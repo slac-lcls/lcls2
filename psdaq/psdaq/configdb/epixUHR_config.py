@@ -85,8 +85,6 @@ def sorting_dict(asics):
                                         "DaqTriggerDelay",
                                         "TimingRunTriggerEnable",
                                         "TimingDaqTriggerEnable", 
-                                        "RunTriggerDelay",
-                                        "DaqTriggerDelay",
                                         "AutoRunEn", 
                                         "AutoDaqEn", 
                                         "AutoTrigPeriod", 
@@ -203,13 +201,11 @@ def cbase_init(cbase):
     cbase.App.WaveformControl.InjSkipFrames.set(0) 		
     cbase.App.TriggerRegisters.enable.set(True)			  	
     cbase.App.TriggerRegisters.RunTriggerEnable.set(False)					
-    cbase.App.TriggerRegisters.RunTriggerDelay.set(False)					
+    cbase.App.TriggerRegisters.RunTriggerDelay.set(0)					
     cbase.App.TriggerRegisters.DaqTriggerEnable.set(False)					
-    cbase.App.TriggerRegisters.DaqTriggerDelay.set(False)					
+    cbase.App.TriggerRegisters.DaqTriggerDelay.set(0)					
     cbase.App.TriggerRegisters.TimingRunTriggerEnable.set(False)				
     cbase.App.TriggerRegisters.TimingDaqTriggerEnable.set(False)			
-    cbase.App.TriggerRegisters.RunTriggerDelay.set(False)					
-    cbase.App.TriggerRegisters.DaqTriggerDelay.set(False)					
     cbase.App.TriggerRegisters.AutoRunEn.set(False)					
     cbase.App.TriggerRegisters.AutoDaqEn.set(False)					
     cbase.App.TriggerRegisters.AutoTrigPeriod.set(42700000)				
@@ -367,7 +363,9 @@ def user_to_expert(base, cfg, full=False):
     global lane
 
     cbase = base['cam']
-
+    
+    deltadelay = -192
+    
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
@@ -385,7 +383,8 @@ def user_to_expert(base, cfg, full=False):
             raise ValueError('triggerDelay computes to < 0')
 
         d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
-        triggerDelay=int(rawStart/base["clk_period"])-cfg['expert']['App']['TimingRx']['TriggerEventManager']['EvrV2CoreTriggers']['EvrV2TriggerReg[0]']['DelayDelta'] # value found empirically
+        
+        triggerDelay=int(rawStart/base["clk_period"]) - deltadelay
         
         if triggerDelay < 0:
             logging.error(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
@@ -452,24 +451,25 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     pll = cbase.Core.Si5345Pll
     
     tmpfiles = []
-    Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
-    if pll.enable.get() == False:
-        pll.enable.set(True)
-    
-    clk = cfg['user']['PllRegistersSel'] 
-    
-    freq = Pll_sel[clk]
-    print(f"Loading PLL file: {freq}")
-    
-    pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
-    fn = pathPll+'PllConfig'+'.csv'
-    np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
-    
-    tmpfiles.append(fn)
-    setattr(cbase, 'filenamePLL', fn)
-    
-    pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
-    cbase_ASIC_init(cbase, asics)
+    if not secondPass:
+        Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
+        if pll.enable.get() == False:
+            pll.enable.set(True)
+        
+        clk = cfg['user']['PllRegistersSel'] 
+        
+        freq = Pll_sel[clk]
+        print(f"Loading PLL file: {freq}")
+        
+        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+        fn = pathPll+'PllConfig'+'.csv'
+        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+        
+        tmpfiles.append(fn)
+        setattr(cbase, 'filenamePLL', fn)
+        
+        pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
+        cbase_ASIC_init(cbase, asics)
                
                 # remove the ASIC configuration so we don't try it
             #    del app['Mv2Asic[{}]'.format(i)]
@@ -622,7 +622,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         gainMapSelection=np.zeros((4, 168, 192))
         gainValSelection=np.zeros(4)
         
-        cbase.App.EpixUhrkMatrixConfig.enable.set("True")
+        cbase.App.EpixUhrMatrixConfig.enable.set("True")
         
         if ( cfg['user']['Gain']['SetSameGain4All']):
             print("Set same Gain for all ASIC")
@@ -644,15 +644,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     print(f"ASIC{i}")
                     gainMapSelection[i-1,:,:]=csvCfg
                     if i == 1:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
                     if i == 2:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
                     if i == 3:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
                     if i == 4:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
-                   # print(f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
-                   # getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
                     
                     #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)                        
                     #getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
@@ -684,13 +682,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     tmpfiles.append(fn)
                     gainMapSelection[i-1,:,:]=csvCfg
                     if i == 1:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
                     if i == 2:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
                     if i == 3:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
                     if i == 4:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
 
 #                    getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMapFromCSVAsic{i}('{fn}')")
 #                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
@@ -712,6 +710,17 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(app['GTReadoutBoardCtrl']['timingOutEn0'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(app['GTReadoutBoardCtrl']['timingOutEn1'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
+        
+        timingOutEnum=['asicR0', 'asicACQ', 'asicSRO', 'asicInj', 'asicGlbRstN', 'timingRunTrigger', 'timingDaqTrigger', 'acqStart', 'dataSend', '_0', '_1']
+        timingOutMux0_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux0'])
+        timingOutMux1_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux1'])
+        timingOutMux3_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux3'])
+        print(f'Setting timingOutMux0 to {timingOutEnum[timingOutMux0_Sel]}')
+        print(f'Setting timingOutMux1 to {timingOutEnum[timingOutMux1_Sel]}')
+        print(f'Setting timingOutMux3 to {timingOutEnum[timingOutMux3_Sel]}')
+        cbase.App.GTReadoutBoardCtrl.timingOutMux0.set(timingOutMux0_Sel)
+        cbase.App.GTReadoutBoardCtrl.timingOutMux1.set(timingOutMux1_Sel)
+        cbase.App.GTReadoutBoardCtrl.timingOutMux3.set(timingOutMux3_Sel)
         
         cbase.App.AsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
         #cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
@@ -778,7 +787,6 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-
     origcfg = cfg
     
     
@@ -858,7 +866,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [1,0,0])
+    top.setAlg('config', [2,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -930,7 +938,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [1,0,0])
+            top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -972,6 +980,7 @@ def epixUHR_update(update):
     cfg = {}
     update_config_entry(cfg,origcfg,json.loads(update))
     #  Apply to expert
+
     writeCalibRegs = user_to_expert(base,cfg,full=False)
     print(f'Partial config writeCalibRegs {writeCalibRegs}')
 
@@ -1012,7 +1021,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [1,0,0])
+            top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels

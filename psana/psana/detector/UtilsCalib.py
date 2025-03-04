@@ -69,6 +69,24 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
     return ts_run, ts_now
 
 
+def merge_panels(lst):
+    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
+    """
+    npanels = len(lst)   # 16 or 4 or 1
+    shape = lst[0].shape # (7, 1, 352, 384)
+    ngmods = shape[0]    # 7
+    dtype = lst[0].dtype #
+
+    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
+
+    # make list for merging of (352,384) blocks in right order
+    mrg_lst = []
+    for igm in range(ngmods):
+        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
+        mrg_lst.append(nda1gm)
+    return np.stack(mrg_lst)
+
+
 def proc_block(block, **kwa):
     """Dark data 1st stage processing to define gate limits.
        block.shape = (nrecs, <raw-detector-shape>),
@@ -98,7 +116,7 @@ def proc_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow
@@ -107,9 +125,9 @@ def proc_block(block, **kwa):
     """
     blockf64 = block
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='lower')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='higher')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='lower')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='higher')
 
     logger.debug('block array median/quantile(frac) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
@@ -144,6 +162,14 @@ def proc_block(block, **kwa):
                 +info_ndarr(gate_hi,     '\n    gate_hi[100:105]', first=100, last=105))
 
     return gate_lo, gate_hi, arr_med, arr_abs_dev
+
+
+def detector_name_short(detlong):
+  """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
+      to short: epixm320_000004
+  """
+  from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+  return pro_detector_name(detlong, add_shortname=True)
 
 
 class DataBlock():
@@ -352,6 +378,11 @@ class DarkProc():
         logger.info('summary consumes %.3f sec' % (time()-t0_sec))
 
 
+    def show_plot_results(self):
+        logger.debug(self.info_results())
+        self.plot_images(titpref='')
+
+
     def add_event(self, raw, irec):
         logger.debug(info_ndarr(raw, 'add_event %3d raw' % irec))
         _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
@@ -459,8 +490,8 @@ def plot_image(nda, tit=''):
 
     logger.info(info_ndarr(img, 'plot_image of %s' % tit))
 
-    amin = np.quantile(img, 0.01, interpolation='lower')
-    amax = np.quantile(img, 0.99, interpolation='higher')
+    amin = np.quantile(img, 0.01, method='lower')
+    amax = np.quantile(img, 0.99, method='higher')
     gr.plotImageLarge(img, amp_range=(amin, amax), title=tit)
     gr.show()
 
@@ -478,11 +509,16 @@ def add_metadata_kwargs(orun, odet, **kwa):
     ivalid_run = tstamp if use_external_run else orun.runnum\
                   if not use_external_ts else 0
 
+    v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
+    segment_ids = None if v is None else v()
+    shortname = detector_name_short(odet.raw._uniqueid)
+
     kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
-    kwa['detector']   = odet.raw._uniqueid
+    kwa['detector']   = shortname
+    #kwa['uniqueid']  = odet.raw._uniqueid
     kwa['longname']   = odet.raw._uniqueid
-    kwa['uniqueid']   = odet.raw._uniqueid
+    kwa['shortname']  = shortname
     kwa['detname']    = odet.raw._det_name
     kwa['dettype']    = odet.raw._dettype
     kwa['time_sec']   = tvalid_sec
@@ -495,6 +531,8 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['version']    = kwa.get('version', 'N/A')
     kwa['comment']    = kwa.get('comment', 'no comment')
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
+    kwa['segment_ids'] = segment_ids
+    kwa['segment_inds'] = odet.raw._sorted_segment_inds
     return kwa
 
 
@@ -532,9 +570,11 @@ def deploy_constants(dic_consts, **kwa):
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
-#                 'pixel_max'   : fmt_max,
-#                 'pixel_min'   : fmt_min,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
+
+    list_keys= ('experiment', 'run_orig', 'run', 'detname', 'shortname', 'ctype', 'tsshort', 'dettype', 'version')
 
     if repoman is None:
        repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
@@ -565,7 +605,7 @@ def deploy_constants(dic_consts, **kwa):
         _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
         _ = kwa.pop('det',None)
 
-        logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
+        logger.debug('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
 
         data = data_from_file(fname, ctype, dtype, True)
         logger.info(info_ndarr(data, 'constants loaded from file', last=10))
@@ -573,6 +613,7 @@ def deploy_constants(dic_consts, **kwa):
         if deploy:
             detname = kwa['longname']
             resp = add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys)))
             if resp:
                 #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
@@ -608,6 +649,7 @@ def pedestals_calibration(parser):
   dpo = None
   nevtot = 0
   nevsel = 0
+  nnones = 0
   nsteptot = 0
   break_loop = False
   dettype = None
@@ -683,7 +725,8 @@ def pedestals_calibration(parser):
         raw = odet.raw.raw(evt)
 
         if raw is None:
-            logger.info('==== Ev:%04d raw is None' % (ievt))
+            logger.debug('==== Ev:%04d raw is None' % (ievt))
+            nnones += 1
             continue
 
         nevsel += 1
@@ -692,8 +735,8 @@ def pedestals_calibration(parser):
         dt   = tsec - tdt
         tdt  = tsec
         if selected_record(ievt+1, events):
-            ss = 'run[%d] %d  step %d  events total/run/step/selected: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
-                 (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
+            ss = 'run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
+                 (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
             logger.info(ss)
 
         status = dpo.event(raw,ievt)
@@ -707,12 +750,12 @@ def pedestals_calibration(parser):
                                      (ievt, orun.runnum, istep))
       if True:
           dpo.summary()
-          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
+          ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
           arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           arr_max, arr_min = dpo.constants_max_min()
-          #consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
-          consts = (arr_av1, arr_rms, arr_sta)
+          consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
+          #consts = (arr_av1, arr_rms, arr_sta)
 
           logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
                       info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\

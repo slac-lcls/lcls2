@@ -171,6 +171,8 @@ if 'PSANA' in BUILD_LIST :
             'psplot_live         = psana.app.psplot_live.main:start',
             'timestamp_sort_h5   = psana.app.timestamp_sort_h5.main:start',
             'psanaplot = psana.app.psana_plot:_do_main',
+            'jungfrau_dark_proc  = psana.app.jungfrau_dark_proc:do_main',
+            'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
         ]
     }
 
