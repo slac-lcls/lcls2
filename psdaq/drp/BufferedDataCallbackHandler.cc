@@ -6,12 +6,41 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-BufferedDataCallbackHandler::BufferedDataCallbackHandler(int measurementTimeMs,
-                                                         const std::string &iniFilePath)
+BufferedDataCallbackHandler::BufferedDataCallbackHandler(int measurementTimeMs, const std::string &iniFilePath)
     : m_measurementTimeMs(measurementTimeMs),
       m_iniFilePath(iniFilePath),
       m_measurementStarted(false) {
-    // Initialization deferred until init() is called.
+
+    // Create or open shared memory object
+    shm_fd = shm_open("/shared_event_data", O_CREAT | O_RDWR, 0666);
+    if (shm_fd == -1) {
+        perror("shm_open failed");
+        throw std::runtime_error("Failed to create shared memory.");
+    }
+    std::cerr << "Shared memory created successfully.\n";
+
+    // Set size of shared memory
+    if (ftruncate(shm_fd, sizeof(SharedEventData)) == -1) {
+        perror("ftruncate failed");
+        throw std::runtime_error("Failed to set size of shared memory.");
+    }
+    std::cerr << "Shared memory size set successfully.\n";
+
+    // Map shared memory to process address space
+    shared_event = static_cast<SharedEventData*>(mmap(
+        nullptr, sizeof(SharedEventData), PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0
+    ));
+
+    if (shared_event == MAP_FAILED) {
+        perror("mmap failed");
+        throw std::runtime_error("Failed to map shared memory.");
+    }
+
+    // Initialize shared memory and verify its allocation
+    *shared_event = SharedEventData();  // Correctly initialize struct
+    shared_event->is_valid = false;
+
+    std::cerr << "Shared memory successfully mapped at " << static_cast<void*>(shared_event) << "\n";
 }
 
 void BufferedDataCallbackHandler::init() {
@@ -57,16 +86,61 @@ BufferedDataCallbackHandler::~BufferedDataCallbackHandler() {
         sc_pipe_close2(m_dd, m_pd);
         sc_tdc_deinit2(m_dd);
     }
+
+    // Unmap and close shared memory
+    if (shared_event) {
+        munmap(shared_event, sizeof(SharedEventData));
+    }
+    if (shm_fd >= 0) {
+        close(shm_fd);
+    }
+    shm_unlink("/shared_event_data");  // Ensure it's cleaned up
 }
 
 void BufferedDataCallbackHandler::processBufferedData(const sc_pipe_buf_callback_args* data) {
-    if (!data || data->data_len == 0) return;
-
-    for (size_t i = 0; i < data->data_len; ++i) {
-        std::cout << "dif1: " << data->dif1[i] << ", dif2: " << data->dif2[i]
-                  << ", time: " << data->time[i] << ", time_tag: " << data->time_tag[i]
-                  << ", start_counter: " << data->start_counter[i] << std::endl;
+    if (!data || data->data_len == 0 || data->data_len > 1024) {
+        std::cerr << "ERROR: Received invalid event! Skipping...\n";
+        return;
     }
+
+    // Validate source pointers before copying
+    if (!data->dif1 || !data->dif2 || !data->time || !data->time_tag || !data->start_counter) {
+        std::cerr << "ERROR: Incoming data contains NULL pointers! Skipping event.\n";
+        return;
+    }
+
+    // Validate shared memory before copying
+    if (shared_event == nullptr) {
+        std::cerr << "ERROR: shared_event is NULL! Shared memory may not be mapped correctly.\n";
+        return;
+    }
+
+    try {
+        // Corrected type sizes for safe copying
+        std::memcpy(shared_event->dif1.data(), data->dif1, data->data_len * sizeof(uint32_t));  // Now 32-bit
+        std::memcpy(shared_event->dif2.data(), data->dif2, data->data_len * sizeof(uint32_t));  // Now 32-bit
+        std::memcpy(shared_event->time.data(), data->time, data->data_len * sizeof(uint64_t));  // Now 64-bit
+        std::memcpy(shared_event->time_tag.data(), data->time_tag, data->data_len * sizeof(uint32_t));  // Now 32-bit
+        std::memcpy(shared_event->start_counter.data(), data->start_counter, data->data_len * sizeof(uint64_t));  // Now 64-bit
+
+        shared_event->data_len = data->data_len;
+        shared_event->is_valid = true;
+
+        std::cerr << "Successfully copied event. Data length: " << shared_event->data_len << "\n";
+
+    } catch (const std::exception& e) {
+        std::cerr << "ERROR: Exception in memcpy: " << e.what() << "\n";
+    }
+}
+
+
+bool BufferedDataCallbackHandler::getLatestEvent(SharedEventData& event) {
+    if (!shared_event->is_valid) {
+        return false;
+    }
+
+    memcpy(&event, shared_event, sizeof(SharedEventData));
+    return true;
 }
 
 extern "C" {
