@@ -622,7 +622,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         gainMapSelection=np.zeros((4, 168, 192))
         gainValSelection=np.zeros(4)
         
-        cbase.App.EpixUhrkMatrixConfig.enable.set("True")
+        cbase.App.EpixUhrMatrixConfig.enable.set("True")
         
         if ( cfg['user']['Gain']['SetSameGain4All']):
             print("Set same Gain for all ASIC")
@@ -644,15 +644,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     print(f"ASIC{i}")
                     gainMapSelection[i-1,:,:]=csvCfg
                     if i == 1:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
                     if i == 2:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
                     if i == 3:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
                     if i == 4:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
-                   # print(f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
-                   # getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
                     
                     #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)                        
                     #getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
@@ -684,13 +682,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     tmpfiles.append(fn)
                     gainMapSelection[i-1,:,:]=csvCfg
                     if i == 1:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
                     if i == 2:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
                     if i == 3:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
                     if i == 4:
-                        cbase.App.EpixUhrkMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
 
 #                    getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMapFromCSVAsic{i}('{fn}')")
 #                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
@@ -712,6 +710,17 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         cbase.App.GTReadoutBoardCtrl.timingOutEn0.set(app['GTReadoutBoardCtrl']['timingOutEn0'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn1.set(app['GTReadoutBoardCtrl']['timingOutEn1'])
         cbase.App.GTReadoutBoardCtrl.timingOutEn2.set(app['GTReadoutBoardCtrl']['timingOutEn2'])
+        
+        timingOutEnum=['asicR0', 'asicACQ', 'asicSRO', 'asicInj', 'asicGlbRstN', 'timingRunTrigger', 'timingDaqTrigger', 'acqStart', 'dataSend', '_0', '_1']
+        timingOutMux0_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux0'])
+        timingOutMux1_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux1'])
+        timingOutMux3_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux3'])
+        print(f'Setting timingOutMux0 to {timingOutEnum[timingOutMux0_Sel]}')
+        print(f'Setting timingOutMux1 to {timingOutEnum[timingOutMux1_Sel]}')
+        print(f'Setting timingOutMux3 to {timingOutEnum[timingOutMux3_Sel]}')
+        cbase.App.GTReadoutBoardCtrl.timingOutMux0.set(timingOutMux0_Sel)
+        cbase.App.GTReadoutBoardCtrl.timingOutMux1.set(timingOutMux1_Sel)
+        cbase.App.GTReadoutBoardCtrl.timingOutMux3.set(timingOutMux3_Sel)
         
         cbase.App.AsicGtClk.enable.set(cfg['expert']['App']['AsicGtClk']['enable'])
         #cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
@@ -857,7 +866,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [1,0,0])
+    top.setAlg('config', [2,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -929,7 +938,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [1,0,0])
+            top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -1012,7 +1021,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [1,0,0])
+            top.setAlg('config', [2,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
