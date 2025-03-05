@@ -164,12 +164,12 @@ def proc_block(block, **kwa):
     return gate_lo, gate_hi, arr_med, arr_abs_dev
 
 
-def detector_name_short(detlong):
+def detector_name_short(detlong, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=True):
   """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
       to short: epixm320_000004
   """
   from psana.pscalib.calib.MDBWebUtils import pro_detector_name
-  return pro_detector_name(detlong, add_shortname=True)
+  return pro_detector_name(detlong, maxsize=maxsize, add_shortname=add_shortname)
 
 
 class DataBlock():
@@ -511,7 +511,7 @@ def add_metadata_kwargs(orun, odet, **kwa):
 
     v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
     segment_ids = None if v is None else v()
-    shortname = detector_name_short(odet.raw._uniqueid)
+    shortname = detector_name_short(odet.raw._uniqueid, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
     kwa['exp']        = orun.expt
     kwa['experiment'] = orun.expt
@@ -558,8 +558,9 @@ def deploy_constants(dic_consts, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
-    uniqueid = kwa.get('uniqueid', 'not-def-id')
+    uniqueid = kwa.get('uniqueid', None)
     shortname= kwa.get('shortname', 'not-def-shortname')
+    longname = kwa.get('longname', 'not-def-longname')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -581,14 +582,15 @@ def deploy_constants(dic_consts, **kwa):
     #dircons = repoman.makedir_constants(dname='constants')
     #fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
-    panelid = uniqueid.split('_',1)[-1]
+    panelid = (longname if uniqueid is None else uniqueid).split('_',1)[-1]
+
     logger.info('use panelid: %s' % panelid)
 
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
-        #fprefix = fname_prefix(shortname, tsshort, expname, runnum, dir_ct)
-        fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
+        fprefix = fname_prefix(shortname, tsshort, expname, runnum, dir_ct)
+        #fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
 
         fname = '%s-%s.data' % (fprefix, ctype)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
