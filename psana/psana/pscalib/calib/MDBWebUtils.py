@@ -28,7 +28,7 @@ Usage ::
     id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
       wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
 
-    detname_short = wu.pro_detector_name(detname, add_shortname=False)
+    detname_short = wu.pro_detector_name(detname, add_shortname=False, maxsize=cc.MAX_DETNAME_SIZE)
 
     resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -207,11 +207,11 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
     return mu.object_from_data_string(s, doc)
 
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None, dbsuffix=''):
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None, dbsuffix='', **kwa):
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
-    short = pro_detector_name(det)
+    short = pro_detector_name(det, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     logger.debug('short: %s dbsuffix: %s' % (short, dbsuffix))
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
@@ -375,15 +375,16 @@ def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbh
 def add_data_and_two_docs(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Add data and document to experiment and detector data bases."""
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
-
-    shortname = pro_detector_name(detname_long, add_shortname=True)
+    shortname = pro_detector_name(detname_long, add_shortname=True,\
+                                  maxsize=kwargs.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
     colname = shortname
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(shortname)
-    
+
     ctype = kwargs.get('ctype','N/A')
-    logger.info('add_data_and_two_docs save constants: %s in DBs: %s %s collection: %s' % (ctype, dbname_exp, dbname_det, colname))
+    logger.info('add_data_and_two_docs save constants: %s in DBs: %s and %s collection: %s'%\
+                (ctype, dbname_exp, dbname_det, colname))
 
     #kwargs['detector'] = detname         # ex: epix10ka
     kwargs['shortname'] = shortname       # ex: epix10ka_000001
@@ -422,7 +423,7 @@ def add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=cc.URL_KRB, 
     """
     logger.debug('add_data_and_doc_to_detdb_extended kwargs: %s' % str(kwargs))
 
-    short = pro_detector_name(detname_long, add_shortname=True)
+    short = pro_detector_name(detname_long, add_shortname=True, maxsize=kwargs.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
     dbname_det = detector_dbname(short, **kwargs)
     colname = short
@@ -440,7 +441,7 @@ def add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=cc.URL_KRB, 
 def deploy_constants(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa):
     """Deploys constants depending on dbsuffix."""
 
-    detname = pro_detector_name(detname_long, add_shortname=False)
+    detname = pro_detector_name(detname_long, add_shortname=False, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     ctype = kwa.get('ctype','')
     dbsuffix = kwa.get('dbsuffix','')
 
