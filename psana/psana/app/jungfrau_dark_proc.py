@@ -18,6 +18,7 @@ USAGE = 'Usage:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
       + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -26,17 +27,17 @@ def argument_parser():
 
     d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
     d_detname = 'jungfrau' #  None
-    d_nrecs   = 20   # number of records to collect and process
-    d_nrecs1  = 10   # number of records to process at 1st stage
-    d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
-    d_dirrepo = './work' # DIR_REPO_JUNGFRAU
+    d_nrecs   = 1000  # number of records to collect and process
+    d_nrecs1  = 50    # number of records to process at 1st stage
+    d_idx     = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
     d_events  = 1000000 # last event number in the step to process
-    d_evstep  = 2000
+    d_evstep  = 1000000
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
@@ -51,13 +52,13 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-02-11'
+    d_version = 'V2025-03-05'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
     d_evcode  = None
     d_segind  = None
-    d_igmode  = 0 # None
+    d_igmode  = None
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
