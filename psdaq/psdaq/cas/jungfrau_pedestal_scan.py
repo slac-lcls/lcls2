@@ -24,11 +24,12 @@ def main():
         metad = {}
         metad['detname'] = args.detname
         metad['scantype'] = 'pedestal'
-        for gain in range(5):
+        for gain in range(3):
             #  Set the detector level config change
             d[f'{args.detname}:user.gainMode'] = gain
             #  Set the global meta data
             metad['step'] = gain
+            metad['gainMode'] = gain
             yield (d, float(gain), json.dumps(metad))
 
     scan.run(keys, steps)
