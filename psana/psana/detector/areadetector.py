@@ -365,7 +365,8 @@ class AreaDetectorRaw(AreaDetector):
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
         if len(segs) == 1:
-            return segs[0].raw
+            ind = self._segment_numbers[0]
+            return segs[ind].raw
         return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
 
 
