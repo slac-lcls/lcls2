@@ -4,6 +4,7 @@ from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import ePixQuad
+from psdaq.utils import enable_lcls2_pgp_pcie_apps
 import lcls2_pgp_pcie_apps
 import rogue
 #import epix

@@ -9,6 +9,7 @@ import rogue
 import rogue.hardware.axi
 import pyrogue.protocols
 
+from psdaq.utils import enable_epix_uhr_gtreadout_dev
 import epix_uhr_gtreadout_dev as epixUhrDev
 import surf.protocols.batcher as batcher
 
