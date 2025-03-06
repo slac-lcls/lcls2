@@ -46,7 +46,7 @@ def issue_2025_01_29():
     #ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
     ds = DataSource(exp='rixx1017523',run=418, detectors=['archon']) # (600, 4800)
     orun = next(ds.runs())
-    det = orun.Detector('archon', gainfact=1, cmpars=None) #(1,0,0))
+    det = orun.Detector('archon', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
 
     flimg = None
     events = 10
@@ -72,8 +72,8 @@ def issue_2025_01_29():
        #img.shape = (1,4800)
        #img,  title  = det.raw._calibconst['pedestals'][0], 'pedestals'
        #img, title  = det.raw.raw(evt), 'raw'
-       img, title  = det.raw.calib(evt), 'calib'
-       #img, title  = det.raw.image(evt), 'image'
+       #img, title  = det.raw.calib(evt), 'calib'
+       img, title  = det.raw.image(evt), 'image'
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb
