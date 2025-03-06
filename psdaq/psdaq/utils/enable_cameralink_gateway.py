@@ -4,7 +4,7 @@ import sys
 
 submoduledir = os.environ["SUBMODULEDIR"]
 
-top_level = submoduledir + "/cameralink_gateway/"
+top_level = submoduledir + "/cameralink-gateway/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 

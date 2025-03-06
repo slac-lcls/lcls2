@@ -5,6 +5,9 @@ import sys
 submoduledir = os.environ["SUBMODULEDIR"]
 
 top_level = submoduledir + "/epix_quad/"
+
+sys.path.append("%s/firmware/python".format(top_level))
+
 pr.addLibraryPath(top_level + 'firmware/submodules/axi-pcie-core/python')
 pr.addLibraryPath(top_level + 'firmware/submodules/surf/python')
 pr.addLibraryPath(top_level + 'firmware/python')

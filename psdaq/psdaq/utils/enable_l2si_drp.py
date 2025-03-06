@@ -4,7 +4,7 @@ import sys
 
 submoduledir = os.environ["SUBMODULEDIR"]
 
-top_level = submoduledir + "/l2si_drp/"
+top_level = submoduledir + "/l2si-drp/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 
