@@ -144,9 +144,17 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         return a
 
 
-class archon_raw_1_0_1(AreaDetectorRaw):
+archon_raw_1_0_1 = archon_raw_1_0_0 # alias
+
+#class archon_raw_1_0_1(archon_raw_1_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+
+
+
+class archon_raw_1_0_X(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
-        """In 1_0_1 bank fake pixel columns ahead of real:
+        """In 1_0_X bank fake pixel columns ahead of real:
            daq raw array consists of 16 banks, bank has variable number off rows.
            bank has 36 columns af fake, and 264 columns of real pixels, described by ARCHON:V2 geometry
         """
