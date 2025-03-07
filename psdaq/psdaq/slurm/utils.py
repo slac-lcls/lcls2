@@ -212,6 +212,7 @@ class SbatchManager:
         env_opt += ",CONDA_DEFAULT_ENV"
         env_opt += ",CONDA_EXE"
         env_opt += ",CONFIGDB_AUTH"
+        env_opt += ",SUBMODULEDIR"
 
         # Build PATH and PYTHONPATH from scratch
         daq_path = "$TESTRELDIR/bin"

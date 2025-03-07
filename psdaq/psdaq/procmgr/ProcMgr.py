@@ -961,6 +961,12 @@ class ProcMgr:
         else:
             export_dict['CONFIGDB_AUTH'] = os.environ['CONFIGDB_AUTH']
 
+        if (submoduledir := os.getenv('SUBMODULEDIR')) is not None:
+            export_dict["SUBMODULEDIR"] = submoduledir
+        else:
+            print('SUBMODULEDIR not defined in environment')
+            return 1
+
         if self.isEmpty():
             # configuration is empty -- nothing to start
             if verbose:
