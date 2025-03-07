@@ -6,7 +6,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import copy_reconfig_keys, copy_config_entry, update_config_entry
 from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
-from psdaq.utils import submod_lcls2_udp_pcie_apps # Required to find lcls2_udp_pcie_apps
+from psdaq.utils import enable_lcls2_udp_pcie_apps # Required to find lcls2_udp_pcie_apps
 
 import lcls2_udp_pcie_apps # Found after importing submod_lcls2_udp_pcie_apps
 import rogue
