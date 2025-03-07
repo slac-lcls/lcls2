@@ -155,7 +155,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
     // set up the names for L1Accept data
     // Generic panel data
     {
-        Alg alg("raw", 0, 0, 0);
+        Alg alg("raw", 1, 0, 0);
         // copy the detName, detType, detId from the Config Names
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
@@ -243,11 +243,13 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    
+
     // Moved to a 1D array instead of 2D, due to packing of the data (12 instead of 16). 
     shape[0] = 4; shape[1] = elemRows*elemRowSize*12/8; // numrows*numcolumns*numasics*(12Bits/pixel; 8bits/Bytes)
     Array<uint8_t> aframe = cd.allocate<uint8_t>(EpixUHRPanelDef::raw, shape);
-    unsigned m_asic_check = __builtin_popcount(m_asics)+2;
+    // unsigned m_asic_check = __builtin_popcount(m_asics)+2; this was working with 2 Asics, we don't understand why we need to change it to +1 with one Asic
+    unsigned m_asic_check = __builtin_popcount(m_asics)+1;
+    
     if (subframes.size() != m_asic_check) {
         logging::error("Missing data: subframe size %d [%d]\n",
                         subframes.size(), m_asic_check);
@@ -275,16 +277,17 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<numAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size() < (a+2)) {
+    // it was a+2 working with 2 Asics, with only one Asic we have to switch to a+1, to be better understood why.
+            if (subframes.size() < (a+1)) {
                 logging::error("Missing data from asic %d\n", q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
 
             }
-            else if (subframes[a+2].num_elem() != headerSize+asicSize) {
+            else if (subframes[a+1].num_elem() != headerSize+asicSize) {
             // else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                                subframes[a+2].num_elem()/2, asicSize+headerSize, q);
+                                subframes[a+1].num_elem()/2, asicSize+headerSize, q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
@@ -297,7 +300,8 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     a=0;
     for (unsigned asic = 0; asic < numAsics; ++asic) {
         if (q_asics & (1<<asic)) {
-            auto src = reinterpret_cast<const uint8_t*>(subframes[2 + a].data()) + headerSize;
+            // replacing 2+a to 1+a it worked with 2 Asics we switch to 1 for one asic, to be investigated why.
+            auto src = reinterpret_cast<const uint8_t*>(subframes[1 + a].data()) + headerSize;
             auto dst = &frame[asic * asicSize];
             memcpy(dst, src, elemRows*elemRowSize*12/8);
             q_asics ^= (1<<asic);

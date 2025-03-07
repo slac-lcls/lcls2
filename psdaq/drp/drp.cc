@@ -141,6 +141,9 @@ int main(int argc, char* argv[])
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
             if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
+        } else if (para.detType == "jungfrauemu") {
+            if (kwargs.first == "imgArray")          continue;
+            if (kwargs.first == "segNums")           continue;
         }
         if (para.detType == "jungfrau") {
             if (kwargs.first == "segNums")           continue;

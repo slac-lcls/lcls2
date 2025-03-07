@@ -18,4 +18,5 @@ from .epixm320              import *
 from .epixuhr               import *
 from .archon                import *
 from .jungfrau              import *
+from .jungfrauemu           import *
 #from .epixhremu             import *

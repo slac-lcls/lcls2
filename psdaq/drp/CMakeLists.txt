@@ -39,6 +39,7 @@ add_executable(drp
     EpixQuad.cc
     Jungfrau.cc
     JungfrauDetectorId.cc
+    JungfrauEmulator.cc
     TimingDef.cc
     TimingBEB.cc
     TimingSystem.cc

@@ -23,7 +23,8 @@ from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
+import psana.detector.UtilsCalib as uc
+from psana.detector.utils_psana import seconds, data_source_kwargs#, datasource_kwargs_from_string
 from psana.detector.UtilsLogging import init_file_handler
 
 
@@ -214,7 +215,7 @@ def proc_dark_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
@@ -226,9 +227,9 @@ def proc_dark_block(block, **kwa):
 
     t1_sec = time()
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='linear')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='linear')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='linear')
     logger.debug('block array median/quantile(0.5) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
     med_med = np.median(arr_med)
@@ -372,9 +373,9 @@ def irun_first(runs):
            int(runs.split(',',1)[0].split('-',1)[0])
 
 
-def data_source_kwargs(**kwa):
-    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
-    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
+#def data_source_kwargs(**kwa):
+#    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+#    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
 def pedestals_calibration(parser):
@@ -782,23 +783,24 @@ def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, of
     nda.shape = shape_merged # (7, 1, 352, 384) because save_ndarray_in_textfile changes shape
     return nda
 
+merge_panels = uc.merge_panels
 
-def merge_panels(lst):
-    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
-    """
-    npanels = len(lst)   # 16 or 4 or 1
-    shape = lst[0].shape # (7, 1, 352, 384)
-    ngmods = shape[0]    # 7
-    dtype = lst[0].dtype #
+#def merge_panels(lst):
+#    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
+#    """
+#    npanels = len(lst)   # 16 or 4 or 1
+#    shape = lst[0].shape # (7, 1, 352, 384)
+#    ngmods = shape[0]    # 7
+#    dtype = lst[0].dtype #
+#
+#    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
 
-    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
-
-    # make list for merging of (352,384) blocks in right order
-    mrg_lst = []
-    for igm in range(ngmods):
-        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
-        mrg_lst.append(nda1gm)
-    return np.stack(mrg_lst)
+#    # make list for merging of (352,384) blocks in right order
+#    mrg_lst = []
+#    for igm in range(ngmods):
+#        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
+#        mrg_lst.append(nda1gm)
+#    return np.stack(mrg_lst)
 
 
 def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):

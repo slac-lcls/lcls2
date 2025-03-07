@@ -101,6 +101,7 @@ class SmallDataTest:
         return
 
     def test_int(self):
+        print('DEBUGXXX', np.array(self.f['/oneint']))
         assert np.all(np.array(self.f['/oneint']) == 1)
         return
 

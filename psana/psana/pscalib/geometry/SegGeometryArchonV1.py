@@ -23,7 +23,7 @@ In this class we use natural matrix notations like in data array
       |             |              |             |              |
       |             |              |             |              |
       -----------------------------------------------------------
-   (1199,0)                         |                          (1199,4799)
+   (1199,0)                        |                          (1199,4799)
    (Xmin,Ymin)                                                (Xmax,Ymin)
 
 
@@ -96,7 +96,6 @@ class SegGeometryArchonV1(SegGeometry):
     _pixsc = 10.     # Pixel size in um (micrometer) in col
     _pixd  = 400.00  # Pixel depth in um (micrometer)
 
-
     def __init__(sp, **kwa):
         sp._name = 'SegGeometryArchonV1'
         #logger.debug('%s.__init__()'%sp._name)
@@ -108,10 +107,13 @@ class SegGeometryArchonV1(SegGeometry):
         SegGeometry.__init__(sp, **kwa)
         det = kwa.get('detector', None)
         assert det is not None
-        assert 'pedestals' in det._calibconst.keys()
-        peds = det._calibconst['pedestals'][0]
-        logger.debug('__init__(): pedestals.shape=%s' % str(peds.shape))
-        sp._rows = peds.shape[0]
+        shape = kwa.get('shape', None)
+        if shape is None:
+            assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
+            peds = det._calibconst['pedestals'][0]
+            shape = peds.shape
+        logger.debug('__init__(): segment shape=%s' % str(shape))
+        sp._rows = shape[0]
         sp.make_pixel_coord_arrs()
         sp.pix_area_arr = None
         sp.x_pix_arr_pix = None
