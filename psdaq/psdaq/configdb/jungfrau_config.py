@@ -130,6 +130,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     ocfg = [] # per segment dicts for later use (config scans)
     cfg_list = [] # Json strings
     segm_lane = 0
+    #jungfrau_kcu.DevPcie.AxiPcieCore.AxiVersion.UserRst()
+    jungfrau_kcu.StopRun()
     for segm in detsegm_list:
         cfg = get_config(connect_str, cfgtype, detname, segm)
 
@@ -148,9 +150,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         # Do some of the descrambling stuff here?
         #########################################
         frameReorg = jungfrau_kcu.DevPcie.UdpFrameReorg[segm_lane]
-        frameReorg.Blowoff.set(True)
-        time.sleep(0.1)
-        frameReorg.Blowoff.set(False)
 
         npackets = 128
         center = (npackets // 2)
@@ -166,13 +165,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         # Need to do on all AppLanes
         appLane = jungfrau_kcu.DevPcie.Application.AppLane[segm_lane]
 
-        appLane.UdpBatcher.Blowoff.set(True)
-        time.sleep(0.1)
-        appLane.UdpBatcher.Blowoff.set(False)
-
-        appLane.EventBuilder.Blowoff.set(True)
-        time.sleep(0.1)
-        appLane.EventBuilder.Blowoff.set(False)
         appLane.EventBuilder.Bypass.set(0x0)
         appLane.EventBuilder.Timeout.set(0x0)
 
@@ -180,7 +172,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
 
         trigEventBuf.Partition.set(grp)
         time.sleep(0.1)
-        # Need to do on multiple lanes
 
         #  Capture the firmware version to persist in the xtc
         cfg["firmwareVersion"] = jungfrau_kcu.DevPcie.AxiPcieCore.AxiVersion.FpgaVersion.get()
@@ -196,8 +187,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     segm_lane = 0
     trigEventManager = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager
     jungfrau_kcu.StartRun()
+    print("Disabling all lanes")
     for i in range(7):
-        print("Disabling all lanes")
         trigEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
     for i in range(7):
         if lm & (1 << i):
