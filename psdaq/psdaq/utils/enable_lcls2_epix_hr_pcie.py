@@ -4,7 +4,7 @@ import sys
 
 submoduledir = os.environ["SUBMODULEDIR"]
 
-top_level = submoduledir + "/lcls2_epix_hr_pcie/"
+top_level = submoduledir + "/lcls2-epix-hr-pcie/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 

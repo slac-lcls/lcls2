@@ -4,7 +4,7 @@ import sys
 
 submoduledir = os.environ["SUBMODULEDIR"]
 
-top_level = submoduledir + "/epix_100a_gen2/"
+top_level = submoduledir + "/epix-100a-gen2/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 
