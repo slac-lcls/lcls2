@@ -4,8 +4,10 @@ import os
 import time
 from collections import OrderedDict
 
+from psdaq.utils import enable_epix_100a_gen2 # To find epix100_gen2
 import epix100a_gen2  # To find ePixFpga
 import ePixFpga as fpga
+from psdaq.utils import enable_lcls2_epix_hr_pcie # To find lcls2_epix_hr_pcie
 import lcls2_epix_hr_pcie
 import pyrogue
 import rogue
