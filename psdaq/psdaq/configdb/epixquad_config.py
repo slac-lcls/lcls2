@@ -3,6 +3,7 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
+from psdaq.utils import enable_epix_quad
 import ePixQuad
 from psdaq.utils import enable_lcls2_pgp_pcie_apps
 import lcls2_pgp_pcie_apps
