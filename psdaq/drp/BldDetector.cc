@@ -655,9 +655,17 @@ uint64_t KMicroscopeBld::next() {
     // Flush any pending events.
     m_callbackHandler.flushPending();
 
-    // Busy–wait until an event is available.
+    auto start_time = std::chrono::steady_clock::now();
+    const std::chrono::milliseconds timeout(500);  // Set a timeout of 500ms
+
     while (!m_callbackHandler.popEvent(event)) {
         std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+        auto now = std::chrono::steady_clock::now();
+        if (now - start_time > timeout) {
+            logging::warning("Timeout exceeded in next(), returning dummy event");
+            return 0;  // Return a dummy timestamp to prevent blocking
+        }
     }
 
     // Save (replace) the stored event with the new one.
