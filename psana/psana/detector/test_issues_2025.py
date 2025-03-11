@@ -43,12 +43,13 @@ def issue_2025_01_29():
     #ds = DataSource(exp='rixx1016923',run=118, detectors=['archon'])
     #ds = DataSource(exp='rixx1016923',run=119, detectors=['archon'])
     #ds = DataSource(exp='rixx1017523',run=395, detectors=['archon']) # (1, 4800)
-    ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
+    #ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
+    ds = DataSource(exp='rixx1017523',run=418, detectors=['archon']) # (600, 4800)
     orun = next(ds.runs())
-    det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
+    det = orun.Detector('archon', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
 
     flimg = None
-    events = 3
+    events = 10
     evsel = 0
 
     for nev, evt in enumerate(orun.events()):
@@ -69,10 +70,10 @@ def issue_2025_01_29():
 
        #img = np.array(raw)[0,:]
        #img.shape = (1,4800)
-
+       #img,  title  = det.raw._calibconst['pedestals'][0], 'pedestals'
        #img, title  = det.raw.raw(evt), 'raw'
-       img, title  = det.raw.calib(evt), 'calib'
-       #img, title  = det.raw.image(evt), 'image'
+       #img, title  = det.raw.calib(evt), 'calib'
+       img, title  = det.raw.image(evt), 'image'
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb

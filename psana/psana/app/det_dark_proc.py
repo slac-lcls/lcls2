@@ -20,22 +20,9 @@ USAGE = 'Usage:'\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00318-r0010-s000-c000.xtc2 -d epix100 -o ./work' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/tmoc00118-r0222-s006-c000.xtc2 -d tmo_atmopal -o ./work' % SCRNAME\
       + '\n  %s -k /cds/data/psdm/prj/public01/xtc/rixl1013320-r0093-s006-c000.xtc2 -d atmopal -o ./work' % SCRNAME\
+      + '\n  %s -k exp=rixx1017523,run=396 -d archon -o ./work # (600, 4800)' % SCRNAME\
+      + '\n  %s -k exp=rixx1017523,run=411 -d archon -o ./work # (1, 4800)' % SCRNAME\
       + '\n\nHelp:\n  %s -h' % SCRNAME
-
-
-def do_main():
-
-    parser = argument_parser()
-    args = parser.parse_args()
-    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
-    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-
-    from time import time
-    from psana.detector.UtilsCalib import pedestals_calibration
-    t0_sec = time()
-    pedestals_calibration(parser)
-    logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
 def argument_parser():
@@ -147,6 +134,21 @@ def argument_parser():
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
 
     return parser
+
+
+def do_main():
+
+    parser = argument_parser()
+    args = parser.parse_args()
+    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
+    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
+    assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+
+    from time import time
+    from psana.detector.UtilsCalib import pedestals_calibration
+    t0_sec = time()
+    pedestals_calibration(parser)
+    logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 
 
 if __name__ == "__main__":

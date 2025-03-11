@@ -938,6 +938,13 @@ def epixm320_enable(base):
     # If charge injection was enabled, start the f/w engine
     if cbase.App.FPGAChargeInjection.step.get() != 0:
         cbase.App.FPGAChargeInjection.Start()
+        print('Starting charge injection engine')
+        print('step:', cbase.App.FPGAChargeInjection.step.get());
+        print('currentAsic:', cbase.App.FPGAChargeInjection.currentAsic.get());
+        print('status:', cbase.App.FPGAChargeInjection.status.get());
+        print('state:', cbase.App.FPGAChargeInjection.state.get());
+        print('stateLast:', cbase.App.FPGAChargeInjection.stateLast.get());
+        print('triggerStateCounter:', cbase.App.FPGAChargeInjection.triggerStateCounter.get());
 
     epixm320_external_trigger(base)
     #_start(base)
@@ -948,6 +955,13 @@ def epixm320_disable(base):
 
     # If charge injection was enabled, stop the f/w engine
     if cbase.App.FPGAChargeInjection.step.get() != 0:
+        print('Stopping charge injection engine')
+        print('step:', cbase.App.FPGAChargeInjection.step.get());
+        print('currentAsic:', cbase.App.FPGAChargeInjection.currentAsic.get());
+        print('status:', cbase.App.FPGAChargeInjection.status.get());
+        print('state:', cbase.App.FPGAChargeInjection.state.get());
+        print('stateLast:', cbase.App.FPGAChargeInjection.stateLast.get());
+        print('triggerStateCounter:', cbase.App.FPGAChargeInjection.triggerStateCounter.get());
         cbase.App.FPGAChargeInjection.Stop()
 
     # The following prevents transitions from going through
