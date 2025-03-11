@@ -272,11 +272,12 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
         if (m_debatch)
             sf = _subframes(sf[2].data(), sf[2].shape()[0]);
 
-        if (subframes.size()==0)
-            subframes = sf;
-        else if (sf.size() > 2)
-            subframes.push_back(sf[2]);
-
+        if (sf.size()>2) {
+            if (subframes.size()==0)
+                subframes = sf;
+            else
+                subframes.push_back(sf[2]);
+        }
         mask &= mask - 1;
     }
 
