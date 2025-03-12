@@ -307,8 +307,6 @@ def issue_2025_02_27():
     print('odet.raw._calibconst.keys()', odet.raw._calibconst.keys())
 
 
-
-
 def issue_2025_03_06():
     """jungfrau
        datinfo -k exp=ascdaq023,run=37 -d jungfrau
