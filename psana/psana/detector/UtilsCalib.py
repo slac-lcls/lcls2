@@ -21,7 +21,6 @@ import sys
 import numpy as np
 
 import psana.detector.utils_psana as up
-from psana import DataSource
 from psana.detector.Utils import str_tstamp, time, get_login, info_dict  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
@@ -628,6 +627,8 @@ def deploy_constants(dic_consts, **kwa):
 
 
 def pedestals_calibration(parser):
+
+  from psana import DataSource
 
   args = parser.parse_args()
   kwa = vars(args)
