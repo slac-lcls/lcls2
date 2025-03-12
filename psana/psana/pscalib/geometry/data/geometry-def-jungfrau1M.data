@@ -6,7 +6,6 @@
 # DETECTOR   XcsEndstation.0:Jungfrau.0
 # CALIB_TYPE geometry
 # COMMENT:01 Manually created as an example for the 2-segment 1M Jungfrau detector
-# COMMENT:02 
 
 # PARAM:01 PARENT     - name and version of the parent object
 # PARAM:02 PARENT_IND - index of the parent object
@@ -24,7 +23,7 @@
 
 # HDR PARENT IND      OBJECT     IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
 
-JFCAMERA:V1    0    JUNGFRAU:V1    0         0   20625       0       0     0   180    0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    1         0  -20625       0       0     0   180    0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    0         0   20625       0       0     0   180    0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    1         0  -20625       0       0     0   180    0.0      0.0      0.0
 
 IP:V1          0    JFCAMERA:V1    0         0       0  100000      90     0     0    0.0      0.0      0.0
