@@ -74,6 +74,7 @@ def issue_2025_01_29():
        #img, title  = det.raw.raw(evt), 'raw'
        #img, title  = det.raw.calib(evt), 'calib'
        img, title  = det.raw.image(evt), 'image'
+       img = np.copy(img)
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb
@@ -81,7 +82,7 @@ def issue_2025_01_29():
        #img = det.raw._arr_to_image(clb)
 
        dt_sec = (time() - t0_sec)*1000
-       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  image' % (nev, dt_sec), last=100))
+       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  image' % (nev, dt_sec), last=10))
        #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
 
        if img.ndim==2 and img.shape[0] == 1:
@@ -306,6 +307,79 @@ def issue_2025_02_27():
     print('odet.raw._calibconst.keys()', odet.raw._calibconst.keys())
 
 
+
+
+def issue_2025_03_06():
+    """jungfrau
+       datinfo -k exp=ascdaq023,run=37 -d jungfrau
+       jungfrau_dark_proc -k exp=ascdaq023,run=37 -d jungfrau
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsJungfrau import info_gainbits
+
+    ds = DataSource(exp='ascdaq023',run=37) #, detectors=['jungfrau']) # (600, 4800)
+    orun = next(ds.runs())
+    det = orun.Detector('jungfrau', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
+
+    flimg = None
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       raw = det.raw.raw(evt)
+       if raw is None:
+           #print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+       evsel += 1
+
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       #print('==== evt/sel: %4d/%4d' % (nev,evsel))
+
+       t0_sec = time()
+
+       #img,  title  = det.raw._calibconst['pedestals'][0], 'pedestals'
+       #img, title  = det.raw.raw(evt), 'raw'
+       img, title  = det.raw.calib(evt, cmpars=(1,7,1000)), 'calib'
+       #img, title  = det.raw.image(evt), 'image'
+
+       dt_sec = (time() - t0_sec)*1000
+       print(info_ndarr(img, '==== evt/sel:%3d/%3d dt=%.3f msec  image' % (nev, evsel, dt_sec), last=10))
+       #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
+
+       print('     info_gainbits', info_gainbits(raw))
+
+       if img.ndim==2 and img.shape[0] == 1:
+           img = np.stack(1000*tuple(img))
+
+       #np.save('archon_raw.npy', img)
+       #fraclo, frachi, fracme = 0.1, 0.9, 0.5
+       #arr = img[0,:]
+       #qlo = np.quantile(arr, fraclo, method='linear')
+       #qhi = np.quantile(arr, frachi, method='linear')
+       #qme = np.quantile(arr, fracme, method='linear')
+       #print('qlo, qhi, qme, mean, max, min:', qlo, qhi, np.median(arr), np.mean(arr), np.max(arr), np.min(arr))
+       img = reshape_to_2d(img)
+
+       if flimg is None:
+          flimg = fleximage(img, h_in=5, w_in=20) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+
+       flimg.update(img)
+       flimg.fig.suptitle('Event %d: %s' % (nev, title), fontsize=16)
+       #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       gr.show(mode='DO NOT HOLD')
+
+    gr.show()
+
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -344,11 +418,12 @@ def selector():
 
     if   TNAME in  ('0',): issue_2025_mm_dd() # template
     elif TNAME in  ('1',): issue_2025_01_29() # archon V2 common mode
-    elif TNAME in  ('2',): issue_2025_01_31() # emulated jungfrau
+    elif TNAME in  ('2',): issue_2025_01_31() # emulated jungfrauemu
     elif TNAME in  ('3',): issue_2025_02_05() # fleximage does not show image
     elif TNAME in  ('4',): issue_2025_02_21() # access to jungfrau panel configuration object
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
     elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
+    elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
