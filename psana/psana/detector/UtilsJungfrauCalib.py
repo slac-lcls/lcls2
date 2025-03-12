@@ -34,7 +34,7 @@ import psana.pscalib.calib.CalibConstants as cc
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
 SCRNAME = os.path.basename(sys.argv[0])
-
+MAX_DETNAME_SIZE = 40
 NUMBER_OF_GAIN_MODES = 3
 
 CTYPES = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 'status_extra')
@@ -42,12 +42,9 @@ CTYPES = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 's
 dic_calib_char_to_name = cc.dic_calib_char_to_name # {'p':'pedestals', 'r':'pixel_rms', 's':'pixel_status',...}
 # "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,
 
-DIC_GAIN_MODE = {'FixedGain1':  1,
-                 'FixedGain2':  2,
-                 'ForcedGain1': 1,
-                 'ForcedGain2': 2,
-                 'HighGain0':   0,
-                 'Normal':      0}
+DIC_GAIN_MODE = {'DYNAMIC':         0,
+                 'FORCE_SWITCH_G1': 1,
+                 'FORCE_SWITCH_G2': 2}
 
 DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_dict(DIC_GAIN_MODE)
 
@@ -438,7 +435,7 @@ def save_results(dpo, orun, odet, **kwa):
                 info_ndarr(arr_min, 'arr_min', first=0, last=5)))
     dic_consts = dict(zip(ctypes, consts))
 
-    kwa.setdefault('max_detname_size', 40)
+    kwa.setdefault('max_detname_size', MAX_DETNAME_SIZE)
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
     save_constants_in_repository(dic_consts, **kwa_depl)
     del(dpo)
@@ -605,7 +602,7 @@ def jungfrau_deploy_constants(parser):
     deploy    = kwargs.get('deploy', False)
     detname   = kwargs.get('detname', None)
     ctdepl    = kwargs.get('ctdepl', None) # 'prs'
-    max_detname_size = kwargs.setdefault('max_detname_size', 40)
+    max_detname_size = kwargs.setdefault('max_detname_size', MAX_DETNAME_SIZE)
 
     DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
 
