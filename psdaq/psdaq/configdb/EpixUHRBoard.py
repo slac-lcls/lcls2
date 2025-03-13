@@ -18,6 +18,7 @@ import rogue.hardware.axi
 import rogue.interfaces.stream
 import rogue.utilities.fileio
 
+from psdaq.utils import enable epix_uhr_gtreadout_dev
 import epix_uhr_gtreadout_dev as epixUhrDev
 import epix_hr_leap_common as leapCommon
 

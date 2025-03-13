@@ -4,6 +4,7 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
 import rogue
+from psdaq.utils import enable_high_rate_encoder_dev
 import high_rate_encoder_dev
 import time
 import json

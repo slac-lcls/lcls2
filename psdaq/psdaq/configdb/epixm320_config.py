@@ -9,7 +9,7 @@ import rogue
 import rogue.hardware.axi
 import pyrogue.protocols
 
-import epix_hr_m_320k
+from psdaq.utils import enable_epix_hr_m_320k
 import ePix320kM as ePixM
 import epix_hr_leap_common as leapCommon
 import surf.protocols.batcher as batcher
