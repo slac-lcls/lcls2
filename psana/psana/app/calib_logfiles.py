@@ -24,6 +24,7 @@ def argument_parser():
     d_year = str_tstamp(fmt='%Y', time_sec=None) # 2025
     d_diratstart = DIR_ATSTART
     d_dirconstants = DIR_CONSTANTS
+    d_show_files = False
     d_deploy  = False
     d_logmode = 'INFO'
     d_version = 'V2025-03-10'
@@ -38,6 +39,7 @@ def argument_parser():
     h_year = 'year, default = %s' % d_year
     h_diratstart = 'non-default repository of atstart logfiles, default = %s' % d_diratstart
     h_dirconstants = 'non-default repository of constants logfiles, default = %s' % d_dirconstants
+    h_show_files = 'show files in the directory, default = %s' % d_show_files
     h_logmode = 'logging mode, default = %s' % d_logmode
     h_version = 'constants version, default = %s' % str(d_version)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
@@ -51,8 +53,27 @@ def argument_parser():
     parser.add_argument('-L', '--logmode',      default=d_logmode,      type=str,   help=h_logmode)
     parser.add_argument('-v', '--version',      default=d_version,      type=str,   help=h_version)
     parser.add_argument('-C', '--comment',      default=d_comment,      type=str,   help=h_comment)
+    parser.add_argument('-S', '--show_files',   action='store_true',                help=h_show_files)
+#    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
 
     return parser
+
+
+def info_logfiles(topdir, detname, year, show_files=False):
+    gap = '    '
+    spc = ('\n'+2*gap)
+    lst_dirs = [os.path.join(topdir,fname) for fname in os.listdir(topdir)\
+                                   if (True if detname is None else detname in fname)]
+    lst_dirs_ext = [os.path.join(fname, 'logs', year) for fname in lst_dirs]
+    s = ''
+    for d in lst_dirs_ext:
+        if os.path.exists(d):
+            s += '\n%s%s/' % (gap, d)
+            lst_files = [fn for fn in os.listdir(d)]
+            s += ' - %d files' % len(lst_files)
+            if show_files: s += spc + spc.join([fn for fn in sorted(lst_files)])
+        else: continue # s += ' - does not exist'
+    return s
 
 
 def do_main():
@@ -66,21 +87,23 @@ def do_main():
 #    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 #    logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
 
-    print('DIR ATSTART: %s' % args.diratstart)
-    print('DIR CONSTANTS: %s' % args.dirconstants)
-    print('current time: %s' % str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None))
-    print('for year: %s' % args.year)
+#    print('DIR ATSTART: %s' % args.diratstart)
+#    print('DIR CONSTANTS: %s' % args.dirconstants)
+#    print('current time: %s' % str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None))
+
+    print('calibration logfiles for: %s' % args.year)
 
     path_atstart = os.path.join(args.diratstart, args.year)
-    list_of_files = '\n    '.join(['%s/%s' % (path_atstart,fname) for fname in os.listdir(path_atstart)])
-    print('list of files in %s\n    %s' % (path_atstart, list_of_files))
+    lst_files = '\n    '.join([os.path.join(path_atstart,fname) for fname in os.listdir(path_atstart)\
+                                   if (True if args.detname is None else args.detname in fname)])
+    print('\nfiles with "at start" records in %s\n    %s' % (path_atstart, lst_files))
 
-    list_of_dirs = '\n    '.join(['%s/%s' % (args.dirconstants,fname) for fname in os.listdir(args.dirconstants)])
-    print('list of subdirs for detectors\n    %s' % list_of_dirs)
+    s = info_logfiles(args.dirconstants, args.detname, args.year, args.show_files)
+    print('\ndirs for detectors in %s   %s' %  (args.dirconstants, s))
 
-    path_scrs = os.path.join(args.dirconstants, 'scripts')
-    list_of_scrs = '\n    '.join(['%s/%s' % (path_scrs,fname) for fname in os.listdir(path_scrs)])
-    print('list of subdirs for scripts in %s\n    %s' % (path_scrs, list_of_scrs))
+    dirs_scripts = os.path.join(args.dirconstants, 'scripts')
+    s = info_logfiles(dirs_scripts, args.detname, args.year, args.show_files)
+    print('\ndirs for scripts in %s    %s' % (dirs_scripts, s))
 
 
 if __name__ == "__main__":
