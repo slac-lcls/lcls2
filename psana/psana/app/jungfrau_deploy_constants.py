@@ -12,9 +12,9 @@ USAGE = 'Usage:'\
       + '\nTEST COMMAND:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
       + '\n  datinfo -k exp=mfxdaq23,run=7 -d jungfrau # test data'\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=ascdaq023,run=36 -d jungfrau -o ./work # data' % SCRNAME\
       + '\nREGULAR COMMAND:'\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work -D # data' % SCRNAME\
+      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work -D # data' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -24,8 +24,8 @@ def argument_parser():
     d_dskwargs= None
     d_detname = None # 'jungfrau'
     d_tstamp  = None # 20180910111049
-    d_dirrepo = './work' # DIR_REPO_JUNGFRAU
-    d_nsegstot= 16
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
+    d_nsegstot= 8
     d_deploy  = False
     d_logmode = 'INFO'
     d_ctdepl  = 'psrg'
@@ -33,7 +33,7 @@ def argument_parser():
     d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-02-27'
+    d_version = 'V2025-03-05'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''

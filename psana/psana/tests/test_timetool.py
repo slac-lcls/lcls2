@@ -1,6 +1,7 @@
 import numpy as np
 import os 
 import IPython
+import pytest
 
 from psana import DataSource
 from psana.pyalgos.generic.edgefinder import EdgeFinder
@@ -62,6 +63,7 @@ def run_timetool():
     assert nevt==1324
 
 
+@pytest.mark.skip(reason="calibration constants not in database in march 2025?")
 def test_timetool_psana(plot=False):
     dir_path = os.path.dirname(os.path.realpath(__file__))
     ds = DataSource(files=os.path.join(dir_path,'test_timetool_psana.xtc2'))

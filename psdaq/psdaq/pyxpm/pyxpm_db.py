@@ -11,13 +11,17 @@ if __name__ == "__main__":
     args = cdb.createArgs().args
     db   = 'configdb' if args.prod else 'devconfigdb'
     url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
-
-    #try:
-    if True:
-        cfg = get_config_with_params(url, args.inst, dbname, args.alias, args.name)
+    print(f'url {url}')
+    
+    mycdb = cdb.configdb(url, args.inst, create,
+                         root=dbname, user=args.user, password=args.password)
+    try:
+        cfg = mycdb.get_configuration(args.alias, args.name)
         print(f'cfg {cfg}')
-    #except:
-    else:
+    except:
+        print(f'Creating alias {args.alias}')
+        mycdb.add_alias(args.alias)
+        mycdb.add_device_config('xpm')
         cfg = {'PART':{'L0Delay':[0,0,0,0,0,0,0,0,]},
                'XTPG':{'CuBeamCode':140,'CuDelay':0,'CuInput':1}}
         print(f'created cfg {cfg}')

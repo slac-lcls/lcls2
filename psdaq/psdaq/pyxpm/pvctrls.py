@@ -311,6 +311,7 @@ class GroupSetup(object):
 
         self._pv_StepGroups = _addPV('StepGroups'            ,self.stepGroups,0)
         self._pv_StepEnd    = _addPV('StepEnd'               ,self.stepEnd   ,0)
+        self._pv_SeqMask    = _addPV('SeqMask'               ,self.seqMask   ,0)
 
         def _addPV(label,reg,init=0,set=False):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -360,7 +361,7 @@ class GroupSetup(object):
         self._inhibits.append(PVInhibit(name, app, app.inh_3, group, 3))
 
     def dump(self):
-        logging.info(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
+        logging.warning(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
 
     def setFixedRate(self):
         rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
@@ -434,7 +435,6 @@ class GroupSetup(object):
 
         forceUpdate(self._app.l0DestSel)
         self.setDestn()
-        #self.dump()
         lock.release()
 
     def stepGroups(self, pv, val):
@@ -443,6 +443,9 @@ class GroupSetup(object):
     def stepEnd(self, pv, val):
         self.stepDone(False)
         getattr(self._app,'stepEnd%i'%self._group).set(val)
+
+    def seqMask(self, pv, val):
+        getattr(self._app,'seqMask%i'%self._group).set(val)
 
     def stepDone(self, val):
         value = self._pv_StepDone.current()
@@ -620,7 +623,7 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
-            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(NCODES//4)]
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0)) for i in range(NCODES//4)]
 
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -657,12 +660,20 @@ class PVCtrls(object):
                     offset = self._handle(msg)
                     # seqcodes
                     if self._seq:
-                        w = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
+                        uw = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
+                        w = list(uw)
+                        ena = [False]*NCODES
+                        for i in range(NCODES//4):
+                            if w[i*4+3]&(1<<31):
+                                ena[4*i:4*i+4] = [True]*4
+                                w[i*4+3] &= (1<<31)-1
+
                         offset += NCODES*4
 
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
                         self._seq_codes_val['Description'] = value['value']['Description']
+                        self._seq_codes_val['Enabled'] = ena
                         value['value'] = self._seq_codes_val
                         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
                         self._seq_codes_pv.post(value)

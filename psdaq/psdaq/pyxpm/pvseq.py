@@ -231,10 +231,9 @@ class Engine(object):
 
 
 class PVSeq(object):
-    def __init__(self, provider, name, ip, engine, pv_enabled):
+    def __init__(self, provider, name, ip, engine):
         self._eng = engine
         self._seq = []
-        self._pv_enabled = pv_enabled
 
         def _addPV(label,ctype='I',init=0):
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
@@ -333,7 +332,6 @@ class PVSeq(object):
 
     def enable(self, pv, val):
         id = self._eng._id
-        self._pv_enabled['Enabled'][4*id:4*id+4] = [(val!=0)]*4
         self._eng.enable(val)
 
     def checkPoint(self,addr):

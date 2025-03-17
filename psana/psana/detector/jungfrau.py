@@ -2,7 +2,13 @@ from amitypes import Array3d
 
 import logging
 logger = logging.getLogger(__name__)
+<<<<<<< HEAD
 
+=======
+from amitypes import Array1d, Array2d, Array3d
+import psana.detector.UtilsJungfrau as uj
+import psana.detector.UtilsCalib as uc
+>>>>>>> master
 import psana.detector.areadetector as ad
 AreaDetectorRaw = ad.AreaDetectorRaw
 
@@ -10,6 +16,7 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
     def __init__(self, *args, **kwa):
         logger.debug('jungfrau_raw_0_1_0.__init__')
         AreaDetectorRaw.__init__(self, *args, **kwa)
+<<<<<<< HEAD
         #self._sorteed_segment_inds = (0,1,2,3,4,5,6,7)
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau4M.data'
         self._seg_geo = ad.sgs.Create(segname='JUNGFRAU:V2')
@@ -26,6 +33,25 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
 #        self._gain_modes = ('FH', 'FM', 'FL')
 
 #    def raw(self, evt, mu=0, sigma=10):
+=======
+
+        #self._segment_numbers = (0,3,4,5,6,8,9)
+        #print('XXX self._segment_numbers', self._segment_numbers)
+        segnum_max = max(self._segment_numbers)
+        nsegs = 1 if segnum_max<1 else\
+                2 if segnum_max<2 else\
+                8 if segnum_max<8 else\
+                32
+        sMpix = {1:'05M', 2:'1M', 8:'4M', 32:'16M'}.get(nsegs, 32)
+
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix
+        self._seg_geo = ad.sgs.Create(segname='JUNGFRAU:V2')
+
+#        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
+        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
+
+#    def _raw_random(self, evt, mu=0, sigma=10):
+>>>>>>> master
 #        """ FOR DEBUGGING ONLY !!!
 #            add random values to apread the same per event array
 #        """
@@ -49,7 +75,22 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
 
     def _segment_ids(self):
         """returns list of segment ids"""
+<<<<<<< HEAD
         #print('TBD _segment_ids for longname: %s' % self._uniqueid)
         return self._uniqueid.split('_')[1:]
 
+=======
+        #print('_segment_ids for _uniqueid: %s' % self._uniqueid)
+        return self._uniqueid.split('_')[1:]
+
+    def _detector_name_long_short(self):
+        longname = self._uniqueid
+        return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
+
+    def calib(self, evt, **kwa) -> Array2d:
+        raw = self.raw(evt)
+        if raw is None: return None
+        return uj.calib_jungfrau(self, evt, **kwa)
+
+>>>>>>> master
 # EOF

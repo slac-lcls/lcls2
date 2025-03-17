@@ -829,6 +829,16 @@ class XpmApp(pr.Device):
                 mode         = "RW",
                 verify       = False,
             ))
+            self.add(pr.RemoteVariable(    
+                name         = "seqMask%i"%i,
+                description  = "Group sequence control",
+                offset       =  0x210+8*i,
+                bitSize      =  8,
+                bitOffset    =  0x10,
+                base         = pr.UInt,
+                mode         = "RW",
+                verify       = False,
+            ))
 
     def l0EnaCnt(self, l0Stats):
         return (l0Stats>>0)&((1<<64)-1)

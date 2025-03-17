@@ -57,6 +57,7 @@ static int print_mig_lane(const char* name, int addr, int offset, int mask)
 
 static bool lInit = false;
 static bool lReset = false;
+static bool lPgpReset = false;
 
 static void check_program_clock(int ifd, const AxiVersion& vsn)
 {
@@ -71,6 +72,9 @@ static void check_program_clock(int ifd, const AxiVersion& vsn)
       else
         s.program();
     }
+    lPgpReset = true;
+  }
+  if (lPgpReset) {
     //  Reset the QPLL
     //uint32_t reg;
     dmaWriteRegister(ifd, 0x00a40024, 1);
@@ -93,6 +97,7 @@ static void usage(const char* p) {
   printf("         -R (reset to 156.25MHz clock)\n");
   printf("         -C (reset counters)\n");
   printf("         -Q (enable interrupts)\n");
+  printf("         -P (reset PGP)\n");
 }
 
 int main (int argc, char **argv) {
@@ -105,12 +110,13 @@ int main (int argc, char **argv) {
   int          dev = 0;
   int          c;
 
-  while((c=getopt(argc,argv,"d:l:CIRQ"))!=-1) {
+  while((c=getopt(argc,argv,"d:l:CIPRQ"))!=-1) {
     switch(c) {
     case 'd': dev = strtoul(optarg,NULL,0); break;
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
     case 'C': lCounterReset = true; lUpdateId = true; break;
     case 'I': lInit = true; lUpdateId = true; break;
+    case 'P': lPgpReset = true; break;
     case 'R': lReset = true; break;
     case 'Q': lIntEnable = true; break;
     default:  usage(argv[0]); return 1;

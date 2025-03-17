@@ -79,9 +79,7 @@ class PeriodicGenerator(object):
             options.append( f'a{ts.acRates}t[1..6]')
             raise ValueError(f'marker {marker} not recognized. Options are {options}')
 
-
         print(f'#syncins = \"{self.syncins}\"')
-
         self.repeat = repeat
         self.notify = notify
 

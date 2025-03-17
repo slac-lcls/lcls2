@@ -28,7 +28,7 @@ public:
 
     RawDef()
     {
-        Alg raw("raw", 1, 0, 0);
+        Alg raw("raw", 2, 0, 0);
         NameVec.push_back({"raw", Name::UINT16, 2, raw});
     }
 };

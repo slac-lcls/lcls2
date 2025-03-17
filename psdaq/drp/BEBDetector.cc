@@ -332,30 +332,29 @@ std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, uns
 
 void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
 {
-    // Deliver subframe vectors in lane order
+    // The subframes structure will be 
+    // elem[0] = Timing Header, 
+    // elem[1] = Auxilliary timing header, 
+    // elem[2 and on] = frame data in lane order
     auto mask = event->mask;
-    unsigned lane = __builtin_ffs(mask) - 1;
-    uint32_t dmaIndex = event->buffers[lane].index;
-    unsigned data_size = event->buffers[lane].size;
+    std::vector< XtcData::Array<uint8_t> > subframes(0);
 
-    std::vector< XtcData::Array<uint8_t> > subframes = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
-    if (m_debatch)
-        subframes = _subframes(subframes[2].data(), subframes[2].shape()[0]);
-
-    while ( (mask &= mask - 1) ) {
-        lane = __builtin_ffs(mask) - 1;
-        dmaIndex = event->buffers[lane].index;
-        data_size = event->buffers[lane].size;
+    while (mask) {
+        auto lane = __builtin_ffs(mask) - 1;
+        auto dmaIndex = event->buffers[lane].index;
+        auto data_size = event->buffers[lane].size;
 
         std::vector< XtcData::Array<uint8_t> > sf = _subframes(m_pool->dmaBuffers[dmaIndex], data_size);
         if (m_debatch)
             sf = _subframes(sf[2].data(), sf[2].shape()[0]);
 
-        if (sf.size() > 2)
-            subframes.push_back(sf[2]);
-        else {
-            logging::debug("BEBDetector::event: Missing subframes for lane %u; Got %zu, expected >2", lane, sf.size());
+        if (sf.size()>2) {
+            if (subframes.size()==0)
+                subframes = sf;
+            else
+                subframes.push_back(sf[2]);
         }
+        mask &= mask - 1;
     }
 
     _event(dgram.xtc, bufEnd, subframes);

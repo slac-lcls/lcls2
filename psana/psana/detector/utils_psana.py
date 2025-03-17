@@ -48,7 +48,9 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
 
 
 def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp')):
-    return {k:v for k,v in d.items() if k in list_keys}
+    from collections import OrderedDict
+    return OrderedDict([(k,d[k]) for k in list_keys])
+    #return {k:v for k,v in d.items() if k in list_keys}
 
 
 def datasource_kwargs_from_string(s):

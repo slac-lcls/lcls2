@@ -30,7 +30,7 @@ def recursive_list(dictionary):
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [1,1,0])
+    top.setAlg('config', [2,1,0])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
@@ -54,7 +54,7 @@ def epixUHR_cdict():
         top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT8'   )
         
     conv = functools.partial(int, base=16)
-    pathPll='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pll/'
+    pathPll='/cds/home/p/psrel/EpixUHR/pll/'
 
     base = 'expert.Pll.'
     conv = functools.partial(int, base=16)
@@ -65,14 +65,14 @@ def epixUHR_cdict():
     top.set(base+'_2_3_9',      np.loadtxt(pathPll+'Si5345-B-156MHZ-out2-3-9.csv',                   dtype='uint16', delimiter=',', skiprows=1, converters=conv))
     top.set(base+'_0_5_7_v2',   np.loadtxt(pathPll+'Si5345-B-156MHZ-out-0-5-and-7-v2-Registers.csv', dtype='uint16', delimiter=',', skiprows=1, converters=conv))
             
-    pathpix='/cds/home/m/melchior/git/EVERYTHING_EPIX_UHR/epix-uhr-gtreadout-dev/software/config/pixelBitMaps_prod/'
+    pathpix='/cds/home/p/psrel/EpixUHR/pixelBitMaps_prod/'
     #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, }
+    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, '_7_on_the_fly'}
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
-    base = 'expert.pixelBitMaps.'
+    base = 'expert.pixelBitMaps.' 
     for pixelmap in pixelBitMapDic:
-        top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
+        if ('on_the_fly' not in pixelmap): top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
     for n in range(1, 5):
         base = f'expert.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
@@ -89,8 +89,8 @@ def epixUHR_cdict():
     top.set("expert.App.WaveformControl.R0Polarity",				0			  	,'boolEnum')
     top.set("expert.App.WaveformControl.R0Delay",					70 			  	,"UINT32"  )
     top.set("expert.App.WaveformControl.R0Width",					1125			,"UINT32"  )
-    top.set("expert.App.WaveformControl.InjPolarity",				1			  	,"boolEnum")
-    top.set("expert.App.WaveformControl.InjDelay",				    660				,"UINT32"  )
+    top.set("expert.App.WaveformControl.InjPolarity",				0			  	,"boolEnum")
+    top.set("expert.App.WaveformControl.InjDelay",				    700				,"UINT32"  )
     top.set("expert.App.WaveformControl.InjWidth",				    535				,"UINT32"  )
     top.set("expert.App.WaveformControl.InjEn",					    0			  	,"boolEnum")
     top.set("expert.App.WaveformControl.InjSkipFrames",			    0				,"UINT32"  )
@@ -110,14 +110,21 @@ def epixUHR_cdict():
     
     top.set("expert.App.GTReadoutBoardCtrl.enable",				    1			  	,"boolEnum")
     top.set("expert.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard",	1               ,"boolEnum")
-    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn0",			0				,"boolEnum")
-    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn1",			0				,"boolEnum")
-    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn2",			0				,"boolEnum")
+    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn0",			1				,"boolEnum")
+    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn1",			1				,"boolEnum")
+    top.set("expert.App.GTReadoutBoardCtrl.timingOutEn2",			1				,"boolEnum")
     top.set("expert.App.AsicGtClk.enable",						    1			  	,"boolEnum")
     top.set("expert.App.AsicGtClk.gtResetAll",					    0				,"boolEnum")
     for n in range(1, 5):
         top.set(f"expert.App.AsicGtData{n}.enable",					1			  	,"boolEnum")
         top.set(f"expert.App.AsicGtData{n}.gtStableRst",			0				,"boolEnum")
+    
+    timingOutEnum={'asicR0':0, 'asicACQ':1, 'asicSRO':2, 'asicInj':3, 'asicGlbRstN':4, 'timingRunTrigger':5, 'timingDaqTrigger':6, 'acqStart':7, 'dataSend':8, '_0':9, '_1':10}
+    top.define_enum('TimingOutMuxEnum', timingOutEnum)
+
+    top.set("expert.App.GTReadoutBoardCtrl.TimingOutMux0", 10, 'TimingOutMuxEnum')
+    top.set("expert.App.GTReadoutBoardCtrl.TimingOutMux1", 10, 'TimingOutMuxEnum')
+    top.set("expert.App.GTReadoutBoardCtrl.TimingOutMux3", 10, 'TimingOutMuxEnum')
     
     top.set("user.App.VCALIBP_DAC.enable",                                      0				,"boolEnum")
     top.set("user.App.VCALIBP_DAC.dacEn",                                       0				,"boolEnum")
@@ -137,7 +144,6 @@ def epixUHR_cdict():
     top.set("user.App.VINJ_DAC.dacStepValue",                                0				,"UINT32")
     top.set("user.App.VINJ_DAC.resetDacRamp",                                0				,"boolEnum")
     
-    
     top.set("user.App.ADS1217.enable",							    0				,"boolEnum")
     top.set("user.App.ADS1217.adcStartEnManual",				    0  				,"boolEnum")
     
@@ -149,7 +155,7 @@ def epixUHR_cdict():
     top.set("help:RO", help_str, 'CHARSTR')
 
 
-    top.set("user.start_ns" , 106000, 'UINT32') # taken from epixHR
+    top.set("user.start_ns" , 119000, 'UINT32') # taken from epixHR
     
     top.define_enum('PllRegEnum', {'temp250':1, '2_3_7':2, '0_5_7':3, '2_3_9':4, '0_5_7_v2':5})
     base = 'user.'
@@ -177,8 +183,7 @@ def epixUHR_cdict():
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].EnableReg'    ,1,'UINT32'     )
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2ChannelReg[0].DestType'     ,2,'UINT32'     )
     top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].EnableTrig'   ,1,'UINT32'     )
-    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].DelayDelta'   ,1185,'UINT32' )
-    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'        ,1850,'UINT32' )
+    top.set('expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'        ,1850, 'UINT32' )
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition'                   ,7,'UINT32'     )
     # daq trigger
     top.set('expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].PauseThreshold'              ,16,'UINT32'    )

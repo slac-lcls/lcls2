@@ -127,7 +127,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     #  Tx reset
     toggle(root.PgpTxReset,1)
     #  Rx reset
-    toggle(root.PgpTxReset,1)
+    toggle(root.PgpRxReset,1)
 
     #  On to the business of configure
     ctxt = Context('pva')

@@ -89,7 +89,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegGeometryJungfrauV1(SegGeometry):
-    """Self-sufficient class for generation of Jungfrau 2x4 sensor pixel coordinate array"""
+    """Self-sufficient class for generation of Jungfrau 2x4 ASICs pixel coordinate array"""
 
     _name = 'SegGeometryJungfrauV1'
 
