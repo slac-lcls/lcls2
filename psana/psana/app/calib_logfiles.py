@@ -64,7 +64,7 @@ def info_logfiles(topdir, detname, year, show_files=False):
     spc = ('\n'+2*gap)
     lst_dirs = [os.path.join(topdir,fname) for fname in os.listdir(topdir)\
                                    if (True if detname is None else detname in fname)]
-    lst_dirs_ext = [os.path.join(fname, 'logs', year) for fname in lst_dirs]
+    lst_dirs_ext = sorted([os.path.join(fname, 'logs', year) for fname in lst_dirs])
     s = ''
     for d in lst_dirs_ext:
         if os.path.exists(d):
@@ -80,23 +80,14 @@ def do_main():
 
     parser = argument_parser()
     args = parser.parse_args()
-    #opts = vars(args)
-
-#    if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
-#    assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-#    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-#    logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
-
-#    print('DIR ATSTART: %s' % args.diratstart)
-#    print('DIR CONSTANTS: %s' % args.dirconstants)
-#    print('current time: %s' % str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None))
 
     print('calibration logfiles for: %s' % args.year)
 
     path_atstart = os.path.join(args.diratstart, args.year)
-    lst_files = '\n    '.join([os.path.join(path_atstart,fname) for fname in os.listdir(path_atstart)\
-                                   if (True if args.detname is None else args.detname in fname)])
-    print('\nfiles with "at start" records in %s\n    %s' % (path_atstart, lst_files))
+    lst_files = [os.path.join(path_atstart,fname) for fname in os.listdir(path_atstart)\
+                 if (True if args.detname is None else args.detname in fname)]
+    s = '\n    '.join(sorted(lst_files))
+    print('\nfiles with "at start" records in %s\n    %s' % (path_atstart, s))
 
     s = info_logfiles(args.dirconstants, args.detname, args.year, args.show_files)
     print('\ndirs for detectors in %s   %s' %  (args.dirconstants, s))
