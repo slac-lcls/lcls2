@@ -225,7 +225,7 @@ class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
 class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
     def __init__(self, *args, **kwargs):
         logger.debug('epixuhr_raw_2_0_0.__init__')
-        super.__init__(self, *args, **kwargs)
+        super.__init__(*args, **kwargs)
 
 
 
