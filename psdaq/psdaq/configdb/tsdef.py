@@ -27,7 +27,7 @@ if 'ued' in socket.gethostname():
                    "30H" :{"intv":91    ,"marker":1}, 
                    "60H" :{"intv":13    ,"marker":0}}
 else:
-    fixedRates  = ['1.02Hz','10.2Hz','102Hz','1.02kHz','10.2kHz','71.4kHz','929kHz']
+    fixedRates  = ['1.02Hz','10.2Hz','102Hz','1.02kHz','10.2kHz','71.4kHz','929kHz', 'Undef7', 'Undef8', 'Undef9' ]
     fixedRateHzToMarker = {'929kHz':6, '71kHz':5, '10kHz':4, '1kHz':3, '100Hz':2, '10Hz':1, '1Hz':0}
     FixedIntvs = [910000, 91000, 9100, 910, 91, 13, 1]
     FixedIntvsDict = {"1H"   :{"intv":910000,"marker":0}, 

@@ -58,6 +58,7 @@ static int print_mig_lane(const char* name, int addr, int offset, int mask)
 static bool lInit = false;
 static bool lReset = false;
 static bool lPgpReset = false;
+static bool lUsrReset = false;
 
 static void check_program_clock(int ifd, const AxiVersion& vsn)
 {
@@ -86,6 +87,11 @@ static void check_program_clock(int ifd, const AxiVersion& vsn)
     usleep(10);
     dmaWriteRegister(ifd, 0x00a40024, 0);
   }
+  if (lUsrReset) {
+    dmaWriteRegister(ifd, 0x00800000, (1<<31));
+    usleep(10);
+    dmaWriteRegister(ifd, 0x00800000, 0);
+  }
 }
 
 static void usage(const char* p) {
@@ -98,6 +104,7 @@ static void usage(const char* p) {
   printf("         -C (reset counters)\n");
   printf("         -Q (enable interrupts)\n");
   printf("         -P (reset PGP)\n");
+  printf("         -U (user reset)\n");
 }
 
 int main (int argc, char **argv) {
@@ -110,7 +117,7 @@ int main (int argc, char **argv) {
   int          dev = 0;
   int          c;
 
-  while((c=getopt(argc,argv,"d:l:CIPRQ"))!=-1) {
+  while((c=getopt(argc,argv,"d:l:CIPRQU"))!=-1) {
     switch(c) {
     case 'd': dev = strtoul(optarg,NULL,0); break;
     case 'l': lbmask = strtoul(optarg,NULL,0); break;
@@ -118,6 +125,7 @@ int main (int argc, char **argv) {
     case 'I': lInit = true; lUpdateId = true; break;
     case 'P': lPgpReset = true; break;
     case 'R': lReset = true; break;
+    case 'U': lUsrReset = true; break;
     case 'Q': lIntEnable = true; break;
     default:  usage(argv[0]); return 1;
     }
