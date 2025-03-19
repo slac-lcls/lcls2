@@ -3,6 +3,12 @@
 import sys
 from psana.detector.dir_root import DIR_REPO
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+from psana.pscalib.calib.CalibConstants import list_calib_names
+from psana.detector.UtilsJungfrauCalib import DIC_GAIN_MODE
+from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
+lst_gainmodes = list(DIC_GAIN_MODE.keys()) # ['DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2']
+lst_gainmodes += list(GAIN_MODES_IN)
+
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -15,9 +21,7 @@ USAGE = 'Usage:'\
       + '\nExamples:'\
       + '\nTests:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-      + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
+       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work -c pedestals -G DYNAMIC -I 1' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -26,15 +30,16 @@ def argument_parser():
 
     d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
     d_detname = 'jungfrau' #  None
-    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
+    d_dirrepo = './work' # DIR_REPO # './work'
     d_ctype = None
+    d_version = 'V2025-03-19'
+    d_segind  = None
+    d_gainmode = None
     d_logmode = 'INFO'
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
-    d_version = 'V2025-03-18'
-    d_segind  = None
-    d_gainmode  = None
+    d_fname2darr = 'test_2darr.npy' # None
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -43,27 +48,29 @@ def argument_parser():
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, default = %s' % d_detname
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
-    h_ctype   = 'calibration type, one of %s, default = %s' % (STR_LEVEL_NAMES, d_ctype)
+    h_ctype   = 'calibration type, one of %s, default = %s' % (list_calib_names, d_ctype)
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
-    h_version = 'constants version, default = %s' % str(d_version)
+    h_version = 'script version, default = %s' % str(d_version)
     h_segind  = 'segment index to process, default = %s' % str(d_segind)
-    h_gainmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_gainmode)
+    h_gainmode  = 'gainmode, one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
+    h_fname2darr = 'file name for 2d panel constants, default = %s' %d_fname2darr
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
-    parser.add_argument('-k', '--dskwargs', default=d_dskwargs,   type=str,   help=h_dskwargs)
-    parser.add_argument('-d', '--detname',  default=d_detname,    type=str,   help=h_detname)
-    parser.add_argument('-o', '--dirrepo',  default=d_dirrepo,    type=str,   help=h_dirrepo)
-    parser.add_argument('-c', '--ctype',    default=d_ctype,      type=str,   help=h_ctype)
-    parser.add_argument('-L', '--logmode',  default=d_logmode,    type=str,   help=h_logmode)
-    parser.add_argument('--dirmode',        default=d_dirmode,    type=int,   help=h_dirmode)
-    parser.add_argument('--filemode',       default=d_filemode,   type=int,   help=h_filemode)
-    parser.add_argument('-v', '--version',  default=d_version,    type=str,   help=h_version)
-    parser.add_argument('-I', '--segind',   default=d_segind,     type=int,   help=h_segind)
-    parser.add_argument('-G', '--gainmode', default=d_gainmode,     type=int,   help=h_gainmode) 
+    parser.add_argument('-k', '--dskwargs',   default=d_dskwargs,   type=str,   help=h_dskwargs)
+    parser.add_argument('-d', '--detname',    default=d_detname,    type=str,   help=h_detname)
+    parser.add_argument('-o', '--dirrepo',    default=d_dirrepo,    type=str,   help=h_dirrepo)
+    parser.add_argument('-c', '--ctype',      default=d_ctype,      type=str,   help=h_ctype)
+    parser.add_argument('-I', '--segind',     default=d_segind,     type=int,   help=h_segind)
+    parser.add_argument('-G', '--gainmode',   default=d_gainmode,   type=str,   help=h_gainmode)
+    parser.add_argument('-L', '--logmode',    default=d_logmode,    type=str,   help=h_logmode)
+    parser.add_argument('--dirmode',          default=d_dirmode,    type=int,   help=h_dirmode)
+    parser.add_argument('--filemode',         default=d_filemode,   type=int,   help=h_filemode)
+    parser.add_argument('-v', '--version',    default=d_version,    type=str,   help=h_version)
+    parser.add_argument('-F', '--fname2darr', default=d_fname2darr, type=str,   help=h_fname2darr)
 #   parser.add_argument('-D', '--deploy',  action='store_true',  help=h_deploy)
-   return parser
+    return parser
 
 
 def do_main():
