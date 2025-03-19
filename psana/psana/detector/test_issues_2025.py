@@ -174,8 +174,6 @@ def issue_2025_02_05():
     print('qlo, qhi, qme, mean, max, min:', qlo, qhi, np.median(arr), np.mean(arr), np.max(arr), np.min(arr))
 
 
-
-
 def issue_2025_02_21():
     """Access to jungfrau panel configuration object
 
@@ -377,6 +375,43 @@ def issue_2025_03_06():
     gr.show()
 
 
+def issue_2025_03_18():
+    """Silke - direct access to calibration constants
+       datinfo -k exp=ued1006477,run=15 -d epixquad
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='ued1006477',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('\n\n\n  det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    detrawid = det.raw._uniqueid
+    print('\n\n\n  det.raw._uniqueid:', detrawid)
+    peds = calib_constants(detrawid, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants uniqueid:',peds.shape)
+    import psana.detector.UtilsCalib as uc
+    shortname = uc.detector_name_short(detrawid)
+    print('\n\n\n  shortname', shortname)
+    peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants shortname',peds.shape)
+    # eventually silke would like to get the constants for another run like this:
+    #peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=17)[0]
+    #print('calib_constants shortname',peds)
+
+
+def issue_2025_03_19():
+    """Silke -  It appears to me that she is picking up constants from February 12th for uedc00104 and we don?t understand why
+       datinfo -k exp=uedc00104,run=177 -d epixquad
+       REASON: recent mess with detector names, in passing as metadata kwa['detector'] = detname, should be shortname
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='uedc00104',run=177)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('det.calibconst:',det.calibconst['pedestals'][1])
+
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -422,6 +457,8 @@ def selector():
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
     elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
     elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
+    elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
+    elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
