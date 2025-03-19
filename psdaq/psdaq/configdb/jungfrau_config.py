@@ -130,8 +130,9 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     ocfg = [] # per segment dicts for later use (config scans)
     cfg_list = [] # Json strings
     segm_lane = 0
-    #jungfrau_kcu.DevPcie.AxiPcieCore.AxiVersion.UserRst()
     jungfrau_kcu.StopRun()
+    # reset the card if needed
+    jungfrau_reset(jungfrau_kcu)
     for segm in detsegm_list:
         cfg = get_config(connect_str, cfgtype, detname, segm)
 
@@ -259,5 +260,32 @@ def jungfrau_unconfig(jungfrau_kcu):
     print("jungfrau_unconfig")
 
     jungfrau_kcu.StopRun()
+
+    return jungfrau_kcu
+
+
+def jungfrau_reset(jungfrau_kcu):
+    """Checks if the passed jungfrau_kcu needs reset to clear batcher desync.
+
+    This function checks if there is non-zero rxOverFlowCnt for any of the UDP
+    lanes. Packets lost to overflow leaves the UDP batcher in a bad state, and
+    this can be fixed by reseting the card.
+    """
+    global lm
+
+    reset = False
+    # check if any udp lanes have rxOverFlowCnt > 0
+    for segm_lane in range(7):
+        if lm & (1 << segm_lane):
+            ethPhy = jungfrau_kcu.DevPcie.Hsio.UdpLane[segm_lane].EthPhy
+            if ethPhy.rxOverFlowCnt.get() > 0:
+                print("possible udp batcger desync on lane", segm_lane)
+                reset = True
+
+    if (reset):
+        print("calling UserRst to clear udp batcher desync")
+        jungfrau_kcu.DevPcie.AxiPcieCore.AxiVersion.UserRst()
+        time.sleep(2.)
+        print("finished waiting for reset to complete")
 
     return jungfrau_kcu
