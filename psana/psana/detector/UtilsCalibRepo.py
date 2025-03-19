@@ -8,13 +8,15 @@ Usage::
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-@datetime 2025-03-14
+@datetime 2025-03-19
 @author Mikhail Dubrovin
 @see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/...>`_.
 """
 
 import os
 import sys
+import numpy as np
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -206,8 +208,6 @@ def save_segment_constants_in_repository(**kwa):
 
 
 if __name__ == "__main__":
-
-    import numpy as np
 
     def nda_random(mu=100, sigma=5, shape=(512,1024), dtype=np.float32):
         a = mu + sigma*np.random.standard_normal(size=shape)
