@@ -15,6 +15,21 @@ B16 = 0o100000 # the 16-th bit (counting from 1)
 
 # make an empty detector interface for Matt's hardware
 # configuration object so that config_dump works - cpo
+class epixuhrhw_config_0_1_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
+class epixuhr_config_0_0_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
+class epixuhrhw_config_1_1_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
+class epixuhr_config_1_0_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
 
 class epixuhrhw_config_2_1_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
@@ -23,21 +38,11 @@ class epixuhrhw_config_2_1_0(DetectorImpl):
 class epixuhr_config_2_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-
-class epixuhr_raw_2_0_0(eb.epix_base):
+               
+class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
-        logger.debug('epixuhr_raw_2_0_0.__init__')
-        eb.epix_base.__init__(self, *args, **kwargs)
-        self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
-        self._segment_numbers = [0,1,2,3]
-        #self._data_bit_mask = M15 # for epixm320 data on 2024-03-20 Dawood - epixM has 15 data bits.
-        #self._data_gain_bit = B16 # gain switching bit
-        #self._gain_bit_shift = 10
-        #self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
-        #self._gain_modes = ('SH', 'SL', 'AHL')
-        #self._dataDebug = None
-
+        logger.debug('epixuhr_raw_0_0_0.__init__')
+        
     def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)
@@ -210,6 +215,18 @@ class epixuhr_raw_2_0_0(eb.epix_base):
         #print('XXX time for calib: %.6f sec' % (time()-t0_sec)) # 4ms on drp-neh-cmp001
 
         return arrf
+
+       
+class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
+    def __init__(self, *args, **kwargs):
+        logger.debug('epixuhr_raw_1_0_0.__init__')
+        super().__init__(*args, **kwargs)
+
+class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
+    def __init__(self, *args, **kwargs):
+        logger.debug('epixuhr_raw_2_0_0.__init__')
+        super.__init__(*args, **kwargs)
+
 
 
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py

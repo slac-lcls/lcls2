@@ -24,7 +24,7 @@ from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory,
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 import psana.detector.UtilsCalib as uc
-from psana.detector.utils_psana import seconds, data_source_kwargs#, datasource_kwargs_from_string
+from psana.detector.utils_psana import seconds, data_source_kwargs, dict_filter
 from psana.detector.UtilsLogging import init_file_handler
 
 
@@ -686,6 +686,8 @@ def get_config_info_for_dataset_detname(**kwargs):
 
       #co = odet.raw._config_object()
 
+      longname = odet.raw._fullname() #ue.fullname_det(odet) #odet.raw._uniqueid
+
       cpdic = {}
       cpdic['expname']    = orun.expt   # experiment name
       cpdic['strsrc']     = None
@@ -693,7 +695,8 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
       cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
       cpdic['panel_inds'] = odet.raw._segment_indices() #ue.segment_indices_det(odet)
-      cpdic['longname']   = odet.raw._fullname() #ue.fullname_det(odet) #odet.raw._uniqueid
+      cpdic['longname']   = longname
+      cpdic['shortname']  = uc.detector_name_short(longname)
       cpdic['det_name']   = odet._det_name # odet.raw._det_name epixquad
       cpdic['dettype']    = odet._dettype # epix
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
@@ -863,7 +866,8 @@ def deploy_constants(parser):
     panel_inds  = cpdic.get('panel_inds',None)
     dettype     = cpdic.get('dettype',   None)
     det_name    = cpdic.get('det_name',  None)
-    longname    = cpdic.get('longname',  detname)
+    longname    = cpdic.get('longname',  None)
+    shortname   = cpdic.get('shortname', None)
     gains_def   = cpdic.get('gains_def', None)
     irun        = cpdic.get('runnum',    None)
     exp         = cpdic.get('expname',   None)
@@ -968,7 +972,8 @@ def deploy_constants(parser):
             'experiment' : exp,
             'ctype'      : octype,
             'dtype'      : dtype,
-            'detector'   : detname,
+            'detector'   : shortname,
+            'shortname'  : shortname,
             'detname'    : det_name,
             'longname'   : longname,
             'time_sec'   : tvalid_sec,
@@ -984,8 +989,9 @@ def deploy_constants(parser):
             'dettype'    : dettype,
             'dbsuffix'   : dbsuffix
           }
-
-          logger.debug('DEPLOY metadata: %s' % str(kwa))
+          d = dict_filter(kwa, list_keys=('experiment', 'detname', 'detector', 'shortname', 'ctype',\
+                                          'run', 'run_orig', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'longname', 'iofname', 'version'))
+          logger.info('partial metadata:\n  %s' % '\n  '.join(['%16s: %s' %(k,v) for k,v in d.items()]))
 
           data = mu.data_from_file(fmerge, octype, dtype, True)
           logger.debug(info_ndarr(data, 'merged constants loaded from file'))

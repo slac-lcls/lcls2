@@ -30,11 +30,12 @@ from psana.detector.RepoManager import init_repoman_and_logger
 import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
 from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile # import divide_protected
 import psana.detector.Utils as uts # info_dict
+import psana.detector.UtilsCalibRepo as ucr
 import psana.pscalib.calib.CalibConstants as cc
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
 SCRNAME = os.path.basename(sys.argv[0])
-
+MAX_DETNAME_SIZE = 40
 NUMBER_OF_GAIN_MODES = 3
 
 CTYPES = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 'status_extra')
@@ -42,12 +43,9 @@ CTYPES = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 's
 dic_calib_char_to_name = cc.dic_calib_char_to_name # {'p':'pedestals', 'r':'pixel_rms', 's':'pixel_status',...}
 # "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,
 
-DIC_GAIN_MODE = {'FixedGain1':  1,
-                 'FixedGain2':  2,
-                 'ForcedGain1': 1,
-                 'ForcedGain2': 2,
-                 'HighGain0':   0,
-                 'Normal':      0}
+DIC_GAIN_MODE = {'DYNAMIC':         0,
+                 'FORCE_SWITCH_G1': 1,
+                 'FORCE_SWITCH_G2': 2}
 
 DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_dict(DIC_GAIN_MODE)
 
@@ -59,14 +57,7 @@ FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
 #      '\n  DIR_REPO', dr.DIR_REPO)
 
 
-def dic_ctype_fmt(**kwargs):
-    return {'pedestals'   : kwargs.get('fmt_peds', '%.3f'),
-            'pixel_rms'   : kwargs.get('fmt_rms',  '%.3f'),
-            'pixel_status': kwargs.get('fmt_status', '%4i'),
-            'pixel_max'   : kwargs.get('fmt_max', '%i'),
-            'pixel_min'   : kwargs.get('fmt_min', '%i'),
-            'status_extra': kwargs.get('fmt_status', '%4i')}
-
+dic_ctype_fmt = uc.dic_ctype_fmt
 
 class DarkProcJungfrau(uc.DarkProc):
 
@@ -438,77 +429,25 @@ def save_results(dpo, orun, odet, **kwa):
                 info_ndarr(arr_min, 'arr_min', first=0, last=5)))
     dic_consts = dict(zip(ctypes, consts))
 
-    kwa.setdefault('max_detname_size', 40)
+    kwa.setdefault('max_detname_size', MAX_DETNAME_SIZE)
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
-    save_constants_in_repository(dic_consts, **kwa_depl)
+    ucr.save_constants_in_repository(dic_consts, **kwa_depl)
     del(dpo)
 
 
-def save_constants_in_repository(dic_consts, **kwa):
-    logger.debug('save_constants_in_repository kwa:', kwa)
+fname_prefix = ucr.fname_prefix
 
-    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
-    repoman  = kwa.get('repoman', None)
-    expname  = kwa.get('exp', None)
-    detname  = kwa.get('detname', None)
-    dettype  = kwa.get('dettype', None)
-    deploy   = kwa.get('deploy', False)
-    dirrepo  = kwa.get('dirrepo', './work')
-    dirmode  = kwa.get('dirmode',  0o2775)
-    filemode = kwa.get('filemode', 0o664)
-    group    = kwa.get('group', 'ps-users')
-    tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
-    tsshort  = kwa.get('tsshort', '20100101000000')
-    runnum   = kwa.get('run_orig', None)
-    uniqueid = kwa.get('uniqueid', 'not-def-id')
-    shortname= kwa.get('shortname', 'not-def-shortname')
-    segids   = kwa.get('segment_ids', [])  # self._uniqueid.split('_')[1]
-    seginds  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers
-    gainmode = kwa.get('gainmode', None)
-    longname = kwa.get('longname', 'non-def-longname') # odet.raw._uniqueid
-    shortname= kwa.get('shortname', 'non-def-shortname') # uc.detector_name_short(longname)
-
-    #logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
-    d = ups.dict_filter(kwa, list_keys=('dskwargs', 'nrecs', 'nrecs1', 'dirrepo', 'version',\
-                                       'dettype', 'tsshort', 'longname', 'shortname', 'gainmode', 'segment_ids', 'segment_inds'))
-    logger.info('essential kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
-
-    DIC_CTYPE_FMT = dic_ctype_fmt(**kwa)
-
-    if repoman is None:
-       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-
-    for i,(segind,segid) in enumerate(zip(seginds, segids)):
-      logger.info('%s next segment\n   save segment constants for gain mode:%s in repo for raw ind:%02d segment ind:%02d id: %s'%\
-                  (20*'-', gainmode, i, segind, segid))
-
-      for ctype, nda in dic_consts.items():
-
-        dir_ct = repoman.makedir_ctype(segid, ctype)
-        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
-
-        fname = calib_file_name(fprefix, ctype, gainmode)
-        fmt = DIC_CTYPE_FMT.get(ctype,'%.5f')
-        arr2d = nda[i,:]
-        #save_ndarray_in_textfile(nda, fname, filemode, fmt)
-        save_2darray_in_textfile(arr2d, fname, filemode, fmt)
-        logger.debug(info_ndarr(arr2d, 'array of %s' % ctype))
-        logger.info('saved: %s' % fname)
-
-
-def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
-    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
-    fnpref = '%s-s%02d-%s-%s-r%04d' % (detname, ind, tstamp, exp, runnum)
-    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
+#def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
+#    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
+#    fnpref = '%s-s%02d-%s-%s-r%04d' % (detname, ind, tstamp, exp, runnum)
+#    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
     """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-pixel_status.txt """
     return '%s/%s-%s.txt' % (dir_ctype, fnprefix, ctype)
 
-
-def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
-    return fmt % (fprefix, ctype, gainmode)
+fname_prefix = ucr.calib_file_name
 
 
 def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
@@ -605,7 +544,7 @@ def jungfrau_deploy_constants(parser):
     deploy    = kwargs.get('deploy', False)
     detname   = kwargs.get('detname', None)
     ctdepl    = kwargs.get('ctdepl', None) # 'prs'
-    max_detname_size = kwargs.setdefault('max_detname_size', 40)
+    max_detname_size = kwargs.setdefault('max_detname_size', MAX_DETNAME_SIZE)
 
     DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
 

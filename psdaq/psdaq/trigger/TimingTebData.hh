@@ -6,7 +6,12 @@ namespace Pds {
 
     struct TimingTebData
     {
-        TimingTebData(const uint32_t* eventcodes_) { memcpy(eventcodes,eventcodes_,sizeof(eventcodes)); };
+        TimingTebData(const uint8_t   ebeamDestn_,
+                      const uint32_t* eventcodes_) {
+            ebeamDestn = ebeamDestn_;
+            memcpy(eventcodes,eventcodes_,sizeof(eventcodes));
+        };
+        uint8_t  ebeamDestn;
         uint32_t eventcodes[9];
     };
   };

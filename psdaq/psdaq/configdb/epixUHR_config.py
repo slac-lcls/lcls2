@@ -399,12 +399,14 @@ def user_to_expert(base, cfg, full=False):
         if full:
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']= group+1    # Run trigger
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']= group  # DAQ trigger
-
-    calibRegsChanged = True
-    a = None
+    
+        a = None
     hasUser = 'user' in cfg
     conv = functools.partial(int, base=16)
-    
+    calibRegsChanged = False
+    if hasUser and 'Gain'  in cfg['user']:
+        calibRegsChanged = True
+
     update_config_entry(cfg,origcfg,d)
 
     return calibRegsChanged
@@ -639,126 +641,126 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         #pixelBitMapDic = ['default', 'injection_truck', 'injection_corners_FHG', 'injection_corners_AHGLG1', 'extra_config_1', 'extra_config_2', 'truck2']
         for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(True)
         csvCfg = 0
-    gainValue = 0
-    pixelBitMapDic = ['_0_default', '_1_injection_truck', '_2_injection_corners_FHG', '_3_injection_corners_AHGLG1', '_4_extra_config', '_5_extra_config', '_6_truck2', '_7_on_the_fly', ]
-    
-    gainMapSelection=np.zeros((4, 168, 192))
-    gainValSelection=np.zeros(4)
-    
-    cbase.App.EpixUhrMatrixConfig.enable.set("True")
-
-    
-    if ( cfg['user']['Gain']['SetSameGain4All']):
-        print("Set same Gain for all ASIC")
-        if ( cfg['user']['Gain']['UsePixelMap']):
-            #same MAP for each
-            print("Use Pixel MAP")
-            PixMapSel = int(cfg['user']['Gain']['PixelBitMapSel'])
-            
-            PixMapSelected= pixelBitMapDic[PixMapSel]
-            
-#                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
-            
-            if ('on_the_fly' not in PixMapSelected):
-                fn = pathPll+'csvConfig'+'.csv'
-                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
-                np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')
-                tmpfiles.append(fn)
-                
-            else:
-                fn = pathPll+'onthefly.csv'    
-                csvCfg = np.loadtxt(pathPll+'onthefly.csv', dtype='uint16', delimiter=',')
-            for i in asics: 
-                print(f"ASIC{i}")
-                
-                if i == 1:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
-                if i == 2:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
-                if i == 3:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
-                if i == 4:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
-                
-                #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)                        
-                #getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
-                print(f"{PixMapSelected} CSV File Loaded")
-            gainMapSelection[i-1,:,:]=csvCfg
-
-        else:
-            #same value for all
-            print("Use single value for all ASICS")
-            gainValue=str(cfg['user']['Gain']['SetGainValue'])
-            
-            for i in asics: 
-                print(f"ASIC{i}")
-                gainValSelection[i-1]=gainValue
-                getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
-    else:
-        print("Set single Gain per ASIC")
-        if ( cfg['user']['Gain']['UsePixelMap']):
-            #a map per each
-            print("Use a Pixel MAP per each ASIC")
-            for i in asics:
-                print(f"ASIC{i}")
-                PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
-                PixMapSelected= pixelBitMapDic[PixMapSel]
-                print(PixMapSelected)
-                if ('on_the_fly' not in PixMapSelected):
-                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
-                    fn = pathPll+f'csvConfigAsic{i}'+'.csv'
-                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
-                    tmpfiles.append(fn)
-                else:
-                    fn = pathPll+'onthefly.csv'
-                    csvCfg = np.loadtxt(f'{pathPll}onthefly.csv', dtype='uint16', delimiter=',')
-                gainMapSelection[i-1,:,:]=csvCfg
-                if i == 1:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
-                if i == 2:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
-                if i == 3:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
-                if i == 4:
-                    cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
-
-#                    getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMapFromCSVAsic{i}('{fn}')")
-#                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
-        else:
-            #a value per each
-            print("Use a value per ASIC")
-            for i in asics: 
-                gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
-                print(f"ASIC{i}")
-                gainValSelection[i-1]=gainValue
-                getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
-                
-    for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(False)
-    
-    
-    #cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
-     
-    # Do not apply if already enabled
-    #if cbase.App.VINJ_DAC.enable.get() != cfg['user']['App']['VINJ_DAC']['enable']:
-    cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']			)	
-    
-    #cbase.App.VCALIBP_DAC.enable.set(cfg['user']['App']['VCALIBP_DAC']['enable'])
-    
-    #cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable'])
-    if cbase.App.VINJ_DAC.enable.get() != cfg['user']['App']['VINJ_DAC']['enable']:
-        cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable'])
-    cbase.App.VINJ_DAC.dacEn.set(cfg['user']['App']['VINJ_DAC']['dacEn']			)	
-    cbase.App.VINJ_DAC.rampEn.set(cfg['user']['App']['VINJ_DAC']['rampEn'])
-    cbase.App.VINJ_DAC.dacStartValue.set(cfg['user']['App']['VINJ_DAC']['dacStartValue'])
-    cbase.App.VINJ_DAC.dacStopValue.set(cfg['user']['App']['VINJ_DAC']['dacStopValue'])
-    cbase.App.VINJ_DAC.dacStepValue.set(cfg['user']['App']['VINJ_DAC']['dacStepValue'])
-    cbase.App.WaveformControl.InjEn.set(cfg['user']['App']['VINJ_DAC']['enable'])
+    if writeCalibRegs:
+        gainValue = 0
+        pixelBitMapDic = ['_0_default', '_1_injection_truck', '_2_injection_corners_FHG', '_3_injection_corners_AHGLG1', '_4_extra_config', '_5_extra_config', '_6_truck2', '_7_on_the_fly', ]
         
-           
-     # Remove the yml files
-    for f in tmpfiles:
-        os.remove(f)
+        gainMapSelection=np.zeros((4, 168, 192))
+        gainValSelection=np.zeros(4)
+        
+        cbase.App.EpixUhrMatrixConfig.enable.set("True")
+
+        if ( cfg['user']['Gain']['SetSameGain4All']):
+            print("Set same Gain for all ASIC")
+            if ( cfg['user']['Gain']['UsePixelMap']):
+                #same MAP for each
+                print("Use Pixel MAP")
+                PixMapSel = int(cfg['user']['Gain']['PixelBitMapSel'])
+                
+                PixMapSelected= pixelBitMapDic[PixMapSel]
+                
+    #                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
+                
+                if ('on_the_fly' not in PixMapSelected):
+                    fn = pathPll+'csvConfig'+'.csv'
+                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
+                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')
+                    tmpfiles.append(fn)
+                    
+                else:
+                    fn = pathPll+'onthefly.csv'    
+                    csvCfg = np.loadtxt(pathPll+'onthefly.csv', dtype='uint16', delimiter=',')
+                for i in asics: 
+                    print(f"ASIC{i}")
+                    
+                    if i == 1:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                    if i == 2:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                    if i == 3:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                    if i == 4:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+                    
+                    #getattr(cbase.App,f"Asic{i}").LoadCsvPixelBitmap(fn)                        
+                    #getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
+                    print(f"{PixMapSelected} CSV File Loaded")
+                gainMapSelection[i-1,:,:]=csvCfg
+
+            else:
+                #same value for all
+                print("Use single value for all ASICS")
+                gainValue=str(cfg['user']['Gain']['SetGainValue'])
+                
+                for i in asics: 
+                    print(f"ASIC{i}")
+                    gainValSelection[i-1]=gainValue
+                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
+        else:
+            print("Set single Gain per ASIC")
+            if ( cfg['user']['Gain']['UsePixelMap']):
+                #a map per each
+                print("Use a Pixel MAP per each ASIC")
+                for i in asics:
+                    print(f"ASIC{i}")
+                    PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
+                    PixMapSelected= pixelBitMapDic[PixMapSel]
+                    print(PixMapSelected)
+                    if ('on_the_fly' not in PixMapSelected):
+                        csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (168, 192))
+                        fn = pathPll+f'csvConfigAsic{i}'+'.csv'
+                        np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                        tmpfiles.append(fn)
+                    else:
+                        fn = pathPll+'onthefly.csv'
+                        csvCfg = np.loadtxt(f'{pathPll}onthefly.csv', dtype='uint16', delimiter=',')
+                    gainMapSelection[i-1,:,:]=csvCfg
+                    if i == 1:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
+                    if i == 2:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
+                    if i == 3:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
+                    if i == 4:
+                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+
+    #                    getattr(cbase.App,f"EpixUhrkMatrixConfig.progPixelMapFromCSVAsic{i}('{fn}')")
+    #                    getattr(cbase.App,f"Asic{i}").SetPixelBitmap(csvCfg)
+            else:
+                #a value per each
+                print("Use a value per ASIC")
+                for i in asics: 
+                    gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
+                    print(f"ASIC{i}")
+                    gainValSelection[i-1]=gainValue
+                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
+                    
+        for i in asics: getattr(cbase.App,f"Asic{i}").PixNumModeEn.set(False)
+        
+        
+        #cbase.App.AsicGtClk.gtRstAll.set(cfg['expert']['App']['AsicGtClk']['gtResetAll'])
+        
+        # Do not apply if already enabled
+        #if cbase.App.VINJ_DAC.enable.get() != cfg['user']['App']['VINJ_DAC']['enable']:
+        cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable']			)	
+        
+        #cbase.App.VCALIBP_DAC.enable.set(cfg['user']['App']['VCALIBP_DAC']['enable'])
+        
+        #cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable'])
+        if cbase.App.VINJ_DAC.enable.get() != cfg['user']['App']['VINJ_DAC']['enable']:
+            cbase.App.VINJ_DAC.enable.set(cfg['user']['App']['VINJ_DAC']['enable'])
+        cbase.App.VINJ_DAC.dacEn.set(cfg['user']['App']['VINJ_DAC']['dacEn']			)	
+        cbase.App.VINJ_DAC.rampEn.set(cfg['user']['App']['VINJ_DAC']['rampEn'])
+        cbase.App.VINJ_DAC.dacStartValue.set(cfg['user']['App']['VINJ_DAC']['dacStartValue'])
+        cbase.App.VINJ_DAC.dacStopValue.set(cfg['user']['App']['VINJ_DAC']['dacStopValue'])
+        cbase.App.VINJ_DAC.dacStepValue.set(cfg['user']['App']['VINJ_DAC']['dacStepValue'])
+        cbase.App.WaveformControl.InjEn.set(cfg['user']['App']['VINJ_DAC']['enable'])
             
+            
+        # Remove the yml files
+        for f in tmpfiles:
+            os.remove(f)
+                
     logging.info('config_expert complete')
     config_completed = True
 def reset_counters(base):
@@ -950,7 +952,7 @@ def epixUHR_scan_keys(update):
 
     base['scan_keys'] = copy.deepcopy(result)
     if not check_json_keys(result, base['result']): # @todo: Too strict?
-        logging.error('epixmUHR_scan_keys json is inconsistent with that of epixUHR_config')
+        logging.error('epixUHR_scan_keys json is inconsistent with that of epixUHR_config')
 
     return result
 

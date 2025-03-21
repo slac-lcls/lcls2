@@ -107,9 +107,10 @@ def main():
                 off = f'{gain_mode[:-2]}off'
                 print(f'gains: {gain_mode}: {gains_dict[gain_mode]} ')
                 print(f'gains: {off}: {gains_dict[off]}')
-                matrix=np.full((168, 192), gains_dict[off])
+                
                 for i0 in range(5):
                     for j0 in range(5):
+                        matrix=np.full((168, 192), gains_dict[off])
                         for i in range(i0, 168, 5):
                             for j in range(j0, 192, 5):
                                 matrix[i,j]=gains_dict[gain_mode]

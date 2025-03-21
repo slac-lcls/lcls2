@@ -7,12 +7,13 @@ Usage::
 
     from psana.detector.UtilsCalib import *
     #OR
-    import psana.detector.UtilsCalib as uac
+    import psana.detector.UtilsCalib as uc
 
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2022-01-18 by Mikhail Dubrovin
+2025-03-dd - adopted to lcls2
 """
 
 import logging
@@ -21,7 +22,6 @@ import sys
 import numpy as np
 
 import psana.detector.utils_psana as up
-from psana import DataSource
 from psana.detector.Utils import str_tstamp, time, get_login, info_dict  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
@@ -36,6 +36,15 @@ def selected_record(i, events):
        or (i<200 and not i%20)\
        or not i%100\
        or i>events-5
+
+
+def dic_ctype_fmt(**kwargs):
+    return {'pedestals'   : kwargs.get('fmt_peds', '%.3f'),
+            'pixel_rms'   : kwargs.get('fmt_rms',  '%.3f'),
+            'pixel_status': kwargs.get('fmt_status', '%4i'),
+            'pixel_max'   : kwargs.get('fmt_max', '%i'),
+            'pixel_min'   : kwargs.get('fmt_min', '%i'),
+            'status_extra': kwargs.get('fmt_status', '%4i')}
 
 
 def info_pixel_status(status, bits=(1<<64)-1):
@@ -533,6 +542,8 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = odet.raw._sorted_segment_inds
+    kwa['seggeo_shape'] = odet.raw._seg_geo.shape()
+    #print('XXXX dir(odet.raw)',  dir(odet.raw))
     return kwa
 
 
@@ -628,6 +639,8 @@ def deploy_constants(dic_consts, **kwa):
 
 
 def pedestals_calibration(parser):
+
+  from psana import DataSource
 
   args = parser.parse_args()
   kwa = vars(args)
