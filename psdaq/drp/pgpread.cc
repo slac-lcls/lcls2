@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
             ++nevents;
 
             if (lverbose || (transition_id != XtcData::TransitionId::L1Accept)) {
-                printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | TimeStamp %u.%u | event counter %u | index %u\n",
+                printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | TimeStamp %u.%09u | event counter %u | index %u\n",
                        size, dest, vc, transition_id, event_header->pulseId(), event_header->time.seconds(), event_header->time.nanoseconds(), event_header->evtCounter, index);
                 if (lverbose > 1) {
                     printf("env %08x\n", event_header->env);
