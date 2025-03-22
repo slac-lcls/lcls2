@@ -20,10 +20,8 @@ namespace {
 // Constructor that takes separate parameters for flushing and queue capacity.
 PipeCallbackHandler::PipeCallbackHandler(int measurementTimeMs,
                                          const std::string& iniFilePath,
-                                         size_t batchSize,
                                          size_t queueCapacity)
     : m_measurementTimeMs(measurementTimeMs),
-      m_batchSize(batchSize),
       m_iniFilePath(iniFilePath),
       m_measurementStarted(false),
       m_hasCurrentEvent(false),
@@ -102,8 +100,6 @@ void PipeCallbackHandler::startMeasurement() {
 }
 
 PipeCallbackHandler::~PipeCallbackHandler() {
-    // Flush any pending complete events.
-    flushPending();
     if (m_pd >= 0) {
         sc_pipe_close2(m_dd, m_pd);
         m_pd = -1; // Mark as closed.
@@ -117,33 +113,20 @@ bool PipeCallbackHandler::popEvent(KMicroscopeData &event) {
     return m_eventQueue.try_pop(event);
 }
 
-// Since we now guarantee single-producer access to m_pendingBatch,
-// we remove the lock_guard and use the vector directly.
-void PipeCallbackHandler::accumulateEvents(const std::vector<KMicroscopeData>& events) {
-    m_pendingBatch.insert(m_pendingBatch.end(), events.begin(), events.end());
-    if (m_pendingBatch.size() >= m_batchSize) {
-        for (const auto &ev : m_pendingBatch) {
-            m_eventQueue.push(ev);
-        }
-        m_pendingBatch.clear();
-    }
-}
-
-// Similarly, flushPending() is now lock-free.
-void PipeCallbackHandler::flushPending() {
-    for (const auto &ev : m_pendingBatch) {
-        m_eventQueue.push(ev);
-    }
-    m_pendingBatch.clear();
-}
-
 //------------------------------------------------------------------------------
 // processScDldEvent: Processes a single raw sc_DldEvent and updates the in-progress KMicroscopeData.
-// If a new pulseid is encountered, the current event is complete, stored in the pending batch,
+// If a new pulseid is encountered, the current event is complete, stored in the queue,
 // and a new KMicroscopeData is started.
 //------------------------------------------------------------------------------
 void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
-    uint64_t newPulse = obj->time_tag; // using time_tag as pulseid
+    uint64_t newPulse = obj->time_tag;
+
+    // Check if the pulse ID is not advancing correctly
+    if (m_hasCurrentEvent && newPulse < m_currentEvent.pulseid) {
+        int64_t pulseDiff = static_cast<int64_t>(newPulse) - static_cast<int64_t>(m_currentEvent.pulseid);
+        printf("Unexpected PulseId behavior! Last PulseId: %lu, Current PulseId: %lu, Difference: %ld\n",
+                         m_currentEvent.pulseid, newPulse, pulseDiff);
+    }
 
     if (!m_hasCurrentEvent) {
         m_currentEvent = KMicroscopeData();
@@ -152,13 +135,7 @@ void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
     }
 
     if (m_hasCurrentEvent && m_currentEvent.pulseid != newPulse) {
-        m_pendingBatch.push_back(m_currentEvent);
-        if (m_pendingBatch.size() >= m_batchSize) {
-            for (const auto &ev : m_pendingBatch) {
-                m_eventQueue.push(ev);
-            }
-            m_pendingBatch.clear();
-        }
+        m_eventQueue.push(m_currentEvent);
         m_currentEvent = KMicroscopeData();
         m_currentEvent.pulseid = newPulse;
     }

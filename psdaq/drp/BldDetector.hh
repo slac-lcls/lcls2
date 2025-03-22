@@ -106,7 +106,6 @@ public:
     // Constructor: takes a measurement time (ms), an INI file path, an optional batch size, and payload size.
     KMicroscopeBld(int measurementTimeMs,
                     const std::string& iniFilePath,
-                    size_t batchSize,
                     size_t queueCapacity,
                     unsigned payloadSize);
 

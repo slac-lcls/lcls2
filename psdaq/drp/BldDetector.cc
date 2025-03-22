@@ -174,17 +174,17 @@ BldFactory::BldFactory(const char* name,
         const std::string& iniFilePath = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
                                        ? "tdc_gpx3.ini"
                                        : para.kwargs["iniFile"];
-        size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
-                         ? 1000
-                         : std::stoul(para.kwargs["batchSize"]);
         size_t queueCapacity = para.kwargs.find("queueCapacity") == para.kwargs.end()
-                         ? 1024
+                         ? 65536
                          : std::stoul(para.kwargs["queueCapacity"]);
+        logging::info("Using INI file: %s", iniFilePath);
+        logging::info("Measurement time: %d", measurementTimeMs);
+        logging::info("Queue capacity %zu", queueCapacity);
         _alg    = XtcData::Alg("raw", 1, 0, 0);
         _varDef.NameVec = BldNames::KMicroscopeV1().NameVec;
         _arraySizes = BldNames::KMicroscopeV1().arraySizes();
         unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
-        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, batchSize, queueCapacity, payloadSize);
+        _handler = std::make_shared<KMicroscopeBld>(measurementTimeMs, iniFilePath, queueCapacity, payloadSize);
         return;
     }
 
@@ -631,11 +631,10 @@ void Bld::initDevice()
 
 KMicroscopeBld::KMicroscopeBld(int measurementTimeMs,
     const std::string& iniFilePath,
-    size_t batchSize,
     size_t queueCapacity,
     unsigned payloadSize)
     : BldBase(0, 0, 0, 0, 0, payloadSize, 0),  // These values are unused.
-    m_callbackHandler(measurementTimeMs, iniFilePath, batchSize, queueCapacity)
+    m_callbackHandler(measurementTimeMs, iniFilePath, queueCapacity)
 {
 }
 
@@ -651,9 +650,6 @@ void KMicroscopeBld::clear(uint64_t ts)
 
 uint64_t KMicroscopeBld::next() {
     Drp::KMicroscopeData event;
-
-    // Flush any pending events.
-    m_callbackHandler.flushPending();
 
     auto start_time = std::chrono::steady_clock::now();
     const std::chrono::milliseconds timeout(500);  // Set a timeout of 500ms
@@ -771,6 +767,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
     uint64_t nevents = 0L;
+
+    uint64_t matchedEvents = 0;
+    uint64_t missedEvents = 0;
+    constexpr uint64_t printInterval = 100000;  // Print every this many events
+
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
                   [&](){return nevents;});
     uint64_t nmissed = 0L;
@@ -1005,12 +1006,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                         else {
                             // Pulse ID matching.
                             if (bldValue[i] == timingHeader->pulseId()) {
+                                matchedEvents++;
                                 XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
                                 m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId, m_para);
                                 logging::debug("Found bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
                                                 i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
                             }
                             else {
+                                missedEvents++;
                                 lMissed = true;
                                 if (!lMissing)
                                     logging::debug("Missed bld[%u]: pgp %016lx  bld %016lx  timestamp %016lx",
@@ -1033,6 +1036,14 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     timingHeader = nullptr;
                     _sendToTeb(*dgram, index);
                     nevents++;
+                    // Print every 1000 events
+                    if (nevents % printInterval == 0) {
+                        double percentMatched = (nevents > 0) ? (matchedEvents / (double)nevents) * 100.0 : 0.0;
+                        double percentMissed = (nevents > 0) ? (missedEvents / (double)nevents) * 100.0 : 0.0;
+
+                        logging::info("[Pgp::worker] Events: %llu, Matched: %llu (%.2f%%), Missed: %llu (%.2f%%)",
+                                    nevents, matchedEvents, percentMatched, missedEvents, percentMissed);
+                    }
                 }  // Done with L1Accept with correct timing
             }  // Done with one event
         }
@@ -1414,10 +1425,9 @@ int main(int argc, char* argv[])
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
-        if (kwargs.first == "measurementTimeMs") continue;
-        if (kwargs.first == "iniFile") continue;
-        if (kwargs.first == "batchSize") continue;
-        if (kwargs.first == "queueCapacity") continue;
+        if (kwargs.first == "measurementTimeMs") continue;  // K-microscope
+        if (kwargs.first == "iniFile") continue;            // K-microscope
+        if (kwargs.first == "queueCapacity") continue;      // K-microscope
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
@@ -1439,22 +1449,6 @@ int main(int argc, char* argv[])
     }
     */
 
-    int measurementTimeMs = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
-                          ? 1000
-                          : std::stoi(para.kwargs["measurementTimeMs"]);
-    const std::string& iniFilePath = para.kwargs.find("measurementTimeMs") == para.kwargs.end()
-                                   ? "tdc_gpx3.ini"
-                                   : para.kwargs["iniFile"];
-    size_t batchSize = para.kwargs.find("batchSize") == para.kwargs.end()
-                     ? 1000
-                     : std::stoul(para.kwargs["batchSize"]);
-    size_t queueCapacity = para.kwargs.find("queueCapacity") == para.kwargs.end()
-                     ? 1024
-                     : std::stoul(para.kwargs["queueCapacity"]);
-    std::cout << "Using INI file: " << iniFilePath << "\n";
-    std::cout << "Measurement time: " << measurementTimeMs << " ms\n";
-    std::cout << "Batch size: " << batchSize << "\n";
-    std::cout << "Queue capacity: " << queueCapacity << "\n";
     para.maxTrSize = 256 * 1024;
     try {
         Drp::BldApp app(para);

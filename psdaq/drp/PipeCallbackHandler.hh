@@ -85,7 +85,6 @@ public:
 
     PipeCallbackHandler(int measurementTimeMs,
                         const std::string& iniFilePath,
-                        size_t batchSize,
                         size_t queueCapacity);
     ~PipeCallbackHandler();
 
@@ -94,8 +93,6 @@ public:
     // popEvent returns a completed KMicroscopeData. A KMicroscopeData is considered complete
     // when a new pulseid is encountered. The in-progress event is not popped.
     bool popEvent(KMicroscopeData &event);
-    void flushPending();
-    void accumulateEvents(const std::vector<KMicroscopeData>& events);
 
     // Delete copy constructor and copy-assignment operator
     PipeCallbackHandler(const PipeCallbackHandler&) = delete;
@@ -103,7 +100,6 @@ public:
 
 private:
     int m_measurementTimeMs;
-    size_t m_batchSize;
     std::string m_iniFilePath;
     int m_dd;
     int m_pd;
@@ -120,8 +116,6 @@ private:
 
     // Replace the standard queue with a lock-free SPSCQueue.
     SPSCQueue<KMicroscopeData> m_eventQueue;
-    // The pending batch (and the mutex protecting it) remains for intermediate accumulation.
-    std::vector<KMicroscopeData> m_pendingBatch;
 
     // Process a single raw sc_DldEvent.
     void processScDldEvent(const sc_DldEvent* obj);
