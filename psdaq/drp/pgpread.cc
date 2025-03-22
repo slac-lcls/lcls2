@@ -50,7 +50,8 @@ int main(int argc, char* argv[])
     unsigned lverbose = 0;
     bool lrogue = false, timing_kcu_enable=false;
     bool lusage = false;
-    while((c = getopt(argc, argv, "c:d:l:tvrh?")) != EOF) {
+    bool ljump = false;
+    while((c = getopt(argc, argv, "c:d:l:tjvrh?")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
@@ -70,6 +71,9 @@ int main(int argc, char* argv[])
             case 't':
                 timing_kcu_enable = true;
                 break;
+            case 'j':
+                ljump = true;
+                break;
             default:
                 lusage = true;
                 break;
@@ -78,6 +82,11 @@ int main(int argc, char* argv[])
 
     if (lusage) {
         show_usage(argv[0]);
+        return -1;
+    }
+
+    if (ljump && laneMask == ((1 << PGP_MAX_LANES) - 1)){
+        printf("Please specify the lane mask for L1 Jump check\n");
         return -1;
     }
 
@@ -165,6 +174,7 @@ int main(int argc, char* argv[])
     int32_t dmaRet[MAX_RET_CNT_C];
     uint32_t dmaIndex[MAX_RET_CNT_C];
     uint32_t dmaDest[MAX_RET_CNT_C];
+    uint32_t curr_event_counter = 0;
     while (1) {
         if (terminate.load(std::memory_order_acquire) == true) {
             close(fd);
@@ -190,6 +200,21 @@ int main(int argc, char* argv[])
             XtcData::TransitionId::Value transition_id = event_header->service();
 
             ++nevents;
+
+            // Check for jumping L1
+            uint32_t evtCounter = event_header->evtCounter & 0xffffff;
+
+            // Only check for jump if -j is set AND -l was explicitly specified
+            // -l only monitor a single lane making the check below correct.
+            if (ljump && laneMask != ((1 << PGP_MAX_LANES) - 1)) {
+                if (nevents > 0 && evtCounter != curr_event_counter + 1) {
+                    auto evtCntDiff = evtCounter - curr_event_counter;
+                    printf("PGPReader: Jump in complete l1Count %u -> %u | difference %d \n",
+                        curr_event_counter, evtCounter, evtCntDiff);
+                }
+            }
+
+            curr_event_counter = evtCounter;
 
             if (lverbose || (transition_id != XtcData::TransitionId::L1Accept)) {
                 printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | TimeStamp %u.%09u | event counter %u | index %u\n",
