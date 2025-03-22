@@ -42,6 +42,19 @@ public:
     void push(T value)
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
+
+        if (is_full()) {
+            // Only print the warning once per full queue condition
+            if (!m_queueFullWarned) {
+                fprintf(stderr, "WARNING: SPSCQueue is full! (queueCapacity: %ld). Consider increasing queueCapacity. Dropping event.\n", m_capacity);
+                m_queueFullWarned = true;  // Set flag to prevent repeated warnings
+            }
+            return;  // Prevent overflow
+        }
+
+        // Reset the warning flag once space becomes available again
+        m_queueFullWarned = false;
+
         m_ring_buffer[index & m_buffer_mask] = value;
         int64_t next = index + 1;
         m_write_index.store(next, std::memory_order_release);
@@ -154,6 +167,11 @@ public:
                m_write_index.load(std::memory_order_acquire);
     }
 
+    bool is_full() {
+        return (m_write_index.load(std::memory_order_acquire) -
+                m_read_index.load(std::memory_order_acquire)) >= m_capacity;
+    }
+
     int guess_size()
     {
         int ret = m_write_index.load(std::memory_order_acquire) -
@@ -194,6 +212,7 @@ private:
     alignas(64) std::atomic<int64_t> m_write_index;
     alignas(64) std::atomic<int64_t> m_read_index;
     char _pad[64 - sizeof(std::atomic<int64_t>)];
+    std::atomic<bool> m_queueFullWarned{false};
 };
 
 #endif // SPSCQUEUE_H
