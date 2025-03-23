@@ -276,6 +276,7 @@ class DgramManager(object):
                 if det_name not in det_stream_id_table:
                     det_stream_id_table[det_name] = i
 
+
         # collect only user detectors
         stream_id_to_detnames = {}
         for det_name, _ in det_classes["normal"].keys():

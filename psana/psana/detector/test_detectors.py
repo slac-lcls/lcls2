@@ -392,3 +392,46 @@ class epixhremu_raw_0_0_1(DetectorImpl):
     def image(self, evt) -> Array2d:
         segs = self._segments(evt)
         return np.vstack([segs[i].raw for i in sorted(segs.keys())])
+
+class kmicro_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(kmicro_raw_1_0_0, self).__init__(*args)
+
+    def xpos(self, evt):
+        segment = self._segment(evt)
+        if segment is None:
+            return None
+        return segment.xpos
+
+    def ypos(self, evt):
+        segment = self._segment(evt)
+        if segment is None:
+            return None
+        return segment.ypos
+
+    def time(self, evt):
+        segment = self._segment(evt)
+        if segment is None:
+            return None
+        return segment.time
+
+    def raw(self, evt):
+        segment = self._segment(evt)
+        if segment is None:
+            return None
+        return {
+            "xpos": segment.xpos,
+            "ypos": segment.ypos,
+            "time": segment.time
+        }
+
+    def raw_data(self, evt):
+        return self.raw(evt)
+
+    def _segment(self, evt):
+        segments = self._segments(evt)
+        if segments is None:
+            return None
+        first_seg_id = self._sorted_segment_inds[0]
+        return segments[first_seg_id]
+
