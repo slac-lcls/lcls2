@@ -3,13 +3,17 @@
 #include <string.h>                     // strdup
 #include <stdio.h>                      // fprintf
 
+#include "psalg/utils/SysLog.hh"
+
+using logging = psalg::SysLog;
+
 
 int Pds::Dl::open(const std::string& filename, int flag)
 {
   if (_handle)
   {
-    fprintf(stderr, "%s:\n  Cannot open dynamic library '%s' without first closing '%s'\n",
-            __PRETTY_FUNCTION__, filename.c_str(), _filename.c_str());
+    logging::debug("Cannot open dynamic library '%s' without first closing '%s'\n",
+                   filename.c_str(), _filename.c_str());
     return -1;
   }
 
@@ -18,8 +22,8 @@ int Pds::Dl::open(const std::string& filename, int flag)
   _handle = dlopen(_filename.c_str(), flag);
   if (!_handle)
   {
-    fprintf(stderr, "%s:\n  Cannot open dynamic library '%s':\n  %s\n",
-            __PRETTY_FUNCTION__, _filename.c_str(), dlerror());
+    logging::debug("Cannot open dynamic library '%s':\n  %s\n",
+                   _filename.c_str(), dlerror());
     return -1;
   }
 
@@ -34,8 +38,8 @@ void* Pds::Dl::loadSymbol(const std::string& name) const
   const char *error  = dlerror();
   if (error)
   {
-    fprintf(stderr, "%s:\n  Cannot load symbol '%s' from '%s':\n  %s\n",
-            __PRETTY_FUNCTION__, name.c_str(), _filename.c_str(), error);
+    logging::debug("Cannot load symbol '%s' from '%s':\n  %s\n",
+                   name.c_str(), _filename.c_str(), error);
     return nullptr;
   }
 
