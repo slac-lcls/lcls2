@@ -985,7 +985,6 @@ PvApp::PvApp(PvParameters& para) :
     m_para(para),
     m_pool(para),
     m_drp(para, m_pool, context()),
-    m_pvDetector(std::make_unique<PvDetector>(para, m_drp)),
     m_det(nullptr),
     m_unconfigure(false)
 {
