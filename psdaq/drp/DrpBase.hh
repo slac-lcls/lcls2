@@ -95,6 +95,7 @@ public:
     void resetCounters(bool all);
     int  connect(const std::shared_ptr<Pds::MetricExporter> exporter);
     void configure(Detector*, const PgpReader*);
+    void unconfigure();
     std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
     bool advanceChunkId();
     std::string reopenFiles();

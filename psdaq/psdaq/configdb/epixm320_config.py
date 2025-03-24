@@ -246,7 +246,7 @@ def gain_mode_value(gain_mode):
 
 def gain_mode_map(gain_mode):
     compTH        = ( 0,   44,   24)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45,   45,   45)[gain_mode]
+    precharge_DAC = (50,   50,   50)[gain_mode]
     return (compTH, precharge_DAC)
 
 # Sanitize the json for json2xtc by removing offensive characters
@@ -604,9 +604,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             cbase.App.FPGAChargeInjection.step.set       (app['FPGAChargeInjection']['step'])
             cbase.App.FPGAChargeInjection.currentAsic.set(app['FPGAChargeInjection']['currentAsic'])
             cbase.App.FPGAChargeInjection.UseTiming.set(True)
-            cbase.App.FPGAChargeInjection.Start()
         else:
-            cbase.App.FPGAChargeInjection.Stop()
+            cbase.App.FPGAChargeInjection.step.set(0) # Disable charge injection
 
     logging.warning('config_expert complete')
 
@@ -693,7 +692,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     print(f'gain_mode {gain_mode}  CompTH_ePixM {compTH}  Precharge_DAC_ePixM {precharge_DAC}')
 
-    for seg in range(1):  # Loop over 'tiles', of which the ePixM is defined to have only one
+    for seg in range(1):  # Loop over 'tiles', of which the ePixM has only one
         # Get serial numbers
         cbase.App.AsicTop.RegisterControlDualClock.enable.set(True)
         cbase.App.AsicTop.RegisterControlDualClock.IDreset.set(0x7)
@@ -791,7 +790,7 @@ def epixm320_scan_keys(update):
         compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(numAsics) ]
         precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(numAsics) ]
 
-        for seg in range(1):
+        for seg in range(1):    # Loop over 'tiles', of which the ePixM has only one
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [1,0,0])
@@ -874,7 +873,7 @@ def epixm320_update(update):
         compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(numAsics) ]
         precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(numAsics) ]
 
-        for seg in range(1):    # Loop over 'tiles'
+        for seg in range(1):    # Loop over 'tiles', of which the ePixM has only one
             id = segids[seg]
             top = cdict()
             top.setAlg('config', [1,0,0])
@@ -934,12 +933,39 @@ def epixm320_internal_trigger(base):
 
 def epixm320_enable(base):
     logging.info('epixm320_enable')
+    cbase = base['cam']
+
+    # If charge injection was enabled, start the f/w engine
+    if cbase.App.FPGAChargeInjection.step.get() != 0:
+        cbase.App.FPGAChargeInjection.Start()
+        print('Starting charge injection engine')
+        print('step:', cbase.App.FPGAChargeInjection.step.get());
+        print('currentAsic:', cbase.App.FPGAChargeInjection.currentAsic.get());
+        print('status:', cbase.App.FPGAChargeInjection.status.get());
+        print('state:', cbase.App.FPGAChargeInjection.state.get());
+        print('stateLast:', cbase.App.FPGAChargeInjection.stateLast.get());
+        print('triggerStateCounter:', cbase.App.FPGAChargeInjection.triggerStateCounter.get());
+
     epixm320_external_trigger(base)
-    _start(base)
+    #_start(base)
 
 def epixm320_disable(base):
     logging.info('epixm320_disable')
-    # Prevents transitions going through: epixm320_internal_trigger(base)
+    cbase = base['cam']
+
+    # If charge injection was enabled, stop the f/w engine
+    if cbase.App.FPGAChargeInjection.step.get() != 0:
+        print('Stopping charge injection engine')
+        print('step:', cbase.App.FPGAChargeInjection.step.get());
+        print('currentAsic:', cbase.App.FPGAChargeInjection.currentAsic.get());
+        print('status:', cbase.App.FPGAChargeInjection.status.get());
+        print('state:', cbase.App.FPGAChargeInjection.state.get());
+        print('stateLast:', cbase.App.FPGAChargeInjection.stateLast.get());
+        print('triggerStateCounter:', cbase.App.FPGAChargeInjection.triggerStateCounter.get());
+        cbase.App.FPGAChargeInjection.Stop()
+
+    # The following prevents transitions from going through
+    # epixm320_internal_trigger(base)
     # Seems like we should do the following, but it also blows off transitions
     #_stop(base)
 

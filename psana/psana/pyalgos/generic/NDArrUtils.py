@@ -532,7 +532,7 @@ def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'
     if not fexists:
         set_file_access_mode(fname, fmode)
         change_file_ownership(fname, user=None, group=group)
-    logger.info('saved:  %s' % fname)
+    logger.debug('saved:  %s' % fname)
 
 
 def save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'):

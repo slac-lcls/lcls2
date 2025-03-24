@@ -27,13 +27,13 @@
 
 # HDR PARENT IND      OBJECT     IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
 
-JFCAMERA:V1    0    JUNGFRAU:V1    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    3    66941.7  33921.7     0      90     180	 0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JUNGFRAU:V1    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    3    66941.7  33921.7     0      90     180	 0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFCAMERA:V1    0    JUNGFRAU:V2    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
 
 IP:V1          0    JFCAMERA:V1    0           0       0  100000    90     0     0       0.0      0.0      0.0

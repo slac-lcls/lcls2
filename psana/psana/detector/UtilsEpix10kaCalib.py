@@ -23,7 +23,8 @@ from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
 from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
-from psana.detector.utils_psana import seconds, datasource_kwargs_from_string
+import psana.detector.UtilsCalib as uc
+from psana.detector.utils_psana import seconds, data_source_kwargs, dict_filter
 from psana.detector.UtilsLogging import init_file_handler
 
 
@@ -214,7 +215,7 @@ def proc_dark_block(block, **kwa):
     """
     NOTE:
     - our data is uint16.
-    - np.median(block, axis=0) or np.quantile(...,interpolation='linear') return result rounded to int
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
     - in order to return interpolated float values apply the trick:
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow to get better interpolation for median and quantile values
@@ -226,9 +227,9 @@ def proc_dark_block(block, **kwa):
 
     t1_sec = time()
     #arr_med = np.median(block, axis=0)
-    arr_med = np.quantile(blockf64, frac05, axis=0, interpolation='linear')
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, interpolation='linear')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, interpolation='linear')
+    arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='linear')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='linear')
     logger.debug('block array median/quantile(0.5) for med, qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
     med_med = np.median(arr_med)
@@ -372,9 +373,9 @@ def irun_first(runs):
            int(runs.split(',',1)[0].split('-',1)[0])
 
 
-def data_source_kwargs(**kwa):
-    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
-    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
+#def data_source_kwargs(**kwa):
+#    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+#    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
 def pedestals_calibration(parser):
@@ -685,6 +686,8 @@ def get_config_info_for_dataset_detname(**kwargs):
 
       #co = odet.raw._config_object()
 
+      longname = odet.raw._fullname() #ue.fullname_det(odet) #odet.raw._uniqueid
+
       cpdic = {}
       cpdic['expname']    = orun.expt   # experiment name
       cpdic['strsrc']     = None
@@ -692,7 +695,8 @@ def get_config_info_for_dataset_detname(**kwargs):
       cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
       cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
       cpdic['panel_inds'] = odet.raw._segment_indices() #ue.segment_indices_det(odet)
-      cpdic['longname']   = odet.raw._fullname() #ue.fullname_det(odet) #odet.raw._uniqueid
+      cpdic['longname']   = longname
+      cpdic['shortname']  = uc.detector_name_short(longname)
       cpdic['det_name']   = odet._det_name # odet.raw._det_name epixquad
       cpdic['dettype']    = odet._dettype # epix
       cpdic['tstamp']     = tstamp_run # (str) 20201209191018
@@ -782,23 +786,24 @@ def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, of
     nda.shape = shape_merged # (7, 1, 352, 384) because save_ndarray_in_textfile changes shape
     return nda
 
+merge_panels = uc.merge_panels
 
-def merge_panels(lst):
-    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
-    """
-    npanels = len(lst)   # 16 or 4 or 1
-    shape = lst[0].shape # (7, 1, 352, 384)
-    ngmods = shape[0]    # 7
-    dtype = lst[0].dtype #
+#def merge_panels(lst):
+#    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
+#    """
+#    npanels = len(lst)   # 16 or 4 or 1
+#    shape = lst[0].shape # (7, 1, 352, 384)
+#    ngmods = shape[0]    # 7
+#    dtype = lst[0].dtype #
+#
+#    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
 
-    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
-
-    # make list for merging of (352,384) blocks in right order
-    mrg_lst = []
-    for igm in range(ngmods):
-        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
-        mrg_lst.append(nda1gm)
-    return np.stack(mrg_lst)
+#    # make list for merging of (352,384) blocks in right order
+#    mrg_lst = []
+#    for igm in range(ngmods):
+#        nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
+#        mrg_lst.append(nda1gm)
+#    return np.stack(mrg_lst)
 
 
 def add_links_for_gainci_fixed_modes(dir_gain, fname_prefix):
@@ -861,7 +866,8 @@ def deploy_constants(parser):
     panel_inds  = cpdic.get('panel_inds',None)
     dettype     = cpdic.get('dettype',   None)
     det_name    = cpdic.get('det_name',  None)
-    longname    = cpdic.get('longname',  detname)
+    longname    = cpdic.get('longname',  None)
+    shortname   = cpdic.get('shortname', None)
     gains_def   = cpdic.get('gains_def', None)
     irun        = cpdic.get('runnum',    None)
     exp         = cpdic.get('expname',   None)
@@ -966,7 +972,8 @@ def deploy_constants(parser):
             'experiment' : exp,
             'ctype'      : octype,
             'dtype'      : dtype,
-            'detector'   : detname,
+            'detector'   : shortname,
+            'shortname'  : shortname,
             'detname'    : det_name,
             'longname'   : longname,
             'time_sec'   : tvalid_sec,
@@ -982,8 +989,9 @@ def deploy_constants(parser):
             'dettype'    : dettype,
             'dbsuffix'   : dbsuffix
           }
-
-          logger.debug('DEPLOY metadata: %s' % str(kwa))
+          d = dict_filter(kwa, list_keys=('experiment', 'detname', 'detector', 'shortname', 'ctype',\
+                                          'run', 'run_orig', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'longname', 'iofname', 'version'))
+          logger.info('partial metadata:\n  %s' % '\n  '.join(['%16s: %s' %(k,v) for k,v in d.items()]))
 
           data = mu.data_from_file(fmerge, octype, dtype, True)
           logger.debug(info_ndarr(data, 'merged constants loaded from file'))

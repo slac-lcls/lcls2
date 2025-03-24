@@ -163,6 +163,7 @@ if 'PSDAQ' in BUILD_LIST :
             'traingenerator = psdaq.seq.traingenerator:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',
+            'ued_seq_setup = psdaq.seq.ued_seq_setup:main',
             'bos = psdaq.bos.bos:main',
             'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
             'prometheusIOC = psdaq.cas.prometheusIOC:main',

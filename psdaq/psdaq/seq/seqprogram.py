@@ -116,7 +116,7 @@ class SeqUser:
         self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
-        self.start .put(1 if not refresh else 3,wait=tmo)
+        self.reset .put(1,wait=tmo)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
@@ -143,6 +143,7 @@ def main():
     parser.add_argument('--pv', type=str, required=True, help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
+    parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
@@ -174,7 +175,7 @@ def main():
                 print(i)
 
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=True,refresh=config['refresh'])
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
         del seq
 
         engineMask |= (1<<engine)
@@ -193,6 +194,7 @@ def main():
 
         pvSeqReset = Pv(f'{args.pv}:SeqReset')
         pvSeqReset.put(engineMask,wait=tmo)
+
         
 
 if __name__ == '__main__':

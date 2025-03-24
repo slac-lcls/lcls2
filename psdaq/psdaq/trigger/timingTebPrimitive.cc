@@ -51,9 +51,11 @@ void Pds::Trg::TimingTebPrimitive::event(const Drp::MemPool& pool,
     const XtcData::Xtc& dat = *reinterpret_cast<const XtcData::Xtc*>(shdat.payload());
     const Drp::TimingData& tdat = *new(dat.payload()) Drp::TimingData;
 
+    uint8_t ebeamDestn_ = tdat.ebeamDestn | (tdat.ebeamPresent ? 0x80 : 0);
     const uint32_t* eventcodes_ = reinterpret_cast<const uint32_t*>(tdat.sequenceValues);
 
-    new(xtc.alloc(sizeof(TimingTebData), bufEnd)) TimingTebData(eventcodes_);
+    new(xtc.alloc(sizeof(TimingTebData), bufEnd)) TimingTebData(ebeamDestn_,
+                                                                eventcodes_);
 }
 
 // The class factory

@@ -161,7 +161,7 @@ class UdpEncoder : public XpmDetector
 {
 public:
     UdpEncoder(Parameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg, unsigned slowGroup);
+    unsigned connect(const nlohmann::json& msg, std::string& errorMsg, const std::string& id, unsigned slowGroup);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
@@ -169,6 +169,8 @@ public:
     unsigned unconfigure();
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
+    nlohmann::json publicConnectionInfo(const nlohmann::json& msg) { return connectionInfo(msg); }
+    void publicConnectionShutdown() { connectionShutdown(); }
     const PgpReader* pgp() { return &m_pgp; }
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
@@ -206,6 +208,7 @@ private:
 };
 
 
+// Remove the unique_ptr member and declare m_det as a raw pointer.
 class UdpApp : public CollectionApp
 {
 public:
@@ -222,12 +225,11 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
-    Parameters& m_para;
-    MemPoolCpu m_pool;
-    DrpBase m_drp;
-    std::unique_ptr<UdpEncoder> m_udpDetector;
-    Detector* m_det;
-    bool m_unconfigure;
+    Parameters&   m_para;
+    MemPoolCpu    m_pool;
+    DrpBase       m_drp;
+    UdpEncoder*   m_det;        // replaced m_udpDetector
+    bool          m_unconfigure;
 };
 
 }

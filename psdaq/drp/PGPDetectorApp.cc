@@ -17,6 +17,7 @@
 #include "EpixM320.hh"
 #include "EpixUHR.hh"
 #include "Epix100.hh"
+#include "JungfrauEmulator.hh"
 #include "Opal.hh"
 #include "HREncoder.hh"
 #include "Wave8.hh"
@@ -313,22 +314,23 @@ void PGPDetectorApp::initialize()
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     Factory<Detector> f;
-    f.register_type<AreaDetector>("fakecam");
-    f.register_type<AreaDetector>("cspad");
-    f.register_type<Digitizer>   ("hsd");
-    f.register_type<EpixQuad>    ("epixquad");
-    f.register_type<EpixHR2x2>   ("epixhr2x2");
-    f.register_type<EpixHRemu>   ("epixhremu");
-    f.register_type<EpixM320>    ("epixm320");
-    f.register_type<EpixUHR>     ("epixUHR");
-    f.register_type<Epix100>     ("epix100");
-    f.register_type<Opal>        ("opal");
-    f.register_type<TimeTool>    ("tt");
-    f.register_type<TimingBEB>   ("tb");
-    f.register_type<TimingSystem>("ts");
-    f.register_type<Wave8>       ("wave8");
-    f.register_type<HREncoder>   ("hrencoder");
-    f.register_type<Piranha4>    ("piranha4");
+    f.register_type<AreaDetector>    ("fakecam");
+    f.register_type<AreaDetector>    ("cspad");
+    f.register_type<Digitizer>       ("hsd");
+    f.register_type<EpixQuad>        ("epixquad");
+    f.register_type<EpixHR2x2>       ("epixhr2x2");
+    f.register_type<EpixHRemu>       ("epixhremu");
+    f.register_type<EpixM320>        ("epixm320");
+    f.register_type<EpixUHR>         ("epixUHR");
+    f.register_type<Epix100>         ("epix100");
+    f.register_type<JungfrauEmulator>("jungfrauemu");
+    f.register_type<Opal>            ("opal");
+    f.register_type<TimeTool>        ("tt");
+    f.register_type<TimingBEB>       ("tb");
+    f.register_type<TimingSystem>    ("ts");
+    f.register_type<Wave8>           ("wave8");
+    f.register_type<HREncoder>       ("hrencoder");
+    f.register_type<Piranha4>        ("piranha4");
 
     m_det = f.create(&m_para, &m_drp.pool);
     if (m_det == nullptr) {

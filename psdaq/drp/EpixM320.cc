@@ -272,26 +272,26 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
     //
 
     //  Check which ASICs are in the streams
-    unsigned asic = 2;                  // Point to the first ASIC subframe
+    unsigned ia = 2;                    // Point to the first ASIC subframe
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<NumAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size() < asic) {
+            if (subframes.size() < ia) {
                 logging::error("Missing data from asic %d\n", q);
                 xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            else if (subframes[asic].num_elem() != headerSize+asicSize+trailerSize) {
+            else if (subframes[ia].num_elem() != headerSize+asicSize+trailerSize) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q+2].num_elem()/2, (headerSize+asicSize+trailerSize)/2, q);
+                               subframes[ia].num_elem()/2, (headerSize+asicSize+trailerSize)/2, q);
                 xtc.damage.increase(Damage::MissingData);
                 q_asics ^= (1<<q);
             }
-            ++asic;                     // On to the next ASIC in the subframes
+            ++ia;                       // On to the next ASIC in the subframes
         }
     }
 
-    asic = 2;                           // Point to the first ASIC subframes
+    ia = 2;                             // Point to the first ASIC subframes
     for (unsigned q = 0; q < NumAsics; ++q) {
         if ((q_asics & (1<<q))==0) {
             //  Missing ASICS are padded with zeroes
@@ -302,11 +302,11 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
         }
 
         // Pack the header into the Xtc
-        auto header = subframes[asic].data();
+        auto header = subframes[ia].data();
         memcpy(&aHeader(q, 0), header, headerSize);
 
         // Pack the image data into the Xtc
-        auto src = reinterpret_cast<const uint16_t*>(subframes[asic].data() + headerSize);
+        auto src = reinterpret_cast<const uint16_t*>(subframes[ia].data() + headerSize);
         auto dst = &aFrame(q, 0, 0);
 #if 1
         _descramble(dst, src);
@@ -315,10 +315,10 @@ void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> 
 #endif
 
         // Pack the trailer into the Xtc
-        auto trailer = subframes[asic].data() + headerSize + asicSize;
+        auto trailer = subframes[ia].data() + headerSize + asicSize;
         memcpy(&aTrailer(q, 0), trailer, trailerSize);
 
-        ++asic;                         // On to the next ASIC in the subframes
+        ++ia;                           // On to the next ASIC in the subframes
     }
 }
 

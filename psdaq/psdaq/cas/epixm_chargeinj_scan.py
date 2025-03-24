@@ -23,7 +23,10 @@ def main():
              ('--nBandSteps', {'type':int,'default':1,'help':'number of times to step the injection band (default 1)'}),
              ('--gain-modes', {'type':str,'nargs':'+','choices':['SH','SL','AHL','User'],
                                'default':['SH', 'SL', 'AHL'],
-                               'help':'Gain modes to use (default [\'SH\',\'SL\',\'AHL\'])'}),]
+                               'help':'Gain modes to use (default [\'SH\',\'SL\',\'AHL\'])'}),
+             ('--asics',      {'type':int,'nargs':'+','choices':range(nAsics),
+                               'default':range(nAsics),
+                               'help':f'ASICs to use (default {range(nAsics)})'})]
     scan = ConfigScanBase(userargs=aargs, defargs=defargs)
 
     args = scan.args
@@ -68,7 +71,7 @@ def main():
         for gain_mode in args.gain_modes:
             metad['gain_mode'] = gain_mode
             d[f'{args.detname}:user.gain_mode'] = int(gain_mode_value(gain_mode))
-            for asic in range(nAsics):
+            for asic in args.asics:
                 metad['asic'] = asic
                 d[f'{args.detname}:expert.App.FPGAChargeInjection.currentAsic'] = asic
                 firstCol = args.firstCol
