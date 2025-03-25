@@ -90,6 +90,9 @@ def request(url, query=None):
         (url, str(query), r.ok, r.status_code, r.reason)
     s += '\nTry command: curl -s "%s"' % url
     logger.debug(s)
+    if r.status_code == 503:
+        logger.warning(s)
+        sys.exit(1)
     return None
 
 
