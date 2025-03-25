@@ -435,7 +435,9 @@ def save_results(dpo, orun, odet, **kwa):
     del(dpo)
 
 
-fname_prefix = ucr.fname_prefix
+#fname_prefix = ucr.fname_prefix
+fname_prefix = ucr.calib_file_name
+
 
 #def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
 #    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
@@ -446,8 +448,6 @@ fname_prefix = ucr.fname_prefix
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
     """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-pixel_status.txt """
     return '%s/%s-%s.txt' % (dir_ctype, fnprefix, ctype)
-
-fname_prefix = ucr.calib_file_name
 
 
 def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
