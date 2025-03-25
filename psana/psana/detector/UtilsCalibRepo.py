@@ -221,7 +221,6 @@ if __name__ == "__main__":
            'segind'      : 1,\
            'tstampbegin' : '20250101000000',\
            'fname2darr'  : 'test_2darr.npy',\
-           'dirrepo'     : './work',\
            'version'     : '2025-03-14',\
     }
 
