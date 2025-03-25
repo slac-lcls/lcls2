@@ -19,6 +19,7 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=rixx1003721,run=200 -d epixhr  -o ./work --int_hi 32000' % SCRNAME\
       + '\n  %s -k \"{\'exp\':\'rixx45619\', \'run\':121}\" -d epixhr -o ./work' % SCRNAME\
       + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work' % SCRNAME\
+      + '\n  %s -k exp=uedc00104,run=177 -d epixquad  -o ./work' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
       #+ '\n  ??? mpirun -n 5 %s -k exp=ueddaq02,run=27 -d epixquad -i15 -o ./work -L DEBUG' % SCRNAME\
 
@@ -47,7 +48,7 @@ def argument_parser():
     d_dskwargs = None
     d_det     = None # 'epixquad'
     d_nrecs   = 800  # number of records to collect and process
-    d_nrecs1  = 200  # number of records to process at 1st stage
+    d_nrecs1  = 50   # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirrepo = DIR_REPO_EPIX10KA
     d_logmode = 'INFO'
@@ -70,7 +71,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2024-04-01'
+    d_version = 'V2025-03-24'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
