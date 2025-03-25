@@ -137,7 +137,9 @@ public:
     {
         raw,
         frame_cnt,
-        timestamp
+        timestamp,
+        hotPixelThresh,
+        numHotPixels,
     };
 
     JungfrauDef()
@@ -145,6 +147,8 @@ public:
         NameVec.push_back({"raw", XtcData::Name::UINT16, 3});
         NameVec.push_back({"frame_cnt", XtcData::Name::UINT64});
         NameVec.push_back({"timestamp", XtcData::Name::UINT64});
+        NameVec.push_back({"hotPixelThresh", XtcData::Name::UINT16});
+        NameVec.push_back({"numHotPixels", XtcData::Name::UINT32});
     }
 } RawDef;
 
@@ -303,7 +307,7 @@ void Jungfrau::_connectionInfo(PyObject*)
 
 unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
-    XtcData::Alg rawAlg("raw", 0, 1, 0);
+    XtcData::Alg rawAlg("raw", 0, 2, 0);
     for (size_t i=0; i<m_nModules; ++i) {
         // We have multiple DAQ segments per DRP executable (potentially)
         unsigned detSegment;
@@ -355,6 +359,10 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     uint8_t biasVoltage = desc.get_value<uint8_t>(i);
                     logging::info("Setting module %zu bias voltage to %u", mod, biasVoltage);
                     m_slsDet->setHighVoltage(biasVoltage, pos);
+                } else if (strcmp(name.name(), "user.hot_pixel_threshold") == 0) {
+                    uint16_t threshold = desc.get_value<uint16_t>(i);
+                    logging::info("Pixels above %u will be counted as hot pixels.", threshold);
+                    m_hotPixelThreshold = threshold;
                 } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
                     double trigDelay = desc.get_value<double>(i);
                     logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
@@ -473,6 +481,21 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     }
 }
 
+uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels) {
+    uint32_t numHotPixels {0};
+    static const uint16_t gain_bits = 3 << 14;
+    static const uint16_t data_bits = (1 << 14) - 1;
+
+    for (size_t i=0; i<numPixels; ++i) {
+        uint16_t value = rawData[i];
+        if (((value & gain_bits) == gain_bits) &&
+            ((value & data_bits) > hotPixelThreshold)) {
+            numHotPixels++;
+        }
+    }
+    return numHotPixels;
+}
+
 void Jungfrau::_event(XtcData::Xtc& xtc,
                       const void* bufEnd,
                       std::vector< XtcData::Array<uint8_t> >& subframes)
@@ -543,8 +566,13 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 dataPtr += JungfrauData::PayloadSize;
             }
         }
+        uint32_t numHotPixels = _countNumHotPixels(frame.data(),
+                                                  m_hotPixelThreshold,
+                                                  JungfrauData::Rows*JungfrauData::Cols);
         cd.set_value(JungfrauDef::frame_cnt, framenum);
         cd.set_value(JungfrauDef::timestamp, timestamp);
+        cd.set_value(JungfrauDef::hotPixelThresh, m_hotPixelThreshold);
+        cd.set_value(JungfrauDef::numHotPixels, numHotPixels);
     }
 }
 

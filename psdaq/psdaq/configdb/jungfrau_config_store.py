@@ -49,7 +49,7 @@ def write_to_daq_config_db(args):
 
     top: mcdict = mcdict(args.yaml)
     top.setInfo("jungfrau", args.name, args.segm, args.id, "No comment")
-    top.setAlg("config", [0,1,0])
+    top.setAlg("config", [0,2,0])
 
     help_str: str = (
         "-- user --\n"
@@ -62,6 +62,7 @@ def write_to_daq_config_db(args):
     top.set("help:RO", help_str, "CHARSTR")
 
     # For Jungfrau module
+    top.set("user.hot_pixel_threshold", 15000, "UINT16")
     top.set("user.bias_voltage_v", 200, "UINT8") # Int??
     top.set("user.trigger_delay_s", 0.000238, "DOUBLE")
     top.set("user.exposure_time_s", 0.00001, "DOUBLE")
