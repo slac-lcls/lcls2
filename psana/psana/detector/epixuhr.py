@@ -44,6 +44,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
+        self._segment_numbers = [0,1,2,3]
         
     def _array(self, evt) -> Array2d:
         f = None
