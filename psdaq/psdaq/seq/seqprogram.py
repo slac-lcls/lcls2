@@ -64,6 +64,9 @@ class SeqUser:
     def load(self, title, instrset, descset=None):
         self.desc.put(title,wait=tmo)
 
+        # Before encoding, run the preprocessor to expand any macros
+        instrset = preproc(instrset)
+
         encoding = [len(instrset)]
         for instr in instrset:
             encoding = encoding + instr.encoding()
@@ -170,7 +173,12 @@ def main():
             config['refresh']=False
         print(f'refresh  {config["refresh"]}')
         if args.verbose:
-            print('instrset:')
+            print('instrset (before preproc):')
+            for i in config["instrset"]:
+                print(i)
+        instrset = preproc(instrset)
+        if args.verbose:
+            print('instrset (after preproc):')
             for i in config["instrset"]:
                 print(i)
 

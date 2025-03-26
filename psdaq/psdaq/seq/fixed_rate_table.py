@@ -2,7 +2,7 @@ import sys
 import itertools
 import numpy as np
 
-if __name__ == '__main__':
+def main():
     factors = [2,2,2,2,5,5,5,5,7,13]  # product is 910,000
     iters = [itertools.combinations(factors,i+1) for i in range(len(factors))]
     f = set()
@@ -21,3 +21,6 @@ if __name__ == '__main__':
     for q in sorted(f):
         print(' {:6d}     {:6d}   {}'.format(int(base/float(q)),q,d[q]))
         
+
+if __name__ == '__main__':
+    main()

@@ -2,7 +2,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 import pyqtgraph as pg
 import numpy as np
 import argparse
-import psdaq.seq.seq
+from psdaq.seq.seq import preproc
 from psdaq.seq.globals import *
 
 f=None
@@ -179,6 +179,7 @@ def main():
 
         for i,ins in enumerate(config['instrset']):
             print(f'{i}: {ins}')
+        config['instrset'] = preproc(config['instrset'])
 
         seq = SeqUser(start=int(args.time[0]*TPGSEC),stop=int(args.time[1]*TPGSEC),acmode=False)
         seq.execute(config['title'],config['instrset'],config['descset'])
