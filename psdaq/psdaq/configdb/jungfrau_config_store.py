@@ -63,6 +63,7 @@ def write_to_daq_config_db(args):
 
     # For Jungfrau module
     top.set("user.hot_pixel_threshold", 15000, "UINT16")
+    top.set("user.max_hot_pixels", 3400, "UINT32")
     top.set("user.bias_voltage_v", 200, "UINT8") # Int??
     top.set("user.trigger_delay_s", 0.000238, "DOUBLE")
     top.set("user.exposure_time_s", 0.00001, "DOUBLE")

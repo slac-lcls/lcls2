@@ -41,6 +41,7 @@ private:
 private:
     unsigned m_nModules = 0;
     uint16_t m_hotPixelThreshold { 15000 };
+    uint32_t m_maxHotPixels { 3400 };
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;

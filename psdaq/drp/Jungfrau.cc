@@ -140,6 +140,7 @@ public:
         timestamp,
         hotPixelThresh,
         numHotPixels,
+        maxHotPixels,
     };
 
     JungfrauDef()
@@ -147,8 +148,9 @@ public:
         NameVec.push_back({"raw", XtcData::Name::UINT16, 3});
         NameVec.push_back({"frame_cnt", XtcData::Name::UINT64});
         NameVec.push_back({"timestamp", XtcData::Name::UINT64});
-        NameVec.push_back({"hotPixelThresh", XtcData::Name::UINT16});
-        NameVec.push_back({"numHotPixels", XtcData::Name::UINT32});
+        NameVec.push_back({"hotPixelThresh", XtcData::Name::UINT16}); // ADU Threshold for hot pixel
+        NameVec.push_back({"numHotPixels", XtcData::Name::UINT32}); // Number pixels above threshold
+        NameVec.push_back({"maxHotPixels", XtcData::Name::UINT32}); // Maximum number of hot pixels before tripping
     }
 } RawDef;
 
@@ -363,6 +365,11 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
                     uint16_t threshold = desc.get_value<uint16_t>(i);
                     logging::info("Pixels above %u will be counted as hot pixels.", threshold);
                     m_hotPixelThreshold = threshold;
+                } else if (strcmp(name.name(), "user.max_hot_pixels") == 0) {
+                    uint32_t maxHotPixels = desc.get_value<uint32_t>(i);
+                    logging::info("Maximum number of hot pixels (across all panels) before trip: %u .",
+                                  maxHotPixels);
+                    m_maxHotPixels = maxHotPixels;
                 } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
                     double trigDelay = desc.get_value<double>(i);
                     logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
@@ -493,6 +500,7 @@ uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThresh
             numHotPixels++;
         }
     }
+
     return numHotPixels;
 }
 
@@ -567,12 +575,13 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             }
         }
         uint32_t numHotPixels = _countNumHotPixels(frame.data(),
-                                                  m_hotPixelThreshold,
-                                                  JungfrauData::Rows*JungfrauData::Cols);
+                                                   m_hotPixelThreshold,
+                                                   JungfrauData::Rows*JungfrauData::Cols);
         cd.set_value(JungfrauDef::frame_cnt, framenum);
         cd.set_value(JungfrauDef::timestamp, timestamp);
         cd.set_value(JungfrauDef::hotPixelThresh, m_hotPixelThreshold);
         cd.set_value(JungfrauDef::numHotPixels, numHotPixels);
+        cd.set_value(JungfrauDef::maxHotPixels, m_maxHotPixels);
     }
 }
 
