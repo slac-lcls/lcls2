@@ -64,4 +64,23 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         if raw is None: return None
         return uj.calib_jungfrau(self, evt, **kwa)
 
+class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
+    def num_hot_pixels(self, evt):
+        n_hot_pixels = 0
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        for _,seg in segs.items():
+            n_hot_pixels += seg.numHotPixels
+        return n_hot_pixels
+
+    def hot_pixel_thresh(self, evt):
+        hot_pixel_thresh = 0
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        for _,seg in segs.items():
+            hot_pixel_thresh = seg.hotPixelThresh
+            break
+        return hot_pixel_thresh
 # EOF
