@@ -26,26 +26,31 @@ import json
 
 import psana.detector.dir_root as dr
 import psana.detector.UtilsCalib as uc
-from psana.detector.RepoManager import init_repoman_and_logger
+from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge
 import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
 from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile # import divide_protected
 import psana.detector.Utils as uts # info_dict
-import psana.detector.UtilsCalibRepo as ucr
 import psana.pscalib.calib.CalibConstants as cc
+from psana.detector.UtilsCalibRepo import save_constants_in_repository
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
 SCRNAME = os.path.basename(sys.argv[0])
 MAX_DETNAME_SIZE = 40
 NUMBER_OF_GAIN_MODES = 3
 
-CTYPES = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 'status_extra')
+CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
+CTYPES_DEPL = CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
 
 dic_calib_char_to_name = cc.dic_calib_char_to_name # {'p':'pedestals', 'r':'pixel_rms', 's':'pixel_status',...}
 # "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,
 
-DIC_GAIN_MODE = {'DYNAMIC':         0,
-                 'FORCE_SWITCH_G1': 1,
-                 'FORCE_SWITCH_G2': 2}
+#DIC_GAIN_MODE = {'DYNAMIC':         0,
+#                 'FORCE_SWITCH_G1': 1,
+#                 'FORCE_SWITCH_G2': 2}
+
+DIC_GAIN_MODE = {'g0': 0,
+                 'g1': 1,
+                 'g2': 2}
 
 DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_dict(DIC_GAIN_MODE)
 
@@ -60,7 +65,6 @@ FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
 dic_ctype_fmt = uc.dic_ctype_fmt
 
 class DarkProcJungfrau(uc.DarkProc):
-
     """dark data accumulation and processing for Jungfrau.
        Extends DarkProc to account for bad gain mode switch state in self.bad_switch array and pixel_status.
     """
@@ -82,8 +86,6 @@ class DarkProcJungfrau(uc.DarkProc):
 
 
     def add_statistics_bad_gain_switch(self, raw, irec, evgap=10):
-        #if irec%evgap: return #parsify events
-
         igm    = self.gmindex
         gmname = self.gmname
 
@@ -123,7 +125,6 @@ class DarkProcJungfrau(uc.DarkProc):
     def plot_images(self, titpref=''):
         uc.DarkProc.plot_images(self, titpref)
         plotim = self.plotim
-        #if plotim &   1: plot_image(self.arr_av1, tit=titpref + 'average')
         if plotim &2048: plot_image(self.bad_switch, tit=titpref + 'bad gain mode switch')
 
 
@@ -154,9 +155,6 @@ def get_jungfrau_gain_mode_object(odet):
     """Returns gain mode object, usage: gmo=..., gmo.name, gmo.names.items(), gm.values.items(), etc.
     """
     dcfg = odet.raw._config_object()
-    #print('odet.raw._config_object():', dir(dcfg))
-    #co = get_jungfrau_config_object(env, _psana.Source(src))
-    #return co.gainMode()
 
 
 def open_DataSource(**kwargs):
@@ -302,7 +300,7 @@ def jungfrau_dark_proc(parser):
             if istep==0:
                 logger.info('TBD gain mode info from jungfrau configuration') #\n%s' % info_gain_modes(gmo))
 
-            logger.info('\n== begin step %d gain mode "%s" index %d' % (istep, gmname, igm))
+            logger.info('%s\n== begin step %d gain mode "%s" index %d' % (120*'-',istep, gmname, igm))
 
             for ievt, evt in enumerate(step.events()):
 
@@ -390,7 +388,7 @@ def jungfrau_dark_proc(parser):
             # End of step-loop
 
         logger.info(ss)
-        logger.info('run %d, number of steps processed %d' % (orun.runnum, istep))
+        logger.info('run %d, number of steps processed %d' % (orun.runnum, istep+1))
 
         #if is_single_run:
         #    logger.info('terminated due to is_single_run:%s' % is_single_run)
@@ -408,6 +406,7 @@ def jungfrau_dark_proc(parser):
 
     logger.info('number of runs processed %d' % (irun+1))
     logger.info('%s\ntotal consumed time = %.3f sec.' % (40*'_', time()-t0_sec))
+    repoman.logfile_save()
 
 
 def save_results(dpo, orun, odet, **kwa):
@@ -417,32 +416,22 @@ def save_results(dpo, orun, odet, **kwa):
     dpo.summary()
     dpo.show_plot_results()
 
-    ctypes = CTYPES # ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+    ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
     arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
     arr_max, arr_min = dpo.constants_max_min()
-    consts = arr_av1, arr_rms, arr_sta, arr_max, arr_min
+    consts = arr_av1, arr_rms, arr_max, arr_min, arr_sta
     logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
                 info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
                 info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
                 info_ndarr(arr_max, 'arr_max', first=0, last=5),\
-                info_ndarr(arr_min, 'arr_min', first=0, last=5)))
+                info_ndarr(arr_min, 'arr_min', first=0, last=5),\
+                info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
     dic_consts = dict(zip(ctypes, consts))
 
     kwa.setdefault('max_detname_size', MAX_DETNAME_SIZE)
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
-    ucr.save_constants_in_repository(dic_consts, **kwa_depl)
+    save_constants_in_repository(dic_consts, **kwa_depl)
     del(dpo)
-
-
-#fname_prefix = ucr.fname_prefix
-fname_prefix = ucr.calib_file_name
-
-
-#def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
-#    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
-#    fnpref = '%s-s%02d-%s-%s-r%04d' % (detname, ind, tstamp, exp, runnum)
-#    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
@@ -450,16 +439,13 @@ def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
     return '%s/%s-%s.txt' % (dir_ctype, fnprefix, ctype)
 
 
-def fname_prefix_merge(dmerge, detname, tstamp, exp, irun):
-    return '%s/%s-%s-%s-r%04d' % (dmerge, detname, tstamp, exp, irun)
-
-
 def find_file_for_timestamp(dirname, pattern, tstamp, fnext='.data'):
     """fname ejungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-pedestals-Normal.data
     """
     # list of file names in directory, dirname, containing pattern
     logger.debug('\n  dirname: %s\n  pattern: %s\n, tstamp: %s' % (dirname, pattern, tstamp))
-    fnames = [name for name in os.listdir(dirname) if os.path.splitext(name)[-1]==fnext and pattern in name]
+    fnames = [name for name in os.listdir(dirname) if os.path.splitext(name)[-1]==fnext and pattern in name]\
+             if os.path.exists(dirname) else []
 
     # list of int tstamps
     # !!! here we assume specific name structure generated by file_name_prefix: jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-
@@ -477,7 +463,7 @@ def find_file_for_timestamp(dirname, pattern, tstamp, fnext='.data'):
             for name in fnames:
                 if ts in name:
                      fname = '%s/%s' % (dirname, name)
-                     logger.debug('  selected %s for %s and %s' % (os.path.basename(fname),pattern,tstamp))
+                     logger.info('  selected %s for %s and %s' % (os.path.basename(fname),pattern,tstamp))
                      return fname
 
     logger.debug('directory %s\n         DOES NOT CONTAIN file for pattern %s and timestamp <= %s'%\
@@ -492,6 +478,9 @@ def merge_jf_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, ofname
     """
     logger.debug('In merge_panel_gain_ranges for\n  dir_ctype: %s\n  id: %s\n  ctype=%s tstamp=%s shape=%s'%\
                  (dir_ctype, panel_id, ctype, str(tstamp), str(shape)))
+
+    logger.info('merge gain ranges in: %s tstamp: %s shape: %s'%\
+                 (dir_ctype, str(tstamp), str(shape)))
 
     # define default constants to substitute missing
     nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'rms', 'dark_max') else\
@@ -577,17 +566,19 @@ def jungfrau_deploy_constants(parser):
     shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
     logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
 
-    ctypes = CTYPES
+    ctypes = CTYPES_DEPL
     ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
 
     logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
 
-    for ctype, fmt in DIC_CTYPE_FMT.items():
-        if ctype == 'status_extra':
-            logger.warning('FOR NOW SKIP ctype: status_extra')
-            continue
+    #for ctype, fmt in DIC_CTYPE_FMT.items():
+    for ctype in ctypes:
+        fmt = DIC_CTYPE_FMT[ctype]
+        #if ctype == 'status_extra':
+        #    logger.warning('FOR NOW SKIP ctype: status_extra')
+        #    continue
         octype = ctype
-        logger.info('\n%s merge constants for calib type %s %s' % (50*'_', ctype, 50*'_'))
+        logger.info('\n%s merge constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
 
         dic_cons = {}
 
@@ -599,7 +590,9 @@ def jungfrau_deploy_constants(parser):
             #logger.info('%s\nmerge gain range constants for panel %02d dir: %s' % (110*'_', segind, dirpanel))
             check_exists(dirpanel, errskip, 'panel directory does not exist %s' % dirpanel)
 
-            dir_ctype = repoman.dir_type(segid, ctype) # <repo>/jungfrauemu/00b1ed0000-0000000000-...-0000000000/pedestals/
+            dir_ctype = repoman.dir_ctype(segid, ctype) # <repo>/jungfrauemu/00b1ed0000-0000000000-...-0000000000/pedestals/
+            if not os.path.exists(dir_ctype):
+                dir_ctype = repoman.makedir_ctype(segid, ctype)
 
             fnprefix = fname_prefix(shortname, segind, ts_run, orun.expt, orun.runnum, dirname=None) # <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007
             #logger.debug('prefix: %s' % fnprefix)
@@ -630,7 +623,7 @@ def jungfrau_deploy_constants(parser):
         logger.debug('fmerge_prefix: %s' % fmerge_prefix)
         nda = uc.merge_panels(lst_cons)
         fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
-        logger.info(info_ndarr(nda, '%s\n    merged for detector constants of %s' % (10*'-', ctype))\
+        logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
                     + '\n    save in %s\n' % fmerge)
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
 
