@@ -149,15 +149,15 @@ public:
     void freeDma(PGPEvent* event);
     virtual void handleBrokenEvent(const PGPEvent& event) {}
     virtual void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
-    const uint64_t dmaBytes()     const { return m_dmaBytes; }
-    const uint64_t dmaSize()      const { return m_dmaSize; }
-    const int64_t  latency()      const { return m_latency; }
-    const uint64_t nDmaErrors()   const { return m_nDmaErrors; }
-    const uint64_t nNoComRoG()    const { return m_nNoComRoG; }
-    const uint64_t nMissingRoGs() const { return m_nMissingRoGs; }
-    const uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
-    const uint64_t nPgpJumps()    const { return m_nPgpJumps; }
-    const uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    uint64_t dmaBytes()     const { return m_dmaBytes; }
+    uint64_t dmaSize()      const { return m_dmaSize; }
+    int64_t  latency()      const { return m_latency; }
+    uint64_t nDmaErrors()   const { return m_nDmaErrors; }
+    uint64_t nNoComRoG()    const { return m_nNoComRoG; }
+    uint64_t nMissingRoGs() const { return m_nMissingRoGs; }
+    uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
+    uint64_t nPgpJumps()    const { return m_nPgpJumps; }
+    uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
     std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
 private:
     void _setTimeOffset(const XtcData::TimeStamp& time);
