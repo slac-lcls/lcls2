@@ -525,6 +525,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+    if detname is None: return None
     assert isinstance(detname,str), 'unexpected detname: %s' % str(detname)
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
