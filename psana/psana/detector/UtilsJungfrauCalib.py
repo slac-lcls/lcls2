@@ -35,7 +35,7 @@ from psana.detector.UtilsCalibRepo import save_constants_in_repository
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
 
 SCRNAME = os.path.basename(sys.argv[0])
-MAX_DETNAME_SIZE = 40
+MAX_DETNAME_SIZE = 20
 NUMBER_OF_GAIN_MODES = 3
 
 CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
