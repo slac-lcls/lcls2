@@ -437,12 +437,13 @@ def issue_2025_03_27():
     print(info_ndarr(nda,'calib_constants shortname', last=10))
 #    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
 
+
 def issue_2025_03_27_2():
     """see cpo email
        datinfo -k exp=mfxdaq23,run=9,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
     """
     from psana import DataSource
-    ds = DataSource(exp='mfxdaq23',run=9,dir='/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/')
+    ds = DataSource(exp='mfxdaq23',run=11,dir='/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/')
     myrun = next(ds.runs())
     det = myrun.Detector('jungfrau')
     for nevt,evt in enumerate(myrun.events()):
