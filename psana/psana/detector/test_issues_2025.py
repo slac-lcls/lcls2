@@ -413,6 +413,31 @@ def issue_2025_03_19():
     print('det.calibconst:',det.calibconst['pedestals'][1])
 
 
+def issue_2025_03_27():
+    """direct access to calibration constants for jungfrau16M
+       datinfo -k exp=ascdaq023,run=37 -d jungfrau
+    """
+    from time import time
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+
+    t0_sec = time()
+    ds = DataSource(exp='ascdaq023',run=37)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('\n\ntime for det.calibconst (sec): %.3f' % (time()-t0_sec))
+    print('det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    shortname = 'jungfrau_000001' # uc.detector_name_short(detrawid)
+    print('\n\nshortname', shortname)
+    t0_sec = time()
+    nda = calib_constants(shortname, exp='ascdaq023', ctype='pedestals', run=37)[0] # 'pixel_status'
+    print('time for calib_constants (sec): %.3f' % (time()-t0_sec))
+    print(info_ndarr(nda,'calib_constants shortname', last=10))
+#    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -459,6 +484,7 @@ def selector():
     elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
     elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
+    elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
