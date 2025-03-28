@@ -477,6 +477,8 @@ def preproc(instrset):
         #  Check for macros
         if instr.args[0]==Wait.opcode:
             reps[line] = Wait.replace(instr, _findcc(line), line)
+        elif instr.args[0]==WaitA.opcode:
+            reps[line] = WaitA.replace(instr, _findcc(line), line)
 
     print(f'reps {reps}')
 
