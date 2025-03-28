@@ -171,7 +171,7 @@ unsigned MemPool::allocate()
         });
     }
 
-    return allocs;
+    return allocs & (m_nbuffers - 1);
 }
 
 void MemPool::freeDma(unsigned count, uint32_t* indices)
@@ -458,8 +458,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
     if (event->mask == m_para.laneMask) {
         // Allocate a pebble buffer once the event is built
-        auto counter = m_pool.allocate(); // This can block
-        event->pebbleIndex = counter & (m_pool.nbuffers() - 1);
+        event->pebbleIndex = m_pool.allocate(); // This can block
 
         if (transitionId != XtcData::TransitionId::L1Accept) {
             if (transitionId != XtcData::TransitionId::SlowUpdate) {
@@ -1351,6 +1350,8 @@ void DrpBase::unconfigure()
         m_mebContributor->unconfigure();
     }
     m_ebRecv->unconfigure();
+
+    if (m_triggerPrimitive)  delete m_triggerPrimitive;
 }
 
 void DrpBase::disconnect()
