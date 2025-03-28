@@ -13,9 +13,7 @@ import os
 from psdaq.seq.seq import Instruction
 from psdaq.cas.pvedit import Pv
 
-EXPOSURE_TRIGGER_DELTA = 26 # Excess over camera exposure setting (360Hz)
-                            # Read this from the camera
-READOUT_TRIGGER_DELTA  = -4 # Time before/after exposure setting (360Hz)
+READOUT_TRIGGER_DELTA  = -4/360. # Time before/after exposure setting
 
 #  Dictionary of PV prefixes for the camera, exposure trigger, and timestamp trigger
 d = {1:{'cam':'UED:ANDOR:CAM:01:',
@@ -35,8 +33,14 @@ def main():
     parser.add_argument("--eng", type=int, default=0, help="sequence engine; default=0")
     parser.add_argument("--period", type=float, default=None, help="camera exposure setting (sec)")
     parser.add_argument("--test", action='store_true', help="test only")
+    parser.add_argument("--ac"  , action='store_true', help="ac time base")
+    parser.add_argument("--margin", type=float, default=None, help="addition to trigger interval")
+    parser.add_argument("--setup", type=float, default=0.002, help="subtraction for timestamp trigger")
     parser.add_argument("--verbose", action='store_true', help="verbose printout")
     args = parser.parse_args()
+
+    if args.margin is None:
+        args.margin = 0.010 if args.ac else 0.002
 
     #
     #  Setup the TPR and CAMERA via EPICS
@@ -75,39 +79,51 @@ def main():
         path = f'{os.path.dirname(os.path.realpath(__file__))}/ued_360Hz.py'
         cmd = ["seqprogram","--pv", args.pv,"--seq", f'{args.eng}:{path}', '--start','--reset']
         print(cmd)
-        if not args.test:
+        if not args.test and campv is not None:
             result = subprocess.run(cmd)
             #  Remove DAQ control over seqence enable/disable
             pvSeqMask = Pv(f'{args.pv}:PART:0:SeqMask')
             pvSeqMask.put(0)
     else:
-#        exp = int(360*args.period+EXPOSURE_TRIGGER_DELTA+0.5)
-        rot = int(360*args.period+READOUT_TRIGGER_DELTA +0.5)
-        exp = int(360*exp_period)+1
+        if args.ac:
+            #  Use the power line markers
+            clkrate = 360
+            def marker(intv):
+                return f'ACRateSync( 63, \"60H\", occ={intv} )'
+        else:
+            #  Use the 100kH rate markers
+            clkrate = 100e3
+            def marker(intv):
+                return f'FixedRateSync( \"100kH\", occ={intv} )'
+
+        #rot = int(clkrate*(args.period+READOUT_TRIGGER_DELTA) +0.5)
+        rot = int(clkrate*(args.period-args.setup) +0.5)
+        exp = int(clkrate*(exp_period+args.margin) +0.5)
 
         if exp==0:
             raise ValueError(f'Input period {args.period} sec is less than 1/360Hz')
 
-        print(f'** Exposure interval is {exp} at 360Hz = {exp/360.} sec **')
-        print(f'** Readout delay     is {rot} at 360Hz = {rot/360.} sec **')
+        print(f'** Exposure interval is {exp} at {clkrate}Hz = {exp/clkrate} sec **')
+        print(f'** Readout delay     is {rot} at {clkrate}Hz = {rot/clkrate} sec **')
 
         fd, path = tempfile.mkstemp()
         with open(fd,'w') as f:
 
             def wait(intv):
                 if intv <= Instruction.maxocc:
-                    f.write(f'instrset.append( ACRateSync( 63, \"60H\", occ={intv} ) )\n')
+                    f.write(f'instrset.append( {marker(intv)} )\n')
                 else:
                     n   = int(intv/Instruction.maxocc)
                     if n > Instruction.maxocc:
                         raise ValueError(f'Period {args.period} sec is too large.')
                     rem = intv%Instruction.maxocc
-                    f.write(f'instrset.append( ACRateSync( 63, \"60H\", occ={Instruction.maxocc} ) )\n')
+                    f.write(f'ln = len(instrset)\n')
+                    f.write(f'instrset.append( {marker(Instruction.maxocc)} )\n')
                     if n>1:
-                        f.write(f'instrset.append( Branch.conditional( 2, 0, {n-1} ) )\n')
-                    f.write(f'instrset.append( ACRateSync( 63, \"60H\", occ={rem} ) )\n')
+                        f.write(f'instrset.append( Branch.conditional( line=ln, counter=0, value={n-1} ) )\n')
+                    f.write(f'instrset.append( {marker(rem)} )\n')
 
-            seqcodes = {0: f'Readout', 1:'Exposure Start'}
+            seqcodes = {0: f'Readout {rot/clkrate} sec', 1:'Exposure {exp/clkrate} sec'}
             f.write(f'seqcodes = {seqcodes}\n')
             f.write(f'instrset = []\n')
             f.write(f'instrset.append( ACRateSync( 63, \"60H\", occ=1 ) )\n')

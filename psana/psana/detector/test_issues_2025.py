@@ -174,8 +174,6 @@ def issue_2025_02_05():
     print('qlo, qhi, qme, mean, max, min:', qlo, qhi, np.median(arr), np.mean(arr), np.max(arr), np.min(arr))
 
 
-
-
 def issue_2025_02_21():
     """Access to jungfrau panel configuration object
 
@@ -377,6 +375,81 @@ def issue_2025_03_06():
     gr.show()
 
 
+def issue_2025_03_18():
+    """Silke - direct access to calibration constants
+       datinfo -k exp=ued1006477,run=15 -d epixquad
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='ued1006477',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('\n\n\n  det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    detrawid = det.raw._uniqueid
+    print('\n\n\n  det.raw._uniqueid:', detrawid)
+    peds = calib_constants(detrawid, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants uniqueid:',peds.shape)
+    import psana.detector.UtilsCalib as uc
+    shortname = uc.detector_name_short(detrawid)
+    print('\n\n\n  shortname', shortname)
+    peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants shortname',peds.shape)
+    # eventually silke would like to get the constants for another run like this:
+    #peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=17)[0]
+    #print('calib_constants shortname',peds)
+
+
+def issue_2025_03_19():
+    """Silke -  It appears to me that she is picking up constants from February 12th for uedc00104 and we don?t understand why
+       datinfo -k exp=uedc00104,run=177 -d epixquad
+       REASON: recent mess with detector names, in passing as metadata kwa['detector'] = detname, should be shortname
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='uedc00104',run=177)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('det.calibconst:',det.calibconst['pedestals'][1])
+
+
+def issue_2025_03_27():
+    """direct access to calibration constants for jungfrau16M
+       datinfo -k exp=ascdaq023,run=37 -d jungfrau
+    """
+    from time import time
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+
+    t0_sec = time()
+    ds = DataSource(exp='ascdaq023',run=37)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('\n\ntime for det.calibconst (sec): %.3f' % (time()-t0_sec))
+    print('det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    shortname = 'jungfrau_000001' # uc.detector_name_short(detrawid)
+    print('\n\nshortname', shortname)
+    t0_sec = time()
+    nda = calib_constants(shortname, exp='ascdaq023', ctype='pedestals', run=37)[0] # 'pixel_status'
+    print('time for calib_constants (sec): %.3f' % (time()-t0_sec))
+    print(info_ndarr(nda,'calib_constants shortname', last=10))
+#    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
+
+
+def issue_2025_03_27_2():
+    """see cpo email
+       datinfo -k exp=mfxdaq23,run=9,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfxdaq23',run=11,dir='/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/')
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    for nevt,evt in enumerate(myrun.events()):
+      print(det.raw.raw(evt).shape)
+      print(det.raw.image(evt))
+      if nevt>10: break
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -422,6 +495,10 @@ def selector():
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
     elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
     elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
+    elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
+    elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
+    elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
+    elif TNAME in ('11',): issue_2025_03_27_2() # cpo - jungfrau issues
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

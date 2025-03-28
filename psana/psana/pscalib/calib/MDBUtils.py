@@ -53,7 +53,7 @@ Usage ::
     data_from_file(fname, ctype, dtype, verb=False):
     _doc_detector_name(detname, dettype, detnum):
     _short_for_partial_name(detname, ldocs):
-    pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
+    _pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
 
     ...
     2023-11-02 remove all methods directly depending on pymongo
@@ -368,7 +368,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """Returns dbnames for detector, experiment, collection name, and query."""
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
-    _det = pro_detector_name(det)
+    _det = _pro_detector_name(det)
     query={'detector':_det,} # 'ctype':ctype}
     if ctype is not None: query['ctype'] = ctype
     if dtype is not None: query['dtype'] = dtype
@@ -418,7 +418,7 @@ def out_fname_prefix(fmt='clb-%s-%s-r%04d-%s', **kwa):
     """Returns output file name prefix like doc-cxid9114-cspad_0001-r0116-pixel_rms"""
     exp = kwa.get('experiment', 'exp')
     det = kwa.get('detector', 'det')
-    _det = pro_detector_name(det)
+    _det = _pro_detector_name(det)
     run = int(kwa.get('run', 0))
     ctype = kwa.get('ctype', 'ctype')
     return fmt % (exp, _det, run, ctype)
@@ -517,12 +517,18 @@ def _short_for_partial_name(detname, ldocs):
             return shortname # longname
     return None
 
-def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
-    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
-    if detname is None:
-        logger.debug('WARNING: pro_detector_name: input detname is None')
-        return None
-    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+#def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
+#    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+#    if detname is None:
+#        logger.debug('WARNING: pro_detector_name: input detname is None')
+#        return None
+#    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+
+def _pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
+    #import psana.pscalib.calib.MDBWebUtils as mwu
+    from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+    return pro_detector_name(detname, maxsize, add_shortname)
+
 
 if __name__ == "__main__":
     sys.exit('\nFor test use ./ex_%s <test-number> <mode> <...>' % sys.argv[0].rsplit('/')[-1])

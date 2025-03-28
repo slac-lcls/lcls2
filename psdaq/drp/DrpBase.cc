@@ -461,8 +461,8 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         }
         if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
             auto evtCntDiff = evtCounter - m_lastComplete;
-            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d%s",
-                           RED_ON, m_lastComplete, evtCounter, evtCntDiff, RED_OFF);
+            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, DMA size %u%s",
+                           RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
             logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
                            data[0], data[1], data[2], data[3], data[4], data[5], XtcData::TransitionId::name(transitionId));
             logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
@@ -628,6 +628,12 @@ void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
 {
     m_det = detector;
     m_pgp = pgpReader;
+}
+
+void EbReceiver::unconfigure()
+{
+    closeFiles();                       // Close files when BeginRun has failed
+    this->EbCtrbInBase::unconfigure();
 }
 
 std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)

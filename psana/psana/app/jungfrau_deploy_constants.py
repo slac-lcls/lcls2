@@ -28,12 +28,12 @@ def argument_parser():
     d_nsegstot= 8
     d_deploy  = False
     d_logmode = 'INFO'
-    d_ctdepl  = 'psrg'
+    d_ctdepl  = 'psrgonx'
     d_paninds = None
     d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-03-05'
+    d_version = 'V2025-03-27'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''
@@ -54,13 +54,12 @@ def argument_parser():
     h_medium  = 'default medium gain ADU/keV, default = %s' % str(d_medium)
     h_low     = 'default low    gain ADU/keV, default = %s' % str(d_low)
     h_ctdepl    = '(str) keyword for processing of "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,'\
-              + '  default = %s' % d_ctdepl
+              + '"o" - offset, "x" - max, "n" - min,  default = %s' % d_ctdepl
     h_paninds = 'comma-separated panel indexds to generate constants for subset of panels (ex.: quad from 2M), default = %s' % d_paninds
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_dbsuffix= 'suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
-
 
     parser = ArgumentParser(description='Deploy calibration files from repository to DB.', usage = USAGE)
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs, type=str,   help=h_dskwargs)
