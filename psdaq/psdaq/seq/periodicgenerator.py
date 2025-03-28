@@ -10,24 +10,6 @@ import psdaq.configdb.tsdef as ts # for marker/interval mapping
 
 verbose = False
 
-#
-#  Need a control sequence with periodic triggers at different rates and phasing
-#  The periods will be the minimum bunch spacing for SXR and HXR delivery
-#  The 'args' parameter shall have .period,.start_bucket lists for each 
-#  sequence bit
-#
-def gcd(a,b):
-    d = min(a,b)
-    y = max(a,b)
-    while True:
-        r = y%d
-        if r == 0:
-            return d
-        d = r
-
-def lcm(a,b):
-    return a*b // gcd(a,b)
-
 def myunion(s0,s1):
     return set(s0) | set(s1)
 
