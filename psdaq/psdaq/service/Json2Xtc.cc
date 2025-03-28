@@ -347,7 +347,7 @@ int translateJson2XtcNames(Document* d,
                            NamesLookup& nl,
                            NamesId namesID,
                            Value& json,
-                           const char*__restrict__ detname,
+                           const char* __restrict__ detname,
                            unsigned segment,
                            std::string const& serNo)
 {
@@ -497,6 +497,7 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
 
         //  Extract detname, segment from document detName field
         std::string sdetName((*d)["detName:RO"].GetString());
+        std::string simpleDetName;
         {
             size_t pos = sdetName.rfind('_');
             if (pos==std::string::npos) {
@@ -504,7 +505,8 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
                 break;
             }
             sscanf(sdetName.c_str()+pos+1,"%u",&segment);
-            detname = sdetName.substr(0,pos).c_str();
+            simpleDetName = sdetName.substr(0,pos);
+            detname = simpleDetName.c_str();
         }
 
         std::string serNo("");
@@ -560,7 +562,6 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
             detname = sdetName.substr(0,pos).c_str();
         }
 
-        std::cout << "Json2Xtc- detname: " << detname << ", serNo: " << serNo << std::endl;
         if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment, serNo) < 0)
             break;
 
