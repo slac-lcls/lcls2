@@ -280,16 +280,6 @@ def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
 def init_repoman_and_logger(**kwa):
     from psana.detector.UtilsLogging import init_logger, init_stream_handler, init_file_handler
 
-    #dirrepo  = kwa.get('dirrepo', './work')
-    #dirmode  = kwa.get('dirmode', 0o2775)
-    #umask    = kwa.get('umask', 0o0)
-    #dettype  = kwa.get('dettype', 'undefined')
-    #year     = kwa.get('year', ut.str_tstamp(fmt='%Y'))
-    #tstamp   = kwa.get('tstamp', ut.str_tstamp(fmt='%Y-%m-%dT%H%M%S'))
-    #dirname_log = kwa.get('dirname_log', 'logs')
-    #dir_log_at_start = kwa.get('dir_log_at_start', DIR_LOG_AT_START)
-    #filemode = kwa.get('filemode', 0o664)
-
     logsuffix   = kwa.get('logsuffix', '%s_%s' % (SCRNAME, ut.get_login()))  # getpass.getuser()))
     savelogfile = kwa.get('savelogfile', True)
     parser      = kwa.get('parser', None)
@@ -312,6 +302,28 @@ def init_repoman_and_logger(**kwa):
         logger.info(ut.info_parser_arguments(parser))
 
     return repoman
+
+
+def set_repoman_and_logger(kwa):
+    repoman = kwa.get('repoman', None)
+    if repoman is None:
+       #from psana.detector.RepoManager import init_repoman_and_logger
+       repoman = kwa['repoman'] = init_repoman_and_logger(parser=None, **kwa)
+    return repoman
+
+
+def fname_prefix(shortname, ind, tstamp, exp, runnum, dirname=None):
+    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
+    fnpref = '%s-s%02d-%s-%s-r%04d' % (shortname, ind, tstamp, exp, runnum)
+    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
+
+
+def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
+    return fmt % (fprefix, ctype, gainmode)
+
+
+def fname_prefix_merge(dmerge, shortname, tstamp, exp, irun):
+    return '%s/%s-%s-%s-r%04d' % (dmerge, shortname, tstamp, exp, irun)
 
 
 if __name__ == "__main__":
