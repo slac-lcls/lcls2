@@ -517,12 +517,17 @@ def _short_for_partial_name(detname, ldocs):
             return shortname # longname
     return None
 
+#def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
+#    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+#    if detname is None:
+#        logger.debug('WARNING: pro_detector_name: input detname is None')
+#        return None
+#    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
-    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
-    if detname is None:
-        logger.debug('WARNING: pro_detector_name: input detname is None')
-        return None
-    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+    import psana.pscalib.calib.MDBWebUtils as mwu
+    return mwu.pro_detector_name(detname, maxsize, add_shortname)
+
 
 if __name__ == "__main__":
     sys.exit('\nFor test use ./ex_%s <test-number> <mode> <...>' % sys.argv[0].rsplit('/')[-1])
