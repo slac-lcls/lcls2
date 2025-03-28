@@ -437,6 +437,18 @@ def issue_2025_03_27():
     print(info_ndarr(nda,'calib_constants shortname', last=10))
 #    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
 
+def issue_2025_03_27_2():
+    """see cpo email
+       datinfo -k exp=mfxdaq23,run=9,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfxdaq23',run=9,dir='/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/')
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    for nevt,evt in enumerate(myrun.events()):
+      print(det.raw.raw(evt).shape)
+      print(det.raw.image(evt))
+      if nevt>10: break
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -485,6 +497,7 @@ def selector():
     elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
+    elif TNAME in ('11',): issue_2025_03_27_2() # cpo - jungfrau issues
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
