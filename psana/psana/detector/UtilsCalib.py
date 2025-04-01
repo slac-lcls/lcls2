@@ -651,7 +651,11 @@ def pedestals_calibration(parser):
 
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
   logger.info('DataSource kwargs: %s' % str(dskwargs))
-  ds = DataSource(**dskwargs)
+  try:
+    ds = DataSource(**dskwargs)
+  except Exception as err:
+      logger.error('DataSource(**dskwargs) does not work:\n    %s' % err)
+      sys.exit('Exit processing')
 
   t0_sec = time()
   tdt = t0_sec

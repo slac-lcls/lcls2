@@ -186,13 +186,13 @@ def jungfrau_dark_proc(parser):
     kwargs['repoman'] = repoman
 
     detname = args.detname
-    evskip = args.evskip
-    events = args.events
-    stepnum= args.stepnum
-    stepmax= args.stepmax
-    evcode = args.evcode
-    segind = args.segind
-    igmode = args.igmode
+    evskip  = args.evskip
+    events  = args.events
+    stepnum = args.stepnum
+    stepmax = args.stepmax
+    evcode  = args.evcode
+    segind  = args.segind
+    igmode  = args.igmode
     dirrepo = args.dirrepo
 
     dirmode  = kwargs.get('dirmode',  0o2775)
@@ -529,7 +529,7 @@ def jungfrau_deploy_constants(parser):
     fac_mode  = kwargs.get('fac_mode', 0o664)
     group     = kwargs.get('group', 'ps-users')
     shape_seg = kwargs.get('shape_seg', (512,1024)) # pixel_gain:  shape:(3, 1, 512, 1024)  size:1572864  dtype:float32
-    nsegstot  = kwargs.get('nsegstot', 32)
+    nsegstot  = kwargs.get('nsegstot', None)
     deploy    = kwargs.get('deploy', False)
     detname   = kwargs.get('detname', None)
     ctdepl    = kwargs.get('ctdepl', None) # 'prs'
@@ -614,9 +614,12 @@ def jungfrau_deploy_constants(parser):
 
         #nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'rms', 'dark_max') else\
         #      np.zeros(shape, dtype=np.float32) # 'pedestals', 'status', 'dark_min'
+        vtype = cc.dic_calib_name_to_dtype[ctype]
+        nda_def = np.zeros((3,1,)+shape_seg, dtype=vtype) # np.float32) # (3,1,512,1024)
 
-        nda_def = np.zeros((3,1,)+shape_seg, dtype=np.float32) # (3,1,512,1024)
-        lst_cons = [(dic_cons[i] if i in dic_cons.keys() else nda_def) for i in range(nsegstot)]
+        indmax = max(list(dic_cons.keys()))
+        nsegs = indmax+1 if nsegstot is None else nsegstot
+        lst_cons = [(dic_cons[i] if i in dic_cons.keys() else nda_def) for i in range(nsegs)]
 
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
@@ -656,5 +659,7 @@ def jungfrau_deploy_constants(parser):
               exit()
         else:
           logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+    repoman.logfile_save()
 
 # EOF

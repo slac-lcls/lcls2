@@ -176,7 +176,7 @@ def main():
             print('instrset (before preproc):')
             for i in config["instrset"]:
                 print(i)
-        instrset = preproc(instrset)
+        config['instrset'] = preproc(config['instrset'])
         if args.verbose:
             print('instrset (after preproc):')
             for i in config["instrset"]:

@@ -438,18 +438,23 @@ def issue_2025_03_27():
 #    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
 
 
-def issue_2025_03_27_2():
+def issue_2025_03_27a():
     """see cpo email
-       datinfo -k exp=mfxdaq23,run=9,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
+       datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
+       datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/ds/mfx/mfxdaq23/xtc/ -d jungfrau
+       datinfo -k exp=mfxdaq23,run=11 -d jungfrau
     """
     from psana import DataSource
-    ds = DataSource(exp='mfxdaq23',run=11,dir='/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/')
+    ds = DataSource(exp='mfxdaq23',run=11,dir='/sdf/data/lcls/ds/mfx/mfxdaq23/xtc')
     myrun = next(ds.runs())
     det = myrun.Detector('jungfrau')
     for nevt,evt in enumerate(myrun.events()):
-      print(det.raw.raw(evt).shape)
-      print(det.raw.image(evt))
+      print('evt:', nevt)
+      print('    raw  :', det.raw.raw(evt).shape)
+      print('    calib:', det.raw.calib(evt).shape)
+      print('    image:', det.raw.image(evt).shape)
       if nevt>10: break
+
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -468,7 +473,7 @@ def argument_parser():
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
-    parser.add_argument('-s', '--subtest', default=d_subtest, type=str, help=h_subtest)
+    parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
     return parser
 
 
@@ -498,7 +503,7 @@ def selector():
     elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
-    elif TNAME in ('11',): issue_2025_03_27_2() # cpo - jungfrau issues
+    elif TNAME in ('11',): issue_2025_03_27a() # cpo - jungfrau issues
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

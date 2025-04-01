@@ -186,8 +186,7 @@ def epix100_config(base, connect_str, cfgtype, detname, detsegm, rog):
         "PartitionDelay[%d]" % group,
     ).get()
     rawStart = cfg["user"]["start_ns"]
-    # triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-    triggerDelay = 100
+    triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
     logging.debug(
         "partitionDelay {:}  rawStart {:}  triggerDelay {:}".format(
             partitionDelay, rawStart, triggerDelay
