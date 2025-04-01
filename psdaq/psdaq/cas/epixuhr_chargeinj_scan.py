@@ -17,8 +17,8 @@ def main():
                }
 
     aargs = [('--gain-modes',  {'type':str,
-                               'default':'FHGIon, FMGIon, FLG1Ion, FLG2Ion, AHLG1Ion, AHLG2Ion, AMLG1Ion, AMLG2Ion',
-                               'help':'Gain modes to use (default [\'FHGIon\', \'FMGIon\', \'FLG1Ion\', \'FLG2Ion\', \'AHLG1Ion\', \'AHLG2Ion\', \'AMLG1Ion\', \'AMLG2Ion\'])'}),
+                               'default':'FHG, FMG, FLG1, FLG2, AHLG1, AHLG2, AMLG1, AMLG2',
+                               'help':'Gain modes to use (default [\'FHG \', \'FMG \', \'FLG1 \', \'FLG2 \', \'AHLG1 \', \'AHLG2 \', \'AMLG1 \', \'AMLG2 \'])'}),
              ('--cross',       {'type':int,'default':0,'help':'activate cross talk scan 5x5 (default 0)'}),
              ('--asics',      {'type':int,'nargs':'+','choices':range(nAsics),
                                'default':range(nAsics),
@@ -29,22 +29,15 @@ def main():
     args = scan.args
         
     gains_dict={}
-    gains_dict['FHGIoff']   = {'level':32, 'stop': 6400,  'start': 0, 'step':1}
-    gains_dict['FHGIon']    = {'level':36, 'stop': 6400,  'start': 0, 'step':1}
-    gains_dict['FMGIoff']   = {'level':40, 'stop': 10000, 'start': 0, 'step':1}
-    gains_dict['FMGIon']    = {'level':44, 'stop': 10000, 'start': 0, 'step':1}
-    gains_dict['FLG1Ioff']  = {'level':1,  'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['FLG1Ion' ]  = {'level':5,  'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['FLG2Ioff']  = {'level':33, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['FLG2Ion']   = {'level':37, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AHLG1Ioff'] = {'level':16, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AHLG1Ion']  = {'level':20, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AHLG2Ioff'] = {'level':48, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AHLG2Ion']  = {'level':52, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AMLG1Ioff'] = {'level':24, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AMLG1Ion']  = {'level':28, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AMLG2Ioff'] = {'level':56, 'stop': 28000, 'start': 0, 'step':1}
-    gains_dict['AMLG2Ion']  = {'level':60 ,'stop': 28000, 'start': 0, 'step':1}
+    
+    gains_dict['FHG']    = {'level':36, 'stop': 6400,  'start': 0, 'step':1}
+    gains_dict['FMG']    = {'level':44, 'stop': 10000, 'start': 0, 'step':1}
+    gains_dict['FLG1' ]  = {'level':5,  'stop': 28000, 'start': 0, 'step':1}
+    gains_dict['FLG2']   = {'level':37, 'stop': 28000, 'start': 0, 'step':1}
+    gains_dict['AHLG1']  = {'level':20, 'stop': 28000, 'start': 0, 'step':1}
+    gains_dict['AHLG2']  = {'level':52, 'stop': 28000, 'start': 0, 'step':1}
+    gains_dict['AMLG1']  = {'level':28, 'stop': 28000, 'start': 0, 'step':1}
+    gains_dict['AMLG2']  = {'level':60, 'stop': 28000, 'start': 0, 'step':1}
     
     
     keys = []
@@ -69,7 +62,6 @@ def main():
         # The step_docstring is used to guide the offline calibration routine
         metad = {'detname'    : args.detname,
                  'scantype'   : args.scantype,
-                 'events'     : args.events,
         }
         
         d = {}
@@ -87,59 +79,59 @@ def main():
             
         step = 0
                                                                                     
-        if args.cross:
-            pathPll = '/tmp/'
-            d[f'{args.detname}:user.Gain.UsePixelMap']            = 1
-            d[f'{args.detname}:user.Gain.PixelBitMapSel']         = 7
-            d[f'{args.detname}:user.Gain.SetGainValue']           = 36
+        # if args.cross:
+        #     pathPll = '/tmp/'
+        #     d[f'{args.detname}:user.Gain.UsePixelMap']            = 1
+        #     d[f'{args.detname}:user.Gain.PixelBitMapSel']         = 7
+        #     d[f'{args.detname}:user.Gain.SetGainValue']           = 36
 
-            for gain_mode in gain_modes:
+        #     for gain_mode in gain_modes:
 
-                gain_mode=gain_mode.strip()
-                metad['gain_mode'] = gain_mode
+        #         gain_mode=gain_mode.strip()
+        #         metad['gain_mode'] = gain_mode
                 
-                off = f'{gain_mode[:-2]}off'
-                print(f'gains: {gain_mode}: {gains_dict[gain_mode]} ')
-                print(f'gains: {off}: {gains_dict[off]}')
+        #         off = f'{gain_mode[:-2]}off'
+        #         print(f'gains: {gain_mode}: {gains_dict[gain_mode]} ')
+        #         print(f'gains: {off}: {gains_dict[off]}')
                 
-                for i0 in range(5):
-                    for j0 in range(5):
-                        matrix=np.full((168, 192), gains_dict[off])
-                        for i in range(i0, 168, 5):
-                            for j in range(j0, 192, 5):
-                                matrix[i,j]=gains_dict[gain_mode]
-                        fn = pathPll+'onthefly.csv'         
-                        csvCfg = np.reshape(matrix, (168, 192))
-                        np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')
+        #         for i0 in range(5):
+        #             for j0 in range(5):
+        #                 matrix=np.full((168, 192), gains_dict[off])
+        #                 for i in range(i0, 168, 5):
+        #                     for j in range(j0, 192, 5):
+        #                         matrix[i,j]=gains_dict[gain_mode]
+        #                 fn = pathPll+'onthefly.csv'         
+        #                 csvCfg = np.reshape(matrix, (168, 192))
+        #                 np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')
                         
-                        for asic in args.asics:
-                            metad['asic'] = asic
-                            metad['step'] = step
-                            yield (d, float(step), json.dumps(metad))
-                            step += 1
+        #                 for asic in args.asics:
+        #                     metad['asic'] = asic
+        #                     metad['step'] = step
+        #                     yield (d, float(step), json.dumps(metad))
+        #                     step += 1
                         
-        else:
-            d[f'{args.detname}:user.Gain.UsePixelMap']            = 0
-            d[f'{args.detname}:user.Gain.PixelBitMapSel']         = 1
-            for gain_mode in gain_modes:
-                gain_mode=gain_mode.strip()
-                print(gain_mode)
-                args.events = (gains_dict[gain_mode]['stop'])/gains_dict[gain_mode]['step']
-                args.pulserStart=gains_dict[gain_mode]['start']
-                args.pulserStop=gains_dict[gain_mode]['stop']
-                args.pulserStep=gains_dict[gain_mode]['step']
-                print(f'{args.pulserStart}, {args.pulserStop}, {args.pulserStep}')
-                
-                d[f'{args.detname}:user.App.VINJ_DAC.dacStartValue']  = args.pulserStart
-                d[f'{args.detname}:user.App.VINJ_DAC.dacStopValue']   = args.pulserStop
-                d[f'{args.detname}:user.App.VINJ_DAC.dacStepValue']   = args.pulserStep
-                
-                metad['gain_mode'] = gain_mode
-                d[f'{args.detname}:user.Gain.SetGainValue']           = gains_dict[gain_mode]['level']
-                print(gains_dict[gain_mode]['level'])
-                metad['step'] = step
-                yield (d, float(step), json.dumps(metad))
-                step += 1
+        # else:
+        d[f'{args.detname}:user.Gain.UsePixelMap']            = 0
+        d[f'{args.detname}:user.Gain.PixelBitMapSel']         = 1
+        for gain_mode in gain_modes:
+            gain_mode=gain_mode.strip()
+            print(f"gain mode: {gain_mode}")
+            args.events = (gains_dict[gain_mode]['stop'])/gains_dict[gain_mode]['step']
+            args.pulserStart=gains_dict[gain_mode]['start']
+            args.pulserStop=gains_dict[gain_mode]['stop']
+            args.pulserStep=gains_dict[gain_mode]['step']
+            print(f'Start:{args.pulserStart}, Stop:{args.pulserStop}, Step:{args.pulserStep}')
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStartValue']  = args.pulserStart
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStopValue']   = args.pulserStop
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStepValue']   = args.pulserStep
+            
+            metad['gain_mode'] = gain_mode
+            d[f'{args.detname}:user.Gain.SetGainValue']           = gains_dict[gain_mode]['level']
+            print(gains_dict[gain_mode]['level'])
+            metad['step'] = step
+            metad['events']=args.events
+            yield (d, float(step), json.dumps(metad))
+            step += 1
 
     scan.run(keys,steps)
 

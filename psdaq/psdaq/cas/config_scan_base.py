@@ -145,21 +145,23 @@ class ConfigScanBase(object):
         }
         configureBlock = scan.getBlock(transition="Configure", data=data)
         configure_dict = {"NamesBlockHex": configureBlock,
-                          "readout_count": args.events,
                           "group_mask"   : group_mask,
                           'step_keys'    : keys,
                           "step_group"   : step_group }  # we should have a separate group param
 
-        enable_dict = {'readout_count': args.events,
-                       'group_mask'   : group_mask,
+        enable_dict = {'group_mask'   : group_mask,
                        'step_group'   : step_group }
 
-        # config scan setup
-        keys_dict = {"configure": configure_dict,
-                     "enable":    enable_dict}
 
         for step in steps():
             # update
+            configure_dict["readout_count"] = args.events
+            enable_dict['readout_count']=args.events
+            print(f"Number of events: {args.events}")
+            # config scan setup
+            keys_dict = {   "configure": configure_dict,
+                            "enable":    enable_dict}
+            
             scan.update(value=step[1])
 
             my_step_data = {}
