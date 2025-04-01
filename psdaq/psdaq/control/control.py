@@ -2181,11 +2181,12 @@ class CollectionManager():
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
 
         # readout_count and group_mask are optional
+        self.group_mask = self.groups
         try:
-            self.group_mask    = self.phase1Info['configure']['group_mask']
+            #self.group_mask    = self.phase1Info['configure']['group_mask']
             self.readout_count = self.phase1Info['configure']['readout_count']
         except KeyError:
-            self.group_mask    = 1 << self.platform
+            #self.group_mask    = 1 << self.platform
             self.readout_count = 0
 
         # step_group is optional
@@ -2295,7 +2296,7 @@ class CollectionManager():
         # readout_count and group_mask are optional
         group_mask    = self.group_mask
         try:
-            group_mask    = self.phase1Info['enable']['group_mask']
+            #group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
         except KeyError:
             readout_count = 0
