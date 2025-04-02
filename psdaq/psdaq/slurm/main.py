@@ -1,15 +1,13 @@
-from typing import List
-import json
 import typer
 from typing_extensions import Annotated
 import time
 import asyncio
-import psutil
-import copy
 import socket
-from psdaq.slurm.utils import SbatchManager, call_subprocess
+from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries
 from psdaq.slurm.subproc import SubprocHelper
-import os, sys, errno
+import os
+import sys
+import errno
 from subprocess import Popen
 from psdaq.slurm.config import Config
 
@@ -43,7 +41,7 @@ class Runner:
                 {},
                 config_dict,
             )
-        except:
+        except Exception:
             print("Error parsing configuration file:", sys.exc_info()[1])
         self.platform = config_dict["platform"]
         self.configfilename = configfilename
@@ -213,7 +211,7 @@ class Runner:
         return result_list
 
     def _cancel(self, slurm_job_id):
-        output = call_subprocess("scancel", str(slurm_job_id))
+        run_slurm_with_retries("scancel", str(slurm_job_id))
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
@@ -292,7 +290,7 @@ class Runner:
                 if len(active_jobs) == 0:
                     break
                 if i == 0 and verbose:
-                    print(f"Waiting for slurm jobs to complete...")
+                    print("Waiting for slurm jobs to complete...")
                 time.sleep(3)
 
     def restart(self, unique_ids=None, verbose=False):
@@ -340,7 +338,7 @@ class Runner:
 
                 arg_str = " ".join(args)
                 asyncio.run(self.proc.run(arg_str, wait_output=False))
-            except:
+            except Exception:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
                 rv = 0
@@ -384,8 +382,8 @@ class Runner:
                         logfile,
                     ]
                 Popen(args)
-            except:
-                print("spawnLogfile failed for process '%s'" % uniqueid)
+            except Exception:
+                print("spawnLogfile failed for process '%s'" % config_id)
             else:
                 rv = 0
         return rv

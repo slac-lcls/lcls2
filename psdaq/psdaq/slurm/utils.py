@@ -1,16 +1,19 @@
-import os, sys
-from dataclasses import dataclass, field
-import asyncio
-import psutil
+import os
+import sys
+import socket
 from datetime import datetime
 import subprocess
-
-import socket
+import time
+import logging
+from subprocess import CalledProcessError, PIPE
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
+RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
+
+logger = logging.getLogger(__name__)
 
 
 class PSbatchSubCommand:
@@ -19,12 +22,55 @@ class PSbatchSubCommand:
     RESTART = 2
 
 
-def call_subprocess(*args):
-    cc = subprocess.run(args, capture_output=True)
-    output = None
-    if not cc.returncode:
-        output = str(cc.stdout.strip(), "utf-8")
-    return output
+def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
+    """
+    Calls a subprocess, with retries for specific Slurm commands,
+    and graceful handling for 'scontrol show job'.
+
+    Parameters:
+    - *args: Command and arguments to pass to subprocess.
+    - max_retries: Max number of retries before failing (only applies to retryable commands).
+    - retry_delay: Delay between retries in seconds.
+
+    Returns:
+    - Decoded output string from the subprocess call, or None if suppressed.
+
+    Raises:
+    - CalledProcessError: If the command fails after all retries (unless handled gracefully).
+    """
+    cmd = args[0]
+    is_retryable = cmd in RETRYABLE_CMDS
+    is_scontrol_show_job = (
+        cmd == "scontrol"
+        and len(args) >= 3
+        and args[1] == "show"
+        and args[2] == "job"
+    )
+
+    attempt = 0
+    while True:
+        try:
+            output = subprocess.check_output(args, stderr=PIPE).strip()
+            return output.decode("utf-8")
+        except CalledProcessError as e:
+            cmd_str = " ".join(args)
+            stderr_text = e.stderr.decode("utf-8").strip()
+
+            if is_scontrol_show_job:
+                logger.debug("Command '%s' failed (non-critical): %s", cmd_str, stderr_text)
+                return None
+
+            if not is_retryable or attempt >= max_retries:
+                logger.error("Subprocess call '%s' failed.%s\nError: %s",
+                             cmd_str,
+                             f" Reached max retries ({max_retries})." if is_retryable else "",
+                             stderr_text)
+                raise
+
+            attempt += 1
+            logger.warning("Attempt %d/%d: Subprocess call '%s' failed.\nError: %s\nRetrying in %d sec...",
+                           attempt, max_retries, cmd_str, stderr_text, retry_delay)
+            time.sleep(retry_delay)
 
 
 class SbatchManager:
@@ -60,7 +106,7 @@ class SbatchManager:
         return comment
 
     def get_node_features(self):
-        lines = call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
+        lines = run_slurm_with_retries("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
         node_features = {}
         for line in lines:
             node, features = line.strip('"').split()
@@ -71,7 +117,7 @@ class SbatchManager:
         """Returns a dictionary containing values obtained from scontrol
         with the given jobparms list. Returns {} if this job does not exist.
         """
-        output = call_subprocess("scontrol", "show", "job", job_id)
+        output = run_slurm_with_retries("scontrol", "show", "job", job_id)
         results = {}
         if output is not None:
             scontrol_lines = output.splitlines()
@@ -88,16 +134,16 @@ class SbatchManager:
         """Returns formatted output from squeue by the current user"""
         user = self.user
         if not user:
-            print(f"Cannot list jobs for user. $USER variable is not set.")
+            print("Cannot list jobs for user. $USER variable is not set.")
         else:
             if use_sacct:
                 format_string = "JobID,Comment%30,JobName,State,NodeList"
-                lines = call_subprocess(
+                lines = run_slurm_with_retries(
                     "sacct", "-u", user, "-n", f"--format={format_string}"
                 ).splitlines()
             else:
                 format_string = '"%i %k %j %T %R"'
-                lines = call_subprocess(
+                lines = run_slurm_with_retries(
                     "squeue", "-u", user, "-h", "-o", format_string
                 ).splitlines()
 
@@ -119,7 +165,7 @@ class SbatchManager:
 
             if success:
                 # Get logfile from job_id
-                scontrol_result = call_subprocess("scontrol", "show", "job", job_id)
+                scontrol_result = run_slurm_with_retries("scontrol", "show", "job", job_id)
                 logfile = ""
                 if scontrol_result is not None:
                     scontrol_lines = scontrol_result.splitlines()
@@ -286,7 +332,7 @@ class SbatchManager:
     def generate_as_step(self, sbjob, node_features):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
-        sb_script += f"#SBATCH --job-name=main" + "\n"
+        sb_script += "#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
@@ -331,7 +377,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
-        n_tasks = 1
 
         if node_features is None:
             sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"
