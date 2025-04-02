@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include "psalg/utils/SysLog.hh"
+#include <inttypes.h>
 
 using logging = psalg::SysLog;
 
@@ -121,23 +122,29 @@ bool PipeCallbackHandler::popEvent(KMicroscopeData &event) {
 void PipeCallbackHandler::processScDldEvent(const sc_DldEvent* obj) {
     uint64_t newPulse = obj->time_tag;
 
-    // Check if the pulse ID is not advancing correctly
-    if (m_hasCurrentEvent && newPulse < m_currentEvent.pulseid) {
-        int64_t pulseDiff = static_cast<int64_t>(newPulse) - static_cast<int64_t>(m_currentEvent.pulseid);
-        printf("Unexpected PulseId behavior! Last PulseId: %lu, Current PulseId: %lu, Difference: %ld\n",
-                         m_currentEvent.pulseid, newPulse, pulseDiff);
-    }
+    // Lock the mutex to protect m_currentEvent.pulseid from concurrent modifications
+    {
+        std::lock_guard<std::mutex> lock(m_eventMutex);
+        // Check if the pulse ID is not advancing correctly
+        if (m_hasCurrentEvent && newPulse < m_currentEvent.pulseid) {
+            int64_t pulseDiff = static_cast<int64_t>(newPulse) - static_cast<int64_t>(m_currentEvent.pulseid);
+            logging::warning("Event droped - PulseId regression detected! Last PulseId: %" PRIx64 ", Current PulseId: %" PRIx64 ", Difference: %ld",
+                            m_currentEvent.pulseid, newPulse, pulseDiff);
+            std::this_thread::sleep_for(std::chrono::microseconds(10));
+            return;
+        }
 
-    if (!m_hasCurrentEvent) {
-        m_currentEvent = KMicroscopeData();
-        m_currentEvent.pulseid = newPulse;
-        m_hasCurrentEvent = true;
-    }
+        if (!m_hasCurrentEvent) {
+            m_currentEvent = KMicroscopeData();
+            m_currentEvent.pulseid = newPulse;
+            m_hasCurrentEvent = true;
+        }
 
-    if (m_hasCurrentEvent && m_currentEvent.pulseid != newPulse) {
-        m_eventQueue.push(m_currentEvent);
-        m_currentEvent = KMicroscopeData();
-        m_currentEvent.pulseid = newPulse;
+        if (m_hasCurrentEvent && m_currentEvent.pulseid != newPulse) {
+            m_eventQueue.push(m_currentEvent);
+            m_currentEvent = KMicroscopeData();
+            m_currentEvent.pulseid = newPulse;
+        }
     }
 
     if (m_currentEvent.count < KMicroscopeData::MAX_EVENTS) {

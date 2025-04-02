@@ -117,6 +117,9 @@ private:
     // Replace the standard queue with a lock-free SPSCQueue.
     SPSCQueue<KMicroscopeData> m_eventQueue;
 
+    // Add the mutex here to protect m_currentEvent
+    mutable std::mutex m_eventMutex;
+
     // Process a single raw sc_DldEvent.
     void processScDldEvent(const sc_DldEvent* obj);
 
