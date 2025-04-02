@@ -768,8 +768,12 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                                               {"alias", m_para.alias}};
     uint64_t nevents = 0L;
 
+    // This block is for debugging no. of matched and missed events
     uint64_t matchedEvents = 0;
     uint64_t missedEvents = 0;
+    uint64_t last_nevents = 0;
+    uint64_t last_matched = 0;
+    uint64_t last_missed = 0;
     constexpr uint64_t printInterval = 100000;  // Print every this many events
 
     exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
@@ -1036,14 +1040,25 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     timingHeader = nullptr;
                     _sendToTeb(*dgram, index);
                     nevents++;
-                    // Print every 1000 events
+                    // Print every n events
                     if (nevents % printInterval == 0) {
-                        double percentMatched = (nevents > 0) ? (matchedEvents / (double)nevents) * 100.0 : 0.0;
-                        double percentMissed = (nevents > 0) ? (missedEvents / (double)nevents) * 100.0 : 0.0;
+                        // Deltas
+                        uint64_t delta_nevents = nevents - last_nevents;
+                        uint64_t delta_matched = matchedEvents - last_matched;
+                        uint64_t delta_missed  = missedEvents - last_missed;
 
-                        logging::info("[Pgp::worker] Events: %llu, Matched: %llu (%.2f%%), Missed: %llu (%.2f%%)",
-                                    nevents, matchedEvents, percentMatched, missedEvents, percentMissed);
+                        double delta_percentMatched = (delta_nevents > 0) ? (delta_matched / (double)delta_nevents) * 100.0 : 0.0;
+                        double delta_percentMissed  = (delta_nevents > 0) ? (delta_missed  / (double)delta_nevents) * 100.0 : 0.0;
+
+                        logging::info("[Pgp::worker] Interval-> Events: %llu (Total: %llu), Matched: %llu (%.2f%%), Missed: %llu (%.2f%%)",
+                                    delta_nevents, nevents, delta_matched, delta_percentMatched, delta_missed, delta_percentMissed);
+
+                        // Update last_* for next interval
+                        last_nevents = nevents;
+                        last_matched = matchedEvents;
+                        last_missed  = missedEvents;
                     }
+
                 }  // Done with L1Accept with correct timing
             }  // Done with one event
         }
