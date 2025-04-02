@@ -234,6 +234,21 @@ private:
     unsigned _numWords;
 };
 
+class Stats {
+public:
+  Stats() : _nl1(0),_nstep(0) {}
+  void update(TransitionId::Value trans) {
+    if (trans==TransitionId::L1Accept) _nl1++;
+    if (trans==TransitionId::EndStep) {
+      printf("Step %d has %d L1Accepts\n",_nstep,_nl1);
+      _nl1=0;
+      _nstep++;
+    }
+  }
+private:
+  unsigned _nl1;
+  unsigned _nstep;
+};
 
 void usage(char* progname)
 {
@@ -250,9 +265,8 @@ int main(int argc, char* argv[])
     bool debugprint = false;
     unsigned numWords = 3;
     bool printTimeAsUnsignedLong = false;
-    bool stats = false;
-    int nl1 = 0;
-    int nstep = 0;
+    bool doStats = false;
+    Stats stats;
 
     while ((c = getopt(argc, argv, "hf:n:dw:c:Ts")) != -1) {
         switch (c) {
@@ -275,7 +289,7 @@ int main(int argc, char* argv[])
             cfg_xtcname = optarg;
             break;
         case 's':
-            stats = true;
+            doStats = true;
             break;
         case 'T':
             printTimeAsUnsignedLong = true;
@@ -327,7 +341,7 @@ int main(int argc, char* argv[])
     while (dg) {
         if (nevent>=neventreq) break;
         nevent++;
-	if (!stats) {
+	if (!doStats) {
 	  printf("event %d, %11s transition: ",
 		 nevent,
 		 TransitionId::name(dg->service()));
@@ -340,12 +354,7 @@ int main(int argc, char* argv[])
 		 dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
 	  if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
 	} else {
-	  if (dg->service()==TransitionId::L1Accept) nl1++;
-	  if (dg->service()==TransitionId::EndStep) {
-	    printf("Step %d has %d L1Accepts\n",nstep,nl1);
-	    nl1=0;
-	    nstep++;
-	  }
+	  stats.update(dg->service());
 	}
         dg = iter.next();
     }
