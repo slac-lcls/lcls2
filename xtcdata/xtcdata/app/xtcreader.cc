@@ -339,12 +339,16 @@ int main(int argc, char* argv[])
 	  printf(" env 0x%08x, payloadSize %d damage 0x%x extent %d\n",
 		 dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
 	  if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+	} else {
+	  if (dg->service()==TransitionId::L1Accept) nl1++;
+	  if (dg->service()==TransitionId::EndStep) {
+	    printf("Step %d has %d L1Accepts\n",nstep,nl1);
+	    nl1=0;
+	    nstep++;
+	  }
 	}
-	if (dg->service()==TransitionId::L1Accept) nl1++;
-	if (dg->service()==TransitionId::BeginStep) nstep++;
         dg = iter.next();
     }
-    if (stats) printf("Number of steps/L1Accepts: %d/%d\n",nstep,nl1);
 
     if (cfg_fd >= 0) {
         ::close(cfg_fd);
