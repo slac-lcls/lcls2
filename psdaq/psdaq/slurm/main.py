@@ -7,21 +7,12 @@ from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries
 from psdaq.slurm.subproc import SubprocHelper
 import os
 import sys
-import errno
 from subprocess import Popen
 from psdaq.slurm.config import Config
+import tempfile
 
 LOCALHOST = socket.gethostname()
-DAQMGR_SCRIPT = "submit_daqmgr.sh"
 MAX_RETRIES = 30
-
-
-def silentremove(filename):
-    try:
-        os.remove(filename)
-    except OSError as e:
-        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
-            raise
 
 
 class Runner:
@@ -128,10 +119,18 @@ class Runner:
         return f"x{self.xpm_id}_p{self.platform}_s{self.station}"
 
     def submit(self):
-        with open(DAQMGR_SCRIPT, "w") as f:
-            f.write(self.sbman.sb_script)
-        cmd = f"sbatch {DAQMGR_SCRIPT}"
-        asyncio.run(self.proc.run(cmd, wait_output=True))
+        """
+        Submits the sbatch script using a temporary file.
+
+        Uses tempfile to safely write the sbatch script, ensuring it's uniquely named
+        and automatically cleaned up after submission. The script file persists just
+        long enough for sbatch to read it.
+        """
+        with tempfile.NamedTemporaryFile("w", delete=True, suffix=".sh") as tmpfile:
+            tmpfile.write(self.sbman.sb_script)
+            tmpfile.flush()  # Make sure content is written to disk
+            cmd = f"sbatch {tmpfile.name}"
+            asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())
@@ -437,7 +436,6 @@ def main(
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(DAQMGR_SCRIPT)
 
 
 def _do_main():
