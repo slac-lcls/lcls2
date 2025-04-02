@@ -17,6 +17,7 @@
 #include "EpixM320.hh"
 #include "EpixUHR.hh"
 #include "Epix100.hh"
+#include "Jungfrau.hh"
 #include "JungfrauEmulator.hh"
 #include "Opal.hh"
 #include "HREncoder.hh"
@@ -322,6 +323,7 @@ void PGPDetectorApp::initialize()
     f.register_type<EpixM320>        ("epixm320");
     f.register_type<EpixUHR>         ("epixUHR");
     f.register_type<Epix100>         ("epix100");
+    f.register_type<Jungfrau>        ("jungfrau");
     f.register_type<JungfrauEmulator>("jungfrauemu");
     f.register_type<Opal>            ("opal");
     f.register_type<TimeTool>        ("tt");

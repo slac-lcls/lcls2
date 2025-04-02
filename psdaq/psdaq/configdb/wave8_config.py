@@ -2,6 +2,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
+from psdaq.utils import enable_lcls2_pgp_pcie_apps
 import lcls2_pgp_pcie_apps
 import epics
 

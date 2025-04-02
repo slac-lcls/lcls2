@@ -172,6 +172,7 @@ if 'PSDAQ' in BUILD_LIST :
             'cnf2py = psdaq.slurm.cnftopy:_do_main',
             'daqstat = psdaq.slurm.daqstat:_do_main',
             'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
+            'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main'
         ]
     }
 
