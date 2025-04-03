@@ -131,67 +131,79 @@ class SbatchManager:
         return results
 
     def get_job_info(self, use_sacct=False):
-        """Returns formatted output from squeue by the current user"""
+        """
+        Retrieves job information from Slurm using `squeue` or `sacct`.
+        Handles transient failures with retries, logs malformed lines,
+        and always returns a dictionary to ensure GUI stability.
+
+        Returns:
+            dict: Mapping of job comment strings to job detail dictionaries.
+        """
         user = self.user
         if not user:
-            print("Cannot list jobs for user. $USER variable is not set.")
-        else:
+            logger.warning("Cannot list jobs: $USER is not set.")
+            return {}
+
+        try:
             if use_sacct:
                 format_string = "JobID,Comment%30,JobName,State,NodeList"
-                lines = run_slurm_with_retries(
+                output = run_slurm_with_retries(
                     "sacct", "-u", user, "-n", f"--format={format_string}"
-                ).splitlines()
+                )
             else:
                 format_string = '"%i %k %j %T %R"'
-                lines = run_slurm_with_retries(
+                output = run_slurm_with_retries(
                     "squeue", "-u", user, "-h", "-o", format_string
-                ).splitlines()
+                )
+        except Exception as e:
+            logger.warning("Failed to retrieve job info using Slurm: %s", str(e))
+            return {}
 
         job_details = {}
-        for i, job_info in enumerate(lines):
+        lines = output.splitlines()
+
+        for job_info in lines:
             cols = job_info.strip('"').split()
-            # Check that JobId column has all the characters as digit
+            if len(cols) < 1:
+                logger.debug("Skipping empty or malformed job line: %s", job_info)
+                continue
             if not cols[0].isdigit():
+                logger.debug("Skipping non-numeric JobID in job line: %s", job_info)
                 continue
 
-            success = True
             if len(cols) == 5:
                 job_id, comment, job_name, state, nodelist = cols
             elif len(cols) > 5:
                 job_id, comment, job_name, state = cols[:4]
                 nodelist = " ".join(cols[5:])
             else:
-                success = False
+                logger.debug("Unexpected number of fields in job line: %s", job_info)
+                continue
 
-            if success:
-                # Get logfile from job_id
-                scontrol_result = run_slurm_with_retries("scontrol", "show", "job", job_id)
-                logfile = ""
-                if scontrol_result is not None:
-                    scontrol_lines = scontrol_result.splitlines()
-                    for scontrol_line in scontrol_lines:
-                        if scontrol_line.find("StdOut") > -1:
-                            scontrol_cols = scontrol_line.split("=")
-                            logfile = scontrol_cols[1]
+            # Attempt to get logfile path from scontrol
+            logfile = ""
+            scontrol_result = run_slurm_with_retries("scontrol", "show", "job", job_id)
+            if scontrol_result is not None:
+                for line in scontrol_result.splitlines():
+                    if "StdOut=" in line:
+                        try:
+                            logfile = line.split("StdOut=")[1].strip()
+                            if not logfile:
+                                logfile = "unknown.log"
+                        except IndexError:
+                            logger.debug("Malformed StdOut line in scontrol output: %s", line)
+                            logfile = "unknown.log"
 
-                # Results from sacct also show old jobs with the same name.
-                # We choose the oldest job and returns its values.
-                if comment not in job_details:
-                    job_details[comment] = {
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "state": state,
-                        "nodelist": nodelist,
-                        "logfile": logfile,
-                    }
-                elif int(job_id) > int(job_details[comment]["job_id"]):
-                    job_details[comment] = {
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "state": state,
-                        "nodelist": nodelist,
-                        "logfile": logfile,
-                    }
+            # Store job info (prefer latest job_id if duplicate comment exists)
+            if comment not in job_details or int(job_id) > int(job_details[comment]["job_id"]):
+                job_details[comment] = {
+                    "job_id": job_id,
+                    "job_name": job_name,
+                    "state": state,
+                    "nodelist": nodelist,
+                    "logfile": logfile,
+                }
+
         return job_details
 
     def get_output_filepath(self, node, job_name):
