@@ -456,6 +456,43 @@ def issue_2025_03_27a():
       if nevt>10: break
 
 
+def issue_2025_04_02a():
+    """
+    """
+    import os
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    import psana.pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.Graphics as gg # for test purpose
+
+    SCRDIR = os.path.dirname(os.path.realpath(__file__))
+
+    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-jungfrau16M.data')
+    assert os.path.exists(fname_geo)
+    logger.info('fngeo: %s' % fname_geo)
+
+    geo = GeometryAccess(fname_geo)
+    rows, cols = geo.get_pixel_coord_indexes()
+
+    print(ndu.info_ndarr(rows, 'rows'))
+    sh3d = ndu.shape_nda_as_3d(rows)
+    rows.shape = cols.shape = sh3d
+    print(ndu.info_ndarr(rows, 'rows'))
+    arr = ag.arr3dincr(sh3d)
+    arr[0:2,:] += arr[0:2,:]
+
+    img = gg.img_from_pixel_arrays(rows, cols, W=arr)
+
+    gg.plotImageLarge(img) #, amp_range=amp_range)
+    gg.move(500,10)
+    gg.show()
+    gg.save_plt(fname='jf_img.png')
+
+
+
+
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -504,6 +541,7 @@ def selector():
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
     elif TNAME in ('11',): issue_2025_03_27a() # cpo - jungfrau issues
+    elif TNAME in ('12',): issue_2025_04_02a() # Aaron Brewster - acces to jungfrau geometry
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
