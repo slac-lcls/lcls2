@@ -34,18 +34,23 @@ cdef extern from "HsdPython.hh" namespace "Pds::HSD":
     cdef cppclass ChannelPython:
         ChannelPython()
         ChannelPython(const evthdr_t *evtheader, const si.uint8_t *data)
-        si.uint16_t* waveform(unsigned &numsamples)
+        si.uint16_t* waveform(unsigned &numsamples, unsigned istr)
         #si.uint16_t* sparse(unsigned &numsamples)
-        unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
+        unsigned next_peak  (unsigned &sPos, si.uint16_t** peakPtr, unsigned istr)
+        unsigned next_window(unsigned &sPos, si.uint16_t** peakPtr, unsigned istr)
         unsigned char fex_out_of_range()
+        void reset_peak_iter()
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
     #cdef public cnp.ndarray sparse
     cdef public list peakList
     cdef public list startPosList
+    cdef public list cfpList
+    cdef public list startCfpList
+    cdef public list cfdTimesList
     cdef public unsigned fexOor
-    def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
+    def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram, streams):
         cdef cnp.npy_intp shape[1]
         cdef si.uint16_t* wf_ptr
         cdef ChannelPython chanpy
@@ -58,7 +63,7 @@ cdef class PyChannelPython:
 
         chanpy = ChannelPython(&evtheader[0], &chan[0])
 
-        wf_ptr = chanpy.waveform(numsamples)
+        wf_ptr = chanpy.waveform(numsamples,0)  # Raw is in stream 0
         shape[0] = numsamples
         if numsamples:
             self.waveform = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
@@ -76,20 +81,37 @@ cdef class PyChannelPython:
 #        else:
 #            self.sparse = None
 
-        self.peakList = None
-        self.startPosList = None
-        while True:
-            shape[0] = chanpy.next_peak(startPos,&peakPtr)
-            if not shape[0]: break
-            if self.peakList is None:
-                # we've found a peak so initialize the arrays
-                self.peakList = []
-                self.startPosList = []
-            peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, peakPtr)
-            cnp.PyArray_SetBaseObject(peak, dgram)
-            Py_INCREF(dgram)
-            self.peakList.append(peak)
-            self.startPosList.append(startPos)
+        def proc_stream(istr,vsn):
+            cdef list peakL = None
+            cdef list startPosL = None
+            chanpy.reset_peak_iter()
+            while True:
+                if vsn==1:
+                    shape[0] = chanpy.next_window(startPos,&peakPtr,istr)
+                else:
+                    shape[0] = chanpy.next_peak  (startPos,&peakPtr,istr)
+                if not shape[0]: break
+                if peakL is None:
+                    # we've found a peak so initialize the arrays
+                    peakL = []
+                    startPosL = []
+                peak = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, peakPtr)
+                cnp.PyArray_SetBaseObject(peak, dgram)
+                Py_INCREF(dgram)
+                peakL    .append(peak)
+                startPosL.append(startPos)
+            return (peakL,startPosL)
+
+        if streams==4:
+            self.peakList, self.startPosList = proc_stream(1,1)
+            self.cfpList , self.startCfpList = proc_stream(2,1)
+            cfdList , startCfdList = proc_stream(3,1)
+            self.cfdTimesList = []
+            for i,x in enumerate(cfdList):
+                dx = x[1]-x[0]
+                self.cfdTimesList.append( startCfdList[i] + x[3] - (x[1]/dx if dx else 0.) )
+        else:
+            self.peakList, self.startPosList = proc_stream(1,0)
 
         self.fexOor = chanpy.fex_out_of_range()
 
@@ -190,13 +212,16 @@ cdef class cyhsd_base_1_2_3:
             self._padDict[iseg][chanNum] = padvalues
             self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
 
-    def _parseEvt(self, evt):
+    def _parseEvt(self, evt, streams=2):
         self._wvDict = {}
         self._spDict = {}
         self._peaksDict = {}
         self._padDict = {}
         self._fexStatus = {}
         self._fexPeaks = []
+        self._cfpDict = {}
+        self._cfdTimesDict = {}
+
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
         self._evt = evt
@@ -219,7 +244,7 @@ cdef class cyhsd_base_1_2_3:
             
             chan = getattr(self._hsdsegments[iseg], chanName)
             if chan.size > 0:
-                pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+                pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg], streams)
 
                 self._pychansegs[iseg] = (chanNum, pychan)
                 if pychan.waveform is not None:
@@ -238,6 +263,16 @@ cdef class cyhsd_base_1_2_3:
                         self._peaksDict[iseg]={}
                     self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
 
+
+                if streams==4:
+                    if iseg not in self._cfpDict.keys():
+                        self._cfpDict[iseg]={}
+                    self._cfpDict[iseg][chanNum] = (pychan.startCfpList,pychan.cfpList)
+
+                    if iseg not in self._cfdTimesDict.keys():
+                        self._cfdTimesDict[iseg]={}
+                    self._cfdTimesDict[iseg][chanNum] = pychan.cfdTimesList
+                              
                 if iseg not in self._fexStatus.keys():
                     self._fexStatus[iseg]={}
                 self._fexStatus[iseg][chanNum] = ([pychan.fexOor],[])
@@ -411,3 +446,48 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
             return None
         else:
             return self._fexStatus
+
+#
+#  2.0.0 -> 2.1.0
+#
+class hsd_raw_2_1_0(hsd_raw_2_0_0):
+
+    def __init__(self, *args):
+        hsd_raw_2_0_0.__init__(self, *args)
+	
+    def _load_config(self):
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = seg_config.config.user.fex.corr.baseline
+                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
+    def _parseEvt(self, evt):
+        cyhsd_base_1_2_3._parseEvt(self, evt, 4)
+        peaksDict =cyhsd_base_1_2_3.peaksDict(self)
+        if not peaksDict:
+           return
+
+    @cython.binding(True)
+    def cfp(self, evt) -> HSDPeaks:
+        """Return a dictionary of (int,array) tuples
+        """
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._cfpDict:
+            return None
+        else:
+            return self._cfpDict
+
+    @cython.binding(True)
+    def cfd_times(self, evt):
+        """Return a dictionary of hit times (list)
+        """
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._cfdTimesDict:
+            return None
+        else:
+            return self._cfdTimesDict

@@ -356,6 +356,8 @@ def apply_config(ctxt,cfg):
     values['input_chan']        = cfg['user']['input_chan']
     values['fex_corr_baseline'] = cfg['user']['fex']['corr']['baseline']
     values['fex_corr_accum'   ] = cfg['user']['fex']['corr']['accum']
+    values['fex_cfd_thres'    ] = cfg['user']['fex']['cfd']['thres']
+    values['fex_cfd_win'      ] = cfg['user']['fex']['cfd']['win']
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)
 
     # the completion of the "put" guarantees that all of the above

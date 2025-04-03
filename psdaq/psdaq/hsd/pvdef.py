@@ -20,7 +20,9 @@ daqConfig = {'readoutGroup':('i', 0),
              'fex_xpre'    :('i', 1),
              'fex_xpost'   :('i', 1),
              'fex_corr_baseline':('i',16384),
-             'fex_corr_accum'   :('i',12)}
+#             'fex_corr_accum'   :('i',12)}
+             'fex_cfd_thres':('i', 16384),
+             'fex_cfd_win'  :('i', 1)}
 
 pgpConfig  = {'diffctrl'    :('ai', [15]*4),
               'precursor'   :('ai', [7]*4),

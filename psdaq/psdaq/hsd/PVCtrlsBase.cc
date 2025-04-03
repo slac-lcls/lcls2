@@ -152,19 +152,29 @@ namespace Pds {
                              PVGET(raw_gate));
         fex._base[0].setFull(fullSize,fullEvt);
       }
-      if (PVGET(fex_prescale)) {
-        streamMask |= (1<<1);
-        fex._base[1].setGate(PVGET(fex_start),
-                             PVGET(fex_gate));
-        fex._base[1].setFull(fullSize,fullEvt);
-        fex._base[1].setPrescale(PVGET(fex_prescale)-1);
-        fex._stream[1].parms[0]=PVGET(fex_ymin);
-        fex._stream[1].parms[2]=PVGET(fex_ymax);
-        fex._stream[1].parms[4]=PVGET(fex_xpre);
-        fex._stream[1].parms[6]=PVGET(fex_xpost);
-        //  Baseline correction parameters
-        fex._stream[1].parms[12]=PVGET(fex_corr_baseline);
-        fex._stream[1].parms[13]=PVGET(fex_corr_accum);
+
+      // unsigned fex_streams = 1<<3;  // Just the CFD
+      unsigned fex_streams = (1<<1) | (1<<2) | (1<<3);  // All FEX streams
+
+      if (PVGET(fex_prescale) && fex_streams) {
+        for(unsigned i=1; i<4; i++) {
+          if (fex_streams & (1<<i)) {
+            streamMask |= (1<<1);
+            fex._base[1].setGate(PVGET(fex_start),
+                                 PVGET(fex_gate));
+            fex._base[1].setFull(fullSize,fullEvt);
+            fex._base[1].setPrescale(PVGET(fex_prescale)-1);
+            fex._stream[1].parms[0]=PVGET(fex_ymin);
+            fex._stream[1].parms[2]=PVGET(fex_ymax);
+            fex._stream[1].parms[4]=PVGET(fex_xpre);
+            fex._stream[1].parms[6]=PVGET(fex_xpost);
+            //  Baseline correction parameters
+            fex._stream[1].parms[12]=PVGET(fex_corr_baseline);
+            //fex._stream[1].parms[13]=PVGET(fex_corr_accum);
+            fex._stream[1].parms[13]=PVGET(fex_cfd_thres);
+            fex._stream[1].parms[14]=PVGET(fex_cfd_win);
+          }
+        }
       }
       fex._streams= streamMask | (fullEvt<<8) | (rawStreams<<16);
     

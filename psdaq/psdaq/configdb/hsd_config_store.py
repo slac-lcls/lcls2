@@ -30,11 +30,13 @@ help_str += "\nuser.fex.start_ns : nanoseconds from fiducial to sparsify start"
 help_str += "\nuser.fex.gate_ns  : nanoseconds from sparsify start to end"
 help_str += "\nuser.fex.prescale : event downsampling; record 1-out-of-N"
 help_str += "\nuser.fex.corr.baseline : new baseline after sample correction"
-help_str += "\nuser.fex.corr.accum    : pre-gate baseline accumulation period"
+#help_str += "\nuser.fex.corr.accum    : pre-gate baseline accumulation period"
 help_str += "\nuser.fex.dymin    : min ADC value to sparsify relative to fex.corr.baseline"
 help_str += "\nuser.fex.dymax    : max ADC value to sparsify relative to fex.corr.baseline"
 help_str += "\nuser.fex.xpre     : keep N samples leading excursion"
 help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
+help_str += "\nuser.fex.cfd.thres: threshold for CFD"
+help_str += "\nuser.fex.cfd.win  : sample window after threshold crossing for CFD"
 
 top.set("help:RO", help_str, 'CHARSTR')
 
@@ -54,18 +56,22 @@ top.set('user.fex.dymax' ,       20, 'INT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
 top.set('user.fex.xpost',         8, 'UINT32')
 
-top.define_enum('accumEnum', {'11ns_64Sa'   :  4, 
-                              '22ns_128Sa'  :  5, 
-                              '43ns_256Sa'  :  6, 
-                              '86ns_512Sa'  :  7,
-                              '172ns_1kSa'  :  8, 
-                              '345ns_2kSa'  :  9, 
-                              '689ns_4kSa'  : 10, 
-                              '1378ns_8kSa' : 11, 
-                              '2757ns_16kSa': 12})
+if False:
+    top.define_enum('accumEnum', {'11ns_64Sa'   :  4, 
+                                  '22ns_128Sa'  :  5, 
+                                  '43ns_256Sa'  :  6, 
+                                  '86ns_512Sa'  :  7,
+                                  '172ns_1kSa'  :  8, 
+                                  '345ns_2kSa'  :  9, 
+                                  '689ns_4kSa'  : 10, 
+                                  '1378ns_8kSa' : 11, 
+                                  '2757ns_16kSa': 12})
+    top.set('user.fex.corr.accum'    ,    12, 'accumEnum')
 
 top.set('user.fex.corr.baseline' , 16384, 'UINT32')
-top.set('user.fex.corr.accum'    ,    12, 'accumEnum')
+
+top.set('user.fex.cfd.thres' , 16384, 'UINT32')
+top.set('user.fex.cfd.win'   , 16   , 'UINT32')
 
 top.define_enum('dataModeEnum', {'Data': -1, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
 

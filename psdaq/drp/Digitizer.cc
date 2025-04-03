@@ -193,7 +193,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const v
     lane_mask = Digitizer::_addJson(xtc, bufEnd, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg alg("raw", 3, 0, 0);
+    Alg alg("raw", 2, 1, 0);
     Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                 m_para->detName.c_str(), alg,
                                                 m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
