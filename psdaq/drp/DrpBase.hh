@@ -18,7 +18,7 @@
 
 namespace Pds {
     class TimingHeader;
-};
+}
 
 namespace Drp {
 

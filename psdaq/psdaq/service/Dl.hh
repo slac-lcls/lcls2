@@ -19,6 +19,6 @@ namespace Pds
     std::string _filename;
     void*       _handle;
   };
-};
+}
 
 #endif

@@ -296,7 +296,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaFlags      (maxRetCnt),
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
-    m_lastTid     (XtcData::TransitionId::Reset),
+    m_lastTid     (TransitionId::Reset),
     m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
@@ -411,7 +411,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         logging::error("Timing header error bit is set");
         ++m_nTmgHdrError;
     }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
+    TransitionId::Value transitionId = timingHeader->service();
     //{
     //  uint32_t lane = dest[current] >> 8;
     //  uint32_t vc   = dest[current] & 0xff;
@@ -424,7 +424,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     auto rogs = timingHeader->readoutGroups();
     if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
+                       TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
@@ -433,11 +433,11 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         ++m_nNoComRoG;
         return nullptr;
     }
-    if (transitionId == XtcData::TransitionId::SlowUpdate) {
+    if (transitionId == TransitionId::SlowUpdate) {
         uint16_t missingRogs = m_para.rogMask & ~rogs;
         if (missingRogs) {
             logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                           XtcData::TransitionId::name(transitionId),
+                           TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId(), missingRogs, timingHeader->env);
             ++m_lastComplete;
@@ -460,20 +460,20 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         // Allocate a pebble buffer once the event is built
         event->pebbleIndex = m_pool.allocate(); // This can block
 
-        if (transitionId != XtcData::TransitionId::L1Accept) {
-            if (transitionId != XtcData::TransitionId::SlowUpdate) {
+        if (transitionId != TransitionId::L1Accept) {
+            if (transitionId != TransitionId::SlowUpdate) {
                 logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                              XtcData::TransitionId::name(transitionId),
+                              TransitionId::name(transitionId),
                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                               timingHeader->pulseId());
             }
             else {
                 logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                               XtcData::TransitionId::name(transitionId),
+                               TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId());
             }
-            if (transitionId == XtcData::TransitionId::BeginRun) {
+            if (transitionId == TransitionId::BeginRun) {
                 resetEventCounter();
             }
         }
@@ -482,9 +482,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, DMA size %u%s",
                            RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
             logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
-                           data[0], data[1], data[2], data[3], data[4], data[5], XtcData::TransitionId::name(transitionId));
+                           data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
             logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
-                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], XtcData::TransitionId::name(m_lastTid));
+                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
             m_nPgpJumps += evtCntDiff;
 
             if ((evtCntDiff < 0) || (evtCntDiff > 100)) {
@@ -509,7 +509,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         // Allocate a transition datagram from the pool.  Since a
         // SPSCQueue is used (not an SPMC queue), this can be done here,
         // but not in the workers or there will be concurrency issues.
-        if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId != TransitionId::L1Accept) {
             uint32_t evtIndex = event->pebbleIndex;
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
             if (!m_pool.transitionDgrams[evtIndex]) {
@@ -527,7 +527,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     // Determine the difference between epochs and clock offsets.
     // We ignore the time difference due to the two clocks not
     // being read at quite the same point in time.
-    if (transitionId == XtcData::TransitionId::Configure) {
+    if (transitionId == TransitionId::Configure) {
         _setTimeOffset(timingHeader->time);
     }
     if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
@@ -537,14 +537,14 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     return timingHeader;
 }
 
-void PgpReader::_setTimeOffset(const XtcData::TimeStamp& time) {
+void PgpReader::_setTimeOffset(const TimeStamp& time) {
     auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
     auto tTh = (std::chrono::seconds    { time.seconds()     } +
                 std::chrono::nanoseconds{ time.nanoseconds() });
     m_tOffset = now - tTh;
 }
 
-std::chrono::nanoseconds PgpReader::age(const XtcData::TimeStamp& time) const {
+std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {
     auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
     auto tTh = (std::chrono::seconds    { time.seconds()     } +
                 std::chrono::nanoseconds{ time.nanoseconds() });
@@ -631,7 +631,7 @@ int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 
 int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
-    m_lastTid = XtcData::TransitionId::Unconfigure; // @todo: Check
+    m_lastTid = TransitionId::Unconfigure; // @todo: Check
 
     if (exporter) {
       int rc = _setupMetrics(exporter);
@@ -824,7 +824,7 @@ void EbReceiver::resetCounters(bool all = false)
     m_latency = 0;
 }
 
-void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
+void EbReceiver::_writeDgram(Dgram* dgram)
 {
     size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     m_fileWriter.writeEvent(dgram, size, dgram->time);
@@ -832,10 +832,10 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     // small data writing
     Smd smd;
     const void* bufEnd = m_smdWriter.buffer + sizeof(m_smdWriter.buffer);
-    XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
-                                            m_smdWriter.namesLookup, namesId);
-    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
+    NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
+    Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
+                                   m_smdWriter.namesLookup, namesId);
+    m_smdWriter.writeEvent(smdDgram, sizeof(Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
 
@@ -849,8 +849,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     uint64_t pulseId = dgram->pulseId();
-    XtcData::TransitionId::Value transitionId = dgram->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
+    TransitionId::Value transitionId = dgram->service();
+    if (transitionId != TransitionId::L1Accept) {
         if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
@@ -881,8 +881,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     }
 
     if (error) {
-        logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
-        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, XtcData::TransitionId::name(m_lastTid));
+        logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, TransitionId::name(transitionId), dgram->env);
+        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, TransitionId::name(m_lastTid));
         abort();
     }
 
@@ -903,27 +903,27 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     }
 
     // pass everything except L1 accepts and slow updates to control level
-    if ((transitionId != XtcData::TransitionId::L1Accept)) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            if (transitionId == XtcData::TransitionId::Configure) {
+    if ((transitionId != TransitionId::L1Accept)) {
+        if (transitionId != TransitionId::SlowUpdate) {
+            if (transitionId == TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                XtcData::Dgram* configDgram = dgram;
+                Dgram* configDgram = dgram;
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
                 memcpy(m_configureBuffer.data(), configDgram, size);
             }
-            if (transitionId == XtcData::TransitionId::BeginRun)
+            if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
 
             logging::info("EbReceiver saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
+                           TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
         else {
             logging::debug("EbReceiver saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
+                           TransitionId::name(transitionId),
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
     }
@@ -935,7 +935,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
 
-    if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
+    if (m_writing && !m_chunkRequest && (transitionId == TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
             // request chunking opportunity
             chunkRequestSet();
@@ -945,24 +945,24 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
 
-    // To write/monitor event, require the primary readout group to have triggered
-    // Events for which the primary RoG didn't trigger are counted as bypass events
+    // To write/monitor event, require the commmon readout group to have triggered
+    // Events for which the common RoG didn't trigger are counted as NoComRoG errors
     if (dgram->readoutGroups() & (1 << m_para.partition)) {
         if (m_writing) {                    // Won't ever be true for Configure
             // write event to file if it passes event builder or if it's a transition
             if (result.persist() || result.prescale()) {
                 _writeDgram(dgram);
             }
-            else if (transitionId != XtcData::TransitionId::L1Accept) {
-                if (transitionId == XtcData::TransitionId::BeginRun) {
+            else if (transitionId != TransitionId::L1Accept) {
+                if (transitionId == TransitionId::BeginRun) {
                     m_offset = 0; // reset offset when writing out a new file
-                    _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
+                    _writeDgram(reinterpret_cast<Dgram*>(m_configureBuffer.data()));
                 }
                 _writeDgram(dgram);
-                if ((transitionId == XtcData::TransitionId::Enable) && m_chunkRequest) {
+                if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
                     logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
                     reopenFiles();
-                } else if (transitionId == XtcData::TransitionId::EndRun) {
+                } else if (transitionId == TransitionId::EndRun) {
                     logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
                     closeFiles();
                 }
@@ -998,7 +998,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     if (dgram->xtc.src.value() == 0) {  // Do this on only one DRP
         static auto _t0(tp);
         static bool _enabled(false);
-        if (transitionId == XtcData::TransitionId::Enable) {
+        if (transitionId == TransitionId::Enable) {
             _t0 = tp;
             _enabled = true;
         }
@@ -1275,20 +1275,20 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 void DrpBase::runInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
-    XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
-    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::Names& runInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                    "runinfo", runInfoAlg,
-                                                                    "runinfo", "", runInfoNamesId);
+    Alg runInfoAlg("runinfo", 0, 0, 1);
+    NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
+    Names& runInfoNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                  "runinfo", runInfoAlg,
+                                                  "runinfo", "", runInfoNamesId);
     RunInfoDef myRunInfoDef;
     runInfoNames.add(xtc, bufEnd, myRunInfoDef);
-    namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+    namesLookup[runInfoNamesId] = NameIndex(runInfoNames);
 }
 
 void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const RunInfo& runInfo)
 {
-    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
+    NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
+    CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
     runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
@@ -1296,20 +1296,20 @@ void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup
 void DrpBase::chunkInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
-    XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
-    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::Names& chunkInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                      "chunkinfo", chunkInfoAlg,
-                                                                      "chunkinfo", "", chunkInfoNamesId);
+    Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
+    NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    Names& chunkInfoNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                    "chunkinfo", chunkInfoAlg,
+                                                    "chunkinfo", "", chunkInfoNamesId);
     ChunkInfoDef myChunkInfoDef;
     chunkInfoNames.add(xtc, bufEnd, myChunkInfoDef);
-    namesLookup[chunkInfoNamesId] = XtcData::NameIndex(chunkInfoNames);
+    namesLookup[chunkInfoNamesId] = NameIndex(chunkInfoNames);
 }
 
 void DrpBase::chunkInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
 {
-    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
+    NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
     chunkinfo.set_string(ChunkInfoDef::FILENAME, chunkInfo.filename.c_str());
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, chunkInfo.chunkId);
 }
