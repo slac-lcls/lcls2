@@ -45,21 +45,53 @@ target_link_libraries(tmoTrigger
 
 #---
 
-add_library(tmoTeb SHARED
-  tmoTebPrimitive.cc
-  tmoTeb.cc
-)
+if(NOT CMAKE_CUDA_COMPILER)
 
-target_include_directories(tmoTeb PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-  $<INSTALL_INTERFACE:include>
-  ${PYTHON_INCLUDE_DIRS}
-)
+  add_library(tmoTeb SHARED
+    tmoTebPrimitive.cc
+    tmoTeb.cc
+  )
 
-target_link_libraries(tmoTeb
-  xtcdata::xtc
-  trigger
-)
+  target_include_directories(tmoTeb PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(tmoTeb
+    xtcdata::xtc
+    trigger
+  )
+
+else()
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+  set(CMAKE_CUDA_ARCHITECTURES 86 90)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)
+  endif()
+
+  add_library(tmoTeb SHARED
+    tmoTebPrimitive.cc
+    tmoTebPrimitive_gpu.cu
+    tmoTeb.cc
+  )
+
+  target_include_directories(tmoTeb PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(tmoTeb
+    xtcdata::xtc
+    trigger
+    CUDA::cudart
+    CUDA::cuda_driver
+  )
+
+endif()
 
 #---
 
