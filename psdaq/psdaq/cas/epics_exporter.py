@@ -62,7 +62,8 @@ def createExposer(prometheusDir):
         try:
             start_http_server(port)
             fileName = f'{prometheusDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml'
-            if not os.path.exists(fileName):
+            # Commented out the existing file check so that the file's date is refreshed
+            if True: #not os.path.exists(fileName):
                 try:
                     with open(fileName, 'wt') as f:
                         f.write(f'- targets:\n    - {hostname}:{port}\n')
