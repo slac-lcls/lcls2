@@ -136,19 +136,19 @@ if(CMAKE_CUDA_COMPILER)
     #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
     #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
 
-    add_executable(drp_gpu
+    add_executable(drp_gpu_v1
         GpuAsyncLib.cc
         GpuWorker.cu
         GpuDetector.cc
         GpuDetectorApp.cc
     )
-    target_include_directories(drp_gpu PUBLIC
+    target_include_directories(drp_gpu_v1 PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
         #$<INSTALL_INTERFACE:include>  # Not working?
         ${CMAKE_INSTALL_PREFIX}/include
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
-    target_link_libraries(drp_gpu
+    target_link_libraries(drp_gpu_v1
         xtcdata::xtc
         drpbase
         trigger
@@ -157,20 +157,20 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
-    target_compile_options(drp_gpu PUBLIC -O3)
+    set_target_properties(drp_gpu_v1 PROPERTIES CUDA_ARCHITECTURES "86")
+    target_compile_options(drp_gpu_v1 PUBLIC -O3)
 
-    add_library(AreaDetector_gpu SHARED
+    add_library(AreaDetector_gpu_v1 SHARED
         AreaDetectorGpu.cu
         AreaDetector.cc
     )
-    target_include_directories(AreaDetector_gpu PUBLIC
+    target_include_directories(AreaDetector_gpu_v1 PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
         #$<INSTALL_INTERFACE:include>  # Not working?
         ${CMAKE_INSTALL_PREFIX}/include
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
-    target_link_libraries(AreaDetector_gpu
+    target_link_libraries(AreaDetector_gpu_v1
         xtcdata::xtc
         drpbase
         trigger  # @todo: This needed?
@@ -179,8 +179,8 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
-    target_compile_options(AreaDetector_gpu PUBLIC -O3)
+    set_target_properties(AreaDetector_gpu_v1 PROPERTIES CUDA_ARCHITECTURES "86")
+    target_compile_options(AreaDetector_gpu_v1 PUBLIC -O3)
 
     add_executable(pgpreadgpu
         pgpreadgpu.cc
@@ -318,7 +318,7 @@ install(TARGETS drp
 
 if(CMAKE_CUDA_COMPILER)
   install(TARGETS
-    drp_gpu
-    AreaDetector_gpu
+    drp_gpu_v1
+    AreaDetector_gpu_v1
   )
 endif()

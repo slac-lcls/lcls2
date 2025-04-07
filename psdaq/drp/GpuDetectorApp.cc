@@ -130,7 +130,7 @@ void GpuDetectorApp::initialize()
 
     // Register Detector types and the .so library that provides them
     auto& f = m_factory;   // Factory must remain in scope to avoid .so closing
-    f.register_type("fakecam",   "libAreaDetector_gpu.so");
+    f.register_type("fakecam",   "libAreaDetector_gpu_v1.so");
     //f.register_type<AreaDetectorGpu>("fakecam",   "libAreaDetector_gpu.so");
     //f.register_type<EpixHRemuGpu>   ("epixhremu", "libEpixHRemu_gpu.so");
     //f.register_type<EpixM320Gpu>    ("epixm320",  "libEpixM320_gpu.so");

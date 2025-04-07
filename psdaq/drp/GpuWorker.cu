@@ -108,9 +108,12 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
         abort();
       }
 #ifdef SUDO
-      auto dmaBufAddr = readRegister<void*>   (seg.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
-      auto dmaBufSize = readRegister<uint32_t>(seg.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
-      printf("*** DMA buffer[%d] addr %p, size %u\n", i, dmaBufAddr, dmaBufSize);
+      auto dmaBufAddr0 = readRegister<uint32_t>(seg.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
+      auto dmaBufAddr1 = readRegister<uint32_t>(seg.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i)+4);
+      auto dmaBufSize  = readRegister<uint32_t>(seg.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
+      uint64_t dmaBufAddr = ((uint64_t)dmaBufAddr1 << 32) | dmaBufAddr0;
+      printf("*** DMA buffer[%d] dptr %p, addr %p, size %u\n",
+             i, (void*)seg.dmaBuffers[i].dptr, (void*)dmaBufAddr, dmaBufSize);
 #endif
     }
 
