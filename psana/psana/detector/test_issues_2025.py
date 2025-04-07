@@ -399,7 +399,7 @@ def issue_2025_03_18():
     #peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=17)[0]
     #print('calib_constants shortname',peds)
 
-
+ 
 def issue_2025_03_19():
     """Silke -  It appears to me that she is picking up constants from February 12th for uedc00104 and we don?t understand why
        datinfo -k exp=uedc00104,run=177 -d epixquad
@@ -460,37 +460,100 @@ def issue_2025_04_02a():
     """
     """
     import os
-    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    #from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    import psana.pscalib.geometry.GeometryAccess as ga # import GeometryAccess, img_from_pixel_arrays
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
     import psana.pyalgos.generic.NDArrGenerators as ag
-    import psana.pyalgos.generic.Graphics as gg # for test purpose
 
     SCRDIR = os.path.dirname(os.path.realpath(__file__))
 
-    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-jungfrau16M.data')
+    #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-jungfrau16M.data')
+    #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-epixuhr.data')
+    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometgeometry-def-epixm320.data')
     assert os.path.exists(fname_geo)
     logger.info('fngeo: %s' % fname_geo)
 
-    geo = GeometryAccess(fname_geo)
+    geo = ga.GeometryAccess(fname_geo)
     rows, cols = geo.get_pixel_coord_indexes()
 
     print(ndu.info_ndarr(rows, 'rows'))
-    sh3d = ndu.shape_nda_as_3d(rows)
+    sh3d = ndu.shape_nda_as_3d(rows) # i.e. (1,1,512,1024)
     rows.shape = cols.shape = sh3d
     print(ndu.info_ndarr(rows, 'rows'))
     arr = ag.arr3dincr(sh3d)
-    arr[0:2,:] += arr[0:2,:]
+    arr1 = ag.arr2dincr(sh3d[1:]) # gg.np.array(arr[0,:])
+    for n in range(sh3d[0]):
+        arr[n,:] += (10+n)*arr1
 
-    img = gg.img_from_pixel_arrays(rows, cols, W=arr)
+    img = ga.img_from_pixel_arrays(rows, cols, W=arr)
 
-    gg.plotImageLarge(img) #, amp_range=amp_range)
-    gg.move(500,10)
-    gg.show()
-    gg.save_plt(fname='jf_img.png')
+    if False:
+        import psana.pyalgos.generic.Graphics as gg # for test purpose
+        gg.plotImageLarge(img) #, amp_range=amp_range)
+        gg.move(500,10)
+        gg.show()
+        #gg.save_plt(fname='img.png')
+
+    if True:
+        flimg = None
+        from psana.detector.UtilsGraphics import gr, fleximage
+
+        if flimg is None:
+          flimg = fleximage(img, h_in=11, w_in=11) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+        else:
+          flimg.update(img)
+        flimg.fig.suptitle('test of geometry', fontsize=16)
+        #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+        # gr.show(mode='DO NOT HOLD')
+
+        gr.show()
 
 
+def issue_2025_04_02b(args):
+    """https://confluence.slac.stanford.edu/spaces/LCLSIIData/pages/267391733/psana#psana-PublicPracticeData
+       datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
+       shape:(4, 352, 384)
+    """
+    import os
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
+    ds = DataSource(exp='ued101066', run=181, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
 
+    if True:
+        det_geo = det.raw._det_geo()
+        seg_geo = det.raw._seg_geo
+        top_geo = det_geo.get_top_geo()
+        print('det_geo:%s\n%s' % (type(det_geo), str(dir(det_geo))))
+        print('seg_geo:%s\n%s' % (type(seg_geo), str(dir(seg_geo))))
+        print('top_geo:%s\n%s' % (type(top_geo), str(dir(top_geo))))
+
+        print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='X'), 'seg_geo.pixel_size_array(axis="X")'))
+        print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='Y'), 'seg_geo.pixel_size_array(axis="Y")'))
+
+        print(ndu.info_ndarr(det_geo.get_pixel_coords(), 'det_geo.get_pixel_coords'))
+
+    if False:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            img   = det.raw.image(evt)
+            print('evt:', nevt)
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if nevt>10: break
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
 
 
 def argument_parser():
@@ -541,7 +604,8 @@ def selector():
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
     elif TNAME in ('11',): issue_2025_03_27a() # cpo - jungfrau issues
-    elif TNAME in ('12',): issue_2025_04_02a() # Aaron Brewster - acces to jungfrau geometry
+    elif TNAME in ('12',): issue_2025_04_02a() # Aaron Brewster - acces to jungfrau geometry from file
+    elif TNAME in ('13',): issue_2025_04_02b(args) # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
