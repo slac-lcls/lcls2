@@ -12,7 +12,6 @@ def test_plot_quad():
     """ Test geometry acess methods of the class GeometryAccess object for CSPAD quad.
     """
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
-    import psana.pyalgos.generic.Graphics as gg # for test purpose
     from psana.pyalgos.generic.NDArrGenerators import cspad_ndarr # for test purpose only
 
     basedir = '/sdf/group/lcls/ds/ana/detector/alignment/cspad/calib-cxi-ds1-2014-03-19/'
@@ -33,6 +32,7 @@ def test_plot_quad():
     logger.info('shapes rows: %s cols: %s weight: %s' % (str(rows.shape), str(cols.shape), str(arr.shape)))
     img = img_from_pixel_arrays(rows,cols,W=arr)
 
+    import psana.pyalgos.generic.Graphics as gg
     gg.plotImageLarge(img,amp_range=amp_range)
     gg.move(500,10)
     gg.show()
@@ -42,30 +42,33 @@ def test_jungfrau16M():
     """
     """
     from time import time
-    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    import psana.pscalib.geometry.GeometryAccess as ga # import GeometryAccess, img_from_pixel_arrays
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
     import psana.pyalgos.generic.NDArrGenerators as ag
-    import psana.pyalgos.generic.Graphics as gg # for test purpose
 
     fname_geo = os.path.join(SCRDIR, 'data/geometry-def-jungfrau16M.data')
     assert os.path.exists(fname_geo)
     logger.info('fngeo: %s' % fname_geo)
 
-    geo = GeometryAccess(fname_geo)
+    geo = ga.GeometryAccess(fname_geo)
     rows, cols = geo.get_pixel_coord_indexes()
-    print(ndu.info_ndarr(rows, 'rows'))
+    print(ndu.info_ndarr(rows, 'geo.get_pixel_coord_indexes()'))
     sh3d = ndu.shape_nda_as_3d(rows)
     rows.shape = cols.shape = sh3d
     print(ndu.info_ndarr(rows, 'rows'))
     arr = ag.arr3dincr(sh3d)
-    arr[0:2,:] += arr[0:2,:]
-
-    img = gg.img_from_pixel_arrays(rows, cols, W=arr)
-
-    gg.plotImageLarge(img) #, amp_range=amp_range)
-    gg.move(500,10)
-    gg.show()
-    gg.save_plt(fname='jf_img.png')
+    arr1 = ag.arr2dincr() # gg.np.array(arr[0,:])
+    for n in range(sh3d[0]):
+        arr[n,:] += (10+n)*arr1
+    print(ndu.info_ndarr(arr, 'arr'))
+    img = ga.img_from_pixel_arrays(rows, cols, W=arr)
+    print(ndu.info_ndarr(img, 'img'))
+    if True:
+        import psana.pyalgos.generic.Graphics as gg
+        gg.plotImageLarge(img) #, amp_range=amp_range)
+        gg.move(500,10)
+        gg.show()
+        gg.save_plt(fname='img.png')
 
 
 def argument_parser():
