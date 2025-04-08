@@ -438,7 +438,7 @@ def issue_2025_03_27():
 #    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
 
 
-def issue_2025_03_27a():
+def issue_2025_03_28():
     """see cpo email
        datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
        datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/ds/mfx/mfxdaq23/xtc/ -d jungfrau
@@ -453,10 +453,10 @@ def issue_2025_03_27a():
       print('    raw  :', det.raw.raw(evt).shape)
       print('    calib:', det.raw.calib(evt).shape)
       print('    image:', det.raw.image(evt).shape)
-      if nevt>10: break
+      if nevt>4: break
 
 
-def issue_2025_04_02a():
+def issue_2025_04_02():
     """
     """
     import os
@@ -469,15 +469,15 @@ def issue_2025_04_02a():
 
     #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-jungfrau16M.data')
     #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-epixuhr.data')
-    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometgeometry-def-epixm320.data')
-    assert os.path.exists(fname_geo)
+    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-epixm320.data')
     logger.info('fngeo: %s' % fname_geo)
+    assert os.path.exists(fname_geo)
 
     geo = ga.GeometryAccess(fname_geo)
     rows, cols = geo.get_pixel_coord_indexes()
 
     print(ndu.info_ndarr(rows, 'rows'))
-    sh3d = ndu.shape_nda_as_3d(rows) # i.e. (1,1,512,1024)
+    sh3d = ndu.shape_nda_as_3d(rows) # i.e. (1,1,512,1024) > (1,512,1024)
     rows.shape = cols.shape = sh3d
     print(ndu.info_ndarr(rows, 'rows'))
     arr = ag.arr3dincr(sh3d)
@@ -509,7 +509,7 @@ def issue_2025_04_02a():
         gr.show()
 
 
-def issue_2025_04_02b(args):
+def issue_2025_04_03(args):
     """https://confluence.slac.stanford.edu/spaces/LCLSIIData/pages/267391733/psana#psana-PublicPracticeData
        datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
        shape:(4, 352, 384)
@@ -527,14 +527,21 @@ def issue_2025_04_02b(args):
         det_geo = det.raw._det_geo()
         seg_geo = det.raw._seg_geo
         top_geo = det_geo.get_top_geo()
-        print('det_geo:%s\n%s' % (type(det_geo), str(dir(det_geo))))
-        print('seg_geo:%s\n%s' % (type(seg_geo), str(dir(seg_geo))))
-        print('top_geo:%s\n%s' % (type(top_geo), str(dir(top_geo))))
+        #print('det_geo:%s\n%s' % (type(det_geo), str(dir(det_geo))))
+        #print('seg_geo:%s\n%s' % (type(seg_geo), str(dir(seg_geo))))
+        #print('top_geo:%s\n%s' % (type(top_geo), str(dir(top_geo))))
 
         print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='X'), 'seg_geo.pixel_size_array(axis="X")'))
         print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='Y'), 'seg_geo.pixel_size_array(axis="Y")'))
-
         print(ndu.info_ndarr(det_geo.get_pixel_coords(), 'det_geo.get_pixel_coords'))
+
+        def info_recurs_geo(geo):
+            geo.print_geo()
+            for o in geo.get_list_of_children():
+                info_recurs_geo(o)
+
+        info_recurs_geo(top_geo)
+
 
     if False:
         flimg = None
@@ -603,9 +610,9 @@ def selector():
     elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
-    elif TNAME in ('11',): issue_2025_03_27a() # cpo - jungfrau issues
-    elif TNAME in ('12',): issue_2025_04_02a() # Aaron Brewster - acces to jungfrau geometry from file
-    elif TNAME in ('13',): issue_2025_04_02b(args) # Aaron Brewster - acces to jungfrau geometry from det._calibconst
+    elif TNAME in ('11',): issue_2025_03_28() # cpo - jungfrau issues
+    elif TNAME in ('12',): issue_2025_04_02() # Aaron Brewster - acces to jungfrau geometry from file
+    elif TNAME in ('13',): issue_2025_04_03(args) # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
