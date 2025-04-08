@@ -11,8 +11,8 @@ static const unsigned MAX_PROM_PORTS = 100;
 using logging = psalg::SysLog;
 
 std::unique_ptr<prometheus::Exposer>
-    Pds::createExposer(const std::string& prometheusDir,
-                       const std::string& hostname)
+Pds::createExposer(const std::string& prometheusDir,
+                   const std::string& hostname)
 {
     // Allow prometheus monitoring to be disabled
     if (prometheusDir.empty())  return {};
@@ -33,13 +33,11 @@ std::unique_ptr<prometheus::Exposer>
                     logging::debug("Writing %s\n", fileName.c_str());
                     fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
                     fclose(file);
-                }
-                else {
+                } else {
                     // %m will be replaced by the string strerror(errno)
                     logging::debug("Error creating file %s: %m", fileName.c_str());
                 }
-            //}
-            //else {
+            //} else {
             //    // File already exists; no need to rewrite it
             //    // @todo: Perhaps 'touch' the file to refresh its date here
             //    // so that we can see which ones are old and likely stale?
@@ -55,7 +53,9 @@ std::unique_ptr<prometheus::Exposer>
     }
 
     if (exposer) {
-        logging::info("Run-time monitoring data is on port %d", port);
+        logging::info("Prometheus run-time monitoring data is on port %d", port);
+    } else {
+        logging::warning("No port found for prometheus run-time monitoring data");
     }
 
     return exposer;
