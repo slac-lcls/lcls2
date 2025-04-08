@@ -8,7 +8,7 @@ Usage::
 
     from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
 
-    fname_geometry = '/reg/d/psdm/CXI/cxitut13/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
+    fname_geometry = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-default.data'
     geometry = GeometryAccess(fname_geometry)
 
     # load constants from geometry file
@@ -91,9 +91,17 @@ Usage::
     # DEPRECATED change verbosity bit-control word; to print everythisg use pbits = 0xffff
     geometry.set_print_bits(pbits=0o377)
 
-    # return geometry parameters in "psf" format as a tuple psf[32][3][3]
+    # DEPRECATED: for CSPAD only, return geometry parameters in "psf" format as a tuple psf[32][3][3]
     psf = geometry.get_psf()
     geometry.print_psf()
+
+    # return geometry parameters in "psf" format as a tuple psf[<number-of-asics>][3][3]
+    psf = geometry.psf(cframe=1) # by default cframe=CFRAME_LAB - defined in psana/pscalib/geometry/UtilsPSF.py
+    s = geometry.info_psf(cframe=1)
+
+    # converts psana data formatted for panels to psf data formatted per asic with shape=(<n-asics>, arows, acols)
+    datapsf = geometry.data_psf(data)
+    xarr, yarr, zarr = geometry.pixel_coords_psf(cframe=1) # returns pixel coordinate arrays generated from psf vectors.
 
 See:
  * :py:class:`GeometryObject`,
@@ -108,7 +116,7 @@ For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/dis
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Author: Mikhail Dubrovin
+@author: Mikhail Dubrovin
 """
 
 import os
@@ -120,20 +128,20 @@ from psana.pscalib.geometry.GeometryObject import GeometryObject
 import logging
 logger = logging.getLogger(__name__)
 
+ups=None
+def import_ups():
+    global ups
+    if ups is None: import psana.pscalib.geometry.UtilsPSF as ups
 
 def divide_protected(num, den, vsub_zero=0):
-    """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements.
-    """
+    """Returns result of devision of numpy arrays num/den with substitution of value vsub_zero for zero den elements."""
     pro_num = np.select((den!=0,), (num,), default=vsub_zero)
     pro_den = np.select((den!=0,), (den,), default=1)
     return pro_num / pro_den
 
-#------------------------------
 
 class GeometryAccess:
-    """ :py:class:`GeometryAccess`
-    """
-
+    """ :py:class:`GeometryAccess"""
     # DEPRECATED: def __init__(self, path=None, pbits=0, use_wide_pix_center=False):
     def __init__(self, *args, **kwargs):
         """Constructor of the class :py:class:`GeometryAccess`
@@ -180,14 +188,12 @@ class GeometryAccess:
 
 
     def is_valid(self):
-        """Returns True if geometry is loaded and presumably valid, otherwise False.
-        """
+        """Returns True if geometry is loaded and presumably valid, otherwise False."""
         return self.valid
 
 
     def load_pars_from_file(self, path=None):
-        """Reads input "geometry" file, discards empty lines and comments, fills the list of geometry objects for data lines.
-        """
+        """Reads input "geometry" file, discards empty lines and comments, fills the list of geometry objects for data lines."""
         self.valid = False
         if path is not None: self.path = path
 
@@ -215,8 +221,7 @@ class GeometryAccess:
 
 
     def load_pars_from_str(self, s):
-        """Reads input geometry from str, discards empty lines and comments, fills the list of geometry objects for data lines.
-        """
+        """Reads input geometry from str, discards empty lines and comments, fills the list of geometry objects for data lines."""
         self.valid = False
         if not isinstance(s, str):
             logger.debug('%s.load_pars_from_str input parameter is not a str, s: %s' % (self.__class__.__name__, str(s)))
@@ -235,7 +240,6 @@ class GeometryAccess:
             if line[0] == '#':      # process line of comments
                 self._add_comment_to_dict(line)
                 continue
-            #geo=self._parse_line(line)
             self.list_of_geos.append(self._parse_line(line))
 
         self._set_relations()
@@ -243,8 +247,7 @@ class GeometryAccess:
 
 
     def save_pars_in_file(self, path):
-        """Save geometry file with current content.
-        """
+        """Save geometry file with current content."""
         if not self.valid: return
 
         logger.info('Save file: %s' % path)
@@ -270,22 +273,13 @@ class GeometryAccess:
 
 
     def _add_comment_to_dict(self, line):
-        """Splits the line of comments for keyward and value and store it in the dictionary.
-        """
-        #cmt = line.lstrip('# ').split(' ', 1)
+        """Splits the line of comments for keyward and value and store it in the dictionary."""
         cmt = line.lstrip('#').lstrip(' ')
         if len(cmt)<1: return
         ind = len(self.dict_of_comments)
         if len(cmt)==1:
-            #self.dict_of_comments[cmt[0]] = ''
             self.dict_of_comments[ind] = ''
             return
-
-        #beginline, endline = cmt
-        #print '  cmt     : "%s"' % cmt
-        #print '  len(cmt): %d' % len(cmt)
-        #print '  line    : "%s"' % line
-
         self.dict_of_comments[ind] = cmt.strip()
 
 
@@ -325,8 +319,7 @@ class GeometryAccess:
 
 
     def _find_parent(self, geobj):
-        """Finds and returns parent for geobj geometry object.
-        """
+        """Finds and returns parent for geobj geometry object."""
         for geo in self.list_of_geos:
             if geo == geobj: continue
             if  geo.oindex == geobj.pindex \
@@ -345,23 +338,17 @@ class GeometryAccess:
 
 
     def _set_relations(self):
-        """Set relations between geometry objects in the list_of_geos.
-        """
+        """Set relations between geometry objects in the list_of_geos."""
         for geo in self.list_of_geos:
-            #geo.print_geo()
             parent = self._find_parent(geo)
-
             if parent is None: continue
-
             geo.set_parent(parent)
             parent.add_child(geo)
-
             logger.debug('geo:%s:%d has parent:%s:%d' % (geo.oname, geo.oindex, parent.oname, parent.oindex))
 
 
     def get_geo(self, oname, oindex):
-        """Returns specified geometry object.
-        """
+        """Returns specified geometry object."""
         if not self.valid: return None
 
         if oindex == self.oindex_old and oname == self.oname_old: return self.geo_old
@@ -377,15 +364,13 @@ class GeometryAccess:
 
 
     def get_top_geo(self):
-        """Returns top geometry object.
-        """
+        """Returns top geometry object."""
         if not self.valid: return None
         return self.list_of_geos[-1]
 
 
     def get_seg_geo(self):
-        """Returns segment geometry object GeometryObject. SegGeometry is GeometryObject.algo
-        """
+        """Returns segment geometry object GeometryObject. SegGeometry is GeometryObject.algo"""
         if not self.valid: return None
         geo = self.list_of_geos[0]
         if geo.algo is not None: return geo
@@ -395,8 +380,7 @@ class GeometryAccess:
 
 
     def shape3d(self):
-        """ Returns 3d shape of the arrays as (<number-of-segments>, <rows>, <cols>)
-        """
+        """Returns 3d shape of the arrays as (<number-of-segments>, <rows>, <cols>)"""
         sg = self.get_seg_geo().algo
         sshape = sg.shape()
         ssize = sg.size()
@@ -406,10 +390,10 @@ class GeometryAccess:
 
 
     def coords_psana_to_lab_frame(self, x, y, z):
-        """ Switches arrays of pixel coordinates between psana <-(symmetric transformation)-> lab frame
-            returns x,y,z pixel arrays in the lab coordinate frame.
-            cframe [int] = 0 - default psana frame for image-matrix from open panel side X-rows, Y-columns, Z-opposite the beam
-                         = 1 - LAB frame - Y-top (-g - opposite to gravity) Z-along the beam, X=[YxZ]
+        """Switches arrays of pixel coordinates between psana <-(symmetric transformation)-> lab frame
+           returns x,y,z pixel arrays in the lab coordinate frame.
+           cframe [int] = 0 - default psana frame for image-matrix from open panel side X-rows, Y-columns, Z-opposite the beam
+                        = 1 - LAB frame - Y-top (-g - opposite to gravity) Z-along the beam, X=[YxZ]
         """
         return np.array(-y), np.array(-x), np.array(-z)
 
@@ -420,8 +404,7 @@ class GeometryAccess:
 
 
     def get_pixel_coords(self, oname=None, oindex=0, do_tilt=True, cframe=0):
-        """Returns three pixel X,Y,Z coordinate arrays for top or specified geometry object.
-        """
+        """Returns three pixel X,Y,Z coordinate arrays for top or specified geometry object."""
         if not self.valid: return None
 
         if  oindex  == self.oindex_old\
@@ -444,7 +427,6 @@ class GeometryAccess:
 
     def get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0):
         """Returns pixel coordinate arrays XatZ, YatZ, for specified zplane and geometry object.
-
            This method projects pixel X, Y coordinates in 3-D
            on the specified Z plane along direction to origin.
         """
@@ -498,24 +480,21 @@ class GeometryAccess:
 
 
     def set_geo_pars(self, oname=None, oindex=0, x0=0, y0=0, z0=0, rot_z=0, rot_y=0, rot_x=0, tilt_z=0, tilt_y=0, tilt_x=0):
-        """Sets geometry parameters for specified or top geometry object.
-        """
+        """Sets geometry parameters for specified or top geometry object."""
         if not self.valid: return None
         geo = self.get_top_geo() if oname is None else self.get_geo(oname, oindex)
         return geo.set_geo_pars(x0, y0, z0, rot_z, rot_y, rot_x, tilt_z, tilt_y, tilt_x)
 
 
     def move_geo(self, oname=None, oindex=0, dx=0, dy=0, dz=0):
-        """Moves specified or top geometry object by dx, dy, dz.
-        """
+        """Moves specified or top geometry object by dx, dy, dz."""
         if not self.valid: return None
         geo = self.get_top_geo() if oname is None else self.get_geo(oname, oindex)
         return geo.move_geo(dx, dy, dz)
 
 
     def tilt_geo(self, oname=None, oindex=0, dt_x=0, dt_y=0, dt_z=0):
-        """Tilts specified or top geometry object by dt_x, dt_y, dt_z.
-        """
+        """Tilts specified or top geometry object by dt_x, dt_y, dt_z."""
         if not self.valid: return None
         geo = self.get_top_geo() if oname is None else self.get_geo(oname, oindex)
         return geo.tilt_geo(dt_x, dt_y, dt_z)
@@ -547,8 +526,7 @@ class GeometryAccess:
 
 
     def print_pixel_coords(self, oname=None, oindex=0, cframe=0):
-        """Partial print of pixel coordinate X,Y,Z arrays for selected or top(by default) geo.
-        """
+        """Partial print of pixel coordinate X,Y,Z arrays for selected or top(by default) geo."""
         if not self.valid: return
         X, Y, Z = self.get_pixel_coords(oname, oindex, do_tilt=True, cframe=cframe)
 
@@ -587,8 +565,7 @@ class GeometryAccess:
 
 
     def xy_to_rc_arrays(self, X, Y, pix_scale_size_um=None, xy0_off_pix=None, cframe=0):
-        """Returns image martix rows and columns arrays evaluated from X,Y coordinate arrays.
-        """
+        """Returns image martix rows and columns arrays evaluated from X,Y coordinate arrays."""
         if X is None or Y is None: return None, None
 
         pix_size = self.get_pixel_scale_size() if pix_scale_size_um is None else pix_scale_size_um
@@ -613,8 +590,7 @@ class GeometryAccess:
 
 
     def get_pixel_coord_indexes(self, oname=None, oindex=0, pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0):
-        """Returns image martix rows and columns arrays evaluated from X,Y coordinate arrays for top or specified geometry object.
-        """
+        """Returns image martix rows and columns arrays evaluated from X,Y coordinate arrays for top or specified geometry object."""
         if not self.valid: return None, None
 
         if  oindex  == self.oindex_old\
@@ -632,8 +608,7 @@ class GeometryAccess:
 
 
     def get_pixel_xy_inds_at_z(self, zplane=None, oname=None, oindex=0, pix_scale_size_um=None, xy0_off_pix=None, do_tilt=True, cframe=0):
-        """Returns pixel coordinate index arrays rows, cols of size for specified zplane and geometry object.
-        """
+        """Returns pixel coordinate index arrays rows, cols of size for specified zplane and geometry object."""
         if not self.valid: return None, None
         X, Y = self.get_pixel_xy_at_z(zplane, oname, oindex, do_tilt, cframe)
         self.rows_old, self.cols_old = self.xy_to_rc_arrays(X, Y, pix_scale_size_um, xy0_off_pix, cframe)
@@ -663,14 +638,12 @@ class GeometryAccess:
 
 
     def set_print_bits(self, pbits=0):
-        """ Sets printout control bitword.
-        """
+        """ Sets printout control bitword."""
         self.pbits = pbits
 
 
     def get_psf(self):
-        """Returns array of vectors in CrystFEL format (psf stands for position-slow-fast vectors).
-        """
+        """Returns array of vectors in CrystFEL format for 32 CSPAD panels (psf stands for position-slow-fast vectors)."""
         if not self.valid: return None
         X, Y, Z = self.get_pixel_coords() # pixel positions for top level object
         if X.size != 32*185*388: return None
@@ -696,23 +669,49 @@ class GeometryAccess:
         return psf
 
 
-    def print_psf(self):
-        """ Gets and prints psf array for test purpose.
-        """
+    def info_get_psf(self):
+        """ Gets and prints psf array for test purpose."""
         if not self.valid: return None
         psf = np.array(self.get_psf())
         s = 'print_psf(): psf.shape: %s \npsf vectors:' % (str(psf.shape))
         for (px,py,pz), (sx,xy,xz), (fx,fy,fz) in psf:
             s += '\n    p=(%12.2f, %12.2f, %12.2f),    s=(%8.2f, %8.2f, %8.2f)   f=(%8.2f, %8.2f, %8.2f)' \
                   % (px,py,pz,  sx,xy,xz,  fx,fy,fz)
-        logger.info(s)
+        return s
+
+
+    def psf(self, cframe=1):
+        """Returns array of vectors in PSF format (psf stands for position-slow-fast vectors)."""
+        if not self.valid:
+            logger.debug('GeometryAccess object is not valid... it needs in correct initialization from geometry file.')
+            return None
+        import_ups()
+        psf, self.sego, _geo = ups.psf_from_geo(self, cframe=cframe)
+        logger.debug('self.sego: %s' % str(self.sego))
+        return psf
+
+    def info_psf(self, cframe=1):
+        """Returns (str) formatted info with psf vectors."""
+        psf = self.psf(cframe)
+        return ups.info_psf(psf)
+
+    def data_psf(self, data):
+        """Converts psana data formatted for panels to psf data formatted per asic (<n-asics>, arows, acols)."""
+        if self.sego is None: return None
+        import_ups()
+        return ups.data_psf(self.sego, data)
+
+    def pixel_coords_psf(self, cframe=1):
+        """Returns pixel coordinate arrays for x, y and z generated from psf vectors."""
+        psf = self.psf(cframe)
+        if psf is None: return None
+        return ups.pixel_coords_psf(psf, self.sego.asic_rows_cols())
 
 
 #------ Global Method(s) ------
 
 def img_default(shape=(10,10), dtype = np.float32):
-    """Returns default image.
-    """
+    """Returns default image."""
     arr = np.arange(shape[0]*shape[1], dtype=dtype)
     arr.shape = shape
     return arr
