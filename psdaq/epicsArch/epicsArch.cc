@@ -319,7 +319,6 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     m_para       (para),
     m_pool       (para),
     m_drp        (para, m_pool, context()),
-    m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration

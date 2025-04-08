@@ -883,7 +883,6 @@ BldApp::BldApp(Parameters& para) :
     m_para       (para),
     m_pool       (para),
     m_drp        (para, m_pool, context()),
-    m_det        (new BldDetector(m_para, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
