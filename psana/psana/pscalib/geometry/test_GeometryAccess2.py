@@ -71,6 +71,32 @@ def test_jungfrau16M():
         gg.save_plt(fname='img.png')
 
 
+def instance_GeometryAccess():
+    import psana.pscalib.geometry.GeometryAccess as ga
+    fngeo = os.path.join(SCRDIR, 'data/geometry-def-jungfrau16M.data')
+    assert os.path.exists(fngeo)
+    logger.info('fngeo: %s' % fngeo)
+    return ga.GeometryAccess(fngeo)
+
+
+def test_psf():
+    """PSF - test data for CrystFEL format (PSF stands for position-slow-fast vectors)"""
+    from psana.pscalib.geometry.UtilsPSF import CFRAME_PSANA, CFRAME_LAB
+    det_geo = instance_GeometryAccess()
+    print(det_geo.info_psf(cframe=CFRAME_PSANA))
+    print(det_geo.psf(cframe=CFRAME_PSANA))
+
+
+def test_GeometryObject():
+    det_geo = instance_GeometryAccess()
+    top_geo = det_geo.get_top_geo()
+    #print(dir(top_geo))
+    rot_x, rot_y, rot_z = top_geo.get_rot()
+    print('rot_x', rot_x)
+    #print('', )
+    #print('', )
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -107,8 +133,9 @@ def selector():
 
     TNAME = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
 
-    if   TNAME in  ('0',): test_plot_quad() # cspad quad image
+    if   TNAME in  ('0',): test_plot_quad()   # cspad quad image
     elif TNAME in  ('1',): test_jungfrau16M() # image of jungfrau16M
+    elif TNAME in  ('2',): test_psf()         # PSF - test geometry for CrystFEL format
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
