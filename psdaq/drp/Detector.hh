@@ -15,9 +15,12 @@ namespace Pds {
   namespace Eb {
     class ResultDgram;
   }
-};
+}
 
 namespace Drp {
+    namespace Gpu {
+        class Detector;
+    }
 
 struct Parameters;
 
@@ -27,6 +30,9 @@ public:
     Detector(Parameters* para, MemPool* pool) :
         nodeId(-1u), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
+
+    virtual Gpu::Detector* gpuDetector() { return nullptr; }
+
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
     virtual void connectionShutdown() {}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};

@@ -4,7 +4,6 @@
 #include <Python.h>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
-#include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 

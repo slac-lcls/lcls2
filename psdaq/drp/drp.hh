@@ -123,6 +123,7 @@ public:
                                    m_frees.load(std::memory_order_relaxed); }
     void resetCounters();
     virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) = 0;
+    template <typename T> T* getAs() { return static_cast<T*>( this ); }
 protected:
     void _initialize(const Parameters&);
 private:
