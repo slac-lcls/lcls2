@@ -509,7 +509,7 @@ def issue_2025_04_02():
         gr.show()
 
 
-def issue_2025_04_03(args):
+def issue_2025_04_03():
     """https://confluence.slac.stanford.edu/spaces/LCLSIIData/pages/267391733/psana#psana-PublicPracticeData
        datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
        shape:(4, 352, 384)
@@ -583,6 +583,32 @@ def argument_parser():
     parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
     return parser
 
+def issue_2025_04_09():
+    """Philip: det.calibconst.keys()
+          dict_keys(['pixel_status', 'pedestals', 'pixel_min', 'pixel_max', 'pixel_rms'])
+       datinfo -k exp=mfx101332224,run=15 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('det.calibconst.keys():', det.calibconst.keys())
+    gain = det.calibconst['pixel_gain'][0]
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    print(ndu.info_ndarr(gain, 'gain:', last=10))
+
+
+def issue_2025_04_09a(shape=(704, 768), mu=100, sigma=10, fname='fake_704x768.npy'):
+    import numpy as np
+    #import psana.pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    a = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.float64)
+    print(ndu.info_ndarr(a, 'save %s:'%fname, last=10))
+    np.save(fname, a)
+
+#===
+    
+#===
 
 def USAGE():
     import inspect
@@ -612,7 +638,9 @@ def selector():
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
     elif TNAME in ('11',): issue_2025_03_28() # cpo - jungfrau issues
     elif TNAME in ('12',): issue_2025_04_02() # Aaron Brewster - acces to jungfrau geometry from file
-    elif TNAME in ('13',): issue_2025_04_03(args) # Aaron Brewster - acces to jungfrau geometry from det._calibconst
+    elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
+    elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
+    elif TNAME in ('15',): issue_2025_04_09a()# my - generate and save random numpy array in file
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
