@@ -295,7 +295,7 @@ def init_repoman_and_logger(**kwa):
     logfname = repoman.makedir_logname(logsuffix)
     if savelogfile:
         init_file_handler(logfname=logfname, loglevel=logmode, **kwa)  # loglevel=logmode, filemode=filemode, group=group, fmt=fmt
-    if dirrepo != 'work' and dirrepo != './work':
+    if not (dirrepo in ('work1', './work1')):
         repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
     if parser is not None:
@@ -319,7 +319,8 @@ def fname_prefix(shortname, ind, tstamp, exp, runnum, dirname=None):
 
 
 def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
-    return fmt % (fprefix, ctype, gainmode)
+    return '%s-%s.data' % (fprefix, ctype) if gainmode is None else\
+           fmt % (fprefix, ctype, gainmode)
 
 
 def fname_prefix_merge(dmerge, shortname, tstamp, exp, irun):
