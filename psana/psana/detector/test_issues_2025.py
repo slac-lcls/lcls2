@@ -598,13 +598,17 @@ def issue_2025_04_09():
     print(ndu.info_ndarr(gain, 'gain:', last=10))
 
 
-def issue_2025_04_09a(shape=(704, 768), mu=100, sigma=10, fname='fake_704x768.npy'):
+def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
     import numpy as np
     #import psana.pyalgos.generic.NDArrGenerators as ag
     import psana.pyalgos.generic.NDArrUtils as ndu
     a = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.float64)
     print(ndu.info_ndarr(a, 'save %s:'%fname, last=10))
     np.save(fname, a)
+
+def issue_2025_nda():
+    for sh in ((704, 768), (512,1024)):
+        make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
 
 #===
     
@@ -640,7 +644,7 @@ def selector():
     elif TNAME in ('12',): issue_2025_04_02() # Aaron Brewster - acces to jungfrau geometry from file
     elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
-    elif TNAME in ('15',): issue_2025_04_09a()# my - generate and save random numpy array in file
+    elif TNAME in ('15',): issue_2025_nda()   # my - generate and save random numpy array in file
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
