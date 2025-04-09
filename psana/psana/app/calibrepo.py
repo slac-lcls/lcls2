@@ -27,17 +27,18 @@ USAGE = DESCRIPTION\
       + '\n  datinfo -k exp=ascdaq023,run=37,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
       + '\n  python UtilsCalibRepo.py # makes test_2darr.npy'\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -c pedestals -G g0 -I 1 -F test_2darr.npy -o ./work' % SCRNAME\
+      + '\n  %s -k exp=mfx101332224,run=15 -d jungfrau -c pixel_gain -G g2 -F fake_g2.npy -I 0 -o work1' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
-    d_detname = 'jungfrau' #  None
-    d_dirrepo = './work' # DIR_REPO # './work'
+    d_dskwargs= None # 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc'
+    d_detname = None # 'jungfrau'
+    d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-03-27'
+    d_version = 'V2025-04-09'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'
@@ -59,7 +60,7 @@ def argument_parser():
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_version = 'script version, default = %s' % str(d_version)
     h_segind  = 'segment index to process, default = %s' % str(d_segind)
-    h_gainmode  = 'gainmode, one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
+    h_gainmode  = 'gainmode, (detector-dependent) one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
     h_fname2darr = 'file name for 2d panel constants, default = %s' %d_fname2darr
 
     parser = ArgumentParser(prog=SCRNAME, usage=USAGE, description=DESCRIPTION, epilog='help: %s -h' % SCRNAME )
