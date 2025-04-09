@@ -212,6 +212,11 @@ class AreaDetector(DetectorImpl):
         #return self._det_calibconst('shape_as_daq')
 
 
+    def _segment_ids(self):
+        """Returns list of detector segment ids"""
+        return self._uniqueid.split('_')[1:]
+
+
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
         nsegs_tot = self._number_of_segments_total()
         nsegs_daq = self._number_of_segments_daq()
