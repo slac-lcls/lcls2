@@ -50,11 +50,6 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
                     +'\n    per-segment gain0: %s' % str([str(cfg.gain0.value) for cfg in scfgs]))
         return scfgs
 
-    def _segment_ids(self):
-        """returns list of segment ids"""
-        #print('_segment_ids for _uniqueid: %s' % self._uniqueid)
-        return self._uniqueid.split('_')[1:]
-
     def _detector_name_long_short(self):
         longname = self._uniqueid
         return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
