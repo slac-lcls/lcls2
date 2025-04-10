@@ -61,9 +61,7 @@ class DetectorImpl:
         self._var_name = var_name
 
     def _seg_configs(self):
-        """
-        Gather up all the segment configs into an easier-to-use dictionary
-        """
+        """Gather up all the segment configs into an easier-to-use dictionary"""
         seg_configs = {}
         for dgram in self._configs:
             if hasattr(dgram, self._det_name):
@@ -91,11 +89,15 @@ class DetectorImpl:
             return None
 
     def _info(self, evt):
-        # check for missing data
+        """check for missing data"""
         segments = self._segments(evt)
         if segments is None:
             return None
         return segments[0]
+
+    def _segment_ids(self):
+        """Returns list of detector segment ids"""
+        return self._uniqueid.split('_')[1:]
 
     @staticmethod
     def _return_types(rtype, rrank):
@@ -143,3 +145,5 @@ class DetectorImpl:
                         return getattr(info, field)
 
                 setattr(self, field, func)
+
+#EOF
