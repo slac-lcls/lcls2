@@ -1350,8 +1350,6 @@ void DrpBase::unconfigure()
         m_mebContributor->unconfigure();
     }
     m_ebRecv->unconfigure();
-
-    if (m_triggerPrimitive)  delete m_triggerPrimitive;
 }
 
 void DrpBase::disconnect()

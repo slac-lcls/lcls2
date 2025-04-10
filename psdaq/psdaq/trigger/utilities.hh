@@ -23,6 +23,7 @@ namespace Pds {
     {
     public:
       Factory() : _object(nullptr) {}
+      ~Factory() { if (_object)  delete _object; }
     public:
       T* create(const rapidjson::Document& top,
                 const std::string&         detName,
