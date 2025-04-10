@@ -82,13 +82,15 @@ def _set_segment_ind_and_id(kwa):
     segind   = kwa.get('segind', None)
     seg_inds = kwa.get('segment_inds', [])
     seg_ids  = kwa.get('segment_ids', [])
+
+    if segind is None: return
+
     assert segind in seg_inds,\
-      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds: %s'%\
+      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds(): %s'%\
       (segind, str(seg_inds))
     segid = seg_ids[seg_inds.index(segind)]
     kwa['segment_inds'] = [segind,]
     kwa['segment_ids'] = [segid,]
-#    return segind, segid
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
