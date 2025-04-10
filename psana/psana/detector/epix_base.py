@@ -69,16 +69,6 @@ class epix_base(AreaDetectorRaw):
         return self._uniqueid
 
 
-    def _segment_ids(self):
-        """Returns list of detector segment ids, e.g. for epix10ka
-        [3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000]
-        """
-        return self._uniqueid.split('_')[1:]
-
-
 #    def _config_object(self):
 #        """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
 #        """
