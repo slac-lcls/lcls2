@@ -284,10 +284,10 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
                 q_asics ^= (1<<q);
 
             }
-            else if (subframes[a+1].num_elem() != headerSize+asicSize) {
+            else if (subframes[a+2].num_elem() != headerSize+asicSize) {
             // else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                                subframes[a+1].num_elem()/2, asicSize+headerSize, q);
+                                subframes[a+2].num_elem()/2, asicSize+headerSize, q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
