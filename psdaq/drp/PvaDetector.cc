@@ -25,6 +25,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
+#include "psdaq/service/Json2Xtc.hh"
 #include "psdaq/eb/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
@@ -86,6 +87,16 @@ static int _compare(const TimeStamp& ts1,
 
 
 namespace Drp {
+
+static PyObject* pyCheckErr(PyObject* obj)
+{
+    if (!obj) {
+        PyErr_Print();
+        logging::critical("*** python error");
+        abort();
+    }
+    return obj;
+}
 
 static const Name::DataType xtype[] = {
   Name::UINT8 , // pvBoolean
@@ -385,11 +396,18 @@ PvDetector::PvDetector(PvParameters& para, DrpBase& drp) :
     m_terminate(false),
     m_running  (false)
 {
+    const char* module_name = "psdaq.configdb.pvadetector_config";
+    m_pyModule = PyImport_ImportModule(module_name);
+    if (!m_pyModule) {
+        PyErr_Print();
+        abort();
+    }
 }
 
-unsigned PvDetector::connect(std::string& msg)
+unsigned PvDetector::connect(std::string& msg, const nlohmann::json connectJson, const std::string& collectionId)
 {
     unsigned rc = 0;
+    m_connectJson = connectJson.dump();
 
     // Check for a default first dimension specification
     uint32_t firstDimDef = 0;
@@ -546,7 +564,6 @@ unsigned PvDetector::disconnect()
 unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
     logging::info("PV configure");
-
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
@@ -575,11 +592,46 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
         RawDef rawDef(fieldName, xtcType, rank);
         rawNames.add(xtc, bufEnd, rawDef);
         m_namesLookup[rawNamesId] = NameIndex(rawNames);
+
+        // Create configuration object -> Only works for one PV per executable currently
+        if (m_para.detType != "pv") {
+            PyObject* funcDict = pyCheckErr(PyModule_GetDict(m_pyModule));
+            const char* funcName = "pvadetector_config";
+            PyObject* configFunc = pyCheckErr(PyDict_GetItemString(funcDict, funcName));
+
+            PyObject* pyjsoncfg = pyCheckErr(PyObject_CallFunction(configFunc,
+                                                                   "sssi",
+                                                                   m_connectJson.c_str(),
+                                                                   config_alias.c_str(),
+                                                                   m_para.detName.c_str(),
+                                                                   m_para.detSegment));
+
+            // pvadetector_config returns None if no retrieval from configdb
+            if (pyjsoncfg != Py_None) {
+                char* buffer = new char[m_para.maxTrSize];
+                const void* end = buffer + m_para.maxTrSize;
+
+                Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
+                NamesId cfgNamesId(nodeId, ConfigNamesIndex + pvMonitor->id());
+                if (Pds::translateJson2Xtc(pyjsoncfg, jsonxtc, end, cfgNamesId)) {
+                    return -1;
+                }
+
+                if (jsonxtc.extent > m_para.maxTrSize) throw "Config JSON too large for buffer!";
+
+                logging::info("Adding config object for PV detector %s", m_para.detName.c_str());
+                auto jsonXtcPayload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+                memcpy(jsonXtcPayload, (const void*) jsonxtc.payload(), jsonxtc.sizeofPayload());
+            } else {
+                logging::info("No config object for PV detector %s", m_para.detName.c_str());
+            }
+            Py_DECREF(pyjsoncfg);
+        }
     }
 
     // Set up the names for PvDetector informational data
     Alg     infoAlg("pvdetinfo", 1, 0, 0);
-    NamesId infoNamesId(nodeId, InfoNamesIndex + m_pvMonitors.size());
+    NamesId infoNamesId(nodeId, InfoNamesIndex);
     Names&  infoNames = *new(xtc, bufEnd) Names(bufEnd,
                                                 ("pvdetinfo_" + m_para.detName).c_str(), infoAlg,
                                                 "pvdetinfo", "detnum1234", infoNamesId);
@@ -610,7 +662,6 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
 
     m_workerThread = std::thread{&PvDetector::_worker, this};
 
-    //    return std::string();
     return 0;
 }
 
@@ -979,6 +1030,13 @@ void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)
     m_drp.tebContributor().process(l3InpDg);
 }
 
+PvDetector::~PvDetector()
+{
+    if (m_pyModule) {
+        Py_DECREF(m_pyModule);
+    }
+}
+
 
 PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
@@ -1065,7 +1123,7 @@ void PvApp::handleConnect(const nlohmann::json& msg)
     m_det->nodeId = m_drp.nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    unsigned rc = m_pvDetector->connect(errorMsg);
+    unsigned rc = m_pvDetector->connect(errorMsg, msg, std::to_string(getId()));
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("PvDetector::connect: " + errorMsg).c_str());

@@ -6,6 +6,7 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <Python.h>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "spscqueue.hh"
@@ -98,7 +99,8 @@ class PvDetector : public XpmDetector
 {
 public:
     PvDetector(PvParameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg);
+    ~PvDetector();
+    unsigned connect(std::string& msg, const nlohmann::json connectJson, const std::string& colectionId);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
@@ -124,7 +126,12 @@ private:
       uint32_t _spare;                  // For alignment purposes
     };
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    static const unsigned maxSupportedPVs = 64;
+    enum {
+      ConfigNamesIndex = NamesIndex::BASE,
+      RawNamesIndex = unsigned(ConfigNamesIndex) + maxSupportedPVs,
+      InfoNamesIndex = unsigned(RawNamesIndex) + maxSupportedPVs,
+    };
     PvParameters& m_para;
     DrpBase& m_drp;
     Pgp m_pgp;
@@ -142,6 +149,8 @@ private:
     uint64_t m_nTooOld;
     uint64_t m_nTimedOut;
     int64_t m_timeDiff;
+    PyObject* m_pyModule;
+    std::string m_connectJson;
 };
 
 
