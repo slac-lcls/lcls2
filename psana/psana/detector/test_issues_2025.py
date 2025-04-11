@@ -542,17 +542,60 @@ def issue_2025_04_03():
 
         info_recurs_geo(top_geo)
 
+def issue_2025_04_09():
+    """Philip: det.calibconst.keys()
+          dict_keys(['pixel_status', 'pedestals', 'pixel_min', 'pixel_max', 'pixel_rms'])
+       datinfo -k exp=mfx101332224,run=15 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('det.calibconst.keys():', det.calibconst.keys())
+    gain = det.calibconst['pixel_gain'][0]
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    print(ndu.info_ndarr(gain, 'gain:', last=10))
 
-    if False:
+
+def issue_2025_04_10():
+    """epixquad det.raw.image timing
+       datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
+       shape:(4, 352, 384)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec: 16.220, 16.394, 16.230, 16.623, 16.154
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec: 16.423, 16.230, 16.477, 16.071, 16.722
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='ued101066', run=181, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    events = 100
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
         flimg = None
         for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
             raw   = det.raw.raw(evt)
             calib = det.raw.calib(evt)
+            t0_sec = time()
             img   = det.raw.image(evt)
-            print('evt:', nevt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
             print('    raw  :', raw.shape)
             print('    calib:', calib.shape)
-            if nevt>10: break
             if flimg is None:
                 flimg = fleximage(img, h_in=11, w_in=11)
             print('    image:', img.shape)
@@ -561,7 +604,25 @@ def issue_2025_04_03():
             #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
             # gr.show(mode='DO NOT HOLD')
         gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
 
+
+def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
+    import numpy as np
+    #import psana.pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    a = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.float64)
+    print(ndu.info_ndarr(a, 'save %s:'%fname, last=10))
+    np.save(fname, a)
+
+def issue_2025_nda():
+    for sh in ((704, 768), (512,1024)):
+        make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
+
+#===
+    
+#===
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -583,36 +644,6 @@ def argument_parser():
     parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
     return parser
 
-def issue_2025_04_09():
-    """Philip: det.calibconst.keys()
-          dict_keys(['pixel_status', 'pedestals', 'pixel_min', 'pixel_max', 'pixel_rms'])
-       datinfo -k exp=mfx101332224,run=15 -d jungfrau
-    """
-    from psana import DataSource
-    ds = DataSource(exp='mfx101332224',run=15)
-    myrun = next(ds.runs())
-    det = myrun.Detector('jungfrau')
-    print('det.calibconst.keys():', det.calibconst.keys())
-    gain = det.calibconst['pixel_gain'][0]
-    import psana.pyalgos.generic.NDArrUtils as ndu
-    print(ndu.info_ndarr(gain, 'gain:', last=10))
-
-
-def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
-    import numpy as np
-    #import psana.pyalgos.generic.NDArrGenerators as ag
-    import psana.pyalgos.generic.NDArrUtils as ndu
-    a = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.float64)
-    print(ndu.info_ndarr(a, 'save %s:'%fname, last=10))
-    np.save(fname, a)
-
-def issue_2025_nda():
-    for sh in ((704, 768), (512,1024)):
-        make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
-
-#===
-    
-#===
 
 def USAGE():
     import inspect
@@ -645,6 +676,7 @@ def selector():
     elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
     elif TNAME in ('15',): issue_2025_nda()   # my - generate and save random numpy array in file
+    elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
