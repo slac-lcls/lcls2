@@ -537,6 +537,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             xtc.damage.increase(XtcData::Damage::Truncated);
         } else {
             unsigned numOutOfOrderPackets = 0;
+            uint64_t packetCounter[] = {0xfffffffffffffffful, 0xfffffffffffffffful};
             uint8_t* dataPtr = reinterpret_cast<uint8_t*>(frame.data());
             for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
                 // validate the packet size
@@ -568,18 +569,38 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 }
                 // check that the packets have been properly descrambled
                 if (packet->header.packetnum != udpIdx) {
-                    numOutOfOrderPackets++;
-                    logging::debug("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
-                                   subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                    if (packet->header.packetnum < JungfrauData::PacketNum) {
+                        numOutOfOrderPackets++;
+                        logging::debug("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
+                                       subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                    } else {
+                        logging::warning("Corrupted data: subframe[%u] framenum[%lu] invalid packetnum %u [%u]",
+                                         subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                        // don't copy the invalid packet payload but not flag damage since this may just be an 'extra' packet
+                        continue;
+                    }
                 }
 
                 size_t offset = packet->header.packetnum * JungfrauData::PayloadSize;
                 std::memcpy(dataPtr + offset, &packet->data, JungfrauData::PayloadSize);
+
+                // mark down that we have seen the packet
+                uint32_t pidx = packet->header.packetnum / (JungfrauData::PacketNum / 2);
+                uint32_t poff = packet->header.packetnum % (JungfrauData::PacketNum / 2);
+                packetCounter[pidx] &= ~(1ul<<poff);
             }
 
+            // check if packets came out of the expected order
             if (numOutOfOrderPackets > 0) {
                 logging::warning("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packet order",
                                  subframeIdx, framenum);
+            }
+
+            // check that all the expected packets for the frame were seen
+            if ((packetCounter[1] != 0) || (packetCounter[0] != 0)) {
+                logging::error("Missing data: subframe[%u] framenum[%lu] is missing at least one packet %016lx%016lx",
+                               subframeIdx, framenum, packetCounter[1], packetCounter[0]);
+                xtc.damage.increase(XtcData::Damage::MissingData);
             }
         }
 
