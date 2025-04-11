@@ -39,9 +39,10 @@ private:
     uint32_t _countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels);
 
 private:
-    unsigned m_nModules = 0;
+    unsigned m_nModules { 0 };
     uint16_t m_hotPixelThreshold { 15000 };
     uint32_t m_maxHotPixels { 3400 };
+    uint64_t m_expectedFrameNum { 0 };
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;

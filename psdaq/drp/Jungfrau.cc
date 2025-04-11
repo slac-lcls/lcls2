@@ -343,6 +343,9 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
         m_slsDet->setTimingMode(sls::defs::TRIGGER_EXPOSURE);
         m_slsDet->setNumberOfTriggers(std::numeric_limits<int64_t>::max());
         m_slsDet->setNumberOfFrames(1);
+        // sync the internal frame counter of all the modules
+        m_expectedFrameNum = 1;
+        m_slsDet->setNextFrameNumber(m_expectedFrameNum);
 
         // Loop over the modules we have, extracting the same names for each one
         for (size_t mod=0; mod < m_nModules; ++mod) {
@@ -533,6 +536,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                            subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
             xtc.damage.increase(XtcData::Damage::Truncated);
         } else {
+            unsigned numOutOfOrderPackets = 0;
             uint8_t* dataPtr = reinterpret_cast<uint8_t*>(frame.data());
             for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
                 // validate the packet size
@@ -564,16 +568,28 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 }
                 // check that the packets have been properly descrambled
                 if (packet->header.packetnum != udpIdx) {
-                    logging::error("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
+                    numOutOfOrderPackets++;
+                    logging::debug("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
                                    subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
-                    xtc.damage.increase(XtcData::Damage::OutOfOrder);
-                    break;
                 }
 
-                std::memcpy(dataPtr, &packet->data, JungfrauData::PayloadSize);
-                dataPtr += JungfrauData::PayloadSize;
+                size_t offset = packet->header.packetnum * JungfrauData::PayloadSize;
+                std::memcpy(dataPtr + offset, &packet->data, JungfrauData::PayloadSize);
+            }
+
+            if (numOutOfOrderPackets > 0) {
+                logging::warning("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packet order",
+                                 subframeIdx, framenum);
             }
         }
+
+        // check the framenum is the expected value
+        if (framenum != m_expectedFrameNum) {
+          logging::error("Out-of-Order data: subframe[%u] unexpected frame num %lu [%lu] -> diff %lu",
+                         subframeIdx, framenum, m_expectedFrameNum, framenum - m_expectedFrameNum);
+          xtc.damage.increase(XtcData::Damage::OutOfOrder);
+        }
+
         uint32_t numHotPixels = _countNumHotPixels(frame.data(),
                                                    m_hotPixelThreshold,
                                                    JungfrauData::Rows*JungfrauData::Cols);
@@ -583,6 +599,8 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         cd.set_value(JungfrauDef::numHotPixels, numHotPixels);
         cd.set_value(JungfrauDef::maxHotPixels, m_maxHotPixels);
     }
+
+    m_expectedFrameNum++;
 }
 
 std::string Jungfrau::_buildDetId(uint64_t sensor_id,
