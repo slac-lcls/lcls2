@@ -152,8 +152,12 @@ def select_latest_doc(docs, query):
         #logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
-    qkeys = query.keys()
-    key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    for d in docs:
+        d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'])
+
+    #qkeys = query.keys()
+    #key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    key_sort = 'tsec_id'
 
     logger.debug('select_latest_doc: %s\nkey_sort: %s' % (str(query), key_sort))
     vals = [int(d[key_sort]) for d in docs]
