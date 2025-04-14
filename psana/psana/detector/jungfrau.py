@@ -26,7 +26,8 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         self._seg_geo = ad.sgs.Create(segname='JUNGFRAU:V2')
 
 #        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
-        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
+#        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
+        self._gain_modes = ('g0', 'g1', 'g2')
 
 #    def _raw_random(self, evt, mu=0, sigma=10):
 #        """ FOR DEBUGGING ONLY !!!
@@ -55,8 +56,8 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
 
     def calib(self, evt, **kwa) -> Array2d:
-        raw = self.raw(evt)
-        if raw is None: return None
+        #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
+        if self.raw(evt) is None: return None
         return uj.calib_jungfrau(self, evt, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
@@ -70,12 +71,12 @@ class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
         return n_hot_pixels
 
     def hot_pixel_thresh(self, evt):
-        hot_pixel_thresh = 0
+        hp_tresh = 0
         segs = self._segments(evt)
         if segs is None:
             return None
         for _,seg in segs.items():
-            hot_pixel_thresh = seg.hotPixelThresh
+            hp_tresh = seg.hotPixelThresh
             break
-        return hot_pixel_thresh
+        return hp_tresh
 # EOF
