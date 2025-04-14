@@ -23,6 +23,7 @@ Usage ::
     get_colname(**kwa):
     _timestamp(time_sec):
     timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
+    tsec, ts = sec_and_ts_from_id(id)
     timestamp_doc(doc):
     time_and_timestamp(**kwa):
     docdic(data, dataid, **kwa):
@@ -151,7 +152,7 @@ def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     oid = id
     if isinstance(id, str):
         if len(id) != 24: return str(id) # protection aginst non-valid id
-        oid = ObjectId(id)
+    oid = ObjectId(id)
     if isinstance(oid, ObjectId):
         str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
         tobj = Time.parse(str_ts)         # Time object from parsed string
@@ -159,6 +160,17 @@ def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
         str_tsf = _timestamp(tsec)        # re-formatted time stamp
         return str_tsf
     return str(id) # protection aginst non-valid id
+
+
+def sec_and_ts_from_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
+    """Converts MongoDB (str) id to (int) sec."""
+    assert isinstance(id, str)
+    assert len(id) == 24
+    oid = ObjectId(id)
+    str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
+    tobj = Time.parse(str_ts)         # Time object from parsed string
+    return int(tobj.sec()), str_ts    # 1521064777
+
 
 def timestamp_doc(doc):
     """Returns document creation (str) timestamp from its id."""
@@ -394,15 +406,17 @@ def document_keys(doc):
         s += ' %s' % k.ljust(16)
     return s
 
-def document_info(doc, keys=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
-                  fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s'):
+#def document_info(doc, keys=('time_sec','time_stamp','experiment',\
+#                  'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
+#                  fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s'):
+def document_info(doc, keys=('ctype','uid','experiment','run','data_shape','data_dtype','time_stamp','id_data_ts','version'),\
+                  fmt='%16s %10s %11s run:%4s %12s %10s tsrun:%24s tsDB:%24s %11s'):
     """Returns (str, str) for formatted document values and title made of keys."""
     id_data = str(doc.get('id_data',None))
     doc['id_data_ts'] = timestamp_id(id_data)
     doc_keys = sorted(doc.keys())
     if 'experiment' in doc_keys: # CDDB type of document
-        vals = tuple([str(doc.get(k,None)) for k in keys])
+        vals = tuple([str(doc.get(k,None)) for k in keys]) #.ljust(5)
         return fmt % vals, fmt % keys
     else: # OTHER type of document
         title = '  '.join(doc_keys)
