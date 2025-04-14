@@ -399,7 +399,6 @@ def issue_2025_03_18():
     #peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=17)[0]
     #print('calib_constants shortname',peds)
 
- 
 def issue_2025_03_19():
     """Silke -  It appears to me that she is picking up constants from February 12th for uedc00104 and we don?t understand why
        datinfo -k exp=uedc00104,run=177 -d epixquad
@@ -542,6 +541,7 @@ def issue_2025_04_03():
 
         info_recurs_geo(top_geo)
 
+
 def issue_2025_04_09():
     """Philip: det.calibconst.keys()
           dict_keys(['pixel_status', 'pedestals', 'pixel_min', 'pixel_max', 'pixel_rms'])
@@ -606,6 +606,25 @@ def issue_2025_04_10():
         gr.show()
         print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
         print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_04_11():
+    """access to multiple calibration constants
+       datinfo -k exp=mfx101332224,run=7 -d epix100
+    """
+    #from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana.pscalib.calib.MDBUtils import timestamp_id, sec_and_ts_from_id
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=7)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100')
+    cc = det.calibconst['pedestals']
+    print('\n\n== pedestals:', cc[0].shape)
+    print('\n\n== matadata:',  cc[1])
+    id_doc = cc[1]['id_data'] # '_id']
+    print('id_doc', id_doc)
+    print('tsDB', timestamp_id(id_doc))
+    print('id -> sec:', sec_and_ts_from_id(id_doc))
 
 
 def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
@@ -677,6 +696,7 @@ def selector():
     elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
     elif TNAME in ('15',): issue_2025_nda()   # my - generate and save random numpy array in file
     elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing
+    elif TNAME in ('17',): issue_2025_04_11() # my - access to multiple calibconst
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
