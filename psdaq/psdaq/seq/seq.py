@@ -130,8 +130,11 @@ class Branch(Instruction):
                 raise ValueError('Branch called with occ={}'.format(args[3]))
         super(Branch, self).__init__(args)
 
-    def _word(self, a):
-        w = a & 0x7ff
+    def _word(self, a = None):
+        if a is None:
+            w = self.args[1] & 0x7ff
+        else:
+            w = a & 0x7ff
         if len(self.args)>2:
             w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&Instruction.maxocc)<<12) | w
         return int(w)

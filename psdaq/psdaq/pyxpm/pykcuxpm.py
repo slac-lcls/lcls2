@@ -58,6 +58,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--dev', type=str, required=True, help="device file" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
     parser.add_argument('-G', action='store_true', help='is generator')
@@ -92,7 +93,7 @@ def main():
 
     lock = Lock()
 
-    autosave.set(args.P,args.db,None)
+    autosave.set(args.P,args.db,None,norestore=args.norestore)
 
     tsSync = TsSync(args.P,base.XPM.TpgMini) if args.G else None
 

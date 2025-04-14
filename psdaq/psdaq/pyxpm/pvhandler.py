@@ -36,8 +36,30 @@ def toDictList(t,n):
         l.append(d)
     return l
 
-def addPV(name,ctype,init=0):
-    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=DefaultPVHandler())
+#  Translate from NTScalar type to XTC type
+_ctype = {'?':'UINT8',
+          's':'CHARSTR',
+          'b':'INT8',
+          'B':'UINT8',
+          'h':'INT16',
+          'H':'UINT16',
+          'i':'INT32',
+          'I':'UINT32',
+          'l':'INT64',
+          'L':'UINT64',
+          'f':'FLOAT',
+          'd':'DOUBLE'}
+
+def addPV(name,ctype,init=0,archive=False):
+    if archive:
+        if len(ctype)==2 and ctype[0]=='a':
+            xtype = _ctype[ctype[1]]
+        else:
+            xtype = _ctype[ctype]
+        handler = DefaultPVHandler(name,xtype)
+    else:
+        handler = DefaultPVHandler()
+    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=handler)
     provider.add(name, pv)
     return pv
 
@@ -60,11 +82,13 @@ def pvUpdate(pv, val):
     value['value'] = val
     value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
     pv.post(value)
+    pv._handler.archive(val)
 
 class DefaultPVHandler(object):
 
-    def __init__(self):
-        pass
+    def __init__(self, archive=None, ctype='UINT32'):
+        self._archive = archive
+        self._ctype   = ctype
 
     def put(self, pv, op):
         postedval = op.value()
@@ -72,12 +96,18 @@ class DefaultPVHandler(object):
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
         pv.post(postedval)
         op.done()
+        self.archive(postedval['value'])
 
+    def archive(self, val):
+        if self._archive:
+            autosave.add(self._archive,val,self._ctype)
+            
 class PVHandler(object):
 
-    def __init__(self,cb,archive=None):
+    def __init__(self, cb, archive=None, ctype='UINT32'):
         self._cb = cb
         self._archive = archive
+        self._ctype   = ctype
 
     def put(self, pv, op):
         postedval = op.value()
@@ -86,6 +116,9 @@ class PVHandler(object):
         pv.post(postedval)
         self._cb(pv,postedval['value'])
         op.done()
-        if self._archive:
-            autosave.add(self._archive,postedval['value'])
+        self.archive(postedval['value'])
 
+    def archive(self, val):
+        if self._archive:
+            autosave.add(self._archive,val,self._ctype)
+            

@@ -57,6 +57,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
     parser.add_argument('-T', action='store_true', help='test mode : use when no valid timing input')
@@ -95,7 +96,7 @@ def main():
 
     lock = Lock()
 
-    autosave.set(args.P,args.db,None)
+    autosave.set(args.P,args.db,None,norestore=args.norestore)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
 #    tsSync = TsSync(args.P,base.XPM.TpgMini) if cuMode else None
@@ -125,6 +126,8 @@ def main():
                 if cycle == 5:
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
+
+                elif cycle == 10:   # Wait for PVSeq to register with autosave/restore
                     autosave.restore()
 
                     #  This is necessary after restoring L0Delays
