@@ -101,6 +101,7 @@ class DetCache():
         logger.info('%s add_calibcons for detname: %s %s' % (30*'_', self.detname, 30*'_'))
 
         self.calibc = det._calibconst
+        if self.calibc is None: return
         keys = self.calibc.keys()
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         #raw  = np.array(det.raw(evt), dtype=np.float32)
