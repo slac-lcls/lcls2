@@ -136,8 +136,10 @@ class AreaDetector(DetectorImpl):
 
     def _fname_geotxt_default(self):
         """returns (str) file name for default geometry constants lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        return '%s/../%s' % (dir_detector, self._path_geo_default)
+        dir_psana = os.path.abspath(os.path.dirname(__file__)).rstrip('detector')
+        path = os.path.join(dir_psana, self._path_geo_default)
+        #print('default geometry:', path)
+        return path # os.path.join(dir_psana, self._path_geo_default)
 
 
     def _det_geotxt_default(self):
