@@ -639,6 +639,48 @@ def issue_2025_nda():
     for sh in ((704, 768), (512,1024)):
         make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
 
+
+def issue_2025_04_17():
+    """shape: (32, 512, 1024)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec: 13.677
+
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec: 14.030
+    """
+    import os
+    import numpy as np
+    from time import time
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    shape = (32, 512, 1024)
+    mu_g, sigma_g, dtype_g =   10,   1, np.float32
+    mu_p, sigma_p, dtype_p = 1000,  10, np.float32
+    mu,   sigma,   dtype   = 1100, 100, np.float32
+
+    gain = mu_g + sigma_g*np.random.standard_normal(size=shape).astype(dtype=dtype_g)
+    peds = mu_p + sigma_p*np.random.standard_normal(size=shape).astype(dtype=dtype_p)
+    print(ndu.info_ndarr(gain, 'gain'))
+    print(ndu.info_ndarr(peds, 'peds'))
+
+    nloops = 100
+    arrdt = np.empty(nloops, dtype=np.float32)
+
+    for n in range(nloops):
+        nda = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=dtype)
+        t0_sec = time()
+        #result = nda-peds
+        result = (nda-peds) * gain
+        dt_sec = (time() - t0_sec)*1000
+        arrdt[n] = dt_sec
+        print('%02d dt, msec: %.3f %s' % (n, dt_sec, ndu.info_ndarr(result, 'result')))
+
+    print('median dt, msec: %.3f' % np.median(arrdt))
+
 #===
     
 #===
@@ -695,8 +737,9 @@ def selector():
     elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
     elif TNAME in ('15',): issue_2025_nda()   # my - generate and save random numpy array in file
-    elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing
+    elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing with OPENBLAS_NUM_THREADS=1/0
     elif TNAME in ('17',): issue_2025_04_11() # my - access to multiple calibconst
+    elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
