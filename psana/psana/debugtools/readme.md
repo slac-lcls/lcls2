@@ -58,4 +58,33 @@ The scanner looks for lines containing:
 
 ---
 
+### simulate_smalldata_write.py
+
+Simulates concurrent writing of `.smd.xtc2` files using real `xtc2` data and the `smdwriter` tool.
+
+#### What it does:
+- Detects stream files from a real experiment and run (e.g. `s000`, `s001`, ...)
+- Creates symlinks in the given `output_path` to those files
+- Launches one `smdwriter` process per stream in parallel
+- Writes `.smd.xtc2.inprogress` files into `output_path/smalldata/`, and renames them to `.smd.xtc2` when done
+
+#### Usage:
+```bash
+python -m psana.debugtools.simulate_smalldata_write <exp> <run> <output_path> [-m SECONDS] [-n EVENTS]
+```
+
+#### Example:
+```bash
+python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 ~/tmp/debugtest -m 5 -n 100
+```
+
+#### Parameters:
+- `exp`: Experiment name (e.g. `rixl1032923`)
+- `run`: Run number (e.g. `22`)
+- `output_path`: Where symlinks and smalldata are written
+- `-m`: Delay in seconds during `smdwriter` (default: `10`)
+- `-n`: Number of events to simulate (default: `200`)
+
+Use this to simulate real-time smalldata writing for testing tools like live monitors or file watchers.
+
 For questions or contributions, contact the LCLS DAQ/Data Systems team.
