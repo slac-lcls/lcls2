@@ -647,10 +647,13 @@ def issue_2025_04_17():
        echo $OPENBLAS_NUM_THREADS
 
        by default, OPENBLAS_NUM_THREADS=1
-       median dt, msec: 13.677
+       median dt, msec: 13.677, 13.700
 
        export OPENBLAS_NUM_THREADS=0
        median dt, msec: 14.030
+
+       export OPENBLAS_NUM_THREADS=10
+       median dt, msec: 13.638
     """
     import os
     import numpy as np
