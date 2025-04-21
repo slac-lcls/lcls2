@@ -22,6 +22,8 @@ from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.tssync import TsSync
 import psdaq.pyxpm.autosave as autosave
 
+MIN_FW_VERSION = 0x030c0100
+
 class NoLock(object):
     def __init__(self):
         self._level=0
@@ -86,6 +88,10 @@ def main():
 
     # Print the AxiVersion Summary
     axiv.printStatus()
+    fwver = axiv.FpgaVersion.get()
+
+    if fwver < MIN_FW_VERSION:
+        raise RuntimeError(f'Firmware version {fwver:x} is less than min required {MIN_FW_VERSION:x}')
 
     #provider = StaticProvider(__name__)
     provider = MyProvider(__name__)
