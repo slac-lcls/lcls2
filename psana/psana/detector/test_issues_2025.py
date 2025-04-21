@@ -422,16 +422,19 @@ def issue_2025_03_27():
     from psana import DataSource
 
     t0_sec = time()
-    ds = DataSource(exp='ascdaq023',run=37)
+    #ds = DataSource(exp='ascdaq023',run=37)
+    ds = DataSource(exp='mfx101332224',run=66)
     myrun = next(ds.runs())
     det = myrun.Detector('jungfrau')
     print('\n\ntime for det.calibconst (sec): %.3f' % (time()-t0_sec))
+    print('det.calibconst.keys:',det.calibconst.keys())
     print('det.calibconst:',det.calibconst['pedestals'][0].shape)
 
-    shortname = 'jungfrau_000001' # uc.detector_name_short(detrawid)
+    shortname = 'jungfrau_000003' # uc.detector_name_short(detrawid)
     print('\n\nshortname', shortname)
     t0_sec = time()
-    nda = calib_constants(shortname, exp='ascdaq023', ctype='pedestals', run=37)[0] # 'pixel_status'
+    #nda = calib_constants(shortname, exp='ascdaq023', ctype='pedestals', run=37)[0] # 'pixel_status'
+    nda = calib_constants(shortname, exp='mfx101332224', ctype='pedestals', run=66)[0] # 'pixel_status'
     print('time for calib_constants (sec): %.3f' % (time()-t0_sec))
     print(info_ndarr(nda,'calib_constants shortname', last=10))
 #    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
@@ -684,6 +687,60 @@ def issue_2025_04_17():
 
     print('median dt, msec: %.3f' % np.median(arrdt))
 
+
+def issue_2025_04_21():
+    """The same as issue_2025_04_10, but for jungfrau 16M
+       epixquad det.raw.image timing
+       datinfo -k exp=mfx101332224,run=9999,dir=/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo -d jungfrau
+       shape:(3,32,512,1024)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec:
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec:
+       export OPENBLAS_NUM_THREADS=10
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx101332224', run=66) #, dir='/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo')
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    events = 100
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
 #===
     
 #===
@@ -700,19 +757,13 @@ def argument_parser():
     h_detname  = 'detector name, default = %s' % d_detname
     h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
-    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
+    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage='for use cases run it without parameters')
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
     parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
     return parser
-
-
-def USAGE():
-    import inspect
-    return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
-    + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])
 
 
 def selector():
@@ -743,11 +794,23 @@ def selector():
     elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing with OPENBLAS_NUM_THREADS=1/0
     elif TNAME in ('17',): issue_2025_04_11() # my - access to multiple calibconst
     elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
+    elif TNAME in ('19',): issue_2025_04_21() # my - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
+
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
 
     exit('END OF TEST %s'%TNAME)
+
+
+def USAGE():
+    import inspect
+    #return '\n  TEST'
+    return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
+         + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])
+
+
+print(USAGE())
 
 
 if __name__ == "__main__":
