@@ -55,19 +55,40 @@ struct JungfrauData {
 };
 #pragma pack(pop)
 
+
+/** The Jungfrau drp process may contain multiple modules which appear as individual
+ *  XTCs per datagram. For providing a TEB contribution, the number of hot pixels in each
+ *  module is summed and only a single contribution for ALL segments/drp is sent to the TEB.
+ *  The values of `hotPixelThresh` and `maxHotPixels`, while in theory can be different
+ *  between modules, should in practice always be identical so only a single value is sent
+ *  to the TEB for the time being.
+ */
 void Pds::Trg::MfxTripperPrimitive_jungfrau::event(const Drp::MemPool& pool,
                                                    uint32_t            idx,
                                                    const XtcData::Xtc& ctrb,
                                                    XtcData::Xtc&       xtc,
                                                    const void*         bufEnd)
 {
-    XtcData::ShapesData& shapesData = *reinterpret_cast<XtcData::ShapesData*>(ctrb.payload());
-    XtcData::Data& xtcData = shapesData.data();
+    int remaining = ctrb.sizeofPayload();
+    uint16_t hotPixelThresh{0};
+    uint32_t numHotPixels{0};
+    uint32_t maxHotPixels{0};
 
-    const JungfrauData& jungfrauData = *new (xtcData.payload()) JungfrauData;
+    XtcData::Xtc* payload = reinterpret_cast<XtcData::Xtc*>(ctrb.payload());
+    while (remaining > 0) {
+        XtcData::ShapesData& shapesData = *reinterpret_cast<XtcData::ShapesData*>(payload);
+        XtcData::Data& xtcData = shapesData.data();
 
-    new (xtc.alloc(sizeof(TripperTebData), bufEnd)) TripperTebData(jungfrauData.numHotPixels,
-                                                                   jungfrauData.maxHotPixels,
+        const JungfrauData& jungfrauData = *new (xtcData.payload()) JungfrauData;
+        hotPixelThresh = jungfrauData.hotPixelThresh;
+        numHotPixels += jungfrauData.numHotPixels; // Sum hot pixels for each module
+        maxHotPixels = jungfrauData.maxHotPixels;
+        remaining -= payload->sizeofPayload() + sizeof(XtcData::Xtc);
+        payload = payload->next();
+    }
+    new (xtc.alloc(sizeof(TripperTebData), bufEnd)) TripperTebData(hotPixelThresh,
+                                                                   numHotPixels,
+                                                                   maxHotPixels,
                                                                    "jungfrau");
 }
 

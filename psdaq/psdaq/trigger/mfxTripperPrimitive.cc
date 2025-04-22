@@ -47,7 +47,7 @@ void Pds::Trg::MfxTripperPrimitive::event(const Drp::MemPool& pool,
                                           XtcData::Xtc&       xtc,
                                           const void*         bufEnd)
 {
-    new (xtc.alloc(sizeof(TripperTebData), bufEnd)) TripperTebData(0, 0, "NOTRIP");
+    new (xtc.alloc(sizeof(TripperTebData), bufEnd)) TripperTebData(0, 0, 0, "NOTRIP");
 }
 
 // The class factory
