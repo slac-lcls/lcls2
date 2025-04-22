@@ -158,7 +158,7 @@ static __global__ void _waitForDMA(const volatile uint32_t* __restrict__ mem,
   while (*mem == 0) {
     if ( (*done = terminate.load(cuda::memory_order_acquire)) )  break;
   }
-  printf("*** waitForDMA 3.%u, *mem %08x\n", instance, *mem);
+  printf("*** waitForDMA 3.%u, *mem %08x, done = %u\n", instance, *mem, *done);
 }
 
 // This copies the DmaDsc and TimingHeader into a host-visible buffer

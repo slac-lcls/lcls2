@@ -125,7 +125,7 @@ public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     const Pds::TimingHeader* next();
-    void worker(std::shared_ptr<Pds::MetricExporter> exporter);
+    void worker(const std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
@@ -150,6 +150,21 @@ private:
 };
 
 
+class BldDrp : public DrpBase
+{
+public:
+    BldDrp(Parameters&, MemPoolCpu&, Detector*, ZmqContext&);
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+public:
+    const PgpReader* pgp() { return &m_pgp; }
+private:
+    Pgp                                  m_pgp;
+    std::thread                          m_workerThread;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
+};
+
+
 class BldApp : public CollectionApp
 {
 public:
@@ -166,14 +181,11 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    Parameters&                          m_para;
-    MemPoolCpu                           m_pool;
-    DrpBase                              m_drp;
-    std::thread                          m_workerThread;
-    std::unique_ptr<Pgp>                 m_pgp;
-    Detector*                            m_det;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
-    bool                                 m_unconfigure;
+    Parameters&               m_para;
+    MemPoolCpu                m_pool;
+    std::unique_ptr<Detector> m_det;
+    std::unique_ptr<BldDrp>   m_drp;
+    bool                      m_unconfigure;
 };
 
 }

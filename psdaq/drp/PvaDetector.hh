@@ -12,26 +12,22 @@
 #include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
 
-
 namespace Drp {
 
 struct PvParameters;
-class  PvDetector;
 
 class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det);
+    Pgp(const Parameters& para, MemPool& pool, Detector* det);
     Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
+    const uint64_t nDmaRet() const { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
     Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
     int32_t m_available;
     int32_t m_current;
-    unsigned m_nodeId;
     uint64_t m_nDmaRet;
 };
 
@@ -97,18 +93,36 @@ private:
 class PvDetector : public XpmDetector
 {
 public:
-    PvDetector(PvParameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg);
+    PvDetector(PvParameters&, MemPoolCpu&);
+    unsigned connect(const nlohmann::json&, const std::string& collectionId, std::string& msg);
     unsigned disconnect();
-  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ };
-    void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override { /* unused */ };
+    unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
     unsigned unconfigure();
+    void enable();
+    void disable();
+    void event_(XtcData::Dgram& evt, const void* bufEnd, const XtcData::Xtc& pv);
+    void event(XtcData::Dgram& evt, const void* bufEnd, PGPEvent*) override { /* unused */ };
+    void event(XtcData::Dgram& evt, const void* bufEnd, const Pds::Eb::ResultDgram&) override { /* unused */ };
+public:
+    const std::vector< std::shared_ptr<PvMonitor> >& pvMonitors() const { return m_pvMonitors; }
+private:
+    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    std::atomic<bool>                         m_running;
+    std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
+};
+
+
+class PvDrp : public DrpBase
+{
+public:
+    PvDrp(PvParameters&, MemPoolCpu&, PvDetector&, ZmqContext&);
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+public:
     const PgpReader* pgp() { return &m_pgp; }
 private:
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _worker();
-    void _event(XtcData::Dgram& dgram, const void* bufEnd, const XtcData::Xtc& pvXtc);
     void _timeout(std::chrono::milliseconds timeout);
     void _matchUp();
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
@@ -124,16 +138,12 @@ private:
       uint32_t _spare;                  // For alignment purposes
     };
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
-    PvParameters& m_para;
-    DrpBase& m_drp;
+    const PvParameters& m_para;
+    PvDetector& m_det;
     Pgp m_pgp;
-    std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
     std::thread m_workerThread;
     SPSCQueue<Event> m_evtQueue;
     std::atomic<bool> m_terminate;
-    std::atomic<bool> m_running;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
     uint64_t m_nMissed;
@@ -163,9 +173,8 @@ private:
 private:
     PvParameters& m_para;
     MemPoolCpu m_pool;
-    DrpBase m_drp;
-    std::unique_ptr<PvDetector> m_pvDetector;
-    Detector* m_det;
+    std::unique_ptr<PvDetector> m_det;
+    std::unique_ptr<PvDrp> m_drp;
     bool m_unconfigure;
 };
 

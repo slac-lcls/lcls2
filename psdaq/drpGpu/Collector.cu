@@ -73,25 +73,31 @@ Collector::~Collector()
 
 int Collector::_setupGraph()
 {
+  printf("*** Collector setupGraph 1\n");
   // Build the graph
   if (m_graph == 0) {        // @todo: Graphs can be created on the stack
     logging::debug("Recording collector graph");
     auto& hostWriteBufs = m_pool.hostBuffers_h();
     for (unsigned worker = 0; worker < m_para.nworkers; ++worker) {
+      printf("*** Collector setupGraph attach 1: worker %u, sz %zu\n", worker, m_collectorQueue.h->size());
       for (unsigned i = 0; i < m_collectorQueue.h->size(); ++i) {
         chkError(cudaStreamAttachMemAsync(m_stream, hostWriteBufs[worker][i], 0, cudaMemAttachHost));
       }
+      printf("*** Collector setupGraph attach 2\n");
     }
+    printf("*** Collector setupGraph 2\n");
     m_graph = _recordGraph(m_stream);
     if (m_graph == 0)
       return -1;
   }
+  printf("*** Collector setupGraph 3\n");
 
   // Instantiate the graph
   if (chkError(cudaGraphInstantiate(&m_graphExec, m_graph, cudaGraphInstantiateFlagDeviceLaunch),
                "Collector graph create failed")) {
     return -1;
   }
+  printf("*** Collector setupGraph 4\n");
 
   // @todo: No need to hang on to the stream info
   //cudaGraphDestroy(m_graph);
@@ -101,6 +107,7 @@ int Collector::_setupGraph()
   if (chkError(cudaGraphUpload(m_graphExec, m_stream), "Collector graph upload failed")) {
     return -1;
   }
+  printf("*** Collector setupGraph 5\n");
 
   return 0;
 }

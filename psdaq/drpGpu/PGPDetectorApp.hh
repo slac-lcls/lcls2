@@ -5,21 +5,19 @@
 #include <string>
 #include <unordered_map>
 #include <thread>
+#include <Python.h>
 
 #include "drp/drp.hh"
-#include <Python.h>
 #include "drp/DrpBase.hh"
 #include "psdaq/service/Collection.hh"
-#include <nlohmann/json.hpp>
 #include "psdaq/service/Dl.hh"
-#include "psdaq/service/MetricExporter.hh"
 #include "MemPool.hh"
 #include "Detector.hh"
 
 namespace Drp {
   namespace Gpu {
 
-class PGPDetector;
+class PGPDrp;
 
 class DetectorFactory
 {
@@ -53,16 +51,13 @@ private:
     void _unconfigure();
     void _disconnect();
 private:
-    Parameters&                          m_para;
-    MemPoolGpu                           m_pool;
-    DrpBase                              m_drp;
-    DetectorFactory                      m_factory;
-    Detector*                            m_det;
-    std::thread                          m_collectorThread;
-    std::unique_ptr<PGPDetector>         m_pgpDetector;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
-    bool                                 m_unconfigure;
-    PyThreadState*                       m_pysave;
+    Parameters&             m_para;
+    MemPoolGpu              m_pool;
+    Detector*               m_det;
+    std::unique_ptr<PGPDrp> m_drp;
+    bool                    m_unconfigure;
+    PyThreadState*          m_pysave;
+    DetectorFactory         m_factory;
 };
 
   } // Gpu

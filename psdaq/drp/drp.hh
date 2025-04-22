@@ -117,6 +117,7 @@ public:
     unsigned allocate();
     void freeDma(unsigned count, uint32_t* indices);
     void freePebble();
+    void flushPebble();
     int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
                                       m_dmaFrees.load(std::memory_order_relaxed); }
     int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -

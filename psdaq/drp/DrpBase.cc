@@ -194,6 +194,13 @@ void MemPool::freePebble()
     }
 }
 
+void MemPool::flushPebble()
+{
+    while (inUse()) {
+        freePebble();
+    }
+}
+
 Pds::EbDgram* MemPool::allocateTr()
 {
     void* dgram = nullptr;
@@ -210,18 +217,20 @@ void MemPool::resetCounters()
         m_dmaAllocs.store(0);
         m_dmaFrees .store(0);
     } else {
+        // This means DMA buffers were lost and we don't have their indices to free them
+        // (return them to the PGP FPGA).  Can run with fewer buffers but crash instead?
         logging::warning("DMA counters cannot be reset while buffers are still in use: "
                          "Allocs %lu, Frees %lu, inUse %ld",
                          m_dmaAllocs.load(), m_dmaFrees.load(), dmaInUse());
     }
-    if (inUse() == 0) {
-        m_allocs.store(0);
-        m_frees .store(0);
-    } else {
-        logging::warning("Not resetting pebble counters when buffers are still in use: "
+
+    if (inUse()) {
+        logging::warning("Pebble counters reset although buffers are still in use: "
                          "Allocs %lu, Frees %lu, inUse %ld",
                          m_allocs.load(), m_frees.load(), inUse());
     }
+    m_allocs.store(0);
+    m_frees .store(0);
 }
 
 void MemPool::shutdown()
@@ -360,13 +369,16 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
-    // Return buffers queued for freeing
+    // Return DMA buffers queued for freeing
     if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
     m_count = 0;
 
-    // Also return buffers queued for reading, without adjusting counters
+    // Also return DMA buffers queued for reading, without adjusting counters
     int32_t ret = read();
     if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+
+    // Free any in-use pebble buffers
+    m_pool.flushPebble();
 }
 
 const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
@@ -843,7 +855,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 {
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s",
+                          RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         error = true;
     }
 
