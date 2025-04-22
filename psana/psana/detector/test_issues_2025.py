@@ -698,10 +698,13 @@ def issue_2025_04_21():
        echo $OPENBLAS_NUM_THREADS
 
        by default, OPENBLAS_NUM_THREADS=1
-       median dt, msec:
+       median dt, msec: 265.418
        export OPENBLAS_NUM_THREADS=0
-       median dt, msec:
+       median dt, msec: 264.812
        export OPENBLAS_NUM_THREADS=10
+       median dt, msec: 264.504
+       export OPENBLAS_NUM_THREADS=64
+       median dt, msec: 262.617
     """
     import os
     import numpy as np
@@ -710,23 +713,25 @@ def issue_2025_04_21():
     from psana.detector.UtilsGraphics import gr, fleximage
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
-    ds = DataSource(exp='mfx101332224', run=66) #, dir='/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo')
+    ds = DataSource(exp='mfx101332224', run=9999, dir='/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo')
     myrun = next(ds.runs())
     det = myrun.Detector('jungfrau')
     events = 100
-    arrdt = np.empty(events, dtype=np.float64)
+    arrdt = np.zeros(events, dtype=np.float64)
     if True:
         flimg = None
         for nevt,evt in enumerate(myrun.events()):
             if nevt>events-1: break
             raw   = det.raw.raw(evt)
+            if raw is None: continue
             calib = det.raw.calib(evt)
             t0_sec = time()
             img   = det.raw.image(evt)
             dt_sec = (time() - t0_sec)*1000
             #print('evt:', nevt)
             arrdt[nevt] = dt_sec
-            print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print('evt:%3d dt=%.3f msec det.raw.image' % (nevt, dt_sec))
             print('    raw  :', raw.shape)
             print('    calib:', calib.shape)
             if flimg is None:
