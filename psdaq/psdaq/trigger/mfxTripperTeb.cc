@@ -31,12 +31,10 @@ namespace Pds {
                    const Pds::EbDgram**       end,
                    Pds::Eb::ResultDgram&      result) override;
         ~MfxTripperTrigger() {
-          /*
             SEVCHK(ca_clear_channel(m_blockId), "Clear channel :BLOCK failed..");
             SEVCHK(ca_clear_channel(m_aduId), "Clear channel :ADU failed..");
             SEVCHK(ca_clear_channel(m_npixId), "Clear channel :NPIX failed..");
             SEVCHK(ca_clear_channel(m_npix_overId), "Clear channel :NPIX_OT failed..");
-          */
         }
     private:
         chid m_blockId; ///< Channel to trigger blocking of beam
