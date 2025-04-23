@@ -1027,7 +1027,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     // Try to reduce clutter in grafana by picking the same port on each invocation.
     // Since DRPs on the same node have unique lane masks use the lowest bit set as an
     // offset into the port space.  If the port is in use, a search is done.
-    unsigned portOffset = ffs(para.laneMask);
+    unsigned portOffset = ffs(para.laneMask) - 1; // Assumes laneMask is never 0
     size_t found = para.device.rfind('_');
     if ((found != std::string::npos) && isdigit(para.device[found+1])) {
         portOffset += PGP_MAX_LANES * std::stoi(para.device.substr(found+1, para.device.size()));
