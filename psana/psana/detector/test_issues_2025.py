@@ -746,6 +746,51 @@ def issue_2025_04_21():
         print('median dt, msec: %.3f' % np.median(arrdt))
 
 
+def issue_2025_04_22():
+    """epixquad det.raw.calib/image - zeros
+       datinfo -k exp=ued1006419,run=2 -d epixquad
+       shape:(4, 352, 384)
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='ued1006419', run=2) #, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    events = 10
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:%3d' % nevt)
+            arrdt[nevt] = dt_sec
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print(ndu.info_ndarr(calib, 'evt:%3d calib'% nevt, last=10))
+            print('min: %f max: %f' % (np.min(calib),np.max(calib)))
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            #print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+
+
 #===
     
 #===
@@ -800,6 +845,7 @@ def selector():
     elif TNAME in ('17',): issue_2025_04_11() # my - access to multiple calibconst
     elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
     elif TNAME in ('19',): issue_2025_04_21() # my - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
+    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros due to misidentified calibration type "gain"
 
     else:
         print(USAGE())
