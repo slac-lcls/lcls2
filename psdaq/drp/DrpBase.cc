@@ -1029,8 +1029,8 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     // offset into the port space.  If the port is in use, a search is done.
     unsigned portOffset = ffs(para.laneMask);
     size_t found = para.device.rfind('_');
-    if ((found != std::string::npos) && isdigit(para.device.back())) {
-        portOffset *= PGP_MAX_LANES * std::stoi(para.device.substr(found+1, para.device.size()));
+    if ((found != std::string::npos) && isdigit(para.device[found+1])) {
+        portOffset += PGP_MAX_LANES * std::stoi(para.device.substr(found+1, para.device.size()));
     }
     m_exposer = Pds::createExposer(para.prometheusDir, _getHostName(), portOffset);
 
