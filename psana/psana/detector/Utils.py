@@ -25,8 +25,10 @@ import sys
 import numpy as np
 
 import psana.pyalgos.generic.Utils as gu
-time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile, set_file_access_mode, time_sec_from_stamp, create_directory, file_mode, change_file_ownership\
-= gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile, gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode, gu.change_file_ownership
+time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile,\
+    set_file_access_mode, time_sec_from_stamp, create_directory, file_mode, change_file_ownership\
+  = gu.time, gu.str_tstamp, gu.get_login, gu.get_hostname, gu.get_cwd, gu.save_textfile, gu.load_textfile,\
+    gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode, gu.change_file_ownership
 
 #log_rec_at_start = gu.log_rec_on_start
 #create_directory = gu.create_directory

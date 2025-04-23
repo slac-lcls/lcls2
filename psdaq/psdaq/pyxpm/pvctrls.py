@@ -623,6 +623,7 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
+            self._seq_code_names_pv = addPV(self._name+':SEQCODENAMES',*seqCodes['Description'],True)
             self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0)) for i in range(NCODES//4)]
 
     def notify(self):
@@ -672,7 +673,7 @@ class PVCtrls(object):
 
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
-                        self._seq_codes_val['Description'] = value['value']['Description']
+                        self._seq_codes_val['Description'] = self._seq_code_names_pv.current()['value']
                         self._seq_codes_val['Enabled'] = ena
                         value['value'] = self._seq_codes_val
                         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)

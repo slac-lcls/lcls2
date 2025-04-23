@@ -2,6 +2,7 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
+from psdaq.utils import enable_lcls2_pgp_pcie_apps
 import lcls2_pgp_pcie_apps
 import epics
 
@@ -187,34 +188,30 @@ def user_to_expert(prefix, cfg, full=False):
 
     d = {}
     try:
-        lcls1Delay     = 0.9e-3*119e6
-        ctrlDelay      = ctxt_get(prefix+'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
-        partitionDelay = ctxt_get(prefix+'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]'%group)
-        delta          = cfg['user']['delta_ns']
-        #  This is not so good; using timebase to distinguish LCLS from UED
-        if timebase=='186M':
-            if False:
-                print('lcls1Delay {:}  partitionDelay {:}  delta_ns {:}'.format(lcls1Delay,partitionDelay,delta))
-                triggerDelay   = int(lcls1Delay*1300/(7*119) + delta*1300/7000 - partitionDelay*200)
-            else:
-                #  LCLS2 timing.  Let controls set the delay value.
-                print('ctrlDelay {:}  partitionDelay {:}  delta_ns {:}'.format(ctrlDelay,partitionDelay,delta))
-                # since controls now also runs off the LCLS2 timing fiber there
-                # is not reason to have a "delta".  This was put in place to
-                # compensate for different lcls1/lcls2 timing fiber lengths
-                # when controls used the lcls1 timing fiber = cpo 02/01/24
-                #triggerDelay   = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
-                triggerDelay   = int(ctrlDelay - partitionDelay*200)
+        ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
+        partitionDelay = ctxt_get(prefix + 'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]' % group)
+
+        if timebase == '186M':
+            #  LCLS2 timing. Let controls set the delay value.
+            print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
+
+            # Since controls now also runs off the LCLS2 timing fiber, there
+            # is no reason to have a "delta". This was put in place to
+            # compensate for different LCLS1/LCLS2 timing fiber lengths
+            # when controls used the LCLS1 timing fiber = cpo 02/01/24
+            # triggerDelay = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
+            triggerDelay = int(ctrlDelay - partitionDelay * 200)
 
             print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
-                print('Raise controls trigger delay >= {:} nanoseconds ({:} 185MHz clock ticks)'.format(-triggerDelay*7000/1300.,-triggerDelay))
+                print('Raise controls trigger delay >= {:} nanoseconds ({:} 185MHz clock ticks)'.format(
+                    -triggerDelay * 7000 / 1300., -triggerDelay))
                 raise ValueError('triggerDelay computes to < 0')
 
-            ctxt_put(prefix+'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+            ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
         else:
             #  119M = UED, 238 clks per timing frame (500kHz)
-            #  UED is only LCLS2 timing.  Let controls set the delay value.
+            #  UED is only LCLS2 timing. Let controls set the delay value.
             pass
 
     except KeyError:

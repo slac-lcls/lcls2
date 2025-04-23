@@ -25,25 +25,7 @@ import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as ups
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile
-
-
-def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
-    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
-    fnpref = '%s-s%02d-%s-%s-r%04d' % (detname, ind, tstamp, exp, runnum)
-    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
-
-
-def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
-    return fmt % (fprefix, ctype, gainmode)
-
-
-def set_repoman_and_logger(kwa):
-    repoman = kwa.get('repoman', None)
-    if repoman is None:
-       from psana.detector.RepoManager import init_repoman_and_logger
-       repoman = kwa['repoman'] = init_repoman_and_logger(parser=None, **kwa)
-    return repoman
-
+from psana.detector.RepoManager import set_repoman_and_logger, fname_prefix, calib_file_name
 
 def save_constants_in_repository(dic_consts, **kwa):
     """dic_consts = {<ctype>: <nda-for-ctype>,...}
@@ -52,7 +34,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     #repoman  = kwa.get('repoman', None)
     expname  = kwa.get('exp', None)
     #detname  = kwa.get('detname', None)
-    #dettype  = kwa.get('dettype', None)
+    dettype  = kwa.get('dettype', None)
     #deploy   = kwa.get('deploy', False)
     #dirrepo  = kwa.get('dirrepo', './work')
     #dirmode  = kwa.get('dirmode',  0o2775)
@@ -69,10 +51,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     shortname= kwa.get('shortname', 'non-def-shortname') # uc.detector_name_short(longname)
 
     repoman = set_repoman_and_logger(kwa)
-
-#    if repoman is None:
-#       from psana.detector.RepoManager import init_repoman_and_logger
-#       repoman = init_repoman_and_logger(parser=None, **kwa)
+    repoman.makedir_dettype(dettype)
 
     d = ups.dict_filter(kwa, list_keys=('dskwargs', 'dirrepo', 'ctype',\
                                         'dettype', 'tsshort', 'detname', 'longname', 'shortname',\
@@ -87,10 +66,8 @@ def save_constants_in_repository(dic_consts, **kwa):
                   (20*'-', gainmode, i, segind, segid))
 
       for ctype, nda in dic_consts.items():
-
         dir_ct = repoman.makedir_ctype(segid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
-
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = dic_ctype_fmt.get(ctype,'%.5f')
         arr2d = nda if nda.ndim == 2 else nda[i,:]
@@ -105,13 +82,15 @@ def _set_segment_ind_and_id(kwa):
     segind   = kwa.get('segind', None)
     seg_inds = kwa.get('segment_inds', [])
     seg_ids  = kwa.get('segment_ids', [])
+
+    if segind is None: return
+
     assert segind in seg_inds,\
-      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds: %s'%\
+      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds(): %s'%\
       (segind, str(seg_inds))
     segid = seg_ids[seg_inds.index(segind)]
     kwa['segment_inds'] = [segind,]
     kwa['segment_ids'] = [segid,]
-#    return segind, segid
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
@@ -217,11 +196,10 @@ if __name__ == "__main__":
            'detname'     : 'jungfrau',\
            'dirrepo'     : './work',\
            'ctype'       : 'pedestals',\
-           'gainmode'    : 'DYNAMIC',\
+           'gainmode'    : 'g0',\
            'segind'      : 1,\
            'tstampbegin' : '20250101000000',\
            'fname2darr'  : 'test_2darr.npy',\
-           'dirrepo'     : './work',\
            'version'     : '2025-03-14',\
     }
 

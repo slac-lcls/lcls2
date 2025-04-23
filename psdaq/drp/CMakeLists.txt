@@ -37,6 +37,8 @@ add_executable(drp
     EpixUHR.cc
     Epix100.cc
     EpixQuad.cc
+    Jungfrau.cc
+    JungfrauDetectorId.cc
     JungfrauEmulator.cc
     TimingDef.cc
     TimingBEB.cc
@@ -63,6 +65,7 @@ target_link_libraries(drp
     trigger
     mmhw
     nlohmann_json::nlohmann_json
+    slsDetectorShared
 )
 
 add_executable(drp_bld
@@ -245,6 +248,19 @@ target_link_libraries(pgpread_timetool
     rt
 )
 
+add_executable(pgpread_jungfrau
+    pgpread_jungfrau.cc
+)
+target_include_directories(pgpread_jungfrau PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(pgpread_jungfrau
+    mmhw
+    psalg::utils
+    xtcdata::xtc
+    Threads::Threads
+)
+
 add_executable(AxiBatcherParserTest
     AxiBatcherParserTest.cc
     AxiBatcherParser.cc
@@ -303,6 +319,30 @@ target_link_libraries(drp_groupsync
 
 add_executable(ePixMDescTest
     ePixMDescTest.cc
+)
+
+add_executable(jungfrauTest
+    jungfrauTest.cc
+    JungfrauDetectorId.cc
+)
+
+target_include_directories(jungfrauTest PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+
+target_link_libraries(jungfrauTest
+    slsDetectorShared
+)
+
+add_executable(jungfrauSim
+    jungfrauSim.cc
+)
+
+target_include_directories(jungfrauSim PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(jungfrauSim
+    xtcdata::xtc
 )
 
 

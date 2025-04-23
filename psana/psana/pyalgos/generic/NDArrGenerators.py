@@ -151,6 +151,22 @@ def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1):
     return peaks
 
 
+def arr2dincr(sh2d=(512,1024), dtype=np.int32):
+    rows, cols = sh2d
+    ix, iy = np.meshgrid(np.arange(rows), np.arange(cols))
+    a = np.empty((rows,cols), dtype)
+    a[ix,iy] = ix+iy
+    return a
+
+
+def arr3dincr(sh3d=(32,512,1024), dtype=np.int32):
+    nsegs, rows, cols = sh3d
+    a1 = arr2dincr((rows, cols), dtype)
+    a = np.vstack([a1 for s in range(nsegs)])
+    a.shape = sh3d
+    return a
+
+
 def cspad2x1_arr(dtype=np.float32):
     """Returns test np.array for cspad 2x1 with linear variation of intensity from corner (0,0) to (rmax,cmax)."""
     rows, cols = 185, 388

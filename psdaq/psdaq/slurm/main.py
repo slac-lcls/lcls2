@@ -1,29 +1,18 @@
-from typing import List
-import json
 import typer
 from typing_extensions import Annotated
 import time
 import asyncio
-import psutil
-import copy
 import socket
-from psdaq.slurm.utils import SbatchManager, call_subprocess
+from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries
 from psdaq.slurm.subproc import SubprocHelper
-import os, sys, errno
+import os
+import sys
 from subprocess import Popen
 from psdaq.slurm.config import Config
+import tempfile
 
 LOCALHOST = socket.gethostname()
-DAQMGR_SCRIPT = "submit_daqmgr.sh"
 MAX_RETRIES = 30
-
-
-def silentremove(filename):
-    try:
-        os.remove(filename)
-    except OSError as e:
-        if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
-            raise
 
 
 class Runner:
@@ -43,7 +32,7 @@ class Runner:
                 {},
                 config_dict,
             )
-        except:
+        except Exception:
             print("Error parsing configuration file:", sys.exc_info()[1])
         self.platform = config_dict["platform"]
         self.configfilename = configfilename
@@ -130,10 +119,18 @@ class Runner:
         return f"x{self.xpm_id}_p{self.platform}_s{self.station}"
 
     def submit(self):
-        with open(DAQMGR_SCRIPT, "w") as f:
-            f.write(self.sbman.sb_script)
-        cmd = f"sbatch {DAQMGR_SCRIPT}"
-        asyncio.run(self.proc.run(cmd, wait_output=True))
+        """
+        Submits the sbatch script using a temporary file.
+
+        Uses tempfile to safely write the sbatch script, ensuring it's uniquely named
+        and automatically cleaned up after submission. The script file persists just
+        long enough for sbatch to read it.
+        """
+        with tempfile.NamedTemporaryFile("w", delete=True, suffix=".sh") as tmpfile:
+            tmpfile.write(self.sbman.sb_script)
+            tmpfile.flush()  # Make sure content is written to disk
+            cmd = f"sbatch {tmpfile.name}"
+            asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())
@@ -213,7 +210,7 @@ class Runner:
         return result_list
 
     def _cancel(self, slurm_job_id):
-        output = call_subprocess("scancel", str(slurm_job_id))
+        run_slurm_with_retries("scancel", str(slurm_job_id))
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
@@ -292,7 +289,7 @@ class Runner:
                 if len(active_jobs) == 0:
                     break
                 if i == 0 and verbose:
-                    print(f"Waiting for slurm jobs to complete...")
+                    print("Waiting for slurm jobs to complete...")
                 time.sleep(3)
 
     def restart(self, unique_ids=None, verbose=False):
@@ -340,7 +337,7 @@ class Runner:
 
                 arg_str = " ".join(args)
                 asyncio.run(self.proc.run(arg_str, wait_output=False))
-            except:
+            except Exception:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
                 rv = 0
@@ -384,8 +381,8 @@ class Runner:
                         logfile,
                     ]
                 Popen(args)
-            except:
-                print("spawnLogfile failed for process '%s'" % uniqueid)
+            except Exception:
+                print("spawnLogfile failed for process '%s'" % config_id)
             else:
                 rv = 0
         return rv
@@ -439,7 +436,6 @@ def main(
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(DAQMGR_SCRIPT)
 
 
 def _do_main():

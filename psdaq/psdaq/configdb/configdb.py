@@ -35,7 +35,7 @@ class configdb(object):
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
         self.host = urlparse(self.prefix).hostname
-        self.timeout = 15.05     # timeout for http requests
+        self.timeout = 8.05     # timeout for http requests
         self.user = user
         self.password = password
 
@@ -55,10 +55,18 @@ class configdb(object):
     def _get_response(self, cmd, *, json=None):
         if 'ws-auth' in self.prefix:
             # basic authentication
-            resp = requests.get(self.prefix + cmd,
-                                auth=HTTPBasicAuth(self.user, self.password),
-                                json=json,
-                                timeout=self.timeout)
+            for i in range(4):
+                try:
+                    resp = requests.get(self.prefix + cmd,
+                                        auth=HTTPBasicAuth(self.user, self.password),
+                                        json=json,
+                                        timeout=self.timeout)
+                    break
+                except Exception as e:
+                    print('*** exception',e)
+                    print('***configdb request RETRY',time.time(),i)
+                    if i==3: raise
+                    time.sleep(1)
         elif 'ws-kerb' in self.prefix:
             # kerberos authentication
             resp = requests.get(self.prefix + cmd,

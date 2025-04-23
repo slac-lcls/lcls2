@@ -238,7 +238,7 @@ class CalibConstants:
 
         logger.info(info_ndarr(segnums, 'preserve pixel indices for segments '))
 
-        logger.info(info_ndarr(resp[0], 'self.pixel_coord_indexes '))
+        logger.info(info_ndarr(resp, 'self.pixel_coord_indexes '))
 
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
 

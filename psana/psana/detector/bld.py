@@ -82,6 +82,11 @@ class xgmd_raw_2_1_0(DetectorImpl):
         super(xgmd_raw_2_1_0, self).__init__(*args)
         self._add_fields()
 
+class feespec_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._add_fields()
+
 class scbld_raw_1_0_0(DetectorImpl):
     def __init__(self, *args):
         super(scbld_raw_1_0_0, self).__init__(*args)

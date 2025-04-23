@@ -90,6 +90,9 @@ def request(url, query=None):
         (url, str(query), r.ok, r.status_code, r.reason)
     s += '\nTry command: curl -s "%s"' % url
     logger.debug(s)
+    if r.status_code == 503:
+        logger.warning(s)
+        sys.exit(1)
     return None
 
 
@@ -149,8 +152,12 @@ def select_latest_doc(docs, query):
         #logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
-    qkeys = query.keys()
-    key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    for d in docs:
+        d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'])
+
+    #qkeys = query.keys()
+    #key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    key_sort = 'tsec_id'
 
     logger.debug('select_latest_doc: %s\nkey_sort: %s' % (str(query), key_sort))
     vals = [int(d[key_sort]) for d in docs]
@@ -522,6 +529,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+    if detname is None: return None
     assert isinstance(detname,str), 'unexpected detname: %s' % str(detname)
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 

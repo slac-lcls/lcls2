@@ -50,12 +50,12 @@ def argument_parser():
     d_dirrepo = DIR_REPO_EPIX10KA
     d_deploy  = False
     d_logmode = 'INFO'
-    d_proc    = 'psrg'
+    d_proc    = 'psr'
     d_paninds = None
     d_high    = None #16.40 for epix10ka
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-03-19'
+    d_version = 'V2025-03-24'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''

@@ -15,6 +15,8 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=ascdaq023,run=36 -d jungfrau -o ./work # data' % SCRNAME\
       + '\nREGULAR COMMAND:'\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work -D # data' % SCRNAME\
+      + '\n  %s -k exp=mfxdaq23,run=10,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau' % SCRNAME\
+      + '\n  %s -k exp=mfxdaq23,run=10 -d jungfrau -o ./work -D' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -25,15 +27,15 @@ def argument_parser():
     d_detname = None # 'jungfrau'
     d_tstamp  = None # 20180910111049
     d_dirrepo = DIR_REPO_JUNGFRAU # './work'
-    d_nsegstot= 8
+    d_nsegstot= None # e.i. 32 if entire array needs to be saved
     d_deploy  = False
     d_logmode = 'INFO'
-    d_ctdepl  = 'psrg'
+    d_ctdepl  = 'psrnx' # - for constants from dark, alternatively 'go' - if gain and offset needs to be deployed
     d_paninds = None
     d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-03-05'
+    d_version = 'V2025-03-28'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''
@@ -47,20 +49,20 @@ def argument_parser():
     h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
                 'By default run time is used, default = %s' % str(d_tstamp)
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
-    h_nsegstot= 'total number of segments in the detector, default = %d' % d_nsegstot
+    h_nsegstot= 'total number of segments in the detector at deployment, '\
+                'None - auto-defined from max segment index in data, default = %s' % str(d_nsegstot)
     h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_high    = 'default high   gain ADU/keV, default = %s' % str(d_high)
     h_medium  = 'default medium gain ADU/keV, default = %s' % str(d_medium)
     h_low     = 'default low    gain ADU/keV, default = %s' % str(d_low)
-    h_ctdepl    = '(str) keyword for processing of "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,'\
-              + '  default = %s' % d_ctdepl
+    h_ctdepl    = '(str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,'\
+              + '"o" - offset, "x" - max, "n" - min, "e" - status_extra, default = %s' % d_ctdepl
     h_paninds = 'comma-separated panel indexds to generate constants for subset of panels (ex.: quad from 2M), default = %s' % d_paninds
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_dbsuffix= 'suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
-
 
     parser = ArgumentParser(description='Deploy calibration files from repository to DB.', usage = USAGE)
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs, type=str,   help=h_dskwargs)

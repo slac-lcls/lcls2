@@ -4,6 +4,67 @@
 
 using namespace XtcData;
 
+BldNames::SpectrometerDataV1::SpectrometerDataV1() {
+    /* Width of camera frame (size of hproj) */
+    NameVec.push_back(Name("width", Name::UINT32));
+
+    /* First row of pixels used in the projection ROI */
+    NameVec.push_back(Name("hproj_y1", Name::UINT32));
+
+    /* Last row of pixels used in the projection ROI */
+    NameVec.push_back(Name("hproj_y2", Name::UINT32));
+
+    /* Raw center of mass, no baseline subtraction */
+    NameVec.push_back(Name("comRaw", Name::DOUBLE));
+
+    /* Baseline level for calculated values */
+    NameVec.push_back(Name("baseline", Name::DOUBLE));
+
+    /* Baseline-subtracted center of mass  */
+    NameVec.push_back(Name("com", Name::DOUBLE));
+
+    /* Integrated area under spectrum (no baseline subtraction) */
+    NameVec.push_back(Name("integral", Name::DOUBLE));
+
+    /* Number of peak fits performed */
+    NameVec.push_back(Name("nPeaks", Name::UINT32));
+
+    /* Projection of spectrum onto energy axis */
+    NameVec.push_back(Name("hproj", Name::INT32, 1)); // hproj[width]
+
+    /* Peak position array */
+    NameVec.push_back(Name("peakPos", Name::DOUBLE, 1)); // peakPos[nPeaks]
+
+    /* Peak height array */
+    NameVec.push_back(Name("peakHeight", Name::DOUBLE, 1)); // peakHeight[nPeaks]
+
+    /* Peak FWHM array */
+    NameVec.push_back(Name("FWHM", Name::INT32, 1)); // FWHM[nPeaks]
+}
+
+std::vector<unsigned> BldNames::SpectrometerDataV1::byteSizes() {
+    std::vector<unsigned> sizes {4, 4, 4, 8, 8, 8, 8, 4, 4, 8, 8, 4};
+    return sizes;
+}
+
+std::map<unsigned,unsigned> BldNames::SpectrometerDataV1::arraySizeMap() {
+    std::map<unsigned,unsigned> sizeMap {
+        { 0, 0}, // If map[X]=X this is a scalar
+        { 1, 1},
+        { 2, 2},
+        { 3, 3},
+        { 4, 4},
+        { 5, 5},
+        { 6, 6},
+        { 7, 7},
+        { 8, 0}, // If map[X]=Y Use map[Y] as array length of map[X]
+        { 9, 7},
+        {10, 7},
+        {11, 7},
+    };
+    return sizeMap;
+}
+
 BldNames::EBeamDataV7::EBeamDataV7() {
     NameVec.push_back(Name("damageMask"       , Name::UINT32));
     NameVec.push_back(Name("ebeamCharge"      , Name::DOUBLE));
@@ -87,12 +148,12 @@ static std::map<std::string,unsigned> _bmmonMcaddr
   {"XcsUsrDio"  ,0xefff185b},
   {"CxiUsrDio"  ,0xefff185c},
   {"MecUsrDio"  ,0xefff185d}, };
-                                                     
+
 
 unsigned BldNames::BeamMonitorV1::mcaddr(const char* n)
 {
     std::string s(n);
-    return _bmmonMcaddr.find(s) == _bmmonMcaddr.end() ? 0 : _bmmonMcaddr[s]; 
+    return _bmmonMcaddr.find(s) == _bmmonMcaddr.end() ? 0 : _bmmonMcaddr[s];
 }
 
 
@@ -101,9 +162,9 @@ BldNames::GmdV2::GmdV2() {
     NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
 }
 
-BldNames::XGmdV2::XGmdV2() { 
+BldNames::XGmdV2::XGmdV2() {
     NameVec.push_back(Name("millijoulesperpulse",Name::FLOAT,0));
-    NameVec.push_back(Name("POSY",Name::FLOAT,0)); 
+    NameVec.push_back(Name("POSY",Name::FLOAT,0));
     NameVec.push_back(Name("RMS_E1",Name::FLOAT,0));
     NameVec.push_back(Name("RMS_E2",Name::FLOAT,0));
 }

@@ -38,11 +38,14 @@ class epixuhrhw_config_2_1_0(DetectorImpl):
 class epixuhr_config_2_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-               
+
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
-        logger.debug('epixuhr_raw_0_0_0.__init__')
-        
+        eb.epix_base.__init__(self, *args, **kwargs)
+        self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
+        self._segment_numbers = [0,1,2,3]
+
     def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)
@@ -216,16 +219,14 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
         return arrf
 
-       
 class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
     def __init__(self, *args, **kwargs):
-        logger.debug('epixuhr_raw_1_0_0.__init__')
         super().__init__(*args, **kwargs)
-
+        
 class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
     def __init__(self, *args, **kwargs):
-        logger.debug('epixuhr_raw_2_0_0.__init__')
-        super.__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
+
 
 
 

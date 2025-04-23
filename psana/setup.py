@@ -128,7 +128,7 @@ if 'PSANA' in BUILD_LIST :
                             extra_compile_args = extra_cxx_compile_args)
 
     PACKAGES = find_packages()
-    PACKAGE_DATA = {'psana.graphqt': ['data/icons/*.png','data/icons/*.gif']}
+    PACKAGE_DATA = {'psana.graphqt': ['data/icons/*.png','data/icons/*.gif'], "psana.pscalib": ["geometry/data/*data"]}
     EXTS = [dgram_module, container_module]
     INSTALL_REQS = [
         'numpy',

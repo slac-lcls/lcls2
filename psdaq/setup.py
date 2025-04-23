@@ -158,11 +158,12 @@ if 'PSDAQ' in BUILD_LIST :
             'ts_config_scan = psdaq.control.ts_config_scan:main',
             'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
+            'fixed_rate_table = psdaq.seq.fixed_rate_table:main',
+            'periodicgenerator = psdaq.seq.periodicgenerator:main',
+            'rixgenerator = psdaq.seq.rixgeneratory:main',
             'seqplot = psdaq.seq.seqplot:main',
             'seqprogram = psdaq.seq.seqprogram:main',
             'traingenerator = psdaq.seq.traingenerator:main',
-            'periodicgenerator = psdaq.seq.periodicgenerator:main',
-            'rixgenerator = psdaq.seq.rixgeneratory:main',
             'ued_seq_setup = psdaq.seq.ued_seq_setup:main',
             'bos = psdaq.bos.bos:main',
             'prometheus2pvs = psdaq.cas.prometheus2pvs:main',
@@ -171,6 +172,7 @@ if 'PSDAQ' in BUILD_LIST :
             'cnf2py = psdaq.slurm.cnftopy:_do_main',
             'daqstat = psdaq.slurm.daqstat:_do_main',
             'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
+            'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main'
         ]
     }
 

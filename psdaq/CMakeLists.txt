@@ -29,6 +29,7 @@ find_package(epics REQUIRED)
 find_package(RapidJSON REQUIRED)
 find_package(Readline REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(slsDetectorPackage REQUIRED)
 
 find_library(YAML_CPP_LIB yaml-cpp)
 

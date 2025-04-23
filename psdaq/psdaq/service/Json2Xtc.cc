@@ -341,7 +341,15 @@ private:
     int          _cnt;
 };
 
-int translateJson2XtcNames(Document* d, Xtc* xtc, const void* bufEnd, NamesLookup& nl, NamesId namesID, Value& json, const char* detname, unsigned segment)
+int translateJson2XtcNames(Document* d,
+                           Xtc* xtc,
+                           const void* bufEnd,
+                           NamesLookup& nl,
+                           NamesId namesID,
+                           Value& json,
+                           const char* __restrict__ detname,
+                           unsigned segment,
+                           std::string const& serNo)
 {
     if (d->HasParseError()) {
         printf("Parse error: %s, location %zu\n",
@@ -366,11 +374,17 @@ int translateJson2XtcNames(Document* d, Xtc* xtc, const void* bufEnd, NamesLooku
                   v[1].GetInt(), v[2].GetInt());
     // Set alg._doc from a["doc"].GetString()?
     d->RemoveMember("alg:RO");
+    const char* serNoCstr;
+    if (!serNo[0] == '\0')
+        serNoCstr = serNo.c_str();
+    else
+        serNoCstr = (*d)["detId:RO"].GetString();
+
     Names& names = (*new(xtc, bufEnd) Names(bufEnd,
                                             detname ? detname : (*d)["detName:RO"].GetString(),
                                             alg,
                                             (*d)["detType:RO"].GetString(),
-                                            (*d)["detId:RO"].GetString(), namesID, segment));
+                                            serNoCstr, namesID, segment));
     // Set _NameInfo.doc from d["doc"].GetString()?
     d->RemoveMember("detName:RO");
     d->RemoveMember("detType:RO");
@@ -445,7 +459,8 @@ int translateJson2Xtc(char *in, char *out, const void* bufEnd, NamesId namesID, 
     if (!ok)
         logging::error("translateJson2Xtc(char*): JSON parse error: %s (%u)",
                        GetParseError_En(ok.Code()), ok.Offset());
-    if (translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, json, detname, segment) < 0)
+    std::string serNo("");
+    if (translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, json, detname, segment, serNo) < 0)
         return -1;
 
     if (translateJson2XtcData (d, xtc, bufEnd, nl, namesID, json) < 0)
@@ -482,6 +497,61 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
 
         //  Extract detname, segment from document detName field
         std::string sdetName((*d)["detName:RO"].GetString());
+        std::string simpleDetName;
+        {
+            size_t pos = sdetName.rfind('_');
+            if (pos==std::string::npos) {
+                logging::info("No segment number in config json");
+                break;
+            }
+            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            simpleDetName = sdetName.substr(0,pos);
+            detname = simpleDetName.c_str();
+        }
+
+        std::string serNo("");
+        if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment, serNo) < 0)
+            break;
+
+        if (Pds::translateJson2XtcData (d, &xtc, bufEnd, nl, namesID, jsonv) < 0)
+            break;
+
+        result = 0;
+        break;
+    }
+
+    delete d;
+    Py_DECREF(json_bytes);
+
+    return result;
+}
+
+int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId namesID, unsigned segment, std::string serNo )
+{
+    int result = -1;
+
+    // returns new reference
+    PyObject * json_bytes = PyUnicode_AsASCIIString(item);
+    char* json = (char*)PyBytes_AsString(json_bytes);
+
+    NamesLookup nl;
+    Value jsonv;
+
+    Document *d = new Document();
+    ParseResult ok = d->Parse(json);
+    if (!ok)
+        logging::error("translateJson2Xtc(PyObject): JSON parse error: %s (%u)",
+                       GetParseError_En(ok.Code()), ok.Offset());
+
+    while(1) {
+        const char* detname;
+        if (!d->HasMember("detName:RO")) {
+            logging::info("No detName member in config json");
+            break;
+        }
+
+        //  Extract detname from document detName field
+        std::string sdetName((*d)["detName:RO"].GetString());
         {
             size_t pos = sdetName.rfind('_');
             if (pos==std::string::npos) {
@@ -492,7 +562,7 @@ int translateJson2Xtc( PyObject* item, Xtc& xtc, const void* bufEnd, NamesId nam
             detname = sdetName.substr(0,pos).c_str();
         }
 
-        if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, &xtc, bufEnd, nl, namesID, jsonv, detname, segment, serNo) < 0)
             break;
 
         if (Pds::translateJson2XtcData (d, &xtc, bufEnd, nl, namesID, jsonv) < 0)

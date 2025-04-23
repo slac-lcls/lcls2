@@ -14,16 +14,24 @@ std::unique_ptr<prometheus::Exposer>
 Pds::createExposer(const std::string& prometheusDir,
                    const std::string& hostname)
 {
+    return createExposer(prometheusDir, hostname, 0);
+}
+
+std::unique_ptr<prometheus::Exposer>
+Pds::createExposer(const std::string& prometheusDir,
+                   const std::string& hostname,
+                   unsigned           portOffset)
+{
     // Allow prometheus monitoring to be disabled
     if (prometheusDir.empty())  return {};
 
     std::unique_ptr<prometheus::Exposer> exposer;
 
     // Find and register a port to use with Prometheus for run-time monitoring
-    unsigned port = 0;
+    unsigned port;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
-            port = PROM_PORT_BASE + i;
+            port = PROM_PORT_BASE + (i + portOffset)%MAX_PROM_PORTS;
             std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
             // Commented out the existing file check so that the file's date is refreshed
             //struct stat buf;

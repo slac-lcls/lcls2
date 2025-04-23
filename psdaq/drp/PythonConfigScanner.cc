@@ -35,11 +35,13 @@ static const int BUFSIZE = 4*1024*1024;
 //
 //  On Configure, save the Names for the keys that will change
 //
-unsigned PythonConfigScanner::configure(const json&  scan_keys,
-                                        Xtc&         xtc,
-                                        const void*  bufEnd,
-                                        NamesId&     namesId,
-                                        NamesLookup& namesLookup)
+unsigned PythonConfigScanner::configure(const json&              scan_keys,
+                                        Xtc&                     xtc,
+                                        const void*              bufEnd,
+                                        NamesId&                 namesId,
+                                        NamesLookup&             namesLookup,
+                                        std::vector<unsigned>    segNos,
+                                        std::vector<std::string> serNos)
 {
     PyObject* pDict = _check(PyModule_GetDict(&m_module));
 
@@ -63,6 +65,7 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
 
     unsigned nodeId   = namesId.nodeId();
     unsigned namesIdx = namesId.namesId();
+    std::string serNo("");
     for(unsigned seg=0; seg<nseg; seg++) {
         PyObject* item = isList ? PyList_GetItem(mybytes,seg) : mybytes;
         NamesId nId(nodeId,namesIdx+seg);
@@ -82,16 +85,25 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
         std::string sdetName((*d)["detName:RO"].GetString());
         {
             size_t pos = sdetName.rfind('_');
-            if (pos==std::string::npos) {
-                logging::error("No segment number in config json");
-                break;
+            if (segNos.empty()) {
+                if (pos==std::string::npos) {
+                    logging::error("No segment number in config json");
+                    break;
+                }
+                sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            } else {
+                segment = segNos[seg];
+                if (serNos.empty()) {
+                    logging::error("No per segment serial numbers!");
+                    break;
+                }
+                serNo = serNos[seg];
             }
-            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
             detname = sdetName.substr(0,pos).c_str();
         }
 
         Value jsonv;
-        if (Pds::translateJson2XtcNames(d, &jsonxtc, end, namesLookup, nId, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, &jsonxtc, end, namesLookup, nId, jsonv, detname, segment, serNo) < 0)
             return -1;
 
         delete d;
@@ -111,7 +123,13 @@ unsigned PythonConfigScanner::configure(const json&  scan_keys,
     return 0;
 }
 
-static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup& namesLookup, NamesId namesID)
+static int _translate(PyObject*    item,
+                      Xtc*         xtc,
+                      const void*  bufEnd,
+                      NamesLookup& namesLookup,
+                      NamesId      namesID,
+                      int          segNo=-1,
+                      std::string  serNo="")
 {
     int result = -1;
 
@@ -128,6 +146,7 @@ static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup
         logging::error("PythonConfigScanner::_translate: JSON parse error: %s (%u)",
                        GetParseError_En(ok.Code()), ok.Offset());
 
+    std::string serial("");
     while(1) {
         const char* detname;
         unsigned    segment = 0;
@@ -140,17 +159,26 @@ static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup
         std::string sdetName((*d)["detName:RO"].GetString());
         {
             size_t pos = sdetName.rfind('_');
-            if (pos==std::string::npos) {
-                logging::info("No segment number in config json");
-                break;
+            if (segNo < 0) {
+                if (pos==std::string::npos) {
+                    logging::info("No segment number in config json");
+                    break;
+                }
+                sscanf(sdetName.c_str()+pos+1,"%u",&segment);
+            } else {
+                segment = static_cast<unsigned>(segNo);
+                if (serNo.empty()) {
+                    logging::error("No per segment serial number!");
+                    break;
+                }
+                serial = serNo;
             }
-            sscanf(sdetName.c_str()+pos+1,"%u",&segment);
             detname = sdetName.substr(0,pos).c_str();
         }
 
         unsigned extent = xtc->extent;
         logging::info("update names");
-        if (Pds::translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, jsonv, detname, segment) < 0)
+        if (Pds::translateJson2XtcNames(d, xtc, bufEnd, nl, namesID, jsonv, detname, segment, serial) < 0)
             break;
 
         xtc->extent = extent;
@@ -171,11 +199,13 @@ static int _translate( PyObject* item, Xtc* xtc, const void* bufEnd, NamesLookup
 //
 //  On BeginStep, save the updated configuration data (matching the keys stored on Configure)
 //
-unsigned PythonConfigScanner::step(const json&  stepInfo,
-                                   Xtc&         xtc,
-                                   const void*  bufEnd,
-                                   NamesId&     namesId,
-                                   NamesLookup& namesLookup)
+unsigned PythonConfigScanner::step(const json&              stepInfo,
+                                   Xtc&                     xtc,
+                                   const void*              bufEnd,
+                                   NamesId&                 namesId,
+                                   NamesLookup&             namesLookup,
+                                   std::vector<unsigned>    segNos,
+                                   std::vector<std::string> serNos)
 {
     unsigned r=0;
 
@@ -199,7 +229,13 @@ unsigned PythonConfigScanner::step(const json&  stepInfo,
             logging::info("scan update seg %d",seg);
             PyObject* item = PyList_GetItem(mybytes,seg);
             NamesId nId(namesId.nodeId(),namesId.namesId()+seg);
-            if (_translate( item, jsonxtc, end, namesLookup, nId ))
+            int segNo {-1};
+            std::string serNo{""};
+            if (!segNos.empty())
+                segNo = static_cast<int>(segNos[seg]);
+            if (!serNos.empty())
+                serNo = serNos[seg];
+            if (_translate( item, jsonxtc, end, namesLookup, nId, segNo, serNo ))
                 return -1;
         }
     }

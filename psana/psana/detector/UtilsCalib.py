@@ -20,12 +20,11 @@ import logging
 logger = logging.getLogger(__name__)
 import sys
 import numpy as np
-
 import psana.detector.utils_psana as up
 from psana.detector.Utils import str_tstamp, time, get_login, info_dict  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
-from psana.detector.RepoManager import RepoManager, init_repoman_and_logger
+from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -39,11 +38,14 @@ def selected_record(i, events):
 
 
 def dic_ctype_fmt(**kwargs):
-    return {'pedestals'   : kwargs.get('fmt_peds', '%.3f'),
-            'pixel_rms'   : kwargs.get('fmt_rms',  '%.3f'),
+    return {'pedestals'   : kwargs.get('fmt_peds',   '%.3f'),
+            'pixel_rms'   : kwargs.get('fmt_rms',    '%.3f'),
+            'pixel_max'   : kwargs.get('fmt_max',    '%i'),
+            'pixel_min'   : kwargs.get('fmt_min',    '%i'),
+            'pixel_mask'  : kwargs.get('fmt_mask',   '%2i'),
+            'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
+            'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
             'pixel_status': kwargs.get('fmt_status', '%4i'),
-            'pixel_max'   : kwargs.get('fmt_max', '%i'),
-            'pixel_min'   : kwargs.get('fmt_min', '%i'),
             'status_extra': kwargs.get('fmt_status', '%4i')}
 
 
@@ -65,7 +67,6 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
 
     logger.debug('  %s: %s ave, std = %.3f, %.3f  low, high limits = %.3f, %.3f'%\
                  (sys._getframe().f_code.co_name, cmt, ave, std, lo, hi))
-
     return lo, hi
 
 
@@ -547,10 +548,6 @@ def add_metadata_kwargs(orun, odet, **kwa):
     return kwa
 
 
-def fname_prefix(detname, tstamp, exp, runnum, dirname):
-    return '%s/%s-%s-%s-r%04d' % (dirname, detname, tstamp, exp, runnum)
-
-
 def deploy_constants(dic_consts, **kwa):
 
     from psana.pscalib.calib.MDBUtils import data_from_file
@@ -572,6 +569,7 @@ def deploy_constants(dic_consts, **kwa):
     uniqueid = kwa.get('uniqueid', None)
     shortname= kwa.get('shortname', 'not-def-shortname')
     longname = kwa.get('longname', 'not-def-longname')
+    segind   = kwa.get('segind', 0)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -588,10 +586,7 @@ def deploy_constants(dic_consts, **kwa):
 
     list_keys= ('experiment', 'run_orig', 'run', 'detname', 'shortname', 'ctype', 'tsshort', 'dettype', 'version')
 
-    if repoman is None:
-       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-    #dircons = repoman.makedir_constants(dname='constants')
-    #fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
+    repoman = set_repoman_and_logger(kwa)
 
     panelid = (longname if uniqueid is None else uniqueid).split('_',1)[-1]
 
@@ -600,8 +595,7 @@ def deploy_constants(dic_consts, **kwa):
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
-        fprefix = fname_prefix(shortname, tsshort, expname, runnum, dir_ct)
-        #fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
+        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
 
         fname = '%s-%s.data' % (fprefix, ctype)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
@@ -657,7 +651,11 @@ def pedestals_calibration(parser):
 
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
   logger.info('DataSource kwargs: %s' % str(dskwargs))
-  ds = DataSource(**dskwargs)
+  try:
+    ds = DataSource(**dskwargs)
+  except Exception as err:
+      logger.error('DataSource(**dskwargs) does not work:\n    %s' % err)
+      sys.exit('Exit processing')
 
   t0_sec = time()
   tdt = t0_sec

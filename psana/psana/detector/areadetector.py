@@ -136,8 +136,10 @@ class AreaDetector(DetectorImpl):
 
     def _fname_geotxt_default(self):
         """returns (str) file name for default geometry constants lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        return '%s/../%s' % (dir_detector, self._path_geo_default)
+        dir_psana = os.path.abspath(os.path.dirname(__file__)).rstrip('detector')
+        path = os.path.join(dir_psana, self._path_geo_default)
+        #print('default geometry:', path)
+        return path # os.path.join(dir_psana, self._path_geo_default)
 
 
     def _det_geotxt_default(self):
@@ -210,6 +212,11 @@ class AreaDetector(DetectorImpl):
     def _shape_total(self):
         return (self._number_of_segments_total(),) + tuple(self._seg_geo.shape())
         #return self._det_calibconst('shape_as_daq')
+
+
+#    def _segment_ids(self):
+#        """Returns list of detector segment ids"""
+#        return self._uniqueid.split('_')[1:]
 
 
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:

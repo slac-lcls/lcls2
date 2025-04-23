@@ -40,7 +40,7 @@ BW2 = 0o100000 # 32768 or 2<<14 or 1<<15
 BW3 = 0o140000 # 49152 or 3<<14
 MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 
-MAX_DETNAME_SIZE = 40
+MAX_DETNAME_SIZE = 20
 
 def is_true(cond, msg, method=logger.debug):
     if cond: method(msg)
@@ -101,6 +101,7 @@ class DetCache():
         logger.info('%s add_calibcons for detname: %s %s' % (30*'_', self.detname, 30*'_'))
 
         self.calibc = det._calibconst
+        if self.calibc is None: return
         keys = self.calibc.keys()
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         #raw  = np.array(det.raw(evt), dtype=np.float32)

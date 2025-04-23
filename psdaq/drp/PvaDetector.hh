@@ -6,6 +6,7 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <Python.h>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "spscqueue.hh"
@@ -94,11 +95,14 @@ class PvDetector : public XpmDetector
 {
 public:
     PvDetector(PvParameters&, MemPoolCpu&);
+    ~PvDetector();
     unsigned connect(const nlohmann::json&, const std::string& collectionId, std::string& msg);
     unsigned disconnect();
     unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
     unsigned unconfigure();
+    using Detector::enable;             // Avoid 'hidden' warning
     void enable();
+    using Detector::disable;            // Avoid 'hidden' warning
     void disable();
     void event_(XtcData::Dgram& evt, const void* bufEnd, const XtcData::Xtc& pv);
     void event(XtcData::Dgram& evt, const void* bufEnd, PGPEvent*) override { /* unused */ };
@@ -106,9 +110,16 @@ public:
 public:
     const std::vector< std::shared_ptr<PvMonitor> >& pvMonitors() const { return m_pvMonitors; }
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
+    static const unsigned maxSupportedPVs = 64;
+    enum {
+      ConfigNamesIndex = NamesIndex::BASE,
+      RawNamesIndex = unsigned(ConfigNamesIndex) + maxSupportedPVs,
+      InfoNamesIndex = unsigned(RawNamesIndex) + maxSupportedPVs,
+    };
     std::atomic<bool>                         m_running;
     std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
+    PyObject*                                 m_pyModule;
+    std::string                               m_connectJson;
 };
 
 

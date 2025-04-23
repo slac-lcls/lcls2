@@ -145,6 +145,10 @@ int main(int argc, char* argv[])
             if (kwargs.first == "imgArray")          continue;
             if (kwargs.first == "segNums")           continue;
         }
+        if (para.detType == "jungfrau") {
+            if (kwargs.first == "segNums")           continue;
+            if (kwargs.first == "slsHosts")          continue;
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

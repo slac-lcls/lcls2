@@ -11,28 +11,34 @@ lst_gainmodes += list(GAIN_MODES_IN)
 
 logger = logging.getLogger(__name__)
 
+#print('XXX sys.argv[0]', sys.argv[0])
+
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 #M14 = 0o37777 # 14-bits, 2 bits for gain mode switch
 
-USAGE = 'Usage:'\
+DESCRIPTION = 'Proceses dark run xtc data for simple detectors like epix100, archon'
+USAGE = DESCRIPTION\
+      + '\n\nUsage:'\
       + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
       + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
       + '\nExamples:'\
       + '\nTests:'\
-      + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work -c pedestals -G DYNAMIC -I 1' % SCRNAME\
+      + '\n  datinfo -k exp=ascdaq023,run=37,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
+      + '\n  python UtilsCalibRepo.py # makes test_2darr.npy'\
+      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -c pedestals -G g0 -I 1 -F test_2darr.npy -o ./work' % SCRNAME\
+      + '\n  %s -k exp=mfx101332224,run=15 -d jungfrau -c pixel_gain -G g2 -F fake_g2.npy -I 0 -o work1' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
-    d_detname = 'jungfrau' #  None
-    d_dirrepo = './work' # DIR_REPO # './work'
+    d_dskwargs= None # 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc'
+    d_detname = None # 'jungfrau'
+    d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-03-19'
+    d_version = 'V2025-04-09'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'
@@ -54,10 +60,10 @@ def argument_parser():
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_version = 'script version, default = %s' % str(d_version)
     h_segind  = 'segment index to process, default = %s' % str(d_segind)
-    h_gainmode  = 'gainmode, one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
+    h_gainmode  = 'gainmode, (detector-dependent) one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
     h_fname2darr = 'file name for 2d panel constants, default = %s' %d_fname2darr
 
-    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
+    parser = ArgumentParser(prog=SCRNAME, usage=USAGE, description=DESCRIPTION, epilog='help: %s -h' % SCRNAME )
     parser.add_argument('-k', '--dskwargs',   default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname',    default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-o', '--dirrepo',    default=d_dirrepo,    type=str,   help=h_dirrepo)

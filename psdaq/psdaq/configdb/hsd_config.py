@@ -1,3 +1,4 @@
+from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import Barrier
 from psdaq.configdb.get_config import get_config
@@ -43,6 +44,8 @@ def hsd_init(prefix, dev='dev/datadev_0'):
     root.__enter__()
     args['root'] = root.PcieControl.DevKcu1500
     args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+
+    hsd_unconfig(prefix)
 
 def hsd_connect(msg):
 
@@ -245,25 +248,51 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
 def hsd_unconfig(prefix):
     global epics_prefix
     epics_prefix = prefix
-
+    
+    # disable both A and B detectors
     ctxt = Context('pva')
-    values = ctxt.get(epics_prefix+':CONFIG')
-    values['enable'] = 0
-    print(values)
-    print(epics_prefix)
-    ctxt.put(epics_prefix+':CONFIG',values,wait=True)
+    epics_prefix_A = epics_prefix[:-1]+"A"
+    epics_prefix_B = epics_prefix[:-1]+"B"
+    
+    valuesA = ctxt.get(epics_prefix_A+':CONFIG')
+    if valuesA['enable'] ==1 :
+        valuesA['enable'] = 0
+        print(epics_prefix_A)
+        ctxt.put(epics_prefix_A+':CONFIG',valuesA,wait=True)
+
+        #  This handshake seems to be necessary, or at least the .get()
+        complete = False
+        for i in range(100):
+            complete = ctxt.get(epics_prefix_A+':READY')!=0
+            if complete: break
+            print('hsd_unconfig wait for complete',i)
+            time.sleep(0.1)
+        if complete:
+            print('hsd unconfig complete')
+        else:
+            raise Exception('timed out waiting for hsd_unconfig')
+    else:
+        print(f'{epics_prefix_A}: enable already false')
+    
+    valuesB = ctxt.get(epics_prefix_B+':CONFIG')
+    if valuesB['enable'] == 1 :
+        valuesB['enable'] = 0
+        print(epics_prefix_B)
+        ctxt.put(epics_prefix_B+':CONFIG',valuesB,wait=True)
 
     #  This handshake seems to be necessary, or at least the .get()
-    complete = False
-    for i in range(100):
-        complete = ctxt.get(epics_prefix+':READY')!=0
-        if complete: break
-        print('hsd_unconfig wait for complete',i)
-        time.sleep(0.1)
-    if complete:
-        print('hsd unconfig complete')
+        complete = False
+        for i in range(100):
+            complete = ctxt.get(epics_prefix_B+':READY')!=0
+            if complete: break
+            print('hsd_unconfig wait for complete',i)
+            time.sleep(0.1)
+        if complete:
+            print('hsd unconfig complete')
+        else:
+            raise Exception('timed out waiting for hsd_unconfig')
     else:
-        raise Exception('timed out waiting for hsd_unconfig')
+        print(f'{epics_prefix_B}: enable already false')
 
     ctxt.close()
 

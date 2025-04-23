@@ -43,10 +43,4 @@ class jungfrauemu_raw_0_1_0(ad.AreaDetectorRaw):
         #print('dir(self._config_object):', dir(self._config_object))
         return None
 
-    def _segment_ids(self):
-        """returns list of segment ids"""
-        longname = self._uniqueid
-        print('TBD _segment_ids for longname: %s' % longname)
-        return longname.split('_')[1:]
-
 # EOF

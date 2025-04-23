@@ -126,6 +126,7 @@ class DataSourceBase(abc.ABC):
                 "smd_callback",
                 "psmon_publish",
                 "prom_jobid",
+                "skip_calib_load"
             )
 
             for k in keywords:
@@ -659,6 +660,9 @@ class DataSourceBase(abc.ABC):
                     det_uniqueid = "cspad_detnum1234"
                 else:
                     det_uniqueid = configinfo.uniqueid
+                if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
+                    self.dsparms.calibconst[det_name] = None
+                    continue
                 calib_const = wu.calib_constants_all_types(
                     det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                 )

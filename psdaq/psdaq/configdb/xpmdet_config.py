@@ -1,3 +1,4 @@
+from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId

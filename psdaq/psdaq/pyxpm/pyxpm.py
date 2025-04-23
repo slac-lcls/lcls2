@@ -21,6 +21,8 @@ from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.pvhandler import *
 import psdaq.pyxpm.autosave as autosave
 
+MIN_FW_VERSION = 0x030c0100
+
 class NoLock(object):
     def __init__(self):
         self._level=0
@@ -57,6 +59,7 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
     parser.add_argument('-L', action='store_true', help='bypass AMC Locks')
     parser.add_argument('-T', action='store_true', help='test mode : use when no valid timing input')
@@ -89,13 +92,17 @@ def main():
 
     # Print the AxiVersion Summary
     axiv.printStatus()
+    fwver = axiv.FpgaVersion.get()
+
+    if fwver < MIN_FW_VERSION:
+        raise RuntimeError(f'Firmware version {fwver:x} is less than min required {MIN_FW_VERSION:x}')
 
     #provider = StaticProvider(__name__)
     provider = MyProvider(__name__)
 
     lock = Lock()
 
-    autosave.set(args.P,args.db,None)
+    autosave.set(args.P,args.db,None,norestore=args.norestore)
 
     cuMode='xtpg' in xpm.AxiVersion.ImageName.get()
 #    tsSync = TsSync(args.P,base.XPM.TpgMini) if cuMode else None
@@ -125,6 +132,8 @@ def main():
                 if cycle == 5:
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode, bypassLock=args.L)
                     pvxtpg.init()
+
+                elif cycle == 10:   # Wait for PVSeq to register with autosave/restore
                     autosave.restore()
 
                     #  This is necessary after restoring L0Delays

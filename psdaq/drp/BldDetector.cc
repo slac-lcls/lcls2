@@ -153,6 +153,8 @@ BldFactory::BldFactory(const char* name,
     _detType = std::string(name);
     _detId   = std::string(name);
 
+    _varLenArr = false; // Only feespec has variable length arrays
+
     unsigned mcaddr = 0;
     unsigned mcport = 10148; // 12148, eventually
     uint64_t tscorr = 0x259e9d80UL << 32;
@@ -201,14 +203,22 @@ BldFactory::BldFactory(const char* name,
         _varDef.NameVec = BldNames::BeamMonitorV1().NameVec;
         _arraySizes = BldNames::BeamMonitorV1().arraySizes();
     }
+    else if (strcmp("feespec",name) == 0) {
+        mcaddr = 0xefff182e;
+        _alg   = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::SpectrometerDataV1().NameVec;
+        _arraySizeMap = BldNames::SpectrometerDataV1().arraySizeMap();
+        _entryByteSizes = BldNames::SpectrometerDataV1().byteSizes();
+        _varLenArr = true; // Feespec arrays are variable length
+    }
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
-    unsigned payloadSize = getVarDefSize(_varDef,_arraySizes);
+    unsigned payloadSize = _varLenArr ? 0 : getVarDefSize(_varDef,_arraySizes);
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
-                                     tscorr);
+                                     tscorr, _varLenArr, _entryByteSizes, _arraySizeMap);
 }
 
   //
@@ -276,13 +286,31 @@ void BldFactory::addEventData(Xtc&          xtc,
 {
     const Bld& bld = handler();
     DescribedData desc(xtc, bufEnd, namesLookup, namesId);
+    // Assume payloadSize has been updated by the time this is called for varLenArr bld
     memcpy(desc.data(), bld.payload(), bld.payloadSize());
     desc.set_data_length(bld.payloadSize());
     unsigned shape[] = {0,0,0,0,0};
-    for(unsigned i=0; i<_arraySizes.size(); i++) {
-        if (_arraySizes[i]) {
-            shape[0] = _arraySizes[i];
-            desc.set_array_shape(i,shape);
+    if (!_varLenArr) {
+        for(unsigned i=0; i<_arraySizes.size(); i++) {
+            if (_arraySizes[i]) {
+                shape[0] = _arraySizes[i];
+                desc.set_array_shape(i,shape);
+            }
+        }
+    } else {
+        for (unsigned i=0; i<_arraySizeMap.size(); i++) {
+            if (_arraySizeMap[i] != i) {
+                unsigned offset = 0;
+                for (unsigned j=0; j < _arraySizeMap[i]; j++) {
+                    // This should work if all var lens are at the end
+                    // Then shouldn't need to account for variable length part in
+                    // offset calculation
+                    offset += _entryByteSizes[j];
+                }
+                // Assume entries that dictate array sizes are uint32_t? Or need generic handling?
+                shape[0] = *reinterpret_cast<uint32_t*>(&bld.payload()[offset]);
+                desc.set_array_shape(i,shape);
+            }
         }
     }
 }
@@ -372,13 +400,21 @@ Bld::Bld(unsigned mcaddr,
          unsigned pulseIdPos,
          unsigned headerSize,
          unsigned payloadSize,
-         uint64_t timestampCorr) :
+         uint64_t timestampCorr,
+         bool     varLenArr,
+         std::vector<unsigned> entryByteSizes,
+         std::map<unsigned,unsigned> arraySizeMap) :
     m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
     m_headerSize(headerSize), m_payloadSize(payloadSize),
     m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
-    m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0)
+    m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0), m_varLenArr(varLenArr),
+    m_entryByteSizes(entryByteSizes), m_arraySizeMap(arraySizeMap)
 {
-    logging::info("Bld listening for %x.%d with payload size %u",mcaddr,port,payloadSize);
+    if (m_varLenArr) {
+        logging::info("Bld listening for %x.%d with payload size TBD", mcaddr, port);
+    } else {
+        logging::info("Bld listening for %x.%d with payload size %u", mcaddr, port, payloadSize);
+    }
 
     m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     if (m_sockfd < 0)
@@ -442,6 +478,41 @@ uint8_t  payload[]
 
 */
 
+/**
+ * Update m_payloadSize for variable length data arriving from some bld.
+ * Inspects the payload based on byte size array and a map for determining
+ * what values in the payload determine array lengths elsewhere.
+ * Currently assumes values in payload that are also used for array lengths
+ * elsewhere in the payload are uint32_t.
+ */
+void Bld::_calcVarPayloadSize()
+{
+    if (!m_varLenArr)
+        return; // payloadSize is fixed and was passed in at construction, so return
+
+    unsigned offset {0};
+    unsigned payloadSize {0};
+
+    for (unsigned i = 0; i < m_arraySizeMap.size(); i++) {
+        if (m_arraySizeMap[i] == i) {
+            payloadSize += m_entryByteSizes[i];
+        } else {
+            for (unsigned j=0; j < m_arraySizeMap[i]; j++) {
+                // This should work if all var lens are at the end
+                // Then shouldn't need to account for variable length part in
+                // offset calculation
+                offset += m_entryByteSizes[j];
+            }
+            // Assume entries that dictate array sizes are uint32_t? Or need generic handling?
+            uint32_t numEntries = *reinterpret_cast<uint32_t*>(&m_payload[offset]);
+            payloadSize += m_entryByteSizes[i]*numEntries;
+            offset = 0;
+        }
+    }
+
+    m_payloadSize = payloadSize;
+}
+
 //  Read ahead and clear events older than ts (approximate)
 void     Bld::clear(uint64_t ts)
 {
@@ -466,6 +537,7 @@ void     Bld::clear(uint64_t ts)
             }
             pulseId      = headerPulseId  ();
             m_payload    = &m_buffer[m_headerSize];
+            _calcVarPayloadSize();
             m_position   = m_headerSize + m_payloadSize;
         }
         else if (m_position==0) {
@@ -474,6 +546,7 @@ void     Bld::clear(uint64_t ts)
                 break;
             pulseId      = headerPulseId  ();
             m_payload    = &m_buffer[m_headerSize];
+            _calcVarPayloadSize();
             m_position   = m_headerSize + m_payloadSize;
         }
         else {
@@ -484,6 +557,7 @@ void     Bld::clear(uint64_t ts)
             uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
             pulseId     = headerPulseId  () + pulseIdOffset;
             m_payload   = &m_buffer[m_position + 4];
+            _calcVarPayloadSize();
             m_position += 4 + m_payloadSize;
         }
 
@@ -522,6 +596,7 @@ uint64_t Bld::next()
         timestamp    = headerTimestamp();
         pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
+        _calcVarPayloadSize();
         m_position   = m_headerSize + m_payloadSize;
         logging::debug("Bld::next [%u.%09d]  ts %016llx  diff %d", ts.tv_sec, ts.tv_nsec, timestamp, ts.tv_sec - (timestamp>>32) - POSIX_TIME_AT_EPICS_EPOCH);
     }
@@ -529,6 +604,7 @@ uint64_t Bld::next()
         timestamp    = headerTimestamp();
         pulseId      = headerPulseId  ();
         m_payload    = &m_buffer[m_headerSize];
+        _calcVarPayloadSize();
         m_position   = m_headerSize + m_payloadSize;
     }
     else {
@@ -537,6 +613,7 @@ uint64_t Bld::next()
         uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
         pulseId     = headerPulseId  () + pulseIdOffset;
         m_payload   = &m_buffer[m_position + 4];
+        _calcVarPayloadSize();
         m_position += 4 + m_payloadSize;
     }
 
