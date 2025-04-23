@@ -50,7 +50,7 @@ def argument_parser():
     d_dirrepo = DIR_REPO_EPIX10KA
     d_deploy  = False
     d_logmode = 'INFO'
-    d_proc    = 'psrg'
+    d_proc    = 'psr'
     d_paninds = None
     d_high    = None #16.40 for epix10ka
     d_medium  = None #5.466
