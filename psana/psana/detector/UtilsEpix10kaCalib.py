@@ -695,19 +695,19 @@ def merge_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, dtype, of
     logger.info('merge ctype: %s\n    in: %s' % (ctype, dir_ctype))
 
     #dtype = np.uint64 if ctype in ('status', ) else np.float32
-    nda_def = np.ones(shape, dtype=dtype) if ctype in ('gain', 'gainci', 'rms') else\
+    nda_def = np.ones(shape, dtype=dtype) if ctype in ('gain', 'gainci', 'rms', 'pixel_gain', 'pixel_gainci', 'pixel_rms') else\
               np.zeros(shape, dtype=dtype)
 
     lstnda = []
     for igm,gm in enumerate(ue.GAIN_MODES):
-        fname = None if gm in ue.GAIN_MODES[5:] and ctype in ('status', 'rms') else\
+        fname = None if gm in ue.GAIN_MODES[5:] and ctype in ('status', 'rms', 'pixel_status', 'pixel_rms') else\
                 find_file_for_timestamp(dir_ctype, '%s-%s' % (ctype,gm), tstamp)
         nda = np.loadtxt(fname, dtype=dtype) if fname is not None else\
-              nda_def*GAIN_FACTOR_DEF[igm] if ctype in ('gain', 'gainci') else\
+              nda_def*GAIN_FACTOR_DEF[igm] if ctype in ('gain', 'gainci', 'pixel_gain', 'pixel_gainci') else\
               nda_def
 
         # normalize gains for ctype 'gainci'
-        if fname is not None and ctype == 'gainci':
+        if fname is not None and ctype in ('gainci', 'pixel_gainci'):
             med_nda = np.median(nda)
             dir_gain = dir_ctype
             if med_nda != 0:
