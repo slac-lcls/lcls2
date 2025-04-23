@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS, au
-from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
+from psana.detector.UtilsEpix10ka import calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4,\
   cbits_config_and_data_detector, M14, M15, B14, B15
 import psana.detector.UtilsMask as um #import merge_status
