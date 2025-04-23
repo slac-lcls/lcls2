@@ -20,7 +20,7 @@ class epix10k_raw_0_0_1(eb.epix_base):
         logger.debug('%s.__init__' % self.__class__.__name__)
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIX10KA:V1')
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-opal-TBD.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix10ka-TBD.data'
 
 
 class epix10ka_raw_2_0_1(eb.epix_base):
@@ -32,7 +32,7 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         self._data_gain_bit = eb.B14
         self._gain_bit_shift = 9
         self._gains_def = (16.4, 5.466, 0.164) # epix10ka ADU/keV H:M:L = 1 : 1/3 : 1/100
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-TBD.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix10ka-TBD.data'
 
 
     def _cbits_config_segment(self, cob):
