@@ -1024,7 +1024,15 @@ static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& 
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
-    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName());
+    // Try to reduce clutter in grafana by picking the same port on each invocation.
+    // Since DRPs on the same node have unique lane masks use the lowest bit set as an
+    // offset into the port space.  If the port is in use, a search is done.
+    unsigned portOffset = ffs(para.laneMask);
+    size_t found = para.device.rfind('_');
+    if ((found != std::string::npos) && isdigit(para.device.back())) {
+        portOffset *= PGP_MAX_LANES * std::stoi(para.device.substr(found+1, para.device.size()));
+    }
+    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName(), portOffset);
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
