@@ -87,4 +87,26 @@ python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 ~/tmp/debugte
 
 Use this to simulate real-time smalldata writing for testing tools like live monitors or file watchers.
 
+### scan_daq_logs_by_run.py
+
+Scans DAQ log files by run timestamp, grouping all logs from the same invocation and reporting only the relevant errors and warnings in a concise, deduped format.
+
+### Key features:
+
+- Glob & Sort: Supply shell patterns (e.g., ~/2025/04/24*) to select log files.
+- Group by Run: Files are grouped by their date_time prefix (e.g., 24_10:26:29).
+- Error Detection: Matches case-insensitive error, segmentation fault, and any !! warnings.
+- Ignore Filters: Skips slurmstepd: error noise lines.
+- Consecutive Deduplication: Collapses only consecutive repeats of the same normalized error; resets suppression when a different line appears.
+
+### Usage:
+```bash
+python -m psana.debugtools.scan_daq_logs_by_run <log_glob1> [<log_glob2> ...]
+```
+### Example:
+```bash
+python -m psana.debugtools.scan_daq_logs_by_run ~/2025/04/24*
+```
+
 For questions or contributions, contact the LCLS DAQ/Data Systems team.
+
