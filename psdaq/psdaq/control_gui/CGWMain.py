@@ -39,7 +39,7 @@ from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, ControlDef,\
                                                    daq_control_get_status, daq_control_get_instrument
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
-from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
+from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box, info_rect_xywh, info_point
 #from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
 from psdaq.control_gui.CGWMainTabExpert     import CGWMainTabExpert
 
@@ -434,12 +434,14 @@ def proc_control_gui(parser=None):
     p = QCursor.pos()
     scrnum = QDesktopWidget().screenNumber(p)
     #r = QDesktopWidget().screenGeometry(screen=scrnum)
-    #r = QDesktopWidget().availableGeometry(p)
-    r = QDesktopWidget().availableGeometry(screen=scrnum)
+    #r = QDesktopWidget().screenGeometry(p)
+    r = QDesktopWidget().availableGeometry(p)
+    #r = QDesktopWidget().availableGeometry(screen=scrnum)
     w.move(r.x(), r.y())
     #w.move(r.x()+400, r.y())
-    #w.move(200, p.y())
-    #w.setWindowTitle(str(p))
+    #w.move(p.x(), p.y())
+    #w.setWindowTitle('scr:%d %s'%(scrnum, info_point(p, cmt='', fmt='%sx=%1.0f y=%1.0f')))
+    #w.setWindowTitle('scr:%d %s'%(scrnum, info_rect_xywh(r, cmt='', fmt='%sx=%1.0f y=%1.0f w=%1.0f h=%1.0f')))
 
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
