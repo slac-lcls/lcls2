@@ -102,7 +102,7 @@ class Run(object):
     def run(self):
         """Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
-        return self.run_no
+        return self.runnum
 
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constant - set default value to None
