@@ -108,5 +108,22 @@ python -m psana.debugtools.scan_daq_logs_by_run <log_glob1> [<log_glob2> ...]
 python -m psana.debugtools.scan_daq_logs_by_run ~/2025/04/24*
 ```
 
+---
+
+### `scan_teb_fixups_by_run.py`
+
+Scans TEB logs for “Fixup L1Accept” warnings and drills into the matching DAQ logs to locate the closest pulse-ID match, presenting useful context around the issue.
+
+**Key features:**
+- **Run boundaries**: Detects `BeginRun` and `EndRun` pulse IDs; marks runs as crashed if no `EndRun` is found.
+- **Run duration**: Reports total run time in seconds when both boundaries are available.
+- **Fixup analysis**: For each fixup warning, shows the pulse ID and offset from the start (and end, if available) in both pulse counts and seconds.
+- **Best-match context**: Finds the nearest pulse-ID occurrence in the DAQ log, prints its delta in pulses and seconds, and displays lines around the match for deeper debugging.
+
+**Usage:**
+```bash
+python -m psana.debugtools.scan_teb_fixups_by_run <teb_glob1> [<teb_glob2> ...]
+
+
 For questions or contributions, contact the LCLS DAQ/Data Systems team.
 
