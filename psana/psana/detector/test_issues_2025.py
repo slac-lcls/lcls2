@@ -790,6 +790,35 @@ def issue_2025_04_22():
 
 
 
+def issue_2025_04_23(DO_WITH_PUBLISH=True):
+    """cpo - jungfrau16M image for 4 drp panels
+       datinfo -k exp=mfx101332224,run=167 -d jungfrau
+       shape:(4, 512, 1024)
+    """
+    from psana import DataSource
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    if DO_WITH_PUBLISH:
+        from psmon.plots import Image
+        from psmon import publish
+        publish.local = True
+        publish.plot_opts.aspect = 1
+
+    ds = DataSource(exp='mfx101332224',run=167)
+    myrun = next(ds.runs())
+    jf = myrun.Detector('jungfrau')
+    for nevent,evt in enumerate(myrun.events()):
+        if nevent > 10: break
+        raw = jf.raw.raw(evt)
+        print(ndu.info_ndarr(raw, 'ev:%02d raw:' % nevent))
+        if raw is None: continue
+        image = jf.raw.image(evt)
+        print(ndu.info_ndarr(image, '    image:'))
+
+        if DO_WITH_PUBLISH:
+            imgsend = Image(nevent,"Random",image)
+            publish.send('image',imgsend)
+            input("hit cr")
 
 #===
     
@@ -802,12 +831,13 @@ def argument_parser():
     d_detname  = 'archon' # None
     d_loglevel = 'INFO' # 'DEBUG'
     d_subtest  = None
-    h_tname    = 'test name, usually numeric number, default = %s' % d_tname
+    h_tname    = 'test name, usually numeric number 0,...,>20, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
     h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
-    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage='for use cases run it without parameters')
+    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME,\
+                            usage='for list of implemented tests run it without parameters')
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
@@ -823,7 +853,7 @@ def selector():
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
 
-    TNAME = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
+    TNAME = args.tname # sys.argv[1] if len(sys.argv)>1 else '0'
 
     if   TNAME in  ('0',): issue_2025_mm_dd() # template
     elif TNAME in  ('1',): issue_2025_01_29() # archon V2 common mode
@@ -840,17 +870,16 @@ def selector():
     elif TNAME in ('12',): issue_2025_04_02() # Aaron Brewster - acces to jungfrau geometry from file
     elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
     elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
-    elif TNAME in ('15',): issue_2025_nda()   # my - generate and save random numpy array in file
+    elif TNAME in ('15',): issue_2025_nda()   # me - generate and save random numpy array in file
     elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing with OPENBLAS_NUM_THREADS=1/0
-    elif TNAME in ('17',): issue_2025_04_11() # my - access to multiple calibconst
+    elif TNAME in ('17',): issue_2025_04_11() # me - access to multiple calibconst
     elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
-    elif TNAME in ('19',): issue_2025_04_21() # my - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
-    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros due to misidentified calibration type "gain"
-
+    elif TNAME in ('19',): issue_2025_04_21() # me - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
+    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
+    elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
-
     exit('END OF TEST %s'%TNAME)
 
 
@@ -858,13 +887,14 @@ def USAGE():
     import inspect
     #return '\n  TEST'
     return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
-         + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])
-
-
-print(USAGE())
+         + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])\
+         + '\n\nHELP:\n  list of parameters: ./%s -h\n  list of tests:      ./%s' % (SCRNAME, SCRNAME)
 
 
 if __name__ == "__main__":
+    if len(sys.argv)==1:
+        print(USAGE())
+        exit('\nMISSING ARGUMENTS -> EXIT')
     selector()
 
 # EOF
