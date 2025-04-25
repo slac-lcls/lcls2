@@ -75,7 +75,7 @@ python -m psana.debugtools.simulate_smalldata_write <exp> <run> <output_path> [-
 
 #### Example:
 ```bash
-python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 ~/tmp/debugtest -m 5 -n 100
+python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 /sdf/data/lcls/drpsrcf/ffb/users/monarin/ds/rix/rixl1032923/xtc -m 5 -n 1000
 ```
 
 #### Parameters:
