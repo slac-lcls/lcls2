@@ -337,7 +337,7 @@ void TebContributor::_post(const Batch& batch)
     uint64_t     pid    = batch.start->pulseId();
     unsigned     dst    = (pid / _prms.maxEntries) % _numEbs;
     EbLfCltLink* link   = _links[dst];
-    unsigned     offset = link->lclOfs(batch.start);
+    size_t       offset = link->lclOfs(batch.start);
     uint32_t     idx    = offset / _prms.maxInputSize;
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;

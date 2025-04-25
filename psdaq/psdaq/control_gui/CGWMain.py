@@ -39,7 +39,7 @@ from psdaq.control_gui.QWLoggerStd          import QWLoggerStd
 from psdaq.control_gui.CGDaqControl         import daq_control, DaqControl, ControlDef,\
                                                    daq_control_get_status, daq_control_get_instrument
 from psdaq.control_gui.QWZMQListener        import QWZMQListener, zmq
-from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box
+from psdaq.control_gui.QWUtils              import confirm_or_cancel_dialog_box, info_rect_xywh, info_point
 #from psdaq.control_gui.CGWMainTabs          import CGWMainTabs
 from psdaq.control_gui.CGWMainTabExpert     import CGWMainTabExpert
 
@@ -102,7 +102,6 @@ class CGWMain(QWZMQListener):
         #self.connect(self.wbut.but_save,  QtCore.SIGNAL('clicked()'), self.on_but_save)
 
 
-
     def proc_parser(self, parser=None):
         self.parser=parser
 
@@ -157,15 +156,13 @@ class CGWMain(QWZMQListener):
         if cp.instr is None: logger.warning('instrument is None')
 
 
-
     def set_tool_tips(self):
         pass
         #self.setToolTip('DAQ control')
 
 
     def sizeHint(self):
-        """Set default window size
-        """
+        """Set default window size"""
         return QSize(370, 810)
 
 
@@ -257,7 +254,6 @@ class CGWMain(QWZMQListener):
 
         cp.cgwmain = None
 
-#--------------------
 
 #    def __del__(self):
 #        logger.debug('In CGConfigParameters d-tor')
@@ -265,7 +261,6 @@ class CGWMain(QWZMQListener):
 #        if True:
 #            self.on_save()
 
-#--------------------
 
     def on_save(self):
 
@@ -425,6 +420,7 @@ class CGWMain(QWZMQListener):
 
 def proc_control_gui(parser=None):
     import sys
+    from PyQt5.QtWidgets import QApplication, QDesktopWidget
     #sys.stdout = sys.stderr = open('/dev/null', 'w') # open('%s-stdout-stderr' % cp.log_file.value(), 'w')
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
@@ -432,7 +428,21 @@ def proc_control_gui(parser=None):
 
     cp.qapplication = app
     w = CGWMain(parser)
-    w.move(QCursor.pos().x(), 0)
+
+    #ag = QDesktopWidget().availableGeometry()
+    #sg = QDesktopWidget().screenGeometry()
+    p = QCursor.pos()
+    scrnum = QDesktopWidget().screenNumber(p)
+    #r = QDesktopWidget().screenGeometry(screen=scrnum)
+    #r = QDesktopWidget().screenGeometry(p)
+    r = QDesktopWidget().availableGeometry(p)
+    #r = QDesktopWidget().availableGeometry(screen=scrnum)
+    w.move(r.x(), r.y())
+    #w.move(r.x()+400, r.y())
+    #w.move(p.x(), p.y())
+    #w.setWindowTitle('scr:%d %s'%(scrnum, info_point(p, cmt='', fmt='%sx=%1.0f y=%1.0f')))
+    #w.setWindowTitle('scr:%d %s'%(scrnum, info_rect_xywh(r, cmt='', fmt='%sx=%1.0f y=%1.0f w=%1.0f h=%1.0f')))
+
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
 

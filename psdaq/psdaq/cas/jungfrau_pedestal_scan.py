@@ -9,7 +9,7 @@ def main():
         "--hutch": "asc",
         "--detname": "jungfrau_0",
         "--scantype": "pedestal",
-        "--record": 0,#1,
+        "--record": 1,
         "--config": "BEAM",
     }
 

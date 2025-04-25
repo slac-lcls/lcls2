@@ -75,7 +75,7 @@ python -m psana.debugtools.simulate_smalldata_write <exp> <run> <output_path> [-
 
 #### Example:
 ```bash
-python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 ~/tmp/debugtest -m 5 -n 100
+python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 /sdf/data/lcls/drpsrcf/ffb/users/monarin/ds/rix/rixl1032923/xtc -m 5 -n 1000
 ```
 
 #### Parameters:
@@ -87,4 +87,43 @@ python -m psana.debugtools.simulate_smalldata_write rixl1032923 22 ~/tmp/debugte
 
 Use this to simulate real-time smalldata writing for testing tools like live monitors or file watchers.
 
+### scan_daq_logs_by_run.py
+
+Scans DAQ log files by run timestamp, grouping all logs from the same invocation and reporting only the relevant errors and warnings in a concise, deduped format.
+
+### Key features:
+
+- Glob & Sort: Supply shell patterns (e.g., ~/2025/04/24*) to select log files.
+- Group by Run: Files are grouped by their date_time prefix (e.g., 24_10:26:29).
+- Error Detection: Matches case-insensitive error, segmentation fault, and any !! warnings.
+- Ignore Filters: Skips slurmstepd: error noise lines.
+- Consecutive Deduplication: Collapses only consecutive repeats of the same normalized error; resets suppression when a different line appears.
+
+### Usage:
+```bash
+python -m psana.debugtools.scan_daq_logs_by_run <log_glob1> [<log_glob2> ...]
+```
+### Example:
+```bash
+python -m psana.debugtools.scan_daq_logs_by_run ~/2025/04/24*
+```
+
+---
+
+### `scan_teb_fixups_by_run.py`
+
+Scans TEB logs for “Fixup L1Accept” warnings and drills into the matching DAQ logs to locate the closest pulse-ID match, presenting useful context around the issue.
+
+**Key features:**
+- **Run boundaries**: Detects `BeginRun` and `EndRun` pulse IDs; marks runs as crashed if no `EndRun` is found.
+- **Run duration**: Reports total run time in seconds when both boundaries are available.
+- **Fixup analysis**: For each fixup warning, shows the pulse ID and offset from the start (and end, if available) in both pulse counts and seconds.
+- **Best-match context**: Finds the nearest pulse-ID occurrence in the DAQ log, prints its delta in pulses and seconds, and displays lines around the match for deeper debugging.
+
+**Usage:**
+```bash
+python -m psana.debugtools.scan_teb_fixups_by_run <teb_glob1> [<teb_glob2> ...]
+
+
 For questions or contributions, contact the LCLS DAQ/Data Systems team.
+

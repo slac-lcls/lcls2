@@ -1,4 +1,4 @@
-#------------------------------
+
 """
 :py:class:`QWUtils` - Popup GUIs
 ================================
@@ -22,7 +22,6 @@ Created on 2017-02-08 by Mikhail Dubrovin
 Adopted for LCLS2 on 2018-02-15
 Adopted for psdaq on 2019-03-27
 """
-#------------------------------
 
 import os
 import logging
@@ -32,7 +31,6 @@ from PyQt5.QtWidgets import QMenu, QDialog, QFileDialog, QMessageBox, QColorDial
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QCursor
 
-#------------------------------
 
 def select_item_from_popup_menu(lst, title=None, default=None, parent=None):
     """Shows the list as a pop-up menu and returns the selected item as a string or None"""
@@ -42,7 +40,7 @@ def select_item_from_popup_menu(lst, title=None, default=None, parent=None):
     atitle = w.addAction(_title)
     atitle.setDisabled(True)
     asep = w.addSeparator()
-    for name in lst : 
+    for name in lst:
        action = w.addAction(name)
        if name == default :
            #w.setDefaultAction(action)
@@ -50,7 +48,6 @@ def select_item_from_popup_menu(lst, title=None, default=None, parent=None):
     item = w.exec_(QCursor.pos())
     return None if item is None else str(item.text()) # str(QString)
 
-#------------------------------
 
 def select_color(colini=Qt.blue, parent=None):
     """Select color using QColorDialog"""
@@ -62,7 +59,6 @@ def select_color(colini=Qt.blue, parent=None):
     #color = QColorDialog.getColor()
     return None if color is None else color # QColor or None
 
-#------------------------------
 
 def change_check_box_list_in_popup_menu(list, win_title='Set check boxes', parent=None):
     """Shows the list of check-boxes as a dialog pop-up menu and returns the (un)changed list"""
@@ -99,7 +95,7 @@ def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', paren
     response = popupMenu.exec_()
 
     if   response == QDialog.Accepted :
-        #logger.debug('New checkbox dict is accepted',)         
+        #logger.debug('New checkbox dict is accepted',)
         return 1
     elif response == QDialog.Rejected :
         #logger.debug('Will use old checkbox dict')
@@ -108,7 +104,6 @@ def change_check_box_dict_in_popup_menu(dict, win_title='Set check boxes', paren
         #logger.error('Unknown response...')
         return 2
 
-#------------------------------
 
 def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', do_confirm=False, parent=None):
     """Popup GUI to select radio button from the list:  dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
@@ -120,17 +115,26 @@ def select_radio_button_in_popup_menu(dict_of_pars, win_title='Select option', d
     popupMenu.move(QCursor.pos()-QPoint(100,100))
     return popupMenu.exec_() # QDialog.Accepted or QDialog.Rejected
 
-#------------------------------
 
-def print_rect(r, cmt='') :
-    x, y, w, h = r.x(), r.y(), r.width(), r.height()
-    L, R, T, B = r.left(), r.right(), r.top(), r.bottom()
-    logger.debug('%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h))
-    logger.debug('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
+def info_point(p, cmt='', fmt='%sx=%1.0f y=%1.0f') :
+    return fmt % (cmt, p.x(), p.y())
 
-#------------------------------
+def info_rect_xywh(r, cmt='', fmt='%sx=%1.0f y=%1.0f w=%1.0f h=%1.0f') :
+    return fmt % (cmt, r.x(), r.y(), r.width(), r.height())
 
-def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+def info_rect_lbrt(r, cmt='', fmt='%sL=%1.0f B=%1.0f R=%1.0f T=%1.0f') :
+    return fmt % (cmt, r.left(), r.right(), r.top(), r.bottom())
+
+def print_rect(r, cmt=' ') :
+    logger.debug(info_rect_xywh(r, cmt))
+    logger.debug(info_rect_xywh(r, cmt))
+    #x, y, w, h = r.x(), r.y(), r.width(), r.height()
+    #L, R, T, B = r.left(), r.right(), r.top(), r.bottom()
+    #logger.debug('%s x=%8.2f  y=%8.2f  w=%8.2f  h=%8.2f' % (cmt, x, y, w, h))
+    #logger.debug('%s L=%8.2f  B=%8.2f  R=%8.2f  T=%8.2f' % (len(cmt)*' ', L, B, R, T))
+
+
+def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getSaveFileName(parent,
                                              caption   = title,
@@ -143,9 +147,8 @@ def get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
     #logger.debug('Output file: ' + path + ' get_save_fname_through_dialog_box')
     return path
 
-#------------------------------
 
-def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):       
+def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
 
     path, fext = QFileDialog.getOpenFileName(parent, title, path0, filter=filter)
 
@@ -156,12 +159,11 @@ def get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt'):
     if dname == '' or fname == '' :
         #logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    #logger.info('Input file: ' + path + 'get_open_fname_through_dialog_box') 
+    #logger.info('Input file: ' + path + 'get_open_fname_through_dialog_box')
     return path
 
-#------------------------------
 
-def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):       
+def get_existing_directory_through_dialog_box(parent, path0, title, options = QFileDialog.ShowDirsOnly):
 
     resp = QFileDialog.getExistingDirectory(parent, title, path0, options)
 
@@ -172,10 +174,9 @@ def get_existing_directory_through_dialog_box(parent, path0, title, options = QF
     if dname == '' :
         # logger.debug('Input directiry name or file name is empty... keep file path unchanged...'
         return None
-    logger.info('Selected directory: %s' % dname) 
+    logger.info('Selected directory: %s' % dname)
     return dname
 
-#------------------------------
 
 def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title='Please acknowledge') :
         """Pop-up MODAL box for confirmation"""
@@ -205,7 +206,6 @@ def confirm_dialog_box(parent=None, text='Please confirm that you aware!', title
 
         return True if clicked == QMessageBox.Ok else False
 
-#------------------------------
 
 def confirm_or_cancel_dialog_box(parent=None, text='Please confirm or cancel', title='Confirm or cancel') :
         """Pop-up MODAL box for confirmation"""
@@ -228,7 +228,6 @@ def confirm_or_cancel_dialog_box(parent=None, text='Please confirm or cancel', t
         elif clicked == QMessageBox.Cancel : return False
         else                               : return False
 
-#------------------------------
 
 def help_dialog_box(parent=None, text='Help message goes here', title='Help') :
         """Pop-up NON-MODAL box for help etc."""
@@ -246,23 +245,19 @@ def help_dialog_box(parent=None, text='Help message goes here', title='Help') :
         #logger.info('Help window is open' + text, 'help_dialog_box')
         return mesbox
 
-#------------------------------
 
 def widget_from_layout(l) :
     w = QWigget()
     w.setLayout(l)
     return w
 
-#------------------------------
 
 def layout_from_widget(w, layout=QVBoxLayout) :
     l = layout()
     l.addWidget(w)
     return l
 
-#------------------------------
-#------------------------------
- 
+
 if __name__ == "__main__" :
 
   def test(tname) :
@@ -272,7 +267,7 @@ if __name__ == "__main__" :
 
     if tname == '0':
         instrs = ['SXR', 'AMO', 'XPP', 'CXI', 'MEC']
-        resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO') 
+        resp = select_item_from_popup_menu(instrs, title='Select INS', default='AMO')
         logger.debug('Selected: %s' % resp)
 
     elif tname == '1':
@@ -280,8 +275,8 @@ if __name__ == "__main__" :
         resp = change_check_box_list_in_popup_menu(list_of_cbox, win_title='Select vars(s)')
         for (var,stat) in list_of_cbox : logger.debug('%s: %s' % (var, stat))
         logger.debug('resp: %s' % resp)
-        
-    elif tname == '2': 
+
+    elif tname == '2':
         dict_of_pars = {'checked':'radio1', 'list':['radio0', 'radio1', 'radio2']}
         resp = select_radio_button_in_popup_menu(dict_of_pars, win_title='Select vars(s)', do_confirm=True)
         for (k,v) in dict_of_pars.items() : logger.debug('%s: %s' % (k, v))
@@ -292,27 +287,27 @@ if __name__ == "__main__" :
         resp = get_save_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '4': 
+    elif tname == '4':
         parent=None; path0='./'; title='get_open_fname_through_dialog_box'
         resp = get_open_fname_through_dialog_box(parent, path0, title, filter='*.txt')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '5': 
+    elif tname == '5':
         resp = confirm_dialog_box(parent=None, text='Confirm that you aware!', title='Acknowledge')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '6': 
-        resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel') 
+    elif tname == '6':
+        resp = confirm_or_cancel_dialog_box(parent=None, text='Confirm or cancel', title='Confirm or cancel')
         logger.debug('resp: %s' % resp)
 
-    elif tname == '7': 
+    elif tname == '7':
         from time import sleep
         resp = help_dialog_box(parent=None, text='Help message goes here', title='Help')
         logger.debug('resp: %s' % resp)
         sleep(3)
         del resp
 
-    elif tname == '8': 
+    elif tname == '8':
         resp = select_color(colini=Qt.blue, parent=None)
 
     elif tname == '9':
@@ -324,13 +319,12 @@ if __name__ == "__main__" :
     elif tname == '10':
         resp = get_existing_directory_through_dialog_box(None, '.', 'Select directory', options = QFileDialog.ShowDirsOnly)
         logger.debug('resp: %s' % resp)
-        
+
     else :
         logger.debug('Sorry, not-implemented test "%s"' % tname)
 
     del app
 
-#------------------------------
 
 if __name__ == "__main__" :
     import sys; global sys
@@ -342,4 +336,4 @@ if __name__ == "__main__" :
     test(tname)
     sys.exit('End of test %s' % tname)
 
-#------------------------------
+# EOF
