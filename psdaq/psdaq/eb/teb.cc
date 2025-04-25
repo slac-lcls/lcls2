@@ -752,7 +752,7 @@ void Teb::_post(const Batch& batch)
   size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
                      reinterpret_cast<const char*>(batch.start)) + maxResultSize;
-  unsigned offset = batch.idx * maxResultSize;
+  size_t   offset = batch.idx * maxResultSize;
   uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
   _entries = extent / maxResultSize;
@@ -780,7 +780,7 @@ void Teb::_post(const Batch& batch)
   {
     uint64_t pid = batch.start->pulseId();
     printf("TEB posts          %9lu result  [%8u] @ "
-           "%16p,         pid %014lx, ofs %08x, sz %6zd, dst %016lx\n",
+           "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
            _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
   }
 

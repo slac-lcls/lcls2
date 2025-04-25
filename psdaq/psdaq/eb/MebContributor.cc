@@ -184,7 +184,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
-  unsigned     offset = idx * _maxEvSize;
+  size_t       offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
   uint32_t     data   = ImmData::value(ImmData::NoResponse_Buffer, _id, idx);
   void*        buffer = (char*)(_region[dst]) + offset;
@@ -199,7 +199,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
 
   if (UNLIKELY(ddg->xtc.src.value() != _id))
   {
-    logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08x",
+    logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08zx",
                       ddg->xtc.src.value(), _id, pid, sz, destination, data, offset);
     abort();
   }
@@ -356,7 +356,7 @@ int MebContributor::post(const EbDgram* dgram)
       abort();
     }
 
-    uint64_t offset = _bufRegSize[src] + idx * _maxTrSize;
+    size_t   offset = _bufRegSize[src] + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
     void*    buffer = (char*)(_region[src]) + offset;
     memcpy(buffer, dgram, sz); // Copy the datagram into the intermediate buffer
@@ -371,7 +371,7 @@ int MebContributor::post(const EbDgram* dgram)
     if (UNLIKELY(print || (_verbose >= VL_BATCH)))
     {
       printf("MebCtrb rcvd transition buffer           [%2u] @ "
-             "%16p, ofs %016lx = %08zx + %2u * %08zx,     src %2u\n",
+             "%16p, ofs %016zx = %08zx + %2u * %08zx,     src %2u\n",
              idx, (void*)link->rmtAdx(0), offset, _bufRegSize[src], idx, _maxTrSize, src);
 
       unsigned ctl    = dgram->control();
