@@ -11,15 +11,15 @@ Usage::
   sec, nsec = sec_nsec_from_tstamp(ts)
   d = dict_from_arr3d(a)
   a = arr3d_from_dict(d, keys=None)
-  img_sta, multinds, nentries = statistics_of_pixel_arrays(rows, cols)
-  img = img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0)
+  img_sta, multinds, nentries = statistics_of_pixel_arrays(rows, cols, rc_tot_max=None)
+  img = img_from_pixel_arrays(rows, cols, weight=1.0, dtype=np.float32, vbase=0, rc_tot_max=None)
   img = img_multipixel_max(img, weight, dict_pix_to_img_idx)
   img_multipixel_max(img, weight, dict_pix_to_img_idx)
   img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries)
   size = size_for_shape(shape)
   a = ascending_index_array_for_shape(shape, dtype=np.int32)
-  shape = image_shape(arr_rows, arr_cols)
-  img = image_of_pixel_array_ascending_index(rows, cols, img_shape=None, dtype=np.int32)
+  shape = image_shape(arr_rows, arr_cols, rc_tot_max=None) # rc_tot_max - maximal row and column for entire detector image
+  img = image_of_pixel_array_ascending_index(rows, cols, img_shape=None, dtype=np.int32, rc_tot_max=None)
   img = image_of_pixel_seg_row_col(img_ascend_pix_ind, arr_shape, dtype=np.int32)
   img = image_of_holes(busy_img_bins)
   inds = hole_inds_ravel(img_holes)
@@ -28,13 +28,12 @@ Usage::
   statistics_of_holes(rows, cols, **kwa)
   img = img_default(arr)
 
-  #TBD init_interpolation_parameters(rows, cols, x, y, **kwa)
+  #TBD init_interpolation_parameters(rows, cols, x, y, **kwa) # kwa['rc_tot_max'] - maximal row and column
   #TBD img = img_interpolated(data, interpol_pars, **kwa)
 
 2020-11-06 created by Mikhail Dubrovin
 """
 
-#from psana.detector.NDArrUtils import shape_as_2d, shape_as_3d, reshape_to_2d, reshape_to_3d
 import logging
 logger = logging.getLogger(__name__)
 
@@ -49,12 +48,10 @@ def arr_rot_n90(arr, rot_ang_n90=0):
     elif rot_ang_n90==270: return np.fliplr(arr.T)
     else                 : return arr
 
-
 def sec_nsec_from_tstamp(ts):
    nsec = ts & 0xffffffff
    sec = (ts >> 32) & 0xffffffff
    return sec, nsec
-
 
 def dict_from_arr3d(a):
     """Converts 3d array of shape=(n0,n1,n2) to dict {k[0:n0-1] : nd.array.shape(n1,n2)}
@@ -64,11 +61,9 @@ def dict_from_arr3d(a):
     assert a.ndim == 3
     return {k:a[k,:,:] for k in range(a.shape[0])}
 
-
 def arr3d_from_list(lst):
     assert isinstance(lst, list)
     return np.stack(lst)
-
 
 def arr3d_from_dict(d, keys=None):
     """Converts dict {k[0:n0-1] : nd.array.shape(n1,n2)} to 3d array of shape=(n0,n1,n2)
@@ -78,8 +73,7 @@ def arr3d_from_dict(d, keys=None):
     _keys = sorted(d.keys() if keys is None else keys)
     return np.stack([d[k] for k in _keys])
 
-
-def statistics_of_pixel_arrays(rows, cols):
+def statistics_of_pixel_arrays(rows, cols, rc_tot_max=None):
     """Returns:
        - 2-d image shaped numpy array with statistics of overlapped data pixels,
        - dict for multiple entries: {<pixel-index-in-data-array> : <pixel-index-on-image>} for ravel arrays
@@ -89,7 +83,7 @@ def statistics_of_pixel_arrays(rows, cols):
     assert isinstance(cols, np.ndarray)
     assert rows.size == cols.size
 
-    img_shape = nrows, ncols = image_shape(rows, cols)
+    img_shape = nrows, ncols = image_shape(rows, cols, rc_tot_max)
 
     zipped_rows_cols = zip(rows.ravel(), cols.ravel())
 
@@ -109,8 +103,6 @@ def statistics_of_pixel_arrays(rows, cols):
     multinds = {i:int(r*ncols+c) for i,(r,c) in enumerate(zipped_rows_cols) if cond[r,c]}
     #logger.debug('XXX dict multinds production time (sec) = %.6f' % (time()-t0_sec)) # 170us
     #exit('TEST EXIT') #############
-
-
     s = '\n multiple mapping of pixels to image:'
     for k,v in multinds.items(): s += '\n  pix:%06d img:%06d' % (k,v)
     logger.debug(s)
@@ -129,8 +121,7 @@ def statistics_of_pixel_arrays(rows, cols):
 
     return img_sta, multinds, nentries
 
-
-def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0):
+def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0, rc_tot_max=None):
     """Returns image from rows, cols index arrays and associated weights W.
        Methods like matplotlib imshow(img) plot 2-d image array oriented as matrix(rows,cols).
     """
@@ -145,8 +136,7 @@ def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0):
         logger.warning(msg)
         return img_default(np.ones_like(rows, dtype=dtype))
 
-    img_shape = image_shape(rows, cols)
-
+    img_shape = image_shape(rows, cols, rc_tot_max)
     _weight = weight*np.ones_like(rows, dtype=dtype) if isinstance(weight, float) else\
               weight
 
@@ -162,7 +152,6 @@ def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0):
 
     return img
 
-
 def img_multipixel_max(img, weight, dict_pix_to_img_idx):
     imgrav = img.ravel() # ravel() does not copy like ravel()
     for ia,i in dict_pix_to_img_idx.items(): imgrav[i] = max(imgrav[i], weight.ravel()[ia])
@@ -176,7 +165,6 @@ def img_multipixel_max(img, weight, dict_pix_to_img_idx):
             s += '\n  inds in img:%06d max: %.1f' % (i, imgrav[i])
         logger.debug(s)
     #return img
-
 
 def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries):
     imgrav = img.ravel()
@@ -195,49 +183,37 @@ def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries
         logger.debug(s)
     #return img
 
-
 def size_for_shape(shape): return np.empty(shape).size
 
-
 def ascending_index_array_for_shape(shape, dtype=np.int32):
-    """returns ascending index [0,size-1] array of given shape
-    """
+    """returns ascending index [0,size-1] array of given shape"""
     a = np.arange(size_for_shape(shape), dtype=dtype)
     a.shape = shape
     return a
 
+def image_shape(rows, cols, rc_tot_max=None):
+    """defines image shape from appays of pixel rows and cols in image"""
+    rmax, cmax = (rows.max(), cols.max()) if rc_tot_max is None else rc_tot_max
+    return int(rmax)+1, int(cmax)+1
 
-def image_shape(rows, cols):
-    """defines image shape from appays of pixel rows and cols in image
-    """
-    #rowsfl = rows.ravel()
-    #colsfl = cols.ravel()
-    #nrows = int(rows.max())+1
-    #ncols = int(cols.max())+1
-    return int(rows.max())+1, int(cols.max())+1
-
-
-def image_of_pixel_array_ascending_index(rows, cols, img_shape=None, dtype=np.int32):
+def image_of_pixel_array_ascending_index(rows, cols, img_shape=None, dtype=np.int32, rc_tot_max=None):
     """ returns image-shaped array containing pixel array ascending index
         rows and cols - pixel arrays shaped as data, i.e. for epix10ks... (<n-segments>, 352, 384)
         consumed time 7ms
         NOTE: some indices may be missing due to overlap - last index is retained in image
     """
-    shape = image_shape(rows, cols) if img_shape is None else img_shape
+    shape = image_shape(rows, cols, rc_tot_max) if img_shape is None else img_shape
     img = -np.ones(shape, dtype=dtype)
     img[rows.ravel(), cols.ravel()] = np.arange(rows.size, dtype=dtype) # 7ms
     #for i,(r,c) in enumerate(zip(rows.ravel(), cols.ravel())): img[r,c]=i # 250ms
     return img
 
-
 def image_of_pixel_seg_row_col(img_ascend_pix_ind, arr_shape, dtype=np.int32):
-    """returns image size array of pixel (seg,row,col), shape = (<image-size>,3) # 47ms
-    """
+    """returns image size array of pixel (seg,row,col), shape = (<image-size>,3) # 47ms"""
     imgind_to_seg_row_col = -np.ones((img_ascend_pix_ind.size,3), dtype=dtype)
     inds = img_ascend_pix_ind[img_ascend_pix_ind>-1] # img indexes of non-empty bins
     imgind_to_seg_row_col[inds] = np.array(np.unravel_index(inds.ravel(), arr_shape)).T
     return imgind_to_seg_row_col
-
 
 def image_of_holes(busy_img_bins):
     """Works with image-shaped arrays.
@@ -252,23 +228,18 @@ def image_of_holes(busy_img_bins):
     empty[:,1:ncols]   = np.logical_and(empty[:,1:ncols],   nonem[:,0:ncols-1]) # 810us
     return empty
 
-
 def hole_inds_ravel(img_holes):
     return np.where(img_holes.ravel())[0] # [0] because np.where returns tuple for all axes
 
-
 def hole_rows_cols(img_holes):
-    """ Returns hole rows and cols on image shaped array
-    """
+    """Returns hole rows and cols on image shaped array"""
     return np.where(img_holes)
-
 
 def fill_holes(img, hrows, hcols):
     img[hrows, hcols] = np.minimum(\
              np.minimum(img[hrows-1, hcols], img[hrows+1, hcols]),
              np.minimum(img[hrows, hcols-1], img[hrows, hcols+1]))
     #return img
-
 
 def statistics_of_holes(rows, cols, **kwa):
     """generates and returns a few useful arrays
@@ -279,13 +250,13 @@ def statistics_of_holes(rows, cols, **kwa):
     assert isinstance(rows, np.ndarray)
     assert isinstance(cols, np.ndarray)
     assert rows.size == cols.size
-
+    rc_tot_max=kwa.get('rc_tot_max', None)
     arr_shape = rows.shape
-    img_shape = nrows, ncols = image_shape(rows, cols)
+    img_shape = nrows, ncols = image_shape(rows, cols, rc_tot_max)
     img_size = nrows * ncols
     # make img_pix_ascend_ind mapping [r,c] to index in pixelarray
     t0_sec = time()
-    img_pix_ascend_ind = image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32)
+    img_pix_ascend_ind = image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32, rc_tot_max)
     logger.debug('statistics_of_holes.image_of_pixel_array_ascending_index time (sec) = %.6f' % (time()-t0_sec)) # 8ms
     logger.debug(info_ndarr(img_pix_ascend_ind, ' img_pix_ascend_ind:'))
 
@@ -309,7 +280,6 @@ def statistics_of_holes(rows, cols, **kwa):
 
     return img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d
 
-
 def img_default(arr):
     med = np.median(arr)
     spr = np.median(np.abs(arr-med))
@@ -320,18 +290,18 @@ def img_default(arr):
     a.shape =(3,4)
     return a
 
-
 def init_interpolation_parameters(rows, cols, x, y, **kwa):
     """TBD: currently returns image of ascending index in data array
+       kwa['rc_tot_max'] - maximal row and column for entire detector image
     """
     assert isinstance(rows, np.ndarray)
     assert isinstance(cols, np.ndarray)
     assert rows.size == cols.size
+    rc_tot_max = kwa.get('rc_tot_max', None)
     #address_table_4 = -np.ones((nrows,ncols,4), dtype=np.int32)
     #weights_table_4 = np.zeros((nrows,ncols,4), dtype=np.int32)
-    img_shape = image_shape(rows, cols)
-    return image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32)
-
+    img_shape = image_shape(rows, cols, rc_tot_max=kwa.get('rc_tot_max', None))
+    return image_of_pixel_array_ascending_index(rows, cols, img_shape, np.int32, rc_tot_max)
 
 def img_interpolated(data, interpol_pars, **kwa):
     """Image inperpolation.
