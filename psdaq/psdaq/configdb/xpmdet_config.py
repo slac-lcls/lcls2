@@ -30,6 +30,12 @@ def supervisor_info(json_msg):
                 nworker+=1
     return supervisor,nworker
 
+def dumpTiming(tim):
+    logging.warning(f'FidCount  : {tim.FidCount.get()}')
+    logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
+    logging.warning(f'RxDecErrs : {tim.RxDecErrCount.get()}')
+    logging.warning(f'RxDspErrs : {tim.RxDspErrCount.get()}')
+
 def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     global args
 
@@ -42,8 +48,10 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     root.__enter__()
 
     logging.info('Reset timing data path')
+    dumpTiming(root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx)
     root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.C_RxReset()
     time.sleep(0.1)
+    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
 
     args['root'] = root.PcieControl.DevKcu1500
     args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
@@ -80,8 +88,10 @@ def xpmdet_connectionInfo(alloc_json_str):
                     tim.RxPllReset.set(1)
                     tim.RxPllReset.set(0)
                     time.sleep(0.0001)
+                    dumpTiming(tim)
                     tim.C_RxReset()
                     time.sleep(0.1)
+                    tim.ClearRxCounters()
             else:
                 logging.warning('Supervisor is not I2cBus manager')
 
@@ -108,8 +118,10 @@ def xpmdet_connectionInfo(alloc_json_str):
         tim.RxPllReset.set(1)
         tim.RxPllReset.set(0)
         time.sleep(0.0001)
+        dumpTiming(tim)
         tim.C_RxReset()
         time.sleep(0.1)
+        tim.ClearRxCounters()
 
         rxId = xma.RxId.get()
         logging.info('rxId {:x}'.format(rxId))
