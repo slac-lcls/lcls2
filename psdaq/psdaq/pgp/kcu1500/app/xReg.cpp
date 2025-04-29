@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <linux/types.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 
@@ -64,7 +64,7 @@ int main (int argc, char **argv) {
       printf("firmwareVersion : %x\n", vsn.firmwareVersion);
       printf("upTimeCount     : %u\n", vsn.upTimeCount);
       printf("deviceId        : %x\n", vsn.deviceId);
-      printf("buildString     : %s\n", vsn.buildString); 
+      printf("buildString     : %s\n", vsn.buildString);
     }
   }
 

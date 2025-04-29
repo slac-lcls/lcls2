@@ -10,8 +10,8 @@ base_host = 'drp-ued-cmp001'
 prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom/ued' # Prometheus
 
 procmgr_config = [
-# { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0}, # XTPG
- { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0+' -L'}, # XTPG
+# { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0+' -L'}, # XTPG
+ { host: base_host, id:'pyxpm-0' , port:'29451', flags:'s', env:epics_env, cmd:'pyxpm --ip 10.0.1.104 '+pyxpm_optsdb%0+' -L -F 2.0e-6 -C 238 -A 1'}, # XTPG
 ## EPICS PV exporter
  { host: base_host, id:'pvrtmon',  port:'29460', flags:'s', env:epics_env, cmd:f'epics_exporter -H ued -M {prom_dir} -P DAQ:UED:XPM:0 -G Cu:FIDs,Cu:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 ]

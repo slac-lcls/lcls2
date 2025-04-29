@@ -5,6 +5,9 @@ from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
+import psdaq.pyxpm.autosave as autosave
+import numpy as np
+import json
 
 verbose = True
 
@@ -18,6 +21,15 @@ class SeqCache(object):
         self.index = index
         self.size  = sz
         self.instr = instr
+
+    def save(self):
+        l = [i._word() for i in self.instr]
+        return (self.index, self.size, l)
+
+    @classmethod
+    def restore(cls,v):
+        l = [decodeInstr(i) for i in v[2]]
+        return SeqCache(v[0], v[1], l)
 
 class Engine(object):
 
@@ -38,7 +50,7 @@ class Engine(object):
         self.dump()
 
         a = 0
-        self._caches[a]                           = SeqCache(0,3,[FixedRateSync(5,1),FixedRateSync(5,1),Branch.unconditional(line=0)])
+        self._caches[a] = SeqCache(0,3,[FixedRateSync(5,1),FixedRateSync(5,1),Branch.unconditional(line=0)])
         self._ram   [a  ].set(FixedRateSync(5,1)._word())
         self._ram   [a+1].set(FixedRateSync(5,1)._word())
         self._ram   [a+2].set(Branch.unconditional(line=0)._word(a))
@@ -47,6 +59,7 @@ class Engine(object):
         self._ram   [a].set(Branch.unconditional(line=a)._word(a))
         self._indices = 3   # bit mask of committed sequences
         self._seq     = []  # instruction sequence to be committed
+        self._autosave()
 
     def cacheSeq(self,val):
         seq = []
@@ -98,7 +111,9 @@ class Engine(object):
                 addr = 0
                 none_found = 1<<self._reg.seqAddrLen.get()
                 best_size = none_found
-                for key,cache in self._caches.items():
+                keys = sorted(self._caches.keys())
+                for key in keys:
+                    cache = self._caches[key]
                     isize = key-addr
                     if verbose:
                         logging.info('Found memblock {:x}:{:x} [{:x}]'.format(addr,key,isize))
@@ -130,6 +145,7 @@ class Engine(object):
 
             logging.info('Caching seq {} of size {}'.format(aindex,nwords))
             self._caches[best_ram] = SeqCache(aindex,nwords,self._seq)
+            self._autosave()
 
             #  Translate addresses
             addr = best_ram
@@ -153,6 +169,8 @@ class Engine(object):
     def removeSeq(self, index):
         if (self._indices & (1<<index))==0:
             return -1
+
+        print(f'Engine.removeSeq {index}')
         self._indices = self._indices & ~(1<<index)
 
         # Lookup sequence
@@ -161,6 +179,7 @@ class Engine(object):
             if seq.index == index:
                 self._ram[key].set(key)
                 del self._caches[key]
+                self._autosave()
                 return 0
         return -2
 
@@ -226,35 +245,51 @@ class Engine(object):
                     ram = self._ram[key+j].get()
                     logging.info('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
 
+    def _autosave(self):
+        #  autosave will keep _caches, _indices
+        d = {}
+        for k,v in self._caches.items():
+            d[k] = v.save()
+        s = json.dumps((int(self._indices),d))
+        autosave.addJson(f'SEQENG_{self._id}', self, s)
+
+    def restore(self,v):
+        obj = json.loads(v)
+        self._indices = obj[0]
+        for k,v in obj[1].items():
+            self._caches[int(k)] = SeqCache.restore(v)  # json converted int key to str
+        self._autosave()
 
 class PVSeq(object):
-    def __init__(self, provider, name, ip, engine, pv_enabled):
+    def __init__(self, provider, name, ip, engine):
         self._eng = engine
         self._seq = []
-        self._pv_enabled = pv_enabled
 
-        def _addPV(label,ctype='I',init=0):
+        def _addPV(label,ctype='I',init=0,archive=False):
+            pvname = name+':'+label
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
-                          handler=DefaultPVHandler())
-            provider.add(name+':'+label,pv)
-            logging.info(name+':'+label)
+                          handler=DefaultPVHandler(archive=pvname if archive else None))
+            provider.add(pvname,pv)
+            logging.info(pvname)
+            print(f'_addPV {vars(pv)}')
             return pv
 
         self._pv_DescInstrs    = _addPV('DESCINSTRS','s','')
         self._pv_InstrCnt      = _addPV('INSTRCNT')
-        self._pv_SeqIdx        = _addPV('SEQIDX'    ,'aI',[0]*NSubSeq)
+        self._pv_SeqIdx        = _addPV('SEQIDX'    ,'aI',[0]*NSubSeq,archive=True)
         self._pv_SeqDesc       = _addPV('SEQDESC'   ,'as',['']*NSubSeq)
-        self._pv_Seq00Idx      = _addPV('SEQ00IDX')
+        self._pv_Seq00Idx      = _addPV('SEQ00IDX'  ,'I' ,0)
         self._pv_Seq00Desc     = _addPV('SEQ00DESC' ,'s','')
         self._pv_Seq00BDesc    = _addPV('SEQ00BDESC','as',['']*NSubSeq)
-        self._pv_RmvIdx        = _addPV('RMVIDX')
-        self._pv_RunIdx        = _addPV('RUNIDX')
+        self._pv_RmvIdx        = _addPV('RMVIDX','i')
+        self._pv_RunIdx        = _addPV('RUNIDX',archive=True)
         self._pv_Running       = _addPV('RUNNING')
 
-        def _addPV(label,ctype,init,cmd):
+        def _addPV(label,ctype,init,cmd,archive=False):
+            pvname = name+':'+label
             pv = SharedPV(initial=NTScalar(ctype).wrap(init), 
-                          handler=PVHandler(cmd))
-            provider.add(name+':'+label,pv)
+                          handler=PVHandler(cmd,archive=pvname if archive else None))
+            provider.add(pvname,pv)
             return pv
 
         self._pv_Instrs        = _addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
@@ -278,12 +313,34 @@ class PVSeq(object):
         logging.info('rmvseq index %d'%val)
         if val > 1 and val < NSubSeq:
             self._eng.removeSeq(val)
+            aval = self._pv_SeqIdx.current()['value'].tolist()
+            try:
+                aval.remove(val)
+            except:
+                pass
+            pvUpdate(self._pv_SeqIdx,np.array(aval,dtype=np.uint32))
+            pvUpdate(self._pv_Seq00Idx,aval[0])
+        elif val < 0:
+            aval = self._pv_SeqIdx.current()['value'].tolist()
+            idx  = self._pv_RunIdx.current()['value']
+            nval = aval
+            for i in aval:
+                if i < 2 or i==idx:
+                    continue
+                self._eng.removeSeq(i)
+                nval.remove(i)
+            if len(nval)<NSubSeq:
+                nval.extend([0]*(NSubSeq-len(nval)))
+            pvUpdate(self._pv_SeqIdx,np.array(nval,dtype=np.uint32))
             pvUpdate(self._pv_Seq00Idx,0)
 
     def ins(self, pv, val):
         if val:
             rval = self._eng.insertSeq()
             pvUpdate(self._pv_Seq00Idx,rval)
+            aval = np.insert(self._pv_SeqIdx.current()['value'],0,rval)
+            pvUpdate(self._pv_SeqIdx,aval)
+            print(f'Updated SeqIdx with {aval}')
 
     def schedReset(self, pv, val):
         if val>0:
@@ -314,13 +371,13 @@ class PVSeq(object):
 
     def enable(self, pv, val):
         id = self._eng._id
-        self._pv_enabled['Enabled'][4*id:4*id+4] = [(val!=0)]*4
         self._eng.enable(val)
 
     def checkPoint(self,addr):
         pvUpdate(self._pv_Running,0)
 
     def dump(self, pv, val):
+        logging.info('Dump engine {self._eng._id} : runidx {self._pv_RunIdx.current()}')
         self._eng.dump()
 
     def refresh(self):

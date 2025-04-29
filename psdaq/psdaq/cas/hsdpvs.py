@@ -65,6 +65,9 @@ class ChipServer(object):
         self.provider.add(prefix+':CONFIG',self.daqConfig)
         self.provider.add(prefix+':READY' ,self.ready)
 
+        self.pgpConfig      = MySharedPV(pgpConfig)
+        self.provider.add(prefix+':PGPCONFIG',self.pgpConfig)
+
         #  Monitoring
         self.fwBuild     = SharedPV(initial=NTScalar('s').wrap({'value':''}),
                                     handler=DefaultPVHandler())

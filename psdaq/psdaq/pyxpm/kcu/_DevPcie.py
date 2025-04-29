@@ -273,6 +273,10 @@ class DevPcie(pr.Device):
             self.TpgMini.FixedRateDiv[4].set(    91)
             self.TpgMini.FixedRateDiv[5].set(    13)
             self.TpgMini.FixedRateDiv[6].set(     1)
+            #  And some rate markers tied to beam simulation
+            self.TpgMini.FixedRateDiv[7].set(  9100)  # beam request
+            self.TpgMini.FixedRateDiv[8].set( 91000)  # dest b1
+            self.TpgMini.FixedRateDiv[9].set(  9100)  # dest b2
             self.TpgMini.RateReload.set(1)
 
         #  Reset to realign the rate markers

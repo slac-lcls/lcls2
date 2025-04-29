@@ -10,7 +10,7 @@
 #include <iostream>
 #include <cstdio>
 #include "drp.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 
 #define MAX_RET_CNT_C 1000
@@ -179,7 +179,7 @@ int main()
                     for (int l=1; l<nlanes; l++) {
                         uint64_t tsl = *(uint64_t*)event->buffers[l].data;
                         if (tsl != ts)
-                            printf("lane %u  evtCounter 0x%x  ts 0x%lx [0x%lx]\n", 
+                            printf("lane %u  evtCounter 0x%x  ts 0x%lx [0x%lx]\n",
                                    l, data[5]&0xffffff, tsl, ts);
                     }
                 }

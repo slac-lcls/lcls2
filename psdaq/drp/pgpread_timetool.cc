@@ -3,7 +3,6 @@
 #include <iostream>
 #include <signal.h>
 #include <cstdio>
-#include <AxisDriver.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include "psdaq/service/EbDgram.hh"
@@ -287,7 +286,7 @@ int main(int argc, char* argv[])
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
     if (dmaSetMaskBytes(fd, mask)) {
-        
+
         return -1;
     }
 

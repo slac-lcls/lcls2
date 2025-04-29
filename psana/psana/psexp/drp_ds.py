@@ -1,14 +1,14 @@
-from psana.psexp import DataSourceBase, RunDrp
-from psana.dgrammanager import DgramManager, dgSize
-from psana.psexp import Events, TransitionId
-from psana.event import Event
-from psana.smalldata import SmallData
 from psana.dgramedit import DgramEdit
-from psana import dgram
+from psana.dgrammanager import DgramManager
+from psana.event import Event
+from psana.psexp import TransitionId
+from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.run import RunDrp
 from psana.psexp.zmq_utils import PubSocket, SubSocket
+from psana.smalldata import SmallData
+
 
 class DrpDataSource(DataSourceBase):
-
     def __init__(self, *args, **kwargs):
         super(DrpDataSource, self).__init__(**kwargs)
         self.tag = self.drp
@@ -41,17 +41,20 @@ class DrpDataSource(DataSourceBase):
 
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         self._setup_run()
-        super(). _start_prometheus_client(prom_cfg_dir=kwargs["drp"].prom_cfg_dir) # Use http exporter
+        super()._start_prometheus_client(
+            prom_cfg_dir=kwargs["drp"].prom_cfg_dir
+        )  # Use http exporter
 
     def __del__(self):
-        super(). _end_prometheus_client()
+        super()._end_prometheus_client()
 
     def _setup_run(self):
         if self.runnum_list_index == len(self.runnum_list):
             return False
-        runnum = self.runnum_list[self.runnum_list_index]
-        self.dm = DgramManager(['drp'], tag=self.tag, config_consumers=[self.dsparms])
-        self.config_dgramedit = DgramEdit(self._configs[-1], bufsize=self.dm.transition_bufsize)
+        self.dm = DgramManager(["drp"], tag=self.tag, config_consumers=[self.dsparms])
+        self.config_dgramedit = DgramEdit(
+            self._configs[-1], bufsize=self.dm.transition_bufsize
+        )
         self.curr_dgramedit = self.config_dgramedit
         self.runnum_list_index += 1
         return True
@@ -60,14 +63,14 @@ class DrpDataSource(DataSourceBase):
         for evt in self.dm:
             if not evt:
                 return None
-            if evt.service() == TransitionId.L1Accept:
+            if TransitionId.isEvent(evt.service()):
                 buffer_size = self.dm.pebble_bufsize
             else:
                 buffer_size = self.dm.transition_bufsize
             self.curr_dgramedit = DgramEdit(
-                 evt._dgrams[0],
-                 config_dgramedit=self.config_dgramedit,
-                 bufsize=buffer_size
+                evt._dgrams[0],
+                config_dgramedit=self.config_dgramedit,
+                bufsize=buffer_size,
             )
             self.curr_dgramedit.save(self.dm.shm_res_mv)
             if evt.service() == TransitionId.BeginRun:
@@ -93,10 +96,10 @@ class DrpDataSource(DataSourceBase):
 
     def _start_run(self):
         found_next_run = False
-        if self._setup_beginruns():   # try to get next run from the current file
+        if self._setup_beginruns():  # try to get next run from the current file
             self._setup_run_calibconst()
             found_next_run = True
-        elif self._setup_run():       # try to get next run from next files
+        elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
                 self._setup_run_calibconst()
                 found_next_run = True
@@ -127,11 +130,13 @@ class DrpDataSource(DataSourceBase):
     def is_mpi(self):
         return False
 
-    def add_detector(self, detdef, algdef, datadef,
-                     nodeId=None, namesId=None, segment=None):
+    def add_detector(
+        self, detdef, algdef, datadef, nodeId=None, namesId=None, segment=None
+    ):
         if self._edtbl_config:
-            return self.curr_dgramedit.Detector(detdef, algdef, datadef,
-                                                nodeId, namesId, segment)
+            return self.curr_dgramedit.Detector(
+                detdef, algdef, datadef, nodeId, namesId, segment
+            )
         else:
             raise RuntimeError(
                 "[Python - Worker {self.worker_num}] Cannot edit the configuration "

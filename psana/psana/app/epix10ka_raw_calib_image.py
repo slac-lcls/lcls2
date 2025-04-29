@@ -399,8 +399,8 @@ def test_image(args):
 
     med_vs_evt = med_vs_evt[:nrec_med]
     med = np.median(med_vs_evt)
-    q05 = np.quantile(med_vs_evt, 0.05, interpolation='linear')
-    q95 = np.quantile(med_vs_evt, 0.95, interpolation='linear')
+    q05 = np.quantile(med_vs_evt, 0.05, method='linear')
+    q95 = np.quantile(med_vs_evt, 0.95, method='linear')
 
     print(info_ndarr(med_vs_evt, 'per event median  ', last=nrec_med-1))
     print('  median over %d event-records: %.3f' % (nrec_med, med))

@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <getopt.h>
 #include <Python.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "drp/RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -318,10 +318,11 @@ EpicsArchApp::EpicsArchApp(Drp::Parameters& para, const std::string& pvCfgFile) 
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_eaDetector (std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
+
+    m_eaDetector = std::make_unique<EaDetector>(m_para, pvCfgFile, m_drp);
 
     m_det = m_eaDetector.get();
     if (m_det == nullptr) {
@@ -371,6 +372,8 @@ json EpicsArchApp::connectionInfo(const nlohmann::json& msg)
 
 void EpicsArchApp::connectionShutdown()
 {
+    if (m_det)
+        m_det->connectionShutdown();
     m_drp.shutdown();
 }
 

@@ -112,7 +112,7 @@ class Ui_mainWindow(object):
 
     def retranslateUi(self, mainWindow):
         _translate = QtCore.QCoreApplication.translate
-        mainWindow.setWindowTitle(_translate("mainWindow", "psqueue"))
+        mainWindow.setWindowTitle(_translate("mainWindow", "daqstat"))
         self.groupBoxProcessStatus.setTitle(_translate("mainWindow", "Process Status"))
         self.tableProcStat.setSortingEnabled(False)
         self.pushButtonConsole.setToolTip(

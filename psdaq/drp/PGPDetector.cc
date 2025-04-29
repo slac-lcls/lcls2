@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 #include "psdaq/service/Collection.hh"
@@ -212,10 +212,9 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector* det,
 
 
                 Pds::EbDgram* dgram = new(pool.pebble[pebbleIndex]) Pds::EbDgram(*timingHeader, src, para.rogMask);
-                logging::debug("[Thread %u] PGPDetector saw %s @ %u.%09u (%014lx)",
-                               threadNum,
+                logging::debug("PGPDetector saw %s @ %u.%09u (%014lx) [Thread %u]",
                                XtcData::TransitionId::name(transitionId),
-                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+                               dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId(), threadNum);
                 // Find the transition dgram in the pool and initialize its header
                 Pds::EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
                 const void*   bufEnd  = (char*)trDgram + para.maxTrSize;
@@ -304,9 +303,10 @@ PGPDetector::PGPDetector(const Parameters& para, DrpBase& drp, Detector* det,
     int* m_resMqId = resMqId;
     int* m_inpShmId = inpShmId;
     int* m_resShmId = resShmId;
-    
+
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
-        logging::critical("Failed to allocate lane/vc");
+        logging::critical("Failed to allocate lane/vc: '%m' "
+                          "- does another process have %s open?", para.device.c_str());
         abort();
     }
 

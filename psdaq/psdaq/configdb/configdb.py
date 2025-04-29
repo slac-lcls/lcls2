@@ -35,7 +35,7 @@ class configdb(object):
         self.hutch  = hutch
         self.prefix = url.strip('/') + '/' + root + '/'
         self.host = urlparse(self.prefix).hostname
-        self.timeout = 15.05     # timeout for http requests
+        self.timeout = 8.05     # timeout for http requests
         self.user = user
         self.password = password
 
@@ -55,10 +55,18 @@ class configdb(object):
     def _get_response(self, cmd, *, json=None):
         if 'ws-auth' in self.prefix:
             # basic authentication
-            resp = requests.get(self.prefix + cmd,
-                                auth=HTTPBasicAuth(self.user, self.password),
-                                json=json,
-                                timeout=self.timeout)
+            for i in range(4):
+                try:
+                    resp = requests.get(self.prefix + cmd,
+                                        auth=HTTPBasicAuth(self.user, self.password),
+                                        json=json,
+                                        timeout=self.timeout)
+                    break
+                except Exception as e:
+                    print('*** exception',e)
+                    print('***configdb request RETRY',time.time(),i)
+                    if i==3: raise
+                    time.sleep(1)
         elif 'ws-kerb' in self.prefix:
             # kerberos authentication
             resp = requests.get(self.prefix + cmd,
@@ -472,6 +480,9 @@ def _cat(args):
         except NameError as ex:
             sys.exit(ex)
 
+    if args.key:
+        alias = args.key
+
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
@@ -697,6 +708,7 @@ def main():
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
     parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_cat.add_argument('--key', default=None, help='key to print, if provided')
     parser_cat.set_defaults(func=_cat)
 
     # create the parser for the "rm" command

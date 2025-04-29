@@ -18,7 +18,7 @@ nRows    = 192
 def epixm320_cdict(prjCfg):
 
     top = cdict()
-    top.setAlg('config', [0,1,0])
+    top.setAlg('config', [1,0,0])
 
     top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     top.set("firmwareVersion:RO",   0, 'UINT32')
@@ -28,7 +28,6 @@ def epixm320_cdict(prjCfg):
     help_str += "\nrun_trigger_group : Group for the Run trigger"
     help_str += "\nasic_enable       : 4 bits for enabling the ASICs"
     help_str += "\ngain_mode         : SoftHigh/SoftLow/AutoHiLo/User"
-    help_str += "\nchgInj_column_map : Map of columns for charge injection scan"
     top.set("help:RO", help_str, 'CHARSTR')
 
     top.set("user.start_ns", 107749, 'UINT32')
@@ -39,9 +38,6 @@ def epixm320_cdict(prjCfg):
 
     top.define_enum('gainEnum', {'SoftHigh':0, 'SoftLow':1, 'Auto':2, 'User':3})
     top.set("user.gain_mode", 2, 'gainEnum')
-
-    columnMap = np.zeros(nColumns, dtype=np.uint8)
-    top.set("user.chgInj_column_map", columnMap)
 
     # timing system
     # run trigger
@@ -271,9 +267,13 @@ def epixm320_cdict(prjCfg):
 
     for i in range(numAsics):
         base = 'expert.App.AsicTop.DigAsicStrmRegisters{}.'.format(i)
-        top.set(base+'asicDataReq'     , 0, 'UINT16')
-        top.set(base+'DisableLane'     , 0, 'UINT32')
-        top.set(base+'EnumerateDisLane', 0, 'UINT32')
+        top.set(base+'asicDataReq',                 0, 'UINT16')
+        top.set(base+'DisableLane',                 0, 'UINT32')
+        top.set(base+'EnumerateDisLane',            0, 'UINT32')
+        top.set(base+'FillOnFailEn',                0, 'boolEnum')
+        top.set(base+'FillOnFailPersistantDisable', 0, 'boolEnum')
+        top.set(base+'SroToSofTimeout',             0, 'UINT32')
+        top.set(base+'DataTimeout',                 0, 'UINT32')
 
     # These registers are set in the epixm320_config.py file
     #for i in range(numAsics):
@@ -300,6 +300,13 @@ def epixm320_cdict(prjCfg):
     top.set(base+'rCStartValue'    , 0,       'UINT32')
     top.set(base+'rCStopValue'     , 0,       'UINT32')
     top.set(base+'rCStep'          , 0,       'UINT32')
+
+    base = 'expert.App.FPGAChargeInjection.'
+    top.set(base+'startCol',              0, 'UINT32')
+    top.set(base+'endCol',       nColumns-1, 'UINT32')
+    top.set(base+'step',                  0, 'UINT32')
+    top.set(base+'triggerWaitCycles', 31250, 'UINT32')
+    top.set(base+'currentAsic',           0, 'UINT32')
 
     top.define_enum('clkEnum', {'250MHz':1, '125MHz':2, '168MHz':3, 'Default':4})
     base = 'expert.Pll.'

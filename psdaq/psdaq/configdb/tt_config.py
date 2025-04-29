@@ -3,6 +3,7 @@ from psdaq.configdb.scan_utils import *
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
 import rogue
+from psdaq.utils import enable_lcls2_timetool
 import lcls2_timetool
 import json
 import IPython

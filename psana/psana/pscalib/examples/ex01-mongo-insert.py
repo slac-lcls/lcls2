@@ -1,7 +1,5 @@
 import sys
 
-#------------------------------
-
 #import numpy as np
 #import pyimgalgos.NDArrGenerators as ag
 from time import time
@@ -9,17 +7,13 @@ from time import time
 #import PSCalib.DCUtils as gu
 import Utils as gu
 
-#------------------------------
 
 time_sec = time()
 time_stamp = gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%Z', time_sec=time_sec)
 print 'time_sec %.9f' % time_sec
-nda = gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float)
+nda = gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float32)
 #nda = gu.random_standard(shape=(3,5), mu=20, sigma=5, dtype=gu.np.float64)
 
-#sys.exit('TEST EXIT')
-
-#------------------------------
 
 t0_sec = time()
 
@@ -36,7 +30,6 @@ col = db['camera-0-cxids1-0']
 dt_sec = time() - t0_sec
 print 'db: %s collection: %s connection time %.6f sec' % (db.name, col.name, dt_sec)
 
-#------------------------------
 
 t0_sec = time()
 
@@ -47,10 +40,7 @@ sarr = Binary(pickle.dumps(arr, protocol=2), subtype=128)
 #sarr = nda.flatten().tolist()
 
 #print 'sarr:', sarr
-gu.print_ndarr(nda, 'nda') 
-#------------------------------
-#sys.exit('TEST EXIT')
-#------------------------------
+gu.print_ndarr(nda, 'nda')
 
 doc = {
    "experiment": "cxi12345",
@@ -80,17 +70,15 @@ print 'document preparation time %.6f sec' % (dt_sec)
 #   "data":       str(nda.flatten().tostring()),
 #   "data":       nda.flatten().tobytes(),
 
-#------------------------------
 
-#for k,v in doc.iteritems() : 
-#    if k=="data" : 
+#for k,v in doc.iteritems() :
+#    if k=="data" :
 #        print '%16s : skip...' % (k),
         #gu.print_ndarr(nda, name='nda', first=0, last=3)
         #gu.print_ndarr(nda, name='nda', first=0, last=3)
 #    else :
 #        print '%16s : %s' % (k,str(v))
 
-#------------------------------
 
 t0_sec = time()
 
@@ -99,12 +87,10 @@ doc_id = col.insert_one(doc).inserted_id
 dt_sec = time() - t0_sec
 print 'Inserting document %s time %.6f sec' % (doc_id, dt_sec)
 
-#------------------------------
-
 #doc = col.find({"run": 125})[0]
 #xcarr = pickle.loads(doc["data"])
 #print 'X-check arr', xcarr
 
-#------------------------------
 sys.exit('TEST EXIT')
-#------------------------------
+
+# EOF

@@ -22,8 +22,6 @@ namespace Pds {
     class EbEpoch;
     class EbEvent;
 
-    std::chrono::system_clock::duration latency(const XtcData::TimeStamp&);
-
     class EventBuilder
     {
     public:

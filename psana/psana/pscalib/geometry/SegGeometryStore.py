@@ -52,6 +52,8 @@ See:
  * :py:class:`SegGeometryEpixM320V1`
  * :py:class:`SegGeometryJungfrauV1`,
  * :py:class:`SegGeometryMatrixV1`,
+ * :py:class:`SegGeometryArchonV1`,
+ * :py:class:`SegGeometryArchonV2`,
  * :py:class:`SegGeometryStore`
 
 For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/display/PSDM/Detector+Geometry>`_.
@@ -87,6 +89,9 @@ def segment_geometry(**kwa):
     elif segname=='EPIXMASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXM ASIC
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         return SegGeometryMatrixV2(192, 384, 50, 50, pix_size_depth=500, pix_scale_size=50)
+    elif segname=='EPIXUHRASIC:V1': # The same as 'MTRX:V2:192:384:50:50' # EPIXUHR ASIC
+        from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
+        return SegGeometryMatrixV2(168, 192, 100, 100, pix_size_depth=500, pix_scale_size=100)
     elif segname[:7]=='MTRX:V2':
         from psana.pscalib.geometry.SegGeometryMatrixV2 import SegGeometryMatrixV2, matrix_pars_v2
         rows, cols, psize_row, psize_col = matrix_pars_v2(segname)
@@ -114,6 +119,14 @@ def segment_geometry(**kwa):
     elif segname=='SENS2X1:V1':
         from psana.pscalib.geometry.SegGeometryCspad2x1V1 import cspad2x1_one, cspad2x1_wpc
         return cspad2x1_wpc if wpc else cspad2x1_one
+    elif segname=='ARCHON:V1':
+        from psana.pscalib.geometry.SegGeometryArchonV1 import SegGeometryArchonV1
+        return SegGeometryArchonV1(detector=kwa.get('detector', None),
+                                   shape=kwa.get('shape', None))
+    elif segname=='ARCHON:V2':
+        from psana.pscalib.geometry.SegGeometryArchonV2 import SegGeometryArchonV2
+        return SegGeometryArchonV2(detector=kwa.get('detector', None),
+                                   shape=kwa.get('shape', None))
     #elif segname=='ANDOR3D:V1': return seg_andor3d # SegGeometryMatrixV1()
     else:
         logger.debug('segment "%s" gometry IS NOT IMPLEMENTED' % segname)
@@ -122,12 +135,29 @@ def segment_geometry(**kwa):
 
 class SegGeometryStore():
     def __init__(sp):
-        pass
+        sp.dict_dets = {} # {<det-object>:{segname:<seg_geo-object>}}
+
+    def create_single_segment_geometry(sp, **kwa):
+        """returns segment_geometry singleton for detector and segname
+           - update_seggeo - enforce update for segment_geometry
+        """
+        detector = kwa.get('detector', None)
+        segname  = kwa.get('segname', None)
+        update   = kwa.get('update_seggeo', False)
+        logger.debug('segname: %s det: %s' % (segname, str(detector)))
+        if segname is None: return None
+        dict_segs = sp.dict_dets.get(detector, {})
+        seg_geo = dict_segs.get(segname, None)
+        if seg_geo is None or update:
+            seg_geo = segment_geometry(**kwa)
+            dict_segs[segname] = seg_geo
+            sp.dict_dets[detector] = dict_segs
+        return seg_geo
 
     def Create(sp, **kwa):
-        return segment_geometry(**kwa)
+        return sp.create_single_segment_geometry(**kwa)
+        #return segment_geometry(**kwa)
 
-
-sgs = SegGeometryStore() # singleton
+sgs = SegGeometryStore()
 
 # EOF - See test_SegGeometryStore.py

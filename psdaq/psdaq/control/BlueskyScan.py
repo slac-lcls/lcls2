@@ -24,7 +24,7 @@ class BlueskyScan:
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motors = []                        # set in configure()
-        self.group_mask = 1 << control.platform # set in configure()
+        self.group_mask = None                  # set in configure()
         self.events=1                           # set in configure()
         self.record=False                       # set in configure()
         self.detname='scan'                     # set in configure()
@@ -127,8 +127,9 @@ class BlueskyScan:
 
                 configure_dict = {"NamesBlockHex": configureBlock,
                                   "readout_count": self.events,
-                                  "group_mask"   : self.group_mask,
                                   "step_group"   : self.group }
+                if self.group_mask is not None:
+                    configure_dict["group_mask"] = self.group_mask
 
                 if self.seq_ctl is not None:
                     configure_dict['seqpv_name'] = self.seq_ctl[0]
@@ -138,8 +139,9 @@ class BlueskyScan:
 
                 # set DAQ state
                 enable_dict = {'readout_count':self.events, 
-                               'group_mask':self.group_mask, 
                                'step_group':self.group}
+                if self.group_mask is not None:
+                    enable_dict['group_mask'] = self.group_mask
 
                 errMsg = self.control.setState('running',
                     {'configure':   configure_dict,
@@ -251,6 +253,8 @@ class BlueskyScan:
                 self.group_mask = group_mask
             else:
                 raise TypeError('group_mask must be of type int')
+        else:
+            self.group_mask = None
         if events is not None:
             if isinstance(events, int):
                 self.events = events

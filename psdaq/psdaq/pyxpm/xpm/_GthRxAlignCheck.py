@@ -19,6 +19,8 @@
 
 import pyrogue as pr
 
+clkf = 2./3  # 104MHz/156.25MHz
+
 class GthRxAlignCheck(pr.Device):
     def __init__(   self,       
             name        = "GthRxAlignCheck",
@@ -109,7 +111,7 @@ class GthRxAlignCheck(pr.Device):
             units        = "MHz",
             mode         = 'RO',
             dependencies = [self.TxClkFreqRaw], 
-            linkedGet    = lambda: self.TxClkFreqRaw.value() * 1.0e-6,
+            linkedGet    = lambda: self.TxClkFreqRaw.value() * 1.0e-6 * clkf,
             disp         = '{:0.3f}',
         ))
 
@@ -128,7 +130,7 @@ class GthRxAlignCheck(pr.Device):
             units        = "MHz",
             mode         = 'RO',
             dependencies = [self.RxClkFreqRaw], 
-            linkedGet    = lambda: self.RxClkFreqRaw.value() * 1.0e-6,
+            linkedGet    = lambda: self.RxClkFreqRaw.value() * 1.0e-6 * clkf,
             disp         = '{:0.3f}',
         ))        
 

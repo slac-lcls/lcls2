@@ -37,6 +37,7 @@ target_link_libraries(service PUBLIC
 add_library(collection SHARED
     Collection.cc
     kwargs.cc
+    range.cc
 )
 
 target_link_libraries(collection

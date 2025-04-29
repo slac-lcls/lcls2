@@ -3,9 +3,16 @@ import json
 
 def main():
 
-    scan = ConfigScanBase(scantype='pedestal')
+    # default command line arguments
+    defargs = {'--hutch'   :'rix',
+               '--detname' :'epixhr_0',
+               '--scantype':'pedestal',
+               '--events'  :1000,
+               '--record'  :1}
 
+    scan = ConfigScanBase(defargs=defargs)
     args = scan.args
+
     args.scantype = 'pedestal'
     keys = [f'{args.detname}:user.gain_mode']
 

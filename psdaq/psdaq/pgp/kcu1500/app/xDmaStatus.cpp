@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <linux/types.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 
@@ -88,7 +88,7 @@ int main (int argc, char **argv) {
   PRINTREG(fifoTh  , 0xa4);
   PRINTREG(fifoDep , 0xa8);
   PRINTREG(fifoDep , 0xac);
-  
+
   PRINTCLK(axilOther  ,0x100);
   PRINTCLK(timingRef  ,0x104);
   PRINTCLK(migA       ,0x108);

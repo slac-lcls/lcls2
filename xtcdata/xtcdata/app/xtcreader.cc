@@ -234,10 +234,25 @@ private:
     unsigned _numWords;
 };
 
+class Stats {
+public:
+  Stats() : _nl1(0),_nstep(0) {}
+  void update(TransitionId::Value trans) {
+    if (trans==TransitionId::L1Accept) _nl1++;
+    if (trans==TransitionId::EndStep) {
+      printf("Step %d has %d L1Accepts\n",_nstep,_nl1);
+      _nl1=0;
+      _nstep++;
+    }
+  }
+private:
+  unsigned _nl1;
+  unsigned _nstep;
+};
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-h]\n", progname);
+    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-h] [-s]\n", progname);
 }
 
 int main(int argc, char* argv[])
@@ -250,8 +265,10 @@ int main(int argc, char* argv[])
     bool debugprint = false;
     unsigned numWords = 3;
     bool printTimeAsUnsignedLong = false;
+    bool doStats = false;
+    Stats stats;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:c:T")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:Ts")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -270,6 +287,9 @@ int main(int argc, char* argv[])
             break;
         case 'c':
             cfg_xtcname = optarg;
+            break;
+        case 's':
+            doStats = true;
             break;
         case 'T':
             printTimeAsUnsignedLong = true;
@@ -321,17 +341,21 @@ int main(int argc, char* argv[])
     while (dg) {
         if (nevent>=neventreq) break;
         nevent++;
-        printf("event %d, %11s transition: ",
-               nevent,
-               TransitionId::name(dg->service()));
-        if (printTimeAsUnsignedLong) {
+	if (!doStats) {
+	  printf("event %d, %11s transition: ",
+		 nevent,
+		 TransitionId::name(dg->service()));
+	  if (printTimeAsUnsignedLong) {
             printf(" time %" PRIu64 ", ", dg->time.value());
-        } else {
+	  } else {
             printf(" time 0x%8.8x.0x%8.8x, ", dg->time.seconds(), dg->time.nanoseconds());
-        }
-        printf(" env 0x%08x, payloadSize %d damage 0x%x extent %d\n",
-               dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
-        if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+	  }
+	  printf(" env 0x%08x, payloadSize %d damage 0x%x extent %d\n",
+		 dg->env, dg->xtc.sizeofPayload(),dg->xtc.damage.value(),dg->xtc.extent);
+	  if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
+	} else {
+	  stats.update(dg->service());
+	}
         dg = iter.next();
     }
 

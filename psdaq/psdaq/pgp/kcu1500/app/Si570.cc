@@ -1,5 +1,5 @@
 #include "Si570.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace Kcu;
 
@@ -12,9 +12,9 @@ void Si570::reset()
   dmaReadRegister(_fd, _off+4*135, &v);
   v |= 1;
   dmaWriteRegister(_fd, _off+4*135, v);
-  do { 
-    usleep(100); 
-    dmaReadRegister(_fd, _off+4*135, &v); 
+  do {
+    usleep(100);
+    dmaReadRegister(_fd, _off+4*135, &v);
   } while (v&1);
 }
 
@@ -27,7 +27,7 @@ double Si570::read()
   printf("si570[7] = 0x%x\n", v);
   unsigned hs_div = hsd_divn[(v>>5)&7];
   unsigned n1 = (v&0x1f)<<2;
-  dmaReadRegister(_fd, _off+4*8, &v); 
+  dmaReadRegister(_fd, _off+4*8, &v);
   printf("si570[8] = 0x%x\n", v);
   n1 |= (v>>6)&3;
   uint64_t rfreq = v&0x3f;
@@ -70,7 +70,7 @@ void Si570::program()
   dmaWriteRegister(_fd, _off+4*10, (rfreq>>16)&0xff );
   dmaWriteRegister(_fd, _off+4*11, (rfreq>>8)&0xff );
   dmaWriteRegister(_fd, _off+4*12, (rfreq>>0)&0xff );
-  
+
   printf("Wrote: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
          hs_div, n1, rfreq, fcal);
 
@@ -78,7 +78,7 @@ void Si570::program()
   dmaReadRegister(_fd, _off+4*137, &v);
   v &= ~(1<<4);
   dmaWriteRegister(_fd, _off+4*137, v);
-  
+
   dmaReadRegister(_fd, _off+4*135, &v);
   v |= (1<<6);
   dmaWriteRegister(_fd, _off+4*135, v);

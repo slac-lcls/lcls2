@@ -1,10 +1,9 @@
 ####!/usr/bin/env python
 
-import numpy as np             
+import numpy as np
 import sys
 import os
 
-##-----------------------------------------------------
 
 def print_exit(case) :
 
@@ -15,14 +14,13 @@ def print_exit(case) :
 
     sys.exit('%s\nMERGING ABORTED' % msg)
 
-##-----------------------------------------------------
 
 def parse_input_pars() :
 
     #print('len(sys.argv)', len(sys.argv))
     #print(sys.argv)
-    
-    if len(sys.argv)<4 : print_exit(1) 
+
+    if len(sys.argv)<4 : print_exit(1)
 
     list_of_files = [fname for fname in sys.argv[1:-1]]
     ofname = sys.argv[-1]
@@ -30,22 +28,21 @@ def parse_input_pars() :
     #print('Input files:')
     #for fname in list_of_files : print(fname)
     #print('Output file: %s' % ofname)
-    
+
     return list_of_files, ofname
 
-##-----------------------------------------------------
 
 def do_main() :
 
-    list_of_files, ofname = parse_input_pars() 
+    list_of_files, ofname = parse_input_pars()
 
     nda = None
 
     for i, file in enumerate(list_of_files) :
         print('Load array from file %s' % file)
-        if i<1 : nda = np.loadtxt(file, dtype=np.float)
-        else   : nda = np.maximum(nda, np.loadtxt(file, dtype=np.float))
-        #    nda2 = np.loadtxt(file, dtype=np.float)
+        if i<1 : nda = np.loadtxt(file, dtype=np.float32)
+        else   : nda = np.maximum(nda, np.loadtxt(file, dtype=np.float32))
+        #    nda2 = np.loadtxt(file, dtype=np.float32)
         #    print(nda [0,0:5])
         #    print(nda2[0,0:5])
         #    nda = np.maximum(nda, nda2)
@@ -60,7 +57,6 @@ def do_main() :
     #nda.shape = (32,185,388)
     #np.save   ('%s.npy' % ofname, nda)
 
-##-----------------------------------------------------
 
 if __name__ == '__main__':
 
@@ -68,5 +64,5 @@ if __name__ == '__main__':
 
     sys.exit('End of script')
 
-##-----------------------------------------------------
+# EOF
 

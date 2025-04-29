@@ -3,7 +3,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 //  DrpTDet register map
 //    Master (device = 0x2030)
@@ -96,11 +96,11 @@ static inline uint32_t get_reg32_proxy(unsigned addr) {
   //  wait until transaction is complete
   unsigned tmo=0;
   unsigned tmo_mask = 0x3;
-  do { 
+  do {
     usleep(1000);
     if ((++tmo&tmo_mask) ==  tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) read from 0x%x\n", 
+      printf("RegProxy tmo (%x) read from 0x%x\n",
              tmo, reg);
     }
   } while ( (get_reg32(_proxy_csr+(1<<2))&1)==0 );
@@ -118,11 +118,11 @@ static inline void set_reg32_proxy(unsigned addr, uint32_t value) {
   //  wait until transaction is complete
   unsigned tmo=0;
   unsigned tmo_mask = 0x3;
-  do { 
+  do {
     usleep(1000);
     if ((++tmo&tmo_mask) ==  tmo_mask) {
       tmo_mask = (tmo_mask<<1) | 1;
-      printf("RegProxy tmo (%x) writing 0x%x to 0x%x\n", 
+      printf("RegProxy tmo (%x) writing 0x%x to 0x%x\n",
              tmo, value, reg);
     }
   } while ( (get_reg32(_proxy_csr+(1<<2))&1)==0 );
@@ -140,7 +140,7 @@ static void print_mig_lane(const char* name, int addr, int offset, int mask)
     printf("\n");
 }
 
-static void print_clk_rate(const char* name, int addr) 
+static void print_clk_rate(const char* name, int addr)
 {
     const unsigned CLK_BASE = 0x00800100;
     printf("%20.20s", name);
@@ -206,7 +206,7 @@ static double read_si570()
     ((get_reg32_proxy(SI570(10))&0xff)<<16) |
     ((get_reg32_proxy(SI570(11))&0xff)<< 8) |
     ((get_reg32_proxy(SI570(12))&0xff)<< 0);
- 
+
   double f = (156.25 * double(hs_div * (n1+1))) * double(1<<28)/ double(rfreq);
 
   printf("Read: hs_div %x  n1 %x  rfreq %lx  f %f MHz\n",
@@ -291,7 +291,7 @@ static void dump_ring()
   for(unsigned i=0; i<len; i++)
     buff[i] = get_reg32(base+4*i)&mask;
 
-  printf("csr %08x  mask 0x%x  cmask %u  dataWidth %u\n", 
+  printf("csr %08x  mask 0x%x  cmask %u  dataWidth %u\n",
          csr, mask, cmask, dataWidth);
   for(unsigned i=0; i<len; i++)
     printf("%0*x%c", cmask, buff[i], (i&0x7)==0x7 ? '\n':' ');
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
     int links      = 0xff;
     const char* dev = "/dev/datadev_1";
     char* endptr;
-    
+
     int c;
     while((c = getopt(argc, argv, "cd:sStTmMFDC:")) != EOF) {
       switch(c) {
@@ -370,7 +370,7 @@ int main(int argc, char* argv[])
       default: usage(argv[0]); return 0;
       }
     }
-    
+
     if ( (fd = open(dev,O_RDWR)) < 0) {
       perror("Opening device file");
       return 1;
@@ -378,7 +378,7 @@ int main(int argc, char* argv[])
 
     bool core_pcie = true;
 
-    { 
+    {
       struct AxiVersion axiv;
       axiVersionGet(fd, &axiv);
 
@@ -418,7 +418,7 @@ int main(int argc, char* argv[])
 
       sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
 
-      unsigned id = 0xfb000000 | 
+      unsigned id = 0xfb000000 |
         (ntohl(saddr->sin_addr.s_addr)&0xffff);
       set_reg32( 0x00a00004, id);
     }
@@ -437,11 +437,11 @@ int main(int argc, char* argv[])
 
         select_si570();
         reset_si570();
-        
+
         double f = read_si570();
         set_si570(f);
         read_si570();
-        
+
         double txrefclk, rxrefclk;
         measure_clks(txrefclk,rxrefclk);
       }
@@ -463,7 +463,7 @@ int main(int argc, char* argv[])
         set_reg32( 0x00c00020, v);
         usleep(100000);
       }
-      
+
       tcountRst |= timingRst;
       if (tcountRst) {
         printf("Reset timing counters\n");
@@ -587,7 +587,7 @@ int main(int argc, char* argv[])
       usleep(1000);
       w |=  (1<<3);       // reset
       set_reg32( 0x00a00000,w);
-      usleep(1);         
+      usleep(1);
       set_reg32( 0x00a00000,v);
     }
 

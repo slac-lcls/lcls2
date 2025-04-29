@@ -178,7 +178,8 @@ def select_experiment(parent, lst_exp, show_frame=False):
     return w.selectedName()
 
 
-def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_frame=False):
+#def select_instrument_experiment(parent=None, dir_instr='/cds/data/psdm', show_frame=False):
+def select_instrument_experiment(parent=None, dir_instr='/sdf/data/lcls/ds/', show_frame=False):
     from psana.graphqt.QWPopupSelectItem import popup_select_item_from_list
     from psana.pyalgos.generic.PSUtils import list_of_instruments, list_of_experiments
     instrs = sorted(list_of_instruments(dir_instr))
@@ -196,7 +197,7 @@ if __name__ == "__main__":
   logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.DEBUG)
 
   def test_all(tname):
-    lst_exp = sorted(os.listdir('/reg/d/psdm/SXR/'))
+    lst_exp = sorted(os.listdir('/sdf/data/lcls/ds/MFX/'))
     print('years form the list of experiments', years(lst_exp))
     print('years and runs form the list of experiments', str(years_and_runs(lst_exp)))
     print('experiments for 2016:', lst_exp_for_year(lst_exp, '2016'))

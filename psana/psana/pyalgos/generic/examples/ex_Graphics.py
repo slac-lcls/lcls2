@@ -61,7 +61,7 @@ def test04():
 
     for i in range(10):
        print('Event %3d' % i)
-       arr = random_standard((500,), mu, sigma, dtype=np.float)
+       arr = random_standard((500,), mu, sigma, dtype=np.float32)
        axhi.cla()
        set_win_title(fig, 'Event %d' % i)
        his = hist(axhi, arr, bins=100, amp_range=(mu-6*sigma,mu+6*sigma), weights=None, color=None, log=False)

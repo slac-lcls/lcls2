@@ -147,7 +147,7 @@ class TriggerDataSource(object):
             #print(f"[Python] Received msg '{message}', prio '{priority}'")
 
             if chr(message[0]) == 'g':
-                event = Event(self._shm_inp_mmap, self._shm_inp_bufSizes)
+                event = Event(self._shm_inp_mmap, self._shm_inp_bufSizes, int(message[1:],16))
                 yield event
             elif chr(message[0]) == 's':
                 break
@@ -167,34 +167,37 @@ class TriggerDataSource(object):
 
 # Revisit: Move this into a .pyx?
 class Event(object):
-    def __init__(self, shm_inp_mmap, shm_bufSizes):
+    def __init__(self, shm_inp_mmap, shm_bufSizes, ctrb):
         self._shm_inp_mmap      = shm_inp_mmap
         self._shm_bufSizes = shm_bufSizes
+        self._ctrb = ctrb
         self._idx = 0
-        self._pid = 0
+        self._pid = None
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        if self._idx == len(self._shm_bufSizes) - 1:
-            raise StopIteration
+        while True:
+            if self._idx == len(self._shm_bufSizes):
+                raise StopIteration
+            if (self._ctrb >> self._idx)&1:
+                break
+            self._idx += 1
 
         beg = self._shm_bufSizes[self._idx]
         end = self._shm_bufSizes[self._idx + 1]
         datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
-        if datagram.pulseId() == 0:
-            raise StopIteration
 
         self._idx += 1
 
         # Consistency check to make sure we haven't run off the end
-        if self._pid == 0:
+        if self._pid is None:
             self._pid = datagram.pulseId()
         elif datagram.pulseId() != self._pid:
             print(f"[Python] PulseId mismatch: "
                   f"expected {'%014x'%self._pid}, "
-                  f"got {'%014lx'%datagram.pulseId()}")
+                  f"got {'%014x'%datagram.pulseId()}, src {datagram.xtc.src.value():x}")
             raise StopIteration
 
         return datagram

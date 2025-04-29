@@ -25,7 +25,7 @@ void sigHandler( int signal ) {
 }
 
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 

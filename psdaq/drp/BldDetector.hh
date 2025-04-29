@@ -27,7 +27,9 @@ public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
         unsigned timestampPos, unsigned pulseIdPos,
         unsigned headerSize, unsigned payloadSize,
-        uint64_t timestampCorr=0);
+        uint64_t timestampCorr=0, bool varLenArr=false,
+        std::vector<unsigned> entryByteSizes={},      // For varLenArr Bld
+        std::map<unsigned,unsigned> arraySizeMap={}); // For varLenArr Bld
     Bld(const Bld&);
     ~Bld();
 public:
@@ -48,6 +50,8 @@ public:
 private:
     uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
     uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_pulseIdPos);}
+    void _calcVarPayloadSize  (); // Modifies m_payloadSize
+private:
     int      m_timestampPos;
     int      m_pulseIdPos;
     int      m_headerSize;
@@ -60,6 +64,9 @@ private:
     uint64_t m_timestampCorr;
     uint64_t m_pulseId;
     unsigned m_pulseIdJump;
+    bool     m_varLenArr;
+    std::vector<unsigned> m_entryByteSizes;
+    std::map<unsigned,unsigned> m_arraySizeMap;
 };
 
 class BldPVA
@@ -116,6 +123,9 @@ private:
     std::shared_ptr<BldDescriptor> _pvaPayload;
     std::shared_ptr<Bld          > _handler;
     std::vector<unsigned>          _arraySizes;
+    std::map<unsigned,unsigned>    _arraySizeMap;
+    std::vector<unsigned>          _entryByteSizes;
+    bool                           _varLenArr;
 };
 
 

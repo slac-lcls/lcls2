@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <poll.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 
 using namespace std;
@@ -152,7 +152,7 @@ int main (int argc, char **argv) {
   }
   if (!lquiet)
     cout << endl;
-  
+
   for(uint count=0; count<nevents; count++) {
     // DMA Write
     if (!lquiet) {
@@ -234,7 +234,7 @@ void* readThread(void* args)
       cout << ", EOFE=" << hex << err;
       cout << ", size=" << dec << ret;
       cout << endl << "   ";
-      
+
       for (int x=0; x<ret && x<maxPrint; x++) {
         cout << " 0x" << setw(8) << setfill('0') << hex << data[x];
         if ( ((x+1)%10) == 0 ) cout << endl << "   ";
@@ -264,7 +264,7 @@ void* countThread(void* args)
     double dbytes = double(nbytes-obytes)/dt;
     double tbytes = dbytes/rate;
     unsigned dbsc = 0, rsc=0, tbsc=0;
-    
+
     if (gcount < 0) break;
 
     static const char scchar[] = { ' ', 'k', 'M' };
@@ -285,7 +285,7 @@ void* countThread(void* args)
       dbsc    = 1;
       dbytes *= 1.e-3;
     }
-    
+
     if (tbytes > 1.e6) {
       tbsc    = 2;
       tbytes *= 1.e-6;
@@ -294,10 +294,10 @@ void* countThread(void* args)
       tbsc    = 1;
       tbytes *= 1.e-3;
     }
-    
-    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt)\n", 
-           rate  , scchar[rsc ], ncount, 
-           dbytes, scchar[dbsc], (long long)nbytes, 
+
+    printf("Rate %7.2f %cHz [%u]:  Size %7.2f %cBps [%lld B] (%7.2f %cB/evt)\n",
+           rate  , scchar[rsc ], ncount,
+           dbytes, scchar[dbsc], (long long)nbytes,
            tbytes, scchar[tbsc]);
 
     ocount = ncount;

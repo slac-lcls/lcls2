@@ -34,7 +34,6 @@ Usage::
 
 2022-07-07 created by Mikhail Dubrovin
 """
-
 import logging
 logger = logging.getLogger(__name__)
 import sys
@@ -49,15 +48,12 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
 
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
-
 def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
     if resp: logger_method(msg)
     return resp
 
-
 class CalibConstants:
-
     def __init__(self, calibconst, **kwa):
         """
         Parameters
@@ -83,14 +79,13 @@ class CalibConstants:
         self._pix_rc = None, None
         self._pix_xyz = None, None, None
         self._interpol_pars = None
-
+        self._rc_tot_max = None
 
     def calibconst(self):
         logger.debug('calibconst')
         cc = self._calibconst
         if is_none(cc, 'self._calibconst is None'): return None
         return cc
-
 
     def cons_and_meta_for_ctype(self, ctype='pedestals'):
         logger.debug('cons_and_meta_for_ctype(ctype="%s")'%ctype)
@@ -100,12 +95,10 @@ class CalibConstants:
         if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.debug): return None, None
         return cons_and_meta
 
-
     def cached_array(self, p, ctype='pedestals'):
         """Returns cached array of constants for ctype."""
         if p is None: p = self.cons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
-
 
     def pedestals(self):   return self.cached_array(self._pedestals, 'pedestals')
 
@@ -115,11 +108,9 @@ class CalibConstants:
 
     def gain(self):        return self.cached_array(self._gain, 'pixel_gain')
 
-
     def mask_calib(self):
         a = self.cached_array(self._mask_calib, 'pixel_mask')
         return a if a is None else a.astype(DTYPE_MASK)
-
 
     def status(self, ctype='pixel_status'):
         """for ctype pixel_status"""
@@ -133,12 +124,10 @@ class CalibConstants:
         a = self.cached_array(cach, ctype)
         return a if a is None else a.astype(DTYPE_STATUS)
 
-
     def status_extra(self):
         """for ctype status_extra"""
         a = self.cached_array(self._status_extra, 'status_extra')
         return a if a is None else a.astype(DTYPE_STATUS)
-
 
     def gain_factor(self):
         """Evaluates and returns gain factor as 1/gain if gain is available in calib constants else 1."""
@@ -147,18 +136,15 @@ class CalibConstants:
             self._gain_factor = divide_protected(np.ones_like(g), g) if isinstance(g, np.ndarray) else 1
         return self._gain_factor
 
-
     def shape_as_daq(self):
         peds = self.pedestals()
         #print(info_ndarr(peds, 'XXX shape_as_daq pedesstals'))
         if is_none(peds, 'shape_as_daq - pedestals is None, can not define daq data shape - returns None'): return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
-
     def number_of_segments_total(self):
         shape = self.shape_as_daq()
         return None if shape is None else shape[-3] # (7,n,352,384) - define through calibration constants
-
 
     def segment_numbers_total(self):
         """Returns total list of segment numbers."""
@@ -169,7 +155,6 @@ class CalibConstants:
         logger.debug('segnums: %s' % str(segnums))
         return segnums
 
-
     def geotxt_and_meta(self):
         logger.debug('geotxt_and_meta')
         cc = self.calibconst()
@@ -177,7 +162,6 @@ class CalibConstants:
         geotxt_and_meta = cc.get('geometry', None)
         if is_none(geotxt_and_meta, 'calibconst["geometry"] is None', logger_method=logger.debug): return None, None
         return geotxt_and_meta
-
 
     def geo(self):
         """Return GeometryAccess() object."""
@@ -189,13 +173,11 @@ class CalibConstants:
             self._geo.load_pars_from_str(geotxt)
         return self._geo
 
-
     def seg_geo(self):
         logger.debug('seg_geo')
         geo = self.geo()
         if is_none(geo, 'geo is None', logger_method=logger.debug): return None
         return geo.get_seg_geo().algo
-
 
     def pixel_coords(self, **kwa):
         """DEPRECATED - can't load detector-dependent default geometry here...
@@ -209,7 +191,6 @@ class CalibConstants:
         return geo.get_pixel_coords(\
             do_tilt            = kwa.get('do_tilt',True),\
             cframe             = kwa.get('cframe',0))
-
 
     def pixel_coord_indexes(self, **kwa):
         """DEPRECATED - can't load detector-dependent default geometry here...
@@ -225,12 +206,15 @@ class CalibConstants:
             do_tilt            = kwa.get('do_tilt',True),\
             cframe             = kwa.get('cframe',0))
 
-
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
         logger.debug('CalibConstants.cached_pixel_coord_indexes')
 
         resp = self.pixel_coord_indexes(**kwa)
         if resp is None: return None
+
+        logger.debug(info_ndarr(resp, 'detector total rows, cols: '))
+        self._rc_tot_max = [np.max(np.ravel(a)) for a in resp]
+        logger.debug('_rc_tot_max: ', self._rc_tot_max)
 
         # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
         if segnums is None:
@@ -238,7 +222,7 @@ class CalibConstants:
 
         logger.info(info_ndarr(segnums, 'preserve pixel indices for segments '))
 
-        logger.info(info_ndarr(resp[0], 'self.pixel_coord_indexes '))
+        logger.info(info_ndarr(resp, 'self.pixel_coord_indexes '))
 
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
 
@@ -277,7 +261,6 @@ class CalibConstants:
                 for i in range(first,first+10): s += '\n    s:%02d r:%03d c:%03d' % tuple(imgind_to_seg_row_col[i])
                 logger.debug(s)
 
-
     def image(self, nda, segnums=None, **kwa):
         """
         Create 2-d image.
@@ -314,7 +297,7 @@ class CalibConstants:
         mapmode   = kwa.get('mapmode',2)
         fillholes = kwa.get('fillholes',True)
 
-        #print('XXX in CalibConstants.image segnums', segnums, 'mapmode:', mapmode)
+        #logger.debug('in CalibConstants.image segnums', segnums, 'mapmode:', mapmode)
 
         if mapmode==0: return self.img_entries
 
@@ -325,7 +308,7 @@ class CalibConstants:
         logger.debug(info_ndarr(rows, 'rows ', last=3))
         logger.debug(info_ndarr(cols, 'cols ', last=3))
 
-        img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase) # mapmode==1
+        img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase, rc_tot_max=self._rc_tot_max) # mapmode==1
 
         if   mapmode==2: img_multipixel_max(img, nda, self.dmulti_pix_to_img_idx)
         elif mapmode==3: img_multipixel_mean(img, nda, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)
@@ -335,7 +318,6 @@ class CalibConstants:
         return img if mapmode<4 else\
                img_interpolated(nda, self._cached_interpol_pars()) if mapmode==4 else\
                self.img_entries
-
 
     def pix_rc(self): return self._pix_rc
 

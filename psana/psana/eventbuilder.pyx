@@ -2,28 +2,30 @@
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
 
 from cpython cimport array
+
 import array
-from cpython.object cimport PyObject
+
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
+from cpython.object cimport PyObject
+from dgramlite cimport Dgram, Xtc
+from libc.stdint cimport uint64_t
 
-from dgramlite cimport Xtc, Sequence, Dgram
-
-from libc.stdint cimport uint32_t, uint64_t
-
-from psana.event import Event
-from psana.psexp import PacketFooter, TransitionId
-from psana import dgram
-import time
 import numpy as np
+
+from psana import dgram
 from psana.dgramedit import PyDgram
-from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
+from psana.event import Event
+from psana.psexp import TransitionId
+
+from cpython.buffer cimport (PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE,
+                             PyBuffer_Release, PyObject_GetBuffer)
+from cpython.pycapsule cimport PyCapsule_New
 
 MAX_BATCH_SIZE = 1000000
 
 cdef class ProxyEvent:
     """ EventBuilder uses this class to store event-related info
-    while walking through each view buffer. Values such as timestamps, 
+    while walking through each view buffer. Values such as timestamps,
     dgram sizes, pointer to the dgrams, are kept here so that they
     can be reused when we build a byte-representation of event batch.
     """
@@ -41,7 +43,7 @@ cdef class ProxyEvent:
     @property
     def pydgrams(self):
         return self.pydgrams
-    
+
     def set_service(self, int service):
         self.service = service
 
@@ -58,14 +60,14 @@ cdef class ProxyEvent:
 
     def set_destination(self, dest_rank):
         self.destination = dest_rank
-    
+
     @property
     def destination(self):
         return self.destination
 
     def as_bytearray(self):
         """Generate a bytearray representation of the event.
-       
+
         An event as bytearray has this structure:
         [ [[d0][d1][d2][evt_footer]] [[d0][d1][d2][evt_footer]] ]
         evt_footer:    [sizeof(d0) | sizeof(d1) | sizeof(d2) | 3] (for 3 dgrams in 1 evt)
@@ -76,18 +78,20 @@ cdef class ProxyEvent:
         evt_bytearray = bytearray()
         cdef int i
         for i, pydg in enumerate(self.pydgrams):
-            if pydg == 0: continue
+            if pydg == 0:
+                continue
             evt_footer[i] = pydg.size()
             evt_bytearray.extend(bytearray(pydg.as_memoryview()))
         evt_bytearray.extend(evt_footer)
         return evt_bytearray
-    
+
     def as_dgrams(self, configs):
         """ Returns a list of converted PyDgram objects (as dgram.Dgram)."""
         cdef int i
         dgrams = [None]*self.nsmds
         for i, pydg in enumerate(self.pydgrams):
-            if pydg == 0: continue
+            if pydg == 0:
+                continue
             # FIXME: potentially makes dgram.cc view read-only with PyBUF_CONTIG_RO (currently PyBUF_SIMPLE)
             dgrams[i] = dgram.Dgram(config=configs[i], view=bytearray(pydg.as_memoryview()))
         return dgrams
@@ -98,14 +102,16 @@ cdef class EventBuilder:
     Takes memoryslice 'views' and identifies matching timestamp
     dgrams as an event. Returns list of events (size=batch_size)
     as another memoryslice 'batch'.
-    
+
     Input: views
     EventBuilder receives a views from SmdCore. Each views consists
     of 1 or more chunks of small data.
-    
+
     Output: list of batches
-    Without destination call back the build fn returns a batch of events (size = batch_size) at index 0. With destination call back, this fn returns list of batches. Each batch has the same destination rank.
-    
+    Without destination call back the build fn returns a batch of events
+    (size = batch_size) at index 0. With destination call back, this fn
+    returns list of batches. Each batch has the same destination rank.
+
     Note that reading chunks inside a views or events inside a batch can be done
     using PacketFooter class."""
     cdef short nsmds
@@ -121,8 +127,7 @@ cdef class EventBuilder:
     cdef array.array services
     cdef list views
 
-    def __init__(self, views, configs,
-            *args, **kwargs):
+    def __init__(self, views, configs, *args, **kwargs):
         self.nsmds  = len(views)
         self.configs= configs
         self.nevents= 0
@@ -132,24 +137,22 @@ cdef class EventBuilder:
         # Keep offsets and sizes for the input views
         self.offsets = array.array('I', [0]*self.nsmds)
         self.sizes = array.array('I', [memoryview(view).nbytes for view in views])
-        
+
         # Keep dgram data while working along each stream during building step
         self.timestamps = array.array('L', [0]*self.nsmds)
         self.dgram_sizes= array.array('I', [0]*self.nsmds)
         self.services   = array.array('i', [0]*self.nsmds)
-    
+
         # Keyword args that need to be passed in once. To save some of
         # them as cpp class attributes, we need to read them in as PyObject*.
         cdef char* kwlist[4]
         kwlist[0] = "dsparms"
-        kwlist[1] = "run"   
+        kwlist[1] = "run"
         kwlist[2] = NULL
 
-        if PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwlist, 
-                &(self.dsparms),
-                &(self.run)) == False:
+        if PyArg_ParseTupleAndKeywords(args, kwargs, "|OO", kwlist, &(self.dsparms), &(self.run)) is False:
             raise RuntimeError, "Invalid kwargs for EventBuilder"
-        
+
     def events(self):
         """A generator that yields an smd event.
         Note: Use either this generator or build(). They both call build()
@@ -178,7 +181,7 @@ cdef class EventBuilder:
         The key of this batch is the destination (rank no.), which is default to 0
         (any rank). Each contain byte representation of event batch understood by
         PacketFooter.
-        
+
         A batch is bytearray with this content:
         | ---------- evt 0 --------| |------------evt 1 --------| batch_footer |
         batch_footer:  [sizeof(evt0) | sizeof(evt1) | 2] (for 2 evts in 1 batch)
@@ -187,7 +190,7 @@ cdef class EventBuilder:
         cdef array.array int_array_template = array.array('I', [])
         cdef array.array batch_footer       = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
         cdef array.array step_batch_footer  = array.clone(int_array_template, MAX_BATCH_SIZE+1, zero=True)
-    
+
         # Bytearray batch and step batch generation depends on the
         # run types and whether the user has the destination set.
         #
@@ -214,9 +217,9 @@ cdef class EventBuilder:
             batch_dict = {0: (bytearray(), [])}
             step_dict = {}
         else:
-            batch_dict  = {dest: (bytearray(), []) for dest in destinations} 
-            step_dict  = {dest: (bytearray(), []) for dest in destinations} 
-        
+            batch_dict  = {dest: (bytearray(), []) for dest in destinations}
+            step_dict  = {dest: (bytearray(), []) for dest in destinations}
+
         for proxy_evt in proxy_events:
             evt_bytearray = proxy_evt.as_bytearray()
             if run_serial:
@@ -224,7 +227,7 @@ cdef class EventBuilder:
                 batch.extend(evt_bytearray)
                 evt_sizes.append(memoryview(evt_bytearray).nbytes)
             else:
-                if proxy_evt.service != TransitionId.L1Accept:
+                if not TransitionId.isEvent(proxy_evt.service):
                     for dest, (step_batch, step_sizes) in step_dict.items():
                         step_batch.extend(evt_bytearray)
                         step_sizes.append(memoryview(evt_bytearray).nbytes)
@@ -240,8 +243,9 @@ cdef class EventBuilder:
         cdef int evt_idx = 0
         for _, val in batch_dict.items():
             batch, evt_sizes = val
-           
-            if memoryview(batch).nbytes == 0: continue
+
+            if memoryview(batch).nbytes == 0:
+                continue
 
             for evt_idx in range(len(evt_sizes)):
                 batch_footer[evt_idx] = evt_sizes[evt_idx]
@@ -251,7 +255,8 @@ cdef class EventBuilder:
         for _, val in step_dict.items():
             step_batch, step_sizes = val
 
-            if memoryview(step_batch).nbytes ==0: continue
+            if memoryview(step_batch).nbytes ==0:
+                continue
 
             for evt_idx in range(len(step_sizes)):
                 step_batch_footer[evt_idx] = step_sizes[evt_idx]
@@ -262,14 +267,13 @@ cdef class EventBuilder:
 
     def build_proxy_event(self):
         """ Builds and returns a proxy event (None if filterred)"""
-        #t0 = time.perf_counter()
         proxy_evt = ProxyEvent(self.nsmds)
-        
+
         # Use typed variables for performance
         cdef short view_idx     = 0
 
         # For checking which smd stream has the smallest timestamp
-        cdef uint64_t min_ts    = 0                          
+        cdef uint64_t min_ts    = 0
         cdef int smd_id         = -1
 
         # For counting if all transtion dgrams show up
@@ -279,17 +283,14 @@ cdef class EventBuilder:
         array.zero(self.timestamps)
         array.zero(self.dgram_sizes)
         array.zero(self.services)
-        
-        cdef list pydgrams = [0] * self.nsmds
 
-        #t1 = time.perf_counter()
+        cdef list pydgrams = [0] * self.nsmds
 
         # For retrieving pointers to the input memoryviews
         cdef Py_buffer buf
         cdef char* view_ptr
         cdef Dgram* dg
-        cdef uint64_t payload
-        
+
         # Get dgrams and collect their timestamps for all smds, then locate
         # smd_id with the smallest timestamp.
         for view_idx, view in enumerate(self.views):
@@ -303,11 +304,11 @@ cdef class EventBuilder:
                 self.offsets[view_idx] += dgram_size
                 pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
                 pydg = PyDgram(pycap_dg, dgram_size)
-                
+
                 # Save dgram meta data for each stream
-                self.timestamps[view_idx] = <uint64_t>dg.seq.high << 32 | dg.seq.low 
-                self.dgram_sizes[view_idx] = dgram_size 
-                self.services[view_idx] = (dg.env>>24)&0xf 
+                self.timestamps[view_idx] = <uint64_t>dg.seq.high << 32 | dg.seq.low
+                self.dgram_sizes[view_idx] = dgram_size
+                self.services[view_idx] = (dg.env>>24)&0xf
                 pydgrams[view_idx] = pydg
 
                 # Check for the smallest timestamp
@@ -322,19 +323,17 @@ cdef class EventBuilder:
 
             # end if self.offsets[view_idx] ...
         # end for view_id in ...
-        #t2 = time.perf_counter()
-        
-        # Nothing matches user's selected timestamps 
-        if smd_id == -1:                                        
-            return None 
+
+        # Nothing matches user's selected timestamps
+        if smd_id == -1:
+            return None
 
         # Setup proxy event with its main dgram (smallest ts)
         proxy_evt.set_timestamp(self.timestamps[smd_id])
         proxy_evt.set_service(self.services[smd_id])
         proxy_evt.pydgrams[smd_id] = pydgrams[smd_id]
         cn_dgrams += 1
-        #t3 = time.perf_counter()
-        
+
         # In other smd views, find matching timestamp dgrams
         for view_idx in range(self.nsmds):
             # We use previous offset to check if this view has been used up. Only
@@ -342,7 +341,7 @@ cdef class EventBuilder:
             # its current buffer offset.
             if view_idx == smd_id or self.offsets[view_idx] - self.dgram_sizes[view_idx] >= self.sizes[view_idx]:
                 continue
-            
+
             # Find matching timestamp dgram. If fails, we need to rewind the offset
             # of stream view back one dgram so that the new next call can get the
             # same dgram again.
@@ -351,63 +350,98 @@ cdef class EventBuilder:
                 cn_dgrams += 1
             else:
                 self.offsets[view_idx] -= self.dgram_sizes[view_idx]
-        
-        #t4 = time.perf_counter()
 
         # For Non L1, check that all dgrams show up
-        if  proxy_evt.service != TransitionId.L1Accept and cn_dgrams != self.nsmds:
+        if not TransitionId.isEvent(proxy_evt.service) and cn_dgrams != self.nsmds:
             msg = f'TransitionId {proxy_evt.service} incomplete (ts:{proxy_evt.timestamp}) expected:{self.nsmds} received:{cn_dgrams}'
             raise RuntimeError(msg)
-        
-        #t5 = time.perf_counter()
-        #print(f'svr:{proxy_evt.service} total (micro-sec): {(t4-t0)*1e6:.2f} init:{(t1-t0)*1e6:.2f} loop1:{(t2-t1)*1e6:.2f} set:{(t3-t2)*1e6:.2f} loop2:{(t4-t3)*1e6:.2f} fin:{(t5-t4)*1e6:.2f}')
         return proxy_evt
 
     def build(self, as_proxy_events=False):
         """ Build proxy events according to batch size.
-        
-        Input: 
+
+        Input:
         as_proxy_events: set this to skip creating event and step batches
 
         Output:
         proxy_events: a list of proxy events (as_proxy_events=True)
-        batch_dict, step_dict: batches of events with destination 
+        batch_dict, step_dict: batches of events with destination
                                rank id as key
         """
         # Grab dsparms (cast PyObject* to Python object)
         dsparms = <object> self.dsparms
-        
+        filter_timestamps = dsparms.timestamps
+
         # For counting no. of events. If `intg_stream_id`
         # is not given, this counts no. of events (equivalent to `got`).
         cdef unsigned got       = 0
         cdef unsigned got_step  = 0
-        cdef unsigned cn_intg_events = 0
 
         # Keeping all built proxy event
         proxy_events = []
+        non_L1_indices = []
 
-        while cn_intg_events < dsparms.batch_size and self.has_more():
-            proxy_evt = self.build_proxy_event()
-            if proxy_evt is not None:
-                # Either counting no. of events normally or counting only
-                # events in integrating stream as set by `intg_stream_id`.
-                if dsparms.intg_stream_id > -1:
-                    if proxy_evt.pydgrams[dsparms.intg_stream_id] != 0 and proxy_evt.service != TransitionId.SlowUpdate:
-                        cn_intg_events += 1
-                else:
-                    cn_intg_events += 1
-                
-                # Counts no. of steps 
-                if proxy_evt.service != TransitionId.L1Accept:
-                    got_step += 1
-                
-                proxy_events.append(proxy_evt)
-                got += 1
+        # Build a batch of events upto batch_size or whatever we have.
+        # Note that for integrating run, we build everything that
+        # we got from smd0 (no batch_size used).
+        if dsparms.intg_stream_id > -1:
+            while self.has_more():
+                proxy_evt = self.build_proxy_event()
+                if proxy_evt is not None:
+                    # Potentially keep indices of transition for filtering
+                    if not TransitionId.isEvent(proxy_evt.service):
+                        got_step += 1
+                        if filter_timestamps.shape[0] > 0:
+                            non_L1_indices.append(got)
+                    proxy_events.append(proxy_evt)
+                    got += 1
+        else:
+            while got < dsparms.batch_size and self.has_more():
+                proxy_evt = self.build_proxy_event()
+                if proxy_evt is not None:
+                    # Potentially keep indices of transition for filtering
+                    if not TransitionId.isEvent(proxy_evt.service):
+                        got_step += 1
+                        if filter_timestamps.shape[0] > 0:
+                            non_L1_indices.append(got)
+                    proxy_events.append(proxy_evt)
+                    got += 1
 
-        assert got <= MAX_BATCH_SIZE, f"No. of events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got}). For integrating detector, lower the value of PS_SMD_N_EVENTS."
-        assert got_step <= MAX_BATCH_SIZE, f"No. of transition events exceeds maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
+        assert got <= MAX_BATCH_SIZE, "No. of events exceeds maximum allowed"+ \
+            f"(max:{MAX_BATCH_SIZE} got:{got}). For integrating detector, "+ \
+            "lower the value of PS_SMD_N_EVENTS."
+        assert got_step <= MAX_BATCH_SIZE, "No. of transition events exceeds"+ \
+            f"maximum allowed (max:{MAX_BATCH_SIZE} got:{got_step})"
         self.nevents = got
         self.nsteps = got_step
+
+        # Filter by timestamps note that all non-L1 will not get filtered
+        # This is done by locating insert positions in the filter_timestamps.
+        # If the position is the shape of filter_timestamps, this indicates
+        # not found. The exact match means the insert position has the same
+        # timestamp.
+        cdef int i, ia, ib
+        if filter_timestamps.shape[0] and len(proxy_events) > 0:
+            timestamps = np.asarray([proxy_evt.timestamp for proxy_evt in proxy_events], dtype=np.uint64)
+            # Find best position to insert timestamps into filter_timestamps.
+            # This is so because the result index array is always limited by
+            # the size of timestamps (batch_size). In case we have a large
+            # filter_timestamps, the search time and checking time below is
+            # always constant.
+            insert_indices = np.searchsorted(filter_timestamps, timestamps)
+            # The insert positions should have the same timestamp value
+            found_indices = []
+            found_insert_index = -1
+            for ia in range(insert_indices.shape[0]-1, -1, -1):
+                ib = insert_indices[ia]
+                if ib == found_insert_index or ib == filter_timestamps.shape[0]:
+                    continue
+                if timestamps[ia] == filter_timestamps[ib]:
+                    found_indices.append(ia)
+                    found_insert_index = ib
+
+            _proxy_events = [proxy_events[i] for i in sorted(list(found_indices)+non_L1_indices)]
+            proxy_events = _proxy_events
 
         # Eiter return the proxy_events (smd_callback) or bytearrays (grouped by destination)
         if as_proxy_events:
@@ -423,4 +457,3 @@ cdef class EventBuilder:
     @property
     def nsteps(self):
         return self.nsteps
-

@@ -1555,3 +1555,8 @@ void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
     spi_write(0, dev, 0x213, (1<<3)); 
 }
 
+void Fmc134Cpld::adc_input(unsigned chip,unsigned ch)
+{
+    DevSel dev = (chip==0) ? ADC0 : ADC1;
+    spi_write(0, dev, 0x60, 1+(ch&1)); // 1=INA, 2=INB
+} 

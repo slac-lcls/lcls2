@@ -1,25 +1,19 @@
-from psana.psexp import PrometheusManager
 import typer
 from typing_extensions import Annotated
-import os
+
+from psana.psexp.prometheus_manager import PrometheusManager
 
 
 def main(
-    exp: Annotated[
-        str, typer.Argument(help="Experiment code")
+    job_id: Annotated[
+        str,
+        typer.Argument(
+            help="Prometheus JobID (default is slurm jobid or exp_runnum_user)"
+        ),
     ],
-    runnum: Annotated[
-        int, typer.Argument(help="Run no.")
-    ],
-    user: Annotated[
-        str, typer.Argument(help="User who ran the job")
-    ],
-    n_ranks: Annotated[
-        int, typer.Argument(help="No. of total mpi ranks")
-    ],
-    ):
-    job = f'{exp}_{runnum}_{user}'
-    prom_man = PrometheusManager(exp, runnum, job=job)
+    n_ranks: Annotated[int, typer.Argument(help="No. of total mpi ranks")],
+):
+    prom_man = PrometheusManager(job=job_id)
     prom_man.delete_all_metrics_on_pushgateway(n_ranks=n_ranks)
 
 

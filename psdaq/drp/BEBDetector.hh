@@ -32,6 +32,7 @@ public:
     virtual ~BEBDetector();
 public:  // Implementation of Detector
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
+    void           connectionShutdown() override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
@@ -54,6 +55,7 @@ protected:
     void _init_feb();         // Must call from subclass constructor
     // Helper functions
     std::vector< XtcData::Array<uint8_t> > _subframes(void* buffer, unsigned length);
+    std::vector< XtcData::Array<uint8_t> > _subframes(void* buffer, unsigned length, size_t nsubhint);
     static std::string _string_from_PyDict(PyObject*, const char* key);
 protected:
     std::string          m_connect_json;  // info passed on connect phase
@@ -63,6 +65,8 @@ protected:
     unsigned             m_paddr;         // timing system link id
     PythonConfigScanner* m_configScanner;
     bool                 m_debatch;       // data is contained in an extra AxiStreamBatcherEventBuilder
+    bool                 m_multiSegment = false;
+    std::string          m_segNoStr{""};
   };
 
 }

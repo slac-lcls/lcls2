@@ -15,6 +15,12 @@ std::unique_ptr<prometheus::Exposer>
     createExposer(const std::string& prometheusDir,
                   const std::string& hostname);
 
+// Entry for allowing app to attempt to pick the same port on each invocation
+std::unique_ptr<prometheus::Exposer>
+    createExposer(const std::string& prometheusDir,
+                  const std::string& hostname,
+                  unsigned           portOffset);
+
 struct Previous
 {
     int64_t value;

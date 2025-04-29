@@ -126,7 +126,7 @@ if __name__ == "__main__":
     logger.info('Detector origin indexes ixo:%d iyo:%d' % (ixo, iyo))
 
     root, ext = os.path.splitext(fname_data)
-    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float)
+    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float32)
     arr.shape= (4,8,185,388)
 
     logger.info('shapes rows: %s cols: %s weight: %s' % (str(rows.shape), str(cols.shape), str(arr.shape)))
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     rows, cols = geometry.get_pixel_coord_indexes(do_tilt=True)
 
     root, ext = os.path.splitext(fname_data)
-    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float)
+    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float32)
     arr.shape= (185,388,2)
 
     logger.info('shapes rows: %s cols: %s weight: %s' % (str(rows.shape), str(cols.shape), str(arr.shape)))
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     rows, cols = geometry.get_pixel_coord_indexes()
 
     root, ext = os.path.splitext(fname_data)
-    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float)
+    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float32)
 
     logger.info('shapes rows: %s cols: %s weight: %s' % (str(rows.shape), str(cols.shape), str(arr.shape)))
     img = img_from_pixel_arrays(rows,cols,W=arr)
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     rows, cols = geometry.get_pixel_xy_inds_at_z(zplane=150000)
 
     root, ext = os.path.splitext(fname_data)
-    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float)
+    arr = np.load(fname_data) if ext == '.npy' else np.loadtxt(fname_data, dtype=np.float32)
 
     #logger.info('arr.shape=', arr.shape
     arr.shape= (32,185,388)
@@ -301,7 +301,7 @@ if __name__ == "__main__":
     #amp_range = (0,0.5)
 
     # CXI
-    basedir = '/reg/g/psdm/detector/alignment/cspad/calib-cxi-ds1-2014-03-19/'
+    basedir = '/sdf/group/lcls/ds/ana/detector/alignment/cspad/calib-cxi-ds1-2014-03-19/'
     fname_data     = basedir + 'cspad-ndarr-ave-cxii0114-r0227.dat'
     fname_geometry = basedir + 'calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'
     #fname_geometry = '/reg/d/psdm/CXI/cxitut13/calib/CsPad::CalibV1/CxiDs1.0:Cspad.0/geometry/0-end.data'

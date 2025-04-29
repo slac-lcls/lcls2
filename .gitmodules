@@ -1,0 +1,3 @@
+[submodule "psdaq/psdaq/submodules/lcls2_udp_pcie_apps"]
+	path = psdaq/psdaq/submodules/lcls2_udp_pcie_apps
+	url = git@github.com:slaclab/lcls2-udp-pcie-apps

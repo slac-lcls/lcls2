@@ -34,7 +34,7 @@ def control_gui() :
         parser.print_usage()
         print(80*'_')
 
-    (popts, pargs) = parser.parse_args() # TRICK! this line allows -h or --help potion !!!
+    (popts, pargs) = parser.parse_args() # TRICK! this line allows -h or --help option !!!
     proc_control_gui(parser)
 
     #opts = vars(popts)

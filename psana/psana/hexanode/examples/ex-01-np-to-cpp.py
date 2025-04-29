@@ -22,7 +22,7 @@ def test_templ(nda) :
 
 def test_02() :
     print(50*'_', '\nTest of templated function test_nda')
-    test_templ(1*np.ones((2,3), dtype=np.double))
+    test_templ(1*np.ones((2,3), dtype=np.float64))
     test_templ(2*np.ones((2,4), dtype=np.int16))
     test_templ(3*np.ones((2,5), dtype=np.uint16))
 
@@ -32,7 +32,7 @@ def test_03() :
     from hexanode import test_nda_f8, test_nda_i2, test_nda_u2
 
     print(50*'_', '\nTest of specialized methods test_nda_f8(nda), test_nda_i2(nda), test_nda_u2(nda)')
-    nda = np.ones((2,3), dtype=np.double)
+    nda = np.ones((2,3), dtype=np.float64)
     test_nda_f8(nda)
     print('Returned array:\n', nda)
 

@@ -43,13 +43,11 @@ namespace Pds {
     class TebContributor
     {
     public:
-      TebContributor(const TebCtrbParams&,
-                     unsigned numBuffers,
-                     const std::shared_ptr<MetricExporter>&);
+      TebContributor(const TebCtrbParams&, unsigned numBuffers);
       ~TebContributor();
     public:
       int         resetCounters();
-      int         connect();
+      int         connect(const std::shared_ptr<MetricExporter> exporter);
       int         configure();
       void        unconfigure();
       void        disconnect();
@@ -64,6 +62,7 @@ namespace Pds {
     public:
       BatchQueue& pending()  { return _pending; }
     private:
+      int        _setupMetrics(const std::shared_ptr<MetricExporter>);
       void       _flush();
       void       _post(const Pds::EbDgram* nonEvent);
       void       _post(const Batch& batch);

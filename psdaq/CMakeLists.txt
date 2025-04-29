@@ -10,6 +10,7 @@ include(CheckLanguage)
 check_language(CUDA)
 if(CMAKE_CUDA_COMPILER)
   enable_language(CUDA)
+  find_package(CUDAToolkit)
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -28,6 +29,7 @@ find_package(epics REQUIRED)
 find_package(RapidJSON REQUIRED)
 find_package(Readline REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(slsDetectorPackage REQUIRED)
 
 find_library(YAML_CPP_LIB yaml-cpp)
 
@@ -41,8 +43,6 @@ endif()
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
-find_path(AES_STREAM_DRIVER_HEADER_PATH NAMES "DataDriver.h" PATH_SUFFIXES include REQUIRED)
 
 add_subdirectory(psdaq)
 add_subdirectory(drp)

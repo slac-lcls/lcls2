@@ -115,6 +115,7 @@ namespace Drp {
             pvac::ClientChannel   m_fex_pv;
             pvd::PVStructure::const_shared_pointer m_request;
             double                *m_vec;
+            pvd::shared_vector<const double> m_ttvec;
             const char            *m_ttpv;
         };
 
@@ -359,7 +360,8 @@ TT::TT(Piranha4& d, Parameters* para) :
     m_background_sem  (Pds::Semaphore::FULL),
     m_background_empty(true),
     m_fex             (para),
-    m_vec             (new double[6])
+    m_vec             (new double[6]),
+    m_ttvec           (m_vec,0,6) 
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
@@ -486,15 +488,13 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
     }
     else if (result == Piranha4TTFex::VALID) {
         if (m_ttpv) {
-            //  Live feedback
-            pvd::shared_vector<const double> ttvec(m_vec,0,6);
             m_vec[0] = m_fex.amplitude();
             m_vec[1] = m_fex.filtered_position();
             m_vec[2] = m_fex.filtered_pos_ps();
             m_vec[3] = m_fex.filtered_fwhm();
             m_vec[4] = m_fex.next_amplitude();
             m_vec[5] = m_fex.ref_amplitude();
-            m_fex_pv.put(m_request).set<const double>("value",ttvec).exec();
+            m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
         }
         //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);

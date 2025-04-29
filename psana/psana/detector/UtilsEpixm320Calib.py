@@ -2,6 +2,14 @@
 :py:class:`UtilsEpixm320Calib` dark processing algorithms for generic area detector
 ===============================================================================
 
+
+TODO:
+  UtilsCalib import * -> import psana.detector.UtilsCalib as uc
+  NEEDS TO BE COMPLETED for fname_prefix, calib_file_name etc.
+
+  RepoManager > set_repoman_and_logger
+
+
 Usage::
 
     from psana.detector.UtilsEpixm320Calib import *
@@ -15,12 +23,21 @@ Created on 2024-04-09 by Mikhail Dubrovin
 """
 from psana.detector.Utils import info_dict
 
-from psana.detector.UtilsCalib import * # logging
+#from psana.detector.UtilsCalib import * # logging
+import psana.detector.UtilsCalib as uc
+from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge, calib_file_name
 import json
 
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
+
+
+def selected_record(i, events=1000000):
+    return i<5\
+       or (i<50 and not i%10)\
+       or not i%100\
+       or i>events-5
 
 
 def pedestals_calibration(parser):
@@ -37,8 +54,8 @@ def pedestals_calibration(parser):
   stepmax = kwa.get('stepmax', 1)
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
-
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
+  shortname = None
 
   logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
   ds = DataSource(**dskwargs)
@@ -49,11 +66,12 @@ def pedestals_calibration(parser):
   nevtot = 0
   nevsel = 0
   nsteptot = 0
-  break_loop   = False
-  break_runs   = False
+  break_loop = False
+  break_runs = False
   dettype = None
-  dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape:(4, 192, 384)}}
+  dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape=(4, 192, 384)}}
   kwa_depl = None
+  odet = None
 
   expname = dskwargs.get('exp', None)
   runnum  = dskwargs.get('run', None)
@@ -86,17 +104,18 @@ def pedestals_calibration(parser):
     trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
     ts_run, ts_now = tstamps_run_and_now(int(trun_sec))
 
-    break_steps  = False
+    break_steps = False
 
     for istep,step in enumerate(orun.steps()):
       nsteptot += 1
 
       metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
 
+      print('\n==== Begin step %1d ====' % istep)
       logger.info('Step %1d docstring: %s' % (istep, str(metadic)))
       ss = ''
 
-      if istep>=stepmax:
+      if istep >= stepmax:
           logger.info('==== Step:%02d loop is terminated --stepmax=%d' % (istep, stepmax))
           break_steps = True
           break
@@ -113,11 +132,12 @@ def pedestals_calibration(parser):
          kwa['rms_hi'] = odet.raw._data_bit_mask - 10
          kwa['int_hi'] = odet.raw._data_bit_mask - 10
 
-         dpo = DarkProc(**kwa)
+         dpo = uc.DarkProc(**kwa)
          dpo.runnum = orun.runnum
          dpo.exp = expname
          dpo.ts_run, dpo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
 
+      count_none = 0
       break_events = False
 
       for ievt,evt in enumerate(step.events()):
@@ -141,7 +161,9 @@ def pedestals_calibration(parser):
         raw = odet.raw.raw(evt)
 
         if raw is None:
-            logger.info('==== Ev:%04d raw is None' % (ievt))
+            count_none += 1
+            if selected_record(count_none, events):
+                logger.info('==== Ev:%04d raw is None, counter: %d' % (ievt, count_none))
             continue
 
         nevsel += 1
@@ -161,11 +183,10 @@ def pedestals_calibration(parser):
             break
         # End of event-loop
 
-      if ievt < events: logger.info('==== Ev:%04d end of events in run %d step %d'%\
-                                     (ievt, orun.runnum, istep))
+      if ievt < events: logger.info('======== Ev:%04d end of events in run %d   step %d   counter of raw==None %d'%\
+                                     (ievt, orun.runnum, istep, count_none))
       if True:
           dpo.summary()
-          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
           ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
           arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           arr_max, arr_min = dpo.constants_max_min()
@@ -181,6 +202,13 @@ def pedestals_calibration(parser):
           kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
           kwa_depl['gainmode'] = gainmode
           kwa_depl['repoman'] = repoman
+          longname = kwa_depl['longname'] # odet.raw._uniqueid
+          if shortname is None:
+            shortname = detector_name_short(longname)
+          print('detector long  name: %s' % longname)
+          print('detector short name: %s' % shortname)
+          kwa_depl['shortname'] = shortname
+
           #kwa_depl['segment_ids'] = odet.raw._segment_ids()
 
           logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
@@ -190,6 +218,8 @@ def pedestals_calibration(parser):
           dic_consts_tot[gainmode] = dic_consts
           del(dpo)
           dpo=None
+
+          print('==== End of step %1d ====\n' % istep)
 
       if break_steps:
         logger.info('terminate_steps')
@@ -210,6 +240,9 @@ def pedestals_calibration(parser):
   kwa_depl['exp'] = expname
   kwa_depl['det'] = detname
   kwa_depl['run_orig'] = runnum
+
+  #print('XXXXX kwa_depl', kwa_depl)
+  #sys.exit('TEST EXIT')
 
   deploy_constants(ctypes, gmodes, **kwa_depl)
 
@@ -254,60 +287,6 @@ def gain_mode(odet, metadic, nstep):
     return gainmode if scantype=='pedestal' else cfggainmode # else None
 
 
-
-#def save_constants_in_repository_per_asic(dic_consts, **kwa):
-#    """ DEPRECATED - ASIC can not be replacable unit - no reason to keep constants peer ASIC"""
-#
-#    logger.debug('save_constants_in_repository kwa:', kwa)
-#
-#    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
-#    repoman  = kwa.get('repoman', None)
-#    expname  = kwa.get('exp', None)
-#    detname  = kwa.get('det', None)
-#    dettype  = kwa.get('dettype', None)
-#    deploy   = kwa.get('deploy', False)
-#    dirrepo  = kwa.get('dirrepo', './work')
-#    dirmode  = kwa.get('dirmode',  0o2775)
-#    filemode = kwa.get('filemode', 0o664)
-#    group    = kwa.get('group', 'ps-users')
-#    tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
-#    tsshort  = kwa.get('tsshort', '20100101000000')
-#    runnum   = kwa.get('run_orig', None)
-#    uniqueid = kwa.get('uniqueid', 'not-def-id')
-#    segids   = kwa.get('segment_ids', [])
-#    gainmode = kwa.get('gainmode', None)
-#
-#    fmt_peds   = kwa.get('fmt_peds', '%.3f')
-#    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
-#    fmt_status = kwa.get('fmt_status', '%4i')
-#
-#    CTYPE_FMT = {'pedestals'   : fmt_peds,
-#                 'pixel_rms'   : fmt_rms,
-#                 'pixel_status': fmt_status,
-#                 'status_extra': fmt_status}
-#
-#    if repoman is None:
-#       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
-#
-#    logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
-#
-#    for i,sid in enumerate(segids):
-#      logger.info('\nsave segment constants for gain mode:%s in repo for id:%s' % (gainmode, sid))
-#      for ctype, nda in dic_consts.items():
-#
-#        dir_ct = repoman.makedir_ctype(sid, ctype)
-#        fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
-#
-#        fname = '%s-%s-%s.data' % (fprefix, ctype, gainmode)
-#        fmt = CTYPE_FMT.get(ctype,'%.5f')
-#        nda2d = nda[i,:,:] # select for shape:(4, 192, 384)
-#        #print(info_ndarr(nda2d, '   %s' % ctype))
-#
-#        save_ndarray_in_textfile(nda2d, fname, filemode, fmt)
-#        ###save_2darray_in_textfile(nda, fname, filemode, fmt)
-#        logger.info('saved: %s' % fname)
-
-
 def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
     return fmt % (fprefix, ctype, gainmode)
 
@@ -330,7 +309,9 @@ def save_constants_in_repository(dic_consts, **kwa):
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig', None)
     uniqueid = kwa.get('uniqueid', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
     segids   = kwa.get('segment_ids', [])
+    segind   = kwa.get('segind', 0)
     gainmode = kwa.get('gainmode', None)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
@@ -346,10 +327,11 @@ def save_constants_in_repository(dic_consts, **kwa):
                  'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
 
-    if repoman is None:
-       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+#    if repoman is None:
+#       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+    repoman = set_repoman_and_logger(kwa)
+
     #dircons = repoman.makedir_constants(dname='constants')
-    #fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
     #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
@@ -360,8 +342,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(segid, ctype)
-        #fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
-        fprefix = fname_prefix(dettype, tsshort, expname, runnum, dir_ct)
+        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
@@ -371,8 +352,6 @@ def save_constants_in_repository(dic_consts, **kwa):
         ###save_2darray_in_textfile(nda, fname, filemode, fmt)
 
         logger.info('saved: %s' % fname)
-
-
 
 
 def deploy_constants(ctypes, gainmodes, **kwa):
@@ -394,7 +373,9 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
     uniqueid = kwa.get('uniqueid', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
+    segind   = kwa.get('segind', 0)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -409,10 +390,11 @@ def deploy_constants(ctypes, gainmodes, **kwa):
                  'pixel_min'   : fmt_min,
                  'status_extra': fmt_status}
 
-    if repoman is None:
-       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+#    if repoman is None:
+#       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+
+    repoman = set_repoman_and_logger(kwa)
     #dircons = repoman.makedir_constants(dname='constants')
-    #fprefix = fname_prefix(detname, tsshort, expname, runnum, dircons)
 
     #segid = uniqueid.split('_',1)[-1]
     segid = uniqueid.split('_')[1]
@@ -424,11 +406,10 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     for ctype in ctypes:
 
       dir_ct = repoman.makedir_ctype(segid, ctype)
-      #fprefix = fname_prefix(detname, tsshort, expname, runnum, dir_ct)
-      fprefix = fname_prefix(dettype, tsshort, expname, runnum, dir_ct)
+      fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
       logger.info('=========================== combine calib array for %s' % ctype
-                 +'\n  dettype:%s\n  tsshort:%s\n  expname:%s\n  runnum:%d\n  dir_ct:%s\n  fprefix:%s\n\n'%\
-                  (dettype, tsshort, expname, runnum, dir_ct, fprefix))
+                 +'\n  shortname:%s\n  tsshort:%s\n  expname:%s\n  runnum:%d\n  dir_ct:%s\n  fprefix:%s\n\n'%\
+                  (shortname, tsshort, expname, runnum, dir_ct, fprefix))
       dic_nda = {}
 
       for gm in gainmodes:

@@ -66,6 +66,10 @@ def random_one(shape=(40,60), dtype=np.float32):
 
 random_1 = random_one
 
+def random_0or1(shape=(40,60), p1=0.5, dtype=np.uint8):
+    """Returns numpy array of requested shape and type filled with random 0 and 1. probability of ones is p1 [0,1]"""
+    return np.select((random_one(shape=shape, dtype=np.float32)<p1,),\
+                     (np.ones(shape, dtype=dtype),), 0)
 
 def random_256(shape=(40,60), dtype=np.uint8):
     """Returns numpy array of requested shape and type filled with random numbers in the range [0,255]."""
@@ -145,6 +149,22 @@ def add_random_peaks(arr2d, npeaks=10, amean=100, arms=50, wmean=2, wrms=0.1):
     for r0, c0, a0, sigma in peaks:
         add_ring(arr2d, amp=a0, row=r0, col=c0, rad=0, sigma=sigma)
     return peaks
+
+
+def arr2dincr(sh2d=(512,1024), dtype=np.int32):
+    rows, cols = sh2d
+    ix, iy = np.meshgrid(np.arange(rows), np.arange(cols))
+    a = np.empty((rows,cols), dtype)
+    a[ix,iy] = ix+iy
+    return a
+
+
+def arr3dincr(sh3d=(32,512,1024), dtype=np.int32):
+    nsegs, rows, cols = sh3d
+    a1 = arr2dincr((rows, cols), dtype)
+    a = np.vstack([a1 for s in range(nsegs)])
+    a.shape = sh3d
+    return a
 
 
 def cspad2x1_arr(dtype=np.float32):

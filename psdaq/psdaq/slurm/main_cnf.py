@@ -15,15 +15,21 @@ host, cores, id, flags, env, cmd, rtprio = (
 )
 task_set = ""
 
+
 ld_lib_path = f"LD_LIBRARY_PATH={CONDA_PREFIX}/epics/lib/linux-x86_64:{CONDA_PREFIX}/pcas/lib/linux-x86_64"
 epics_env = f"{ld_lib_path}"
 
 collect_host = "drp-srcf-cmp035"
 
-groups = platform + " 1"
+# groups = platform+' 1'
+# hutch, user = ('tst', 'tstopr')
+# auth = ' --user {:} '.format(user)
+# url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
+# cdb  = 'https://pswww.slac.stanford.edu/ws-auth/configdb/ws'
+
+groups = platform
 hutch, user = ("tst", "tstopr")
 auth = " --user {:} ".format(user)
-# url  = ' --url https://pswww.slac.stanford.edu/ws-auth/lgbk/ '
 url = " --url https://pswww.slac.stanford.edu/ws-auth/devlgbk/ "
 cdb = "https://pswww.slac.stanford.edu/ws-auth/configdb/ws"
 
@@ -34,7 +40,6 @@ prom_dir = f"/cds/group/psdm/psdatmgr/etc/config/prom/{hutch}"  # Prometheus
 data_dir = f"/cds/data/drpsrcf"
 trig_dir = f"/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf"
 
-# task_set = 'taskset -c 4-63'
 task_set = ""
 batching = "batching=yes"
 directIO = "directIO=yes"
@@ -87,17 +92,15 @@ ami_monitor_node = "drp-srcf-cmp035"
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
-    {
-        id: "psqueue",
-        cmd: f"psqueue -i 5",
-    },
+    {id: "daqstat", cmd: "daqstat -i 5"},
+    {id: "groupca", flags: "s", env: epics_env, cmd: "groupca DAQ:NEH 3 " + groups},
     # set the phase2 transition timeout to 20s. this is because the teb
     # has a 16s timeout for slow PVA detectors coming through the gateway.
     # both can be reduced if/when we get consistent behavior from gateways.
     {
         host: collect_host,
         id: "control",
-        flags: "spux",
+        flags: "spu",
         env: epics_env,
         cmd: f"control -P {hutch} -B DAQ:NEH -x 0 -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}",
     },
@@ -106,9 +109,9 @@ procmgr_config = [
         flags: "p",
         cmd: f"control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING",
     },
-    {host: "drp-srcf-cmp035", id: "teb0", flags: "spu", cmd: f"{teb_cmd}"},
+    {host: "drp-srcf-cmp035", cores: 10, id: "teb0", flags: "spu", cmd: f"{teb_cmd}"},
     {
-        host: "drp-srcf-cmp002",
+        host: "drp-srcf-cmp032",
         id: "timing_0",
         flags: "spu",
         env: epics_env,
@@ -119,7 +122,7 @@ procmgr_config = [
 #
 # ami
 #
-ami_config = [
+procmgr_ami = [
     {
         host: ami_manager_node,
         id: "ami-global",
@@ -144,7 +147,7 @@ ami_config = [
 # ami workers
 #
 for N, worker_node in enumerate(ami_worker_nodes):
-    ami_config.append(
+    procmgr_ami.append(
         {
             host: worker_node,
             id: f"ami-meb{N}",
@@ -152,7 +155,7 @@ for N, worker_node in enumerate(ami_worker_nodes):
             cmd: f"{meb_cmd} -d -n 64 -q {ami_workers_per_node}",
         }
     )
-    ami_config.append(
+    procmgr_ami.append(
         {
             host: worker_node,
             id: f"ami-node_{N}",
@@ -162,4 +165,4 @@ for N, worker_node in enumerate(ami_worker_nodes):
         }
     )
 
-# procmgr_config.extend(ami_config)
+# procmgr_config.extend(procmgr_ami)

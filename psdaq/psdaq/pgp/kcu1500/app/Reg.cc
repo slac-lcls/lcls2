@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 //#define DBUG
 

@@ -91,6 +91,8 @@ logger = logging.getLogger(__name__)
 class SegGeometryEpix100V1(SegGeometry):
     """Self-sufficient class for generation of Epix100 2x2 sensor pixel coordinate array"""
 
+    _name = 'SegGeometryEpix100V1'
+
     _rows  = 704     # Number of rows in 2x2
     _cols  = 768     # Number of cols in 2x2
     _pixs  =  50     # Pixel size in um (micrometer)

@@ -109,7 +109,7 @@ namespace Pds {
     public:
       int post(const void* buf,
                size_t      len,
-               uint64_t    offset,
+               size_t      offset,
                uint64_t    immData,
                void*       ctx = nullptr);
     private:

@@ -12,10 +12,12 @@ class SeqUser:
         self.ninstr   = Pv(prefix+':INSTRCNT')
         self.desc     = Pv(prefix+':DESCINSTRS')
         self.instr    = Pv(prefix+':INSTRS')
-        self.idxseq   = Pv(prefix+':SEQ00IDX')
+        self.idxseq   = Pv(prefix+':SEQIDX')  # array of indices
+        self.seqnames = Pv(prefix+':SEQDESC') # array of names
+        self.idxseq0  = Pv(prefix+':SEQ00IDX')
         self.seqname  = Pv(prefix+':SEQ00DESC')
         self.seqbname = Pv(prefix+':SEQ00BDESC')
-        self.idxseqr  = Pv(prefix+':RMVIDX')
+        self.idxseq0r  = Pv(prefix+':RMVIDX')
         self.seqr     = Pv(prefix+':RMVSEQ')
         self.insert   = Pv(prefix+':INS')
         self.idxrun   = Pv(prefix+':RUNIDX')
@@ -30,9 +32,6 @@ class SeqUser:
         self.running  = Pv(prefix+':RUNNING', self.changed)
         self._idx     = 0
         self.lock     = None
-
-        xpmpf = ':'.join(prefix.split(':')[:4])
-        self.seqcodes = Pv(xpmpf+':SEQCODES',isStruct=True)
         self.eng      = int(prefix.split(':')[-1])
 
     def changed(self,err=None):
@@ -46,40 +45,35 @@ class SeqUser:
         self.reset .put(1,wait=tmo)
         self.reset .put(0,wait=tmo)
 
-    def clean(self):
-        # Remove existing sub sequences
-        ridx = -1
-        print( 'Remove %d'%ridx)
-        if ridx < 0:
-            idx = self.idxseq.get()
-            print(f'idx {idx}')
-            while (idx>0):
-                print( 'Removing seq %d'%idx)
-#                self.seqr.put(0)
-                self.idxseqr.put(idx,wait=tmo)
-                self.seqr.put(1,wait=tmo)
-                time.sleep(1.0)
-                idx = self.idxseq.get()
-        elif ridx > 1:
-            print( 'Removing seq %d'%ridx)
-            self.seqr.put(0,wait=tmo)
-            self.idxseqr.put(ridx,wait=tmo)
+    def clean(self, ridx=None):
+        if ridx is None:
+            self.idxseq0r.put(-1,wait=tmo)
             self.seqr.put(1,wait=tmo)
+        else:
+            aidx = self.idxseq.get()
+            for idx in aidx:
+                if idx==0 or idx==ridx:
+                    continue
+                print( 'Removing seq %d'%idx)
+                self.idxseq0r.put(idx,wait=tmo)
+                self.seqr.put(1,wait=tmo)
 
     def load(self, title, instrset, descset=None):
         self.desc.put(title,wait=tmo)
+
+        # Before encoding, run the preprocessor to expand any macros
+        instrset = preproc(instrset)
 
         encoding = [len(instrset)]
         for instr in instrset:
             encoding = encoding + instr.encoding()
 
-        print( encoding)
+        #print( encoding)
 
         self.instr.put( tuple(encoding),wait=tmo)
 
         time.sleep(1.0)
 
-#        self.insert.put(0)
         ninstr = self.ninstr.get()
         if ninstr != len(instrset):
             print( 'Error: ninstr invalid %u (%u)' % (ninstr, len(instrset)))
@@ -89,11 +83,11 @@ class SeqUser:
 
         self.insert.put(1,wait=tmo)
 
-        #  How to handshake the insert.put -> idxseq.get (RPC?)
+        #  How to handshake the insert.put -> idxseq0.get (RPC?)
         time.sleep(1.0)
 
         #  Get the assigned sequence num
-        idx = self.idxseq.get()
+        idx = self.idxseq0.get()
         if idx < 2:
             print( 'Error: subsequence index  invalid (%u)' % idx)
             raise RuntimeError("Sequence failed")
@@ -103,61 +97,47 @@ class SeqUser:
         #  (Optional for XPM) Write descriptions for each bit in the sequence
         if descset!=None:
             self.seqbname.put(descset,wait=tmo)
-            
-            seqcodes = self.seqcodes.get()
-            desc     = seqcodes.value.Description
-            for e in range(4*self.eng,4*self.eng+4):
-                desc[e] = ''
-            for i,d in enumerate(descset):
-                desc[4*self.eng+i] = d
 
-            v = seqcodes.value
-            v.Description = desc
-            seqcodes.value = v
-            self.seqcodes.put(seqcodes,wait=tmo)
-                
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):
-        self.start .put(0,wait=tmo)
+        self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
-        self.start .put(1 if not refresh else 3,wait=tmo)
+        self.reset .put(1,wait=tmo)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
 
     def sync(self,refresh=False):
-        self.start .put(0,wait=tmo)
+        self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
         self.start .put(2 if not refresh else 4,wait=tmo)
 
+    #  Move from one set to the next without stopping
     def execute(self, title, instrset, descset=None, sync=False, refresh=False):
-        self.insert.put(0,wait=tmo)
-        self.stop ()
-        self.clean()
         self.load (title,instrset,descset)
         if sync:
-            self.sync(refresh)
+            self.sync(refresh)  # schedule the reset
         else:
-            self.begin(refresh)
-
+            self.begin(refresh) # reset now
+        self.clean()
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument('--pv', type=str, required=True, help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
+    parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
     files = []
     engineMask = 0
 
-    seqcodes_pv = Pv(f'{args.pv}:SEQCODES',isStruct=True)
-    seqcodes = seqcodes_pv.get()
-    desc = seqcodes.value.Description
+    seqcodes_pv = Pv(f'{args.pv}:SEQCODENAMES')
+    desc = seqcodes_pv.get()
 
     for s in args.seq:
         sengine,fname = s.split(':',1)
@@ -175,12 +155,17 @@ def main():
             config['refresh']=False
         print(f'refresh  {config["refresh"]}')
         if args.verbose:
-            print('instrset:')
+            print('instrset (before preproc):')
+            for i in config["instrset"]:
+                print(i)
+        config['instrset'] = preproc(config['instrset'])
+        if args.verbose:
+            print('instrset (after preproc):')
             for i in config["instrset"]:
                 print(i)
 
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=True,refresh=config['refresh'])
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
         del seq
 
         engineMask |= (1<<engine)
@@ -191,16 +176,12 @@ def main():
             desc[4*engine+e] = d
         print(f'desc {desc}')
 
-    v = seqcodes.value
-    v.Description = desc
-    seqcodes.value = v
-
-    print(f'seqcodes_pv {seqcodes}')
-    seqcodes_pv.put(seqcodes,wait=tmo)
+    seqcodes_pv.put(desc,wait=tmo)
 
     if args.start:
         pvSeqReset = Pv(f'{args.pv}:SeqReset')
         pvSeqReset.put(engineMask,wait=tmo)
+
         
 
 if __name__ == '__main__':

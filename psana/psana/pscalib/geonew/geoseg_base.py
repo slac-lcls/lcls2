@@ -18,15 +18,12 @@ If you use all or part of it, please give an appropriate acknowledgment.
 Created on 2019-01-30 by Mikhail Dubrovin
 """
 
-#----------
-
 import numpy as np
 from math import sqrt
 
 import logging
 logger = logging.getLogger(__name__)
 
-#----------
 
 MICROMETER = 1
 MILIMETER  = 1e3
@@ -37,13 +34,12 @@ AXIS_Y = 1
 AXIS_Z = 2
 AXES = (AXIS_X, AXIS_Y, AXIS_Z)
 
-#----------
 
-def unit_vector(v, dtype=np.float) :
+def unit_vector(v, dtype=np.float32) :
     """Returns (np.array) normalized unit vector for any array of values.
     """
-    a = np.array(v, dtype=dtype)        
-    alen = sqrt(sum(a*a))   
+    a = np.array(v, dtype=dtype)
+    alen = sqrt(sum(a*a))
     return a/alen if alen>0 else None
 
 def pixel_coords_from_array_of_sizes(a) :
@@ -51,7 +47,6 @@ def pixel_coords_from_array_of_sizes(a) :
     """
     return None if a is None else np.cumsum(a) - a/2 - a[0]/2
 
-#----------
 
 def memorize(dic={}) :
     """Caching decorator
@@ -66,7 +61,6 @@ def memorize(dic={}) :
         return wrapper
     return deco_memorize
 
-#----------
 
 class geoseg_base :
     logger.debug('in geoseg_base')
@@ -116,15 +110,15 @@ class geoseg_base :
         return psize_fast
 
     def pixel_size_slow(self, row=0) :
-        psizes = self.pixel_sizes_slow()        
+        psizes = self.pixel_sizes_slow()
         return None if psizes is None else psizes[row]
 
     def pixel_size_fast(self, column=0) :
-        psizes = self.pixel_sizes_fast()        
+        psizes = self.pixel_sizes_fast()
         return None if psizes is None else psizes[column]
 
     @memorize()
-    def pixel_coordinate_slow(self) : 
+    def pixel_coordinate_slow(self) :
         return pixel_coords_from_array_of_sizes(self.pixel_sizes_slow())
 
     @memorize()
@@ -133,13 +127,13 @@ class geoseg_base :
 
     @memorize()
     def pixel_coordinate_arrays(self) :
-        """Returns list of [X, Y, Z] pixel coordinate arrays. 
+        """Returns list of [X, Y, Z] pixel coordinate arrays.
            Consumed time is ~5ms on pcds113
         """
         cfs = (self.pixel_coordinate_fast(),\
                self.pixel_coordinate_slow())
 
-        if not all(isinstance(v,np.ndarray) for v in cfs) : 
+        if not all(isinstance(v,np.ndarray) for v in cfs) :
             logger.debug('pixel_coordinate_fast/slow - are not defined as numpy array')
             return None
 
@@ -179,9 +173,8 @@ class geoseg_base :
                '\n\n#----------'
         return '%s\n  """%s\n  """%s\n%s\n' % (hat, doc, body, bot)
 
-#----------
 
 if __name__ == "__main__" :
     print('Test method is not implemented for this module... See test_geoseg.py')
 
-#----------
+# EOF

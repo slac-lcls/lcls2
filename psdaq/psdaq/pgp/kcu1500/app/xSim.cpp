@@ -3,7 +3,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 
 //  DrpTDet register map
@@ -491,6 +491,7 @@ static void usage(const char* p)
   printf("         -M              [enable DRAM monitoring]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
+  printf("         -R              [reset timing receiver]\n");
   printf("         -F              [reset frame counters]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
   printf("         -L              [toggle loopback mode]\n");
@@ -506,6 +507,7 @@ int main(int argc, char* argv[])
     bool ringb     = false;
     bool dumpReg   = false;
     bool timingRst = false;
+    bool rxTimRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
     bool loopback  = false;
@@ -520,7 +522,7 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rsStTLmMFVD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rRsStTLmMFVD:C:1")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
@@ -528,6 +530,7 @@ int main(int argc, char* argv[])
       case 'l': lanes = strtoul(optarg,&endptr,0); break;
       case 'L': loopback = true; break;
       case 'r': reset_clk = true; break;
+      case 'R': rxTimRst  = true; break;
       case 's': status    = true; break;
       case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
@@ -546,6 +549,16 @@ int main(int argc, char* argv[])
         break;
       default: usage(argv[0]); return 0;
       }
+    }
+
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        usage(argv[0]);
+        return 1;
     }
 
     if ( (fd = open(dev,O_RDWR)) < 0) {
@@ -581,7 +594,8 @@ int main(int argc, char* argv[])
     //
     //  Update ID advertised on timing link
     //
-    if (updateId && core_pcie) {
+    //    if (updateId && core_pcie) {
+    if (updateId) {
       struct addrinfo hints;
       struct addrinfo* result;
 
@@ -620,7 +634,8 @@ int main(int argc, char* argv[])
     //
     //  Measure si570 clock output
     //
-    if (core_pcie) {
+    if (1) {
+        //    if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
 
@@ -667,6 +682,17 @@ int main(int argc, char* argv[])
         v &= ~0x80;
         set_reg32( 0x00c00020, v);
         usleep(1000000);
+        v |= 0x8;
+        set_reg32( 0x00c00020, v);
+        usleep(1000);
+        v &= ~0x8;
+        set_reg32( 0x00c00020, v);
+        usleep(100000);
+      }
+
+      if (rxTimRst) {
+        printf("Reset timing Rx\n");
+        unsigned v = get_reg32( 0x00c00020);
         v |= 0x8;
         set_reg32( 0x00c00020, v);
         usleep(1000);

@@ -15,7 +15,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 DIR_REPO = './work-roicon'
 TESTNDA = '<ndarray-shaped-as-data-fname>'
 TGFNAME = '<geometry-fname>'
-TGFNAME1 = '/cds/group/psdm/detector/data_test/geometry/geo-epix10ka2m-16-segment.data'
+TGFNAME1 = '/sdf/group/lcls/ds/ana/detector/data_test/geometry/geo-epix10ka2m-16-segment.data'
 
 USAGE = '\n'\
       + '\n1) Construct 2-d image (or mask-of-segments) from ndarray with image shaped as data using appropriate geometry file'\

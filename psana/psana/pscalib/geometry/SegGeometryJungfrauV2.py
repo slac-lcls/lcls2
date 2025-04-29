@@ -3,6 +3,8 @@
 Class :py:class:`SegGeometryJungfrauV2` describes the Jungfrau V2 sensor geometry
 =================================================================================
 
+V2 - Y axis is flipped comparing to V1
+
 Data array for Jungfrau 512x1024 segment is shaped as (1,512,1024),
 has a matrix-like numeration for rows and columns with gaps between 2x4 ASICs
 \n We assume that
@@ -89,7 +91,7 @@ logger = logging.getLogger(__name__)
 
 
 class SegGeometryJungfrauV2(SegGeometryJungfrauV1):
-    """Self-sufficient class for generation of Jungfrau 2x4 sensor pixel coordinate array"""
+    """Self-sufficient class for generation of Jungfrau 2x4 ASICs pixel coordinate array"""
 
     _name = 'SegGeometryJungfrauV2'
 

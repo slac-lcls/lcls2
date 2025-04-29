@@ -3,12 +3,8 @@
 Saving large files using gridfs motivated by
 https://github.com/mongodb/mongo-python-driver/blob/master/doc/examples/gridfs.rst
 """
-#------------------------------
 
 import sys
-
-#------------------------------
-
 #import numpy as np
 #import pyimgalgos.NDArrGenerators as ag
 from time import time
@@ -16,16 +12,13 @@ from time import time
 #import PSCalib.DCUtils as gu
 import Utils as gu
 
-#------------------------------
 
 time_sec = time()
 time_stamp = gu.str_tstamp(fmt='%Y-%m-%dT%H:%M:%S%Z', time_sec=time_sec)
 print 'time_sec %.9f' % time_sec
-nda = gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float)
+nda = gu.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=gu.np.float32)
 
-#------------------------------
 #sys.exit('TEST EXIT')
-#------------------------------
 
 t0_sec = time()
 
@@ -45,9 +38,9 @@ col = db['camera-0-cxids1-0']
 dt_sec = time() - t0_sec
 print 'db: %s collection: %s connection time %.6f sec' % (db.name, col.name, dt_sec)
 
-#------------------------------
 #sys.exit('TEST EXIT')
-#------------------------------
+
+# EOF
 
 gu.print_ndarr(nda, 'nda') 
 

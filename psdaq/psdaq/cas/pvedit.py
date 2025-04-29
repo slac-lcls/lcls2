@@ -298,9 +298,10 @@ class PvComboDisplay(QtWidgets.QComboBox):
 
 class PvTableDisplay(QtWidgets.QWidget):
 
-    def __init__(self, pvname, rowNames=None):
+    def __init__(self, pvname, rowNames=None, colEmpty=None):
         super(PvTableDisplay, self).__init__()
         self.ready = False
+        self.colEmpty = colEmpty
         initPvMon(self,pvname,isStruct=True)
 
         v = self.pv.get()
@@ -326,8 +327,10 @@ class PvTableDisplay(QtWidgets.QWidget):
         for j,r in enumerate(v.labels):
             w = getattr(self,r)
             q = getattr(v.value,r)
+            e = self.colEmpty[j] if self.colEmpty else None
             for i,qv in enumerate(q):
-                w[i].setText(str(qv))
+                sqv = str(qv) if qv != e else '-'
+                w[i].setText(sqv)
 
 class PvEditTxt(PvTextDisplay):
 
@@ -911,3 +914,9 @@ def LblMask(pvbase, label, bits=1):
     PvMask(hbox, pvbase+label, bits)
     hbox.addStretch(1)
     return hbox
+
+def to_mask(lista):
+    v = 0
+    for l in lista:
+        v |= (1<<l)
+    return v

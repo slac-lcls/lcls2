@@ -17,6 +17,7 @@ namespace Drp {
 static inline ssize_t _write(int fd, const void* buffer, size_t count)
 {
     auto sz = write(fd, buffer, count);
+
     while (size_t(sz) != count) {
         if (sz < 0) {
             // %m will be replaced by the string strerror(errno)
@@ -31,20 +32,22 @@ static inline ssize_t _write(int fd, const void* buffer, size_t count)
 
 
 BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
-    m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
+    m_fd(0), m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
 {
 }
 
 BufferedFileWriter::~BufferedFileWriter()
 {
-    m_writing += 2;
-    _write(m_fd, m_buffer.data(), m_count);
-    m_writing -= 2;
-    m_count = 0;
+    close();
 }
 
 int BufferedFileWriter::open(const std::string& fileName)
 {
+    if (m_fd > 0) {
+        logging::warning("open() closed an already open file");
+        close();
+    }
+
     int rv = -1;
     struct flock flk;
     flk.l_type   = F_WRLCK;
@@ -78,13 +81,15 @@ int BufferedFileWriter::close()
     if (m_fd > 0) {
         if (m_count > 0) {
             logging::debug("Flushing %zu bytes to fd %d", m_count, m_fd);
+            m_writing += 2;
             _write(m_fd, m_buffer.data(), m_count);
+            m_writing -= 2;
             m_count = 0;
             m_batch_starttime = XtcData::TimeStamp(0,0);
         }
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
-    } else {
+    } else if (m_fd < 0) {
         logging::warning("No file to close (m_fd=%d)", m_fd);
     }
     if (rv == -1) {
@@ -113,6 +118,7 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
         m_writing += 1;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
+            logging::critical("File writing failed");
             throw "File writing failed";
         }
         m_writing -= 1;
@@ -174,6 +180,7 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize, bool dio) :
 
 BufferedFileWriterMT::~BufferedFileWriterMT()
 {
+    close();
     m_terminate = true;
     m_thread.join();
     Buffer b;
@@ -201,6 +208,11 @@ void BufferedFileWriterMT::_initialize(size_t bufferSize)
 
 int BufferedFileWriterMT::open(const std::string& fileName)
 {
+    if (m_fd > 0) {
+        logging::warning("open() closed an already open file");
+        close();
+    }
+
     int rv = -1;
     struct flock flk;
     flk.l_type   = F_WRLCK;
@@ -237,7 +249,7 @@ int BufferedFileWriterMT::close()
         flush();
         logging::debug("Closing fd %d", m_fd);
         rv = ::close(m_fd);
-    } else {
+    } else if (m_fd < 0) {
         logging::warning("No file to close (m_fd=%d)", m_fd);
     }
     if (rv == -1) {
@@ -319,6 +331,7 @@ void BufferedFileWriterMT::run()
         Buffer& b = m_pend.front();
         m_writing += 1;
         if (_write(m_fd, b.p, b.count) == -1) {
+            logging::critical("File writing failed MT");
             throw "File writing failed";
         }
         m_writing -= 1;

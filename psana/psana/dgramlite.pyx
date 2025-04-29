@@ -1,6 +1,5 @@
 from dgramlite cimport Xtc, Sequence, Dgram
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-from libc.stdint cimport uint64_t
 
 cdef class DgramLite:
     cdef uint64_t payload
@@ -32,5 +31,7 @@ cdef class DgramLite:
     @property
     def service(self):
         return self.service
+
+
 
 

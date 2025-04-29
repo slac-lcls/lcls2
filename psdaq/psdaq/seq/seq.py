@@ -130,8 +130,11 @@ class Branch(Instruction):
                 raise ValueError('Branch called with occ={}'.format(args[3]))
         super(Branch, self).__init__(args)
 
-    def _word(self, a):
-        w = a & 0x7ff
+    def _word(self, a = None):
+        if a is None:
+            w = self.args[1] & 0x7ff
+        else:
+            w = a & 0x7ff
         if len(self.args)>2:
             w = ((self.args[2]&0x3)<<27) | (1<<24) | ((self.args[3]&Instruction.maxocc)<<12) | w
         return int(w)
@@ -270,6 +273,98 @@ class Return(Instruction):
         engine.instr = engine.returnaddr
         engine.returnaddr = None
 
+#
+#  Macro instructions
+#
+class Macro(Instruction):
+
+    def __init__(self, args):
+        super(Macro, self).__init__(args)
+
+    def _word(self):
+        raise RuntimeError(f'Attempted encoding of macro Wait({self.args})')
+    
+    def execute(self,engine):
+        raise RuntimeError(f'Attempting to simulate macro Wait({self.args})')
+
+
+class Wait(Instruction):
+
+    opcode = -1
+
+    def __init__(self, marker, occ):
+        if marker is None:
+            self.intv = 1
+            for k,v in FixedIntvsDict.items():
+                if v["intv"]==self.intv:
+                    marker = v["marker"]
+                    break
+        elif marker in FixedIntvsDict:
+            mk     = marker
+            marker = FixedIntvsDict[mk]['marker']
+            self.intv = FixedIntvsDict[mk]['intv']
+        else:
+            self.intv = FixedIntvs[marker]
+        super(Wait, self).__init__( (self.opcode, marker, occ) )
+
+    def print_(self):
+        return f'Wait({fixedRates[self.args[1]]}) # occ({self.args[2]})'
+
+    #  Create the replacement instructions for this macro
+    def replace(self, cc, line):
+        marker = self.args[1]
+        occ    = self.args[2]
+        n = int(occ/Instruction.maxocc)
+        rem = occ - n*Instruction.maxocc
+        if cc is None or n < 3:
+            l = [FixedRateSync(marker,occ=Instruction.maxocc)]*n
+        else:
+            l = [FixedRateSync(marker,occ=Instruction.maxocc),
+                 Branch.conditional( line, cc, n-1 )]
+        if rem > 0:
+            l.append(FixedRateSync(marker,occ=rem))
+        return l
+            
+class WaitA(Instruction):
+
+    opcode = -2
+
+    def __init__(self, timeslotm, marker, occ):
+        if timeslotm > 0x3f:
+            raise ValueError('WaitA called with timeslotm={}'.format(timeslotm))
+        if marker is None:
+            self.intv = 1
+            for k,v in ACIntvsDict.items():
+                if v["intv"]==self.intv:
+                    marker = v["marker"]
+                    break
+        elif marker in ACIntvsDict:
+            mk        = marker
+            marker    = ACIntvsDict[mk]['marker']
+            self.intv = ACIntvsDict[mk]['intv']
+        else:
+            self.intv = ACIntvs[marker]
+        super(WaitA, self).__init__( (self.opcode, timeslotm, marker, occ) )
+
+    def print_(self):
+        return f'WaitA(0x{self.args[1]:x},{acRates[self.args[2]]}) # occ({self.args[3]})'
+
+    #  Create the replacement instructions for this macro
+    def replace(self, cc, line):
+        timeslotm = self.args[1]
+        marker    = self.args[2]
+        occ       = self.args[3]
+        n = int(occ/Instruction.maxocc)
+        rem = occ - n*Instruction.maxocc
+        if cc is None or n < 3:
+            l = [ACRateSync(timeslotm,marker,occ=Instruction.maxocc)]*n
+        else:
+            l = [ACRateSync(timeslotm,marker,occ=Instruction.maxocc),
+                 Branch.conditional( line, cc, n-1 )]
+        if rem > 0:
+            l.append(ACRateSync(timeslotm,marker,occ=rem))
+        return l
+
 def decodeInstr(w):
     idw = w>>29
     instr = Instruction([])
@@ -299,7 +394,7 @@ def validate(filename):
     seq = 'from psdaq.seq.seq import *\n'
     seq += open(filename).read()
     exec(compile(seq, filename, 'exec'), {}, config)
-    l = config['instrset']
+    l = preproc(config['instrset'])
 
 #    for i,ins in enumerate(l):
 #        print(f'{i}: {ins}')
@@ -348,3 +443,74 @@ def relocate(instrset,target,source=0):
         print(f'{i}: {w:x}')
 
     return words
+
+def preproc(instrset):
+
+    #  Examine bounds of conditional branches to track
+    #  conditional counter usage
+    #  accumulate the branch statement source and targets
+    d = {cc:[] for cc in range(4)}
+    for line,instr in enumerate(instrset):
+        if instr.args[0]==Branch.opcode and len(instr.args)>2:
+            cc   = instr.args[2]
+            addr = instr.args[1]
+            if line < addr:
+                print(f'Preprocessor detected forward conditional branch')
+            else:
+                d[cc].append([addr,line])
+
+    print(f'd {d}')
+
+    #  Find a conditional counter not in use at that line #
+    def _findcc(line):
+        for cc in range(4):
+            lAvail = True
+            for br in d[cc]:
+                if line >= br[0] and line < br[1]:
+                    lAvail = False
+                    break
+            if lAvail:
+                return cc
+        return None
+
+    #  Expand macros with conditional branch usage where possible
+    #  Keep the new replacement instructions in a dictionary by line
+    reps  = {}
+    for line,instr in enumerate(instrset):
+        #  Check for macros
+        if instr.args[0]==Wait.opcode:
+            reps[line] = Wait.replace(instr, _findcc(line), line)
+        elif instr.args[0]==WaitA.opcode:
+            reps[line] = WaitA.replace(instr, _findcc(line), line)
+
+    print(f'reps {reps}')
+
+    #  Update line number references
+    def _target( old ):
+        target = old
+        for r in reps.keys():
+            if r < old:
+                target += len(reps[r])-1
+        return target
+
+    def _relocate(instr):
+        if instr.opcode == Branch.opcode:
+            if len(instr.args) > 2:
+                return Branch.conditional(_target(instr.args[1]), 
+                                          instr.args[2], 
+                                          instr.args[3])
+            else:
+                return Branch.unconditional(_target(instr.args[1]))
+        return instr
+
+    newinstr = []
+    for line,instr in enumerate(instrset):
+        start = len(newinstr)
+        if line in reps:
+            for rline,rinstr in enumerate(reps[line]):
+                newinstr.append(_relocate(rinstr))
+        else:
+            newinstr.append(_relocate(instr))
+
+    return newinstr
+

@@ -8,9 +8,10 @@
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/digitizer/Hsd.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 #include "XpmInfo.hh"
+#include "psdaq/mmhw/Pgp3Axil.hh"
 #include "psdaq/mmhw/Reg.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -32,19 +33,6 @@ using Pds::Mmhw::Reg;
 
 namespace Drp {
 
-    //  hardware register model
-    class DrpPgpIlv {
-    public:
-        uint32_t reserved_to_80_0000[0x800000/4];
-        Reg      mig[0x80];
-        uint32_t reserved_to_a4_0010[(0x240010-sizeof(mig))/4];
-        Reg      linkId[4];
-        Reg      pgp[4];
-        uint32_t reserved_to_e0_0000[(0x3BFFF0-sizeof(linkId)-sizeof(pgp))/4];
-        Reg      i2c     [0x200];       // 0x00E0_0000
-        Si570    si570;                 // 0x00E0_0800
-    };
-
 class HsdDef : public VarDef
 {
 public:
@@ -63,11 +51,11 @@ public:
     }
 };
 
-static PyObject* check(PyObject* obj, const char* err) {
+static PyObject* _check(PyObject* obj) {
     if (!obj) {
-        logging::critical("Python error: '%s'", err);
         PyErr_Print();
-        throw "**** python error";
+        logging::critical("**** python error");
+        abort();
     }
     return obj;
 }
@@ -79,106 +67,19 @@ Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     printf("*** found epics name %s\n",m_epics_name.c_str());
 
     //
-    // Check PGP reference clock, reprogram if necessary
+    //  Initialize python calls
     //
-    int fd = m_pool->fd();
-    Pds::Mmhw::Reg::set(fd);
-    Pds::Mmhw::Reg::verbose(true);
-    DrpPgpIlv& hw = *new(0) DrpPgpIlv;
+    m_module = _check(PyImport_ImportModule("psdaq.configdb.hsd_config"));
 
-    logging::debug("DrpPgpIlv::mig    %p",&hw.mig[0]);
-    logging::debug("DrpPgpIlv::linkId %p",&hw.linkId[0]);
-    logging::debug("DrpPgpIlv::i2c    %p",&hw.i2c[0]);
-    logging::debug("DrpPgpIlv::si570  %p",&hw.si570);
-    
-    AxiVersion vsn;
-    axiVersionGet(fd, &vsn);
-    if (vsn.userValues[2] == 0) {  // Only one PCIe interface has access to I2C bus
-        unsigned pgpclk = hw.mig[0x10c/4];
-        printf("PGP RefClk %f MHz\n", double(pgpclk&0x1fffffff)*1.e-6);
-        if ((pgpclk&0x1fffffff) < 185000000) { // target is 185.7 MHz
-            //  Set the I2C Mux
-            hw.i2c[0] = 1<<2;
-            //  Configure the Si570
-            hw.si570.program();
-        }
-    }
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, "hsd_init"));
 
-    //
-    //  Assign data link return ID
-    //
-    { struct addrinfo hints;
-        struct addrinfo* result;
+    // returns new reference
+    PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"ss",
+                                                    m_epics_name.c_str(), para->device.c_str()));
+    Py_DECREF(mbytes);
 
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family = AF_INET;       /* Allow IPv4 or IPv6 */
-        hints.ai_socktype = SOCK_DGRAM; /* Datagram socket */
-        hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
-
-        char hname[64];
-        gethostname(hname,64);
-        int s = getaddrinfo(hname, NULL, &hints, &result);
-        if (s != 0) {
-            fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(s));
-            exit(EXIT_FAILURE);
-        }
-
-        sockaddr_in* saddr = (sockaddr_in*)result->ai_addr;
-
-        unsigned id = 0xfb000000 |
-            (ntohl(saddr->sin_addr.s_addr)&0xffff);
-
-        for(unsigned i=0; i<4; i++) {
-            unsigned link = (vsn.userValues[2] == 0) ? i : i+4;
-            hw.linkId[link&3] = id | (link<<16);
-        }
-    }
-
-    //
-    //  Initialize python calls, get paddr
-    //
-    {
-        char module_name[64];
-        sprintf(module_name,"psdaq.configdb.hsd_config");
-
-        char func_name[64];
-
-        // returns new reference
-        m_module = check(PyImport_ImportModule(module_name), "ImportModule");
-
-        PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 1");
-        {
-            sprintf(func_name,"hsd_connect");
-            PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)func_name), "hsd_connect");
-
-            // returns new reference
-            PyObject* mbytes = check(PyObject_CallFunction(pFunc,"s",
-                                                           m_epics_name.c_str()), "hsd_connect()");
-
-            m_paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
-            printf("*** BebDetector: paddr is %08x = %u\n", m_paddr, m_paddr);
-
-            // there is currently a failure mode where the register reads
-            // back as zero or 0xffffffff (incorrectly). This is not the best
-            // longterm fix, but throw here to highlight the problem. the
-            // difficulty is that Matt says this register has to work
-            // so that an automated software solution would know which
-            // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
-            // Also, register is corrupted when port number > 15 - Ric
-            if (!m_paddr || m_paddr==0xffffffff || (m_paddr & 0xff) > 15) {
-                logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",m_paddr);
-                abort();
-            }
-            else
-                logging::info("paddr %x",m_paddr);
-
-            // _connect(mbytes);
-
-            Py_DECREF(mbytes);
-        }
-
-        m_configScanner = new PythonConfigScanner(*m_para,*m_module);
-    }
+    m_configScanner = new PythonConfigScanner(*m_para,*m_module);
 }
 
 Digitizer::~Digitizer()
@@ -188,8 +89,30 @@ Digitizer::~Digitizer()
 }
 
 json Digitizer::connectionInfo(const nlohmann::json& msg)
-{   
-    return xpmInfo(m_paddr);
+{
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, "hsd_connect"));
+        
+    // returns new reference
+    PyObject* mbytes = _check(PyObject_CallFunction(pFunc,"s", msg.dump().c_str()));
+    unsigned paddr = PyLong_AsLong(PyDict_GetItemString(mbytes, "paddr"));
+    Py_DECREF(mbytes);
+
+    // there is currently a failure mode where the register reads
+    // back as zero or 0xffffffff (incorrectly). This is not the best
+    // longterm fix, but throw here to highlight the problem. the
+    // difficulty is that Matt says this register has to work
+    // so that an automated software solution would know which
+    // xpm TxLink's to reset (a chicken-and-egg problem) - cpo
+    // Also, register is corrupted when port number > 15 - Ric
+    if (!paddr || paddr==0xffffffff || (paddr & 0xff) > 15) {
+        logging::critical("XPM Remote link id register illegal value: 0x%x. Try XPM TxLink reset.",paddr);
+        abort();
+    }
+    else
+        logging::info("paddr %x",paddr);
+    
+    return xpmInfo(paddr);
 }
 
 unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId, const std::string& config_alias) {
@@ -202,57 +125,57 @@ unsigned Digitizer::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesI
            double(tv.tv_sec-tv_b.tv_sec)+1.e-9*(double(tv.tv_nsec)-double(tv_b.tv_nsec))); }
 
 
-    // returns borrowed reference
-    PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 2");
-    // returns borrowed reference
-    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_config"), "hsd_config");
+  // returns borrowed reference
+  PyObject* pDict = _check(PyModule_GetDict(m_module));
+  // returns borrowed reference
+  PyObject* pFunc = _check(PyDict_GetItemString(pDict, "hsd_config"));
+  
+  CHECK_TIME(PyDict_Get);
 
-    CHECK_TIME(PyDict_Get);
+  // returns new reference
+  PyObject* mybytes = _check(PyObject_CallFunction(pFunc,"ssssii",
+                                                   m_connect_json.c_str(),
+                                                   m_epics_name.c_str(),
+                                                   config_alias.c_str(),
+                                                   m_para->detName.c_str(),
+                                                   m_para->detSegment,
+                                                   m_readoutGroup));
+  
+  CHECK_TIME(PyObj_Call);
 
-    // returns new reference
-    PyObject* mybytes = check(PyObject_CallFunction(pFunc,"ssssii",
-                                                    m_connect_json.c_str(),
-                                                    m_epics_name.c_str(),
-                                                    config_alias.c_str(),
-                                                    m_para->detName.c_str(),
-                                                    m_para->detSegment,
-                                                    m_readoutGroup), "hsd_config()");
-
-    CHECK_TIME(PyObj_Call);
-
-    // returns new reference
-    PyObject * json_bytes = check(PyUnicode_AsASCIIString(mybytes), "AsASCIIString");
-    char* json = (char*)PyBytes_AsString(json_bytes);
-    printf("json: %s\n",json);
+  // returns new reference
+  PyObject * json_bytes = _check(PyUnicode_AsASCIIString(mybytes));
+  char* json = (char*)PyBytes_AsString(json_bytes);
+  printf("json: %s\n",json);
 
     // convert to json to xtc
-    const unsigned BUFSIZE = 1024*1024;
-    char buffer[BUFSIZE];
-    unsigned len = Pds::translateJson2Xtc(json, buffer, &buffer[BUFSIZE], configNamesId, m_para->detName.c_str(), m_para->detSegment);
-    if (len>BUFSIZE) {
-        throw "**** Config json output too large for buffer";
-    }
-    if (len <= 0) {
-        throw "**** Config json translation error";
-    }
+  const unsigned BUFSIZE = 1024*1024;
+  char buffer[BUFSIZE];
+  unsigned len = Pds::translateJson2Xtc(json, buffer, &buffer[BUFSIZE], configNamesId, m_para->detName.c_str(), m_para->detSegment);
+  if (len>BUFSIZE) {
+      throw "**** Config json output too large for buffer";
+  }
+  if (len <= 0) {
+      throw "**** Config json translation error";
+  }
+  
+  CHECK_TIME(translateJson);
+  
+  // append the config xtc info to the dgram
+  Xtc& jsonxtc = *(Xtc*)buffer;
+  auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
+  memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
 
-    CHECK_TIME(translateJson);
-
-    // append the config xtc info to the dgram
-    Xtc& jsonxtc = *(Xtc*)buffer;
-    auto payload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
-    memcpy(payload,(const void*)jsonxtc.payload(),jsonxtc.sizeofPayload());
-
-    // get the lane mask from the json
-    unsigned lane_mask = 1;
-    printf("hsd lane_mask is 0x%x\n",lane_mask);
-
-    Py_DECREF(mybytes);
-    Py_DECREF(json_bytes);
-
-    CHECK_TIME(Done);
-
-    return lane_mask;
+  // get the lane mask from the json
+  unsigned lane_mask = 1;
+  printf("hsd lane_mask is 0x%x\n",lane_mask);
+  
+  Py_DECREF(mybytes);
+  Py_DECREF(json_bytes);
+  
+  CHECK_TIME(Done);
+  
+  return lane_mask;
 }
 
 void Digitizer::connect(const json& connect_json, const std::string& collectionId)
@@ -263,22 +186,6 @@ void Digitizer::connect(const json& connect_json, const std::string& collectionI
 
 unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-    DrpPgpIlv& hw = *new(0) DrpPgpIlv;
-    //  Reset the PGP links
-    //  user reset
-    hw.mig[0] = 1<<31;
-    usleep(10);
-    hw.mig[0] = 0;
-    //  QPLL reset
-    hw.pgp[1] = 1;
-    usleep(10);
-    hw.pgp[1] = 0;
-    usleep(10);
-    //  Reset the Tx and Rx
-    hw.pgp[1] = 6;
-    usleep(10);
-    hw.pgp[1] = 0;
-
     unsigned lane_mask;
     m_evtNamesId = NamesId(nodeId, EventNamesIndex);
     // set up the names for the configuration data
@@ -286,7 +193,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const v
     lane_mask = Digitizer::_addJson(xtc, bufEnd, configNamesId, config_alias);
 
     // set up the names for L1Accept data
-    Alg alg("raw", 2, 0, 0);
+    Alg alg("raw", 3, 0, 0);
     Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                 m_para->detName.c_str(), alg,
                                                 m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
@@ -340,8 +247,11 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             const uint8_t* const p_end = p + data_size;
             do {
                 const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
-                if (stream.overflow()) {
-                    logging::debug("Overflow");
+                if (stream.overflow() ||
+                    stream.unlocked()) {
+                    logging::debug("Header error: overflow %c  unlocked %c",
+                                   stream.overflow()?'T':'F',
+                                   stream.unlocked()?'T':'F');
                     dgram.xtc.damage.increase(Damage::UserDefined);
                     break;
                 }
@@ -362,9 +272,9 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
 void Digitizer::shutdown()
 {
     // returns borrowed reference
-    PyObject* pDict = check(PyModule_GetDict(m_module), "GetDict 3");
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
     // returns borrowed reference
-    PyObject* pFunc = check(PyDict_GetItemString(pDict, (char*)"hsd_unconfig"), "hsd_unconfig");
+    PyObject* pFunc = _check(PyDict_GetItemString(pDict, "hsd_unconfig"));
 
     // returns new reference
     PyObject_CallFunction(pFunc,"s",

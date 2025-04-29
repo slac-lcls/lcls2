@@ -1,7 +1,9 @@
+import sys
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
 import logging
-from psana.detector.areadetector import AreaDetectorRaw
+from psana.detector.NDArrUtils import info_ndarr #, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+from psana.detector.areadetector import AreaDetectorRaw, sgs
 import numpy as np
 
 # create a dictionary that can be used to look up other
@@ -162,58 +164,6 @@ class encoder_interpolated_3_0_0(encoder_raw_3_0_0):
         """
         return super().value(evt)
 
-class archon_raw_1_0_0(AreaDetectorRaw):
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._nbanks = 16
-        self._fakePixelsPerBank = 36
-        self._realPixelsPerBank = 264
-        self._totPixelsPerBank = self._fakePixelsPerBank+self._realPixelsPerBank
-        self._totRealPixels = self._realPixelsPerBank*self._nbanks
-    def _common_mode(self,frame):
-        # courtesy of Phil Hart
-        # this is slow because of the python loops, but the
-        # camera readout is <1Hz with many rows, so perhaps OK? - cpo
-        bankSize = self._totPixelsPerBank
-        rows = frame.shape[0]
-        for r in range(rows):
-            colOffset = 0
-            for b in range(self._nbanks):
-                # this also corrects the fake pixels themselves
-                frame[r, colOffset:colOffset+bankSize] -= \
-                    frame[r, colOffset+bankSize-self._fakePixelsPerBank:colOffset+bankSize].mean()
-                colOffset += bankSize
-    def raw(self,evt) -> Array2d:
-        segs = self._segments(evt)
-        if segs is None: return None
-        return segs[0].value
-    def calib(self,evt) -> Array2d:
-        raw = self.raw(evt)
-        if raw is None: return None
-        peds = self._calibconst['pedestals'][0]
-        if peds is None:
-            logging.warning('no archon pedestals')
-            return raw
-        if peds.shape != raw.shape:
-            logging.warning(f'incorrect archon pedestal shape: {peds.shape}, raw data shape: {raw.shape}')
-            return raw
-        cal = raw-peds
-        self._common_mode(cal) # make this optional with a kwarg
-        return cal
-    def image(self,evt) -> Array2d:
-        c = self.calib(evt)
-        # make a copy of the data.  would be faster to np.slice, but
-        # mpi4py's efficient Reduce/Gather methods don't work
-        # with non-contiguous arrays.  but mpi4py does give an error
-        # when this happens so could change this. - cpo
-        image = np.empty_like(c, shape=(c.shape[0],self._totRealPixels))
-        for i in range(self._nbanks):
-            size = self._realPixelsPerBank
-            startNoFakePix = i*size
-            startSkipFakePix = i*self._totPixelsPerBank
-            image[:,startNoFakePix:startNoFakePix+size] \
-                = c[:,startSkipFakePix:startSkipFakePix+size]
-        return image
 
 # Test
 class justafloat_simplefloat32_1_2_4(DetectorImpl):
@@ -221,3 +171,5 @@ class justafloat_simplefloat32_1_2_4(DetectorImpl):
         super().__init__(*args)
     def value(self,evt) -> float:
         return self._segments(evt)[0].valfloat32
+
+# EOF

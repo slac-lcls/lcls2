@@ -10,6 +10,12 @@ ocfg = None
 pv_prefix = None
 readout_groups = None
 
+DEST_INCLUDE  = 0
+DEST_DONTCARE = 1
+DEST_BSY = 2
+DEST_HXR = 3
+DEST_SXR = 4
+
 def ts_config(connect_json,cfgtype,detname,detsegm):
     global ocfg
     global pv_prefix
@@ -64,42 +70,37 @@ def apply_config(cfg):
             rcfg['user']['SC'][grp_prefix] = grp
             pvdict[str(group)+':L0Select'          ] = grp['trigMode']
             pvdict[str(group)+':L0Select_FixedRate'] = grp['fixed']['rate']
-            pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
             pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
-            pvdict[str(group)+':L0Select_Sequence' ] = grp['seq']['mode']
             #  until we update all timing configurations
             if 'keepRawRate' in grp:
                 pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['keepRawRate'])
             else:
                 logging.warning(f'No keepRawRate entry in user.SC.{grp_prefix}.  Run ts_config_update.py')
-            pvdict[str(group)+':DstSelect'         ] = grp['destination']['select']
 
-            # convert ac.ts0 through ac.ts5 to L0Select_ACTimeslot bitmask
-            tsmask = 0
-            for tsnum in range(6):
-                tsval = grp['ac']['ts'+str(tsnum)]
-                if tsval:
-                    tsmask |= 1<<tsnum
-            pvdict[str(group)+':L0Select_ACTimeslot'] = tsmask
-
-            # L0Select_SeqBit is one var used by all of seq.(burst/fixed/local)
-            if grp['seq']['mode']==15: # burst
-                seqbit = grp['seq']['burst']['mode']
-            elif grp['seq']['mode']==16: # fixed rate
-                seqbit = grp['seq']['fixed']['rate']
-            elif grp['seq']['mode']==17: # local
-                seqbit = grp['seq']['local']['rate']
-            else:
-                raise ValueError('Illegal value for trigger sequence mode')
-            pvdict[str(group)+':L0Select_SeqBit'] = seqbit
+            if 'ac' in grp:
+                pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
+                # convert ac.ts0 through ac.ts5 to L0Select_ACTimeslot bitmask
+                tsmask = 0
+                for tsnum in range(6):
+                    tsval = grp['ac']['ts'+str(tsnum)]
+                    if tsval:
+                        tsmask |= 1<<tsnum
+                pvdict[str(group)+':L0Select_ACTimeslot'] = tsmask
 
             # DstSelect_Mask should come from destination.dest0 through dest15
             dstmask = 0
-            for dstnum in range(16):
-                dstval = grp['destination']['dest'+str(dstnum)]
-                if dstval:
-                    dstmask |= 1<<dstnum
-            pvdict[str(group)+':DstSelect_Mask'] = dstmask
+            if 'select' in grp['destination']:   # old
+                pvdict[str(group)+':DstSelect'] = grp['destination']['select']
+                for dstnum in range(16):
+                    dstval = grp['destination']['dest'+str(dstnum)]
+                    if dstval:
+                        dstmask |= 1<<dstnum
+            else:  # new
+                dstmask |= (1<<DEST_BSY) if grp['destination']['BsyDump' ] else 0
+                dstmask |= (1<<DEST_HXR) if grp['destination']['HardXRay'] else 0
+                dstmask |= (1<<DEST_SXR) if grp['destination']['SoftXRay'] else 0
+                pvdict[str(group)+':DstSelect_Mask'] = dstmask
+                pvdict[str(group)+':DstSelect'     ] = DEST_INCLUDE if dstmask else DEST_DONTCARE
 
         grp_prefix = 'group'+str(group)
         grp = cfg['expert'][grp_prefix]

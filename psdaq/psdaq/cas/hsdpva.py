@@ -73,7 +73,7 @@ class PvBuf(PvScalarBox):
         super(PvBuf,self).__init__(pvname, title, monBuf)
 
 class PvArrayTable(QtWidgets.QGroupBox):
-    def __init__( self, pvname, title, struct, vertical=False):
+    def __init__( self, pvname, title, struct, vertical=False, edit=False):
         super(PvArrayTable,self).__init__(title)
         self.struct = struct
         glo = QtWidgets.QGridLayout()
@@ -86,10 +86,17 @@ class PvArrayTable(QtWidgets.QGroupBox):
             for j in range(len(struct[ttl][1])):
                 x = j+1 if vertical else i
                 y = i   if vertical else j+1
-                w = QtWidgets.QLabel('')
+                w = QtWidgets.QLineEdit('-') if edit else QtWidgets.QLabel('')
                 glo.addWidget(w,x,y)
                 wl.append(w)
             self.widgets.append(wl)
+
+        if edit:
+            b = QtWidgets.QPushButton('Apply')
+            glo.addWidget(b,x+1,1)
+            x += 1
+            b.clicked.connect(self.put)
+
         glo.setRowStretch   (x+1,1)
         glo.setColumnStretch(y+1,1)
         self.setLayout(glo)
@@ -105,6 +112,19 @@ class PvArrayTable(QtWidgets.QGroupBox):
                         self.widgets[i][j].setText(QString(self.struct[v][2].format(w)))
                     else:
                         self.widgets[i][j].setText(QString(w))
+
+    def put(self):
+        d = {}
+        for i,v in enumerate(self.struct):
+            val = []
+            for j,w in enumerate(self.struct[v][1]):
+                #if len(self.struct[v])>2:
+                #    val.append(int(w[i][j].text()))
+                val.append(int(self.widgets[i][j].text()))
+                    # or float
+            d[v] = tuple(val)
+
+        self.pv.put(d)
 
 class PvJesd(object):
     def __init__( self, pvname, statWidgets, clockWidgets):
@@ -298,6 +318,8 @@ class Ui_MainWindow(object):
                             'Timing' )
             maintab.addTab( PvArrayTable(title+':MONPGP','Pgp',monPgp),
                             'PGP' )
+            maintab.addTab( PvArrayTable(title+':PGPCONFIG','Pgp Config',pgpConfig,edit=True),
+                            'PgpCfg' )
             maintab.addTab( HsdBufferSummary(title), 
                             'Buffers' )
             maintab.addTab( PvArrayTable(title+':MONRAWDET','Raw Buffers',monBufDetail,vertical=True), 
@@ -336,17 +358,49 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("base", help="pv base to monitor", nargs='+', default="DAQ:LAB2:HSD:DEV06_3E:A")
+    parser.add_argument("base", help="pv base to monitor", nargs='+', )
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument("-u", help="pv base to monitor in hutch", action="store_true")
     args = parser.parse_args()
-
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    base=[]
+    if args.u:
+        logging.info(f"hutch selection")
+        if args.base[0] == "TMO": 
+            logging.info("TMO")
+            base_sub="DAQ:TMO:HSD:1_"
+            base_FPGAs=["1B","1A","3E","3D","01","DA","B2","B1","89","88",]
+            sub_FPGAs=["A","B"]
+            
+            for FPGA in base_FPGAs:
+                for sub in sub_FPGAs:
+                    card=base_sub+FPGA+":"+sub
+                    base.append(card)
+
+        if args.base[0] == "RIX":
+            logging.info("RIX")
+            base_sub="DAQ:RIX:HSD:1_"
+            base_FPGAs=["1B","1A","3D","3E",]
+            sub_FPGAs=["A","B"]
+            
+            for FPGA in base_FPGAs:
+                for sub in sub_FPGAs:
+                    card=base_sub+FPGA+":"+sub
+                    base.append(card)
+        if args.base[0] not in  ["TMO", "RIX"]:
+            logging.error("Please provide one of the following hutches with the option d: TMO, RIX") 
+            sys.exit()   
+    else:
+        logging.info("base is provided")
+        base=args.base
+    
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
+    
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.base)
+    ui.setupUi(MainWindow,base)
     MainWindow.updateGeometry()
 
     MainWindow.show()

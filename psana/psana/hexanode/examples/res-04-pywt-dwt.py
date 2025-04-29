@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#--------------------
+
 """ https://pywavelets.readthedocs.io/en/latest/ref/dwt-discrete-wavelet-transform.html
 """
 
@@ -73,7 +73,7 @@ colors = ('x', 'b', 'g', 'r', 'c', 'm', 'y', 'k', 'r', 'g', 'm', 'k',\
                'b', 'g', 'r', 'c', 'm', 'y', 'k', 'r', 'g', 'm', 'k',)
 f = 1.0/sqrt(2)
 
-img = np.zeros((nlmax, sig.size), dtype=np.float)
+img = np.zeros((nlmax, sig.size), dtype=np.float32)
 binds = np.arange(0, sig.size, dtype=np.uint)
 print('img.shape',img.shape)
 
@@ -105,7 +105,7 @@ for nlev in range(nlmin,nlmax) :
 #ax0.clear()
 
 imsh = ax3.imshow(img[nlmin:nlmax,:],
-    aspect='auto', 
+    aspect='auto',
     origin='upper',
     cmap='gray',
     interpolation='nearest',
@@ -126,4 +126,4 @@ gr.show()
 suf='-wf-dwt-decomp-l%02d:%02d-b%04d:%04d.png' % (nlmin, nlmax-1,binmin, binmax)
 gr.save_fig(fig, prefix='fig-', suffix=suf, **kwargs)
 
-#----------
+# EOF

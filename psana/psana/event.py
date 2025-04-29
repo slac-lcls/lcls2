@@ -1,10 +1,10 @@
+# import detectors
 
-#import detectors
-
-from psana import dgram
-from psana.psexp import PacketFooter, TransitionId
-import numpy as np
 import datetime
+
+import numpy as np
+
+from psana.psexp.packet_footer import PacketFooter
 
 # TO DO
 # 1) remove comments
@@ -13,21 +13,24 @@ import datetime
 
 epoch = datetime.datetime(1990, 1, 1)
 
+
 class DrpClassContainer(object):
     def __init__(self):
-            pass
+        pass
 
-class Event():
+
+class Event:
     """
     Event holds list of dgrams
     """
+
     def __init__(self, dgrams, run=None):
         self._dgrams = dgrams
         self._size = len(dgrams)
         self._complete()
         self._position = 0
         self._run = run
-        self._proxy_evt = None          # For smalldata-event loop
+        self._proxy_evt = None  # For smalldata-event loop
 
     def __iter__(self):
         return self
@@ -59,14 +62,29 @@ class Event():
 
         return event_bytes
 
+    def timestamp_diff(self, ts):
+        """Subtract the given timestamp from the event timestamp and return
+        differences in nanasecond unit.
+
+        Since timestamp format is [32 bits of seconds][32 bits of nanoseconds],
+        we need to convert these two parts in seconds and nanoseconds
+        respectively prior to the calculation
+        """
+        evt_sec = self._seconds
+        evt_nsec = self._nanoseconds
+        ts_sec = (ts >> 32) & 0xFFFFFFFF
+        ts_nsec = ts & 0xFFFFFFFF
+        dif_ns = (evt_sec * 1000000000 + evt_nsec) - (ts_sec * 1000000000 + ts_nsec)
+        return dif_ns
+
     @property
     def _seconds(self):
-        _high = (self.timestamp >> 32) & 0xffffffff
+        _high = (self.timestamp >> 32) & 0xFFFFFFFF
         return _high
-    
+
     @property
     def _nanoseconds(self):
-        _low = self.timestamp & 0xffffffff
+        _low = self.timestamp & 0xFFFFFFFF
         return _low
 
     @property
@@ -93,31 +111,33 @@ class Event():
         return self._run
 
     def _assign_det_segments(self):
-        """
-        """
+        """ """
         self._det_segments = {}
         for evt_dgram in self._dgrams:
-            
-            if evt_dgram: # dgram can be None (missing) in an event
+
+            if evt_dgram:  # dgram can be None (missing) in an event
 
                 # detector name (e.g. "xppcspad")
                 for det_name, segment_dict in evt_dgram.__dict__.items():
                     # skip hidden dgram attributes
-                    if det_name.startswith('_'): continue
+                    if det_name.startswith("_"):
+                        continue
 
                     # drp class name (e.g. "raw", "fex")
                     for segment, det in segment_dict.items():
                         for drp_class_name, drp_class in det.__dict__.items():
-                            class_identifier = (det_name,drp_class_name)
-                        
+                            class_identifier = (det_name, drp_class_name)
+
                             if class_identifier not in self._det_segments.keys():
                                 self._det_segments[class_identifier] = {}
                             segs = self._det_segments[class_identifier]
 
-                            if det_name not in ['runinfo','smdinfo','chunkinfo'] :
-                                assert segment not in segs, f'Found duplicate segment: {segment} for {class_identifier}'
+                            if det_name not in ["runinfo", "smdinfo", "chunkinfo"]:
+                                assert (
+                                    segment not in segs
+                                ), f"Found duplicate segment: {segment} for {class_identifier}"
                             segs[segment] = drp_class
-                            
+
         return
 
     # this routine is called when all the dgrams have been inserted into
@@ -133,9 +153,9 @@ class Event():
         service = None
         for d in self._dgrams:
             if d:
-                service = (d.env()>>24)&0xf
+                service = (d.env() >> 24) & 0xF
                 if not service:
-                    print(f'expected value between 1-13, got: {service}')
+                    print(f"expected value between 1-13, got: {service}")
                     raise
                 break
         return service
@@ -144,7 +164,7 @@ class Event():
         keepraw = None
         for d in self._dgrams:
             if d:
-                keepraw = (d.env()>>22)&0x1
+                keepraw = (d.env() >> 22) & 0x1
                 break
         return keepraw
 
@@ -161,27 +181,44 @@ class Event():
         for size.
         """
         d = self._dgrams[i]
-        offset_and_size = np.zeros((1,2), dtype=int)
+        offset_and_size = np.zeros((1, 2), dtype=int)
         if d:
             if hasattr(d, "smdinfo"):
-                offset_and_size[:] = [d.smdinfo[0].offsetAlg.intOffset, \
-                        d.smdinfo[0].offsetAlg.intDgramSize]
+                offset_and_size[:] = [
+                    d.smdinfo[0].offsetAlg.intOffset,
+                    d.smdinfo[0].offsetAlg.intDgramSize,
+                ]
             else:
-                offset_and_size[0,1] = d._size
+                offset_and_size[0, 1] = d._size
         return offset_and_size
 
     def datetime(self):
-        sec = (self.timestamp>>32)
-        usec = (self.timestamp&0xffffffff)/1000
-        delta_t = datetime.timedelta(seconds=sec,microseconds=usec)
+        sec = self.timestamp >> 32
+        usec = (self.timestamp & 0xFFFFFFFF) / 1000
+        delta_t = datetime.timedelta(seconds=sec, microseconds=usec)
         return epoch + delta_t
 
     def set_destination(self, dest):
-        """ Sets destination (bigdata core rank no.) where this event
-        should be sent to. 
+        """Sets destination (bigdata core rank no.) where this event
+        should be sent to.
 
         Destination only works in parallel mode with only one EvenBuilder core
         (PS_EB_NODES=1). The valid range of destination is from 1 to the number
         of available bigdata cores.
         """
         self._proxy_evt.set_destination(dest)
+
+    def EndOfBatch(self):
+        """Returns a list of integrating detectors whose batch ends at this event
+
+        Single integrating detector:
+            defaulted to [intg_det]
+        Multiple integrating detectors (future feature):
+            we probably need another flag to identify which integrating detector(s)
+            marks the end of this batch.
+        """
+        intg_dets = []
+        for i, d in enumerate(self._dgrams):
+            if hasattr(d, "_endofbatch"):
+                intg_dets.append(self._run.dsparms.intg_det)
+        return intg_dets

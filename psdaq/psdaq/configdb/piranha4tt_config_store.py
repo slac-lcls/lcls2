@@ -13,8 +13,11 @@ def piranha4tt_cdict():
 
     #  append to the help string
     help_str = top.get("help:RO")
-    help_str += "\nfex.eventcodes.beam  : beam present  = AND(.incl) and not OR(.excl)"
-    help_str += "\nfex.eventcodes.laser : laser present = AND(.incl) and not OR(.excl)"
+    help_str += "\nfex.beam  : beam present  = (.incl) and not OR(.excl)"
+    help_str += "\nfex.laser : laser present = (.incl) and not OR(.excl)"
+    help_str += "\nfex.[beam/laser].[incl/excl].eventcodes   : list of eventcodes"
+    help_str += "\nfex.[beam/laser].[incl/excl].destinations : list of destinations"
+
     help_str += "\nfex.sig.roi          : inclusive pixels (x)"
     help_str += "\nfex.pedestal_adj     : extra offset to image values"
     help_str += "\nfex.signal.minvalue  : minimum signal (ADU) to report valid value"
@@ -28,12 +31,13 @@ def piranha4tt_cdict():
     #  append new fields
     top.set("fex.enable",    1, 'UINT8')
 
-    #  assume mode is nobeam on separate events (vs nobeam in separate roi)
-    top.set("fex.eventcodes.beam.incl" , [136], 'UINT16') # beam present = AND beam.incl NOR beam.excl
-    top.set("fex.eventcodes.beam.excl" , [161], 'UINT16')
-    top.set("fex.eventcodes.laser.incl", [67], 'UINT16') # laser present = AND laser.incl NOR laser.excl
-    top.set("fex.eventcodes.laser.excl", [68], 'UINT16')
+    top.define_enum("destEnum", {'DontCare':0, 'DIAG0':1, 'BSYDump':2, 'HXR':3, 'SXR':4, 'S30XL':5})
 
+    for sel in ('beam','laser'):
+        for op in ('incl','excl'):
+            top.set(f"fex.{sel}.{op}.eventcode"  , 0, 'UINT16')
+            top.set(f"fex.{sel}.{op}.destination", 0, 'destEnum')
+    
     top.set("fex.sig.roi.x0",  700, 'UINT32')
     top.set("fex.sig.roi.x1",  900, 'UINT32')
 
@@ -83,6 +87,12 @@ if __name__ == "__main__":
     if args.update:
         cfg = mycdb.get_configuration(args.alias, args.name+'_%d'%args.segm)
         top = update_config(cfg, top.typed_json(), args.verbose)
+        # weight array size might have changed
+        wts  = top['fex']['fir_weights']
+        wlen = top[':types:']['fex']['fir_weights'][1]
+        if wlen!=len(wts):
+            print(f'Updating fir_weights len {wlen} to {len(wts)}')
+            top[':types:']['fex']['fir_weights'] = ['DOUBLE', len(wts)]
 
     if not args.dryrun:
         if create:

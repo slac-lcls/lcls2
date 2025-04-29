@@ -23,6 +23,7 @@ Usage ::
     get_colname(**kwa):
     _timestamp(time_sec):
     timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
+    tsec, ts = sec_and_ts_from_id(id)
     timestamp_doc(doc):
     time_and_timestamp(**kwa):
     docdic(data, dataid, **kwa):
@@ -53,7 +54,7 @@ Usage ::
     data_from_file(fname, ctype, dtype, verb=False):
     _doc_detector_name(detname, dettype, detnum):
     _short_for_partial_name(detname, ldocs):
-    pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
+    _pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False)
 
     ...
     2023-11-02 remove all methods directly depending on pymongo
@@ -151,7 +152,7 @@ def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     oid = id
     if isinstance(id, str):
         if len(id) != 24: return str(id) # protection aginst non-valid id
-        oid = ObjectId(id)
+    oid = ObjectId(id)
     if isinstance(oid, ObjectId):
         str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
         tobj = Time.parse(str_ts)         # Time object from parsed string
@@ -159,6 +160,17 @@ def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
         str_tsf = _timestamp(tsec)        # re-formatted time stamp
         return str_tsf
     return str(id) # protection aginst non-valid id
+
+
+def sec_and_ts_from_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
+    """Converts MongoDB (str) id to (int) sec."""
+    assert isinstance(id, str)
+    assert len(id) == 24
+    oid = ObjectId(id)
+    str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
+    tobj = Time.parse(str_ts)         # Time object from parsed string
+    return int(tobj.sec()), str_ts    # 1521064777
+
 
 def timestamp_doc(doc):
     """Returns document creation (str) timestamp from its id."""
@@ -368,7 +380,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """Returns dbnames for detector, experiment, collection name, and query."""
     cond = (run is not None) or (time_sec is not None) or (vers is not None)
     assert cond, 'Not sufficeint info for query: run, time_sec, and vers are None'
-    _det = pro_detector_name(det)
+    _det = _pro_detector_name(det)
     query={'detector':_det,} # 'ctype':ctype}
     if ctype is not None: query['ctype'] = ctype
     if dtype is not None: query['dtype'] = dtype
@@ -394,15 +406,17 @@ def document_keys(doc):
         s += ' %s' % k.ljust(16)
     return s
 
-def document_info(doc, keys=('time_sec','time_stamp','experiment',\
-                  'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
-                  fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s'):
+#def document_info(doc, keys=('time_sec','time_stamp','experiment',\
+#                  'detector','ctype','run','id_data','id_data_ts', 'data_type','data_dtype','version'),\
+#                  fmt='%10s %24s %11s %16s %12s %4s %24s %24s %10s %10s %7s'):
+def document_info(doc, keys=('ctype','uid','experiment','run','data_shape','data_dtype','time_stamp','id_data_ts','version'),\
+                  fmt='%16s %10s %11s run:%4s %12s %10s tsrun:%24s tsDB:%24s %11s'):
     """Returns (str, str) for formatted document values and title made of keys."""
     id_data = str(doc.get('id_data',None))
     doc['id_data_ts'] = timestamp_id(id_data)
     doc_keys = sorted(doc.keys())
     if 'experiment' in doc_keys: # CDDB type of document
-        vals = tuple([str(doc.get(k,None)) for k in keys])
+        vals = tuple([str(doc.get(k,None)) for k in keys]) #.ljust(5)
         return fmt % vals, fmt % keys
     else: # OTHER type of document
         title = '  '.join(doc_keys)
@@ -418,7 +432,7 @@ def out_fname_prefix(fmt='clb-%s-%s-r%04d-%s', **kwa):
     """Returns output file name prefix like doc-cxid9114-cspad_0001-r0116-pixel_rms"""
     exp = kwa.get('experiment', 'exp')
     det = kwa.get('detector', 'det')
-    _det = pro_detector_name(det)
+    _det = _pro_detector_name(det)
     run = int(kwa.get('run', 0))
     ctype = kwa.get('ctype', 'ctype')
     return fmt % (exp, _det, run, ctype)
@@ -517,12 +531,18 @@ def _short_for_partial_name(detname, ldocs):
             return shortname # longname
     return None
 
-def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
-    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
-    if detname is None:
-        logger.debug('WARNING: pro_detector_name: input detname is None')
-        return None
-    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+#def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
+#    """ Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+#    if detname is None:
+#        logger.debug('WARNING: pro_detector_name: input detname is None')
+#        return None
+#    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
+
+def _pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
+    #import psana.pscalib.calib.MDBWebUtils as mwu
+    from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+    return pro_detector_name(detname, maxsize, add_shortname)
+
 
 if __name__ == "__main__":
     sys.exit('\nFor test use ./ex_%s <test-number> <mode> <...>' % sys.argv[0].rsplit('/')[-1])

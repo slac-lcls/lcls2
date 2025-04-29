@@ -49,7 +49,6 @@ namespace Pds {
       uint32_t  rsvd_to_0x17_0000  [(0x10000-sizeof(ring1))/4];
         
       Mmhw::Reg tprLoopback;
-      uint32_t  rsvd_to_0x20_0000  [0x8FFFC/4];
     };
   };
 };
