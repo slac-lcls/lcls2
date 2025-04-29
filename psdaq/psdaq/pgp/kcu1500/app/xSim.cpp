@@ -670,6 +670,17 @@ int main(int argc, char* argv[])
       }
 
       timingRst |= setup_clk;
+
+      //
+      //  Dump timing link stats before resetting
+      //
+      if (timingRst || rxTimRst || tcountRst) {
+        print_word("SOFcounts" , 0x00c00000);
+        print_word("RxRstDone" , 0x00c00014);
+        print_word("RxDecErrs" , 0x00c00018);
+        print_word("RxDspErrs" , 0x00c0001c);
+      }
+
       if (timingRst) {
         printf("Reset timing PLL\n");
         unsigned v = get_reg32( 0x00c00020);
@@ -687,7 +698,7 @@ int main(int argc, char* argv[])
         usleep(1000);
         v &= ~0x8;
         set_reg32( 0x00c00020, v);
-        usleep(100000);
+        usleep(1000000);
       }
 
       if (rxTimRst) {
@@ -698,9 +709,10 @@ int main(int argc, char* argv[])
         usleep(1000);
         v &= ~0x8;
         set_reg32( 0x00c00020, v);
-        usleep(100000);
+        usleep(1000000);
       }
 
+      tcountRst |= rxTimRst;
       tcountRst |= timingRst;
       if (tcountRst) {
         printf("Reset timing counters\n");
