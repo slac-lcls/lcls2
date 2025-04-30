@@ -57,7 +57,9 @@ TebContributor::TebContributor(const TebCtrbParams& prms,
   _eventCount (0),
   _batchCount (0),
   _latPid     (0),
-  _latency    (0)
+  _latency    (0),
+  _age        (0),
+  _entries    (0)
 {
 }
 
