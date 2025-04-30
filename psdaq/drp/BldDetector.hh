@@ -139,6 +139,7 @@ public:
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
@@ -152,7 +153,8 @@ private:
     bool                                       m_running;
     int32_t                                    m_available;
     int32_t                                    m_current;
-    unsigned                                   m_nodeId;
+    uint64_t                                   m_nevents;
+    uint64_t                                   m_nmissed;
     uint64_t                                   m_nDmaRet;
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;

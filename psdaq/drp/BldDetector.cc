@@ -626,7 +626,7 @@ uint64_t Bld::next()
 class BldDetector : public XpmDetector
 {
 public:
-    BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) { virtChan = 0; }
+    BldDetector(Parameters& para, MemPoolCpu& pool) : XpmDetector(&para, &pool) { virtChan = 0; }
     void event(Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
 };
 
@@ -637,7 +637,6 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_config(0), m_terminate(false), m_running(false),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
-    m_nodeId = det->nodeId;
     if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
     }
@@ -702,7 +701,7 @@ void Pgp::shutdown()
     m_det->namesLookup().clear();   // erase all elements
 }
 
-void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
+int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
@@ -710,13 +709,14 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                                               {"detname", m_para.detName},
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
-    uint64_t nevents = 0L;
+    m_nevents = 0L;
     exporter->add("drp_event_rate", labels, MetricType::Rate,
-                  [&](){return nevents;});
-    uint64_t nmissed = 0L;
+                  [&](){return m_nevents;});
+    m_nmissed = 0L;
     exporter->add("bld_miss_count", labels, MetricType::Counter,
-                  [&](){return nmissed;});
+                  [&](){return m_nmissed;});
 
+    m_nDmaRet = 0L;
     exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
                   [&](){return m_nDmaRet;});
     exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
@@ -737,6 +737,20 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return nPgpJumps();});
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
+
+    return 0;
+}
+
+void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
+{
+    // Reset counters to avoid 'jumping' errors on reconfigures
+    m_pool.resetCounters();
+    resetEventCounter();
+
+    // Set up monitoring
+    if (exporter) {
+        if (_setupMetrics(exporter))  return;
+    }
 
     //
     //  Setup the multicast receivers
@@ -868,7 +882,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
 
                     // Revisit: This is intended to be done by BldDetector::configure()
                     for(unsigned i=0; i<m_config.size(); i++) {
-                        NamesId namesId(m_nodeId, BldNamesIndex + i);
+                        NamesId namesId(m_det->nodeId, BldNamesIndex + i);
                         namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                     }
                     break;
@@ -881,7 +895,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                 m_current++;
                 timingHeader = 0;
                 _sendToTeb(*dgram, index);
-                nevents++;
+                m_nevents++;
             }
             else if (ttv < tts) {  // Handle if old enough
                 EbDgram* dgram = _handle(index);
@@ -895,7 +909,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                 for(unsigned i=0; i<m_config.size(); i++) {
                     if (timestamp[i] == ttv) {
                         // Revisit: This is intended to be done by BldDetector::event()
-                        NamesId namesId(m_nodeId, BldNamesIndex + i);
+                        NamesId namesId(m_det->nodeId, BldNamesIndex + i);
                         m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
                     }
                     else {
@@ -908,7 +922,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                 if (lMissed) {
                     lMissing = true;
                     dgram->xtc.damage.increase(Damage::DroppedContribution);
-                    nmissed++;
+                    m_nmissed++;
                 }
                 else {
                     if (lMissing)
@@ -919,7 +933,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                 m_current++;
                 timingHeader = 0;
                 _sendToTeb(*dgram, index);
-                nevents++;
+                m_nevents++;
             }
         }
         else {   // No timing header waiting
@@ -1003,7 +1017,7 @@ BldApp::BldApp(Parameters& para) :
 {
     Py_Initialize();                    // for use by configuration
 
-    m_det = std::make_unique<BldDetector>(m_para, *m_drp);
+    m_det = std::make_unique<BldDetector>(m_para, m_pool);
     m_drp = std::make_unique<BldDrp>(m_para, m_pool, m_det.get(), context());
 
     logging::info("Ready for transitions");
