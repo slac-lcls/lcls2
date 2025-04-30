@@ -406,16 +406,18 @@ unsigned PGPDrp::unconfigure()
 
     m_terminate.store(true, std::memory_order_release);
 
-    logging::info("Shutting down workers");
-    for (unsigned i = 0; i < m_para.nworkers; i++) {
+    if (m_workerThreads.size())
+        logging::info("Shutting down workers");
+    for (unsigned i = 0; i < m_workerThreads.size(); i++) {
         m_workerInputQueues[i].shutdown();
         if (m_workerThreads[i].joinable()) {
             m_workerThreads[i].join();
         }
     }
-    logging::info("Worker threads finished");
+    if (m_workerThreads.size())
+        logging::info("Worker threads finished");
 
-    for (unsigned i = 0; i < m_para.nworkers; i++) {
+    for (unsigned i = 0; i < m_workerOutputQueues.size(); i++) {
         m_workerOutputQueues[i].shutdown();
     }
 
