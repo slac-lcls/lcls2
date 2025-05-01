@@ -25,6 +25,11 @@ namespace Pds {
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
+      void   event(cudaStream_t&     stream,
+                   float*            calibBuffers,
+                   uint32_t** const* out,
+                   unsigned&         index,
+                   bool&             done) override;
       size_t size() const  { return sizeof(TimingTebData); }
     };
   };
@@ -56,6 +61,15 @@ void Pds::Trg::TimingTebPrimitive::event(const Drp::MemPool& pool,
 
     new(xtc.alloc(sizeof(TimingTebData), bufEnd)) TimingTebData(ebeamDestn_,
                                                                 eventcodes_);
+}
+
+void Pds::Trg::TimingTebPrimitive::event(cudaStream_t&     stream,
+                                         float*            calibBuffers,
+                                         uint32_t** const* out,
+                                         unsigned&         index,
+                                         bool&             done)
+{
+  assert(false);  // Unused but must be defined
 }
 
 // The class factory

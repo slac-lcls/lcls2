@@ -658,7 +658,7 @@ unsigned UdpEncoder::connect(const json& msg, const std::string& id, std::string
 
 unsigned UdpEncoder::disconnect()
 {
-    shutdown();
+    XpmDetector::shutdown();
     m_udpReceiver.reset();
     return 0;
 }

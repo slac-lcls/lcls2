@@ -26,6 +26,11 @@ namespace Pds {
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
+      void   event(cudaStream_t&     stream,
+                   float*            calibBuffers,
+                   uint32_t** const* out,
+                   unsigned&         index,
+                   bool&             done) override;
       size_t size() const  { return sizeof(TriggerData_cam); }
     private:
       unsigned _counter;
@@ -73,6 +78,15 @@ void Pds::Trg::TriggerPrimitiveExample_cam::event(const Drp::MemPool& pool,
   //printf("%s: counter %08x, val %016lx\n", __PRETTY_FUNCTION__, _counter, val);
 
   new(xtc.alloc(sizeof(TriggerData_cam), bufEnd)) TriggerData_cam(val);
+}
+
+void Pds::Trg::TriggerPrimitiveExample_cam::event(cudaStream_t&     stream,
+                                                  float*            calibBuffers,
+                                                  uint32_t** const* out,
+                                                  unsigned&         index,
+                                                  bool&             done)
+{
+  assert(false);  // Unused but must be defined
 }
 
 // The class factory

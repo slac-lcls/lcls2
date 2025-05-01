@@ -85,9 +85,9 @@ procmgr_config = [
  {host: collect_host,      id:'control',     flags:'spu', env:epics_env, cmd:f'control -P {hutch} -B DAQ:NEH -x {xtpg} -C BEAM {auth} {url} -d {cdb}/configDB -t trigger -S 1 -T 20000 -V {elog_cfg}'},
  {                         id:'control_gui', flags:'p',                  cmd:f'control_gui -H {collect_host} --uris {cdb} --expert {auth} --loglevel WARNING'},
 
- {host: 'drp-neh-cmp010',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
+ {host: 'drp-neh-cmp002',  id:'teb0',        flags:'spu',                cmd:f'{teb_cmd}'},
 
- {host: 'drp-neh-cmp010',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts'},
+ {host: 'drp-neh-cmp002',  id:'timing_1',    flags:'spu', env:epics_env, cmd:f'{drp_cmd0} -l 0x8 -D ts'},
 
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image'},
 # {host: 'drp-neh-cmp010',  id:'andor_vls_0', flags:'spux', env:andor_epics_env, cmd:pva_cmd0+' -l 0x2 -k pebbleBufSize=4196432 RIX:VLS:CAM:01:IMAGE1:Pva:Image RIX:DIR:CAM:01:IMAGE1:Pva:Image'},

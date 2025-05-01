@@ -47,7 +47,7 @@ namespace Pds {
                            float*            calibBuffers,
                            uint32_t** const* out,
                            unsigned&         index,
-                           bool&             done) { assert(false); } //= 0;
+                           bool&             done) = 0;
       virtual size_t size() const = 0;
     };
   }

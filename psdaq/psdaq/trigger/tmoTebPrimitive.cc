@@ -29,6 +29,15 @@ void Pds::Trg::TmoTebPrimitive::event(const Drp::MemPool& pool,
   new(xtc.alloc(sizeof(TmoTebData), bufEnd)) TmoTebData(write_, monitor_);
 }
 
+void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&     stream,
+                                      float*            calibBuffers,
+                                      uint32_t** const* out,
+                                      unsigned&         index,
+                                      bool&             done)
+{
+  assert(false);  // Unused but must be defined
+}
+
 // The class factory
 
 extern "C" Pds::Trg::TriggerPrimitive* create_producer()
