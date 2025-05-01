@@ -286,6 +286,8 @@ def jungfrau_reset(jungfrau_kcu):
         print("calling UserRst to clear udp batcher desync")
         jungfrau_kcu.DevPcie.AxiPcieCore.AxiVersion.UserRst()
         time.sleep(2.)
+        jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxUserRst()
+        time.sleep(1.)
         print("finished waiting for reset to complete")
 
     return jungfrau_kcu
