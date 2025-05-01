@@ -531,16 +531,17 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         uint64_t timestamp = 0;
         unsigned segNo = m_segNos[moduleIdx];
         const char* slsHost = m_slsHosts[moduleIdx].c_str();
+        XtcData::Data& dataXtc = cd.shapesdata().data();
         XtcData::Array<uint16_t> frame = cd.allocate<uint16_t>(JungfrauDef::raw, rawShape);
         // validate the number of packets
         if (subframesUdp.size() < JungfrauData::PacketNum) {
             logging::error("Missing data: lane-seg-host[%zu-%u-%s] contains %zu packets [%zu]",
                            moduleIdx, segNo, slsHost, subframesUdp.size(), JungfrauData::PacketNum);
-            xtc.damage.increase(XtcData::Damage::MissingData);
+            dataXtc.damage.increase(XtcData::Damage::MissingData);
         } else if (subframesUdp.size() > JungfrauData::PacketNum) {
             logging::error("Extra data: lane-seg-host[%zu-%u-%s] contains %zu packets [%zu]",
                            moduleIdx, segNo, slsHost, subframesUdp.size(), JungfrauData::PacketNum);
-            xtc.damage.increase(XtcData::Damage::Truncated);
+            dataXtc.damage.increase(XtcData::Damage::Truncated);
         } else {
             unsigned numOutOfOrderPackets = 0;
             uint64_t packetCounter[] = {0xfffffffffffffffful, 0xfffffffffffffffful};
@@ -550,7 +551,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
                     logging::error("Corrupted data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected size %lu [%zu]",
                                    moduleIdx, segNo, slsHost, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
-                    xtc.damage.increase(XtcData::Damage::Corrupted);
+                    dataXtc.damage.increase(XtcData::Damage::Corrupted);
                     break;
                 }
                 JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
@@ -562,14 +563,14 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                     if (packet->header.framenum != framenum) {
                         logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected framenum %lu [%lu]",
                                        moduleIdx, segNo, slsHost, udpIdx, packet->header.framenum, framenum);
-                        xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                        dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
                         break;
                     }
                     // this should not happen so if it does the data in the packet is corrupted...
                     if (packet->header.timestamp != timestamp) {
                         logging::error("Corrupted data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected timestamp %lu [%lu]",
                                        moduleIdx, segNo, slsHost, udpIdx, packet->header.timestamp, timestamp);
-                        xtc.damage.increase(XtcData::Damage::Corrupted);
+                        dataXtc.damage.increase(XtcData::Damage::Corrupted);
                         break;
                     }
                 }
@@ -606,7 +607,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             if ((packetCounter[1] != 0) || (packetCounter[0] != 0)) {
                 logging::error("Missing data: lane-seg-host[%zu-%u-%s] framenum[%lu] is missing at least one packet %016lx%016lx",
                                moduleIdx, segNo, slsHost, framenum, packetCounter[1], packetCounter[0]);
-                xtc.damage.increase(XtcData::Damage::MissingData);
+                dataXtc.damage.increase(XtcData::Damage::MissingData);
             }
         }
 
@@ -616,7 +617,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                          moduleIdx, segNo, slsHost,
                          framenum, m_expectedFrameNum,
                          framenum - m_expectedFrameNum);
-          xtc.damage.increase(XtcData::Damage::OutOfOrder);
+          dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
 
         uint32_t numHotPixels = _countNumHotPixels(frame.data(),
@@ -627,6 +628,9 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         cd.set_value(JungfrauDef::hotPixelThresh, m_hotPixelThreshold);
         cd.set_value(JungfrauDef::numHotPixels, numHotPixels);
         cd.set_value(JungfrauDef::maxHotPixels, m_maxHotPixels);
+
+        // Add the damage from this module to the parent Xtc
+        xtc.damage.increase(dataXtc.damage.value());
     }
 
     m_expectedFrameNum++;
