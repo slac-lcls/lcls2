@@ -503,7 +503,7 @@ uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThresh
     for (size_t i=0; i<numPixels; ++i) {
         uint16_t value = rawData[i];
         if (((value & gain_bits) == gain_bits) &&
-            ((data_bits - (value & data_bits) > hotPixelThreshold)) {
+            ((data_bits - (value & data_bits)) > hotPixelThreshold)) {
             numHotPixels++;
         }
     }
