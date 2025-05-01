@@ -643,7 +643,7 @@ int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 
 int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
-    m_lastTid = TransitionId::Unconfigure; // @todo: Check
+    m_lastTid = TransitionId::Unconfigure;
 
     if (exporter) {
       int rc = _setupMetrics(exporter);
@@ -1395,13 +1395,13 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     const std::string triggerConfig = body["trigger_config"];
 
     // In the following, _0 is added in prints to show the default segment number
-    logging::info("DrpBase: Fetching trigger info from ConfigDb/%s/%s_0",
+    logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
                   configAlias.c_str(), triggerConfig.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
-        logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
-                       __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
+        logging::error("Document '%s_0' not found in ConfigDb/%s",
+                       triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
@@ -1426,24 +1426,22 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
     if (m_triggerPrimitive) {
-        logging::info("%s:\n  Created detector-specific TriggerPrimitive [%s]",
-                      __PRETTY_FUNCTION__, symbol.c_str());
+        logging::info("Created detector-specific TriggerPrimitive [%s]", symbol.c_str());
     }
     else {
         // Now try the generic producer
         symbol = std::string("create_producer");
         m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
         if (!m_triggerPrimitive) {
-            logging::error("%s:\n  Failed to create TriggerPrimitive",
-                           __PRETTY_FUNCTION__);
+            logging::error("Failed to create TriggerPrimitive; try '-v'");
             return -1;
         }
+        logging::info("Created generic TriggerPrimitive [%s]", symbol.c_str());
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
-        logging::error("%s:\n  Failed to configure TriggerPrimitive",
-                    __PRETTY_FUNCTION__);
+        logging::error("TriggerPrimitive::configure() failed");
         return -1;
     }
 

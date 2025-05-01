@@ -3,6 +3,7 @@
 
 #include "psdaq/service/Dl.hh"
 #include <nlohmann/json.hpp>
+#include "psalg/utils/SysLog.hh"
 
 #include <cstdint>
 #include <string>
@@ -43,22 +44,22 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
                                 const std::string&         symbol)
 {
   using namespace rapidjson;
+  using logging = psalg::SysLog;
 
   const std::string key("soname");
   if (!top.HasMember(key.c_str()))
   {
-    fprintf(stderr, "%s:\n  Key '%s' not found in Document %s\n",
-            __PRETTY_FUNCTION__, key.c_str(), docName.c_str());
+    logging::debug("Key '%s' not found in Document %s",
+                   key.c_str(), docName.c_str());
     return nullptr;
   }
   std::string so(top[key.c_str()].GetString());
   if (so.length() == 0)
   {
-    fprintf(stderr, "%s:\n  Empty library name for key '%s'\n",
-            __PRETTY_FUNCTION__, key.c_str());
+    logging::debug("Empty library name for key '%s'", key.c_str());
     return nullptr;
   }
-  printf("Loading object symbols from library '%s'\n", so.c_str());
+  logging::debug("Loading symbols from library '%s'", so.c_str());
 
   if (_object)                          // If the object exists,
   {
@@ -71,25 +72,24 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
 
   if (_dl.open(so, RTLD_LAZY))
   {
-    fprintf(stderr, "%s:\n  Error opening library '%s'\n",
-            __PRETTY_FUNCTION__, so.c_str());
+    logging::debug("Error opening library '%s' for symbol '%s'",
+                   so.c_str(), symbol.c_str());
     return nullptr;
   }
 
   Create_t* createFn = reinterpret_cast<Create_t*>(_dl.loadSymbol(symbol.c_str()));
   if (!createFn)
   {
-    fprintf(stderr, "%s:\n  Symbol '%s' not found in %s\n",
-            __PRETTY_FUNCTION__, symbol.c_str(), so.c_str());
+    logging::debug("Symbol '%s' not found in %s", symbol.c_str(), so.c_str());
     return nullptr;
   }
   _object = createFn();
   if (!_object)
   {
-    fprintf(stderr, "%s:\n  Error calling %s\n",
-            __PRETTY_FUNCTION__, symbol.c_str());
+    logging::debug("Error calling %s", symbol.c_str());
     return nullptr;
   }
+  logging::debug("Loaded library '%s'", so.c_str());
   return _object;
 }
 

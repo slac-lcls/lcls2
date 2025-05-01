@@ -1029,8 +1029,8 @@ int TebApp::_configure(const json& msg)
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
   {
-    logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                   __PRETTY_FUNCTION__, triggerConfig.c_str());
+    logging::error("Document '%s_0' not found in ConfigDb/%s",
+                   triggerConfig.c_str(), configAlias.c_str());
     return -1;
   }
 
@@ -1040,22 +1040,20 @@ int TebApp::_configure(const json& msg)
   Trigger* trigger = _factory.create(top, triggerConfig, symbol);
   if (!trigger)
   {
-    logging::error("%s:\n  Failed to create Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Failed to create Trigger; try '-v'");
     return -1;
   }
 
   if (trigger->configure(_connectMsg, top, _prms))
   {
-    logging::error("%s:\n  Failed to configure Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Trigger::configure() failed");
     return -1;
   }
 
 # define _FETCH(key, item)                                              \
   if (top.HasMember(key))  item = top[key].GetUint();                   \
-  else { logging::error("%s:\n  Key '%s' not found in Document %s",     \
-                        __PRETTY_FUNCTION__, key, triggerConfig.c_str()); \
+  else { logging::error("Key '%s' not found in Document %s",            \
+                        key, triggerConfig.c_str());                    \
          rc = -1; }
 
   unsigned prescale;  _FETCH("prescale", prescale);
@@ -1063,8 +1061,7 @@ int TebApp::_configure(const json& msg)
 # undef _FETCH
 
   rc = _teb->configure(trigger, prescale);
-  if (rc)  logging::error("%s:\n  Failed to configure TEB",
-                          __PRETTY_FUNCTION__);
+  if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);
 

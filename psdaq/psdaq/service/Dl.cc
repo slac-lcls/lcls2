@@ -12,7 +12,7 @@ int Pds::Dl::open(const std::string& filename, int flag)
 {
   if (_handle)
   {
-    logging::debug("Cannot open dynamic library '%s' without first closing '%s'\n",
+    logging::debug("Cannot open dynamic library '%s' without first closing '%s'",
                    filename.c_str(), _filename.c_str());
     return -1;
   }
@@ -22,7 +22,7 @@ int Pds::Dl::open(const std::string& filename, int flag)
   _handle = dlopen(_filename.c_str(), flag);
   if (!_handle)
   {
-    logging::debug("Cannot open dynamic library '%s':\n  %s\n",
+    logging::debug("Failed to open dynamic library '%s':\n  %s",
                    _filename.c_str(), dlerror());
     return -1;
   }
@@ -38,7 +38,7 @@ void* Pds::Dl::loadSymbol(const std::string& name) const
   const char *error  = dlerror();
   if (error)
   {
-    logging::debug("Cannot load symbol '%s' from '%s':\n  %s\n",
+    logging::debug("Failed to load symbol '%s' from '%s':\n  %s",
                    name.c_str(), _filename.c_str(), error);
     return nullptr;
   }
