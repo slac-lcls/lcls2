@@ -31,13 +31,13 @@ Pds::createExposer(const std::string& prometheusDir,
     unsigned port;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
-            port = PROM_PORT_BASE + (i + portOffset)%MAX_PROM_PORTS;
+            port = PROM_PORT_BASE + (i /*+ portOffset*/)%MAX_PROM_PORTS;
 
             // An exception will be thrown if the port is in use
             exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
 
             // Write the file only when the port is available
-            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i+portOffset) + ".yaml";
+            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i/*+portOffset*/) + ".yaml";
             // Commented out the existing file check so that the file's date is refreshed
             //struct stat buf;
             //if (stat(fileName.c_str(), &buf) != 0) {
