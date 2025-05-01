@@ -32,7 +32,12 @@ Pds::createExposer(const std::string& prometheusDir,
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
             port = PROM_PORT_BASE + (i + portOffset)%MAX_PROM_PORTS;
-            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
+
+            // An exception will be thrown if the port is in use
+            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
+
+            // Write the file only when the port is available
+            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i+portOffset) + ".yaml";
             // Commented out the existing file check so that the file's date is refreshed
             //struct stat buf;
             //if (stat(fileName.c_str(), &buf) != 0) {
@@ -44,14 +49,12 @@ Pds::createExposer(const std::string& prometheusDir,
                 } else {
                     // %m will be replaced by the string strerror(errno)
                     logging::debug("Error creating file %s: %m", fileName.c_str());
+                    exposer.reset();
+                    continue;           // Try another port
                 }
             //} else {
             //    // File already exists; no need to rewrite it
-            //    // @todo: Perhaps 'touch' the file to refresh its date here
-            //    // so that we can see which ones are old and likely stale?
             //}
-
-            exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
             break;
         }
         catch(const std::runtime_error& e) {
