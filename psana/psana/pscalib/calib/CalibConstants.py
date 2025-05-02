@@ -36,6 +36,8 @@ import getpass
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
 URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
 URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
+#URL     = 'https://psdmint.sdf.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
+#URL_KRB = 'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
 HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
 PORT = 9307
 USERLOGIN = getpass.getuser()

@@ -128,6 +128,8 @@ if 'PSDAQ' in BUILD_LIST :
             'epixhr_r0acq_scan = psdaq.cas.epixhr_r0acq_scan:main',
             'epixquad_chargeinj_scan = psdaq.cas.epixquad_chargeinj_scan:main',
             'epixquad_pedestal_scan = psdaq.cas.epixquad_pedestal_scan:main',
+            'epixuhr_chargeinj_scan = psdaq.cas.epixuhr_chargeinj_scan:main',
+            'epixuhr_pedestal_scan = psdaq.cas.epixuhr_pedestal_scan:main',
             'seq_epixhr = psdaq.seq.seq_epixhr:main',
             'generic_timing_scan = psdaq.cas.generic_timing_scan:main',
             'getrun = psdaq.control.getrun:main',

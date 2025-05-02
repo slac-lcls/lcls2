@@ -16,10 +16,7 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         #self._segment_numbers = (0,3,4,5,6,8,9)
         #print('XXX self._segment_numbers', self._segment_numbers)
         segnum_max = max(self._segment_numbers)
-        nsegs = 1 if segnum_max<1 else\
-                2 if segnum_max<2 else\
-                8 if segnum_max<8 else\
-                32
+        nsegs = uj.jungfrau_segments_tot(segnum_max) # 1,2,8, or 32
         sMpix = {1:'05M', 2:'1M', 8:'4M', 32:'16M'}.get(nsegs, 32)
 
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix

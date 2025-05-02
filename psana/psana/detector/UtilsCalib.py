@@ -40,13 +40,13 @@ def selected_record(i, events):
 def dic_ctype_fmt(**kwargs):
     return {'pedestals'   : kwargs.get('fmt_peds',   '%.3f'),
             'pixel_rms'   : kwargs.get('fmt_rms',    '%.3f'),
-            'pixel_max'   : kwargs.get('fmt_max',    '%i'),
-            'pixel_min'   : kwargs.get('fmt_min',    '%i'),
-            'pixel_mask'  : kwargs.get('fmt_mask',   '%2i'),
+            'pixel_max'   : kwargs.get('fmt_max',    '%d'),
+            'pixel_min'   : kwargs.get('fmt_min',    '%d'),
+            'pixel_mask'  : kwargs.get('fmt_mask',   '%2d'),
             'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
             'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
-            'pixel_status': kwargs.get('fmt_status', '%4i'),
-            'status_extra': kwargs.get('fmt_status', '%4i')}
+            'pixel_status': kwargs.get('fmt_status', '%d'),
+            'status_extra': kwargs.get('fmt_status', '%d')}
 
 
 def info_pixel_status(status, bits=(1<<64)-1):

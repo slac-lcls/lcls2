@@ -1,5 +1,4 @@
 from psdaq.cas.config_scan_base import ConfigScanBase
-from psdaq.configdb.epixm320_config import gain_mode_value
 import numpy as np
 import json
 import logging
@@ -78,7 +77,7 @@ def main():
             gain_modes=[args.gain_modes]
             
         step = 0
-                                                                                    
+                                                                                   
         # if args.cross:
         #     pathPll = '/tmp/'
         #     d[f'{args.detname}:user.Gain.UsePixelMap']            = 1
@@ -116,20 +115,20 @@ def main():
         for gain_mode in gain_modes:
             gain_mode=gain_mode.strip()
             print(f"gain mode: {gain_mode}")
-            args.events = (gains_dict[gain_mode]['stop'])/gains_dict[gain_mode]['step']
-            args.pulserStart=gains_dict[gain_mode]['start']
-            args.pulserStop=gains_dict[gain_mode]['stop']
-            args.pulserStep=gains_dict[gain_mode]['step']
-            print(f'Start:{args.pulserStart}, Stop:{args.pulserStop}, Step:{args.pulserStep}')
-            d[f'{args.detname}:user.App.VINJ_DAC.dacStartValue']  = args.pulserStart
-            d[f'{args.detname}:user.App.VINJ_DAC.dacStopValue']   = args.pulserStop
-            d[f'{args.detname}:user.App.VINJ_DAC.dacStepValue']   = args.pulserStep
+            events = (gains_dict[gain_mode]['stop'])/gains_dict[gain_mode]['step']
+            pulserStart=gains_dict[gain_mode]['start']
+            pulserStop=gains_dict[gain_mode]['stop']
+            pulserStep=gains_dict[gain_mode]['step']
+            print(f'Start:{pulserStart}, Stop:{pulserStop}, Step:{pulserStep}')
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStartValue']  = pulserStart
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStopValue']   = pulserStop
+            d[f'{args.detname}:user.App.VINJ_DAC.dacStepValue']   = pulserStep
             
             metad['gain_mode'] = gain_mode
             d[f'{args.detname}:user.Gain.SetGainValue']           = gains_dict[gain_mode]['level']
             print(gains_dict[gain_mode]['level'])
             metad['step'] = step
-            metad['events']=args.events
+            metad['events']=events
             yield (d, float(step), json.dumps(metad))
             step += 1
 

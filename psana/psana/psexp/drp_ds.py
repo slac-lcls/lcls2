@@ -81,14 +81,15 @@ class DrpDataSource(DataSourceBase):
         if self._is_supervisor:
             if self._is_publisher:
                 super()._setup_run_calibconst()
-                zdata = self._tcp_pub_socket.send(self.dsparms.calibconst)
-                self._ipc_pub_socket.sendz(zdata)
+                self._tcp_pub_socket.send(self.dsparms.calibconst)
+                # This is for drp_python
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
             else:
                 self.dsparms.calibconst = self._ipc_sub_socket.recv()
         else:
             if self._is_publisher:
-                zdata, self.dsparms.calibconst = self._tcp_sub_socket.recvz()
-                self._ipc_pub_socket.sendz(zdata)
+                self.dsparms.calibconst = self._tcp_sub_socket.recv()
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
             else:
                 self.dsparms.calibconst = self._ipc_sub_socket.recv()
 

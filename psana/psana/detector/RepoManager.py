@@ -280,13 +280,22 @@ def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
 def init_repoman_and_logger(**kwa):
     from psana.detector.UtilsLogging import init_logger, init_stream_handler, init_file_handler
 
-    logsuffix   = kwa.get('logsuffix', '%s_%s' % (SCRNAME, ut.get_login()))  # getpass.getuser()))
+    #print('XXX kwa:\n', ut.info_dict(kwa))
+
+    logsuffix_def = '%s_%s' % (SCRNAME, ut.get_login())
+    stepnum     = kwa.get('stepnum', None)
+    segind      = kwa.get('segind', None)
+    idx         = kwa.get('idx', None)
+    if stepnum is not None: logsuffix_def += '_step%d' % stepnum
+    if idx     is not None: logsuffix_def += '_seg%0d' % idx
+    logsuffix   = kwa.get('logsuffix', logsuffix_def)
     savelogfile = kwa.get('savelogfile', True)
     parser      = kwa.get('parser', None)
     logmode     = kwa.get('logmode', 'INFO')
     group       = kwa.get('group', 'ps-users')
     fmt         = kwa.get('fmt', '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s')
     dirrepo     = kwa.get('dirrepo', 'work')
+    #print('XXX logsuffix', logsuffix)
 
     repoman = RepoManager(**kwa)
 

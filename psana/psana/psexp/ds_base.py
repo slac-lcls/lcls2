@@ -650,7 +650,8 @@ class DataSourceBase(abc.ABC):
         if not runinfo:
             return
         expt, runnum, _ = runinfo
-
+        logger.debug("[SHMEM-DEBUG] DataSource _setup_run_calibconst called")
+        logger.debug(f"[SHMEM-DEBUG]    DataSource expt={expt} runnum={runnum}")
         self.dsparms.calibconst = {}
         for det_name, configinfo in self.dsparms.configinfo_dict.items():
             if expt:
@@ -663,9 +664,13 @@ class DataSourceBase(abc.ABC):
                 if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
                     self.dsparms.calibconst[det_name] = None
                     continue
+                st = time.monotonic()
                 calib_const = wu.calib_constants_all_types(
                     det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                 )
+                en = time.monotonic()
+                logger.debug(f"[SHMEM-DEBUG]    DataSource received calibconst for {det_name} in {en-st:.4f}s.")
+
                 self.dsparms.calibconst[det_name] = calib_const
             else:
                 logger.info(
