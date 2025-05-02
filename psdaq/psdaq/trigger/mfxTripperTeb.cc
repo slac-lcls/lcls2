@@ -42,7 +42,8 @@ namespace Pds {
         chid m_npixId; ///< Maximum number of hot pixels
         chid m_npix_overId; ///< Number of hot pixels found
         std::string m_tripperPV;
-        bool m_tripped;
+        bool m_tripped {false};
+        ca_client_context* m_context;
     };
     };
 };
@@ -58,10 +59,10 @@ int Pds::Trg::MfxTripperTrigger::configure(const json&              connectMsg,
         std::cout << "Using tripper base PV: " << m_tripperPV << std::endl;
     } else {
         std::cout << "Configuration requires tripBasePV to work! Check configdb!" << std::endl;
-        rc = 1;
+        return 1;
     }
     SEVCHK(ca_context_create(ca_enable_preemptive_callback), "ca_context_create failed!");
-
+    m_context = ca_current_context();
     int status;
     chid block;
     std::string fullBlockPV = m_tripperPV + ":BLOCK";
@@ -103,9 +104,14 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
     bool wrt {true};
     bool mon {true};
 
-    uint16_t hotPixelThresh {0};
+    uint32_t hotPixelThresh {0};
     uint32_t hotPixelCnt {0};
     uint32_t maxHotPixels {0};
+    bool foundJungfrau {false};
+
+    if (ca_current_context() == NULL) {
+        ca_attach_context(m_context);
+    }
 
     // Accumulate each contribution's input into some sort of overall summary
     do {
@@ -114,19 +120,21 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
             hotPixelCnt += data->numHotPixels;
             maxHotPixels = data->maxHotPixels;
             hotPixelThresh = data->hotPixelThresh;
+            foundJungfrau = true;
         }
     } while (++ctrb != end);
 
-    if (hotPixelCnt > maxHotPixels) {
-        m_tripped = true;
-        std::cout << "Tripped: " << hotPixelCnt << ", " << maxHotPixels
-                  << ", " << hotPixelThresh << std::endl;
+    if (foundJungfrau) {
+        if (hotPixelCnt > maxHotPixels) {
+            m_tripped = true;
+            std::cout << "Tripped: " << hotPixelCnt << ", " << maxHotPixels << ", "
+                      << hotPixelThresh << std::endl;
+        }
+        SEVCHK(ca_put(DBR_LONG, m_aduId, &hotPixelThresh), "Put to tripper :ADU PV failed!");
+        SEVCHK(ca_put(DBR_LONG, m_npixId, &maxHotPixels), "Put to tripper :NPIX PV failed!");
+        SEVCHK(ca_put(DBR_LONG, m_npix_overId, &hotPixelCnt), "Put to tripper :NPIX_OT PV failed!");
+        ca_flush_io();
     }
-
-    SEVCHK(ca_put(DBR_LONG, m_aduId, &hotPixelThresh), "Put to tripper :ADU PV failed!");
-    SEVCHK(ca_put(DBR_LONG, m_npixId, &maxHotPixels), "Put to tripper :NPIX PV failed!");
-    SEVCHK(ca_put(DBR_LONG, m_npix_overId, &hotPixelCnt), "Put to tripper :NPIX_OT PV failed!");
-    ca_flush_io();
 
     if (m_tripped) {
         long enable = 1;

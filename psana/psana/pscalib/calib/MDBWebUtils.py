@@ -335,7 +335,13 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     #logger.debug('add_data byte-data:',d)
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
     logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
-    id = resp.json().get('_id',None)
+    try:
+        id = resp.json().get('_id',None)
+    #except json.decoder.JSONDecodeError as e:
+    except Exception as e:
+        logger.warning('JSONDecodeError: %s' % str(e))
+        return None
+
     if id is None: logger.warning('id_data is None')
     return id
 

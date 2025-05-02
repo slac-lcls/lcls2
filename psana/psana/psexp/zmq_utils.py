@@ -1,10 +1,7 @@
-import pickle
-import zlib
 
 import zmq
 
 client_socket = None
-
 
 def zmq_send(**kwargs):
     global client_socket
@@ -23,31 +20,11 @@ class ZMQSocket:
     def __init__(self, zmq_socket):
         self.socket = zmq_socket
 
-    def send_zipped_pickle(self, obj, flags=0, protocol=-1):
-        """pickle an object, and zip the pickle before sending it"""
-        p = pickle.dumps(obj, protocol)
-        z = zlib.compress(p)
-        self.socket.send(z, flags=flags)
-        return z
-
-    def recv_zipped_pickle(self, flags=0, protocol=-1):
-        """unzip and unpickle received data"""
-        z = self.socket.recv(flags)
-        p = zlib.decompress(z)
-        return z, pickle.loads(p)
-
     def send(self, data):
-        return self.send_zipped_pickle(data)
-
-    def sendz(self, zdata, flags=0):
-        self.socket.send(zdata, flags=flags)
+        self.socket.send_pyobj(data)
 
     def recv(self):
-        return self.recvz()[1]
-
-    def recvz(self):
-        z, data = self.recv_zipped_pickle()
-        return z, data
+        return self.socket.recv_pyobj()
 
 
 class PubSocket(ZMQSocket):

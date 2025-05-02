@@ -52,7 +52,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-03-05'
+    d_version = 'V2025-04-30'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
@@ -68,7 +68,7 @@ def argument_parser():
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_detname = 'detector name, default = %s' % d_detname
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
-    h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
+    h_idx     = 'segment index (0-31 for jungfrau) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
@@ -96,7 +96,7 @@ def argument_parser():
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
                 'code inverts selection, default = %s'%str(d_evcode)
-    h_segind  = 'segment index to process, default = %s' % str(d_segind)
+    h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')

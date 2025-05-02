@@ -170,8 +170,6 @@ static void sigHandler(int signal)
 Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     BEBDetector(para, pool)
 {
-    _init(para->kwargs["epics_prefix"].c_str());
-
     if (para->kwargs.find("timebase")!=para->kwargs.end() &&
         para->kwargs["timebase"]==std::string("119M")) {
         m_debatch = true;
@@ -221,7 +219,7 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     virtChan = 0; // Set correct virtual channel to read from.
     m_para->serNo = std::string(""); // Will fill in during connect
 
-    // try connecting to the jungfrau modules
+    // try connecting to the jungfrau modules and stop acquisition if needed
     try {
         // shm_id must be unique per machine constructing it from the card num + lane mask should work
         unsigned shm_id = calc_shm_id(para->device, para->laneMask);
@@ -245,6 +243,10 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
         logging::critical("Failed to initialize the Jungfrau control interface: %s", err.what());
         abort();
     }
+
+    // call rogue and fpga initialization after the modules are in a known good state
+    // if the modules are acquiring and sending packets during this it causes odd behavior
+    _init(para->kwargs["epics_prefix"].c_str());
 
     // register signal handler to cleanup on exit
     jungfrau = this;
@@ -349,12 +351,14 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
 
         // Loop over the modules we have, extracting the same names for each one
         for (size_t mod=0; mod < m_nModules; ++mod) {
+             logging::info("Configuring module %zu - [segment: %u, hostname: %s]",
+                           mod, m_segNos[mod], m_slsHosts[mod].c_str());
             sls::Positions pos{static_cast<int>(mod)};
             XtcData::ShapesData& shape = configo.getShape(mod);
             XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
             // check if the chip is powered on
             if (!m_slsDet->getPowerChip(pos).squash()) {
-                logging::info("Powering on chip for module %d", mod);
+                logging::info("Powering on chip for module %zu", mod);
                 m_slsDet->setPowerChip(true, pos);
             }
             for (size_t i=0; i < configNames.num(); ++i) {
@@ -499,7 +503,7 @@ uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThresh
     for (size_t i=0; i<numPixels; ++i) {
         uint16_t value = rawData[i];
         if (((value & gain_bits) == gain_bits) &&
-            ((value & data_bits) > hotPixelThreshold)) {
+            ((data_bits - (value & data_bits)) > hotPixelThreshold)) {
             numHotPixels++;
         }
     }
@@ -525,16 +529,19 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
 
         uint64_t framenum = 0;
         uint64_t timestamp = 0;
+        unsigned segNo = m_segNos[moduleIdx];
+        const char* slsHost = m_slsHosts[moduleIdx].c_str();
+        XtcData::Data& dataXtc = cd.shapesdata().data();
         XtcData::Array<uint16_t> frame = cd.allocate<uint16_t>(JungfrauDef::raw, rawShape);
         // validate the number of packets
         if (subframesUdp.size() < JungfrauData::PacketNum) {
-            logging::error("Missing data: subframe[%u] contains %zu packets [%zu]",
-                           subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
-            xtc.damage.increase(XtcData::Damage::MissingData);
+            logging::error("Missing data: lane-seg-host[%zu-%u-%s] contains %zu packets [%zu]",
+                           moduleIdx, segNo, slsHost, subframesUdp.size(), JungfrauData::PacketNum);
+            dataXtc.damage.increase(XtcData::Damage::MissingData);
         } else if (subframesUdp.size() > JungfrauData::PacketNum) {
-            logging::error("Extra data: subframe[%u] contains %zu packets [%zu]",
-                           subframeIdx, subframesUdp.size(), JungfrauData::PacketNum);
-            xtc.damage.increase(XtcData::Damage::Truncated);
+            logging::error("Extra data: lane-seg-host[%zu-%u-%s] contains %zu packets [%zu]",
+                           moduleIdx, segNo, slsHost, subframesUdp.size(), JungfrauData::PacketNum);
+            dataXtc.damage.increase(XtcData::Damage::Truncated);
         } else {
             unsigned numOutOfOrderPackets = 0;
             uint64_t packetCounter[] = {0xfffffffffffffffful, 0xfffffffffffffffful};
@@ -542,9 +549,9 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
             for (uint32_t udpIdx=0; udpIdx < subframesUdp.size(); udpIdx++) {
                 // validate the packet size
                 if (subframesUdp[udpIdx].num_elem() != JungfrauData::PacketSize) {
-                    logging::error("Corrupted data: subframe[%u] packet[%u] unexpected size %lu [%zu]",
-                                   subframeIdx, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
-                    xtc.damage.increase(XtcData::Damage::Corrupted);
+                    logging::error("Corrupted data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected size %lu [%zu]",
+                                   moduleIdx, segNo, slsHost, udpIdx, subframesUdp[udpIdx].num_elem(), JungfrauData::PacketSize);
+                    dataXtc.damage.increase(XtcData::Damage::Corrupted);
                     break;
                 }
                 JungfrauData::JungfrauPacket* packet = reinterpret_cast<JungfrauData::JungfrauPacket*>(subframesUdp[udpIdx].data());
@@ -554,16 +561,16 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                     timestamp = packet->header.timestamp;
                 } else {
                     if (packet->header.framenum != framenum) {
-                        logging::error("Out-of-Order data: subframe[%u] packet[%u] unexpected framenum %lu [%lu]",
-                                       subframeIdx, udpIdx, packet->header.framenum, framenum);
-                        xtc.damage.increase(XtcData::Damage::OutOfOrder);
+                        logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected framenum %lu [%lu]",
+                                       moduleIdx, segNo, slsHost, udpIdx, packet->header.framenum, framenum);
+                        dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
                         break;
                     }
                     // this should not happen so if it does the data in the packet is corrupted...
                     if (packet->header.timestamp != timestamp) {
-                        logging::error("Corrupted data: subframe[%u] packet[%u] unexpected timestamp %lu [%lu]",
-                                       subframeIdx, udpIdx, packet->header.timestamp, timestamp);
-                        xtc.damage.increase(XtcData::Damage::Corrupted);
+                        logging::error("Corrupted data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected timestamp %lu [%lu]",
+                                       moduleIdx, segNo, slsHost, udpIdx, packet->header.timestamp, timestamp);
+                        dataXtc.damage.increase(XtcData::Damage::Corrupted);
                         break;
                     }
                 }
@@ -571,11 +578,11 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                 if (packet->header.packetnum != udpIdx) {
                     if (packet->header.packetnum < JungfrauData::PacketNum) {
                         numOutOfOrderPackets++;
-                        logging::debug("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packetnum %u [%u]",
-                                       subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                        logging::debug("Out-of-Order data: lane-seg-host[%zu-%u-%s] framenum[%lu] unexpected packetnum %u [%u]",
+                                       moduleIdx, segNo, slsHost, packet->header.framenum, packet->header.packetnum, udpIdx);
                     } else {
-                        logging::warning("Corrupted data: subframe[%u] framenum[%lu] invalid packetnum %u [%u]",
-                                         subframeIdx, packet->header.framenum, packet->header.packetnum, udpIdx);
+                        logging::warning("Corrupted data: lane-seg-host[%zu-%u-%s] framenum[%lu] invalid packetnum %u [%u]",
+                                         moduleIdx, segNo, slsHost, packet->header.framenum, packet->header.packetnum, udpIdx);
                         // don't copy the invalid packet payload but not flag damage since this may just be an 'extra' packet
                         continue;
                     }
@@ -592,23 +599,25 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
 
             // check if packets came out of the expected order
             if (numOutOfOrderPackets > 0) {
-                logging::warning("Out-of-Order data: subframe[%u] framenum[%lu] unexpected packet order",
-                                 subframeIdx, framenum);
+                logging::warning("Out-of-Order data: lane-seg-host[%zu-%u-%s] framenum[%lu] unexpected packet order",
+                                 moduleIdx, segNo, slsHost, framenum);
             }
 
             // check that all the expected packets for the frame were seen
             if ((packetCounter[1] != 0) || (packetCounter[0] != 0)) {
-                logging::error("Missing data: subframe[%u] framenum[%lu] is missing at least one packet %016lx%016lx",
-                               subframeIdx, framenum, packetCounter[1], packetCounter[0]);
-                xtc.damage.increase(XtcData::Damage::MissingData);
+                logging::error("Missing data: lane-seg-host[%zu-%u-%s] framenum[%lu] is missing at least one packet %016lx%016lx",
+                               moduleIdx, segNo, slsHost, framenum, packetCounter[1], packetCounter[0]);
+                dataXtc.damage.increase(XtcData::Damage::MissingData);
             }
         }
 
         // check the framenum is the expected value
         if (framenum != m_expectedFrameNum) {
-          logging::error("Out-of-Order data: subframe[%u] unexpected frame num %lu [%lu] -> diff %lu",
-                         subframeIdx, framenum, m_expectedFrameNum, framenum - m_expectedFrameNum);
-          xtc.damage.increase(XtcData::Damage::OutOfOrder);
+          logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %lu",
+                         moduleIdx, segNo, slsHost,
+                         framenum, m_expectedFrameNum,
+                         framenum - m_expectedFrameNum);
+          dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
 
         uint32_t numHotPixels = _countNumHotPixels(frame.data(),
@@ -619,6 +628,9 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         cd.set_value(JungfrauDef::hotPixelThresh, m_hotPixelThreshold);
         cd.set_value(JungfrauDef::numHotPixels, numHotPixels);
         cd.set_value(JungfrauDef::maxHotPixels, m_maxHotPixels);
+
+        // Add the damage from this module to the parent Xtc
+        xtc.damage.increase(dataXtc.damage.value());
     }
 
     m_expectedFrameNum++;

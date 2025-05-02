@@ -199,11 +199,11 @@ def jungfrau_dark_proc(parser):
     filemode = kwargs.get('filemode', 0o664)
     group    = kwargs.get('group', 'ps-users')
 
-    ecm = False
-    if evcode is not None:
-        from Detnameector.EventCodeManager import EventCodeManager
-        ecm = EventCodeManager(evcode, verbos=0)
-        logger.info('requested event-code list %s' % str(ecm.event_code_list()))
+    #ecm = False
+    #if evcode is not None:
+    #    from Detnameector.EventCodeManager import EventCodeManager
+    #    ecm = EventCodeManager(evcode, verbos=0)
+    #    logger.info('requested event-code list %s' % str(ecm.event_code_list()))
 
     s = 'DIC_GAIN_MODE {<name> : <number>}'
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
@@ -326,11 +326,10 @@ def jungfrau_dark_proc(parser):
                     terminate_runs = True
                     break
 
-                if ecm:
-                  if not ecm.select(evt):
-                    print('    skip event %d due to --evcode=%s selected %d ' % (ievt, evcode, nevsel), end='\r')
-                    continue
-                  #else: print()
+                #if ecm:
+                #  if not ecm.select(evt):
+                #    print('    skip event %d due to --evcode=%s selected %d ' % (ievt, evcode, nevsel), end='\r')
+                #    continue
 
                 raw = odet.raw.raw(evt)
                 if raw is None:
@@ -338,7 +337,7 @@ def jungfrau_dark_proc(parser):
                     nnones =+ 1
                     continue
 
-                raw = (raw if segind is None else raw[segind,:]) # NO & M14 herte
+                raw = (raw if segind is None else raw[segind,:]) # NO & M14 here
 
                 nevsel += 1
 
@@ -349,9 +348,9 @@ def jungfrau_dark_proc(parser):
                     #print()
                     ss = 'run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
                          (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
-                    if ecm:
-                       print()
-                       ss += ' event codes: %s' % str(ecm.event_codes(evt))
+                    #if ecm:
+                    #   print()
+                    #   ss += ' event codes: %s' % str(ecm.event_codes(evt))
                     logger.info(ss)
                 #else: print(ss, end='\r')
 
@@ -373,10 +372,10 @@ def jungfrau_dark_proc(parser):
             logger.info(ss)
 
 
-            if ecm:
-                logger.info('continue to accumulate statistics, due to --evcode=%s' % evcode)
-            else:
-                logger.info('reset statistics for next step')
+            #if ecm:
+            #    logger.info('continue to accumulate statistics, due to --evcode=%s' % evcode)
+            #else:
+            #    logger.info('reset statistics for next step')
 
             save_results(dpo, orun, odet, **kwargs)
             dpo=None
@@ -522,6 +521,9 @@ def check_exists(path, errskip, msg):
 
 
 def jungfrau_deploy_constants(parser):
+
+    import psana.detector.UtilsJungfrau as uj
+
     args = parser.parse_args() # namespae of parameters
     kwargs = vars(args) # dict of parameters
 
@@ -618,7 +620,9 @@ def jungfrau_deploy_constants(parser):
         nda_def = np.zeros((3,1,)+shape_seg, dtype=vtype) # np.float32) # (3,1,512,1024)
 
         indmax = max(list(dic_cons.keys()))
-        nsegs = indmax+1 if nsegstot is None else nsegstot
+        nsegs = uj.jungfrau_segments_tot(indmax) if nsegstot is None else nsegstot
+        #nsegs = indmax+1 if nsegstot is None else nsegstot   # 1,2,8, or 32
+
         lst_cons = [(dic_cons[i] if i in dic_cons.keys() else nda_def) for i in range(nsegs)]
 
         dmerge = repoman.makedir_merge()

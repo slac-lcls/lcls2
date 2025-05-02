@@ -820,6 +820,21 @@ def issue_2025_04_23(DO_WITH_PUBLISH=True):
             publish.send('image',imgsend)
             input("hit cr")
 
+def issue_2025_04_29():
+    """
+       datinfo -k exp=mfx101332224,run=204 -d jungfrau
+       shape:(19, 512, 1024)
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=204)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    for nevt,evt in enumerate(myrun.events()):
+        print(det.raw.image(evt).shape)
+        break
+
+
+
 #===
     
 #===
@@ -877,6 +892,7 @@ def selector():
     elif TNAME in ('19',): issue_2025_04_21() # me - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
     elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
     elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
+    elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
