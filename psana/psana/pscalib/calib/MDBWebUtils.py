@@ -728,7 +728,8 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     logger.debug('valid_post_privilege ws_url: %s'% ws_url)
 
     try:
-        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(url_krb).hostname).getAuthHeaders()
+        #krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(cc.URL_OLD).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
         logger.warning('KerberosTicket error: %s' % str(err))
         logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')
