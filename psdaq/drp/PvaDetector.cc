@@ -161,6 +161,7 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     m_type                  (type),
     m_nelem                 (nelem),
     m_rank                  (rank),
+    m_payloadSize           (0),
     m_firstDimOverride      (firstDim),
     m_alias                 (alias),
     m_running               (running),
@@ -1224,6 +1225,17 @@ void PvApp::handlePhase1(const json& msg)
             _unconfigure();
         }
 
+        // Configure the detector first
+        std::string config_alias = msg["body"]["config_alias"];
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+        if (error) {
+            std::string errorMsg = "Failed transition phase 1";
+            logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
+        }
+
+        // Next, configure the DRP
         std::string errorMsg = m_drp->configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
@@ -1235,15 +1247,6 @@ void PvApp::handlePhase1(const json& msg)
         // Provide EbReceiver with the Detector interface so that additional
         // data blocks can be formatted into the XTC, e.g. trigger information
         m_drp->ebReceiver().configure(m_det.get(), m_drp->pgp());
-
-        std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-        if (error) {
-            std::string errorMsg = "Failed transition phase 1";
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
-        }
 
         m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
         m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());

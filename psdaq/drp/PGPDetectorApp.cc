@@ -512,30 +512,32 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             }
         }
 
-        std::string errorMsg = m_drp->configure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
+        // Configure the detector first
+        std::string config_alias = msg["body"]["config_alias"];
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+        if (!error) {
+            json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+            if (!scan.empty())
+                error = m_det->configureScan(scan, xtc, bufEnd);
+        }
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::configure()";
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            // Provide EbReceiver with the Detector interface so that additional
-            // data blocks can be formatted into the XTC, e.g. trigger information
-            m_drp->ebReceiver().configure(m_det, m_drp->pgp());
-
-            std::string config_alias = msg["body"]["config_alias"];
-            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-            if (!error) {
-                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-                if (!scan.empty())
-                    error = m_det->configureScan(scan, xtc, bufEnd);
-            }
-            if (error) {
-                std::string errorMsg = "Phase 1 error in Detector::configure()";
+            // Next, configure the DRP
+            std::string errorMsg = m_drp->configure(msg);
+            if (!errorMsg.empty()) {
+                errorMsg = "Phase 1 error: " + errorMsg;
                 body["err_info"] = errorMsg;
                 logging::error("%s", errorMsg.c_str());
             }
             else {
+                // Provide EbReceiver with the Detector interface so that additional
+                // data blocks can be formatted into the XTC, e.g. trigger information
+                m_drp->ebReceiver().configure(m_det, m_drp->pgp());
+
                 m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
                 m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
             }
