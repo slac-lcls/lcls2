@@ -1,5 +1,4 @@
 from psdaq.cas.config_scan_base import ConfigScanBase
-from psdaq.configdb.epixm320_config import gain_mode_value
 import json
 
 def main():
