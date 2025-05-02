@@ -2295,6 +2295,7 @@ class CollectionManager():
     def condition_enable(self):
         # readout_count and group_mask are optional
         group_mask    = self.group_mask
+        readout_count = self.readout_count
         try:
             #group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
@@ -2309,10 +2310,10 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        if (self.readout_count > 0):
+        if (readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
-            self.readoutCumulative[self.step_group] += self.readout_count
+            self.readoutCumulative[self.step_group] += readout_count
             self.xpm.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
         # phase 2
