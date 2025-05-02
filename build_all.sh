@@ -123,7 +123,7 @@ if [ $no_ana == 0 ]; then
     # setup.py is unable to detect if an external header file changed
     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
     if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
+        python setup.py build_ext --inplace
     fi
     pip install --no-deps --prefix=$INSTDIR $pipOptions .
 fi
