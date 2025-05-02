@@ -38,23 +38,18 @@ Pds::createExposer(const std::string& prometheusDir,
 
             // Write the file only when the port is available
             std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i+portOffset) + ".yaml";
-            // Commented out the existing file check so that the file's date is refreshed
-            //struct stat buf;
-            //if (stat(fileName.c_str(), &buf) != 0) {
-                FILE* file = fopen(fileName.c_str(), "w");
-                if (file) {
-                    logging::debug("Writing %s\n", fileName.c_str());
-                    fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
-                    fclose(file);
-                } else {
-                    // %m will be replaced by the string strerror(errno)
-                    logging::debug("Error creating file %s: %m", fileName.c_str());
-                    exposer.reset();
-                    continue;           // Try another port
-                }
-            //} else {
-            //    // File already exists; no need to rewrite it
-            //}
+            // Even when the file exists, write it so that the its date is refreshed
+            FILE* file = fopen(fileName.c_str(), "w");
+            if (file) {
+                logging::debug("Writing %s\n", fileName.c_str());
+                fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                fclose(file);
+            } else {
+                // %m will be replaced by the string strerror(errno)
+                logging::debug("Error creating file %s: %m", fileName.c_str());
+                exposer.reset();
+                continue;           // Try another port
+            }
             break;
         }
         catch(const std::runtime_error& e) {
