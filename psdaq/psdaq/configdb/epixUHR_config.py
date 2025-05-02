@@ -3,11 +3,9 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.det_config import *
 from psdaq.cas.xpm_utils import timTxId
-#from .xpmmini import *
 import pyrogue as pr
 import rogue
 import rogue.hardware.axi
-import pyrogue.protocols
 
 from psdaq.utils import enable_epix_uhr_gtreadout_dev
 import epix_uhr_gtreadout_dev as epixUhrDev
@@ -17,18 +15,14 @@ import time
 import json
 import os
 import numpy as np
-import IPython
-import datetime
 import logging
 import copy # deepcopy
-#import psdaq.configdb.EpixUHRBoard as EpixUHRBoard
-import functools
 
 rogue.Version.minVersion('6.1.0')
 
 base = None
 pv = None
-#lane = 0  # An element consumes all 4 lanes
+
 chan = None
 group = None
 origcfg = None
@@ -37,10 +31,10 @@ segids = None
 seglist = [0,1]
 asics = None
 
-nColumns = 384
-
 #  Timing delay scans can be limited by this
-EventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
+eventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
+
+#Sorting for writing yml files in order
 def sorting_dict(asics):
     sortdict={}
         
@@ -93,6 +87,7 @@ def sorting_dict(asics):
                                         "PgpTrigEn"] 
     return sortdict
     
+#Used to determine if cofiguration has changed
 def _dict_compare(d1,d2,path):
     for k in d1.keys():
         if k in d2.keys():
@@ -115,135 +110,129 @@ def sanitize_config(src):
         dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
     return dst
 
-def setSaci(reg,field,di):
-    if field in di:
-        v = di[field]
-        reg.set(v)
-
-def gain_mode_map(gain_mode):
-    compTH        = ( 0, 44, 24)[gain_mode] # SoftHigh/SoftLow/Auto
-    precharge_DAC = (45, 45, 45)[gain_mode]
-    return (compTH, precharge_DAC)
-
-def cbase_ASIC_init(cbase, asics):
+#Initialization of each ASIC after getting configdb data, because we need to know which ASIC to init
+def panel_ASIC_init(detectorRoot, asics):
     for asic in asics:
         
-        wdet(getattr(cbase.App,f'Asic{asic}').enable,                True)			  	
-        wdet(getattr(cbase.App,f'Asic{asic}').TpsDacGain,            1)						
-        wdet(getattr(cbase.App,f'Asic{asic}').TpsDac,                34)						
-        wdet(getattr(cbase.App,f'Asic{asic}').TpsGr,                 12)						
-        wdet(getattr(cbase.App,f'Asic{asic}').TpsMux,                0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasTpsBuffer,         5)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasTps,               4)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasTpsDac,            4)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVthr,               52)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasDac,               4)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrCtrlDacTps,         3)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrCtrlDacComp,        0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVthrGain,           2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').PpbitBe,               1)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasPxlCsa,            0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasPxlBuf,            0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasAdcComp,           0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BiasAdcRef,            0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').CmlRxBias,             3)						
-        wdet(getattr(cbase.App,f'Asic{asic}').CmlTxBias,             3)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVfiltGain,          2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVfilt,              28)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVrefCdsGain,        2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVrefCds,            44)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVprechGain,         2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacVprech,             34)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrCtrlDacFilt,        2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrCtrlDacAdcRef,      2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrCtrlDacPrechCds,    2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrfCtrlDacAll,        2)						
-        wdet(getattr(cbase.App,f'Asic{asic}').BgrDisable,            0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefpGain,       3)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefp,           53)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefnGain,       0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefn,           12)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefCmGain,      1)						
-        wdet(getattr(cbase.App,f'Asic{asic}').DacAdcVrefCm,          45)						
-        wdet(getattr(cbase.App,f'Asic{asic}').AdcCalibEn,            0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').CompEnGenEn,           1)						
-        wdet(getattr(cbase.App,f'Asic{asic}').CompEnGenCfg,          5)						
-        wdet(getattr(cbase.App,f'Asic{asic}').CfgAutoflush,          0)						
-        wdet(getattr(cbase.App,f'Asic{asic}').ExternalFlushN,        1)						
-        wdet(getattr(cbase.App,f'Asic{asic}').ClusterDvMask,         16383)					
-        wdet(getattr(cbase.App,f'Asic{asic}').PixNumModeEn,          0)
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').enable,                True)			  	
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsDacGain,            1)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsDac,                34)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsGr,                 12)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsMux,                0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTpsBuffer,         5)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTps,               4)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTpsDac,            4)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVthr,               52)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasDac,               4)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacTps,         3)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacComp,        0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVthrGain,           2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').PpbitBe,               1)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasPxlCsa,            0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasPxlBuf,            0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasAdcComp,           0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasAdcRef,            0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CmlRxBias,             3)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CmlTxBias,             3)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVfiltGain,          2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVfilt,              28)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVrefCdsGain,        2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVrefCds,            44)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVprechGain,         2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVprech,             34)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacFilt,        2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacAdcRef,      2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacPrechCds,    2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrfCtrlDacAll,        2)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrDisable,            0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefpGain,       3)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefp,           53)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefnGain,       0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefn,           12)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefCmGain,      1)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefCm,          45)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').AdcCalibEn,            0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CompEnGenEn,           1)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CompEnGenCfg,          5)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CfgAutoflush,          0)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').ExternalFlushN,        1)						
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').ClusterDvMask,         16383)					
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').PixNumModeEn,          0)
         #PixNumModeEn, change this value to 1 to create a fixed pattern						
-        wdet(getattr(cbase.App,f'Asic{asic}').SerializerTestEn,      0)						
-        wdet(getattr(cbase.App,f'BatcherEventBuilder{asic}').enable, True)			  	
-        wdet(getattr(cbase.App,f'BatcherEventBuilder{asic}').Bypass, 0)						
-        wdet(getattr(cbase.App,f'BatcherEventBuilder{asic}').Timeout, 0)						
-        wdet(getattr(cbase.App,f'BatcherEventBuilder{asic}').Blowoff, False)					
-        wdet(getattr(cbase.App,f'FramerAsic{asic}').enable,          False)
-        wdet(getattr(cbase.App,f'FramerAsic{asic}').DisableLane,     0)						
-        wdet(getattr(cbase.App,f'AsicGtData{asic}').enable,          True)
-        wdet(getattr(cbase.App,f'AsicGtData{asic}').gtStableRst,     False)
+        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').SerializerTestEn,      0)						
+        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').enable, True)			  	
+        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Bypass, 0)						
+        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Timeout, 0)						
+        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Blowoff, False)					
+        write_to_detector(getattr(detectorRoot.App,f'FramerAsic{asic}').enable,          False)
+        write_to_detector(getattr(detectorRoot.App,f'FramerAsic{asic}').DisableLane,     0)						
+        write_to_detector(getattr(detectorRoot.App,f'AsicGtData{asic}').enable,          True)
+        write_to_detector(getattr(detectorRoot.App,f'AsicGtData{asic}').gtStableRst,     False)
 
-def cbase_init(cbase):
-    wdet(cbase.App.WaveformControl.enable,               True)			  	
-    wdet(cbase.App.WaveformControl.GlblRstPolarity,      True)		  	
-    wdet(cbase.App.WaveformControl.SR0Polarity,          False)			  	
-    wdet(cbase.App.WaveformControl.SR0Delay,             1195)	  	
-    wdet(cbase.App.WaveformControl.SR0Width,             1)		  	
-    wdet(cbase.App.WaveformControl.AcqPolarity,          False)			  	
-    wdet(cbase.App.WaveformControl.AcqDelay,             655)	  	
-    wdet(cbase.App.WaveformControl.AcqWidth,             535)	  	
-    wdet(cbase.App.WaveformControl.R0Polarity,           False)			  	
-    wdet(cbase.App.WaveformControl.R0Delay,              70)		  	
-    wdet(cbase.App.WaveformControl.R0Width,              1125)		  	
-    wdet(cbase.App.WaveformControl.InjPolarity,          False)		  	
-    wdet(cbase.App.WaveformControl.InjDelay,             700)	  	
-    wdet(cbase.App.WaveformControl.InjWidth,             535)	  	
-    wdet(cbase.App.WaveformControl.InjEn,                False)		  	
-    wdet(cbase.App.WaveformControl.InjSkipFrames,        0) 		
-    wdet(cbase.App.TriggerRegisters.enable,              True)			  	
-    wdet(cbase.App.TriggerRegisters.RunTriggerEnable,    False)					
-    wdet(cbase.App.TriggerRegisters.RunTriggerDelay,     0)					
-    wdet(cbase.App.TriggerRegisters.DaqTriggerEnable,    False)					
-    wdet(cbase.App.TriggerRegisters.DaqTriggerDelay,     0)					
-    wdet(cbase.App.TriggerRegisters.TimingRunTriggerEnable, False)				
-    wdet(cbase.App.TriggerRegisters.TimingDaqTriggerEnable, False)			
-    wdet(cbase.App.TriggerRegisters.AutoRunEn,           False)					
-    wdet(cbase.App.TriggerRegisters.AutoDaqEn,           False)					
-    wdet(cbase.App.TriggerRegisters.AutoTrigPeriod,      42700000)				
-    wdet(cbase.App.TriggerRegisters.numberTrigger,       0)						
-    wdet(cbase.App.TriggerRegisters.PgpTrigEn,           False)					
-    wdet(cbase.App.GTReadoutBoardCtrl.enable,            True)
-    wdet(cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, False)		 	
-    wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn0,      False)
-    wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn1,      False)
-    wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn2,      False)
-    wdet(cbase.App.AsicGtClk.enable,                     True)
-    wdet(cbase.App.AsicGtClk.gtRstAll,                   False)					
-    wdet(cbase.App.TimingRx.enable,                      True)
-    wdet(cbase.Core.Si5345Pll.enable,                    False)
-    wdet(cbase.App.VINJ_DAC.dacEn,                       False)
-    wdet(cbase.App.VINJ_DAC.rampEn,                      False)
+#Initialization of the detector
+def panel_init(detectorRoot):
+    write_to_detector(detectorRoot.App.WaveformControl.enable,               True)			  	
+    write_to_detector(detectorRoot.App.WaveformControl.GlblRstPolarity,      True)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.SR0Polarity,          False)			  	
+    write_to_detector(detectorRoot.App.WaveformControl.SR0Delay,             1195)	  	
+    write_to_detector(detectorRoot.App.WaveformControl.SR0Width,             1)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.AcqPolarity,          False)			  	
+    write_to_detector(detectorRoot.App.WaveformControl.AcqDelay,             655)	  	
+    write_to_detector(detectorRoot.App.WaveformControl.AcqWidth,             535)	  	
+    write_to_detector(detectorRoot.App.WaveformControl.R0Polarity,           False)			  	
+    write_to_detector(detectorRoot.App.WaveformControl.R0Delay,              70)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.R0Width,              1125)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.InjPolarity,          False)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.InjDelay,             700)	  	
+    write_to_detector(detectorRoot.App.WaveformControl.InjWidth,             535)	  	
+    write_to_detector(detectorRoot.App.WaveformControl.InjEn,                False)		  	
+    write_to_detector(detectorRoot.App.WaveformControl.InjSkipFrames,        0) 		
+    write_to_detector(detectorRoot.App.TriggerRegisters.enable,              True)			  	
+    write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerEnable,    False)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerDelay,     0)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerEnable,    False)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerDelay,     0)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.TimingRunTriggerEnable, False)				
+    write_to_detector(detectorRoot.App.TriggerRegisters.TimingDaqTriggerEnable, False)			
+    write_to_detector(detectorRoot.App.TriggerRegisters.AutoRunEn,           False)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.AutoDaqEn,           False)					
+    write_to_detector(detectorRoot.App.TriggerRegisters.AutoTrigPeriod,      42700000)				
+    write_to_detector(detectorRoot.App.TriggerRegisters.numberTrigger,       0)						
+    write_to_detector(detectorRoot.App.TriggerRegisters.PgpTrigEn,           False)					
+    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable,            True)
+    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, False)		 	
+    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,      False)
+    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,      False)
+    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,      False)
+    write_to_detector(detectorRoot.App.AsicGtClk.enable,                     True)
+    write_to_detector(detectorRoot.App.AsicGtClk.gtRstAll,                   False)					
+    write_to_detector(detectorRoot.App.TimingRx.enable,                      True)
+    write_to_detector(detectorRoot.Core.Si5345Pll.enable,                    False)
+    write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,                       False)
+    write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,                      False)
+
+
 #
 #  Initialize the rogue accessor
 #
 def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M",verbosity=0):
     global base
     global pv
-    global config_completed
+    
     global gainMapSelection
     global gainValSelection
     
+    #used to store gain configuration
     gainMapSelection=np.zeros((4, 168, 192))
     gainValSelection=np.zeros(4)
     
-#    logging.getLogger().setLevel(40-10*verbosity) # way too much from rogue
-    logging.getLogger().setLevel(30)
+    logging.getLogger().setLevel(logging.WARNING)
     logging.info('epixUHR_init')
-    config_completed = False
+    
     base = {}
     #  Connect to the camera and the PCIe card
 
-    cbase = epixUhrDev.Root(
+    detectorRoot = epixUhrDev.Root(
         dev          = dev,
         defaultFile  = ' ',
         emuMode      = False,
@@ -259,13 +248,13 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
         loadPllCsv   = False,
     )
     
-    cbase.__enter__()
+    detectorRoot.__enter__()
     
-    base['cam'] = cbase
+    base['cam'] = detectorRoot
 
-    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
-    buildDate       = cbase.Core.AxiVersion.BuildDate.get()
-    gitHashShort    = cbase.Core.AxiVersion.GitHashShort.get()
+    firmwareVersion = detectorRoot.Core.AxiVersion.FpgaVersion.get()
+    buildDate       = detectorRoot.Core.AxiVersion.BuildDate.get()
+    gitHashShort    = detectorRoot.Core.AxiVersion.GitHashShort.get()
     logging.info(f'firmwareVersion [{firmwareVersion:x}]')
     logging.info(f'buildDate       [{buildDate}]')
     logging.info(f'gitHashShort    [{gitHashShort}]')
@@ -273,34 +262,34 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
     # configure timing
     logging.warning(f'Using timebase {timebase}')
 
-    cbase_init(cbase)
+    panel_init(detectorRoot)
     
     if timebase=="119M":  # UED
-        base['bypass'] = cbase.numOfAsics * [0x3]
+        base['bypass'] = detectorRoot.numOfAsics * [0x3]
         base['clk_period'] = 1000/119.
         base['msg_period'] = 238
         base['pcie_timing'] = True
 
         epixUHR_unconfig(base)
         
-        wdet(cbase.App.TimingRx.TimingFrameRx.ModeSelEn, 1) # UseModeSel
-        wdet(cbase.App.TimingRx.TimingFrameRx.ClkSel, 0)    # LCLS-1 Clock
-        wdet(cbase.App.TimingRx.TimingFrameRx.RxDown, 0)
+        write_to_detector(detectorRoot.App.TimingRx.TimingFrameRx.ModeSelEn, 1) # UseModeSel
+        write_to_detector(detectorRoot.App.TimingRx.TimingFrameRx.ClkSel, 0)    # LCLS-1 Clock
+        write_to_detector(detectorRoot.App.TimingRx.TimingFrameRx.RxDown, 0)
     else:
-        base['bypass'] = cbase.numOfAsics * [0x3]
+        base['bypass'] = detectorRoot.numOfAsics * [0x3]
         base['clk_period'] = 7000/1300. # default 185.7 MHz clock
         base['msg_period'] = 200
         base['pcie_timing'] = False
 
         epixUHR_unconfig(base)
 
-        cbase.App.TimingRx.ConfigLclsTimingV2()
+        detectorRoot.App.TimingRx.ConfigLclsTimingV2()
 
     # Delay long enough to ensure that timing configuration effects have completed
     cnt = 0
     while cnt < 15:
         time.sleep(1)
-        rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+        rxId = detectorRoot.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         if rxId != 0xffffffff:  break
         del rxId                # Maybe this can help getting RxId reevaluated
         cnt += 1
@@ -309,15 +298,9 @@ def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M
         raise ValueError("rxId didn't become valid after configuring timing")
     print(f"rxId {rxId:x} found after {cnt}s")
 
-    # Ric: Not working yet
-    ## configure internal ADC
-    ##cbase.App.InitHSADC()
-
     #  store previously applied configuration
     base['cfg'] = None
 
-    time.sleep(1)               # Still needed?
-#    epixUHR_internal_trigger(base)
     return base
 
 #
@@ -342,10 +325,10 @@ def epixUHR_connectionInfo(base, alloc_json_str):
     txId = timTxId('epixUHR')
     logging.info('TxId {:x}'.format(txId))
 
-    cbase = base['cam']
-    rxId = cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
+    detectorRoot = base['cam']
+    rxId = detectorRoot.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     logging.info('RxId {:x}'.format(rxId))
-    wdet(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId, txId)
+    write_to_detector(detectorRoot.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId, txId)
 
     epixUHRid = '-'
 
@@ -360,22 +343,24 @@ def epixUHR_connectionInfo(base, alloc_json_str):
 #  The cfg dictionary may be partial (scanning), so the origcfg dictionary is
 #  reference for the full set.
 #
-def user_to_expert(base, cfg, full=False):
+def user_to_expert(base, cfg, fullConfig=False):
     global origcfg
     global group
     global lane
 
-    cbase = base['cam']
+    detectorRoot = base['cam']
     
     deltadelay = -192
     
     d = {}
     hasUser = 'user' in cfg
+    
+    #there are scripts that do not have user
     if (hasUser and 'start_ns' in cfg['user']):
         #rtp = origcfg['user']['run_trigger_group'] # run trigger partition
         
         #for i,p in enumerate([rtp,group]):
-        partitionDelay = getattr(cbase.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        partitionDelay = getattr(detectorRoot.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
 
         triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
@@ -397,13 +382,10 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'] = triggerDelay
         logging.warning(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
 
-        if full:
+        if fullConfig:
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']= group+1    # Run trigger
             d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']= group  # DAQ trigger
     
-        a = None
-    hasUser = 'user' in cfg
-    conv = functools.partial(int, base=16)
     calibRegsChanged = False
     if hasUser and 'Gain'  in cfg['user']:
         calibRegsChanged = True
@@ -426,13 +408,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     #  Disable internal triggers during configuration
     epixUHR_external_trigger(base)
 
-    cbase = base['cam']
+    detectorRoot = base['cam']
     
     # overwrite the low-level configuration parameters with calculations from the user configuration
     if 'expert' in cfg:
         try:  # config update might not have this
-            apply_dict('cbase.App.TimingRx.TriggerEventManager',
-                       cbase.App.TimingRx.TriggerEventManager,
+            apply_dict('detectorRoot.App.TimingRx.TriggerEventManager',
+                       detectorRoot.App.TimingRx.TriggerEventManager,
                        cfg['expert']['App']['TimingRx']['TriggerEventManager'])
         except KeyError:
             pass
@@ -444,15 +426,15 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
      #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
         asics = []
-        for i in range(cbase.numOfAsics):
+        for i in range(detectorRoot.numOfAsics):
             if cfg['user']['asic_enable']&(1<<i):
                 asics.append(i+1)
     
-    pll = cbase.Core.Si5345Pll
+    pll = detectorRoot.Core.Si5345Pll
     
     tmpfiles = []
     if not secondPass:
-
+        #Load Pll config values
         Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
         if pll.enable.get() == False:
             pll.enable.set(True)
@@ -467,34 +449,30 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
         
         tmpfiles.append(fn)
-        setattr(cbase,"filenamePLL", fn)
+        setattr(detectorRoot,"filenamePLL", fn)
         
         pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
-        cbase_ASIC_init(cbase, asics)
+        panel_ASIC_init(detectorRoot, asics)
                
-    base['bypass']   = cbase.numOfAsics * [0x2]  # Enable Timing (bit-0) and Data (bit-1)
-    base['batchers'] = cbase.numOfAsics * [1]  # list of active batchers
+    base['bypass']   = detectorRoot.numOfAsics * [0x2]  # Enable Timing (bit-0) and Data (bit-1)
+    base['batchers'] = detectorRoot.numOfAsics * [1]  # list of active batchers
     
-    for i in range(cbase.numOfAsics):
+    for i in range(detectorRoot.numOfAsics):
         if i+1 in asics: 
             base['bypass'][i] = 0
         
-        wdet(getattr(cbase.App, f'BatcherEventBuilder{i+1}').Bypass, base['bypass'][i])
+        write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i+1}').Bypass, base['bypass'][i])
        
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
     
     for i in asics:
-        wdet(getattr(cbase.App, f'BatcherEventBuilder{i}').Timeout, EventBuilderTimeout) # 400 us
+        write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i}').Timeout, eventBuilderTimeout) # 400 us
     if not base['pcie_timing']:
-        eventBuilder = cbase.find(typ=batcher.AxiStreamBatcherEventBuilder)
+        eventBuilder = detectorRoot.find(typ=batcher.AxiStreamBatcherEventBuilder)
         for eb in eventBuilder:
-            eb.Timeout.set(EventBuilderTimeout)
+            eb.Timeout.set(eventBuilderTimeout)
             eb.Blowoff.set(True)
-    #
-    #  For some unknown reason, performing this part of the configuration on BeginStep
-    #  causes the readout to fail until the next Configure
-    #
     
     if app is not None and not secondPass:
         # Work hard to use the underlying rogue interface
@@ -505,11 +483,11 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         tree = ('Root','App')
         
         def toYaml(sect,keys,name):
-            
-            tmpfiles.append(dictToYaml(app,epixMTypes,keys,cbase.App,path,name,tree,ordering))
+            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree,ordering))
             
         ordering=sorting_dict(asics)
         
+        #Creating yaml files to be loaded durint detector initialization
         toYaml('App',['WaveformControl'],'RegisterControl')
         toYaml('App',['TriggerRegisters'],'TriggerReg')
         toYaml('App',[f'Asic{i}' for i in asics ],'SACIReg')
@@ -517,18 +495,18 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         arg = [1,1,1,1,1]
         logging.info(f'Calling fnInitAsicScript(None,None,{arg})')
-        cbase.App.fnInitAsicScript(None,None,arg)
+        detectorRoot.App.fnInitAsicScript(None,None,arg)
         logging.info("### FINISHED YAML LOAD ###")
 
         # Enable the batchers for all ASICs
-        for i in range(cbase.numOfAsics):
-            wdet(getattr(cbase.App, f'BatcherEventBuilder{i+1}').enable, base['batchers'][i] == 1)
+        for i in range(detectorRoot.numOfAsics):
+            write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i+1}').enable, base['batchers'][i] == 1)
             
-        wdet(cbase.App.GTReadoutBoardCtrl.enable, app['GTReadoutBoardCtrl']['enable']==1)
-        wdet(cbase.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn0, app['GTReadoutBoardCtrl']['timingOutEn0']==1)
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn1, app['GTReadoutBoardCtrl']['timingOutEn1']==1)
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutEn2, app['GTReadoutBoardCtrl']['timingOutEn2']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable, app['GTReadoutBoardCtrl']['enable']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0, app['GTReadoutBoardCtrl']['timingOutEn0']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1, app['GTReadoutBoardCtrl']['timingOutEn1']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2, app['GTReadoutBoardCtrl']['timingOutEn2']==1)
         
         timingOutEnum=['asicR0', 'asicACQ', 'asicSRO', 'asicInj', 'asicGlbRstN', 'timingRunTrigger', 'timingDaqTrigger', 'acqStart', 'dataSend', '_0', '_1']
         timingOutMux0_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux0'])
@@ -537,26 +515,26 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         logging.info(f'Setting timingOutMux0 to {timingOutEnum[timingOutMux0_Sel]}')
         logging.info(f'Setting timingOutMux1 to {timingOutEnum[timingOutMux1_Sel]}')
         logging.info(f'Setting timingOutMux3 to {timingOutEnum[timingOutMux3_Sel]}')
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutMux0, timingOutMux0_Sel)
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutMux1, timingOutMux1_Sel)
-        wdet(cbase.App.GTReadoutBoardCtrl.timingOutMux3, timingOutMux3_Sel)
-        wdet(cbase.App.AsicGtClk.enable, cfg['expert']['App']['AsicGtClk']['enable']==1)
+        
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutMux0, timingOutMux0_Sel)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutMux1, timingOutMux1_Sel)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutMux3, timingOutMux3_Sel)
+        write_to_detector(detectorRoot.App.AsicGtClk.enable, cfg['expert']['App']['AsicGtClk']['enable']==1)
         for i in asics:
-            wdet(getattr(cbase.App,f"AsicGtData{i}").enable, cfg['expert']['App'][f'AsicGtData{i}']['enable']==1)			
-            wdet(getattr(cbase.App,f"AsicGtData{i}").gtStableRst, cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
-        if cbase.App.VCALIBP_DAC.enable.get() != cfg['user']['App']['VCALIBP_DAC']['enable']:
-            wdet(cbase.App.VCALIBP_DAC.enable, cfg['user']['App']['VCALIBP_DAC']['enable']==1)	
+            write_to_detector(getattr(detectorRoot.App,f"AsicGtData{i}").enable, cfg['expert']['App'][f'AsicGtData{i}']['enable']==1)			
+            write_to_detector(getattr(detectorRoot.App,f"AsicGtData{i}").gtStableRst, cfg['expert']['App'][f'AsicGtData{i}']['gtStableRst']		)	
+        if detectorRoot.App.VCALIBP_DAC.enable.get() != cfg['user']['App']['VCALIBP_DAC']['enable']:
+            write_to_detector(detectorRoot.App.VCALIBP_DAC.enable, cfg['user']['App']['VCALIBP_DAC']['enable']==1)	
 
-        wdet(cbase.App.VCALIBP_DAC.dacSingleValue, cfg['user']['App']['VCALIBP_DAC']['dacSingleValue'])
-        wdet(cbase.App.VCALIBP_DAC.resetDacRamp, cfg['user']['App']['VCALIBP_DAC']['resetDacRamp'])
+        write_to_detector(detectorRoot.App.VCALIBP_DAC.dacSingleValue, cfg['user']['App']['VCALIBP_DAC']['dacSingleValue'])
+        write_to_detector(detectorRoot.App.VCALIBP_DAC.resetDacRamp, cfg['user']['App']['VCALIBP_DAC']['resetDacRamp'])
                
-        wdet(cbase.App.ADS1217.enable, cfg['user']['App']['ADS1217']['enable']==1)	
-        wdet(cbase.App.ADS1217.adcStartEnManual, cfg['user']['App']['ADS1217']['adcStartEnManual']	)        
+        write_to_detector(detectorRoot.App.ADS1217.enable, cfg['user']['App']['ADS1217']['enable']==1)	
+        write_to_detector(detectorRoot.App.ADS1217.adcStartEnManual, cfg['user']['App']['ADS1217']['adcStartEnManual']	)        
         
-        
-        
+        #Need to turn PixNumModeEn true to modify Gain
         for i in asics: 
-            wdet(getattr(cbase.App,f"Asic{i}").PixNumModeEn, True)
+            write_to_detector(getattr(detectorRoot.App,f"Asic{i}").PixNumModeEn, True)
             
         csvCfg = 0
     
@@ -567,8 +545,16 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         gainMapSelection=np.zeros((4, 168, 192))
         gainValSelection=np.zeros(4)
         
-        wdet(cbase.App.EpixUhrMatrixConfig.enable, True)
-
+        write_to_detector(detectorRoot.App.EpixUhrMatrixConfig.enable, True)
+        
+        #Gain value can be set via single value or via CSV file, also it is possible to select the same value 
+        #for every ASIC or a specific one per ASIC.
+        #SetSameGain4All establishes if all 4 ASICs uses the same gain
+        #UsePixalMap establishes if a CSV file is used
+        #if SetSameGain4All is True then cfg['user']['Gain']['PixelBitMapSel'] or cfg['user']['Gain']['SetGainValue']
+        # are used
+        #if SetSameGain4All is False then cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel'] or cfg['expert']['App'][f'Asic{i}']['SetGainValue']
+        # are used
         if ( cfg['user']['Gain']['SetSameGain4All']):
             logging.info("Set same Gain for all ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -577,8 +563,6 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 PixMapSel = int(cfg['user']['Gain']['PixelBitMapSel'])
                 
                 PixMapSelected= pixelBitMapDic[PixMapSel]
-                
-    #                csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (-1, 192))
                 
                 if ('on_the_fly' not in PixMapSelected):
                     fn = pathPll+'csvConfig'+'.csv'
@@ -591,16 +575,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     csvCfg = np.loadtxt(pathPll+'onthefly.csv', dtype='uint16', delimiter=',')
                 for i in asics: 
                     print(f"ASIC{i}")
-                    
-                    if i == 1:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
-                    if i == 2:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
-                    if i == 3:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
-                    if i == 4:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
-                    
+                    eval(f"detectorRoot.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
+                                        
                     logging.info(f"{PixMapSelected} CSV File Loaded")
                 gainMapSelection[i-1,:,:]=csvCfg
 
@@ -612,7 +588,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 for i in asics: 
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=gainValue
-                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
+                    getattr(detectorRoot.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
         else:
             logging.info("Set single Gain per ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -632,14 +608,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                         fn = pathPll+'onthefly.csv'
                         csvCfg = np.loadtxt(f'{pathPll}onthefly.csv', dtype='uint16', delimiter=',')
                     gainMapSelection[i-1,:,:]=csvCfg
-                    if i == 1:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic1(fn)
-                    if i == 2:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic2(fn)
-                    if i == 3:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic3(fn)
-                    if i == 4:
-                        cbase.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic4(fn)
+                    eval(f"detectorRoot.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{i}('{fn}')")
+                    
             else:
                 #a value per each
                 logging.info("Use a value per ASIC")
@@ -647,33 +617,33 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=gainValue
-                    getattr(cbase.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
+                    getattr(detectorRoot.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
+        
                     
-        for i in asics: wdet(getattr(cbase.App,f"Asic{i}").PixNumModeEn, False)
+        for i in asics: write_to_detector(getattr(detectorRoot.App,f"Asic{i}").PixNumModeEn, False)
         
-        
-        
+        #Charge Injection definitions
         if(cfg['user']['App']['VINJ_DAC']['enable']==1):
-            wdet(cbase.App.WaveformControl.InjEn,  True    )
-            wdet(cbase.App.VINJ_DAC.enable,        True   )
-            wdet(cbase.App.VINJ_DAC.dacEn,         True   )
+            write_to_detector(detectorRoot.App.WaveformControl.InjEn,  True    )
+            write_to_detector(detectorRoot.App.VINJ_DAC.enable,        True   )
+            write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,         True   )
             
-            
+            #If ramp is not used, set Gain single Value
             if (not cfg['user']['App']['VINJ_DAC']['rampEn']==1): 
-                wdet(cbase.App.VINJ_DAC.dacSingleValue, cfg['user']['App']['VINJ_DAC']['dacSingleValue'])
+                write_to_detector(detectorRoot.App.VINJ_DAC.dacSingleValue, cfg['user']['App']['VINJ_DAC']['dacSingleValue'])
             else:
-                wdet(cbase.App.VINJ_DAC.resetDacRamp, True)
-                #wdet(cbase.App.VINJ_DAC.rampEn,        False   )	
-                wdet(cbase.App.VINJ_DAC.dacStartValue, cfg['user']['App']['VINJ_DAC']['dacStartValue'])
-                wdet(cbase.App.VINJ_DAC.dacStopValue,  cfg['user']['App']['VINJ_DAC']['dacStopValue'] )
-                wdet(cbase.App.VINJ_DAC.dacStepValue,  cfg['user']['App']['VINJ_DAC']['dacStepValue'] )    
-                wdet(cbase.App.VINJ_DAC.resetDacRamp, False)
-                wdet(cbase.App.VINJ_DAC.rampEn,        True    )                
+                #Need to reset ramp when running inj script in between gain values
+                write_to_detector(detectorRoot.App.VINJ_DAC.resetDacRamp, True)
+                write_to_detector(detectorRoot.App.VINJ_DAC.dacStartValue, cfg['user']['App']['VINJ_DAC']['dacStartValue'])
+                write_to_detector(detectorRoot.App.VINJ_DAC.dacStopValue,  cfg['user']['App']['VINJ_DAC']['dacStopValue'] )
+                write_to_detector(detectorRoot.App.VINJ_DAC.dacStepValue,  cfg['user']['App']['VINJ_DAC']['dacStepValue'] )    
+                write_to_detector(detectorRoot.App.VINJ_DAC.resetDacRamp, False)
+                write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,        True    )                
         else:            
-            wdet(cbase.App.VINJ_DAC.dacEn,         False       )	
-            wdet(cbase.App.VINJ_DAC.rampEn,        False       )
-            wdet(cbase.App.WaveformControl.InjEn,  False       )
-            wdet(cbase.App.VINJ_DAC.enable,        False       )
+            write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,         False       )	
+            write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,        False       )
+            write_to_detector(detectorRoot.App.WaveformControl.InjEn,  False       )
+            write_to_detector(detectorRoot.App.VINJ_DAC.enable,        False       )
         
         
         # Remove the yml files
@@ -681,7 +651,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             os.remove(f)
                 
     logging.info('config_expert complete')
-    config_completed = True
+    
 def reset_counters(base):
     # Reset the timing counters
     base['cam'].App.TimingRx.TimingFrameRx.countReset()
@@ -708,7 +678,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     
     
     #  Translate user settings to the expert fields
-    writeCalibRegs=user_to_expert(base, cfg, full=True)
+    writeCalibRegs=user_to_expert(base, cfg, fullConfig=True)
     
     
     if cfg==base['cfg']:
@@ -735,16 +705,10 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     epixUHR_internal_trigger(base)
     
     #  Capture the firmware version to persist in the xtc
-    cbase = base['cam']
-    firmwareVersion = cbase.Core.AxiVersion.FpgaVersion.get()
+    detectorRoot = base['cam']
+    firmwareVersion = detectorRoot.Core.AxiVersion.FpgaVersion.get()
 
     origcfg = cfg
-
-    #
-    #  Create the segment configurations from parameters required for analysis
-    #
-   # compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(cbase.numOfAsics) ]
-   # precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(cbase.numOfAsics) ]
 
     topname = cfg['detName:RO'].split('_')
 
@@ -754,25 +718,15 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #  Rename the complete config detector
     segcfg[0] = cfg.copy()
     segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
-    
-    
-    #gain_mode = cfg['user']['gain_mode']
-    #if gain_mode==3:
-    #    column_map    = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
-    #else:
-    #    compTH0,precharge_DAC0 = gain_mode_map(gain_mode)
-    #    compTH        = [compTH0        for i in range(cbase.numOfAsics)]
-    #    precharge_DAC = [precharge_DAC0 for i in range(cbase.numOfAsics)]
-
 
     #for seg in range(1):
         #  Construct the ID
-    digitalId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.DigitalBoardId.get()
-                 #0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.DigIDHigh.get()]
-    pwrCommId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.AnalogBoardId.get()
-        #             0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.PowerAndCommIDHigh.get()]
-    carrierId =  0 if base['pcie_timing'] else cbase.App.GTReadoutBoardCtrl.CarrierBoardId.get()
-        #             0 if base['pcie_timing'] else cbase.App.RegisterControlDualClock.CarrierIDHigh.get()]
+    digitalId =  0 if base['pcie_timing'] else detectorRoot.App.GTReadoutBoardCtrl.DigitalBoardId.get()
+                 #0 if base['pcie_timing'] else detectorRoot.App.RegisterControlDualClock.DigIDHigh.get()]
+    pwrCommId =  0 if base['pcie_timing'] else detectorRoot.App.GTReadoutBoardCtrl.AnalogBoardId.get()
+        #             0 if base['pcie_timing'] else detectorRoot.App.RegisterControlDualClock.PowerAndCommIDHigh.get()]
+    carrierId =  0 if base['pcie_timing'] else detectorRoot.App.GTReadoutBoardCtrl.CarrierBoardId.get()
+        #             0 if base['pcie_timing'] else detectorRoot.App.RegisterControlDualClock.CarrierIDHigh.get()]
 
         
     id = '%010d-%010d-%010d-%010d'%(firmwareVersion,
@@ -788,10 +742,6 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
     top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')        
     
-    #top.set('CompTH_ePixM',        compTH,        'UINT8')
-    #top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
-    #   if gain_mode==3:
-    #       top.set('chgInj_column_map', column_map)
     segcfg[1] = top.typed_json()
     
     result = []
@@ -824,7 +774,7 @@ def epixUHR_scan_keys(update):
     cfg = {}
     copy_reconfig_keys(cfg,origcfg,json.loads(update))
     # Apply to expert
-    calibRegsChanged = user_to_expert(base,cfg,full=False)
+    calibRegsChanged = user_to_expert(base,cfg,fullConfig=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,origcfg,key)
@@ -841,15 +791,7 @@ def epixUHR_scan_keys(update):
     
     if calibRegsChanged:
        
-        cbase = base['cam']
-   #     compTH        = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['CompTH_ePixM']        for i in range(1, cbase.numOfAsics+1) ]
-   #     precharge_DAC = [ cfg['expert']['App'][f'Mv2Asic[{i}]']['Precharge_DAC_ePixM'] for i in range(1, cbase.numOfAsics+1) ]
-   #     if 'chgInj_column_map' in cfg['user']:
-   #         gain_mode = cfg['user']['gain_mode']
-   #         if gain_mode==3:
-   #             column_map = np.array(cfg['user']['chgInj_column_map'], dtype=np.uint8)
-   #         else:
-   #             column_map = np.zeros(nColumns, dtype=np.uint8)
+        detectorRoot = base['cam']
 
         for seg in range(1):
             id = segids[seg]
@@ -858,11 +800,6 @@ def epixUHR_scan_keys(update):
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
-   
-   #         top.set('CompTH_ePixM',        compTH,        'UINT8')
-   #         top.set('Precharge_DAC_ePixM', precharge_DAC, 'UINT8')
-   #         if 'chgInj_column_map' in cfg['user']:
-   #             top.set('chgInj_column_map', column_map)
             segcfg[seg+1] = top.typed_json()
 
     result = []
@@ -898,7 +835,7 @@ def epixUHR_update(update):
     update_config_entry(cfg,origcfg,json.loads(update))
     #  Apply to expert
     
-    writeCalibRegs = user_to_expert(base,cfg,full=False)
+    writeCalibRegs = user_to_expert(base,cfg,fullConfig=False)
     logging.info(f'Partial config writeCalibRegs {writeCalibRegs}')
     
     config_expert(base, cfg, writeCalibRegs, secondPass=True)
@@ -921,8 +858,6 @@ def epixUHR_update(update):
     segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
     if writeCalibRegs:
-        cbase = base['cam']
-
         for seg in range(1):
             id = segids[seg]
             top = cdict()
@@ -943,18 +878,21 @@ def epixUHR_update(update):
     return result
 
 def _resetSequenceCount():
-    cbase = base['cam']
-    wdet(cbase.App.RegisterControlDualClock.ResetCounters, 1)
+    detectorRoot = base['cam']
+    write_to_detector(detectorRoot.App.RegisterControlDualClock.ResetCounters, 1)
     time.sleep(1.e6)
-    wdet(cbase.App.RegisterControlDualClock.ResetCounters, 0)
+    write_to_detector(detectorRoot.App.RegisterControlDualClock.ResetCounters, 0)
 
 def epixUHR_external_trigger(base):
     #  Switch to external triggering
     logging.info("external triggering")
-    cbase = base['cam']
-    cbase.App.TriggerRegisters.SetTimingTrigger()
+    detectorRoot = base['cam']
+    detectorRoot.App.TriggerRegisters.SetTimingTrigger()
 
-def wdet(var, val):
+#checks if value is already set, then sets it, and check if it has been set
+#reading is faster than writing, therefor if it is already set initialization is faster
+#Considering introducing the function directly in Root
+def write_to_detector(var, val):
     if (var.get() != val):
         var.set(val)
         if var.get() != val:
@@ -966,21 +904,11 @@ def wdet(var, val):
         
 def epixUHR_internal_trigger(base):
     logging.info('internal triggering')
-    ##  Disable frame readout
-    #mask = 0x3
-    #print('=== internal triggering with bypass {:x} ==='.format(mask))
-    #cbase = base['cam']
-    #for i in range(cbase.numOfAsics):
-    #    # This should be base['pci'].DevPcie.Application.EventBuilder.Bypass
-    #    getattr(cbase.App.AsicTop, f'BatcherEventBuilder{i}').Bypass.set(mask)
-    #return
 
     #  Switch to internal triggering
+    detectorRoot = base['cam']
+    detectorRoot.App.TriggerRegisters.StartAutoTrigger()
     
-    cbase = base['cam']
-    cbase.App.TriggerRegisters.StartAutoTrigger()
-    
-
 def epixUHR_enable(base):
     logging.info('epixUHR_enable')
     epixUHR_external_trigger(base)
@@ -992,17 +920,17 @@ def epixUHR_disable(base):
 
 def _stop(base):
     logging.info('_stop')
-    cbase = base['cam']
-    cbase.App.StopRun()
+    detectorRoot = base['cam']
+    detectorRoot.App.StopRun()
     time.sleep(0.1)  #  let last triggers pass through
 
 def _start(base):
     logging.info('_start')
-    cbase = base['cam']
-    cbase.App.SetTimingTrigger()
+    detectorRoot = base['cam']
+    detectorRoot.App.SetTimingTrigger()
     
             # Get devices
-    eventBuilder = cbase.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
+    eventBuilder = detectorRoot.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
     
     for devPtr in eventBuilder:
         devPtr.Blowoff.set(False)
@@ -1011,12 +939,12 @@ def _start(base):
 
     # Turn on the triggering
 
-    wdet(cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable, True)
-    wdet(cbase.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].MasterEnable, True)
+    write_to_detector(detectorRoot.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable, True)
+    write_to_detector(detectorRoot.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].MasterEnable, True)
     
 
     # Update the run state status variable
-    wdet(cbase.App.RunState, True)  
+    write_to_detector(detectorRoot.App.RunState, True)  
 
    
 #
