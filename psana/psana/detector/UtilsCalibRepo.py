@@ -28,8 +28,8 @@ from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save
 from psana.detector.RepoManager import set_repoman_and_logger, fname_prefix, calib_file_name
 
 def save_constants_in_repository(dic_consts, **kwa):
-    """dic_consts = {<ctype>: <nda-for-ctype>,...}
-    """
+    """dic_consts = {<ctype>: <nda-for-ctype>,...}"""
+
     #CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
     #repoman  = kwa.get('repoman', None)
     expname  = kwa.get('exp', None)
@@ -45,7 +45,8 @@ def save_constants_in_repository(dic_consts, **kwa):
     runnum   = kwa.get('run_orig', None)
     #uniqueid = kwa.get('uniqueid', 'not-def-id')
     segids   = kwa.get('segment_ids', [])  # self._uniqueid.split('_')[1]
-    seginds  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers
+    segnums  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers in entire det
+    segind   = kwa.get('segind', None) # segment index in det.raw.raw
     gainmode = kwa.get('gainmode', None)
     #longname = kwa.get('longname', 'non-def-longname') # odet.raw._uniqueid
     shortname= kwa.get('shortname', 'non-def-shortname') # uc.detector_name_short(longname)
@@ -56,18 +57,23 @@ def save_constants_in_repository(dic_consts, **kwa):
     d = ups.dict_filter(kwa, list_keys=('dskwargs', 'dirrepo', 'ctype',\
                                         'dettype', 'tsshort', 'detname', 'longname', 'shortname',\
                                         'gainmode', 'segment_ids', 'segment_inds', 'version'))
-    logger.debug('save_constants_in_repository kwa:', kwa)
+    logger.debug('save_constants_in_repository kwa:', uts.info_dict(kwa))
     logger.info('essential kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
 
     dic_ctype_fmt = uc.dic_ctype_fmt(**kwa)
 
-    for i,(segind,segid) in enumerate(zip(seginds, segids)):
-      logger.info('%s next segment\n   save segment constants for gain mode: %s in repo for raw ind:%02d segment ind:%02d id: %s'%\
-                  (20*'-', gainmode, i, segind, segid))
+    for i,(segnum,segid) in enumerate(zip(segnums, segids)):
+
+      if segind is not None and i != segind:
+          logger.info('---- skip segment %d, save only --segind %d' % (i,segind))
+          continue
+
+      logger.info('%s next segment\n   save segment constants for gain mode: %s in repo for raw ind:%02d segment num:%02d id: %s'%\
+                  (20*'-', gainmode, i, segnum, segid))
 
       for ctype, nda in dic_consts.items():
         dir_ct = repoman.makedir_ctype(segid, ctype)
-        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
+        fprefix = fname_prefix(shortname, segnum, tsshort, expname, runnum, dir_ct)
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = dic_ctype_fmt.get(ctype,'%.5f')
         arr2d = nda if nda.ndim == 2 else nda[i,:]
