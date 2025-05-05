@@ -155,7 +155,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
     // set up the names for L1Accept data
     // Generic panel data
     {
-        Alg alg("raw", 2, 0, 0);
+        Alg alg("raw", 2, 1, 1);
         // copy the detName, detType, detId from the Config Names
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
