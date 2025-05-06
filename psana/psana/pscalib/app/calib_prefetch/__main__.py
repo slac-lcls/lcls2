@@ -10,6 +10,20 @@ from .calib_utils import update_calib
 
 
 def main():
+    """
+    Entry point for the calibration prefetcher tool.
+
+    Parses command-line arguments, sets up logging and signal handling,
+    and runs a loop to periodically update calibration constants using
+    `update_calib()` based on the experiment's newest run.
+
+    Args:
+        None
+
+    Returns:
+        None
+    """
+
     parser = argparse.ArgumentParser(description="Calibration Prefetcher")
     parser.add_argument('--xtc-dir', default=None, help='Optional path to XTC directory')
     parser.add_argument('-e', '--expcode', required=True, help='Experiment code')
