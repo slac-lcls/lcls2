@@ -43,7 +43,7 @@ def gen_h5(source='xtc', pid=None):
 
     if source == 'xtc':
         xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
-        ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=lambda x : True, batch_size=2)
+        ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=lambda x : True, batch_size=2)
     elif source == 'shmem':
         ds = DataSource(shmem='shmem_test_' + pid)
 
