@@ -16,7 +16,7 @@ else
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
     export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_03172025
-    conda activate daq_20250402
+    conda activate daq_20250402_r9
 fi
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
