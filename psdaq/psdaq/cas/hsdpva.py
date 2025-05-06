@@ -378,7 +378,7 @@ def main():
                 for sub in sub_FPGAs:
                     card=base_sub+FPGA+":"+sub
                     base.append(card)
-
+        
         if args.base[0] == "RIX":
             logging.info("RIX")
             base_sub="DAQ:RIX:HSD:1_"
@@ -391,7 +391,8 @@ def main():
                     base.append(card)
         if args.base[0] not in  ["TMO", "RIX"]:
             logging.error("Please provide one of the following hutches with the option d: TMO, RIX") 
-            sys.exit()   
+            sys.exit()
+        print(base)   
     else:
         logging.info("base is provided")
         base=args.base

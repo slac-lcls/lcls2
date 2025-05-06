@@ -66,7 +66,6 @@ class ConfigScanBase(object):
         logging.info('logging initialized')
 
     def run(self,keys,steps):
-
         args = self.args
         # instantiate DaqControl object
         control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -106,6 +105,10 @@ class ConfigScanBase(object):
             rv = control.setConfig(args.config)
             if rv is not None:
                 logging.error('%s' % rv)
+
+        # Set state to a valid state for changing record setting
+        control.setState("connected")
+        while control.getState() != "connected": ...
 
         if args.record is not None:
             # recording flag request
@@ -147,20 +150,29 @@ class ConfigScanBase(object):
         configure_dict = {"NamesBlockHex": configureBlock,
                           "group_mask"   : group_mask,
                           'step_keys'    : keys,
-                          "step_group"   : step_group }  # we should have a separate group param
+                          "step_group"   : step_group, 
+                          "events"       : args.events, 
+                          }  # we should have a separate group param
 
         enable_dict = {'group_mask'   : group_mask,
-                       'step_group'   : step_group }
+                       'step_group'   : step_group,
+                       'events'       : args.events,
+                       }
 
-
+        keys_dict = {   "configure": configure_dict,
+                        "enable":    enable_dict,
+                        }
+        
         for step in steps():
             # update
-            configure_dict["readout_count"] = args.events
-            enable_dict['readout_count']=args.events
-            print(f"Number of events: {args.events}")
+            
+            if "events" in step[2]: 
+                configure_dict["readout_count"] = int(eval(step[2])["events"])
+                enable_dict['readout_count']    = int(eval(step[2])["events"] )
+                print(f"Number of events: {eval(step[2])['events']}")
             # config scan setup
-            keys_dict = {   "configure": configure_dict,
-                            "enable":    enable_dict}
+                keys_dict = {   "configure": configure_dict,
+                                "enable":    enable_dict}
             
             scan.update(value=step[1])
 

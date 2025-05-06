@@ -39,6 +39,15 @@ class epixuhr_config_2_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
 
+#from now on both hw and not have same version number
+class epixuhrhw_config_2_1_1(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
+class epixuhr_config_2_1_1(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+        
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
@@ -227,6 +236,9 @@ class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+class epixuhr_raw_2_1_1(epixuhr_raw_2_0_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 
 

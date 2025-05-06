@@ -34,8 +34,10 @@ from urllib.parse import urlparse
 import getpass
 
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
-URL     = 'https://pswww.slac.stanford.edu/calib_ws' if URL_ENV is None else URL_ENV
-URL_KRB = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
+URL = 'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
+URL_KRB = 'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
+URL_KRB_HEADERS = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
+
 HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
 PORT = 9307
 USERLOGIN = getpass.getuser()
@@ -48,7 +50,7 @@ DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
 MAX_DETNAME_SIZE = 20
 OPER = os.getenv('CALIBDB_AUTH')
 
-try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB).hostname).getAuthHeaders()
+try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB_HEADERS).hostname).getAuthHeaders()
 #except kerberos.GSSError as e:
 except Exception as e:
     #msg = e.message if hasattr(e, 'message') else str(e)

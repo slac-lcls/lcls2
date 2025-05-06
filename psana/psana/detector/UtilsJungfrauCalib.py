@@ -55,7 +55,7 @@ DIC_GAIN_MODE = {'g0': 0,
 DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_dict(DIC_GAIN_MODE)
 
 M14 = 0x3fff # 16383, 14-bit mask
-FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
+#FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
 
 
 #print('\n  DIR_ROOT', dr.DIR_ROOT,\

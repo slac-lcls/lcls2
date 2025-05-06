@@ -25,8 +25,8 @@ class TestSmallDataCallbacks(unittest.TestCase):
 
     def setUp(self):
         """Common setup for both tests: Define the experiment, run, and test data."""
-        self.exp = 'xpptut13'
-        self.runnum = 1
+        self.exp = 'xpptut15'
+        self.runnum = 14
         self.xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
         self.mydata = {
             "int_value": 42,

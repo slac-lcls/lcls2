@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""./lcls2/psana/psana/detector/test_issues_2024.py <TNAME>
-"""
+"""./lcls2/psana/psana/detector/test_issues_2024.py <TNAME>"""
 
 import sys
 import logging

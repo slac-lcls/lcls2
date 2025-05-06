@@ -4,6 +4,54 @@
 
 using namespace XtcData;
 
+BldNames::UsdUsbDataV1::UsdUsbDataV1() {
+    // Config
+    NameVec.push_back(Name("_countMode",     Name::UINT32, 1)); // Array: [4]
+    NameVec.push_back(Name("_quadMode",      Name::UINT32, 1)); // Array: [4]
+    // FEX Config
+    NameVec.push_back(Name("_offset",        Name::INT32, 1));  // Array: [4]
+    NameVec.push_back(Name("_scale",         Name::DOUBLE, 1)); // Array: [4]
+    NameVec.push_back(Name("_name",          Name::INT8, 1));   // Array: [4][48] (CHARSTR)
+    // Data
+    NameVec.push_back(Name("_header",        Name::UINT8, 1));  // Array: [6]
+    NameVec.push_back(Name("_din",           Name::UINT8));
+    NameVec.push_back(Name("_estop",         Name::UINT8));
+    NameVec.push_back(Name("_timestamp",     Name::UINT32));
+    NameVec.push_back(Name("_count",         Name::UINT32, 1)); // Array: [4]
+    NameVec.push_back(Name("_status",        Name::UINT8, 1));  // Array: [4]
+    NameVec.push_back(Name("_ain",           Name::UINT16, 1)); // Array: [4]
+    // FEX
+    NameVec.push_back(Name("encoder_values", Name::DOUBLE, 1)); // Array: [4]
+}
+
+static std::vector<unsigned> _usdUsbArraySizes {
+    4, 4,                // Config arrays
+    4, 4, 4*48,          // FEX Config arrays
+    6, 0, 0, 0, 4, 4, 4, // Data arrays
+    4,                   // FEX array
+};
+
+std::vector<unsigned> BldNames::UsdUsbDataV1::arraySizes()
+{
+    return _usdUsbArraySizes;
+}
+
+static std::map<std::string, unsigned> _usdUsbMcaddr{
+    { "XrtUsbEncoder01", 0xefff1844 },
+    { "XppUsbEncoder01", 0xefff1845 },
+    { "XppUsbEncoder02", 0xefff1846 },
+    { "XcsUsbEncoder01", 0xefff1847 },
+    { "CxiUsbEncoder01", 0xefff1848 },
+    { "MfxUsbEncoder01", 0xefff185e },
+};
+
+
+unsigned BldNames::UsdUsbDataV1::mcaddr(const char* n)
+{
+    std::string s(n);
+    return _usdUsbMcaddr.find(s) == _usdUsbMcaddr.end() ? 0 : _usdUsbMcaddr[s];
+}
+
 BldNames::SpectrometerDataV1::SpectrometerDataV1() {
     /* Width of camera frame (size of hproj) */
     NameVec.push_back(Name("width", Name::UINT32));

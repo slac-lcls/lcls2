@@ -3,6 +3,7 @@ from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSingleFile
+from pathlib import Path
 
 
 class SingleFileDataSource(DataSourceBase):
@@ -17,12 +18,43 @@ class SingleFileDataSource(DataSourceBase):
         super()._end_prometheus_client()
 
     def _setup_run(self):
+        """
+        Prepare the data manager and internal path state for the next run.
+
+        This method:
+        - Checks if there are remaining files to process.
+        - Verifies that the file exists.
+        - Extracts the directory path of the current file and stores it in `self.xtc_path`.
+        - Initializes a new DgramManager for the current file.
+        - Advances the file index.
+
+        Returns:
+            bool: True if setup was successful, False if there are no more runs to process.
+        """
         if self.runnum_list_index == len(self.runnum_list):
+            self.logger.debug("No more files to process.")
             return False
 
-        self.dm = DgramManager(
-            self.files[self.runnum_list_index], config_consumers=[self.dsparms]
-        )
+        file = self.files[self.runnum_list_index]
+        full_path = Path(file)
+
+        if not full_path.exists():
+            self.logger.error(f"File not found: {file}")
+            raise FileNotFoundError(f"Cannot set up run; file does not exist: {file}")
+
+        try:
+            # Resolve full path and set xtc_path
+            self.xtc_path = full_path.parent.resolve()
+            self.logger.debug(f"Resolved xtc_path: {self.xtc_path}")
+
+            # Initialize the data manager
+            self.dm = DgramManager(file, config_consumers=[self.dsparms])
+            self.logger.debug(f"Initialized DgramManager for: {file}")
+
+        except Exception as e:
+            self.logger.exception(f"Failed to set up run for file: {file}")
+            raise e
+
         self.runnum_list_index += 1
         return True
 

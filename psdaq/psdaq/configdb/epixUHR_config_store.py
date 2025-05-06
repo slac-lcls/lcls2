@@ -30,7 +30,7 @@ def recursive_list(dictionary):
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [2,1,0])
+    top.setAlg('config', [2,1,1])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
@@ -41,6 +41,8 @@ def epixUHR_cdict():
         top.set(f"expert.App.Asic{n}.DacVfiltGain",						2	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVfilt",							30	,	'UINT8'   )	
         top.set(f"expert.App.Asic{n}.DacVrefCdsGain",					2	,	'UINT8'   )
+        top.set(f"expert.App.Asic{n}.DacAdcVrefCm",					    45	,	'UINT8'   )
+        top.set(f"expert.App.Asic{n}.DacAdcVrefCmGain",					1	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVrefCds",						44	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVprechGain",				    2	,	'UINT8'   )
         top.set(f"expert.App.Asic{n}.DacVprech",						34	,	'UINT8'   )
@@ -67,7 +69,7 @@ def epixUHR_cdict():
             
     pathpix='/cds/home/p/psrel/EpixUHR/pixelBitMaps_prod/'
     #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, '_7_on_the_fly'}
+    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, '_7_on_the_fly':7}
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
     base = 'expert.pixelBitMaps.' 
