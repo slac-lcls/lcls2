@@ -209,6 +209,12 @@ BldFactory::BldFactory(const char* name,
         _entryByteSizes = BldNames::SpectrometerDataV1().byteSizes();
         _varLenArr = true; // Feespec arrays are variable length
     }
+    else if ((mcaddr = BldNames::UsdUsbDataV1::mcaddr(name))) {
+        _detType = _detId = std::string("usdusb");
+        _alg   = XtcData::Alg("raw", 1, 0, 0);
+        _varDef.NameVec = BldNames::UsdUsbDataV1().NameVec;
+        _arraySizes = BldNames::UsdUsbDataV1().arraySizes();
+    }
     else {
         throw std::string("BLD name ")+name+" not recognized";
     }
