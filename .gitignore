@@ -12,3 +12,4 @@ install
 *.xtc2
 p[0-7].cnf.*
 *.ipynb_checkpoints
+!psana/psana/tests/test_data/**/*.xtc2
