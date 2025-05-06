@@ -125,6 +125,8 @@ class DataSourceBase(abc.ABC):
         List of detectors that skip calibration constant loading.
     use_calib_cache : bool
         Enable calibration constant saving and loading in shared memory (default: False).
+    fetch_calib_cache_max_retres: int
+        Max number of retries reading calibration constant from shared memory (default: 60).
     mpi_ts : bool
         Used internally to avoid repeated file I/O in MPI contexts.
     log_level : int
@@ -163,6 +165,7 @@ class DataSourceBase(abc.ABC):
         self.prom_jobid = kwargs.get("prom_jobid", None)
         self.skip_calib_load = kwargs.get("skip_calib_load", [])
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
+        self.fetch_calib_cache_max_retres = kwargs.get("fetch_calib_cache_max_retres", 60)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
 
@@ -209,7 +212,7 @@ class DataSourceBase(abc.ABC):
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
-            "mpi_ts", "mode", "log_level"
+            "fetch_calib_cache_max_retres", "mpi_ts", "mode", "log_level"
         }
         for k in kwargs:
             if k not in known_keys:
@@ -712,13 +715,14 @@ class DataSourceBase(abc.ABC):
 
         if self.use_calib_cache:
             self.logger.info("using calibration constant from shared memory, if exists")
-            det_info = {det_name: cfg.uniqueid for det_name, cfg in self.dsparms.configinfo_dict.items()}
-            xtc_path = None
-            if hasattr(self, "xtc_path"):
-                xtc_path = self.xtc_path
-            calib_const, found_runnum = calib_utils.ensure_valid_calibconst(expt, runnum, det_info, xtc_path, self.skip_calib_load, log=self.logger)
-            if found_runnum != runnum and found_runnum != -1:
-                self.logger.warning(f"using calibration constant from run={found_runnum} (as found in shared memory)")
+            calib_const, max_retry = (None, 0)
+            while not calib_const and max_retry < self.fetch_calib_cache_max_retres:
+                self.logger.debug("try to read calib_const from shared memory ({fetch_calib_retry=})")
+                try:
+                    calib_const = calib_utils.try_load_data_from_file(self.logger)["calib_const"]
+                except Exception as e:
+                    self.logger.warning(f"failed to retrieve calib_const: {e}")
+                max_retry += 1
             self.dsparms.calibconst = calib_const
         else:
             self.dsparms.calibconst = {}
