@@ -26,11 +26,6 @@ namespace Pds {
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
-      void   event(cudaStream_t&     stream,
-                   float*            calibBuffers,
-                   uint32_t** const* out,
-                   unsigned&         index,
-                   bool&             done) override;
       size_t size() const  { return sizeof(TriggerData_xpphsd); }
     };
   };
@@ -55,15 +50,6 @@ void Pds::Trg::TriggerPrimitiveExample_xpphsd::event(const Drp::MemPool& pool,
   uint64_t nPeaks = ctrb.sizeofPayload(); // Revisit with a real value
 
   new(xtc.alloc(sizeof(TriggerData_xpphsd), bufEnd)) TriggerData_xpphsd(nPeaks);
-}
-
-void Pds::Trg::TriggerPrimitiveExample_xpphsd::event(cudaStream_t&     stream,
-                                                     float*            calibBuffers,
-                                                     uint32_t** const* out,
-                                                     unsigned&         index,
-                                                     bool&             done)
-{
-  assert(false);  // Unused but must be defined
 }
 
 // The class factory

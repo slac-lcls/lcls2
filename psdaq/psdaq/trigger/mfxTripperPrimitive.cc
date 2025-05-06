@@ -26,11 +26,6 @@ namespace Pds {
                      const XtcData::Xtc& ctrb,
                      XtcData::Xtc&       xtc,
                      const void*         bufEnd) override;
-        void   event(cudaStream_t&     stream,
-                     float*            calibBuffers,
-                     uint32_t** const* out,
-                     unsigned&         index,
-                     bool&             done) override;
         size_t size() const  { return sizeof(TripperTebData); }
     };
   };
@@ -53,15 +48,6 @@ void Pds::Trg::MfxTripperPrimitive::event(const Drp::MemPool& pool,
                                           const void*         bufEnd)
 {
     new (xtc.alloc(sizeof(TripperTebData), bufEnd)) TripperTebData(0, 0, 0, "NOTRIP");
-}
-
-void Pds::Trg::MfxTripperPrimitive::event(cudaStream_t&     stream,
-                                          float*            calibBuffers,
-                                          uint32_t** const* out,
-                                          unsigned&         index,
-                                          bool&             done)
-{
-  assert(false);  // Unused but must be defined
 }
 
 // The class factory
