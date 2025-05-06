@@ -37,6 +37,11 @@ private:
                             std::string software,
                             std::string hostname);
     uint32_t _countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels);
+    void _configure_module_thread(size_t mod,
+                                  XtcData::Names& configNames,
+                                  XtcData::ConfigIter& configo,
+                                  std::atomic<unsigned>& numFailed);
+    unsigned _configure_module(size_t mod, XtcData::Names& configNames, XtcData::ConfigIter& configo);
 
 private:
     unsigned m_nModules { 0 };
