@@ -16,6 +16,7 @@ from kafka import KafkaProducer
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
+from psana.pscalib.app.calib_prefetch import calib_utils
 from psana.psexp.prometheus_manager import PrometheusManager
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import MODE, mode
@@ -120,8 +121,10 @@ class DataSourceBase(abc.ABC):
         Enable publishing to psmon (legacy).
     prom_jobid : str
         Prometheus job ID tag.
-    skip_calib_load : bool
-        Whether to skip loading calibration constants.
+    skip_calib_load : str
+        List of detectors that skip calibration constant loading.
+    use_calib_cache : bool
+        Enable calibration constant saving and loading in shared memory (default: False).
     mpi_ts : bool
         Used internally to avoid repeated file I/O in MPI contexts.
     log_level : int
@@ -158,6 +161,8 @@ class DataSourceBase(abc.ABC):
         self.current_retry_no = 0
         self.smd_callback = kwargs.get("smd_callback", 0)
         self.prom_jobid = kwargs.get("prom_jobid", None)
+        self.skip_calib_load = kwargs.get("skip_calib_load", [])
+        self.use_calib_cache = kwargs.get("use_calib_cache", False)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
 
@@ -203,7 +208,8 @@ class DataSourceBase(abc.ABC):
             "max_events", "detectors", "xdetectors", "det_name", "destination",
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
-            "psmon_publish", "prom_jobid", "skip_calib_load", "mpi_ts", "mode"
+            "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
+            "mpi_ts", "mode", "log_level"
         }
         for k in kwargs:
             if k not in known_keys:
@@ -679,9 +685,22 @@ class DataSourceBase(abc.ABC):
 
     def _setup_run_calibconst(self):
         """
-        note: calibconst is set differently in MPIDataSource and DrpDataSource
+        Initialize the `dsparms.calibconst` dictionary with calibration constants.
+
+        If `use_calib_cache` is enabled, attempts to load calibration constants from
+        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
+        fetches calibration constants directly from the database for each detector.
+
+        This function supports skipping selected detectors via `skip_calib_load`.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
-        if hasattr(self, "skip_calib_load") and self.skip_calib_load == 'all':
+
+        if self.skip_calib_load == 'all':
             self.logger.debug("_setup_run_calibconst skipped {self.skip_calib_load=}")
             return
 
@@ -690,31 +709,40 @@ class DataSourceBase(abc.ABC):
             return
         expt, runnum, _ = runinfo
         self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
-        self.dsparms.calibconst = {}
-        for det_name, configinfo in self.dsparms.configinfo_dict.items():
-            if expt:
-                if expt == "cxid9114":  # mona: hack for cctbx
-                    det_uniqueid = "cspad_0002"
-                elif expt == "xpptut15":
-                    det_uniqueid = "cspad_detnum1234"
-                else:
-                    det_uniqueid = configinfo.uniqueid
-                if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
-                    self.dsparms.calibconst[det_name] = None
-                    continue
-                st = time.monotonic()
-                calib_const = wu.calib_constants_all_types(
-                    det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
-                )
-                en = time.monotonic()
-                self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
 
-                self.dsparms.calibconst[det_name] = calib_const
-            else:
-                self.logger.info(
-                    "ds_base: Warning: cannot access calibration constant (exp is None)"
-                )
-                self.dsparms.calibconst[det_name] = None
+        if self.use_calib_cache:
+            self.logger.info("using calibration constant from shared memory, if exists")
+            det_info = {det_name: cfg.uniqueid for det_name, cfg in self.dsparms.configinfo_dict.items()}
+            xtc_path = None
+            if hasattr(self, "xtc_path"):
+                xtc_path = self.xtc_path
+            calib_const, found_runnum = calib_utils.ensure_valid_calibconst(expt, runnum, det_info, xtc_path, self.skip_calib_load, log=self.logger)
+            if found_runnum != runnum and found_runnum != -1:
+                self.logger.warning(f"using calibration constant from run={found_runnum} (as found in shared memory)")
+            self.dsparms.calibconst = calib_const
+        else:
+            self.dsparms.calibconst = {}
+            for det_name, configinfo in self.dsparms.configinfo_dict.items():
+                if expt:
+                    if expt == "xpptut15":
+                        det_uniqueid = "cspad_detnum1234"
+                    else:
+                        det_uniqueid = configinfo.uniqueid
+                    if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
+                        self.dsparms.calibconst[det_name] = None
+                        continue
+                    st = time.monotonic()
+                    calib_const = wu.calib_constants_all_types(
+                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
+                    )
+                    en = time.monotonic()
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    self.dsparms.calibconst[det_name] = calib_const
+                else:
+                    self.logger.info(
+                        "ds_base: Warning: cannot access calibration constant (exp is None)"
+                    )
+                    self.dsparms.calibconst[det_name] = None
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)
