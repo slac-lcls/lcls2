@@ -165,7 +165,7 @@ private:
 class BldDrp : public DrpBase
 {
 public:
-    BldDrp(Parameters&, MemPoolCpu&, Detector*, ZmqContext&);
+    BldDrp(Parameters&, MemPoolCpu&, Detector&, ZmqContext&);
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
 public:

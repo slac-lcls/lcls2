@@ -287,7 +287,7 @@ void PvMonitor::updated()
         TimeStamp timestamp(seconds, nanoseconds);
 
         ++m_nUpdates;
-        m_latency = Pds::Eb::latency<us_t>(timestamp); // Grafana plots latency in us
+        m_latency = Eb::latency<us_t>(timestamp); // Grafana plots latency in us
         logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
 
         Dgram* dgram;
@@ -332,7 +332,7 @@ void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
                            "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                            pvDg->time.seconds(),  pvDg->time.nanoseconds(),
                            pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
-                           Pds::Eb::latency<ms_t>(pvDg->time));
+                           Eb::latency<ms_t>(pvDg->time));
             pvQueue.try_pop(pvDg);      // Actually consume the element
             bufferFreelist.push(pvDg);  // Return buffer to freelist
         }
@@ -618,7 +618,7 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
 
                 Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
                 NamesId cfgNamesId(nodeId, ConfigNamesIndex + pvMonitor->id());
-                if (Pds::translateJson2Xtc(pyjsoncfg, jsonxtc, end, cfgNamesId)) {
+                if (translateJson2Xtc(pyjsoncfg, jsonxtc, end, cfgNamesId)) {
                     return -1;
                 }
 
@@ -718,7 +718,7 @@ void PvDetector::event_(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
 // ---
 
 PvDrp::PvDrp(PvParameters& para, MemPoolCpu& pool, PvDetector& det, ZmqContext& context) :
-    DrpBase    (para, pool, context),
+    DrpBase    (para, pool, det, context),
     m_para     (para),
     m_det      (det),
     m_pgp      (para, pool, &det),
@@ -929,7 +929,7 @@ void PvDrp::_matchUp()
                                result == 0 ? '=' : (result < 0 ? '<' : '>'),
                                pvDg->time.seconds(), pvDg->time.nanoseconds(),
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               Pds::Eb::latency<ms_t>(evtDg->time));
+                               Eb::latency<ms_t>(evtDg->time));
 
                 if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
@@ -1047,7 +1047,7 @@ void PvDrp::_timeout(ms_t timeout)
                        "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
+                       Eb::latency<ms_t>(dgram.time), dgram.service());
 
         if (dgram.service() == TransitionId::L1Accept) {
             // No PV data so mark event as damaged
@@ -1243,10 +1243,6 @@ void PvApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp->ebReceiver().configure(m_det.get(), m_drp->pgp());
 
         m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
         m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());

@@ -397,6 +397,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     }
 
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
+    if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+        m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
+        m_latPid = timingHeader->pulseId();
+    }
     uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
@@ -536,31 +540,16 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         return nullptr;                 // Event is still incomplete
     }
 
-    // Determine the difference between epochs and clock offsets.
-    // We ignore the time difference due to the two clocks not
-    // being read at quite the same point in time.
-    if (transitionId == TransitionId::Configure) {
-        _setTimeOffset(timingHeader->time);
-    }
-    if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-        m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
-        m_latPid = timingHeader->pulseId();
-    }
     return timingHeader;
 }
 
-void PgpReader::_setTimeOffset(const TimeStamp& time) {
-    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
-    auto tTh = (std::chrono::seconds    { time.seconds()     } +
-                std::chrono::nanoseconds{ time.nanoseconds() });
-    m_tOffset = now - tTh;
-}
-
 std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {
-    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
-    auto tTh = (std::chrono::seconds    { time.seconds()     } +
-                std::chrono::nanoseconds{ time.nanoseconds() });
-    return now - tTh - m_tOffset;
+//    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
+//    auto tTh = (std::chrono::seconds    { time.seconds()     } +
+//                std::chrono::nanoseconds{ time.nanoseconds() });
+//    return now - tTh - m_tOffset;
+    using ns_t = std::chrono::nanoseconds;
+    return ns_t{ Pds::Eb::latency<ns_t>(time) };
 }
 
 void PgpReader::freeDma(PGPEvent* event)
@@ -594,13 +583,11 @@ std::string Drp::FileParameters::runName()
 }
 
 EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon) :
+                       MemPool& pool, ZmqSocket& inprocSend, DrpBase& drp) :
   EbCtrbInBase(tPrms),
   m_pool(pool),
-  m_det(nullptr),
-  m_pgp(nullptr),
+  m_drp(drp),
   m_tsId(-1u),
-  m_mon(mon),
   m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] != "no"), // Default to "yes"
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
@@ -650,16 +637,13 @@ int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
       if (rc)  return rc;
     }
 
+    // On the timing system DRP, EbReceiver needs to know its node ID
+    if (m_para.detType == "ts")  m_tsId = m_drp.nodeId();
+
     int rc = this->EbCtrbInBase::connect(exporter);
     if (rc)  return rc;
 
     return 0;
-}
-
-void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
-{
-    m_det = detector;
-    m_pgp = pgpReader;
 }
 
 void EbReceiver::unconfigure()
@@ -942,9 +926,9 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     }
     else { // L1Accept
         // On just the timing system DRP, save the trigger information
-        if (m_det && (m_det->nodeId == m_tsId)) {
+        if (m_drp.nodeId() == m_tsId) {
             const void* bufEnd = (char*)dgram + m_pool.bufferSize();
-            m_det->event(*dgram, bufEnd, result);
+            m_drp.detector().event(*dgram, bufEnd, result);
         }
     }
 
@@ -985,22 +969,22 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
 
         // Measure latency before sending dgram for monitoring
-        // @todo: Revisit m_pgp being null in the GPU case
-        if (m_pgp && dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-            m_latency = std::chrono::duration_cast<us_t>(m_pgp->age(dgram->time)).count();
+        if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+            m_latency = Pds::Eb::latency<us_t>(dgram->time);
             m_latPid = dgram->pulseId();
         }
 
-        if (m_mon.enabled()) {
+        auto& mon = m_drp.mebContributor();
+        if (mon.enabled()) {
             // L1Accept
             if (result.isEvent()) {
                 if (result.monitor()) {
-                    m_mon.post(dgram, result.monBufNo());
+                    mon.post(dgram, result.monBufNo());
                 }
             }
             // Other Transition
             else {
-                m_mon.post(dgram);
+                mon.post(dgram);
             }
         }
     }
@@ -1055,8 +1039,8 @@ static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& 
   return true;
 }
 
-DrpBase::DrpBase(Parameters& para, MemPool& pool_, ZmqContext& context) :
-    pool(pool_), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
+DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& context) :
+    pool(pool_), m_para(para), m_det(det), m_inprocSend(&context, ZMQ_PAIR)
 {
     // Try to reduce clutter in grafana by picking the same port on each invocation.
     // Since DRPs on the same node have unique lane masks use the lowest bit set as an
@@ -1091,7 +1075,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, ZmqContext& context) :
     m_mPrms.kwargs     = para.kwargs;
     m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *this);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1214,9 +1198,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
-
-    // On the timing system DRP, EbReceiver needs to know its node ID
-    if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
 
     return std::string{};
 }
@@ -1421,17 +1402,24 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
+    if (!top.HasMember("soname")) {
+        logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+        return -1;
+    }
+    std::string soname(top["soname"].GetString());
+    if (m_det.gpuDetector())  soname += "_gpu";
+
     //  Look for the detector-specific producer first
     std::string symbol("create_producer");
     symbol +=  "_" + m_para.detName;
-    m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+    m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
     if (m_triggerPrimitive) {
         logging::info("Created detector-specific TriggerPrimitive [%s]", symbol.c_str());
     }
     else {
         // Now try the generic producer
         symbol = std::string("create_producer");
-        m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+        m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
         if (!m_triggerPrimitive) {
             logging::error("Failed to create TriggerPrimitive; try '-v'");
             return -1;

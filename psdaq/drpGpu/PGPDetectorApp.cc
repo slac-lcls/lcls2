@@ -188,7 +188,7 @@ void PGPDetectorApp::initialize()
         throw "Could not create Detector object for " + m_para.detType;
     }
 
-    m_drp = std::make_unique<PGPDrp>(m_para, m_pool, m_det, context());
+    m_drp = std::make_unique<PGPDrp>(m_para, m_pool, *m_det, context());
 
     logging::info("Ready for transitions");
 
@@ -349,10 +349,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                // Provide EbReceiver with the Detector interface so that additional
-                // data blocks can be formatted into the XTC, e.g. trigger information
-                m_drp->ebReceiver().configure(m_det, nullptr);  // @todo: Revisit: m_pgpDetector.get());
-
                 m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
                 m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
             }

@@ -19,15 +19,15 @@ using namespace Drp::Gpu;
 
 PGPDrp::PGPDrp(Parameters&    parameters,
                MemPoolGpu&    memPool,
-               Gpu::Detector* detector,
+               Gpu::Detector& detector,
                ZmqContext&    context) :
-  DrpBase(parameters, memPool, context),
+  DrpBase(parameters, memPool, detector, context),
   m_para       (parameters),
   m_det        (detector),
   m_terminate_h(false),
   m_nNoTrDgrams(0)
 {
-  if (pool.setMaskBytes(m_para.laneMask, m_det->virtChan)) {
+  if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
     logging::critical("Failed to allocate lane/vc "
                       "- does another process have (one or more of) %s open?",
                       m_para.device.c_str());
@@ -66,7 +66,7 @@ std::string PGPDrp::configure(const json& msg)
     m_workerQueues_h.emplace_back(nBuffers, pool.dmaCount(), *m_terminate_d);
     auto wq = &m_workerQueues_d[i];
 
-    m_workers.emplace_back(i, m_para, *pool.getAs<MemPoolGpu>(), wq, *m_det, tpSz, *m_terminate_d);
+    m_workers.emplace_back(i, m_para, *pool.getAs<MemPoolGpu>(), wq, m_det, tpSz, *m_terminate_d);
   }
   chkError(cudaMemcpy(m_workerQueues_d, m_workerQueues_h.data(), m_workerQueues_h.size() * sizeof(*m_workerQueues_d), cudaMemcpyHostToDevice));
 
@@ -219,11 +219,11 @@ void PGPDrp::collector()
       break;
     }
     TimingHeader* timingHeader;
-    auto nRet = m_collector->receive(m_det, m_colMetrics); // This can block
+    auto nRet = m_collector->receive(&m_det, m_colMetrics); // This can block
     m_colMetrics.m_nDmaRet.store(nRet);
 
     for (unsigned b = 0; b < nRet; ++b) {
-      timingHeader = m_det->getTimingHeader(bufIndex);
+      timingHeader = m_det.getTimingHeader(bufIndex);
       uint32_t pgpIndex = timingHeader->evtCounter & bufferMask;
       PGPEvent* event = &pool.pgpEvents[pgpIndex];
       if (event->mask == 0)
@@ -237,7 +237,7 @@ void PGPDrp::collector()
       // Allocate a pebble buffer
       event->pebbleIndex = pool.allocate(); // This can block
       unsigned pebbleIndex = event->pebbleIndex;
-      Src src = m_det->nodeId;
+      Src src = m_det.nodeId;
       TransitionId::Value transitionId = timingHeader->service();
 
       // Make a new dgram in the pebble
@@ -275,11 +275,11 @@ void PGPDrp::collector()
         if (transitionId == TransitionId::SlowUpdate) {
           // Store the SlowUpdate's payload in the transition datagram
           const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
-          m_det->slowupdate(trDgram->xtc, bufEnd); // @todo: Is this needed or done on the GPU?
+          m_det.slowupdate(trDgram->xtc, bufEnd); // @todo: Is this needed or done on the GPU?
         } else {                // Transition
           // copy the temporary xtc created on phase 1 of the transition
           // into the real location
-          Xtc& trXtc = m_det->transitionXtc();
+          Xtc& trXtc = m_det.transitionXtc();
           trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
           const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
           auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);

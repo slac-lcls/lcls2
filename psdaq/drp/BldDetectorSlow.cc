@@ -874,9 +874,9 @@ void Pgp::_sendToTeb(EbDgram& dgram, uint32_t index)
 }
 
 
-BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector* det, ZmqContext& context) :
-    DrpBase(para, pool, context),
-    m_pgp  (para, *this, det)
+BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& context) :
+    DrpBase(para, pool, det, context),
+    m_pgp  (para, *this, &det)
 {
 }
 
@@ -921,7 +921,7 @@ BldApp::BldApp(Parameters& para) :
     Py_Initialize();                    // for use by configuration
 
     m_det = std::make_unique<BldDetector>(m_para, m_pool);
-    m_drp = std::make_unique<BldDrp>(m_para, m_pool, m_det.get(), context());
+    m_drp = std::make_unique<BldDrp>(m_para, m_pool, *m_det, context());
 
     logging::info("Ready for transitions");
 }
@@ -1054,10 +1054,6 @@ void BldApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp->ebReceiver().configure(m_det.get(), m_drp->pgp());
 
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);

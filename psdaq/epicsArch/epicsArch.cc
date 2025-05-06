@@ -177,7 +177,7 @@ void EaDetector::slowupdate(Xtc& xtc, const void* bufEnd)
 // ---
 
 EaDrp::EaDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& context) :
-    DrpBase    (para, pool, context),
+    DrpBase    (para, pool, det, context),
     m_para     (para),
     m_det      (det),
     m_pgp      (para, pool, &det),
@@ -491,10 +491,6 @@ void EpicsArchApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp->ebReceiver().configure(m_det.get(), m_drp->pgp());
 
         m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
         m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());

@@ -317,7 +317,7 @@ void Pgp::resetEventCounter()
 
 PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& context,
                int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, size_t shmemSize) :
-    DrpBase    (para, pool, context),
+    DrpBase    (para, pool, det, context),
     m_para     (para),
     m_det      (det),
     m_pgp      (para, pool, det, *this),
@@ -581,12 +581,12 @@ void PGPDrp::reader()
                     unsigned pebbleIndex = event->pebbleIndex;
                     Src src = nodeId();
                     EbDgram* dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader,
-                                                                                     src, m_para.rogMask);
+                                                                           src, m_para.rogMask);
 
                     logging::debug("PGPDrp saw %s @ %u.%09u (%014lx)",
-                                TransitionId::name(transitionId),
-                                dgram->time.seconds(), dgram->time.nanoseconds(),
-                                dgram->pulseId());
+                                   TransitionId::name(transitionId),
+                                   dgram->time.seconds(), dgram->time.nanoseconds(),
+                                   dgram->pulseId());
 
                     // Initialize the transition dgram's header
                     EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];

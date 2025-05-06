@@ -26,9 +26,8 @@ namespace Pds {
       Factory() : _object(nullptr) {}
       ~Factory() { if (_object)  delete _object; }
     public:
-      T* create(const rapidjson::Document& top,
-                const std::string&         detName,
-                const std::string&         symbol);
+      T* create(const std::string& soname,
+                const std::string& symbol);
     private:
       typedef T* Create_t();
       Pds::Dl _dl;
@@ -39,27 +38,13 @@ namespace Pds {
 
 
 template <typename T>
-T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
-                                const std::string&         docName,
-                                const std::string&         symbol)
+T* Pds::Trg::Factory<T>::create(const std::string& soname,
+                                const std::string& symbol)
 {
   using namespace rapidjson;
   using logging = psalg::SysLog;
 
-  const std::string key("soname");
-  if (!top.HasMember(key.c_str()))
-  {
-    logging::debug("Key '%s' not found in Document %s",
-                   key.c_str(), docName.c_str());
-    return nullptr;
-  }
-  std::string so(top[key.c_str()].GetString());
-  if (so.length() == 0)
-  {
-    logging::debug("Empty library name for key '%s'", key.c_str());
-    return nullptr;
-  }
-  logging::debug("Loading symbols from library '%s'", so.c_str());
+  logging::debug("Loading symbols from library '%s'", soname.c_str());
 
   if (_object)                          // If the object exists,
   {
@@ -70,17 +55,17 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
   // Lib must remain open during Unconfig transition
   _dl.close();                          // If a lib is open, close it first
 
-  if (_dl.open(so, RTLD_LAZY))
+  if (_dl.open(soname, RTLD_LAZY))
   {
     logging::debug("Error opening library '%s' for symbol '%s'",
-                   so.c_str(), symbol.c_str());
+                   soname.c_str(), symbol.c_str());
     return nullptr;
   }
 
   Create_t* createFn = reinterpret_cast<Create_t*>(_dl.loadSymbol(symbol.c_str()));
   if (!createFn)
   {
-    logging::debug("Symbol '%s' not found in %s", symbol.c_str(), so.c_str());
+    logging::debug("Symbol '%s' not found in %s", symbol.c_str(), soname.c_str());
     return nullptr;
   }
   _object = createFn();
@@ -89,7 +74,7 @@ T* Pds::Trg::Factory<T>::create(const rapidjson::Document& top,
     logging::debug("Error calling %s", symbol.c_str());
     return nullptr;
   }
-  logging::debug("Loaded library '%s'", so.c_str());
+  logging::debug("Loaded library '%s'", soname.c_str());
   return _object;
 }
 

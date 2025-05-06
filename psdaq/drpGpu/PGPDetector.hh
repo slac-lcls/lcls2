@@ -29,7 +29,7 @@ class RingIndexDtoH;
 class PGPDrp : public DrpBase
 {
 public:
-  PGPDrp(Parameters&, MemPoolGpu&, Detector*, ZmqContext&);
+  PGPDrp(Parameters&, MemPoolGpu&, Detector&, ZmqContext&);
   ~PGPDrp();
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
@@ -38,7 +38,7 @@ private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
 private:
   const Parameters&           m_para;
-  Detector*                   m_det;
+  Detector&                   m_det;
   std::atomic<bool>           m_terminate_h;    // Avoid PCIe transfer of _d
   cuda::atomic<int>*          m_terminate_d;    // Managed memory pointer
   std::vector<RingIndexDtoD>  m_workerQueues_h; // Preserves lifetime of _d

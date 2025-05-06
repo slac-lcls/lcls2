@@ -8,9 +8,6 @@
 
 #ifdef __NVCC__
 #include <cuda_runtime.h>               // For cudaStream_t
-#else
-struct CUstream_st;
-typedef struct CUstream_st* cudaStream_t;
 #endif
 
 #include <cstdint>
@@ -41,13 +38,14 @@ namespace Pds {
                            const XtcData::Xtc& contribution,
                            XtcData::Xtc&       xtc,
                            const void*         bufEnd) = 0;
-      // This method can't be left pure virtual for non-GPU use so it is
-      // defaulted to an empty block that is never called by non-GPU code
+#ifdef __NVCC__
+      // This method is for GPU use only and shouldn't show up in CPU builds
       virtual void   event(cudaStream_t&     stream,
                            float*            calibBuffers,
                            uint32_t** const* out,
                            unsigned&         index,
                            bool&             done) = 0;
+#endif
       virtual size_t size() const = 0;
     };
   }

@@ -1036,8 +1036,14 @@ int TebApp::_configure(const json& msg)
 
   if (!triggerConfig.empty())  _buildContract(top);
 
+  if (!top.HasMember("soname")) {
+    logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+    return -1;
+  }
+  std::string soname(top["soname"].GetString());
+
   const std::string symbol("create_consumer");
-  Trigger* trigger = _factory.create(top, triggerConfig, symbol);
+  Trigger* trigger = _factory.create(soname, symbol);
   if (!trigger)
   {
     logging::error("Failed to create Trigger; try '-v'");

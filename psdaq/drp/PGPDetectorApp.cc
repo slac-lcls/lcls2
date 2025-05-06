@@ -534,10 +534,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                // Provide EbReceiver with the Detector interface so that additional
-                // data blocks can be formatted into the XTC, e.g. trigger information
-                m_drp->ebReceiver().configure(m_det, m_drp->pgp());
-
                 m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
                 m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
             }

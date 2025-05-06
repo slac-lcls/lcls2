@@ -64,25 +64,24 @@ target_link_libraries(tmoTrigger
 
 #---
 
-if(NOT CMAKE_CUDA_COMPILER)
 
-  add_library(tmoTeb SHARED
-    tmoTebPrimitive.cc
-    tmoTeb.cc
-  )
+add_library(tmoTeb SHARED
+  tmoTebPrimitive.cc
+  tmoTeb.cc
+)
 
-  target_include_directories(tmoTeb PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-    ${PYTHON_INCLUDE_DIRS}
-  )
+target_include_directories(tmoTeb PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
+)
 
-  target_link_libraries(tmoTeb
-    xtcdata::xtc
-    trigger
-  )
+target_link_libraries(tmoTeb
+  xtcdata::xtc
+  trigger
+)
 
-else()
+if(CMAKE_CUDA_COMPILER)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
   set(CMAKE_CUDA_ARCHITECTURES 86 90)
@@ -91,25 +90,24 @@ else()
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)
   endif()
 
-  add_library(tmoTeb SHARED
+  add_library(tmoTeb_gpu SHARED
     tmoTebPrimitive.cc
     tmoTebPrimitive_gpu.cu
     tmoTeb.cc
   )
 
-  target_include_directories(tmoTeb PUBLIC
+  target_include_directories(tmoTeb_gpu PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
   )
 
-  target_link_libraries(tmoTeb
+  target_link_libraries(tmoTeb_gpu
     xtcdata::xtc
     trigger
     CUDA::cudart
     CUDA::cuda_driver
   )
-
 endif()
 
 #---
@@ -165,3 +163,8 @@ install(TARGETS
   tstTebPy
   calibTrigger
 )
+if(CMAKE_CUDA_COMPILER)
+install(TARGETS
+  tmoTeb_gpu
+)
+endif()

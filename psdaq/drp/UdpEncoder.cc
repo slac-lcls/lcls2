@@ -769,7 +769,7 @@ void UdpEncoder::event_(Dgram& dgram, const void* const bufEnd, const encoder_fr
 
 
 UdpDrp::UdpDrp(UdpParameters& para, MemPoolCpu& pool, UdpEncoder& det, ZmqContext& context) :
-    DrpBase       (para, pool, context),
+    DrpBase       (para, pool, det, context),
     m_para        (para),
     m_det         (det),
     m_pgp         (para, pool, &det),
@@ -1297,10 +1297,6 @@ void UdpApp::handlePhase1(const json& msg)
             _error(key, msg, errorMsg);
             return;
         }
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp->ebReceiver().configure(m_det.get(), m_drp->pgp());
 
         m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
         m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
