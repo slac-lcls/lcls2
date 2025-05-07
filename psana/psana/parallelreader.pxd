@@ -30,9 +30,9 @@ cdef struct Buffer:
     uint64_t* en_offset_arr             # end offset (start offset + size)
     int      found_endrun
     uint64_t endrun_ts
-    int    force_reread                 # set when intg event is incomplete
     uint64_t cp_offset                  # when force reread is set, cp_offset is the seen_offset
                                         # otherwise it's ready_offset (not using local var due to nogil)
+    int err_code                        # for debugging
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors
@@ -56,4 +56,4 @@ cdef class ParallelReader:
 
     cdef void _init_buffers(self, Buffer* bufs)
     cdef void _free_buffers(self, Buffer* bufs)
-    cdef void just_read(self)
+    cdef void force_read(self)

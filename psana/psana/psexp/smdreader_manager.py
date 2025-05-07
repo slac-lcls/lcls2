@@ -94,19 +94,17 @@ class SmdReaderManager(object):
         # Collecting Smd0 performance using prometheus
         self.read_gauge = self.dsparms.prom_man.get_metric("psana_smd0_read")
 
-    def get(self):
-        """Reads new data and raise if unable too"""
-        get_success = True
-        if not self.smdr.is_complete():
-            self._get()
-            if not self.smdr.is_complete():
-                get_success = False
-        return get_success
+    def force_read(self):
+        """
+        Always performs a new read from the file descriptors.
 
-    def _get(self):
-        """Reads new data with retry and check for .inprogress"""
+        Overwrites any existing data in the buffer.
+        Used when new data must be forced into the buffers,
+        regardless of how much data is already present.
+        """
+        logger.debug(f"[SMD-DEBUG] SmdReaderManager force_read called")
         st = time.monotonic()
-        self.smdr.get(self.dsparms.smd_inprogress_converted)
+        self.smdr.force_read(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
         read_rate = self.smdr.got / (1e6 * (en - st))
         logger.debug(
@@ -117,16 +115,21 @@ class SmdReaderManager(object):
         if self.smdr.chunk_overflown > 0:
             msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
             raise ValueError(msg)
+        return True
 
     @property
     def processed_events(self):
         return self.smdr.n_processed_events
 
     def get_next_dgrams(self):
-        """Returns list of dgrams as appeared in the current offset of the smd chunks.
+        """
+        Fetch Configure and BeginRun dgrams at the start of run.
 
-        Currently used to retrieve Configure and BeginRun. This allows read with wait
-        for these two types of dgram.
+        In live mode, will retry up to max_retries if the streams are incomplete.
+        In non-live mode, attempts only once.
+
+        Returns:
+            list of dgrams or None if not available
         """
         if (
             self.dsparms.max_events > 0
@@ -135,166 +138,201 @@ class SmdReaderManager(object):
             logger.debug(f"MESSAGE SMD0 max_events={self.dsparms.max_events} reached")
             return None
 
-        dgrams = None
-        if not self.smdr.is_complete():
-            self._get()
+        logger.debug(f"[SMD-DEBUG] SmdReaderManager get_next_dgrams called")
+        max_retries = getattr(self.dsparms, "max_retries", 0)
+        if max_retries:
+            retries = 0
+        else:
+            retries = -1
+        success = False
 
-        if self.smdr.is_complete():
-            # Get chunks with only one dgram each. There's no need to set
-            # integrating stream id here since Configure and BeginRun
-            # must exist in this stream too. Note that by setting batch_size
-            # to 1, we automatically ask for all types of event.
-            self.smdr.find_view_offsets(batch_size=1, ignore_transition=False)
+        while retries <= max_retries:
+            # Determine if we have a single event
+            success = self.smdr.build_batch_view(batch_size=1, ignore_transition=False)
+            if success:
+                bytearray_bufs = [bytearray(self.smdr.show(i)) for i in range(self.n_files)]
 
-            # For configs, we need to copy data from smdreader's buffers
-            # This prevents it from getting overwritten by other dgrams.
-            bytearray_bufs = [bytearray(self.smdr.show(i)) for i in range(self.n_files)]
+                if self.configs is None:
+                    dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
+                    self.configs = dgrams
+                    self.smdr.set_configs(self.configs)
+                else:
+                    dgrams = [
+                        dgram.Dgram(view=ba_buf, config=config, offset=0)
+                        for ba_buf, config in zip(bytearray_bufs, self.configs)
+                    ]
 
-            if self.configs is None:
-                dgrams = [
-                    dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs
-                ]
-                self.configs = dgrams
-                self.smdr.set_configs(self.configs)
-            else:
-                dgrams = [
-                    dgram.Dgram(view=ba_buf, config=config, offset=0)
-                    for ba_buf, config in zip(bytearray_bufs, self.configs)
-                ]
-        return dgrams
+                return dgrams
+
+            # No data to yield, try to get more data
+            self.force_read()
+            # Didn't get complete streams yet
+            if retries == max_retries:
+                logger.log(
+                    f"WARNING: Unable to fetch complete Configure/BeginRun dgrams after {retries} retries."
+                )
+                return None
+
+            if retries > -1:
+                logger.debug(f"[SMD-DEBUG] Waiting for Configure/BeginRun... retry {retries+1}/{max_retries}")
+                time.sleep(1)
+            retries += 1
 
     def __iter__(self):
         return self
 
-    def check_split_event(self, current_processed_events):
-        # Return True
-        #   - if there's no split integrating event or
-        #   - when it has been handled correctly by reread once
-        #   - EndRun is found
-        #
-        # How we check? If no. of viewed event is not increasing, this means there's a split
-        # integrating event and we need to reread again.
-        # Notes:
-        #   - Reread in get() is performed for any streams with n_ready_events == n_seen_events
-        #     or when force_reread flag is set (split integrating event).
-        #   - We only try to reread one time for split events. If this is not successful,
-        #     we abort with below message.
-        check_pass = True
-        if (
-            self.processed_events <= current_processed_events
-            and not self.smdr.found_endrun()
-        ):
-            # Also fail if we cannot get more data
-            check_pass = self.get()
-            if check_pass:
-                self.smdr.find_view_offsets(
-                    batch_size=self.smd0_n_events,
-                    intg_stream_id=self.dsparms.intg_stream_id,
-                    intg_delta_t=self.dsparms.intg_delta_t,
-                    max_events=self.dsparms.max_events,
-                )
-                if self.processed_events <= current_processed_events:
-                    logger.log(
-                        f"ERROR: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}."
-                    )
-                    check_pass = False
+    def build_normal_batch(self):
+        """
+        Build a normal (non-integrating) batch by calling build_batch_view().
+        Retry in live mode if no batch is found.
+        """
+        max_retries = getattr(self.dsparms, "max_retries", 0)
+        if max_retries:
+            retries = 0
+        else:
+            retries = -1
+        success = False
+        logger.debug(f"[SMD-DEBUG] SmdReaderManager build_normal_batch called")
+
+        while retries <= max_retries:
+            success = self.smdr.build_batch_view(
+                batch_size=self.smd0_n_events,
+                intg_stream_id=-1,
+                intg_delta_t=0,
+                max_events=self.dsparms.max_events,
+            )
+            if success:
+                break
+
+            # No data to yield, try to get more data
+            self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+
+            # Didn't get complete streams yet
+            if retries == max_retries:
+                return None
+
+            if retries > -1:
+                logger.debug(f"[SMD-DEBUG] Waiting for data... retry {retries+1}/{max_retries}")
+                time.sleep(1)
+            retries += 1
+
+        if not success:
+            logger.log(
+                f"ERROR: Unable to build a batch after {retries} retries."
+            )
+
+        return success
+
+    def build_integrating_batch(self):
+        """
+        Build an integrating batch by calling build_batch_view().
+        Retry in live mode if no complete integrating event is found.
+        """
+        max_retries = getattr(self.dsparms, "max_retries", 0)
+        if max_retries:
+            retries = 0
+        else:
+            retries = -1
+        success = False
+        logger.debug(f"[SMD-DEBUG] SmdReaderManager build_integrating_batch called")
+
+        while retries <= max_retries:
+            success = self.smdr.build_batch_view(
+                batch_size=self.smd0_n_events,
+                intg_stream_id=self.dsparms.intg_stream_id,
+                intg_delta_t=self.dsparms.intg_delta_t,
+                max_events=self.dsparms.max_events,
+            )
+            if success:
+                break
+
+            # No data to yield, try to get more data
+            self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+
+            # Didn't get complete streams yet
+            if retries == max_retries:
+                return None
+
+            if retries > -1:
+                logger.debug(f"[SMD-DEBUG] Waiting for data... retry {retries+1}/{max_retries}")
+                time.sleep(1)
+            retries += 1
+
+        if not success:
+            logger.log(
+                f"ERROR: Unable to build an integrating batch after {retries} retries."
+            )
+
+        return success
+
+    def chunks(self):
+        """
+        Generator that yields chunk numbers as we process smalldata batches.
+
+        In both normal and integrating modes:
+        - If there isn't enough data, it tries to reread more.
+        - In live mode, it will retry up to max_retries before giving up.
+        - `build_normal_batch()` and `build_integrating_batch()` both internally
+        call build_batch_view() and handle retries.
+
+        Yields:
+            int: Chunk number starting from 1
+        """
+        is_done = False
+        cn_chunks = 0
+        integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
+
+        while not is_done:
+            logger.debug(f"TIMELINE 1. STARTCHUNK {time.monotonic()}", level=3)
+            logger.debug(f"[SMD-DEBUG] SmdReaderManager chunks called")
+
+            # --- Build batch ---
+            if integrating:
+                success = self.build_integrating_batch()
             else:
-                logger.log(
-                    "ERROR: unable to locate a new chunk. No data in one or more streams and no EndRun found."
-                )
-        return check_pass
+                success = self.build_normal_batch()
+
+            if not success:
+                is_done = True
+                break
+
+            self.got_events = self.smdr.view_size
+
+            if (
+                self.dsparms.max_events
+                and self.processed_events >= self.dsparms.max_events
+            ):
+                logger.debug(f"MESSAGE SMD0 max_events={self.dsparms.max_events} reached")
+                is_done = True
+
+            if self.got_events:
+                cn_chunks += 1
+                yield cn_chunks
+
+        logger.debug(f"TIMELINE FINAL. Exiting chunks generator after {cn_chunks} chunks.", level=3)
 
     def __next__(self):
         """
         Returns a batch of events as an iterator object.
-        This is used by non-parallel run. Parallel run uses chunks
-        generator that yields chunks of raw smd data and steps (no
-        event building).
-
-        The iterator stops reading under two conditions. Either there's
-        no more data or max_events reached.
+        Used by non-parallel (serial) mode.
         """
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
 
-        # Read new data if needed
-        if not self.get():
-            raise StopIteration
+        integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
 
-        # Locate viewing windows for each chunk
-        current_processed_events = self.processed_events
-        self.smdr.find_view_offsets(
-            batch_size=self.smd0_n_events,
-            intg_stream_id=self.dsparms.intg_stream_id,
-            intg_delta_t=self.dsparms.intg_delta_t,
-            max_events=self.dsparms.max_events,
-        )
+        if integrating:
+            success = self.build_integrating_batch()
+        else:
+            success = self.build_normal_batch()
 
-        # Check if reread is needed for split integrating event
-        check_pass = self.check_split_event(current_processed_events)
-        if not check_pass:
+        if not success:
             raise StopIteration
 
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
         batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
         self.got_events = self.smdr.view_size
         return batch_iter
-
-    def chunks(self):
-        """Generates a tuple of smd and step dgrams"""
-        is_done = False
-        d_view, d_read = 0, 0
-        cn_chunks = 0
-        while not is_done:
-            logger.debug(f"TIMELINE 1. STARTCHUNK {time.monotonic()}", level=3)
-            st_view, en_view, st_read, en_read = 0, 0, 0, 0
-
-            if self.smdr.is_complete():
-
-                st_view = time.monotonic()
-
-                # Gets the next batch of already read-in data.
-                current_processed_events = self.processed_events
-                self.smdr.find_view_offsets(
-                    batch_size=self.smd0_n_events,
-                    intg_stream_id=self.dsparms.intg_stream_id,
-                    intg_delta_t=self.dsparms.intg_delta_t,
-                    max_events=self.dsparms.max_events,
-                )
-
-                # Check if reread is needed for split integrating event
-                check_pass = self.check_split_event(current_processed_events)
-                if not check_pass:
-                    break
-
-                self.got_events = self.smdr.view_size
-
-                if (
-                    self.dsparms.max_events
-                    and self.processed_events >= self.dsparms.max_events
-                ):
-                    logger.debug(
-                        f"MESSAGE SMD0 max_events={self.dsparms.max_events} reached"
-                    )
-                    is_done = True
-
-                en_view = time.monotonic()
-                d_view += en_view - st_view
-                logger.debug(f"TIMELINE 2. DONECREATEVIEW {time.monotonic()}", level=3)
-
-                if self.got_events:
-                    cn_chunks += 1
-                    yield cn_chunks
-
-            else:  # if self.smdr.is_complete()
-                st_read = time.monotonic()
-                self._get()
-                en_read = time.monotonic()
-                logger.debug(f"TIMELINE 3. DONEREAD {time.monotonic()}", level=3)
-                d_read += en_read - st_read
-                if not self.smdr.is_complete():
-                    is_done = True
-                    break
 
     @property
     def min_ts(self):

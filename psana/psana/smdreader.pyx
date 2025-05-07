@@ -1,5 +1,6 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
+
 from cpython cimport array
 from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libc.stdlib cimport free, malloc
@@ -13,6 +14,9 @@ cimport cython
 
 from cython.parallel import prange
 
+DEF DEBUG_MODULE = "SmdReader"
+include "cydebug.pxh"
+
 from psana.psexp import TransitionId
 
 from cpython.buffer cimport (PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE,
@@ -23,6 +27,9 @@ from psana.dgramedit import DgramEdit
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 from cpython.object cimport PyObject
 from dgramlite cimport Dgram
+
+
+cdef uint64_t INVALID_TS = 0xFFFFFFFFFFFFFFFF
 
 
 cdef class SmdReader:
@@ -124,67 +131,34 @@ cdef class SmdReader:
         for i in range(self.n_eb_nodes):
             self.send_bufs[i].chunk      = <char *>malloc(self.sendbufsize)
 
-    def is_complete(self):
-        """ Checks that all buffers have at least one event"""
-        cdef int is_complete = 1
-        cdef int i
-
-        for i in range(self.prl_reader.nfiles):
-            if (self.prl_reader.bufs[i].n_ready_events -
-                    self.prl_reader.bufs[i].n_seen_events == 0) or \
-                    self.prl_reader.bufs[i].force_reread == 1:
-                is_complete = 0
-                break
-
-        return is_complete
-
     def set_configs(self, configs):
         # SmdReaderManager calls view (with batch_size=1)  at the beginning
         # to read config dgrams. It passes the configs to SmdReader for
         # creating any fake dgrams using DgramEdit.
         self.configs = configs
 
-    def get(self, smd_inprogress_converted):
-        """SmdReaderManager only calls this function when there's no more event
-        in one or more buffers. Reset the indices for buffers that need re-read."""
+    def force_read(self, smd_inprogress_converted):
+        """
+        Force a full read across all streams.
 
+        Resets buffer indices and reads new data into the ParallelReader buffers.
+        In live mode, retries up to max_retries if new data isn't immediately available.
+        """
+        debug_print("force_reread called")
+        
         # Exit if EndRun is found for all files. This is safe even though
         # we support mulirun in one xtc2 file but this is only for shmem mode,
         # which doesn't use SmdReader.
         if self.found_endrun():
             return
 
-        cdef int i=0
+        # Always reset the per‐buffer “next block” indices before reading,
+        # so partial tails always get carried forward.
         for i in range(self.prl_reader.nfiles):
-            buf = &(self.prl_reader.bufs[i])
-            if (buf.n_ready_events - buf.n_seen_events > 0) and \
-                    not buf.force_reread:
-                continue
-            self.i_st_nextblocks[i] = 0
+            self.i_st_nextblocks[i]      = 0
             self.i_st_step_nextblocks[i] = 0
 
-        self.prl_reader.just_read()
-
-        if self.max_retries > 0:
-
-            cn_retries = 0
-            while not self.is_complete():
-                flag_founds = smd_inprogress_converted()
-
-                # Only when .inprogress file is used and ALL xtc2 files are found
-                # that this will return a list of all(True). If we have a mixed
-                # of True and False, we let ParallelReader decides which file
-                # to read but we'll still need to do sleep.
-                if all(flag_founds):
-                    break
-
-                time.sleep(self.sleep_secs)
-                print(f'smd0 waiting for an event...retry#{cn_retries+1} of \
-                    {self.max_retries} (use PS_R_MAX_RETRIES for different value)')
-                self.prl_reader.just_read()
-                cn_retries += 1
-                if cn_retries >= self.max_retries:
-                    break
+        self.prl_reader.force_read()
 
         # Reset winning buffer when we read-in more data
         self.winner = -1
@@ -199,17 +173,22 @@ cdef class SmdReader:
         We also set the attributes that keep records of L1Accept and all events per call
         and all events that have been processed from the begining.
         """
+        debug_print("find_limit_ts called")
 
         cdef int i=0
+        is_transition = not ignore_transition
 
         # The winning stream is the one with smallest timestamp and the end of its chunk.
         # We only need to do this once at a new read.
-        cdef uint64_t limit_ts=0
+        cdef uint64_t limit_ts=INVALID_TS
         cdef uint64_t buf_ts=0
         if self.winner == -1:
+            debug_print("    Find winner:")
             for i in range(self.prl_reader.nfiles):
+                if self.prl_reader.bufs[i].n_ready_events == 0:
+                    continue
                 buf_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].n_ready_events-1]
-                if limit_ts == 0:
+                if limit_ts == INVALID_TS:
                     self.winner = i
                     limit_ts = buf_ts
                 else:
@@ -221,63 +200,73 @@ cdef class SmdReader:
                     elif buf_ts < limit_ts:
                         self.winner = i
                         limit_ts = buf_ts
+                debug_print(f"    file[{i}]: n_ready_events={self.prl_reader.bufs[i].n_ready_events} "
+                            f"buf_ts={buf_ts} limit_ts={limit_ts} --> winner={self.winner}")
         else:
-            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_ready_events-1]
-
-        # Index of the first and last event in the viewing window
-        cdef int i_bob=0, i_eob=0
-        i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
-        i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
+            if self.prl_reader.bufs[self.winner].n_ready_events > 0:
+                limit_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_ready_events-1]
+                debug_print(f"    Known winner: {self.winner} "
+                            f"n_ready_events={self.prl_reader.bufs[self.winner].n_ready_events} "
+                            f"limit_ts={limit_ts}")
 
         # Apply batch_size and max_events
         cdef int n_L1Accepts=0
         cdef int n_events=0
+        # Index of the first and last event in the viewing window
+        cdef int i_bob=0, i_eob=0
 
-        if ignore_transition:
-            if max_events == 0:
-                for i in range(i_bob+1, i_eob + 1):
-                    n_events += 1
-                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
-                        n_L1Accepts +=1
-                    if n_L1Accepts == batch_size:
-                        break
-            else:
-                for i in range(i_bob+1, i_eob + 1):
-                    n_events += 1
-                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
-                        n_L1Accepts +=1
-                    if n_L1Accepts == batch_size:
-                        break
-                    if self.n_processed_events + n_L1Accepts == max_events:
-                        break
-        else:
-            if max_events == 0:
-                for i in range(i_bob+1, i_eob + 1):
-                    n_events += 1
-                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
-                        n_L1Accepts +=1
-                    if n_events == batch_size:
-                        break
-            else:
-                for i in range(i_bob+1, i_eob + 1):
-                    n_events += 1
-                    if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
-                        n_L1Accepts +=1
-                    if n_events == batch_size:
-                        break
-                    if self.n_processed_events + n_events == max_events:
-                        break
+        if limit_ts != INVALID_TS:
+            i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
+            i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
+            debug_print(f"    Apply batch cut-off is_transition={is_transition} max_events={max_events} "
+                        f" i_bob={i_bob} i_eob={i_eob}")
 
-        i_eob = i
-        limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+            if is_transition:
+                if max_events == 0:
+                    for i in range(i_bob+1, i_eob + 1):
+                        n_events += 1
+                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                            n_L1Accepts +=1
+                        if n_events == batch_size:
+                            break
+                else:
+                    for i in range(i_bob+1, i_eob + 1):
+                        n_events += 1
+                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                            n_L1Accepts +=1
+                        if n_events == batch_size:
+                            break
+                        if self.n_processed_events + n_events == max_events:
+                            break
+            else:
+                if max_events == 0:
+                    for i in range(i_bob+1, i_eob + 1):
+                        n_events += 1
+                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                            n_L1Accepts +=1
+                        if n_L1Accepts == batch_size:
+                            break
+                else:
+                    for i in range(i_bob+1, i_eob + 1):
+                        n_events += 1
+                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                            n_L1Accepts +=1
+                        if n_L1Accepts == batch_size:
+                            break
+                        if self.n_processed_events + n_L1Accepts == max_events:
+                            break
+
+            i_eob = i
+            limit_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+            debug_print(f"    Done apply batch i_eob={i_eob} winner={self.winner} limit_ts={limit_ts}")
+            # Save timestamp and transition id of the last event in batch
+            self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]
+            self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
+        
         self.n_view_events  = n_events
         self.n_view_L1Accepts = n_L1Accepts
         self.n_processed_events += n_L1Accepts
-
-        # Save timestamp and transition id of the last event in batch
-        self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]
-        self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-
+        debug_print(f"Exit find_limit_ts limit_ts={limit_ts}")
         return limit_ts
 
     def find_intg_limit_ts(self, intg_stream_id, intg_delta_t, max_events):
@@ -289,7 +278,7 @@ cdef class SmdReader:
         event.
         """
         self.winner = intg_stream_id
-        cdef uint64_t limit_ts = 0
+        cdef uint64_t limit_ts = 0xFFFFFFFFFFFFFFFF
         cdef uint64_t buf_ts=0
         cdef int i=0, j=0
 
@@ -325,7 +314,6 @@ cdef class SmdReader:
                     buf_ts = self.prl_reader.bufs[j].ts_arr[self.prl_reader.bufs[j].n_ready_events-1]
                     if buf_ts < limit_ts:
                         is_split = 1
-                        self.prl_reader.bufs[j].force_reread = 1
                 if not is_split:
                     n_L1Accepts += 1
                     i_complete = i
@@ -378,17 +366,33 @@ cdef class SmdReader:
                 memcpy(&(d.env), &new_env, sizeof(uint32_t))
 
     @cython.boundscheck(False)
-    def find_view_offsets(self, int batch_size=1000, int intg_stream_id=-1, uint64_t intg_delta_t=0, max_events=0, ignore_transition=True):
-        """ Set the start and end offsets for both data and transition buffers.
+    def build_batch_view(self, batch_size=1000, intg_stream_id=-1, intg_delta_t=0, max_events=0, ignore_transition=True):
+        """
+        Build a view (window) of the next batch of events from the buffers.
 
-        This function is called by SmdReaderManager only when is_complete is True (
-        all buffers have at least one event). It returns events of batch_size if
-        possible or as many as it has for the buffer.
+        This function selects events across all streams according to either
+        normal mode (timestamp-ordered) or integrating mode (based on a target stream).
+        It updates internal offsets and counters to mark events as seen.
 
-        Integrating detector:
-        When intg_stream_id is set (value > -1)
+        It returns True if at least one event was found and prepared, False otherwise.
+
+        Args:
+            batch_size (int): Number of events to group into one batch.
+            intg_stream_id (int): Index of the integrating detector stream, or -1 if none.
+            intg_delta_t (int): Integration time window (nanoseconds) for integrating detectors.
+            max_events (int): Maximum number of events to process across the run.
+            ignore_transition (bool): Whether to skip transition events.
+
+        Returns:
+            bool: True if a valid batch is prepared, False if no events found.
         """
         st_all = time.monotonic()
+        
+        debug_print("build_batch_view called")
+        debug_print(f"    batch_size={batch_size} intg_stream_id={intg_stream_id} "
+                    f"intg_delta_t={intg_delta_t} max_events={max_events} "
+                    f"ignore_transition={ignore_transition}")
+        
         cdef int i=0
         cdef uint64_t limit_ts
         cdef array.array _i_st_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
@@ -431,22 +435,28 @@ cdef class SmdReader:
         # event).
         cdef int batch_complete_flag = 0
         cdef int cn_intg_events = 0
+
         while not batch_complete_flag:
             # With batch_size = 1 (used for reading Configure and BeginRun), this
             # automatically set ignore_transition flag to False so we can get any
             # type of event. We also use standard way to find limit_ts when asking
-            # for Configure and BeginRun.
+            # for Configure and BeginRun. We also check here if there's no event
+            # to yield, and return False.
             if intg_stream_id == -1 or ignore_transition is False:
                 limit_ts = self.find_limit_ts(batch_size, max_events, ignore_transition)
+                if limit_ts == INVALID_TS:
+                    debug_print(f"    invalid limit_ts ({limit_ts})")
+                    return False
                 batch_complete_flag = 1
             else:
                 limit_ts = self.find_intg_limit_ts(intg_stream_id, intg_delta_t, max_events)
-                # Return none when there is nothing in this batch
-                if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]:
-                    return
+                if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1] or limit_ts == INVALID_TS:
+                    debug_print(f"EARLY EXIT: limit_ts == last_ts or invalid (limit_ts={limit_ts}")
+                    return False
                 cn_intg_events += 1
                 if cn_intg_events == batch_size:
                     batch_complete_flag = 1
+            debug_print(f"    batch loop: limit_ts={limit_ts} winner={self.winner}")
 
             # Reset timestamp and buffer for fake steps (will be calculated lazily)
             self._next_fake_ts = 0
@@ -479,6 +489,11 @@ cdef class SmdReader:
                     if block_sizes[i] > 0:
 
                         cn_batch_bufs[i] += 1
+
+                with gil:
+                    debug_print(f"    file[{i}]: st={i_st_blocks[i]} en={i_en_blocks[i]} "
+                            f"block_size={block_sizes[i]} seen_offset={buf.seen_offset} "
+                            f"n_seen_events={buf.n_seen_events}")
 
                 # Handle step buffers the same way
                 buf = &(self.prl_reader.step_bufs[i])
@@ -524,6 +539,9 @@ cdef class SmdReader:
 
         en_all = time.monotonic()
         self.total_time += en_all - st_all
+        debug_print(f"Success build_batch_view, limit_ts={limit_ts} total_time={self.total_time:.6f} sec")
+        return True
+
 
     def get_next_fake_ts(self):
         """Returns next fake timestamp
