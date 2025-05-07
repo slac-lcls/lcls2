@@ -40,7 +40,7 @@ class axis_raw_1_0_0(AreaDetectorRaw):
     def image(self, evt, nda=None, **kwa) -> Array2d:
         r = self.raw(evt)
         if r is None: return None
-        if self._geo is None and r is not None:
+        if self._seg_geo is None and r is not None:
             self._init_geometry(r.shape)
         return self.calib(evt)
 
