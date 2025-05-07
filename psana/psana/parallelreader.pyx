@@ -1,11 +1,13 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
-
 from parallelreader cimport Buffer
 
 import os
 
 from cython.parallel import prange
+
+DEF DEBUG_MODULE = "ParallelReader"
+include "cydebug.pxh"
 
 cimport cython
 from dgramlite cimport Dgram, Xtc
@@ -60,12 +62,12 @@ cdef class ParallelReader:
             buf.timestamp       = 0
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
-            buf.force_reread    = 0
             buf.chunk      = <char *>malloc(self.chunksize)
             buf.ts_arr     = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
             buf.st_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.en_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
+            buf.err_code = 0
 
     cdef void _free_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
@@ -81,46 +83,34 @@ cdef class ParallelReader:
             free(bufs)
 
     @cython.boundscheck(False)
-    cdef void just_read(self):
+    cdef void force_read(self):
         """
-        Reads only if the buffer has no more unseen events
+        Forcefully refill each buffer by copying any remaining data and reading from file descriptors.
 
-        If there's some data left at the bottom of the buffer due to cutoff,
-        copy this remaining data to the begining of the buffer then read to
-        fill the rest of the chunk. Sets the following variables when done:
-        - got = remaining (from copying) + new got (from reading)
-        - ready_offset = offset of the last event that fits in the buffer
-        - n_ready_events = no. of total events that fit in the buffer
-
+        - Resets per-buffer tracking variables (ready_offset, seen_offset, n_ready_events, etc.)
+        - Does NOT check if buffers still contain unseen events; it always overwrites.
+        - Called by SmdReader.force_read() when a full reread is needed.
         """
-        cdef size_t i           = 0
-        cdef int64_t[:] gots    = self.gots
+        cdef int i           = 0
+        cdef int64_t[:] gots = self.gots
         cdef Dgram* d
         cdef Buffer* buf
         cdef Buffer* step_buf
-        cdef uint64_t payload   = 0
-        cdef int err_thread_id  = -1
-        self.got                = 0
+        cdef uint64_t payload = 0
+        self.got = 0
 
         for i in prange(self.nfiles, nogil=True, num_threads=self.num_threads):
             gots[i] = 0
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
 
-            # skip reading this buffer if there is/are still some event(s).
-            # or when there's a split integrating event.
-            if (buf.n_ready_events - buf.n_seen_events > 0) and not buf.force_reread:
-                continue
-
-            # copy remaining data if any -
-            # if force_reread is set (intg det), we need to copy data from seen_offset
-            # instead of ready_offset.
-            if buf.force_reread:
-                buf.cp_offset = buf.seen_offset
-            else:
-                buf.cp_offset = buf.ready_offset
-            if buf.got - buf.cp_offset > 0 and buf.cp_offset > 0:
-                memcpy(buf.chunk, buf.chunk + buf.cp_offset, buf.got - buf.cp_offset)
+            # decide how many bytes to keep (cp_offset)
+            buf.cp_offset = buf.ready_offset    
+            # copy them down to the front of the chunk buffer
+            if buf.got - buf.cp_offset > 0:
+                memcpy(buf.chunk,
+                       buf.chunk + buf.cp_offset,
+                       buf.got - buf.cp_offset)
 
             # read more data to fill up the buffer
             gots[i] = read(self.file_descriptors[i], buf.chunk + (buf.got - buf.cp_offset),
@@ -140,17 +130,18 @@ cdef class ParallelReader:
             step_buf.n_ready_events = 0
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
+            
+            buf.err_code            = 0
 
-            # reset force_read flag for integrating event
-            buf.force_reread        = 0
-
-            while buf.ready_offset < buf.got and buf.n_ready_events < self.max_events:
+            while buf.ready_offset < buf.got and \
+                  buf.n_ready_events < self.max_events and \
+                  not buf.err_code:
                 if buf.got - buf.ready_offset >= sizeof(Dgram):
                     d = <Dgram *>(buf.chunk + buf.ready_offset)
 
                     if d.xtc.extent == 0:
-                        err_thread_id = i
-                        break
+                        buf.err_code = 3
+                        continue
 
                     payload = d.xtc.extent - sizeof(Xtc)
 
@@ -184,13 +175,31 @@ cdef class ParallelReader:
                         buf.n_ready_events += 1
 
                     else:  # if (buf.got - buf.ready_offset) >= sizeof(Dgram) + payload
-                        break
+                        buf.err_code = 2
+                        continue
                 else:  # if buf.got - buf.ready_offset >= sizeof(Dgram)
-                    break
+                    buf.err_code = 1
+                    continue
 
             # end while buf.ready_offset < buf.got:
 
         # end for i
-        if err_thread_id >= 0:
-            print(f'Error: found 0 extent in stream {err_thread_id}')
-            raise
+        
+        # Check for fatal error
+        cdef int fatal_error_detected = 0
+        
+        for i in range(self.nfiles):
+            buf = &(self.bufs[i])
+
+            if buf.err_code == 0:
+                continue
+
+            if buf.err_code == 3:
+                fatal_error_detected = 1
+                debug_print(f"Stream {i}: Found invalid dgram with xtc.extent==0 (fatal)")
+            else:
+                debug_print(f"Stream {i}: Buffer ended prematurely (err_code={buf.err_code})")
+
+        if fatal_error_detected:
+            raise RuntimeError("Data corruption detected during force_read(): xtc.extent == 0 in one or more streams.")
+
