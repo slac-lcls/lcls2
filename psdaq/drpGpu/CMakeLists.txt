@@ -13,6 +13,7 @@ if(CMAKE_CUDA_COMPILER)
         # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)
     endif()
 
+    #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --verbose")  # or do: export NVCC_PREPEND_FLAGS='--verbose'
     #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
     #message(INSTALL_INTERFACE="$<INSTALL_INTERFACE>")
     #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
