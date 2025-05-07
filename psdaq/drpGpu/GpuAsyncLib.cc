@@ -26,15 +26,15 @@ bool CudaContext::init(int device, bool quiet) {
     int devs = 0;
     if (chkError(cuDeviceGetCount(&devs)))
         return false;
-    logging::debug("Total GPU devices %d\n", devs);
+    logging::debug("Total GPU devices %d", devs);
     if (devs <= 0) {
-        logging::error("No GPU devices available!\n");
+        logging::error("No GPU devices available!");
         return false;
     }
 
     device = device < 0 ? 0 : device;
     if (devs <= device) {
-        logging::error("Invalid GPU device number %d! There are only %d devices available\n", device, devs);
+        logging::error("Invalid GPU device number %d! There are only %d devices available", device, devs);
         return false;
     }
 
@@ -46,16 +46,16 @@ bool CudaContext::init(int device, bool quiet) {
     char name[256];
     if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
         return false;
-    logging::debug("Selected GPU device: %s\n", name);
+    logging::debug("Selected GPU device: %s", name);
 
     // Set required attributes
     int res;
     if (chkError(cuDeviceGetAttribute(&res, CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1, device_)))
         return false;
     if (!res) {
-        logging::warning("This device does not support CUDA Stream Operations, this code will not run!\n");
+        logging::warning("This device does not support CUDA Stream Operations, this code will not run!");
         logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
-                       "if your GPU is supported.\n");
+                       "if your GPU is supported.");
         return false;
     }
 
@@ -63,17 +63,17 @@ bool CudaContext::init(int device, bool quiet) {
     size_t global_mem = 0;
     if (chkError(cuDeviceTotalMem(&global_mem, device_)))
         return false;
-    logging::debug("Global memory: %zu MB\n", global_mem >> 20);
+    logging::debug("Global memory: %zu MB", global_mem >> 20);
     if (global_mem > (size_t)4 << 30)
-        logging::debug("64-bit Memory Address support\n");
+        logging::debug("64-bit Memory Address support");
 
     int value;
     if (chkError(cuDeviceGetAttribute(&value, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device_)))
         return false;
-    logging::debug("Device supports unified addressing: %s\n", value ? "YES" : "NO");
+    logging::debug("Device supports unified addressing: %s", value ? "YES" : "NO");
     if (chkError(cudaDeviceGetAttribute(&value, cudaDevAttrComputePreemptionSupported, device_)))
         return false;
-    logging::debug("Device supports compute preemption: %s\n", value ? "YES" : "NO");
+    logging::debug("Device supports compute preemption: %s", value ? "YES" : "NO");
 
     // Create context
     if (chkError(cuCtxCreate(&context_, 0, device_)))
@@ -98,7 +98,7 @@ void CudaContext::listDevices() {
             logging::error("Unable to get name of GPU device %d", i);
             continue;
         }
-        logging::info("%d: %s\n", i, name);
+        logging::info("%d: %s", i, name);
     }
 }
 
@@ -119,14 +119,15 @@ bool checkError(CUresult status, const char* func, const char* file, int line, b
         CUresult ok         = cuGetErrorString(status, &perrstr);
         const char* perrnam = 0;
         CUresult ok2        = cuGetErrorName(status, &perrnam);
+        if (!msg)  msg = func;          // Just in case, but msg is never 0
         if (ok == CUDA_SUCCESS && ok2 == CUDA_SUCCESS) {
             if (perrstr) {
-                logging::error("%s:%d:\n  '%s'\n  status %s (%i): info: %s - %s\n", file, line, func, perrnam, status, perrstr, msg);
+                logging::error("%s:%d:  %s (%i): '%s'%s", file, line, perrnam, status, perrstr, *msg ? msg : func);
             } else {
-                logging::error("%s:%d:\n  '%s'\n  status %s (%i): info: unknown error - %s\n", file, line, func, perrnam, status, msg);
+                logging::error("%s:%d:  %s (%i): unknown error%s", file, line, perrnam, status, *msg ? msg : func);
             }
         } else {
-            logging::error("%s:%d:\n  '%s'\n  status %i: info: unknown error - %s\n", file, line, func, status, msg);
+            logging::error("%s:%d:  status %i: unknown error%s", file, line, status, *msg ? msg : func);
         }
         if (crash)  abort();
         return true;
@@ -137,7 +138,9 @@ bool checkError(CUresult status, const char* func, const char* file, int line, b
 bool checkError(cudaError status, const char* func, const char* file, int line, bool crash, const char* msg)
 {
     if (status != cudaSuccess) {
-        logging::error("%s:%d:  '%s'\n  %s\n  status %s (%i): info: %s - %s\n", file, line, func, cudaGetErrorName(status), status, cudaGetErrorString(status), msg);
+        if (!msg)  msg = func;          // Just in case, but msg is never 0
+        logging::error("%s:%d:  %s (%i): '%s' - %s",
+                       file, line, cudaGetErrorName(status), status, cudaGetErrorString(status), *msg ? msg : func);
         if (crash)  abort();
         return true;
     }
@@ -182,7 +185,7 @@ int gpuMapHostFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t si
 
     CUresult status = cuMemHostRegister(outmem->ptr, size, CU_MEMHOSTREGISTER_IOMEMORY);
     if (chkError(status)) {
-        logging::error("Unable to map offset=%lu, size=%zu to GPU\n", offset, size);
+        logging::error("Unable to map offset=%lu, size=%zu to GPU", offset, size);
         dmaUnMapRegister(fd, (void**)outmem->ptr, outmem->size);
         outmem = {};
         return -1;
@@ -190,7 +193,7 @@ int gpuMapHostFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t si
 
     status = cuMemHostGetDevicePointer(&outmem->dptr, outmem->ptr, 0);
     if (chkError(status)) {
-        logging::error("Failed to get device pointer: %d\n", status);
+        logging::error("Failed to get device pointer: %d", status);
         dmaUnMapRegister(fd, (void**)outmem->ptr, outmem->size);
         outmem = {};
         return -1;
@@ -223,7 +226,7 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
     }
 
     if (gpuAddNvidiaMemory(fd, write, outmem->dptr, outmem->size) < 0) {
-        logging::critical("gpuAddNvidiaMemory failed\n");
+        logging::critical("gpuAddNvidiaMemory failed");
         abort();
         cuMemFree(outmem->dptr);
         outmem = {};
