@@ -8,22 +8,20 @@ from psana.detector.areadetector import AreaDetectorRaw, sgs
 class axis_raw_1_0_0(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
         super().__init__(*args, **kwargs)
+        self._seg_geo =  None
         self._geo = None
-        
+
     def _init_geometry(self, shape):
         """delayed geometry initialization when raw.shape is available in det.raw.raw"""
         logger.info('_init_geometry for raw.shape %s' % str(shape))
         pixel_size_microns = 1
         self._seg_geo = sgs.Create(segname=f'MTRX:{shape[0]}:{shape[1]}:{pixel_size_microns}:{pixel_size_microns}', detector=self)
-        #self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
-        self._geo = self._det_geo()
+        self._path_geo_default = None # 'pscalib/geometry/data/geometry-def-axis.data'
+        self._geo = self._det_geo() # None
 
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
         if segs is None: return None
-        r = segs[0].value
-        if self._geo is None and r is not None:
-            self._init_geometry(r.shape)
         return segs[0].value
 
     def calib(self, evt) -> Array2d:
@@ -40,4 +38,10 @@ class axis_raw_1_0_0(AreaDetectorRaw):
         return cal
 
     def image(self, evt, nda=None, **kwa) -> Array2d:
+        r = self.raw(evt)
+        if r is None: return None
+        if self._geo is None and r is not None:
+            self._init_geometry(r.shape)
         return self.calib(evt)
+
+# EOF
