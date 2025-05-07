@@ -22,8 +22,11 @@ namespace Drp {
 
 
 MemPoolGpu::MemPoolGpu(Parameters& para) :
-  MemPool(para),
-  m_setMaskBytesDone(0)
+  MemPool           (para),
+  m_setMaskBytesDone(0),
+  m_hostPnlWrBufs_d (nullptr),
+  m_calibBuffers    (nullptr),
+  m_dataBuffers     (nullptr)
 {
   // @todo: Get the DMA size from somewhere - query the device?  No, the device is told below.
   //        Get it from the command line?

@@ -21,11 +21,13 @@ PGPDrp::PGPDrp(Parameters&    parameters,
                MemPoolGpu&    memPool,
                Gpu::Detector& detector,
                ZmqContext&    context) :
-  DrpBase(parameters, memPool, detector, context),
-  m_para       (parameters),
-  m_det        (detector),
-  m_terminate_h(false),
-  m_nNoTrDgrams(0)
+  DrpBase         (parameters, memPool, detector, context),
+  m_para          (parameters),
+  m_det           (detector),
+  m_terminate_h   (false),
+  m_terminate_d   (nullptr),
+  m_workerQueues_d(nullptr),
+  m_nNoTrDgrams   (0)
 {
   if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
     logging::critical("Failed to allocate lane/vc "
@@ -117,15 +119,17 @@ unsigned PGPDrp::unconfigure()
   // @todo: m_reducer.reset();
 
   m_collector.reset();
-  chkError(cudaFree(m_collectorQueue.d));
-  delete m_collectorQueue.h;
+  if (m_collectorQueue.d)  chkError(cudaFree(m_collectorQueue.d));
+  if (m_collectorQueue.h)  delete m_collectorQueue.h;
+  m_collectorQueue = {nullptr, nullptr};
 
   m_workers.clear();
   //for (unsigned i = 0; i < m_para.nworkers; ++i) {
   //  chkError(cudaFree(m_workerQueues_d[i]));
   //}
   m_workerQueues_h.clear();
-  chkError(cudaFree(m_workerQueues_d));
+  if (m_workerQueues_d)  chkError(cudaFree(m_workerQueues_d));
+  m_workerQueues_d = nullptr;
 
   return 0;
 }

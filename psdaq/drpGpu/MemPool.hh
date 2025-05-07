@@ -39,8 +39,8 @@ struct DetPanel
 template <class T>
 struct Ptr
 {
-  T* h;                                 // A host pointer
-  T* d;                                 // A device pointer
+  T* h = nullptr;                       // A host pointer
+  T* d = nullptr;                       // A device pointer
 };
 
 class MemPoolGpu : public Drp::MemPool
