@@ -752,7 +752,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                     )
                     en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} {det_uniqueid=} {expt=} {runnum=} {self.dbsuffix=} {calib_const.keys()=} in {en-st:.4f}s.")
+                    self.logger.debug(f"received calibconst for {det_name} {det_uniqueid=} {expt=} {runnum=} {self.dbsuffix=} in {en-st:.4f}s.")
                     self.dsparms.calibconst[det_name] = calib_const
                 else:
                     self.logger.info(
