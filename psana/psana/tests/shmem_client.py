@@ -1,10 +1,7 @@
-import os, shutil
-import subprocess
-import sys, os
+import sys
 from psana import DataSource
 import numpy as np
 import vals
-import zmq
 
 known_epics_pedestals = np.array([[11.,12.,13.,14.,15.,16.],
      [21.,22.,23.,24.,25.,26.],
@@ -13,12 +10,12 @@ known_epics_pedestals = np.array([[11.,12.,13.,14.,15.,16.],
 def launch_client(pid, supervisor=-1, supervisor_ip_addr=None):
     dg_count = 0
     if supervisor == -1:
-        ds = DataSource(shmem='shmem_test_'+pid)
+        ds = DataSource(shmem='shmem_test_'+pid, use_calib_cache=True, log_level='DEBUG')
     else:
-        ds = DataSource(shmem='shmem_test_'+pid, supervisor=supervisor, supervisor_ip_addr=supervisor_ip_addr)
+        ds = DataSource(shmem='shmem_test_'+pid, supervisor=supervisor, supervisor_ip_addr=supervisor_ip_addr, use_calib_cache=True, log_level='DEBUG')
 
     run = next(ds.runs())
-    
+
     # Check calibration constant
     assert np.array_equal(ds.dsparms.calibconst['epics']['pedestals'][0], known_epics_pedestals)
 
@@ -31,7 +28,7 @@ def launch_client(pid, supervisor=-1, supervisor_ip_addr=None):
         assert(np.array_equal(cspad.raw.calib(evt),np.stack((padarray,padarray))))
         assert(np.array_equal(cspad.raw.image(evt),np.vstack((padarray,padarray))))
         dg_count += 1
-    return dg_count  
+    return dg_count
 
 #------------------------------
 
