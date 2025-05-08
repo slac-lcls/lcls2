@@ -145,7 +145,7 @@ cdef class SmdReader:
         In live mode, retries up to max_retries if new data isn't immediately available.
         """
         debug_print("force_reread called")
-        
+
         # Exit if EndRun is found for all files. This is safe even though
         # we support mulirun in one xtc2 file but this is only for shmem mode,
         # which doesn't use SmdReader.
@@ -262,7 +262,7 @@ cdef class SmdReader:
             # Save timestamp and transition id of the last event in batch
             self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_eob]
             self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_eob]
-        
+
         self.n_view_events  = n_events
         self.n_view_L1Accepts = n_L1Accepts
         self.n_processed_events += n_L1Accepts
@@ -387,12 +387,12 @@ cdef class SmdReader:
             bool: True if a valid batch is prepared, False if no events found.
         """
         st_all = time.monotonic()
-        
+
         debug_print("build_batch_view called")
         debug_print(f"    batch_size={batch_size} intg_stream_id={intg_stream_id} "
                     f"intg_delta_t={intg_delta_t} max_events={max_events} "
                     f"ignore_transition={ignore_transition}")
-        
+
         cdef int i=0
         cdef uint64_t limit_ts
         cdef array.array _i_st_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
