@@ -105,7 +105,7 @@ cdef class ParallelReader:
             step_buf = &(self.step_bufs[i])
 
             # decide how many bytes to keep (cp_offset)
-            buf.cp_offset = buf.ready_offset    
+            buf.cp_offset = buf.ready_offset
             # copy them down to the front of the chunk buffer
             if buf.got - buf.cp_offset > 0:
                 memcpy(buf.chunk,
@@ -130,7 +130,7 @@ cdef class ParallelReader:
             step_buf.n_ready_events = 0
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
-            
+
             buf.err_code            = 0
 
             while buf.ready_offset < buf.got and \
@@ -184,10 +184,10 @@ cdef class ParallelReader:
             # end while buf.ready_offset < buf.got:
 
         # end for i
-        
+
         # Check for fatal error
         cdef int fatal_error_detected = 0
-        
+
         for i in range(self.nfiles):
             buf = &(self.bufs[i])
 
@@ -202,4 +202,3 @@ cdef class ParallelReader:
 
         if fatal_error_detected:
             raise RuntimeError("Data corruption detected during force_read(): xtc.extent == 0 in one or more streams.")
-
