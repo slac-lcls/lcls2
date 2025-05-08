@@ -1,0 +1,6 @@
+# cydebug.pxd
+DEF DEBUG_CYDEBUG = True
+
+cpdef debug_print(msg):
+    if DEBUG_CYDEBUG:
+        print(f"[{DEBUG_MODULE}] {msg}")
