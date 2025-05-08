@@ -194,12 +194,12 @@ class SmdReaderManager(object):
                     max_events=self.dsparms.max_events,
                 )
                 if self.processed_events <= current_processed_events:
-                    logger.log(
+                    logger.error(
                         f"ERROR: unable to fit one integrating event in the memory. Try increasing PS_SMD_CHUNKSIZE (current value: {self.chunksize}). Useful debug info: {self.processed_events=} {current_processed_events=}."
                     )
                     check_pass = False
             else:
-                logger.log(
+                logger.error(
                     "ERROR: unable to locate a new chunk. No data in one or more streams and no EndRun found."
                 )
         return check_pass
