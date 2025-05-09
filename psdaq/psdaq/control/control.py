@@ -461,8 +461,7 @@ class DaqPVA():
             self.report_error(f"self.ctxt.put({pvName}, {val}) failed")
         else:
             retval = True
-            #logging.debug(f"self.ctxt.put({pvName}, {val})")
-            logging.info(f"self.ctxt.put({pvName}, {val})")
+            logging.debug(f"self.ctxt.put({pvName}, {val})")
 
         return retval
 
@@ -531,7 +530,7 @@ class DaqXPM():
         l0d = self.pva.pv_get(pvl)
         if l0d is None:
             logging.debug(f'setup_common() failed getting L0Delays from {pvl}')
-            return False                
+            return False
         #l0max = max(l0d)+1
         l0max = 99
         # The value of 99 shouldn't be necessary, according to simulation.
@@ -540,7 +539,7 @@ class DaqXPM():
         pv = f'{self.pv_xpm_base}:CommonL0Delay'
         if not self.pva.pv_put(pv,l0max):
             logging.debug(f'setup_common() failed setting CommonL0Delay')
-            return False            
+            return False
         return True
 
     #
@@ -559,7 +558,7 @@ class DaqXPM():
             if groups & (1 << g):
                 pv = self.pv_xpm_base + f':PART:{g}:Recording'
                 self.pva.pv_put(pv, recording)
-                    
+
     #
     #  DaqXPM.clear_readout
     #
@@ -570,7 +569,7 @@ class DaqXPM():
             msg = {'type' :'set_reg',
                    'reg'  :'groupL0Reset',
                    'value':groups}
-            self.push.send_json(msg)            
+            self.push.send_json(msg)
         self.insert_transition(groups, ControlDef.transitionId['ClearReadout'])
         time.sleep(1.0)
 
@@ -619,9 +618,9 @@ class DaqXPM():
             if rval:
                 rval = self.pva.pv_put(self.pvGroupMsgInsert, groups)
         else:
-            msg = {'type'  :'set_idx_reg', 
-                   'reg'   :'msgHdr', 
-                   'groups':groups, 
+            msg = {'type'  :'set_idx_reg',
+                   'reg'   :'msgHdr',
+                   'groups':groups,
                    'value' :id}
             self.push.send_json(msg)
             msg = {'type' :'set_reg',
@@ -629,7 +628,7 @@ class DaqXPM():
                    'value':groups}
             self.push.send_json(msg)
             rval = True
-            
+
         return rval
 
     #
@@ -735,7 +734,7 @@ class CollectionManager():
         self.pva = DaqPVA(report_error=self.report_error)
 
         # instanciate DaqXPM object
-        self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva, 
+        self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva,
                           zctxt=self.context, xpm_host=args.X, report_error=self.report_error)
 
         # instantiate RunParams object
@@ -1426,7 +1425,7 @@ class CollectionManager():
         if not ok:
             self.report_error(err_msg)
             return False
-            
+
         # Advertise recording status
         self.xpm.recording(self.groups,self.recording)
 
