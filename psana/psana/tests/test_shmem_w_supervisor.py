@@ -1,13 +1,13 @@
 # Test shmem datasource with pubsub broadcasting
 
-import os, shutil
+import os
 import subprocess
-import sys, os
+import sys
 import pytest
 import socket
-from psana import DataSource
 
-client_count = 4  # number of clients in test (1 supervisor, 3 clients)
+client_count = 3  # number of clients in test (1 supervisor, 3 clients)
+calib_prefetch_count = 1  # number of calib prefetchers
 dgram_count  = 64 # number of expected datagrams per client
 
 @pytest.mark.skipif(sys.platform == 'darwin' or os.getenv('LCLS_TRAVIS') is not None, reason="shmem not supported on mac and centos7 failing in travis for unknown reasons")
@@ -15,19 +15,24 @@ class Test:
 
     @staticmethod
     def launch_server(tmp_file,pid):
-        cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
+        cmd_args = ['shmemServer','-c',str(client_count+calib_prefetch_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
         return subprocess.Popen(cmd_args)
 
     def launch_supervisor(self,pid,supervisor_ip_addr):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'
         cmd_args = ['python',shmem_file,pid,'1',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
-    
+
     def launch_client(self,pid,supervisor_ip_addr):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'
         cmd_args = ['python',shmem_file,pid,'0',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
-                
+
+    def launch_calib_prefetch(self,pid):
+        cmd_args = ['python', '-m', 'psana.pscalib.app.calib_prefetch', '--shmem', f'shmem_test_{pid}', '--log-level', 'DEBUG']
+        return subprocess.Popen(cmd_args)
+
+
     @staticmethod
     def setup_input_files(tmp_path):
         tmp_dir = tmp_path / 'shmem'
@@ -35,14 +40,17 @@ class Test:
         tmp_file = tmp_dir / 'data_shmem.xtc2'
         subprocess.call(['xtcwriter','-t','-n',str(dgram_count),'-f',str(tmp_file)])
         return tmp_file
-        
+
     def test_shmem(self, tmp_path):
         cli = []
         pid = str(os.getpid())
         tmp_file = self.setup_input_files(tmp_path)
         srv = self.launch_server(tmp_file,pid)
-        assert srv != None,"server launch failure"
-        
+        assert srv is not None,"server launch failure"
+
+        # launch calib prefetcher
+        self.launch_calib_prefetch(pid)
+
         # shmem_ds uses host addr and port determined externally for
         # calibration constant broadcasting. In this test, we simulate
         # such a situation by acquiring an available port using a socket
@@ -56,11 +64,11 @@ class Test:
 
         try:
             for i in range(client_count):
-              if i == 0: 
+              if i == 0:
                   cli.append(self.launch_supervisor(pid, supervisor_ip_addr))
               else:
                   cli.append(self.launch_client(pid, supervisor_ip_addr))
-              assert cli[i] != None,"client "+str(i)+ " launch failure"
+              assert cli[i] is not None,"client "+str(i)+ " launch failure"
         except:
             srv.kill()
             raise

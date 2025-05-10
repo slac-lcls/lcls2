@@ -1,0 +1,28 @@
+# TITLE      Geometry parameters of AXIS
+# DATE_TIME  2025-05-08 10:00:00 PDT
+# METROLOGY  no metrology available
+# AUTHOR     dubrovin
+# EXPERIMENT rix101333324
+# DETECTOR   axis_svls
+# CALIB_TYPE geometry
+# COMMENT:01 Manually created as an example for the first test of axis detector
+# COMMENT:02
+
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT IND      OBJECT             IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
+
+DETMTRX:V1     0    MTRXANY:V1             0         0       0       0       0     0     0    0.0      0.0      0.0
+IP:V1          0    DETMTRX:V1             0         0       0   10000       0     0     0    0.0      0.0      0.0

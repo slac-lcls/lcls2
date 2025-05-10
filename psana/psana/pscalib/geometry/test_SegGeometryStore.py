@@ -36,6 +36,8 @@ def test_segname(segname, **kwa):
     t0_sec = time()
     #sgs1 = SegGeometryStore()
     sg = sgs.Create(segname=segname, **kwa)
+    if segname=='MTRXANY:V1':
+        sg.init_matrix_parameters(shape=(512,1024), pix_size_rcsd_um=(75,75,75,400))
     dt_sec = time()-t0_sec
     sg.print_seg_info(pbits=0o377)
     logger.info('Consumed time to create = %.6f sec' % dt_sec)
@@ -62,6 +64,7 @@ def selector():
     elif(tname=='11'):sg = test_segname('ARCHON:V1', detector=detector_simulator())
     elif(tname=='12'):sg = test_segname('EPIXMASIC:V1')
     elif(tname=='13'):sg = test_segname('EPIXUHRASIC:V1')
+    elif(tname=='14'):sg = test_segname('MTRXANY:V1')
     elif(tname=='99'):sg = sgs.Create(segname='ABRACADABRA:V1');\
         logger.info('Return for non-existent segment name: %s' % sg)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))

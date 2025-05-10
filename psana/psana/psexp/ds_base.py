@@ -714,15 +714,27 @@ class DataSourceBase(abc.ABC):
         self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
 
         if self.use_calib_cache:
-            self.logger.info("using calibration constant from shared memory, if exists")
-            calib_const, max_retry = (None, 0)
-            while not calib_const and max_retry < self.fetch_calib_cache_max_retres:
-                self.logger.debug("try to read calib_const from shared memory ({fetch_calib_retry=})")
+            self.logger.debug("using calibration constant from shared memory, if exists")
+            calib_const, existing_info, max_retry = (None, None, 0)
+            latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
+            while not calib_const and max_retry < self.fetch_calib_cache_max_retres and existing_info != latest_info:
                 try:
-                    calib_const = calib_utils.try_load_data_from_file(self.logger)["calib_const"]
+                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
                 except Exception as e:
                     self.logger.warning(f"failed to retrieve calib_const: {e}")
+                if loaded_data is not None:
+                    calib_const = loaded_data.get("calib_const")
+                    existing_info = loaded_data.get("det_info")
+                if existing_info != latest_info:
+                    calib_const = None
+                    self.logger.warning("det_info in pickle file does not matched with the latest run")
+                elif calib_const:
+                    self.logger.debug(f"received {calib_const.keys()=}")
+                    break
                 max_retry += 1
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retres})")
+                time.sleep(1)
+
             self.dsparms.calibconst = calib_const
         else:
             self.dsparms.calibconst = {}
@@ -740,7 +752,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                     )
                     en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    self.logger.debug(f"received calibconst for {det_name} {det_uniqueid=} {expt=} {runnum=} {self.dbsuffix=} in {en-st:.4f}s.")
                     self.dsparms.calibconst[det_name] = calib_const
                 else:
                     self.logger.info(

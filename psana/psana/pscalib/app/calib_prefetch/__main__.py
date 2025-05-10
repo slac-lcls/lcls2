@@ -3,8 +3,7 @@ import logging
 import signal
 import sys
 
-from psana import DataSource
-from psana.pscalib.app.calib_prefetch import calib_utils
+from psana.pscalib.app.calib_prefetch.calib_utils import CalibSource
 from psana.utils import Logger
 
 def main():
@@ -12,8 +11,7 @@ def main():
     Entry point for the calibration prefetcher CLI tool.
 
     Parses command-line arguments, sets up logging and signal handlers,
-    and periodically calls `update_calib()` to fetch calibration constants
-    for the latest available run of an experiment or via shared memory.
+    and initializes the CalibSource to fetch calibration constants.
     """
     parser = argparse.ArgumentParser(description="Calibration Prefetcher")
     parser.add_argument('-e', '--expcode', default=None, help='Experiment code')
@@ -22,11 +20,17 @@ def main():
     parser.add_argument('--log-level', default='INFO', help='Logging level (DEBUG, INFO, WARNING, ERROR)')
     parser.add_argument('--timestamp', action='store_true', help='Include timestamp in log messages')
     parser.add_argument('--shmem', default=None, help='Shmem ID to run in shared memory mode')
-    parser.add_argument('--check-before-update', default=False, help='Force check before we update the calibration constants')
+    parser.add_argument('--check-before-update', action='store_true', help='Only update if detector info has changed')
+    parser.add_argument('--log-file', default=None, help='Optional log file path')
     args = parser.parse_args()
 
     log = Logger(timestamp=args.timestamp)
     log.logger.setLevel(getattr(logging, args.log_level.upper(), logging.INFO))
+
+    if args.log_file:
+        handler = logging.FileHandler(args.log_file)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        log.logger.addHandler(handler)
 
     def signal_handler(sig, frame):
         log.info("Shutting down gracefully...")
@@ -35,30 +39,15 @@ def main():
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
 
-    try:
-        if args.shmem:
-            log.info(f"Running in shmem mode using id={args.shmem}")
-            ds = DataSource(shmem=args.shmem, skip_calib_load='all', dir=args.xtc_dir)
-        else:
-            log.info(f"Running in normal mode using expcode={args.expcode}")
-            ds = DataSource(exp=args.expcode, skip_calib_load='all', dir=args.xtc_dir)
-    except Exception as e:
-            log.error(f"Failed to create DataSource: {e}")
-            raise
-
-    for run in ds.runs():
-        runnum = run.runnum
-        log.info(f"Detected new run: {runnum}")
-        det_info = run.dsparms.configinfo_dict
-        det_uid_map = {k: v.uniqueid for k, v in det_info.items()}
-        calib_utils.update_calib(
-            args.expcode,
-            latest_run=runnum,
-            latest_info=det_uid_map,
-            log=log,
-            output_dir=args.output_dir,
-            check_before_update=args.check_before_update,
-        )
+    calib_source = CalibSource(
+        expcode=args.expcode,
+        xtc_dir=args.xtc_dir,
+        output_dir=args.output_dir,
+        shmem=args.shmem,
+        check_before_update=args.check_before_update,
+        log=log,
+    )
+    calib_source.run_loop()
 
 if __name__ == '__main__':
     main()

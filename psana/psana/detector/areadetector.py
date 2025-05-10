@@ -151,6 +151,7 @@ class AreaDetector(DetectorImpl):
 
     def _det_geo(self):
         """Returns cached object self._geo of GeometryAccess() from CalibConstants, loads it from default file if missing in CalibConstants."""
+        if self._path_geo_default is None: return None
         self._geo = self._det_calibconst('geo')
         if self._geo is None:
             geotxt = self._det_geotxt_default()
