@@ -38,14 +38,15 @@ class PGPDrp : public DrpBase
 public:
     PGPDrp(Parameters&, MemPool&, Detector&, ZmqContext&,
            int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, size_t shemeSize);
+    virtual ~PGPDrp() {}
     void reader();
     void collector();
     void handleBrokenEvent(const PGPEvent& event);
     void resetEventCounter();
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-public:
-    const PgpReader* pgp() const { return &m_pgp; }
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
 private:

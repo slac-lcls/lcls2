@@ -166,10 +166,11 @@ class BldDrp : public DrpBase
 {
 public:
     BldDrp(Parameters&, MemPoolCpu&, Detector&, ZmqContext&);
+    virtual ~BldDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-public:
-    const PgpReader* pgp() { return &m_pgp; }
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
 private:
     Pgp                                  m_pgp;
     std::thread                          m_workerThread;

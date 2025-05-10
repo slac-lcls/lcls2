@@ -184,11 +184,12 @@ class UdpDrp : public DrpBase
 {
 public:
     UdpDrp(UdpParameters&, MemPoolCpu&, UdpEncoder&, ZmqContext&);
+    virtual ~UdpDrp() {}
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-public:
-    const PgpReader* pgp() { return &m_pgp; }
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     void _worker();

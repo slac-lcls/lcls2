@@ -1085,11 +1085,12 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
         // Induce the automounter to mount in case user enables recording
         struct stat statBuf;
         std::string statPth = para.outputDir + "/" + para.instrument;
-        logging::info("Awaiting availability of %s", statPth.c_str());
+        logging::info("Output dir: %s", statPth.c_str());
         if (::stat(statPth.c_str(), &statBuf) < 0) {
-            logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
+            logging::error("stat(%s) error: %m", statPth.c_str());
+        } else {
+            logging::info("Output dir: ready");
         }
-        logging::info("Output dir is ready: %s", statPth.c_str());
     }
 
     //  Add pva_addr to the environment
@@ -1098,9 +1099,9 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
         char* p = getenv("EPICS_PVA_ADDR_LIST");
         char envBuff[256];
         if (p)
-            sprintf(envBuff,"%s %s", p, a);
+            snprintf(envBuff,sizeof(envBuff), "%s %s", p, a);
         else
-            sprintf(envBuff,"%s", a);
+            snprintf(envBuff, sizeof(envBuff), "%s", a);
         logging::info("Setting env %s\n", envBuff);
         if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
             perror("setenv pva_addr");
@@ -1162,6 +1163,10 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 
 std::string DrpBase::connect(const json& msg, size_t id)
 {
+    // If triggers had been left running, they will have been stopped during Allocate
+    // Flush anything that accumulated
+    pgpFlush();
+
     // Save a copy of the json so we can use it to connect to the config database on configure
     m_connectMsg = msg;
     m_collectionId = id;

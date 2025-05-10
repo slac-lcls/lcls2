@@ -54,10 +54,11 @@ class EaDrp : public DrpBase
 {
 public:
     EaDrp(Parameters&, MemPoolCpu&, Detector&, ZmqContext&);
+    virtual ~EaDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-public:
-    const PgpReader* pgp() { return &m_pgp; }
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _worker();
