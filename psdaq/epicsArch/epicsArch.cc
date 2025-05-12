@@ -117,7 +117,6 @@ unsigned EaDetector::connect(const json& connectJson, const std::string& collect
         }
     }
 
-    m_pgp.flushAll();
     return 0;
 }
 

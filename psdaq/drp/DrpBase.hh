@@ -141,7 +141,6 @@ public:
     virtual ~PgpReader();
     int32_t read();
     void flush();
-    void flushAll();
     const Pds::TimingHeader* handle(Detector* det, unsigned current);
     void freeDma(PGPEvent* event);
     virtual void handleBrokenEvent(const PGPEvent& event) {}
