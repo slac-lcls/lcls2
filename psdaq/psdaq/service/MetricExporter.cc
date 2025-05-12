@@ -31,30 +31,25 @@ Pds::createExposer(const std::string& prometheusDir,
     unsigned port;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
-            port = PROM_PORT_BASE + (i /*+ portOffset*/)%MAX_PROM_PORTS;
+            port = PROM_PORT_BASE + (i + portOffset)%MAX_PROM_PORTS;
 
             // An exception will be thrown if the port is in use
             exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
 
             // Write the file only when the port is available
-            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i/*+portOffset*/) + ".yaml";
-            // Commented out the existing file check so that the file's date is refreshed
-            //struct stat buf;
-            //if (stat(fileName.c_str(), &buf) != 0) {
-                FILE* file = fopen(fileName.c_str(), "w");
-                if (file) {
-                    logging::debug("Writing %s\n", fileName.c_str());
-                    fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
-                    fclose(file);
-                } else {
-                    // %m will be replaced by the string strerror(errno)
-                    logging::debug("Error creating file %s: %m", fileName.c_str());
-                    exposer.reset();
-                    continue;           // Try another port
-                }
-            //} else {
-            //    // File already exists; no need to rewrite it
-            //}
+            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i+portOffset) + ".yaml";
+            // Even when the file exists, write it so that the its date is refreshed
+            FILE* file = fopen(fileName.c_str(), "w");
+            if (file) {
+                logging::debug("Writing %s\n", fileName.c_str());
+                fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                fclose(file);
+            } else {
+                // %m will be replaced by the string strerror(errno)
+                logging::debug("Error creating file %s: %m", fileName.c_str());
+                exposer.reset();
+                continue;           // Try another port
+            }
             break;
         }
         catch(const std::runtime_error& e) {

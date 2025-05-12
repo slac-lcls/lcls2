@@ -139,6 +139,8 @@ public:
     }
 };
 
+// ---
+
 PvMonitor::PvMonitor(const PvParameters&      para,
                      const std::string&       alias,
                      const std::string&       pvName,
@@ -159,6 +161,7 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     m_type                  (type),
     m_nelem                 (nelem),
     m_rank                  (rank),
+    m_payloadSize           (0),
     m_firstDimOverride      (firstDim),
     m_alias                 (alias),
     m_running               (running),
@@ -284,7 +287,7 @@ void PvMonitor::updated()
         TimeStamp timestamp(seconds, nanoseconds);
 
         ++m_nUpdates;
-        m_latency = Pds::Eb::latency<us_t>(timestamp); // Grafana plots latency in us
+        m_latency = Eb::latency<us_t>(timestamp); // Grafana plots latency in us
         logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
 
         Dgram* dgram;
@@ -329,21 +332,21 @@ void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
                            "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                            pvDg->time.seconds(),  pvDg->time.nanoseconds(),
                            pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
-                           Pds::Eb::latency<ms_t>(pvDg->time));
+                           Eb::latency<ms_t>(pvDg->time));
             pvQueue.try_pop(pvDg);      // Actually consume the element
             bufferFreelist.push(pvDg);  // Return buffer to freelist
         }
     }
 }
 
+// ---
 
-Pgp::Pgp(const Parameters& para, DrpBase& drp, Detector* det) :
-    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
-    m_det(det), m_tebContributor(drp.tebContributor()),
+Pgp::Pgp(const Parameters& para, MemPool& pool, Detector* det) :
+    PgpReader(para, pool, MAX_RET_CNT_C, 32),
+    m_det(det),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
-    m_nodeId = drp.nodeId();
-    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+    if (pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
     }
 }
@@ -386,16 +389,13 @@ EbDgram* Pgp::next(uint32_t& evtIndex)
     return dgram;
 }
 
+// ---
 
-PvDetector::PvDetector(PvParameters& para, DrpBase& drp) :
-    XpmDetector(&para, &drp.pool),
-    m_para     (para),
-    m_drp      (drp),
-    m_pgp      (para, drp, this),
-    m_evtQueue (drp.pool.nbuffers()),
-    m_terminate(false),
-    m_running  (false)
+PvDetector::PvDetector(PvParameters& para, MemPoolCpu& pool) :
+    XpmDetector(&para, &pool)
 {
+    virtChan = 0;
+
     const char* module_name = "psdaq.configdb.pvadetector_config";
     m_pyModule = PyImport_ImportModule(module_name);
     if (!m_pyModule) {
@@ -404,24 +404,32 @@ PvDetector::PvDetector(PvParameters& para, DrpBase& drp) :
     }
 }
 
-unsigned PvDetector::connect(std::string& msg, const nlohmann::json connectJson, const std::string& collectionId)
+PvDetector::~PvDetector()
+{
+    if (m_pyModule) {
+        Py_DECREF(m_pyModule);
+    }
+}
+
+unsigned PvDetector::connect(const json& connectJson, const std::string& collectionId, std::string& msg)
 {
     unsigned rc = 0;
+    XpmDetector::connect(connectJson, collectionId);
     m_connectJson = connectJson.dump();
 
     // Check for a default first dimension specification
     uint32_t firstDimDef = 0;
-    if (m_para.kwargs.find("firstdim") != m_para.kwargs.end()) {
-        firstDimDef = std::stoul(m_para.kwargs["firstdim"]);
+    if (m_para->kwargs.find("firstdim") != m_para->kwargs.end()) {
+        firstDimDef = std::stoul(m_para->kwargs["firstdim"]);
     }
 
     unsigned id = 0;
-    for (const auto& pvSpec : m_para.pvSpecs) {
+    for (const auto& pvSpec : static_cast<PvParameters*>(m_para)->pvSpecs) {
         // Parse the pvSpec string of the forms
         //   "[<alias>=][<provider>/]<PV name>[.<field>][,firstDim]"
         //   "[<alias>=][<provider>/]<PV name>[.<field>][<shape>][(<type>)]"
         try {
-            std::string alias     = m_para.detName;
+            std::string alias     = m_para->detName;
             std::string pvName    = pvSpec;
             std::string provider  = "pva";
             std::string field     = "value";
@@ -536,9 +544,9 @@ unsigned PvDetector::connect(std::string& msg, const nlohmann::json connectJson,
                            "type %d, firstDim %u, nelem %zd, rank %zd, request '%s'",
                            pvSpec.c_str(), alias.c_str(), provider.c_str(), pvName.c_str(), field.c_str(),
                            type, firstDim, nelem, rank, request.c_str());
-            auto pvMonitor = std::make_shared<PvMonitor>(m_para,
+            auto pvMonitor = std::make_shared<PvMonitor>(*static_cast<PvParameters*>(m_para),
                                                          alias, pvName, provider, request, field,
-                                                         id++, m_evtQueue.size(), type, nelem, rank, firstDim,
+                                                         id++, m_pool->nbuffers(), type, nelem, rank, firstDim,
                                                          m_running);
             m_pvMonitors.push_back(pvMonitor);
         }
@@ -556,32 +564,29 @@ unsigned PvDetector::connect(std::string& msg, const nlohmann::json connectJson,
 
 unsigned PvDetector::disconnect()
 {
+    XpmDetector::shutdown();
+
     m_pvMonitors.clear();
     return 0;
 }
 
-//std::string PvDetector::sconfigure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-    logging::info("PV configure");
+    logging::info("PvDetector configure");
+
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
-    m_exporter = std::make_shared<MetricExporter>();
-    if (m_drp.exposer()) {
-        m_drp.exposer()->RegisterCollectable(m_exporter);
-    }
-
     for (auto& pvMonitor : m_pvMonitors) {
         // Set up the names for L1Accept data
-        unsigned uvsn = m_para.kwargs.find("data_vsn") != m_para.kwargs.end() ? std::stoul(m_para.kwargs["data_vsn"],NULL,0) : 0x010000;
+        unsigned uvsn = m_para->kwargs.find("data_vsn") != m_para->kwargs.end() ? std::stoul(m_para->kwargs["data_vsn"],NULL,0) : 0x010000;
         AlgVersion& vsn = *reinterpret_cast<AlgVersion*>(&uvsn);
         logging::debug("AlgVersion %d.%d.%d",vsn.major(),vsn.minor(),vsn.micro());
         Alg     rawAlg("raw", vsn.major(), vsn.minor(), vsn.micro());
         NamesId rawNamesId(nodeId, RawNamesIndex + pvMonitor->id());
         Names&  rawNames = *new(xtc, bufEnd) Names(bufEnd,
                                                    pvMonitor->alias().c_str(), rawAlg,
-                                                   m_para.detType.c_str(), m_para.serNo.c_str(), rawNamesId);
+                                                   m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId);
         std::string    fieldName;
         Name::DataType xtcType;
         int            rank;
@@ -594,7 +599,7 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
         m_namesLookup[rawNamesId] = NameIndex(rawNames);
 
         // Create configuration object -> Only works for one PV per executable currently
-        if (m_para.detType != "pv") {
+        if (m_para->detType != "pv") {
             PyObject* funcDict = pyCheckErr(PyModule_GetDict(m_pyModule));
             const char* funcName = "pvadetector_config";
             PyObject* configFunc = pyCheckErr(PyDict_GetItemString(funcDict, funcName));
@@ -603,27 +608,27 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
                                                                    "sssi",
                                                                    m_connectJson.c_str(),
                                                                    config_alias.c_str(),
-                                                                   m_para.detName.c_str(),
-                                                                   m_para.detSegment));
+                                                                   m_para->detName.c_str(),
+                                                                   m_para->detSegment));
 
             // pvadetector_config returns None if no retrieval from configdb
             if (pyjsoncfg != Py_None) {
-                char* buffer = new char[m_para.maxTrSize];
-                const void* end = buffer + m_para.maxTrSize;
+                char* buffer = new char[m_para->maxTrSize];
+                const void* end = buffer + m_para->maxTrSize;
 
                 Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
                 NamesId cfgNamesId(nodeId, ConfigNamesIndex + pvMonitor->id());
-                if (Pds::translateJson2Xtc(pyjsoncfg, jsonxtc, end, cfgNamesId)) {
+                if (translateJson2Xtc(pyjsoncfg, jsonxtc, end, cfgNamesId)) {
                     return -1;
                 }
 
-                if (jsonxtc.extent > m_para.maxTrSize) throw "Config JSON too large for buffer!";
+                if (jsonxtc.extent > m_para->maxTrSize) throw "Config JSON too large for buffer!";
 
-                logging::info("Adding config object for PV detector %s", m_para.detName.c_str());
+                logging::info("Adding config object for PV detector %s", m_para->detName.c_str());
                 auto jsonXtcPayload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
                 memcpy(jsonXtcPayload, (const void*) jsonxtc.payload(), jsonxtc.sizeofPayload());
             } else {
-                logging::info("No config object for PV detector %s", m_para.detName.c_str());
+                logging::info("No config object for PV detector %s", m_para->detName.c_str());
             }
             Py_DECREF(pyjsoncfg);
         }
@@ -633,9 +638,9 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
     Alg     infoAlg("pvdetinfo", 1, 0, 0);
     NamesId infoNamesId(nodeId, InfoNamesIndex);
     Names&  infoNames = *new(xtc, bufEnd) Names(bufEnd,
-                                                ("pvdetinfo_" + m_para.detName).c_str(), infoAlg,
+                                                ("pvdetinfo_" + m_para->detName).c_str(), infoAlg,
                                                 "pvdetinfo", "detnum1234", infoNamesId);
-    InfoDef infoDef(m_para.detName);
+    InfoDef infoDef(m_para->detName);
     infoNames.add(xtc, bufEnd, infoDef);
     m_namesLookup[infoNamesId] = NameIndex(infoNames);
 
@@ -652,37 +657,27 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
         str = str + pvMonitor->name() + "\n";
     cd.set_string(InfoDef::detName, str.substr(0, str.length()-1).c_str());
 
-    // (Re)initialize the queues
-    m_evtQueue.startup();
-    for (auto& pvMonitor : m_pvMonitors) {
-        pvMonitor->startup();
-    }
-
-    m_terminate.store(false, std::memory_order_release);
-
-    m_workerThread = std::thread{&PvDetector::_worker, this};
-
     return 0;
 }
 
 unsigned PvDetector::unconfigure()
 {
-    if (m_exporter)  m_exporter.reset();
-
-    m_terminate.store(true, std::memory_order_release);
-    if (m_workerThread.joinable()) {
-        m_workerThread.join();
-    }
-    m_evtQueue.shutdown();
-    for (auto& pvMonitor : m_pvMonitors) {
-        pvMonitor->shutdown();
-    }
     m_namesLookup.clear();   // erase all elements
 
     return 0;
 }
 
-void PvDetector::_event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
+void PvDetector::enable()
+{
+    m_running = true;
+}
+
+void PvDetector::disable()
+{
+    m_running = false;
+}
+
+void PvDetector::event_(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
 {
     NamesId namesId(nodeId, RawNamesIndex + pvXtc.src.value());
     CreateData cd(dgram.xtc, bufEnd, m_namesLookup, namesId);
@@ -720,91 +715,151 @@ void PvDetector::_event(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
     dgram.xtc.damage.increase(pvXtc.damage.value());
 }
 
-void PvDetector::_worker()
+// ---
+
+PvDrp::PvDrp(PvParameters& para, MemPoolCpu& pool, PvDetector& det, ZmqContext& context) :
+    DrpBase    (para, pool, det, context),
+    m_para     (para),
+    m_det      (det),
+    m_pgp      (para, pool, &det),
+    m_evtQueue (pool.nbuffers()),
+    m_terminate(false)
 {
-    // setup monitoring
+}
+
+std::string PvDrp::configure(const json& msg)
+{
+    std::string errorMsg = DrpBase::configure(msg);
+    if (!errorMsg.empty()) {
+        return errorMsg;
+    }
+
+    // Start the worker thread
+    m_workerThread = std::thread{&PvDrp::_worker, this};
+
+    return std::string();
+}
+
+unsigned PvDrp::unconfigure()
+{
+    DrpBase::unconfigure(); // TebContributor must be shut down before the worker
+
+    // Stop the worker thread
+    m_terminate.store(true, std::memory_order_release);
+    if (m_workerThread.joinable()) {
+        m_workerThread.join();
+    }
+
+    return 0;
+}
+
+int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
+{
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
                                               {"partition", std::to_string(m_para.partition)},
                                               {"detname", m_para.detName},
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
     m_nEvents = 0;
-    m_exporter->add("drp_event_rate", labels, MetricType::Rate,
-                    [&](){return m_nEvents;});
+    exporter->add("drp_event_rate", labels, MetricType::Rate,
+                  [&](){return m_nEvents;});
     m_nUpdates = 0;
-    m_exporter->add("drp_update_rate", labels, MetricType::Rate,
-                    [&](){ uint64_t nUpdates = 0;
-                           for (const auto& pvMonitor : m_pvMonitors)
-                               nUpdates += pvMonitor->nUpdates();
-                           m_nUpdates = nUpdates;
-                           return m_nUpdates; });
+    exporter->add("drp_update_rate", labels, MetricType::Rate,
+                  [&](){ uint64_t nUpdates = 0;
+                         for (const auto& pvMonitor : m_det.pvMonitors())
+                             nUpdates += pvMonitor->nUpdates();
+                         m_nUpdates = nUpdates;
+                         return m_nUpdates; });
     m_nMatch = 0;
-    m_exporter->add("drp_match_count", labels, MetricType::Counter,
-                    [&](){return m_nMatch;});
+    exporter->add("drp_match_count", labels, MetricType::Counter,
+                  [&](){return m_nMatch;});
     m_nEmpty = 0;
-    m_exporter->add("drp_empty_count", labels, MetricType::Counter,
-                    [&](){return m_nEmpty;});
+    exporter->add("drp_empty_count", labels, MetricType::Counter,
+                  [&](){return m_nEmpty;});
     m_nMissed = 0;
-    m_exporter->add("drp_miss_count", labels, MetricType::Counter,
-                    [&](){ uint64_t nMissed = 0;
-                           for (const auto& pvMonitor : m_pvMonitors)
-                               nMissed += pvMonitor->nMissed();
-                           m_nMissed = nMissed;
-                           return m_nMissed; });
+    exporter->add("drp_miss_count", labels, MetricType::Counter,
+                  [&](){ uint64_t nMissed = 0;
+                         for (const auto& pvMonitor : m_det.pvMonitors())
+                             nMissed += pvMonitor->nMissed();
+                         m_nMissed = nMissed;
+                         return m_nMissed; });
     m_nTooOld = 0;
-    m_exporter->add("drp_tooOld_count", labels, MetricType::Counter,
-                    [&](){return m_nTooOld;});
+    exporter->add("drp_tooOld_count", labels, MetricType::Counter,
+                  [&](){return m_nTooOld;});
     m_nTimedOut = 0;
-    m_exporter->add("drp_timeout_count", labels, MetricType::Counter,
-                    [&](){return m_nTimedOut;});
+    exporter->add("drp_timeout_count", labels, MetricType::Counter,
+                  [&](){return m_nTimedOut;});
     m_timeDiff = 0;
-    m_exporter->add("drp_time_diff", labels, MetricType::Gauge,
-                    [&](){return m_timeDiff;});
+    exporter->add("drp_time_diff", labels, MetricType::Gauge,
+                  [&](){return m_timeDiff;});
 
-    m_exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
-                    [&](){return m_evtQueue.guess_size();});
-    m_exporter->constant("drp_worker_queue_depth", labels, m_evtQueue.size());
+    exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
+                  [&](){return m_evtQueue.guess_size();});
+    exporter->constant("drp_worker_queue_depth", labels, m_evtQueue.size());
 
     // Borrow this for awhile
-    m_exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
-                    [&](){return m_pvMonitors[0]->pvQueue.guess_size();});
+    exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
+                  [&](){return m_det.pvMonitors()[0]->pvQueue.guess_size();});
 
     // @todo: Support multiple PVs
-    m_exporter->add("drp_pv_latency", labels, MetricType::Gauge,
-                    [&](){return m_pvMonitors[0]->latency();});
+    exporter->add("drp_pv_latency", labels, MetricType::Gauge,
+                  [&](){return m_det.pvMonitors()[0]->latency();});
 
-    m_exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nDmaRet();});
-    m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
-                    [&](){return m_pgp.dmaBytes();});
-    m_exporter->add("drp_dma_size", labels, MetricType::Gauge,
-                    [&](){return m_pgp.dmaSize();});
-    m_exporter->add("drp_th_latency", labels, MetricType::Gauge,
-                    [&](){return m_pgp.latency();});
-    m_exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nDmaErrors();});
-    m_exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nNoComRoG();});
-    m_exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nMissingRoGs();});
-    m_exporter->add("drp_num_th_error", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nTmgHdrError();});
-    m_exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nPgpJumps();});
-    m_exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
-                    [&](){return m_pgp.nNoTrDgrams();});
+    exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nDmaRet();});
+    exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
+                  [&](){return m_pgp.dmaBytes();});
+    exporter->add("drp_dma_size", labels, MetricType::Gauge,
+                  [&](){return m_pgp.dmaSize();});
+    exporter->add("drp_th_latency", labels, MetricType::Gauge,
+                  [&](){return m_pgp.latency();});
+    exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nDmaErrors();});
+    exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nNoComRoG();});
+    exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nMissingRoGs();});
+    exporter->add("drp_num_th_error", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nTmgHdrError();});
+    exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpJumps();});
+    exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nNoTrDgrams();});
+
+    return 0;
+}
+
+void PvDrp::_worker()
+{
+    m_terminate.store(false, std::memory_order_release);
 
     // Avoid running off the end of the word
-    uint64_t mask = 1ul << (m_pvMonitors.size() - 1);
+    uint64_t mask = 1ul << (m_det.pvMonitors().size() - 1);
     uint64_t contract = mask | (mask - 1ul);
 
-    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
-                    std::stoul(Detector::m_para->kwargs["match_tmo_ms"])      :
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()            ?
+                    std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
                     1500 };
 
+    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+
     // Reset counters to avoid 'jumping' errors on reconfigures
-    m_pool->resetCounters();
+    pool.resetCounters();
     m_pgp.resetEventCounter();
+
+    // (Re)initialize the queues
+    m_evtQueue.startup();
+    for (auto& pvMonitor : m_det.pvMonitors()) {
+      pvMonitor->startup();
+    }
+
+    // Set up monitoring
+    auto exporter = std::make_shared<MetricExporter>();
+    if (exposer()) {
+        exposer()->RegisterCollectable(exporter);
+
+        if (_setupMetrics(exporter))  return;
+    }
 
     while (true) {
         if (m_terminate.load(std::memory_order_relaxed)) {
@@ -828,23 +883,30 @@ void PvDetector::_worker()
             _timeout(tmo);
 
             // Time out batches for the TEB
-            m_drp.tebContributor().timeout();
+            tebContributor().timeout();
         }
     }
 
     // Flush the DMA buffers
     m_pgp.flush();
 
+    for (auto& pvMonitor : m_det.pvMonitors()) {
+      pvMonitor->shutdown();
+    }
+    m_evtQueue.shutdown();
+
+    if (exposer())  exporter.reset();
+
     logging::info("Worker thread finished");
 }
 
-void PvDetector::_matchUp()
+void PvDrp::_matchUp()
 {
     while (true) {
         if (m_evtQueue.is_empty())  break;
         Event& evt = m_evtQueue.front();
 
-        EbDgram* evtDg = reinterpret_cast<EbDgram*>(m_pool->pebble[evt.index]);
+        EbDgram* evtDg = reinterpret_cast<EbDgram*>(pool.pebble[evt.index]);
         TransitionId::Value service = evtDg->service();
         if (service == TransitionId::L1Accept) {
             uint64_t remaining = evt.remaining;
@@ -852,7 +914,7 @@ void PvDetector::_matchUp()
                 unsigned id = __builtin_ffsl(remaining) - 1;
                 remaining &= ~(1ull << id);
 
-                auto& pvMonitor = m_pvMonitors[id];
+                auto& pvMonitor = m_det.pvMonitors()[id];
 
                 Dgram* pvDg;
                 if (!pvMonitor->pvQueue.peek(pvDg))  continue;
@@ -867,7 +929,7 @@ void PvDetector::_matchUp()
                                result == 0 ? '=' : (result < 0 ? '<' : '>'),
                                pvDg->time.seconds(), pvDg->time.nanoseconds(),
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               Pds::Eb::latency<ms_t>(evtDg->time));
+                               Eb::latency<ms_t>(evtDg->time));
 
                 if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
@@ -877,7 +939,7 @@ void PvDetector::_matchUp()
         }
         else {
             // Find the transition dgram in the pool
-            EbDgram* trDg = m_pool->transitionDgrams[evt.index];
+            EbDgram* trDg = pool.transitionDgrams[evt.index];
             if (trDg)                   // nullptr can happen during shutdown
                 _handleTransition(*evtDg, *trDg);
         }
@@ -890,7 +952,7 @@ void PvDetector::_matchUp()
     }
 }
 
-void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
+void PvDrp::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
 {
     // Initialize the transition dgram's header
     trDg = evtDg;
@@ -899,25 +961,26 @@ void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
     if (service != TransitionId::SlowUpdate) {
         // copy the temporary xtc created on phase 1 of the transition
         // into the real location
-        Xtc& trXtc = transitionXtc();
+        Xtc& trXtc = m_det.transitionXtc();
         trDg.xtc = trXtc; // Preserve header info, but allocate to check fit
         const void* bufEnd = (char*)&trDg + m_para.maxTrSize;
         auto payload = trDg.xtc.alloc(trXtc.sizeofPayload(), bufEnd);
         memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
+        // Enable/disable PV updates
         if (service == TransitionId::Enable) {
-            m_running = true;
+            m_det.enable();
         }
         else if (service == TransitionId::Disable) {
-            m_running = false;
+            m_det.disable();
         }
     }
 }
 
-void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDrp::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
-    auto bufEnd = (char*)&evtDg + m_pool->pebble.bufferSize();
-    _event(evtDg, bufEnd, pvDg.xtc);
+    auto bufEnd = (char*)&evtDg + pool.pebble.bufferSize();
+    m_det.event_(evtDg, bufEnd, pvDg.xtc);
 
     ++m_nMatch;
     logging::debug("PV matches PGP!!  "
@@ -930,7 +993,7 @@ void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg,
     pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDrp::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PVs show up in time order, when the most recent PV is younger
     // than the PGP event (t(PV) > t(PGP)), we know that no older PV will show
@@ -945,7 +1008,7 @@ void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg,
                    pvDg.time.seconds(), pvDg.time.nanoseconds());
 }
 
-void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDrp::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PGP events show up in time order, when the most recent PV is older
     // than the PGP event (t(PV) < t(PGP)), we know that no older PGP event will
@@ -964,12 +1027,12 @@ void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg,
     pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvDetector::_timeout(ms_t timeout)
+void PvDrp::_timeout(ms_t timeout)
 {
     // Try to clear out as many of the older queue entries as we can in one go
     while (true) {
         // Time out older PV updates
-        for (auto& pvMonitor : m_pvMonitors) {
+        for (auto& pvMonitor : m_det.pvMonitors()) {
             pvMonitor->timeout(m_pgp, timeout);
         }
 
@@ -977,14 +1040,14 @@ void PvDetector::_timeout(ms_t timeout)
         Event event;
         if (!m_evtQueue.peek(event))  break;
 
-        EbDgram& dgram = *reinterpret_cast<EbDgram*>(m_pool->pebble[event.index]);
+        EbDgram& dgram = *reinterpret_cast<EbDgram*>(pool.pebble[event.index]);
         if (m_pgp.age(dgram.time) < timeout)  break;
 
         logging::debug("Event timed out!! "
                        "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
+                       Eb::latency<ms_t>(dgram.time), dgram.service());
 
         if (dgram.service() == TransitionId::L1Accept) {
             // No PV data so mark event as damaged
@@ -993,7 +1056,7 @@ void PvDetector::_timeout(ms_t timeout)
         }
         else {
             // Find the transition dgram in the pool
-            EbDgram* trDg = m_pool->transitionDgrams[event.index];
+            EbDgram* trDg = pool.transitionDgrams[event.index];
             if (trDg)                   // nullptr can happen during shutdown
                 _handleTransition(dgram, *trDg);
         }
@@ -1006,53 +1069,43 @@ void PvDetector::_timeout(ms_t timeout)
     }
 }
 
-void PvDetector::_sendToTeb(const EbDgram& dgram, uint32_t index)
+void PvDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
     const size_t maxSize = (dgram.service() == TransitionId::L1Accept)
-                         ? m_pool->pebble.bufferSize()
+                         ? pool.pebble.bufferSize()
                          : m_para.maxTrSize;
     if (size > maxSize) {
         logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
-    auto l3InpBuf = m_drp.tebContributor().fetch(index);
+    auto l3InpBuf = tebContributor().fetch(index);
     EbDgram* l3InpDg = new(l3InpBuf) EbDgram(dgram);
     if (l3InpDg->isEvent()) {
-        auto triggerPrimitive = m_drp.triggerPrimitive();
-        if (triggerPrimitive) { // else this DRP doesn't provide input
-            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + triggerPrimitive->size();
-            triggerPrimitive->event(*m_pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
+        auto trgPrimitive = triggerPrimitive();
+        if (trgPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + trgPrimitive->size();
+            trgPrimitive->event(pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
     }
-    m_drp.tebContributor().process(l3InpDg);
+    tebContributor().process(l3InpDg);
 }
 
-PvDetector::~PvDetector()
-{
-    if (m_pyModule) {
-        Py_DECREF(m_pyModule);
-    }
-}
-
+// ---
 
 PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
     m_para(para),
-    m_det(nullptr),
+    m_pool(para),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
-    m_pvDetector = std::make_unique<PvDetector>(para, m_drp);
-    m_det = m_pvDetector.get();
-    if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
-        throw "Could not create Detector object for " + m_para.detType;
-    }
+    m_det = std::make_unique<PvDetector>(m_para, m_pool);
+    m_drp = std::make_unique<PvDrp>(para, m_pool, *m_det, context());
+
     logging::info("Ready for transitions");
 }
 
@@ -1067,42 +1120,39 @@ PvApp::~PvApp()
 
 void PvApp::_disconnect()
 {
-    m_drp.disconnect();
-    m_det->shutdown();
-    m_pvDetector->disconnect();
+    m_drp->disconnect();
+    m_det->disconnect();
 }
 
 void PvApp::_unconfigure()
 {
-    m_drp.pool.shutdown();  // Release Tr buffer pool
-    m_drp.unconfigure();    // TebContributor must be shut down before the worker
-    m_pvDetector->unconfigure();
+    m_drp->pool.shutdown();        // Release Tr buffer pool
+    m_drp->unconfigure();
+    m_det->unconfigure();
     m_unconfigure = false;
 }
 
-json PvApp::connectionInfo(const nlohmann::json& msg)
+json PvApp::connectionInfo(const json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo(msg);
+    json info = static_cast<Detector&>(*m_det).connectionInfo(msg);
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo(ip);
+    json bufInfo = m_drp->connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
 }
 
 void PvApp::connectionShutdown()
 {
-    if (m_det) {
-        m_det->connectionShutdown();
-    }
-    m_drp.shutdown();
+    static_cast<Detector&>(*m_det).connectionShutdown();
+    m_drp->shutdown();
 }
 
-void PvApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
+void PvApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
     json body = json({});
     body["err_info"] = errorMsg;
@@ -1110,20 +1160,17 @@ void PvApp::_error(const std::string& which, const nlohmann::json& msg, const st
     reply(answer);
 }
 
-void PvApp::handleConnect(const nlohmann::json& msg)
+void PvApp::handleConnect(const json& msg)
 {
-    std::string errorMsg = m_drp.connect(msg, getId());
+    std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
-        logging::error("Error in DrpBase::connect");
-        logging::error("%s", errorMsg.c_str());
+        logging::error(("DrpBase::connect: " + errorMsg).c_str());
         _error("connect", msg, errorMsg);
         return;
     }
 
-    m_det->nodeId = m_drp.nodeId();
-    m_det->connect(msg, std::to_string(getId()));
-
-    unsigned rc = m_pvDetector->connect(errorMsg, msg, std::to_string(getId()));
+    m_det->nodeId = m_drp->nodeId();
+    unsigned rc = m_det->connect(msg, std::to_string(getId()), errorMsg);
     if (!errorMsg.empty()) {
         if (!rc) {
             logging::warning(("PvDetector::connect: " + errorMsg).c_str());
@@ -1178,18 +1225,7 @@ void PvApp::handlePhase1(const json& msg)
             _unconfigure();
         }
 
-        std::string errorMsg = m_drp.configure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
-        }
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp.ebReceiver().configure(m_det, m_pvDetector->pgp());
-
+        // Configure the detector first
         std::string config_alias = msg["body"]["config_alias"];
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
@@ -1199,8 +1235,17 @@ void PvApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        // Next, configure the DRP
+        std::string errorMsg = m_drp->configure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
+            logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
+        }
+
+        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -1208,32 +1253,39 @@ void PvApp::handlePhase1(const json& msg)
     }
     else if (key == "beginrun") {
         RunInfo runInfo;
-        std::string errorMsg = m_drp.beginrun(phase1Info, runInfo);
+        std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
-            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
-        else {
-            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
-        }
+
+        m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp.endrun(phase1Info);
+        std::string errorMsg = m_drp->endrun(phase1Info);
         if (!errorMsg.empty()) {
-            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
     }
     else if (key == "enable") {
         bool chunkRequest;
         ChunkInfo chunkInfo;
-        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        std::string errorMsg = m_drp->enable(phase1Info, chunkRequest, chunkInfo);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         } else if (chunkRequest) {
             logging::debug("handlePhase1 enable found chunkRequest");
-            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+            m_drp->chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+        }
+        unsigned error = static_cast<Detector&>(*m_det).enable(xtc, bufEnd, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::enable()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
         }
         logging::debug("handlePhase1 enable complete");
     }
@@ -1242,7 +1294,7 @@ void PvApp::handlePhase1(const json& msg)
     reply(answer);
 }
 
-void PvApp::handleReset(const nlohmann::json& msg)
+void PvApp::handleReset(const json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _unconfigure();

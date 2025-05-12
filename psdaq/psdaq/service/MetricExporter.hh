@@ -101,4 +101,4 @@ void setValue(prometheus::MetricFamily& family, const T& value)
     }
 }
 
-};
+}

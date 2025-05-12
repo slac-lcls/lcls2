@@ -135,10 +135,11 @@ public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     const Pds::TimingHeader* next();
-    void worker(std::shared_ptr<Pds::MetricExporter> exporter);
+    void worker(const std::shared_ptr<Pds::MetricExporter> exporter);
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
@@ -152,11 +153,28 @@ private:
     bool                                       m_running;
     int32_t                                    m_available;
     int32_t                                    m_current;
-    unsigned                                   m_nodeId;
+    uint64_t                                   m_nevents;
+    uint64_t                                   m_nmissed;
     uint64_t                                   m_nDmaRet;
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
+};
+
+
+class BldDrp : public DrpBase
+{
+public:
+    BldDrp(Parameters&, MemPoolCpu&, Detector&, ZmqContext&);
+    virtual ~BldDrp() {}
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
+private:
+    Pgp                                  m_pgp;
+    std::thread                          m_workerThread;
+    std::shared_ptr<Pds::MetricExporter> m_exporter;
 };
 
 
@@ -176,13 +194,11 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                              m_drp;
-    Parameters&                          m_para;
-    std::thread                          m_workerThread;
-    std::unique_ptr<Pgp>                 m_pgp;
-    Detector*                            m_det;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
-    bool                                 m_unconfigure;
+    Parameters&               m_para;
+    MemPoolCpu                m_pool;
+    std::unique_ptr<Detector> m_det;
+    std::unique_ptr<BldDrp>   m_drp;
+    bool                      m_unconfigure;
 };
 
 }
