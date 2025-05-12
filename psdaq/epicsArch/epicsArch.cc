@@ -120,6 +120,7 @@ unsigned EaDetector::connect(std::string& msg)
         }
     }
 
+    m_pgp.flushAll();
     return 0;
 }
 

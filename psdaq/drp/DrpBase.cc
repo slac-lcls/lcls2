@@ -350,6 +350,15 @@ void PgpReader::flush()
   if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }
 
+void PgpReader::flushAll()
+{
+  int32_t ret;
+  do {
+    ret = read();
+    if (ret > 0) dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+  } while(ret > 0);
+}
+
 const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 {
     uint32_t size = dmaRet[current];
