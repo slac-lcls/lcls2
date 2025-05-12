@@ -374,8 +374,10 @@ void PgpReader::flush()
     m_count = 0;
 
     // Also return DMA buffers queued for reading, without adjusting counters
-    int32_t ret = read();
-    if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+    int32_t ret;
+    while ( (ret = read()) ) {
+        dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+    }
 
     // Free any in-use pebble buffers
     m_pool.flushPebble();
@@ -495,28 +497,17 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         }
         if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
             auto evtCntDiff = evtCounter - m_lastComplete;
-            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, DMA size %u%s",
+            logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
                            RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
             logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
                            data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
             logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
                            m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
-            m_nPgpJumps += evtCntDiff;
-
-            if ((evtCntDiff < 0) || (evtCntDiff > 100)) {
-                logging::critical("PGPReader: Aborting on crazy jump in event counter: %d\n", evtCntDiff);
-                abort();
-            }
-
-            if (m_lastComplete == evtCounter) {}  // something else is going on
-            else {
-                for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
-                    PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
-                    logging::error("broken event:  %08x", brokenEvent->mask);
-                    handleBrokenEvent(*brokenEvent);
-                    freeDma(brokenEvent);   // Leaves event mask = 0
-                }
-            }
+            handleBrokenEvent(*event);
+            freeDma(event);             // Leaves event mask = 0
+            m_pool.freePebble();        // Avoid leaking pebbles on errors
+            ++m_nPgpJumps;
+            return nullptr;             // Throw away out-of-sequence events
         }
         m_lastComplete = evtCounter;
         m_lastTid = transitionId;
