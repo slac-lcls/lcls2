@@ -704,7 +704,7 @@ class DataSourceBase(abc.ABC):
         """
 
         if self.skip_calib_load == 'all':
-            self.logger.debug("_setup_run_calibconst skipped {self.skip_calib_load=}")
+            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
             return
 
         runinfo = self._get_runinfo()
@@ -752,7 +752,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                     )
                     en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} {det_uniqueid=} {expt=} {runnum=} {self.dbsuffix=} in {en-st:.4f}s.")
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
                     self.dsparms.calibconst[det_name] = calib_const
                 else:
                     self.logger.info(
