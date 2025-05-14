@@ -35,58 +35,18 @@ asics = None
 eventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
 
 #Sorting for writing yml files in order
-def sorting_dict(asics):
+def sorting_dict(asics, cfg):
     sortdict={}
-        
-    for n in asics:
-        sortdict[f'Asic{n}'] = ["enable",
-                                "DacAdcVrefCm",	
-                                "DacAdcVrefCmGain",
-                                "DacVthr", 
-                                "DacVthrGain", 
-                                "DacVfiltGain", 
-                                "DacVfilt", 
-                                "DacVrefCdsGain", 
-                                "DacVrefCds", 
-                                "DacVprechGain", 
-                                "DacVprech", 
-                                "CompEnGenEn", 
-                                "CompEnGenCfg",  
-                                ]
-        
-        sortdict[f'BatcherEventBuilder{n}']= [  "enable", 
-                                                "Timeout", 
-                                                ]	
 
-    sortdict['WaveformControl'] = [    "enable",
-                                       "GlblRstPolarity", 
-                                       "SR0Polarity", 
-                                       "SR0Delay", 
-                                       "SR0Width",
-                                       "AcqPolarity", 
-                                       "AcqDelay", 
-                                       "AcqWidth", 
-                                       "R0Polarity", 
-                                       "R0Delay", 
-                                       "R0Width",
-                                       "InjPolarity", 
-                                       "InjDelay", 
-                                       "InjWidth", 
-                                       "InjEn", 
-                                       "InjSkipFrames"]
+    for n in asics:
+        sortdict[f'Asic{n}'] = list(cfg["expert"]["App"][f"Asic{n}"].keys())
+        sortdict[f'BatcherEventBuilder{n}']=  list(cfg["expert"]["App"][f"BatcherEventBuilder{n}"].keys())
+        sortdict[f'Asic{n}'].remove('SetGainValue')
+        sortdict[f'Asic{n}'].remove('PixelBitMapSel')
+        
+    sortdict['WaveformControl']  = list(cfg["expert"]["App"]["WaveformControl"].keys())
+    sortdict['TriggerRegisters'] = list(cfg["expert"]["App"]["TriggerRegisters"].keys())
     
-    sortdict['TriggerRegisters'] = [    "enable",
-                                        "RunTriggerEnable",
-                                        "RunTriggerDelay", 
-                                        "DaqTriggerEnable", 
-                                        "DaqTriggerDelay",
-                                        "TimingRunTriggerEnable",
-                                        "TimingDaqTriggerEnable", 
-                                        "AutoRunEn", 
-                                        "AutoDaqEn", 
-                                        "AutoTrigPeriod", 
-                                        "numberTrigger", 
-                                        "PgpTrigEn"] 
     return sortdict
     
 #Used to determine if cofiguration has changed
@@ -423,7 +383,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 
     app = None
     if 'expert' in cfg and 'App' in cfg['expert']:
-        app = copy.deepcopy(cfg['expert']['App'])
+        app = OrderedDict(cfg['expert']['App'])
 
      #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
@@ -485,9 +445,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         tree = ('Root','App')
         
         def toYaml(sect,keys,name):
-            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree,ordering))
+            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree, ordering))
             
-        ordering=sorting_dict(asics)
+        ordering=sorting_dict(asics, cfg)
         
         #Creating yaml files to be loaded durint detector initialization
         toYaml('App',['WaveformControl'],'RegisterControl')
@@ -649,8 +609,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         
         # Remove the yml files
-        for f in tmpfiles:
-            os.remove(f)
+        #for f in tmpfiles:
+        #    os.remove(f)
                 
     logging.info('config_expert complete')
     
