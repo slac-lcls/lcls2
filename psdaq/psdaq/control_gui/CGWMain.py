@@ -174,10 +174,11 @@ class CGWMain(QWZMQListener):
 
         self.wconf.setFixedHeight(80)
 
-        self.setGeometry(self.main_win_pos_x .value(),\
-                         self.main_win_pos_y .value(),\
-                         self.main_win_width .value(),\
-                         self.main_win_height.value())
+        if False:
+          self.setGeometry(self.main_win_pos_x .value(),\
+                           self.main_win_pos_y .value(),\
+                           self.main_win_width .value(),\
+                           self.main_win_height.value())
         #w_height = self.main_win_height.value()
 
         #self.layout().setContentsMargins(0,0,0,0)
@@ -429,19 +430,13 @@ def proc_control_gui(parser=None):
     cp.qapplication = app
     w = CGWMain(parser)
 
-    #ag = QDesktopWidget().availableGeometry()
-    #sg = QDesktopWidget().screenGeometry()
-    p = QCursor.pos()
-    scrnum = QDesktopWidget().screenNumber(p)
-    #r = QDesktopWidget().screenGeometry(screen=scrnum)
-    #r = QDesktopWidget().screenGeometry(p)
-    r = QDesktopWidget().availableGeometry(p)
-    #r = QDesktopWidget().availableGeometry(screen=scrnum)
-    w.move(r.x(), r.y())
-    #w.move(r.x()+400, r.y())
-    #w.move(p.x(), p.y())
-    #w.setWindowTitle('scr:%d %s'%(scrnum, info_point(p, cmt='', fmt='%sx=%1.0f y=%1.0f')))
-    #w.setWindowTitle('scr:%d %s'%(scrnum, info_rect_xywh(r, cmt='', fmt='%sx=%1.0f y=%1.0f w=%1.0f h=%1.0f')))
+#    p = QCursor.pos()
+#    scrnum = QDesktopWidget().screenNumber(p)
+#    #r = QDesktopWidget().screenGeometry(screen=scrnum)
+#    r = QDesktopWidget().availableGeometry(p)
+#    w.move(r.x(), r.y())
+#    #w.setWindowTitle('scr:%d %s'%(scrnum, info_point(p, cmt='', fmt='%sx=%1.0f y=%1.0f')))
+#    #w.setWindowTitle('scr:%d %s'%(scrnum, info_rect_xywh(r, cmt='', fmt='%sx=%1.0f y=%1.0f w=%1.0f h=%1.0f')))
 
     w.show()
     print('In CGWMain:proc_control_gui after w.show() - ERRORS FROM libGL IS A KNOWN ISSUE')
