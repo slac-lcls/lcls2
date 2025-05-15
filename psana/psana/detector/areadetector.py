@@ -55,22 +55,26 @@ Usage::
 2020-11-06 created by Mikhail Dubrovin
 """
 
+import logging
+
 from psana.detector.detector_impl import DetectorImpl
 
-import logging
 logger = logging.getLogger(__name__)
 
 import os
 import sys
+
 import numpy as np
+
+import psana.detector.NDArrUtils as au  # reshape_to_3d, shape_as_3d, shape_as_3d, reshape_to_2d
 from psana.detector.calibconstants import CalibConstants
-from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
 from psana.pscalib.geometry.GeometryAccess import GeometryAccess
-import psana.detector.NDArrUtils as au # reshape_to_3d, shape_as_3d, shape_as_3d, reshape_to_2d
+
 info_ndarr, reshape_to_3d =  au.info_ndarr, au.reshape_to_3d
-from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
+
 import psana.detector.Utils as ut
+from psana.detector.mask_algos import DTYPE_MASK, MaskAlgos
 
 
 def is_none(par, msg, logger_method=logger.debug):
@@ -101,6 +105,7 @@ class AreaDetector(DetectorImpl):
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             self._calibc_ = CalibConstants(cc, **kwa)
+            self._apply_calibc_preload_cache()
         return self._calibc_
 
 

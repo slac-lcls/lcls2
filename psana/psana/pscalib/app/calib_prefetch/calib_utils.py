@@ -31,8 +31,8 @@ class CalibSource:
         """
         for detname in self.detectors:
             det = run.Detector(detname)
-            det.raw._run = run  # Attach run to detector for event access
-            cache_mgr = DetectorCacheManager(det.raw, check_before_update=self.check_before_update, logger=self.log)
+            det._run = run  # Attach run to detector for event access
+            cache_mgr = DetectorCacheManager(det, check_before_update=self.check_before_update, logger=self.log)
             cache_mgr.ensure()
             self.det_cache_managers[detname] = cache_mgr
 
