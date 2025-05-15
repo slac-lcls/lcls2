@@ -1,6 +1,8 @@
 import os
-import time
 import pickle
+import time
+
+from psana.detector.detector_cache import DetectorCacheManager
 from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
 
 GREEN = '\033[92m'
@@ -10,13 +12,29 @@ RESET = '\033[0m'
 CALIB_PICKLE_FILENAME = 'calibconst.pkl'
 
 class CalibSource:
-    def __init__(self, expcode, xtc_dir, output_dir, shmem, check_before_update, log):
+    def __init__(self, expcode, xtc_dir, output_dir, shmem, detectors, check_before_update, log):
         self.expcode = expcode
         self.xtc_dir = xtc_dir
         self.output_dir = output_dir
         self.shmem = shmem
         self.check_before_update = check_before_update
         self.log = log
+        self.detectors = detectors
+        self.det_cache_managers = {}
+
+    def on_run_begin(self, run):
+        """
+        Called at the beginning of each run to initialize detectors and prefetch calibration constants.
+
+        Parameters:
+        run (psana.Run): The current run object.
+        """
+        for detname in self.detectors:
+            det = run.Detector(detname)
+            det._run = run  # Attach run to detector for event access
+            cache_mgr = DetectorCacheManager(det, check_before_update=self.check_before_update, logger=self.log)
+            cache_mgr.ensure()
+            self.det_cache_managers[detname] = cache_mgr
 
     def run_loop(self):
         from psana import DataSource
@@ -25,7 +43,7 @@ class CalibSource:
                 ds = DataSource(shmem=self.shmem, skip_calib_load='all', dir=self.xtc_dir)
                 self.log.debug(f"Running in shmem mode using id={self.shmem}")
             else:
-                ds = DataSource(exp=self.expcode, skip_calib_load='all', dir=self.xtc_dir)
+                ds = DataSource(exp=self.expcode, run=9999, dir=self.xtc_dir, skip_calib_load='all')
                 self.log.debug(f"Running in normal mode using expcode={self.expcode}")
         except Exception as e:
             self.log.error(f"Failed to create DataSource: {e}")
@@ -43,6 +61,10 @@ class CalibSource:
                 output_dir=self.output_dir,
                 check_before_update=self.check_before_update,
             )
+            loaded_data = try_load_data_from_file(self.log, self.output_dir)
+            # Attach the retrieved calibconst to be used in Detector caching
+            ds.dsparms.calibconst = loaded_data.get('calib_const')
+            self.on_run_begin(run)
 
 def update_calib(expcode, latest_run, latest_info, log, output_dir, check_before_update=False):
     """
@@ -70,7 +92,7 @@ def update_calib(expcode, latest_run, latest_info, log, output_dir, check_before
                 det_uid = "cspad_detnum1234"
             t0 = time.time()
             calib_const[det_name] = calib_constants_all_types(det_uid, exp=expcode, run=latest_run, dbsuffix="")
-            log.debug(f"Fetched calib_const for {det_name} {det_uid=} {expcode=} {latest_run=} in {time.time() - t0:.2f}s")
+            log.debug(f"Fetched calib_const for {det_name} {latest_run=} in {time.time() - t0:.2f}s")
             if not calib_const[det_name]:
                 log.warning(f"{det_name} returns {calib_const[det_name]}")
     except Exception as e:

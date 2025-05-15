@@ -33,6 +33,7 @@ python -m psana.pscalib.app.calib_prefetch \
 | `--interval`      | Time in minutes between calibration checks         |
 | `--log-level`     | Logging level (`DEBUG`, `INFO`, etc.)              |
 | `--timestamp`     | Whether to include timestamps in log messages      |
+| `--detectors`     | List of detector names to precompute               |
 
 ## Output Format
 
@@ -65,6 +66,66 @@ calib_const, runnum = calib_utils.ensure_valid_calibconst(
     skip_calib_load=["det0"]
 )
 ```
+
+
+## 🧠 Detector Caching Support
+
+In addition to calibration constant prefetching, `calib_prefetch` can now also trigger detector-side caching of geometry-related attributes to reduce initialization time during event processing.
+
+### 🔧 New Options
+
+| Option                | Description                                                                 |
+|-----------------------|-----------------------------------------------------------------------------|
+| `--shmem`             | Run in shared memory mode (typically required for triggering detectors)    |
+| `--detectors`         | List of detector names to precompute and cache `_calibc_` attributes        |
+| `--check-before-update` | Skip updating if detector UID matches previously cached state            |
+
+When `--detectors` is provided, the tool will call `det.raw.image(evt)` internally on one event to ensure expensive geometry arrays are computed and saved using `DetectorCacheManager`.
+
+These arrays (e.g. pixel coordinates, masks, and mappings) are then saved in a structured pickle file in the specified output directory (default: `/dev/shm`).
+
+### 📁 Detector Cache Format
+
+Each detector's cache is saved under:
+
+```
+/dev/shm/<detector_name>_calibc_cache.pkl
+```
+
+Format:
+```python
+{
+  "raw": {
+    "_pix_rc": np.ndarray,
+    ...
+  },
+  "fex": {
+    ...
+  }
+}
+```
+
+These are loaded later by the `Detector` interface (e.g. `det.raw`) during `DataSource` setup if `use_calib_cache=True`.
+
+### 🧪 Example Usage
+
+```bash
+python -m psana.pscalib.app.calib_prefetch \
+  --expcode mfx101332224 \
+  --xtc-dir /sdf/data/lcls/ds/mfx/mfx101332224/xtc \
+  --output-dir /dev/shm \
+  --shmem shmem_test_12345 \
+  --detectors jungfrau \
+  --log-level DEBUG
+```
+
+This will write both the calibration constants (`calibconst.pkl`) and detector-side `_calibc_` geometry caches for the `jungfrau` detector to `/dev/shm`.
+
+### 🧩 Integration Notes
+
+- `calib_prefetch` should be launched at DAQ start by a control process such as `daqmgr`.
+- Use `use_calib_cache=True` and `cached_detectors=["<detector>"]` when creating the downstream `DataSource`.
+- Detector-side loading will automatically populate `_calibc_` attributes and skip redundant computation in `image(evt)` or `geometry()`.
 
 ## Developers
 

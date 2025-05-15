@@ -848,7 +848,7 @@ def issue_2025_05_07():
     ds = DataSource(exp='rix101333324', run=46)
     myrun = next(ds.runs())
     det = myrun.Detector('axis_svls')
-    events = 100
+    events = 5
     arrdt = np.empty(events, dtype=np.float64)
     if True:
         flimg = None
@@ -857,7 +857,8 @@ def issue_2025_05_07():
             raw   = det.raw.raw(evt)
             calib = det.raw.calib(evt)
             t0_sec = time()
-            img   = det.raw.image(evt) # raw
+            #img = det.raw.image(evt, nda=raw/2) # raw
+            img = det.raw.image(evt, nda=None) # raw
             dt_sec = (time() - t0_sec)*1000
             #print('evt:', nevt)
             arrdt[nevt] = dt_sec

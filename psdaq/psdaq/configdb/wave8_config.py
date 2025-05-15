@@ -2,8 +2,6 @@ from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
-from psdaq.utils import enable_lcls2_pgp_pcie_apps
-import lcls2_pgp_pcie_apps
 import epics
 
 import json
@@ -125,26 +123,6 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
 
     print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
 
-    if timebase=="119M":  # UED
-        print('Configure for UED')
-        #  We need pcie control to configure event batcher (which normally doesnt exist)
-        #  Concerned if we will interfere with other pcie operation (for epixquad)
-        pbase = lcls2_pgp_pcie_apps.DevRoot(dev           =dev,
-                                            enLclsI       =False,
-                                            enLclsII      =True,
-                                            yamlFileLclsI =None,
-                                            yamlFileLclsII=None,
-                                            startupMode   =True,
-                                            standAloneMode=False,
-                                            pgp4          =True,
-                                            dataVc        =0,
-                                            pollEn        =False,
-                                            initRead      =False)
-        pbase.__enter__()
-        base['pci'] = pbase
-        eventBuilder = getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder
-        eventBuilder.Blowoff.set(True)
-
     wave8_unconfig(base)
 
     return base
@@ -191,7 +169,10 @@ def user_to_expert(prefix, cfg, full=False):
         ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
         partitionDelay = ctxt_get(prefix + 'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]' % group)
 
-        if timebase == '186M':
+        clksPerFid = 200 if timebase=='186M' else 238
+        nsPerClk   = 7000/1300. if timebase=='186M' else 1000/119.
+
+        if True:
             #  LCLS2 timing. Let controls set the delay value.
             print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
 
@@ -200,19 +181,15 @@ def user_to_expert(prefix, cfg, full=False):
             # compensate for different LCLS1/LCLS2 timing fiber lengths
             # when controls used the LCLS1 timing fiber = cpo 02/01/24
             # triggerDelay = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
-            triggerDelay = int(ctrlDelay - partitionDelay * 200)
+            triggerDelay = int(ctrlDelay - partitionDelay * clksPerFid)
 
             print('triggerDelay {:}'.format(triggerDelay))
             if triggerDelay < 0:
-                print('Raise controls trigger delay >= {:} nanoseconds ({:} 185MHz clock ticks)'.format(
-                    -triggerDelay * 7000 / 1300., -triggerDelay))
+                print('Raise controls trigger delay >= {:} nanoseconds ({:} clock ticks)'.format(
+                    -triggerDelay * nsPerClk, -triggerDelay))
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
-        else:
-            #  119M = UED, 238 clks per timing frame (500kHz)
-            #  UED is only LCLS2 timing. Let controls set the delay value.
-            pass
 
     except KeyError:
         pass
@@ -436,7 +413,6 @@ def wave8_unconfig(base):
     ctxt_put(names_cfg, values)
 
     #  Leaving DAQ control.
-    if base['timebase']=='186M':
-        config_timing(epics_prefix)
+    config_timing(epics_prefix)
 
     return None;

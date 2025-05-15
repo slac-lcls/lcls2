@@ -21,6 +21,7 @@ Usage::
     sg = sgs.Create(segname='MTRX:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:192:384:50:50') # the same as EPIXMASIC:V1
+    sg = sgs.Create(segname='MTRXANY:V1') # the same as MTRX:V2 with posponed initialization
     sg = sgs.Create(segname='EPIXMASIC:V1') # the same as MTRX:V2:192:384:50:50
 
     sg.print_seg_info(pbits=0o377)
@@ -52,6 +53,8 @@ See:
  * :py:class:`SegGeometryEpixM320V1`
  * :py:class:`SegGeometryJungfrauV1`,
  * :py:class:`SegGeometryMatrixV1`,
+ * :py:class:`SegGeometryMatrixV2`,
+ * :py:class:`SegGeometryMatrixAnyV1`,
  * :py:class:`SegGeometryArchonV1`,
  * :py:class:`SegGeometryArchonV2`,
  * :py:class:`SegGeometryStore`
@@ -98,6 +101,12 @@ def segment_geometry(**kwa):
         return SegGeometryMatrixV2(rows, cols, psize_row, psize_col,\
                                    pix_size_depth=100,\
                                    pix_scale_size=min(psize_row, psize_col))
+    elif segname=='MTRXANY:V1':
+        """needs in postponed initialization of parameters sg.init_matrix_parameters(...)"""
+        from psana.pscalib.geometry.SegGeometryMatrixAnyV1 import SegGeometryMatrixAnyV1
+        sg = SegGeometryMatrixAnyV1()
+        #sg.init_matrix_parameters(shape=(512,1024), pix_size_rcsd_um=(75,75,75,400))
+        return sg
     elif segname[:4]=='MTRX':
         from psana.pscalib.geometry.SegGeometryMatrixV1 import SegGeometryMatrixV1, matrix_pars, segment_one
         rows, cols, psize_row, psize_col = matrix_pars(segname)

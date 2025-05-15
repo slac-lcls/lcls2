@@ -125,8 +125,11 @@ class DataSourceBase(abc.ABC):
         List of detectors that skip calibration constant loading.
     use_calib_cache : bool
         Enable calibration constant saving and loading in shared memory (default: False).
-    fetch_calib_cache_max_retres: int
+    fetch_calib_cache_max_retries: int
         Max number of retries reading calibration constant from shared memory (default: 60).
+    cached_detectors : list, optional
+        List of detector names to load cached calibration attributes for
+        when use_calib_cache is True. Default is [].
     mpi_ts : bool
         Used internally to avoid repeated file I/O in MPI contexts.
     log_level : int
@@ -165,7 +168,8 @@ class DataSourceBase(abc.ABC):
         self.prom_jobid = kwargs.get("prom_jobid", None)
         self.skip_calib_load = kwargs.get("skip_calib_load", [])
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
-        self.fetch_calib_cache_max_retres = kwargs.get("fetch_calib_cache_max_retres", 60)
+        self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
+        self.cached_detectors = kwargs.get("cached_detectors", [])
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
 
@@ -212,7 +216,8 @@ class DataSourceBase(abc.ABC):
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
-            "fetch_calib_cache_max_retres", "mpi_ts", "mode", "log_level"
+            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
+            "log_level"
         }
         for k in kwargs:
             if k not in known_keys:
@@ -704,7 +709,7 @@ class DataSourceBase(abc.ABC):
         """
 
         if self.skip_calib_load == 'all':
-            self.logger.debug("_setup_run_calibconst skipped {self.skip_calib_load=}")
+            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
             return
 
         runinfo = self._get_runinfo()
@@ -717,7 +722,7 @@ class DataSourceBase(abc.ABC):
             self.logger.debug("using calibration constant from shared memory, if exists")
             calib_const, existing_info, max_retry = (None, None, 0)
             latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
-            while not calib_const and max_retry < self.fetch_calib_cache_max_retres and existing_info != latest_info:
+            while not calib_const and max_retry < self.fetch_calib_cache_max_retries and existing_info != latest_info:
                 try:
                     loaded_data = calib_utils.try_load_data_from_file(self.logger)
                 except Exception as e:
@@ -729,10 +734,10 @@ class DataSourceBase(abc.ABC):
                     calib_const = None
                     self.logger.warning("det_info in pickle file does not matched with the latest run")
                 elif calib_const:
-                    self.logger.debug(f"received {calib_const.keys()=}")
+                    self.logger.debug(f"received calib_const for {','.join(calib_const.keys())}")
                     break
                 max_retry += 1
-                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retres})")
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
                 time.sleep(1)
 
             self.dsparms.calibconst = calib_const
@@ -752,7 +757,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
                     )
                     en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} {det_uniqueid=} {expt=} {runnum=} {self.dbsuffix=} in {en-st:.4f}s.")
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
                     self.dsparms.calibconst[det_name] = calib_const
                 else:
                     self.logger.info(

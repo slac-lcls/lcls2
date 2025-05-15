@@ -13,6 +13,82 @@ using json = nlohmann::json;
 using logging = psalg::SysLog;
 
 
+// _dehex - convert a hex std::string to an array of chars
+//
+// For example, string "0E2021" is converted to array [14, 32, 33].
+// <outArray> must be allocated by the caller to at least half
+// the length of <inString>.
+//
+// RETURNS: 0 on success, otherwise 1.
+//
+static int _dehex(std::string inString, char *outArray)
+{
+    if (outArray) {
+        try {
+            for (unsigned uu = 0; uu < inString.length() / 2; uu++) {
+                std::string str2 = inString.substr(2*uu, 2);
+                outArray[uu] = (char) std::stoi(str2, 0, 16);   // base 16
+            }
+            return 0;   // success
+        }
+        catch (std::exception& e) {
+            std::cout << "Exception in _dehex(): " << e.what() << "\n";
+        }
+    }
+    return 1;           // error
+}
+
+//  Return a list of scan parameters for detname
+static json _getscankeys(const json& stepInfo, const char* detname, const char* alias)
+{
+    json update;
+//  bool detscanned=false;
+    if (stepInfo.contains("step_keys")) {
+        json reconfig = stepInfo["step_keys"];
+        logging::debug("_getscankeys reconfig [%s]",reconfig.dump().c_str());
+        for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
+            std::string v = it->get<std::string>();
+            logging::debug("_getscankeys key [%s]",v.c_str());
+            size_t delim = v.find(":");
+            if (delim != std::string::npos) {
+                std::string src = v.substr(0,delim);
+                if (src == alias)
+                    update.push_back(v.substr(delim+1));
+//              if (src.substr(0,src.rfind("_",delim)) == detname)
+//                  detscanned = true;
+            }
+        }
+    }
+
+    logging::debug("_getscankeys returning [%s]",update.dump().c_str());
+    return update;
+}
+
+//  Return a dictionary of scan parameters for detname
+static json _getscanvalues(const json& stepInfo, const char* detname, const char* alias)
+{
+    json update;
+//  bool detscanned=false;
+    if (stepInfo.contains("step_values")) {
+        json reconfig = stepInfo["step_values"];
+        for (json::iterator it=reconfig.begin(); it != reconfig.end(); it++) {
+            std::string v = it.key();
+            logging::debug("_getscanvalues key [%s]",v.c_str());
+            size_t delim = it.key().find(":");
+            if (delim != std::string::npos) {
+                std::string src = it.key().substr(0,delim);
+                if (src == alias)
+                    update[it.key().substr(delim+1)] = it.value();
+//              if (src.substr(0,src.rfind("_",delim)) == detname)
+//                  detscanned = true;
+            }
+        }
+    }
+
+    logging::debug("_getscanvalues returning [%s]",update.dump().c_str());
+    return update;
+}
+
 namespace Drp
 {
 
@@ -35,9 +111,10 @@ private:
 
 GpuDetectorApp::GpuDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
-    m_para(para),
-    m_det(nullptr),
+    m_para       (para),
+    m_pool       (para),
+    m_drp        (para, m_pool, context()),
+    m_det        (nullptr),
     m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
@@ -53,12 +130,12 @@ void GpuDetectorApp::initialize()
 
     // Register Detector types and the .so library that provides them
     auto& f = m_factory;   // Factory must remain in scope to avoid .so closing
-    f.register_type("fakecam",   "libAreaDetector_gpu.so");
+    f.register_type("fakecam",   "libAreaDetector_gpu_v1.so");
     //f.register_type<AreaDetectorGpu>("fakecam",   "libAreaDetector_gpu.so");
     //f.register_type<EpixHRemuGpu>   ("epixhremu", "libEpixHRemu_gpu.so");
     //f.register_type<EpixM320Gpu>    ("epixm320",  "libEpixM320_gpu.so");
 
-    m_det = f.create(m_para.detType, m_para, m_drp.pool);
+    m_det = f.create(m_para.detType, m_para, m_pool);
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
         throw "Could not create Detector object for " + m_para.detType;
@@ -100,10 +177,6 @@ void GpuDetectorApp::_unconfigure()
     if (m_gpuDetector) {
         m_gpuDetector->shutdown();
         if (m_exporter)  m_exporter.reset();
-        if (m_gpuThread.joinable()) {
-            m_gpuThread.join();
-            logging::info("GpuReader thread finished");
-        }
         if (m_collectorThread.joinable()) {
             m_collectorThread.join();
             logging::info("Collector thread finished");
@@ -172,50 +245,47 @@ void GpuDetectorApp::handlePhase1(const json& msg)
     xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
     auto bufEnd = m_det->trXtcBufEnd();
 
-    // @todo:
-    //bool has_names_block_hex = false;
-    //bool has_shapes_data_block_hex = false;
-    //
+    bool has_names_block_hex = false;
+    bool has_shapes_data_block_hex = false;
+
     json phase1Info{ "" };
-    // @todo:
-    //if (msg.find("body") != msg.end()) {
-    //    if (msg["body"].find("phase1Info") != msg["body"].end()) {
-    //        phase1Info = msg["body"]["phase1Info"];
-    //        if (phase1Info.find("NamesBlockHex") != phase1Info.end()) {
-    //            has_names_block_hex = true;
-    //        }
-    //        if (phase1Info.find("ShapesDataBlockHex") != phase1Info.end()) {
-    //            has_shapes_data_block_hex = true;
-    //        }
-    //    }
-    //}
+    if (msg.find("body") != msg.end()) {
+        if (msg["body"].find("phase1Info") != msg["body"].end()) {
+            phase1Info = msg["body"]["phase1Info"];
+            if (phase1Info.find("NamesBlockHex") != phase1Info.end()) {
+                has_names_block_hex = true;
+            }
+            if (phase1Info.find("ShapesDataBlockHex") != phase1Info.end()) {
+                has_shapes_data_block_hex = true;
+            }
+        }
+    }
 
     if (key == "configure") {
         if (m_unconfigure) {
             _unconfigure();
         }
-        // @todo:
-        //if (has_names_block_hex && m_det->scanEnabled()) {
-        //    std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
-        //    unsigned hexlen = xtcHex.length();
-        //    if (hexlen > 0) {
-        //        logging::debug("configure phase1 in GpuDetectorApp: NamesBlockHex length=%u", hexlen);
-        //        char *xtcBytes = new char[hexlen / 2]();
-        //        if (_dehex(xtcHex, xtcBytes) != 0) {
-        //            logging::error("configure phase1 in GpuDetectorApp: _dehex() failure");
-        //        } else {
-        //            logging::debug("configure phase1 in GpuDetectorApp: _dehex() success");
-        //            // append the config xtc info to the dgram
-        //            XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
-        //            logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
-        //                           jsonxtc.sizeofPayload());
-        //            unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-        //            auto payload = xtc.alloc(copylen, bufEnd);
-        //            memcpy(payload, (const void*)xtcBytes, copylen);
-        //        }
-        //        delete[] xtcBytes;
-        //    }
-        //}
+        if (has_names_block_hex && m_det->scanEnabled()) {
+           std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
+           unsigned hexlen = xtcHex.length();
+           if (hexlen > 0) {
+               logging::debug("configure phase1 in GpuDetectorApp: NamesBlockHex length=%u", hexlen);
+               char *xtcBytes = new char[hexlen / 2]();
+               if (_dehex(xtcHex, xtcBytes) != 0) {
+                   logging::error("configure phase1 in GpuDetectorApp: _dehex() failure");
+               } else {
+                   logging::debug("configure phase1 in GpuDetectorApp: _dehex() success");
+                   // append the config xtc info to the dgram
+                   XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                   logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
+                                  jsonxtc.sizeofPayload());
+                   unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                   auto payload = xtc.alloc(copylen, bufEnd);
+                   memcpy(payload, (const void*)xtcBytes, copylen);
+               }
+               delete[] xtcBytes;
+           }
+        }
 
         std::string errorMsg = m_drp.configure(msg);
         if (!errorMsg.empty()) {
@@ -225,28 +295,26 @@ void GpuDetectorApp::handlePhase1(const json& msg)
         }
         else {
             const std::string& config_alias = msg["body"]["config_alias"];
-            m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_drp, m_det);
-            m_exporter = std::make_shared<Pds::MetricExporter>();
+            m_gpuDetector = std::make_unique<GpuDetector>(m_para, m_pool, m_det);
             if (m_drp.exposer()) {
+                m_exporter = std::make_shared<Pds::MetricExporter>();
                 m_drp.exposer()->RegisterCollectable(m_exporter);
             }
 
-            m_gpuThread = std::thread{&GpuDetector::reader, std::ref(*m_gpuDetector), m_exporter,
-                                      std::ref(m_drp.tebContributor())};
             m_collectorThread = std::thread(&GpuDetector::collector, std::ref(*m_gpuDetector),
-                                            std::ref(m_drp.tebContributor()));
+                                            m_exporter, std::ref(m_drp.tebContributor()),
+                                            std::ref(m_drp)); // Revisit: Do we want m_drp?
 
             // Provide EbReceiver with the Detector interface so that additional
             // data blocks can be formatted into the XTC, e.g. trigger information
-            m_drp.ebReceiver().configure(m_det, m_gpuDetector.get());
+            m_drp.ebReceiver().configure(m_det, nullptr);  // @todo: Revisit: m_gpuDetector.get());
 
             // @todo: Maybe we should configure the h/w before the reader thread starts?
             unsigned error = m_det->configure(config_alias, xtc, bufEnd);
             if (!error) {
-                // @todo:
-                //json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-                //if (!scan.empty())
-                //    error = m_det->configureScan(scan, xtc, bufEnd);
+                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+                if (!scan.empty())
+                    error = m_det->configureScan(scan, xtc, bufEnd);
             }
             if (error) {
                 std::string errorMsg = "Phase 1 error in Detector::configure()";
@@ -264,44 +332,42 @@ void GpuDetectorApp::handlePhase1(const json& msg)
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
-        // @todo:
-        //// see if we find some step information in phase 1 that needs to be
-        //// to be attached to the xtc
-        //if (has_shapes_data_block_hex && m_det->scanEnabled()) {
-        //    std::string xtcHex = msg["body"]["phase1Info"]["ShapesDataBlockHex"];
-        //    unsigned hexlen = xtcHex.length();
-        //    if (hexlen > 0) {
-        //        logging::debug("beginstep phase1 in GpuDetectorApp: ShapesDataBlockHex length=%u", hexlen);
-        //        char *xtcBytes = new char[hexlen / 2]();
-        //        if (_dehex(xtcHex, xtcBytes) != 0) {
-        //            logging::error("beginstep phase1 in GpuDetectorApp: _dehex() failure");
-        //        } else {
-        //            // append the beginstep xtc info to the dgram
-        //            XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
-        //            logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
-        //                           jsonxtc.sizeofPayload());
-        //            unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-        //            auto payload = xtc.alloc(copylen, bufEnd);
-        //            memcpy(payload, (const void*)xtcBytes, copylen);
-        //        }
-        //        delete[] xtcBytes;
-        //    }
-        //}
+        // see if we find some step information in phase 1 that needs to be
+        // to be attached to the xtc
+        if (has_shapes_data_block_hex && m_det->scanEnabled()) {
+            std::string xtcHex = msg["body"]["phase1Info"]["ShapesDataBlockHex"];
+            unsigned hexlen = xtcHex.length();
+            if (hexlen > 0) {
+                logging::debug("beginstep phase1 in GpuDetectorApp: ShapesDataBlockHex length=%u", hexlen);
+                char *xtcBytes = new char[hexlen / 2]();
+                if (_dehex(xtcHex, xtcBytes) != 0) {
+                    logging::error("beginstep phase1 in GpuDetectorApp: _dehex() failure");
+                } else {
+                    // append the beginstep xtc info to the dgram
+                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
+                                   jsonxtc.sizeofPayload());
+                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    auto payload = xtc.alloc(copylen, bufEnd);
+                    memcpy(payload, (const void*)xtcBytes, copylen);
+                }
+                delete[] xtcBytes;
+            }
+        }
 
         unsigned error = m_det->beginstep(xtc, bufEnd, phase1Info);
         if (error) {
             logging::error("m_det->beginstep() returned error");
         } else {
-            // @todo:
-            //json scan = _getscanvalues(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-            //if (scan.empty()) {
-            //    logging::debug("scan is empty");
-            //} else {
-            //    error = m_det->stepScan(scan, xtc, bufEnd);
-            //    if (error) {
-            //        logging::error("m_det->stepScan() returned error");
-            //    }
-            //}
+            json scan = _getscanvalues(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+            if (scan.empty()) {
+                logging::debug("scan is empty");
+            } else {
+                error = m_det->stepScan(scan, xtc, bufEnd);
+                if (error) {
+                    logging::error("m_det->stepScan() returned error");
+                }
+            }
         }
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::beginstep()";
@@ -400,7 +466,7 @@ void GpuDetectorApp::connectionShutdown()
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     if (m_det) {
-        m_det.connectionShutdown();
+        m_det->connectionShutdown();
     }
     m_drp.shutdown();
     if (m_exporter) {

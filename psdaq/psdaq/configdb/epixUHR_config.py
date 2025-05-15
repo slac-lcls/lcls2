@@ -40,6 +40,8 @@ def sorting_dict(asics):
         
     for n in asics:
         sortdict[f'Asic{n}'] = ["enable",
+                                "DacAdcVrefCm",	
+                                "DacAdcVrefCmGain",
                                 "DacVthr", 
                                 "DacVthrGain", 
                                 "DacVfiltGain", 

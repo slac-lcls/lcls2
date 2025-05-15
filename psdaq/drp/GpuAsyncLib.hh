@@ -22,14 +22,35 @@
 #include <assert.h>
 #include <stdint.h>
 
+#if defined(__CUDACC_VER_MAJOR__) || defined(__clangd__)
+#define _CUDA
+#endif
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#ifdef __NVCC__
+#define globalFunc __global__
+#define hostFunc __host__
+#define deviceFunc __device__
+#else
+#define deviceFunc
+#define globalFunc
+#define hostFunc
+#endif
+
+#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ < 12) // Avoid gcc complaints
+#define CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1 CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS
+#endif
+
 //--------------------------------------------------------------------------------//
 // CUDA Prototypes
-void checkError(CUresult status);
-void checkError(cudaError status);
-bool wasError(CUresult status);
+#define NOARG ""           // Ensures there is an arg when __VA_ARGS__ is blank
+#define chkFatal(rc, ...)  checkError((rc), #rc, __FILE__, __LINE__, true,  NOARG __VA_ARGS__)
+#define chkError(rc, ...)  checkError((rc), #rc, __FILE__, __LINE__, false, NOARG __VA_ARGS__)
+
+bool checkError(CUresult  status, const char* func, const char* file, int line, bool crash=true, const char* msg="");
+bool checkError(cudaError status, const char* func, const char* file, int line, bool crash=true, const char* msg="");
 //--------------------------------------------------------------------------------//
 
 /**
@@ -56,6 +77,7 @@ protected:
 class CudaContext
 {
 public:
+    CudaContext();
 
     /**
      * Creates a CUDA context, selects a device and ensures that stream memory ops are available.
@@ -68,7 +90,9 @@ public:
     /**
      * \brief Dumps a list of devices to stdout
      */
-    void list_devices();
+    void listDevices();
+
+    int getAttribute(CUdevice_attribute attr);
 
     CUdevice device() const { return device_; }
     CUcontext context() const { return context_; }
@@ -93,6 +117,22 @@ static inline void dumpGpuMem(CUdeviceptr devicePtr, size_t sizeInBytes, void* b
     dumpMem<T, COLS>(reinterpret_cast<T*>(buf), sizeInBytes);
     if (buffed) free(buf);
 }
+
+/**
+ * Simple utility to display a device buffer
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
+static void show_buf(CUdeviceptr dptr, size_t size, CUstream stream = 0) {
+    uint8_t buf[size];
+    //cuMemcpyDtoH(buf, dptr, size);
+    chkError(cudaMemcpyAsync(buf, (void*)dptr, size, cudaMemcpyDeviceToHost, stream));
+    cuStreamSynchronize(stream);
+    for (size_t i = 0; i < size / 4; ++i) {
+        printf("offset=0x%zX,  0x%X\n",i*4,*((uint32_t*)(buf+(i*4))));
+    }
+}
+#pragma GCC diagnostic pop
 
 /**
  * \brief Describes FPGA memory that's mapped via RDMA to the GPU. The below functions wrap
@@ -140,7 +180,7 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
 /**
  * \brief Unmaps memory, clears out the pointer and size
  */
-void gpuUnMapFpgaMem(GpuDmaBuffer_t* mem);
+void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem);
 
 //-----------------------------------------------------------------------------//
 
@@ -155,20 +195,49 @@ struct GpuBufferState_t
 /**
  * Allocates and inits buffer pairs on the GPU for RDMA operation.
  * \param b Buffer state to init
- * \param gpu The DataGPU instance to allocate for
+ * \param fd The file descriptor of the DataGPU device to allocate for
  * \param bufSize The size of the buffers to allocate
  * \return 0 for success, -1 on error
  */
-int gpuInitBufferState(GpuBufferState_t* b, const DataGPU& gpu, size_t bufSize);
+int gpuInitBufferState(GpuBufferState_t* b, int fd, size_t bufSize);
 void gpuDestroyBufferState(GpuBufferState_t* b);
 
 //-----------------------------------------------------------------------------//
 
 /**
- * Functions to get and set the DMA destination.
- * \param fd The file descriptor of the datagpu device
- * \param mode_ The enumerated value of the destination
+ * 64-bit write AXI descriptor data
  */
-enum DmaDest_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
-DmaDest_t dmaDestGet(int fd);
-void dmaDestSet(int fd, DmaDest_t mode_);
+struct __attribute__((packed)) AxiWrDesc64_t
+{
+    uint32_t result     : 2;
+    uint32_t overflow   : 1;        /** Overflow bit */
+    uint32_t cont       : 1;        /** Continue bit */
+    uint32_t reserved0  : 12;
+    uint32_t lastUser   : 8;
+    uint32_t firstUser  : 8;
+    uint32_t size;
+};
+
+static_assert(sizeof(AxiWrDesc64_t) == 8, "AxiWrDesc64_t must be 64-bits (8-bytes)");
+
+deviceFunc inline AxiWrDesc64_t UnpackAxiWriteDescriptor(const void* data)
+{
+    return *(AxiWrDesc64_t*)data;
+}
+
+//-----------------------------------------------------------------------------//
+
+/**
+ * Functions to get and set the DMA destination.
+ * \param fd The file descriptor of the PGP PCIe device
+ * \param mode The enumerated value of the destination
+ */
+enum DmaTgt_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
+DmaTgt_t dmaTgtGet(const DataGPU&);
+void dmaTgtSet(const DataGPU&, DmaTgt_t);
+
+/**
+ * Function to reset the DMA buffer round-robin index.
+ * \param fd The file descriptor of the PGP PCIe device
+ */
+void dmaIdxReset(const DataGPU&);

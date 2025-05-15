@@ -4,9 +4,7 @@
 #include <Python.h>
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
-#include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/service/Collection.hh"
-#include "psdaq/service/MetricExporter.hh"
 
 namespace Drp {
 
@@ -29,15 +27,12 @@ private:
     void disconnect();
     void drainDrpMessageQueues();
     int resetDrpPython();
-    DrpBase m_drp;
     Parameters& m_para;
-    std::thread m_pgpThread;
-    std::thread m_collectorThread;
-    std::unique_ptr<PGPDetector> m_pgpDetector;
+    MemPoolCpu m_pool;
     Detector* m_det;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
+    std::unique_ptr<PGPDrp> m_drp;
     bool m_unconfigure;
-    PyThreadState*    m_pysave;
+    PyThreadState* m_pysave;
     int* m_inpMqId;
     int* m_resMqId;
     int* m_inpShmId;

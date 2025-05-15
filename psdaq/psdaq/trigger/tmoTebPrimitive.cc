@@ -1,36 +1,11 @@
-#include "TriggerPrimitive.hh"
-#include "TmoTebData.hh"
+#include "tmoTebPrimitive.hh"
+
 #include "utilities.hh"
 #include "drp/drp.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include <cstdint>
-#include <stdio.h>
-
 using namespace rapidjson;
 using json = nlohmann::json;
-
-
-namespace Pds {
-  namespace Trg {
-
-    class TmoTebPrimitive : public TriggerPrimitive
-    {
-    public:
-      int    configure(const Document& top,
-                       const json&     connectMsg,
-                       size_t          collectionId) override;
-      void   event(const Drp::MemPool& pool,
-                   uint32_t            idx,
-                   const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc,
-                   const void*         bufEnd) override;
-      size_t size() const  { return sizeof(TmoTebData); }
-    };
-  };
-};
-
-
 using namespace Pds::Trg;
 
 int Pds::Trg::TmoTebPrimitive::configure(const Document& top,
@@ -46,6 +21,8 @@ void Pds::Trg::TmoTebPrimitive::event(const Drp::MemPool& pool,
                                       XtcData::Xtc&       xtc,
                                       const void*         bufEnd)
 {
+  // Analyze ctrb to determine TEB input data for the trigger
+  // Example dummy input data:
   uint32_t write_   = 0xdeadbeef;
   uint32_t monitor_ = 0x12345678;
 

@@ -5,8 +5,7 @@
 #include <atomic>
 #include "drp.hh"
 #include "spscqueue.hh"
-#include "Detector.hh"
-#include "DrpBase.hh"
+#include "GpuWorker.hh"
 
 namespace Pds {
     class MetricExporter;
@@ -15,33 +14,26 @@ namespace Pds {
 
 namespace Drp {
 
-struct Batch
-{
-    uint32_t start;
-    uint32_t size;
-};
+class DrpBase;
+class Detector;
+class MemPoolGpu;
 
-class GpuWorker;
-
-class GpuDetector : public PgpReader
+class GpuDetector
 {
 public:
-    GpuDetector(const Parameters& para, DrpBase& drp, Detector* det);
-    virtual ~GpuDetector();
-    void reader(std::shared_ptr<Pds::MetricExporter> exporter, Pds::Eb::TebContributor& tebContributor);
-    void collector(Pds::Eb::TebContributor& tebContributor);
-    virtual void handleBrokenEvent(const PGPEvent& event) override;
-    virtual void resetEventCounter() override;
+    GpuDetector(const Parameters& para, MemPoolGpu& pool, Detector* det);
+    ~GpuDetector();
+    void collector(std::shared_ptr<Pds::MetricExporter>, Pds::Eb::TebContributor&, DrpBase&);
     void shutdown();
 private:
-    void _gpuCollector(Pds::Eb::TebContributor& tebContributor);
+    int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
 private:
-    static constexpr int MAX_RET_CNT_C { 8 };
-    DrpBase&             m_drp;
-    Detector*            m_det;
-    SPSCQueue<uint32_t>  m_collectorCpuQueue;
-    SPSCQueue<Batch>     m_collectorGpuQueue;
-    std::atomic<bool>    m_terminate;
+    const Parameters&       m_para;
+    MemPoolGpu&             m_pool;
+    Detector*               m_det;
+    std::vector<GpuWorker*> m_workers;
+    uint64_t                m_nNoTrDgrams;
+    GpuMetrics              m_metrics;
 };
 
 }

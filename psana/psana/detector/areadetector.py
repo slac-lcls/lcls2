@@ -101,6 +101,7 @@ class AreaDetector(DetectorImpl):
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             self._calibc_ = CalibConstants(cc, **kwa)
+            self._apply_calibc_preload_cache()
         return self._calibc_
 
 
