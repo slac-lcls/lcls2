@@ -24,7 +24,7 @@ def smd_callback(run):
 
 def test_standard():
     # Usecase 1a : two iterators with filter function
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, batch_size=1)
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, batch_size=1)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -48,7 +48,7 @@ def test_standard():
 
 def test_no_filter():
     # Usecase 1b : two iterators without filter function
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -69,7 +69,7 @@ def test_no_filter():
 
 def test_step():
     # Usecase 3: test looping over steps
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -93,8 +93,8 @@ def test_step():
 
 def test_select_detectors():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, 
-            detectors=['xppcspad_2'], 
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir,
+            detectors=['xppcspad_2'],
             xdetectors=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
@@ -114,7 +114,7 @@ def test_select_detectors():
 
 def test_replace_with_smd():
     # Usecase 4 : selecting only xppcspad
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, detectors=['epicsinfo'], small_xtc=['epicsinfo'])
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, detectors=['epicsinfo'], small_xtc=['epicsinfo'])
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -131,7 +131,7 @@ def test_replace_with_smd():
         assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
 
 def test_callback(batch_size):
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, smd_callback=smd_callback , batch_size=batch_size)
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, smd_callback=smd_callback , batch_size=batch_size)
 
     sendbuf = np.zeros(1, dtype='i')
     recvbuf = None
@@ -154,7 +154,7 @@ def test_callback(batch_size):
 
 def test_multi_seg_epics():
     xtc_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'test_data', 'multi-seg-epics')
-    ds = DataSource(exp="xpptut15", run=1, dir=xtc_dir)
+    ds = DataSource(exp="xpptut15", run=14, dir=xtc_dir)
     run = next(ds.runs())
 
     hsd = run.Detector('hsd')

@@ -15,12 +15,14 @@ namespace Pds {
   namespace Eb {
     class ResultDgram;
   }
-};
+}
 
 namespace Drp {
+    namespace Gpu {
+        class Detector;
+    }
 
 struct Parameters;
-class GpuWorker;
 
 class Detector
 {
@@ -28,6 +30,9 @@ public:
     Detector(Parameters* para, MemPool* pool) :
         nodeId(-1u), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
+
+    virtual Gpu::Detector* gpuDetector() { return nullptr; }
+
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
     virtual void connectionShutdown() {}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
@@ -45,7 +50,6 @@ public:
     virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
     virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
 
-    virtual GpuWorker* gpuWorker() { return nullptr; }
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const
     {
         return static_cast<Pds::TimingHeader*>(m_pool->dmaBuffers[index]);

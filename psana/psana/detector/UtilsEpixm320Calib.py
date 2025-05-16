@@ -21,13 +21,15 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2024-04-09 by Mikhail Dubrovin
 """
-from psana.detector.Utils import info_dict
 
+import sys
+from psana.detector.Utils import info_dict
+import psana.pscalib.calib.CalibConstants as cc
 #from psana.detector.UtilsCalib import * # logging
 import psana.detector.UtilsCalib as uc
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge, calib_file_name
 import json
-
+import logging
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]

@@ -178,8 +178,11 @@ int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
 
-  rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   rc = linksConnect(_transport, _links, _id, "DRP");
   if (rc)  return rc;

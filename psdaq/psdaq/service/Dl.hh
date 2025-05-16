@@ -9,7 +9,7 @@ namespace Pds
   class Dl
   {
   public:
-    Dl() : _filename({}), _handle(nullptr) { }
+    Dl() : _handle(nullptr) { }
     ~Dl() { close(); }
   public:
     int   open(const std::string& filename, int flag);
@@ -19,6 +19,6 @@ namespace Pds
     std::string _filename;
     void*       _handle;
   };
-};
+}
 
 #endif

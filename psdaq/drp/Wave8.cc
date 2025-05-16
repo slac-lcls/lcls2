@@ -168,10 +168,6 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
     BEBDetector(para, pool)
 {
     _init(para->kwargs["epics_prefix"].c_str());
-
-    if (para->kwargs.find("timebase")!=para->kwargs.end() &&
-        para->kwargs["timebase"]==std::string("119M"))
-        m_debatch = true;
 }
 
 unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)

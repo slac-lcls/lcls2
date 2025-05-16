@@ -485,12 +485,15 @@ int Meb::_setupMetrics(const MetricExporter_t exporter)
 
 int Meb::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   _mrqLinks.resize(_prms.addrs.size());
 
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
+  int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
   rc = EbAppBase::connect(MEB_TR_BUFFERS, exporter);
@@ -738,11 +741,6 @@ MebApp::MebApp(const std::string& collSrv,
   _meb         (std::make_unique<Meb>(_prms, context())),
   _unconfigFlag(false)
 {
-  if (_exposer)
-  {
-    _exposer->RegisterCollectable(_exporter);
-  }
-
   logging::info("Ready for transitions");
 }
 
@@ -794,9 +792,9 @@ void MebApp::connectionShutdown()
 void MebApp::handleConnect(const json &msg)
 {
   // If the exporter already exists, replace it so that previous metrics are deleted
-  _exporter = std::make_shared<MetricExporter>();
   if (_exposer)
   {
+    _exporter = std::make_shared<MetricExporter>();
     _exposer->RegisterCollectable(_exporter);
   }
 

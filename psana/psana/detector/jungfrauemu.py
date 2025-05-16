@@ -19,6 +19,9 @@ class jungfrauemu_raw_0_1_0(ad.AreaDetectorRaw):
         nsegs = None if flds is None else len(flds)-1
         sMpix = {1:'05M', 2:'1M', 3:'4M'}.get(nsegs, None)
 
+        self._data_bit_mask = 0x3fff
+        self._gain_modes = ('g0', 'g1', 'g2')
+
         #self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix
         #self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau1M.data'
         #self._segment_numbers = (0,1,2,3,4,5,6,7)

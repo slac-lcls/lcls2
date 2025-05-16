@@ -17,6 +17,7 @@ from .epix100               import *
 from .epixm320              import *
 from .epixuhr               import *
 from .archon                import *
+from .axis                  import *
 from .jungfrau              import *
 from .jungfrauemu           import *
 #from .epixhremu             import *

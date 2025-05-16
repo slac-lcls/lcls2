@@ -132,64 +132,74 @@ target_link_libraries(tpr_trigger
     rt
 )
 
-if(CMAKE_CUDA_COMPILER)
-    #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
-    #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
-    #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
-    #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
-
-    add_executable(drp_gpu
-        GpuDetector.cc
-        GpuDetectorApp.cc
-    )
-    # @todo: No need for this anymore, I think
-    #target_include_directories(drp_gpu PUBLIC
-    #    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    #)
-    target_link_libraries(drp_gpu
-        xtcdata::xtc
-        drpbase
-        trigger
-        mmhw
-        nlohmann_json::nlohmann_json
-    )
-
-    add_library(AreaDetector_gpu SHARED
-        AreaDetectorGpu.cc
-        GpuWorker_impl.cu
-        AreaDetector.cc
-    )
-    target_include_directories(AreaDetector_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-        #$<INSTALL_INTERFACE:include>  # Not working?
-        ${CMAKE_INSTALL_PREFIX}/include
-        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    )
-    target_link_libraries(AreaDetector_gpu
-        xtcdata::xtc
-        drpbase
-        trigger  # @todo: This needed?
-        mmhw
-        nlohmann_json::nlohmann_json  # @todo: This needed?
-        CUDA::cudart
-        CUDA::cuda_driver
-    )
-    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
-
-    add_executable(pgpreadgpu
-        pgpreadgpu.cc
-        GpuAsyncLib.cc
-    )
-    target_include_directories(pgpreadgpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    )
-    target_link_libraries(pgpreadgpu
-        CUDA::cudart
-        CUDA::cuda_driver
-        Threads::Threads
-    )
-endif()
+#if(CMAKE_CUDA_COMPILER)
+#    message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+#    message(INSTALL_INTERFACE="$<INSTALL_INTERFACE>")
+#    #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+#    #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
+#    #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
+#
+#    add_executable(drp_gpu_v1
+#        GpuAsyncLib.cc
+#        GpuWorker.cu
+#        GpuDetector.cc
+#        GpuDetectorApp.cc
+#    )
+#    target_include_directories(drp_gpu_v1 PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        #$<INSTALL_INTERFACE:include>  # Not working?
+#        ${CMAKE_INSTALL_PREFIX}/include
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(drp_gpu_v1
+#        xtcdata::xtc
+#        drpbase
+#        trigger
+#        mmhw
+#        nlohmann_json::nlohmann_json
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
+#    set_target_properties(drp_gpu_v1 PROPERTIES CUDA_ARCHITECTURES "86")
+#    target_compile_options(drp_gpu_v1 PUBLIC -O3)
+#
+#    add_library(AreaDetector_gpu_v1 SHARED
+#        AreaDetectorGpu.cu
+#        AreaDetector.cc
+#    )
+#    target_include_directories(AreaDetector_gpu_v1 PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        #$<INSTALL_INTERFACE:include>  # Not working?
+#        ${CMAKE_INSTALL_PREFIX}/include
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(AreaDetector_gpu_v1
+#        xtcdata::xtc
+#        drpbase
+#        trigger  # @todo: This needed?
+#        mmhw
+#        nlohmann_json::nlohmann_json  # @todo: This needed?
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
+#    set_target_properties(AreaDetector_gpu_v1 PROPERTIES CUDA_ARCHITECTURES "86")
+#    target_compile_options(AreaDetector_gpu_v1 PUBLIC -O3)
+#
+#    add_executable(pgpreadgpu
+#        pgpreadgpu.cc
+#        GpuAsyncLib.cc
+#    )
+#    target_include_directories(pgpreadgpu PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        ${CMAKE_INSTALL_PREFIX}/include
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(pgpreadgpu
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#        Threads::Threads
+#    )
+#endif()
 
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
@@ -205,19 +215,6 @@ target_include_directories(configdb_obj_2xtc PUBLIC
 target_link_libraries(configdb_obj_2xtc
     service
     xtcdata::xtc
-    ${PYTHON_LIBRARIES}
-)
-
-add_executable(test_teb_config
-    test_teb_config.cc
-)
-
-target_include_directories(test_teb_config PUBLIC
-    ${RapidJSON_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
-)
-
-target_link_libraries(test_teb_config
     ${PYTHON_LIBRARIES}
 )
 
@@ -359,9 +356,9 @@ install(TARGETS drp
   RUNTIME DESTINATION bin
 )
 
-if(CMAKE_CUDA_COMPILER)
-  install(TARGETS
-    drp_gpu
-    AreaDetector_gpu
-  )
-endif()
+#if(CMAKE_CUDA_COMPILER)
+#  install(TARGETS
+#    drp_gpu_v1
+#    AreaDetector_gpu_v1
+#  )
+#endif()

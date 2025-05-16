@@ -66,7 +66,6 @@ class ConfigScanBase(object):
         logging.info('logging initialized')
 
     def run(self,keys,steps):
-        
         args = self.args
         # instantiate DaqControl object
         control = DaqControl(host=args.C, platform=args.p, timeout=args.t)
@@ -106,6 +105,10 @@ class ConfigScanBase(object):
             rv = control.setConfig(args.config)
             if rv is not None:
                 logging.error('%s' % rv)
+
+        # Set state to a valid state for changing record setting
+        control.setState("connected")
+        while control.getState() != "connected": ...
 
         if args.record is not None:
             # recording flag request

@@ -4,6 +4,7 @@
 #include <rapidjson/document.h>
 
 using namespace rapidjson;
+  using logging = psalg::SysLog;
 
 
 static bool failed(PyObject* obj)
@@ -54,7 +55,7 @@ int Pds::Trg::fetchDocument(const std::string& connectMsg,
             }
             else
             {
-              fprintf(stderr, "%s: json parse error\n", __PRETTY_FUNCTION__);
+              logging::error("Trg::fetchDocument: json parse error");
             }
             Py_DECREF(json_bytes);
           }

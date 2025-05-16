@@ -78,7 +78,6 @@ Epix100::Epix100(Parameters* para, MemPool* pool) :
     m_env_empty   (true)
 {
     _init(para->detName.c_str());  // an argument is required here
-
     epix = this;
 
     struct sigaction sa;
@@ -102,13 +101,13 @@ void Epix100::_connectionInfo(PyObject* mbytes)
 
 unsigned Epix100::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
-    // monStreamDisable();
+    monStreamDisable();
     return 0;
 }
 
 unsigned Epix100::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
-    // monStreamEnable();
+    monStreamEnable();
     return 0;
 }
 

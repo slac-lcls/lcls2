@@ -330,10 +330,13 @@ int Teb::connect(const MetricExporter_t exporter)
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
     _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
+  int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
   rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
@@ -962,9 +965,9 @@ void TebApp::handleConnect(const json& msg)
   _connectMsg = msg;
 
   // If the exporter already exists, replace it so that previous metrics are deleted
-  _exporter = std::make_shared<MetricExporter>();
   if (_exposer)
   {
+    _exporter = std::make_shared<MetricExporter>();
     _exposer->RegisterCollectable(_exporter);
   }
 
@@ -1026,33 +1029,37 @@ int TebApp::_configure(const json& msg)
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
   {
-    logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                   __PRETTY_FUNCTION__, triggerConfig.c_str());
+    logging::error("Document '%s_0' not found in ConfigDb/%s",
+                   triggerConfig.c_str(), configAlias.c_str());
     return -1;
   }
 
   if (!triggerConfig.empty())  _buildContract(top);
 
+  if (!top.HasMember("soname")) {
+    logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+    return -1;
+  }
+  std::string soname(top["soname"].GetString());
+
   const std::string symbol("create_consumer");
-  Trigger* trigger = _factory.create(top, triggerConfig, symbol);
+  Trigger* trigger = _factory.create(soname, symbol);
   if (!trigger)
   {
-    logging::error("%s:\n  Failed to create Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Failed to create Trigger; try '-v'");
     return -1;
   }
 
   if (trigger->configure(_connectMsg, top, _prms))
   {
-    logging::error("%s:\n  Failed to configure Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Trigger::configure() failed");
     return -1;
   }
 
 # define _FETCH(key, item)                                              \
   if (top.HasMember(key))  item = top[key].GetUint();                   \
-  else { logging::error("%s:\n  Key '%s' not found in Document %s",     \
-                        __PRETTY_FUNCTION__, key, triggerConfig.c_str()); \
+  else { logging::error("Key '%s' not found in Document %s",            \
+                        key, triggerConfig.c_str());                    \
          rc = -1; }
 
   unsigned prescale;  _FETCH("prescale", prescale);
@@ -1060,8 +1067,7 @@ int TebApp::_configure(const json& msg)
 # undef _FETCH
 
   rc = _teb->configure(trigger, prescale);
-  if (rc)  logging::error("%s:\n  Failed to configure TEB",
-                          __PRETTY_FUNCTION__);
+  if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);
 

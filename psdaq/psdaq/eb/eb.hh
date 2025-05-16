@@ -164,22 +164,27 @@ namespace Pds {
 template<typename T>
 int64_t Pds::Eb::latency(const XtcData::TimeStamp& time)
 {
+  using std::chrono::system_clock;
+  using std::chrono::duration_cast;
   using sec_t = std::chrono::seconds;
-  static unsigned _epoch = POSIX_TIME_AT_EPICS_EPOCH;
+  using ns_t  = std::chrono::nanoseconds;
+  static unsigned long _tOffset = POSIX_TIME_AT_EPICS_EPOCH; // 20 years
 
-  auto now = std::chrono::system_clock::now();  // Takes a long time!
-  auto dgt = std::chrono::seconds    { time.seconds() + _epoch }
-           + std::chrono::nanoseconds{ time.nanoseconds() };
-  std::chrono::system_clock::time_point tp{ std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt) };
+  // XPMs on external timing produce times since the 1990 epoch
+  // XPMs on internal timing reset time to 0 when they're started
+  auto now = system_clock::now();               // 1970 epoch (Takes a long time!)
+  auto dgt = sec_t{ time.seconds() + _tOffset } // Convert to 1970 epoch
+           + ns_t { time.nanoseconds() };
+  system_clock::time_point tp{ duration_cast<system_clock::duration>(dgt) };
   auto dt =  now - tp;
 
-  // If time difference is large, adjust the epoch to get differences near zero
-  if (std::chrono::duration_cast<sec_t>(dt).count() > POSIX_TIME_AT_EPICS_EPOCH)
+  // If dt is still large, increase tOffset to get differences near zero
+  if (duration_cast<sec_t>(dt).count() > POSIX_TIME_AT_EPICS_EPOCH)
   {
-    _epoch = std::chrono::duration_cast<sec_t>(dt).count() + POSIX_TIME_AT_EPICS_EPOCH;
+    _tOffset += duration_cast<sec_t>(dt).count();
     return latency<T>(time);
   }
-  return std::chrono::duration_cast<T>(dt).count();
+  return duration_cast<T>(dt).count();
 }
 
 #endif

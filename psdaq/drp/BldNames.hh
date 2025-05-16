@@ -7,6 +7,12 @@
 #include <map>
 
 namespace BldNames {
+    class UsdUsbDataV1 : public XtcData::VarDef {
+    public:
+        UsdUsbDataV1();
+        static unsigned mcaddr(const char*);
+        static std::vector<unsigned> arraySizes();
+    };
     class SpectrometerDataV1 : public XtcData::VarDef {
     public:
         SpectrometerDataV1();

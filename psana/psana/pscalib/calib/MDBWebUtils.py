@@ -52,13 +52,28 @@ import numpy as np
 import io
 
 import psana.pscalib.calib.CalibConstants as cc
-from requests import get, post, delete #put
+import requests as req
+get, delete = req.get, req.delete # req.put
 
 from time import time
 from numpy import fromstring
 import psana.pscalib.calib.MDBUtils as mu
 import psana.pyalgos.generic.Utils as gu
 from subprocess import call
+
+def info_dict(d, cmt='', offset='  '):
+    """ returns (str) dict content"""
+    s = '%s\n%sinfo_dict' % (cmt, offset)
+    for k,v in d.items():
+        if isinstance(v,dict): s = info_dict(v, cmt='', offset = offset+'  ')
+        else: s = '%s\n%sk:%s t:%s v:%s' % (s, offset, str(k).ljust(10), type(v), str(v)[:60])
+    return s
+
+
+def post(url, **kwa):
+    print('XXX MDBWebUtils: post url:%s' % url) # info_dict(kwa, cmt='kwa', offset='  ')
+    return req.post(url, **kwa)
+
 
 def has_kerberos_ticket():
     """Checks to see if the user has a valid Kerberos ticket."""
@@ -116,7 +131,7 @@ def collection_names(dbname, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}."""
-    uri = '%s/%s/%s'%(url,dbname,colname)
+    uri = '%s/%s/%s'%(url.rstrip('/'),dbname,colname)
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
     r = request(uri, {"query_string": query_string})
@@ -174,7 +189,7 @@ def select_latest_doc(docs, query):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     """Returns document for docid."""
-    r = request('%s/%s/%s/%s'%(url,dbname,colname,docid))
+    r = request('%s/%s/%s/%s'%(url.rstrip('/'),dbname,colname,docid))
     if r is None: return None
     return r.json()
 
@@ -182,7 +197,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a"
 def get_data_for_id(dbname, dataid, url=cc.URL):
     """Returns raw data from GridFS, at this level there is no info for parsing."""
-    r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    r = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,dataid))
     if r is None: return None
     logger.debug('get_data_for_docid:'\
                 +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' %
@@ -206,8 +221,8 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
-    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url,dbname,idd)))
-    r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
+    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd)))
+    r2 = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd))
     if r2 is None: return None
     s = r2.content
 
@@ -334,10 +349,10 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     d = f.read()
     #logger.debug('add_data byte-data:',d)
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
-    logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+    logger.info('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+
     try:
         id = resp.json().get('_id',None)
-    #except json.decoder.JSONDecodeError as e:
     except Exception as e:
         logger.warning('JSONDecodeError: %s' % str(e))
         return None
@@ -363,7 +378,7 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
     # check permission
     t0_sec = time()
-    if not valid_post_privilege(_dbname, url_krb=url): return None
+    if not valid_post_privilege(_dbname, url_krb=cc.URL_KRB): return None
 
     id_data = add_data(_dbname, data, url, krbheaders)
     if id_data is None: return None
@@ -728,7 +743,7 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     logger.debug('valid_post_privilege ws_url: %s'% ws_url)
 
     try:
-        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(cc.URL_KRB_HEADERS).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
         logger.warning('KerberosTicket error: %s' % str(err))
         logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')

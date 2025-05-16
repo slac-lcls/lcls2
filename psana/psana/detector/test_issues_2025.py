@@ -833,6 +833,104 @@ def issue_2025_04_29():
         break
 
 
+def issue_2025_05_07():
+    """test of the detector axis, shape:(796, 6144)
+       det_dark_proc -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix101333324,run=46 -d axis_svls
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='rix101333324', run=46)
+    myrun = next(ds.runs())
+    det = myrun.Detector('axis_svls')
+    events = 5
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            #img = det.raw.image(evt, nda=raw/2) # raw
+            img = det.raw.image(evt, nda=None) # raw
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec for det.raw.image(evt)' % (nevt, dt_sec))
+            print(ndu.info_ndarr(raw,   '  raw  :'))
+            print(ndu.info_ndarr(calib, '  calib:'))
+            print(ndu.info_ndarr(img,   '  img  :'))
+            if flimg is None:
+                flimg = fleximage(img, h_in=2.5, w_in=15)
+            flimg.update(img)
+            flimg.fig.suptitle('evt: %d test of detector axis' % nevt, fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_05_14():
+    """test QComboBox for control_gui"""
+
+    from PyQt5.QtWidgets import QComboBox, QMainWindow, QApplication
+    from PyQt5.QtCore import Qt
+    import sys
+
+    class CustomQComboBox(QComboBox):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+        def keyPressEvent(self, event):
+            #print('event.key():', event.key())
+            if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                event.ignore()  # Ignore up and down arrow keys
+            else:
+                super().keyPressEvent(event) # Default behavior for other keys
+
+        def wheelEvent(self, event):
+            event.ignore()
+            #print('event:', dir(event), '\n')
+            #print('event.angleDelta().y():', event.angleDelta().y(), '\n')
+            #super().wheelEvent(event) # Default behavior
+            #if event.angleDelta().y() in (120, -120):
+            #    event.ignore()  # Ignore up and down arrow keys
+            #else:
+            #    super().keyPressEvent(event) # Default behavior for other keys
+
+    class MainWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            combobox = CustomQComboBox()
+            combobox.addItems(['One', 'Two', 'Three', 'Four'])
+            # Connect signals to the methods.
+            combobox.activated.connect(self.activated)
+            combobox.currentTextChanged.connect(self.text_changed)
+            combobox.currentIndexChanged.connect(self.index_changed)
+
+            self.setCentralWidget(combobox)
+
+        def activated(Self, index):
+            print("Activated index:", index)
+
+        def text_changed(self, s):
+            print("Text changed:", s)
+
+        def index_changed(self, index):
+            print("Index changed", index)
+
+    app = QApplication(sys.argv)
+    w = MainWindow()
+    w.show()
+    app.exec_()
+
 
 #===
     
@@ -892,6 +990,8 @@ def selector():
     elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
     elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
     elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
+    elif TNAME in ('23',): issue_2025_05_07() # me - test of the detector axis shape:(796, 6144)
+    elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

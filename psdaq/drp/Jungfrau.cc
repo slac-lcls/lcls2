@@ -22,6 +22,7 @@
 #include <set>
 #include <limits>
 #include <chrono>
+#include <thread>
 
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -309,6 +310,153 @@ void Jungfrau::_connectionInfo(PyObject*)
     }
 }
 
+void Jungfrau::_configure_module_thread(size_t mod,
+                                        XtcData::Names& configNames,
+                                        XtcData::ConfigIter& configo,
+                                        std::atomic<unsigned>& numFailed)
+{
+    numFailed += _configure_module(mod, configNames, configo);
+}
+
+unsigned Jungfrau::_configure_module(size_t mod,
+                                     XtcData::Names& configNames,
+                                     XtcData::ConfigIter& configo)
+{
+    logging::info("Configuring module %zu - [segment: %u, hostname: %s]",
+                   mod, m_segNos[mod], m_slsHosts[mod].c_str());
+    sls::Positions pos{static_cast<int>(mod)};
+    XtcData::ShapesData& shape = configo.getShape(mod);
+    XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
+    try {
+        // check if the chip is powered on
+        if (!m_slsDet->getPowerChip(pos).squash()) {
+            logging::info("Powering on chip for module %zu", mod);
+            m_slsDet->setPowerChip(true, pos);
+        }
+        for (size_t i=0; i < configNames.num(); ++i) {
+            XtcData::Name& name = configNames.get(i);
+            // Extract the configuration data values and do Jungfrau SDK configuration...
+            if (strcmp(name.name(), "user.bias_voltage_v") == 0) {
+                uint8_t biasVoltage = desc.get_value<uint8_t>(i);
+                logging::info("Setting module %zu bias voltage to %u", mod, biasVoltage);
+                m_slsDet->setHighVoltage(biasVoltage, pos);
+            } else if (strcmp(name.name(), "user.hot_pixel_threshold") == 0) {
+                uint16_t threshold = desc.get_value<uint16_t>(i);
+                logging::info("Pixels above %u will be counted as hot pixels.", threshold);
+                m_hotPixelThreshold = threshold;
+            } else if (strcmp(name.name(), "user.max_hot_pixels") == 0) {
+                uint32_t maxHotPixels = desc.get_value<uint32_t>(i);
+                logging::info("Maximum number of hot pixels (across all panels) before trip: %u .",
+                              maxHotPixels);
+                m_maxHotPixels = maxHotPixels;
+            } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
+                double trigDelay = desc.get_value<double>(i);
+                logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
+                m_slsDet->setDelayAfterTrigger(secs_to_ns(trigDelay), pos);
+            } else if (strcmp(name.name(), "user.exposure_time_s") == 0) {
+                double exposureTime = desc.get_value<double>(i);
+                logging::info("Setting module %zu exposureTime to %f s", mod, exposureTime);
+                m_slsDet->setExptime(secs_to_ns(exposureTime), pos);
+            } else if (strcmp(name.name(), "user.exposure_period") == 0) {
+                double exposurePeriod = desc.get_value<double>(i);
+                logging::info("Setting module %zu exposurePeriod to %f s", mod, exposurePeriod);
+                m_slsDet->setPeriod(secs_to_ns(exposurePeriod), pos);
+            } else if (strcmp(name.name(), "user.port") == 0) {
+                uint16_t port = desc.get_value<uint16_t>(i);
+                logging::info("Setting module %zu destination udp port to %u", mod, port);
+                m_slsDet->setDestinationUDPPort(port, pos[0]);
+            } else if (strcmp(name.name(), "user.gainMode:gainModeEnum") == 0) {
+                uint32_t gainMode = desc.get_value<uint32_t>(i);
+                auto& gainModeEnums = m_configEnums["gainModeEnum"];
+                if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
+                    auto it = slsGainEnumMap.find(gainModeEnums[gainMode]);
+                    if (it != slsGainEnumMap.end()) {
+                        logging::info("Setting module %zu gainMode to %s",
+                                      mod,
+                                      sls::ToString(it->second).c_str());
+                        m_slsDet->setGainMode(it->second, pos);
+                    } else {
+                        logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
+                                       gainModeEnums[gainMode].c_str(),
+                                       mod);
+                        return 1;
+                    }
+                } else {
+                    logging::error("Invalid gainMode enum value for module %zu: %u", mod, gainMode);
+                    return 1;
+                }
+            } else if (strcmp(name.name(), "user.speedLevel:speedLevelEnum") == 0) {
+                uint32_t speedLevel = desc.get_value<uint32_t>(i);
+                auto& speedLevelEnums = m_configEnums["speedLevelEnum"];
+                if (speedLevelEnums.find(speedLevel) != speedLevelEnums.end()) {
+                    auto it = slsSpeedLevelMap.find(speedLevelEnums[speedLevel]);
+                    if (it != slsSpeedLevelMap.end()) {
+                        logging::info("Setting module %zu speedLevel to %s",
+                                      mod,
+                                      sls::ToString(it->second).c_str());
+                        m_slsDet->setReadoutSpeed(it->second, pos);
+                    } else {
+                        logging::error("Enum value %s for module %zu is an invalid parameter for setReadoutSpeed()",
+                                       speedLevelEnums[speedLevel].c_str(),
+                                       mod);
+                        return 1;
+                    }
+                } else {
+                    logging::error("Invalid speedLevel enum value for module %zu: %u", mod, speedLevel);
+                    return 1;
+                }
+            } else if (strcmp(name.name(), "user.gain0:gain0Enum") == 0) {
+                uint32_t gain0 = desc.get_value<uint32_t>(i);
+                auto& gain0Enums = m_configEnums["gain0Enum"];
+                if (gain0Enums.find(gain0) != gain0Enums.end()) {
+                    auto it = slsDetSettingsMap.find(gain0Enums[gain0]);
+                    if (it != slsDetSettingsMap.end()) {
+                        logging::info("Setting module %zu gain0 to %s",
+                                      mod,
+                                      sls::ToString(it->second).c_str());
+                        m_slsDet->setSettings(it->second, pos);
+                    } else {
+                        logging::error("Enum value %s for module %zu is an invalid parameter for setSettings()",
+                                       gain0Enums[gain0].c_str(),
+                                       mod);
+                        return 1;
+                    }
+                } else {
+                    logging::error("Invalid gain0 enum value for module %zu: %u", mod, gain0);
+                    return 1;
+                }
+            } else if (strcmp(name.name(), "user.jungfrau_mac") == 0) {
+                std::string jungfrauMac(desc.get_array<char>(i).const_data());
+                logging::info("Setting module %zu jungfrauMac to %s", mod, jungfrauMac.c_str());
+                m_slsDet->setSourceUDPMAC(sls::MacAddr(jungfrauMac), pos);
+            } else if (strcmp(name.name(), "user.kcu_mac") == 0) {
+                std::string kcuMac(desc.get_array<char>(i).const_data());
+                logging::info("Setting module %zu kcuMac to %s", mod, kcuMac.c_str());
+                m_slsDet->setDestinationUDPMAC(sls::MacAddr(kcuMac), pos);
+            } else if (strcmp(name.name(), "user.jungfrau_ip") == 0) {
+                std::string jungfrauIp(desc.get_array<char>(i).const_data());
+                logging::info("Setting module %zu jungfrauIp to %s", mod, jungfrauIp.c_str());
+                m_slsDet->setSourceUDPIP(sls::HostnameToIp(jungfrauIp.c_str()), pos);
+            } else if (strcmp(name.name(), "user.kcu_ip") == 0) {
+                std::string kcuIp(desc.get_array<char>(i).const_data());
+                logging::info("Setting module %zu kcuIp to %s", mod, kcuIp.c_str());
+                m_slsDet->setDestinationUDPIP(sls::HostnameToIp(kcuIp.c_str()), pos);
+            }
+        }
+        m_slsDet->validateUDPConfiguration(pos);
+
+        return 0;
+    }
+    catch (const sls::RuntimeError &err) {
+        logging::error("Failed to configure module %zu - [segment: %u, hostname: %s]: %s",
+                       mod,
+                       m_segNos[mod],
+                       m_slsHosts[mod].c_str(),
+                       err.what());
+        return 1;
+    }
+}
+
 unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIter& configo)
 {
     XtcData::Alg rawAlg("raw", 0, 2, 0);
@@ -336,6 +484,24 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     // BEBDetector should have put one in for each module we have
     // Assume all modules have the same configuration names...
     XtcData::Names& configNames = detector::configNames(configo); //psalg/detector/UtilsConfig.hh
+    // Load the enum values into m_configEnums. Assume all modules have the same
+    // enum values so use module 0 for this...
+    XtcData::ShapesData& shape = configo.getShape(0);
+    XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
+    for (size_t i=0; i < configNames.num(); ++i) {
+        XtcData::Name& name = configNames.get(i);
+        const char* start = name.name();
+        const char* enumDelimiter = std::strchr(start, ':');
+        if (enumDelimiter) {
+            std::string enumName(start, enumDelimiter - start);
+            std::string enumType(enumDelimiter + 1);
+            uint32_t enumValue = desc.get_value<uint32_t>(i);
+            // if it starts with "user." or "expert." its a value field not an enum
+            if (!enumName.starts_with("user.") && !enumName.starts_with("expert.")) {
+                m_configEnums[enumType][enumValue] = enumName;
+            }
+        }
+    }
 
     try {
         // Take all of the modules out of the acquiring state
@@ -349,138 +515,28 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
         m_expectedFrameNum = 1;
         m_slsDet->setNextFrameNumber(m_expectedFrameNum);
 
+        // Atomic counter for configuration threads to signal failure
+        std::atomic<unsigned> numFailed{0};
+        std::vector<std::thread> configThreads;
         // Loop over the modules we have, extracting the same names for each one
         for (size_t mod=0; mod < m_nModules; ++mod) {
-             logging::info("Configuring module %zu - [segment: %u, hostname: %s]",
-                           mod, m_segNos[mod], m_slsHosts[mod].c_str());
-            sls::Positions pos{static_cast<int>(mod)};
-            XtcData::ShapesData& shape = configo.getShape(mod);
-            XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
-            // check if the chip is powered on
-            if (!m_slsDet->getPowerChip(pos).squash()) {
-                logging::info("Powering on chip for module %zu", mod);
-                m_slsDet->setPowerChip(true, pos);
-            }
-            for (size_t i=0; i < configNames.num(); ++i) {
-                XtcData::Name& name = configNames.get(i);
-                // Extract the configuration data values and do Jungfrau SDK configuration...
-                if (strcmp(name.name(), "user.bias_voltage_v") == 0) {
-                    uint8_t biasVoltage = desc.get_value<uint8_t>(i);
-                    logging::info("Setting module %zu bias voltage to %u", mod, biasVoltage);
-                    m_slsDet->setHighVoltage(biasVoltage, pos);
-                } else if (strcmp(name.name(), "user.hot_pixel_threshold") == 0) {
-                    uint16_t threshold = desc.get_value<uint16_t>(i);
-                    logging::info("Pixels above %u will be counted as hot pixels.", threshold);
-                    m_hotPixelThreshold = threshold;
-                } else if (strcmp(name.name(), "user.max_hot_pixels") == 0) {
-                    uint32_t maxHotPixels = desc.get_value<uint32_t>(i);
-                    logging::info("Maximum number of hot pixels (across all panels) before trip: %u .",
-                                  maxHotPixels);
-                    m_maxHotPixels = maxHotPixels;
-                } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
-                    double trigDelay = desc.get_value<double>(i);
-                    logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
-                    m_slsDet->setDelayAfterTrigger(secs_to_ns(trigDelay), pos);
-                } else if (strcmp(name.name(), "user.exposure_time_s") == 0) {
-                    double exposureTime = desc.get_value<double>(i);
-                    logging::info("Setting module %zu exposureTime to %f s", mod, exposureTime);
-                    m_slsDet->setExptime(secs_to_ns(exposureTime), pos);
-                } else if (strcmp(name.name(), "user.exposure_period") == 0) {
-                    double exposurePeriod = desc.get_value<double>(i);
-                    logging::info("Setting module %zu exposurePeriod to %f s", mod, exposurePeriod);
-                    m_slsDet->setPeriod(secs_to_ns(exposurePeriod), pos);
-                } else if (strcmp(name.name(), "user.port") == 0) {
-                    uint16_t port = desc.get_value<uint16_t>(i);
-                    logging::info("Setting module %zu destination udp port to %u", mod, port);
-                    m_slsDet->setDestinationUDPPort(port, pos[0]);
-                } else if (strcmp(name.name(), "user.gainMode:gainModeEnum") == 0) {
-                    uint32_t gainMode = desc.get_value<uint32_t>(i);
-                    auto& gainModeEnums = m_configEnums["gainModeEnum"];
-                    if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
-                        auto it = slsGainEnumMap.find(gainModeEnums[gainMode]);
-                        if (it != slsGainEnumMap.end()) {
-                            logging::info("Setting module %zu gainMode to %s",
-                                          mod,
-                                          sls::ToString(it->second).c_str());
-                            m_slsDet->setGainMode(it->second, pos);
-                        } else {
-                            logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
-                                           gainModeEnums[gainMode].c_str(),
-                                           mod);
-                            return 1;
-                        }
-                    } else {
-                        logging::error("Invalid gainMode enum value for module %zu: %u", mod, gainMode);
-                        return 1;
-                    }
-                } else if (strcmp(name.name(), "user.speedLevel:speedLevelEnum") == 0) {
-                    uint32_t speedLevel = desc.get_value<uint32_t>(i);
-                    auto& speedLevelEnums = m_configEnums["speedLevelEnum"];
-                    if (speedLevelEnums.find(speedLevel) != speedLevelEnums.end()) {
-                        auto it = slsSpeedLevelMap.find(speedLevelEnums[speedLevel]);
-                        if (it != slsSpeedLevelMap.end()) {
-                            logging::info("Setting module %zu speedLevel to %s",
-                                          mod,
-                                          sls::ToString(it->second).c_str());
-                            m_slsDet->setReadoutSpeed(it->second, pos);
-                        } else {
-                            logging::error("Enum value %s for module %zu is an invalid parameter for setReadoutSpeed()",
-                                           speedLevelEnums[speedLevel].c_str(),
-                                           mod);
-                            return 1;
-                        }
-                    } else {
-                        logging::error("Invalid speedLevel enum value for module %zu: %u", mod, speedLevel);
-                        return 1;
-                    }
-                } else if (strcmp(name.name(), "user.gain0:gain0Enum") == 0) {
-                    uint32_t gain0 = desc.get_value<uint32_t>(i);
-                    auto& gain0Enums = m_configEnums["gain0Enum"];
-                    if (gain0Enums.find(gain0) != gain0Enums.end()) {
-                        auto it = slsDetSettingsMap.find(gain0Enums[gain0]);
-                        if (it != slsDetSettingsMap.end()) {
-                            logging::info("Setting module %zu gain0 to %s",
-                                          mod,
-                                          sls::ToString(it->second).c_str());
-                            m_slsDet->setSettings(it->second, pos);
-                        } else {
-                            logging::error("Enum value %s for module %zu is an invalid parameter for setSettings()",
-                                           gain0Enums[gain0].c_str(),
-                                           mod);
-                            return 1;
-                        }
-                    } else {
-                        logging::error("Invalid gain0 enum value for module %zu: %u", mod, gain0);
-                        return 1;
-                    }
-                } else if (strcmp(name.name(), "user.jungfrau_mac") == 0) {
-                    std::string jungfrauMac(desc.get_array<char>(i).const_data());
-                    logging::info("Setting module %zu jungfrauMac to %s", mod, jungfrauMac.c_str());
-                    m_slsDet->setSourceUDPMAC(sls::MacAddr(jungfrauMac), pos);
-                } else if (strcmp(name.name(), "user.kcu_mac") == 0) {
-                    std::string kcuMac(desc.get_array<char>(i).const_data());
-                    logging::info("Setting module %zu kcuMac to %s", mod, kcuMac.c_str());
-                    m_slsDet->setDestinationUDPMAC(sls::MacAddr(kcuMac), pos);
-                } else if (strcmp(name.name(), "user.jungfrau_ip") == 0) {
-                    std::string jungfrauIp(desc.get_array<char>(i).const_data());
-                    logging::info("Setting module %zu jungfrauIp to %s", mod, jungfrauIp.c_str());
-                    m_slsDet->setSourceUDPIP(sls::HostnameToIp(jungfrauIp.c_str()), pos);
-                } else if (strcmp(name.name(), "user.kcu_ip") == 0) {
-                    std::string kcuIp(desc.get_array<char>(i).const_data());
-                    logging::info("Setting module %zu kcuIp to %s", mod, kcuIp.c_str());
-                    m_slsDet->setDestinationUDPIP(sls::HostnameToIp(kcuIp.c_str()), pos);
-                } else {
-                    const char* start = name.name();
-                    const char* enumDelimiter = std::strchr(start, ':');
-                    if (enumDelimiter) {
-                        std::string enumName(start, enumDelimiter - start);
-                        std::string enumType(enumDelimiter + 1);
-                        uint32_t enumValue = desc.get_value<uint32_t>(i);
-                        m_configEnums[enumType][enumValue] = enumName;
-                    }
-                }
-            }
-            m_slsDet->validateUDPConfiguration(pos);
+            configThreads.emplace_back(&Jungfrau::_configure_module_thread,
+                                       this,
+                                       mod,
+                                       std::ref(configNames),
+                                       std::ref(configo),
+                                       std::ref(numFailed));
+        }
+
+        // Wait for all the configure threads to finish
+        for (auto& configThread : configThreads) {
+            configThread.join();
+        }
+
+        // Check if any of the threads failed.
+        if (numFailed > 0) {
+            logging::error("Failed to configure %u of %u Jungfrau modules", numFailed.load(), m_nModules);
+            return 1;
         }
 
         // Put all of the modules in the acquiring state

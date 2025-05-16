@@ -27,26 +27,27 @@
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
-
+using namespace XtcData;
+using namespace Pds;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
 
 namespace Drp {
 
-static const XtcData::Name::DataType xtype[] = {
-    XtcData::Name::UINT8 , // pvBoolean
-    XtcData::Name::INT8  , // pvByte
-    XtcData::Name::INT16,  // pvShort
-    XtcData::Name::INT32 , // pvInt
-    XtcData::Name::INT64 , // pvLong
-    XtcData::Name::UINT8 , // pvUByte
-    XtcData::Name::UINT16, // pvUShort
-    XtcData::Name::UINT32, // pvUInt
-    XtcData::Name::UINT64, // pvULong
-    XtcData::Name::FLOAT , // pvFloat
-    XtcData::Name::DOUBLE, // pvDouble
-    XtcData::Name::CHARSTR, // pvString
+static const Name::DataType xtype[] = {
+    Name::UINT8 , // pvBoolean
+    Name::INT8  , // pvByte
+    Name::INT16,  // pvShort
+    Name::INT32 , // pvInt
+    Name::INT64 , // pvLong
+    Name::UINT8 , // pvUByte
+    Name::UINT16, // pvUShort
+    Name::UINT32, // pvUInt
+    Name::UINT64, // pvULong
+    Name::FLOAT , // pvFloat
+    Name::DOUBLE, // pvDouble
+    Name::CHARSTR, // pvString
 };
 
 BldPVA::BldPVA(std::string det,
@@ -112,28 +113,28 @@ BldFactory::BldFactory(const char* name,
             mcaddr = 0xefff1900;
         }
         tscorr = 0;
-        _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("damageMask"       , XtcData::Name::UINT32));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamCharge"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamL3Energy"    , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLUTAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTUAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC2"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPkCurrBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamEnergyBC1"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndPosY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngX"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamUndAngY"     , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVAmpl"   , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamXTCAVPhase"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamDumpCharge"  , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamPhotonEnergy", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU250"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ebeamLTU450"      , XtcData::Name::DOUBLE));
+        _alg    = Alg("raw", 2, 0, 0);
+        _varDef.NameVec.push_back(Name("damageMask"       , Name::UINT32));
+        _varDef.NameVec.push_back(Name("ebeamCharge"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamL3Energy"    , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLTUPosX"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLTUPosY"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLUTAngX"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLTUAngY"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamPkCurrBC2"   , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamEnergyBC2"   , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamPkCurrBC1"   , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamEnergyBC1"   , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamUndPosX"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamUndPosY"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamUndAngX"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamUndAngY"     , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamXTCAVAmpl"   , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamXTCAVPhase"  , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamDumpCharge"  , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamPhotonEnergy", Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLTU250"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ebeamLTU450"      , Name::DOUBLE));
         payloadSize = 164;
     }
     else if (strncmp("pcav",name,4)==0) {
@@ -143,35 +144,35 @@ BldFactory::BldFactory(const char* name,
         else {
             mcaddr = 0xefff1901;
         }
-        _alg    = XtcData::Alg("raw", 2, 0, 0);
-        _varDef.NameVec.push_back(XtcData::Name("fitTime1"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("fitTime2"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge1"       , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("charge2"       , XtcData::Name::DOUBLE));
+        _alg    = Alg("raw", 2, 0, 0);
+        _varDef.NameVec.push_back(Name("fitTime1"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("fitTime2"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("charge1"       , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("charge2"       , Name::DOUBLE));
         payloadSize = 32;
     }
     else if (strncmp("gmd",name,3)==0) {
         mcaddr = 0xefff1902;
-        _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
+        _alg    = Alg("raw", 2, 1, 0);
+        _varDef.NameVec.push_back(Name("energy"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("xpos"        , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ypos"        , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("avgIntensity", Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("rmsElectronSum", Name::INT64));
+        _varDef.NameVec.push_back(Name("electron1BkgNoiseAvg", Name::INT16));
+        _varDef.NameVec.push_back(Name("electron2BkgNoiseAvg", Name::INT16));
         payloadSize = 44;
     }
     else if (strcmp("xgmd",name)==0) {
         mcaddr = 0xefff1903;
-        _alg    = XtcData::Alg("raw", 2, 1, 0);
-        _varDef.NameVec.push_back(XtcData::Name("energy"      , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("xpos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("ypos"        , XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("avgIntensity", XtcData::Name::DOUBLE));
-        _varDef.NameVec.push_back(XtcData::Name("rmsElectronSum", XtcData::Name::INT64));
-        _varDef.NameVec.push_back(XtcData::Name("electron1BkgNoiseAvg", XtcData::Name::INT16));
-        _varDef.NameVec.push_back(XtcData::Name("electron2BkgNoiseAvg", XtcData::Name::INT16));
+        _alg    = Alg("raw", 2, 1, 0);
+        _varDef.NameVec.push_back(Name("energy"      , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("xpos"        , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("ypos"        , Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("avgIntensity", Name::DOUBLE));
+        _varDef.NameVec.push_back(Name("rmsElectronSum", Name::INT64));
+        _varDef.NameVec.push_back(Name("electron1BkgNoiseAvg", Name::INT16));
+        _varDef.NameVec.push_back(Name("electron2BkgNoiseAvg", Name::INT16));
         payloadSize = 44;
     }
     else {
@@ -210,7 +211,7 @@ BldFactory::BldFactory(const BldPVA& pva) :
     if (_detType == "hpsex" ||
         _detType == "hpscp" ||
         _detType == "hpscpb") {
-        _alg = XtcData::Alg("raw", 2, 0, 0);
+        _alg = Alg("raw", 2, 0, 0);
         //  validate _varDef against version here
     }
     else {
@@ -240,16 +241,16 @@ Bld& BldFactory::handler()
     return *_handler;
 }
 
-XtcData::NameIndex BldFactory::addToXtc  (XtcData::Xtc& xtc,
+NameIndex BldFactory::addToXtc  (Xtc& xtc,
                                           const void* bufEnd,
-                                          const XtcData::NamesId& namesId)
+                                          const NamesId& namesId)
 {
-    XtcData::Names& bldNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
+    Names& bldNames = *new(xtc, bufEnd) Names(bufEnd,
                                                                 _detName.c_str(), _alg,
                                                                 _detType.c_str(), _detId.c_str(), namesId);
 
     bldNames.add(xtc, bufEnd, _varDef);
-    return XtcData::NameIndex(bldNames);
+    return NameIndex(bldNames);
 }
 
 unsigned interfaceAddress(const std::string& interface)
@@ -268,10 +269,10 @@ BldDescriptor::~BldDescriptor()
     logging::debug("~BldDescriptor");
 }
 
-XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
+VarDef BldDescriptor::get(unsigned& payloadSize)
 {
     payloadSize = 0;
-    XtcData::VarDef vd;
+    VarDef vd;
     const pvd::StructureConstPtr& structure = _strct->getStructure();
     if (!structure) {
         logging::error("BLD with no payload.  Is FieldMask empty?");
@@ -284,9 +285,9 @@ XtcData::VarDef BldDescriptor::get(unsigned& payloadSize)
         switch (fields[i]->getType()) {
             case pvd::scalar: {
                 const pvd::Scalar* scalar = static_cast<const pvd::Scalar*>(fields[i].get());
-                XtcData::Name::DataType type = xtype[scalar->getScalarType()];
-                vd.NameVec.push_back(XtcData::Name(names[i].c_str(), type));
-                payloadSize += XtcData::Name::get_element_size(type);
+                Name::DataType type = xtype[scalar->getScalarType()];
+                vd.NameVec.push_back(Name(names[i].c_str(), type));
+                payloadSize += Name::get_element_size(type);
                 break;
             }
 
@@ -477,8 +478,8 @@ uint64_t Bld::next()
 class BldDetector : public XpmDetector
 {
 public:
-    BldDetector(Parameters& para, DrpBase& drp) : XpmDetector(&para, &drp.pool) {}
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
+    BldDetector(Parameters& para, MemPoolCpu& pool) : XpmDetector(&para, &pool) { virtChan = 0; }
+    void event(Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
 };
 
 
@@ -488,15 +489,14 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     m_config(0), m_terminate(false), m_running(false),
     m_available(0), m_current(0), m_next(0), m_nDmaRet(0)
 {
-    m_nodeId = det->nodeId;
-    if (drp.pool.setMaskBytes(para.laneMask, 0)) {
+    if (drp.pool.setMaskBytes(para.laneMask, det->virtChan)) {
         logging::error("Failed to allocate lane/vc");
     }
 }
 
-Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
+EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
-    const Pds::TimingHeader* timingHeader = handle(m_det, m_current);
+    const TimingHeader* timingHeader = handle(m_det, m_current);
     if (!timingHeader)  return nullptr;
 
     uint32_t pgpIndex = timingHeader->evtCounter & (m_pool.nDmaBuffers() - 1);
@@ -505,8 +505,8 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
     // make new dgram in the pebble
     // It must be an EbDgram in order to be able to send it to the MEB
     evtIndex = event->pebbleIndex;
-    XtcData::Src src = m_det->nodeId;
-    Pds::EbDgram* dgram = new(m_pool.pebble[evtIndex]) Pds::EbDgram(*timingHeader, src, m_para.rogMask);
+    Src src = m_det->nodeId;
+    EbDgram* dgram = new(m_pool.pebble[evtIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
 
     // Collect indices of DMA buffers that can be recycled and reset event
     freeDma(event);
@@ -514,7 +514,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
     return dgram;
 }
 
-Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
+EbDgram* Pgp::next(uint32_t& evtIndex)
 {
     // get new buffers
     if (m_current == m_available) {
@@ -525,7 +525,7 @@ Pds::EbDgram* Pgp::next(uint32_t& evtIndex)
             return nullptr;
     }
 
-    Pds::EbDgram* dgram = _handle(evtIndex);
+    EbDgram* dgram = _handle(evtIndex);
     m_current++;
     return dgram;
 }
@@ -536,7 +536,7 @@ void Pgp::shutdown()
     m_det->namesLookup().clear();   // erase all elements
 }
 
-void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
+int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
     // setup monitoring
     std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
@@ -544,33 +544,47 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                                               {"detname", m_para.detName},
                                               {"detseg", std::to_string(m_para.detSegment)},
                                               {"alias", m_para.alias}};
-    uint64_t nevents = 0L;
-    exporter->add("drp_event_rate", labels, Pds::MetricType::Rate,
-                  [&](){return nevents;});
-    uint64_t nmissed = 0L;
-    exporter->add("bld_miss_count", labels, Pds::MetricType::Counter,
-                  [&](){return nmissed;});
+    m_nevents = 0L;
+    exporter->add("drp_event_rate", labels, MetricType::Rate,
+                  [&](){return m_nevents;});
+    m_nmissed = 0L;
+    exporter->add("bld_miss_count", labels, MetricType::Counter,
+                  [&](){return m_nmissed;});
 
-    exporter->add("drp_num_dma_ret", labels, Pds::MetricType::Gauge,
+    m_nDmaRet = 0L;
+    exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
                   [&](){return m_nDmaRet;});
-    exporter->add("drp_pgp_byte_rate", labels, Pds::MetricType::Rate,
+    exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
                   [&](){return dmaBytes();});
-    exporter->add("drp_dma_size", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_dma_size", labels, MetricType::Gauge,
                   [&](){return dmaSize();});
-    exporter->add("drp_th_latency", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_th_latency", labels, MetricType::Gauge,
                   [&](){return latency();});
-    exporter->add("drp_num_dma_errors", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
                   [&](){return nDmaErrors();});
-    exporter->add("drp_num_no_common_rog", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
                   [&](){return nNoComRoG();});
-    exporter->add("drp_num_missing_rogs", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
                   [&](){return nMissingRoGs();});
-    exporter->add("drp_num_th_error", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_th_error", labels, MetricType::Gauge,
                   [&](){return nTmgHdrError();});
-    exporter->add("drp_num_pgp_jump", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
                   [&](){return nPgpJumps();});
-    exporter->add("drp_num_no_tr_dgram", labels, Pds::MetricType::Gauge,
+    exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
+    return 0;
+}
+
+void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
+{
+    // Reset counters to avoid 'jumping' errors on reconfigures
+    m_pool.resetCounters();
+    resetEventCounter();
+
+    // Set up monitoring
+    if (exporter) {
+        if (_setupMetrics(exporter))  return;
+    }
 
     //
     //  Setup the multicast receivers
@@ -612,11 +626,11 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
 
     //  Event builder variables
     unsigned index;
-    Pds::EbDgram* dgram = 0;
+    EbDgram* dgram = 0;
     uint64_t timestamp[m_config.size()];
     memset(timestamp,0,sizeof(timestamp));
     bool lMissing = false;
-    XtcData::NamesLookup& namesLookup = m_det->namesLookup();
+    NamesLookup& namesLookup = m_det->namesLookup();
 
     //  Poll
     // this was 4ms, but EBeam bld timed out in rix intermittently,
@@ -707,35 +721,35 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     }
                 }
                 //  Accept non-L1 transitions
-                if (dgram->service() != XtcData::TransitionId::L1Accept) {
+                if (dgram->service() != TransitionId::L1Accept) {
 
                     // Find the transition dgram in the pool and initialize its header
-                    Pds::EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
+                    EbDgram* trDgram = m_drp.pool.transitionDgrams[index];
                     const void*   bufEnd  = (char*)trDgram + m_para.maxTrSize;
                     if (!trDgram)  continue; // Can happen during shutdown
                     memcpy((void*)trDgram, (const void*)dgram, sizeof(*dgram) - sizeof(dgram->xtc));
                     // copy the temporary xtc created on phase 1 of the transition
                     // into the real location
-                    XtcData::Xtc& trXtc = m_det->transitionXtc();
+                    Xtc& trXtc = m_det->transitionXtc();
                     trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
                     auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
                     memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
-                    if (dgram->service() == XtcData::TransitionId::Configure) {
+                    if (dgram->service() == TransitionId::Configure) {
                         logging::info("BLD configure");
                         // Revisit: This is intended to be done by BldDetector::configure()
                         for(unsigned i=0; i<m_config.size(); i++) {
-                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                            NamesId namesId(m_det.nodeId, BldNamesIndex + i);
                             namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
                         }
                     }
-                    //else if (dgram->service() == XtcData::TransitionId::Enable)
+                    //else if (dgram->service() == TransitionId::Enable)
                     //    lRunning = true;
-                    //else if (dgram->service() == XtcData::TransitionId::Disable)
+                    //else if (dgram->service() == TransitionId::Disable)
                     //    lRunning = false;
 
                     _sendToTeb(*dgram, index);
-                    nevents++;
+                    m_nevents++;
                     if (_ready())
                         skipPoll |= (1<<0);
                     else {
@@ -750,9 +764,9 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     bool lMissed = false;
                     for(unsigned i=0; i<m_config.size(); i++) {
                         if (timestamp[i] == ts) {
-                            XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                            NamesId namesId(m_det.nodeId, BldNamesIndex + i);
                             const Bld& bld = m_config[i]->handler();
-                            XtcData::DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
+                            DescribedData desc(dgram->xtc, bufEnd, namesLookup, namesId);
                             memcpy(desc.data(), bld.payload(), bld.payloadSize());
                             desc.set_data_length(bld.payloadSize());
 
@@ -772,8 +786,8 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     }
                     if (lMissed) {
                         lMissing = true;
-                        dgram->xtc.damage.increase(XtcData::Damage::DroppedContribution);
-                        nmissed++;
+                        dgram->xtc.damage.increase(Damage::DroppedContribution);
+                        m_nmissed++;
                     }
                     else {
                         if (lMissing)
@@ -782,7 +796,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                     }
 
                     _sendToTeb(*dgram, index);
-                    nevents++;
+                    m_nevents++;
                     if (_ready())
                         skipPoll |= (1<<0);
                     else {
@@ -835,20 +849,20 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
     logging::info("Worker thread finished");
 }
 
-void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
+void Pgp::_sendToTeb(EbDgram& dgram, uint32_t index)
 {
     // Make sure the datagram didn't get too big
     const size_t size = sizeof(dgram) + dgram.xtc.sizeofPayload();
-    const size_t maxSize = (dgram.service() == XtcData::TransitionId::L1Accept)
+    const size_t maxSize = (dgram.service() == TransitionId::L1Accept)
                          ? m_drp.pool.pebble.bufferSize()
                          : m_para.maxTrSize;
     if (size > maxSize) {
-        logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", XtcData::TransitionId::name(dgram.service()), size, maxSize);
+        logging::critical("%s Dgram of size %zd overflowed buffer of size %zd", TransitionId::name(dgram.service()), size, maxSize);
         throw "Dgram overflowed buffer";
     }
 
     auto l3InpBuf = m_drp.tebContributor().fetch(index);
-    Pds::EbDgram* l3InpDg = new(l3InpBuf) Pds::EbDgram(dgram);
+    EbDgram* l3InpDg = new(l3InpBuf) EbDgram(dgram);
     if (l3InpDg->isEvent()) {
         auto triggerPrimitive = m_drp.triggerPrimitive();
         if (triggerPrimitive) { // else this DRP doesn't provide input
@@ -860,19 +874,55 @@ void Pgp::_sendToTeb(Pds::EbDgram& dgram, uint32_t index)
 }
 
 
+BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& context) :
+    DrpBase(para, pool, det, context),
+    m_pgp  (para, *this, &det)
+{
+}
+
+std::string BldDrp::configure(const json& msg)
+{
+    std::string errorMsg = DrpBase::configure(msg);
+    if (!errorMsg.empty()) {
+        return errorMsg;
+    }
+
+    if (exposer()) {
+        m_exporter = std::make_shared<MetricExporter>();
+        exposer()->RegisterCollectable(m_exporter);
+    }
+
+    m_workerThread = std::thread{&Pgp::worker, &m_pgp, m_exporter};
+
+    return std::string();
+}
+
+unsigned BldDrp::unconfigure()
+{
+    DrpBase::unconfigure(); // TebContributor must be shut down before the worker
+
+    m_pgp.shutdown();
+    if (m_workerThread.joinable()) {
+        m_workerThread.join();
+    }
+
+    if (m_exporter)  m_exporter.reset();
+
+    return 0;
+}
+
+
 BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp        (para, context()),
     m_para       (para),
-    m_det        (new BldDetector(m_para, m_drp)),
+    m_pool       (para),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
-    if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
-        throw "Could not create Detector object for " + m_para.detType;
-    }
+    m_det = std::make_unique<BldDetector>(m_para, m_pool);
+    m_drp = std::make_unique<BldDrp>(m_para, m_pool, *m_det, context());
+
     logging::info("Ready for transitions");
 }
 
@@ -882,60 +932,43 @@ BldApp::~BldApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
-    if (m_det) {
-        delete m_det;
-    }
-
     Py_Finalize();                      // for use by configuration
 }
 
 void BldApp::_disconnect()
 {
-    m_drp.disconnect();
+    m_drp->disconnect();
     m_det->shutdown();
 }
 
 void BldApp::_unconfigure()
 {
-    m_drp.pool.shutdown();  // Release Tr buffer pool
-    m_drp.unconfigure();    // TebContributor must be shut down before the worker
-    if (m_pgp) {
-        if (m_exporter)  m_exporter.reset();
-        m_pgp->shutdown();
-         if (m_workerThread.joinable()) {
-             m_workerThread.join();
-         }
-         m_pgp.reset();
-    }
+    m_drp->pool.shutdown();  // Release Tr buffer pool
+    m_drp->unconfigure();
     m_unconfigure = false;
 }
 
-json BldApp::connectionInfo(const nlohmann::json& msg)
+json BldApp::connectionInfo(const json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
     logging::debug("nic ip  %s", ip.c_str());
     json body = {{"connect_info", {{"nic_ip", ip}}}};
-    json info = m_det->connectionInfo(msg);
+    json info = static_cast<Detector&>(*m_det).connectionInfo(msg);
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo(ip);
+    json bufInfo = m_drp->connectionInfo(ip);
     body["connect_info"].update(bufInfo);
     return body;
 }
 
 void BldApp::connectionShutdown()
 {
-    if (m_det) {
-        m_det.connectionShutdown();
-    }
-    m_drp.shutdown();
-    if (m_exporter) {
-        m_exporter.reset();
-    }
+    static_cast<Detector&>(*m_det).connectionShutdown();
+    m_drp->shutdown();
 }
 
-void BldApp::_error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg)
+void BldApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
     json body = json({});
     body["err_info"] = errorMsg;
@@ -943,9 +976,9 @@ void BldApp::_error(const std::string& which, const nlohmann::json& msg, const s
     reply(answer);
 }
 
-void BldApp::handleConnect(const nlohmann::json& msg)
+void BldApp::handleConnect(const json& msg)
 {
-    std::string errorMsg = m_drp.connect(msg, getId());
+    std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in BldApp::handleConnect");
         logging::error("%s", errorMsg.c_str());
@@ -970,7 +1003,7 @@ void BldApp::handleConnect(const nlohmann::json& msg)
         return;
     }
 
-    m_det->nodeId = m_drp.nodeId();
+    m_det->nodeId = m_drp->nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
     json body = json({});
@@ -996,8 +1029,8 @@ void BldApp::handlePhase1(const json& msg)
     std::string key = msg["header"]["key"];
     logging::debug("handlePhase1 for %s in BldDetectorApp", key.c_str());
 
-    XtcData::Xtc& xtc = m_det->transitionXtc();
-    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    Xtc& xtc = m_det->transitionXtc();
+    xtc = {{TypeId::Parent, 0}, {m_det->nodeId}};
     auto bufEnd = m_det->trXtcBufEnd();
 
     json phase1Info{ "" };
@@ -1014,23 +1047,12 @@ void BldApp::handlePhase1(const json& msg)
             _unconfigure();
         }
 
-        std::string errorMsg = m_drp.configure(msg);
+        std::string errorMsg = m_drp->configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
             _error(key, msg, errorMsg);
             return;
-        }
-
-        m_pgp = std::make_unique<Pgp>(m_para, m_drp, m_det);
-
-        // Provide EbReceiver with the Detector interface so that additional
-        // data blocks can be formatted into the XTC, e.g. trigger information
-        m_drp.ebReceiver().configure(m_det, m_pgp.get());
-
-        m_exporter = std::make_shared<Pds::MetricExporter>();
-        if (m_drp.exposer()) {
-            m_drp.exposer()->RegisterCollectable(m_exporter);
         }
 
         std::string config_alias = msg["body"]["config_alias"];
@@ -1042,10 +1064,8 @@ void BldApp::handlePhase1(const json& msg)
             return;
         }
 
-        m_workerThread = std::thread{&Pgp::worker, std::ref(*m_pgp), m_exporter};
-
-        m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-        m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
@@ -1053,17 +1073,17 @@ void BldApp::handlePhase1(const json& msg)
     }
     else if (key == "beginrun") {
         RunInfo runInfo;
-        std::string errorMsg = m_drp.beginrun(phase1Info, runInfo);
+        std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
             logging::error("%s", errorMsg.c_str());
             _error(key, msg, errorMsg);
             return;
         }
 
-        m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp.endrun(phase1Info);
+        std::string errorMsg = m_drp->endrun(phase1Info);
         if (!errorMsg.empty()) {
             logging::error("%s", errorMsg.c_str());
             _error(key, msg, errorMsg);
@@ -1073,13 +1093,13 @@ void BldApp::handlePhase1(const json& msg)
     else if (key == "enable") {
         bool chunkRequest;
         ChunkInfo chunkInfo;
-        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        std::string errorMsg = m_drp->enable(phase1Info, chunkRequest, chunkInfo);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         } else if (chunkRequest) {
             logging::debug("handlePhase1 enable found chunkRequest");
-            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+            m_drp->chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
         unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
         if (error) {
@@ -1094,7 +1114,7 @@ void BldApp::handlePhase1(const json& msg)
     reply(answer);
 }
 
-void BldApp::handleReset(const nlohmann::json& msg)
+void BldApp::handleReset(const json& msg)
 {
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
     _unconfigure();

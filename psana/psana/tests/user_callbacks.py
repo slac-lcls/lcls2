@@ -30,7 +30,7 @@ def filter_fn(evt):
 
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=filter_fn)
 n_events = 0
 def event_fn(event, det):
     global n_events

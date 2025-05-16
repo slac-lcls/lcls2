@@ -169,14 +169,17 @@ int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 int EbCtrbInBase::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 
   _links.resize(numEbs);
 
-  rc = linksConnect(_transport, _links, _prms.id, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
   return 0;

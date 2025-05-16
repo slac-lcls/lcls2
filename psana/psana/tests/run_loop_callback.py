@@ -1,4 +1,4 @@
-from psana import DataSource 
+from psana import DataSource
 import os
 
 # TODO:
@@ -19,7 +19,7 @@ def smd_callback_with_step(run):
         for i_evt, evt in enumerate(step.events()):
             if evt.timestamp % 2 == 0 and edet(evt) is not None:
                 yield evt
-                
+
 
 def run_test_loop_callback(withstep=False):
     xtc_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), '.tmp_smd0', '.tmp')
@@ -30,7 +30,7 @@ def run_test_loop_callback(withstep=False):
     else:
         callback = smd_callback
 
-    ds = DataSource(exp='xpptut15', run=1, dir=xtc_dir,
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir,
             smd_callback=callback
             )
 
@@ -50,4 +50,4 @@ def run_test_loop_callback(withstep=False):
 if __name__ == "__main__":
     run_test_loop_callback()
     run_test_loop_callback(withstep=True)
-            
+

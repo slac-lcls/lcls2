@@ -60,14 +60,12 @@ typedef struct {
 } encoder_frame_t;
 
 static_assert(sizeof(encoder_frame_t) == 64, "Data structure encoder_frame_t is not size 64");
-class UdpEncoder;
+struct UdpParameters;
 
 class UdpReceiver
 {
 public:
-    UdpReceiver(const Parameters&           para,
-                SPSCQueue<XtcData::Dgram*>& encQueue,
-                SPSCQueue<XtcData::Dgram*>& bufferFreeList);
+  UdpReceiver(const UdpParameters& para, size_t nBuffers);
     ~UdpReceiver();
 public:
     const std::string name() const { return "encoder"; }    // FIXME
@@ -79,9 +77,12 @@ public:
     void setMissingData(std::string errMsg);
     bool getMissingData() { return (m_missingData); }
     void process();
+    bool consume();
+    void drain();
     void loopbackSend();
     int drainDataFd();
     int reset();
+    SPSCQueue<XtcData::Dgram*>& encQueue() { return m_encQueue; }
     uint64_t nUpdates() { return m_nUpdates; }
     uint64_t nMissed() { return m_nMissed; }
 private:
@@ -92,9 +93,10 @@ private:
     void _loopbackFini();
     void _udpReceiver();
 private:
-    const Parameters&           m_para;
-    SPSCQueue<XtcData::Dgram*>& m_encQueue;
-    SPSCQueue<XtcData::Dgram*>& m_bufferFreelist;
+    const UdpParameters&        m_para;
+    SPSCQueue<XtcData::Dgram*>  m_encQueue;
+    SPSCQueue<XtcData::Dgram*>  m_bufferFreelist;
+    std::vector<uint8_t>        m_buffer;
     std::atomic<bool>           m_terminate;
     std::thread                 m_udpReceiverThread;
     int                         m_loopbackFd;
@@ -117,18 +119,15 @@ private:
 class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det, const bool& running);
+    Pgp(const UdpParameters& para, MemPool& pool, Detector* det);
     Pds::EbDgram* next(uint32_t& evtIndex);
     const uint64_t nDmaRet() { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
     Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
-    const bool& m_running;
     int32_t m_available;
     int32_t m_current;
-    unsigned m_nodeId;
     uint64_t m_nDmaRet;
 };
 
@@ -160,22 +159,39 @@ private:
 class UdpEncoder : public XpmDetector
 {
 public:
-    UdpEncoder(Parameters& para, DrpBase& drp);
-    unsigned connect(const nlohmann::json& msg, std::string& errorMsg, const std::string& id, unsigned slowGroup);
+    UdpEncoder(UdpParameters& para, MemPoolCpu& pool);
+    unsigned connect(const nlohmann::json& msg, const std::string& id, std::string& errorMsg);
     unsigned disconnect();
   //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ }
     unsigned unconfigure();
+    void event_(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ }
+public:
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
+    const std::shared_ptr<UdpReceiver>& udpReceiver() const { return m_udpReceiver; }
     int reset() { return m_udpReceiver ? m_udpReceiver->reset() : 0; }
-    nlohmann::json publicConnectionInfo(const nlohmann::json& msg) { return connectionInfo(msg); }
-    void publicConnectionShutdown() { connectionShutdown(); }
-    const PgpReader* pgp() { return &m_pgp; }
     enum { DefaultDataPort = 5006 };
     enum { MajorVersion = 3, MinorVersion = 0, MicroVersion = 0 };
 private:
-    void _event(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
+    enum {RawNamesIndex = NamesIndex::BASE, InterpolatedNamesIndex};
+    enum { DiscardBufSize = 10000 };
+    std::shared_ptr<UdpReceiver> m_udpReceiver;
+};
+
+
+class UdpDrp : public DrpBase
+{
+public:
+    UdpDrp(UdpParameters&, MemPoolCpu&, UdpEncoder&, ZmqContext&);
+    virtual ~UdpDrp() {}
+    std::string connect(const nlohmann::json& msg, size_t id);
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
+private:
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     void _worker();
     void _timeout(std::chrono::milliseconds timeout);
     void _process(Pds::EbDgram* dgram);
@@ -184,22 +200,14 @@ private:
     void _handleL1Accept(Pds::EbDgram& pgpDg, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InterpolatedNamesIndex};
-    enum { DiscardBufSize = 10000 };
-    DrpBase& m_drp;
+    const UdpParameters& m_para;
+    UdpEncoder& m_det;
     Pgp m_pgp;
-    std::shared_ptr<UdpReceiver> m_udpReceiver;
     std::thread m_workerThread;
     Interpolator m_interpolator;
-    bool m_interpolating;
-    int m_slowGroup;
     SPSCQueue<uint32_t> m_evtQueue;
-    SPSCQueue<XtcData::Dgram*> m_encQueue;
-    SPSCQueue<XtcData::Dgram*> m_bufferFreelist;
-    std::vector<uint8_t> m_buffer;
     std::atomic<bool> m_terminate;
     std::atomic<bool> m_running;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nMatch;
     uint64_t m_nEmpty;
@@ -212,7 +220,7 @@ private:
 class UdpApp : public CollectionApp
 {
 public:
-    UdpApp(Parameters& para);
+    UdpApp(UdpParameters& para);
     ~UdpApp();
     void handleReset(const nlohmann::json& msg) override;
 private:
@@ -225,10 +233,11 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
-    DrpBase       m_drp;
-    Parameters&   m_para;
-    UdpEncoder*   m_det;        // replaced m_udpDetector
-    bool          m_unconfigure;
+    UdpParameters&              m_para;
+    MemPoolCpu                  m_pool;
+    std::unique_ptr<UdpEncoder> m_det;
+    std::unique_ptr<UdpDrp>     m_drp;
+    bool                        m_unconfigure;
 };
 
 }

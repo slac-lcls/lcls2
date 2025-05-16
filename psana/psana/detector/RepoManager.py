@@ -5,7 +5,7 @@
 
 Usage::
 
-      import psana.detector.RepoManager import RepoManageras rm
+      import psana.detector.RepoManager as rm
       kwa = {}
       repoman = rm.init_repoman_and_logger(**kwa)
       # OR:
@@ -303,7 +303,8 @@ def init_repoman_and_logger(**kwa):
 
     logfname = repoman.makedir_logname(logsuffix)
     if savelogfile:
-        init_file_handler(logfname=logfname, loglevel=logmode, **kwa)  # loglevel=logmode, filemode=filemode, group=group, fmt=fmt
+        init_file_handler(loglevel=logmode, logfname=logfname) #, filemode=0o664, group='ps-users')
+        #init_file_handler(logfname=logfname, loglevel=logmode, **kwa)  # loglevel=logmode, filemode=filemode, group=group, fmt=fmt
     if not (dirrepo in ('work1', './work1')):
         repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 

@@ -20,8 +20,8 @@
  * ----------------------------------------------------------------------------
  **/
 
-#ifndef __ASIS_DRIVER_H__
-#define __ASIS_DRIVER_H__
+#ifndef __AXIS_DRIVER_H__
+#define __AXIS_DRIVER_H__
 #include "DmaDriver.h"
 
 // Command definitions
@@ -103,4 +103,4 @@ static inline void axisWriteReqMissed(int32_t fd) {
 }
 
 #endif  // !DMA_IN_KERNEL
-#endif  // __ASIS_DRIVER_H__
+#endif  // __AXIS_DRIVER_H__

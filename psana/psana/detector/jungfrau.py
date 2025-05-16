@@ -22,9 +22,11 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix
         self._seg_geo = ad.sgs.Create(segname='JUNGFRAU:V2')
 
+        self._gain_modes = ('g0', 'g1', 'g2')
+        self._data_bit_mask = 0x3fff
+
 #        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
 #        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
-        self._gain_modes = ('g0', 'g1', 'g2')
 
 #    def _raw_random(self, evt, mu=0, sigma=10):
 #        """ FOR DEBUGGING ONLY !!!

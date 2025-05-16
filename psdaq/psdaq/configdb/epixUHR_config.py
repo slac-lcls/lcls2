@@ -40,6 +40,8 @@ def sorting_dict(asics):
         
     for n in asics:
         sortdict[f'Asic{n}'] = ["enable",
+                                "DacAdcVrefCm",	
+                                "DacAdcVrefCmGain",
                                 "DacVthr", 
                                 "DacVthrGain", 
                                 "DacVfiltGain", 
@@ -736,7 +738,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [2,0,0])
+    top.setAlg('config', [2,1,1])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -796,7 +798,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [2,1,1])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -861,7 +863,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [2,1,1])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels

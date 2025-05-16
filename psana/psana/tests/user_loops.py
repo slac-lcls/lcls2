@@ -21,7 +21,7 @@ def filter_fn(evt):
     # Create a detector within filter is possible
     run = evt.run()
     det = run.Detector('xppcspad')
-    
+
     # Access step event
     step_evt = run.step(evt)
     return True
@@ -29,7 +29,7 @@ def filter_fn(evt):
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 
 # Usecase 1a : two iterators with filter function
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=filter_fn)
+ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=filter_fn)
 #beginJobCode
 for run in ds.runs():
     #beginRunCode
@@ -56,7 +56,7 @@ for run in ds.runs():
 #endJobCode
 
 # Usecase#2 looping through steps
-ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, batch_size=10)
+ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, batch_size=10)
 for run in ds.runs():
     det = run.Detector('xppcspad')
     for step in run.steps():
@@ -65,7 +65,7 @@ for run in ds.runs():
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
 
 # Usecase#3: singlefile ds
-ds = DataSource(files=os.path.join(xtc_dir,'data-r0001-s00.xtc2'))
+ds = DataSource(files=os.path.join(xtc_dir,'xpptut15-r0014-s000-c000.xtc2'))
 for run in ds.runs():
     det = run.Detector('xppcspad')
     edet = run.Detector('HX2:DVD:GCC:01:PMON')
