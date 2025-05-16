@@ -58,6 +58,7 @@ def main():
     parser.add_argument('-P', required=True, help='e.g. DAQ:LAB2:XPM:1', metavar='PREFIX')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--ip', type=str, required=True, help="IP address" )
+    parser.add_argument('--xvc', type=int, default=None, help="XVC port (e.g. 2542)" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
     parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-I', action='store_true', help='initialize Cu timing')
@@ -77,6 +78,7 @@ def main():
     base.add(Top(
         name   = 'XPM',
         ipAddr = args.ip,
+        xvcPort = args.xvc,
         fidPrescale = args.C,
         noTiming = args.T,
     ))
@@ -136,11 +138,12 @@ def main():
                 elif cycle == 10:   # Wait for PVSeq to register with autosave/restore
                     autosave.restore()
 
+                    ##  Now handled in l0delay pv callback
                     #  This is necessary after restoring L0Delays
                     #  Can also fix strange behavior in common group
-                    app.groupL0Reset.set(0xff)
-                    time.sleep(1.e-3)
-                    app.groupL0Reset.set(0)
+                    #app.groupL0Reset.set(0xff)
+                    #time.sleep(1.e-3)
+                    #app.groupL0Reset.set(0)
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))
