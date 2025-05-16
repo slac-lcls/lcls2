@@ -9,7 +9,6 @@ from psana.psexp.run import RunShmem
 from psana.psexp.zmq_utils import PubSocket, SubSocket
 from psana.smalldata import SmallData
 
-logger = None
 
 class ShmemDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
@@ -18,8 +17,7 @@ class ShmemDataSource(DataSourceBase):
         self.runnum_list = [0]
         self.runnum_list_index = 0
 
-        global logger
-        logger = utils.Logger()
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
 
         # Setup socket for calibration constant broadcast if supervisor
         # is set (1=I am supervisor, 0=I am not supervisor).
@@ -55,23 +53,14 @@ class ShmemDataSource(DataSourceBase):
         return False
 
     def _setup_run_calibconst(self):
-        logger.debug("[SHMEM-DEBUG] ShmemDs _setup_run_calibconst called")
         st = time.monotonic()
         if self.supervisor:
             super()._setup_run_calibconst()
-            t_calib_received = time.monotonic()
-            logger.debug(f"[SHMEM-DEBUG]    ShmemDs Done setup run calib by supervisor in {t_calib_received-st:.4f}s.")
             if self.supervisor == 1:
                 self._pub_socket.send(self.dsparms.calibconst)
-                t_calib_sent = time.monotonic()
-                logger.debug(f"[SHMEM-DEBUG]    ShmemDs Done sent calib by supervisor in {t_calib_sent - t_calib_received:.4f}s.")
-
         else:
-            logger.debug("[SHMEM-DEBUG]    ShmemDs Prepare to receive by client")
             self.dsparms.calibconst = self._sub_socket.recv()
-            t_calib_received = time.monotonic()
-            logger.debug(f"[SHMEM-DEBUG]    ShmemDs received by client in {t_calib_received-st:.4f}s.")
-        logger.debug(f"[SHMEM-DEBUG] ShmemDs Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
+        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def _start_run(self):
         found_next_run = False

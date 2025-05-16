@@ -5,7 +5,8 @@ import time
 import numpy as np
 from contextlib import contextmanager
 
-from psana import dgram, utils
+from psana import dgram
+from psana import utils
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
@@ -19,10 +20,6 @@ from psana.smalldata import SmallData
 
 if mode == "mpi":
     from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
 
 
 class InvalidEventBuilderCores(Exception):
@@ -42,6 +39,8 @@ class RunParallel(Run):
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
+
+        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
 
         super()._setup_envstore()
 
@@ -63,7 +62,7 @@ class RunParallel(Run):
             if i % 1000 == 0:
                 en = time.time()
                 ana_rate = 1 / (en - st)
-                logger.debug(f"ANARATE {ana_rate:.2f} kHz")
+                self.logger.debug(f"ANARATE {ana_rate:.2f} kHz")
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 
@@ -199,7 +198,7 @@ class MPIDataSource(DataSourceBase):
                 [os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files],
                 dtype=np.int32,
             )
-            logger.debug(f"mpi_ds: smd0 opened smd_fds: {self.smd_fds}")
+            self.logger.debug(f"smd0 opened smd_fds: {self.smd_fds}")
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
             configs = self.smdr_man.get_next_dgrams()
             nbytes = np.array(
