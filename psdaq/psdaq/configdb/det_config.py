@@ -74,6 +74,8 @@ def dictToYaml(d,types,keys,dev,path,name,tree,ordering=None):
         if key in d:
             if ordering is None:
                 v[key] = OrderedDict(d[key])
+                # Without OrderedDict, dataToYaml will sort the data alphabetically, with OrderedDict the dictionary 
+                # is written as it is oredered
             else:
                 try:
                     v[key] = ordered(d[key],ordering[key])
