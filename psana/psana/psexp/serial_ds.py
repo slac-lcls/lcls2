@@ -13,11 +13,7 @@ from psana.psexp.tools import mode
 from psana.smalldata import SmallData
 
 if mode == "mpi":
-    from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
+    pass
 
 
 class SerialDataSource(DataSourceBase):
@@ -32,6 +28,8 @@ class SerialDataSource(DataSourceBase):
         self._setup_run()
         super()._start_prometheus_client()
 
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+
     def __del__(self):
         super()._close_opened_smd_files()
         super()._end_prometheus_client()
@@ -42,7 +40,7 @@ class SerialDataSource(DataSourceBase):
             [os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files],
             dtype=np.int32,
         )
-        logger.debug(f"serial_ds: opened smd_fds: {self.smd_fds}")
+        self.logger.debug(f"opened smd_fds: {self.smd_fds}")
         self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
         # Reading configs (first dgram of the smd files)
         return self.smdr_man.get_next_dgrams()

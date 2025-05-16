@@ -1,6 +1,41 @@
 import inspect
 import logging
+from pathlib import Path
 from logging.handlers import RotatingFileHandler
+from psana.psexp.tools import mode
+
+def get_class_name(obj):
+    """
+    Returns the class name of the given object instance.
+    """
+    try:
+        return obj.__class__.__name__
+    except AttributeError:
+        return str(type(obj))  # fallback for non-class cases
+
+
+def get_logger(dsparms=None, name=None, timestamp=False):
+    if mode == "mpi":
+        from mpi4py import MPI
+        rank = MPI.COMM_WORLD.Get_rank()
+    else:
+        rank = 0
+
+    level = getattr(dsparms, "log_level", "INFO")
+    logfile = getattr(dsparms, "log_file", None)
+
+    # Add .rankX suffix if logfile is defined and running in MPI
+    if logfile and rank is not None:
+        path = Path(logfile)
+        logfile = str(path.with_name(f"{path.stem}.rank{rank}{path.suffix}"))
+
+    return Logger(
+        name=name,
+        level=level,
+        myrank=rank,
+        logfile=logfile,
+        timestamp=timestamp
+    )
 
 
 class Logger:
