@@ -7,8 +7,6 @@ from psana.smdreader import SmdReader
 
 from .run import RunSmallData
 
-logger = utils.Logger(myrank=0)
-
 
 class BatchIterator(object):
     """Iterates over batches of events.
@@ -75,6 +73,8 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+
         assert self.n_files > 0
 
         # Sets no. of events Smd0 sends to each EventBuilder core. This gets
@@ -102,12 +102,12 @@ class SmdReaderManager(object):
         Used when new data must be forced into the buffers,
         regardless of how much data is already present.
         """
-        logger.debug("[SMD-DEBUG] SmdReaderManager force_read called")
+        self.logger.debug("force_read() called")
         st = time.monotonic()
         self.smdr.force_read(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
         read_rate = self.smdr.got / (1e6 * (en - st))
-        logger.debug(
+        self.logger.debug(
             f"READRATE SMD0 (0-) {read_rate:.2f} MB/s ({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)"
         )
         self.read_gauge.set(read_rate)
@@ -135,10 +135,10 @@ class SmdReaderManager(object):
             self.dsparms.max_events > 0
             and self.processed_events >= self.dsparms.max_events
         ):
-            logger.debug(f"MESSAGE SMD0 max_events={self.dsparms.max_events} reached")
+            self.logger.debug(f"Exit. - max_events={self.dsparms.max_events} reached")
             return None
 
-        logger.debug("[SMD-DEBUG] SmdReaderManager get_next_dgrams called")
+        self.logger.debug("get_next_dgrams() called")
         max_retries = getattr(self.dsparms, "max_retries", 0)
         if max_retries:
             retries = 0
@@ -164,17 +164,22 @@ class SmdReaderManager(object):
 
                 return dgrams
 
+            # Check if no more data will ever arrive
+            if self.smdr.found_endrun():
+                self.logger.debug("EndRun found — giving up on fetching Configure/BeginRun.")
+                return None
+
             # No data to yield, try to get more data
             self.force_read()
             # Didn't get complete streams yet
             if retries == max_retries:
-                logger.log(
+                self.logger.info(
                     f"WARNING: Unable to fetch complete Configure/BeginRun dgrams after {retries} retries."
                 )
                 return None
 
             if retries > -1:
-                logger.debug(f"[SMD-DEBUG] Waiting for Configure/BeginRun... retry {retries+1}/{max_retries}")
+                self.logger.debug(f"Waiting for Configure/BeginRun... retry {retries+1}/{max_retries}")
                 time.sleep(1)
             retries += 1
 
@@ -192,7 +197,7 @@ class SmdReaderManager(object):
         else:
             retries = -1
         success = False
-        logger.debug("[SMD-DEBUG] SmdReaderManager build_normal_batch called")
+        self.logger.debug("build_normal_batch() called")
 
         while retries <= max_retries:
             success = self.smdr.build_batch_view(
@@ -212,12 +217,12 @@ class SmdReaderManager(object):
                 return None
 
             if retries > -1:
-                logger.debug(f"[SMD-DEBUG] Waiting for data... retry {retries+1}/{max_retries}")
+                self.logger.debug(f"Waiting for data... retry {retries+1}/{max_retries}")
                 time.sleep(1)
             retries += 1
 
         if not success:
-            logger.log(
+            self.logger.info(
                 f"ERROR: Unable to build a batch after {retries} retries."
             )
 
@@ -234,7 +239,7 @@ class SmdReaderManager(object):
         else:
             retries = -1
         success = False
-        logger.debug("[SMD-DEBUG] SmdReaderManager build_integrating_batch called")
+        self.logger.debug("build_integrating_batch() called")
 
         while retries <= max_retries:
             success = self.smdr.build_batch_view(
@@ -254,13 +259,13 @@ class SmdReaderManager(object):
                 return None
 
             if retries > -1:
-                logger.debug(f"[SMD-DEBUG] Waiting for data... retry {retries+1}/{max_retries}")
+                self.logger.debug(f"Waiting for data... retry {retries+1}/{max_retries}")
                 time.sleep(1)
             retries += 1
 
         if not success:
-            logger.log(
-                f"ERROR: Unable to build an integrating batch after {retries} retries."
+            self.logger.error(
+                f"Unable to build an integrating batch after {retries} retries."
             )
 
         return success
@@ -283,8 +288,7 @@ class SmdReaderManager(object):
         integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
 
         while not is_done:
-            logger.debug(f"TIMELINE 1. STARTCHUNK {time.monotonic()}", level=3)
-            logger.debug("[SMD-DEBUG] SmdReaderManager chunks called")
+            self.logger.debug("chunks() called")
 
             # --- Build batch ---
             if integrating:
@@ -302,14 +306,12 @@ class SmdReaderManager(object):
                 self.dsparms.max_events
                 and self.processed_events >= self.dsparms.max_events
             ):
-                logger.debug(f"MESSAGE SMD0 max_events={self.dsparms.max_events} reached")
+                self.logger.debug(f"Exit - max_events={self.dsparms.max_events} reached")
                 is_done = True
 
             if self.got_events:
                 cn_chunks += 1
                 yield cn_chunks
-
-        logger.debug(f"TIMELINE FINAL. Exiting chunks generator after {cn_chunks} chunks.", level=3)
 
     def __next__(self):
         """
