@@ -144,12 +144,13 @@ cdef class SmdReader:
         Resets buffer indices and reads new data into the ParallelReader buffers.
         In live mode, retries up to max_retries if new data isn't immediately available.
         """
-        debug_print("force_reread called")
+        debug_print("force_read called")
 
         # Exit if EndRun is found for all files. This is safe even though
         # we support mulirun in one xtc2 file but this is only for shmem mode,
         # which doesn't use SmdReader.
         if self.found_endrun():
+            debug_print("Exit - EndRun found")
             return
 
         # Always reset the per‐buffer “next block” indices before reading,
@@ -228,6 +229,7 @@ cdef class SmdReader:
                         if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                             n_L1Accepts +=1
                         if n_events == batch_size:
+                            debug_print(f"i={i} isEvent={TransitionId.name(self.prl_reader.bufs[self.winner].sv_arr[i])} n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
                             break
                 else:
                     for i in range(i_bob+1, i_eob + 1):
@@ -245,6 +247,7 @@ cdef class SmdReader:
                         if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                             n_L1Accepts +=1
                         if n_L1Accepts == batch_size:
+                            debug_print(f"i={i} isEvent={TransitionId.name(self.prl_reader.bufs[self.winner].sv_arr[i])} n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
                             break
                 else:
                     for i in range(i_bob+1, i_eob + 1):
@@ -296,6 +299,8 @@ cdef class SmdReader:
         i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
         i_complete = i_bob
         limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
+
+        debug_print(f"Enter find_intg_limit_ts i_bob={i_bob} limit_ts_complete={limit_ts_complete}")
         cdef uint64_t ts_sec=0, ts_nsec=0, ts_sum=0
         for i in range(i_bob+1, i_eob + 1):
             if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
@@ -335,6 +340,8 @@ cdef class SmdReader:
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_complete]
         self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
+        
+        debug_print(f"Exit find_intg_limit_ts limit_ts_complete={limit_ts_complete}")
 
         return limit_ts_complete
 
@@ -537,6 +544,17 @@ cdef class SmdReader:
                 i_st_step_blocks[i] = i_st_step_blocks_firstbatch[i]
                 step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_blocks[i]]
 
+        # Final check: Did we actually gather any usable data?
+        cdef bint all_empty = True
+        for i in range(self.prl_reader.nfiles):
+            if block_sizes[i] > 0 or step_block_sizes[i] > 0:
+                all_empty = False
+                break
+
+        if all_empty:
+            debug_print("    No buffers had non-zero block size — returning False.")
+            return False
+
         en_all = time.monotonic()
         self.total_time += en_all - st_all
         debug_print(f"Success build_batch_view, limit_ts={limit_ts} total_time={self.total_time:.6f} sec")
@@ -600,10 +618,12 @@ cdef class SmdReader:
             buf = &(self.prl_reader.step_bufs[i_buf])
             block_sizes = self.step_block_sizes
             i_st_blocks = self.i_st_step_blocks
+            debug_print(f"show() step_buf[{i_buf}] block_size={block_sizes[i_buf]}")
         else:
             buf = &(self.prl_reader.bufs[i_buf])
             block_sizes = self.block_sizes
             i_st_blocks = self.i_st_blocks
+            debug_print(f"show() buf[{i_buf}] block_size={block_sizes[i_buf]}")
 
         cdef char[:] view
         if block_sizes[i_buf] > 0:
@@ -625,10 +645,13 @@ cdef class SmdReader:
                 # by RunParallel.
                 if i_buf == self.winner:
                     self.n_view_events += 4
+                debug_print(f"show() return fakebuf size={memoryview(outbuf).nbytes}")
                 return memoryview(outbuf)
             else:
+                debug_print(f"show() return view size={memoryview(view).nbytes}")
                 return view
         else:
+            debug_print(f"show() return empty memoryview")
             return memoryview(bytearray())
 
     def get_total_view_size(self):
