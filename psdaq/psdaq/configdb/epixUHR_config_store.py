@@ -19,18 +19,10 @@ elemCols = 192
 import os
 
 
-def recursive_list(dictionary):
-    for key, value in dictionary.items():
-        if type(value) is dict:
-            yield from recursive_list(value)
-        else:
-            yield (key, value)
-
-
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [2,1,1])
+    top.setAlg('config', [3,0,0])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
@@ -76,7 +68,7 @@ def epixUHR_cdict():
     for pixelmap in pixelBitMapDic:
         if ('on_the_fly' not in pixelmap): top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
     for n in range(1, 5):
-        base = f'expert.App.Asic{n}.'
+        base = f'user.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
         top.set(base+"SetGainValue",							    48              ,'UINT8'   )    
         

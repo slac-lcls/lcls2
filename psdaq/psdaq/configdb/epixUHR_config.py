@@ -33,21 +33,6 @@ asics = None
 
 #  Timing delay scans can be limited by this
 eventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
-
-#Sorting for writing yml files in order
-def sorting_dict(asics, cfg):
-    sortdict={}
-
-    for n in asics:
-        sortdict[f'Asic{n}'] = list(cfg["expert"]["App"][f"Asic{n}"].keys())
-        sortdict[f'BatcherEventBuilder{n}']=  list(cfg["expert"]["App"][f"BatcherEventBuilder{n}"].keys())
-        sortdict[f'Asic{n}'].remove('SetGainValue')
-        sortdict[f'Asic{n}'].remove('PixelBitMapSel')
-        
-    sortdict['WaveformControl']  = list(cfg["expert"]["App"]["WaveformControl"].keys())
-    sortdict['TriggerRegisters'] = list(cfg["expert"]["App"]["TriggerRegisters"].keys())
-    
-    return sortdict
     
 #Used to determine if cofiguration has changed
 def _dict_compare(d1,d2,path):
@@ -453,9 +438,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         tree = ('Root','App')
         
         def toYaml(sect,keys,name):
-            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree, ordering))
+            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree))
             
-        ordering=sorting_dict(asics, cfg)
         
         #Creating yaml files to be loaded durint detector initialization
         toYaml('App',['WaveformControl'],'RegisterControl')
@@ -566,7 +550,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 logging.info("Use a Pixel MAP per each ASIC")
                 for i in asics:
                     print(f"ASIC{i}")
-                    PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
+                    PixMapSel = cfg['user']['App'][f'Asic{i}']['PixelBitMapSel']    
                     PixMapSelected= pixelBitMapDic[PixMapSel]
                     print(PixMapSelected)
                     if ('on_the_fly' not in PixMapSelected):
@@ -584,7 +568,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 #a value per each
                 logging.info("Use a value per ASIC")
                 for i in asics: 
-                    gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
+                    gainValue=str(cfg['user']['App'][f'Asic{i}']['SetGainValue'])
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=gainValue
                     getattr(detectorRoot.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
@@ -706,7 +690,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [2,1,1])
+    top.setAlg('config', [3,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -766,7 +750,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,1,1])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -831,7 +815,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,1,1])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
