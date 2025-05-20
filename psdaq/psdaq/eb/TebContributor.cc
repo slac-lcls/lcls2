@@ -378,9 +378,9 @@ void TebContributor::_post(const Batch& batch)
     if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("CtrbOut posts %9lu    batch[%8u]    @ "
-             "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
-             _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+      fprintf(stderr, "CtrbOut posts %9lu    batch[%8u]    @ "
+              "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
+              _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
     }
     else
     {
@@ -518,9 +518,9 @@ void TebContributor::_post(const EbDgram* dgram)
         unsigned    ctl    = dgram->control();
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
-        printf("CtrbOut posts    %15s              @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
-               svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
+        fprintf(stderr, "CtrbOut posts    %15s              @ "
+                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
+                svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
         print = false;                  // Just once for now
       }
       else

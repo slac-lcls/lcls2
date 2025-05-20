@@ -374,9 +374,9 @@ int EbAppBase::process()
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
     const char* svc = TransitionId::name(idg->service());
-    printf("EbAp rcvd %9lu %15s[%8u]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
-           _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
+    fprintf(stderr, "EbAp rcvd %9lu %15s[%8u]   @ "
+            "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
+            _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
   }
 
   auto svc = idg->service();
@@ -418,8 +418,8 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     uint64_t imm = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
     if (UNLIKELY(_verbose >= VL_EVENT))
-      printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
-             idx, src, imm);
+      fprintf(stderr, "EbAp posts transition buffer index %u to src %2u, %08lx\n",
+              idx, src, imm);
 
     int rc = lnk->post(imm);
     if (rc)

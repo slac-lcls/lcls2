@@ -794,14 +794,14 @@ bool Fabric::deregister_memory(MemoryRegion* mr)
 
 void Fabric::list_memory() const
 {
-  printf("List of MRs for fabric %p\n", this);
+  fprintf(stderr, "List of MRs for fabric %p\n", this);
   for (unsigned i=0; i<_mem_regions.size(); i++) {
-    printf("%2u: mr %p", i, _mem_regions[i]);
+    fprintf(stderr, "%2u: mr %p", i, _mem_regions[i]);
     if (_mem_regions[i]) {
-      printf("  start %12p  length %08zx = %zu",
+      fprintf(stderr, "  start %12p  length %08zx = %zu",
              _mem_regions[i]->start(), _mem_regions[i]->length(), _mem_regions[i]->length());
     }
-    printf("\n");
+    fprintf(stderr, "\n");
   }
 }
 
@@ -2075,23 +2075,23 @@ void CompletionQueue::comp_error_dump(const struct fi_cq_err_entry& comp_err) co
   char buf[ERR_MSG_LEN];          memset(buf, 0, sizeof(buf));
   auto msg = fi_cq_strerror(_cq, comp_err.prov_errno, comp_err.err_data, buf, sizeof(buf));
 
-  printf("void*    op_context    %p\n",      comp_err.op_context);
-  printf("uint64_t flags         %016lx\n",  comp_err.flags);
-  printf("size_t   len           %zd\n",     comp_err.len);
-  printf("void*    buf           %p\n",      comp_err.buf);
-  printf("uint64_t data          %016lx\n",  comp_err.data);
-  printf("uint64_t tag           %016lx\n",  comp_err.tag);
-  printf("size_t   olen          %zd\n",     comp_err.olen);
-  printf("int      err           %d (%s)\n", comp_err.err, fi_strerror(comp_err.err));
-  printf("int      prov_errno    %d (%s)\n", comp_err.prov_errno, msg);
+  fprintf(stderr, "void*    op_context    %p\n",      comp_err.op_context);
+  fprintf(stderr, "uint64_t flags         %016lx\n",  comp_err.flags);
+  fprintf(stderr, "size_t   len           %zd\n",     comp_err.len);
+  fprintf(stderr, "void*    buf           %p\n",      comp_err.buf);
+  fprintf(stderr, "uint64_t data          %016lx\n",  comp_err.data);
+  fprintf(stderr, "uint64_t tag           %016lx\n",  comp_err.tag);
+  fprintf(stderr, "size_t   olen          %zd\n",     comp_err.olen);
+  fprintf(stderr, "int      err           %d (%s)\n", comp_err.err, fi_strerror(comp_err.err));
+  fprintf(stderr, "int      prov_errno    %d (%s)\n", comp_err.prov_errno, msg);
   /* err_data is available until the next time the CQ is read */
-  printf("size_t   err_data_size %zd\n",     comp_err.err_data_size);
-  printf("void*    err_data      %p\n",      comp_err.err_data);
+  fprintf(stderr, "size_t   err_data_size %zd\n",     comp_err.err_data_size);
+  fprintf(stderr, "void*    err_data      %p\n",      comp_err.err_data);
   if (comp_err.err_data_size) {
     const uint32_t* ptr = reinterpret_cast<const uint32_t*>(comp_err.err_data);
     for (unsigned i = 0; i < comp_err.err_data_size; ++i)
-      printf("%08x%c", ptr[i], (i%8)==7?'\n':' ');
-    printf("\n");
+      fprintf(stderr, "%08x%c", ptr[i], (i%8)==7?'\n':' ');
+    fprintf(stderr, "\n");
   }
 }
 
@@ -2167,14 +2167,14 @@ ssize_t CompletionQueue::check_completion_noctx(unsigned flags, uint64_t* data, 
 
 void CompletionQueue::dump_cq_data_entry(const struct fi_cq_data_entry& comp)
 {
-  printf("op_context: %p",       comp.op_context);
+  fprintf(stderr, "op_context: %p",       comp.op_context);
   if (comp.op_context)
-    printf(" -> 0x%08x",  *(int*)comp.op_context);
-  printf("\n");
-  printf("flags:      %016lx\n", comp.flags);
-  printf("len:        %zd\n",    comp.len);
-  printf("buf:        %p\n",     comp.buf);
-  printf("data:       %016lx\n", comp.data);
+    fprintf(stderr, " -> 0x%08x",  *(int*)comp.op_context);
+  fprintf(stderr, "\n");
+  fprintf(stderr, "flags:      %016lx\n", comp.flags);
+  fprintf(stderr, "len:        %zd\n",    comp.len);
+  fprintf(stderr, "buf:        %p\n",     comp.buf);
+  fprintf(stderr, "data:       %016lx\n", comp.data);
 }
 
 bool CompletionQueue::up() const { return _up; }

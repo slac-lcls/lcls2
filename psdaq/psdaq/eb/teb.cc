@@ -534,7 +534,7 @@ void Teb::process(EbEvent* event)
 
   if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
-    printf("Teb::process event dump:\n");
+    fprintf(stderr, "Teb::process event dump:\n");
     event->dump(1, _trCount + _eventCount);
   }
 
@@ -626,9 +626,9 @@ void Teb::process(EbEvent* event)
       unsigned    src = rdg->xtc.src.value();
       unsigned    env = rdg->env;
       uint32_t*   pld = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
-      printf("TEB processed %15s result [%8u] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, dsts %016lx, res [%08x, %08x]\n",
-             svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
+      fprintf(stderr, "TEB processed %15s result [%8u] @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, dsts %016lx, res [%08x, %08x]\n",
+              svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
     }
 
     _tryPost(rdg, dsts, idx);
@@ -665,9 +665,9 @@ void Teb::process(EbEvent* event)
       size_t      sz  = sizeof(dgram) + dgram->xtc.sizeofPayload();
       unsigned    src = dgram->xtc.src.value();
       unsigned    env = dgram->env;
-      printf("TEB processed %15s ACK    [%8u] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
-             svc, idx, dgram, ctl, pid, env, sz, src, imm);
+      fprintf(stderr, "TEB processed %15s ACK    [%8u] @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
+              svc, idx, dgram, ctl, pid, env, sz, src, imm);
     }
 
     // Make the transition buffer available to the contributor again
@@ -782,9 +782,9 @@ void Teb::_post(const Batch& batch)
   if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     uint64_t pid = batch.start->pulseId();
-    printf("TEB posts          %9lu result  [%8u] @ "
-           "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
-           _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
+    fprintf(stderr, "TEB posts          %9lu result  [%8u] @ "
+            "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
+            _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
   }
 
   // uint64_t pid = batch.start->pulseId();
@@ -801,8 +801,8 @@ void Teb::_post(const Batch& batch)
     if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("                                      to DRP %2u @ %16p\n",
-             dst, rmtAdx);
+      fprintf(stderr, "                                      to DRP %2u @ %16p\n",
+              dst, rmtAdx);
     }
 
     int rc = link->post(batch.start, extent, offset, data);
@@ -1277,41 +1277,48 @@ int TebApp::_parseConnectionParams(const json& body)
   return rc;
 }
 
-static void _printGroups(unsigned groups, const EbAppBase::u64arr_t& array)
+static
+void _printGroups(const char* which, unsigned groups, const EbAppBase::u64arr_t& array)
 {
+  char buffer[8*24];
+  int i = 0;
+
+  groups &= 0xff;                       // Prevent buffer overrun
+
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    printf("%u: 0x%016lx  ", group, array[group]);
+    i += snprintf(&buffer[i], sizeof(buffer), "%u: 0x%016lx  ", group, array[group]);
   }
-  printf("\n");
+  logging::info("  Readout group %-12s    %s", which, buffer);
 }
 
 void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
 {
-  printf("Parameters of TEB ID %d (%s:%s):\n",                   prms.id,
-                                                                 prms.ifAddr.c_str(), prms.ebPort.c_str());
-  printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Instrument:                   %s\n",                 prms.instrument.c_str());
-  printf("  Partition:                    %u\n",                 prms.partition);
-  printf("  Alias:                        %s\n",                 prms.alias.c_str());
-  printf("  Bit list of contributors:     0x%016lx, cnt: %zu\n", prms.contributors,
-                                                                 std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:    ");                    _printGroups(prms.rogs, prms.contractors);
-  printf("  Readout group receivers:      ");                    _printGroups(prms.rogs, prms.receivers);
-  printf("  Number of MEB requestors:     %u\n",                 prms.numMrqs);
-  printf("  Batch duration:               0x%08x = %u ticks\n",  prms.maxEntries, prms.maxEntries);
-  printf("  Batch pool depth:             0x%08x = %u\n",        prms.maxBuffers / prms.maxEntries, prms.maxBuffers / prms.maxEntries);
-  printf("  Max # of entries / batch:     0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
-  printf("  # of contrib. buffers:        0x%08x = %u\n",        prms.maxBuffers, prms.maxBuffers);
-  printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      trigger->size(), trigger->size());
-  printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
+  logging::info("");
+  logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
+                                                                      prms.ifAddr.c_str(), prms.ebPort.c_str());
+  logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
+  logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
+  logging::info("  Partition:                    %u",                 prms.partition);
+  logging::info("  Alias:                        %s",                 prms.alias.c_str());
+  logging::info("  Bit list of contributors:     0x%016lx, cnt: %zu", prms.contributors,
+                                                                      std::bitset<64>(prms.contributors).count());
+  _printGroups("contractors:", prms.rogs, prms.contractors);
+  _printGroups("receivers:", prms.rogs, prms.receivers);
+  logging::info("  Number of MEB requestors:     %u",                 prms.numMrqs);
+  logging::info("  Batch duration:               0x%08x = %u ticks",  prms.maxEntries, prms.maxEntries);
+  logging::info("  Batch pool depth:             0x%08x = %u",        prms.maxBuffers / prms.maxEntries, prms.maxBuffers / prms.maxEntries);
+  logging::info("  Max # of entries / batch:     0x%08x = %u",        prms.maxEntries, prms.maxEntries);
+  logging::info("  # of contrib. buffers:        0x%08x = %u",        prms.maxBuffers, prms.maxBuffers);
+  logging::info("  Max result     EbDgram size:  0x%08zx = %zu",      trigger->size(), trigger->size());
+  logging::info("  Max transition EbDgram size:  0x%08zx = %zu",      prms.maxTrSize[0], prms.maxTrSize[0]);
   for (unsigned i = 0; i < _prms.numMebEvBufs.size(); ++i)
-    printf("  # of MEB %u event buffers:     0x%08x = %u\n",      i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
-  printf("  # of transition  buffers:     0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
-  printf("\n");
+    logging::info("  # of MEB %u event buffers:     0x%08x = %u",     i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
+  logging::info("  # of transition  buffers:     0x%08x = %u",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+  logging::info("");
 }
 
 

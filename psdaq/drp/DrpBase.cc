@@ -1564,30 +1564,31 @@ void DrpBase::printParams() const
 {
     using namespace Pds::Eb;
 
-    printf("\nParameters of Contributor ID %d (%s:%s):\n",         m_tPrms.id,
-                                                                   m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    printf("  Thread core numbers:          %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
-    printf("  Instrument:                   %s\n",                 m_tPrms.instrument.c_str());
-    printf("  Partition:                    %u\n",                 m_tPrms.partition);
-    printf("  Alias (detName, detSeg):      %s ('%s', %u)\n",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
-    printf("  Readout group receipient:     0x%02x\n",             m_tPrms.readoutGroup);
-    printf("  Readout group contractor:     0x%02x\n",             m_tPrms.contractor);
-    printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
-                                                                   std::bitset<64>(m_tPrms.builders).count());
-    printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
-    printf("  Batching state:               %s\n",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
-    printf("  Batch duration:               0x%014x = %u ticks\n", m_tPrms.maxEntries, m_tPrms.maxEntries);
-    printf("  Batch pool depth:             0x%08x = %u\n",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
-    printf("  Max # of entries / batch:     0x%08x = %u\n",        m_tPrms.maxEntries, m_tPrms.maxEntries);
-    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        pool.nbuffers(), pool.nbuffers());
-    printf("  # of TEB transition buffers:  0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
-    printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
-    printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
-    printf("  Max  MEB transition    size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
+    logging::info("");
+    logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
+                                                                        m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
+    logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
+    logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
+    logging::info("  Partition:                    %u",                 m_tPrms.partition);
+    logging::info("  Alias (detName, detSeg):      %s ('%s', %u)",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
+    logging::info("  Readout group receipient:     0x%02x",             m_tPrms.readoutGroup);
+    logging::info("  Readout group contractor:     0x%02x",             m_tPrms.contractor);
+    logging::info("  Bit list of TEBs:             0x%016lx, cnt: %zu", m_tPrms.builders,
+                                                                        std::bitset<64>(m_tPrms.builders).count());
+    logging::info("  Number of MEBs:               %zu",                m_mPrms.addrs.size());
+    logging::info("  Batching state:               %s",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
+    logging::info("  Batch duration:               0x%014x = %u ticks", m_tPrms.maxEntries, m_tPrms.maxEntries);
+    logging::info("  Batch pool depth:             0x%08x = %u",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
+    logging::info("  Max # of entries / batch:     0x%08x = %u",        m_tPrms.maxEntries, m_tPrms.maxEntries);
+    logging::info("  # of TEB contrib.   buffers:  0x%08x = %u",        pool.nbuffers(), pool.nbuffers());
+    logging::info("  # of TEB transition buffers:  0x%08x = %u",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+    logging::info("  Max  TEB contribution  size:  0x%08zx = %zu",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
+    logging::info("  Max  MEB L1Accept      size:  0x%08zx = %zu",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
+    logging::info("  Max  MEB transition    size:  0x%08zx = %zu",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
     for (unsigned i = 0; i < m_mPrms.maxEvents.size(); ++i)
-      printf("  # of MEB %u contrib. buffers:  0x%08x = %u\n",      i, m_mPrms.maxEvents[i], m_mPrms.maxEvents[i]);
-    printf("  # of MEB transition buffers:  0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
-    printf("\n");
+      logging::info("  # of MEB %u contrib. buffers:  0x%08x = %u",      i, m_mPrms.maxEvents[i], m_mPrms.maxEvents[i]);
+    logging::info("  # of MEB transition buffers:  0x%08x = %u",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
+    logging::info("");
 }
 
 }
