@@ -2088,9 +2088,9 @@ void CompletionQueue::comp_error_dump(const struct fi_cq_err_entry& comp_err) co
   fprintf(stderr, "size_t   err_data_size %zd\n",     comp_err.err_data_size);
   fprintf(stderr, "void*    err_data      %p\n",      comp_err.err_data);
   if (comp_err.err_data_size) {
-    const uint32_t* ptr = reinterpret_cast<const uint32_t*>(comp_err.err_data);
+    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(comp_err.err_data);
     for (unsigned i = 0; i < comp_err.err_data_size; ++i)
-      fprintf(stderr, "%08x%c", ptr[i], (i%8)==7?'\n':' ');
+      fprintf(stderr, "%02x%c", ptr[i], (i%32)==31?'\n':' ');
     fprintf(stderr, "\n");
   }
 }
