@@ -38,8 +38,8 @@ class SFPStatus(object):
 
     def __init__(self, name, xpm, nLinks=14):
         self._xpm   = xpm
-        self._pv    = addPVT(name,sfpStatus)
-        self._value = toDict(sfpStatus)
+        self._pv    = addPVT(name,self.sfpStatus)
+        self._value = toDict(self.sfpStatus)
         self._link  = 0
         self._nlinks= nLinks
 
