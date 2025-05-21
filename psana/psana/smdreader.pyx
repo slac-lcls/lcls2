@@ -50,6 +50,10 @@ cdef class SmdReader:
     cdef array.array repack_offsets             # ¬ for parallel repack
     cdef array.array repack_step_sizes          # }
     cdef array.array repack_footer              # }
+    cdef array.array _i_st_blocks_firstbatch
+    cdef array.array _i_st_step_blocks_firstbatch
+    cdef array.array _cn_batch_bufs
+    cdef array.array _cn_batch_stepbufs
     cdef unsigned    winner_last_sv             # ¬ transition id and ts of the last dgram in winner's chunk
     cdef uint64_t    winner_last_ts             # }
     cdef uint64_t    _next_fake_ts              # incremented from winner_last_ts (shared by all streams)
@@ -99,6 +103,10 @@ cdef class SmdReader:
         self.repack_offsets     = array.array('L', [0]*fds.size)
         self.repack_step_sizes  = array.array('L', [0]*fds.size)
         self.repack_footer      = array.array('I', [0]*(fds.size+1))  # size of all smd chunks plus no. of smds
+        self._i_st_blocks_firstbatch = array.array('L', [0]*fds.size)
+        self._i_st_step_blocks_firstbatch = array.array('L', [0]*fds.size)
+        self._cn_batch_bufs = array.array('L', [0]*fds.size)
+        self._cn_batch_stepbufs = array.array('L', [0]*fds.size)
         self._fakebuf_maxsize   = 0x1000
         self._fakebuf           = bytearray(self._fakebuf_maxsize)
         self._fakebuf_size      = 0
@@ -229,7 +237,7 @@ cdef class SmdReader:
                         if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                             n_L1Accepts +=1
                         if n_events == batch_size:
-                            debug_print(f"i={i} isEvent={TransitionId.name(self.prl_reader.bufs[self.winner].sv_arr[i])} n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
+                            debug_print(f"    i={i} Configure/BeginRun n_events={n_events} batch_size={batch_size}")
                             break
                 else:
                     for i in range(i_bob+1, i_eob + 1):
@@ -247,7 +255,7 @@ cdef class SmdReader:
                         if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
                             n_L1Accepts +=1
                         if n_L1Accepts == batch_size:
-                            debug_print(f"i={i} isEvent={TransitionId.name(self.prl_reader.bufs[self.winner].sv_arr[i])} n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
+                            debug_print(f"    i={i} Data n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
                             break
                 else:
                     for i in range(i_bob+1, i_eob + 1):
@@ -340,7 +348,7 @@ cdef class SmdReader:
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_complete]
         self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
-        
+
         debug_print(f"Exit find_intg_limit_ts limit_ts_complete={limit_ts_complete}")
 
         return limit_ts_complete
@@ -402,10 +410,6 @@ cdef class SmdReader:
 
         cdef int i=0
         cdef uint64_t limit_ts
-        cdef array.array _i_st_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
-        cdef array.array _i_st_step_blocks_firstbatch = array.array('L', [0]*self.prl_reader.nfiles)
-        cdef array.array _cn_batch_bufs = array.array('L', [0]*self.prl_reader.nfiles)
-        cdef array.array _cn_batch_stepbufs = array.array('L', [0]*self.prl_reader.nfiles)
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
@@ -417,10 +421,10 @@ cdef class SmdReader:
         cdef uint64_t[:] i_st_step_blocks       = self.i_st_step_blocks
         cdef uint64_t[:] step_block_sizes       = self.step_block_sizes
         cdef uint64_t[:] i_en_step_blocks       = self.i_en_step_blocks
-        cdef uint64_t[:] i_st_blocks_firstbatch = _i_st_blocks_firstbatch
-        cdef uint64_t[:] i_st_step_blocks_firstbatch = _i_st_step_blocks_firstbatch
-        cdef uint64_t[:] cn_batch_bufs          = _cn_batch_bufs
-        cdef uint64_t[:] cn_batch_stepbufs      = _cn_batch_stepbufs
+        cdef uint64_t[:] i_st_blocks_firstbatch = self._i_st_blocks_firstbatch
+        cdef uint64_t[:] i_st_step_blocks_firstbatch = self._i_st_step_blocks_firstbatch
+        cdef uint64_t[:] cn_batch_bufs          = self._cn_batch_bufs
+        cdef uint64_t[:] cn_batch_stepbufs      = self._cn_batch_stepbufs
 
         # Reset buffer index and size for both normal and step buffers.
         # They will get set to the boundary value if the current timestamp
@@ -432,6 +436,10 @@ cdef class SmdReader:
             i_st_step_blocks[i] = 0
             i_en_step_blocks[i] = 0
             step_block_sizes[i] = 0
+            i_st_blocks_firstbatch[i] = 0
+            i_st_step_blocks_firstbatch[i] = 0
+            cn_batch_bufs[i] = 0
+            cn_batch_stepbufs[i] = 0
 
         # Need to convert Python object to c++ data type for the nogil loop
         cdef unsigned endrun_id = TransitionId.EndRun
@@ -497,10 +505,11 @@ cdef class SmdReader:
 
                         cn_batch_bufs[i] += 1
 
-                with gil:
-                    debug_print(f"    file[{i}]: st={i_st_blocks[i]} en={i_en_blocks[i]} "
-                            f"block_size={block_sizes[i]} seen_offset={buf.seen_offset} "
-                            f"n_seen_events={buf.n_seen_events}")
+                # FOR DEBUGGING - Calling print with gil can slow down performance.
+                #with gil:
+                #    debug_print(f"    data[{i}]: st={i_st_blocks[i]} en={i_en_blocks[i]} "
+                #            f"block_size={block_sizes[i]} seen_offset={buf.seen_offset} "
+                #            f"n_seen_events={buf.n_seen_events}")
 
                 # Handle step buffers the same way
                 buf = &(self.prl_reader.step_bufs[i])
@@ -525,6 +534,12 @@ cdef class SmdReader:
                     if step_block_sizes[i] > 0:
                         cn_batch_stepbufs[i] += 1
 
+                # FOR DEBUGGING - Calling print with gil can slow down performance.
+                #with gil:
+                #    debug_print(f"    step[{i}]: st={i_st_step_blocks[i]} en={i_en_step_blocks[i]} "
+                #            f"block_size={step_block_sizes[i]} seen_offset={buf.seen_offset} "
+                #            f"n_seen_events={buf.n_seen_events}")
+
             # end for i in ...
 
             # Mark EndOfBatch for integrating detector run
@@ -544,7 +559,7 @@ cdef class SmdReader:
                 i_st_step_blocks[i] = i_st_step_blocks_firstbatch[i]
                 step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_blocks[i]]
 
-        # Final check: Did we actually gather any usable data?
+        # First check: Did we actually gather any usable data?
         cdef bint all_empty = True
         for i in range(self.prl_reader.nfiles):
             if block_sizes[i] > 0 or step_block_sizes[i] > 0:
@@ -618,12 +633,10 @@ cdef class SmdReader:
             buf = &(self.prl_reader.step_bufs[i_buf])
             block_sizes = self.step_block_sizes
             i_st_blocks = self.i_st_step_blocks
-            debug_print(f"show() step_buf[{i_buf}] block_size={block_sizes[i_buf]}")
         else:
             buf = &(self.prl_reader.bufs[i_buf])
             block_sizes = self.block_sizes
             i_st_blocks = self.i_st_blocks
-            debug_print(f"show() buf[{i_buf}] block_size={block_sizes[i_buf]}")
 
         cdef char[:] view
         if block_sizes[i_buf] > 0:
@@ -645,13 +658,10 @@ cdef class SmdReader:
                 # by RunParallel.
                 if i_buf == self.winner:
                     self.n_view_events += 4
-                debug_print(f"show() return fakebuf size={memoryview(outbuf).nbytes}")
                 return memoryview(outbuf)
             else:
-                debug_print(f"show() return view size={memoryview(view).nbytes}")
                 return view
         else:
-            debug_print(f"show() return empty memoryview")
             return memoryview(bytearray())
 
     def get_total_view_size(self):

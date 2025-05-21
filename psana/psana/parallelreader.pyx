@@ -115,7 +115,6 @@ cdef class ParallelReader:
             # read more data to fill up the buffer
             gots[i] = read(self.file_descriptors[i], buf.chunk + (buf.got - buf.cp_offset),
                            self.chunksize - (buf.got - buf.cp_offset))
-
             # summing the size of all the new reads
             self.got += gots[i]
 
@@ -132,6 +131,13 @@ cdef class ParallelReader:
             step_buf.n_seen_events  = 0
 
             buf.err_code            = 0
+
+            # FOR DEBUGGING - Calling print with gil can slow down performance.
+            #with gil:
+            #    debug_print(f"Stream {i}: read:{gots[i]} buf.got:{buf.got} ready_offset:{buf.ready_offset} "
+            #            f"n_ready_events:{buf.n_ready_events} max_events:{self.max_events} "
+            #            f"err_code:{buf.err_code}")
+
 
             while buf.ready_offset < buf.got and \
                   buf.n_ready_events < self.max_events and \
