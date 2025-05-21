@@ -17,11 +17,11 @@ using namespace Pds::Eb;
 void EbEpoch::dump(unsigned detail, int number)
 {
   if (!detail)
-    printf(" Epoch #%2d  key %014lx\n",
-           number, key);
+    fprintf(stderr, " Epoch #%2d  key %014lx\n",
+            number, key);
   else
-    printf(" Epoch #%2d  @ %16p nxt %16p prv %16p key %014lx\n",
-           number, this, forward(), reverse(), key);
+    fprintf(stderr, " Epoch #%2d  @ %16p nxt %16p prv %16p key %014lx\n",
+            number, this, forward(), reverse(), key);
 
   EbEvent* end   = pending.empty();
   EbEvent* event = pending.forward();
@@ -37,5 +37,5 @@ void EbEpoch::dump(unsigned detail, int number)
       event->dump(detail, 0);
   }
   else
-    printf("   Epoch has NO pending events...\n");
+    fprintf(stderr, "   Epoch has NO pending events...\n");
 }

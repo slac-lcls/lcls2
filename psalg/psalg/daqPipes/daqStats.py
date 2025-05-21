@@ -235,7 +235,7 @@ class Table:
         self._dbg    = dbg
         self._pad    = None
         self._size_y = 0
-        self._size_x = 12 + 1          # Add space for detName column
+        self._size_x = 0
         self.metrics = {}
         for metric, query in queries.items():
             self.metrics[metric] = PromMetric(srvurl, query, self._size_x)
@@ -250,7 +250,7 @@ class Table:
 
         if showInstance != self._showInstance:
             self._showInstance = showInstance
-            size_x += 20 if showInstance else -20
+            size_x += 21 if showInstance else -21
 
         # Set up a sub-window that fits the whole Table
         if size_y > self._size_y or size_x != self._size_x:
@@ -275,10 +275,10 @@ class Table:
         start_row = max(0,               start_row)
         self._start_row = start_row
 
-        tw = 12
+        tw = 16             # DetName width
         cols = 1            # DetName
         if showInstance:
-            tw += 20
+            tw += 21
             cols += 1       # Instance
         tot_cols = cols + len(self.metrics)
         for metric in self.metrics.values():
@@ -309,7 +309,7 @@ class Table:
         cw = 0
         if self._showInstance:
             header = 'Instance'
-            cw = 20
+            cw = 21
             self._pad.addstr(y, x, header)
             self._pad.addstr(y, x + len(header), " " * (cw - len(header)))
             if sc < self._start_col:
@@ -317,7 +317,7 @@ class Table:
                 sc += 1
             x += cw
         header = 'DetName'
-        cw = 12
+        cw = 16                 # DetName width
         self._pad.addstr(y, x, header)
         self._pad.addstr(y, x + len(header), " " * (cw - len(header)))
         if sc < self._start_col:
@@ -349,7 +349,7 @@ class Table:
             y = 1 + nInstance  # !+ to skip over header
             x = 0
             if self._showInstance:
-                cw = 20
+                cw = 21
                 self._pad.addstr(y, x, instance, curses.color_pair(2))
                 if sr < self._start_row:
                     start_y += rh
@@ -357,7 +357,7 @@ class Table:
                 x += cw
 
             sample = samples[instance]
-            cw = 12
+            cw = 16             # DetName width
             self._pad.addstr(y, x, sample[0], curses.color_pair(1))
             if sr < self._start_row:
                 start_y += rh
@@ -538,7 +538,7 @@ def test(srvurl, args, listOfQueries, dbg):
         print('samples:', samples)
 
         print(0, 0, 'DetName')
-        w = 12
+        w = 16                  # DetName width
         for header, metric in table.metrics.items():
             print(0, w, header)
             w += metric.width() # Includes the column separating space
@@ -591,6 +591,7 @@ def daqStats(srvurl, args):
         entry  = f'%0{width}x' % (int(value))
         return entry, color
 
+    #   Header name    : (Prometheus query,                  Format fn,  Help string,                                          Column width)
     drpQueries = {
 #        'EvtCt'        : (_q(args, 'TCtbO_EvtCt'),               _fmtN,    'DRP: Event rate',                                              10),
         'EvtRt'        : (_r(args, 'TCtbO_EvtCt'),             _fmtF,    'DRP: Event rate',                                               8),

@@ -66,7 +66,7 @@ void BatchManager::shutdown()
 
 void BatchManager::dump() const
 {
-  printf("\nBatchManager dump:\n");
-  printf("  Region base %p  size %zd  maxBatchSize %zd  maxEntrySize %zd\n",
-         _region, _regSize, _maxBatchSize, _maxEntrySize);
+  fprintf(stderr, "\nBatchManager dump:\n");
+  fprintf(stderr, "  Region base %p  size %zd  maxBatchSize %zd  maxEntrySize %zd\n",
+          _region, _regSize, _maxBatchSize, _maxEntrySize);
 }

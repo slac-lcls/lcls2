@@ -156,6 +156,7 @@ class DevPcie(pr.Device):
         
         # Add devices
         self.add(kcu.AxiPcieCore(
+            name    = 'AxiPcieCore',
             boardType = 'Kcu1500',
             memBase = memBase,
             offset  = 0x00000000, 

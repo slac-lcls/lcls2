@@ -33,61 +33,6 @@ asics = None
 
 #  Timing delay scans can be limited by this
 eventBuilderTimeout = 0 #4*int(1.0e-3*156.25e6)
-
-#Sorting for writing yml files in order
-def sorting_dict(asics):
-    sortdict={}
-        
-    for n in asics:
-        sortdict[f'Asic{n}'] = ["enable",
-                                "DacAdcVrefCm",	
-                                "DacAdcVrefCmGain",
-                                "DacVthr", 
-                                "DacVthrGain", 
-                                "DacVfiltGain", 
-                                "DacVfilt", 
-                                "DacVrefCdsGain", 
-                                "DacVrefCds", 
-                                "DacVprechGain", 
-                                "DacVprech", 
-                                "CompEnGenEn", 
-                                "CompEnGenCfg",  
-                                ]
-        
-        sortdict[f'BatcherEventBuilder{n}']= [  "enable", 
-                                                "Timeout", 
-                                                ]	
-
-    sortdict['WaveformControl'] = [    "enable",
-                                       "GlblRstPolarity", 
-                                       "SR0Polarity", 
-                                       "SR0Delay", 
-                                       "SR0Width",
-                                       "AcqPolarity", 
-                                       "AcqDelay", 
-                                       "AcqWidth", 
-                                       "R0Polarity", 
-                                       "R0Delay", 
-                                       "R0Width",
-                                       "InjPolarity", 
-                                       "InjDelay", 
-                                       "InjWidth", 
-                                       "InjEn", 
-                                       "InjSkipFrames"]
-    
-    sortdict['TriggerRegisters'] = [    "enable",
-                                        "RunTriggerEnable",
-                                        "RunTriggerDelay", 
-                                        "DaqTriggerEnable", 
-                                        "DaqTriggerDelay",
-                                        "TimingRunTriggerEnable",
-                                        "TimingDaqTriggerEnable", 
-                                        "AutoRunEn", 
-                                        "AutoDaqEn", 
-                                        "AutoTrigPeriod", 
-                                        "numberTrigger", 
-                                        "PgpTrigEn"] 
-    return sortdict
     
 #Used to determine if cofiguration has changed
 def _dict_compare(d1,d2,path):
@@ -114,106 +59,114 @@ def sanitize_config(src):
 
 #Initialization of each ASIC after getting configdb data, because we need to know which ASIC to init
 def panel_ASIC_init(detectorRoot, asics):
+    panelAsicVars={}
+    
     for asic in asics:
-        
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').enable,                True)			  	
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsDacGain,            1)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsDac,                34)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsGr,                 12)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').TpsMux,                0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTpsBuffer,         5)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTps,               4)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasTpsDac,            4)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVthr,               52)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasDac,               4)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacTps,         3)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacComp,        0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVthrGain,           2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').PpbitBe,               1)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasPxlCsa,            0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasPxlBuf,            0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasAdcComp,           0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BiasAdcRef,            0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CmlRxBias,             3)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CmlTxBias,             3)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVfiltGain,          2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVfilt,              28)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVrefCdsGain,        2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVrefCds,            44)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVprechGain,         2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacVprech,             34)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacFilt,        2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacAdcRef,      2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrCtrlDacPrechCds,    2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrfCtrlDacAll,        2)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').BgrDisable,            0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefpGain,       3)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefp,           53)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefnGain,       0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefn,           12)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefCmGain,      1)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').DacAdcVrefCm,          45)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').AdcCalibEn,            0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CompEnGenEn,           1)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CompEnGenCfg,          5)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').CfgAutoflush,          0)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').ExternalFlushN,        1)						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').ClusterDvMask,         16383)					
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').PixNumModeEn,          0)
-        #PixNumModeEn, change this value to 1 to create a fixed pattern						
-        write_to_detector(getattr(detectorRoot.App,f'Asic{asic}').SerializerTestEn,      0)						
-        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').enable, True)			  	
-        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Bypass, 0)						
-        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Timeout, 0)						
-        write_to_detector(getattr(detectorRoot.App,f'BatcherEventBuilder{asic}').Blowoff, False)					
-        write_to_detector(getattr(detectorRoot.App,f'FramerAsic{asic}').enable,          False)
-        write_to_detector(getattr(detectorRoot.App,f'FramerAsic{asic}').DisableLane,     0)						
-        write_to_detector(getattr(detectorRoot.App,f'AsicGtData{asic}').enable,          True)
-        write_to_detector(getattr(detectorRoot.App,f'AsicGtData{asic}').gtStableRst,     False)
-
+        panelAsicVars[asic]=(
+            [getattr(detectorRoot.App,f"Asic{asic}").enable,               True],			  	
+            [getattr(detectorRoot.App,f"Asic{asic}").TpsDacGain,           1],						
+            [getattr(detectorRoot.App,f"Asic{asic}").TpsDac,               34],						
+            [getattr(detectorRoot.App,f"Asic{asic}").TpsGr,                12],						
+            [getattr(detectorRoot.App,f"Asic{asic}").TpsMux,               0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasTpsBuffer,        5],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasTps,              4],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasTpsDac,           4],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVthr,              52],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasDac,              4],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacTps,        3],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacComp,       0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVthrGain,          2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").PpbitBe,              1],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasPxlCsa,           0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasPxlBuf,           0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasAdcComp,          0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BiasAdcRef,           0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").CmlRxBias,            3],						
+            [getattr(detectorRoot.App,f"Asic{asic}").CmlTxBias,            3],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVfiltGain,         2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVfilt,             28],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVrefCdsGain,       2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVrefCds,           44],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVprechGain,        2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacVprech,            34],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacFilt,       2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacAdcRef,     2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacPrechCds,   2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrfCtrlDacAll,       2],						
+            [getattr(detectorRoot.App,f"Asic{asic}").BgrDisable,           0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefpGain,      3],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefp,          53],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefnGain,      0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefn,          12],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCmGain,     1],						
+            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCm,         45],						
+            [getattr(detectorRoot.App,f"Asic{asic}").AdcCalibEn,           0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").CompEnGenEn,          1],						
+            [getattr(detectorRoot.App,f"Asic{asic}").CompEnGenCfg,         5],						
+            [getattr(detectorRoot.App,f"Asic{asic}").CfgAutoflush,         0],						
+            [getattr(detectorRoot.App,f"Asic{asic}").ExternalFlushN,       1],						
+            [getattr(detectorRoot.App,f"Asic{asic}").ClusterDvMask,        16383],					
+            [getattr(detectorRoot.App,f"Asic{asic}").PixNumModeEn,         0],				
+            [getattr(detectorRoot.App,f"Asic{asic}").SerializerTestEn,     0],						
+            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").enable,True],			  	
+            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Bypass,0],						
+            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Timeout,0],						
+            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Blowoff,False],					
+            [getattr(detectorRoot.App,f"FramerAsic{asic}").enable,         False],
+            [getattr(detectorRoot.App,f"FramerAsic{asic}").DisableLane,    0],						
+            [getattr(detectorRoot.App,f"AsicGtData{asic}").enable,         True],
+            [getattr(detectorRoot.App,f"AsicGtData{asic}").gtStableRst,    False],
+        )
+    
+    for asic in asics:
+        for key in panelAsicVars[asic]:
+            write_to_detector(key[0],key[1])
+                            
 #Initialization of the detector
 def panel_init(detectorRoot):
-    write_to_detector(detectorRoot.App.WaveformControl.enable,               True)			  	
-    write_to_detector(detectorRoot.App.WaveformControl.GlblRstPolarity,      True)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.SR0Polarity,          False)			  	
-    write_to_detector(detectorRoot.App.WaveformControl.SR0Delay,             1195)	  	
-    write_to_detector(detectorRoot.App.WaveformControl.SR0Width,             1)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.AcqPolarity,          False)			  	
-    write_to_detector(detectorRoot.App.WaveformControl.AcqDelay,             655)	  	
-    write_to_detector(detectorRoot.App.WaveformControl.AcqWidth,             535)	  	
-    write_to_detector(detectorRoot.App.WaveformControl.R0Polarity,           False)			  	
-    write_to_detector(detectorRoot.App.WaveformControl.R0Delay,              70)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.R0Width,              1125)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.InjPolarity,          False)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.InjDelay,             700)	  	
-    write_to_detector(detectorRoot.App.WaveformControl.InjWidth,             535)	  	
-    write_to_detector(detectorRoot.App.WaveformControl.InjEn,                False)		  	
-    write_to_detector(detectorRoot.App.WaveformControl.InjSkipFrames,        0) 		
-    write_to_detector(detectorRoot.App.TriggerRegisters.enable,              True)			  	
-    write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerEnable,    False)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerDelay,     0)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerEnable,    False)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerDelay,     0)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.TimingRunTriggerEnable, False)				
-    write_to_detector(detectorRoot.App.TriggerRegisters.TimingDaqTriggerEnable, False)			
-    write_to_detector(detectorRoot.App.TriggerRegisters.AutoRunEn,           False)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.AutoDaqEn,           False)					
-    write_to_detector(detectorRoot.App.TriggerRegisters.AutoTrigPeriod,      42700000)				
-    write_to_detector(detectorRoot.App.TriggerRegisters.numberTrigger,       0)						
-    write_to_detector(detectorRoot.App.TriggerRegisters.PgpTrigEn,           False)					
-    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable,            True)
-    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, False)		 	
-    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,      False)
-    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,      False)
-    write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,      False)
-    write_to_detector(detectorRoot.App.AsicGtClk.enable,                     True)
-    write_to_detector(detectorRoot.App.AsicGtClk.gtRstAll,                   False)					
-    write_to_detector(detectorRoot.App.TimingRx.enable,                      True)
-    write_to_detector(detectorRoot.Core.Si5345Pll.enable,                    False)
-    write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,                       False)
-    write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,                      False)
-
-
+    panelInitVars=[
+        [detectorRoot.App.WaveformControl.enable,              True],			  	
+        [detectorRoot.App.WaveformControl.GlblRstPolarity,     True],		  	
+        [detectorRoot.App.WaveformControl.SR0Polarity,         False],			  	
+        [detectorRoot.App.WaveformControl.SR0Delay,            1195],	  	
+        [detectorRoot.App.WaveformControl.SR0Width,            1],		  	
+        [detectorRoot.App.WaveformControl.AcqPolarity,         False],			  	
+        [detectorRoot.App.WaveformControl.AcqDelay,            655],	  	
+        [detectorRoot.App.WaveformControl.AcqWidth,            535],	  	
+        [detectorRoot.App.WaveformControl.R0Polarity,          False],			  	
+        [detectorRoot.App.WaveformControl.R0Delay,             70],		  	
+        [detectorRoot.App.WaveformControl.R0Width,             1125],		  	
+        [detectorRoot.App.WaveformControl.InjPolarity,         False],		  	
+        [detectorRoot.App.WaveformControl.InjDelay,            700],	  	
+        [detectorRoot.App.WaveformControl.InjWidth,            535],	  	
+        [detectorRoot.App.WaveformControl.InjEn,               False],		  	
+        [detectorRoot.App.WaveformControl.InjSkipFrames,       0], 		
+        [detectorRoot.App.TriggerRegisters.enable,             True],			  	
+        [detectorRoot.App.TriggerRegisters.RunTriggerEnable,   False],					
+        [detectorRoot.App.TriggerRegisters.RunTriggerDelay,    0],					
+        [detectorRoot.App.TriggerRegisters.DaqTriggerEnable,   False],					
+        [detectorRoot.App.TriggerRegisters.DaqTriggerDelay,    0],					
+        [detectorRoot.App.TriggerRegisters.TimingRunTriggerEnable,False],				
+        [detectorRoot.App.TriggerRegisters.TimingDaqTriggerEnable,False],			
+        [detectorRoot.App.TriggerRegisters.AutoRunEn,          False],					
+        [detectorRoot.App.TriggerRegisters.AutoDaqEn,          False],					
+        [detectorRoot.App.TriggerRegisters.AutoTrigPeriod,     42700000],				
+        [detectorRoot.App.TriggerRegisters.numberTrigger,      0],						
+        [detectorRoot.App.TriggerRegisters.PgpTrigEn,          False],					
+        [detectorRoot.App.GTReadoutBoardCtrl.enable,           True],
+        [detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard,False],		 	
+        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,     False],
+        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,     False],
+        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,     False],
+        [detectorRoot.App.AsicGtClk.enable,                    True],
+        [detectorRoot.App.AsicGtClk.gtRstAll,                  False],					
+        [detectorRoot.App.TimingRx.enable,                     True],
+        [detectorRoot.Core.Si5345Pll.enable,                   False],
+        [detectorRoot.App.VINJ_DAC.dacEn,                      False],
+        [detectorRoot.App.VINJ_DAC.rampEn,                     False],
+    ]
+    for key in panelInitVars:
+        write_to_detector(key[0],key[1])
 #
 #  Initialize the rogue accessor
 #
@@ -423,7 +376,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
 
     app = None
     if 'expert' in cfg and 'App' in cfg['expert']:
-        app = copy.deepcopy(cfg['expert']['App'])
+        app = cfg['expert']['App']
 
      #  Make list of enabled ASICs
     if 'user' in cfg and 'asic_enable' in cfg['user']:
@@ -485,9 +438,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         tree = ('Root','App')
         
         def toYaml(sect,keys,name):
-            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree,ordering))
+            tmpfiles.append(dictToYaml(app,epixMTypes,keys,detectorRoot.App,path,name,tree))
             
-        ordering=sorting_dict(asics)
         
         #Creating yaml files to be loaded durint detector initialization
         toYaml('App',['WaveformControl'],'RegisterControl')
@@ -598,7 +550,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 logging.info("Use a Pixel MAP per each ASIC")
                 for i in asics:
                     print(f"ASIC{i}")
-                    PixMapSel = cfg['expert']['App'][f'Asic{i}']['PixelBitMapSel']    
+                    PixMapSel = cfg['user']['App'][f'Asic{i}']['PixelBitMapSel']    
                     PixMapSelected= pixelBitMapDic[PixMapSel]
                     print(PixMapSelected)
                     if ('on_the_fly' not in PixMapSelected):
@@ -616,7 +568,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 #a value per each
                 logging.info("Use a value per ASIC")
                 for i in asics: 
-                    gainValue=str(cfg['expert']['App'][f'Asic{i}']['SetGainValue'])
+                    gainValue=str(cfg['user']['App'][f'Asic{i}']['SetGainValue'])
                     print(f"ASIC{i}")
                     gainValSelection[i-1]=gainValue
                     getattr(detectorRoot.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
@@ -649,8 +601,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         
         # Remove the yml files
-        for f in tmpfiles:
-            os.remove(f)
+        #for f in tmpfiles:
+        #    os.remove(f)
                 
     logging.info('config_expert complete')
     
@@ -738,7 +690,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [2,1,1])
+    top.setAlg('config', [3,0,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -798,7 +750,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,1,1])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -863,7 +815,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,1,1])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
