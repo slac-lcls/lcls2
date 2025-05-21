@@ -102,7 +102,6 @@ class SmdReaderManager(object):
         Used when new data must be forced into the buffers,
         regardless of how much data is already present.
         """
-        self.logger.debug("force_read() called")
         st = time.monotonic()
         self.smdr.force_read(self.dsparms.smd_inprogress_converted)
         en = time.monotonic()
@@ -138,7 +137,6 @@ class SmdReaderManager(object):
             self.logger.debug(f"Exit. - max_events={self.dsparms.max_events} reached")
             return None
 
-        self.logger.debug("get_next_dgrams() called")
         max_retries = getattr(self.dsparms, "max_retries", 0)
         if max_retries:
             retries = 0
@@ -197,7 +195,6 @@ class SmdReaderManager(object):
         else:
             retries = -1
         success = False
-        self.logger.debug("build_normal_batch() called")
 
         while retries <= max_retries:
             success = self.smdr.build_batch_view(
@@ -239,7 +236,6 @@ class SmdReaderManager(object):
         else:
             retries = -1
         success = False
-        self.logger.debug("build_integrating_batch() called")
 
         while retries <= max_retries:
             success = self.smdr.build_batch_view(
@@ -288,8 +284,6 @@ class SmdReaderManager(object):
         integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
 
         while not is_done:
-            self.logger.debug("chunks() called")
-
             # --- Build batch ---
             if integrating:
                 success = self.build_integrating_batch()
