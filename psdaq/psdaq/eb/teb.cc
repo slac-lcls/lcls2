@@ -246,6 +246,10 @@ int Teb::resetCounters()
 
 void Teb::shutdown()
 {
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
   _mrqTransport.shutdown();
 
   EbAppBase::shutdown();
@@ -253,6 +257,10 @@ void Teb::shutdown()
 
 void Teb::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 

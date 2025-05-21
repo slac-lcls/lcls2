@@ -1101,6 +1101,10 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
 
 void DrpBase::shutdown()
 {
+    // If connect() ran but the system didn't get into the Connected state,
+    // there won't be a Disconnect transition, so disconnect() here
+    disconnect();                       // Does no harm if already done
+
     m_tebContributor->shutdown();
     m_mebContributor->shutdown();
     m_ebRecv->shutdown();
@@ -1352,6 +1356,10 @@ void DrpBase::unconfigure()
 
 void DrpBase::disconnect()
 {
+    // If configure() ran but the system didn't get into the Configured state,
+    // there won't be an Unconfigure transition, so unconfigure() here
+    unconfigure();                      // Does no harm if already done
+
     m_tebContributor->disconnect();
     if (m_mPrms.addrs.size() != 0) {
         m_mebContributor->disconnect();

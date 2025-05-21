@@ -342,6 +342,7 @@ namespace Pds {
     int  configure();
     void unconfigure();
     void disconnect();
+    void shutdown();
     void run();
   private:                              // For EventBuilder
     virtual
@@ -417,8 +418,21 @@ int Meb::resetCounters()
   return 0;
 }
 
+void Meb::shutdown()
+{
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
+  EbAppBase::shutdown();
+}
+
 void Meb::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 

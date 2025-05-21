@@ -123,11 +123,19 @@ int EbCtrbInBase::resetCounters()
 
 void EbCtrbInBase::shutdown()
 {
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
   _transport.shutdown();
 }
 
 void EbCtrbInBase::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 }
@@ -323,7 +331,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     }
     else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
-                     __PRETTY_FUNCTION__, rc, strerror(-rc));
+                     __PRETTY_FUNCTION__, rc, fi_strerror(-rc));
     return rc;
   }
 
