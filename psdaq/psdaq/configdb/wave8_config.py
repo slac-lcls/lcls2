@@ -311,10 +311,10 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     top.set("expert.Integrators.ProcFifoPauseThreshold",  255,'UINT32')
     top.set("expert.Integrators.IntFifoPauseThreshold" ,  255,'UINT32')
 
-    top.set("expert.RawBuffers.BuffEn"            ,[0]*8,'UINT32')  # user config
+    top.set("expert.RawBuffers.BuffEn"            ,[0]*8,'UINT8')  # user config
     top.set("expert.RawBuffers.BuffLen"           , 100,'UINT32')  # user config
     top.set("expert.RawBuffers.FifoPauseThreshold", 100,'UINT32')
-    top.set("expert.RawBuffers.TrigPrescale"      , 0,'UINT32')    # user config
+    top.set("expert.RawBuffers.TrigPrescale"      , 0,'INT32')    # user config
 
     top.set("expert.BatcherEventBuilder.Bypass" , 0,'UINT8')
     top.set("expert.BatcherEventBuilder.Timeout", 0,'UINT32')

@@ -20,7 +20,8 @@ from copy import deepcopy
 import dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
-                                  back_pub_port, front_rep_port, back_pull_port, fast_rep_port
+                                  back_pub_port, front_rep_port, back_pull_port, fast_rep_port, \
+                                  xpm_pull_port
 
 report_keys = ['error', 'warning', 'fileReport']
 
@@ -52,9 +53,10 @@ class PvInfo:
 
 class RunParams:
     """Run Parameters"""
-    def __init__(self, path, collection, pva):
+    def __init__(self, path, collection, platform, pva):
         self.path = path
         self.collection = collection
+        self.platform = platform
         self.pva = pva
         self.dirname = os.path.dirname(path)
         self.fileSet = set()
@@ -177,7 +179,7 @@ class RunParams:
         logging.debug(f"RunParams: param_descs = {param_descs}")
 
         # gather partition number
-        params['partition'] = self.pva.platform
+        params['partition'] = self.platform
 
         # gather pva run parameters
         nameList = []
@@ -422,41 +424,10 @@ def levels_to_activedet(src):
     return dst
 
 class DaqPVA():
-    def __init__(self, *, platform, xpm_master, pv_base, report_error):
-        self.platform         = platform
-        self.xpm_master       = xpm_master
-        self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
+    def __init__(self, *, report_error):
         self.report_error     = report_error
-
-        # name PVs
-        self.pvListMsgHeader  = []  # filled in at alloc
-        self.pvListXPM        = []  # filled in at alloc
-        self.pvGroupL0Enable  = self.pv_xpm_base+':GroupL0Enable'
-        self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
-        self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
-        self.pvGroupL0Reset   = self.pv_xpm_base+':GroupL0Reset'
-
         # initialize EPICS context
         self.ctxt = Context('pva', nt=None)
-
-    #
-    # DaqPVA.step_groups -
-    #
-    # If you don't want steps, set StepGroups = 0.
-    #
-    def setup_step(self, group, mask, readout):
-        pv_base = f'{self.pv_xpm_base}:PART:{group}'
-        self.pv_put(f'{pv_base}:StepEnd', readout)
-
-        self.pvStepDone = f'{pv_base}:StepDone'
-        self.pv_put(self.pvStepDone, 0)
-
-        logging.debug("DaqPVA.setup_step(mask=%d)" % mask)
-        return self.pv_put(f'{pv_base}:StepGroups', mask)
-
-    def setup_seq(self, seqpv):
-        self.pvStepDone = seqpv
-        return 0
 
     #
     # DaqPVA.pv_get -
@@ -480,23 +451,247 @@ class DaqPVA():
 
         retval = False
 
+        if isinstance(pvName, list) and not isinstance(val, list):
+            val = [val]*len(pvName)
         try:
-            self.ctxt.put(pvName, val)
+            self.ctxt.put(pvName, val, get=False, wait=False)
         except TimeoutError:
-            self.report_error("self.ctxt.put('%s', %d) timed out" % (pvName, val))
+            self.report_error(f"self.ctxt.put({pvName}, {val}) timed out")
         except Exception:
-            self.report_error("self.ctxt.put('%s', %d) failed" % (pvName, val))
+            self.report_error(f"self.ctxt.put({pvName}, {val}) failed")
         else:
             retval = True
-            logging.debug("self.ctxt.put('%s', %d)" % (pvName, val))
+            #logging.debug(f"self.ctxt.put({pvName}, {val})")
+            logging.info(f"self.ctxt.put({pvName}, {val})")
 
         return retval
 
+#
+#  Encapsulate control-XPM communication
+#
+class DaqXPM():
+    def __init__(self, *, platform, xpm_master, pv_base, pva, zctxt, xpm_host, report_error):
+        self.platform         = platform
+        self.xpm_master       = xpm_master
+        self.pv_xpm_base      = pv_base + ':XPM:%d'         % xpm_master
+        self.pva              = pva
+        self.report_error     = report_error
+        self._usepva          = xpm_host is None
+
+        # name PVs
+        self.pvListMsgHeader  = []  # filled in at alloc
+        self.pvListXPM        = []  # filled in at alloc
+        self.pvGroupL0Enable  = self.pv_xpm_base+':GroupL0Enable'
+        self.pvGroupL0Disable = self.pv_xpm_base+':GroupL0Disable'
+        self.pvGroupMsgInsert = self.pv_xpm_base+':GroupMsgInsert'
+        self.pvGroupL0Reset   = self.pv_xpm_base+':GroupL0Reset'
+
+        # zmq
+        self.push = zctxt.socket(zmq.PUSH)
+        self.push.connect(f'tcp://{xpm_host}:{xpm_pull_port(self.pv_xpm_base)}')
+
     #
-    # DaqPVA.monitor_StepDone
+    #  DaqXPM.allocate
+    #
+    def allocate(self,groups):
+        self.pvListMsgHeader = []
+        self.pvListXPM = []
+        self.pvListL0Groups = []
+        for g in range(8):
+            if groups & (1 << g):
+                self.pvListMsgHeader.append(self.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
+                self.pvListXPM.append(self.pv_xpm_base+":PART:"+str(g)+':Master')
+                self.pvListL0Groups.append(self.pv_xpm_base+":PART:"+str(g)+':L0Groups')
+        logging.debug('pvListMsgHeader: %s' % self.pvListMsgHeader)
+        logging.debug('pvListXPM: %s'       % self.pvListXPM)
+        logging.debug('pvListL0Groups: %s'  % self.pvListL0Groups)
+
+        # Couple deadtime of all readout groups
+        logging.debug(f'DaqXPM.allocate() putting {groups} to PV {self.pvListL0Groups}')
+        retVal = self.pva.pv_put(self.pvListL0Groups, groups)
+        if not retVal:
+            self.report_error(f'condition_alloc() failed putting {groups} to PV {self.pvListL0Groups}')
+        return retVal
+
+    #
+    #  DaqXPM.setup_common
+    #
+    def setup_common(self,platform,groups):
+        groups = groups ^ (1<<platform)
+        pv = f'{self.pv_xpm_base}:PART:{platform}:L0Groups'
+        if not self.pva.pv_put(pv,groups):
+            logging.debug(f'setup_common() failed putting {groups} to PV {pv}')
+            return False
+
+        #  set the common group delay
+        pvl = []
+        for g in range(8):
+            if groups & (1 << g):
+                pvl.append(f'{self.pv_xpm_base}:PART:{g}:L0Delay')
+        l0d = self.pva.pv_get(pvl)
+        if l0d is None:
+            logging.debug(f'setup_common() failed getting L0Delays from {pvl}')
+            return False                
+        #l0max = max(l0d)+1
+        l0max = 99
+        # The value of 99 shouldn't be necessary, according to simulation.
+        # Empirically, it is necessary for group alignment
+        # This value breaks receivers with old firmware (earlier than l2si-core v3.5.0)
+        pv = f'{self.pv_xpm_base}:CommonL0Delay'
+        if not self.pva.pv_put(pv,l0max):
+            logging.debug(f'setup_common() failed setting CommonL0Delay')
+            return False            
+        return True
+
+    #
+    #  DaqXPM.deallocate
+    #
+    def deallocate(self,groups):
+        logging.debug(f'deallocate() putting 0 to PV {self.pvListL0Groups}')
+        rv = self.pva.pv_put(self.pvListL0Groups, 0)
+        return rv
+
+    #
+    #  DaqXPM.recording
+    #
+    def recording(self,recording,groups):
+        for g in range(8):
+            if groups & (1 << g):
+                pv = self.pv_xpm_base + f':PART:{g}:Recording'
+                self.pva.pv_put(pv, recording)
+                    
+    #
+    #  DaqXPM.clear_readout
+    #
+    def clear_readout(self,groups):
+        if self._usepva:
+            self.pva.pv_put(self.pvGroupL0Reset, groups)
+        else:
+            msg = {'type' :'set_reg',
+                   'reg'  :'groupL0Reset',
+                   'value':groups}
+            self.push.send_json(msg)            
+        self.insert_transition(groups, ControlDef.transitionId['ClearReadout'])
+        time.sleep(1.0)
+
+    #
+    #  DaqXPM.set_master
+    #
+    def set_master(self,groups):
+        for pv in self.pvListXPM:
+            if not self.pva.pv_put(pv, 1):
+                logging.debug('connect: failed to put PV \'%s\'' % pv)
+                return False
+        return True
+
+    #
+    #  DaqXPM.set_common
+    #
+    def set_common(self,common):
+        pv = f'{self.pv_xpm_base}:PART:{common}:Master'
+        if not self.pva.pv_put(pv, 2):
+            self.report_error(f'set_common: failed to put PV {pv} common')
+            return False
+        return True
+
+    #
+    #  DaqXPM.group_run
+    #
+    def group_run(self, groups, enable):
+        pv = self.pvGroupL0Enable if enable else self.pvGroupL0Disable
+        if self._usepva:
+            rv = self.pva.pv_put(pv, groups)
+        else:
+            msg = {'type' :'set_reg',
+                   'reg'  :'groupL0Enable' if enable else 'groupL0Disable',
+                   'value':groups,
+                   'pv'   :pv}
+            self.push.send_json(msg)
+            rv = True
+        return rv
+
+    #
+    # DaqXPM.insert_transition
+    #
+    def insert_transition( self, groups, id ):
+        if self._usepva:
+            rval = self.pva.pv_put(self.pvListMsgHeader, id)
+            if rval:
+                rval = self.pva.pv_put(self.pvGroupMsgInsert, groups)
+        else:
+            msg = {'type'  :'set_idx_reg', 
+                   'reg'   :'msgHdr', 
+                   'groups':groups, 
+                   'value' :id}
+            self.push.send_json(msg)
+            msg = {'type' :'set_reg',
+                   'reg'  :'groupMsgInsert',
+                   'value':groups}
+            self.push.send_json(msg)
+            rval = True
+            
+        return rval
+
+    #
+    # DaqXPM.setup_step -
+    #
+    # If you don't want steps, set StepGroups = 0.
+    #
+    def setup_step(self, group, mask, readout):
+        pv_base = f'{self.pv_xpm_base}:PART:{group}'
+        if self._usepva:
+            self.pva.pv_put(f'{pv_base}:StepEnd', readout)
+
+            self.pvStepDone = f'{pv_base}:StepDone'
+            self.pva.pv_put(self.pvStepDone, 0)
+
+            logging.debug("DaqXPM.setup_step(mask=%d)" % mask)
+            rv = self.pva.pv_put(f'{pv_base}:StepGroups', mask)
+        else:
+            msg = {'type'  :'set_reg',
+                   'reg'   :f'stepEnd{group}',
+                   'value' :readout,
+                   'pv'    :f'{pv_base}:StepEnd'}
+            self.push.send_json(msg)
+
+            self.pvStepDone = f'{pv_base}:StepDone'
+            self.pva.pv_put(self.pvStepDone, 0)
+
+            msg = {'type'  :'set_reg',
+                   'reg'   :f'stepGroup{group}',
+                   'value' :mask,
+                   'pv'    :f'{pv_base}:StepGroups'}
+            self.push.send_json(msg)
+            rv = True
+        return rv
+
+    #
+    # DaqXPM.step_groups_clear -
+    #
+    def step_groups_clear(self, groups):
+        logging.debug("step_groups_clear()")
+        retval = True
+        pv = []
+        for g in range(8):
+            if groups & (1 << g):
+                pv.append(self.pv_xpm_base + f':PART:{g}:StepGroups')
+
+        logging.debug(f'step_groups_clear(): clearing {pv}')
+        if not self.pva.pv_put(pv, 0):
+            logging.error(f'step_groups_clear(): clearing {pv} failed')
+            retval = False
+
+        return retval
+
+    def setup_seq(self, seqpv):
+        self.pvStepDone = seqpv
+        return 0
+
+    #
+    # DaqXPM.monitor_StepDone
     #
     def monitor_StepDone(self, *, callback):
-        return self.ctxt.monitor(self.pvStepDone, callback)
+        return self.pva.ctxt.monitor(self.pvStepDone, callback)
 
 
 class CollectionManager():
@@ -508,6 +703,7 @@ class CollectionManager():
         self.trigger_config = args.t
         self.xpm_master = args.x
         self.pv_base = args.B
+        self.use_common = args.c
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
         self.back_pub = self.context.socket(zmq.PUB)
@@ -520,7 +716,7 @@ class CollectionManager():
         self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
         self.slow_update_rate = args.S
-        self.fast_reply_rate = 10           # Hz
+        self.fast_reply_rate = 100           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
         self.step_exit = Event()
@@ -536,10 +732,14 @@ class CollectionManager():
         self.step_done = Event()
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, report_error=self.report_error)
+        self.pva = DaqPVA(report_error=self.report_error)
+
+        # instanciate DaqXPM object
+        self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva, 
+                          zctxt=self.context, xpm_host=args.X, report_error=self.report_error)
 
         # instantiate RunParams object
-        self.runParams = RunParams(args.V, self, self.pva)
+        self.runParams = RunParams(args.V, self, self.platform, self.pva)
 
         if args.r:
             # active detectors file from command line
@@ -744,7 +944,7 @@ class CollectionManager():
         try:
             msg = self.fast_rep.recv_json()
             key = msg['header']['key'].split(".")
-            logging.debug("service_fast: key = %s" % key)
+
             body = msg['body']
 
             if key[0] == 'setrecord':
@@ -1092,35 +1292,24 @@ class CollectionManager():
         logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
 
         # set Disable PV
-        if not self.group_run(False):
+        if not self.xpm.group_run(self.groups,False):
             logging.error('condition_alloc(): group_run(False) failed')
             return False
 
         # if you don't want steps, set StepGroups = 0 for each group in partition
-        if not self.step_groups_clear():
+        if not self.xpm.step_groups_clear(self.groups):
             logging.error('condition_alloc(): step_groups_clear() failed')
             return False
 
         # create group-dependent PVs
-        self.pva.pvListMsgHeader = []
-        self.pva.pvListXPM = []
-        self.pva.pvListL0Groups = []
-        for g in range(8):
-            if self.groups & (1 << g):
-                self.pva.pvListMsgHeader.append(self.pva.pv_xpm_base+":PART:"+str(g)+':MsgHeader')
-                self.pva.pvListXPM.append(self.pva.pv_xpm_base+":PART:"+str(g)+':Master')
-                self.pva.pvListL0Groups.append(self.pva.pv_xpm_base+":PART:"+str(g)+':L0Groups')
-        logging.debug('pvListMsgHeader: %s' % self.pva.pvListMsgHeader)
-        logging.debug('pvListXPM: %s' % self.pva.pvListXPM)
-        logging.debug('pvListL0Groups: %s' % self.pva.pvListL0Groups)
+        if not self.xpm.allocate(self.groups):
+            logging.debug('condition_alloc() returning False')
+            return False
 
-        # Couple deadtime of all readout groups
-        for pv in self.pva.pvListL0Groups:
-            logging.debug(f'condition_alloc() putting {self.groups} to PV {pv}')
-            if not self.pva.pv_put(pv, self.groups):
-                self.report_error(f'condition_alloc() failed putting {self.groups} to PV {pv}')
-                logging.debug('condition_alloc() returning False')
-                return False
+        # Configure common group
+        if self.use_common:
+            if not self.xpm.setup_common(self.platform,self.groups):
+                self.report_error(f'condition_alloc() failed in setup_common')
 
         # give number to teb nodes for the event builder
         if 'teb' in active_state:
@@ -1197,12 +1386,9 @@ class CollectionManager():
 
         if dealloc_ok:
             # clear L0Groups PVs
-            for pv in self.pva.pvListL0Groups:
-                logging.debug(f'condition_dealloc() putting 0 to PV {pv}')
-                if not self.pva.pv_put(pv, 0):
-                    self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
-                    dealloc_ok = False
-                    break
+            if not self.xpm.deallocate(self.groups):
+                self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
+                dealloc_ok = False
 
         if dealloc_ok:
             self.lastTransition = 'dealloc'
@@ -1242,10 +1428,7 @@ class CollectionManager():
             return False
             
         # Advertise recording status
-        for g in range(8):
-            if self.groups & (1 << g):
-                pv = self.pva.pv_xpm_base + f':PART:{g}:Recording'
-                self.pva.pv_put(pv, self.recording)
+        self.xpm.recording(self.groups,self.recording)
 
         # phase 1
         ok = self.condition_common('beginrun', 6000)
@@ -1255,17 +1438,9 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        time.sleep(1.0)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['BeginRun'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.xpm.clear_readout(self.groups)
 
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginRun'])
         self.readoutCumulative = [0 for i in range(8)]
 
         ok = self.get_phase2_replies('beginrun')
@@ -1291,15 +1466,8 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['EndRun'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-
-        for g in range(8):
-            if self.groups & (1 << g):
-                pv = self.pva.pv_xpm_base + f':PART:{g}:Recording'
-                self.pva.pv_put(pv, False)
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndRun'])
+        self.xpm.recording(self.groups, False)
 
         ok = self.get_phase2_replies('endrun')
         if not ok:
@@ -1322,10 +1490,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['BeginStep'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginStep'])
 
         ok = self.get_phase2_replies('beginstep')
         if not ok:
@@ -1342,10 +1507,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['EndStep'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndStep'])
 
         ok = self.get_phase2_replies('endstep')
         if not ok:
@@ -1359,15 +1521,10 @@ class CollectionManager():
 
         # phase 1 not needed
         # phase 2 no replies needed
-        for pv in self.pva.pvListMsgHeader:
-            # Force SlowUpdate to respect deadtime
-            if not self.pva.pv_put(pv, (0x80 | ControlDef.transitionId['SlowUpdate'])):
-                update_ok = False
-                break
+        # 0x80 means throw away transition if there is deadtime
+        update_ok = self.xpm.insert_transition(self.groups, (0x80 | ControlDef.transitionId['SlowUpdate']))
 
         if update_ok:
-            self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-            self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
             self.lastTransition = 'slowupdate'
 
         return update_ok
@@ -1377,11 +1534,14 @@ class CollectionManager():
         connect_ok = True
 
         # set XPM PV
-        for pv in self.pva.pvListXPM:
-            if not self.pva.pv_put(pv, 1):
-                self.report_error('connect: failed to put PV \'%s\'' % pv)
+        if not self.xpm.set_master(self.groups):
+            self.report_err(f'connect: failed to set XPM master')
+            connect_ok = False
+
+        if self.use_common:
+            if not self.xpm.set_common(self.platform):
+                self.report_err(f'connect: failed to set XPM common')
                 connect_ok = False
-                break
 
         if connect_ok:
             logging.info('master XPM is %d' % self.xpm_master)
@@ -1660,6 +1820,9 @@ class CollectionManager():
                     if level == 'drp' or level == 'meb' or level == 'tpr':
                         self.cmstate[level][id]['hidden'] = 0
                     else:
+                        self.cmstate[level][id]['hidden'] = 1
+                    #  For common group
+                    if self.use_common and level == 'drp' and 'timing' in alias:
                         self.cmstate[level][id]['hidden'] = 1
                     logging.debug('rollcall: responder (%s) in newfound_set = %s' % (responder, responder in newfound_set))
                     if self.bypass_activedet:
@@ -2058,28 +2221,21 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.pva.pv_put(self.pva.pvGroupL0Reset, self.groups)
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['ClearReadout'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        time.sleep(1.0)
+        self.xpm.clear_readout(self.groups)
+
         # ...configure
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Configure'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
-        self.step_groups_clear()    # default is no scanning
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Configure'])
+        self.xpm.step_groups_clear(self.groups)    # default is no scanning
 
         start_step_thread = False
         if (self.readout_count > 0):
             start_step_thread = True
-            self.pva.setup_step(self.step_group,self.group_mask,1)
+            self.xpm.setup_step(self.step_group,self.group_mask,1)
         elif seqpv_done is not None:
-            self.pva.setup_seq(seqpv_done)
+            self.xpm.setup_seq(seqpv_done)
             start_step_thread = True
         else:
-            self.step_groups_clear()    # default is no scanning
+            self.xpm.step_groups_clear(self.groups)    # default is no scanning
 
         if start_step_thread:
             self.step_exit.clear()
@@ -2109,10 +2265,7 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Unconfigure'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Unconfigure'])
 
         ok = self.get_phase2_replies('unconfigure')
         if not ok:
@@ -2124,28 +2277,6 @@ class CollectionManager():
 
         self.lastTransition = 'unconfigure'
         return True
-
-    def group_run(self, enable):
-        if enable:
-            rv = self.pva.pv_put(self.pva.pvGroupL0Enable, self.groups)
-        else:
-            rv = self.pva.pv_put(self.pva.pvGroupL0Disable, self.groups)
-        return rv
-
-    # step_groups_clear - clear all StepGroups PVs included in mask
-    # Returns False on error
-    def step_groups_clear(self):
-        logging.debug("step_groups_clear()")
-        retval = True
-        for g in range(8):
-            if self.groups & (1 << g):
-                pv = self.pva.pv_xpm_base + f':PART:{g}:StepGroups'
-                logging.debug(f'step_groups_clear(): clearing {pv}')
-                if not self.pva.pv_put(pv, 0):
-                    logging.error(f'step_groups_clear(): clearing {pv} failed')
-                    retval = False
-
-        return retval
 
     # set slow_update_enabled to True or False
     def set_slow_update_enabled(self, enabled):
@@ -2181,13 +2312,10 @@ class CollectionManager():
             # set EPICS PVs.
             # StepEnd is a cumulative count.
             self.readoutCumulative[self.step_group] += self.readout_count
-            self.pva.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
+            self.xpm.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            self.pva.pv_put(pv, ControlDef.transitionId['Enable'])
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Enable'])
 
         ok = self.get_phase2_replies('enable')
         if not ok:
@@ -2203,13 +2331,13 @@ class CollectionManager():
                 return False
 
         # order matters: set Enable PV after others transition
-        if not self.group_run(True):
+        if not self.xpm.group_run(self.groups,True):
             logging.error('condition_enable(): group_run(True) failed')
             return False
 
         # optionally enable a sequence
         if self.seqpv_name:
-            self.pva.pv_put(self.seqpv_name, self.seqpv_val)
+            self.pva.pv_put(self.seqpv_name, 1)
 
         self.lastTransition = 'enable'
         return True
@@ -2217,8 +2345,12 @@ class CollectionManager():
 
     def condition_disable(self):
 
+        # optionally enable a sequence
+        if self.seqpv_name:
+            self.pva.pv_put(self.seqpv_name, 0)
+
         # order matters: set Disable PV before others transition
-        if not self.group_run(False):
+        if not self.xpm.group_run(self.groups,False):
             logging.error('condition_disable(): group_run(False) failed')
             return False
 
@@ -2237,11 +2369,11 @@ class CollectionManager():
             return False
 
         # phase 2
-        for pv in self.pva.pvListMsgHeader:
-            #  Force Disable to respect deadtime but remain queued
-            self.pva.pv_put(pv, (0x180 | ControlDef.transitionId['Disable']))
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, self.groups)
-        self.pva.pv_put(self.pva.pvGroupMsgInsert, 0)
+        # bits 0x180 here mean we queue the transition and keep trying forever
+        # until deadtime goes away.  can result in completely lost transitions
+        # if deadtime is 100%. could then go out later and corrupt a later instance
+        # of the daq? just a guess.  - cpo oct 24, 2024
+        self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
 
         ok = self.get_phase2_replies('disable')
         if not ok:
@@ -2256,7 +2388,7 @@ class CollectionManager():
 
         # disable triggers
         if self.state == 'running':
-            if not self.group_run(False):
+            if not self.xpm.group_run(self.groups,False):
                 logging.error('condition_reset(): group_run(False) failed')
 
         # disable slowupdate timer
@@ -2315,14 +2447,15 @@ class CollectionManager():
         def callback(done):
             doneFlag = int(done)
             if doneFlag:
-                if self.state != 'running':
+                #  There is a race between self.state=running and stepdone
+                if self.state != 'running' and self.state != 'paused':
                     logging.debug(f'StepDone PV={doneFlag} in state {self.state} (ignore)')
                 elif doneFlag:
                     logging.debug(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
                     self.step_done.set()
 
         # start monitoring the StepDone PV
-        sub = self.pva.monitor_StepDone(callback=callback)
+        sub = self.xpm.monitor_StepDone(callback=callback)
 
         while not self.step_exit.is_set():
             if self.step_done.wait(0.5):
@@ -2343,11 +2476,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    parser.add_argument('-X', metavar='XPMHOST', type=str, default=None, help='XPM host (drp-srcf-mon001')
     parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument_name[:station_number]')
     parser.add_argument('-d', metavar='CFGDATABASE', default='https://pswww.slac.stanford.edu/ws/devconfigdb/ws/configDB', help='configuration database connection')
     parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
+    parser.add_argument('-c', action='store_true', help='use auto common group')
     parser.add_argument('-t', metavar='TRIGGER_CONFIG', default='tmoteb', help='trigger configuration name')
     parser.add_argument('-S', metavar='SLOW_UPDATE_RATE', type=int, default=1, choices=(0, 1, 5, 10), help='slow update rate (Hz, default 1)')
 #    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')

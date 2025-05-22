@@ -217,7 +217,7 @@ def issue_2024_04_17():
     from psana import DataSource
     import sys
     from psana.detector.NDArrUtils import info_ndarr
-    from psana.detector.UtilsGraphics import gr, fleximage
+    #from psana.detector.UtilsGraphics import gr, fleximage
     from psana.detector.UtilsEpixm320Calib import gain_mode_name
 
     ds = DataSource(exp='tstx00417',run=324,dir='/drpneh/data/tst/tstx00417/xtc/')
@@ -247,7 +247,7 @@ def issue_2024_04_23():
     from psana.detector.UtilsGraphics import gr, fleximage
     from psana.detector.UtilsEpixm320Calib import gain_mode_name
     flimg = None
-    #ds = DataSource(exp='rixx1005922',run=34)
+    #Ds = DataSource(exp='rixx1005922',run=34)
     ds = DataSource(exp='rixx1005922',run=7)
     orun = next(ds.runs())
     det = orun.Detector('epixm')
@@ -267,7 +267,7 @@ def issue_2024_04_23():
         if nda is None: continue
         img = det.raw.image(evt)
         if flimg is None:
-           flimg = fleximage(img, arr=nda, h_in=5, w_in=10, nneg=1, npos=3)
+           flimg = fleximage(img, arr=nda, h_in=5, w_in=10) #, nneg=1, npos=3)
         gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
         flimg.update(img, arr=nda)
         gr.show(mode='DO NOT HOLD')
@@ -286,21 +286,391 @@ def issue_2024_04_24():
     print('orun.expt', orun.expt, ' expected rixx1005922...')
 
 
+def issue_2024_07_24():
+    """test for det.raw.calib/image implementation for archon
+    """
+    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    #ds = DataSource(exp='rixc00121',run=140, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1,4800)
+    #ds = DataSource(exp='rixc00121',run=141, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1,4800)
+    #ds = DataSource(exp='rixc00121',run=142, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(75,4800)
+    #ds = DataSource(exp='rixc00121',run=151, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(300,4800), 35evts
+    #ds = DataSource(exp='rixc00121',run=152, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(600,4800), 5evts
+    ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
+    #ds = DataSource(exp='rixc00121',run=155, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(600,4800)
+    #ds = DataSource(exp='rixc00121',run=156, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon'])  # raw data shape=(?,4800)
+    orun = next(ds.runs())
+    #for orun in ds.runs():
+    #det = orun.Detector('archon', gainfact=2, cmpars=(1,2,3,4)) # see class Detector in psana/psana/psexp/run.py **kwargs intercepted by AreaDetector
+    det = orun.Detector('archon', gainfact=2, cmpars=None)
+    #print('ZZZ dir(det): %s' % dir(det))
+    #print('ZZZ gain_factor: %s' % str(det._det_kwargs))
+
+    flimg = None
+    flimg1 = None
+    peds = det.calibconst['pedestals'][0]
+    print(info_ndarr(peds, 'issue_2024_07_24 peds'))
+
+    x, y = det.raw._seg_geo.get_seg_xy_maps_um()
+    print(info_ndarr(x, 'panel pixel x'))
+    print(info_ndarr(y, 'panel pixel y'))
+
+    x, y, z = det.raw._geo.get_pixel_coords()
+    print(info_ndarr(x, 'det pixel x'))
+    print(info_ndarr(y, 'det pixel y'))
+    print(info_ndarr(z, 'det pixel z'))
+
+    #print('\ndet.calibconst["pedestals"]', det.calibconst['pedestals'])
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       if nev>20:
+           print('BREAK for nev>20')
+           break
+       raw = det.raw.raw(evt)
+       if raw is None:
+           print('evt:%3d - raw is None' % nev)
+           continue
+
+       t0_sec = time()
+       img  = det.raw.image(evt)
+       dt_sec = (time() - t0_sec)*1000
+       arr = img # calib # img
+       print(info_ndarr(arr, 'evt:%3d dt=%.3f msec  det.raw.img(evt)' % (nev, dt_sec)))
+
+       if flimg is None:
+          flimg = fleximage(img, arr=None, h_in=5, w_in=16, nneg=1, npos=3)
+
+       raw_img = det.raw._arr_to_image(raw)
+       flimg.update(raw_img, arr=None)
+       flimg.fig.suptitle('Event %d: det.raw.raw' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       print(info_ndarr(raw_img, 'raw_img'))
+       print(info_ndarr(raw, 'raw'))
+
+       flimg.update(img, arr=None)
+       flimg.fig.suptitle('Event %d: det.raw.image' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_image.png', verb=True)
+       gr.show(mode='DO NOT HOLD')
+
+       if nev<2:
+
+         t0_sec = time()
+         mask_fake = det.raw._mask_fake(raw.shape) # 0.6 msec
+         dt_sec = (time() - t0_sec)*1000
+         print(info_ndarr(mask_fake, '    mask_fake: dt=%.3f msec' % dt_sec))
+
+         if flimg1 is None:
+            flimg1 = fleximage(mask_fake, arr=None, h_in=5, w_in=16, nneg=1, npos=3)
+
+         flimg1.update(mask_fake, arr=None)
+         flimg1.fig.suptitle('mask_fake', fontsize=16)
+         gr.save_fig(flimg1.fig, fname='img_mask_fake.png', verb=True)
+
+         gr.show()
+         sys.exit('TEST EXIT')
+
+         det.raw._set_tstamp_pixel_values(mask_fake, value=100)
+         flimg.update(mask_fake, arr=None)
+         gr.show(mode='DO NOT HOLD')
+         for ibank in range(16):
+             print('  bank: %02d time stamp: %d' % (ibank, det.raw._tstamp_raw(raw, ibank)))
+
+    gr.show()
+
+
+
+
+def issue_2024_08_19():
+    """
+       optimization of det.raw.calib for mpi
+       @sdfiana002
+       datinfo -k exp=rixx1005922,run=100 -d epixm
+       epixm320_dark_proc -k exp=rixx1005922,run=28 -d epixm -o ./work # -D
+       datinfo -k exp=uedcom103,run=812 -d epixquad
+       https://confluence.slac.stanford.edu/display/LCLSIIData/psana#psana-PublicPracticeData
+       uedcom103, ueddaq02 epix10ka
+
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsEpixm320Calib import gain_mode_name
+    flimg = None
+    ds = DataSource(exp='uedcom103',run=812)
+    #orun = next(ds.runs())
+    #evt = next(orun.events())
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixquad')
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        for nevt,evt in enumerate(step.events()):
+          s = '  == evt %d' % nevt
+          s += info_ndarr(det.raw.raw(evt),     '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(det.raw.calib(evt),   '\n  calib', first=1000, last=1005)
+          print(s)
+          if nevt>10:
+              break_loop = True
+              print('\n break_loop')
+              break
+
+          nda = det.raw.calib(evt)
+          if nda is None: continue
+          img = det.raw.image(evt)
+          print('  nda min: %.3f max: %.3f' % (nda.min(), nda.max()))
+          if flimg is None:
+             flimg = fleximage(img, arr=nda, h_in=10, w_in=11.2)
+          gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+          flimg.update(img, arr=nda) #, amin=0, amax=60000)
+          gr.show(mode='DO NOT HOLD')
+    gr.show()
+
+
+def issue_2024_10_30():
+    """philip, archon common mode
+       myRun.Detector(detName) - a single instance is created..., Philm expects 3.
+    """
+    import sys
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import psana
+
+    detName = 'archon'
+    ds  = psana.DataSource(exp='rixx1017523', run=11, detectors=[detName])
+    myRun = next(ds.runs())
+    detDefault = myRun.Detector(detName)
+    detNoCM = myRun.Detector(detName, cmpars=None)
+    detCM1 = myRun.Detector(detName, cmpars=1)
+
+    for nEvt, evt in enumerate(myRun.events()):
+        if nEvt == 0:
+            print("mean pedestal:", detDefault.calibconst['pedestals'][0].mean())
+        cDef = detDefault.raw.calib(evt)
+        if cDef is None:
+            raise Exception("should never be None I think with detectors set")
+
+        cNoCM = detNoCM.raw.calib(evt)
+        cCM1 = detCM1.raw.calib(evt)
+        print("default = no cm:", cDef == cNoCM)
+        print("no cm = cm:", cNoCM == cCM1)
+        break
+
+
+
+def issue_2024_10_31():
+    """test access to config for det.raw.calib development
+       datinfo -k exp=uedcom103,run=812 -d epixquad
+       https://confluence.slac.stanford.edu/display/LCLSIIData/psana#psana-PublicPracticeData
+       uedcom103, ueddaq02 epix10ka
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    import psana.detector.UtilsEpix10ka as ue
+    flimg = None
+    ds = DataSource(exp='uedcom103',run=812)
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixquad')
+      #print('det:', dir(det.raw))
+      #print('det.raw:', dir(det.raw))
+      #d = det.raw._seg_configs()
+      #print('det.raw._seg_configs():', d)
+      #for k,v in d.items():
+          #print(k, v.config.trbit, v.config.asicPixelConfig.shape)
+          #cob = v.config
+          #cbits = ue.cbits_config_epix10ka(cob, shape=(352, 384))
+          #print(info_ndarr(cbits, 'panel: %02d cbits:' % k))
+      cbits = det.raw._cbits_config_detector()
+      #print(info_ndarr(('detname: %s cbits:' % det.raw._fullname()), cbits))
+      print(info_ndarr(cbits,'cbits:'))
+      sys.exit('TEST EXIT')
+
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        #print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        print('\n=============== step %d' % (nstep))
+        for nevt,evt in enumerate(step.events()):
+          s = '  == evt %d' % nevt
+          s += info_ndarr(det.raw.raw(evt),     '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(det.raw.calib(evt),   '\n  calib', first=1000, last=1005)
+          print(s)
+          if nevt>2:
+              break_loop = True
+              print('\n break_loop')
+              break
+
+
+
+def issue_2024_11_01(parser):
+    """
+       datinfo -k exp=tstx00217,run=553,dir=/sdf/group/lcls/ds/ana/detector/data2_test/xtc/ -d epixuhr
+       epixm320_dark_proc -k exp=tstx00217,run=553,dir=/sdf/group/lcls/ds/ana/detector/data2_test/xtc/ -d epixm -o ./work # -D
+       shape for 4 asic (4, 168, 192)
+    """
+    args = parser.parse_args()
+    subtest = args.subtest
+
+    import numpy as np
+    def nda_sunrise(sh=(4, 168, 192), dtype=np.int32):
+        nsegs, nrows, ncols = (4, 168, 192)
+        rows = np.arange(nrows, dtype=dtype)
+        cols = np.arange(ncols, dtype=dtype)
+        cs, rs = np.meshgrid(cols, rows)
+        arr2d = cs + rs
+        nda = np.stack([arr2d, arr2d, arr2d,arr2d])
+        print('nda.shape:', nda.shape)
+        return nda
+
+    from time import time
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+    #from psana.detector.UtilsEpixm320Calib import gain_mode_name
+    flimg = None
+    ds = DataSource(exp='tstx00217', run=553, dir='/sdf/group/lcls/ds/ana/detector/data2_test/xtc/')
+    #orun = next(ds.runs())
+    #evt = next(orun.events())
+    break_loop = False
+    for nrun,orun in enumerate(ds.runs()):
+      det = orun.Detector('epixuhr')
+      seggeo = det.raw._seg_geo
+      nda_inc = nda_sunrise(seggeo)
+
+      if break_loop: break
+      print('det.raw._shape_as_daq():', det.raw._shape_as_daq())
+      for nstep,step in enumerate(orun.steps()):
+        if break_loop: break
+        #print('\n=============== step %d config gain mode: %s' % (nstep, gain_mode_name(det)))
+        print('\n=============== step %d' % nstep)
+        for nevt,evt in enumerate(step.events()):
+          t0_sec = time()
+          raw = det.raw.raw(evt)
+          print('  time to get raw %.3f sec' % (time()-t0_sec))
+          cal = det.raw.calib(evt)
+          nda = nda_inc if subtest == 'inds' else raw
+          img = det.raw.image(evt, nda=nda)
+          s = '  == evt %d' % nevt
+          s += info_ndarr(raw, '\n  raw  ', first=1000, last=1005)
+          s += info_ndarr(det.raw._pedestals(), '\n  peds ', first=1000, last=1005)
+          s += info_ndarr(cal, '\n  calib', first=1000, last=1005)
+          s += info_ndarr(img, '\n  image', first=1000, last=1005)
+          print(s)
+          if nevt>10:
+              break_loop = True
+              print('\n break_loop')
+              break
+
+          print('  nda min: %.3f max: %.3f' % (nda.min(), nda.max()))
+          if flimg is None:
+             flimg = fleximage(img, arr=nda, h_in=10, w_in=11.2)
+          gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+          flimg.update(img, arr=nda) #, amin=0, amax=60000)
+          gr.show(mode='DO NOT HOLD')
+    gr.show()
+    print('dir(det.raw):', dir(det.raw))
+
+
+def issue_2024_11_19():
+    """Dorlhiac, Gabriel
+       Dubrovin, Mikhail?
+?       O'Grady, Paul Christopher?
+       Good morning Mikhail,
+       I've been using the EpixHREmu calibration constants for testing GPU detector calibration,
+       but I have some questions about how to correctly identify which portion of the data corresponds
+       to each detector segment. For reference I am using run 276 of experiment tstx00417
+       where the detector long name is of the form: ...
+
+       Good morning Gabriel,
+       Sorry, but in ps-4.6.3 by mistake module epixhremu.py was excluded from the list of known detectors.py ...
+
+       datinfo -d epixhr_emu -k exp=tstx00417,run=276,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
+    """
+
+
+
+def issue_2024_12_05():
+    """test for common mode in det.raw.calib/image implementation for archon
+    """
+    #ds, orun, det = ds_run_det(exp='rixc00121', run=140, detname='archon', dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc')
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+
+    ds = DataSource(exp='rixc00121',run=154, dir='/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc',detectors=['archon']) # raw data shape=(1200,4800), >200 evts
+    orun = next(ds.runs())
+    det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
+
+    flimg = None
+    events = 5
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       if nev>events:
+           print('BREAK for nev>%d' % events)
+           break
+       raw = det.raw.raw(evt)
+       if raw is None:
+           print('evt:%3d - raw is None' % nev)
+           continue
+
+       print('==== evt:%3d' % nev)
+
+       t0_sec = time()
+
+       #img  = det.raw.image(evt)
+       clb  = det.raw.calib(evt)
+
+       #img = arr_img = raw
+       img = arr_img = clb
+       #img = arr_img = img
+       #img = arr_img = det.raw._arr_to_image(clb)
+
+       dt_sec = (time() - t0_sec)*1000
+       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  det.raw.img(evt)' % (nev, dt_sec)))
+
+       if flimg is None:
+          flimg = fleximage(arr_img, arr=arr_img, h_in=5, w_in=16, nneg=1, npos=3)
+
+       flimg.update(img, arr=arr_img)
+       flimg.fig.suptitle('Event %d: det.raw.raw' % nev, fontsize=16)
+       gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       print(info_ndarr(img, 'img'))
+       print(info_ndarr(raw, 'raw'))
+       gr.show(mode='DO NOT HOLD')
+
+    gr.show()
+
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
     d_dskwargs = 'exp=rixc00121,run=140,dir=/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc'  # None
     d_detname  = 'archon' # None
     d_loglevel = 'INFO' # 'DEBUG'
+    d_subtest  = None
     h_tname    = 'test name, usually numeric number, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
+    h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
     parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
+    parser.add_argument('-s', '--subtest', default=d_subtest, type=str, help=h_subtest)
     return parser
 
 
@@ -330,6 +700,12 @@ def selector():
     elif TNAME in  ('8',): issue_2024_04_17() # epixm320 calib method for exp=tstx00417,run=324 on drp_neh_cmp001 psana
     elif TNAME in  ('9',): issue_2024_04_23() # epixm320 calib method for exp='rixx1005922',run=34 on sdf
     elif TNAME in ('10',): issue_2024_04_24() # epixm320 exp='rixx1005922',run=328 run.expt: tstx00417
+    elif TNAME in ('11',): issue_2024_07_24() # test for implementation off archon methods
+    elif TNAME in ('12',): issue_2024_08_19() # epixm320 exp='rixx1005922',run=100 on sdf
+    elif TNAME in ('13',): issue_2024_10_30() # philip exp='rixx1017523',run=11, archon common mode
+    elif TNAME in ('14',): issue_2024_10_31() # test access to config for det.raw.calib development
+    elif TNAME in ('15',): issue_2024_11_01(parser) # -s inds; test epixUHR /sdf/group/lcls/ds/ana/detector/data2_test/xtc/tstx00217-r0553-s001-c000.xtc2
+    elif TNAME in ('16',): issue_2024_12_05() # archon V1/V2 common mode
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

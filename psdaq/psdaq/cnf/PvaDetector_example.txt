@@ -18,6 +18,10 @@ andor_vls = RIX:VLS:CAM:01:IMAGE1:Pva:Image		# This is a trailing comment
   andor_dir = RIX:DIR:CAM:01:IMAGE1:Pva:Image
   andor_norm = RIX:NORM:CAM:01:IMAGE1:Pva:Image
 #  andor_norm = RIX:NORM:CAM:01:IMAGE1:Pva:Image,1024
+
+im1k4_pva = IM1K4:XTES:CAM:IMAGE1:Pva:Image
+im1k4_ca  = ca/IM1K4:XTES:CAM:IMAGE1:ArrayData,1024
+
 #bpms_undh_1990_x = ca/BPMS:UNDH:1990:X.tstval,1234
 #
 #andor_vls2=RIX:VLS:CAM:01:IMAGE2:Pva:Image[1024,1024]

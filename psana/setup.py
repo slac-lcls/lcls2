@@ -38,7 +38,7 @@ rebuild = int(os.environ.get('REBUILD'))
 if rebuild:
     BUILD_LIST = ('PEAKFINDER','HSD')
 else:
-    BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY')# ,'XTCAV')
+    BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
@@ -178,6 +178,8 @@ if 'PSANA' in BUILD_LIST :
             'psplot_live         = psana.app.psplot_live.main:start',
             'timestamp_sort_h5   = psana.app.timestamp_sort_h5.main:start',
             'psanaplot = psana.app.psana_plot:_do_main',
+            'jungfrau_dark_proc  = psana.app.jungfrau_dark_proc:do_main',
+            'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
         ]
     }
 
@@ -393,7 +395,7 @@ if 'HSD' in BUILD_LIST :
 if 'NDARRAY' in BUILD_LIST :
     ext = Extension("ndarray",
                     sources=["psana/pycalgos/NDArray_ext.pyx",
-                             "psana/peakFinder/src/WFAlgos.cc"],
+                             "psana/peakFinder/src/WFAlgos.cc"],\
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
@@ -403,6 +405,21 @@ if 'NDARRAY' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
+
+if 'PYCALGOS' in BUILD_LIST :
+    ext = Extension("utilsdetector_ext",
+                    sources=["psana/pycalgos/utilsdetector_ext.pyx",
+                             "psana/pycalgos/UtilsDetector.cc"],
+                    #libraries = ['utils'], # for SysLog
+                    libraries = [],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args + ['-O3',],
+                    extra_link_args = extra_link_args_rpath,
+                    #include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+                    library_dirs = [os.path.join(instdir, 'lib')],
+    )
+    CYTHON_EXTS.append(ext)
 
 setup(
     name = 'psana',

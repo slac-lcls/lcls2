@@ -13,6 +13,9 @@ namespace Pds {
       virtual void   resetCounts    ();
       virtual void   loopback       (bool v);
       virtual void   skip_interval  (unsigned) {}
+      virtual void   txdiffctrl     (unsigned) {}
+      virtual void   txprecursor    (unsigned) {}
+      virtual void   txpostcursor   (unsigned) {}
     public:
       virtual bool     localLinkReady () const;
       virtual bool     remoteLinkReady() const;

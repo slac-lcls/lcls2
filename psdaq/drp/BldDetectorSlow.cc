@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -926,6 +926,9 @@ json BldApp::connectionInfo(const nlohmann::json& msg)
 
 void BldApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det.connectionShutdown();
+    }
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();

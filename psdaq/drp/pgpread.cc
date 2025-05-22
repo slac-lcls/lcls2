@@ -3,7 +3,7 @@
 #include <iostream>
 #include <signal.h>
 #include <cstdio>
-#include <AxisDriver.h>
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 #include <stdlib.h>
 #include "drp.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -81,6 +81,16 @@ int main(int argc, char* argv[])
         return -1;
     }
 
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        show_usage(argv[0]);
+        return 1;
+    }
+
     terminate.store(false, std::memory_order_release);
     signal(SIGINT, int_handler);
 
@@ -120,7 +130,9 @@ int main(int argc, char* argv[])
     printf("dmaCount %u  dmaSize %u\n", dmaCount, dmaSize);
 
     if (dmaSetMaskBytes(fd, mask)) {
-        printf("Failed to allocate lane/vc\n");
+        perror("dmaSetMaskBytes");
+        printf("Failed to allocate lane/vc "
+               "- does another process have %s open?\n", device.c_str());
         const unsigned* u = reinterpret_cast<const unsigned*>(mask);
         for(unsigned i=0; i<DMA_MASK_SIZE/4; i++)
             printf("%08x%c", u[i], (i%8)==7?'\n':' ');
@@ -180,8 +192,8 @@ int main(int argc, char* argv[])
             ++nevents;
 
             if (lverbose || (transition_id != XtcData::TransitionId::L1Accept)) {
-                printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | event counter %u | index %u\n",
-                       size, dest, vc, transition_id, event_header->pulseId(), event_header->evtCounter, index);
+                printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %lu | TimeStamp %u.%u | event counter %u | index %u\n",
+                       size, dest, vc, transition_id, event_header->pulseId(), event_header->time.seconds(), event_header->time.nanoseconds(), event_header->evtCounter, index);
                 if (lverbose > 1) {
                     printf("env %08x\n", event_header->env);
                     for(unsigned i=0; i<((size+3)>>2); i++)

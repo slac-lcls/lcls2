@@ -169,7 +169,7 @@ int Pds::Trg::TebPyTrig::configure(const json&              connectMsg,
   _pythonScript = scriptPath + "/" + _pythonScript;
   _partition    = prms.partition;
 
-  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id) ;
+  _keyBase = "p" + std::to_string(prms.partition) + "_teb" + std::to_string(prms.id);
 
   _inpMqId  = 0;
   _resMqId  = 0;
@@ -213,7 +213,7 @@ int Pds::Trg::TebPyTrig::_setupMsgQueue(std::string key,
   if ( rc == -1)
   {
     logging::error("[C++] Error in creating %s message queue with key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
@@ -233,7 +233,7 @@ int Pds::Trg::TebPyTrig::_setupShMem(std::string key,
   if (rc == -1)
   {
     logging::error("[C++] Error in creating %s shared memory for key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
@@ -242,12 +242,12 @@ int Pds::Trg::TebPyTrig::_setupShMem(std::string key,
   if (rc == -1)
   {
     logging::error("[C++] Error attaching %s shared memory for key %s: %m",
-                   name, key);
+                   name, key.c_str());
     cleanup();
     return -1;
   }
 
-  logging::info("[C++] %s shared memory created for key %s", name, key);
+  logging::info("[C++] %s shared memory created for key %s", name, key.c_str());
 
   return 0;
 }
@@ -472,24 +472,27 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
 {
   *(Pds::Eb::ResultDgram*)_resData = result;
 
-  unsigned idx = 0;
+  uint64_t rem = (1ull<<_inpData.size())-1;
   const Pds::EbDgram* const* ctrb = start;
   do
   {
     auto dg   = *ctrb;
     auto size = sizeof(*dg) + dg->xtc.sizeofPayload();
-    auto dest = _inpData[idx++];
+    auto idx = dg->xtc.src.value();
+    auto dest = _inpData[idx];
+    rem ^= 1ull<<idx;
     memcpy(dest, dg, size);
   }
   while(++ctrb != end);
 
-  if (idx < _inpData.size())            // zero terminate
-    *(EbDgram*)(_inpData[idx]) = EbDgram(PulseId{0}, XtcData::Dgram());
+  // bit mask of contributions
+  uint64_t mctrb = ((1ull<<_inpData.size())-1) ^ rem;
 
   int       rc;
   char msg[512];
-  msg[0] = 'g';
-  rc = _send(_inpMqId, msg, 1);
+  //  msg[0] = 'g';
+  sprintf(msg,"g%016lx",mctrb);
+  rc = _send(_inpMqId, msg, 17);
 
   if (rc == 0)
     rc = _checkPy(_pyPid);

@@ -1,0 +1,58 @@
+name: Test LCLS-II
+on:
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
+  workflow_dispatch:
+
+jobs:
+  build-lcls-ii:
+    runs-on: ubuntu-latest
+    defaults:
+     run:
+       # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
+       # so these shells need to be explicitly declared.
+       # This makes the shell a login shell, which typically
+       # sources said files. This is needed for conda.
+       # Refer: https://github.com/marketplace/actions/setup-miniconda
+       shell: bash -el {0}  
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          auto-update-conda: true
+          activate-environment: build-conda-env
+          channels: lcls-ii, conda-forge
+          environment-file: .ps-4.6.3-daq.txt
+
+      - name: Build
+        run:
+          ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+
+      - name: Set Env Variables
+        run: |
+          cd psana
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          cd ..
+
+          export PATH=$(pwd)/install/bin:${PATH}
+          pytest psana/psana/tests/test_HBins.py \
+                 psana/psana/tests/test_Time.py \
+                 psana/psana/tests/test_TimeFormat.py \
+                 psana/psana/tests/test_TimeParse.py \
+                 psana/psana/tests/test_dgramedit.py \
+                 psana/psana/tests/test_dgraminit.py \
+                 psana/psana/tests/test_epix_calib.py \
+                 psana/psana/tests/test_hsd.py \
+                 psana/psana/tests/test_packetfooter.py \
+                 psana/psana/tests/test_psalg.py \
+                 psana/psana/tests/test_py2xtc.py \
+                 psana/psana/tests/test_py2xtc_scan.py \
+                 psana/psana/tests/test_pyalgos.py \
+                 psana/psana/tests/test_sample.py \
+                 psana/psana/tests/test_timetool.py \
+                 psana/psana/tests/test_ts.py \
+                 psana/psana/tests/test_xtc.py
+

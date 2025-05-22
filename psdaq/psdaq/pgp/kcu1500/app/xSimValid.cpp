@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <argp.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 using namespace std;
 
@@ -112,7 +112,7 @@ public:
 class EventValidator {
 public:
   EventValidator(const LaneValidator* valid,
-                 unsigned             lanemask) : 
+                 unsigned             lanemask) :
     _lanev   (valid),
     _lanemask(lanemask),
     _last    (1<<31),
@@ -163,7 +163,7 @@ public:
         lm &= ~(1<<i);
         if (_lanev[i]._pulseId[now] != pid) {
           _pulseIdErr++;
-          if ((verbose & PULSE_ID_ERR) && nprint++ < MAX_PRINT) 
+          if ((verbose & PULSE_ID_ERR) && nprint++ < MAX_PRINT)
             DUMP(pulseId);
           break;
         }
@@ -296,7 +296,7 @@ void LaneValidator::validate(const uint32_t* p, unsigned sz) {
     if (_sz != sz) {
       _frameSizeErr++;
       if ((verbose & FRAME_SIZE_ERR) && nprint++ < MAX_PRINT)
-        printf("\t[%p] [%06x.%ld] frameSize : %x [%x]\n", 
+        printf("\t[%p] [%06x.%ld] frameSize : %x [%x]\n",
                p, event, this-lanev, sz, _sz);
     }
   }
@@ -415,7 +415,7 @@ int main (int argc, char **argv) {
       usleep(1000);
       w |=  (1<<3);       // reset
       dmaWriteRegister(s, 0x00a00000,w);
-      usleep(1);         
+      usleep(1);
       dmaWriteRegister(s, 0x00a00000,v);
     }
 
@@ -546,7 +546,7 @@ static void print_mig_lane(const char* name, int addr, int offset, int mask)
     printf("\n");
 }
 
-static void print_clk_rate(const char* name, int addr) 
+static void print_clk_rate(const char* name, int addr)
 {
     const unsigned CLK_BASE = 0x00800100;
     printf("%20.20s", name);

@@ -7,14 +7,15 @@ import asyncio
 import psutil
 import copy
 import socket
-from psdaq.slurm.utils import SbatchManager
+from psdaq.slurm.utils import SbatchManager, call_subprocess
 from psdaq.slurm.subproc import SubprocHelper
 import os, sys, errno
 from subprocess import Popen
 from psdaq.slurm.config import Config
 
 LOCALHOST = socket.gethostname()
-PSBATCH_SCRIPT = "submit_psbatch.sh"
+DAQMGR_SCRIPT = "submit_daqmgr.sh"
+MAX_RETRIES = 30
 
 
 def silentremove(filename):
@@ -32,10 +33,10 @@ class Runner:
     PATH_LESS = "/usr/bin/less"
     PATH_CAT = "/bin/cat"
 
-    def __init__(self, configfilename, as_step=False, verbose=False):
+    def __init__(self, configfilename, as_step=False, verbose=False, output=None):
         # Allowing users' code to do relative 'import' in config file
         sys.path.append(os.path.dirname(configfilename))
-        config_dict = {"platform": None, "config": None}
+        config_dict = {"platform": None, "station": 0, "config": None}
         try:
             exec(
                 compile(open(configfilename).read(), configfilename, "exec"),
@@ -59,8 +60,18 @@ class Runner:
             for cmd_index, cmd_token in enumerate(cmd_tokens):
                 if cmd_token == "-x":
                     self.xpm_id = int(cmd_tokens[cmd_index + 1])
+        # Set station id
+        self.station = int(config_dict["station"])
 
-        self.sbman = SbatchManager(configfilename, self.platform, as_step, verbose)
+        self.sbman = SbatchManager(
+            configfilename,
+            self.xpm_id,
+            self.platform,
+            self.station,
+            as_step,
+            verbose,
+            output=output,
+        )
         self.proc = SubprocHelper()
         self.parse_config()
 
@@ -83,9 +94,7 @@ class Runner:
 
         data = {}
         for config_id, config_detail in self.config.items():
-            config_detail["comment"] = self.sbman.get_comment(
-                self.xpm_id, self.platform, config_id
-            )
+            config_detail["comment"] = self.sbman.get_comment(config_id)
             if use_feature:
                 found_node = None
                 for node, features in node_features.items():
@@ -117,10 +126,13 @@ class Runner:
         self.node_features = node_features
         return
 
+    def get_unique_prefix(self):
+        return f"x{self.xpm_id}_p{self.platform}_s{self.station}"
+
     def submit(self):
-        with open(PSBATCH_SCRIPT, "w") as f:
+        with open(DAQMGR_SCRIPT, "w") as f:
             f.write(self.sbman.sb_script)
-        cmd = f"sbatch {PSBATCH_SCRIPT}"
+        cmd = f"sbatch {DAQMGR_SCRIPT}"
         asyncio.run(self.proc.run(cmd, wait_output=True))
 
     def _select_config_ids(self, unique_ids):
@@ -137,7 +149,7 @@ class Runner:
         config_ids = self._select_config_ids(unique_ids)
 
         for config_id in config_ids:
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            comment = self.sbman.get_comment(config_id)
             if comment in job_details:
                 job_exists = True
                 break
@@ -156,13 +168,14 @@ class Runner:
 
     def show_status(self, quiet=False):
         job_details = self.sbman.get_job_info()
+        sacct_details = self.sbman.get_job_info(use_sacct=True)
         result_list = []
         if not quiet:
             print(
                 "%20s %12s %10s %40s" % ("Host", "UniqueID", "Status", "Command+Args")
             )
         for config_id, detail in self.config.items():
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
+            comment = self.sbman.get_comment(config_id)
             statusdict = {}
             statusdict["showId"] = config_id
             if comment in job_details:
@@ -171,16 +184,12 @@ class Runner:
                 statusdict["host"] = job_detail["nodelist"]
                 statusdict["logfile"] = job_detail["logfile"]
                 statusdict["job_id"] = job_detail["job_id"]
-                if not quiet:
-                    print(
-                        "%20s %12s %10s %40s"
-                        % (
-                            job_detail["nodelist"],
-                            job_detail["job_name"],
-                            job_detail["state"],
-                            detail["cmd"],
-                        )
-                    )
+            elif comment in sacct_details:
+                sacct_detail = sacct_details[comment]
+                statusdict["status"] = "COMPLETED"
+                statusdict["host"] = sacct_detail["nodelist"]
+                statusdict["logfile"] = sacct_detail["logfile"]
+                statusdict["job_id"] = sacct_detail["job_id"]
             else:
                 statusdict["status"] = "COMPLETED"
                 nodelist = LOCALHOST
@@ -189,22 +198,22 @@ class Runner:
                 statusdict["host"] = nodelist
                 statusdict["logfile"] = ""
                 statusdict["job_id"] = ""
-                if not quiet:
-                    print(
-                        "%20s %12s %10s %40s"
-                        % (
-                            nodelist,
-                            config_id,
-                            "COMPLETED",
-                            detail["cmd"],
-                        )
+            if not quiet:
+                print(
+                    "%20s %12s %10s %40s"
+                    % (
+                        statusdict["host"],
+                        statusdict["showId"],
+                        statusdict["status"],
+                        detail["cmd"],
                     )
+                )
             # add dictionary to list
             result_list.append(statusdict)
         return result_list
 
     def _cancel(self, slurm_job_id):
-        output = self.sbman.call_subprocess("scancel", str(slurm_job_id))
+        output = call_subprocess("scancel", str(slurm_job_id))
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
@@ -221,9 +230,32 @@ class Runner:
                     if job_name in config_ids:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         self.submit()
+                        if "flags" in details:
+                            if details["flags"].find("x") > -1:
+                                job_state = None
+                                for i in range(MAX_RETRIES):
+                                    if self._exists(unique_ids=job_name):
+                                        job_details = self.sbman.get_job_info()
+                                        job_state = job_details[details["comment"]][
+                                            "state"
+                                        ]
+                                        if job_state == "RUNNING":
+                                            break
+                                    if i == 0:
+                                        print(
+                                            f"Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm..."
+                                        )
+                                    time.sleep(3)
+                                if job_state is not None:
+                                    time.sleep(
+                                        1
+                                    )  # Still need to wait! even if job is already in RUNNING state
+                                    ldProcStatus = self.show_status(quiet=True)
+                                    self.spawnConsole(job_name, ldProcStatus, False)
 
-    def stop(self, unique_ids=None):
-        """Stops running job using their comment.
+    def stop(self, unique_ids=None, skip_wait=False, verbose=False):
+        """Cancel jobs with comment matched with the unique identifier (xXPM_pPLATFORM_sSTATION_*).
+        The action is either for all unique_ids or the given ones if specified.
 
         Each job is submitted with their unique comment. We can stop all the processes
         by looking at the given cnf and match the comment (see below for detail) with
@@ -231,30 +263,58 @@ class Runner:
         self._check_unique_ids(unique_ids)
         job_details = self.sbman.get_job_info()
 
+        config_ids = []
         if unique_ids is not None:
             config_ids = unique_ids.split(",")
-        else:
-            config_ids = list(self.config.keys())
 
-        for config_id in config_ids:
-            comment = self.sbman.get_comment(self.xpm_id, self.platform, config_id)
-            if comment in job_details:
-                self._cancel(job_details[comment]["job_id"])
-            else:
-                print(
-                    f"Warning: cannot stop {config_id} ({comment}). There is no job with this ID found."
-                )
+        unique_prefix = self.get_unique_prefix()
 
-    def restart(self, unique_ids=None):
-        self.stop(unique_ids=unique_ids)
+        job_states = {}
+        for comment, job_detail in job_details.items():
+            if comment.startswith(unique_prefix) and (
+                job_detail["job_name"] in config_ids or not config_ids
+            ):
+                self._cancel(job_detail["job_id"])
+                job_states[job_detail["job_id"]] = None
+
+        # Wait until all cancelled jobs reach CANCELLED state
+        if not skip_wait:
+            for i in range(MAX_RETRIES):
+                for job_id, _ in job_states.items():
+                    results = self.sbman.get_job_info_byid(job_id, ["JobState"])
+                    if "JobState" in results:
+                        job_states[job_id] = results["JobState"]
+                active_jobs = [
+                    job_id
+                    for job_id, job_state in job_states.items()
+                    if job_state != "CANCELLED"
+                ]
+                if len(active_jobs) == 0:
+                    break
+                if i == 0 and verbose:
+                    print(f"Waiting for slurm jobs to complete...")
+                time.sleep(3)
+
+    def restart(self, unique_ids=None, verbose=False):
+        self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
         self.start(unique_ids=unique_ids, skip_check_exist=True)
+
+    def get_statusdict(self, config_id, ldProcStatus):
+        """Uses exclusively by spawnX definitions to retreive slurm jobid
+        from the given status details"""
+        result = {}
+        for statusdict in ldProcStatus:
+            if statusdict["showId"] == config_id:
+                result = statusdict
+                break
+        return result
 
     def spawnConsole(self, config_id, ldProcStatus, large=False):
         rv = 1  # return value (0=OK, 1=ERR)
         job_id = ""
-        for statusdict in ldProcStatus:
-            if statusdict["showId"] == config_id:
-                job_id = statusdict["job_id"]
+        result = self.get_statusdict(config_id, ldProcStatus)
+        if result:
+            job_id = result["job_id"]
 
         if not job_id:
             print("spawnConsole: process '%s' not found" % config_id)
@@ -277,7 +337,9 @@ class Runner:
                     ]
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
-                Popen(args)
+
+                arg_str = " ".join(args)
+                asyncio.run(self.proc.run(arg_str, wait_output=False))
             except:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
@@ -287,9 +349,9 @@ class Runner:
     def spawnLogfile(self, config_id, ldProcStatus, large=False):
         rv = 1  # return value (0=OK, 1=ERR)
         logfile = ""
-        for statusdict in ldProcStatus:
-            if statusdict["showId"] == config_id:
-                logfile = statusdict["logfile"]
+        result = self.get_statusdict(config_id, ldProcStatus)
+        if result:
+            logfile = result["logfile"]
 
         if not os.path.exists(logfile) or not logfile:
             print(f"spawnLogfile: process {config_id} logfile not found ({logfile})")
@@ -352,21 +414,32 @@ def main(
         ),
     ] = False,
     verbose: Annotated[
-        bool, typer.Option(help="Print out sbatch script(s) submitted by psbatch.")
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Print out sbatch script(s) submitted by daqmgr and warnings",
+        ),
     ] = False,
+    output: Annotated[
+        str,
+        typer.Option(
+            "--output", "-o", help="Specify output path for process log files."
+        ),
+    ] = None,
 ):
-    runner = Runner(cnf_file, as_step=as_step, verbose=verbose)
+    runner = Runner(cnf_file, as_step=as_step, verbose=verbose, output=output)
     if subcommand == "start":
         runner.start(unique_ids=unique_ids)
     elif subcommand == "stop":
-        runner.stop(unique_ids=unique_ids)
+        runner.stop(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "restart":
-        runner.restart(unique_ids=unique_ids)
+        runner.restart(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "status":
         runner.show_status()
     else:
         print(f"Unrecognized subcommand: {subcommand}")
-    silentremove(PSBATCH_SCRIPT)
+    silentremove(DAQMGR_SCRIPT)
 
 
 def _do_main():

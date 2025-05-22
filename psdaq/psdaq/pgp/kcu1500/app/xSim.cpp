@@ -3,7 +3,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <string.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "Si570.hh"
 
 //  DrpTDet register map
@@ -548,6 +548,16 @@ int main(int argc, char* argv[])
       }
     }
 
+    // Complain if all arguments weren't consummed
+    if (optind < argc) {
+        printf("Unrecognized argument:\n");
+        while (optind < argc)
+            printf("  %s ", argv[optind++]);
+        printf("\n");
+        usage(argv[0]);
+        return 1;
+    }
+
     if ( (fd = open(dev,O_RDWR)) < 0) {
       perror("Opening device file");
       return 1;
@@ -581,7 +591,8 @@ int main(int argc, char* argv[])
     //
     //  Update ID advertised on timing link
     //
-    if (updateId && core_pcie) {
+    //    if (updateId && core_pcie) {
+    if (updateId) {
       struct addrinfo hints;
       struct addrinfo* result;
 
@@ -620,7 +631,8 @@ int main(int argc, char* argv[])
     //
     //  Measure si570 clock output
     //
-    if (core_pcie) {
+    if (1) {
+        //    if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
 

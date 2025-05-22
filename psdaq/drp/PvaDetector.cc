@@ -17,7 +17,7 @@
 #include <cctype>       // std::isspace
 #include <regex>
 #include <Python.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -39,7 +39,7 @@ using namespace Pds;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
-using ns_t = std::chrono::nanoseconds;
+using us_t = std::chrono::microseconds;
 
 namespace Drp {
 
@@ -84,15 +84,6 @@ static int _compare(const TimeStamp& ts1,
   return result;
 }
 
-template<typename T>
-static int64_t _deltaT(const TimeStamp& ts)
-{
-    auto now = std::chrono::system_clock::now();
-    auto tns = std::chrono::seconds{ts.seconds() + POSIX_TIME_AT_EPICS_EPOCH}
-             + std::chrono::nanoseconds{ts.nanoseconds()};
-    std::chrono::system_clock::time_point tp{std::chrono::duration_cast<std::chrono::system_clock::duration>(tns)};
-    return std::chrono::duration_cast<T>(now - tp).count();
-}
 
 namespace Drp {
 
@@ -164,7 +155,8 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     bufferFreelist          (pvQueue.size()),
     m_notifySocket          {&m_context, ZMQ_PUSH},
     m_nUpdates              (0),
-    m_nMissed               (0)
+    m_nMissed               (0),
+    m_latency               (0)
 {
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
@@ -254,7 +246,7 @@ void PvMonitor::onConnect()
         m_condition.notify_one();
     }
 
-    if (m_para.verbose) {
+    if (m_para.verbose > 1) {           // Use -vv to get increased detail
         if (printStructure())
             logging::error("onConnect: printStructure() failed");
     }
@@ -281,7 +273,8 @@ void PvMonitor::updated()
         TimeStamp timestamp(seconds, nanoseconds);
 
         ++m_nUpdates;
-        logging::debug("%s updated @ %u.%09u", name().c_str(), timestamp.seconds(), timestamp.nanoseconds());
+        m_latency = Pds::Eb::latency<us_t>(timestamp); // Grafana plots latency in us
+        logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
 
         Dgram* dgram;
         if (bufferFreelist.try_pop(dgram)) { // If a buffer is available...
@@ -325,7 +318,7 @@ void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
                            "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
                            pvDg->time.seconds(),  pvDg->time.nanoseconds(),
                            pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
-                           _deltaT<ms_t>(pvDg->time));
+                           Pds::Eb::latency<ms_t>(pvDg->time));
             pvQueue.try_pop(pvDg);      // Actually consume the element
             bufferFreelist.push(pvDg);  // Return buffer to freelist
         }
@@ -564,7 +557,10 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
 
     for (auto& pvMonitor : m_pvMonitors) {
         // Set up the names for L1Accept data
-        Alg     rawAlg("raw", 1, 0, 0);
+        unsigned uvsn = m_para.kwargs.find("data_vsn") != m_para.kwargs.end() ? std::stoul(m_para.kwargs["data_vsn"],NULL,0) : 0x010000;
+        AlgVersion& vsn = *reinterpret_cast<AlgVersion*>(&uvsn);
+        logging::debug("AlgVersion %d.%d.%d",vsn.major(),vsn.minor(),vsn.micro());
+        Alg     rawAlg("raw", vsn.major(), vsn.minor(), vsn.micro());
         NamesId rawNamesId(nodeId, RawNamesIndex + pvMonitor->id());
         Names&  rawNames = *new(xtc, bufEnd) Names(bufEnd,
                                                    pvMonitor->alias().c_str(), rawAlg,
@@ -722,6 +718,10 @@ void PvDetector::_worker()
     m_exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
                     [&](){return m_pvMonitors[0]->pvQueue.guess_size();});
 
+    // @todo: Support multiple PVs
+    m_exporter->add("drp_pv_latency", labels, MetricType::Gauge,
+                    [&](){return m_pvMonitors[0]->latency();});
+
     m_exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
                     [&](){return m_pgp.nDmaRet();});
     m_exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
@@ -810,11 +810,13 @@ void PvDetector::_matchUp()
 
                 int result = _compare(evtDg->time, pvDg->time);
 
-                logging::debug("PGP: %u.%09d, PV: %u.%09d, PGP - PV: %12ld ns, pid %014lx, svc %2d, compare %c, latency %ld ms",
+                logging::debug("PGP: %u.%09d %c PV: %u.%09d, PGP - PV: %12ld ns, "
+                               "pid %014lx, svc %2d, PGP age %ld ms",
                                evtDg->time.seconds(), evtDg->time.nanoseconds(),
+                               result == 0 ? '=' : (result < 0 ? '<' : '>'),
                                pvDg->time.seconds(), pvDg->time.nanoseconds(),
                                m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               result == 0 ? '=' : (result < 0 ? '<' : '>'), _deltaT<ms_t>(evtDg->time));
+                               Pds::Eb::latency<ms_t>(evtDg->time));
 
                 if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
                 else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
@@ -861,7 +863,7 @@ void PvDetector::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
     }
 }
 
-void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     auto bufEnd = (char*)&evtDg + m_pool->pebble.bufferSize();
     _event(evtDg, bufEnd, pvDg.xtc);
@@ -877,7 +879,7 @@ void PvDetector::_tEvtEqPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
     pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
 }
 
-void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PVs show up in time order, when the most recent PV is younger
     // than the PGP event (t(PV) > t(PGP)), we know that no older PV will show
@@ -892,7 +894,7 @@ void PvDetector::_tEvtLtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg
                    pvDg.time.seconds(), pvDg.time.nanoseconds());
 }
 
-void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor>& pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
+void PvDetector::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
 {
     // Because PGP events show up in time order, when the most recent PV is older
     // than the PGP event (t(PV) < t(PGP)), we know that no older PGP event will
@@ -931,7 +933,7 @@ void PvDetector::_timeout(ms_t timeout)
                        "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
                        dgram.time.seconds(), dgram.time.nanoseconds(),
                        dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       _deltaT<ms_t>(dgram.time), dgram.service());
+                       Pds::Eb::latency<ms_t>(dgram.time), dgram.service());
 
         if (dgram.service() == TransitionId::L1Accept) {
             // No PV data so mark event as damaged
@@ -982,12 +984,12 @@ PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp(para, context()),
     m_para(para),
-    m_pvDetector(std::make_unique<PvDetector>(para, m_drp)),
     m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
 
+    m_pvDetector = std::make_unique<PvDetector>(para, m_drp);
     m_det = m_pvDetector.get();
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -1036,6 +1038,9 @@ json PvApp::connectionInfo(const nlohmann::json& msg)
 
 void PvApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
     m_drp.shutdown();
 }
 
@@ -1356,6 +1361,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
+            if (kwargs.first == "data_vsn")       continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;

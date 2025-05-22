@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 #include <vector>
+
+#include "xtcdata/xtc/Array.hh"
 
 namespace XtcData { class DescData; }
 
@@ -26,6 +29,7 @@ namespace Drp {
         bool eventCode(unsigned ec) const { return _seqInfo[ec>>4] & (1<<(ec&0xf)); }
         bool sequencer(unsigned word,
                        unsigned bit) const { return _seqInfo[word] & (1<<bit); }
+        bool destination(unsigned destmask) const { return _beamPresent && (_beamDestn & destmask); }
     public:
         uint64_t _pulseId; 
         unsigned _fixedRates  : 10;
@@ -34,6 +38,24 @@ namespace Drp {
         unsigned _beamPresent : 1, : 3;
         unsigned _beamDestn   : 4;
         uint16_t _seqInfo[18];
+    };
+
+    class EventSelect {
+    public:
+        EventSelect() : incl_eventcode(0), incl_destination(0),
+                        excl_eventcode(0), excl_destination(0) {}
+    public:
+        bool select(const EventInfo&) const;
+    public:
+        void set_incl_eventcode  (unsigned code) { incl_eventcode = code; }
+        void set_excl_eventcode  (unsigned code) { excl_eventcode = code; }
+        void set_incl_destination(unsigned dest) { incl_destination = dest; } 
+        void set_excl_destination(unsigned dest) { excl_destination = dest; } 
+    private:
+        unsigned incl_eventcode;
+        unsigned incl_destination;
+        unsigned excl_eventcode;
+        unsigned excl_destination;
     };
 };
 

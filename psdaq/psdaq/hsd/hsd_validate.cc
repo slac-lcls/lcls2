@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <poll.h>
 #include "psdaq/hsd/Validator.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "xtcdata/xtc/Dgram.hh"
 
 static FILE* f = 0;
@@ -135,7 +135,7 @@ int main(int argc, char* argv[])
     return -1;
   }
 
-  Validator& val = l134 ? 
+  Validator& val = l134 ?
     *static_cast<Validator*>(new Fmc134Validator(cfg,5)) :
     *static_cast<Validator*>(new Fmc126Validator(cfg,0));
 

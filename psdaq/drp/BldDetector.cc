@@ -11,7 +11,7 @@
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
 #include <net/if.h>
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -87,8 +87,10 @@ BldPVA::BldPVA(std::string det,
     //    _alg     = XtcData::Alg("raw",(vsn>>8)&0xf,(vsn>>4)&0xf,(vsn>>0)&0xf);
 
     std::string sname(_detId);
-    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_ADDR").c_str());
-    _pvaPort    = std::make_shared<Pds_Epics::PVBase>((sname+":BLD1_MULT_PORT").c_str());
+    // These are CA,PVA for GMD,XGMD but only CA for PCAV
+    _pvaAddr    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":BLD1_MULT_ADDR").c_str());
+    _pvaPort    = std::make_shared<Pds_Epics::PVBase>("ca",(sname+":BLD1_MULT_PORT").c_str());
+    // This is PVA
     _pvaPayload = std::make_shared<BldDescriptor>    ((sname+":BLD_PAYLOAD"   ).c_str());
 
     logging::info("BldPVA::BldPVA looking up multicast parameters for %s/%s from %s",
@@ -585,7 +587,7 @@ Pds::EbDgram* Pgp::_handle(uint32_t& evtIndex)
 //
 static const unsigned TMO_MS = 20;
 
-//  Look at the next timing header (or wait 20ms for the next one) 
+//  Look at the next timing header (or wait 20ms for the next one)
 const Pds::TimingHeader* Pgp::next()
 {
     // get new buffers
@@ -784,7 +786,7 @@ void Pgp::worker(std::shared_ptr<Pds::MetricExporter> exporter)
                 switch (dgram->service()) {
                 case XtcData::TransitionId::Configure: {
                     logging::info("BLD configure");
-                        
+
                     // Revisit: This is intended to be done by BldDetector::configure()
                     for(unsigned i=0; i<m_config.size(); i++) {
                         XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
@@ -880,10 +882,11 @@ BldApp::BldApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_drp        (para, context()),
     m_para       (para),
-    m_det        (new BldDetector(m_para, m_drp)),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
+
+    m_det = new BldDetector(m_para, m_drp);
 
     if (m_det == nullptr) {
         logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
@@ -942,6 +945,9 @@ json BldApp::connectionInfo(const nlohmann::json& msg)
 
 void BldApp::connectionShutdown()
 {
+    if (m_det) {
+        m_det->connectionShutdown();
+    }
     m_drp.shutdown();
     if (m_exporter) {
         m_exporter.reset();

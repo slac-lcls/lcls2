@@ -1,6 +1,10 @@
+import l2si_drp
+from psdaq.configdb.barrier import Barrier
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from p4p.client.thread import Context
+import os
+import socket
 import json
 import time
 import logging
@@ -9,9 +13,68 @@ ocfg = None
 partitionDelay = None
 epics_prefix = None
 
-def hsd_connect(prefix):
+barrier_global = Barrier()
+args = {}
+
+def supervisor_info(json_msg):
+    nworker = 0
+    supervisor=None
+    mypid = os.getpid()
+    myhostname = socket.gethostname()
+    for drp in json_msg['body']['drp'].values():
+        proc_info = drp['proc_info']
+        host = proc_info['host']
+        pid = proc_info['pid']
+        if host==myhostname and drp['active']:
+            if supervisor is None:
+                # we are supervisor if our pid is the first entry
+                supervisor = pid==mypid
+            else:
+                # only count workers for second and subsequent entries on this host
+                nworker+=1
+    return supervisor,nworker
+
+def hsd_init(prefix, dev='dev/datadev_0'):
+    global args
     global epics_prefix
     epics_prefix = prefix
+
+    root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
+    root.__enter__()
+    args['root'] = root.PcieControl.DevKcu1500
+    args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+
+def hsd_connect(msg):
+
+    root = args['root']
+
+    alloc_json = json.loads(msg)
+    supervisor,nworker = supervisor_info(alloc_json)
+    barrier_global.init(supervisor,nworker)
+
+    if barrier_global.supervisor:
+        # Check clock programming
+        clockrange = (180.,190.)
+        rate = root.MigIlvToPcieDma.MonClkRate_3.get()*1.e-6
+
+        if (rate < clockrange[0] or rate > clockrange[1]):
+            logging.info(f'Si570 clock rate {rate}.  Reprogramming')
+            root.I2CBus.programSi570(1300/7.)
+
+    barrier_global.wait()
+
+    time.sleep(1)
+
+    # Set linkId
+    
+    hostname = socket.gethostname()
+    ipaddr   = socket.gethostbyname(hostname).split('.')
+    linkId   = 0xfb000000 | (int(ipaddr[2])<<8) | (int(ipaddr[3])<<0)
+    if not args['core']:
+        linkId |= 0x40000
+
+    for i in range(4):
+        getattr(root,f'TxLinkId[{i}]').set(linkId | i<<16)
 
     # Retrieve connection information from EPICS
     # May need to wait for other processes here {PVA Server, hsdioc}, so poll
@@ -23,6 +86,12 @@ def hsd_connect(prefix):
         print('{:} is zero, retry'.format(epics_prefix+':PADDR_U'))
         time.sleep(0.1)
 
+    #  validate linkId: EPICS returns linkId as a signed int32
+    remoteLinkId = ctxt.get(epics_prefix+':MONPGP').remlinkid[0]
+    match = (remoteLinkId^linkId)&0xffffffff
+    if match:
+        raise ValueError(f'pgpTxLinkId [{linkId:x}] does not match remoteLinkId [{remoteLinkId:x}] from EPICS (match={match:x})')   
+
     ctxt.close()
 
     d = {}
@@ -31,10 +100,35 @@ def hsd_connect(prefix):
 
 def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     global partitionDelay
-    global epics_prefix
     global ocfg
-    epics_prefix = prefix
 
+    root = args['root']
+
+    #  Some diagnostic printout
+    def rxcnt(lane,name):
+        return getattr(getattr(root,f'Pgp3AxiL[{lane}]'),name).get()
+
+    def print_field(name):
+        logging.info(f'{name:15s}: {rxcnt(0,name):04x} {rxcnt(1,name):04x} {rxcnt(2,name):04x} {rxcnt(3,name):04x}')
+
+    print_field('RxFrameCount')
+    print_field('RxFrameErrorCount')
+
+    def toggle(var,value):
+        var.set(value)
+        time.sleep(10.e-6)
+        var.set(0)
+
+    #  Reset the PGP links
+    toggle(root.MigIlvToPcieDma.UserReset,1)
+    #  QPLL reset
+    toggle(root.PgpQPllReset,1)
+    #  Tx reset
+    toggle(root.PgpTxReset,1)
+    #  Rx reset
+    toggle(root.PgpTxReset,1)
+
+    #  On to the business of configure
     ctxt = Context('pva')
 
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
@@ -45,18 +139,22 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['enable'   ] = 0
     apply_config(ctxt,cfg)
 
-    # Wait for the L0Delay to update
-    time.sleep(1.1)
-
     # fetch the current configuration for defaults not specified in the configuration
     values = ctxt.get(epics_prefix+':CONFIG')
 
-    monTiming = ctxt.get(epics_prefix+':MONTIMING')
+    # Wait for the L0Delay to update
+    while True:
+        monTiming = ctxt.get(epics_prefix+':MONTIMING')
+        if monTiming.group == group:
+            break
+        print(f'Polling monTiming: group {monTiming.group}/{group}')
+        time.sleep(0.2)
+
     print(epics_prefix+':MONTIMING')
     print(monTiming)
 
     # fetch the xpm delay
-    partitionDelay = ctxt.get(epics_prefix+':MONTIMING').msgdelayset
+    partitionDelay = monTiming.msgdelayset
     print('partitionDelay {:}'.format(partitionDelay))
 
     #
@@ -119,9 +217,15 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     expert['fex_gate' ] = fex_gate
     expert['fex_xpre' ] = fex_xpre
     expert['fex_xpost'] = fex_xpost
-    expert['fex_ymin' ] = fex['ymin']
-    expert['fex_ymax' ] = fex['ymax']
+    if 'dymin' in fex:
+        expert['fex_ymin' ] = fex['corr']['baseline']+fex['dymin']
+        expert['fex_ymax' ] = fex['corr']['baseline']+fex['dymax']
+    else:
+        expert['fex_ymin' ] = fex['ymin']
+        expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
+#    expert['fex_corr_baseline'] = fex['corr']['baseline']
+#    expert['fex_corr_accum']    = fex['corr']['accum']
 
     # program the values
     apply_config(ctxt,cfg)
@@ -247,6 +351,9 @@ def apply_config(ctxt,cfg):
     if 'expert' in cfg:
         for k,v in cfg['expert'].items():
             values[k] = v
+    values['input_chan']        = cfg['user']['input_chan']
+    values['fex_corr_baseline'] = cfg['user']['fex']['corr']['baseline']
+    values['fex_corr_accum'   ] = cfg['user']['fex']['corr']['accum']
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)
 
     # the completion of the "put" guarantees that all of the above

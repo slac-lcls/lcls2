@@ -8,6 +8,7 @@
 #include <netinet/ether.h>
 #include <netdb.h>
 #include <net/if.h>
+#include <sys/resource.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -36,6 +37,54 @@ json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg)
     return createMsg("warning", "0", 0, body);
 }
 
+bool checkResourceLimits()
+{
+    const struct Resources
+    {
+        const char*  name;              // Pretty name for printing
+        const int    resource;          // RLIMIT_* value
+        const rlim_t required;          // Value application needs for proper execution
+        const bool   fatal;             // Fail if unsettable
+    } limits[] = { { "MEMLOCK", RLIMIT_MEMLOCK, RLIM_INFINITY, true },
+                   { "RTPRIO",  RLIMIT_RTPRIO,  99, false } };
+    const auto size = sizeof(limits) / sizeof(*limits);
+    struct rlimit rlimits[size];
+
+    // Query current and maximum resource limits
+    for (unsigned i = 0; i < size; ++i) {
+        if (getrlimit(limits[i].resource, &rlimits[i]) < 0) {
+            logging::error("Failed to get %s limit: %M", limits[i].name);
+            return true;
+        }
+    }
+
+    // Check whether maximum limits meet requirements
+    bool bad = false;
+    for (unsigned i = 0; i < size; ++i) {
+        if (rlimits[i].rlim_max != limits[i].required) {
+            logging::critical("Inadequate %s limit: got %jd, require %jd",
+                              limits[i].name, (uintmax_t)rlimits[i].rlim_max, limits[i].required);
+            bad |= limits[i].fatal;
+        }
+    }
+    if (bad)  return true;
+
+    // Raise current limits to maximums, if needed
+    for (unsigned i = 0; i < size; ++i) {
+        if (rlimits[i].rlim_cur != rlimits[i].rlim_max) {
+            rlimits[i].rlim_cur  = rlimits[i].rlim_max;
+            if (setrlimit(limits[i].resource, &rlimits[i]) < 0) {
+                logging::error("Failed to set %s limit from %jd to %jd: %M",
+                               limits[i].name, (uintmax_t)rlimits[i].rlim_cur, (uintmax_t)rlimits[i].rlim_max);
+                return limits[i].fatal;
+            }
+            logging::debug("Raised %s limit from %jd to %jd",
+                           limits[i].name, (uintmax_t)rlimits[i].rlim_cur, (uintmax_t)rlimits[i].rlim_max);
+        }
+    }
+    return false;                       // No error
+}
+
 static
 std::string _getNicIp(const struct ifaddrs* ifaddr,
                       const std::string& ifaceName)
@@ -59,7 +108,10 @@ std::string _getNicIp(const struct ifaddrs* ifaddr,
             logging::debug("Interface address %s: <%s>\n", ifa->ifa_name, host);
         }
     }
-    if (!host[0])  throw "NIC '" + ifaceName + "' not found";
+    if (!host[0]) {
+        logging::critical("NIC '%s' not found", ifaceName.c_str());
+        abort();
+    }
     return std::string(host);
 }
 
@@ -89,7 +141,8 @@ std::string getNicIp(bool forceEnet)
     }
     if ((interface_name == nullptr) || forceEnet) {
         if (ethernet_name == nullptr) {
-            throw "No Infiniband or Ethernet interface found";
+            logging::critical("No Infiniband or Ethernet interface found");
+            abort();
         }
         if (!forceEnet)
             logging::warning("No Infiniband interface found - using Ethernet");
@@ -226,6 +279,11 @@ CollectionApp::CollectionApp(const std::string &managerHostname,
     m_inprocRecv{&m_context, ZMQ_PAIR},
     m_nsubscribe_partition(0)
 {
+    // Check and raise required ulimit resources to maximum (if needed)
+    if (checkResourceLimits()) {
+        throw "Resource limit(s) error";
+    }
+
     m_pushSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + platform)});
 
     m_subSocket.connect({"tcp://" + managerHostname + ":" + std::to_string(zmq_base_port + 10 + platform)});
@@ -353,13 +411,13 @@ void CollectionApp::run()
         // ex 1: {"body":{"pulseId":2463859721849},"key":"pulseId"}
         if (items[1].revents & ZMQ_POLLIN) {
             json msg = m_inprocRecv.recvJson();
-            logging::debug("inproc json received  %s", msg.dump().c_str());
+            //logging::debug("inproc json received  %s", msg.dump().c_str());
             std::string key = msg["key"];
-            logging::debug("inproc '%s' message received", key.c_str());
+            //logging::debug("inproc '%s' message received", key.c_str());
             if (key == "pulseId") {
                 // forward message to control system with pulseId as the message id
                 uint64_t pid = msg["body"]["pulseId"];
-                logging::debug("inproc pulseId received  %014lx", pid);
+                //logging::debug("inproc pulseId received  %014lx", pid);
                 json body;
                 json answer = createMsg("timingTransition", std::to_string(pid), getId(), body);
                 reply(answer);

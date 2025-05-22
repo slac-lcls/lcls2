@@ -128,3 +128,11 @@ def step_pub_port(platform):
 
 def scan_pull_port(platform):
     return ControlDef.PORT_BASE + platform + 60
+
+def xpm_pull_port(xpm_name):
+    #  Extract a unique integer from the xpm name
+    #  NEH,FEH use the same host
+    xpm = int(xpm_name.rsplit(':',1)[1])
+    if xpm_name.split(':',2)[1]=='FEH':
+        xpm += 16
+    return ControlDef.PORT_BASE + xpm + 70

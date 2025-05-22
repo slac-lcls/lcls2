@@ -4,33 +4,15 @@
 //https://confluence.slac.stanford.edu/display/ppareg/AxiStream+Batcher+Protocol+Version+1
 
 
-#include <atomic>
-#include <string>
-#include <iostream>
-#include <signal.h>
-#include <cstdio>
-#include <AxisDriver.h>
-#include <stdlib.h>
-#include "psdaq/service/EbDgram.hh"
 #include "AxiBatcherParser.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include <unistd.h>
-#include <getopt.h>
-#include <time.h>
-#include <Python.h>
-#include <fstream>
-#include <vector>
-#include <typeinfo>
-
-#define MAX_RET_CNT_C 1000
 
 int load_file(std::string test_file, std::vector<uint8_t> &raw_data){
 
     std::streampos size;
     char * memblock;
-   
+
     std::ifstream file (test_file,std::ios::in|std::ios::binary|std::ios::ate);
-    
+
      if (file.is_open())
       {
         size = file.tellg();
@@ -43,14 +25,14 @@ int load_file(std::string test_file, std::vector<uint8_t> &raw_data){
         std::cout << "the entire file content is in memory \n" ;
 
         for(int i=0;i<size;i=i+1){
-            
-            raw_data.push_back(uint8_t(memblock[i]));    
+
+            raw_data.push_back(uint8_t(memblock[i]));
         }
 
-        
+
         delete[] memblock;
       }
-      else std::cout << "Unable to open file \n";    
+      else std::cout << "Unable to open file \n";
 
     return 0;
 
@@ -59,7 +41,7 @@ int load_file(std::string test_file, std::vector<uint8_t> &raw_data){
 
 int main(int argc, char* argv[])
 {
-    
+
         printf("Starting main \n");
 
         int c;
@@ -76,7 +58,7 @@ int main(int argc, char* argv[])
 
       eventBuilderParser my_frame;
 
-      std::vector<uint8_t> raw_data;   
+      std::vector<uint8_t> raw_data;
 
       load_file(test_file,raw_data);
 
@@ -84,10 +66,10 @@ int main(int argc, char* argv[])
       my_frame.load_frame(raw_data);
 
       my_frame.parse_array();
-      
-      //my_frame.print_raw();    
+
+      //my_frame.print_raw();
       my_frame.print_frame();
-    
+
 
       return 0;
 

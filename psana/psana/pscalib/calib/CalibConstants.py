@@ -73,33 +73,38 @@ CODE_GEOMETRY = 10
 LASINGOFFREFERENCE = 11
 USERS_MASK    = 12
 STATUS_EXTRA  = 13
+PIXEL_MAX     = 14
+PIXEL_MIN     = 15
 
 ctype_tuple = (
-    (PEDESTALS,      'pedestals',     np.float32),
-    (PIXEL_STATUS,   'pixel_status',  np.uint64 ),
-    (PIXEL_RMS,      'pixel_rms',     np.float32),
-    (PIXEL_GAIN,     'pixel_gain',    np.float32),
-    (PIXEL_MASK,     'pixel_mask',    np.uint8  ),
-    (PIXEL_BKGD,     'pixel_bkgd',    np.float32),
-    (COMMON_MODE,    'common_mode',   np.double ),
-    (GEOMETRY,       'geometry',      str       ),
-    (PIXEL_OFFSET,   'pixel_offset',  np.float32),
-    (PIXEL_DATAST,   'pixel_datast',  np.uint16 ),
-    (CODE_GEOMETRY,  'code_geometry', str       ),
-    (USERS_MASK,     'users_mask',    np.uint8  ),
-    (STATUS_EXTRA,   'status_extra',  np.uint64 ),
-    (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5')
+    (PEDESTALS,      'pedestals',     np.float32, 'p'),
+    (PIXEL_STATUS,   'pixel_status',  np.uint64 , 's'),
+    (PIXEL_RMS,      'pixel_rms',     np.float32, 'r'),
+    (PIXEL_GAIN,     'pixel_gain',    np.float32, 'g'),
+    (PIXEL_MASK,     'pixel_mask',    np.uint8  , 'm'),
+    (PIXEL_BKGD,     'pixel_bkgd',    np.float32, 'b'),
+    (COMMON_MODE,    'common_mode',   np.float64, 'c'),
+    (GEOMETRY,       'geometry',      str       , 'G'),
+    (PIXEL_OFFSET,   'pixel_offset',  np.float32, 'o'),
+    (PIXEL_DATAST,   'pixel_datast',  np.uint16 , 'd'),
+    (CODE_GEOMETRY,  'code_geometry', str       , 'N'),
+    (USERS_MASK,     'users_mask',    np.uint8  , 'u'),
+    (STATUS_EXTRA,   'status_extra',  np.uint64 , 'e'),
+    (PIXEL_MAX,      'pixel_max',     np.uint64 , 'x'),
+    (PIXEL_MIN,      'pixel_min',     np.uint64 , 'n'),
+    (LASINGOFFREFERENCE, 'lasingoffreference', 'hdf5', 'N'),
 )
 
 list_calib_types  = [rec[0] for rec in ctype_tuple] # (PEDESTALS, PIXEL_STATUS,...)
 list_calib_names  = [rec[1] for rec in ctype_tuple] # ('pedestals','pixel_status',...)
 list_calib_dtypes = [rec[2] for rec in ctype_tuple] # (np.float32,  np.uint64,...)
+list_calib_chars  = [rec[3] for rec in ctype_tuple] # ('p','s','r',...)
 
 dic_calib_type_to_name  = dict(zip(list_calib_types, list_calib_names))
 dic_calib_name_to_type  = dict(zip(list_calib_names, list_calib_types))
 dic_calib_type_to_dtype = dict(zip(list_calib_types, list_calib_dtypes))
 dic_calib_name_to_dtype = dict(zip(list_calib_names, list_calib_dtypes))
-
+dic_calib_char_to_name  = dict(zip(list_calib_chars, list_calib_names))
 
 UNDEFINED   =  0
 CSPAD       =  1

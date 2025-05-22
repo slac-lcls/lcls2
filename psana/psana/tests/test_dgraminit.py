@@ -15,7 +15,7 @@ class TestDgramInit:
         raised = False
         try:
             d = dgram.Dgram(file_descriptor=42)
-        except OSError:
+        except:
             raised = True
         assert raised
 

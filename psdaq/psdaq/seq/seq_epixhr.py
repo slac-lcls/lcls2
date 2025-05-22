@@ -1,6 +1,7 @@
 #from evtsel import *
 import sys
 import math
+import json
 import argparse
 #from sequser import *
 from psdaq.configdb.tsdef import *
@@ -22,7 +23,9 @@ def main():
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
     parser.add_argument('--f360', help='DAQ trigger at 360 Hz', action='store_true')
     parser.add_argument('--minAC', help='Minimum 120H interval in 119MHz clocks', default=0x5088c, type=auto_int )
+    parser.add_argument('--simAC', help='Simulate AC markers', action='store_true')
     parser.add_argument('--pv' , help="XPM pv base (like DAQ:NEH:XPM:7:SEQENG:6)", default=None)
+    parser.add_argument('--ofile', help='save to a file', type=str, default=None)
     parser.add_argument('--test', help="Calculate only", action='store_true')
     parser.add_argument('--plot', help="Plot sequence", action='store_true')
     parser.add_argument('--verbose', help="Verbose", action='store_true')
@@ -58,6 +61,7 @@ def main():
     startb  = targetb - npretrig*spacing
     nafter  = int((ac_periodb - startb)/spacing) - npretrig
     avgrate = (npretrig+nafter+1)*120.
+    last    = startb+(npretrig+nafter)*spacing
     if args.f360:
         avgrate *= 3
 
@@ -66,7 +70,7 @@ def main():
         print(f' npretrig [{npretrig}]  nposttrig [{nafter}]  avg rate [~{avgrate} Hz]')
         print(f' first [{startb} bkt  {startb/fbucket*1.e6} usec]')
         print(f' beam [{startb+npretrig*spacing} bkt]  {(startb+npretrig*spacing)/fbucket*1.e6} usec]')
-        print(f' last [{startb+(npretrig+nafter)*spacing} bkt  {(startb+(npretrig+nafter)*spacing)/fbucket*1.e6} usec]')
+        print(f' last [{last} bkt  {last/fbucket*1.e6} usec]')
 
     RUN = 0
     DAQ = 1
@@ -85,7 +89,10 @@ def main():
     # 60Hz x timeslots 1,4
     tsmask = 0x3f if args.f360 else 0x9
 #    instrset.append(ACRateSync(tsmask,0,1))  # hardcoded to (wrong) AC rate marker until xtpg fixed
-    instrset.append(ACRateSync(tsmask,'60H',1))
+    if args.simAC:
+        instrset.append(FixedRateSync(marker='910kH',occ=7761-last))
+    else:
+        instrset.append(ACRateSync(tsmask,'60H',1))
 
     #  Parent trigger comes first
     if startb:
@@ -138,6 +145,10 @@ def main():
             print(f' {i}: {instr.print_()}')
             i += 1
 
+    if args.ofile:
+        words = relocate(instrset,0)
+        with open(args.ofile,'w') as f:
+            json.dump(words, f)
 
     title = 'ePixHR'
 

@@ -6,8 +6,8 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "rapidjson/document.h"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "AxisDriver.h"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/eb/ResultDgram.hh"
 
 #include <fcntl.h>
@@ -56,9 +56,8 @@ public:
 using Drp::TimingSystem;
 
 TimingSystem::TimingSystem(Parameters* para, MemPool* pool) :
-    XpmDetector   (para, pool),
-    m_connect_json(""),
-    m_module      (0)
+    XpmDetector   (para, pool, 0),
+    m_connect_json("")
 {
     char module_name[64];
     sprintf(module_name,"psdaq.configdb.%s_config",para->detType.c_str());
@@ -118,22 +117,6 @@ void TimingSystem::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId
 void TimingSystem::connect(const json& connect_json, const std::string& collectionId)
 {
     XpmDetector::connect(connect_json, collectionId);
-
-    int fd = m_pool->fd();
-    int links = m_para->laneMask;
-
-    AxiVersion vsn;
-    axiVersionGet(fd, &vsn);
-    if (vsn.userValues[2]) // Second PCIe interface has lanes shifted by 4
-       links <<= 4;
-
-    for(unsigned i=0, l=links; l; i++) {
-        if (l&(1<<i)) {
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<30));  // clear
-          dmaWriteRegister(fd, 0x00a00000+4*(i&3), (1<<31));  // enable, zero-out length
-          l &= ~(1<<i);
-        }
-    }
 
     // returns new reference
     PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_connect");

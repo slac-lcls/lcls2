@@ -36,14 +36,14 @@ def printStackTrace():
     return
 
 
-def psbatchThreadWrapper(
+def daqmgrThreadWrapper(
     win,
     sConfigFile,
     fQueryInterval,
     evgProcMgr,
 ):
     try:
-        psbatchThread(
+        daqmgrThread(
             win,
             sConfigFile,
             fQueryInterval,
@@ -51,7 +51,7 @@ def psbatchThreadWrapper(
         )
     except:
         sErrorReport = (
-            "psbatchThreadWrapper(): psbatchThread(ConfigFile = %s, Query Interval = %f ) Failed"
+            "daqmgrThreadWrapper(): daqmgrThread(ConfigFile = %s, Query Interval = %f ) Failed"
             % (sConfigFile, float(fQueryInterval))
         )
         print(sErrorReport)
@@ -63,7 +63,7 @@ def psbatchThreadWrapper(
     return
 
 
-def psbatchThread(
+def daqmgrThread(
     win,
     sConfigFile,
     fQueryInterval,
@@ -74,26 +74,28 @@ def psbatchThread(
         locale.LC_ALL, ""
     )  # set locale for printing formatted numbers later
 
+    runner = None
     while True:
         # refresh ProcMgr status
         global bProcMgrThreadError
 
         try:
-            runner = Runner(sConfigFile)
+            if runner is None:
+                runner = Runner(sConfigFile)
             win.runner = runner
             ldProcStatus = runner.show_status(quiet=True)
             win.ldProcStatus = ldProcStatus
 
         except IOError:
             ldProcStatus = list()  # default to empty list
-            print("psbatchThread(): ProcMgr(%s): I/O error" % (sConfigFile))
+            print("daqmgrThread(): ProcMgr(%s): I/O error" % (sConfigFile))
             printStackTrace()
             # Send out the signal to notify the main window
             win.ProcMgrIOError.emit(sConfigFile)
 
         except:
             ldProcStatus = list()  # default to empty list
-            print("psbatchThread(): ProcMgr(%s) Failed" % (sConfigFile))
+            print("daqmgrThread(): ProcMgr(%s) Failed" % (sConfigFile))
             printStackTrace()
             # Send out the signal to notify the main window
             win.ProcMgrGeneralError.emit(sConfigFile)
@@ -363,7 +365,7 @@ class WinProcStat(QtWidgets.QMainWindow, ui_procStat.Ui_mainWindow):
     def on_actionAbout_triggered(self):
         QMessageBox.about(
             self,
-            "About psqueue",
+            "About daqstat",
             """<b>Status Monitor</b> v %s
             <p>Copyright &copy; 2009 SLAC PCDS
             <p>This application is used to monitor daq process status and report output file status.
@@ -424,12 +426,12 @@ def main():
     app = QApplication([])
     app.setOrganizationName("SLAC")
     app.setOrganizationDomain("slac.stanford.edu")
-    app.setApplicationName("psqueue")
+    app.setApplicationName("daqstat")
     win = WinProcStat(evgProcMgr)
     win.show()
 
     _thread.start_new_thread(
-        psbatchThreadWrapper,
+        daqmgrThreadWrapper,
         (
             win,
             sConfigFile,

@@ -58,7 +58,7 @@ class LaserGenerator(object):
 
     def one_second(self,bunch_period,branch_counts,req):
         self.instr.append('start = len(instrset)')
-        self.instr.append(f'instrset.append( ControlRequest([{req}]) )')
+        self.instr.append(f'instrset.append( ControlRequest([{req},2]) )')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
         self.ninstr += 2
         for i,f in enumerate(branch_counts):
@@ -75,7 +75,7 @@ class LaserGenerator(object):
         #  laser on subroutine
         self.instr.append('subr_on = len(instrset)')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
-        self.instr.append('instrset.append( ControlRequest([0]) )')
+        self.instr.append('instrset.append( ControlRequest([0,2]) )')
         for i,f in enumerate(branch_counts):
             self.instr.append(f'instrset.append( Branch.conditional(line=subr_on,counter={i},value={f-1}) )')
         self.instr.append('instrset.append( Return() )')
@@ -83,7 +83,7 @@ class LaserGenerator(object):
         # laser off subroutine
         self.instr.append('subr_off = len(instrset)')
         self.instr.append(f'instrset.append( FixedRateSync(marker="910kH", occ={bunch_period}) )')
-        self.instr.append(f'instrset.append( ControlRequest([1]) )')
+        self.instr.append(f'instrset.append( ControlRequest([1,2]) )')
         for i,f in enumerate(branch_counts):
             self.instr.append(f'instrset.append( Branch.conditional(line=subr_off,counter={i},value={f-1}) )')
         self.instr.append('instrset.append( Return() )')
@@ -129,7 +129,8 @@ def one_camera_sequence(args):
     print(f'd {d}')
 
     #  The bunch trains
-    gen = TrainGenerator(start_bucket     =(d['readout']+1)*args.bunch_period+args.start,
+    train_start = (d['readout']+1)*args.bunch_period+args.start
+    gen = TrainGenerator(start_bucket     =train_start,
                          train_spacing    =d['period']*args.bunch_period,
                          bunch_spacing    =args.bunch_period,
                          bunches_per_train=d['period']-d['readout'],
@@ -151,7 +152,7 @@ def one_camera_sequence(args):
     
     #  The Andor triggers
     gen = PeriodicGenerator(period=[d['period']*args.bunch_period],
-                            start =[args.start],
+                            start =[train_start if args.skip_gap else args.start],
                             charge=None,
                             repeat=-1,
                             notify=False)
@@ -237,6 +238,7 @@ def main():
     parser.add_argument("--periods", default=[1,0.01], type=float, nargs='+', help="integration periods (sec); default=[1,0.01]")
     parser.add_argument("--readout_time", default=[0.391,0.005], type=float, nargs='+', help="camera readout times (sec); default=[0.391,0.005]")
     parser.add_argument("--bunch_period", default=28, type=int, help="spacing between bunches in the train; default=28")
+    parser.add_argument("--skip_gap", action='store_true', help='Trigger cameras at the end of the gap')
     parser.add_argument("--laser_onoff", type=int, nargs='+', 
                         default=[1,2,3,1],
                         help='''

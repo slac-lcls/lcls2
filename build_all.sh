@@ -13,11 +13,17 @@ cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
 force_clean=0
-no_daq=0
 no_ana=0
 build_ext_list=""
 PSANA_PATH=`pwd`/psana
 export REBUILD=0
+
+if [ -d "/sdf/group/lcls/" ]
+then
+    no_daq=1
+else
+    no_daq=0
+fi
 
 while getopts "c:p:s:b:fdar" opt; do
   case $opt in

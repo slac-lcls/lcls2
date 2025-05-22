@@ -15,7 +15,7 @@ add_library(drpbase
 )
 
 target_include_directories(drpbase PUBLIC
-    ${AES_STREAM_DRIVER_HEADER_PATH}
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
 )
 
 target_link_libraries(drpbase
@@ -37,6 +37,7 @@ add_executable(drp
     EpixUHR.cc
     Epix100.cc
     EpixQuad.cc
+    JungfrauEmulator.cc
     TimingDef.cc
     TimingBEB.cc
     TimingSystem.cc
@@ -123,10 +124,69 @@ target_link_libraries(tpr_trigger
     app
     tpr
     dl
-    readline
+    ${Readline_LIBRARY}
     Threads::Threads
     rt
 )
+
+if(CMAKE_CUDA_COMPILER)
+    #message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
+    #message(CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES="${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}")
+    #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
+    #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
+
+    add_executable(drp_gpu
+        GpuDetector.cc
+        GpuDetectorApp.cc
+    )
+    # @todo: No need for this anymore, I think
+    #target_include_directories(drp_gpu PUBLIC
+    #    ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    #)
+    target_link_libraries(drp_gpu
+        xtcdata::xtc
+        drpbase
+        trigger
+        mmhw
+        nlohmann_json::nlohmann_json
+    )
+
+    add_library(AreaDetector_gpu SHARED
+        AreaDetectorGpu.cc
+        GpuWorker_impl.cu
+        AreaDetector.cc
+    )
+    target_include_directories(AreaDetector_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        #$<INSTALL_INTERFACE:include>  # Not working?
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(AreaDetector_gpu
+        xtcdata::xtc
+        drpbase
+        trigger  # @todo: This needed?
+        mmhw
+        nlohmann_json::nlohmann_json  # @todo: This needed?
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+
+    add_executable(pgpreadgpu
+        pgpreadgpu.cc
+        GpuAsyncLib.cc
+    )
+    target_include_directories(pgpreadgpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(pgpreadgpu
+        CUDA::cudart
+        CUDA::cuda_driver
+        Threads::Threads
+    )
+endif()
 
 add_executable(configdb_obj_2xtc
     configdb_obj_2xtc.cc
@@ -163,7 +223,6 @@ add_executable(pgpread
 )
 target_include_directories(pgpread PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(pgpread
     mmhw
@@ -179,7 +238,6 @@ add_executable(pgpread_timetool
 target_include_directories(pgpread_timetool PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
     $<INSTALL_INTERFACE:include>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
     ${PYTHON_INCLUDE_DIRS}
 )
 target_link_libraries(pgpread_timetool
@@ -195,8 +253,6 @@ add_executable(AxiBatcherParserTest
     AxiBatcherParser.cc
 )
 target_include_directories(AxiBatcherParserTest PUBLIC
-
-    ${AES_STREAM_DRIVER_HEADER_PATH}
     ../psdaq/drp
     ${PYTHON_INCLUDE_DIRS}
 )
@@ -211,7 +267,6 @@ add_executable(drp_validate
 )
 target_include_directories(drp_validate PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(drp_validate
     Threads::Threads
@@ -244,7 +299,6 @@ add_executable(drp_groupsync
 )
 target_include_directories(drp_groupsync PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 target_link_libraries(drp_groupsync
     Threads::Threads
@@ -253,13 +307,6 @@ target_link_libraries(drp_groupsync
 add_executable(ePixMDescTest
     ePixMDescTest.cc
 )
-
-if(CMAKE_CUDA_COMPILER)
-    add_executable(test_gpu_add
-        test_gpu_add.cu
-    )
-    set_target_properties(test_gpu_add PROPERTIES CUDA_ARCHITECTURES "86")
-endif()
 
 
 install(TARGETS drp
@@ -271,3 +318,10 @@ install(TARGETS drp
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+
+if(CMAKE_CUDA_COMPILER)
+  install(TARGETS
+    drp_gpu
+    AreaDetector_gpu
+  )
+endif()

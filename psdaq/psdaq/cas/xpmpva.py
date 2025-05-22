@@ -27,6 +27,12 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
 
+def isATCA(pvbase):
+    print(f'** isATCA {pvbase}')
+    pv = Pv(pvbase+':FwBuild')
+    v = pv.get()
+    return 'Kcu' not in v
+
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
         super(PvPAddr,self).__init__()
@@ -55,7 +61,13 @@ class PvPAddr(QtWidgets.QWidget):
             elif qs[0:2]=='ff':
                 shelf = int(qs[2:4],16)
                 port  = int(qs[6:8],16)
-                s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+
+                pvbase = ':'.join(self.pv.pvname.split(':')[:-2])+f':{shelf}'
+                if isATCA(pvbase):
+                    s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
+                else:
+                    s = 'XPM:%d:QSFP%d-%d'%(shelf,port/4,port%4)
+                    
             self.__display.valueSet.emit(s)
         else:
             print(err)
@@ -431,7 +443,8 @@ class XpmGroups(object):
                                  'desc'  :'-',
                                  'rate'  :'-'} for i in range(NSeqCodes)}}
         for i in range(NGroups):
-            if self.vals['master'][i].__value__ == 1:
+            v = self.vals['master'][i].__value__
+            if v is not None and v > 0:
                 vals['master'][i] = self.name
                 vals['l0rate'][i] = str(self.vals['l0rate'][i].__value__)
 
@@ -521,8 +534,41 @@ class GroupsTab(QtWidgets.QWidget):
             self.codesText['desc'  ][i].setText(vals['codes'][i]['desc'  ])
             self.codesText['rate'  ][i].setText(vals['codes'][i]['rate'  ])
 
+class PatternTab(QtWidgets.QWidget):
+    def __init__(self, pvbase):
+        super(PatternTab,self).__init__()
+
+        l = QtWidgets.QVBoxLayout()
+        v20b = (1<<20)-1
+        l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
+
+        self.coinc = []
+        g = QtWidgets.QGridLayout()
+        for i in range(8):
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),0,i+1)
+            g.addWidget(QtWidgets.QLabel(f'G{i}'),i+1,0)
+        for i in range(8):
+            for j in range(i,8):
+                w = QtWidgets.QLabel('-')
+                self.coinc.append(w)
+                g.addWidget(w, i+1, j+1)
+        box = QtWidgets.QGroupBox("Group Coincidences")
+        box.setLayout(g)
+        l.addWidget(box)
+        l.addStretch()
+        initPvMon(self,f'{pvbase}PATT:COINC',isStruct=True)
+
+        self.setLayout(l)
+
+    def update(self,err):
+        if err is None:
+            v = self.pv.__value__
+            q = v.value.Coinc
+            for i,qv in enumerate(q):
+                self.coinc[i].setText(str(qv))
+
 class Ui_MainWindow(object):
-    def setupUi(self, MainWindow, titles):
+    def setupUi(self, MainWindow, titles, nopatt):
         global ATCAWidget
         MainWindow.setObjectName("MainWindow")
         self.centralWidget = QtWidgets.QWidget(MainWindow)
@@ -535,9 +581,11 @@ class Ui_MainWindow(object):
         stack = QtWidgets.QStackedWidget()
 
         for title in titles:
-            pvbase = title + ':'
+            pvbase = title+':'
+
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
+
             if 'Kcu' in v:
                 amcTitle = 'QSFP'
                 nDsLinks = (4,4) # if 'Gen' in v else (3,4)
@@ -613,6 +661,9 @@ class Ui_MainWindow(object):
 
             tw.addTab(GroupsTab(pvbase),"Groups/EventCodes")
 
+            if nopatt==False:
+                tw.addTab(PatternTab(pvbase),"Pattern")
+
             if 'Kcu' not in v:
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
 
@@ -644,13 +695,14 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
+    parser.add_argument("--nopatt", help="no pattern stats", action='store_true')
     parser.add_argument("pvs", help="pvs to monitor",nargs='+')
     args = parser.parse_args()
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.pvs)
+    ui.setupUi(MainWindow,args.pvs,args.nopatt)
     MainWindow.updateGeometry()
 
     MainWindow.show()

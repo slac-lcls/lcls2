@@ -30,7 +30,7 @@ namespace Drp {
         enum index { raw, numfields };
 
         EpixUHRPanelDef() {
-            ADD_FIELD(raw              ,UINT16,2);
+            ADD_FIELD(raw              ,UINT8,2);
             //            ADD_FIELD(aux              ,UINT16,2);
         }
     } epixUHRPanelDef;
@@ -46,24 +46,24 @@ namespace Drp {
     class EpixUHRDef : public VarDef
     {
     public:
-        enum index { sht31Hum, sht31TempC,
-                     nctLocTempC, nctFpgaTempC,
-                     asicA0_2V5_CurrmA,
-                     asicA1_2V5_CurrmA,
-                     asicA2_2V5_CurrmA,
-                     asicA3_2V5_CurrmA,
-                     asicD0_2V5_CurrmA,
-                     asicD1_2V5_CurrmA,
-                     therm0TempC,
-                     therm1TempC,
-                     pwrDigCurr,
-                     pwrDigVin,
-                     pwrDigTempC,
-                     pwrAnaCurr,
-                     pwrAnaVin,
-                     pwrAnaTempC,
-                     asic_temp,
-                     num_fields };
+        enum index {    sht31Hum, sht31TempC,
+                        nctLocTempC, nctFpgaTempC,
+                        asicA0_2V5_CurrmA,
+                        asicA1_2V5_CurrmA,
+                        asicA2_2V5_CurrmA,
+                        asicA3_2V5_CurrmA,
+                        asicD0_2V5_CurrmA,
+                        asicD1_2V5_CurrmA,
+                        therm0TempC,
+                        therm1TempC,
+                        pwrDigCurr,
+                        pwrDigVin,
+                        pwrDigTempC,
+                        pwrAnaCurr,
+                        pwrAnaVin,
+                        pwrAnaTempC,
+                        asic_temp,
+                        num_fields };
 
         EpixUHRDef() {
             ADD_FIELD(sht31Hum         ,FLOAT,0);
@@ -97,9 +97,9 @@ static EpixUHR* epix = 0;
 
 static void sigHandler(int signal)
 {
-  psignal(signal, "epixUHR received signal");
-  epix->monStreamEnable();
-  ::exit(signal);
+    psignal(signal, "epixUHR received signal");
+    epix->monStreamEnable();
+    ::exit(signal);
 }
 
 EpixUHR::EpixUHR(Parameters* para, MemPool* pool) :
@@ -109,11 +109,11 @@ EpixUHR::EpixUHR(Parameters* para, MemPool* pool) :
 {
     // VC 0 is used with XilinxKcu1500Pgp4_10Gbps
     // VC 1 is used with Lcls2EpixHrXilinxKcu1500Pgp4_10Gbps, which is the default
-    virtChan = 1;
+    virtChan = 0;
 
     _init(para->detName.c_str());  // an argument is required here
 
-    m_descramble = true;
+    // m_descramble = true;
 
     epix = this;
 
@@ -155,15 +155,13 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
     // set up the names for L1Accept data
     // Generic panel data
     {
-        Alg alg("raw", 0, 0, 0);
-        
+        Alg alg("raw", 2, 0, 0);
         // copy the detName, detType, detId from the Config Names
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
-        
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
         
         logging::debug("Constructing panel eventNames src 0x%x",
-                       unsigned(nid));
+                        unsigned(nid));
         Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                     configNames.detName(), alg,
                                                     configNames.detType(),
@@ -178,6 +176,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
     }
 
     {
+        
         XtcData::Names&    names    = detector::configNames(configo);
         
         XtcData::DescData& descdata = configo.desc_shape();
@@ -191,7 +190,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
         }
         
     }
-   
+
     return 0;
 }
 
@@ -203,22 +202,24 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
 {
     EvtBatcherHeader* ebh = static_cast<EvtBatcherHeader*>(m_pool->dmaBuffers[index]);
     ebh = reinterpret_cast<EvtBatcherHeader*>(ebh->next());
+
     //  This may get called multiple times, so we can't overwrite input we need
     uint32_t* p = reinterpret_cast<uint32_t*>(ebh);
-
-    if (m_descramble) {
-        //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
-        if (p[2]==0 && p[3]==0) {
-            // A zero timestamp means the data has not been rearranged.
-            for(unsigned i=1; i<5; i++) {
-                p[2*i+0] = p[4*i+0];
-                p[2*i+1] = p[4*i+1];
-            }
-        }
-    }
-    else {
-        // Descrambling will be done in firmware
-    }
+    //uint32_t* p = reinterpret_cast<uint32_t*>((char*)ebh+16);
+   
+    // if (m_descramble) {
+    //     //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
+    //     if (p[2]==0 && p[3]==0) {
+    //         // A zero timestamp means the data has not been rearranged.
+    //         for(unsigned i=1; i<5; i++) {
+    //             p[2*i+0] = p[4*i+0];
+    //             p[2*i+1] = p[4*i+1];
+    //         }
+    //     }
+    // }
+    // else {
+    //     // Descrambling will be done in firmware
+    // }
     return reinterpret_cast<Pds::TimingHeader*>(p);
 }
 
@@ -233,21 +234,25 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
 void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-
+    
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows    = 192;
-    const unsigned elemRowSize = 384;
-    const size_t   headerSize  = 24;
+    const unsigned elemRowSize = 168;
+    const size_t   headerSize  = 0; // was 88
 
     //  The epix10kT unit cell is 2x2 ASICs
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
-    shape[0] = elemRows*2; shape[1] = elemRowSize*2;
-    Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixUHRPanelDef::raw, shape);
 
-    if (subframes.size() != 6) {
-        logging::error("Missing data: subframe size %d [6]\n",
-                       subframes.size());
+    // Moved to a 1D array instead of 2D, due to packing of the data (12 instead of 16). 
+    shape[0] = 4; shape[1] = elemRows*elemRowSize*12/8; // numrows*numcolumns*numasics*(12Bits/pixel; 8bits/Bytes)
+    Array<uint8_t> aframe = cd.allocate<uint8_t>(EpixUHRPanelDef::raw, shape);
+    // unsigned m_asic_check = __builtin_popcount(m_asics)+2; this was working with 2 Asics, we don't understand why we need to change it to +1 with one Asic
+    unsigned m_asic_check = __builtin_popcount(m_asics)+1;
+    
+    if (subframes.size() != m_asic_check) {
+        logging::error("Missing data: subframe size %d [%d]\n",
+                        subframes.size(), m_asic_check);
         xtc.damage.increase(XtcData::Damage::MissingData);
         return;
     }
@@ -264,76 +269,45 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
 
     //  Missing ASICS are padded with zeroes
     const unsigned numAsics = 4;
-    const unsigned asicSize = elemRows*elemRowSize;
-    memset(aframe.data(), 0, numAsics*asicSize*sizeof(uint16_t));
-
+    const auto   asicSize    = elemRows*elemRowSize*12/8;
+    memset(aframe.data(), 0, numAsics*asicSize);
+    
     //  Check which ASICs are in the streams
+    unsigned a=0;
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<numAsics; q++) {
         if (q_asics & (1<<q)) {
-            if (subframes.size() < (q+2)) {
+    // it was a+2 working with 2 Asics, with only one Asic we have to switch to a+1, to be better understood why.
+            if (subframes.size() < (a+1)) {
                 logging::error("Missing data from asic %d\n", q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
+
             }
-            else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
+            else if (subframes[a+1].num_elem() != headerSize+asicSize) {
+            // else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
                 logging::error("Wrong size frame %d [%d] from asic %d\n",
-                               subframes[q+2].num_elem()/2, asicSize+headerSize, q);
+                                subframes[a+1].num_elem()/2, asicSize+headerSize, q);
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
+            a++;
         }
     }
 
-    // Descramble the data
-#if 1
-    // Reorder banks from:                 to:
-    // 18    19    20    21    22    23        3     7    11    15    19    23
-    // 12    13    14    15    16    17        2     6    10    14    18    22
-    //  6     7     8     9    10    11        1     5     9    13    17    21
-    //  0     1     2     3     4     5        0     4     8    12    16    20
-
-    //const unsigned asicOrder[] = {0, 2, 1, 3};
-    const unsigned numBanks    = 24;
-    const unsigned bankRows    = 4;
-    const unsigned bankCols    = 6;
-    const unsigned bankHeight  = elemRows / bankRows;
-    const unsigned bankWidth   = elemRowSize / bankCols;
-    const unsigned hw          = bankWidth / 2;
-    const unsigned hb          = bankHeight * hw;
-
-    for (unsigned q = 0; q < numAsics; ++q) {
-        if ((q_asics & (1<<q))==0)
-            continue;
-        //auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asicOrder[q]].data()) + headerSize;
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + q].data()) + headerSize;
-        for (unsigned bankRow = 0; bankRow < bankRows; ++bankRow) {
-            for (unsigned r = 0; r < bankHeight; ++r) {
-                // ASIC firmware bug: Rows are shifted up by one in ring buffer fashion
-                auto row  = r == 0 ? bankHeight - 1 : r - 1; // Compensate
-                auto aRow = bankRow*bankHeight+r;
-                //auto dst  = q<2 ? &aframe(aRow+elemRows,  elemRowSize*(q&1))
-                //                : &aframe(elemRows-1-aRow,elemRowSize*(1-(q&1)));
-                auto dst  = &aframe(aRow+elemRows*((q&2)>>1),  elemRowSize*(q&1));
-                for (unsigned bankCol = 0; bankCol < bankCols; ++bankCol) {
-                    unsigned bank = bankWidth * bankCol + bankRow;
-                    for (unsigned col = 0; col < bankWidth; ++col) {
-                        //          (even cols w/ offset + row offset + inc every 2 cols) * fill one pixel / bank + bank inc
-                        auto idx = (((col+1) % 2) * hb   +  hw * row  + int(col / 2))     * numBanks              + bank;
-                        *dst++ = src[idx];
-                    }
-                }
-            }
-        }
-    }
-#else
     auto frame = aframe.data();
+    q_asics = m_asics;
+    a=0;
     for (unsigned asic = 0; asic < numAsics; ++asic) {
-        auto src = reinterpret_cast<const uint16_t*>(subframes[2 + asic].data()) + headerSize;
-        auto dst = &frame[asic * asicSize];
-        memcpy(dst, src, elemRows*elemRowSize*sizeof(uint16_t));
+        if (q_asics & (1<<asic)) {
+            // replacing 2+a to 1+a it worked with 2 Asics we switch to 1 for one asic, to be investigated why.
+            auto src = reinterpret_cast<const uint8_t*>(subframes[1 + a].data()) + headerSize;
+            auto dst = &frame[asic * asicSize];
+            memcpy(dst, src, elemRows*elemRowSize*12/8);
+            q_asics ^= (1<<asic);
+            a++;
+        }
     }
-#endif
 }
 
 void     EpixUHR::slowupdate(XtcData::Xtc& xtc, const void* bufEnd)

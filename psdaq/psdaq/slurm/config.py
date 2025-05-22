@@ -17,7 +17,6 @@ class Config:
                 config["host"] = LOCALHOST
             # Remove the id key and use it as the main key for main_config
             cid = config["id"]
-            config.pop("id")
             self.main_config[cid] = config
         self.select_config = {}
 
@@ -33,7 +32,6 @@ class Config:
             if isinstance(item, dict):
                 config = copy.deepcopy(item)
                 cid = config["id"]
-                config.pop("id")
                 self.select_config[cid] = config
             else:
                 cid = item
@@ -43,8 +41,12 @@ class Config:
                     print(f"Warning: no {cid} found in main_config")
 
     def add(self, config):
+        if not isinstance(config, (dict,)):
+            msg = 'Error: only accept config as a dictionary (e.g. {"id": "daq", ...})'
+            raise ValueError(msg)
         cid = config["id"]
-        config.pop("id")
+        if "host" not in config:
+            config["host"] = LOCALHOST
         self.select_config[cid] = config
 
     def rename(self, *args):
@@ -56,6 +58,11 @@ class Config:
                 self.select_config[new_cid] = self.select_config.pop(current_cid)
             else:
                 print(f"Warning: no {current_cid} found in select_config")
+
+    def extend(self, configs):
+        """Add all items in the given configs list"""
+        for config in configs:
+            self.add(config)
 
     def show(self, full=False):
         print("%20s %18s %80s" % ("UniqueID", "Host", "Command+Args"))

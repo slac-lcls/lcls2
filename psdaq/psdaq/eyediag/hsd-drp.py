@@ -20,6 +20,7 @@ import dev
 import sys
 import argparse
 import logging
+import socket
 
 class EyeScanRoot(pr.Root):
 
@@ -87,10 +88,11 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='Eyediag for HSD')
 
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
-    parser.add_argument('--link', type=int, required=True, help="Link id ([-1 for timing link], [0 - 7 for pgp link])" )
-    parser.add_argument('--dev', type=str, required=False, help="Device file (default: /dev/datadev_0)" )
+    parser.add_argument('--link', type=int, default=None, help="Link id (default is all)" )
+    parser.add_argument('--dev', default='/dev/datadev_0', help="Device file (default: /dev/datadev_0)" )
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
+    parser.add_argument('--write', default=None, help='Write results to OPATH', metavar='OPATH')
     parser.add_argument('--gui', action='store_true', help='Bring up GUI')
     parser.add_argument('--target', type=float, required=False, help="BET Target" )
 
@@ -98,15 +100,10 @@ def main():
     if args.verbose:
         setVerbose(True)
 
-    if args.dev is None:
-        datadev = '/dev/datadev_0'
-    else:
-        datadev = args.dev
-
     ######################
     # Setup the system
     ######################
-    root = EyeScanRoot(datadev)
+    root = EyeScanRoot(args.dev)
 
     ###################### 
     # Start the system
@@ -126,7 +123,17 @@ def main():
         )
   
     if args.bathtub:
-        root.link[args.link].bathtubPlot()
+        links = [i for i in range(4)] if args.link is None else [args.link]
+        for link in links:
+            if args.write:
+                base = f'{args.write}/{socket.gethostname()}.{args.dev.split("/")[-1]}.{link}'
+                fname = base+'.png'
+                result = root.link[link].bathtubPlot(fname)
+                f=open(base+'.dat',mode='w')
+                f.write(f'BER:{result}')
+                f.close()
+            else:
+                result = root.link[link].bathtubPlot()
 
     if args.eye:
         root.link[args.link].eyePlot(target=target)

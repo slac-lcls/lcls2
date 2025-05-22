@@ -1,14 +1,16 @@
-from libc.string    cimport memcpy
-from libc.stdlib    cimport malloc, free
-from libcpp.string  cimport string
-from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-from cpython.pycapsule cimport PyCapsule_New, PyCapsule_GetPointer
-from psana.dgramedit  cimport *
 from cpython cimport array
+from cpython.buffer cimport (PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE,
+                             PyBuffer_Release, PyObject_GetBuffer)
+from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_New
+from libc.stdlib cimport free, malloc
+
+from psana.dgramedit cimport *
+
 import array
-import numpy as np
 import numbers
-import io
+
+import numpy as np
+
 from psana import dgram
 
 MAXBUFSIZE=64000000
@@ -24,11 +26,13 @@ class AlgDef:
         self.minor  = minor
         self.micro  = micro
 
+
 class DetectorDef:
     def __init__(self, name, dettype, detid):
         self.name       = name
         self.dettype    = dettype
         self.detid      = detid
+
 
 class NamesDef:
     def __init__(self, nodeId, namesId):
@@ -54,23 +58,26 @@ class DataType:
                 9: np.float64,
                 10: str,
     }
-    psana_types = {np.uint8:    0,
-                   np.uint16:   1,
-                   np.uint32:   2,
-                   np.uint64:   3,
-                   np.int8:     4,
-                   np.int16:    5,
-                   np.int32:    6,
-                   np.int64:    7,
-                   np.float32:  8,
-                   np.float64:  9,
-                   str:         10,
-                  }
+    psana_types = {
+                    np.uint8:    0,
+                    np.uint16:   1,
+                    np.uint32:   2,
+                    np.uint64:   3,
+                    np.int8:     4,
+                    np.int16:    5,
+                    np.int32:    6,
+                    np.int64:    7,
+                    np.float32:  8,
+                    np.float64:  9,
+                    str:         10,
+    }
+
     def to_psana2(self, numpy_dtype):
         return self.psana_types[numpy_dtype]
 
     def to_numpy(self, psana_dtype):
         return self.nptypes[psana_dtype]
+
 
 cdef class PyDataDef:
     cdef DataDef* cptr
@@ -102,6 +109,7 @@ cdef class PyDataDef:
 
 cdef class PyCapsuleDgram():
     cdef Py_buffer oPybuf
+
     def __init__(self, buf):
         """ Wraps pointer of a buffer object"""
         PyObject_GetBuffer(buf, &(self.oPybuf), PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -109,35 +117,48 @@ cdef class PyCapsuleDgram():
     def get(self):
         return PyCapsule_New(<char *>self.oPybuf.buf, "dgram", NULL)
 
+cdef class PyDamage():
+    cdef Damage* cptr
+
+    def __init__(self, pycap_damage):
+        self.cptr = <Damage *>PyCapsule_GetPointer(pycap_damage, "damage")
+
+    def value(self):
+        return self.cptr.value()
 
 cdef class PyXtc():
     cdef Xtc* cptr
     cdef const void* bufEnd             # See bufEnd in PyDgram
 
     def __init__(self, pycap_xtc, pycap_bufend):
-        self.cptr = <Xtc*>PyCapsule_GetPointer(pycap_xtc,"xtc")
+        self.cptr = <Xtc*>PyCapsule_GetPointer(pycap_xtc, "xtc")
         self.bufEnd = PyCapsule_GetPointer(pycap_bufend, "bufEnd")
 
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
 
+    @property
+    def damage(self):
+        pycap_damage = PyCapsule_New(<void *>&(self.cptr.damage), "damage", NULL)
+        return PyDamage(pycap_damage)
+
 cdef class PyDgram():
     cdef Dgram* cptr
 
-    # Limit identifier for the dgram to identify the end of the buffer. 
+    # Limit identifier for the dgram to identify the end of the buffer.
     # For reading dgram from a file, this is size() of XtcFileIterator.
     # For createTransition, this is BUFSIZE in XtcUpdateIter.
     cdef const void* bufEnd
     cdef uint64_t bufSize
     cdef PyDgram config_pydgram
-    
+
     def __init__(self, pycap_dgram, bufsize, config_pydgram=None):
-        self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram,"dgram")
+        self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram, "dgram")
         self.bufSize = bufsize
         self.bufEnd = <char*>self.cptr + self.bufSize
         # All dgram types except config will have config_pydgram passed in.
         # This is done so that when we export PyDgram as dgram.Dgram,
-        # we can use the config from its own class. 
+        # we can use the config from its own class.
         self.config_pydgram = config_pydgram
 
     @property
@@ -151,7 +172,7 @@ cdef class PyDgram():
 
     def dec_extent(self, uint32_t removed_size):
         self.cptr.xtc.extent -= removed_size
-        # The minimum value of extent is the size of Xtc. 
+        # The minimum value of extent is the size of Xtc.
         err = f"Invalid extent value: {self.cptr.xtc.extent} (must be >= sizeof(Xtc): {sizeof(Xtc)})"
         assert self.cptr.xtc.extent >= sizeof(Xtc), err
 
@@ -202,7 +223,7 @@ cdef class PyXtcUpdateIter():
         # in createTransition(). The value of pyxtc.bufEnd comes from
         # the externally defined value. In test_dgrampy.py example, this value
         # is the maxDgramSize of PyXtcFileIterator (used to iterate over
-        # dgrams in the given xtc file). 
+        # dgrams in the given xtc file).
         self.cptr.process(pyxtc.cptr, pyxtc.bufEnd)
 
     def iterate(self, PyXtc pyxtc):
@@ -219,7 +240,7 @@ cdef class PyXtcUpdateIter():
         PyObject_GetBuffer(outbuf, &(self.oPybuf), PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
         o_ptr = <char *>self.oPybuf.buf
         self.cptr.setOutput(o_ptr)
-    
+
     def free_outbuf(self):
         # TODO: Find way toProtect when PyObject_GetBuffer is not called.
         PyBuffer_Release(&(self.oPybuf))
@@ -227,8 +248,14 @@ cdef class PyXtcUpdateIter():
     def updatetimestamp(self, PyDgram pydg, timestamp_val):
         self.cptr.updateTimeStamp(pydg.cptr[0], timestamp_val)
 
+    def updateservice(self, PyDgram pydg, transitionId):
+        self.cptr.updateService(pydg.cptr[0], transitionId)
+
+    def updatedamage(self, PyDgram pydg, damage):
+        self.cptr.updateDamage(pydg.cptr[0], damage)
+
     def names(self, PyDgram pydg, detdef, algdef, PyDataDef pydatadef,
-            nodeId, namesId, segment):
+              nodeId, namesId, segment):
         cdef PyXtc pyxtc = pydg.pyxtc
 
         # Passing string to c needs utf-8 encoding
@@ -241,17 +268,20 @@ cdef class PyXtcUpdateIter():
         # for namesId, increment the current value by 1.
         # for nodeId, use the current nodeId of this Configure.
         # for segment, use 0.
-        if nodeId is None: nodeId = self.cptr.getNodeId()
-        if namesId is None: namesId = self.cptr.getNextNamesId()
-        if segment is None: segment = 0
+        if nodeId is None:
+            nodeId = self.cptr.getNodeId()
+        if namesId is None:
+            namesId = self.cptr.getNextNamesId()
+        if segment is None:
+            segment = 0
 
         # Dereference in cython with * is not allowed. You can either use [0] index or
         # from cython.operator import dereference
         # cdef Xtc xtc = dereference(pyxtc.cptr)
         self.cptr.addNames(pyxtc.cptr[0], pydg.bufEnd, detName, detType, detId,
-                nodeId, namesId, segment,
-                algName, algdef.major, algdef.minor, algdef.micro,
-                pydatadef.cptr[0])
+                           nodeId, namesId, segment,
+                           algName, algdef.major, algdef.minor, algdef.micro,
+                           pydatadef.cptr[0])
         return NamesDef(nodeId, namesId)
 
     def createdata(self, PyDgram pydg, namesdef):
@@ -280,7 +310,7 @@ cdef class PyXtcUpdateIter():
         PyBuffer_Release(&data_pybuf)
 
     def adddata(self, namesdef, PyDataDef pydatadef,
-            datadef_name, unsigned[:] shape, data):
+                datadef_name, unsigned[:] shape, data):
         cdef unsigned* shape_ptr
         cdef Py_buffer shape_pybuf
         PyObject_GetBuffer(shape, &shape_pybuf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
@@ -292,7 +322,7 @@ cdef class PyXtcUpdateIter():
         data_ptr = <char *>data_pybuf.buf
 
         self.cptr.addData(namesdef.nodeId, namesdef.namesId, shape_ptr,
-                data_ptr, pydatadef.cptr[0], datadef_name.encode())
+                          data_ptr, pydatadef.cptr[0], datadef_name.encode())
 
         PyBuffer_Release(&shape_pybuf)
         PyBuffer_Release(&data_pybuf)
@@ -310,11 +340,11 @@ cdef class PyXtcUpdateIter():
         cdef char* buf = <char *>PyCapsule_GetPointer(pycap_buf, "buf")
         cdef uint64_t bufSize = bufsize
         self.bufEnd = buf + bufSize
-        
+
         # This returns Dgram and updates bufEnd to point to
         # buffer size of the dgram (defined in XtcUpdateIter).
         cdef Dgram* dg =  &(self.cptr.createTransition(transId,
-                counting_timestamps, timestamp_val, buf))
+                            counting_timestamps, timestamp_val, buf))
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
         pydg = PyDgram(pycap_dg, <char*>self.bufEnd - <char*>dg, config_pydgram=config_pydgram)
         return pydg
@@ -347,7 +377,7 @@ cdef class PyXtcFileIterator():
     def next(self):
         cdef Dgram* dg
         dg = self.cptr.next()
-        
+
         # Wrap the pointers and set the bufEnd limit to maxDgarmsize
         pycap_dg = PyCapsule_New(<void *>dg, "dgram", NULL)
 
@@ -356,7 +386,7 @@ cdef class PyXtcFileIterator():
             pydg = PyDgram(pycap_dg, self.cptr.size())
             self.config = pydg
             # Set all other dgrams after the first one to non-config
-            self.isConfig = 0       
+            self.isConfig = 0
         else:
             pydg = PyDgram(pycap_dg, self.cptr.size(), config_pydgram=self.config)
 
@@ -384,7 +414,7 @@ cdef class DgramEdit:
         self.buf = NULL
         if dg:
             config_pydgram = config_dgramedit.get_pydgram() if config_dgramedit is not None else None
-            self.pydg = PyDgram(dg.get_dgram_ptr(), bufsize, config_pydgram=config_pydgram) 
+            self.pydg = PyDgram(dg.get_dgram_ptr(), bufsize, config_pydgram=config_pydgram)
             if config_dgramedit:
                 self.uiter = config_dgramedit.uiter
                 self.uiter.set_cfg(False)
@@ -410,13 +440,13 @@ cdef class DgramEdit:
             self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize, config_pydgram=config_dgramedit.pydg)
         else:
             raise IOError, "Unsupported input arguments"
-    
+
     def __dealloc__(self):
         if self.buf != NULL:
             free(self.buf)
 
     def Detector(self, detdef, algdef, datadef_dict,
-            nodeId=None, namesId=None, segment=None):
+                 nodeId=None, namesId=None, segment=None):
         """Returns Names object, which represents to a detector."""
         assert self.uiter.is_config() == 1, "Expect a Configure dgram."
 
@@ -427,7 +457,7 @@ cdef class DgramEdit:
             pydatadef.add(key, dt.to_psana2(numpy_dtype), rank)
 
         det = self.uiter.names(self.pydg, detdef, algdef, pydatadef,
-                nodeId, namesId, segment)
+                               nodeId, namesId, segment)
         setattr(det, 'datadef', pydatadef)
 
         class Container:
@@ -442,9 +472,8 @@ cdef class DgramEdit:
         setattr(det, algdef.name, Container())
         return det
 
-
     def adddata(self, data_container):
-        cdef array.array shape = array.array('I', [0,0,0,0,0])
+        cdef array.array shape = array.array('I', [0, 0, 0, 0, 0])
         cdef int i
 
         det = data_container._det
@@ -471,7 +500,6 @@ cdef class DgramEdit:
             err_t = f"Incorrect type for '{datadef_name}'. Expected: {DataType.nptypes[pydatadef.get_dtype(datadef_name)]}."
             assert data_rank == pydatadef.get_rank(datadef_name), err_r
 
-
             # Handle scalar types (string or number)
             if np.ndim(data) == 0:
                 if pydatadef.is_number(datadef_name):
@@ -482,7 +510,9 @@ cdef class DgramEdit:
                     self.uiter.setstring(pydatadef, datadef_name, data)
             else:
                 # Handle array type
-                assert data.dtype.type != np.str_, f"Incorrect data for '{datadef_name}'. Array of string is not permitted. Use string instead (e.g. 'hello world')."
+                assert data.dtype.type != np.str_, \
+                                          f"Incorrect data for '{datadef_name}'. \
+                                          Array of string is not permitted. Use string instead (e.g. 'hello world')."
                 assert pydatadef.get_dtype(datadef_name) == dt.to_psana2(data.dtype.type), err_t
 
                 array.zero(shape)
@@ -492,7 +522,6 @@ cdef class DgramEdit:
                 self.uiter.adddata(det, pydatadef, datadef_name, shape, data)
             # Clears data container for next event
             datadict[datadef_name] = None
-
 
     def removedata(self, det_name, alg_name):
         self.uiter.set_filter(det_name, alg_name)
@@ -519,7 +548,7 @@ cdef class DgramEdit:
         if self.pydg.service() == PyTransitionId.Configure:
             is_config = True
             self.uiter.set_cfgwrite(True)
-        
+
         # Set main output buffer to point to external buffer given by users
         self.uiter.set_outbuf(out)
 
@@ -537,9 +566,15 @@ cdef class DgramEdit:
 
         # Release PyBuffer object
         self.uiter.free_outbuf()
-        
+
     def updatetimestamp(self, timestamp_val):
         self.uiter.updatetimestamp(self.pydg, timestamp_val)
+
+    def updateservice(self, transitionId):
+        self.uiter.updateservice(self.pydg, transitionId)
+
+    def updatedamage(self, damage):
+        self.uiter.updatedamage(self.pydg, damage)
 
     @property
     def size(self):
@@ -551,7 +586,6 @@ cdef class DgramEdit:
 
     def get_pydgram(self):
         return self.pydg
-    
+
     def get_dgram(self, view=None):
         return self.pydg.get(view=view)
-

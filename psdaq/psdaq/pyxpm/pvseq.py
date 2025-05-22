@@ -5,6 +5,7 @@ from psdaq.seq.seq import *
 from psdaq.pyxpm.pvhandler import *
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
+import numpy as np
 
 verbose = True
 
@@ -98,7 +99,9 @@ class Engine(object):
                 addr = 0
                 none_found = 1<<self._reg.seqAddrLen.get()
                 best_size = none_found
-                for key,cache in self._caches.items():
+                keys = sorted(self._caches.keys())
+                for key in keys:
+                    cache = self._caches[key]
                     isize = key-addr
                     if verbose:
                         logging.info('Found memblock {:x}:{:x} [{:x}]'.format(addr,key,isize))
@@ -278,12 +281,28 @@ class PVSeq(object):
         logging.info('rmvseq index %d'%val)
         if val > 1 and val < NSubSeq:
             self._eng.removeSeq(val)
+            aval = self._pv_SeqIdx.current()['value'].tolist()
+            try:
+                aval.remove(val)
+            except:
+                pass
+            pvUpdate(self._pv_SeqIdx,np.array(aval,dtype=np.uint32))
+            pvUpdate(self._pv_Seq00Idx,aval[0])
+        elif val < 0:
+            aval = self._pv_SeqIdx.current()['value']
+            for i in aval:
+                if i < 2:
+                    continue
+                self._eng.removeSeq(val)
+            pvUpdate(self._pv_SeqIdx,[0]*NSubSeq)
             pvUpdate(self._pv_Seq00Idx,0)
-
+                    
     def ins(self, pv, val):
         if val:
             rval = self._eng.insertSeq()
             pvUpdate(self._pv_Seq00Idx,rval)
+            aval = np.insert(self._pv_SeqIdx.current()['value'],0,rval)
+            pvUpdate(self._pv_SeqIdx,aval)
 
     def schedReset(self, pv, val):
         if val>0:

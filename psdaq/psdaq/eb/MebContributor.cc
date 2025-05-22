@@ -22,8 +22,7 @@ using logging  = psalg::SysLog;
 using ms_t     = std::chrono::milliseconds;
 
 
-MebContributor::MebContributor(const MebCtrbParams&            prms,
-                               std::shared_ptr<MetricExporter> exporter) :
+MebContributor::MebContributor(const MebCtrbParams& prms) :
   _prms       (prms),
   _maxEvSize  (roundUpSize(prms.maxEvSize)),
   _maxTrSize  (prms.maxTrSize),
@@ -35,15 +34,6 @@ MebContributor::MebContributor(const MebCtrbParams&            prms,
   _eventCount (0),
   _trCount    (0)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.detName},
-                                            {"detseg", std::to_string(prms.detSegment)},
-                                            {"alias", prms.alias}};
-  exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
-  exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
-  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
-  exporter->add("MCtbO_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
 }
 
 int MebContributor::resetCounters()
@@ -76,8 +66,26 @@ void MebContributor::unconfigure()
   _enabled = false;
 }
 
-int MebContributor::connect()
+int MebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.detName},
+                                            {"detseg", std::to_string(_prms.detSegment)},
+                                            {"alias", _prms.alias}};
+  exporter->add("MCtbO_EvCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
+  exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
+  exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
+  exporter->add("MCtbO_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+
+  return 0;
+}
+
+int MebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
+{
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
+
   _links      .resize(_prms.addrs.size());
   _region     .resize(_links.size());
   _regSize    .resize(_links.size());
@@ -85,7 +93,7 @@ int MebContributor::connect()
   _trBuffers  .resize(_links.size());
   _id         = _prms.id;
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
+  rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
   if (rc)  return rc;
 
   return 0;

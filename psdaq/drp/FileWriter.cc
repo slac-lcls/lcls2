@@ -17,6 +17,7 @@ namespace Drp {
 static inline ssize_t _write(int fd, const void* buffer, size_t count)
 {
     auto sz = write(fd, buffer, count);
+
     while (size_t(sz) != count) {
         if (sz < 0) {
             // %m will be replaced by the string strerror(errno)
@@ -113,6 +114,7 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
         m_writing += 1;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
+            logging::critical("File writing failed");
             throw "File writing failed";
         }
         m_writing -= 1;
@@ -319,6 +321,7 @@ void BufferedFileWriterMT::run()
         Buffer& b = m_pend.front();
         m_writing += 1;
         if (_write(m_fd, b.p, b.count) == -1) {
+            logging::critical("File writing failed MT");
             throw "File writing failed";
         }
         m_writing -= 1;

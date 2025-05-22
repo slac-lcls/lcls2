@@ -10,12 +10,12 @@
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
-#include <DmaDriver.h>
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/epicstools/PVBase.hh"
 
@@ -39,6 +39,13 @@ static json createPulseIdMsg(uint64_t pulseId);
 static json createChunkRequestMsg();
 
 namespace Drp {
+
+static std::string _getHostName()
+{
+    char hostname[HOST_NAME_MAX];
+    gethostname(hostname, HOST_NAME_MAX);
+    return std::string(hostname);
+}
 
 static long readInfinibandCounter(const std::string& counter)
 {
@@ -99,18 +106,23 @@ MemPool::MemPool(Parameters& para) :
         logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
         throw "Error opening kcu1500!!";
     }
+    logging::info("PGP device '%s' opened", para.device.c_str());
 
-    uint32_t dmaCount;
-    dmaBuffers = dmaMapDma(m_fd, &dmaCount, &m_dmaSize);
+    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
         logging::critical("Failed to map dma buffers: %s", strerror(errno));
         abort();
     }
-    logging::info("dmaCount %u,  dmaSize %u", dmaCount, m_dmaSize);
+    logging::info("dmaCount %u,  dmaSize %u", m_dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
-    m_nDmaBuffers = nextPowerOf2(dmaCount);
+    m_nDmaBuffers = nextPowerOf2(m_dmaCount);
+    if (m_nDmaBuffers > 0xffffff) {     // Mask for evtCounter
+        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (%u)",
+                          m_nDmaBuffers, 0xffffff);
+        abort();
+    }
 
     // make the size of the pebble buffer that will contain the datagram equal
     // to the dmaSize times the number of lanes
@@ -146,7 +158,7 @@ MemPool::MemPool(Parameters& para) :
 
 MemPool::~MemPool()
 {
-   logging::info("%s: closing file descriptor", __PRETTY_FUNCTION__);
+   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
    close(m_fd);
 }
 
@@ -207,10 +219,22 @@ Pds::EbDgram* MemPool::allocateTr()
 
 void MemPool::resetCounters()
 {
-    m_dmaAllocs.store(0);
-    m_dmaFrees .store(0);
-    m_allocs   .store(0);
-    m_frees    .store(0);
+    if (dmaInUse() == 0) {
+        m_dmaAllocs.store(0);
+        m_dmaFrees .store(0);
+    } else {
+        logging::warning("DMA counters cannot be reset while buffers are still in use: "
+                         "Allocs %lu, Frees %lu, inUse %ld",
+                         m_dmaAllocs.load(), m_dmaFrees.load(), dmaInUse());
+    }
+    if (inUse() == 0) {
+        m_allocs   .store(0);
+        m_frees    .store(0);
+    } else {
+        logging::warning("Not resetting pebble counters when buffers are still in use: "
+                         "Allocs %lu, Frees %lu, inUse %ld",
+                         m_allocs.load(), m_frees.load(), inUse());
+    }
 }
 
 void MemPool::shutdown()
@@ -267,10 +291,22 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0)
 {
+    // Ensure there are more DMA buffers than the size of the batch used to free them
+    if (pool.dmaCount() < m_dmaIndices.size()) {
+        logging::critical("nDmaIndices (%zu) must be >= dmaCount (%u)",
+                          m_dmaIndices.size(), pool.dmaCount());
+        abort();
+    }
+
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
 
     pool.resetCounters();
+}
+
+PgpReader::~PgpReader()
+{
+    flush();
 }
 
 int32_t PgpReader::read()
@@ -305,6 +341,11 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
+  // Return buffers queued for freeing
+  if (m_count)  m_pool.freeDma(m_dmaIndices, m_count);
+  m_count = 0;
+
+  // Also return buffers queued for reading, without adjusting counters
   int32_t ret = read();
   if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
 }
@@ -523,9 +564,8 @@ std::string Drp::FileParameters::runName()
 }
 
 EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon,
-                       const std::shared_ptr<Pds::MetricExporter>& exporter) :
-  EbCtrbInBase(tPrms, exporter),
+                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon) :
+  EbCtrbInBase(tPrms),
   m_pool(pool),
   m_det(nullptr),
   m_pgp(nullptr),
@@ -544,13 +584,17 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
   m_evtSize(0),
   m_latPid(0),
   m_latency(0),
-  m_partition(para.partition)
+  m_para(para)
+{
+}
+
+int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
     std::map<std::string, std::string> labels
-        {{"instrument", para.instrument},
-         {"partition", std::to_string(para.partition)},
-         {"detname", para.detName},
-         {"alias", para.alias}};
+        {{"instrument", m_para.instrument},
+         {"partition", std::to_string(m_para.partition)},
+         {"detname", m_para.detName},
+         {"alias", m_para.alias}};
     exporter->add("DRP_Damage"    ,   labels, Pds::MetricType::Gauge,   [&](){ return m_damage; });
     exporter->add("DRP_RecordSize",   labels, Pds::MetricType::Counter, [&](){ return m_offset; });
     exporter->add("DRP_RecordDepth",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.depth(); });
@@ -562,6 +606,22 @@ EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
     exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
     exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
     exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
+    exporter->add("DRP_transitionId", labels, Pds::MetricType::Gauge,   [&](){ return m_lastTid; });
+
+    return 0;
+}
+
+int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
+{
+    m_lastTid = XtcData::TransitionId::Unconfigure; // @todo: Check
+
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+
+    rc = this->EbCtrbInBase::connect(exporter);
+    if (rc)  return rc;
+
+    return 0;
 }
 
 void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
@@ -861,7 +921,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
     // To write/monitor event, require the primary readout group to have triggered
     // Events for which the primary RoG didn't trigger are counted as bypass events
-    if (dgram->readoutGroups() & (1 << m_partition)) {
+    if (dgram->readoutGroups() & (1 << m_para.partition)) {
         if (m_writing) {                    // Won't ever be true for Configure
             // write event to file if it passes event builder or if it's a transition
             if (result.persist() || result.prescale()) {
@@ -946,7 +1006,7 @@ public:
   bool ready()   { return getComplete(); }
 };
 
-static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double& value)
+static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
 {
   if (!pv || !pv->ready())  return false;
 
@@ -958,38 +1018,7 @@ static bool _pvVectElem(const std::shared_ptr<PV>& pv, unsigned element, double&
 DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
 {
-    char hostname[HOST_NAME_MAX];
-    gethostname(hostname, HOST_NAME_MAX);
-    m_hostname = std::string(hostname);
-
-    m_exposer = Pds::createExposer(para.prometheusDir, m_hostname);
-    m_exporter = std::make_shared<Pds::MetricExporter>();
-
-    if (m_exposer) {
-        m_exposer->RegisterCollectable(m_exporter);
-    }
-
-    std::map<std::string, std::string> labels{{"instrument", para.instrument},
-                                              {"partition", std::to_string(para.partition)},
-                                              {"detname", para.detName},
-                                              {"detseg", std::to_string(para.detSegment)},
-                                              {"alias", para.alias}};
-    m_exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_rcv_data");});
-
-    m_exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
-                    [](){return 4*readInfinibandCounter("port_xmit_data");});
-
-    m_exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
-                    [&](){return pool.dmaInUse();});
-    m_exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
-
-    m_exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
-                    [&](){return pool.inUse();});
-    m_exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
-
-    m_exporter->addFloat("drp_deadtime", labels,
-                         [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName());
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
@@ -1001,7 +1030,7 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers(), m_exporter);
+    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers());
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -1012,9 +1041,9 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.maxTrSize  = para.maxTrSize;
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
-    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms, m_exporter);
+    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor, m_exporter);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1058,13 +1087,44 @@ json DrpBase::connectionInfo(const std::string& ip)
     m_tPrms.port.clear();               // Use an ephemeral port
 
     int rc = m_ebRecv->startConnection(m_tPrms.port);
-    if (rc)  throw "Error starting connection";
+    if (rc)  {
+        logging::critical("Error starting EbReceiver connection");
+        abort();
+    }
 
     json info = {{"drp_port", m_tPrms.port},
                  {"num_buffers", pool.nbuffers()},
                  {"max_ev_size", pool.bufferSize()},
                  {"max_tr_size", m_para.maxTrSize}};
+
     return info;
+}
+
+int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
+{
+    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
+                                              {"partition", std::to_string(m_para.partition)},
+                                              {"detname", m_para.detName},
+                                              {"detseg", std::to_string(m_para.detSegment)},
+                                              {"alias", m_para.alias}};
+    exporter->add("drp_port_rcv_rate", labels, Pds::MetricType::Rate,
+                  [](){return 4*readInfinibandCounter("port_rcv_data");});
+
+    exporter->add("drp_port_xmit_rate", labels, Pds::MetricType::Rate,
+                  [](){return 4*readInfinibandCounter("port_xmit_data");});
+
+    exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.dmaInUse();});
+    exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
+
+    exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.inUse();});
+    exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
+
+    exporter->addFloat("drp_deadtime", labels,
+                       [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+
+    return 0;
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
@@ -1073,23 +1133,34 @@ std::string DrpBase::connect(const json& msg, size_t id)
     m_connectMsg = msg;
     m_collectionId = id;
 
-    int rc = parseConnectionParams(msg["body"], id);
+    // If the exporter already exists, replace it so that previous metrics are deleted
+    m_exporter = std::make_shared<Pds::MetricExporter>();
+    if (m_exposer) {
+        m_exposer->RegisterCollectable(m_exporter);
+    }
+
+    int rc = setupMetrics(m_exporter);
+    if (rc) {
+        return std::string{"Failed to set up metrics"};
+    }
+
+    rc = parseConnectionParams(msg["body"], id);
     if (rc) {
         return std::string{"Connection parameters error - see log"};
     }
 
-    rc = m_tebContributor->connect();
+    rc = m_tebContributor->connect(m_exporter);
     if (rc) {
         return std::string{"TebContributor connect failed"};
     }
     if (m_mPrms.addrs.size() != 0) {
-        rc = m_mebContributor->connect();
+        rc = m_mebContributor->connect(m_exporter);
         if (rc) {
             return std::string{"MebContributor connect failed"};
         }
     }
 
-    rc = m_ebRecv->connect();
+    rc = m_ebRecv->connect(m_exporter);
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
@@ -1160,7 +1231,7 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo, m_hostname, m_nodeId);
+            msg = m_ebRecv->openFiles(m_para, runInfo, _getHostName(), m_nodeId);
         }
     }
 
@@ -1259,6 +1330,10 @@ void DrpBase::disconnect()
         m_mebContributor->disconnect();
     }
     m_ebRecv->disconnect();
+
+    if (m_exporter) {
+        m_exporter.reset();
+    }
 }
 
 int DrpBase::setupTriggerPrimitives(const json& body)
@@ -1272,20 +1347,19 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     // In the following, _0 is added in prints to show the default segment number
     logging::info("DrpBase: Fetching trigger info from ConfigDb/%s/%s_0",
                   configAlias.c_str(), triggerConfig.c_str());
-    
+
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
         logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
                        __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
-    logging::info("############# DRP 1");
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
 
     std::string buildDets("---");
     if (top.HasMember("buildDets"))
         buildDets = top["buildDets"].GetString();
-    
+
     if (!(buildAll || buildDets.find(m_para.detName))) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb/%s/%s_0",
@@ -1296,14 +1370,24 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         return 0;
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
-    
+
+    //  Look for the detector-specific producer first
     std::string symbol("create_producer");
-    if (!buildAll)  symbol +=  "_" + m_para.detName;
+    symbol +=  "_" + m_para.detName;
     m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
-    if (!m_triggerPrimitive) {
-        logging::error("%s:\n  Failed to create TriggerPrimitive",
-                    __PRETTY_FUNCTION__);
-        return -1;
+    if (m_triggerPrimitive) {
+        logging::info("%s:\n  Created detector-specific TriggerPrimitive [%s]",
+                      __PRETTY_FUNCTION__, symbol.c_str());
+    }
+    else {
+        // Now try the generic producer
+        symbol = std::string("create_producer");
+        m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+        if (!m_triggerPrimitive) {
+            logging::error("%s:\n  Failed to create TriggerPrimitive",
+                           __PRETTY_FUNCTION__);
+            return -1;
+        }
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 

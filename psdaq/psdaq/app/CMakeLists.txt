@@ -1,4 +1,5 @@
 find_package(PythonLibs REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -238,7 +239,7 @@ target_link_libraries(bldpayload
    ${EPICS_PVDATA_LIB}
    ${EPICS_PVACLIENT_LIB}
    ${EPICS_CA_LIB}
-   readline
+   ${READLINE_LIBRARY}
    dl
    rt
 )
@@ -254,12 +255,15 @@ target_include_directories(sim_udpencoder PUBLIC
     ${ZeroMQ_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
     ${RapidJSON_INCLUDE_DIRS}
+    ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(sim_udpencoder
    tpr
    libfabric::fabric
    prometheus-cpp::push
+   nlohmann_json::nlohmann_json
+   ${PYTHON_LIBRARIES}
    ${Readline_LIBRARY}
    dl
    rt

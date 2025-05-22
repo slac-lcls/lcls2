@@ -11,7 +11,7 @@
 #include <iostream>
 #include <signal.h>
 #include <cstdio>
-#include <AxisDriver.h>
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 #include <stdlib.h>
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -29,24 +29,24 @@
 class eventBuilderParser {
     public:
         std::vector<uint8_t>                  raw_data;                       //this isn't really the raw data anymore. it's castas a uint8_t now.
-        std::vector<uint8_t>                  main_header;   
+        std::vector<uint8_t>                  main_header;
         std::vector<uint16_t>                 frame_sizes_reverse_order;      //the size of each subframe extracted from the tail
         std::vector<std::vector<uint16_t>>    frame_positions_reverse_order;  //vector of vectors.  N elements long with each element containing a start and an end.
-        std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.  
+        std::vector<std::vector<uint8_t>>     frames;                         //the actual edge positions, camera images, time stamps, etc... will be elements of this array.
                                                                               //I.e. this is the scientific data that gets viewed, analyzed, and published
-        std::vector<eventBuilderParser>       sub_frames; 
-        
-        std::vector<short>                    is_sub_frame;                   
+        std::vector<eventBuilderParser>       sub_frames;
+
+        std::vector<short>                    is_sub_frame;
 
         int                                   spsft               = 16;       //spsft stand for the size position in the sub frame tail
-        int                                   HEADER_WIDTH        = 16;                            
-        int                                   version;    
+        int                                   HEADER_WIDTH        = 16;
+        int                                   version;
 
-        bool                                  DEBUG;             
+        bool                                  DEBUG;
 
 
-        
-        //this method looks at the position of the raw data indicated in the argument, process the data 
+
+        //this method looks at the position of the raw data indicated in the argument, process the data
         //at that location, and returns the position of the next place to look for the next piece of data
         //it is assumed that the position argument points to the section of the sub-frame tail that contains the subframe length information
         uint16_t frame_to_position(int position);
@@ -57,7 +57,7 @@ class eventBuilderParser {
 
         //this method does the actual parsing.  Upon completion of this method, the members
         //frame_sizes_reverse_order, frame_position_reverse_order are populated
-        int parse_array();        // checks if one of the frame elements is itself an axi batcher sub frame type. 
+        int parse_array();        // checks if one of the frame elements is itself an axi batcher sub frame type.
         int check_for_subframes();
 
         // this will populate the subframe
@@ -66,7 +66,7 @@ class eventBuilderParser {
         //pgpread_timetool sub frames keep growing.  this should prevent that.
         int clear();
 
-        //checking for damage in frame 
+        //checking for damage in frame
         bool is_damaged(uint8_t start,uint8_t end);
 
         //printing for debugging
@@ -76,7 +76,7 @@ class eventBuilderParser {
         template <class T> int print_vector2d(std::vector<T> &my_vector);
 
         int print_sub_batcher();
-        
+
         template <class T> int print_vector(std::vector<T> &my_vector);
 
 

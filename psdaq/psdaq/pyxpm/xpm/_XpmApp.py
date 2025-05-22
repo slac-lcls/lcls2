@@ -71,6 +71,7 @@ class XpmApp(pr.Device):
                     name        = "XpmApp", 
                     description = "XPM Module", 
                     fidPrescale = 200,
+                    linkMonitoring = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
@@ -80,6 +81,25 @@ class XpmApp(pr.Device):
         ##############################
         # Variables
         ##############################
+
+        def GLOB_CONST(name, desc, offset, bitsize, bitoffs):
+            self.add(pr.RemoteVariable(    
+                name         = name,
+                description  = desc,
+                offset       = offset,
+                bitSize      = bitsize,
+                bitOffset    = bitoffs,
+                base         = pr.UInt,
+                mode         = "RO",
+                verify       = False,
+            ))
+
+        GLOB_CONST("numddc"    ,"Number of DestDiagControl engines",0x300,8,0)
+        GLOB_CONST("numseq"    ,"Number of Sequence engines"       ,0x300,8,8)
+        GLOB_CONST("numdslinks","Number of downstream links"       ,0x300,8,16)
+        GLOB_CONST("numbplinks","Number of backplane links"        ,0x300,4,24)
+        GLOB_CONST("axilfreq"  ,"Axi-lite bus clock frequency"     ,0x304,32,0)
+        GLOB_CONST("statintv"  ,"Status update interval"           ,0x308,32,0)
 
         self.add(pr.RemoteVariable(    
             name         = "paddr",
@@ -277,6 +297,148 @@ class XpmApp(pr.Device):
             offset       =  0x14,
         ))
             
+        if linkMonitoring:
+            self.add(pr.RemoteVariable(
+                name         = "link_txResetDone",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_txReady",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x01,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxResetDone",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x02,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxReady",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x03,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxErr",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x04,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxIsXpm",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  0x05,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxpmarstdone",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  8,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_txpmarstdone",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  9,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxcdrlock",
+                description  = "link status summary",
+                offset       =  0x50,
+                bitSize      =  1,
+                bitOffset    =  6,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxErrCnts",
+                description  = "link status summary",
+                offset       =  0x54,
+                bitSize      =  16,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxRcvCnts",
+                description  = "link status summary",
+                offset       =  0x58,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_rxId",
+                description  = "link status summary",
+                offset       =  0x5c,
+                bitSize      =  32,
+                bitOffset    =  0x00,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_gthCntRst",
+                description  = "Reset GTH counters",
+                offset       =  0x0a,
+                bitSize      =  1,
+                bitOffset    =  6,
+                base         = pr.UInt,
+                mode         = "RW",
+            ))
+
+            self.add(pr.RemoteVariable(
+                name         = "link_eyescanrst",
+                description  = "Reset GTH counters",
+                offset       =  0x0a,
+                bitSize      =  1,
+                bitOffset    =  5,
+                base         = pr.UInt,
+                mode         = "RW",
+            ))
+
         self.add(pr.RemoteVariable(    
             name         = "l0Reset",
             description  = "L0 trigger reset",
@@ -303,6 +465,16 @@ class XpmApp(pr.Device):
             offset       =  0x1a,
             bitSize      =  1,
             bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "l0Common",
+            description  = "L0 common master",
+            offset       =  0x1b,
+            bitSize      =  1,
+            bitOffset    =  0x05,
             base         = pr.UInt,
             mode         = "RW",
         ))
@@ -357,6 +529,16 @@ class XpmApp(pr.Device):
             mode         = "RW",
         ))
 
+        self.add(pr.RemoteVariable(
+            name         = "commonL0Delay",
+            description  = "L0Delay for common group",
+            offset       = 0x24,
+            bitSize      = 8,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
         self.add(pr.RemoteVariable(    
             name         = "numL1Acc",
             description  = "L1 accept count",
@@ -367,6 +549,9 @@ class XpmApp(pr.Device):
             mode         = "RO",
         ))
 
+        #
+        #  Not implemented
+        #
         if False:
             self.add(pr.RemoteVariable(    
                 name         = "l1Clr",
@@ -458,16 +643,6 @@ class XpmApp(pr.Device):
                 mode         = "RO",
             ))
 
-#            self.add(pr.RemoteVariable(    
-#                name         = "anaTagRd",
-#                description  = "Analysis tag read counts",
-#                offset       =  0x68,
-#                bitSize      =  32,
-#                bitOffset    =  0x00,
-#                base         = pr.UInt,
-#                mode         = "RO",
-#            )) 
-
         self.add(pr.RemoteVariable(    
             name         = "l0HoldReset",
             description  = "Hold L0Select Reset",
@@ -498,18 +673,6 @@ class XpmApp(pr.Device):
             mode         = "RW",
             verify       = False
         ))
-
-        if False:
-            self.add(pr.RemoteVariable(    
-                name         = "msgIns",
-                description  = "Message insert",
-                offset       =  0x71,
-                bitSize      =  1,
-                bitOffset    =  0x07,
-                base         = pr.UInt,
-                mode         = "RW",
-                verify       = False
-            ))
 
         self.add(pr.RemoteVariable(    
             name         = "msgPayl",

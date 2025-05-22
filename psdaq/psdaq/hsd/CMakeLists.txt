@@ -43,7 +43,6 @@ target_include_directories(hsd PUBLIC
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
-    ${AES_STREAM_DRIVER_HEADER_PATH}
 )
 
 target_link_libraries(hsd

@@ -20,14 +20,16 @@ namespace Pds {
 namespace Drp {
 
 struct Parameters;
+class GpuWorker;
 
 class Detector
 {
 public:
     Detector(Parameters* para, MemPool* pool) :
-        nodeId(-1), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
+        nodeId(-1u), virtChan(0), m_para(para), m_pool(pool), m_xtcbuf(para->maxTrSize) {}
     virtual ~Detector() {}
     virtual nlohmann::json connectionInfo(const nlohmann::json& msg) {return nlohmann::json({});}
+    virtual void connectionShutdown() {}
     virtual void connect(const nlohmann::json&, const std::string& collectionId) {};
     virtual unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) = 0;
     virtual unsigned beginrun (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) {return 0;}
@@ -43,6 +45,7 @@ public:
     virtual unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
     virtual unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) {return 1;};
 
+    virtual GpuWorker* gpuWorker() { return nullptr; }
     virtual Pds::TimingHeader* getTimingHeader(uint32_t index) const
     {
         return static_cast<Pds::TimingHeader*>(m_pool->dmaBuffers[index]);

@@ -121,6 +121,7 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
                'laneConfig'  : {lane:'Piranha4'},
                'dataDebug'   : False,
                'enLclsII'    : True,
+               'startupMode' : True,
                'pgp4'        : False,
                'enableConfig': False,
     }
@@ -142,8 +143,8 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     # there appear to be no options to tell ClinkDevRoot to use
     # LCLS2 timing (without reading yaml files, which we don't
     # want to do) so set it by hand here.
-    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-    time.sleep(3.5)
+##    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+##    time.sleep(3.5)
 
     # TODO: To be removed, now commented out xpm glitch workaround
     ## Open a new thread here
@@ -304,6 +305,10 @@ def piranha4_connectionInfo(cl, alloc_json_str):
 
     return connect_info
 
+# called on dealloc
+def piranha4_connectionShutdown():
+    barrier_global.shutdown()
+
 def user_to_expert(cl, cfg, full=False):
     global group
 
@@ -329,9 +334,9 @@ def user_to_expert(cl, cfg, full=False):
         if gate < 4000:
             print('gate_ns {:} must be at least 4000 ns'.format(gate))
             raise ValueError('gate_ns < 4000')
-        if gate > 160000:
-            print('gate_ns {:} may cause errors.  Please use a smaller gate'.format(gate))
-            #raise ValueError('gate_ns > 160000')
+        if gate > 8000:
+            print('gate_ns {:} must be less than 8us to permit 100kHz running'.format(gate))
+            raise ValueError('gate_ns > 8000')
         d['expert.ClinkFeb.TrigCtrl.TrigPulseWidth']=1.0 #gate*0.001
         d['expert.ClinkFeb.ClinkTop.ClinkCh.UartPiranha4.SET']=gate
 
@@ -380,9 +385,6 @@ def config_expert(cl, cfg):
         if('get' in dir(rogue_node) and 'set' in dir(rogue_node) and path != 'cl' ):
             if 'UartPiranha4' in str(rogue_node):
                 uart._rx._clear()
-            if 'Hsio.TimingRx' in path and not barrier_global.supervisor:
-                print('*** non-supervisor skipping setting',path,'to value',configdb_node)
-                continue
             rogue_node.set(configdb_node)
             #  Parameters like black-level need time to take affect (up to 1.75s)
             if 'UartPiranha4' in str(rogue_node):

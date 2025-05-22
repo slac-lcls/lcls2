@@ -47,6 +47,10 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
+def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp')):
+    return {k:v for k,v in d.items() if k in list_keys}
+
+
 def datasource_kwargs_from_string(s):
     """ Parses string parameters like "exp=<exp-name>,run=<comma-separated-run-numbers>,dir=<xtc-files-directory>,max_events=<number-of-events>"
         to dict keyward arguments.
@@ -73,6 +77,11 @@ def datasource_kwargs_from_string(s):
     import psana.psexp.utils as ut
 
     return ut.datasource_kwargs_from_string(s)
+
+
+def data_source_kwargs(**kwa):
+    """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
+    return datasource_kwargs_from_string(kwa.get('dskwargs', None))
 
 
 def datasource_arguments(args):
@@ -229,7 +238,7 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
         +'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
-        +'%s_segment_numbers    : %s' % (sep, str(det.raw._segment_numbers))\
+        +'%s_segment_numbers    : %s' % (sep, str(getattr(det.raw, '_segment_numbers', None)))\
         +'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\

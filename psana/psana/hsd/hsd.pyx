@@ -19,7 +19,7 @@ cimport numpy as cnp
 cnp.import_array()
 
 import sys # ref count
-from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes
+from amitypes import HSDWaveforms, HSDPeaks, HSDAssemblies, HSDPeakTimes, Array1d
 
 ################# High Speed Digitizer #################
 
@@ -38,12 +38,14 @@ cdef extern from "include/HsdPython.hh" namespace "Pds::HSD":
         si.uint16_t* waveform(unsigned &numsamples)
         #si.uint16_t* sparse(unsigned &numsamples)
         unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
+        unsigned char fex_out_of_range()
 
 cdef class PyChannelPython:
     cdef public cnp.ndarray waveform
     #cdef public cnp.ndarray sparse
     cdef public list peakList
     cdef public list startPosList
+    cdef public unsigned fexOor
     def __init__(self, cnp.ndarray[evthdr_t, ndim=1, mode="c"] evtheader, cnp.ndarray[chan_t, ndim=1, mode="c"] chan, dgram):
         cdef cnp.npy_intp shape[1]
         cdef si.uint16_t* wf_ptr
@@ -90,6 +92,8 @@ cdef class PyChannelPython:
             self.peakList.append(peak)
             self.startPosList.append(startPos)
 
+        self.fexOor = chanpy.fex_out_of_range()
+
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
     def __init__(self, *args):
@@ -103,9 +107,9 @@ class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
                 continue
             seg_dict = getattr(config,self._det_name)
             for seg,seg_config in seg_dict.items():
-                self._padValue[seg] = (seg_config.config.fex.ymin+
-                                       seg_config.config.fex.ymax)//2
-                self._padLength[seg] = seg_config.config.fex.gate*40
+                self._padValue[seg] = (seg_config.config.fex.ymin[0]+
+                                       seg_config.config.fex.ymax[0])//2
+                self._padLength[seg] = seg_config.config.fex.gate[0]*40
         
     # this routine is used by ami/data.py
     def _seg_chans(self):
@@ -146,6 +150,7 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._padValue = {}
         self._padLength = {}
+        self._fexStatus = {}
 
     def _isNewEvt(self, evt):
         if self._evt == None or not (evt._nanoseconds == self._evt._nanoseconds and evt._seconds == self._evt._seconds):
@@ -184,13 +189,14 @@ cdef class cyhsd_base_1_2_3:
             if iseg not in self._padDict:
                 self._padDict[iseg]={}
             self._padDict[iseg][chanNum] = padvalues
-            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg][0]) * 1/(6.4e9*13/14)
+            self._padDict[iseg]["times"] = np.arange(self._padLength[iseg]) * 1/(6.4e9*13/14)
 
     def _parseEvt(self, evt):
         self._wvDict = {}
         self._spDict = {}
         self._peaksDict = {}
         self._padDict = {}
+        self._fexStatus = {}
         self._fexPeaks = []
         self._hsdsegments = self._segments(evt)
         if self._hsdsegments is None: return # no segments at all
@@ -215,6 +221,7 @@ cdef class cyhsd_base_1_2_3:
             chan = getattr(self._hsdsegments[iseg], chanName)
             if chan.size > 0:
                 pychan = PyChannelPython(self._hsdsegments[iseg].eventHeader, chan, self._hsdsegments[iseg])
+
                 self._pychansegs[iseg] = (chanNum, pychan)
                 if pychan.waveform is not None:
                     if iseg not in self._wvDict.keys():
@@ -232,6 +239,10 @@ cdef class cyhsd_base_1_2_3:
                         self._peaksDict[iseg]={}
                     self._peaksDict[iseg][chanNum] = (pychan.startPosList,pychan.peakList)
 
+                if iseg not in self._fexStatus.keys():
+                    self._fexStatus[iseg]={}
+                self._fexStatus[iseg][chanNum] = ([pychan.fexOor],[])
+
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
         # unclear how to flag this.  maybe return None to the user
@@ -239,7 +250,10 @@ cdef class cyhsd_base_1_2_3:
         #seglist.sort()
         #if seglist != self._config_segments: 
 
-
+    #  Need to expose this dictionary to subclasses
+    def peaksDict(self):
+        return self._peaksDict
+	
     # adding this decorator allows access to the signature information of the function in python
     # this is used for AMI type safety
     @cython.binding(True)
@@ -353,3 +367,48 @@ class hsd_raw_2_0_0(hsd_hsd_1_2_3):
                 self._padValue[seg] = (seg_config.config.user.fex.ymin+
                                        seg_config.config.user.fex.ymax)//2
                 self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
+#
+#  2.0.0 -> 3.0.0
+#    Fex sample data is baseline-corrected and given 4 fractional bits, 15 total
+#    Baseline corrections (4 numbers) will also be stored on each event
+#
+class hsd_raw_3_0_0(hsd_raw_2_0_0):
+
+    def __init__(self, *args):
+        hsd_raw_2_0_0.__init__(self, *args)
+	
+    def _load_config(self):
+        for config in self._configs:
+            if not hasattr(config,self._det_name):
+                continue
+            seg_dict = getattr(config,self._det_name)
+            for seg,seg_config in seg_dict.items():
+                self._padValue[seg] = seg_config.config.user.fex.corr.baseline
+                self._padLength[seg] = int(seg_config.config.user.fex.gate_ns*0.160*13/14)*40
+
+    def _parseEvt(self, evt):
+        cyhsd_base_1_2_3._parseEvt(self, evt)
+        peaksDict =cyhsd_base_1_2_3.peaksDict(self)
+        if not peaksDict:
+           return
+        #  Extract the baseline constants
+        for seg, chand in peaksDict.items():
+            for chan, t in chand.items():
+                peaksDict[seg][chan][0][0] += 4
+                wf = peaksDict[seg][chan][1][0]
+                peaksDict[seg][chan][1][0] = wf[4:]
+                fexOor = self._fexStatus[seg][chan][0]
+                #  Baselines are shifted to keep in 15b range
+                self._fexStatus[seg][chan] = (fexOor,[wf[:4]+(1<<14),])
+
+    @cython.binding(True)
+    def fex_status(self, evt) -> HSDPeaks:
+        #  This will be a dictionary of (int,array) tuples
+        #  once the amitype is created and supported
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._fexStatus:
+            return None
+        else:
+            return self._fexStatus

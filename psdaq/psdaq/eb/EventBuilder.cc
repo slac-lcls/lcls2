@@ -7,14 +7,9 @@
 
 #include <stdlib.h>
 #include <new>
-#include <chrono>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
-#ifndef POSIX_TIME_AT_EPICS_EPOCH
-#define POSIX_TIME_AT_EPICS_EPOCH 631152000u
-#endif
 
 using namespace XtcData;
 using namespace Pds;
@@ -24,16 +19,6 @@ using ms_t = std::chrono::milliseconds;
 using us_t = std::chrono::microseconds;
 
 static constexpr unsigned CLS = 64;     // Cache Line Size
-
-
-std::chrono::system_clock::duration Pds::Eb::latency(const TimeStamp& time)
-{
-    auto now = std::chrono::system_clock::now();  // Takes a long time!
-    auto dgt = std::chrono::seconds    { time.seconds() + POSIX_TIME_AT_EPICS_EPOCH }
-             + std::chrono::nanoseconds{ time.nanoseconds() };
-    std::chrono::system_clock::time_point tp{ std::chrono::duration_cast<std::chrono::system_clock::duration>(dgt) };
-    return now - tp;
-}
 
 
 EventBuilder::EventBuilder(unsigned        timeout,
@@ -331,12 +316,12 @@ void EventBuilder::_fixup(EbEvent*             event,
            TransitionId::name(dg->service()), event->sequence(), event->_size,
            event->_remaining, dg->readoutGroups(), event->_contract,
            std::chrono::duration_cast<ms_t>(age).count(),
-           std::chrono::duration_cast<ms_t>(latency(dg->time)).count());
+           latency<ms_t>(dg->time));
     if (age < _eventTimeout)
       printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx, latency %ld ms\n",
              TransitionId::name(due->creator()->service()), due->sequence(),
              due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
-             std::chrono::duration_cast<ms_t>(latency(due->creator()->time)).count());
+             latency<ms_t>(due->creator()->time));
   }
 
   if (age < _eventTimeout)  ++_fixupCnt;

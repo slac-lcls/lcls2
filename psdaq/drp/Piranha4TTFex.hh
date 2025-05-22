@@ -53,10 +53,8 @@ private:
 
     unsigned m_pixels;
 
-    std::vector<uint16_t> m_eventcodes_beam_incl;
-    std::vector<uint16_t> m_eventcodes_beam_excl;
-    std::vector<uint16_t> m_eventcodes_laser_incl;
-    std::vector<uint16_t> m_eventcodes_laser_excl;
+    EventSelect m_beam_select;
+    EventSelect m_laser_select;
 
     int      m_signal_minvalue;  // valid signal must be at least this large
 

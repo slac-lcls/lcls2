@@ -1,4 +1,4 @@
-import os
+import os, sys
 from dataclasses import dataclass, field
 import asyncio
 import psutil
@@ -9,7 +9,8 @@ import socket
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
-DRP_N_RSV_CORES = 4
+DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
+SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 
 
 class PSbatchSubCommand:
@@ -18,82 +19,95 @@ class PSbatchSubCommand:
     RESTART = 2
 
 
+def call_subprocess(*args):
+    cc = subprocess.run(args, capture_output=True)
+    output = None
+    if not cc.returncode:
+        output = str(cc.stdout.strip(), "utf-8")
+    return output
+
+
 class SbatchManager:
-    def __init__(self, configfilename, platform, as_step, verbose):
+    def __init__(
+        self, configfilename, xpm_id, platform, station, as_step, verbose, output=None
+    ):
         self.sb_script = ""
         now = datetime.now()
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        self.output_path = os.path.join(
-            os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
-        )
+        if output is None:
+            self.output_path = os.path.join(
+                os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
+            )
+        else:
+            self.output_path = output
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
-        envs = [
-            "CONDA_PREFIX",
-            "CONFIGDB_AUTH",
-            "TESTRELDIR",
-            "RDMAV_FORK_SAFE",
-            "RDMAV_HUGEPAGES_SAFE",
-            "OPENBLAS_NUM_THREADS",
-            "PS_PARALLEL",
-        ]
-        self.env_dict = {key: os.environ.get(key, "") for key in envs}
         self.configfilename = configfilename
+        self.xpm_id = xpm_id
         self.platform = platform
+        self.station = station
         self.as_step = as_step
         self.verbose = verbose
-
-    @property
-    def git_describe(self):
-        git_describe = None
-        if "TESTRELDIR" in os.environ:
-            git_describe = self.call_subprocess(
-                "git", "-C", os.environ["TESTRELDIR"], "describe", "--dirty", "--tag"
-            )
-        return git_describe
+        self.user = os.environ["USER"]
+        self.hutch = self.user[: self.user.find("opr")]
+        self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
 
-    def call_subprocess(self, *args):
-        cc = subprocess.run(args, capture_output=True)
-        output = None
-        if not cc.returncode:
-            output = str(cc.stdout.strip(), "utf-8")
-        return output
-
-    def get_comment(self, xpm_id, platform, config_id):
-        comment = f"x{xpm_id}_p{platform}_{config_id}"
+    def get_comment(self, config_id):
+        comment = f"x{self.xpm_id}_p{self.platform}_s{self.station}_{config_id}"
         return comment
 
     def get_node_features(self):
-        lines = self.call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
+        lines = call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
         node_features = {}
         for line in lines:
             node, features = line.strip('"').split()
             node_features[node] = {feature: 0 for feature in features.split(",")}
         return node_features
 
-    def get_job_info(self):
+    def get_job_info_byid(self, job_id, jobparms):
+        """Returns a dictionary containing values obtained from scontrol
+        with the given jobparms list. Returns {} if this job does not exist.
+        """
+        output = call_subprocess("scontrol", "show", "job", job_id)
+        results = {}
+        if output is not None:
+            scontrol_lines = output.splitlines()
+            for jobparm in jobparms:
+                for scontrol_line in scontrol_lines:
+                    scontrol_cols = scontrol_line.split()
+                    for scontrol_col in scontrol_cols:
+                        if scontrol_col.find(jobparm) > -1:
+                            _, jobparm_val = scontrol_col.split("=")
+                            results[jobparm] = jobparm_val
+        return results
+
+    def get_job_info(self, use_sacct=False):
         """Returns formatted output from squeue by the current user"""
-        user = os.environ.get("USER", "")
+        user = self.user
         if not user:
             print(f"Cannot list jobs for user. $USER variable is not set.")
         else:
-            if self.as_step:
-                format_string = "JobIDRaw,Comment,JobName,State,NodeList"
-                lines = self.call_subprocess(
-                    "sacct", "-h", f"--format={format_string}"
+            if use_sacct:
+                format_string = "JobID,Comment%30,JobName,State,NodeList"
+                lines = call_subprocess(
+                    "sacct", "-u", user, "-n", f"--format={format_string}"
                 ).splitlines()
             else:
                 format_string = '"%i %k %j %T %R"'
-                lines = self.call_subprocess(
+                lines = call_subprocess(
                     "squeue", "-u", user, "-h", "-o", format_string
                 ).splitlines()
 
         job_details = {}
         for i, job_info in enumerate(lines):
             cols = job_info.strip('"').split()
+            # Check that JobId column has all the characters as digit
+            if not cols[0].isdigit():
+                continue
+
             success = True
             if len(cols) == 5:
                 job_id, comment, job_name, state, nodelist = cols
@@ -102,24 +116,36 @@ class SbatchManager:
                 nodelist = " ".join(cols[5:])
             else:
                 success = False
+
             if success:
                 # Get logfile from job_id
-                scontrol_lines = self.call_subprocess(
-                    "scontrol", "show", "job", job_id
-                ).splitlines()
+                scontrol_result = call_subprocess("scontrol", "show", "job", job_id)
                 logfile = ""
-                for scontrol_line in scontrol_lines:
-                    if scontrol_line.find("StdOut") > -1:
-                        scontrol_cols = scontrol_line.split("=")
-                        logfile = scontrol_cols[1]
+                if scontrol_result is not None:
+                    scontrol_lines = scontrol_result.splitlines()
+                    for scontrol_line in scontrol_lines:
+                        if scontrol_line.find("StdOut") > -1:
+                            scontrol_cols = scontrol_line.split("=")
+                            logfile = scontrol_cols[1]
 
-                job_details[comment] = {
-                    "job_id": job_id,
-                    "job_name": job_name,
-                    "state": state,
-                    "nodelist": nodelist,
-                    "logfile": logfile,
-                }
+                # Results from sacct also show old jobs with the same name.
+                # We choose the oldest job and returns its values.
+                if comment not in job_details:
+                    job_details[comment] = {
+                        "job_id": job_id,
+                        "job_name": job_name,
+                        "state": state,
+                        "nodelist": nodelist,
+                        "logfile": logfile,
+                    }
+                elif int(job_id) > int(job_details[comment]["job_id"]):
+                    job_details[comment] = {
+                        "job_id": job_id,
+                        "job_name": job_name,
+                        "state": state,
+                        "nodelist": nodelist,
+                        "logfile": logfile,
+                    }
         return job_details
 
     def get_output_filepath(self, node, job_name):
@@ -131,20 +157,12 @@ class SbatchManager:
 
     def get_daq_cmd(self, details, job_name):
         cmd = details["cmd"]
-        if not job_name.startswith("ami") and not job_name in (
-            "groupca",
-            "prom2pvs",
-            "control_gui",
-            "xpmpva",
-            "psqueue",
-        ):
-            cmd += f" -u {job_name}"
         if "flags" in details:
             if details["flags"].find("p") > -1:
                 cmd += f" -p {repr(self.platform)}"
-        if job_name.startswith("ami-meb"):
-            cmd += f" -u {job_name}"
-        if job_name == "psqueue":
+            if details["flags"].find("u") > -1:
+                cmd += f" -u {job_name}"
+        if job_name == "daqstat":
             cmd += f" {self.configfilename}"
         if self.is_drp(details["cmd"]):
             n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
@@ -156,47 +174,96 @@ class SbatchManager:
     def is_drp(self, cmd):
         return cmd.strip().startswith("drp ")
 
-    def get_output_header(self, node, job_name, details):
-        header = ""
-        header += "# ID:      %s\n" % job_name
-        header += "# PLATFORM:%s\n" % self.platform
-        header += "# HOST:    %s\n" % node
-        header += "# CMDLINE: %s\n" % self.get_daq_cmd(details, job_name)
-        # obfuscating the password in the log
-        clear_auth = self.env_dict["CONFIGDB_AUTH"]
-        self.env_dict["CONFIGDB_AUTH"] = "*****"
-        for key2, val2 in self.env_dict.items():
-            header += f"# {key2}:{val2}\n"
-        self.env_dict["CONFIGDB_AUTH"] = clear_auth
-        if "TESTRELDIR" in self.env_dict:
-            git_describe = self.git_describe
-            if git_describe:
-                header += "# GIT_DESCRIBE:%s\n" % git_describe
-        return header
-
     def get_n_cores(self, details):
         n_cores = 1
         if "cores" in details:
             n_cores = int(details["cores"])
         return n_cores
 
-    def get_jobstep_cmd(self, node, job_name, details, het_group=-1, with_output=False):
+    def get_rtprio(self, details):
+        """Return '', raise, or return valid 'rtprio value'"""
+        rtprio = ""
+        if "rtprio" in details:
+            if not details["rtprio"].isdigit():
+                raise ValueError("malformed rtprio value: %s" % details["rtprio"])
+            else:
+                rtprio_as_int = int(details["rtprio"])
+                if (rtprio_as_int < 1) or (rtprio_as_int > 99):
+                    raise ValueError("rtprio not in range 1-99: %s" % details["rtprio"])
+                else:
+                    rtprio = details["rtprio"]
+        return rtprio
+
+    def get_jobstep_cmd(
+        self, node, job_name, details, het_group=-1, with_output=False, as_step=False
+    ):
         output_opt = ""
         if with_output:
             output = self.get_output_filepath(node, job_name)
             output_opt = f"--output={output} --open-mode=append "
-        env_opt = "--export=ALL"
+
+        env_opt = "--export="
+
+        # Inherit follows from user's account
+        env_opt += "HOME"
+        env_opt += ",USER"
+        env_opt += ",TESTRELDIR"
+        env_opt += ",CONDA_PREFIX"
+        env_opt += ",CONDA_DEFAULT_ENV"
+        env_opt += ",CONDA_EXE"
+        env_opt += ",CONFIGDB_AUTH"
+
+        # Build PATH and PYTHONPATH from scratch
+        daq_path = "$TESTRELDIR/bin"
+        daq_path += ":$CONDA_PREFIX/bin"
+        daq_path += ":$CONDA_PREFIX/epics/bin/linux-x86_64"
+        daq_path += ":/usr/sbin"
+        daq_path += ":/usr/bin"
+        daq_path += ":/sbin"
+        daq_path += ":/bin"
+        env_opt += ",PATH=" + daq_path
+        env_opt += f",PYTHONPATH=$TESTRELDIR/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+
+        # For x11 forwarding
+        env_opt += ",DISPLAY"
+        env_opt += ",XAUTHORITY=$HOME/.Xauthority"
+
+        # Include any exists in setup_env.sh backdoor
+        env_opt += ",$DAQMGR_EXPORT"
+
+        # Include any exists in the configuration file
+        cnf_env = ""
+        found_ld_library_path = False
         if "env" in details:
             if details["env"] != "":
-                env = details["env"].replace(" ", ",").strip("'")
-                env_opt += f",{env}"
+                envs = details["env"].split()
+                for i, env in enumerate(envs):
+                    env_name, env_var = env.split("=")
+                    if env_name == "LD_LIBRARY_PATH":
+                        found_ld_library_path = True
+                    cnf_env += "," + env
+        env_opt += cnf_env
+
+        if not found_ld_library_path:
+            env_opt += ",LD_LIBRARY_PATH=$TESTRELDIR/lib"
+
+        env_opt += " "
+
         het_group_opt = ""
         if het_group > -1:
             het_group_opt = f"--het-group={het_group} "
 
-        cmd = self.get_daq_cmd(details, job_name)
-        header = self.get_output_header(node, job_name, details)
-        cmd = f'echo "{header}"; {cmd}'
+        # Generate as set of commands for srun
+        daq_cmd = self.get_daq_cmd(details, job_name)
+
+        daqlog_header = (
+            f'daqlog_header {job_name} {self.platform} {node} "{daq_cmd.strip()}";'
+        )
+
+        rtprio = self.get_rtprio(details)
+        rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
+
+        cmd = f"{daqlog_header}{rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -206,12 +273,14 @@ class SbatchManager:
                 )
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
 
-        env_opt += " "
         n_cores = self.get_n_cores(details)
-        jobstep_cmd = (
-            f"srun -n1 --cpus-per-task={n_cores} --exclusive --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
-            + "&\n"
-        )
+        if not as_step:
+            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+        else:
+            jobstep_cmd = (
+                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                + "&\n"
+            )
         return jobstep_cmd
 
     def generate_as_step(self, sbjob, node_features):
@@ -219,7 +288,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
         sb_script += f"#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
-        sb_script += f"#SBATCH --output={output}" + "\n"
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
         sb_steps = ""
@@ -244,7 +312,12 @@ class SbatchManager:
                 if len(sbjob) == 1:
                     het_group_id = -1
                 sb_steps += self.get_jobstep_cmd(
-                    node, job_name, details, het_group=het_group_id, with_output=True
+                    node,
+                    job_name,
+                    details,
+                    het_group=het_group_id,
+                    with_output=True,
+                    as_step=True,
                 )
         sb_script += sb_header + sb_steps + "wait"
         self.sb_script = sb_script
@@ -258,27 +331,14 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
-        flag_x = False
-        if "flags" in details:
-            if details["flags"].find("x") > -1:
-                flag_x = True
-        if flag_x:
-            n_cores += 1
+        n_tasks = 1
 
         if node_features is None:
-            sb_script += f"#SBATCH --nodelist={node} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"
         else:
-            sb_script += f"#SBATCH --constraint={job_name} --ntasks={n_cores}" + "\n"
+            sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
-        if flag_x:
-            cmd = "sattach $SLURM_JOB_ID.0"
-            jobstep_cmd = (
-                f"srun -n1 --exclusive --job-name={job_name}_x --x11 xterm -e bash -c '{cmd}'"
-                + "&\n"
-            )
-            sb_script += jobstep_cmd
-        sb_script += "wait"
         self.sb_script = sb_script
         if self.verbose:
             print(self.sb_script)

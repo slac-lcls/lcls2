@@ -8,7 +8,7 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/utils/SysLog.hh"
-#include "AxisDriver.h"
+#include "psdaq/aes-stream-drivers/AxisDriver.h"
 
 #include <thread>
 #include <fcntl.h>
@@ -149,6 +149,17 @@ json BEBDetector::connectionInfo(const json& msg)
     return xpmInfo(m_paddr);
 }
 
+void BEBDetector::connectionShutdown()
+{
+    char func_name[64];
+    PyObject* pDict = _check(PyModule_GetDict(m_module));
+    sprintf(func_name,"%s_connectionShutdown",m_para->detType.c_str());
+    PyObject* pFunc = PyDict_GetItemString(pDict, (char*)func_name);
+    if (pFunc) {
+        Py_DECREF(_check(PyObject_CallFunction(pFunc,"")));
+    }
+}
+
 void BEBDetector::connect(const json& connect_json, const std::string& collectionId)
 {
     logging::info("BEBDetector connect");
@@ -190,8 +201,11 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, end, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
-    if (jsonxtc.extent>m_para->maxTrSize)
+    if (jsonxtc.extent>m_para->maxTrSize) {
+        logging::critical("Config json output too large (%zu) for buffer (%zu)",
+                          jsonxtc.extent, m_para->maxTrSize);
         throw "**** Config json output too large for buffer\n";
+    }
 
     XtcData::ConfigIter iter(&jsonxtc, end);
     unsigned r = _configure(xtc,bufEnd,iter);
@@ -282,13 +296,7 @@ void BEBDetector::shutdown()
     PyObject* pFunc = _check(PyDict_GetItemString(pDict, (char*)func_name));
 
     // returns new reference
-    PyObject* val = PyObject_CallFunction(pFunc,"O",m_root);
-
-    if (val)
-        Py_DECREF(val);
-    else
-        PyErr_Print();
-
+    Py_DECREF(_check(PyObject_CallFunction(pFunc,"O",m_root)));
 }
 
 }

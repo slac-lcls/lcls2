@@ -46,32 +46,17 @@ static unsigned _ebTimeout(const EbParams& prms)
   return EB_TMO_MS;
 }
 
-EbAppBase::EbAppBase(const EbParams&         prms,
-                     const MetricExporter_t& exporter,
-                     const std::string&      pfx) :
-  EventBuilder (_ebTimeout(prms), prms.verbose),
-  _transport   (prms.verbose, prms.kwargs),
-  _verbose     (prms.verbose),
-  _lastPid     (0),
-  _bufferCnt   (0),
-  _id          (-1),
-  _exporter    (exporter),
-  _pfx         (pfx),
-  _prms        (prms)
+EbAppBase::EbAppBase(const EbParams&    prms,
+                     const std::string& pfx) :
+  EventBuilder(_ebTimeout(prms), prms.verbose),
+  _transport  (prms.verbose, prms.kwargs),
+  _verbose    (prms.verbose),
+  _lastPid    (0),
+  _bufferCnt  (0),
+  _id         (-1),
+  _pfx        (pfx),
+  _prms       (prms)
 {
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias},
-                                            {"eb", pfx}};
-  exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
-  exporter->add("EB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
-  exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
-  exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
-  exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
-  exporter->add("EB_CbMsMk", labels, MetricType::Gauge,   [&](){ return  missing();           });
-  exporter->add("EB_EvAge",  labels, MetricType::Gauge,   [&](){ return  eventAge();          });
-  exporter->add("EB_dTime",  labels, MetricType::Gauge,   [&](){ return  ebTime();            });
 }
 
 EbAppBase::~EbAppBase()
@@ -131,7 +116,46 @@ int EbAppBase::startConnection(const std::string& ifAddr,
   return 0;
 }
 
-int EbAppBase::connect(unsigned maxTrBuffers)
+int EbAppBase::_setupMetrics(const MetricExporter_t exporter)
+{
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias},
+                                            {"eb", _pfx}};
+  exporter->add("EB_RxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("EB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
+  exporter->add("EB_BfInCt", labels, MetricType::Counter, [&](){ return _bufferCnt;           }); // Inbound
+  exporter->add("EB_ToEvCt", labels, MetricType::Counter, [&](){ return  timeoutCnt();        });
+  exporter->add("EB_FxUpCt", labels, MetricType::Counter, [&](){ return  fixupCnt();          });
+  exporter->add("EB_CbMsMk", labels, MetricType::Gauge,   [&](){ return  missing();           });
+  exporter->add("EB_EvAge",  labels, MetricType::Gauge,   [&](){ return  eventAge();          });
+  exporter->add("EB_dTime",  labels, MetricType::Gauge,   [&](){ return  ebTime();            });
+
+  exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
+
+  exporter->add("EB_EpAlCt", labels, MetricType::Counter, [&](){ return epochAllocCnt(); });
+  exporter->add("EB_EpFrCt", labels, MetricType::Counter, [&](){ return epochFreeCnt();  });
+  exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return eventAllocCnt(); });
+  exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return eventFreeCnt();  });
+  exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return eventOccCnt();   });
+  exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return epochOccCnt();   });
+
+  unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
+  for (auto i = 0u; i < nCtrbs; ++i)
+  {
+    // Pass loop index by value or it will be out of scope when lambda runs
+    labels["ctrb"] = _prms.drps[i];
+    exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=,this](){ return arrTime(i); });
+  }
+
+  _fixupSrc = exporter->histogram("EB_FxUpSc", labels, nCtrbs);
+  _ctrbSrc  = exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
+
+  return 0;
+}
+
+int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
 {
   int      rc;
   unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
@@ -154,32 +178,8 @@ int EbAppBase::connect(unsigned maxTrBuffers)
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
 
-  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
-                                            {"partition", std::to_string(_prms.partition)},
-                                            {"detname", _prms.alias},
-                                            {"alias", _prms.alias},
-                                            {"eb", _pfx}};
-  _exporter->constant("EB_EvPlDp", labels, eventPoolDepth());
-
-  _exporter->add("EB_EpAlCt", labels, MetricType::Counter, [&](){ return epochAllocCnt(); });
-  _exporter->add("EB_EpFrCt", labels, MetricType::Counter, [&](){ return epochFreeCnt();  });
-  _exporter->add("EB_EvAlCt", labels, MetricType::Counter, [&](){ return eventAllocCnt(); });
-  _exporter->add("EB_EvFrCt", labels, MetricType::Counter, [&](){ return eventFreeCnt();  });
-  _exporter->add("EB_EvOcCt", labels, MetricType::Gauge,   [&](){ return eventOccCnt();   });
-  _exporter->add("EB_EpOcCt", labels, MetricType::Gauge,   [&](){ return epochOccCnt();   });
-
-  for (auto i = 0u; i < nCtrbs; ++i)
-  {
-    // Pass loop index by value or it will be out of scope when lambda runs
-    _exporter->add("EB_arrTime" + std::to_string(i), labels, MetricType::Gauge, [=,this](){ return arrTime(i); });
-
-    // Revisit: Doesn't work:
-    //labels["ctrb"] = _prms.drps[i];
-    //_exporter->add("EB_arrTime", labels, MetricType::Gauge, [=](){ return arrTime(i); });
-  }
-
-  _fixupSrc = _exporter->histogram("EB_FxUpSc", labels, nCtrbs);
-  _ctrbSrc  = _exporter->histogram("EB_CtrbSc", labels, nCtrbs); // Revisit: For testing
+  rc = _setupMetrics(exporter);
+  if (rc)  return rc;
 
   rc = linksConnect(_transport, _links, _id, "DRP");
   if (rc)  return rc;
@@ -272,9 +272,7 @@ int EbAppBase::process()
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
     }
-    else if (_transport.pollEQ() == -FI_ENOTCONN)
-      rc = -FI_ENOTCONN;
-    else
+    else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;

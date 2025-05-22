@@ -113,7 +113,7 @@ class QWSpectrum(QtGui.QWidget) : # QtGui.QWidget, Frame
         #self.hist._ymax = 1.5
 
         hcolor = Qt.yellow # Qt.green Qt.yellow Qt.blue 
-        #self.hist.add_hist(values, (amin,amax), pen=QtGui.QPen(hcolor, 0), brush=QtGui.QBrush(hcolor)) # vtype=np.float
+        #self.hist.add_hist(values, (amin,amax), pen=QtGui.QPen(hcolor, 0), brush=QtGui.QBrush(hcolor)) # vtype=np.float32
         self.hist.add_array_as_hist(arr, pen=QtGui.QPen(hcolor, 0), brush=QtGui.QBrush(hcolor))
 
         #self.ctab = ct.color_table_monochr256()

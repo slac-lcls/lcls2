@@ -181,7 +181,7 @@ class EyeGth(pr.Device):
             mode         = "RW",
         ))
 
-    def bathtubPlot(self):
+    def bathtubPlot(self, fname=None):
         bers = self.bathtub()
         extrapolated = self.extrapolate(bers)
         plt.clf()
@@ -199,7 +199,12 @@ class EyeGth(pr.Device):
         plt.legend()
         plt.yscale("log")
        
-        plt.show()
+        if fname:
+            plt.savefig(fname)
+        else:
+            plt.show()
+            
+        return extrapolated[54]
 
     def eyePlot(self, target = 1e-4):
         eye = self.getEye(target)
@@ -244,7 +249,7 @@ class EyeGth(pr.Device):
         bers = []
 
         for pos in range(-64, 0):
-            ber = self.getBER(1e-9, pos, y)
+            ber = self.getBERFast(1e-9, pos, y)
             if ber != 0:
                 bers.append(ber)
             else:
@@ -350,29 +355,16 @@ class EyeGth(pr.Device):
 
         return ret
 
-    def getBER(self, berTarget, x, y):
-        bitCntTarget = 1/berTarget
-
-        prescaler = 0
-        while True:
-            if prescaler == 32:
-                raise Exception('BER too high')
-
-            if 20*math.pow(2, 1+prescaler)*32768 < bitCntTarget*2:
-                prescaler += 1
-
-            else:
-                break
+    def getBERsample(self, prescale, x, y):
 
         #self.ES_EYE_SCAN_EN.set(0x00)
-        ##self.ES_ERRDET_EN.set(0x00)
+        #self.ES_ERRDET_EN.set(0x00)
 
-        #time.sleep(1)
-
+        ## This requires a PMA reset
         self.ES_EYE_SCAN_EN.set(0x01)
         self.ES_ERRDET_EN.set(0x01)
 
-        self.ES_PRESCALE.set(prescaler)
+        self.ES_PRESCALE.set(prescale)
 
         self.ES_SDATA_MASK[0].set(0xffff)
         self.ES_SDATA_MASK[1].set(0x000f)
@@ -402,29 +394,105 @@ class EyeGth(pr.Device):
             self.ES_HORZ_OFFSET.set(x)
 
         #Wait for status being WAIT
+        ts0 = time.perf_counter()
         status = self.ES_CONTROL_STATUS.get()
+        np = 0
         while (status & 0x01) != 1:
+            time.sleep(0.1)
             status = self.ES_CONTROL_STATUS.get()
-            #print('Wait for WAIT status: {}'.format(status))
+            np += 1
+        #print('Wait for WAIT status: {}(1) {}'.format(status,np))
 
         self.ES_CONTROL.set(0x01)
 
         #Wait for status being RESET
         status = self.ES_CONTROL_STATUS.get()
+        np = 0
+        ts1 = time.perf_counter()
         while (status & 0x01) != 1:
+            time.sleep(0.1)
             status = self.ES_CONTROL_STATUS.get()
-            #print("Wait for ready status: {}".format(status))
+            np += 1
+        #print("Wait for ready status: {}(5) {}".format(status,np))
 
+        ts2 = time.perf_counter()
         errCount = self.ES_ERROR_COUNT.get()
         sampleCount = self.ES_SAMPLE_COUNT.get()
-        bitCount = 20*math.pow(2, 1+prescaler)*sampleCount
+        bitCount = 20*math.pow(2, 1+prescale)*sampleCount
 
-        print('[{}/{}] Err = {}, Bit = {}           '.format(x,y, errCount, bitCount))
+        #print(f'getBERsample {errCount} {bitCount} {sampleCount} {ts0} {ts1} {ts2}')
+        return (errCount,bitCount)
+
+    def getBER(self, berTarget, x, y):
+        bitCntTarget = 1/berTarget
+
+        prescale = 0
+        while True:
+            if prescale == 32:
+                raise Exception('BER to high')
+
+            if 20*math.pow(2, 1+prescale)*32768 < bitCntTarget*2:
+                prescale += 1
+
+            else:
+                break
+        
+        (errCount,bitCount) = self.getBERsample(prescale, x, y)
+
+        print('[{}/{}] Err = {}, Bit = {}'.format(x,y, errCount, bitCount))
 
         if bitCount == 0:
             return 1
 
-        #Sample count to bit = 20*2^(1+prescaler)*sampleCount
+        #Sample count to bit = 20*2^(1+prescale)*sampleCount
         ber = float(errCount)/float(bitCount)
 
         return ber
+
+    def getBERFast(self, berTarget, x, y):
+        bitCntTarget = 1/berTarget
+
+        errSum = 0
+        bitSum = 0
+        ts1 = time.perf_counter()
+        prescale = 0
+        errscan = 0
+        while True:
+            prescale += 1
+
+            if prescale == 32:
+                raise Exception('BER to high')
+
+            (errCount,bitCount) = self.getBERsample(prescale, x, y)
+
+            if bitCount == 0:
+                errscan += 1
+                prescale -= 1
+                if errscan == 5:
+                    print(f'Too many empty scans.  Exiting.')
+                    break
+
+                print(f'No bitCounts.  Repeat with prescale {prescale}')
+                continue
+
+            errSum += errCount
+            bitSum += bitCount
+            
+            if errSum > 1000 or bitSum > bitCntTarget:
+                break
+
+            errNum = 1 if errSum == 0 else math.sqrt(errSum)
+            if errNum/bitSum < 0.1*berTarget:
+                break
+
+        ts2 = time.perf_counter()
+        print('[{}/{}] Err = {}, Bit = {}, T = {}'.format(x,y, errSum, bitSum, ts2-ts1))
+
+        if bitSum == 0:
+            return 1
+
+        #Sample count to bit = 20*2^(1+prescale)*sampleCount
+        ber = float(errSum)/float(bitSum)
+
+        return ber
+

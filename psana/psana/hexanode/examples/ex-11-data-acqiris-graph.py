@@ -43,8 +43,8 @@ EVENTS = 5 + EVSKIP
 def draw_times(ax, wf, wt) :
     #wf -= wf[0:1000].mean()
     t0_sec = time()
-    #wf  = np.array(WF, dtype=np.double)
-    pkvals = np.zeros((100,), dtype=np.double)
+    #wf  = np.array(WF, dtype=np.float64)
+    pkvals = np.zeros((100,), dtype=np.float64)
     pkinds = np.zeros((100,), dtype=np.uint32)
     npks = wfpkfinder_cfd(wf, BASE, THR, CFR, DEADTIME, LEADINGEDGE, pkvals, pkinds)
 

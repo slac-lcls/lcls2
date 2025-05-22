@@ -69,11 +69,11 @@ def rotation(X, Y, C, S):
 
 
 class SegGeometry:
-    AXIS = ['X', 'Y', 'Z']
+    AXIS = ('X', 'Y', 'Z')
     DIC_AXIS = {'X':0, 'Y':1, 'Z':2}
     wmsg = 'WARNING! %s - interface method from the base class \nneeds to be re-implemented in the derived class'
 
-    def __init__(self):
+    def __init__(self, **kwa):
         pass
 
     def print_warning(self, s):
@@ -124,12 +124,11 @@ class SegGeometry:
         self.print_warning('pixel_coord_max(axis)')
 
     def pixel_mask_array(self, mbits=0o377, **kwa):
-        """ Returns array of masked pixels which content depends on bontrol bitword mbits"""
+        """ Returns array of masked pixels which content depends on control bitword mbits"""
         self.print_warning('pixel_mask_array(mask_bits)')
 
     def return_switch(self, meth, axis=None):
-        """ Returns three x,y,z arrays if axis=None, or single array for specified axis
-        """
+        """ Returns three x,y,z arrays if axis=None, or single array for specified axis"""
         if axis is None: return meth()
         else           : return dict(zip(self.AXIS, meth()))[axis]
 

@@ -35,16 +35,14 @@ namespace Pds {
       using MetricExporter_t = std::shared_ptr<Pds::MetricExporter>;
 
     public:
-      EbAppBase(const EbParams& prms,
-                const MetricExporter_t&,
-                const std::string& pfx);
+      EbAppBase(const EbParams& prms, const std::string& pfx);
       virtual ~EbAppBase();
     public:
       int              resetCounters();
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(unsigned maxTrBuffers);
+      int              connect(unsigned maxTrBuffers, const MetricExporter_t);
       int              configure();
       void             unconfigure();
       void             disconnect();
@@ -59,6 +57,7 @@ namespace Pds {
       virtual void     fixup(Pds::Eb::EbEvent* event, unsigned srcId);
       virtual uint64_t contract(const Pds::EbDgram* contrib) const;
     private:
+      int              _setupMetrics(const MetricExporter_t);
       int              _linksConfigure(const EbParams&            prms,
                                        std::vector<EbLfSvrLink*>& links,
                                        const char*                name);

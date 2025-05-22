@@ -104,11 +104,11 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms, const MetricExporter_t& exporter);
+      Teb(const EbParams& prms);
     public:
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
-      int      connect();
+      int      connect(const std::shared_ptr<MetricExporter>);
       int      configure(Trigger* object, unsigned prescale);
       void     unconfigure();
       void     disconnect();
@@ -120,6 +120,7 @@ namespace Pds {
       virtual
       void     process(EbEvent* event) override;
     private:
+      int      _setupMetrics(const std::shared_ptr<MetricExporter>);
       void     _queueMrqBuffers();
       void     _monitor(ResultDgram* rdg);
       void     _tryPost(const EbDgram* dg, uint64_t dsts, unsigned idx);
@@ -160,7 +161,6 @@ namespace Pds {
     private:
       const EbParams&              _prms;
       EbLfClient                   _l3Transport;
-      const MetricExporter_t&      _exporter;
     };
   };
 };
@@ -196,9 +196,8 @@ using namespace Pds::Eb;
 //   }
 // }
 
-Teb::Teb(const EbParams&         prms,
-         const MetricExporter_t& exporter) :
-  EbAppBase     (prms, exporter, "TEB"),
+Teb::Teb(const EbParams& prms) :
+  EbAppBase     (prms, "TEB"),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
   //_trimmed      (0),
@@ -221,34 +220,10 @@ Teb::Teb(const EbParams&         prms,
   _latency      (0),
   _trgTime      (0),
   _prms         (prms),
-  _l3Transport  (prms.verbose, prms.kwargs),
-  _exporter     (exporter)
+  _l3Transport  (prms.verbose, prms.kwargs)
 {
   if (_prms.kwargs.find("mon_throttle") != _prms.kwargs.end())
     _monThrottle = std::stoul(const_cast<EbParams&>(_prms).kwargs["mon_throttle"]);
-
-  std::map<std::string, std::string> labels{{"instrument", prms.instrument},
-                                            {"partition", std::to_string(prms.partition)},
-                                            {"detname", prms.alias},
-                                            {"alias", prms.alias}};
-  exporter->constant("TEB_BEMax",  labels, prms.maxEntries);
-
-  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
-  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
-  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
-  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;            }); // Outbound
-  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
-  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
-  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
-  exporter->add("TEB_nMonCt", labels, MetricType::Counter, [&](){ return _nMonCount;             });
-  exporter->add("TEB_MebCt0", labels, MetricType::Counter, [&](){ return _mebCount[0];           });
-  exporter->add("TEB_MebCt1", labels, MetricType::Counter, [&](){ return _mebCount[1];           });
-  exporter->add("TEB_MebCt2", labels, MetricType::Counter, [&](){ return _mebCount[2];           });
-  exporter->add("TEB_MebCt3", labels, MetricType::Counter, [&](){ return _mebCount[3];           });
-  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
-  exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
-  exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
-  exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
 }
 
 int Teb::resetCounters()
@@ -317,27 +292,51 @@ int Teb::startConnection(std::string& tebPort,
   return 0;
 }
 
-int Teb::connect()
+int Teb::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc;
+  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
+                                            {"partition", std::to_string(_prms.partition)},
+                                            {"detname", _prms.alias},
+                                            {"alias", _prms.alias}};
+  exporter->constant("TEB_BEMax",  labels, _prms.maxEntries);
 
+  exporter->add("TEB_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;            });
+  exporter->add("TEB_TrCt",   labels, MetricType::Counter, [&](){ return _trCount;               });
+  exporter->add("TEB_SpltCt", labels, MetricType::Counter, [&](){ return _splitCount;            });
+  exporter->add("TEB_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;            }); // Outbound
+  exporter->add("TEB_TxPdg",  labels, MetricType::Gauge,   [&](){ return _l3Transport.posting(); });
+  exporter->add("TEB_WrtCt",  labels, MetricType::Counter, [&](){ return _writeCount;            });
+  exporter->add("TEB_MonCt",  labels, MetricType::Counter, [&](){ return _monitorCount;          });
+  exporter->add("TEB_nMonCt", labels, MetricType::Counter, [&](){ return _nMonCount;             });
+  exporter->add("TEB_MebCt0", labels, MetricType::Counter, [&](){ return _mebCount[0];           });
+  exporter->add("TEB_MebCt1", labels, MetricType::Counter, [&](){ return _mebCount[1];           });
+  exporter->add("TEB_MebCt2", labels, MetricType::Counter, [&](){ return _mebCount[2];           });
+  exporter->add("TEB_MebCt3", labels, MetricType::Counter, [&](){ return _mebCount[3];           });
+  exporter->add("TEB_PsclCt", labels, MetricType::Counter, [&](){ return _prescaleCount;         });
+  exporter->add("TEB_EvtLat", labels, MetricType::Gauge,   [&](){ return _latency;               });
+  exporter->add("TEB_trg_dt", labels, MetricType::Gauge,   [&](){ return _trgTime;               });
+  exporter->add("TEB_BtEnt",  labels, MetricType::Gauge,   [&](){ return _entries;               });
+  for (unsigned i = 0; i < _monBufLists.size(); ++i)
+    exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+
+  return 0;
+}
+
+int Teb::connect(const MetricExporter_t exporter)
+{
   _l3Links .resize(_prms.addrs.size());
   _mrqLinks.resize(_prms.numMrqs);
 
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
     _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
-  std::map<std::string, std::string> labels{{"instrument", _prms.instrument},
-                                            {"partition", std::to_string(_prms.partition)},
-                                            {"detname", _prms.alias},
-                                            {"alias", _prms.alias}};
-  for (unsigned i = 0; i < _monBufLists.size(); ++i)
-    _exporter->add("TEB_MBufCt" + std::to_string(i), labels, MetricType::Gauge, [&, i](){ return _monBufLists[i].count(); });
+  int rc = _setupMetrics(exporter);
+  if (rc)  return rc;
 
   rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(TEB_TR_BUFFERS);
+  rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
@@ -446,9 +445,10 @@ void Teb::run()
   resetCounters();
 
   int rcPrv = 0;
-  while (lRunning)
+  while (true)
   {
     rc = EbAppBase::process();
+    if (!lRunning)  break;              // Don't report errors when exiting
     if (rc < 0)
     {
       if (rc == -FI_EAGAIN)
@@ -464,7 +464,7 @@ void Teb::run()
       }
       else if (rc == rcPrv)
       {
-        logging::critical("TEB thread aborting on repeating fatal error");
+        logging::critical("TEB thread aborting on repeating fatal error: %d", rc);
         throw "Repeating fatal error";
       }
     }
@@ -472,7 +472,7 @@ void Teb::run()
   }
 
   uint64_t immData;
-  while (_mrqTransport.poll(&immData) > 0);
+  while (_mrqTransport.poll(&immData) > 0); // Drain
 
   EventBuilder::dump(0);
 
@@ -682,8 +682,8 @@ void Teb::process(EbEvent* event)
   }
 
   if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
-    _latency = std::chrono::duration_cast<us_t>(latency(dgram->time)).count();
-    _latPid = dgram->pulseId();
+    _latency = latency<us_t>(dgram->time);
+    _latPid  = dgram->pulseId();
   }
 }
 
@@ -898,16 +898,10 @@ TebApp::TebApp(const std::string& collSrv,
   _ebPortEph   (prms.ebPort.empty()),
   _mrqPortEph  (prms.mrqPort.empty()),
   _exposer     (Pds::createExposer(prms.prometheusDir, getHostname())),
-  _exporter    (std::make_shared<MetricExporter>()),
-  _teb         (std::make_unique<Teb>(_prms, _exporter)),
+  _teb         (std::make_unique<Teb>(_prms)),
   _unconfigFlag(false)
 {
   Py_Initialize();
-
-  if (_exposer)
-  {
-    _exposer->RegisterCollectable(_exporter);
-  }
 
   logging::info("Ready for transitions");
 }
@@ -967,6 +961,13 @@ void TebApp::handleConnect(const json& msg)
   // the config database on configure
   _connectMsg = msg;
 
+  // If the exporter already exists, replace it so that previous metrics are deleted
+  _exporter = std::make_shared<MetricExporter>();
+  if (_exposer)
+  {
+    _exposer->RegisterCollectable(_exporter);
+  }
+
   json body = json({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
@@ -975,7 +976,7 @@ void TebApp::handleConnect(const json& msg)
     return;
   }
 
-  rc = _teb->connect();
+  rc = _teb->connect(_exporter);
   if (rc)
   {
     _error(msg, "Error in TEB connect()");
@@ -1122,6 +1123,8 @@ void TebApp::handleDisconnect(const json& msg)
 
   _teb->disconnect();
 
+  if (_exporter)  _exporter.reset();
+
   // Reply to collection with transition status
   json body = json({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
@@ -1133,6 +1136,7 @@ void TebApp::handleReset(const json& msg)
 
   _unconfigure();
   _teb->disconnect();
+  if (_exporter)  _exporter.reset();
   connectionShutdown();
 }
 

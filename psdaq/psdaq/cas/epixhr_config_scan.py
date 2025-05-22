@@ -23,16 +23,23 @@ def listParams(d,name):
             
 def main():
 
+    # default command line arguments
+    defargs = {'--events'  :1000,
+               '--hutch'   :'rix',
+               '--detname' :'epixhr_0',
+               '--scantype':'scan',
+               '--record'  :1}
+
     aargs = [('-P',{'default':None,'help':'parameter to scan (omit to get full list'}),
              ('--linear',{'type':float,'nargs':3,'help':'linear scan over range [0]:[1] in steps of [2]'})]
-    scan = ConfigScanBase(aargs)
+    scan = ConfigScanBase(userargs=aargs,defargs=defargs)
              
     args = scan.args
 
     #  Validate scan parameter
     #  Lookup the configuration in the database
     prod  = True
-    if args.hutch not in ('tmo','rix','asc'):
+    if args.hutch not in ('tmo','rix','asc','ued'):
         hutch = 'tst'
     else:
         hutch = args.hutch

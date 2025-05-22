@@ -10,6 +10,7 @@ class Barrier:
         self.nworker = 0
         self.publisher = False
         self.subscriber = False
+        self.supervisor = False
 
     def __del__(self):
         self.shutdown()
@@ -34,6 +35,9 @@ class Barrier:
         else:
             self.subscriber.close()
             self.syncworker.close()
+        self.nworker = 0
+        self.publisher = False
+        self.subscriber = False
 
     def supervisor_init(self):
         # Socket to talk to workers

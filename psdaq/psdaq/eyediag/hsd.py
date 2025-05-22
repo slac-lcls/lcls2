@@ -20,6 +20,8 @@ import dev
 import sys
 import argparse
 import logging
+import time
+import socket
 
 class EyeScanRoot(pr.Root):
 
@@ -63,6 +65,12 @@ class EyeScanRoot(pr.Root):
             offset      = 0x0000_0000
         ))
 
+        self.add(dev.TimingRx(
+            name        = 'timrx',
+            memBase     = self.memMap,
+            offset      = 0x00140000,
+        ))
+
         # Instantiate the top level Device and pass it the memory map
         self.add(dev.EyeGth(
             name        = 'timing',
@@ -98,12 +106,13 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='Eyediag for HSD')
 
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
-    parser.add_argument('--link', type=int, required=True, help="Link id ([-1 for timing link], [0 - 7 for pgp link])" )
-    parser.add_argument('--dev', type=str, required=False, help="Device file (default: /dev/datadev_0)" )
+    parser.add_argument('--link', type=int, default=None, help="Link id ([-1 for timing link], [0 - 7 for pgp link])" )
+    parser.add_argument('--dev', type=str, default="/dev/datadev_0", help="Device file (default: /dev/datadev_0)" )
     parser.add_argument('--eye', action='store_true', help='Generate eye diagram')
     parser.add_argument('--bathtub', action='store_true', help='Generate bathtub curve')
+    parser.add_argument('--write', default=None, help='Write results to OPATH', metavar='OPATH')
     parser.add_argument('--gui', action='store_true', help='Bring up GUI')
-    parser.add_argument('--target', type=float, required=False, help="BET Target" )
+    parser.add_argument('--target', type=float, required=False, help="BER Target" )
 
     args = parser.parse_args()
     if args.verbose:
@@ -124,6 +133,20 @@ def main():
     ######################
     root.start()
 
+    if (args.link is None or args.link==-1) and root.timing.ES_EYE_SCAN_EN.get()==0:
+        #  This requires an Rx PMA reset
+        root.timing.ES_EYE_SCAN_EN.set(0x01)
+        root.timing.ES_ERRDET_EN.set(0x01)
+        
+        root.timrx.RxReset.set(1)
+        time.sleep(0.001)
+        root.timrx.RxReset.set(0)
+
+    if (args.link is None or args.link>=0):
+        #  Don't know how to reset RXPMA for PGP links
+        #  and they don't seem to need it
+        pass
+
     if args.target is None:
         target = 1e-8
     else:
@@ -137,11 +160,24 @@ def main():
         )
   
     if args.bathtub:
-        if args.link == -1:
-            root.timing.bathtubPlot()
+        links = [i for i in range(0,8)] if args.link is None else [args.link]
+        for link in links:
+            if args.write:
+                base = f'{args.write}/{socket.gethostname()}.{args.dev.split("/")[-1]}.{link}'
+                fname = base+'.png'
+                if link == -1:
+                    result = root.timing.bathtubPlot(fname)
+                else:
+                    result = root.link[link].bathtubPlot(fname)
+                f=open(base+'.dat',mode='w')
+                f.write(f'BER:{result}')
+                f.close()
 
-        else:
-            root.link[args.link].bathtubPlot()
+            else:
+                if link == -1:
+                    result = root.timing.bathtubPlot()
+                else:
+                    result = root.link[link].bathtubPlot()
 
     if args.eye:
         if args.link == -1:

@@ -331,6 +331,16 @@ void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
 }
 
 
+void XtcUpdateIter::updateService(Dgram& d, uint8_t transitionId){
+    uint32_t new_env = d.env&0xf0ffffff | transitionId << 24;
+    memcpy(&(d.env), &new_env, sizeof(uint32_t));
+}
+
+void XtcUpdateIter::updateDamage(Dgram& d, uint16_t damage){
+    d.xtc.damage = damage;
+}
+
+
 /* Creates Names object and adds it  to the given `xtc`
    Names is created from:
       - Alg object (`algName`, `major`, `minor`, & `micro`)

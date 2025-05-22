@@ -146,6 +146,7 @@ class GeometryAccess:
         self.path  = args[0] if len(args)>0 else kwargs.get('path', None)   # positional or optional argument
         self.pbits = args[1] if len(args)>1 else kwargs.get('pbits', 0)     # deprecated, but backward compatable
         self.use_wide_pix_center = kwargs.get('use_wide_pix_center', False) # optional only
+        self.detector = kwargs.get('detector', None) # introduced for Archon, to get variable shape from det.raw._calibconst['pedestals'][0]
         self.valid = False
 
         if self.path is None or not os.path.exists(self.path):
@@ -319,6 +320,7 @@ class GeometryAccess:
 
         d = dict(zip(keys, vals))
         d['use_wide_pix_center'] = self.use_wide_pix_center
+        d['detector'] = self.detector
         return GeometryObject(**d)
 
 
@@ -335,7 +337,7 @@ class GeometryAccess:
         # add top parent object to the list
         if geobj.pname is not None:
             top_parent = GeometryObject(pname=None, pindex=0, oname=geobj.pname, oindex=geobj.pindex,\
-                                        use_wide_pix_center=self.use_wide_pix_center)
+                                        use_wide_pix_center=self.use_wide_pix_center, detector=self.detector)
             self.list_of_geos.append(top_parent)
             return top_parent
 

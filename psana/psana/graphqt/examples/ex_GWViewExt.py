@@ -38,7 +38,7 @@ class TestGWViewExt(GWViewExt):
         elif e.key() in (Qt.Key_W, Qt.Key_D):
             change_def = e.key()==Qt.Key_D
             print('change scene rect %s' % ('set new default' if change_def else ''))
-            v = ag.random_standard((4,), mu=0, sigma=3, dtype=np.int)
+            v = ag.random_standard((4,), mu=0, sigma=3, dtype=np.int32)
             rs = QRectF(v[0]-5, v[1]-5, v[2]+20, v[3]+20)
             print('Set scene rect: %s' % str(rs))
             self.reset_scene_rect(rs)

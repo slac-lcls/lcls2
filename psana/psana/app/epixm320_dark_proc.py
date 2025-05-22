@@ -13,6 +13,7 @@ USAGE = 'Usage:'\
       + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
       + '\nExamples:'\
       + '\nTests:'\
+      + '\n  %s -k exp=ascdaq123,run=4 -d epixm -o ./work # data on psana' % SCRNAME\
       + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work # data on psana' % SCRNAME\
       + '\n  %s -k exp=tstx00417,run=324,dir=/drpneh/data/tst/tstx00417/xtc/ -d epixm -o ./work # data on drp-neh-cmp001' % SCRNAME\
       + '\n  %s -k exp=tstx00417,run=328,dir=/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc -d epixm -o ./work # on s3df IN WROND DIRECTORY' % SCRNAME\
@@ -65,7 +66,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2024-04-25'
+    d_version = 'V2024-12-18'
     d_datbits = 0o77777
     d_deploy  = False
     d_plotim  = 0

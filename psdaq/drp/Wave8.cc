@@ -4,7 +4,8 @@
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "psalg/detector/UtilsConfig.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include <Python.h>
@@ -31,9 +32,9 @@ namespace Drp {
         }
         static void createData(CreateData& cd, unsigned& index, unsigned ch, Array<uint8_t>& seg) {
             unsigned shape[MaxRank];
-            shape[0] = seg.shape()[0]>>1;
+            shape[0] = seg.num_elem()>>1;
             Array<uint16_t> arrayT = cd.allocate<uint16_t>(index++, shape);
-            memcpy(arrayT.data(), seg.data(), seg.shape()[0]);
+            memcpy(arrayT.data(), seg.data(), seg.num_elem());
         }
     };
     class IntegralStream {
@@ -173,11 +174,12 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
         m_debatch = true;
 }
 
-unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
+unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 {
     // set up the names for the event data
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
+
     W8::Streams::defineData(xtc,bufEnd,m_para->detName.c_str(),
                             m_para->detType.c_str(),m_para->serNo.c_str(),
                             m_namesLookup,m_evtNamesRaw,m_evtNamesFex);

@@ -472,6 +472,9 @@ def _cat(args):
         except NameError as ex:
             sys.exit(ex)
 
+    if args.key:
+        alias = args.key
+
     # authentication is not required, adjust url accordingly
     url = args.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
@@ -697,6 +700,7 @@ def main():
     # create the parser for the "cat" command
     parser_cat = subparsers.add_parser('cat', help='print a configuration')
     parser_cat.add_argument('src', help='source: <hutch>/<alias>/<device>_<segment> or <hutch>/XPM/<xpm>')
+    parser_cat.add_argument('--key', default=None, help='key to print, if provided')
     parser_cat.set_defaults(func=_cat)
 
     # create the parser for the "rm" command

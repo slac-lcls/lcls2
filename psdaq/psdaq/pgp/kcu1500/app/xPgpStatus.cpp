@@ -15,7 +15,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "DataDriver.h"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 
 using namespace std;
 
