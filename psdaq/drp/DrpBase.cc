@@ -38,6 +38,8 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
 static json createPulseIdMsg(uint64_t pulseId);
 static json createChunkRequestMsg();
 
+static const unsigned EvtCtrMask = 0xffffff;
+
 namespace Drp {
 
 static std::string _getHostName()
@@ -110,9 +112,9 @@ void MemPool::_initialize(const Parameters& para)
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
     m_nDmaBuffers = nextPowerOf2(m_dmaCount);
-    if (m_nDmaBuffers > 0xffffff) {     // Mask for evtCounter
-        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (%u)",
-                          m_nDmaBuffers, 0xffffff);
+    if (m_nDmaBuffers > EvtCtrMask+1) {
+        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (0:%u)",
+                          m_nDmaBuffers, EvtCtrMask);
         abort();
     }
 
@@ -399,11 +401,19 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     }
 
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
+
+    // Measure TimingHeader arrival latency as early as possible
     if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
         m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
         m_latPid = timingHeader->pulseId();
     }
-    uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
+    if (timingHeader->error()) {
+        if (m_nTmgHdrError++ < 5) {     // Limit prints at rate
+            logging::error("Timing header error bit is set");
+        }
+    }
+
+    uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
     DmaBuffer* buffer = &event->buffers[lane];
@@ -416,65 +426,79 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     uint32_t flag = dmaFlags[current];
     uint32_t err  = dmaErrors[current];
     if (err) {
-        logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
-        //  How do I return this buffer?
-        ++m_lastComplete;
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nDmaErrors;
-        return nullptr;
-    }
-
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-        ++m_nTmgHdrError;
-    }
-    TransitionId::Value transitionId = timingHeader->service();
-    //{
-    //  uint32_t lane = dest[current] >> 8;
-    //  uint32_t vc   = dest[current] & 0xff;
-    //  auto event_header = timingHeader;
-    //  printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %014lx | env %08x | event counter %u | index %u\n",
-    //         size, lane, vc, transitionId, event_header->pulseId(), event_header->env, event_header->evtCounter, index);
-    //  //for(unsigned i=0; i<32; i++) //i<((size+3)>>2); i++)
-    //  //  printf("%08x%c",reinterpret_cast<uint32_t*>(m_pool.dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
-    //}
-    auto rogs = timingHeader->readoutGroups();
-    if ((rogs & (1 << m_para.partition)) == 0) {
-        logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId(), m_para.partition, timingHeader->env);
-        ++m_lastComplete;
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nNoComRoG;
-        return nullptr;
-    }
-    if (transitionId == TransitionId::SlowUpdate) {
-        uint16_t missingRogs = m_para.rogMask & ~rogs;
-        if (missingRogs) {
-            logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                           TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId(), missingRogs, timingHeader->env);
-            ++m_lastComplete;
-            handleBrokenEvent(*event);
-            freeDma(event);             // Leaves event mask = 0
-            ++m_nMissingRoGs;
-            return nullptr;
+        if (m_nDmaErrors++ < 5) {       // Limit prints at rate
+            logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
         }
+        // This assumes the DMA succeeded well enough that evtCounter is valid
+        ++m_lastComplete;
+        handleBrokenEvent(*event);
+        freeDma(event);                 // Leaves event mask = 0
+        return nullptr;
     }
 
+    TransitionId::Value transitionId = timingHeader->service();
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
-    logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
-                   lane, size,
+    logging::debug("PGPReader  lane %u.%u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
+                   lane, dest[current] & 0xff, size,
                    reinterpret_cast<const uint64_t*>(data)[0], // PulseId
                    reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
                    reinterpret_cast<const uint32_t*>(data)[4], // env
                    flag, err);
 
     if (event->mask == m_para.laneMask) {
+        if (transitionId == TransitionId::BeginRun) {
+            resetEventCounter();        // Compensate for the ClearReadout sent before BeginRun
+        }
+        if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) {
+            if (m_lastTid != TransitionId::Unconfigure) {
+              if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
+                    auto evtCntDiff = evtCounter - m_lastComplete;
+                    logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
+                                   RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
+                    logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
+                                   data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
+                    logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
+                                   m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
+                }
+                handleBrokenEvent(*event);
+                freeDma(event);         // Leaves event mask = 0
+                return nullptr;         // Throw away out-of-sequence events
+            } else if (transitionId != TransitionId::Configure) {
+                freeDma(event);         // Leaves event mask = 0
+                return nullptr;         // Drain
+            }
+        }
+        m_lastComplete = evtCounter;
+        m_lastTid = transitionId;
+        memcpy(m_lastData, data, 24);
+
+        auto rogs = timingHeader->readoutGroups();
+        if ((rogs & (1 << m_para.partition)) == 0) {
+            logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
+                           TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId(), m_para.partition, timingHeader->env);
+            ++m_lastComplete;
+            handleBrokenEvent(*event);
+            freeDma(event);                 // Leaves event mask = 0
+            ++m_nNoComRoG;
+            return nullptr;
+        }
+        if (transitionId == TransitionId::SlowUpdate) {
+            uint16_t missingRogs = m_para.rogMask & ~rogs;
+            if (missingRogs) {
+                logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
+                               TransitionId::name(transitionId),
+                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                               timingHeader->pulseId(), missingRogs, timingHeader->env);
+                ++m_lastComplete;
+                handleBrokenEvent(*event);
+                freeDma(event);             // Leaves event mask = 0
+                ++m_nMissingRoGs;
+                return nullptr;
+            }
+        }
+
         // Allocate a pebble buffer once the event is built
         event->pebbleIndex = m_pool.allocate(); // This can block
 
@@ -491,27 +515,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId());
             }
-            if (transitionId == TransitionId::BeginRun) {
-                resetEventCounter();
-            }
         }
-        if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-            auto evtCntDiff = evtCounter - m_lastComplete;
-            logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
-                           RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
-            logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
-                           data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
-            logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
-                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
-            handleBrokenEvent(*event);
-            freeDma(event);             // Leaves event mask = 0
-            m_pool.freePebble();        // Avoid leaking pebbles on errors
-            ++m_nPgpJumps;
-            return nullptr;             // Throw away out-of-sequence events
-        }
-        m_lastComplete = evtCounter;
-        m_lastTid = transitionId;
-        memcpy(m_lastData, data, 24);
 
         // Allocate a transition datagram from the pool.  Since a
         // SPSCQueue is used (not an SPMC queue), this can be done here,
