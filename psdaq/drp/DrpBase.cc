@@ -499,9 +499,6 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             }
         }
 
-        // Allocate a pebble buffer once the event is built
-        event->pebbleIndex = m_pool.allocate(); // This can block
-
         if (transitionId != TransitionId::L1Accept) {
             if (transitionId != TransitionId::SlowUpdate) {
                 logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
@@ -517,6 +514,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             }
         }
 
+        // Allocate a pebble buffer once the event is built
+        event->pebbleIndex = m_pool.allocate(); // This can block
+
         // Allocate a transition datagram from the pool.  Since a
         // SPSCQueue is used (not an SPMC queue), this can be done here,
         // but not in the workers or there will be concurrency issues.
@@ -524,9 +524,9 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             uint32_t evtIndex = event->pebbleIndex;
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
             if (!m_pool.transitionDgrams[evtIndex]) {
-                ++m_nNoTrDgrams;
                 freeDma(event);         // Leaves event mask = 0
                 m_pool.freePebble();    // Avoid leaking pebbles on errors
+                ++m_nNoTrDgrams;
                 return nullptr;         // Can happen during shutdown
             }
         }
