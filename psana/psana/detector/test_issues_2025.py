@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""./lcls2/psana/psana/detector/test_issues_2024.py <TNAME>
-"""
+"""./lcls2/psana/psana/detector/test_issues_2024.py <TNAME>"""
 
 import sys
 import logging
@@ -43,12 +42,13 @@ def issue_2025_01_29():
     #ds = DataSource(exp='rixx1016923',run=118, detectors=['archon'])
     #ds = DataSource(exp='rixx1016923',run=119, detectors=['archon'])
     #ds = DataSource(exp='rixx1017523',run=395, detectors=['archon']) # (1, 4800)
-    ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
+    #ds = DataSource(exp='rixx1017523',run=396, detectors=['archon']) # (600, 4800)
+    ds = DataSource(exp='rixx1017523',run=418, detectors=['archon']) # (600, 4800)
     orun = next(ds.runs())
-    det = orun.Detector('archon', gainfact=2, cmpars=(1,0,0))
+    det = orun.Detector('archon', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
 
     flimg = None
-    events = 3
+    events = 10
     evsel = 0
 
     for nev, evt in enumerate(orun.events()):
@@ -69,10 +69,11 @@ def issue_2025_01_29():
 
        #img = np.array(raw)[0,:]
        #img.shape = (1,4800)
-
+       #img,  title  = det.raw._calibconst['pedestals'][0], 'pedestals'
        #img, title  = det.raw.raw(evt), 'raw'
-       img, title  = det.raw.calib(evt), 'calib'
-       #img, title  = det.raw.image(evt), 'image'
+       #img, title  = det.raw.calib(evt), 'calib'
+       img, title  = det.raw.image(evt), 'image'
+       img = np.copy(img)
 
        #img = (raw.copy()/1000).astype(dtype=np.float64) # np.uint16)
        #img = clb
@@ -80,7 +81,7 @@ def issue_2025_01_29():
        #img = det.raw._arr_to_image(clb)
 
        dt_sec = (time() - t0_sec)*1000
-       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  image' % (nev, dt_sec), last=100))
+       print(info_ndarr(img, 'evt:%3d dt=%.3f msec  image' % (nev, dt_sec), last=10))
        #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
 
        if img.ndim==2 and img.shape[0] == 1:
@@ -170,8 +171,6 @@ def issue_2025_02_05():
     qhi = np.quantile(arr, frachi, method='linear')
     qme = np.quantile(arr, fracme) #, method='nearest')
     print('qlo, qhi, qme, mean, max, min:', qlo, qhi, np.median(arr), np.mean(arr), np.max(arr), np.min(arr))
-
-
 
 
 def issue_2025_02_21():
@@ -305,6 +304,638 @@ def issue_2025_02_27():
     print('odet.raw._calibconst.keys()', odet.raw._calibconst.keys())
 
 
+def issue_2025_03_06():
+    """jungfrau
+       datinfo -k exp=ascdaq023,run=37 -d jungfrau
+       jungfrau_dark_proc -k exp=ascdaq023,run=37 -d jungfrau
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    from psana.detector.UtilsJungfrau import info_gainbits
+
+    ds = DataSource(exp='ascdaq023',run=37) #, detectors=['jungfrau']) # (600, 4800)
+    orun = next(ds.runs())
+    det = orun.Detector('jungfrau', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
+
+    flimg = None
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
+       raw = det.raw.raw(evt)
+       if raw is None:
+           #print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+       evsel += 1
+
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       #print('==== evt/sel: %4d/%4d' % (nev,evsel))
+
+       t0_sec = time()
+
+       #img,  title  = det.raw._calibconst['pedestals'][0], 'pedestals'
+       #img, title  = det.raw.raw(evt), 'raw'
+       img, title  = det.raw.calib(evt, cmpars=(1,7,1000)), 'calib'
+       #img, title  = det.raw.image(evt), 'image'
+
+       dt_sec = (time() - t0_sec)*1000
+       print(info_ndarr(img, '==== evt/sel:%3d/%3d dt=%.3f msec  image' % (nev, evsel, dt_sec), last=10))
+       #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
+
+       print('     info_gainbits', info_gainbits(raw))
+
+       if img.ndim==2 and img.shape[0] == 1:
+           img = np.stack(1000*tuple(img))
+
+       #np.save('archon_raw.npy', img)
+       #fraclo, frachi, fracme = 0.1, 0.9, 0.5
+       #arr = img[0,:]
+       #qlo = np.quantile(arr, fraclo, method='linear')
+       #qhi = np.quantile(arr, frachi, method='linear')
+       #qme = np.quantile(arr, fracme, method='linear')
+       #print('qlo, qhi, qme, mean, max, min:', qlo, qhi, np.median(arr), np.mean(arr), np.max(arr), np.min(arr))
+       img = reshape_to_2d(img)
+
+       if flimg is None:
+          flimg = fleximage(img, h_in=5, w_in=20) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+
+       flimg.update(img)
+       flimg.fig.suptitle('Event %d: %s' % (nev, title), fontsize=16)
+       #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+       gr.show(mode='DO NOT HOLD')
+
+    gr.show()
+
+
+def issue_2025_03_18():
+    """Silke - direct access to calibration constants
+       datinfo -k exp=ued1006477,run=15 -d epixquad
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='ued1006477',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('\n\n\n  det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    detrawid = det.raw._uniqueid
+    print('\n\n\n  det.raw._uniqueid:', detrawid)
+    peds = calib_constants(detrawid, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants uniqueid:',peds.shape)
+    import psana.detector.UtilsCalib as uc
+    shortname = uc.detector_name_short(detrawid)
+    print('\n\n\n  shortname', shortname)
+    peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=15)[0]
+    print('calib_constants shortname',peds.shape)
+    # eventually silke would like to get the constants for another run like this:
+    #peds = calib_constants(shortname, exp='ued1006477', ctype="pedestals", run=17)[0]
+    #print('calib_constants shortname',peds)
+
+def issue_2025_03_19():
+    """Silke -  It appears to me that she is picking up constants from February 12th for uedc00104 and we don?t understand why
+       datinfo -k exp=uedc00104,run=177 -d epixquad
+       REASON: recent mess with detector names, in passing as metadata kwa['detector'] = detname, should be shortname
+    """
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana import DataSource
+    ds = DataSource(exp='uedc00104',run=177)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    print('det.calibconst:',det.calibconst['pedestals'][1])
+
+
+def issue_2025_03_27():
+    """direct access to calibration constants for jungfrau16M
+       datinfo -k exp=ascdaq023,run=37 -d jungfrau
+    """
+    from time import time
+    from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+
+    t0_sec = time()
+    #ds = DataSource(exp='ascdaq023',run=37)
+    ds = DataSource(exp='mfx101332224',run=66)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('\n\ntime for det.calibconst (sec): %.3f' % (time()-t0_sec))
+    print('det.calibconst.keys:',det.calibconst.keys())
+    print('det.calibconst:',det.calibconst['pedestals'][0].shape)
+
+    shortname = 'jungfrau_000003' # uc.detector_name_short(detrawid)
+    print('\n\nshortname', shortname)
+    t0_sec = time()
+    #nda = calib_constants(shortname, exp='ascdaq023', ctype='pedestals', run=37)[0] # 'pixel_status'
+    nda = calib_constants(shortname, exp='mfx101332224', ctype='pedestals', run=66)[0] # 'pixel_status'
+    print('time for calib_constants (sec): %.3f' % (time()-t0_sec))
+    print(info_ndarr(nda,'calib_constants shortname', last=10))
+#    print(info_ndarr(nda[1,1,:],'nda[1,1,:]', last=10))
+
+
+def issue_2025_03_28():
+    """see cpo email
+       datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau
+       datinfo -k exp=mfxdaq23,run=11,dir=/sdf/data/lcls/ds/mfx/mfxdaq23/xtc/ -d jungfrau
+       datinfo -k exp=mfxdaq23,run=11 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfxdaq23',run=11,dir='/sdf/data/lcls/ds/mfx/mfxdaq23/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    for nevt,evt in enumerate(myrun.events()):
+      print('evt:', nevt)
+      print('    raw  :', det.raw.raw(evt).shape)
+      print('    calib:', det.raw.calib(evt).shape)
+      print('    image:', det.raw.image(evt).shape)
+      if nevt>4: break
+
+
+def issue_2025_04_02():
+    """
+    """
+    import os
+    #from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
+    import psana.pscalib.geometry.GeometryAccess as ga # import GeometryAccess, img_from_pixel_arrays
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    import psana.pyalgos.generic.NDArrGenerators as ag
+
+    SCRDIR = os.path.dirname(os.path.realpath(__file__))
+
+    #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-jungfrau16M.data')
+    #fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-epixuhr.data')
+    fname_geo = os.path.join(SCRDIR, '../pscalib/geometry/data/geometry-def-epixm320.data')
+    logger.info('fngeo: %s' % fname_geo)
+    assert os.path.exists(fname_geo)
+
+    geo = ga.GeometryAccess(fname_geo)
+    rows, cols = geo.get_pixel_coord_indexes()
+
+    print(ndu.info_ndarr(rows, 'rows'))
+    sh3d = ndu.shape_nda_as_3d(rows) # i.e. (1,1,512,1024) > (1,512,1024)
+    rows.shape = cols.shape = sh3d
+    print(ndu.info_ndarr(rows, 'rows'))
+    arr = ag.arr3dincr(sh3d)
+    arr1 = ag.arr2dincr(sh3d[1:]) # gg.np.array(arr[0,:])
+    for n in range(sh3d[0]):
+        arr[n,:] += (10+n)*arr1
+
+    img = ga.img_from_pixel_arrays(rows, cols, W=arr)
+
+    if False:
+        import psana.pyalgos.generic.Graphics as gg # for test purpose
+        gg.plotImageLarge(img) #, amp_range=amp_range)
+        gg.move(500,10)
+        gg.show()
+        #gg.save_plt(fname='img.png')
+
+    if True:
+        flimg = None
+        from psana.detector.UtilsGraphics import gr, fleximage
+
+        if flimg is None:
+          flimg = fleximage(img, h_in=11, w_in=11) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+        else:
+          flimg.update(img)
+        flimg.fig.suptitle('test of geometry', fontsize=16)
+        #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+        # gr.show(mode='DO NOT HOLD')
+
+        gr.show()
+
+
+def issue_2025_04_03():
+    """https://confluence.slac.stanford.edu/spaces/LCLSIIData/pages/267391733/psana#psana-PublicPracticeData
+       datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
+       shape:(4, 352, 384)
+    """
+    import os
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='ued101066', run=181, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+
+    if True:
+        det_geo = det.raw._det_geo()
+        seg_geo = det.raw._seg_geo
+        top_geo = det_geo.get_top_geo()
+        #print('det_geo:%s\n%s' % (type(det_geo), str(dir(det_geo))))
+        #print('seg_geo:%s\n%s' % (type(seg_geo), str(dir(seg_geo))))
+        #print('top_geo:%s\n%s' % (type(top_geo), str(dir(top_geo))))
+
+        print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='X'), 'seg_geo.pixel_size_array(axis="X")'))
+        print(ndu.info_ndarr(seg_geo.pixel_size_array(axis='Y'), 'seg_geo.pixel_size_array(axis="Y")'))
+        print(ndu.info_ndarr(det_geo.get_pixel_coords(), 'det_geo.get_pixel_coords'))
+
+        def info_recurs_geo(geo):
+            geo.print_geo()
+            for o in geo.get_list_of_children():
+                info_recurs_geo(o)
+
+        info_recurs_geo(top_geo)
+
+
+def issue_2025_04_09():
+    """Philip: det.calibconst.keys()
+          dict_keys(['pixel_status', 'pedestals', 'pixel_min', 'pixel_max', 'pixel_rms'])
+       datinfo -k exp=mfx101332224,run=15 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=15)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    print('det.calibconst.keys():', det.calibconst.keys())
+    gain = det.calibconst['pixel_gain'][0]
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    print(ndu.info_ndarr(gain, 'gain:', last=10))
+
+
+def issue_2025_04_10():
+    """epixquad det.raw.image timing
+       datinfo -k exp=ued1010667,run=181,dir=/sdf/data/lcls/ds/prj/public01/xtc -d epixquad
+       shape:(4, 352, 384)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec: 16.220, 16.394, 16.230, 16.623, 16.154
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec: 16.423, 16.230, 16.477, 16.071, 16.722
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='ued101066', run=181, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    events = 100
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_04_11():
+    """access to multiple calibration constants
+       datinfo -k exp=mfx101332224,run=7 -d epix100
+    """
+    #from psana.pscalib.calib.MDBWebUtils import calib_constants
+    from psana.pscalib.calib.MDBUtils import timestamp_id, sec_and_ts_from_id
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=7)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100')
+    cc = det.calibconst['pedestals']
+    print('\n\n== pedestals:', cc[0].shape)
+    print('\n\n== matadata:',  cc[1])
+    id_doc = cc[1]['id_data'] # '_id']
+    print('id_doc', id_doc)
+    print('tsDB', timestamp_id(id_doc))
+    print('id -> sec:', sec_and_ts_from_id(id_doc))
+
+
+def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
+    import numpy as np
+    #import psana.pyalgos.generic.NDArrGenerators as ag
+    import psana.pyalgos.generic.NDArrUtils as ndu
+    a = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=np.float64)
+    print(ndu.info_ndarr(a, 'save %s:'%fname, last=10))
+    np.save(fname, a)
+
+def issue_2025_nda():
+    for sh in ((704, 768), (512,1024)):
+        make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
+
+
+def issue_2025_04_17():
+    """shape: (32, 512, 1024)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec: 13.677, 13.700
+
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec: 14.030
+
+       export OPENBLAS_NUM_THREADS=10
+       median dt, msec: 13.638
+    """
+    import os
+    import numpy as np
+    from time import time
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    shape = (32, 512, 1024)
+    mu_g, sigma_g, dtype_g =   10,   1, np.float32
+    mu_p, sigma_p, dtype_p = 1000,  10, np.float32
+    mu,   sigma,   dtype   = 1100, 100, np.float32
+
+    gain = mu_g + sigma_g*np.random.standard_normal(size=shape).astype(dtype=dtype_g)
+    peds = mu_p + sigma_p*np.random.standard_normal(size=shape).astype(dtype=dtype_p)
+    print(ndu.info_ndarr(gain, 'gain'))
+    print(ndu.info_ndarr(peds, 'peds'))
+
+    nloops = 100
+    arrdt = np.empty(nloops, dtype=np.float32)
+
+    for n in range(nloops):
+        nda = mu + sigma*np.random.standard_normal(size=shape).astype(dtype=dtype)
+        t0_sec = time()
+        #result = nda-peds
+        result = (nda-peds) * gain
+        dt_sec = (time() - t0_sec)*1000
+        arrdt[n] = dt_sec
+        print('%02d dt, msec: %.3f %s' % (n, dt_sec, ndu.info_ndarr(result, 'result')))
+
+    print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_04_21():
+    """The same as issue_2025_04_10, but for jungfrau 16M
+       epixquad det.raw.image timing
+       datinfo -k exp=mfx101332224,run=9999,dir=/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo -d jungfrau
+       shape:(3,32,512,1024)
+
+       export OPENBLAS_NUM_THREADS=1
+       echo $OPENBLAS_NUM_THREADS
+
+       by default, OPENBLAS_NUM_THREADS=1
+       median dt, msec: 265.418
+       export OPENBLAS_NUM_THREADS=0
+       median dt, msec: 264.812
+       export OPENBLAS_NUM_THREADS=10
+       median dt, msec: 264.504
+       export OPENBLAS_NUM_THREADS=64
+       median dt, msec: 262.617
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx101332224', run=9999, dir='/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo')
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    events = 100
+    arrdt = np.zeros(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            if raw is None: continue
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print('evt:%3d dt=%.3f msec det.raw.image' % (nevt, dt_sec))
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_04_22():
+    """epixquad det.raw.calib/image - zeros
+       datinfo -k exp=ued1006419,run=2 -d epixquad
+       shape:(4, 352, 384)
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='ued1006419', run=2) #, dir='/sdf/data/lcls/ds/prj/public01/xtc')
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixquad')
+    events = 10
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:%3d' % nevt)
+            arrdt[nevt] = dt_sec
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print(ndu.info_ndarr(calib, 'evt:%3d calib'% nevt, last=10))
+            print('min: %f max: %f' % (np.min(calib),np.max(calib)))
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            #print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+
+def issue_2025_04_23(DO_WITH_PUBLISH=True):
+    """cpo - jungfrau16M image for 4 drp panels
+       datinfo -k exp=mfx101332224,run=167 -d jungfrau
+       shape:(4, 512, 1024)
+    """
+    from psana import DataSource
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    if DO_WITH_PUBLISH:
+        from psmon.plots import Image
+        from psmon import publish
+        publish.local = True
+        publish.plot_opts.aspect = 1
+
+    ds = DataSource(exp='mfx101332224',run=167)
+    myrun = next(ds.runs())
+    jf = myrun.Detector('jungfrau')
+    for nevent,evt in enumerate(myrun.events()):
+        if nevent > 10: break
+        raw = jf.raw.raw(evt)
+        print(ndu.info_ndarr(raw, 'ev:%02d raw:' % nevent))
+        if raw is None: continue
+        image = jf.raw.image(evt)
+        print(ndu.info_ndarr(image, '    image:'))
+
+        if DO_WITH_PUBLISH:
+            imgsend = Image(nevent,"Random",image)
+            publish.send('image',imgsend)
+            input("hit cr")
+
+def issue_2025_04_29():
+    """
+       datinfo -k exp=mfx101332224,run=204 -d jungfrau
+       shape:(19, 512, 1024)
+    """
+    from psana import DataSource
+    ds = DataSource(exp='mfx101332224',run=204)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+    for nevt,evt in enumerate(myrun.events()):
+        print(det.raw.image(evt).shape)
+        break
+
+
+def issue_2025_05_07():
+    """test of the detector axis, shape:(796, 6144)
+       det_dark_proc -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix101333324,run=46 -d axis_svls
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='rix101333324', run=46)
+    myrun = next(ds.runs())
+    det = myrun.Detector('axis_svls')
+    events = 5
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            #img = det.raw.image(evt, nda=raw/2) # raw
+            img = det.raw.image(evt, nda=None) # raw
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec for det.raw.image(evt)' % (nevt, dt_sec))
+            print(ndu.info_ndarr(raw,   '  raw  :'))
+            print(ndu.info_ndarr(calib, '  calib:'))
+            print(ndu.info_ndarr(img,   '  img  :'))
+            if flimg is None:
+                flimg = fleximage(img, h_in=2.5, w_in=15)
+            flimg.update(img)
+            flimg.fig.suptitle('evt: %d test of detector axis' % nevt, fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_05_14():
+    """test QComboBox for control_gui"""
+
+    from PyQt5.QtWidgets import QComboBox, QMainWindow, QApplication
+    from PyQt5.QtCore import Qt
+    import sys
+
+    class CustomQComboBox(QComboBox):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+        def keyPressEvent(self, event):
+            #print('event.key():', event.key())
+            if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                event.ignore()  # Ignore up and down arrow keys
+            else:
+                super().keyPressEvent(event) # Default behavior for other keys
+
+        def wheelEvent(self, event):
+            event.ignore()
+            #print('event:', dir(event), '\n')
+            #print('event.angleDelta().y():', event.angleDelta().y(), '\n')
+            #super().wheelEvent(event) # Default behavior
+            #if event.angleDelta().y() in (120, -120):
+            #    event.ignore()  # Ignore up and down arrow keys
+            #else:
+            #    super().keyPressEvent(event) # Default behavior for other keys
+
+    class MainWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            combobox = CustomQComboBox()
+            combobox.addItems(['One', 'Two', 'Three', 'Four'])
+            # Connect signals to the methods.
+            combobox.activated.connect(self.activated)
+            combobox.currentTextChanged.connect(self.text_changed)
+            combobox.currentIndexChanged.connect(self.index_changed)
+
+            self.setCentralWidget(combobox)
+
+        def activated(Self, index):
+            print("Activated index:", index)
+
+        def text_changed(self, s):
+            print("Text changed:", s)
+
+        def index_changed(self, index):
+            print("Index changed", index)
+
+    app = QApplication(sys.argv)
+    w = MainWindow()
+    w.show()
+    app.exec_()
+
+
+#===
+    
+#===
+
 def argument_parser():
     from argparse import ArgumentParser
     d_tname = '0'
@@ -312,24 +943,19 @@ def argument_parser():
     d_detname  = 'archon' # None
     d_loglevel = 'INFO' # 'DEBUG'
     d_subtest  = None
-    h_tname    = 'test name, usually numeric number, default = %s' % d_tname
+    h_tname    = 'test name, usually numeric number 0,...,>20, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
     h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
-    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
+    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME,\
+                            usage='for list of implemented tests run it without parameters')
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
-    parser.add_argument('-s', '--subtest', default=d_subtest, type=str, help=h_subtest)
+    parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
     return parser
-
-
-def USAGE():
-    import inspect
-    return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
-    + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])
 
 
 def selector():
@@ -339,23 +965,51 @@ def selector():
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
 
-    TNAME = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
+    TNAME = args.tname # sys.argv[1] if len(sys.argv)>1 else '0'
 
     if   TNAME in  ('0',): issue_2025_mm_dd() # template
     elif TNAME in  ('1',): issue_2025_01_29() # archon V2 common mode
-    elif TNAME in  ('2',): issue_2025_01_31() # emulated jungfrau
+    elif TNAME in  ('2',): issue_2025_01_31() # emulated jungfrauemu
     elif TNAME in  ('3',): issue_2025_02_05() # fleximage does not show image
     elif TNAME in  ('4',): issue_2025_02_21() # access to jungfrau panel configuration object
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
     elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
+    elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
+    elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
+    elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
+    elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
+    elif TNAME in ('11',): issue_2025_03_28() # cpo - jungfrau issues
+    elif TNAME in ('12',): issue_2025_04_02() # Aaron Brewster - acces to jungfrau geometry from file
+    elif TNAME in ('13',): issue_2025_04_03() # Aaron Brewster - acces to jungfrau geometry from det._calibconst
+    elif TNAME in ('14',): issue_2025_04_09() # Philip: det.calibconst.keys() - missing pixel_gain
+    elif TNAME in ('15',): issue_2025_nda()   # me - generate and save random numpy array in file
+    elif TNAME in ('16',): issue_2025_04_10() # cpo - epixquad det.raw.image timing with OPENBLAS_NUM_THREADS=1/0
+    elif TNAME in ('17',): issue_2025_04_11() # me - access to multiple calibconst
+    elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
+    elif TNAME in ('19',): issue_2025_04_21() # me - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
+    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
+    elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
+    elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
+    elif TNAME in ('23',): issue_2025_05_07() # me - test of the detector axis shape:(796, 6144)
+    elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
-
     exit('END OF TEST %s'%TNAME)
 
 
+def USAGE():
+    import inspect
+    #return '\n  TEST'
+    return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
+         + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])\
+         + '\n\nHELP:\n  list of parameters: ./%s -h\n  list of tests:      ./%s' % (SCRNAME, SCRNAME)
+
+
 if __name__ == "__main__":
+    if len(sys.argv)==1:
+        print(USAGE())
+        exit('\nMISSING ARGUMENTS -> EXIT')
     selector()
 
 # EOF

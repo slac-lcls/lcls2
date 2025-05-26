@@ -32,9 +32,6 @@ class SeqUser:
         self.running  = Pv(prefix+':RUNNING', self.changed)
         self._idx     = 0
         self.lock     = None
-
-        xpmpf = ':'.join(prefix.split(':')[:4])
-        self.seqcodes = Pv(xpmpf+':SEQCODES',isStruct=True)
         self.eng      = int(prefix.split(':')[-1])
 
     def changed(self,err=None):
@@ -63,6 +60,9 @@ class SeqUser:
 
     def load(self, title, instrset, descset=None):
         self.desc.put(title,wait=tmo)
+
+        # Before encoding, run the preprocessor to expand any macros
+        instrset = preproc(instrset)
 
         encoding = [len(instrset)]
         for instr in instrset:
@@ -97,26 +97,14 @@ class SeqUser:
         #  (Optional for XPM) Write descriptions for each bit in the sequence
         if descset!=None:
             self.seqbname.put(descset,wait=tmo)
-            
-            seqcodes = self.seqcodes.get()
-            desc     = seqcodes.value.Description
-            for e in range(4*self.eng,4*self.eng+4):
-                desc[e] = ''
-            for i,d in enumerate(descset):
-                desc[4*self.eng+i] = d
 
-            v = seqcodes.value
-            v.Description = desc
-            seqcodes.value = v
-            self.seqcodes.put(seqcodes,wait=tmo)
-                
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):
         self.start .put(0,wait=tmo) # noop
         self.idxrun.put(self._idx,wait=tmo)
         self.reset .put(0,wait=tmo)
-        self.start .put(1 if not refresh else 3,wait=tmo)
+        self.reset .put(1,wait=tmo)
         if wait:
             self.lock= Lock()
             self.lock.acquire()
@@ -129,29 +117,27 @@ class SeqUser:
 
     #  Move from one set to the next without stopping
     def execute(self, title, instrset, descset=None, sync=False, refresh=False):
-        self.clean(self.idxrun.get())
         self.load (title,instrset,descset)
         if sync:
             self.sync(refresh)  # schedule the reset
         else:
             self.begin(refresh) # reset now
-        #self.idxrun.put(self._idx,wait=tmo)
-        #self.start.put(2,wait=tmo)
+        self.clean()
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument('--pv', type=str, required=True, help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
+    parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
     files = []
     engineMask = 0
 
-    seqcodes_pv = Pv(f'{args.pv}:SEQCODES',isStruct=True)
-    seqcodes = seqcodes_pv.get()
-    desc = seqcodes.value.Description
+    seqcodes_pv = Pv(f'{args.pv}:SEQCODENAMES')
+    desc = seqcodes_pv.get()
 
     for s in args.seq:
         sengine,fname = s.split(':',1)
@@ -169,12 +155,17 @@ def main():
             config['refresh']=False
         print(f'refresh  {config["refresh"]}')
         if args.verbose:
-            print('instrset:')
+            print('instrset (before preproc):')
+            for i in config["instrset"]:
+                print(i)
+        config['instrset'] = preproc(config['instrset'])
+        if args.verbose:
+            print('instrset (after preproc):')
             for i in config["instrset"]:
                 print(i)
 
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=True,refresh=config['refresh'])
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
         del seq
 
         engineMask |= (1<<engine)
@@ -185,14 +176,12 @@ def main():
             desc[4*engine+e] = d
         print(f'desc {desc}')
 
-    if args.start:
-        v = seqcodes.value
-        v.Description = desc
-        seqcodes.value = v
-        seqcodes_pv.put(seqcodes,wait=tmo)
+    seqcodes_pv.put(desc,wait=tmo)
 
+    if args.start:
         pvSeqReset = Pv(f'{args.pv}:SeqReset')
         pvSeqReset.put(engineMask,wait=tmo)
+
         
 
 if __name__ == '__main__':

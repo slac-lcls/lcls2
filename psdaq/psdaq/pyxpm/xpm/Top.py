@@ -15,7 +15,7 @@ import rogue.hardware.axi
 import pyrogue as pr
 import pyrogue.protocols
 import time
-import cameralink_gateway  # to get surf
+from psdaq.utils import enable_cameralink_gateway  # to get surf
 import surf.axi                     as axi
 import surf.xilinx                  as xil
 import surf.devices.ti              as ti
@@ -36,6 +36,7 @@ class Top(pr.Device):
                     name        = "Top",
                     description = "Container for XPM",
                     ipAddr      = '10.0.1.101',
+                    xvcPort     = None,
                     memBase     = 0,
                     fidPrescale = 200,
                     numDDC      = 0,
@@ -58,24 +59,22 @@ class Top(pr.Device):
         ################################################################################################################
 
         # Create SRP/ASYNC_MSG interface
-        if False:
-            # UDP only
-            self.udp = rogue.protocols.udp.Client(ipAddr,8192,0)
-            
-            # Connect the SRPv0 to RAW UDP
-            self.srp = rogue.protocols.srp.SrpV0()
-            pyrogue.streamConnectBiDir( self.srp, self.udp )
+        self.rudp = pr.protocols.UdpRssiPack( name='rudpReg', host=ipAddr, port=8193, packVer = 1, jumbo = False)
 
-        if True:
-            self.rudp = pyrogue.protocols.UdpRssiPack( name='rudpReg', host=ipAddr, port=8193, packVer = 1, jumbo = False)
+        # Connect the SRPv3 to tDest = 0x0
+        self.srp = rogue.protocols.srp.SrpV3()
+        pr.streamConnectBiDir( self.srp, self.rudp.application(dest=0x0) )
 
-            # Connect the SRPv3 to tDest = 0x0
-            self.srp = rogue.protocols.srp.SrpV3()
-            pr.streamConnectBiDir( self.srp, self.rudp.application(dest=0x0) )
+        # Create stream interface
+        self.stream = pr.protocols.UdpRssiPack( name='rudpData', host=ipAddr, port=8194, packVer = 1, jumbo = False)
 
-            # Create stream interface
-            self.stream = pr.protocols.UdpRssiPack( name='rudpData', host=ipAddr, port=8194, packVer = 1, jumbo = False)
-
+        # Connect XVC
+        if xvcPort is not None:
+            self.udp = rogue.protocols.udp.Client(ipAddr, 2542, 0)
+            self.xvc = rogue.protocols.xilinx.Xvc(xvcPort)
+            self.addProtocol(self.xvc)
+            self.udp == self.xvc
+        
         ######################################################################
         
         # Add devices

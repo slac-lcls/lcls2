@@ -11,6 +11,7 @@ from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
 
 PROM_PORT_BASE = 9200
+MAX_PROM_PORTS = 100
 
 class CustomCollector():
     def __init__(self, provider, hutch, identifier):
@@ -57,12 +58,13 @@ def createExposer(prometheusDir):
         return
 
     hostname = socket.gethostname()
-    port = PROM_PORT_BASE
-    while port < PROM_PORT_BASE + 100:
+    for i in range(MAX_PROM_PORTS):
+        port = PROM_PORT_BASE + i
         try:
             start_http_server(port)
-            fileName = f'{prometheusDir}/drpmon_{hostname}_{port - PROM_PORT_BASE}.yaml'
-            if not os.path.exists(fileName):
+            fileName = f'{prometheusDir}/drpmon_{hostname}_{i}.yaml'
+            # Commented out the existing file check so that the file's date is refreshed
+            if True: #not os.path.exists(fileName):
                 try:
                     with open(fileName, 'wt') as f:
                         f.write(f'- targets:\n    - {hostname}:{port}\n')
@@ -75,7 +77,6 @@ def createExposer(prometheusDir):
             return True
         except OSError:
             pass                # Port in use
-        port += 1
     logging.error('No available port found for providing run-time monitoring')
     return False
 

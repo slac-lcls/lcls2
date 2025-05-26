@@ -2,7 +2,9 @@ from amitypes import Array3d
 
 import logging
 logger = logging.getLogger(__name__)
-
+from amitypes import Array1d, Array2d, Array3d
+import psana.detector.UtilsJungfrau as uj
+import psana.detector.UtilsCalib as uc
 import psana.detector.areadetector as ad
 AreaDetectorRaw = ad.AreaDetectorRaw
 
@@ -10,22 +12,23 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
     def __init__(self, *args, **kwa):
         logger.debug('jungfrau_raw_0_1_0.__init__')
         AreaDetectorRaw.__init__(self, *args, **kwa)
-        #self._sorteed_segment_inds = (0,1,2,3,4,5,6,7)
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau4M.data'
+
+        #self._segment_numbers = (0,3,4,5,6,8,9)
+        #print('XXX self._segment_numbers', self._segment_numbers)
+        segnum_max = max(self._segment_numbers)
+        nsegs = uj.jungfrau_segments_tot(segnum_max) # 1,2,8, or 32
+        sMpix = {1:'05M', 2:'1M', 8:'4M', 32:'16M'}.get(nsegs, 32)
+
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix
         self._seg_geo = ad.sgs.Create(segname='JUNGFRAU:V2')
-        flds = self._uniqueid.split('_')
 
-        nsegs = None if flds is None else len(flds)-1
-        sMpix = {1:'05M', 2:'1M', 3:'4M'}.get(nsegs, None)
-
-        #self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau%s.data' % sMpix
-        #self._path_geo_default = 'pscalib/geometry/data/geometry-def-jungfrau1M.data'
-        #self._segment_numbers = (0,1,2,3,4,5,6,7)
+        self._gain_modes = ('g0', 'g1', 'g2')
+        self._data_bit_mask = 0x3fff
 
 #        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
-#        self._gain_modes = ('FH', 'FM', 'FL')
+#        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
 
-#    def raw(self, evt, mu=0, sigma=10):
+#    def _raw_random(self, evt, mu=0, sigma=10):
 #        """ FOR DEBUGGING ONLY !!!
 #            add random values to apread the same per event array
 #        """
@@ -47,9 +50,32 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
                     +'\n    per-segment gain0: %s' % str([str(cfg.gain0.value) for cfg in scfgs]))
         return scfgs
 
-    def _segment_ids(self):
-        """returns list of segment ids"""
-        #print('TBD _segment_ids for longname: %s' % self._uniqueid)
-        return self._uniqueid.split('_')[1:]
+    def _detector_name_long_short(self):
+        longname = self._uniqueid
+        return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
 
+    def calib(self, evt, **kwa) -> Array2d:
+        #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
+        if self.raw(evt) is None: return None
+        return uj.calib_jungfrau(self, evt, **kwa)
+
+class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
+    def num_hot_pixels(self, evt):
+        n_hot_pixels = 0
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        for _,seg in segs.items():
+            n_hot_pixels += seg.numHotPixels
+        return n_hot_pixels
+
+    def hot_pixel_thresh(self, evt):
+        hp_tresh = 0
+        segs = self._segments(evt)
+        if segs is None:
+            return None
+        for _,seg in segs.items():
+            hp_tresh = seg.hotPixelThresh
+            break
+        return hp_tresh
 # EOF

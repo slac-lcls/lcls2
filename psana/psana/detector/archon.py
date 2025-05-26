@@ -144,9 +144,17 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         return a
 
 
-class archon_raw_1_0_1(AreaDetectorRaw):
+archon_raw_1_0_1 = archon_raw_1_0_0 # alias
+
+#class archon_raw_1_0_1(archon_raw_1_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+
+
+
+class archon_raw_1_0_X(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
-        """In 1_0_1 bank fake pixel columns ahead of real:
+        """In 1_0_X bank fake pixel columns ahead of real:
            daq raw array consists of 16 banks, bank has variable number off rows.
            bank has 36 columns af fake, and 264 columns of real pixels, described by ARCHON:V2 geometry
         """
@@ -252,6 +260,7 @@ class archon_raw_1_0_1(AreaDetectorRaw):
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 36, 300
         return np.hstack([a[:,st*i+sf:st*(i+1)] for i in range(self._nbanks)])
 
+    
     def _mask_fake(self, raw_shape, dtype=np.uint8) -> Array2d:
         """returns mask of shape=(<nrows>,4800), with fake pixels of all banks set to 0"""
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 36, 300

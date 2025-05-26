@@ -1,19 +1,19 @@
 
 
 import os
-import h5py
-import numpy as np
-from glob import glob
-from mpi4py import MPI
-
-
-from psana import DataSource
-from test_shmem import Test as ShmemTest
-
-
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
 import sys
+from glob import glob
+
+import h5py
+import numpy as np
+from mpi4py import MPI
+from test_shmem import Test as ShmemTest
+
+from psana import DataSource
+
+
 # Global error handler
 def global_except_hook(exctype, value, traceback):
     sys.stderr.write("except_hook. Calling MPI_Abort().\n")
@@ -43,7 +43,7 @@ def gen_h5(source='xtc', pid=None):
 
     if source == 'xtc':
         xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
-        ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir, filter=lambda x : True, batch_size=2)
+        ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=lambda x : True, batch_size=2)
     elif source == 'shmem':
         ds = DataSource(shmem='shmem_test_' + pid)
 
@@ -101,7 +101,6 @@ class SmallDataTest:
         return
 
     def test_int(self):
-        print('DEBUGXXX', np.array(self.f['/oneint']))
         assert np.all(np.array(self.f['/oneint']) == 1)
         return
 
@@ -216,7 +215,6 @@ if __name__ == '__main__':
     #setup_input_files(tmp_path) # tmp_path is from pytest :: makes .tmp
     #main(tmp_path)
     #os.system('rm -r .tmp')
-
     # COMMENT IN TO RUN pytest ...
     tmp_path = pathlib.Path(os.environ.get('TEST_XTC_DIR', os.getcwd()))
     main(tmp_path)

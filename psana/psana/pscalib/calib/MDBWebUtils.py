@@ -28,7 +28,7 @@ Usage ::
     id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
       wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
 
-    detname_short = wu.pro_detector_name(detname, add_shortname=False)
+    detname_short = wu.pro_detector_name(detname, add_shortname=False, maxsize=cc.MAX_DETNAME_SIZE)
 
     resp = wu.delete_database(dbname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     resp = wu.delete_collection(dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -52,13 +52,28 @@ import numpy as np
 import io
 
 import psana.pscalib.calib.CalibConstants as cc
-from requests import get, post, delete #put
+import requests as req
+get, delete = req.get, req.delete # req.put
 
 from time import time
 from numpy import fromstring
 import psana.pscalib.calib.MDBUtils as mu
 import psana.pyalgos.generic.Utils as gu
 from subprocess import call
+
+def info_dict(d, cmt='', offset='  '):
+    """ returns (str) dict content"""
+    s = '%s\n%sinfo_dict' % (cmt, offset)
+    for k,v in d.items():
+        if isinstance(v,dict): s = info_dict(v, cmt='', offset = offset+'  ')
+        else: s = '%s\n%sk:%s t:%s v:%s' % (s, offset, str(k).ljust(10), type(v), str(v)[:60])
+    return s
+
+
+def post(url, **kwa):
+    print('XXX MDBWebUtils: post url:%s' % url) # info_dict(kwa, cmt='kwa', offset='  ')
+    return req.post(url, **kwa)
+
 
 def has_kerberos_ticket():
     """Checks to see if the user has a valid Kerberos ticket."""
@@ -90,6 +105,9 @@ def request(url, query=None):
         (url, str(query), r.ok, r.status_code, r.reason)
     s += '\nTry command: curl -s "%s"' % url
     logger.debug(s)
+    if r.status_code == 503:
+        logger.warning(s)
+        sys.exit(1)
     return None
 
 
@@ -113,7 +131,7 @@ def collection_names(dbname, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}."""
-    uri = '%s/%s/%s'%(url,dbname,colname)
+    uri = '%s/%s/%s'%(url.rstrip('/'),dbname,colname)
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
     r = request(uri, {"query_string": query_string})
@@ -149,8 +167,12 @@ def select_latest_doc(docs, query):
         #logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
-    qkeys = query.keys()
-    key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    for d in docs:
+        d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'])
+
+    #qkeys = query.keys()
+    #key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    key_sort = 'tsec_id'
 
     logger.debug('select_latest_doc: %s\nkey_sort: %s' % (str(query), key_sort))
     vals = [int(d[key_sort]) for d in docs]
@@ -167,7 +189,7 @@ def select_latest_doc(docs, query):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     """Returns document for docid."""
-    r = request('%s/%s/%s/%s'%(url,dbname,colname,docid))
+    r = request('%s/%s/%s/%s'%(url.rstrip('/'),dbname,colname,docid))
     if r is None: return None
     return r.json()
 
@@ -175,7 +197,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a"
 def get_data_for_id(dbname, dataid, url=cc.URL):
     """Returns raw data from GridFS, at this level there is no info for parsing."""
-    r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    r = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,dataid))
     if r is None: return None
     logger.debug('get_data_for_docid:'\
                 +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' %
@@ -199,19 +221,19 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
-    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url,dbname,idd)))
-    r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
+    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd)))
+    r2 = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd))
     if r2 is None: return None
     s = r2.content
 
     return mu.object_from_data_string(s, doc)
 
 
-def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None, dbsuffix=''):
+def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dtype=None, dbsuffix='', **kwa):
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
-    short = pro_detector_name(det)
+    short = pro_detector_name(det, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     logger.debug('short: %s dbsuffix: %s' % (short, dbsuffix))
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
@@ -327,8 +349,14 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     d = f.read()
     #logger.debug('add_data byte-data:',d)
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
-    logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
-    id = resp.json().get('_id',None)
+    logger.info('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+
+    try:
+        id = resp.json().get('_id',None)
+    except Exception as e:
+        logger.warning('JSONDecodeError: %s' % str(e))
+        return None
+
     if id is None: logger.warning('id_data is None')
     return id
 
@@ -350,7 +378,7 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
     # check permission
     t0_sec = time()
-    if not valid_post_privilege(_dbname, url_krb=url): return None
+    if not valid_post_privilege(_dbname, url_krb=cc.URL_KRB): return None
 
     id_data = add_data(_dbname, data, url, krbheaders)
     if id_data is None: return None
@@ -375,15 +403,16 @@ def insert_document_and_data(dbname, colname, dicdoc, data, url=cc.URL_KRB, krbh
 def add_data_and_two_docs(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs):
     """Add data and document to experiment and detector data bases."""
     logger.debug('add_data_and_two_docs kwargs: %s' % str(kwargs))
-
-    shortname = pro_detector_name(detname_long, add_shortname=True)
+    shortname = pro_detector_name(detname_long, add_shortname=True,\
+                                  maxsize=kwargs.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
     colname = shortname
     dbname_exp = mu.db_prefixed_name(exp)
     dbname_det = mu.db_prefixed_name(shortname)
-    
+
     ctype = kwargs.get('ctype','N/A')
-    logger.info('add_data_and_two_docs save constants: %s in DBs: %s %s collection: %s' % (ctype, dbname_exp, dbname_det, colname))
+    logger.info('add_data_and_two_docs save constants: %s in DBs: %s and %s collection: %s'%\
+                (ctype, dbname_exp, dbname_det, colname))
 
     #kwargs['detector'] = detname         # ex: epix10ka
     kwargs['shortname'] = shortname       # ex: epix10ka_000001
@@ -422,7 +451,7 @@ def add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=cc.URL_KRB, 
     """
     logger.debug('add_data_and_doc_to_detdb_extended kwargs: %s' % str(kwargs))
 
-    short = pro_detector_name(detname_long, add_shortname=True)
+    short = pro_detector_name(detname_long, add_shortname=True, maxsize=kwargs.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
     dbname_det = detector_dbname(short, **kwargs)
     colname = short
@@ -440,7 +469,7 @@ def add_data_and_doc_to_detdb_extended(data, exp, detname_long, url=cc.URL_KRB, 
 def deploy_constants(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa):
     """Deploys constants depending on dbsuffix."""
 
-    detname = pro_detector_name(detname_long, add_shortname=False)
+    detname = pro_detector_name(detname_long, add_shortname=False, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     ctype = kwa.get('ctype','')
     dbsuffix = kwa.get('dbsuffix','')
 
@@ -521,6 +550,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+    if detname is None: return None
     assert isinstance(detname,str), 'unexpected detname: %s' % str(detname)
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
@@ -713,7 +743,7 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     logger.debug('valid_post_privilege ws_url: %s'% ws_url)
 
     try:
-        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(cc.URL_KRB_HEADERS).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
         logger.warning('KerberosTicket error: %s' % str(err))
         logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')

@@ -18,6 +18,7 @@ USAGE = 'Usage:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
       + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -26,17 +27,17 @@ def argument_parser():
 
     d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
     d_detname = 'jungfrau' #  None
-    d_nrecs   = 20   # number of records to collect and process
-    d_nrecs1  = 10   # number of records to process at 1st stage
-    d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
-    d_dirrepo = './work' # DIR_REPO_JUNGFRAU
+    d_nrecs   = 1000  # number of records to collect and process
+    d_nrecs1  = 50    # number of records to process at 1st stage
+    #d_idx     = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
     d_events  = 1000000 # last event number in the step to process
-    d_evstep  = 2000
+    d_evstep  = 1000000
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
@@ -51,13 +52,13 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-02-11'
+    d_version = 'V2025-04-30'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
     d_evcode  = None
     d_segind  = None
-    d_igmode  = 0 # None
+    d_igmode  = None
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -67,7 +68,7 @@ def argument_parser():
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_detname = 'detector name, default = %s' % d_detname
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
-    h_idx     = 'segment index (0-15 for epix10ka2m, 0-3 for quad) or all by default for processing, default = %s' % str(d_idx)
+    #h_idx     = 'segment index (0-31 for jungfrau) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
@@ -95,7 +96,7 @@ def argument_parser():
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
                 'code inverts selection, default = %s'%str(d_evcode)
-    h_segind  = 'segment index to process, default = %s' % str(d_segind)
+    h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
@@ -103,7 +104,7 @@ def argument_parser():
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
-    parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
+    #parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)

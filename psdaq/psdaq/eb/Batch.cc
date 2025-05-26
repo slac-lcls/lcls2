@@ -23,9 +23,9 @@ void Batch::dump() const
   const char* buffer = static_cast<const char*>(_buffer);
   if (buffer)
   {
-    printf("Dump of Batch %014lx at index %u (%p)\n", _id, index(), buffer);
-    printf("  extent %u, entry size %zd => # of entries %zd\n",
-           _extent, _bufSize, _extent / _bufSize);
+    fprintf(stderr, "Dump of Batch %014lx at index %u (%p)\n", _id, index(), buffer);
+    fprintf(stderr, "  extent %u, entry size %zd => # of entries %zd\n",
+            _extent, _bufSize, _extent / _bufSize);
 
     unsigned cnt = 0;
     while (true)
@@ -38,9 +38,9 @@ void Batch::dump() const
       unsigned       src = dg->xtc.src.value();
       unsigned       env = dg->env;
       uint32_t*      inp = (uint32_t*)dg->xtc.payload();
-      printf("  %2u, %15s  dg @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, inp [%08x, %08x]\n",
-             cnt, svc, dg, ctl, pid, env, sz, src, inp[0], inp[1]);
+      fprintf(stderr, "  %2u, %15s  dg @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, inp [%08x, %08x]\n",
+              cnt, svc, dg, ctl, pid, env, sz, src, inp[0], inp[1]);
 
       buffer += _bufSize;
       dg      = reinterpret_cast<const EbDgram*>(buffer);
@@ -51,6 +51,6 @@ void Batch::dump() const
   }
   else
   {
-    printf("Batch %08x contains no datagrams\n", index());
+    fprintf(stderr, "Batch %08x contains no datagrams\n", index());
   }
 }

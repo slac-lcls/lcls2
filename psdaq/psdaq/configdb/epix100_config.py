@@ -4,8 +4,10 @@ import os
 import time
 from collections import OrderedDict
 
+from psdaq.utils import enable_epix_100a_gen2 # To find epix100_gen2
 import epix100a_gen2  # To find ePixFpga
 import ePixFpga as fpga
+from psdaq.utils import enable_lcls2_epix_hr_pcie # To find lcls2_epix_hr_pcie
 import lcls2_epix_hr_pcie
 import pyrogue
 import rogue
@@ -184,8 +186,7 @@ def epix100_config(base, connect_str, cfgtype, detname, detsegm, rog):
         "PartitionDelay[%d]" % group,
     ).get()
     rawStart = cfg["user"]["start_ns"]
-    # triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-    triggerDelay = 100
+    triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
     logging.debug(
         "partitionDelay {:}  rawStart {:}  triggerDelay {:}".format(
             partitionDelay, rawStart, triggerDelay
@@ -392,3 +393,26 @@ def epix100_update(update):
     ].TriggerDelay.set(triggerDelay)
 
     return json.dumps(newcfg)
+
+
+def epix100_external_trigger(base):
+    cbase = base['cam']
+    # Switch to external triggering
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AutoRunEnable.set(0)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(True)
+
+
+def epix100_internal_trigger(base):
+    cbase = base['cam']
+    # Switch to internal triggering
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(False)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AutoRunEnable.set(1)
+
+
+def epix100_enable(base):
+    epix100_external_trigger(base)
+
+
+def epix100_disable(base):
+    time.sleep(0.005)  # Need to make sure readout of last event is complete
+    epix100_internal_trigger(base)

@@ -31,9 +31,9 @@ static int checkMr(Fabric*         fabric,
     {
       if (verbose)
       {
-        printf("Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
-               mr->start(), (char*)(mr->start()) + mr->length(),
-               mr->length(), mr->length());
+        fprintf(stderr, "Reusing        MR: %10p : %10p, size 0x%08zx = %zu\n",
+                mr->start(), (char*)(mr->start()) + mr->length(),
+                mr->length(), mr->length());
       }
       return 0;
     }
@@ -47,9 +47,9 @@ static int checkMr(Fabric*         fabric,
   }
   if (verbose > 1)
   {
-    printf("Freed          MR: %10p : %10p, size 0x%08zx = %zu\n",
-           mr->start(), (char*)(mr->start()) + mr->length(),
-           mr->length(), mr->length());
+    fprintf(stderr, "Freed          MR: %10p : %10p, size 0x%08zx = %zu\n",
+            mr->start(), (char*)(mr->start()) + mr->length(),
+            mr->length(), mr->length());
   }
   return 1;
 }
@@ -80,9 +80,9 @@ int Pds::Eb::setupMr(Fabric*         fabric,
 
   if (verbose)
   {
-    printf("Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
-           mr->start(), (char*)(mr->start()) + mr->length(),
-           mr->length(), mr->length(), dT);
+    fprintf(stderr, "Registered     MR: %10p : %10p, size 0x%08zx = %zu  (%lu ms)\n",
+            mr->start(), (char*)(mr->start()) + mr->length(),
+            mr->length(), mr->length(), dT);
   }
 
   return 0;
@@ -136,8 +136,8 @@ int EbLfLink::recvU32(uint32_t*   u32,
   }
   *u32 = data;
 
-  if (_verbose > 1)  printf("Received %s's %s: 0x%08x = %d\n",
-                            peer, name, *u32, *u32);
+  if (_verbose > 1)  fprintf(stderr, "Received %s's %s: 0x%08x = %d\n",
+                             peer, name, *u32, *u32);
 
   return 0;
 }
@@ -156,8 +156,8 @@ int EbLfLink::sendU32(uint32_t    u32,
     return rc;
   }
 
-  if (_verbose > 1)  printf("Sent     %s   %s  0x%08x = %d\n",
-                            peer, name, u32, u32);
+  if (_verbose > 1)  fprintf(stderr, "Sent     %s   %s  0x%08x = %d\n",
+                             peer, name, u32, u32);
 
   return 0;
 }
@@ -183,8 +183,8 @@ int EbLfLink::recvMr(RemoteAddress& ra,
 
   if (_verbose > 1)
   {
-    printf("Received %s's MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
-           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
+    fprintf(stderr, "Received %s's MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
+            (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
   }
 
   return 0;
@@ -211,8 +211,8 @@ int EbLfLink::sendMr(MemoryRegion* mr,
 
   if (_verbose > 1)
   {
-    printf("Sent     %s   MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
-           (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
+    fprintf(stderr, "Sent     %s   MR: %10p : %10p, size 0x%08zx = %zu\n", peer,
+            (void*)ra.addr, (void*)(ra.addr + ra.extent), ra.extent, ra.extent);
   }
 
   return 0;

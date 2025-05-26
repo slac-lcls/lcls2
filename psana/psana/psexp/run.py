@@ -1,9 +1,12 @@
 import inspect
+import time
 
 from psana import dgram
+from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
+from psana.utils import Logger
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -79,20 +82,25 @@ class StepEvent(object):
 
 
 class Run(object):
-    configs = None
-    smd_dm = None
-    nfiles = 0
-    scan = False  # True when looping over steps
-    smd_fds = None
-
     def __init__(self, ds):
         self.ds = ds
         self.expt, self.runnum, self.timestamp = ds._get_runinfo()
         self.dsparms = ds.dsparms
+        self.configs = None
+        self.smd_dm = None
+        self.nfiles = 0
+        self.scan = False
+        self.smd_fds = None
+
+        self.logger = getattr(ds, "logger", None)
+        if self.logger is None:
+            self.logger = Logger(name="Run")
+
         if hasattr(ds, "dm"):
             ds.dm.set_run(self)
         if hasattr(ds, "smdr_man"):
             ds.smdr_man.set_run(self)
+
         RunHelper(self)
 
     @property
@@ -102,7 +110,7 @@ class Run(object):
     def run(self):
         """Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
-        return self.run_no
+        return self.runnum
 
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constant - set default value to None
@@ -160,19 +168,31 @@ class Run(object):
                 self._check_empty_calibconst(det_name)
 
                 # set and add propertiees for det.<drp_class_name>.<drp_class> level, i.e. det.raw.archon_raw_1_0_0
-                setattr(
-                    det,
+                iface = drp_class(
+                    det_name,
                     drp_class_name,
-                    drp_class(
-                        det_name,
-                        drp_class_name,
-                        self.dsparms.configinfo_dict[det_name],
-                        self.dsparms.calibconst[det_name],
-                        env_store,
-                        var_name,
-                        **kwargs,
-                    ),
+                    self.dsparms.configinfo_dict[det_name],
+                    self.dsparms.calibconst[det_name],
+                    env_store,
+                    var_name,
+                    **kwargs,
                 )
+                setattr(det, drp_class_name, iface)
+
+                # Optionally load cached _calibc_ attributes
+                if getattr(self.ds, "use_calib_cache", False) and det_name in getattr(self.ds, "cached_detectors", []):
+                    max_retries = getattr(self.ds, "fetch_calib_cache_max_retries", 3)
+                    for attempt in range(max_retries):
+                        try:
+                            if DetectorCacheManager.load(det_name, iface, logger=self.logger):
+                                break
+                        except Exception:
+                            pass
+                        self.logger.debug(f"Retrying cache load for {det_name}.{drp_class_name} (attempt {attempt + 1}/{max_retries})")
+                        time.sleep(1.0)  # optional delay between retries
+                    else:
+                        self.logger.error(f"Failed to load cache for {det_name}.{drp_class_name} after {max_retries} attempts")
+
                 # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
                 setattr(det, "calibconst", self.dsparms.calibconst[det_name])

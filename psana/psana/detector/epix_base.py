@@ -21,7 +21,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS, au
-from psana.detector.UtilsEpix10ka import np, calib_epix10ka_any, map_gain_range_index,\
+from psana.detector.UtilsEpix10ka import calib_epix10ka_any, map_gain_range_index,\
   cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4,\
   cbits_config_and_data_detector, M14, M15, B14, B15
 import psana.detector.UtilsMask as um #import merge_status
@@ -67,16 +67,6 @@ class epix_base(AreaDetectorRaw):
                _3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000
         """
         return self._uniqueid
-
-
-    def _segment_ids(self):
-        """Returns list of detector segment ids, e.g. for epix10ka
-        [3926196238-0175152897-1157627926-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0174824449-0268435478-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0175552257-3456106518-0000000000-0000000000-0000000000-0000000000,
-         3926196238-0176373505-4043309078-0000000000-0000000000-0000000000-0000000000]
-        """
-        return self._uniqueid.split('_')[1:]
 
 
 #    def _config_object(self):

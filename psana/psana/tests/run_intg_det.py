@@ -20,7 +20,7 @@ def intg_det():
     )
     ds = DataSource(
         exp="xpptut15",
-        run=1,
+        run=14,
         dir=xtc_dir,
         intg_det="andor",
         batch_size=batch_size,

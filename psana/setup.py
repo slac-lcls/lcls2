@@ -135,7 +135,7 @@ if 'PSANA' in BUILD_LIST :
                             extra_compile_args = extra_cxx_compile_args)
 
     PACKAGES = find_packages()
-    PACKAGE_DATA = {'psana.graphqt': ['data/icons/*.png','data/icons/*.gif']}
+    PACKAGE_DATA = {'psana.graphqt': ['data/icons/*.png','data/icons/*.gif'], "psana.pscalib": ["geometry/data/*data"]}
     EXTS = [dgram_module, container_module]
     INSTALL_REQS = [
         'numpy',
@@ -180,6 +180,9 @@ if 'PSANA' in BUILD_LIST :
             'psanaplot = psana.app.psana_plot:_do_main',
             'jungfrau_dark_proc  = psana.app.jungfrau_dark_proc:do_main',
             'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
+            'caliblogs           = psana.app.caliblogs:do_main',
+            'calibrepo           = psana.app.calibrepo:do_main',
+            'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
         ]
     }
 

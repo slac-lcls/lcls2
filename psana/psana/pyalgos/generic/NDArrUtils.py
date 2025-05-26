@@ -525,14 +525,14 @@ def change_file_ownership(fname, user=None, group='ps-users'):
     os.chown(fname, uid, gid) # for non-default user - OSError: [Errno 1] Operation not permitted
 
 
-def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'):
+def save_2darray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users', logmethod=logger.debug):
     os.umask(umask)
     fexists = os.path.exists(fname)
     np.savetxt(fname, nda, fmt=fmt)
     if not fexists:
         set_file_access_mode(fname, fmode)
         change_file_ownership(fname, user=None, group=group)
-    logger.info('saved:  %s' % fname)
+    logmethod('saved:  %s' % fname)
 
 
 def save_ndarray_in_textfile(nda, fname, fmode, fmt, umask=0o0, group='ps-users'):

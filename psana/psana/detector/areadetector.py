@@ -101,6 +101,7 @@ class AreaDetector(DetectorImpl):
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             self._calibc_ = CalibConstants(cc, **kwa)
+            self._apply_calibc_preload_cache()
         return self._calibc_
 
 
@@ -136,8 +137,10 @@ class AreaDetector(DetectorImpl):
 
     def _fname_geotxt_default(self):
         """returns (str) file name for default geometry constants lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        return '%s/../%s' % (dir_detector, self._path_geo_default)
+        dir_psana = os.path.abspath(os.path.dirname(__file__)).rstrip('detector')
+        path = os.path.join(dir_psana, self._path_geo_default)
+        #print('default geometry:', path)
+        return path # os.path.join(dir_psana, self._path_geo_default)
 
 
     def _det_geotxt_default(self):
@@ -149,6 +152,7 @@ class AreaDetector(DetectorImpl):
 
     def _det_geo(self):
         """Returns cached object self._geo of GeometryAccess() from CalibConstants, loads it from default file if missing in CalibConstants."""
+        if self._path_geo_default is None: return None
         self._geo = self._det_calibconst('geo')
         if self._geo is None:
             geotxt = self._det_geotxt_default()
@@ -210,6 +214,11 @@ class AreaDetector(DetectorImpl):
     def _shape_total(self):
         return (self._number_of_segments_total(),) + tuple(self._seg_geo.shape())
         #return self._det_calibconst('shape_as_daq')
+
+
+#    def _segment_ids(self):
+#        """Returns list of detector segment ids"""
+#        return self._uniqueid.split('_')[1:]
 
 
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
@@ -365,7 +374,8 @@ class AreaDetectorRaw(AreaDetector):
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if is_none(segs, 'self._segments(evt) is None'): return None
         if len(segs) == 1:
-            return segs[0].raw
+            ind = self._segment_numbers[0]
+            return segs[ind].raw
         return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
 
 

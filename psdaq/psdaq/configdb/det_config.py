@@ -68,11 +68,14 @@ def ordered(d,order):
 #  Translate a dictionary of register value pairs to a yaml file for rogue configuration
 #
 def dictToYaml(d,types,keys,dev,path,name,tree,ordering=None):
-    v = {'enable':True}
+    v = OrderedDict()
+    v['enable']=True
     for key in keys:
         if key in d:
             if ordering is None:
-                v[key] = d[key]
+                v[key] = OrderedDict(d[key])
+                # Without OrderedDict, dataToYaml will sort the data alphabetically, with OrderedDict the dictionary 
+                # is written as it is oredered
             else:
                 try:
                     v[key] = ordered(d[key],ordering[key])
@@ -92,7 +95,7 @@ def dictToYaml(d,types,keys,dev,path,name,tree,ordering=None):
     for leaf in reversed(tree[:-1]):
         nd = {leaf:{'enable':True,'ForceWrite':False,'InitAfterConfig':False,key:nd[key]}}
         key = leaf
-
+    
 #    nd = {'ePixHr10kT':{'enable':True,'ForceWrite':False,'InitAfterConfig':False,'EpixHR':v}}
     yaml = pr.dataToYaml(nd)
     fn = path+name+'.yml'

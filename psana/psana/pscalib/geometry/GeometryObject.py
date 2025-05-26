@@ -15,7 +15,9 @@ Usage::
     # d = <dictionary-of-input-parameters>
     geo = GeometryObject(**d)
 
-    # test print methods:
+    # test info and print methods:
+    s = geo.info_geo()
+    s = geo.info_geo_children()
     geo.print_geo()
     geo.print_geo_children()
 
@@ -56,6 +58,7 @@ Usage::
     # global methods only for CSPAD2x2 array conversion between (2,185,388) and (185,388,2):
     arrTwo2x1 = data2x2ToTwo2x1(asData2x2)
     asData2x2 = two2x1ToData2x2(arrTwo2x1)
+    a3d = reshape_to_3d(a):
 
 See :py:class:`GeometryAccess`
 
@@ -64,7 +67,7 @@ For more detail see `Detector Geometry <https://confluence.slac.stanford.edu/dis
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
-Author: Mikhail Dubrovin
+@author: Mikhail Dubrovin
 """
 
 from math import radians, sin, cos
@@ -75,16 +78,14 @@ from psana.pscalib.geometry.SegGeometryStore import sgs
 
 
 def rotation_cs(X, Y, C, S):
-    """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot.
-    """
+    """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot."""
     Xrot = X*C - Y*S
     Yrot = Y*C + X*S
     return Xrot, Yrot
 
 
 def rotation(X, Y, angle_deg):
-    """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot rotated by angle_deg.
-    """
+    """For numpy arrays X and Y returns the numpy arrays of Xrot and Yrot rotated by angle_deg."""
     angle_rad = radians(angle_deg)
     S, C = sin(angle_rad), cos(angle_rad)
     return rotation_cs(X, Y, C, S)
@@ -115,8 +116,7 @@ class GeometryObject:
                      x0=0, y0=0, z0=0, \
                      rot_z=0, rot_y=0, rot_x=0, \
                      tilt_z=0, tilt_y=0, tilt_x=0):
-        """ Sets self object geometry parameters.
-        """
+        """Sets self object geometry parameters."""
         self.x0 = x0
         self.y0 = y0
         self.z0 = z0
@@ -129,33 +129,33 @@ class GeometryObject:
 
 
     def move_geo(self, dx=0, dy=0, dz=0):
-        """ Adds offset for origin of the self object w.r.t. current position.
-        """
+        """Adds offset for origin of the self object w.r.t. current position."""
         self.x0 += dx
         self.y0 += dy
         self.z0 += dz
 
 
     def tilt_geo(self, dt_x=0, dt_y=0, dt_z=0):
-        """ Tilts the self object w.r.t. current orientation.
-        """
+        """Tilts the self object w.r.t. current orientation."""
         self.tilt_z += dt_z
         self.tilt_y += dt_y
         self.tilt_x += dt_x
 
 
+    def info_geo(self):
+        """Returns (str) info about self geometry object."""
+        return 'parent:%10s %2d   geo: %10s %2d' % (self.pname, self.pindex, self.oname, self.oindex) + \
+               '  x0:%8.0f  y0:%8.0f  z0:%8.0f' % (self.x0, self.y0, self.z0) + \
+               '  rot_z:%8.3f  rot_y:%8.3f  rot_x:%8.3f' % (self.rot_z, self.rot_y, self.rot_x) + \
+               '  tilt_z:%8.5f  tilt_y:%8.5f  tilt_x:%8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x)
+
+
     def print_geo(self):
-        """ Print info about self geometry object.
-        """
-        logger.info('parent:%10s %2d   geo: %10s %2d' % (self.pname, self.pindex, self.oname, self.oindex) + \
-              '  x0:%8.0f  y0:%8.0f  z0:%8.0f' % (self.x0, self.y0, self.z0) + \
-              '  rot_z:%8.3f  rot_y:%8.3f  rot_x:%8.3f' % (self.rot_z, self.rot_y, self.rot_x) + \
-              '  tilt_z:%8.5f  tilt_y:%8.5f  tilt_x:%8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x))
+        logger.info(self.info_geo())
 
 
     def str_data(self):
-        """ Returns a string of data to save in file.
-        """
+        """Returns a string of data to save in file."""
         s_rot_x = ('%8.3f' % self.rot_x).rstrip('0').rstrip('.')
         s_rot_y = ('%8.3f' % self.rot_y).rstrip('0').rstrip('.')
         s_rot_z = ('%8.3f' % self.rot_z).rstrip('0').rstrip('.')
@@ -165,67 +165,61 @@ class GeometryObject:
                '  %8.5f %8.5f %8.5f' % (self.tilt_z, self.tilt_y, self.tilt_x)
 
 
-    def print_geo_children(self):
-        """ Print info about children of self geometry object.
-        """
+    def info_geo_children(self):
+        """Returns (str) info about children of self geometry object."""
         msg = 'parent:%10s %2d   geo: %10s %2d #children: %d:' % \
             (self.pname, self.pindex, self.oname, self.oindex, len(self.list_of_children))
         for geo in self.list_of_children:
             msg += ' %s:%d' % (geo.oname, geo.oindex)
-        logger.info(msg)
+        return msg
+
+
+    def print_geo_children(self):
+        logger.info(self.info_geo_children)
 
 
     def set_parent(self, parent):
-        """ Set parent geometry object for self.
-        """
+        """Set parent geometry object for self."""
         self.parent = parent
 
 
     def add_child(self, child):
-        """ Add children geometry object to the list.
-        """
+        """Add children geometry object to the list."""
         self.list_of_children.append(child)
 
 
     def get_parent(self):
-        """ Returns parent geometry object.
-        """
+        """Returns parent geometry object."""
         return self.parent
 
 
     def get_list_of_children(self):
-        """ Returns list of children geometry objects.
-        """
+        """Returns list of children geometry objects."""
         return self.list_of_children
 
 
     def get_geo_name(self):
-        """ Returns self geometry object name.
-        """
+        """Returns self geometry object name."""
         return self.oname
 
 
     def get_geo_index(self):
-        """ Returns self geometry object index.
-        """
+        """Returns self geometry object index."""
         return self.oindex
 
 
     def get_parent_name(self):
-        """ Returns parent geometry object name.
-        """
+        """Returns parent geometry object name."""
         return self.pname
 
 
     def get_parent_index(self):
-        """ Returns parent geometry object index.
-        """
+        """Returns parent geometry object index."""
         return self.pindex
 
 
     def transform_geo_coord_arrays(self, X, Y, Z, do_tilt=True):
-        """ Transform geometry object coordinates to the parent frame.
-        """
+        """Transform geometry object coordinates to the parent frame."""
         angle_z = self.rot_z + self.tilt_z if do_tilt else self.rot_z
         angle_y = self.rot_y + self.tilt_y if do_tilt else self.rot_y
         angle_x = self.rot_x + self.tilt_x if do_tilt else self.rot_x
@@ -242,8 +236,7 @@ class GeometryObject:
 
 
     def get_pixel_coords(self, do_tilt=True):
-        """ Returns three numpy arrays with pixel X, Y, Z coordinates for self geometry object.
-        """
+        """Returns three numpy arrays with pixel X, Y, Z coordinates for self geometry object."""
         if self.algo is not None:
             xac, yac, zac = self.algo.pixel_coord_array()
             return self.transform_geo_coord_arrays(xac, yac, zac, do_tilt)
@@ -266,10 +259,8 @@ class GeometryObject:
                 zac = np.vstack((zac, zch))
 
         # define shape for output x,y,z arrays
-        #shape_child = xch.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], xch.shape))
-        #logger.debug('geo_shape = ' + str(geo_shape))
         xac.shape = geo_shape
         yac.shape = geo_shape
         zac.shape = geo_shape
@@ -278,8 +269,7 @@ class GeometryObject:
 
 
     def get_pixel_areas(self):
-        """ Returns numpy array with pixel areas for self geometry object.
-        """
+        """Returns numpy array with pixel areas for self geometry object."""
         if self.algo is not None:
             return self.algo.pixel_area_array()
 
@@ -296,13 +286,12 @@ class GeometryObject:
         shape_child = ach.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], ach.shape))
-        #logger.debug('geo_shape = ' + str(geo_shape))
         aar.shape = geo_shape
         return self.det_shape(aar)
 
 
     def get_pixel_mask(self, mbits=0o377, **kwargs):
-        """ Returns numpy array with pixel mask for self geometry object.
+        """Returns numpy array with pixel mask for self geometry object.
 
         mbits =+1 - mask edges
                +2 - two wide-pixel central columns
@@ -319,7 +308,6 @@ class GeometryObject:
             if child.oindex != ind:
                 logger.debug('Geometry object %s:%d has non-consequtive index in calibration file, reconst index:%d' % \
                       (child.oname, child.oindex, ind))
-
             car = child.get_pixel_mask(mbits=mbits, **kwargs)
             oar = car if ind==0 else np.vstack((oar, car))
 
@@ -327,55 +315,45 @@ class GeometryObject:
         shape_child = car.shape
         len_child = len(self.list_of_children)
         geo_shape = np.hstack(([len_child], car.shape))
-        #logger.debug('geo_shape = ' + str(geo_shape))
         oar.shape = geo_shape
         return self.det_shape(oar)
 
 
     def get_size_geo_array(self):
-        """ Returns size of  self geometry object.
-        """
+        """Returns size of  self geometry object."""
         if self.algo is not None: return self.algo.size()
-
         size_arr = 0
         for child in self.list_of_children:
             size_arr += child.get_size_geo_array()
-
         return size_arr
 
 
     def get_pixel_scale_size(self):
-        """ Returns pixel scale size of the geometry object from the first found segment.
-        """
+        """Returns pixel scale size of the geometry object from the first found segment."""
         if self.algo is not None: return self.algo.pixel_scale_size()
-
         for child in self.list_of_children:
             return child.get_pixel_scale_size()
 
 
     def get_origin(self):
-        """ Returns object origin x, y, z coordinates [um] relative to parent frame.
-        """
+        """Returns object origin x, y, z coordinates [um] relative to parent frame."""
         return  self.x0, self.y0, self.z0
 
 
     def get_rot(self):
-        """ Returns object tilt angles [degree] around z, y, and x axes, respectively.
-        """
+        """Returns object tilt angles [degree] around z, y, and x axes, respectively."""
         return self.rot_z, self.rot_y, self.rot_x
 
 
     def get_tilt(self):
-        """ Returns object rotation angles [degree] around z, y, and x axes, respectively.
-        """
+        """Returns object rotation angles [degree] around z, y, and x axes, respectively."""
         return self.tilt_z, self.tilt_y, self.tilt_x
 
 
 # Additional to interface 2-d methods
 
     def transform_2d_geo_coord_arrays(self, X, Y, do_tilt=True):
-        """ Simplified version of transform_geo_coord_arrays(...) for 2-d case.
-        """
+        """Simplified version of transform_geo_coord_arrays(...) for 2-d case."""
         angle_z = self.rot_z + self.tilt_z if do_tilt else self.rot_z
         X1, Y1 = rotation(X, Y, angle_z)
         Xt = X1 + self.x0
@@ -384,11 +362,8 @@ class GeometryObject:
 
 
     def get_2d_pixel_coords(self, do_tilt=True):
-        """ Simplified version of get_pixel_coords() for 2-d case.
-        """
-        #if self.oname == 'SENS2X1:V1':
+        """Simplified version of get_pixel_coords() for 2-d case."""
         if self.algo is not None:
-            #xac, yac, zac = self.algo.get_xyz_maps_um()
             xac, yac, zac = self.algo.pixel_coord_array()
             return self.transform_2d_geo_coord_arrays(xac, yac, do_tilt)
 
@@ -402,15 +377,24 @@ class GeometryObject:
 
 
     def det_shape(self, arr):
-        """ Check detector dependency and re-shape array if necessary.
-        """
-        #logger.debug('psana.pscalib.geometry.GeometryObject.det_shape(...):  arr.size: %d   self.oname: %s' % (arr.size, self.oname))
+        """Check detector dependency and re-shape array if necessary."""
         if arr.size == 143560 and self.oname == 'CSPAD2X2:V1': # Shuffle pixels once for 2*185*388 and CSPAD2X2:V1 ONLY:
-            # shaffle array for cspad2x2
             return two2x1ToData2x2(arr)
-        return arr
+        else:
+            return reshape_to_3d(arr)
+
 
 #------ Global Method(s) ------
+
+def reshape_to_3d(a):
+    """Returns array reshaped to 3d as (<number-of-segments>, <rows>, <cols>)"""
+    if a.ndim < 4: return a
+    sh, asize = a.shape, a.size
+    ssize = sh[-2] * sh[-1]
+    sh3d = (int(asize/ssize), sh[-2], sh[-1])
+    a.shape = sh3d
+    return a
+
 
 def data2x2ToTwo2x1(arr2x2):
     """Converts array shaped as CSPAD2x2 data (185,388,2)
@@ -437,8 +421,7 @@ def two2x1ToData2x2(arrTwo2x1):
         raise ValueError('Expected n-d array shape=(2,185,388), input shape=%s' % str(arrTwo2x1.shape))
 
     arrTwo2x1.shape = (2,185,388)
-    #arr2x2 = np.array(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten()))
-    arr2x2 = np.array(list(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten())))
+    arr2x2 = np.array(list(zip(arrTwo2x1[0].ravel(), arrTwo2x1[1].ravel())))
     arr2x2.shape = (185,388,2)
     return arr2x2
 

@@ -1,7 +1,10 @@
 import typer
 from typing_extensions import Annotated
+import subprocess
+import logging
 import os
-from psdaq.slurm.utils import call_subprocess
+
+logger = logging.getLogger(__name__)
 
 
 def get_output_header(job_name, platform, nodelist, daq_cmd):
@@ -36,9 +39,20 @@ def get_output_header(job_name, platform, nodelist, daq_cmd):
 
     git_describe = None
     if "TESTRELDIR" in env_dict:
-        git_describe = call_subprocess(
-            "git", "-C", os.environ["TESTRELDIR"], "describe", "--dirty", "--tag"
-        )
+        try:
+            git_output = subprocess.check_output(
+                ["git", "-C", os.environ["TESTRELDIR"], "describe", "--dirty", "--tag"],
+                stderr=subprocess.STDOUT,
+                text=True
+            ).strip()
+            git_describe = git_output
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                "Git describe failed for TESTRELDIR '%s': %s",
+                os.environ["TESTRELDIR"],
+                e.output.strip()
+            )
+
     if git_describe:
         header += "# GIT_DESCRIBE:%s\n" % git_describe
 

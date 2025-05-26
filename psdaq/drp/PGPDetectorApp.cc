@@ -17,12 +17,12 @@
 #include "EpixM320.hh"
 #include "EpixUHR.hh"
 #include "Epix100.hh"
+#include "Jungfrau.hh"
 #include "JungfrauEmulator.hh"
 #include "Opal.hh"
 #include "HREncoder.hh"
 #include "Wave8.hh"
 #include "Piranha4.hh"
-#include "psdaq/service/MetricExporter.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
 #include "RunInfoDef.hh"
@@ -39,7 +39,9 @@
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using std::string;
+using namespace XtcData;
 using namespace Pds::Ipc;
+
 
 // _dehex - convert a hex std::string to an array of chars
 //
@@ -87,7 +89,7 @@ static json _getscankeys(const json& stepInfo, const char* detname, const char* 
             }
         }
     }
-    
+
     logging::debug("_getscankeys returning [%s]",update.dump().c_str());
     return update;
 }
@@ -202,7 +204,7 @@ static int startDrpPython(pid_t& pyPid, unsigned workerNum, long shmemSize, cons
 
 int PGPDetectorApp::setupDrpPython() {
 
-    m_shmemSize = m_drp.pool.pebble.bufferSize();
+    m_shmemSize = m_drp->pool.pebble.bufferSize();
     if (m_para.maxTrSize > m_shmemSize) m_shmemSize=m_para.maxTrSize;
 
     // Round up to an integral number of pages
@@ -241,7 +243,7 @@ int PGPDetectorApp::setupDrpPython() {
         logging::debug("[Thread %u] Created Drp msg queue %s for key %s", workerNum, "Results", key.c_str());
 
         // Creating shared memory
-        size_t shmemSize = m_drp.pool.pebble.bufferSize();
+        size_t shmemSize = m_drp->pool.pebble.bufferSize();
         if (m_para.maxTrSize > shmemSize) shmemSize=m_para.maxTrSize;
 
         // Round up to an integral number of pages
@@ -270,7 +272,7 @@ int PGPDetectorApp::setupDrpPython() {
 
         logging::debug("IPC set up for worker %d", workerNum);
 
-        startDrpPython(m_drpPids[workerNum], workerNum, shmemSize, m_para, m_drp);
+        startDrpPython(m_drpPids[workerNum], workerNum, shmemSize, m_para, *m_drp);
     }
 
     logging::info("Drp python processes started");
@@ -295,14 +297,13 @@ private:
 
 PGPDetectorApp::PGPDetectorApp(Parameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_drp(para, context()),
     m_para(para),
+    m_pool(para),
     m_det(nullptr),
     m_unconfigure(false)
 {
     Py_Initialize(); // for use by configuration
     m_pysave = PY_RELEASE_GIL; // Py_BEGIN_ALLOW_THREADS
-
 }
 
 // This initialization is in its own method (to be called from a higher layer)
@@ -311,31 +312,6 @@ PGPDetectorApp::PGPDetectorApp(Parameters& para) :
 void PGPDetectorApp::initialize()
 {
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
-
-    Factory<Detector> f;
-    f.register_type<AreaDetector>    ("fakecam");
-    f.register_type<AreaDetector>    ("cspad");
-    f.register_type<Digitizer>       ("hsd");
-    f.register_type<EpixQuad>        ("epixquad");
-    f.register_type<EpixHR2x2>       ("epixhr2x2");
-    f.register_type<EpixHRemu>       ("epixhremu");
-    f.register_type<EpixM320>        ("epixm320");
-    f.register_type<EpixUHR>         ("epixUHR");
-    f.register_type<Epix100>         ("epix100");
-    f.register_type<JungfrauEmulator>("jungfrauemu");
-    f.register_type<Opal>            ("opal");
-    f.register_type<TimeTool>        ("tt");
-    f.register_type<TimingBEB>       ("tb");
-    f.register_type<TimingSystem>    ("ts");
-    f.register_type<Wave8>           ("wave8");
-    f.register_type<HREncoder>       ("hrencoder");
-    f.register_type<Piranha4>        ("piranha4");
-
-    m_det = f.create(&m_para, &m_drp.pool);
-    if (m_det == nullptr) {
-        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
-        throw "Could not create Detector object for " + m_para.detType;
-    }
 
     // Initialize these to zeros. They will store the file descriptors and
     // process numbers if Drp Python is used or be just zeros if it is not.
@@ -348,10 +324,37 @@ void PGPDetectorApp::initialize()
     keyBase = "";
     m_shmemSize = 0;
 
-    auto kwargs_it = m_para.kwargs.find("drp");
-    if (kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python") {
-        m_pythonDrp = true;
+    Factory<Detector> f;
+    f.register_type<AreaDetector>    ("fakecam");
+    f.register_type<AreaDetector>    ("cspad");
+    f.register_type<Digitizer>       ("hsd");
+    f.register_type<EpixQuad>        ("epixquad");
+    f.register_type<EpixHR2x2>       ("epixhr2x2");
+    f.register_type<EpixHRemu>       ("epixhremu");
+    f.register_type<EpixM320>        ("epixm320");
+    f.register_type<EpixUHR>         ("epixUHR");
+    f.register_type<Epix100>         ("epix100");
+    f.register_type<Jungfrau>        ("jungfrau");
+    f.register_type<JungfrauEmulator>("jungfrauemu");
+    f.register_type<Opal>            ("opal");
+    f.register_type<TimeTool>        ("tt");
+    f.register_type<TimingBEB>       ("tb");
+    f.register_type<TimingSystem>    ("ts");
+    f.register_type<Wave8>           ("wave8");
+    f.register_type<HREncoder>       ("hrencoder");
+    f.register_type<Piranha4>        ("piranha4");
+
+    m_det = f.create(&m_para, &m_pool);
+    if (m_det == nullptr) {
+        logging::critical("Error !! Could not create Detector object for %s", m_para.detType.c_str());
+        throw "Could not create Detector object for " + m_para.detType;
     }
+
+    m_drp = std::make_unique<PGPDrp>(m_para, m_pool, *m_det, context(),
+                                     m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_shmemSize);
+
+    auto kwargs_it = m_para.kwargs.find("drp");
+    m_pythonDrp = kwargs_it != m_para.kwargs.end() && kwargs_it->second == "python";
 
     if (m_pythonDrp) {
         logging::info("Starting DrpPython");
@@ -397,28 +400,15 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::disconnect()
 {
-    m_drp.disconnect();
+    m_drp->disconnect();
     if (m_det)
         m_det->shutdown();
 }
 
 void PGPDetectorApp::unconfigure()
 {
-    m_drp.pool.shutdown();              // Release Tr buffer pool
-    if (m_pgpDetector) {
-        m_pgpDetector->shutdown();
-        if (m_exporter)  m_exporter.reset();
-        if (m_pgpThread.joinable()) {
-            m_pgpThread.join();
-            logging::info("PGPReader thread finished");
-        }
-        if (m_collectorThread.joinable()) {
-            m_collectorThread.join();
-            logging::info("Collector thread finished");
-        }
-        m_pgpDetector.reset();
-    }
-    m_drp.unconfigure();
+    m_drp->pool.shutdown();              // Release Tr buffer pool
+    m_drp->unconfigure();
 
     if (m_det)
         m_det->namesLookup().clear();   // erase all elements
@@ -432,14 +422,14 @@ void PGPDetectorApp::handleConnect(const json& msg)
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
-    std::string errorMsg = m_drp.connect(msg, getId());
+    std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in DrpBase::connect()");
         logging::error("%s", errorMsg.c_str());
         body["err_info"] = errorMsg;
     }
     else {
-        m_det->nodeId = m_drp.nodeId();
+        m_det->nodeId = m_drp->nodeId();
         m_det->connect(msg, std::to_string(getId()));
     }
 
@@ -476,8 +466,8 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
-    XtcData::Xtc& xtc = m_det->transitionXtc();
-    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    Xtc& xtc = m_det->transitionXtc();
+    xtc = {{TypeId::Parent, 0}, {m_det->nodeId}};
     auto bufEnd = m_det->trXtcBufEnd();
 
     bool has_names_block_hex = false;
@@ -511,10 +501,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                 } else {
                     logging::debug("configure phase1 in PGPDetectorApp: _dehex() success");
                     // append the config xtc info to the dgram
-                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    Xtc& jsonxtc = *(Xtc*)xtcBytes;
                     logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
-                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    unsigned copylen = sizeof(Xtc) + jsonxtc.sizeofPayload();
                     auto payload = xtc.alloc(copylen, bufEnd);
                     memcpy(payload, (const void*)xtcBytes, copylen);
                 }
@@ -522,47 +512,30 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             }
         }
 
-        std::string errorMsg = m_drp.configure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
+        // Configure the detector first
+        std::string config_alias = msg["body"]["config_alias"];
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+        if (!error) {
+            json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+            if (!scan.empty())
+                error = m_det->configureScan(scan, xtc, bufEnd);
+        }
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::configure()";
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            // Python-DRP is disabled during calibrations
-            const std::string& config_alias = msg["body"]["config_alias"];
-            bool pythonDrp = config_alias != "CALIB" ? m_pythonDrp : false;
-
-            m_pgpDetector = std::make_unique<PGPDetector>(m_para, m_drp, m_det, pythonDrp, m_inpMqId,
-                                                          m_resMqId, m_inpShmId, m_resShmId, m_shmemSize);
-            m_exporter = std::make_shared<Pds::MetricExporter>();
-            if (m_drp.exposer()) {
-                m_drp.exposer()->RegisterCollectable(m_exporter);
-            }
-
-            m_pgpThread = std::thread{&PGPDetector::reader, std::ref(*m_pgpDetector), m_exporter,
-                                      std::ref(m_det), std::ref(m_drp.tebContributor())};
-            m_collectorThread = std::thread(&PGPDetector::collector, std::ref(*m_pgpDetector),
-                                            std::ref(m_drp.tebContributor()));
-
-            // Provide EbReceiver with the Detector interface so that additional
-            // data blocks can be formatted into the XTC, e.g. trigger information
-            m_drp.ebReceiver().configure(m_det, m_pgpDetector.get());
-
-            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-            if (!error) {
-                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-                if (!scan.empty())
-                    error = m_det->configureScan(scan, xtc, bufEnd);
-            }
-            if (error) {
-                std::string errorMsg = "Phase 1 error in Detector::configure()";
+            // Next, configure the DRP
+            std::string errorMsg = m_drp->configure(msg);
+            if (!errorMsg.empty()) {
+                errorMsg = "Phase 1 error: " + errorMsg;
                 body["err_info"] = errorMsg;
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                m_drp.runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                m_drp.chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
             }
         }
     }
@@ -583,10 +556,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::error("beginstep phase1 in PGPDetectorApp: _dehex() failure");
                 } else {
                     // append the beginstep xtc info to the dgram
-                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    Xtc& jsonxtc = *(Xtc*)xtcBytes;
                     logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
-                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    unsigned copylen = sizeof(Xtc) + jsonxtc.sizeofPayload();
                     auto payload = xtc.alloc(copylen, bufEnd);
                     memcpy(payload, (const void*)xtcBytes, copylen);
                 }
@@ -616,17 +589,17 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     }
     else if (key == "beginrun") {
         RunInfo runInfo;
-        std::string errorMsg = m_drp.beginrun(phase1Info, runInfo);
+        std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            m_drp.runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+            m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp.endrun(phase1Info);
+        std::string errorMsg = m_drp->endrun(phase1Info);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
@@ -635,13 +608,13 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     else if (key == "enable") {
         bool chunkRequest;
         ChunkInfo chunkInfo;
-        std::string errorMsg = m_drp.enable(phase1Info, chunkRequest, chunkInfo);
+        std::string errorMsg = m_drp->enable(phase1Info, chunkRequest, chunkInfo);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         } else if (chunkRequest) {
             logging::debug("handlePhase1 enable found chunkRequest");
-            m_drp.chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
+            m_drp->chunkInfoData(xtc, bufEnd, m_det->namesLookup(), chunkInfo);
         }
         unsigned error = m_det->enable(xtc, bufEnd, phase1Info);
         if (error) {
@@ -694,7 +667,7 @@ void PGPDetectorApp::handleDealloc(const json& msg)
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
-json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
+json PGPDetectorApp::connectionInfo(const json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
@@ -706,7 +679,7 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 
     json info = m_det->connectionInfo(msg);
     body["connect_info"].update(info);
-    json bufInfo = m_drp.connectionInfo(ip);
+    json bufInfo = m_drp->connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
@@ -720,10 +693,7 @@ void PGPDetectorApp::connectionShutdown()
         m_det->connectionShutdown();
     }
 
-    m_drp.shutdown();
-    if (m_exporter) {
-        m_exporter.reset();
-    }
+    m_drp->DrpBase::shutdown();
 }
 
 void PGPDetectorApp::drainDrpMessageQueues()

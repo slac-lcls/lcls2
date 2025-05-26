@@ -15,7 +15,8 @@ else
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
-    conda activate daq_20241215
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_05142025
+    conda activate daq_20250402
 fi
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
@@ -30,7 +31,6 @@ if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
     #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
-    export NVCC_PREPEND_FLAGS='-ccbin '${CC} # Ensure the correct host compiler is used with nvcc
 fi
 
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"

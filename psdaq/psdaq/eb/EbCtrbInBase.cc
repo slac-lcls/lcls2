@@ -77,13 +77,13 @@ static void dumpBatch(const TebContributor& ctrb,
     auto svc = TransitionId::name(dg->service());
     auto rog = dg->readoutGroups();
     auto dmg = dg->xtc.damage.value();
-    printf("  %2u: %16p, %15s, pid %014lx, diff %016lx, RoG %2hx, dmg %04x, idx %u %s\n",
-           i, dg, svc, pid, pid - bPid, rog, dmg, index, dg->isEOL() ? "EOL" : "");
+    fprintf(stderr, "  %2u: %16p, %15s, pid %014lx, diff %016lx, RoG %2hx, dmg %04x, idx %u %s\n",
+            i, dg, svc, pid, pid - bPid, rog, dmg, index, dg->isEOL() ? "EOL" : "");
     if (dg->isEOL())  return;
     dg = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(dg) + size);
     ++index;
   }
-  printf("  EOL not found!\n");
+  fprintf(stderr, "  EOL not found!\n");
 }
 
 
@@ -123,11 +123,19 @@ int EbCtrbInBase::resetCounters()
 
 void EbCtrbInBase::shutdown()
 {
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
   _transport.shutdown();
 }
 
 void EbCtrbInBase::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 }
@@ -169,14 +177,17 @@ int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 int EbCtrbInBase::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   unsigned numEbs = std::bitset<64>(_prms.builders).count();
 
   _links.resize(numEbs);
 
-  rc = linksConnect(_transport, _links, _prms.id, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.id, "TEB");
   if (rc)  return rc;
 
   return 0;
@@ -320,7 +331,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     }
     else if (rc != -FI_ENOTCONN)
       logging::error("%s:\n  pend() error %d (%s)",
-                     __PRETTY_FUNCTION__, rc, strerror(-rc));
+                     __PRETTY_FUNCTION__, rc, fi_strerror(-rc));
     return rc;
   }
 
@@ -367,10 +378,10 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     unsigned ctl     = bdg->control();
     unsigned env     = bdg->env;
     auto&    pending = ctrb.pending();
-    printf("CtrbIn  rcvd        %6lu result  [%8u] @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u, data %08lx\n",
-           _batchCount, idx, bdg, ctl, pid, env, src, pending.is_empty() ? 'Y' : 'N',
-           pending.guess_size(), data);
+    fprintf(stderr, "CtrbIn  rcvd        %6lu result  [%8u] @ "
+            "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u, data %08lx\n",
+            _batchCount, idx, bdg, ctl, pid, env, src, pending.is_empty() ? 'Y' : 'N',
+            pending.guess_size(), data);
   }
 
   _matchUp(ctrb, bdg);
@@ -469,7 +480,7 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
                         __PRETTY_FUNCTION__, results->pulseId(), TransitionId::name(results->service()),
                         results->xtc.src.value(), batch->xtc.src.value());
       unsigned rIdx = ((char*)results - (char*)_region) / _maxResultSize;
-      printf("*** results %p, idx %u\n", results, rIdx);
+      fprintf(stderr, "*** results %p, idx %u\n", results, rIdx);
       _tbDump();
       abort();
     }
@@ -525,8 +536,8 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
                         __PRETTY_FUNCTION__, rPid, rPidPrv);
       unsigned rIdx = ((char*)result - (char*)_region) / _maxResultSize;
       unsigned iIdx = ctrb.index(input);
-      printf("*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
-             results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
+      fprintf(stderr, "*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
+              results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
       _dump(ctrb, results, inputs);
       _tbDump();
       throw "Result pulse ID didn't advance";
@@ -546,9 +557,9 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
       auto ctl    = result->control();
       auto svc    = TransitionId::name(result->service());
       auto extent = sizeof(*result) + result->xtc.sizeofPayload();
-      printf("CtrbIn  found  %15s  [%8u]    @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x\n",
-             svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
+      fprintf(stderr, "CtrbIn  found  %15s  [%8u]    @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u, dlvr %c [%014lx], res %08x, %08x\n",
+              svc, idx, result, ctl, rPid, env, extent, src, rPid == iPid ? 'Y' : 'N', iPid, result->data(), result->monBufNo());
     }
 
     if (rPid == iPid)
@@ -560,8 +571,8 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
                           __PRETTY_FUNCTION__, iPid, iPidPrv);
         unsigned rIdx = ((char*)result - (char*)_region) / _maxResultSize;
         unsigned iIdx = ctrb.index(input);
-        printf("*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
-               results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
+        fprintf(stderr, "*** results %p, result %p, rIdx %u, rpid %014lx, inputs %p, input %p, iIdx %u, iPid %014lx\n",
+                results, result, rIdx, result->pulseId(), inputs, input, iIdx, input->pulseId());
         _dump(ctrb, results, inputs);
         _tbDump();
         throw "Input pulse ID didn't advance";
@@ -642,13 +653,13 @@ void EbCtrbInBase::_dump(TebContributor&    ctrb,
   {
     unsigned index = (reinterpret_cast<const char*>(results) -
                       static_cast<const char*>(_region)) / _maxResultSize;
-    printf("Results:\n");
+    fprintf(stderr, "Results:\n");
     dumpBatch(ctrb, results, _maxResultSize, index);
   }
 
   if (inputs)
   {
-    printf("Inputs:\n");
+    fprintf(stderr, "Inputs:\n");
     dumpBatch(ctrb, inputs, _prms.maxInputSize, ctrb.index(inputs));
   }
 }

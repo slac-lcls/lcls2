@@ -54,6 +54,8 @@ def main():
 
     exec(compile(open(args.seq).read(), args.seq, 'exec'), {}, config)
 
+    config['instrset'] = preproc(config['instrset'])
+
     print(f'descset  {config["descset"]}')
     print(f'instrset {config["instrset"]}')
     print(f'seqcodes {config["seqcodes"]}')

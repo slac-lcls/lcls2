@@ -24,6 +24,25 @@ target_link_libraries(trigger
 
 #---
 
+add_library(mfxTripperTeb SHARED
+  mfxTripperPrimitive.cc
+  mfxTripperPrimitive_jungfrau.cc
+  mfxTripperTeb.cc
+)
+
+target_include_directories(mfxTripperTeb PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
+)
+
+target_link_libraries(mfxTripperTeb
+  xtcdata::xtc
+  trigger
+  nlohmann_json::nlohmann_json
+  epics::ca
+)
+
 add_library(tmoTrigger SHARED
   TriggerPrimitiveExample_cam.cc
   TriggerPrimitiveExample_xpphsd.cc
@@ -45,6 +64,7 @@ target_link_libraries(tmoTrigger
 
 #---
 
+
 add_library(tmoTeb SHARED
   tmoTebPrimitive.cc
   tmoTeb.cc
@@ -60,6 +80,35 @@ target_link_libraries(tmoTeb
   xtcdata::xtc
   trigger
 )
+
+if(CMAKE_CUDA_COMPILER)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+  set(CMAKE_CUDA_ARCHITECTURES 86 90)
+  set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)
+  endif()
+
+  add_library(tmoTeb_gpu SHARED
+    tmoTebPrimitive.cc
+    tmoTebPrimitive_gpu.cu
+    tmoTeb.cc
+  )
+
+  target_include_directories(tmoTeb_gpu PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include>
+    ${PYTHON_INCLUDE_DIRS}
+  )
+
+  target_link_libraries(tmoTeb_gpu
+    xtcdata::xtc
+    trigger
+    CUDA::cudart
+    CUDA::cuda_driver
+  )
+endif()
 
 #---
 
@@ -108,8 +157,14 @@ install(FILES
 
 install(TARGETS
   trigger
+  mfxTripperTeb
   tmoTrigger
   tmoTeb
   tstTebPy
   calibTrigger
 )
+if(CMAKE_CUDA_COMPILER)
+install(TARGETS
+  tmoTeb_gpu
+)
+endif()

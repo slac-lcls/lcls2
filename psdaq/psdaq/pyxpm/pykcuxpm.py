@@ -20,6 +20,9 @@ from psdaq.pyxpm.pvctrls import *
 from psdaq.pyxpm.pvhandler import *
 from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.tssync import TsSync
+import psdaq.pyxpm.autosave as autosave
+
+MIN_FW_VERSION = 0x030c0100
 
 class NoLock(object):
     def __init__(self):
@@ -28,13 +31,22 @@ class NoLock(object):
 
     def acquire(self):
         if self._level!=0:
-            print('NoLock.acquire level {}'.format(self._level))
+            logging.info('NoLock.acquire level {}'.format(self._level))
         self._level=self._level+1
 
     def release(self):
         if self._level!=1:
-            print('NoLock.release level {}'.format(self._level))
+            logging.info('NoLock.release level {}'.format(self._level))
         self._level=self._level-1
+
+class MyProvider(StaticProvider):
+    def __init__(self, name):
+        super(MyProvider,self).__init__(name)
+        self.pvdict = {}
+
+    def add(self,name,pv):
+        self.pvdict[name] = pv
+        super(MyProvider,self).add(name,pv)
 
 def main():
     global pvdb
@@ -48,11 +60,14 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--dev', type=str, required=True, help="device file" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
     parser.add_argument('-G', action='store_true', help='is generator')
-
+    parser.add_argument('--xvc', default=None, type=int, help='XVC port (2542)')
     args = parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
     if args.verbose:
         setVerbose(True)
 
@@ -62,6 +77,7 @@ def main():
         dataDebug = True,
         enVcMask  = 0xF,
         isXpmGen  = args.G,
+        xvcPort   = args.xvc,
     )
 
     # Start the system
@@ -73,11 +89,18 @@ def main():
 
     # Print the AxiVersion Summary
     axiv.printStatus()
+    fwver = axiv.FpgaVersion.get()
 
-    provider = StaticProvider(__name__)
+    if fwver < MIN_FW_VERSION:
+        raise RuntimeError(f'Firmware version {fwver:x} is less than min required {MIN_FW_VERSION:x}')
+
+    #provider = StaticProvider(__name__)
+    provider = MyProvider(__name__)
     setProvider(provider)
 
     lock = Lock()
+
+    autosave.set(args.P,args.db,None,norestore=args.norestore)
 
     tsSync = TsSync(args.P,base.XPM.TpgMini) if args.G else None
 
@@ -101,19 +124,27 @@ def main():
                 prev = time.perf_counter()
                 pvstats.update(cycle)
                 pvctrls.update(cycle)
-
+                autosave.update()
                 #  We have to delay the startup of some classes
                 if cycle == 5:
                     pvxtpg  = PVXTpg(provider, lock, args.P, xpm, xpm.mmcmParms, cuMode=True, bypassLock=False)
                     pvxtpg.init()
+                    autosave.restore()
+
+                    #  This is necessary after restoring L0Delays
+                    #  Can also fix strange behavior in common group
+                    app.groupL0Reset.set(0xff)
+                    time.sleep(1.e-3)
+                    app.groupL0Reset.set(0)
+
                 elif cycle < 5:
-                    print('pvxtpg in %d'%(5-cycle))
+                    logging.info('pvxtpg in %d'%(5-cycle))
                 if pvxtpg is not None:
                     pvxtpg .update()
 
                 curr  = time.perf_counter()
                 delta = prev+updatePeriod-curr
-#                print('Delta {:.2f}  Update {:.2f}  curr {:.2f}  prev {:.2f}'.format(delta,curr-prev,curr,prev))
+#                logging.verbose('Delta {:.2f}  Update {:.2f}  curr {:.2f}  prev {:.2f}'.format(delta,curr-prev,curr,prev))
                 if delta>0:
                     time.sleep(delta)
                 cycle += 1

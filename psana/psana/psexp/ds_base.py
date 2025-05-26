@@ -1,36 +1,29 @@
 import abc
 import glob
+import json
+import logging
 import os
 import re
+import socket
 import threading
 import time
+from dataclasses import dataclass
 
 import numpy as np
 import requests
+from kafka import KafkaProducer
 
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
+from psana.pscalib.app.calib_prefetch import calib_utils
 from psana.psexp.prometheus_manager import PrometheusManager
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana.psexp.tools import mode
+from psana.psexp.tools import MODE, mode
+from psana.psexp.zmq_utils import ClientSocket
 
 if mode == "mpi":
     from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
-
-import json
-import socket
-from dataclasses import dataclass
-
-from kafka import KafkaProducer
-
-from psana.psexp.tools import MODE
-from psana.psexp.zmq_utils import ClientSocket
-
 
 class InvalidDataSourceArgument(Exception):
     pass
@@ -75,96 +68,139 @@ class DsParms:
 
 
 class DataSourceBase(abc.ABC):
+    """
+    Base class for data sources in the psana2 framework.
+
+    Keyword Arguments:
+    ------------------
+    exp : str
+        Experiment ID (e.g., 'xpptut13').
+    run : int
+        Run number to process.
+    dir : str
+        Manual path to XTC files.
+    files : str or list
+        XTC2 file path(s).
+    shmem : str
+        Shared memory identifier (for live mode).
+    drp : str
+        DRP-specific parameters (not currently used).
+    filter : callable
+        A function that takes an event and returns True/False.
+    batch_size : int
+        Number of events per batch sent to bigdata core (default: 1000).
+    max_events : int
+        Max number of events to read.
+    detectors : list
+        User-selected detector names.
+    xdetectors : list
+        Detectors to explicitly exclude.
+    det_name : str
+        Deprecated (use 'detectors').
+    destination : callable or int
+        Callback that returns destination rank (used in event builder).
+    live : bool
+        Enable live data mode (default: False).
+    smalldata_kwargs : dict
+        Arguments forwarded to the SmallData interface.
+    monitor : bool
+        Enable Prometheus monitoring client (default: False).
+    small_xtc : list
+        Detectors to use bigdata files in place of SMD files.
+    timestamps : np.ndarray
+        List of user-selected timestamps to filter on.
+    dbsuffix : str
+        Suffix to use for private calibration constants.
+    intg_det : str
+        Name of integrating detector for timestamp alignment.
+    intg_delta_t : float
+        Integration delay in seconds.
+    smd_callback : callable or int
+        Callback for SMD event handling.
+    psmon_publish : bool
+        Enable publishing to psmon (legacy).
+    prom_jobid : str
+        Prometheus job ID tag.
+    skip_calib_load : str
+        List of detectors that skip calibration constant loading.
+    use_calib_cache : bool
+        Enable calibration constant saving and loading in shared memory (default: False).
+    fetch_calib_cache_max_retries: int
+        Max number of retries reading calibration constant from shared memory (default: 60).
+    cached_detectors : list, optional
+        List of detector names to load cached calibration attributes for
+        when use_calib_cache is True. Default is [].
+    mpi_ts : bool
+        Used internally to avoid repeated file I/O in MPI contexts.
+    log_level : int
+        Python logging level (e.g., logging.DEBUG, logging.INFO). Default is logging.INFO.
+    """
+
     def __init__(self, **kwargs):
-        """Initializes datasource base"""
-        self.filter = 0  # callback that takes an evt and return True/False.
-        self.batch_size = 1000  # no. of events per batch sent to a bigdata core
-        self.max_events = 0  # no. of maximum events
-        self.detectors = []  # user-selected detector names
-        self.xdetectors = []  # user-selected excluded detector names
-        self.exp = None  # experiment id (e.g. xpptut13)
-        self.runnum = None  # run no.
-        self.live = False  # turns live mode on/off
-        self.dir = None  # manual entry for path to xtc files
-        self.files = None  # xtc2 file path
-        self.shmem = None
-        self.destination = 0  # callback that returns rank no. (used by EventBuilder)
-        self.monitor = False  # turns prometheus monitoring client of/off
-        self.small_xtc = []  # swap smd file(s) with bigdata files for these detetors
-        self.timestamps = np.empty(0, dtype=np.uint64)
-        # list of user-selected timestamps
-        self.dbsuffix = ""  # calibration database name extension for private constants
-        self.intg_det = ""  # integrating detector name (contains marker ts for a batch)
-        self.intg_delta_t = 0  # integrating delay (s)
-        self.current_retry_no = 0  # global counting var for no. of read attemps
-        self.smd_callback = 0
-        self.prom_jobid = None
+        # Setup logger
+        rank = MPI.COMM_WORLD.Get_rank() if mode == "mpi" else None
+        log_level = kwargs.get("log_level", logging.INFO)
+        if isinstance(log_level, str):
+            log_level = getattr(logging, log_level.upper(), logging.INFO)
+        self.logger = utils.Logger(myrank=rank, level=log_level)
 
-        if kwargs is not None:
-            self.smalldata_kwargs = {}
-            keywords = (
-                "exp",
-                "dir",
-                "files",
-                "shmem",
-                "drp",
-                "filter",
-                "batch_size",
-                "max_events",
-                "detectors",
-                "xdetectors",
-                "det_name",
-                "destination",
-                "live",
-                "smalldata_kwargs",
-                "monitor",
-                "small_xtc",
-                "timestamps",
-                "dbsuffix",
-                "intg_det",
-                "intg_delta_t",
-                "smd_callback",
-                "psmon_publish",
-                "prom_jobid",
-            )
+        # Default values
+        self.filter = kwargs.get("filter", 0)
+        self.batch_size = kwargs.get("batch_size", 1000)
+        self.max_events = kwargs.get("max_events", 0)
+        self.detectors = kwargs.get("detectors", [])
+        self.xdetectors = kwargs.get("xdetectors", [])
+        self.exp = kwargs.get("exp", None)
+        self.runnum = kwargs.get("run", None)
+        self.live = kwargs.get("live", False)
+        self.dir = kwargs.get("dir", None)
+        self.files = kwargs.get("files", None)
+        self.shmem = kwargs.get("shmem", None)
+        self.destination = kwargs.get("destination", 0)
+        self.monitor = kwargs.get("monitor", False)
+        self.small_xtc = kwargs.get("small_xtc", [])
+        self.timestamps = kwargs.get("timestamps", np.empty(0, dtype=np.uint64))
+        self.dbsuffix = kwargs.get("dbsuffix", "")
+        self.intg_det = kwargs.get("intg_det", "")
+        self.intg_delta_t = kwargs.get("intg_delta_t", 0)
+        self.current_retry_no = 0
+        self.smd_callback = kwargs.get("smd_callback", 0)
+        self.prom_jobid = kwargs.get("prom_jobid", None)
+        self.skip_calib_load = kwargs.get("skip_calib_load", [])
+        self.use_calib_cache = kwargs.get("use_calib_cache", False)
+        self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
+        self.cached_detectors = kwargs.get("cached_detectors", [])
+        self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
+        self.files = [self.files] if isinstance(self.files, str) else self.files
 
-            for k in keywords:
-                if k in kwargs:
-                    setattr(self, k, kwargs[k])
+        # Retry config
+        self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
+        if not self.live:
+            os.environ["PS_R_MAX_RETRIES"] = "0"
 
-            if self.destination != 0:
-                self.batch_size = 1  # reset batch_size to prevent L1 transmitted before BeginRun (FIXME?: Mona)
+        # Reset batch_size if a custom destination is set
+        if self.destination != 0:
+            self.logger.debug("Custom destination set. Resetting batch_size to 1.")
+            self.batch_size = 1
 
-            if "run" in kwargs:
-                setattr(self, "runnum", kwargs["run"])
-
-            if "files" in kwargs:
-                if isinstance(self.files, str):
-                    self.files = [self.files]
-
-            if "dbsuffix" in kwargs:
-                setattr(self, "dbsuffix", kwargs["dbsuffix"])
-
-            max_retries = 0
-            if self.live:
-                max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60"))
-            else:
-                os.environ["PS_R_MAX_RETRIES"] = "0"
-
-        assert self.batch_size > 0
-
-        # This mpi_ts is set by mpi_ds to avoid opening filter timestamps npy file on all ranks
-        if "mpi_ts" not in kwargs:
+        # Load timestamps unless MPI context handles it
+        if not kwargs.get("mpi_ts", False):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
+        # Final sanity check
+        assert self.batch_size > 0, "batch_size must be greater than 0"
+
+        # Create Prometheus manager
         self.prom_man = PrometheusManager(job=self.prom_jobid)
+
+        # Package up DataSource parameters
         self.dsparms = DsParms(
             self.batch_size,
             self.max_events,
             self.filter,
             self.destination,
             self.prom_man,
-            max_retries,
+            self.max_retries,
             self.live,
             self.smd_inprogress_converted,
             self.timestamps,
@@ -172,6 +208,20 @@ class DataSourceBase(abc.ABC):
             self.intg_delta_t,
             self.smd_callback,
         )
+
+        # Warn about unrecognized kwargs
+        known_keys = {
+            "exp", "run", "dir", "files", "shmem", "drp", "filter", "batch_size",
+            "max_events", "detectors", "xdetectors", "det_name", "destination",
+            "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
+            "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
+            "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
+            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
+            "log_level"
+        }
+        for k in kwargs:
+            if k not in known_keys:
+                self.logger.debug(f"Unrecognized kwarg={k}")
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
@@ -185,7 +235,7 @@ class DataSourceBase(abc.ABC):
         elif isinstance(timestamps, np.ndarray):
             formatted_timestamps = timestamps
         else:
-            logger.info(
+            self.logger.info(
                 f"Warning: No timestamp filtering, unrecognized format of the input filter timestamp ({type(timestamps)}). Allowed formats are .npy file or numpy.ndarray)."
             )
         return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
@@ -320,7 +370,7 @@ class DataSourceBase(abc.ABC):
             if file_found:
                 break
             self.current_retry_no += 1
-            logger.info(f"Waiting for {xtc_file} ...(#retry:{self.current_retry_no})")
+            self.logger.info(f"Waiting for {xtc_file} ...(#retry:{self.current_retry_no})")
             time.sleep(1)
         return file_found, true_xtc_file
 
@@ -349,7 +399,7 @@ class DataSourceBase(abc.ABC):
             resp.raise_for_status()
             all_xtc_files = resp.json()["value"]
         except Exception:
-            logger.info(f"Warning: unable to connect to {url}")
+            self.logger.info(f"Warning: unable to connect to {url}")
             all_xtc_files = []
 
         file_info = {}
@@ -436,8 +486,8 @@ class DataSourceBase(abc.ABC):
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
-        logger.debug("smd_files:\n" + "\n".join(self.smd_files))
-        logger.debug("xtc_files:\n" + "\n".join(self.xtc_files))
+        self.logger.debug("smd_files:\n" + "\n".join(self.smd_files))
+        self.logger.debug("xtc_files:\n" + "\n".join(self.xtc_files))
 
         # Set default flag for replacing smalldata with bigda files.
         self.dsparms.set_use_smds([False] * self.n_files)
@@ -493,10 +543,10 @@ class DataSourceBase(abc.ABC):
 
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
         if not self.monitor:
-            logger.debug("ds_base: RUN W/O PROMETHEUS CLENT")
+            self.logger.debug("ds_base: RUN W/O PROMETHEUS CLENT")
         elif prom_cfg_dir is None:  # Use push gateway
             self.prom_man.rank = mpi_rank
-            logger.debug(
+            self.logger.debug(
                 f"ds_base: START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
             )
             self.e = threading.Event()
@@ -508,7 +558,7 @@ class DataSourceBase(abc.ABC):
             )
             self.t.start()
         else:  # Use http exposer
-            logger.debug(
+            self.logger.debug(
                 "ds_base: START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
             )
             self.e = None
@@ -519,7 +569,7 @@ class DataSourceBase(abc.ABC):
             return
 
         if self.e is not None:  # Push gateway case only
-            logger.debug(
+            self.logger.debug(
                 "ds_base: END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
             )
             self.e.set()
@@ -549,7 +599,7 @@ class DataSourceBase(abc.ABC):
                 [os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files],
                 dtype=np.int32,
             )
-            logger.debug(f"smd0 opened tmp smd_fds for detection selection: {smd_fds}")
+            self.logger.debug(f"smd0 opened tmp smd_fds for detection selection: {smd_fds}")
             smdr_man = SmdReaderManager(smd_fds, self.dsparms)
             all_configs = smdr_man.get_next_dgrams()
 
@@ -568,37 +618,37 @@ class DataSourceBase(abc.ABC):
                     det_list.append(detname)
                     for seg_id, _ in seg_dict.items():
                         det_list.append(f"{detname}_{seg_id}")
-                logger.debug(f"Stream:{i} detectors:{all_det_dict[i]}")
+                self.logger.debug(f"Stream:{i} detectors:{all_det_dict[i]}")
 
             # Apply detector selection exclusion
             if self.detectors or self.xdetectors:
                 include_set = set(self.detectors)
                 exclude_set = set(self.xdetectors)
-                logger.debug("Applying detector selection/exclusion")
-                logger.debug(f"  Included: {include_set}")
-                logger.debug(f"  Excluded: {exclude_set}")
+                self.logger.debug("Applying detector selection/exclusion")
+                self.logger.debug(f"  Included: {include_set}")
+                self.logger.debug(f"  Excluded: {exclude_set}")
 
                 # This will become 'key' to the new det_dict
                 cn_keeps = 0
                 for i in range(n_smds):
                     flag_keep = True
                     exist_set = set(all_det_dict[i])
-                    logger.debug(f"  Stream:{i}")
+                    self.logger.debug(f"  Stream:{i}")
                     if self.detectors:
                         if not include_set.intersection(exist_set):
                             flag_keep = False
-                            logger.debug("  |-- Discarded, not matched given detectors")
+                            self.logger.debug("  |-- Discarded, not matched given detectors")
                     if self.xdetectors and flag_keep:
                         matched_set = exclude_set.intersection(exist_set)
                         if matched_set:
                             flag_keep = False
-                            logger.debug(
+                            self.logger.debug(
                                 "  |-- Discarded, matched with excluded detectors"
                             )
                             # We only warn users in the case where we exclude a detector
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
-                                logger.info(
+                                self.logger.info(
                                     f"Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded."
                                 )
 
@@ -610,7 +660,7 @@ class DataSourceBase(abc.ABC):
                         configs.append(config)
                         det_dict[cn_keeps] = all_det_dict[i]
                         cn_keeps += 1
-                        logger.debug("  |-- Kept")
+                        self.logger.debug("  |-- Kept")
             else:
                 xtc_files = self.xtc_files[:]
                 smd_files = self.smd_files[:]
@@ -620,54 +670,100 @@ class DataSourceBase(abc.ABC):
             use_smds = [False] * len(smd_files)
             if self.small_xtc:
                 s1 = set(self.small_xtc)
-                logger.debug("Applying smalldata replacement")
-                logger.debug(f"  Smalldata: {self.small_xtc}")
+                self.logger.debug("Applying smalldata replacement")
+                self.logger.debug(f"  Smalldata: {self.small_xtc}")
                 for i in range(len(smd_files)):
                     exist_set = set(det_dict[i])
-                    logger.debug(f" Stream:{i}")
+                    self.logger.debug(f" Stream:{i}")
                     if s1.intersection(exist_set):
                         smd_files[i] = xtc_files[i]
                         use_smds[i] = True
-                        logger.debug("  |-- Replaced with smalldata")
+                        self.logger.debug("  |-- Replaced with smalldata")
                     else:
-                        logger.debug("  |-- Kept with bigdata")
+                        self.logger.debug("  |-- Kept with bigdata")
 
             self.xtc_files = xtc_files
             self.smd_files = smd_files
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
-            logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
+            self.logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
 
     def _setup_run_calibconst(self):
         """
-        note: calibconst is set differently in MPIDataSource and DrpDataSource
+        Initialize the `dsparms.calibconst` dictionary with calibration constants.
+
+        If `use_calib_cache` is enabled, attempts to load calibration constants from
+        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
+        fetches calibration constants directly from the database for each detector.
+
+        This function supports skipping selected detectors via `skip_calib_load`.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
+
+        if self.skip_calib_load == 'all':
+            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
+            return
+
         runinfo = self._get_runinfo()
         if not runinfo:
             return
         expt, runnum, _ = runinfo
+        self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
 
-        self.dsparms.calibconst = {}
-        for det_name, configinfo in self.dsparms.configinfo_dict.items():
-            if expt:
-                if expt == "cxid9114":  # mona: hack for cctbx
-                    det_uniqueid = "cspad_0002"
-                elif expt == "xpptut15":
-                    det_uniqueid = "cspad_detnum1234"
+        if self.use_calib_cache:
+            self.logger.debug("using calibration constant from shared memory, if exists")
+            calib_const, existing_info, max_retry = (None, None, 0)
+            latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
+            while not calib_const and max_retry < self.fetch_calib_cache_max_retries and existing_info != latest_info:
+                try:
+                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
+                except Exception as e:
+                    self.logger.warning(f"failed to retrieve calib_const: {e}")
+                if loaded_data is not None:
+                    calib_const = loaded_data.get("calib_const")
+                    existing_info = loaded_data.get("det_info")
+                if existing_info != latest_info:
+                    calib_const = None
+                    self.logger.warning("det_info in pickle file does not matched with the latest run")
+                elif calib_const:
+                    self.logger.debug(f"received calib_const for {','.join(calib_const.keys())}")
+                    break
+                max_retry += 1
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
+                time.sleep(1)
+
+            self.dsparms.calibconst = calib_const
+        else:
+            self.dsparms.calibconst = {}
+            for det_name, configinfo in self.dsparms.configinfo_dict.items():
+                if expt:
+                    if expt == "xpptut15":
+                        det_uniqueid = "cspad_detnum1234"
+                    else:
+                        det_uniqueid = configinfo.uniqueid
+                    if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
+                        self.dsparms.calibconst[det_name] = None
+                        continue
+                    st = time.monotonic()
+                    calib_const = wu.calib_constants_all_types(
+                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
+                    )
+                    en = time.monotonic()
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    self.dsparms.calibconst[det_name] = calib_const
                 else:
-                    det_uniqueid = configinfo.uniqueid
-                calib_const = wu.calib_constants_all_types(
-                    det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
-                )
-                self.dsparms.calibconst[det_name] = calib_const
-            else:
-                logger.info(
-                    "ds_base: Warning: cannot access calibration constant (exp is None)"
-                )
-                self.dsparms.calibconst[det_name] = None
+                    self.logger.info(
+                        "ds_base: Warning: cannot access calibration constant (exp is None)"
+                    )
+                    self.dsparms.calibconst[det_name] = None
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)
@@ -688,4 +784,4 @@ class DataSourceBase(abc.ABC):
         if self.smd_fds is not None:
             for fd in self.smd_fds:
                 os.close(fd)
-            logger.debug(f"ds_base: close smd fds: {self.smd_fds}")
+            self.logger.debug(f"ds_base: close smd fds: {self.smd_fds}")

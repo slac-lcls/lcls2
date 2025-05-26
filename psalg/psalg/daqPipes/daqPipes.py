@@ -27,7 +27,7 @@ class Debug:
                 self._file.close()
 
 class PromMetric:
-    def __init__(self, srvurl, query, column, width=12):
+    def __init__(self, srvurl, query, column, width=16):
         self._srvurl = srvurl
         self._query  = query[0]
         self.dpyFmt  = query[1] # A callable function, so no '_'
@@ -250,7 +250,7 @@ def draw(stdscr, args, metrics, size_x):
     start_row = 0               # In units of rows    of some height
     start_col = 0               # In units of columns of some width
     size_y = 0
-    size_x = 12 + size_x + 1    # Add space for detName column
+    size_x = 16 + size_x + 1    # Add space for detName column
     new_y_size = size_y
     new_x_size = size_x
     showInstance = False
@@ -297,10 +297,10 @@ def draw(stdscr, args, metrics, size_x):
             start_row = min(tot_rows - rows, start_row)
             start_row = max(0,               start_row)
 
-            tw = 12
+            tw = 16             # DetName width
             cols = 1            # DetName
             if showInstance:
-                tw += 20
+                tw += 21
                 cols += 1       # Instance
             tot_cols = cols + len(metrics)
             for metric in metrics.values():
@@ -327,7 +327,7 @@ def draw(stdscr, args, metrics, size_x):
             cw = 0
             if showInstance:
                 header = 'Instance'
-                cw = 20
+                cw = 21
                 pad.addstr(y, x, header)
                 pad.addstr(y, x + len(header), " " * (cw - len(header)))
                 if sc < start_col:
@@ -335,7 +335,7 @@ def draw(stdscr, args, metrics, size_x):
                     sc += 1
                 x += cw
             header = 'DetName'
-            cw = 12
+            cw = 16             # DetName width
             pad.addstr(y, x, header)
             pad.addstr(y, x + len(header), " " * (cw - len(header)))
             if sc < start_col:
@@ -365,7 +365,7 @@ def draw(stdscr, args, metrics, size_x):
                 y = 1 + nInstance
                 x = 0
                 if showInstance:
-                    cw = 20
+                    cw = 21
                     pad.addstr(y, x, instance, curses.color_pair(2))
                     if sr < start_row:
                         start_y += rh
@@ -373,7 +373,7 @@ def draw(stdscr, args, metrics, size_x):
                     x += cw
 
                 sample = samples[instance]
-                cw = 12
+                cw = 16         # DetName width
                 pad.addstr(y, x, sample[0], curses.color_pair(1))
                 if sr < start_row:
                     start_y += rh
@@ -447,7 +447,7 @@ def draw(stdscr, args, metrics, size_x):
                     time = datetime.fromisoformat(args.start).timestamp()
             elif k == ord('i'):
                 showInstance = not showInstance
-                new_x_size += 20 if showInstance else -20
+                new_x_size += 21 if showInstance else -21
             elif k == ord('h') or k == ord('?'):
                 showHelp(stdscr, args, metrics)
                 k = 0
@@ -469,7 +469,7 @@ def test(args, metrics):
     print('samples:', samples)
 
     print(0, 0, 'DetName')
-    w = 12
+    w = 16                      # DetName width
     for header, metric in metrics.items():
         print(0, w, header)
         w += metric.width()

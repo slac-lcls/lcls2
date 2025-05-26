@@ -157,7 +157,7 @@ def one_camera_sequence(args):
                             repeat=-1,
                             notify=False)
 
-    seqcodes = {0:'Slow Andor'}
+    seqcodes = {0:args.names[0]}
     write_seq(gen,seqcodes,'codes.py')
 
 def two_camera_sequence(args):
@@ -214,7 +214,7 @@ def two_camera_sequence(args):
                             repeat=-1,
                             notify=False)
 
-    seqcodes = {0:'Slow Andor',1:'Fast Andor'}
+    seqcodes = {0:args.names[0],1:args.names[1]}
     write_seq(gen,seqcodes,'codes.py')
 
     #  Since we don't actually have beam to include in the trigger logic,
@@ -246,6 +246,7 @@ def main():
                         example: 31,1,17,1,37,1,11,1  
                         on 31, off 1, on 17, off 1, on 37, off 1, on 11, off 1. 
                         (repeats every 31+1+17+1+37+1+11+1=100)''')
+    parser.add_argument('--names', default=['Slow Andor','Fast Andor'], type=str, nargs='+', help="camera names; default=[Slow Andor,Fast Andor]")
     parser.add_argument('--override', action='store_true', help='Do not correct readout periods')
 
     args = parser.parse_args()

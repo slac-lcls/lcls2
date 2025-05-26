@@ -1,5 +1,5 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-from libc.stdint cimport uint32_t
+from libc.stdint cimport uint32_t, uint8_t
 cimport psdaq.trigger.TimingTebData as ttt
 
 cdef class TimingTebData():
@@ -17,6 +17,9 @@ cdef class TimingTebData():
     def __dealloc__(self):
         if self._bufOwner:
             PyBuffer_Release(&self.buf)
+
+    def has_destination(self,destn):
+        return (self.cptr.ebeamDestn&0x80) and (self.cptr.ebeamDestn&0x7f)==destn
 
     def has_eventcode(self,code):
         return (self.cptr.eventcodes[code>>5]>>(code&0x1f))&1

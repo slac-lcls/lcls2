@@ -1,11 +1,11 @@
 # Test shmem datasource with pubsub broadcasting
 
-import os, shutil
-import subprocess
-import sys, os
-import pytest
+import os
 import socket
-from psana import DataSource
+import subprocess
+import sys
+
+import pytest
 
 client_count = 4  # number of clients in test (1 supervisor, 3 clients)
 dgram_count  = 64 # number of expected datagrams per client
@@ -19,15 +19,15 @@ class Test:
         return subprocess.Popen(cmd_args)
 
     def launch_supervisor(self,pid,supervisor_ip_addr):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'
         cmd_args = ['python',shmem_file,pid,'1',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
-    
+
     def launch_client(self,pid,supervisor_ip_addr):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'
         cmd_args = ['python',shmem_file,pid,'0',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
-                
+
     @staticmethod
     def setup_input_files(tmp_path):
         tmp_dir = tmp_path / 'shmem'
@@ -35,14 +35,14 @@ class Test:
         tmp_file = tmp_dir / 'data_shmem.xtc2'
         subprocess.call(['xtcwriter','-t','-n',str(dgram_count),'-f',str(tmp_file)])
         return tmp_file
-        
+
     def test_shmem(self, tmp_path):
         cli = []
         pid = str(os.getpid())
         tmp_file = self.setup_input_files(tmp_path)
         srv = self.launch_server(tmp_file,pid)
-        assert srv != None,"server launch failure"
-        
+        assert srv is not None,"server launch failure"
+
         # shmem_ds uses host addr and port determined externally for
         # calibration constant broadcasting. In this test, we simulate
         # such a situation by acquiring an available port using a socket
@@ -56,11 +56,11 @@ class Test:
 
         try:
             for i in range(client_count):
-              if i == 0: 
+              if i == 0:
                   cli.append(self.launch_supervisor(pid, supervisor_ip_addr))
               else:
                   cli.append(self.launch_client(pid, supervisor_ip_addr))
-              assert cli[i] != None,"client "+str(i)+ " launch failure"
+              assert cli[i] is not None,"client "+str(i)+ " launch failure"
         except:
             srv.kill()
             raise

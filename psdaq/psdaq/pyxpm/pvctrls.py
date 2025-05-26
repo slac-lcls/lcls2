@@ -114,13 +114,19 @@ class IdxRegH(PVHandler):
         retry_wlock(self.cmd,pv,value)
 
 class L0DelayH(IdxRegH):
-    def __init__(self, valreg, idxreg, idx, pvu, archive=None):
-        super(L0DelayH,self).__init__(valreg, idxreg, idx, archive)
+    def __init__(self, valreg, app, idx, pvu, archive=None):
+        super(L0DelayH,self).__init__(valreg, app.partition, idx, archive)
+        self.app = app
         self.pvu = pvu
 
     def handle(self, pv, value):
         logging.info(f'Setting L0Delay[{self._idx}] to {pipelinedepth_from_delay(value):x}')
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
+
+        # Toggle L0Reset for this group (set or post?)
+        self.app.groupL0Reset.set(1<<self._idx)
+        time.sleep(1.e-3)
+        self.app.groupL0Reset.set(0)
 
         curr = self.pvu.current()
         curr['value'] = value*_fidPeriod
@@ -311,6 +317,7 @@ class GroupSetup(object):
 
         self._pv_StepGroups = _addPV('StepGroups'            ,self.stepGroups,0)
         self._pv_StepEnd    = _addPV('StepEnd'               ,self.stepEnd   ,0)
+        self._pv_SeqMask    = _addPV('SeqMask'               ,self.seqMask   ,0)
 
         def _addPV(label,reg,init=0,set=False):
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
@@ -332,7 +339,7 @@ class GroupSetup(object):
             provider.add(name+':'+label+'_ns',pvu)
 
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=L0DelayH(reg,self._app.partition,group,pvu,archive=name+':'+label))
+                          handler=L0DelayH(reg,self._app,group,pvu,archive=name+':'+label))
             provider.add(name+':'+label,pv)
             if set:
                 self._app.partition.set(group)
@@ -360,7 +367,7 @@ class GroupSetup(object):
         self._inhibits.append(PVInhibit(name, app, app.inh_3, group, 3))
 
     def dump(self):
-        logging.info(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
+        logging.warning(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
 
     def setFixedRate(self):
         rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
@@ -434,7 +441,6 @@ class GroupSetup(object):
 
         forceUpdate(self._app.l0DestSel)
         self.setDestn()
-        #self.dump()
         lock.release()
 
     def stepGroups(self, pv, val):
@@ -443,6 +449,9 @@ class GroupSetup(object):
     def stepEnd(self, pv, val):
         self.stepDone(False)
         getattr(self._app,'stepEnd%i'%self._group).set(val)
+
+    def seqMask(self, pv, val):
+        getattr(self._app,'seqMask%i'%self._group).set(val)
 
     def stepDone(self, val):
         value = self._pv_StepDone.current()
@@ -472,7 +481,6 @@ class GroupCtrls(object):
             return pv
 
         self._pv_l0Reset   = _addPV('GroupL0Reset'  ,app.groupL0Reset)
-        #self._pv_l0Enable  = _addPV('GroupL0Enable' ,app.groupL0Enable)
         self._pv_l0Enable  = addPVC(f'{name}:GroupL0Enable','I',0,self.groupEnable)
         self._pv_l0Disable = _addPV('GroupL0Disable',app.groupL0Disable)
         self._pv_MsgInsert = _addPV('GroupMsgInsert',app.groupMsgInsert)
@@ -620,7 +628,8 @@ class PVCtrls(object):
         elif cycle == 10:
             self._seq_codes_pv  = addPVT(self._name+':SEQCODES', seqCodes)
             self._seq_codes_val = toDict(seqCodes)
-            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0), self._seq_codes_val) for i in range(NCODES//4)]
+            self._seq_code_names_pv = addPV(self._name+':SEQCODENAMES',*seqCodes['Description'],True)
+            self._seq = [PVSeq(provider, f'{self._name}:SEQENG:{i}', self._ip, Engine(i, self._xpm.SeqEng_0)) for i in range(NCODES//4)]
 
     def notify(self):
         client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -657,12 +666,20 @@ class PVCtrls(object):
                     offset = self._handle(msg)
                     # seqcodes
                     if self._seq:
-                        w = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
+                        uw = struct.unpack_from(f'<{NCODES}L',msg,offset) #seqCount
+                        w = list(uw)
+                        ena = [False]*NCODES
+                        for i in range(NCODES//4):
+                            if w[i*4+3]&(1<<31):
+                                ena[4*i:4*i+4] = [True]*4
+                                w[i*4+3] &= (1<<31)-1
+
                         offset += NCODES*4
 
                         value = self._seq_codes_pv.current()
                         self._seq_codes_val['Rate'] = w
-                        self._seq_codes_val['Description'] = value['value']['Description']
+                        self._seq_codes_val['Description'] = self._seq_code_names_pv.current()['value']
+                        self._seq_codes_val['Enabled'] = ena
                         value['value'] = self._seq_codes_val
                         value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
                         self._seq_codes_pv.post(value)
