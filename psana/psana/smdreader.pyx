@@ -570,9 +570,25 @@ cdef class SmdReader:
             debug_print("    No buffers had non-zero block size — returning False.")
             return False
 
+        cdef uint64_t expected_n_events = 0
+        cdef uint64_t n_events
+
+        for i in range(self.prl_reader.nfiles):
+            n_events = self.prl_reader.step_bufs[i].n_seen_events
+            if expected_n_events == 0 and n_events > 0:
+                expected_n_events = n_events
+                break
+
+        # All streams must contribute to step buffers if any do
+        if expected_n_events > 0:
+            for i in range(self.prl_reader.nfiles):
+                if self.prl_reader.step_bufs[i].n_seen_events != expected_n_events:
+                    debug_print(f"    Mismatched step buffer in stream {i} ({self.prl_reader.step_bufs[i].n_seen_events}/{expected_n_events})")
+                    return False
+
         en_all = time.monotonic()
         self.total_time += en_all - st_all
-        debug_print(f"Success build_batch_view, limit_ts={limit_ts} total_time={self.total_time:.6f} sec")
+        debug_print(f"Success build_batch_view, limit_ts={limit_ts} found_endrun={self.found_endrun()} total_time={self.total_time:.6f} sec")
         return True
 
 
