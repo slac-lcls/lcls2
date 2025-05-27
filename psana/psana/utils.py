@@ -1,5 +1,6 @@
 import inspect
 import logging
+import os
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from psana.psexp.tools import mode
@@ -72,7 +73,11 @@ class Logger:
             if not any(isinstance(h, RotatingFileHandler) for h in self.logger.handlers):
                 self.logger.addHandler(file_handler)
 
-    def debug(self, msg, *args, **kwargs): self.logger.debug(msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        timeline = int(os.environ.get("PS_TIMELINE", "0"))
+        if "TIMELINE" in msg and not timeline:
+            return
+        self.logger.debug(msg, *args, **kwargs)
     def info(self, msg, *args, **kwargs): self.logger.info(msg, *args, **kwargs)
     def warning(self, msg, *args, **kwargs): self.logger.warning(msg, *args, **kwargs)
     def error(self, msg, *args, **kwargs): self.logger.error(msg, *args, **kwargs)
