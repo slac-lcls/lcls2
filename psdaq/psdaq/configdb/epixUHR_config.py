@@ -57,7 +57,7 @@ def sanitize_config(src):
         dst[k.replace('[','').replace(']','').replace('(','').replace(')','')] = v
     return dst
 
-#Initialization of each ASIC after getting configdb data, because we need to know which ASIC to init
+#Initialization of ASICs, this happens after getting configdb data because we need to know which ASIC to init
 def panel_ASIC_init(detectorRoot, asics):
     panelAsicVars={}
     
@@ -122,7 +122,7 @@ def panel_ASIC_init(detectorRoot, asics):
         for key in panelAsicVars[asic]:
             write_to_detector(key[0],key[1])
                             
-#Initialization of the detector
+#Initialization of the detector; this is meant to put the detector in a pre defined working state.
 def panel_init(detectorRoot):
     panelInitVars=[
         [detectorRoot.App.WaveformControl.enable,              True],			  	
@@ -305,6 +305,7 @@ def user_to_expert(base, cfg, fullConfig=False):
 
     detectorRoot = base['cam']
     
+    #this is supposed to be constant for every detector
     deltadelay = -192
     
     d = {}
@@ -357,7 +358,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     global gainMapSelection
     global gainValSelection
     
+    #path were to store cvs files for gain definition
     path = '/tmp/ePixUHR_GTReadout_default_'
+    #path were to store pll files used for calibration
     pathPll = '/tmp/'
 
     #  Disable internal triggers during configuration
@@ -452,9 +455,9 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         detectorRoot.App.fnInitAsicScript(None,None,arg)
         logging.info("### FINISHED YAML LOAD ###")
 
-        # Enable the batchers for all ASICs
-        for i in range(detectorRoot.numOfAsics):
-            write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i+1}').enable, base['batchers'][i] == 1)
+        # Enable the batchers for all ASICs; removed because already in ynl file General
+ #       for i in range(detectorRoot.numOfAsics):
+ #           write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i+1}').enable, base['batchers'][i] == 1)
             
         write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable, app['GTReadoutBoardCtrl']['enable']==1)
         write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
@@ -601,8 +604,8 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         
         
         # Remove the yml files
-        #for f in tmpfiles:
-        #    os.remove(f)
+        for f in tmpfiles:
+            os.remove(f)
                 
     logging.info('config_expert complete')
     
