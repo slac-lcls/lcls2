@@ -178,7 +178,7 @@ void MemPool::freeDma(unsigned count, uint32_t* indices)
         auto idx = indices[i];
         const auto buffer = (uint8_t*)dmaBuffers[idx];
         const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
-        if (word[0] != 0xabababab) {
+        if (word[0] != 0xabababab) [[unlikely]] {
             if (!(m_dmaOverrun & 0x01)) {
                 const auto th = (const Pds::TimingHeader*)buffer;
                 logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
@@ -189,7 +189,7 @@ void MemPool::freeDma(unsigned count, uint32_t* indices)
         }
         // The driver allocates the DMA pool, so we have no control over what comes after it
         // Unclear how to recognize overruns, so commenting this out for now
-        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) {
+        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
         //    if (!(m_dmaOverrun & 0x02)) {
         //        const auto th = (const Pds::TimingHeader*)buffer;
         //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
@@ -238,7 +238,7 @@ void MemPool::freePebble()
     const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
     auto idx = dgram - (Pds::EbDgram*)(pebble.buffer());
-    if (word[0] != 0xcdcdcdcd) {
+    if (word[0] != 0xcdcdcdcd) [[unlikely]] {
         if (!(m_l1Overrun & 0x01)) {
             logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
@@ -246,7 +246,7 @@ void MemPool::freePebble()
             m_l1Overrun |= 0x01;
         }
     }
-    if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) {
+    if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) [[unlikely]] {
         if (!(m_l1Overrun & 0x02)) {
             logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
@@ -266,7 +266,7 @@ void MemPool::flushPebble()
 Pds::EbDgram* MemPool::allocateTr()
 {
     void* dgram = nullptr;
-    if (!m_transitionBuffers.pop(dgram)) {
+    if (!m_transitionBuffers.pop(dgram)) [[unlikely]] {
         // See comments for setting the number of transition buffers in eb.hh
         return nullptr;
     }
@@ -278,7 +278,7 @@ void MemPool::freeTr(Pds::EbDgram* dgram)
     // Do this check before freeing the dgram in case it is reallocated
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
     auto idx = dgram - (Pds::EbDgram*)(pebble.trBuffer());
-    if (word[0] != 0xefefefef) {
+    if (word[0] != 0xefefefef) [[unlikely]] {
         if (!(m_trOverrun & 0x01)) {
             logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
@@ -286,7 +286,7 @@ void MemPool::freeTr(Pds::EbDgram* dgram)
             m_trOverrun |= 0x01;
         }
     }
-    if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) {
+    if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) [[unlikely]] {
         if (!(m_trOverrun & 0x02)) {
             logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
@@ -418,7 +418,8 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nMissingRoGs(0),
     m_nTmgHdrError(0),
     m_nPgpJumps   (0),
-    m_nNoTrDgrams (0)
+    m_nNoTrDgrams (0),
+    m_dmaOverrun  (false)
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
     if (pool.dmaCount() < m_dmaIndices.size()) {
@@ -482,7 +483,6 @@ void PgpReader::flush()
         dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
         cnt += ret;
     }
-    printf("*** PgpReader::flush: cnt %u\n", cnt);
 
     // Free any in-use pebble buffers
     m_pool.flushPebble();
@@ -498,9 +498,15 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
     // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
     // which thus won't have the expected header.  Take the exact match as an overflow indicator.
-    if (size == m_pool.dmaSize()) {
+    if (size >= m_pool.dmaSize()) [[unlikely]] {
         logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
         abort();
+    }
+    if (index > m_pool.dmaCount()-1) [[unlikely]] {
+        if (!m_dmaOverrun) {
+            logging::error("DMA buffer index (%u) is out of range [0:%u]", index, m_pool.dmaCount()-1);
+            m_dmaOverrun = true;
+        }
     }
 
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
@@ -510,7 +516,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
         m_latPid = timingHeader->pulseId();
     }
-    if (timingHeader->error()) {
+    if (timingHeader->error()) [[unlikely]] {
         if (m_nTmgHdrError++ < 5) {     // Limit prints at rate
             logging::error("Timing header error bit is set");
         }
@@ -528,7 +534,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
     uint32_t flag = dmaFlags[current];
     uint32_t err  = dmaErrors[current];
-    if (err) {
+    if (err) [[unlikely]] {
         if (m_nDmaErrors++ < 5) {       // Limit prints at rate
             logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
         }
@@ -552,7 +558,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         if (transitionId == TransitionId::BeginRun) {
             resetEventCounter();        // Compensate for the ClearReadout sent before BeginRun
         }
-        if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) {
+        if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
             if (m_lastTid != TransitionId::Unconfigure) {
                 if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
                     auto evtCntDiff = evtCounter - m_lastComplete;
@@ -576,7 +582,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         memcpy(m_lastData, data, 24);
 
         auto rogs = timingHeader->readoutGroups();
-        if ((rogs & (1 << m_para.partition)) == 0) {
+        if ((rogs & (1 << m_para.partition)) == 0) [[unlikely]] {
             logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                            TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -589,7 +595,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         }
         if (transitionId == TransitionId::SlowUpdate) {
             uint16_t missingRogs = m_para.rogMask & ~rogs;
-            if (missingRogs) {
+            if (missingRogs) [[unlikely]] {
                 logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -626,7 +632,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         if (transitionId != TransitionId::L1Accept) {
             uint32_t evtIndex = event->pebbleIndex;
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
-            if (!m_pool.transitionDgrams[evtIndex]) {
+            if (!m_pool.transitionDgrams[evtIndex]) [[unlikely]] {
                 freeDma(event);         // Leaves event mask = 0
                 m_pool.freePebble();    // Avoid leaking pebbles on errors
                 ++m_nNoTrDgrams;
