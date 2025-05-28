@@ -84,16 +84,27 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 {
     size_t algnSz = 16;                    // For cache boundaries
     m_bufferSize  = algnSz * ((l1BufSize + algnSz - 1) / algnSz);
+    m_trBufSize   = algnSz * ((trBufSize + algnSz - 1) / algnSz);
 
+    // Round up to an integer number of pages for both L1 and transition buffers
     size_t pgSz   = sysconf(_SC_PAGESIZE); // For shmem/MMU
-    m_size        = nL1Buffers*m_bufferSize + nTrBuffers*trBufSize;
-    m_size        = pgSz * ((m_size + pgSz - 1) / pgSz);
+    size_t l1Sz   = pgSz * (((nL1Buffers*m_bufferSize + pgSz - 1) / pgSz) + 1); // +1 for overrun detection
+    size_t trSz   = pgSz * (((nTrBuffers*m_trBufSize  + pgSz - 1) / pgSz) + 1); // +1 for overrun detection
+    m_size        = l1Sz + trSz;
     m_buffer      = nullptr;
     int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
     if (ret) {
         logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
         throw "Pebble creation failed";
     }
+    m_trBuffer = (uint8_t*)m_buffer + l1Sz;
+
+    m_nTrBuffers = nTrBuffers;
+    m_nL1Buffers = nL1Buffers;
+
+    // Load buffers with a pattern for debugging overruns
+    memset(m_buffer,   0xcd, l1Sz);
+    memset(m_trBuffer, 0xef, trSz);
 }
 
 MemPool::MemPool(const Parameters& para) :
@@ -101,7 +112,10 @@ MemPool::MemPool(const Parameters& para) :
     m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
-    m_frees(0)
+    m_frees(0),
+    m_dmaOverrun(0),
+    m_l1Overrun(0),
+    m_trOverrun(0)
 {
 }
 
@@ -137,15 +151,15 @@ void MemPool::_initialize(const Parameters& para)
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
     logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
-    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
+    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, pebble.trBufSize());
 
     pgpEvents.resize(m_nDmaBuffers);
     transitionDgrams.resize(m_nbuffers);
 
     // Put the transition buffer pool at the end of the pebble buffers
-    uint8_t* buffer = pebble[m_nbuffers];
+    uint8_t* buffer = pebble.trBuffer();
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
-        m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
+      m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
     }
 }
 
@@ -156,6 +170,39 @@ unsigned MemPool::allocateDma()
     auto allocs = m_dmaAllocs.fetch_add(1, std::memory_order_acq_rel);
 
     return allocs;
+}
+
+void MemPool::freeDma(unsigned count, uint32_t* indices)
+{
+    for (unsigned i = 0; i < count; ++i) {
+        auto idx = indices[i];
+        const auto buffer = (uint8_t*)dmaBuffers[idx];
+        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
+        if (word[0] != 0xabababab) {
+            if (!(m_dmaOverrun & 0x01)) {
+                const auto th = (const Pds::TimingHeader*)buffer;
+                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
+                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
+                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
+                m_dmaOverrun |= 0x01;
+            }
+        }
+        // The driver allocates the DMA pool, so we have no control over what comes after it
+        // Unclear how to recognize overruns, so commenting this out for now
+        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) {
+        //    if (!(m_dmaOverrun & 0x02)) {
+        //        const auto th = (const Pds::TimingHeader*)buffer;
+        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
+        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
+        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
+        //        m_dmaOverrun |= 0x02;
+        //    }
+        //}
+    }
+
+    _freeDma(count, indices);
+
+    m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
 }
 
 unsigned MemPool::allocate()
@@ -176,13 +223,6 @@ unsigned MemPool::allocate()
     return allocs & (m_nbuffers - 1);
 }
 
-void MemPool::freeDma(unsigned count, uint32_t* indices)
-{
-    _freeDma(count, indices);
-
-    m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
-}
-
 void MemPool::freePebble()
 {
     auto frees  = m_frees.fetch_add(1, std::memory_order_acq_rel);
@@ -193,6 +233,26 @@ void MemPool::freePebble()
     if (allocs - frees == m_nbuffers) {
         std::lock_guard<std::mutex> lock(m_lock);
         m_condition.notify_one();
+    }
+
+    const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
+    const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
+    auto idx = dgram - (Pds::EbDgram*)(pebble.buffer());
+    if (word[0] != 0xcdcdcdcd) {
+        if (!(m_l1Overrun & 0x01)) {
+            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] overrun: %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), idx, word[0], 0xcdcdcdcd);
+            m_l1Overrun |= 0x01;
+        }
+    }
+    if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) {
+        if (!(m_l1Overrun & 0x02)) {
+            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xcdcdcdcd);
+            m_l1Overrun |= 0x02;
+        }
     }
 }
 
@@ -211,6 +271,31 @@ Pds::EbDgram* MemPool::allocateTr()
         return nullptr;
     }
     return static_cast<Pds::EbDgram*>(dgram);
+}
+
+void MemPool::freeTr(Pds::EbDgram* dgram)
+{
+    // Do this check before freeing the dgram in case it is reallocated
+    const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
+    auto idx = dgram - (Pds::EbDgram*)(pebble.trBuffer());
+    if (word[0] != 0xefefefef) {
+        if (!(m_trOverrun & 0x01)) {
+            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] overrun: %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), idx, word[0], 0xefefefef);
+            m_trOverrun |= 0x01;
+        }
+    }
+    if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) {
+        if (!(m_trOverrun & 0x02)) {
+            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xefefefef);
+            m_trOverrun |= 0x02;
+        }
+    }
+
+    m_transitionBuffers.push(dgram);
 }
 
 void MemPool::resetCounters()
@@ -233,6 +318,10 @@ void MemPool::resetCounters()
     }
     m_allocs.store(0);
     m_frees .store(0);
+
+    m_dmaOverrun = 0;
+    m_l1Overrun = 0;
+    m_trOverrun = 0;
 }
 
 void MemPool::shutdown()
@@ -253,8 +342,13 @@ MemPoolCpu::MemPoolCpu(const Parameters& para) :
 
     dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
     if (dmaBuffers == NULL ) {
-        logging::critical("Failed to map dma buffers: %m");
+        logging::critical("Failed to map DMA buffers: %m");
         abort();
+    }
+
+    // Load buffers with a pattern
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+        memset(dmaBuffers[i], 0xab, m_dmaSize);
     }
 
     // Continue with initialization of the base class
@@ -263,6 +357,11 @@ MemPoolCpu::MemPoolCpu(const Parameters& para) :
 
 MemPoolCpu::~MemPoolCpu()
 {
+   auto rc = dmaUnMapDma(m_fd, dmaBuffers);
+   if (rc) {
+     logging::error("Failed to unmap DMA buffers: %m");
+   }
+
    logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
     close(m_fd);
 }
@@ -307,7 +406,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaFlags      (maxRetCnt),
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
-    m_lastTid     (TransitionId::Reset),
+    m_lastTid     (TransitionId::Unconfigure),
     m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
@@ -371,6 +470,8 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
+    unsigned cnt = m_count;
+
     // Return DMA buffers queued for freeing
     if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
     m_count = 0;
@@ -379,7 +480,9 @@ void PgpReader::flush()
     int32_t ret;
     while ( (ret = read()) ) {
         dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+        cnt += ret;
     }
+    printf("*** PgpReader::flush: cnt %u\n", cnt);
 
     // Free any in-use pebble buffers
     m_pool.flushPebble();
@@ -451,7 +554,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         }
         if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) {
             if (m_lastTid != TransitionId::Unconfigure) {
-              if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
+                if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
                     auto evtCntDiff = evtCounter - m_lastComplete;
                     logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
                                    RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
@@ -858,7 +961,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
     if (pulseId == 0) {
-        logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
+        logging::critical("%spulseId %014lx, ts %u.%09u, tid %d, env %08x%s",
                           RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
         error = true;
     }
@@ -890,7 +993,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         while (damage) {
             unsigned dmgType = __builtin_ffsl(damage) - 1;
             damage &= ~(1 << dmgType);
-            m_dmgType->observe(dmgType);
+            if (m_dmgType)  m_dmgType->observe(dmgType);
         }
     }
 
@@ -1064,8 +1167,8 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_mPrms.maxEvSize  = pool.bufferSize();
-    m_mPrms.maxTrSize  = para.maxTrSize;
+    m_mPrms.maxEvSize  = pool.pebble.bufferSize();
+    m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
     m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
@@ -1153,6 +1256,10 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
     exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
                   [&](){return pool.inUse();});
     exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
+
+    exporter->add("drp_trbufs_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.trInUse();});
+    exporter->constant("drp_trbufs_in_use_max", labels, pool.pebble.nTrBuffers());
 
     exporter->addFloat("drp_deadtime", labels,
                        [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
