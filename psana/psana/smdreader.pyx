@@ -318,7 +318,12 @@ cdef class SmdReader:
                 ts_sec = (self.prl_reader.bufs[self.winner].ts_arr[i] >> 32) & 0xffffffff
                 ts_nsec = self.prl_reader.bufs[self.winner].ts_arr[i] & 0xffffffff
                 ts_sum = ts_sec*1000000000 + ts_nsec + intg_delta_t
-                limit_ts = (ts_sum/1000000000)<<32 | (ts_sum % 1000000000)
+                # Convert the result back to the timestamp format with "//" to avoid
+                # truncating float.
+                ts_sec = ts_sum // 1000000000
+                ts_nsec = ts_sum % 1000000000
+                limit_ts = (ts_sec << 32) | ts_nsec
+
                 # Check if other streams have timestamp up to this integrating event
                 is_split = 0
                 for j in range(self.prl_reader.nfiles):
@@ -333,7 +338,6 @@ cdef class SmdReader:
                     limit_ts_complete = limit_ts
             else:
                 n_transitions += 1
-                # TODO: Also check for split EndRun
                 if self.prl_reader.bufs[self.winner].sv_arr[i] == TransitionId.EndRun:
                     i_complete = i
                     limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
@@ -403,13 +407,14 @@ cdef class SmdReader:
         """
         st_all = time.monotonic()
 
-        debug_print("build_batch_view called")
+        debug_print("Start build_batch_view")
         debug_print(f"    batch_size={batch_size} intg_stream_id={intg_stream_id} "
                     f"intg_delta_t={intg_delta_t} max_events={max_events} "
                     f"ignore_transition={ignore_transition}")
 
         cdef int i=0
         cdef uint64_t limit_ts
+        cdef uint64_t last_ts  # for debug
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
@@ -465,8 +470,10 @@ cdef class SmdReader:
                 batch_complete_flag = 1
             else:
                 limit_ts = self.find_intg_limit_ts(intg_stream_id, intg_delta_t, max_events)
-                if limit_ts == self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1] or limit_ts == INVALID_TS:
-                    debug_print(f"EARLY EXIT: limit_ts == last_ts or invalid (limit_ts={limit_ts}")
+                last_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]
+                if limit_ts == last_ts or limit_ts == INVALID_TS:
+                    debug_print(f"[find_intg_limit_ts] EARLY EXIT: limit_ts={limit_ts} last_ts={last_ts} INVALID_TS={INVALID_TS}")
+
                     return False
                 cn_intg_events += 1
                 if cn_intg_events == batch_size:
@@ -588,7 +595,7 @@ cdef class SmdReader:
 
         en_all = time.monotonic()
         self.total_time += en_all - st_all
-        debug_print(f"Success build_batch_view, limit_ts={limit_ts} found_endrun={self.found_endrun()} total_time={self.total_time:.6f} sec")
+        debug_print(f"Success build_batch_view, limit_ts={limit_ts} total_time={self.total_time:.6f} sec")
         return True
 
 
