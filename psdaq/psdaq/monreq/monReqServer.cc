@@ -294,7 +294,7 @@ namespace Pds {
       if (rc == 0)
       {
         ++_requestCount;
-        _bufUseCnts->observe(double(idx));
+        if (_bufUseCnts)  _bufUseCnts->observe(double(idx));
         _monTrgMetric.start(idx);
         _appPrcMetric.accumulate(idx);
       }
