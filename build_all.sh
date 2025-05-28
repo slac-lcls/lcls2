@@ -39,8 +39,6 @@ while getopts "c:p:s:b:fdar" opt; do
     ;;
     f) force_clean=1                       # Force clean is required building between rhel6&7
     ;;
-    r) export REBUILD=1
-    ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
     ;;
@@ -85,7 +83,12 @@ function cmake_build() {
     cd build
 
     # Run CMake configuration with the remaining arguments
-    cmake -DPIP_OPTIONS="$pipOptions" -DPSANA_PATH="$PSANA_PATH" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    if [ $1 == "psana" ]
+    then
+    	cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    else
+    	cmake -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    fi
 
     # Check the make_install flag
     if [ "$make_install" -eq 1 ]; then
