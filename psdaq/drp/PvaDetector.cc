@@ -210,7 +210,7 @@ int PvMonitor::getParams(std::string&    fieldName,
                          name().c_str(), m_rank, rank);
     }
 
-    m_payloadSize = m_nelem * Name::get_element_size(xtcType);
+    m_payloadSize = m_nelem * Name::get_element_size(xtcType); // Doesn't include overhead
     if (m_payloadSize > bufferSize) {
         auto msg("PV "+name()+" size too big; see log");
         json jmsg = createAsyncErrMsg(m_para.alias, msg);
