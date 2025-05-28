@@ -148,13 +148,13 @@ public:
         return m_ring_buffer[index & m_buffer_mask];
     }
 
-    bool is_empty()
+    bool is_empty() const
     {
         return m_read_index.load(std::memory_order_acquire) ==
                m_write_index.load(std::memory_order_acquire);
     }
 
-    int guess_size()
+    int guess_size() const
     {
         int ret = m_write_index.load(std::memory_order_acquire) -
                   m_read_index.load(std::memory_order_acquire);
@@ -164,7 +164,7 @@ public:
         return ret;
     }
 
-    size_t size()
+    size_t size() const
     {
         return m_ring_buffer.size();
     }
