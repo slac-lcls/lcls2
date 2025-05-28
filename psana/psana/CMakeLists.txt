@@ -24,8 +24,9 @@ target_link_libraries(psana PUBLIC psalg::digitizer)
 
 add_custom_command(TARGET psana
                    POST_BUILD
-                   WORKING_DIRECTORY ${PSANA_PATH}
+		   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
                    COMMAND echo "BUILDING EXTENSIONS"
                    COMMAND python setup.py build_ext -f --inplace
                    COMMAND echo "PIP INSTALLING PSANA"
                    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .)
+

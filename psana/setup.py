@@ -33,12 +33,8 @@ else:
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
 
-rebuild = int(os.environ.get('REBUILD'))
 
-if rebuild:
-    BUILD_LIST = ('PEAKFINDER','HSD')
-else:
-    BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
