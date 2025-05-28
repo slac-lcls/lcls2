@@ -693,7 +693,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [3,0,0])
+    top.setAlg('config', [3,1,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -753,7 +753,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [3,0,0])
+            top.setAlg('config', [3,1,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -818,7 +818,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [3,0,0])
+            top.setAlg('config', [3,1,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -895,7 +895,6 @@ def _start(base):
         devPtr.SoftRst()
 
     # Turn on the triggering
-
     write_to_detector(detectorRoot.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].MasterEnable, True)
     write_to_detector(detectorRoot.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].MasterEnable, True)
     

@@ -55,7 +55,15 @@ class epixuhrhw_config_3_0_0(DetectorImpl):
 class epixuhr_config_3_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args) 
-        
+
+class epixuhrhw_config_3_1_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
+
+class epixuhr_config_3_1_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args) 
+                
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
@@ -252,6 +260,9 @@ class epixuhr_raw_3_0_0(epixuhr_raw_2_1_1):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+class epixuhr_raw_3_1_0(epixuhr_raw_3_0_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
 #        if evt is None: return None
