@@ -103,8 +103,8 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
     m_nL1Buffers = nL1Buffers;
 
     // Load buffers with a pattern for debugging overruns
-    memset(m_buffer,   0xcd, l1Sz);
-    memset(m_trBuffer, 0xef, trSz);
+    //memset(m_buffer,   0xcd, l1Sz);
+    //memset(m_trBuffer, 0xef, trSz);
 }
 
 MemPool::MemPool(const Parameters& para) :
@@ -347,9 +347,9 @@ MemPoolCpu::MemPoolCpu(const Parameters& para) :
     }
 
     // Load buffers with a pattern
-    for (unsigned i = 0; i < m_dmaCount; ++i) {
-        memset(dmaBuffers[i], 0xab, m_dmaSize);
-    }
+    //for (unsigned i = 0; i < m_dmaCount; ++i) {
+    //    memset(dmaBuffers[i], 0xab, m_dmaSize);
+    //}
 
     // Continue with initialization of the base class
     _initialize(para);

@@ -245,7 +245,7 @@ void PvMonitor::shutdown()
 
 void PvMonitor::onConnect()
 {
-    logging::debug("PV  %s connected", name().c_str());
+    logging::debug("PV %s connected", name().c_str());
 
     if (m_state == NotReady) {
         std::lock_guard<std::mutex> lock(m_mutex);
