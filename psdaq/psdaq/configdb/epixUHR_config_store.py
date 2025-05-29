@@ -69,12 +69,12 @@ def epixUHR_cdict():
         top.set(f"expert.App.Asic{n}.CompEnGenCfg",     5, "UINT8")
         top.set(f"expert.App.Asic{n}.CfgAutoflush",     0, "UINT8")
         top.set(f"expert.App.Asic{n}.ExternalFlushN",   1, "UINT8")
-        top.set(f"expert.App.Asic{n}.ClusterDvMask",    16383, "UINT8")
+        top.set(f"expert.App.Asic{n}.ClusterDvMask",    16383, "UINT32")
         top.set(f"expert.App.Asic{n}.PixNumModeEn",     0 , "UINT8")
         top.set(f"expert.App.Asic{n}.SerializerTestEn", 0, "UINT8")
   
         top.set(f"expert.App.BatcherEventBuilder{n}.enable",			1   ,	"boolEnum")
-        top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT8'   )
+        top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT32'   )
         
     conv = functools.partial(int, base=16)
     pathPll='/cds/home/p/psrel/EpixUHR/pll/'

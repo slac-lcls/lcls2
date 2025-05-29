@@ -59,114 +59,104 @@ def sanitize_config(src):
 
 #Initialization of ASICs, this happens after getting configdb data because we need to know which ASIC to init
 def panel_ASIC_init(detectorRoot, asics):
-    panelAsicVars={}
     
     for asic in asics:
-        panelAsicVars[asic]=(
-            [getattr(detectorRoot.App,f"Asic{asic}").enable,               True],			  	
-            [getattr(detectorRoot.App,f"Asic{asic}").TpsDacGain,           1],						
-            [getattr(detectorRoot.App,f"Asic{asic}").TpsDac,               34],						
-            [getattr(detectorRoot.App,f"Asic{asic}").TpsGr,                12],						
-            [getattr(detectorRoot.App,f"Asic{asic}").TpsMux,               0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasTpsBuffer,        5],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasTps,              4],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasTpsDac,           4],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVthr,              52],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasDac,              4],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacTps,        3],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacComp,       0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVthrGain,          2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").PpbitBe,              1],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasPxlCsa,           0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasPxlBuf,           0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasAdcComp,          0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BiasAdcRef,           0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").CmlRxBias,            3],						
-            [getattr(detectorRoot.App,f"Asic{asic}").CmlTxBias,            3],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVfiltGain,         2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVfilt,             28],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVrefCdsGain,       2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVrefCds,           44],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVprechGain,        2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacVprech,            34],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacFilt,       2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacAdcRef,     2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacPrechCds,   2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrfCtrlDacAll,       2],						
-            [getattr(detectorRoot.App,f"Asic{asic}").BgrDisable,           0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefpGain,      3],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefp,          53],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefnGain,      0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefn,          12],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCmGain,     1],						
-            [getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCm,         45],						
-            [getattr(detectorRoot.App,f"Asic{asic}").AdcCalibEn,           0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").CompEnGenEn,          1],						
-            [getattr(detectorRoot.App,f"Asic{asic}").CompEnGenCfg,         5],						
-            [getattr(detectorRoot.App,f"Asic{asic}").CfgAutoflush,         0],						
-            [getattr(detectorRoot.App,f"Asic{asic}").ExternalFlushN,       1],						
-            [getattr(detectorRoot.App,f"Asic{asic}").ClusterDvMask,        16383],					
-            [getattr(detectorRoot.App,f"Asic{asic}").PixNumModeEn,         0],				
-            [getattr(detectorRoot.App,f"Asic{asic}").SerializerTestEn,     0],						
-            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").enable,True],			  	
-            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Bypass,0],						
-            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Timeout,0],						
-            [getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Blowoff,False],					
-            [getattr(detectorRoot.App,f"FramerAsic{asic}").enable,         False],
-            [getattr(detectorRoot.App,f"FramerAsic{asic}").DisableLane,    0],						
-            [getattr(detectorRoot.App,f"AsicGtData{asic}").enable,         True],
-            [getattr(detectorRoot.App,f"AsicGtData{asic}").gtStableRst,    False],
-        )
-    
-    for asic in asics:
-        for key in panelAsicVars[asic]:
-            write_to_detector(key[0],key[1])
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").enable,               True)			  	
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").TpsDacGain,           1)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").TpsDac,               34)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").TpsGr,                12)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").TpsMux,               0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasTpsBuffer,        5)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasTps,              4)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasTpsDac,           4)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVthr,              52)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasDac,              4)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacTps,        3)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacComp,       0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVthrGain,          2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").PpbitBe,              1)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasPxlCsa,           0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasPxlBuf,           0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasAdcComp,          0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BiasAdcRef,           0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").CmlRxBias,            3)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").CmlTxBias,            3)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVfiltGain,         2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVfilt,             28)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVrefCdsGain,       2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVrefCds,           44)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVprechGain,        2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacVprech,            34)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacFilt,       2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacAdcRef,     2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrCtrlDacPrechCds,   2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrfCtrlDacAll,       2)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").BgrDisable,           0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefpGain,      3)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefp,          53)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefnGain,      0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefn,          12)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCmGain,     1)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").DacAdcVrefCm,         45)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").AdcCalibEn,           0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").CompEnGenEn,          1)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").CompEnGenCfg,         5)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").CfgAutoflush,         0)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").ExternalFlushN,       1)						
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").ClusterDvMask,        16383)					
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").PixNumModeEn,         0)				
+       write_to_detector(getattr(detectorRoot.App,f"Asic{asic}").SerializerTestEn,     0)						
+       write_to_detector(getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").enable,True)			  	
+       write_to_detector(getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Bypass,0)						
+       write_to_detector(getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Timeout,0)						
+       write_to_detector(getattr(detectorRoot.App,f"BatcherEventBuilder{asic}").Blowoff,False)					
+       write_to_detector(getattr(detectorRoot.App,f"FramerAsic{asic}").enable,         False)
+       write_to_detector(getattr(detectorRoot.App,f"FramerAsic{asic}").DisableLane,    0)						
+       write_to_detector(getattr(detectorRoot.App,f"AsicGtData{asic}").enable,         True)
+       write_to_detector(getattr(detectorRoot.App,f"AsicGtData{asic}").gtStableRst,    False)
+
                             
 #Initialization of the detector; this is meant to put the detector in a pre defined working state.
 def panel_init(detectorRoot):
-    panelInitVars=[
-        [detectorRoot.App.WaveformControl.enable,              True],			  	
-        [detectorRoot.App.WaveformControl.GlblRstPolarity,     True],		  	
-        [detectorRoot.App.WaveformControl.SR0Polarity,         False],			  	
-        [detectorRoot.App.WaveformControl.SR0Delay,            1195],	  	
-        [detectorRoot.App.WaveformControl.SR0Width,            1],		  	
-        [detectorRoot.App.WaveformControl.AcqPolarity,         False],			  	
-        [detectorRoot.App.WaveformControl.AcqDelay,            655],	  	
-        [detectorRoot.App.WaveformControl.AcqWidth,            535],	  	
-        [detectorRoot.App.WaveformControl.R0Polarity,          False],			  	
-        [detectorRoot.App.WaveformControl.R0Delay,             70],		  	
-        [detectorRoot.App.WaveformControl.R0Width,             1125],		  	
-        [detectorRoot.App.WaveformControl.InjPolarity,         False],		  	
-        [detectorRoot.App.WaveformControl.InjDelay,            700],	  	
-        [detectorRoot.App.WaveformControl.InjWidth,            535],	  	
-        [detectorRoot.App.WaveformControl.InjEn,               False],		  	
-        [detectorRoot.App.WaveformControl.InjSkipFrames,       0], 		
-        [detectorRoot.App.TriggerRegisters.enable,             True],			  	
-        [detectorRoot.App.TriggerRegisters.RunTriggerEnable,   False],					
-        [detectorRoot.App.TriggerRegisters.RunTriggerDelay,    0],					
-        [detectorRoot.App.TriggerRegisters.DaqTriggerEnable,   False],					
-        [detectorRoot.App.TriggerRegisters.DaqTriggerDelay,    0],					
-        [detectorRoot.App.TriggerRegisters.TimingRunTriggerEnable,False],				
-        [detectorRoot.App.TriggerRegisters.TimingDaqTriggerEnable,False],			
-        [detectorRoot.App.TriggerRegisters.AutoRunEn,          False],					
-        [detectorRoot.App.TriggerRegisters.AutoDaqEn,          False],					
-        [detectorRoot.App.TriggerRegisters.AutoTrigPeriod,     42700000],				
-        [detectorRoot.App.TriggerRegisters.numberTrigger,      0],						
-        [detectorRoot.App.TriggerRegisters.PgpTrigEn,          False],					
-        [detectorRoot.App.GTReadoutBoardCtrl.enable,           True],
-        [detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard,False],		 	
-        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,     False],
-        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,     False],
-        [detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,     False],
-        [detectorRoot.App.AsicGtClk.enable,                    True],
-        [detectorRoot.App.AsicGtClk.gtRstAll,                  False],					
-        [detectorRoot.App.TimingRx.enable,                     True],
-        [detectorRoot.Core.Si5345Pll.enable,                   False],
-        [detectorRoot.App.VINJ_DAC.dacEn,                      False],
-        [detectorRoot.App.VINJ_DAC.rampEn,                     False],
-    ]
-    for key in panelInitVars:
-        write_to_detector(key[0],key[1])
+        write_to_detector(detectorRoot.App.WaveformControl.enable,              True)			  	
+        write_to_detector(detectorRoot.App.WaveformControl.GlblRstPolarity,     True)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.SR0Polarity,         False)			  	
+        write_to_detector(detectorRoot.App.WaveformControl.SR0Delay,            1195)	  	
+        write_to_detector(detectorRoot.App.WaveformControl.SR0Width,            1)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.AcqPolarity,         False)			  	
+        write_to_detector(detectorRoot.App.WaveformControl.AcqDelay,            655)	  	
+        write_to_detector(detectorRoot.App.WaveformControl.AcqWidth,            535)	  	
+        write_to_detector(detectorRoot.App.WaveformControl.R0Polarity,          False)			  	
+        write_to_detector(detectorRoot.App.WaveformControl.R0Delay,             70)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.R0Width,             1125)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.InjPolarity,         False)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.InjDelay,            700)	  	
+        write_to_detector(detectorRoot.App.WaveformControl.InjWidth,            535)	  	
+        write_to_detector(detectorRoot.App.WaveformControl.InjEn,               False)		  	
+        write_to_detector(detectorRoot.App.WaveformControl.InjSkipFrames,       0) 		
+        write_to_detector(detectorRoot.App.TriggerRegisters.enable,             True)			  	
+        write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerEnable,   False)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.RunTriggerDelay,    0)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerEnable,   False)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.DaqTriggerDelay,    0)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.TimingRunTriggerEnable,False)				
+        write_to_detector(detectorRoot.App.TriggerRegisters.TimingDaqTriggerEnable,False)			
+        write_to_detector(detectorRoot.App.TriggerRegisters.AutoRunEn,          False)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.AutoDaqEn,          False)					
+        write_to_detector(detectorRoot.App.TriggerRegisters.AutoTrigPeriod,     42700000)				
+        write_to_detector(detectorRoot.App.TriggerRegisters.numberTrigger,      0)						
+        write_to_detector(detectorRoot.App.TriggerRegisters.PgpTrigEn,          False)					
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable,           True)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard,False)		 	
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,     False)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,     False)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,     False)
+        write_to_detector(detectorRoot.App.AsicGtClk.enable,                    True)
+        write_to_detector(detectorRoot.App.AsicGtClk.gtRstAll,                  False)					
+        write_to_detector(detectorRoot.App.TimingRx.enable,                     True)
+        write_to_detector(detectorRoot.Core.Si5345Pll.enable,                   False)
+        write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,                      False)
+        write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,                     False)
 #
 #  Initialize the rogue accessor
 #
