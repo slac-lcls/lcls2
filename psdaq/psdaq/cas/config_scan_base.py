@@ -15,7 +15,9 @@ import numpy as np
 hutch_def = {'tmo':(0,'drp-srcf-mon001'),
              'rix':(0,'drp-srcf-cmp004'),
              'ued':(0,'drp-ued-cmp002'),
-             'asc':(2,'drp-det-cmp001')}
+             'asc':(2,'drp-det-cmp001'),
+             'mfx':(3,'drp-srcf-cmp041'),
+            }
 
 class ConfigScanBase(object):
     def __init__(self, userargs=[], defargs={}):
