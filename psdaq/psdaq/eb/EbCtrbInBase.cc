@@ -245,8 +245,10 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
                          __PRETTY_FUNCTION__, peer, rmtId, regSize);
           return ENOMEM;
         }
-
         _regSize = regSize;
+
+        logging::info("Allocated %.1f GB region for %u result buffers of %zu B for inbound link with %3s ID %d",
+                      double(regSize)/1e9, numTebBuffers, regSize/numTebBuffers, peer, rmtId);
       }
       _numBuffers    = numTebBuffers;
       _maxResultSize = regSize / numTebBuffers;
