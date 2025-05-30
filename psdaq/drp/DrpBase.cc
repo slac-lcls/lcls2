@@ -97,14 +97,27 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
         logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
         throw "Pebble creation failed";
     }
-    m_trBuffer = (uint8_t*)m_buffer + l1Sz;
+    m_trBuffer = m_buffer + l1Sz;
 
     m_nTrBuffers = nTrBuffers;
     m_nL1Buffers = nL1Buffers;
 
-    // Load buffers with a pattern for debugging overruns
-    //memset(m_buffer,   0xcd, l1Sz);
-    //memset(m_trBuffer, 0xef, trSz);
+    logging::info("Allocated %.1f GB pebble for %u transitions of %zu B and %u L1Accepts of %zu B",
+                  double(m_size)/1e9, nTrBuffers, trBufSize, nL1Buffers, l1BufSize);
+
+    // Store a sentinel value at the end of the buffers for debugging overruns
+    auto buf = m_buffer + m_bufferSize - sizeof(uint32_t);
+    for (unsigned i = 0; i < nL1Buffers; ++i) {
+        *(uint32_t*)buf = 0xcdcdcdcd;
+        buf += m_bufferSize;
+    }
+    *(uint32_t*)(buf - m_bufferSize + sizeof(uint32_t)) = 0xcdcdcdcd; // Also 1st word of page after L1 buffer pool
+    buf = m_trBuffer + m_trBufSize - sizeof(uint32_t);
+    for (unsigned i = 0; i < nTrBuffers; ++i) {
+        *(uint32_t*)buf = 0xefefefef;
+        buf += m_trBufSize;
+    }
+    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xcdcdcdcd; // Also 1st word of page after transition pool
 }
 
 MemPool::MemPool(const Parameters& para) :
@@ -174,6 +187,7 @@ unsigned MemPool::allocateDma()
 
 void MemPool::freeDma(unsigned count, uint32_t* indices)
 {
+    // Check that the sentinel value at the end of the buffer is still there
     for (unsigned i = 0; i < count; ++i) {
         auto idx = indices[i];
         const auto buffer = (uint8_t*)dmaBuffers[idx];
@@ -235,6 +249,7 @@ void MemPool::freePebble()
         m_condition.notify_one();
     }
 
+    // Check that the sentinel value at the end of the buffer is still there
     const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
     auto idx = dgram - (Pds::EbDgram*)(pebble.buffer());
@@ -246,6 +261,7 @@ void MemPool::freePebble()
             m_l1Overrun |= 0x01;
         }
     }
+    // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) [[unlikely]] {
         if (!(m_l1Overrun & 0x02)) {
             logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
@@ -276,6 +292,7 @@ Pds::EbDgram* MemPool::allocateTr()
 void MemPool::freeTr(Pds::EbDgram* dgram)
 {
     // Do this check before freeing the dgram in case it is reallocated
+    // Check that the sentinel value at the end of the buffer is still there
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
     auto idx = dgram - (Pds::EbDgram*)(pebble.trBuffer());
     if (word[0] != 0xefefefef) [[unlikely]] {
@@ -286,6 +303,7 @@ void MemPool::freeTr(Pds::EbDgram* dgram)
             m_trOverrun |= 0x01;
         }
     }
+    // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) [[unlikely]] {
         if (!(m_trOverrun & 0x02)) {
             logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
@@ -346,10 +364,11 @@ MemPoolCpu::MemPoolCpu(const Parameters& para) :
         abort();
     }
 
-    // Load buffers with a pattern
-    //for (unsigned i = 0; i < m_dmaCount; ++i) {
-    //    memset(dmaBuffers[i], 0xab, m_dmaSize);
-    //}
+    // Store a sentinel value at the end of the buffers for debugging overruns
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+        uint8_t* buf = (uint8_t*)(dmaBuffers[i]);
+        *(uint32_t*)(buf + m_dmaSize - sizeof(uint32_t)) = 0xabababab;
+    }
 
     // Continue with initialization of the base class
     _initialize(para);
