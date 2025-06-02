@@ -184,7 +184,7 @@ namespace Pds {
 
       // Clear the counter here because _init() will cause it to count
       _requestCount = 0;
-      _bufUseCnts->clear();
+      if (_bufUseCnts)  _bufUseCnts->clear();
 
       _init();
     }
