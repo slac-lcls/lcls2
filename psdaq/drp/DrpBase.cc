@@ -157,9 +157,9 @@ void MemPool::_initialize(const Parameters& para)
                       ? m_nDmaBuffers
                       : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
     if (m_nbuffers < m_nDmaBuffers) {
-      logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
-                        m_nbuffers, m_nDmaBuffers);
-      abort();
+        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+                          m_nbuffers, m_nDmaBuffers);
+        abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
@@ -172,7 +172,7 @@ void MemPool::_initialize(const Parameters& para)
     // Put the transition buffer pool at the end of the pebble buffers
     uint8_t* buffer = pebble.trBuffer();
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
-      m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
+        m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
     }
 }
 
@@ -252,21 +252,22 @@ void MemPool::freePebble()
     // Check that the sentinel value at the end of the buffer is still there
     const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
-    auto idx = dgram - (Pds::EbDgram*)(pebble.buffer());
+    auto idx = ((uint8_t*)dgram - pebble.buffer()) / pebble.bufferSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     if (word[0] != 0xcdcdcdcd) [[unlikely]] {
         if (!(m_l1Overrun & 0x01)) {
-            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] overrun: %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], 0xcdcdcdcd);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xcdcdcdcd);
             m_l1Overrun |= 0x01;
         }
     }
     // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) [[unlikely]] {
         if (!(m_l1Overrun & 0x02)) {
-            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xcdcdcdcd);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xcdcdcdcd);
             m_l1Overrun |= 0x02;
         }
     }
@@ -294,21 +295,22 @@ void MemPool::freeTr(Pds::EbDgram* dgram)
     // Do this check before freeing the dgram in case it is reallocated
     // Check that the sentinel value at the end of the buffer is still there
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
-    auto idx = dgram - (Pds::EbDgram*)(pebble.trBuffer());
+    auto idx = ((uint8_t*)dgram - pebble.trBuffer()) / pebble.trBufSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     if (word[0] != 0xefefefef) [[unlikely]] {
         if (!(m_trOverrun & 0x01)) {
-            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] overrun: %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], 0xefefefef);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xefefefef);
             m_trOverrun |= 0x01;
         }
     }
     // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) [[unlikely]] {
         if (!(m_trOverrun & 0x02)) {
-            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xefefefef);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xefefefef);
             m_trOverrun |= 0x02;
         }
     }
