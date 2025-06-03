@@ -18,6 +18,7 @@ Created on 2022-01-18 by Mikhail Dubrovin
 
 import logging
 logger = logging.getLogger(__name__)
+import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
@@ -58,8 +59,7 @@ def info_pixel_status(status, bits=(1<<64)-1):
 
 
 def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
-    """Evaluates low and high limit of the array, which are used to find bad pixels.
-    """
+    """Evaluates low and high limit of the array, which are used to find bad pixels."""
     ave, std = (arr.mean(), arr.std()) if (nneg>0 or npos>0) else (None,None)
     lo = ave-nneg*std if nneg>0 else lim_lo
     hi = ave+npos*std if npos>0 else lim_hi
@@ -71,8 +71,7 @@ def evaluate_limits(arr, nneg=5, npos=5, lim_lo=1, lim_hi=16000, cmt=''):
 
 
 def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
-    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
-    """
+    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026"""
     trun_sec = int(trun_sec)
     ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
     ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
@@ -80,8 +79,7 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
 
 
 def merge_panels(lst):
-    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)
-    """
+    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)"""
     npanels = len(lst)   # 16 or 4 or 1
     shape = lst[0].shape # (7, 1, 352, 384)
     ngmods = shape[0]    # 7
@@ -183,23 +181,27 @@ def detector_name_short(detlong, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=True
 
 
 class DataBlock():
-    """primitive data block accumulation w/o processing
-       NOT USED IN THIS MODULE"""
+    """primitive data block accumulation on event w/o processing,
+       block shape=(nrecs,<shape-of-passed-raw>)
+       NOT USED IN THIS MODULE
+    """
     def __init__(self, **kwa):
         self.kwa    = kwa
-        self.nrecs  = kwa.get('nrecs',1000)
-        self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
-        self.block  = None
+        self.nrecs  = kwa.get('nrecs', 1000)
         self.irec   = -1
+        self.block  = None
+        #self.fname_block = kwa.get('fname_block', None) # None - not save
+        #self.datbits= kwa.get('datbits', 0xffff)
 
     def event(self, raw, evnum):
-        """Switch between gain mode processing objects using igm index of the gain mode (0,1,2).
+        """increment of det.raw.raw array in the block.
+           Parameters:
+           - raw (np.array) - det.raw.raw(evt) with optional [segind,:][aslice]
            - evnum (int) - event number
-           - igm (int) - index of the gain mode in DIC_GAIN_MODE
         """
         logger.debug('event %d' % evnum)
 
-        if raw is None: return self.status
+        if raw is None: return self.is_full()
 
         if self.block is None :
            self.block=np.zeros((self.nrecs,)+tuple(raw.shape), dtype=raw.dtype)
@@ -211,6 +213,7 @@ class DataBlock():
             self.irec +=1
             self.block[self.irec,:] = raw
             self.evnums[self.irec] = evnum
+            print('XXX   add to block irec/nrecs: %d/%s' %(self.irec, self.nrecs))
 
         return self.is_full()
 
@@ -220,15 +223,42 @@ class DataBlock():
     def not_full(self):
         return self.irec < self.nrecs-1
 
+    def max_min(self):
+        return np.max(self.block, axis=0),\
+               np.min(self.block, axis=0)
+
+    def save(self, fname=None):
+        """save data-block array and other DataBlock attributes in file if fname is not None"""
+        # if fname is None: fname = self.fname_block
+        s = info_ndarr(self.block, 'data-block array', last=5)
+        if fname is None:
+            s += '\n    IS NOT SAVED, fname is None'
+        else:
+            np.savez(fname, block=self.block, evnums=self.evnums, intpars=np.array((self.nrecs, self.irec)))
+            s += '\n    saved as %s' % fname
+        logger.info(s)
+
+    def load(self, fname=None):
+        """restore data-block array and other DataBlock attributes from file if available"""
+        #logger.info('Load DataBlock attributes from file: %s' % fname)
+        print('Load DataBlock attributes from file: %s' % fname)
+        assert os.path.exists(fname)
+        data = np.load(fname)
+        self.block = data['block']   # data['arr_0']
+        self.evnums = data['evnums'] # data['arr_1']
+        self.nrecs, self.irec = tuple(data['intpars'])
+
+    def info_data_block(self, cmt=''):
+        return cmt\
+             + info_ndarr(self.block, '  data block')\
+             + info_ndarr(self.evnums, '\n  evnums')\
+             + '\n  nrecs: %d irec: %d' % (self.nrecs, self.irec)
+
 #    def extra_arrays(self, raw, evnum):
 #        self.arr_max = np.zeros(shape_raw, dtype=dtype_raw)
 #        self.arr_min = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
 #        np.maximum(self.arr_max, raw, out=self.arr_max)
 #        np.minimum(self.arr_min, raw, out=self.arr_min)
-
-    def max_min(self):
-        return np.max(self.block, axis=0),\
-               np.min(self.block, axis=0)
 
 
 class DarkProc():
