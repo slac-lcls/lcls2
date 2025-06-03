@@ -117,7 +117,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
         *(uint32_t*)buf = 0xefefefef;
         buf += m_trBufSize;
     }
-    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xcdcdcdcd; // Also 1st word of page after transition pool
+    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xefefefef; // Also 1st word of page after transition pool
 }
 
 MemPool::MemPool(const Parameters& para) :
