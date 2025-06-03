@@ -86,7 +86,7 @@ class SbatchManager:
                 os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
             )
         else:
-            self.output_path = output
+            self.output_path = os.path.join( output, now.strftime("%Y"), now.strftime("%m"))
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
