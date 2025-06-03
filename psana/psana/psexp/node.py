@@ -9,6 +9,7 @@ from psana.psexp.events import Events
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
+from psana.psexp import TransitionId
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -653,7 +654,6 @@ class EventBuilderNode(object):
         wait_for(self.requests)
 
     def start_broadcast(self):
-        print("[DEBUG-EB] start_broadcast called")
         rankreq = np.empty(1, dtype="i")
         smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
@@ -673,7 +673,6 @@ class EventBuilderNode(object):
             )
 
             for smd_batch_dict, _ in eb_man.batches():
-                print("[DEBUG-EB] received smd_batch_dict")
                 # assume no destination usage
                 smd_batch, _ = smd_batch_dict[0]
                 for i in range(n_bd_nodes):
@@ -761,14 +760,20 @@ class BigDataNode(object):
             req.Wait()
             return chunk
 
+        t0 = time.monotonic()
+
         events = SmdEvents(self.ds, self.run, get_smd=get_smd)
         self.run._ts_table = {}
 
         for evt in events:
+            if evt.service() != TransitionId.L1Accept:
+                continue
+
             ts = evt.timestamp
             self.run._ts_table[ts] = {
-                i: (d.smdinfo[0].offsetAlg.intOffset, d._size)
+                i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
                 for i, d in enumerate(evt._dgrams)
                 if d is not None and hasattr(d, 'smdinfo')
             }
-            print(ts, self.run._ts_table[ts])
+
+        logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
