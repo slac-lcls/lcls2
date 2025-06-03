@@ -6,6 +6,7 @@ from psana import utils
 from psana.dgram import Dgram
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
+from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 
@@ -670,6 +671,44 @@ class EventBuilderNode(object):
             logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
 
+    def start_broadcast(self):
+        print("[DEBUG-EB] start_broadcast called")
+        rankreq = np.empty(1, dtype="i")
+        smd_comm = self.comms.smd_comm
+        n_bd_nodes = self.comms.bd_comm.Get_size() - 1
+        bd_comm = self.comms.bd_comm
+
+        # Initialize Non-blocking Send Requests with Null
+        self._init_requests()
+
+        # Broadcast each batch to all BD nodes. Wait for all sends before proceeding.
+        while True:
+            smd_chunk = self._request_data(smd_comm)
+            if not smd_chunk:
+                break
+
+            eb_man = EventBuilderManager(
+                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+            )
+
+            for smd_batch_dict, _ in eb_man.batches():
+                print("[DEBUG-EB] received smd_batch_dict")
+                # assume no destination usage
+                smd_batch, _ = smd_batch_dict[0]
+                for i in range(n_bd_nodes):
+                    self._request_rank(rankreq)
+                    self.requests[rankreq[0] - 1] = bd_comm.Isend(
+                        smd_batch, dest=rankreq[0]
+                    )
+                wait_for(self.requests)
+
+        # - kill all bd nodes
+        self._init_requests()
+        for i in range(n_bd_nodes):
+            self._request_rank(rankreq)
+            self.requests[rankreq[0] - 1] = bd_comm.Isend(bytearray(), dest=rankreq[0])
+        wait_for(self.requests)
+
 
 class BigDataNode(object):
     def __init__(self, ds, run):
@@ -727,3 +766,30 @@ class BigDataNode(object):
                     t0 = time.monotonic()
 
             yield evt
+
+    def start_smdonly(self):
+        def get_smd():
+            bd_comm = self.comms.bd_comm
+            bd_rank = self.comms.bd_rank
+            req = bd_comm.Isend(np.array([bd_rank], dtype="i"), dest=0)
+            req.Wait()
+
+            info = MPI.Status()
+            bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
+            count = info.Get_elements(MPI.BYTE)
+            chunk = bytearray(count)
+            req = bd_comm.Irecv(chunk, source=0)
+            req.Wait()
+            return chunk
+
+        events = SmdEvents(self.ds, self.run, get_smd=get_smd)
+        self.run._ts_table = {}
+
+        for evt in events:
+            ts = evt.timestamp
+            self.run._ts_table[ts] = {
+                i: (d.smdinfo[0].offsetAlg.intOffset, d._size)
+                for i, d in enumerate(evt._dgrams)
+                if d is not None and hasattr(d, 'smdinfo')
+            }
+            print(ts, self.run._ts_table[ts])

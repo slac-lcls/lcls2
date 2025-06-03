@@ -38,6 +38,7 @@ class EventManager(object):
         view,
         ds,
         run,
+        smd=False,
     ):
         if view:
             pf = PacketFooter(view=view)
@@ -58,6 +59,7 @@ class EventManager(object):
         self.smd_view = view
         self.i_evt = 0
         self.exit_id = ExitId.NoError
+        self.smd_mode = smd
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}
@@ -361,6 +363,7 @@ class EventManager(object):
                 self.dm.n_files == 0
                 or not self.isEvent(self.service_array[self.i_evt, i_smd])
                 or self.use_smds[i_smd]
+                or self.smd_mode
             ):
                 view = self.smd_view
                 offset = self.smd_offset_array[self.i_evt, i_smd]

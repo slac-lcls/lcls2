@@ -3,6 +3,7 @@ import sys
 import time
 
 import numpy as np
+from contextlib import contextmanager
 
 from psana import dgram, utils
 from psana.dgrammanager import DgramManager
@@ -79,11 +80,34 @@ class RunParallel(Run):
         elif nodetype == "eb":
             self.eb_node.start()
         elif nodetype == "bd":
-            for evt in self.bd_node.start():
-                yield evt
+            yield from self.bd_node.start()
         elif nodetype == "srv":
             return
 
+    @contextmanager
+    def build_table(self):
+        success = False
+        if nodetype == "smd0":
+            print("  smd0 start")
+            self.smd0.start()
+        elif nodetype == "eb":
+            self.eb_node.start_broadcast()
+        elif nodetype == "bd":
+            self.bd_node.start_smdonly()
+            success = bool(self._ts_table)
+        yield success
+
+    def event(self, ts):
+        offsets = self._ts_table.get(ts)
+        if offsets is None:
+            raise ValueError(f"Timestamp {ts} not found in offset table.")
+
+        dgrams = [None] * len(self.beginruns)
+        for i, (offset, size) in offsets.items():
+            buf = os.pread(self.ds.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.beginruns[i], view=buf)
+
+        return Event(dgrams=dgrams, run=self)
 
 def safe_mpi_abort(msg):
     print(msg)
