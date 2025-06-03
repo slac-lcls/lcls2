@@ -86,9 +86,17 @@ class RunParallel(Run):
 
     @contextmanager
     def build_table(self):
+        """
+        Context manager for building timestamp-offset table.
+        Returns True only on BigDataNode if the table was successfully built.
+
+        Requires PS_EB_NODES=1 for broadcast mode.
+        """
+        if os.environ.get("PS_EB_NODES", "1") != "1":
+            raise RuntimeError("build_table() currently supports only PS_EB_NODES=1")
+
         success = False
         if nodetype == "smd0":
-            print("  smd0 start")
             self.smd0.start()
         elif nodetype == "eb":
             self.eb_node.start_broadcast()
@@ -102,10 +110,10 @@ class RunParallel(Run):
         if offsets is None:
             raise ValueError(f"Timestamp {ts} not found in offset table.")
 
-        dgrams = [None] * len(self.beginruns)
+        dgrams = [None] * len(self.configs)
         for i, (offset, size) in offsets.items():
             buf = os.pread(self.ds.dm.fds[i], size, offset)
-            dgrams[i] = dgram.Dgram(config=self.beginruns[i], view=buf)
+            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
 
         return Event(dgrams=dgrams, run=self)
 
