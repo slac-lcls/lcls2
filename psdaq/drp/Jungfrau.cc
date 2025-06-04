@@ -287,6 +287,8 @@ void Jungfrau::_connectionInfo(PyObject*)
 
         // clear out any old serial numbers from previous calls
         m_serNos.clear();
+        // Clearout the old data in delimited string.
+        m_para->serNo = std::string("");
 
         for (size_t i=0; i < m_nModules; ++i) {
             // construct the LCLS1 style Jungfrau serial id
