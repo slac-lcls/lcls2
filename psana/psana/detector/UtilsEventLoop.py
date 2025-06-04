@@ -18,6 +18,7 @@ If you use all or part of it, please give an appropriate acknowledgment.
 import sys
 import logging
 from time import time
+import json
 
 import psana
 from psana.detector.Utils import info_dict
@@ -51,10 +52,9 @@ def info_datasource(ds):
     return s
 
 
-def message(msg='MUST BE REIMPLEMENTED, IF NEEDED', metname='', logmethod=logger.debug):
-    """self.__class__.__name__, sys._getframe().f_code.co_name"""
-    msg = 'METHOD: %s %s' % (metname, msg)
-    logmethod(msg)
+def message(msg='MUST BE REIMPLEMENTED, IF NEEDED', metname='', logmethod=logger.debug, fmt='METHOD %s %s'):
+    """classname, methodname: self.__class__.__name__, sys._getframe().f_code.co_name"""
+    logmethod(fmt % (metname, msg))
 
 
 class EventLoop:
@@ -84,25 +84,25 @@ class EventLoop:
         print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
         self.det = det
 
-    def init_event_loop(self, kwa):
+    def init_event_loop(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
         print('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
 
-    def begin_run(self, kwa):
+    def begin_run(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
         print('begin_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
 
-    def end_run(self, kwa):
+    def end_run(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
 
-    def begin_step(self, kwa):
+    def begin_step(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
         print('begin_step istep/nevtot: %d/%s' % (self.istep, str(self.metadic)))
 
-    def end_step(self, kwa):
+    def end_step(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
 
-    def proc_event(self, kwa, msgmaxnum=5):
+    def proc_event(self, msgmaxnum=5):
         if   self.ievt  > msgmaxnum: return
         elif self.ievt == msgmaxnum:
             message(msg='STOP WARNINGS', metname='', logmethod=logger.warning)
@@ -110,27 +110,36 @@ class EventLoop:
             message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
         #print('proc_event ievt/nevtot: %d/%d' % (self.ievt, self.nevtot))
 
-    def summary(self, kwa):
+    def summary(self):
         message(metname=sys._getframe().f_code.co_name, logmethod=logger.warning)
 
     def event_loop(self):
-        print('TBD event_loop')
+
         args = self.parser.parse_args()
-        kwa = vars(args)
+        defs = self.parser.parse_args([])
+        self.kwa = kwa = vars(args)
 
-        self.repoman = repoman = rm.init_repoman_and_logger(parser=self.parser, **kwa)
+        self.repoman = rm.init_repoman_and_logger(parser=self.parser, **kwa)
 
-        str_dskwargs = kwa.get('dskwargs', None)
+        s_dskwargs = kwa.get('dskwargs', None)
         detname = kwa.get('detname', None)
-        nrecs   = kwa.get('nrecs', 10)
         stepnum = kwa.get('stepnum', None)
-        stepmax = kwa.get('stepmax', 1)
+        stepmax = kwa.get('stepmax', 1000)
+        s_steps = kwa.get('steps', None)
+        steps   = None if s_steps is None else\
+                  eval('(%s)' % s_steps) # conv. str like '5,6,7' > (5,6,7)
         evskip  = kwa.get('evskip', 0)
         events  = kwa.get('events', 20)
+        s_aslice= kwa.get('aslice', None)
+        events  = kwa.get('events', 20)
+        self.aslice = None if s_aslice is None else\
+                      eval('np.s_[%s]' % s_aslice)
+        self.segind = kwa.get('segind', None)
+        self.nrecs = kwa.get('nrecs', 10)
         shortname = None
         self.detname = detname
 
-        self.dskwargs = dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
+        self.dskwargs = dskwargs = up.datasource_kwargs_from_string(s_dskwargs)
         logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
 
         self.ds = ds = psana.DataSource(**dskwargs)
@@ -140,13 +149,12 @@ class EventLoop:
         nevtot = 0
         nevsel = 0
         nsteptot = 0
-        break_loop = False
-        break_runs = False
+        break_bw = 0 # 1/2/4 - runs/steps/events
         dettype = None
         odet = None
         self.status = None
 
-        self.init_event_loop(kwa)
+        self.init_event_loop()
 
         expname = dskwargs.get('exp', None)
         runnum  = dskwargs.get('run', None)
@@ -160,40 +168,60 @@ class EventLoop:
           logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
           logger.info(up.info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
 
-          self.irun    = irun
-          self.orun    = orun
-          self.expname = expname
-          self.runnum  = runnum
-          self.begin_run(kwa)
-
-          self.odet = odet = orun.Detector(detname)
-          if dettype is None:
-              dettype = odet.raw._dettype
-              repoman.set_dettype(dettype)
-
-          logger.info('created %s detector object' % detname)
-          logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
-
-          try:
-            step_docstring = orun.Detector('step_docstring')
-          except:
-            step_docstring = None
-          self.step_docstring = step_docstring
-
           runtstamp = orun.timestamp       # 4193682596073796843 relative to 1990-01-01
           trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
           self.ts_run, self.ts_now = up.tstamps_run_and_now(int(trun_sec))
 
-          break_steps = False
+          logger.debug('  run.timestamp: %d' % runtstamp)
+          logger.debug('  run unix epoch time %06f sec' % trun_sec)
+          logger.debug('  run tstamp: %s' % self.ts_run)
+          logger.debug('  now tstamp: %s' % self.ts_now)
+
+          self.odet = odet = orun.Detector(detname)
+
+          if dettype is None:
+              dettype = odet.raw._dettype
+              self.repoman.set_dettype(dettype)
+
+          logger.info('created %s detector object' % detname)
+          logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+
+          try: step_docstring = orun.Detector('step_docstring')
+          except Exception as err:
+            logger.warning('run.Detector("step_docstring"):\n    %s' % err)
+            #sys.exit('Exit processing due to missing info about dark data step.')
+            step_docstring = None
+          self.step_docstring = step_docstring
+
+          segment_ids = odet.raw._segment_ids() #ue.segment_ids_det(odet)
+          segment_inds = odet.raw._segment_numbers  #_segment_indices() #ue.segment_indices_det(odet)
+
+          logger.debug('segment inds and ids in the detector\n  '+\
+                       '\n  '.join(['seg:%02d id:%s' % (i,id) for i,id in zip(segment_inds,segment_ids)]))
+
+          databits = kwa.get('databits', None) #0xffff)
+          if databits is None: databits = odet.raw._data_bit_mask
+          logger.info('databits: %d or %s or %s' % (databits, oct(databits), hex(databits)))
+
+          self.irun    = irun
+          self.orun    = orun
+          self.expname = expname
+          self.runnum  = runnum
+          self.begin_run()
 
           for istep,step in enumerate(orun.steps()):
             nsteptot += 1
+
+            if steps is not None:
+              if not(nsteptot in steps):
+                logger.info('==== Step:%02d is skipped, --steps=%s' % (nsteptot, str(steps)))
+                continue
 
             self.istep = istep
             self.step = step
             self.metadic = metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
 
-            self.begin_step(kwa)
+            self.begin_step()
 
             print('\n==== Begin step %1d ====' % istep)
             logger.info('Step %1d docstring: %s' % (istep, str(metadic)))
@@ -201,7 +229,7 @@ class EventLoop:
 
             if istep >= stepmax:
                 logger.info('==== Step:%02d loop is terminated --stepmax=%d' % (istep, stepmax))
-                break_steps = True
+                break_bw |= 2
                 break
             elif stepnum is not None:
                 if istep < stepnum:
@@ -209,11 +237,11 @@ class EventLoop:
                     continue
                 elif istep > stepnum:
                     logger.info('==== Step:%02d loop is terminated --stepnum=%d' % (istep, stepnum))
-                    break_steps = True
+                    break_bw |= 2
                     break
 
             count_none = 0
-            break_events = False
+            #break_bw &= ~4 # clear bit 4
 
             for ievt,evt in enumerate(step.events()):
               sys.stdout.write('Event %04d\r' % ievt)
@@ -234,7 +262,7 @@ class EventLoop:
               if ievt > events-1:
                   logger.info(ss)
                   logger.info('\n==== Ev:%04d event loop is terminated --events=%d' % (ievt,events))
-                  break_events = True
+                  break_bw |= 4
                   break
 
               raw = odet.raw.raw(evt)
@@ -255,31 +283,36 @@ class EventLoop:
                        (irun, runnum, istep, nevtot, nevrun, ievt+1, nevsel, time()-t0_sec, dt)
                   logger.info(ss)
 
-              self.proc_event(kwa)
+              self.proc_event()
 
               if self.status == 2:
-                  logger.info('requested statistics --nrecs=%d is collected - terminate loops' % nrecs)
-                  break_events = True
+                  #logger.info('requested statistics --nrecs=%d is collected - terminate loops' % nrecs)
+                  logger.info('self.status == 2 - terminate event loop')
+                  break_bw |= 0o7
                   break
               # End of event-loop
+
+              #print('Ev:%04d break_bw: %s' % (ievt, bin(break_bw)))
+              
 
             if ievt < events: logger.info('======== Ev:%04d end of events in run %d   step %d   counter of raw==None %d'%\
                                            (ievt, orun.runnum, istep, count_none))
 
-            if break_steps:
+
+            if break_bw & 2:
               logger.info('terminate_steps')
-              self.end_step(kwa)
+              self.end_step()
               break # break step loop
 
-          if break_runs:
+          if break_bw & 1:
             logger.info('terminate_runs')
-            self.end_run(kwa)
+            self.end_run()
             break # break run loop
 
-        self.summary(kwa)
+        self.summary()
 
         logger.debug('run/step/event loop is completed')
-        repoman.logfile_save()
+        self.repoman.logfile_save()
 
 
 class EventLoopTest(EventLoop):
@@ -288,7 +321,7 @@ class EventLoopTest(EventLoop):
     def __init__(self, parser):
         EventLoop.__init__(self, parser)
 
-    def init_event_loop(self, kwa):
+    def init_event_loop(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         print('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
         #kwa['init_event_loop'] = 'OK'
@@ -298,20 +331,21 @@ class EventLoopTest(EventLoop):
         self.kwa_depl = {}
 
 
-    def begin_run(self, kwa):
+    def begin_run(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         print('begin_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
 
-    def end_run(self, kwa):
+    def end_run(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
 
-    def begin_step(self, kwa):
+    def begin_step(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         print('begin_step istep/nevtot: %d/%s' % (self.istep, str(self.metadic)))
 
         dpo = self.dpo
         if dpo is None:
             odet = self.odet
+            kwa = self.kwa
             kwa['rms_hi'] = odet.raw._data_bit_mask - 10
             kwa['int_hi'] = odet.raw._data_bit_mask - 10
 
@@ -320,7 +354,7 @@ class EventLoopTest(EventLoop):
             dpo.exp = self.expname
             dpo.ts_run, dpo.ts_now = self.ts_run, self.ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FOR
 
-    def end_step(self, kwa):
+    def end_step(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         if True:
                 odet = self.odet
@@ -361,7 +395,7 @@ class EventLoopTest(EventLoop):
 
                 print('==== End of step %1d ====\n' % istep)
 
-    def proc_event(self, kwa, msgmaxnum=5):
+    def proc_event(self, msgmaxnum=5):
         if   self.ievt  > msgmaxnum: return
         elif self.ievt == msgmaxnum:
             message(msg='STOP WARNINGS', metname='', logmethod=logger.warning)
@@ -371,7 +405,7 @@ class EventLoopTest(EventLoop):
         #print('proc_event ievt/nevtot: %d/%d' % (self.ievt, self.nevtot))
         self.status = self.dpo.event(self.odet.raw.raw(self.evt), self.ievt)
 
-    def summary(self, kwa):
+    def summary(self):
         message(msg=self.msgelt, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         gainmodes = [k for k in self.dic_consts_tot.keys()]
         logger.info('constants'\
@@ -399,22 +433,28 @@ if __name__ == "__main__":
 
   def argument_parser():
     from argparse import ArgumentParser
-    d_tname = '0'
-    d_dskwargs = 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc'
+    d_tname    = '0'
+    d_dirrepo  = './work1' # DIR_REPO_JUNGFRAU
+    d_dskwargs = 'exp=mfxdaq23,run=7' # dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc
     d_detname  = 'jungfrau'
     d_loglevel = 'INFO' # 'DEBUG'
     d_subtest  = None
+    d_segind   = None
+    h_dirrepo  = 'non-default repository of calibration results, default = %s' % d_dirrepo
     h_tname    = 'test name, usually numeric number, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
     h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
+    h_segind   = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
     #parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
+    parser.add_argument('-o', '--dirrepo',  default=d_dirrepo,  type=str, help=h_dirrepo)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
-    parser.add_argument('-s', '--subtest', default=d_subtest, type=str, help=h_subtest)
+    parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
+    parser.add_argument('-I', '--segind',   default=d_segind,   type=int, help=h_segind)
     return parser
 
 

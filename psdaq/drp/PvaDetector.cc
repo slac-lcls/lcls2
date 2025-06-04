@@ -178,7 +178,8 @@ PvMonitor::PvMonitor(const PvParameters&      para,
 
 int PvMonitor::getParams(std::string&    fieldName,
                          Name::DataType& xtcType,
-                         int&            rank)
+                         int&            rank,
+                         size_t          bufferSize)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -209,7 +210,15 @@ int PvMonitor::getParams(std::string&    fieldName,
                          name().c_str(), m_rank, rank);
     }
 
-    m_payloadSize = m_nelem * Name::get_element_size(xtcType);
+    m_payloadSize = m_nelem * Name::get_element_size(xtcType); // Doesn't include overhead
+    if (m_payloadSize > bufferSize) {
+        auto msg("PV "+name()+" size too big; see log");
+        json jmsg = createAsyncErrMsg(m_para.alias, msg);
+        m_notifySocket.send(jmsg.dump());
+        logging::error("PV %s size (%zu) is too large to fit in buffer of size %zu; "
+                       "increase pebbleBufSize", name().c_str(), m_payloadSize, bufferSize);
+        return 1;
+    }
 
     return 0;
 }
@@ -236,7 +245,7 @@ void PvMonitor::shutdown()
 
 void PvMonitor::onConnect()
 {
-    logging::debug("PV  %s connected", name().c_str());
+    logging::debug("PV %s connected", name().c_str());
 
     if (m_state == NotReady) {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -590,7 +599,7 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
         std::string    fieldName;
         Name::DataType xtcType;
         int            rank;
-        if (pvMonitor->getParams(fieldName, xtcType, rank)) {
+        if (pvMonitor->getParams(fieldName, xtcType, rank, m_pool->bufferSize())) {
             return 1;
         }
 
@@ -622,11 +631,16 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
                     return -1;
                 }
 
-                if (jsonxtc.extent > m_para->maxTrSize) throw "Config JSON too large for buffer!";
+                if (jsonxtc.extent > m_para->maxTrSize) {
+                    logging::critical("Config JSON (%u) too large for buffer (%u)!",
+                                      jsonxtc.extent, m_para->maxTrSize);
+                    abort();
+                }
 
                 logging::info("Adding config object for PV detector %s", m_para->detName.c_str());
                 auto jsonXtcPayload = xtc.alloc(jsonxtc.sizeofPayload(), bufEnd);
                 memcpy(jsonXtcPayload, (const void*) jsonxtc.payload(), jsonxtc.sizeofPayload());
+                delete[] buffer;
             } else {
                 logging::info("No config object for PV detector %s", m_para->detName.c_str());
             }

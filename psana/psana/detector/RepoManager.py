@@ -286,8 +286,9 @@ def init_repoman_and_logger(**kwa):
     stepnum     = kwa.get('stepnum', None)
     segind      = kwa.get('segind', None)
     idx         = kwa.get('idx', None)
-    if stepnum is not None: logsuffix_def += '_step%d' % stepnum
-    if idx     is not None: logsuffix_def += '_seg%0d' % idx
+    if stepnum is not None: logsuffix_def += '_step%02d' % stepnum
+    if idx     is not None: logsuffix_def += '_seg%02d' % idx
+    if segind  is not None: logsuffix_def += '_segi%02d' % segind
     logsuffix   = kwa.get('logsuffix', logsuffix_def)
     savelogfile = kwa.get('savelogfile', True)
     parser      = kwa.get('parser', None)

@@ -239,15 +239,15 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
-        +'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
         +'%s_segment_numbers    : %s' % (sep, str(getattr(det.raw, '_segment_numbers', None)))\
-        +'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
-        +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
-        +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
         +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
-        +'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det.raw) if (v[0]=='_' and v[1]!='_')]))\
+        +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
         +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))
+        #+'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
+        #+'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
+        #+'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
+        #+'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det.raw) if (v[0]=='_' and v[1]!='_')]))\
 
 
 def info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n '):

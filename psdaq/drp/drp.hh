@@ -88,11 +88,20 @@ public:
         return &m_buffer[offset];
     }
     size_t size() const {return m_size;}
-    size_t bufferSize() const {return m_bufferSize;}
+    uint8_t* buffer() const { return m_buffer; }
+    size_t bufferSize() const {return m_bufferSize;} // L1Accepts
+    size_t trBufSize()  const {return m_trBufSize;}
+    uint8_t* trBuffer() const { return m_trBuffer; }
+    unsigned nTrBuffers() const { return m_nTrBuffers; }
+    unsigned nL1Buffers() const { return m_nL1Buffers; }
 private:
     size_t   m_size;
-    size_t   m_bufferSize;
     uint8_t* m_buffer;
+    size_t   m_bufferSize;              // L11Accepts
+    size_t   m_trBufSize;
+    uint8_t* m_trBuffer;
+    unsigned m_nTrBuffers;
+    unsigned m_nL1Buffers;
 };
 
 class MemPool
@@ -112,7 +121,7 @@ public:
     virtual int fd() const = 0;
     void shutdown();
     Pds::EbDgram* allocateTr();
-    void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
+    void freeTr(Pds::EbDgram* dgram);
     unsigned allocateDma();
     unsigned allocate();
     void freeDma(unsigned count, uint32_t* indices);
@@ -122,6 +131,7 @@ public:
                                       m_dmaFrees.load(std::memory_order_relaxed); }
     int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
                                    m_frees.load(std::memory_order_relaxed); }
+    int64_t trInUse() const { return m_transitionBuffers.guess_size(); }
     void resetCounters();
     virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) = 0;
     template <typename T> T* getAs() { return static_cast<T*>( this ); }
@@ -141,6 +151,9 @@ protected:
     std::atomic<uint64_t> m_frees;
     std::mutex m_lock;
     std::condition_variable m_condition;
+    uint8_t m_dmaOverrun;
+    uint8_t m_l1Overrun;
+    uint8_t m_trOverrun;
 };
 
 class MemPoolCpu : public MemPool

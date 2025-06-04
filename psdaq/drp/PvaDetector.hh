@@ -57,7 +57,8 @@ public:
     void startup();
     void shutdown();
     void timeout(const PgpReader& pgp, std::chrono::milliseconds timeout);
-    int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType, int& rank);
+    int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType,
+                   int& rank, size_t bufferSize);
     unsigned id() const { return m_id; }
     const std::string& alias() const { return m_alias; }
     uint64_t nUpdates() const { return m_nUpdates; }

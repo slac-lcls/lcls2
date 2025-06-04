@@ -156,8 +156,10 @@ int MebContributor::_linksConfigure(const MebCtrbParams&       prms,
                        __PRETTY_FUNCTION__, peer, rmtId, regSize);
         return ENOMEM;
       }
-
       _regSize[rmtId] = regSize;
+
+      logging::info("Allocated %.1f GB region for %u transitions of %zu B and %u L1Accepts of %zu B for outbound link with %3s ID %d",
+                    double(regSize)/1e9, MEB_TR_BUFFERS, _maxTrSize, prms.maxEvents[rmtId], _maxEvSize, peer, rmtId);
     }
 
     int rc = link->prepare(_region[rmtId], _regSize[rmtId], _maxEvSize, "MEB");

@@ -244,8 +244,10 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
                        __PRETTY_FUNCTION__, peer, rmtId, regSize);
         return ENOMEM;
       }
-
       _regSize[rmtId] = regSize;
+
+      logging::info("Allocated %.1f GB region for %u transitions of %zu B and %u buffers of %zu B for inbound link with %3s ID %d",
+                    double(regSize)/1e9, _maxTrBuffers, _maxTrSize[rmtId], prms.numBuffers[rmtId], regEntrySize, peer, rmtId);
     }
 
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
@@ -374,7 +376,7 @@ int EbAppBase::process()
   }
   _lastPid[src] = idg->pulseId();
 
-  _ctrbSrc->observe(double(src));       // Revisit: For testing
+  if (_ctrbSrc)  _ctrbSrc->observe(double(src)); // Revisit: For testing
 
   if (UNLIKELY(print || (_verbose >= VL_BATCH)))
   {
@@ -482,5 +484,5 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
                      srcId, _prms.drps[srcId].c_str());
   }
 
-  _fixupSrc->observe(double(srcId));
+  if (_fixupSrc)  _fixupSrc->observe(double(srcId));
 }

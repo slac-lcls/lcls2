@@ -184,7 +184,7 @@ namespace Pds {
 
       // Clear the counter here because _init() will cause it to count
       _requestCount = 0;
-      _bufUseCnts->clear();
+      if (_bufUseCnts)  _bufUseCnts->clear();
 
       _init();
     }
@@ -294,7 +294,7 @@ namespace Pds {
       if (rc == 0)
       {
         ++_requestCount;
-        _bufUseCnts->observe(double(idx));
+        if (_bufUseCnts)  _bufUseCnts->observe(double(idx));
         _monTrgMetric.start(idx);
         _appPrcMetric.accumulate(idx);
       }

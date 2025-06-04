@@ -932,6 +932,51 @@ def issue_2025_05_14():
     app.exec_()
 
 
+def issue_2025_05_16(fname='test-array.npy', USE_GZIP=True): #False):
+    """test gzip.open save and load"""
+    from time import time
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+
+    if USE_GZIP:
+        import gzip
+        fname += '.gz'
+
+    # Create a sample numpy array
+    arr = np.random.rand(32,3,512,1024).astype(np.float32)
+    print(info_ndarr(arr, 'random array'))
+
+    t0_sec = time()
+    #f = gzip.open(fname, 'wb')
+    #np.save(f, arr)
+    #f.close()
+    if USE_GZIP:
+      with gzip.open(fname, 'wb') as f:
+        np.save(f, arr)
+    else:
+        np.save(fname, arr)
+
+    print('dt=%.3f us USE_GZIP=%s save' % (time() - t0_sec, str(USE_GZIP)))
+    # USE_GZIP=True:  8.836us - 176532 test-array.npy.gz
+    # USE_GZIP=False: 0.232us - 196612 test-array.npy compression factor = 0.9
+
+    t0_sec = time()
+    #f = gzip.open(fname, 'rb')
+    #loaded_arr = np.load(f)
+    #f.close()
+
+    loaded_arr = None
+    if USE_GZIP:
+      with gzip.open(fname, 'rb') as f:
+        loaded_arr = np.load(f)
+    else:
+        loaded_arr = np.load(fname)
+    print('dt=%.3f us USE_GZIP=%s load' % (time() - t0_sec, str(USE_GZIP)))
+    # USE_GZIP=True: dt=1.286
+    # USE_GZIP=False: dt=0.486 us
+    # Verify that the loaded array is the same as the original array
+    np.testing.assert_array_equal(arr, loaded_arr)
+
 #===
     
 #===
@@ -992,6 +1037,8 @@ def selector():
     elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
     elif TNAME in ('23',): issue_2025_05_07() # me - test of the detector axis shape:(796, 6144)
     elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
+    elif TNAME in ('25',): issue_2025_05_16(USE_GZIP=True)  # me - test with gzip save and load
+    elif TNAME in ('26',): issue_2025_05_16(USE_GZIP=False) # me - test  w/o gzip save and load
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

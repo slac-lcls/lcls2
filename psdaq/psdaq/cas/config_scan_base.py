@@ -15,7 +15,9 @@ import numpy as np
 hutch_def = {'tmo':(0,'drp-srcf-mon001'),
              'rix':(0,'drp-srcf-cmp004'),
              'ued':(0,'drp-ued-cmp002'),
-             'asc':(2,'drp-det-cmp001')}
+             'asc':(2,'drp-det-cmp001'),
+             'mfx':(3,'drp-srcf-cmp041'),
+            }
 
 class ConfigScanBase(object):
     def __init__(self, userargs=[], defargs={}):
@@ -151,12 +153,12 @@ class ConfigScanBase(object):
                           "group_mask"   : group_mask,
                           'step_keys'    : keys,
                           "step_group"   : step_group, 
-                          "events"       : args.events, 
+                          "readout_count": args.events, 
                           }  # we should have a separate group param
 
         enable_dict = {'group_mask'   : group_mask,
                        'step_group'   : step_group,
-                       'events'       : args.events,
+                       "readout_count": args.events, 
                        }
 
         keys_dict = {   "configure": configure_dict,
@@ -165,27 +167,33 @@ class ConfigScanBase(object):
         
         for step in steps():
             # update
+            # step value is defined from teh yield in the script:
+            # yield (d, float(step), json.dumps(metad)) 
             
-            if "events" in step[2]: 
-                configure_dict["readout_count"] = int(eval(step[2])["events"])
-                enable_dict['readout_count']    = int(eval(step[2])["events"] )
-                print(f"Number of events: {eval(step[2])['events']}")
+            d = step[0]
+            nstep = step[1]
+            metad = json.loads(step[2])
+            
+            if "events" in metad.keys(): 
+                configure_dict["readout_count"] = metad["events"]
+                enable_dict['readout_count']    = metad["events"]
+                print(f"Number of events: {metad['events']}")
             # config scan setup
                 keys_dict = {   "configure": configure_dict,
                                 "enable":    enable_dict}
             
-            scan.update(value=step[1])
+            scan.update(value=nstep)
 
             my_step_data = {}
             for motor in scan.getMotors():
                 my_step_data.update({motor.name: motor.position})
-                my_step_data.update({'step_docstring': step[2]})
+                my_step_data.update({'step_docstring': json.dumps(metad)})
 
             data["motors"] = my_step_data
 
             beginStepBlock = scan.getBlock(transition="BeginStep", data=data)
             values_dict = \
-                          {"beginstep": {"step_values":        step[0],
+                          {"beginstep": {"step_values":        d,
                                          "ShapesDataBlockHex": beginStepBlock}}
             # trigger
             scan.trigger(phase1Info = {**keys_dict, **values_dict})

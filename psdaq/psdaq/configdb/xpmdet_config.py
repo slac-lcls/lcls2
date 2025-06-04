@@ -125,7 +125,7 @@ def xpmdet_connectionInfo(alloc_json_str):
             time.sleep(0.0001)
             dumpTiming(tim)
             tim.C_RxReset()
-            time.sleep(0.1)
+            time.sleep(1.0)
             tim.ClearRxCounters()
 
             rxId = xma.RxId.get()
