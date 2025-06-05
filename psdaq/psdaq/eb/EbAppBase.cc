@@ -163,7 +163,7 @@ int EbAppBase::_setupMetrics(const MetricExporter_t exporter)
   return 0;
 }
 
-int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
+int EbAppBase::connect(unsigned maxEvBuffers, unsigned maxTrBuffers, const MetricExporter_t exporter)
 {
   int      rc;
   unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
@@ -181,7 +181,7 @@ int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
   // Initialize the event builder
   auto duration = _prms.maxEntries;
   _maxEntries   = _prms.maxEntries;
-  _maxEvBuffers = (EB_TMO_MS / 1000) * (_prms.maxBuffers / _prms.maxEntries);
+  _maxEvBuffers = (EB_TMO_MS / 1000) * (maxEvBuffers / _prms.maxEntries);
   _maxTrBuffers = maxTrBuffers;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;

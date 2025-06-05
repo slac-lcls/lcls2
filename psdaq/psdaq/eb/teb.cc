@@ -347,7 +347,9 @@ int Teb::connect(const MetricExporter_t exporter)
   int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
+  const unsigned maxEvBufs = TICK_RATE; // Buffers needed per second at max rate
+  const unsigned maxTrBufs = TEB_TR_BUFFERS;
+  rc = EbAppBase::connect(maxEvBufs, maxTrBufs, exporter);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
