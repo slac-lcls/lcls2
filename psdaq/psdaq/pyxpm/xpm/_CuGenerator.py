@@ -37,7 +37,8 @@ class CuGenerator(pr.Device):
             bitSize      =  64,
             bitOffset    =  0x00,
             base         = pr.UInt,
-            mode         = "RO",
+            mode         = "RW",
+            verify       = False,
         ))
 
         self.add(pr.RemoteVariable(    
@@ -47,7 +48,8 @@ class CuGenerator(pr.Device):
             bitSize      =  64,
             bitOffset    =  0x00,
             base         = pr.UInt,
-            mode         = "RO",
+            mode         = "RW",
+            verify       = False,
         ))
 
         self.add(pr.RemoteVariable(    
@@ -87,6 +89,17 @@ class CuGenerator(pr.Device):
             offset       =  0x1B,
             bitSize      =  1,
             bitOffset    =  0x7,
+            base         = pr.UInt,
+            mode         = "RW",
+            verify       = False,
+        ))
+
+        self.add(pr.RemoteVariable(    
+            name         = "clockControl",
+            description  = "Rate of timestamp advance",
+            offset       =  0x20,
+            bitSize      =  32,
+            bitOffset    =  0,
             base         = pr.UInt,
             mode         = "RW",
             verify       = False,

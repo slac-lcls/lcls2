@@ -54,6 +54,7 @@ class DevRoot(pr.Root):
                  enableConfig   = False,
                  enVcMask       = 0x3, # Enable lane mask
                  isXpmGen       = True,
+                 isUED          = False,
                  xvcPort        = None,
                  **kwargs):
 
@@ -88,6 +89,7 @@ class DevRoot(pr.Root):
             name        = 'XPM',
             memBase     = self.memMap,
             isXpmGen    = isXpmGen,
+            isUED       = isUED,
         ))
 
         # Create empty list
