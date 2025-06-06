@@ -977,6 +977,55 @@ def issue_2025_05_16(fname='test-array.npy', USE_GZIP=True): #False):
     # Verify that the loaded array is the same as the original array
     np.testing.assert_array_equal(arr, loaded_arr)
 
+
+
+
+
+
+def issue_2025_06_05():
+    """test for excessive output
+       epixquad det.raw.calib/image - zeros
+       datinfo -k exp=mfxdet23,run=120 -d epixuhr
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    #ds = DataSource(exp='mfxdet23', run=120)
+    ds = DataSource(exp='mfxdet23', run=9)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixuhr')
+    events = 10
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            if raw is None: continue
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:%3d' % nevt)
+            arrdt[nevt] = dt_sec
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print(ndu.info_ndarr(calib, 'evt:%3d calib'% nevt, last=10))
+            print('min: %f max: %f' % (np.min(calib),np.max(calib)))
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            #print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
 #===
     
 #===
@@ -1039,6 +1088,7 @@ def selector():
     elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
     elif TNAME in ('25',): issue_2025_05_16(USE_GZIP=True)  # me - test with gzip save and load
     elif TNAME in ('26',): issue_2025_05_16(USE_GZIP=False) # me - test  w/o gzip save and load
+    elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages psana.detector.epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
