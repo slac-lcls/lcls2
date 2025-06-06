@@ -590,12 +590,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
                                    m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
                 }
-                handleBrokenEvent(*event);
-                freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Throw away out-of-sequence events
+                // Try to handle out-of-sequence events
             } else if (transitionId != TransitionId::Configure) {
                 freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Drain
+                return nullptr;         // Drain everything before Configure
             }
         }
         m_lastComplete = evtCounter;
@@ -608,7 +606,6 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                            TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId(), m_para.partition, timingHeader->env);
-            ++m_lastComplete;
             handleBrokenEvent(*event);
             freeDma(event);                 // Leaves event mask = 0
             ++m_nNoComRoG;
@@ -621,7 +618,6 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId(), missingRogs, timingHeader->env);
-                ++m_lastComplete;
                 handleBrokenEvent(*event);
                 freeDma(event);             // Leaves event mask = 0
                 ++m_nMissingRoGs;
