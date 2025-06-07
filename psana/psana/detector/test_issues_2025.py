@@ -977,11 +977,6 @@ def issue_2025_05_16(fname='test-array.npy', USE_GZIP=True): #False):
     # Verify that the loaded array is the same as the original array
     np.testing.assert_array_equal(arr, loaded_arr)
 
-
-
-
-
-
 def issue_2025_06_05():
     """test for excessive output
        epixquad det.raw.calib/image - zeros
@@ -1025,6 +1020,21 @@ def issue_2025_06_05():
         gr.show()
         print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
         print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_06_06():
+    """timing of jungfrau_dark_proc with split for steps and panels
+       datinfo -k exp=mfx100852324,run=7 -d jungfrau
+       sbatch -p milano --account lcls:mfx100852324 --mem 8GB --cpus-per-task 5 -o work1
+       cmd: jungfrau_dark_proc -o /sdf/data/lcls/ds/mfx/mfx100852324/results/calib_view -d jungfrau -k exp=mfx100852324,run=6,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx100852324/xtc --stepnum 2 --stepmax 3 -L INFO --segind 9
+    """
+    import os
+    import numpy as np
+    from time import time
+
+    for step in range(3):
+        for panel in range(32):
+            print('step:%d panel:%02d' % (step, panel))
 
 #===
     
@@ -1081,14 +1091,15 @@ def selector():
     elif TNAME in ('17',): issue_2025_04_11() # me - access to multiple calibconst
     elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
     elif TNAME in ('19',): issue_2025_04_21() # me - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
-    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
+    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified "gain"
     elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
     elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
     elif TNAME in ('23',): issue_2025_05_07() # me - test of the detector axis shape:(796, 6144)
     elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
     elif TNAME in ('25',): issue_2025_05_16(USE_GZIP=True)  # me - test with gzip save and load
     elif TNAME in ('26',): issue_2025_05_16(USE_GZIP=False) # me - test  w/o gzip save and load
-    elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages psana.detector.epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
+    elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
+    elif TNAME in ('28',): issue_2025_06_06() # Chris - jungfrau_dark_proc split for steps and panels
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
