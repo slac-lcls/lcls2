@@ -101,10 +101,11 @@ def proc_block(block, **kwa):
        where <raw-detector-shape> can be per segment (352, 384) or per detector (nsegs, 352, 384)
        Returns segment/detector shaped arrays of gate_lo, gate_hi, arr_med, arr_abs_dev
     """
+    datbits    = kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
     exp        = kwa.get('exp', None)
     detname    = kwa.get('det', None)
     int_lo     = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
-    int_hi     = kwa.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
+    int_hi     = kwa.get('int_hi', datbits-1) # highest intensity accepted for dark evaluation
     fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
     frac05     = 0.5
@@ -131,7 +132,8 @@ def proc_block(block, **kwa):
       to get better interpolation for median and quantile values
     - use nrecs1 (< nrecs) due to memory and time consumption
     """
-    blockf64 = block
+    blockf64 = block if datbits == 0xffff else (block & datbits)
+
     #arr_med = np.median(block, axis=0)
     arr_med = np.quantile(blockf64, frac05, axis=0, method='linear')
     arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='lower')
@@ -143,7 +145,7 @@ def proc_block(block, **kwa):
     med_qlo = np.median(arr_qlo)
     med_qhi = np.median(arr_qhi)
 
-    arr_dev_3d = block[:,] - arr_med # .astype(dtype=np.float64)
+    arr_dev_3d = blockf64[:,] - arr_med # .astype(dtype=np.float64)
     arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
     med_abs_dev = np.median(arr_abs_dev)
 
@@ -265,20 +267,20 @@ class DarkProc():
     """dark data accumulation and processing"""
     def __init__(self, **kwa):
 
+        self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
         self.nrecs  = kwa.get('nrecs',1000)
         self.nrecs1 = kwa.get('nrecs1',100)
         self.plotim = kwa.get('plotim', 0o1)
         self.savebw = kwa.get('savebw', 0xffff)
         self.fraclm = kwa.get('fraclm', 0.1)
         self.int_lo = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
-        self.int_hi = kwa.get('int_hi', 16000)   # highest intensity accepted for dark evaluation
+        self.int_hi = kwa.get('int_hi', self.datbits-1)   # highest intensity accepted for dark evaluation
         self.intnlo = kwa.get('intnlo', 6.0)     # intensity ditribution number-of-sigmas low
         self.intnhi = kwa.get('intnhi', 6.0)     # intensity ditribution number-of-sigmas high
         self.rms_lo = kwa.get('rms_lo', 0.001)   # rms ditribution low
-        self.rms_hi = kwa.get('rms_hi', 16000)   # rms ditribution high
+        self.rms_hi = kwa.get('rms_hi', self.datbits-1)   # rms ditribution high
         self.rmsnlo = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
         self.rmsnhi = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
-        self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
 
         self.status = 0 # 0/1/2 stage
         self.kwa    = kwa
