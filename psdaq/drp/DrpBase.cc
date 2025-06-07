@@ -602,6 +602,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
         auto rogs = timingHeader->readoutGroups();
         if ((rogs & (1 << m_para.partition)) == 0) [[unlikely]] {
+            // Events without the common readout group would mess up the TEB and MEB, so filter them out here
             logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                            TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
@@ -614,6 +615,8 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         if (transitionId == TransitionId::SlowUpdate) {
             uint16_t missingRogs = m_para.rogMask & ~rogs;
             if (missingRogs) [[unlikely]] {
+                // SlowUpdates that don't have all readout groups triggered would mess up psana, so filter them out here
+                // This is true for other transitions as well, but those are caught by control.py
                 logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
