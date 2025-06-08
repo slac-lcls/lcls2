@@ -367,13 +367,15 @@ cdef class SmdReader:
         cdef uint64_t eob_ts = 0
         cdef int i
         for i in range(self.prl_reader.nfiles):
+            if self.block_sizes[i] == 0:
+                continue  # Stream did not contribute to batch — skip
             if self.prl_reader.bufs[i].ts_arr[self.i_en_blocks[i]] > eob_ts:
                 eob_ts = self.prl_reader.bufs[i].ts_arr[self.i_en_blocks[i]]
                 eob_stream_id = i
 
         # Update the transition
         cdef Dgram* d
-        cdef uint8_t service
+        cdef uint8_t service = 99
         cdef uint64_t new_env
         cdef uint64_t second_byte = 0xf0ffffff  # Safe if used in no-gil
         if self.block_sizes[eob_stream_id] > 0:
@@ -383,6 +385,9 @@ cdef class SmdReader:
             new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
             if service == self.L1Accept:
                 memcpy(&(d.env), &new_env, sizeof(uint32_t))
+        debug_print(f"mark_endofbatch eob_stream:{eob_stream_id} eob_ts:{eob_ts} "
+                f"service:{service}")
+
 
     @cython.boundscheck(False)
     def build_batch_view(self, batch_size=1000, intg_stream_id=-1, intg_delta_t=0, max_events=0, ignore_transition=True):
