@@ -104,9 +104,10 @@ cdef class ParallelReader:
             buf = &(self.bufs[i])
             step_buf = &(self.step_bufs[i])
 
-            # decide how many bytes to keep (cp_offset)
-            buf.cp_offset = buf.ready_offset
-            # copy them down to the front of the chunk buffer
+            # copy the unseen portion to the beginning of the buffer
+            # [0            |seen_offset     |ready_offset |got         ]buf_size
+            # copy this     { -----------------------------}
+            buf.cp_offset = buf.seen_offset
             if buf.got - buf.cp_offset > 0:
                 memcpy(buf.chunk,
                        buf.chunk + buf.cp_offset,
@@ -117,6 +118,12 @@ cdef class ParallelReader:
                            self.chunksize - (buf.got - buf.cp_offset))
             # summing the size of all the new reads
             self.got += gots[i]
+
+            # FOR DEBUGGING - Calling print with gil can slow down performance.
+            with gil:
+                debug_print(f"Stream {i}: seen_offset:{buf.seen_offset} copied:{buf.got-buf.cp_offset} "
+                        f"read:{gots[i]} "
+                        f"total:{(buf.got - buf.cp_offset) + gots[i]}")
 
             buf.got = (buf.got - buf.cp_offset) + gots[i]
 
@@ -129,16 +136,10 @@ cdef class ParallelReader:
             step_buf.n_ready_events = 0
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
-
             buf.err_code            = 0
 
-            # FOR DEBUGGING - Calling print with gil can slow down performance.
-            #with gil:
-            #    debug_print(f"Stream {i}: read:{gots[i]} buf.got:{buf.got} ready_offset:{buf.ready_offset} "
-            #            f"n_ready_events:{buf.n_ready_events} max_events:{self.max_events} "
-            #            f"err_code:{buf.err_code}")
-
-
+            # Walk through and no. of events, offsets, timestamps, and services
+            # for both L1 and transition buffers.
             while buf.ready_offset < buf.got and \
                   buf.n_ready_events < self.max_events and \
                   not buf.err_code:

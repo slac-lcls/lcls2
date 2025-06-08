@@ -480,6 +480,20 @@ cdef class SmdReader:
                     batch_complete_flag = 1
             debug_print(f"    batch loop: limit_ts={limit_ts} winner={self.winner}")
 
+            # Delay committing limit_ts until all streams can be sure to contribute
+            # their full range of dgrams
+            for i in range(self.prl_reader.nfiles):
+                buf = &(self.prl_reader.bufs[i])
+                if buf.n_ready_events == 0:
+                    debug_print(f"Stream {i} not caught up. n_ready_events={buf.n_ready_events}")
+                    return False
+                # Make sure the fast stream actually contains dgrams < limit_ts
+                latest_ts = buf.ts_arr[buf.n_ready_events - 1]
+                if latest_ts < limit_ts:
+                    debug_print(f"Stream {i} not caught up. ts_arr[-1]={latest_ts}, limit_ts={limit_ts}")
+                    return False  # Retry later
+
+
             # Reset timestamp and buffer for fake steps (will be calculated lazily)
             self._next_fake_ts = 0
             self._fakebuf_size = 0
