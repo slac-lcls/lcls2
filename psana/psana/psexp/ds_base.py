@@ -724,11 +724,6 @@ class DataSourceBase(abc.ABC):
         Returns:
             None
         """
-
-        if self.skip_calib_load == 'all':
-            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
-            return
-
         runinfo = self._get_runinfo()
         if not runinfo:
             return
@@ -766,7 +761,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid = "cspad_detnum1234"
                     else:
                         det_uniqueid = configinfo.uniqueid
-                    if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
+                    if hasattr(self, "skip_calib_load") and (det_name in self.skip_calib_load or self.skip_calib_load=="all"):
                         self.dsparms.calibconst[det_name] = None
                         continue
                     st = time.monotonic()
