@@ -119,11 +119,11 @@ cdef class ParallelReader:
             # summing the size of all the new reads
             self.got += gots[i]
 
-            # FOR DEBUGGING - Calling print with gil can slow down performance.
-            with gil:
-                debug_print(f"Stream {i}: seen_offset:{buf.seen_offset} copied:{buf.got-buf.cp_offset} "
-                        f"read:{gots[i]} "
-                        f"total:{(buf.got - buf.cp_offset) + gots[i]}")
+            ## FOR DEBUGGING - Calling print with gil can slow down performance.
+            #with gil:
+            #    debug_print(f"Stream {i}: seen_offset:{buf.seen_offset} copied:{buf.got-buf.cp_offset} "
+            #            f"read:{gots[i]} "
+            #            f"total:{(buf.got - buf.cp_offset) + gots[i]}")
 
             buf.got = (buf.got - buf.cp_offset) + gots[i]
 
