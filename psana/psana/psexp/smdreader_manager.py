@@ -203,7 +203,7 @@ class SmdReaderManager(object):
                 intg_delta_t=0,
                 max_events=self.dsparms.max_events,
             )
-            if success:
+            if success or self.smdr.found_endrun():
                 break
 
             # No data to yield, try to get more data
@@ -244,7 +244,7 @@ class SmdReaderManager(object):
                 intg_delta_t=self.dsparms.intg_delta_t,
                 max_events=self.dsparms.max_events,
             )
-            if success:
+            if success or self.smdr.found_endrun():
                 break
 
             # No data to yield, try to get more data
