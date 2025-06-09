@@ -281,12 +281,17 @@ cdef class SmdReader:
         return limit_ts
 
     def find_intg_limit_ts(self, intg_stream_id, intg_delta_t, max_events):
-        """ Find limit_ts for a single integrating event
+        """
+        Accumulate view size and determine limit_ts for integrating event batches.
 
-        An integrating event accumulates over fast events in other streams.
-        The winner is automatically set to the integrating stream and limit_ts
-        is yielded only when the fast streams have events beyond the integrating
-        event.
+        This function identifies the timestamp (`limit_ts`) for the next valid
+        integrating event, where the integrating stream (winner) is combined with
+        data from fast streams. Only when all other streams have data beyond the
+        current integrating timestamp, the event is considered valid.
+
+        The function is called multiple times during batch building. Each call
+        may contribute events (L1Accept or transitions), and the total number of
+        events in the batch is accumulated across these calls.
         """
         self.winner = intg_stream_id
         cdef uint64_t limit_ts = 0xFFFFFFFFFFFFFFFF
@@ -346,14 +351,18 @@ cdef class SmdReader:
                     or (self.n_processed_events + n_L1Accepts == max_events and max_events > 0):
                 break
 
-        self.n_view_events  = n_L1Accepts + n_transitions
-        self.n_view_L1Accepts = n_L1Accepts
+        # Accumulate view size across batch loop.
+        # Unlike find_limit_ts(), which sets n_view_events directly for a full batch,
+        # integrating mode collects events incrementally across multiple calls.
+        self.n_view_events  += n_L1Accepts + n_transitions
+        self.n_view_L1Accepts += n_L1Accepts
         self.n_processed_events += n_L1Accepts
+
         # Save timestamp and transition id of the last event in batch
         self.winner_last_sv = self.prl_reader.bufs[self.winner].sv_arr[i_complete]
         self.winner_last_ts = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
 
-        debug_print(f"Exit find_intg_limit_ts limit_ts_complete={limit_ts_complete}")
+        debug_print(f"Exit find_intg_limit_ts limit_ts_complete={limit_ts_complete} n_view_events={self.n_view_events}")
 
         return limit_ts_complete
 
@@ -451,22 +460,21 @@ cdef class SmdReader:
             cn_batch_bufs[i] = 0
             cn_batch_stepbufs[i] = 0
 
-        # Need to convert Python object to c++ data type for the nogil loop
-        cdef unsigned endrun_id = TransitionId.EndRun
-
-        # A batch is always complete for non-integrating detector runs. For integrating
-        # runs, we continue to find the indices of the all the buffers until batch_size
-        # is reached (find_intg_limit_ts only finds limit_ts for a single integrating
-        # event).
+        cdef unsigned endrun_id = TransitionId.EndRun  # support no-gil
         cdef int batch_complete_flag = 0
         cdef int cn_intg_events = 0
-
         while not batch_complete_flag:
-            # With batch_size = 1 (used for reading Configure and BeginRun), this
-            # automatically set ignore_transition flag to False so we can get any
-            # type of event. We also use standard way to find limit_ts when asking
-            # for Configure and BeginRun. We also check here if there's no event
-            # to yield, and return False.
+            # Determine the limit timestamp for the current batch.
+            # For non-integrating runs (intg_stream_id == -1) or when reading transitions
+            # (e.g. Configure or BeginRun, triggered by ignore_transition == False),
+            # we use find_limit_ts() to get a timestamp batch_size events ahead,
+            # or as far as available data allows. This supports partial batches.
+            #
+            # For integrating detector runs, find_intg_limit_ts() advances one integration
+            # frame at a time based on intg_delta_t. We loop until we've collected
+            # batch_size integration frames or detect EndRun, in which case we finalize
+            # the current partial batch.
+
             if intg_stream_id == -1 or ignore_transition is False:
                 limit_ts = self.find_limit_ts(batch_size, max_events, ignore_transition)
                 if limit_ts == INVALID_TS:
@@ -477,9 +485,13 @@ cdef class SmdReader:
                 limit_ts = self.find_intg_limit_ts(intg_stream_id, intg_delta_t, max_events)
                 last_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_seen_events - 1]
                 if limit_ts == last_ts or limit_ts == INVALID_TS:
-                    debug_print(f"[find_intg_limit_ts] EARLY EXIT: limit_ts={limit_ts} last_ts={last_ts} INVALID_TS={INVALID_TS}")
-
-                    return False
+                    if self.found_endrun():
+                        debug_print(f"[find_intg_limit_ts] EndRun found - forcing final partial batch with limit_ts={limit_ts}")
+                        batch_complete_flag = 1
+                        break
+                    else:
+                        debug_print(f"[find_intg_limit_ts] EARLY EXIT: FAIL_ADVANCE={limit_ts==last_ts} INVALID={limit_ts==INVALID_TS} limit_ts={limit_ts}")
+                        return False
                 cn_intg_events += 1
                 if cn_intg_events == batch_size:
                     batch_complete_flag = 1
@@ -497,7 +509,6 @@ cdef class SmdReader:
                 if latest_ts < limit_ts:
                     debug_print(f"Stream {i} not caught up. ts_arr[-1]={latest_ts}, limit_ts={limit_ts}")
                     return False  # Retry later
-
 
             # Reset timestamp and buffer for fake steps (will be calculated lazily)
             self._next_fake_ts = 0
