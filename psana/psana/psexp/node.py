@@ -673,15 +673,9 @@ class EventBuilderNode(object):
         wait_for(self.requests)
 
     def start_broadcast(self):
-        rankreq = np.empty(1, dtype="i")
         smd_comm = self.comms.smd_comm
-        n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
 
-        # Initialize Non-blocking Send Requests with Null
-        self._init_requests()
-
-        # Broadcast each batch to all BD nodes. Wait for all sends before proceeding.
         while True:
             smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
@@ -692,21 +686,15 @@ class EventBuilderNode(object):
             )
 
             for smd_batch_dict, _ in eb_man.batches():
-                # assume no destination usage
                 smd_batch, _ = smd_batch_dict[0]
-                for i in range(n_bd_nodes):
-                    self._request_rank(rankreq)
-                    self.requests[rankreq[0] - 1] = bd_comm.Isend(
-                        smd_batch, dest=rankreq[0]
-                    )
-                wait_for(self.requests)
 
-        # - kill all bd nodes
-        self._init_requests()
-        for i in range(n_bd_nodes):
-            self._request_rank(rankreq)
-            self.requests[rankreq[0] - 1] = bd_comm.Isend(bytearray(), dest=rankreq[0])
-        wait_for(self.requests)
+                # Broadcast to all BD ranks including self
+                smd_batch_np = np.frombuffer(smd_batch, dtype='B')
+                bd_comm.bcast(smd_batch_np, root=0)
+
+        # Send empty array to signal termination
+        bd_comm.bcast(np.array([], dtype='B'), root=0)
+
 
 
 class BigDataNode(object):
@@ -767,26 +755,22 @@ class BigDataNode(object):
             yield evt
 
     def start_smdonly(self):
-        def get_smd():
-            bd_comm = self.comms.bd_comm
-            bd_rank = self.comms.bd_rank
-            req = bd_comm.Isend(np.array([bd_rank], dtype="i"), dest=0)
-            req.Wait()
+        bd_comm = self.comms.bd_comm
 
-            info = MPI.Status()
-            bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
-            count = info.Get_elements(MPI.BYTE)
-            chunk = bytearray(count)
-            req = bd_comm.Irecv(chunk, source=0)
-            req.Wait()
-            return chunk
+        def get_smd():
+            smd_batch_np = bd_comm.bcast(None, root=0)  # receive the broadcast
+            count = smd_batch_np.size
+            return bytearray(smd_batch_np) if count > 0 else bytearray()
 
         t0 = time.monotonic()
 
         events = SmdEvents(self.ds, self.run, get_smd=get_smd)
         self.run._ts_table = {}
 
+        cn_events = 0
+        cn_pass = 0
         for evt in events:
+            cn_events += 1
             if evt.service() != TransitionId.L1Accept:
                 continue
 
@@ -796,5 +780,6 @@ class BigDataNode(object):
                 for i, d in enumerate(evt._dgrams)
                 if d is not None and hasattr(d, 'smdinfo')
             }
+            cn_pass += 1
 
         logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
