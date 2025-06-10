@@ -510,7 +510,7 @@ int Meb::connect(const std::shared_ptr<MetricExporter> exporter)
   int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(MEB_TR_BUFFERS, exporter);
+  rc = EbAppBase::connect(_prms.maxBuffers, MEB_TR_BUFFERS, exporter);
   if (rc)  return rc;
 
   return 0;

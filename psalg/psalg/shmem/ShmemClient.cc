@@ -336,7 +336,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
     }
 
   XtcMonitorMsg::discoveryQueue(tag,qname);
-  ssize_t rv;
+  ssize_t rv = -1;
   do {
       mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
       if (discoveryQueue == (mqd_t)-1) {
@@ -360,11 +360,13 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   saddr.sin_port        = htons(port);
 
   printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
+  unsigned retries = 0;
   while (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-      printf("[%p] Error connecting myTrFd socket\n",this);
+      if (!retries++)  perror("Error connecting myTrFd socket (will retry)");
       sleep(1);
-      printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
   }
+  printf("[%p] Connected to XtcMonitor server on port %d (%d) after %d retries\n",
+         this,port,_myTrFd,retries);
 
 #ifdef DBUG
   socklen_t addrlen = sizeof(sockaddr_in);
@@ -394,7 +396,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   XtcMonitorMsg::sharedMemoryName(tag, qname);
   printf("Opening shared memory %s of size 0x%zx (0x%x * 0x%zx)\n",
-	 qname,sizeOfShm,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
+         qname,sizeOfShm,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
 
   int shm = shm_open(qname, OFLAGS, PERMS_IN);
   if (shm < 0) perror("shm_open");

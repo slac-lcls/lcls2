@@ -48,6 +48,7 @@ private:
     uint16_t m_hotPixelThreshold { 15000 };
     uint32_t m_maxHotPixels { 3400 };
     uint64_t m_expectedFrameNum { 0 };
+    bool m_inFixedGain { false }; // Need to know if in fixed gain for hot pixel calc.
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;

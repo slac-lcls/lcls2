@@ -495,7 +495,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2,noTiming=False):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False):
         setProvider(p)
         global lock
         lock     = m
@@ -509,8 +509,6 @@ class PVStats(object):
         self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
         self.usRxEn  = addPV(name+':UsRxEnable','I',self._app.usRxEnable.get())
         self.cuRxEn  = addPV(name+':CuRxEnable','I',self._app.cuRxEnable.get())
-
-        self._tsSync = tsSync
 
         self._links = []
         for i in range(32):
@@ -572,11 +570,11 @@ class PVStats(object):
         offset = self._monClks.handle(msg,offset,timev)
         return offset
 
-    def update(self, cycle, cuMode=False):
+    def update(self, cycle, noTiming=False, cuMode=False):
         try:
-            if self._tsSync:
-                self._tsSync.update()
-            if cuMode:
+            if noTiming:
+                pass
+            elif cuMode:
                 self._cuTiming.update()
                 self._cuGen   .update()
             else:

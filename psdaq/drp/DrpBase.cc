@@ -590,12 +590,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
                                    m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
                 }
-                handleBrokenEvent(*event);
-                freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Throw away out-of-sequence events
+                // Try to handle out-of-sequence events
             } else if (transitionId != TransitionId::Configure) {
                 freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Drain
+                return nullptr;         // Drain everything before Configure
             }
         }
         m_lastComplete = evtCounter;
@@ -604,11 +602,11 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
         auto rogs = timingHeader->readoutGroups();
         if ((rogs & (1 << m_para.partition)) == 0) [[unlikely]] {
+            // Events without the common readout group would mess up the TEB and MEB, so filter them out here
             logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                            TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId(), m_para.partition, timingHeader->env);
-            ++m_lastComplete;
             handleBrokenEvent(*event);
             freeDma(event);                 // Leaves event mask = 0
             ++m_nNoComRoG;
@@ -617,11 +615,12 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         if (transitionId == TransitionId::SlowUpdate) {
             uint16_t missingRogs = m_para.rogMask & ~rogs;
             if (missingRogs) [[unlikely]] {
+                // SlowUpdates that don't have all readout groups triggered would mess up psana, so filter them out here
+                // This is true for other transitions as well, but those are caught by control.py
                 logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId(), missingRogs, timingHeader->env);
-                ++m_lastComplete;
                 handleBrokenEvent(*event);
                 freeDma(event);             // Leaves event mask = 0
                 ++m_nMissingRoGs;
