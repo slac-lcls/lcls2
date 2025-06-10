@@ -1,7 +1,5 @@
 """
-test_build_table_performance.py
-
-MPI-based pytest for testing timestamp-based access and standard event iteration using
+MPI-based test for testing timestamp-based access and standard event iteration using
 prefetched Jungfrau calibration data in a distributed setup.
 
 PREREQUISITES BEFORE RUNNING:
@@ -36,35 +34,25 @@ PREREQUISITES BEFORE RUNNING:
 
 USAGE:
 -------
-- Pytest (with markers and MPI):
-    mpirun -n 242 --hostfile=slurm_host_test pytest -m slow test_build_table_performance.py
-
 - Standalone:
-    mpirun -n 242 --hostfile=slurm_host_test python test_build_table_performance.py
+    mpirun -n 242 --hostfile=slurm_host_test python run_build_table_performance.py
 """
 
 import os
 import numpy as np
 from psana import DataSource
 from mpi4py import MPI
-import pytest
 
 comm = MPI.COMM_WORLD
 size = comm.Get_size()
 rank = comm.Get_rank()
 group = comm.Get_group()
+
 n_bd_ranks = size - int(os.environ.get('PS_EB_NODES', '1')) - 1
 xtc_dir = "/sdf/data/lcls/ds/mfx/mfx100852324/xtc"
 
-pytestmark = pytest.mark.slow
-
-skip_if_missing_xtc = pytest.mark.skipif(
-    not os.path.exists(xtc_dir),
-    reason=f"XTC directory {xtc_dir} not found."
-)
-
-@skip_if_missing_xtc
 def test_normal_ds():
+    """Triggers subprocess MPI run for normal psana2 event loop test."""
     ds = DataSource(exp='mfx100852324', run=45, dir=xtc_dir, max_events=0,
                     use_calib_cache=True, cached_detectors=["jungfrau"],
                     log_level='INFO', batch_size=100)
@@ -90,7 +78,6 @@ def test_normal_ds():
         print(f"[test_normal_ds] Total time: {total_time:.2f}s. Events: {sum_events} Rate: {(sum_events / total_time) * 1e-3:.2f}kHz")
 
 
-@skip_if_missing_xtc
 def test_ts_access_ds():
     ds = DataSource(exp='mfx100852324', run=45, dir=xtc_dir, max_events=0,
                     use_calib_cache=True, cached_detectors=["jungfrau"],
@@ -158,7 +145,7 @@ def test_ts_access_ds():
 if __name__ == "__main__":
     if os.path.exists(xtc_dir):
         if rank == 0:
-            print("Running tests directly (slow tests)")
+            print("Running build_table performance")
         test_normal_ds()
         test_ts_access_ds()
     else:
