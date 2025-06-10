@@ -64,6 +64,7 @@ def main():
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
     parser.add_argument('-G', action='store_true', help='is generator')
+    parser.add_argument('-U', action='store_true', help='is UED')
     parser.add_argument('--xvc', default=None, type=int, help='XVC port (2542)')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -77,6 +78,7 @@ def main():
         dataDebug = True,
         enVcMask  = 0xF,
         isXpmGen  = args.G,
+        isUED     = args.U,
         xvcPort   = args.xvc,
     )
 

@@ -54,7 +54,7 @@ class epixuhrhw_config_3_0_0(DetectorImpl):
 
 class epixuhr_config_3_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args) 
+        super().__init__(*args)
 
 class epixuhrhw_config_3_1_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
@@ -62,14 +62,16 @@ class epixuhrhw_config_3_1_0(DetectorImpl):
 
 class epixuhr_config_3_1_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args) 
-                
+        super().__init__(*args)
+
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
         self._segment_numbers = [0,1,2,3]
+        self.nwarnings = 0
+        self.nwarnings_max = kwargs.get('nwarnings_max', 5)
 
     def _array(self, evt) -> Array2d:
         f = None
@@ -77,8 +79,8 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         if segs is None:
             pass
         else:
-            nx = segs[0].raw.shape[1]
-            ny = segs[0].raw.shape[0]
+            #nx = segs[0].raw.shape[1]
+            #ny = segs[0].raw.shape[0]
             f = segs[0].raw & self._data_bit_mask # 0x7fff
         return f
 
@@ -155,7 +157,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         return lane_map
 
     # Function needed to descramble the raw frame
-    def _descramble_raw_frame(self, raw_data, gain_msb):    
+    def _descramble_raw_frame(self, raw_data, gain_msb):
         # Below is more or less a copy-paste of the `descramble` function from ePixViewer/asics/ePixUhr100kHz.py
         # Create the frames
         full_frame = np.empty((168, 192), dtype=int)
@@ -163,7 +165,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         num_pixels_x = 192
         num_pixels_y = 168
         num_data_bytes_per_frame = int(num_pixels_x*num_pixels_y*12/8)
-        
+
         num_header_bytes_per_frame = 0
         num_total_bytes_per_frame = num_data_bytes_per_frame + num_header_bytes_per_frame
 
@@ -198,22 +200,21 @@ class epixuhr_raw_0_0_0(eb.epix_base):
             pixels = self._descramble_raw_frame(raw_data=raw_data, gain_msb=gain_msb)
             data_3Darr[i] = pixels
         return data_3Darr
+
 #####################
 
-    def raw(self, evt) -> Array3d: # see in areadetector.py
+    def raw(self, evt) -> Array3d:
         if evt is None: return None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
         if segs is None: return None
-        #print(f"### shape of segs {np.shape(segs[0].raw)}")
-        data_3Darr = self._descramble_3d_frames(segs[0].raw)
-        #print("### 3D arr shape ###")
-        #print(np.shape(data_3Darr))
-        #print(type(np.shape(data_3Darr)))
-        
-        return  data_3Darr # shape=(4, 192, 384)
+        return self._descramble_3d_frames(segs[0].raw) # shape=(4, 192, 384)
 
     def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
-        logger.info('TBD')
+        if self.nwarnings < self.nwarnings_max:
+            self.nwarnings += 1
+            s = 'TBD - calib IS NOT IMPLEMENTED YET!'
+            if self.nwarnings == self.nwarnings_max: s += ' >>> STOP PRINT THESE WARNINGS'
+            logger.warning(s)
         return self.raw(evt)
 
     def _calib_TBD(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
@@ -244,25 +245,31 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
         return arrf
 
-class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+epixuhr_raw_1_0_0 = epixuhr_raw_0_0_0
+epixuhr_raw_2_0_0 = epixuhr_raw_1_0_0
+epixuhr_raw_2_1_1 = epixuhr_raw_2_0_0
+epixuhr_raw_3_0_0 = epixuhr_raw_2_1_1
+epixuhr_raw_3_1_0 = epixuhr_raw_3_0_0
 
-class epixuhr_raw_2_1_1(epixuhr_raw_2_0_0):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+#class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
 
-class epixuhr_raw_3_0_0(epixuhr_raw_2_1_1):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+#class epixuhr_raw_2_0_0(epixuhr_raw_1_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
 
-class epixuhr_raw_3_1_0(epixuhr_raw_3_0_0):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+#class epixuhr_raw_2_1_1(epixuhr_raw_2_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+
+#class epixuhr_raw_3_0_0(epixuhr_raw_2_1_1):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
+
+#class epixuhr_raw_3_1_0(epixuhr_raw_3_0_0):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args, **kwargs)
 
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
 #        if evt is None: return None

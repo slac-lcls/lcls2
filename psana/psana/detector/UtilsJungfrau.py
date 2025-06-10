@@ -298,7 +298,7 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
 
         logger.debug('TIME: common-mode correction time = %.6f sec' % (time()-t0_sec_cm))
 
-        arrf *= factor
+    arrf *= factor
     return arrf if mask is None else arrf * mask
 
 #EOF

@@ -117,7 +117,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
         *(uint32_t*)buf = 0xefefefef;
         buf += m_trBufSize;
     }
-    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xcdcdcdcd; // Also 1st word of page after transition pool
+    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xefefefef; // Also 1st word of page after transition pool
 }
 
 MemPool::MemPool(const Parameters& para) :
@@ -157,9 +157,9 @@ void MemPool::_initialize(const Parameters& para)
                       ? m_nDmaBuffers
                       : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
     if (m_nbuffers < m_nDmaBuffers) {
-      logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
-                        m_nbuffers, m_nDmaBuffers);
-      abort();
+        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+                          m_nbuffers, m_nDmaBuffers);
+        abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
@@ -172,7 +172,7 @@ void MemPool::_initialize(const Parameters& para)
     // Put the transition buffer pool at the end of the pebble buffers
     uint8_t* buffer = pebble.trBuffer();
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
-      m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
+        m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
     }
 }
 
@@ -252,21 +252,22 @@ void MemPool::freePebble()
     // Check that the sentinel value at the end of the buffer is still there
     const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
-    auto idx = dgram - (Pds::EbDgram*)(pebble.buffer());
+    auto idx = ((uint8_t*)dgram - pebble.buffer()) / pebble.bufferSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     if (word[0] != 0xcdcdcdcd) [[unlikely]] {
         if (!(m_l1Overrun & 0x01)) {
-            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] overrun: %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], 0xcdcdcdcd);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xcdcdcdcd);
             m_l1Overrun |= 0x01;
         }
     }
     // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) [[unlikely]] {
         if (!(m_l1Overrun & 0x02)) {
-            logging::error("(%014lx, %u.%09u, %s) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xcdcdcdcd);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xcdcdcdcd);
             m_l1Overrun |= 0x02;
         }
     }
@@ -294,21 +295,22 @@ void MemPool::freeTr(Pds::EbDgram* dgram)
     // Do this check before freeing the dgram in case it is reallocated
     // Check that the sentinel value at the end of the buffer is still there
     const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
-    auto idx = dgram - (Pds::EbDgram*)(pebble.trBuffer());
+    auto idx = ((uint8_t*)dgram - pebble.trBuffer()) / pebble.trBufSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     if (word[0] != 0xefefefef) [[unlikely]] {
         if (!(m_trOverrun & 0x01)) {
-            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] overrun: %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] overrun: %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], 0xefefefef);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xefefefef);
             m_trOverrun |= 0x01;
         }
     }
     // Check that the sentinel value at start of the space after the buffer pool is still there
     if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) [[unlikely]] {
         if (!(m_trOverrun & 0x02)) {
-            logging::error("(%014lx, %u.%09u, %s) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
                            dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
-                           TransitionId::name(dgram->service()), idx, word[0], word[1], 0xefefefef);
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xefefefef);
             m_trOverrun |= 0x02;
         }
     }
@@ -588,12 +590,10 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
                                    m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
                 }
-                handleBrokenEvent(*event);
-                freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Throw away out-of-sequence events
+                // Try to handle out-of-sequence events
             } else if (transitionId != TransitionId::Configure) {
                 freeDma(event);         // Leaves event mask = 0
-                return nullptr;         // Drain
+                return nullptr;         // Drain everything before Configure
             }
         }
         m_lastComplete = evtCounter;
@@ -602,11 +602,11 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
         auto rogs = timingHeader->readoutGroups();
         if ((rogs & (1 << m_para.partition)) == 0) [[unlikely]] {
+            // Events without the common readout group would mess up the TEB and MEB, so filter them out here
             logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
                            TransitionId::name(transitionId),
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId(), m_para.partition, timingHeader->env);
-            ++m_lastComplete;
             handleBrokenEvent(*event);
             freeDma(event);                 // Leaves event mask = 0
             ++m_nNoComRoG;
@@ -615,11 +615,12 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         if (transitionId == TransitionId::SlowUpdate) {
             uint16_t missingRogs = m_para.rogMask & ~rogs;
             if (missingRogs) [[unlikely]] {
+                // SlowUpdates that don't have all readout groups triggered would mess up psana, so filter them out here
+                // This is true for other transitions as well, but those are caught by control.py
                 logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId(), missingRogs, timingHeader->env);
-                ++m_lastComplete;
                 handleBrokenEvent(*event);
                 freeDma(event);             // Leaves event mask = 0
                 ++m_nMissingRoGs;

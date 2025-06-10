@@ -41,9 +41,10 @@ class Top(pr.Device):
                     fidPrescale = 200,
                     numDDC      = 0,
                     noTiming    = False,
+                    fwVersion   = 0,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        self.fwVersion = 0x030B0000
+        self.fwVersion = fwVersion
 
         if noTiming:
             self.mmcmParms = []

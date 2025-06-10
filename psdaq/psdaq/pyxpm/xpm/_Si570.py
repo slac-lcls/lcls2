@@ -64,9 +64,9 @@ class Si570(pr.Device):
         print('Read: hs_div {:x}  n1 {:x}  rfreq {:x}  f {:f} MHz'.format(hs_div,n1,rfreq,f))
         return f
 
-    def _program(self):
+    def _program(self,clkSel=1):
         self.enable.set(True)
-        self._programClk([1])
+        self._programClk([clkSel])
         self.enable.set(False)
 
     def _programClk(self,args):

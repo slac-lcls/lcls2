@@ -42,7 +42,7 @@ namespace Pds {
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(unsigned maxTrBuffers, const MetricExporter_t);
+      int              connect(unsigned maxEvBuffers, unsigned maxTrBuffers, const MetricExporter_t);
       int              configure();
       void             unconfigure();
       void             disconnect();

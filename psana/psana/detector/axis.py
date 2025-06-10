@@ -3,7 +3,7 @@ import logging
 logger = logging.getLogger(__name__)
 from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
-from psana.detector.areadetector import AreaDetectorRaw, sgs
+from psana.detector.areadetector import AreaDetectorRaw, sgs, sys
 
 def is_true(cond, msg, method=logger.debug):
     if cond: method(msg)
@@ -51,4 +51,13 @@ class axis_raw_1_0_0(AreaDetectorRaw):
             self._init_geometry(r.shape, pix_size_rcsd_um=kwa.get('pix_size_rcsd_um', (10,10,10,400)))
         return self.calib(evt, nda=nda) if use_calib else\
                AreaDetectorRaw.image(self, evt, nda=nda, **kwa)
+
+
+class pv_raw_1_0_0(axis_raw_1_0_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._seg_geo =  None
+        self._geo = None
+        logger.info('in pv_raw_1_0_0')
+
 # EOF

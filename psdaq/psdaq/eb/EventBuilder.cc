@@ -58,6 +58,7 @@ int EventBuilder::initialize(unsigned epochs,
 
   // Revisit the factor of 2: it seems like the sum of the values over all RoGs
   // may be closer to the right answer
+  // The factor of 2 is obsolete given that the common RoG always triggers?
   auto nep = 2 * epochs;
   auto nev = 2 * epochs * entries;
 
