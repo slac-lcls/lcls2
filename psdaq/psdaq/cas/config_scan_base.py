@@ -44,6 +44,7 @@ class ConfigScanBase(object):
         add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
         add_argument('--record', type=int, choices=range(0, 2), default=None, help='recording flag')
         add_argument('--hutch' , type=str, default=None, help='hutch (shortcut for -p,-C)')
+        add_argument('--nprocs', type=int, required=False, help='Number of drp segments/processes for the detector `detname`')
         parser.add_argument('-v', action='store_true', help='be verbose')
 
         for a in userargs:
@@ -95,7 +96,10 @@ class ConfigScanBase(object):
         for v in platform['drp'].values():
             if v['active']==1:
                 group_mask |= 1<<(v['det_info']['readout'])
-                if v['proc_info']['alias'] == args.detname:
+                # For multi-segment/process detector args.detname may not have
+                # segment number, so just check that it is in the alias instead
+                # of equality
+                if args.detname in v['proc_info']['alias']:
                     step_group = v['det_info']['readout']
 
         if step_group is None:
