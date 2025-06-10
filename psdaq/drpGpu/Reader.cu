@@ -1,4 +1,4 @@
-#include "Worker.hh"
+#include "Reader.hh"
 
 #include "Detector.hh"
 #include "drp/spscqueue.hh"
@@ -16,104 +16,109 @@ using namespace Drp;
 using namespace Drp::Gpu;
 
 
-Worker::Worker(unsigned                 panel,
+Reader::Reader(unsigned                 panel,
                const Parameters&        para,
                MemPoolGpu&              pool,
-               RingIndexDtoD*           workerQueue_d,
                Detector&                det,
                size_t                   trgPrimitiveSize,
                const cuda::atomic<int>& terminate_d) :
   m_pool         (pool),
   m_det          (det),
   m_terminate_d  (terminate_d),
-  m_workerQueue_d(workerQueue_d),
   m_panel        (panel),
   m_para         (para)
 {
-  printf("*** Worker ctor 1\n");
-  ////////////////////////////////////
-  // Allocate streams
-  ////////////////////////////////////
+  printf("*** Reader ctor 1\n");
+
+  // Set up buffer index allocator for DMA to Collector comms
+  m_readerQueue.h = new Gpu::RingIndexDtoD(m_pool.nbuffers(), m_pool.dmaCount(), m_terminate_d);
+  chkError(cudaMalloc(&m_readerQueue.d,                  sizeof(*m_readerQueue.d)));
+  chkError(cudaMemcpy( m_readerQueue.d, m_readerQueue.h, sizeof(*m_readerQueue.d), cudaMemcpyHostToDevice));
 
   /** Allocate a stream per buffer **/
   m_streams.resize(m_pool.dmaCount());
   for (auto& stream : m_streams) {
     chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
   }
-  printf("*** Worker ctor 2\n");
+  printf("*** Reader ctor 2\n");
 
   // Set up a done flag to cache m_terminate's value and avoid some PCIe transactions
   chkError(cudaMalloc(&m_done,    sizeof(*m_done)));
   chkError(cudaMemset( m_done, 0, sizeof(*m_done)));
-  printf("*** Worker ctor 3\n");
+  printf("*** Reader ctor 3\n");
 
-  // Keep track of the head index of each Worker stream
+  // Keep track of the head index of each Reader stream
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
     chkError(cudaMalloc(&m_head[i],    sizeof(*m_head[i])));
     chkError(cudaMemset( m_head[i], 0, sizeof(*m_head[i])));
   }
-  printf("*** Worker ctor 4: trgPrmtv sz %zu\n", trgPrimitiveSize);
+  printf("*** Reader ctor 4: trgPrmtv sz %zu\n", trgPrimitiveSize);
 
   // Prepare buffers visible to the host for receiving headers
   const size_t bufSz = sizeof(DmaDsc)+sizeof(TimingHeader) + trgPrimitiveSize;
-  printf("*** Worker ctor 4a: sz %zu, nbufs %u\n", bufSz, m_pool.nbuffers());
+  printf("*** Reader ctor 4a: sz %zu, nbufs %u\n", bufSz, m_pool.nbuffers());
   m_pool.createHostBuffers(panel, m_pool.nbuffers(), bufSz);
-  printf("*** Worker ctor 5\n");
+  printf("*** Reader ctor 5\n");
 
   // Prepare the CUDA graphs
-  m_graphs.resize(m_pool.dmaCount());   // @todo: No need to store these in the Worker object
+  m_graphs.resize(m_pool.dmaCount());   // @todo: No need to store these in the Reader object
   m_graphExecs.resize(m_pool.dmaCount());
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
     if (_setupGraphs(i)) {
-      logging::critical("Failed to set up Worker[%u] graphs", panel);
+      logging::critical("Failed to set up Reader[%u] graphs", panel);
       abort();
     }
   }
-  printf("*** Worker ctor 6\n");
+  printf("*** Reader ctor 6\n");
 }
 
-Worker::~Worker()
+Reader::~Reader()
 {
-  printf("*** Worker dtor 1\n");
+  printf("*** Reader dtor 1\n");
   for (auto& graphExec : m_graphExecs) {
     chkError(cudaGraphExecDestroy(graphExec));
   }
-  printf("*** Worker dtor 2\n");
+  printf("*** Reader dtor 2\n");
   for (auto& graph : m_graphs) {
     chkError(cudaGraphDestroy(graph)); // @todo: Goes away?
   }
-  printf("*** Worker dtor 3\n");
+  printf("*** Reader dtor 3\n");
 
   m_pool.destroyHostBuffers(m_panel);
-  printf("*** Worker dtor 4\n");
+  printf("*** Reader dtor 4\n");
 
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
     chkError(cudaFree(m_head[i]));
   }
   chkError(cudaFree(m_done));
-  printf("*** Worker dtor 5\n");
+  printf("*** Reader dtor 5\n");
 
   for (auto& stream : m_streams) {
     chkError(cudaStreamDestroy(stream));
   }
-  printf("*** Worker dtor 6\n");
+  printf("*** Reader dtor 6\n");
+
+  if (m_readerQueue.d)  chkError(cudaFree(m_readerQueue.d));
+  delete m_readerQueue.h;
+  printf("*** Reader dtor 7\n");
 }
 
-int Worker::_setupGraphs(int instance)
+int Reader::_setupGraphs(int instance)
 {
   // Generate the graph
   if (m_graphs[instance] == 0) {        // @todo: Graphs can be created on the stack
-    logging::debug("Recording graph %d of CUDA execution", instance);
-    const auto& panel = m_pool.panels()[m_panel];
-    printf("*** Worker graphs 1\n");
-    auto& hostWriteBufs = m_pool.hostBuffers_h()[m_panel];
-    printf("*** Worker graphs 2\n");
+    // Attach host-visible memory to the stream
+    printf("*** Reader graphs 1\n");
+    auto& hostWriteBufs = m_pool.hostWrtBufsVec_h()[m_panel];
+    printf("*** Reader graphs 2\n");
     for (unsigned i = 0; i < m_pool.nbuffers(); ++i) {
       chkError(cudaStreamAttachMemAsync(m_streams[instance], hostWriteBufs[i], 0, cudaMemAttachHost));
     }
-    printf("*** Worker graphs 3\n");
+    printf("*** Reader graphs 3\n");
+    logging::debug("Recording graph %d of CUDA execution", instance);
+    const auto& panel = m_pool.panels()[m_panel];
     m_graphs[instance] = _recordGraph(m_streams[instance], panel.dmaBuffers[instance].dptr, panel.hwWriteStart);
-    printf("*** Worker graphs 4\n");
+    printf("*** Reader graphs 4\n");
     if (m_graphs[instance] == 0)
       return -1;
   }
@@ -126,7 +131,7 @@ int Worker::_setupGraphs(int instance)
                "Graph create failed")) {
     return -1;
   }
-    printf("*** Worker graphs 5\n");
+    printf("*** Reader graphs 5\n");
 
   // @todo: No need to hang on to the stream info
   //cudaGraphDestroy(m_graph[instance]);
@@ -143,7 +148,7 @@ int Worker::_setupGraphs(int instance)
 // Wait for the DMA size word to become non-zero
 static __global__ void _waitForDMA(const volatile uint32_t* __restrict__ mem,
                                    unsigned                              instance,
-                                   Gpu::RingIndexDtoD&                   workerQueue,
+                                   Gpu::RingIndexDtoD&                   readerQueue,
                                    unsigned*                __restrict__ head,
                                    const cuda::atomic<int>&              terminate,
                                    bool*                    __restrict__ done)
@@ -151,7 +156,7 @@ static __global__ void _waitForDMA(const volatile uint32_t* __restrict__ mem,
   printf("*** waitForDMA 1.%u\n", instance);
 
   // Allocate the index of the next set of intermediate buffers to be used
-  *head = workerQueue.prepare(instance);
+  *head = readerQueue.prepare(instance);
   printf("*** waitForDMA 2.%u, mem %p\n", instance, mem);
 
   // Wait for data to be DMAed
@@ -187,28 +192,28 @@ static __global__ void _event(uint32_t** const __restrict__ outBufs,
 
 // This will re-launch the current graph
 static __global__ void _graphLoop(const unsigned&     idx,
-                                  Gpu::RingIndexDtoD& workerQueue,
+                                  Gpu::RingIndexDtoD& readerQueue,
                                   const bool&         done)
 {
-  printf("*** Worker graphLoop 1, done %d\n", done);
+  printf("*** Reader graphLoop 1, done %d\n", done);
   if (done)  return;
-  printf("*** Worker graphLoop 1a, idx %u\n", idx);
+  printf("*** Reader graphLoop 1a, idx %u\n", idx);
 
-  workerQueue.produce(idx);
-  printf("*** Worker graphLoop 2, idx %u\n", idx);
+  readerQueue.produce(idx);
+  printf("*** Reader graphLoop 2, idx %u\n", idx);
 
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  printf("*** Worker graphLoop 3\n");
+  printf("*** Reader graphLoop 3\n");
 }
 
-cudaGraph_t Worker::_recordGraph(cudaStream_t& stream,
+cudaGraph_t Reader::_recordGraph(cudaStream_t& stream,
                                  CUdeviceptr   dmaBuffer,
                                  CUdeviceptr   hwWriteStart)
 {
-  printf("*** Worker record 1\n");
+  printf("*** Reader record 1\n");
   int instance = &stream - &m_streams[0];
-  auto hostWriteBufs_d = m_pool.hostBuffers_d()[m_panel];
-  printf("*** Worker record 2, hostWriteBufs_d[%u] %p\n", m_panel, hostWriteBufs_d);
+  auto hostWriteBufs_d = m_pool.hostWrtBufsVec_d()[m_panel];
+  printf("*** Reader record 2, hostWriteBufs_d[%u] %p\n", m_panel, hostWriteBufs_d);
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "Stream begin-capture failed")) {
@@ -237,11 +242,11 @@ cudaGraph_t Worker::_recordGraph(cudaStream_t& stream,
   uint32_t bufMask = m_pool.nbuffers() - 1;
   _waitForDMA<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4),
                                    instance,
-                                   *m_workerQueue_d,
+                                   *m_readerQueue.d,
                                    m_head[instance],
                                    m_terminate_d,
                                    m_done);
-  printf("*** Worker record 3\n");
+  printf("*** Reader record 3\n");
 
   // An alternative to the above kernel is to do the waiting on the CPU instead...
   //chkError(cuLaunchHostFunc(stream, check_memory, (void*)buffer));
@@ -249,15 +254,15 @@ cudaGraph_t Worker::_recordGraph(cudaStream_t& stream,
   // Copy the DMA descriptor and the timing header to host-visible managed memory buffers
   constexpr auto iPayload { (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(uint32_t) };
   _event<<<1, iPayload, 0, stream>>>(hostWriteBufs_d, (uint32_t*)dmaBuffer, instance, *m_head[instance], *m_done);
-  printf("*** Worker record 4\n");
+  printf("*** Reader record 4\n");
 
   // Calibrate the raw data from the DMA buffers into the calibrated data buffers
   m_det.recordGraph(stream, *m_head[instance], m_panel, (uint16_t*)(dmaBuffer + iPayload));
-  printf("*** Worker record 5\n");
+  printf("*** Reader record 5\n");
 
   // Publish the current head index and re-launch
-  _graphLoop<<<1, 1, 0, stream>>>(*m_head[instance], *m_workerQueue_d, *m_done);
-  printf("*** Worker record 6\n");
+  _graphLoop<<<1, 1, 0, stream>>>(*m_head[instance], *m_readerQueue.d, *m_done);
+  printf("*** Reader record 6\n");
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph), "Stream end-capture failed")) {
@@ -267,20 +272,20 @@ cudaGraph_t Worker::_recordGraph(cudaStream_t& stream,
   return graph;
 }
 
-void Worker::start()
+void Reader::start()
 {
-  logging::info("Worker[%d] starting", m_panel);
+  logging::info("Reader[%d] starting", m_panel);
   chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
   const auto& panel = m_pool.panels()[m_panel];
 
   // Ensure that timing messages are DMAed to the GPU
   dmaTgtSet(panel.gpu, DmaTgt_t::GPU);
-  printf("*** Worker[%d] start 1\n", m_panel);
+  printf("*** Reader[%d] start 1\n", m_panel);
 
   // Ensure that the DMA round-robin index starts with buffer 0
   dmaIdxReset(panel.gpu);
-  printf("*** Worker[%d] start 2\n", m_panel);
+  printf("*** Reader[%d] start 2\n", m_panel);
 
   // Launch the DMA graphs
   for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {

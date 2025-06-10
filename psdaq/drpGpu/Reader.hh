@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <vector>
-#include <thread>
 #include <atomic>
 
 #include <cuda_runtime.h>
@@ -28,25 +27,26 @@ namespace Drp {
 
 class Detector;
 
-struct WorkerMetrics
+struct ReaderMetrics
 {
 };
 
-class Worker
+class Reader
 {
 public:
-  Worker(unsigned panel, const Parameters&, MemPoolGpu&, RingIndexDtoD*, Detector& det,
+  Reader(unsigned panel, const Parameters&, MemPoolGpu&, Detector&,
          size_t trgPrimitiveSize, const cuda::atomic<int>& terminate_d);
-  ~Worker(); // = default;
+  ~Reader();
   void start();
 public:
   MemPool& pool()  const { return m_pool; }
+  RingIndexDtoD* queue() { return m_readerQueue.d; }
 private:
-  int     _setupGraphs(int instance);
-  CUgraph _recordGraph(cudaStream_t& stream,
-                       CUdeviceptr   hwWritePtr,
-                       CUdeviceptr   hwWriteStart);
-  void    _reader(Detector&, WorkerMetrics&);
+  int         _setupGraphs(int instance);
+  cudaGraph_t _recordGraph(cudaStream_t& stream,
+                           CUdeviceptr   hwWritePtr,
+                           CUdeviceptr   hwWriteStart);
+  void        _reader(Detector&, ReaderMetrics&);
 private:
   MemPoolGpu&                  m_pool;
   Detector&                    m_det;
@@ -55,7 +55,7 @@ private:
   std::vector<cudaStream_t>    m_streams;
   std::vector<cudaGraph_t>     m_graphs; // @todo: Goes away?
   std::vector<cudaGraphExec_t> m_graphExecs;
-  RingIndexDtoD*               m_workerQueue_d; // Device pointer
+  Ptr<RingIndexDtoD>           m_readerQueue;
   unsigned*                    m_head[MAX_BUFFERS];
   unsigned                     m_panel;
   const Parameters&            m_para;
