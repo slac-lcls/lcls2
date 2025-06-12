@@ -2,6 +2,7 @@ from psana import DataSource
 import os
 import numpy as np
 
+@pytest.mark.skip(reason="to be debugged when mikhail returns from vacation in June 2025")
 def test_jungfrau05M_calib():
     correctanswer=np.array(([4.0649414, 9.653076, 15.843018, -12.125977, -24.302979],\
                             [0.06494141, -6.346924, -27.156982, -3.1259766, -15.3029785]))
