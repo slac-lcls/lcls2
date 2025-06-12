@@ -1,6 +1,7 @@
 from psana import DataSource
 import os
 import numpy as np
+import pytest
 
 @pytest.mark.skip(reason="to be debugged when mikhail returns from vacation in June 2025")
 def test_jungfrau05M_calib():
