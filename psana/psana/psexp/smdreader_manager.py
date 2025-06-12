@@ -184,73 +184,35 @@ class SmdReaderManager(object):
     def __iter__(self):
         return self
 
-    def build_normal_batch(self):
+    def build_batch(self):
         """
-        Build a normal (non-integrating) batch by calling build_batch_view().
-        Retry in live mode if no batch is found.
+        Build a batch (normal or integrating) using build_batch_view().
+        Retries in live mode if no complete batch is found.
+
+        Returns:
+            bool or None: True if batch was built,
+                        False if EndRun was found but no batch ready,
+                        None if retries exhausted.
         """
         max_retries = getattr(self.dsparms, "max_retries", 0)
-        if max_retries:
-            retries = 0
-        else:
-            retries = -1
+        retries = 0 if max_retries else -1
         success = False
+        intg_stream_id = self.dsparms.intg_stream_id
+        is_integrating = intg_stream_id >= 0
 
         while retries <= max_retries:
             success = self.smdr.build_batch_view(
                 batch_size=self.smd0_n_events,
-                intg_stream_id=-1,
-                intg_delta_t=0,
-                max_events=self.dsparms.max_events,
-            )
-            if success or self.smdr.found_endrun():
-                break
-
-            # No data to yield, try to get more data
-            self.smdr.force_read(self.dsparms.smd_inprogress_converted)
-
-            # Didn't get complete streams yet
-            if retries == max_retries:
-                return None
-
-            if retries > -1:
-                self.logger.debug(f"Waiting for data... retry {retries+1}/{max_retries}")
-                time.sleep(1)
-            retries += 1
-
-        if not success:
-            self.logger.info(
-                f"ERROR: Unable to build a batch after {retries} retries."
-            )
-
-        return success
-
-    def build_integrating_batch(self):
-        """
-        Build an integrating batch by calling build_batch_view().
-        Retry in live mode if no complete integrating event is found.
-        """
-        max_retries = getattr(self.dsparms, "max_retries", 0)
-        if max_retries:
-            retries = 0
-        else:
-            retries = -1
-        success = False
-
-        while retries <= max_retries:
-            success = self.smdr.build_batch_view(
-                batch_size=self.smd0_n_events,
-                intg_stream_id=self.dsparms.intg_stream_id,
+                intg_stream_id=intg_stream_id,
                 intg_delta_t=self.dsparms.intg_delta_t,
                 max_events=self.dsparms.max_events,
             )
+
             if success or self.smdr.found_endrun():
                 break
 
-            # No data to yield, try to get more data
             self.smdr.force_read(self.dsparms.smd_inprogress_converted)
 
-            # Didn't get complete streams yet
             if retries == max_retries:
                 return None
 
@@ -260,9 +222,8 @@ class SmdReaderManager(object):
             retries += 1
 
         if not success:
-            self.logger.error(
-                f"Unable to build an integrating batch after {retries} retries."
-            )
+            log_func = self.logger.error if is_integrating else self.logger.info
+            log_func(f"Unable to build {'integrating' if is_integrating else 'normal'} batch after {retries} retries.")
 
         return success
 
@@ -281,14 +242,10 @@ class SmdReaderManager(object):
         """
         is_done = False
         cn_chunks = 0
-        integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
 
         while not is_done:
             # --- Build batch ---
-            if integrating:
-                success = self.build_integrating_batch()
-            else:
-                success = self.build_normal_batch()
+            success = self.build_batch()
 
             if not success:
                 is_done = True
@@ -315,12 +272,7 @@ class SmdReaderManager(object):
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
 
-        integrating = getattr(self.dsparms, "intg_stream_id", -1) >= 0
-
-        if integrating:
-            success = self.build_integrating_batch()
-        else:
-            success = self.build_normal_batch()
+        success = self.build_batch()
 
         if not success:
             raise StopIteration
