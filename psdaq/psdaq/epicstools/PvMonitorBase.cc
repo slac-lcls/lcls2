@@ -421,8 +421,30 @@ size_t PvMonitorBase::_getArrayString(void* data, size_t size, uint32_t shape[Ma
 size_t PvMonitorBase::_getEnum(void* data, size_t size, uint32_t shape[MaxRank]) const {
     pvd::shared_vector<const std::string> choices;
     const auto& pvStructure = _strct->getSubField<pvd::PVStructure>(m_fieldName);
-    auto idx = pvStructure->getSubField<pvd::PVScalar>("index")->getAs<int>();
-    pvStructure->getSubField<pvd::PVScalarArray>("choices")->getAs<std::string>(choices);
+    auto pvIdx = pvStructure->getSubField<pvd::PVScalar>("index");
+    if (!pvIdx) {
+        logging::debug("%s: _getEnum: Null idx field!",
+                       MonTracker::name().c_str());
+        return 0;
+    }
+    auto idx = pvIdx->getAs<int>();
+    auto choicesArray = pvStructure->getSubField<pvd::PVScalarArray>("choices");
+    if (!choicesArray) {
+        logging::debug("%s: _getEnum: Null choices field! Current idx: %i",
+                       MonTracker::name().c_str(), idx);
+        return 0;
+    }
+    choicesArray->getAs<std::string>(choices);
+
+    if (idx < 0) {
+        logging::debug("%s: _getEnum: Idx is negative! %i",
+                       MonTracker::name().c_str(), idx);
+        return 0;
+    } else if (idx >= choices.size()) {
+        logging::debug("%s: _getEnum: Idx (%i) is greater than choices size: %i",
+                       MonTracker::name().c_str(), idx, choices.size());
+        return 0;
+    }
 
     auto sz = copyString(data, choices[idx], size);
     shape[0] = sz < size ? sz : size;   // Rank 1 array, includes null
