@@ -176,8 +176,6 @@ namespace Drp
         logging::error("EpicsMonitorPv::addToXtc: %s data returns no data - likely invalid.",
                        name().c_str());
         damage.increase(XtcData::Damage::Corrupted);
-        _bUpdated = false;
-        return 0;
     }
 
     // Now there's an Xtc buffer, copy data from the temporary buffer into it
