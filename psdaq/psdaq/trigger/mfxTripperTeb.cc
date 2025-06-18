@@ -140,8 +140,8 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
         long enable = 1;
         SEVCHK(ca_put(DBR_LONG, m_blockId, &enable), "Put to tripper :BLOCK PV failed!");
         ca_flush_io();
-        wrt = false;
-        mon = false;
+        //wrt = false;
+        //mon = false;
     }
     // Insert the trigger values into a Result EbDgram
     result.persist(wrt);
