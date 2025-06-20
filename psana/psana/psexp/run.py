@@ -113,12 +113,11 @@ class Run(object):
         return self.runnum
 
     def _check_empty_calibconst(self, det_name):
-        # Some detectors do not have calibration constant - set default value to None
-        if not hasattr(self.dsparms, "calibconst"):
+        # Some detectors do not have calibration constants - set default value to None
+        if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
             self.dsparms.calibconst = {det_name: None}
-        else:
-            if det_name not in self.dsparms.calibconst:
-                self.dsparms.calibconst[det_name] = None
+        elif det_name not in self.dsparms.calibconst:
+            self.dsparms.calibconst[det_name] = None
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names
