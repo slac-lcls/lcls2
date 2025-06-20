@@ -694,10 +694,11 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
 
         // check the framenum is the expected value
         if (framenum != m_expectedFrameNum) {
-          logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %lu",
+          logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %ld - ts %lu",
                          moduleIdx, segNo, slsHost,
                          framenum, m_expectedFrameNum,
-                         framenum - m_expectedFrameNum);
+                         static_cast<int64_t>(framenum - m_expectedFrameNum),
+                         timestamp);
           dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
 
