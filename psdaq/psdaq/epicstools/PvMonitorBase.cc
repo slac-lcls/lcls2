@@ -418,7 +418,9 @@ size_t PvMonitorBase::_getArrayString(void* data, size_t size, uint32_t shape[Ma
     return count * maxSz;               // Bytes needed to avoid truncation
 }
 
-size_t PvMonitorBase::_getEnum(void* data, size_t size, uint32_t shape[MaxRank]) const {
+size_t PvMonitorBase::_getEnum(void* data, size_t size, uint32_t shape[MaxRank]) const
+{
+    shape[0] = 0;                       // In case of early return
     pvd::shared_vector<const std::string> choices;
     const auto& pvStructure = _strct->getSubField<pvd::PVStructure>(m_fieldName);
     auto pvIdx = pvStructure->getSubField<pvd::PVScalar>("index");
@@ -440,7 +442,7 @@ size_t PvMonitorBase::_getEnum(void* data, size_t size, uint32_t shape[MaxRank])
         logging::debug("%s: _getEnum: Idx is negative! %i",
                        MonTracker::name().c_str(), idx);
         return 0;
-    } else if (idx >= choices.size()) {
+    } else if (size_t(idx) >= choices.size()) {
         logging::debug("%s: _getEnum: Idx (%i) is greater than choices size: %i",
                        MonTracker::name().c_str(), idx, choices.size());
         return 0;
