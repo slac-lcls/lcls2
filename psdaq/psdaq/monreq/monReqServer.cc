@@ -1,4 +1,4 @@
-include "psalg/shmem/XtcMonitorServer.hh"
+#include "psalg/shmem/XtcMonitorServer.hh"
 
 #include "psdaq/eb/eb.hh"
 #include "psdaq/eb/EbAppBase.hh"
