@@ -10,13 +10,11 @@ Usage ::
 import psana.pscalib.calib.MDBUtils as mu
 
 class CalibDoc():
-    """see LCLS1 module PSCalib/src/CalibFileFinder.py
-    """
+    """see LCLS1 module PSCalib/src/CalibFileFinder.py"""
     rnum_max = 9999
 
     def __init__(self, doc):
         self.doc = doc
-
         begin = doc['run']
         end   = doc['run_end']
         self.tsec_id, self.tstamp_id = mu.sec_and_ts_from_id(doc['_id'])
@@ -26,10 +24,7 @@ class CalibDoc():
         if self.begin>self.rnum_max:
             self.set_invalid('WARNING! INVALID run "%s" - begin value is too big' % str(begin))
             return
-        else:
-            return
 
-        self.end = None
         if str(end).isdigit():
             self.end = int(end)
             if self.end>self.rnum_max:
@@ -42,14 +37,14 @@ class CalibDoc():
             return
 
         self.valid = True
-
+        #print('YYY %s' % self.info_calibdoc())
 
     def set_invalid(self, msg):
         logger.warning(msg)
         self.valid = False
 
-    def info_calibdoc(self, fmt='begin:%4d  end:%4d  tsec_id:%d  tstamp_id:%s'):
-        return fmt % (self.begin, self.end, self.tsec_id, self.tstamp_id)
+    def info_calibdoc(self, fmt='begin:%4d  end:%s  tsec_id:%d  tstamp_id:%s'):
+        return fmt % (self.begin, str(self.end), self.tsec_id, self.tstamp_id)
 
     def cmp_tsec_id(self, other):
         if   self.tsec_id < other.tsec_id: return -1
