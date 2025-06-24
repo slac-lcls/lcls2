@@ -1050,11 +1050,11 @@ def issue_2025_06_17():
     ds = DataSource(exp='mfx100852324', run=13)
     myrun = next(ds.runs())
     det = myrun.Detector('epix100_0')
-    print('det.calibconst:', det.calibconst['pedestals'][1])
-
     #peds = det.raw._pedestals()
-    peds = det.calibconst['pedestals'][0]
-    print(ndu.info_ndarr(peds,   'peds:'))
+    calibc = det.calibconst
+    print('det.calibconst:', calibc['pedestals'][1])
+    print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+
     events = 5
     for nevt,evt in enumerate(myrun.events()):
             if nevt>events-1: break
