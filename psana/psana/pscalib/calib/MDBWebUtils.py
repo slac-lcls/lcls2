@@ -51,6 +51,7 @@ import sys
 import numpy as np
 import io
 
+from psana.pscalib.calib.CalibDoc import CalibDoc
 import psana.pscalib.calib.CalibConstants as cc
 import requests as req
 get, delete = req.get, req.delete # req.put
@@ -150,7 +151,6 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
        1. finds all documents for query
        2. select the latest for run or time_sec
     """
-
     logger.debug('find_doc input pars dbname: %s colname: %s query:%s' % (dbname, colname, str(query)))
 
     docs = find_docs(dbname, colname, query, url)
@@ -161,6 +161,8 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
 
 def select_latest_doc(docs, query):
     """Returns a single document for query selected by time_sec (if available) or run."""
+    if docs is None: return None
+
     if len(docs)==0:
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
@@ -184,6 +186,18 @@ def select_latest_doc(docs, query):
         if d[key_sort]==val_sel:
             return d
     return None
+
+
+def select_doc_in_run_range(docs, rnum):
+    """uses psana.pscalib.calib.CalibDoc"""
+    cdocs = [CalibDoc(d) for d in docs]
+    cdocs_sorted = sorted([cd for cd in cdocs if cd.valid])
+    #print('XXX in select_doc_in_run_range - cdocs_sorted:\n  %s' % '\n  '.join([d.info_calibdoc() for d in cdocs_sorted]))
+    for d in cdocs_sorted[::-1]:
+        if d.valid and d.begin <= rnum and rnum <= d.end:
+            logger.debug('selected calibdoc: %s' % d.info_calibdoc())
+            return d.doc
+    return None # if no matching found
 
 
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
@@ -233,11 +247,13 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
+    logger.debug('dbnames_collection_query input parameters:\n' +\
+                 '    det:%s exp:%s ctype:%s run:%s time_sec:%s vers:%s dtype:%s dbsuffix:%s kwa:%s' %\
+                 (det, exp, ctype, str(run), str(time_sec), vers, str(dtype), dbsuffix, str(kwa)))
     short = pro_detector_name(det, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     logger.debug('short: %s dbsuffix: %s' % (short, dbsuffix))
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
-
     return resp
 
 
@@ -292,14 +308,26 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     return resp
 
 
+def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
+    """print for debugging"""
+    print('\n\ncalib_constants_all_types docs_for_type %s' % ct)
+    for i,d in enumerate(docs_for_type):
+        shortname = d['shortname']
+        if(shortname != detname_short): continue
+        tsec_id, tstamp_id = mu.sec_and_ts_from_id(d['_id'])
+        print('  doc:%02d experiment:%s ctype:%12s shortname:%s run:%3s run_end:%s tstamp_id:%s' %\
+              (i, d['experiment'], ct, shortname, str(d['run']), str(d['run_end']), tstamp_id))
+
+
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
     """Returns constants for all ctype-s."""
     t0_sec = time()
     ctype=None
+
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
-    #print('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
+    logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
 
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -313,7 +341,11 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     resp = {}
     for ct in ctypes:
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
-        doc = select_latest_doc(docs_for_type, query)
+        #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')
+
+        doc = select_doc_in_run_range(docs_for_type, run)
+        #doc = select_latest_doc(docs_in_run_range, query)
+
         if doc is None: continue
         resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
         #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
