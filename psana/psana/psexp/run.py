@@ -244,14 +244,24 @@ class Run(object):
 
     @property
     def detinfo(self):
+        """
+        Returns a mapping of detector interface attributes, guarding against
+        infinite recursion during attribute enumeration.
+        """
         info = {}
-        for (detname, det_xface_name), det_xface_class in self.dsparms.det_classes[
-            "normal"
-        ].items():
-            #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
-            info[(detname, det_xface_name)] = _enumerate_attrs(
-                getattr(self.Detector(detname), det_xface_name)
+        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+            try:
+                xface_obj = getattr(self.Detector(detname), det_xface_name)
+                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+            except RecursionError:
+                msg = (
+                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
+                f"(Consider reviewing custom attributes for missing '_' prefix)"
             )
+                info[(detname, det_xface_name)] = msg
+                self.logger.warning(msg)
+            except Exception as e:
+                info[(detname, det_xface_name)] = f"<error: {e}>"
         return info
 
     @property
