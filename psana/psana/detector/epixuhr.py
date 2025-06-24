@@ -1,5 +1,3 @@
-import os
-import sys
 #from time import time
 #from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
@@ -70,8 +68,8 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
         self._segment_numbers = [0,1,2,3]
-        self.nwarnings = 0
-        self.nwarnings_max = kwargs.get('nwarnings_max', 5)
+        self._nwarnings = 0
+        self._nwarnings_max = kwargs.get('nwarnings_max', 5)
 
     def _array(self, evt) -> Array2d:
         f = None
@@ -210,10 +208,10 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         return self._descramble_3d_frames(segs[0].raw) # shape=(4, 192, 384)
 
     def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
-        if self.nwarnings < self.nwarnings_max:
-            self.nwarnings += 1
+        if self._nwarnings < self._nwarnings_max:
+            self._nwarnings += 1
             s = 'TBD - calib IS NOT IMPLEMENTED YET!'
-            if self.nwarnings == self.nwarnings_max: s += ' >>> STOP PRINT THESE WARNINGS'
+            if self._nwarnings == self._nwarnings_max: s += ' >>> STOP PRINT THESE WARNINGS'
             logger.warning(s)
         return self.raw(evt)
 
