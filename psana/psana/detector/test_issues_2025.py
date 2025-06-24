@@ -1036,6 +1036,33 @@ def issue_2025_06_06():
         for panel in range(32):
             print('step:%d panel:%02d' % (step, panel))
 
+
+def issue_2025_06_17():
+    """       datinfo -k exp=mfx100852324,run=7 -d epix100_0
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx100852324', run=13)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100_0')
+    print('det.calibconst:', det.calibconst['pedestals'][1])
+
+    #peds = det.raw._pedestals()
+    peds = det.calibconst['pedestals'][0]
+    print(ndu.info_ndarr(peds,   'peds:'))
+    events = 5
+    for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            t0_sec = time()
+            raw   = det.raw.raw(evt)
+            dt_sec = (time() - t0_sec)*1000
+            print(ndu.info_ndarr(raw,   'evt:%3d dt=%.3f msec for det.raw.raw(evt):' % (nevt, dt_sec)))
+
 #===
     
 #===
@@ -1100,6 +1127,7 @@ def selector():
     elif TNAME in ('26',): issue_2025_05_16(USE_GZIP=False) # me - test  w/o gzip save and load
     elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
     elif TNAME in ('28',): issue_2025_06_06() # Chris - jungfrau_dark_proc split for steps and panels
+    elif TNAME in ('29',): issue_2025_06_17() # Chris - calibconstants run range
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
