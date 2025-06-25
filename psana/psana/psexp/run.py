@@ -113,12 +113,11 @@ class Run(object):
         return self.runnum
 
     def _check_empty_calibconst(self, det_name):
-        # Some detectors do not have calibration constant - set default value to None
-        if not hasattr(self.dsparms, "calibconst"):
+        # Some detectors do not have calibration constants - set default value to None
+        if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
             self.dsparms.calibconst = {det_name: None}
-        else:
-            if det_name not in self.dsparms.calibconst:
-                self.dsparms.calibconst[det_name] = None
+        elif det_name not in self.dsparms.calibconst:
+            self.dsparms.calibconst[det_name] = None
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names
@@ -245,14 +244,24 @@ class Run(object):
 
     @property
     def detinfo(self):
+        """
+        Returns a mapping of detector interface attributes, guarding against
+        infinite recursion during attribute enumeration.
+        """
         info = {}
-        for (detname, det_xface_name), det_xface_class in self.dsparms.det_classes[
-            "normal"
-        ].items():
-            #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
-            info[(detname, det_xface_name)] = _enumerate_attrs(
-                getattr(self.Detector(detname), det_xface_name)
+        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+            try:
+                xface_obj = getattr(self.Detector(detname), det_xface_name)
+                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+            except RecursionError:
+                msg = (
+                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
+                f"(Consider reviewing custom attributes for missing '_' prefix)"
             )
+                info[(detname, det_xface_name)] = msg
+                self.logger.warning(msg)
+            except Exception as e:
+                info[(detname, det_xface_name)] = f"<error: {e}>"
         return info
 
     @property

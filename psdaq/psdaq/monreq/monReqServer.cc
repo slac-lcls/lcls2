@@ -1030,7 +1030,7 @@ void _printGroups(const char* which, unsigned groups, const u64arr_t& array)
 
     i += snprintf(&buffer[i], sizeof(buffer), "%u: 0x%016lx  ", group, array[group]);
   }
-  logging::info("Readout group %-12s    %s", which, buffer);
+  logging::info("  Readout group %-12s    %s", which, buffer);
 }
 
 void MebApp::_printParams(const MebParams& prms) const
