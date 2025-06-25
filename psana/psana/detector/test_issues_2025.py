@@ -1063,6 +1063,64 @@ def issue_2025_06_17():
             dt_sec = (time() - t0_sec)*1000
             print(ndu.info_ndarr(raw,   'evt:%3d dt=%.3f msec for det.raw.raw(evt):' % (nevt, dt_sec)))
 
+
+def issue_2025_06_25(subtest=1):
+    """test for detectors=['archon',]
+       datinfo -k exp=rixx1017523,run=418 -d archon   (600, 4800) 1836 evts
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+
+    dskwargs = None
+    if subtest in (None, '1'):
+        dskwargs = {'exp':'rixx1017523', 'run':418}
+        #ds = DataSource(exp='rixx1017523',run=418)
+    elif subtest == '2':
+        dskwargs = {'exp':'rixx1017523', 'run':418, 'detectors':['archon']}
+        #ds = DataSource(exp='rixx1017523',run=418, detectors=['archon'])
+    elif subtest == '3':
+        str_dskwargs = 'exp=rixx1017523,run=418'
+        detname = 'archon'
+        dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=detname)
+    elif subtest == '4':
+        kwa = {'dskwargs':'exp=rixx1017523,run=418',
+               'det':'archon'}
+        dskwargs = up.data_source_kwargs(**kwa)
+    else:
+        kwa = {'dskwargs':"{'exp':'rixx1017523', 'run':418, 'detectors':['archon']}",
+               'det':'archon'}
+        dskwargs = up.data_source_kwargs(**kwa)
+
+    print('subtest:%s dskwargs:%s' % (subtest, str(dskwargs)))
+    ds = DataSource(**dskwargs)
+
+    orun = next(ds.runs())
+    det = orun.Detector('archon', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       t0_sec = time()
+       raw = det.raw.raw(evt)
+       dt_sec = (time() - t0_sec)*1000
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+       evsel += 1
+
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       print(info_ndarr(raw, 'evt/sel:%6d/%4d dt=%.3f msec  raw' % (nev, evsel, dt_sec), last=10))
+
+
 #===
     
 #===
@@ -1128,6 +1186,7 @@ def selector():
     elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
     elif TNAME in ('28',): issue_2025_06_06() # Chris - jungfrau_dark_proc split for steps and panels
     elif TNAME in ('29',): issue_2025_06_17() # Chris - calibconstants run range
+    elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
