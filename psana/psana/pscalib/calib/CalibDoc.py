@@ -8,6 +8,9 @@ Usage ::
 """
 
 import psana.pscalib.calib.MDBUtils as mu
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CalibDoc():
     """see LCLS1 module PSCalib/src/CalibFileFinder.py"""
