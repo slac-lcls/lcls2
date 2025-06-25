@@ -293,8 +293,8 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     #  Enable the environmental monitoring stream
     #  This needs to be done once per power-up
-    cbase.App.Adc.DigSlowADC.enableADC.set(1)
-    cbase.App.Adc.PcdSlowADC.enableADC.set(1)
+    cbase.App.Adcs.DigSlowADC.enableADC.set(1)
+    cbase.App.Adcs.PcdSlowADC.enableADC.set(1)
 
     # configure timing
     logging.warning(f'Using timebase {timebase}')
