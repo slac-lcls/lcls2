@@ -7,6 +7,7 @@ import re
 import socket
 import threading
 import time
+from pathlib import Path
 from dataclasses import dataclass
 
 import numpy as np
@@ -23,10 +24,20 @@ from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
 
 if mode == "mpi":
-    from mpi4py import MPI
+    pass
 
 class InvalidDataSourceArgument(Exception):
     pass
+
+
+def _log_file_list(logger, title, files):
+    if not files:
+        logger.debug(f"{title}: (empty)")
+        return
+
+    dir_path = Path(files[0]).parent
+    filenames = [Path(f).name for f in files]
+    logger.debug(f"{title}:\n  {dir_path}/\n    " + "\n    ".join(filenames))
 
 
 @dataclass
@@ -42,6 +53,8 @@ class DsParms:
     timestamps: np.ndarray
     intg_det: str
     intg_delta_t: int
+    log_level: str
+    log_file: str
     smd_callback: int = 0
     terminate_flag: bool = False
 
@@ -117,8 +130,8 @@ class DataSourceBase(abc.ABC):
         Integration delay in seconds.
     smd_callback : callable or int
         Callback for SMD event handling.
-    psmon_publish : bool
-        Enable publishing to psmon (legacy).
+    psmon_publish : psmon.publish
+        Enable publishing to psmon (default: None).
     prom_jobid : str
         Prometheus job ID tag.
     skip_calib_load : str
@@ -138,11 +151,10 @@ class DataSourceBase(abc.ABC):
 
     def __init__(self, **kwargs):
         # Setup logger
-        rank = MPI.COMM_WORLD.Get_rank() if mode == "mpi" else None
         log_level = kwargs.get("log_level", logging.INFO)
+        log_file = kwargs.get("log_file", None)
         if isinstance(log_level, str):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
-        self.logger = utils.Logger(myrank=rank, level=log_level)
 
         # Default values
         self.filter = kwargs.get("filter", 0)
@@ -165,6 +177,7 @@ class DataSourceBase(abc.ABC):
         self.intg_delta_t = kwargs.get("intg_delta_t", 0)
         self.current_retry_no = 0
         self.smd_callback = kwargs.get("smd_callback", 0)
+        self.psmon_publish = kwargs.get("psmon_publish", None)
         self.prom_jobid = kwargs.get("prom_jobid", None)
         self.skip_calib_load = kwargs.get("skip_calib_load", [])
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
@@ -206,8 +219,12 @@ class DataSourceBase(abc.ABC):
             self.timestamps,
             self.intg_det,
             self.intg_delta_t,
-            self.smd_callback,
+            log_level,
+            log_file,
+            smd_callback=self.smd_callback,
         )
+
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
 
         # Warn about unrecognized kwargs
         known_keys = {
@@ -217,7 +234,7 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
-            "log_level"
+            "log_level", "log_file"
         }
         for k in kwargs:
             if k not in known_keys:
@@ -245,7 +262,7 @@ class DataSourceBase(abc.ABC):
         # Note that you can use zmq instead by specifying zmq server
         # in the env var. below.
         PSPLOT_LIVE_ZMQ_SERVER = os.environ.get("PSPLOT_LIVE_ZMQ_SERVER", "")
-        if hasattr(self, "psmon_publish"):
+        if getattr(self, "psmon_publish", None) is not None:
             publish = self.psmon_publish
             publish.init()
             # Send fully qualified hostname
@@ -486,8 +503,8 @@ class DataSourceBase(abc.ABC):
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
-        self.logger.debug("smd_files:\n" + "\n".join(self.smd_files))
-        self.logger.debug("xtc_files:\n" + "\n".join(self.xtc_files))
+        _log_file_list(self.logger, "smd_files", self.smd_files)
+        _log_file_list(self.logger, "xtc_files", self.xtc_files)
 
         # Set default flag for replacing smalldata with bigda files.
         self.dsparms.set_use_smds([False] * self.n_files)
@@ -543,11 +560,11 @@ class DataSourceBase(abc.ABC):
 
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
         if not self.monitor:
-            self.logger.debug("ds_base: RUN W/O PROMETHEUS CLENT")
+            self.logger.debug("RUN W/O PROMETHEUS CLENT")
         elif prom_cfg_dir is None:  # Use push gateway
             self.prom_man.rank = mpi_rank
             self.logger.debug(
-                f"ds_base: START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
+                f"START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
             )
             self.e = threading.Event()
             self.t = threading.Thread(
@@ -559,7 +576,7 @@ class DataSourceBase(abc.ABC):
             self.t.start()
         else:  # Use http exposer
             self.logger.debug(
-                "ds_base: START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
+                "START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
             )
             self.e = None
             self.prom_man.create_exposer(prom_cfg_dir)
@@ -570,7 +587,7 @@ class DataSourceBase(abc.ABC):
 
         if self.e is not None:  # Push gateway case only
             self.logger.debug(
-                "ds_base: END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
+                "END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
             )
             self.e.set()
 
@@ -687,7 +704,7 @@ class DataSourceBase(abc.ABC):
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
-            self.logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
+            self.logger.debug(f"close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
 
@@ -707,11 +724,6 @@ class DataSourceBase(abc.ABC):
         Returns:
             None
         """
-
-        if self.skip_calib_load == 'all':
-            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
-            return
-
         runinfo = self._get_runinfo()
         if not runinfo:
             return
@@ -749,7 +761,7 @@ class DataSourceBase(abc.ABC):
                         det_uniqueid = "cspad_detnum1234"
                     else:
                         det_uniqueid = configinfo.uniqueid
-                    if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
+                    if hasattr(self, "skip_calib_load") and (det_name in self.skip_calib_load or self.skip_calib_load=="all"):
                         self.dsparms.calibconst[det_name] = None
                         continue
                     st = time.monotonic()
@@ -761,7 +773,7 @@ class DataSourceBase(abc.ABC):
                     self.dsparms.calibconst[det_name] = calib_const
                 else:
                     self.logger.info(
-                        "ds_base: Warning: cannot access calibration constant (exp is None)"
+                        "Warning: cannot access calibration constant (exp is None)"
                     )
                     self.dsparms.calibconst[det_name] = None
 
@@ -784,4 +796,3 @@ class DataSourceBase(abc.ABC):
         if self.smd_fds is not None:
             for fd in self.smd_fds:
                 os.close(fd)
-            self.logger.debug(f"ds_base: close smd fds: {self.smd_fds}")

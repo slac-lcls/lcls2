@@ -17,8 +17,6 @@
 #                       Default is 10000000.
 ####################################################################
 
-from typing import List
-import json
 import typer
 from psana.app.timestamp_sort_h5.sort_ts import TsSort
 import time
@@ -59,18 +57,18 @@ def main(
     if data_sort_n_ranks > MAX_DATA_SORT_N_RANKS:
         data_sort_n_ranks = MAX_DATA_SORT_N_RANKS
 
-    print(f"timestamp_sort_h5:", flush=True)
+    print("timestamp_sort_h5:", flush=True)
     print(f"input:     {in_h5}", flush=True)
     print(f"output:    {out_h5}", flush=True)
     print(f"ts_len:    {ts_len}", flush=True)
-    print(f"Dask:", flush=True)
+    print("Dask:", flush=True)
     print(
         f"chunk_size:{dask_chunk_size} n_procs:{dask_n_procs} n_jobs:{dask_n_jobs}",
         flush=True,
     )
-    print(f"Data sort:", flush=True)
+    print("Data sort:", flush=True)
     print(f"batch_size:{data_sort_batch_size} n_ranks:{data_sort_n_ranks}", flush=True)
-    print(f"MAIN: start", flush=True)
+    print("MAIN: start", flush=True)
     ts_sort = TsSort(
         in_h5,
         out_h5,
