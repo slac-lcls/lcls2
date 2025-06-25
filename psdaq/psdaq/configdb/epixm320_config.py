@@ -291,12 +291,10 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
     print(f'buildDate       [{buildDate}]')
     print(f'gitHashShort    [{gitHashShort}]')
 
-    # Ric: These don't exist, so need to find equivalents
-    ##  Enable the environmental monitoring
-    #cbase.App.SlowAdcRegisters.enable.set(1)
-    #cbase.App.SlowAdcRegisters.StreamPeriod.set(100000000)  # 1Hz
-    #cbase.App.SlowAdcRegisters.StreamEn.set(1)
-    #cbase.App.SlowAdcRegisters.enable.set(0)
+    #  Enable the environmental monitoring stream
+    #  This needs to be done once per power-up
+    cbase.App.Adc.DigSlowADC.enableADC.set(1)
+    cbase.App.Adc.PcdSlowADC.enableADC.set(1)
 
     # configure timing
     logging.warning(f'Using timebase {timebase}')
