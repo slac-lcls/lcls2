@@ -761,4 +761,4 @@ class BigDataNode(object):
             }
             cn_pass += 1
 
-        logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
+        self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
