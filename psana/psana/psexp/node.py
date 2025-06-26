@@ -6,8 +6,10 @@ from psana import utils
 from psana.dgram import Dgram
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
+from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
+from psana.psexp import TransitionId
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -651,6 +653,30 @@ class EventBuilderNode(object):
             self.logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
 
+    def start_broadcast(self):
+        smd_comm = self.comms.smd_comm
+        bd_comm = self.comms.bd_comm
+
+        while True:
+            smd_chunk = self._request_data(smd_comm)
+            if not smd_chunk:
+                break
+
+            eb_man = EventBuilderManager(
+                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+            )
+
+            for smd_batch_dict, _ in eb_man.batches():
+                smd_batch, _ = smd_batch_dict[0]
+
+                # Broadcast to all BD ranks including self
+                smd_batch_np = np.frombuffer(smd_batch, dtype='B')
+                bd_comm.bcast(smd_batch_np, root=0)
+
+        # Send empty array to signal termination
+        bd_comm.bcast(np.array([], dtype='B'), root=0)
+
+
 
 class BigDataNode(object):
     def __init__(self, ds, run):
@@ -706,3 +732,33 @@ class BigDataNode(object):
                     t0 = time.monotonic()
 
             yield evt
+
+    def start_smdonly(self):
+        bd_comm = self.comms.bd_comm
+
+        def get_smd():
+            smd_batch_np = bd_comm.bcast(None, root=0)  # receive the broadcast
+            count = smd_batch_np.size
+            return bytearray(smd_batch_np) if count > 0 else bytearray()
+
+        t0 = time.monotonic()
+
+        events = SmdEvents(self.ds, self.run, get_smd=get_smd)
+        self.run._ts_table = {}
+
+        cn_events = 0
+        cn_pass = 0
+        for evt in events:
+            cn_events += 1
+            if evt.service() != TransitionId.L1Accept:
+                continue
+
+            ts = evt.timestamp
+            self.run._ts_table[ts] = {
+                i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
+                for i, d in enumerate(evt._dgrams)
+                if d is not None and hasattr(d, 'smdinfo')
+            }
+            cn_pass += 1
+
+        self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")

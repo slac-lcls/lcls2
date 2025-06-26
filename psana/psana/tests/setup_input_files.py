@@ -1,5 +1,4 @@
 import subprocess
-import shutil
 
 def setup_input_files(tmp_path, n_files=2, slow_update_freq=4, n_motor_steps=1, n_events_per_step=10, gen_run2=True):
     xtc_dir = tmp_path / '.tmp'
@@ -16,6 +15,8 @@ def setup_input_files(tmp_path, n_files=2, slow_update_freq=4, n_motor_steps=1, 
         sfile = str(xtc_dir / filename)
         subprocess.call(['xtcwriter','-f',sfile,'-t','-n',str(n_events_per_step),'-s',str(i*2),'-e',str(slow_update_freq),'-m',str(n_motor_steps)])
         subprocess.call(['smdwriter','-f',sfile,'-o',str(smd_dir / smd_filename)])
+
+    return xtc_dir
 
 if __name__ == "__main__":
     import pathlib

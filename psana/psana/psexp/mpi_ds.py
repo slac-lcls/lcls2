@@ -3,6 +3,7 @@ import sys
 import time
 
 import numpy as np
+from contextlib import contextmanager
 
 from psana import dgram
 from psana import utils
@@ -78,11 +79,42 @@ class RunParallel(Run):
         elif nodetype == "eb":
             self.eb_node.start()
         elif nodetype == "bd":
-            for evt in self.bd_node.start():
-                yield evt
+            yield from self.bd_node.start()
         elif nodetype == "srv":
             return
 
+    @contextmanager
+    def build_table(self):
+        """
+        Context manager for building timestamp-offset table.
+        Returns True only on BigDataNode if the table was successfully built.
+
+        Requires PS_EB_NODES=1 for broadcast mode.
+        """
+        if os.environ.get("PS_EB_NODES", "1") != "1":
+            raise RuntimeError("build_table() currently supports only PS_EB_NODES=1")
+
+        success = False
+        if nodetype == "smd0":
+            self.smd0.start()
+        elif nodetype == "eb":
+            self.eb_node.start_broadcast()
+        elif nodetype == "bd":
+            self.bd_node.start_smdonly()
+            success = bool(self._ts_table)
+        yield success
+
+    def event(self, ts):
+        offsets = self._ts_table.get(ts)
+        if offsets is None:
+            raise ValueError(f"Timestamp {ts} not found in offset table.")
+
+        dgrams = [None] * len(self.configs)
+        for i, (offset, size) in offsets.items():
+            buf = os.pread(self.ds.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
+
+        return Event(dgrams=dgrams, run=self)
 
 def safe_mpi_abort(msg):
     print(msg)
