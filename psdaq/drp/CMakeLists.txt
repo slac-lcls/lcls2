@@ -261,6 +261,16 @@ target_link_libraries(pgpread_jungfrau
     Threads::Threads
 )
 
+add_executable(pgpread_epixM320mon
+    pgpread_epixM320mon.cc
+)
+target_include_directories(pgpread_epixM320mon PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(pgpread_epixM320mon
+    Threads::Threads
+)
+
 add_executable(AxiBatcherParserTest
     AxiBatcherParserTest.cc
     AxiBatcherParser.cc
