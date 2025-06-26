@@ -13,7 +13,7 @@ import numpy as np
 #    Defaults for platform, collection host, groups
 #
 hutch_def = {'tmo':(0,'drp-srcf-mon001'),
-             'rix':(0,'drp-srcf-cmp004'),
+             'rix':(0,'drp-srcf-mon002'),
              'ued':(0,'drp-ued-cmp002'),
              'asc':(2,'drp-det-cmp001'),
              'mfx':(3,'drp-srcf-cmp041'),
