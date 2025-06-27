@@ -71,7 +71,8 @@ def datasource_kwargs_from_string(dsstring, detname=None):
         # filename specified
         kwargs["files"] = dsstring
 
-    if detname is not None: kwargs["detectors"] = [detname,]
+    #if detname is not None: kwargs["detectors"] = [detname,]
+    # DEPRECATED, because other detectors becoming not accessible
     return kwargs
 
 def datasource_kwargs_to_string(**kwargs):
