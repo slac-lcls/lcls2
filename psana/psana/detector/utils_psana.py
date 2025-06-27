@@ -78,15 +78,17 @@ def datasource_kwargs_from_string(s, detname=None):
     """
     import psana.psexp.utils as ut
 
-    return ut.datasource_kwargs_from_string(s, detname=detname)
+    return ut.datasource_kwargs_from_string(s)
+    #return ut.datasource_kwargs_from_string(s, detname=detname)
 
 
 def data_source_kwargs(**kwa):
     """Makes from input **kwa and returns dict of arguments **kwa for DataSource(**kwa)"""
-    detname  = kwa.get('det', None)
-    if detname is None: detname = kwa.get('detname', None)
+    #detname  = kwa.get('det', None)
+    #if detname is None: detname = kwa.get('detname', None)
     dskwargs = kwa.get('dskwargs', None)
-    return datasource_kwargs_from_string(dskwargs, detname=detname)
+    return datasource_kwargs_from_string(dskwargs)
+    #return datasource_kwargs_from_string(dskwargs, detname=None) # DEPRECATED
 
 
 def datasource_arguments(args):
@@ -109,8 +111,8 @@ def datasource_arguments(args):
     kwa = {'files':args.fname,} if args.fname is not None else\
           {'exp':args.expname,'run':[int(v) for v in args.runs.split(',')]}
     if args.evtmax: kwa['max_events'] = args.evtmax
-    if args.det:     kwa['detectors'] = [args.det,]
-    if args.detname: kwa['detectors'] = [args.detname,]
+    #if args.det:     kwa['detectors'] = [args.det,]
+    #if args.detname: kwa['detectors'] = [args.detname,]
     return kwa
 
 
@@ -124,14 +126,14 @@ def datasource_kwargs(**kwargs):
     exp     = kwargs.get('exp', None)
     runs    = kwargs.get('runs', None)
     events  = kwargs.get('events', 0)
-    detname = kwargs.get('det', None)
-    if detname is None: detname = kwa.get('detname', None)
+    #detname = kwargs.get('det', None)
+    #if detname is None: detname = kwa.get('detname', None)
 
     assert fname is not None\
            or None not in (exp, runs), 'experiment name and run or xtc2 file name need to be specified for DataSource'
     kwa = {'files':fname,} if fname is not None else\
           {'exp':exp,'run':[int(v) for v in runs.split(',')]}
-    if detname is not None: kwa['detectors'] = [detname,]
+    #if detname is not None: kwa['detectors'] = [detname,]
     return kwa
 
 
