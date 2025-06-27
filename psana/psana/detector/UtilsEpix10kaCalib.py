@@ -379,6 +379,11 @@ def pedestals_calibration(parser):
     dettype    = None
 
     dskwargs = data_source_kwargs(**kwa)
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc', 'detectors': ['epixquad',]} # then  'step_docstring' does not work!
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc', 'detectors': []}
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc'}
+    logger.info('dskwargs: %s' % str(dskwargs))
+
     try: ds = DataSource(**dskwargs)
     except Exception as err:
         logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
