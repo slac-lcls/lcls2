@@ -36,6 +36,39 @@ struct __attribute__((packed)) AxiPacketFooter {
     uint32_t crc;
 };
 
+class AxiPacket {
+public:
+    AxiPacket(void* buffer, size_t size) :
+        size_(size),
+        aph_(reinterpret_cast<AxiPacketHeader*>(buffer)),
+        apf_(reinterpret_cast<AxiPacketFooter*>((char*)(buffer) + size - sizeof(AxiPacketFooter)))
+    {}
+    ~AxiPacket() = default;
+
+    AxiPacketHeader* aph() const { return aph_; }
+    AxiPacketFooter* apf() const { return apf_; }
+
+    void* data() const { return aph_+1; }
+    size_t size() const { return size_ - sizeof(AxiPacketHeader) - sizeof(AxiPacketFooter); }
+
+    uint32_t version() const { return aph_->version; }
+    uint32_t tdest() const { return aph_->tdest; }
+    uint32_t crc_type() const { return aph_->crc_type; }
+    uint32_t crc() const { return apf_-> crc; }
+    uint32_t last_byte_cnt() const { return apf_->last_byte_cnt; }
+    uint32_t seq() const { return aph_->seq; }
+    uint32_t sof() const { return aph_->sof; }
+    uint32_t eof() const { return apf_->eof; }
+    uint32_t tid() const { return aph_->tid; }
+    uint32_t tuser_first() const { return aph_->tuser_first; }
+    uint32_t tuser_last() const { return apf_->tuser_last; }
+
+private:
+    size_t           size_;
+    AxiPacketHeader* aph_;
+    AxiPacketFooter* apf_;
+};
+
 class EpixMonStream {
 public:
     uint64_t ticks() const {
@@ -300,13 +333,12 @@ int main(int argc, char* argv[])
               printf("\n");
             }
 
-            AxiPacketHeader* aph = reinterpret_cast<AxiPacketHeader*>(dmaBuffers[index]);
+            AxiPacket ap(dmaBuffers[index], size);
+            AxiPacketHeader* aph = ap.aph();
+            AxiPacketFooter* apf = ap.apf();
             if (lverbose) {
                 printf("AxiPacketHeader: vers %u, crc_type %u, tuser_first %u, tdest %u, tid %u, seq %u, sof %u\n",
                        aph->version, aph->crc_type, aph->tuser_first, aph->tdest, aph->tid, aph->seq, aph->sof);
-            }
-            AxiPacketFooter* apf = reinterpret_cast<AxiPacketFooter*>((char*)(dmaBuffers[index]) + size - sizeof(AxiPacketFooter));
-            if (lverbose) {
                 printf("AxiPacketFooter: tuser_last %u, eof %u, last_byte_cnt %u, crc %u\n",
                        apf->tuser_last, apf->eof, apf->last_byte_cnt, apf->crc);
             }
@@ -314,7 +346,7 @@ int main(int argc, char* argv[])
             printf("Monitoring data for tdest %u:\n", aph->tdest);
             if (aph->tdest < 4) {
                 size_t pad = 20;
-                EpixMonStreamAsic* data = reinterpret_cast<EpixMonStreamAsic*>(aph+1);
+                EpixMonStreamAsic* data = reinterpret_cast<EpixMonStreamAsic*>(ap.data());
                 printf("Time -> ticks:       %lu\n", data->ticks());
                 printf("Time -> seconds:     %f\n",  data->timestamp());
                 printf("Carrier Therm:       %f\n", data->carrier_therm());
@@ -338,7 +370,7 @@ int main(int argc, char* argv[])
                        data->misc_voltage_2());
                 printf("ASIC%d An V 2V5:      %f\n", aph->tdest, data->asic_analog_voltage());
             } else {
-                EpixMonStreamPcb* data = reinterpret_cast<EpixMonStreamPcb*>(aph+1);
+                EpixMonStreamPcb* data = reinterpret_cast<EpixMonStreamPcb*>(ap.data());
                 printf("Time -> ticks:       %lu\n", data->ticks());
                 printf("Time -> seconds:     %f\n",  data->timestamp());
                 printf("PCB Humidity:        %f\n",  data->pcb_humidity());
