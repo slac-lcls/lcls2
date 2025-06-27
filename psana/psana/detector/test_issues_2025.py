@@ -977,6 +977,7 @@ def issue_2025_05_16(fname='test-array.npy', USE_GZIP=True): #False):
     # Verify that the loaded array is the same as the original array
     np.testing.assert_array_equal(arr, loaded_arr)
 
+
 def issue_2025_06_05():
     """test for excessive output
        epixquad det.raw.calib/image - zeros
@@ -1121,6 +1122,51 @@ def issue_2025_06_25(subtest=1):
        print(info_ndarr(raw, 'evt/sel:%6d/%4d dt=%.3f msec  raw' % (nev, evsel, dt_sec), last=10))
 
 
+def issue_2025_06_26(args):
+    """epixm raw/image/calib
+       datinfo -k exp=rix101332624,run=208 -d c_epixm
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+    subtest = args.subtest if args.subtest is not None else '1'
+
+    ds = DataSource(exp='rix101332624',run=208)
+
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm') # , cmpars=(1,0,0)) #(1,0,0))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       raw = det.raw.raw(evt)
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+
+       evsel += 1
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+
+       t0_sec = time()
+       nda = det.raw.calib(evt)
+       #nda = det.raw.image(evt)
+       dt_sec = (time() - t0_sec)*1000
+
+       nda = raw
+       #nda = calib
+       #nda = image
+       print(info_ndarr(nda, 'evt/sel:%6d/%4d dt=%.3f msec  nda' % (nev, evsel, dt_sec), last=5))
+
+
+
 #===
     
 #===
@@ -1187,6 +1233,7 @@ def selector():
     elif TNAME in ('28',): issue_2025_06_06() # Chris - jungfrau_dark_proc split for steps and panels
     elif TNAME in ('29',): issue_2025_06_17() # Chris - calibconstants run range
     elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
+    elif TNAME in ('31',): issue_2025_06_26(args) # me - epixm raw/image/calib
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
