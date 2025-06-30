@@ -38,7 +38,7 @@ def argument_parser():
     d_detname = None # 'jungfrau'
     d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-06-26'
+    d_version = 'V2025-06-27'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'
