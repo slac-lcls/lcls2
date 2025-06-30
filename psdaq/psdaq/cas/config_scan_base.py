@@ -208,3 +208,9 @@ class ConfigScanBase(object):
 
         scan.push_socket.send_string('shutdown') #shutdown the daq communicator thread
         scan.comm_thread.join()
+
+        if args.record is not None:
+            # Recording was requested, now we turn it off
+            if args.record == 1:
+                print("Setting record back to False")
+                rv = control.setRecord(False)
