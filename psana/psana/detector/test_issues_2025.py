@@ -1166,6 +1166,18 @@ def issue_2025_06_26(args):
        print(info_ndarr(nda, 'evt/sel:%6d/%4d dt=%.3f msec  nda' % (nev, evsel, dt_sec), last=5))
 
 
+def issue_2025_06_27(args):
+    """epixm raw/image/calib
+       datinfo -k exp=rix101332624,run=208 -d c_epixm
+    """
+    import os
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+
+    fname = '/sdf/home/p/philiph/psana/jungfrau/psana2/gains/pixel_offset.npy'
+
+    a = np.load(fname)
+    print(info_ndarr(a,'nda:'))
 
 #===
     
@@ -1234,6 +1246,7 @@ def selector():
     elif TNAME in ('29',): issue_2025_06_17() # Chris - calibconstants run range
     elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
     elif TNAME in ('31',): issue_2025_06_26(args) # me - epixm raw/image/calib
+    elif TNAME in ('32',): issue_2025_06_27(args) # philip - calibrepo
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
