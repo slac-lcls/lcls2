@@ -57,7 +57,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     d = ups.dict_filter(kwa, list_keys=('dskwargs', 'dirrepo', 'ctype',\
                                         'dettype', 'tsshort', 'detname', 'longname', 'shortname',\
                                         'gainmode', 'segment_ids', 'segment_inds', 'version'))
-    logger.debug('save_constants_in_repository kwa:', uts.info_dict(kwa))
+    logger.debug('save_constants_in_repository kwa: %s' % uts.info_dict(kwa))
     logger.info('essential kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
 
     dic_ctype_fmt = uc.dic_ctype_fmt(**kwa)
@@ -65,7 +65,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     for i,(segnum,segid) in enumerate(zip(segnums, segids)):
 
       if segind is not None and i != segind:
-          logger.info('---- skip segment %d, save only --segind %d' % (i,segind))
+          logger.debug('---- skip daq segment:%02d, segnum:%02d id:%s   save only --segind %d' % (i, segnum, segid, segind))
           continue
 
       logger.info('%s next segment\n   save segment constants for gain mode: %s in repo for raw ind:%02d segment num:%02d id: %s'%\
@@ -95,8 +95,8 @@ def _set_segment_ind_and_id(kwa):
       'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds(): %s'%\
       (segind, str(seg_inds))
     segid = seg_ids[seg_inds.index(segind)]
-    kwa['segment_inds'] = [segind,]
-    kwa['segment_ids'] = [segid,]
+    kwa['segment_inds'] = seg_inds[segind,]
+    kwa['segment_ids'] = seg_ids[segid,]
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
@@ -179,7 +179,7 @@ def save_segment_constants_in_repository(**kwa):
     odet = orun.Detector(kwa.get('detname', None))
 
     kwa_save = uc.add_metadata_kwargs(orun, odet, **kwa)
-    _set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
+    #_set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
     _check_gainmode(**kwa_save)
     _check_ctype(kwa_save)
     _set_tstamp(kwa_save)
