@@ -1190,15 +1190,15 @@ def issue_2025_06_30(args):
        Thanks!
        chris
 
-       calibman
-       epixm raw/image/calib
+       run test_issues_2025.py for issue_2025_06_30 to make epixm-zeros.data and epixm-ones.data
        datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
 
+       calibman
        cdb add -e rix100837624 -d epixm320_000006 -c pedestals    -r 1 -f epixm-zeros.data
        cdb add -e rix100837624 -d epixm320_000006 -c pixel_offset -r 1 -f epixm-zeros.data
        cdb add -e rix100837624 -d epixm320_000006 -c pixel_gain   -r 1 -f epixm-ones.data
+       calibman
     """
-    import os
     import numpy as np
     from psana.detector.NDArrUtils import info_ndarr
     from psana.pscalib.calib.NDArrIO import save_txt, load_txt
@@ -1215,7 +1215,7 @@ def issue_2025_06_30(args):
 
 
 def issue_2025_07_01(args):
-    """2025_06_30 5:13PM
+    """test that issue_2025_06_30 is resolved - print pedestals, pixel_offset, pixel_gain for epixm320
        datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
     """
     import numpy as np
@@ -1322,8 +1322,8 @@ def selector():
     elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
     elif TNAME in ('31',): issue_2025_06_26(args) # me - epixm raw/image/calib
     elif TNAME in ('32',): issue_2025_06_27(args) # philip - calibrepo
-    elif TNAME in ('33',): issue_2025_06_30(args) # cpo-epixm add to DB pedestals=0, pixel_offset=0, pixel_gain=1
-    elif TNAME in ('34',): issue_2025_07_01(args) # cpo-epixm check pedestals, pixel_offset, pixel_gain
+    elif TNAME in ('33',): issue_2025_06_30(args) # cpo - epixm add to DB pedestals=0, pixel_offset=0, pixel_gain=1
+    elif TNAME in ('34',): issue_2025_07_01(args) # test that issue_2025_06_30 is resolved - print pedestals, pixel_offset, pixel_gain for epixm320
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
