@@ -3,6 +3,8 @@
 #include <new>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 
 using namespace XtcData;
 
@@ -27,7 +29,10 @@ Dgram* XtcFileIterator::next()
     }
     ssize_t sz = ::read(_fd, dg.xtc.payload(), payloadSize);
     if (sz != (ssize_t)payloadSize) {
-        printf("XtcFileIterator::next read incomplete payload %d/%d\n", (int)sz, (int)payloadSize);
+        if (sz < 0)
+            printf("XtcFileIterator::next read error '%s' for payload of size %zu", strerror(errno), payloadSize);
+        else
+            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", sz, payloadSize);
     }
 
     return sz != (ssize_t)payloadSize ? 0 : &dg;
