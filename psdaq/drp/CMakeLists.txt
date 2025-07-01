@@ -52,6 +52,7 @@ add_executable(drp
 #    OpalTTSim.cc
     Piranha4.cc
     Piranha4TTFex.cc
+    TebReceiver.cc
     PGPDetector.cc
     PGPDetectorApp.cc
     drp.cc
@@ -69,6 +70,7 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
+    TebReceiver.cc
 #    BldDetectorSlow.cc
     BldDetector.cc
     BldNames.cc
@@ -87,6 +89,7 @@ target_link_libraries(drp_bld
 )
 
 add_executable(drp_pva
+    TebReceiver.cc
     PvaDetector.cc
 )
 
@@ -103,6 +106,7 @@ target_link_libraries(drp_pva
 )
 
 add_executable(drp_udpencoder
+    TebReceiver.cc
     UdpEncoder.cc
 )
 

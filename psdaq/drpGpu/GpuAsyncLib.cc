@@ -112,22 +112,26 @@ int CudaContext::getAttribute(CUdevice_attribute attr) {
 
 // -------------------------------------------------------------------
 
-bool checkError(CUresult status, const char* func, const char* file, int line, bool crash, const char* msg)
+bool checkError(CUresult status, const char* const func, const char* const file,
+                const int line, const bool crash, const char* const msg)
 {
     if (status != CUDA_SUCCESS) {
         const char* perrstr = 0;
         CUresult ok         = cuGetErrorString(status, &perrstr);
         const char* perrnam = 0;
         CUresult ok2        = cuGetErrorName(status, &perrnam);
-        if (!msg)  msg = func;          // Just in case, but msg is never 0
+        const auto message = msg ? (*msg ? msg : func) : func; // Just in case, but msg is never 0
         if (ok == CUDA_SUCCESS && ok2 == CUDA_SUCCESS) {
             if (perrstr) {
-                logging::error("%s:%d:  %s (%i): '%s'%s", file, line, perrnam, status, perrstr, *msg ? msg : func);
+                logging::error("%s:%d:  %s (%i): '%s'%s",
+                               file, line, perrnam, status, perrstr, message);
             } else {
-                logging::error("%s:%d:  %s (%i): unknown error%s", file, line, perrnam, status, *msg ? msg : func);
+                logging::error("%s:%d:  %s (%i): unknown error%s",
+                               file, line, perrnam, status, message);
             }
         } else {
-            logging::error("%s:%d:  status %i: unknown error%s", file, line, status, *msg ? msg : func);
+            logging::error("%s:%d:  status %i: unknown error%s",
+                           file, line, status, message);
         }
         if (crash)  abort();
         return true;
@@ -135,12 +139,13 @@ bool checkError(CUresult status, const char* func, const char* file, int line, b
     return false;
 }
 
-bool checkError(cudaError status, const char* func, const char* file, int line, bool crash, const char* msg)
+bool checkError(cudaError status, const char* const func, const char* const file,
+                const int line, const bool crash, const char* const msg)
 {
     if (status != cudaSuccess) {
-        if (!msg)  msg = func;          // Just in case, but msg is never 0
         logging::error("%s:%d:  %s (%i): '%s' - %s",
-                       file, line, cudaGetErrorName(status), status, cudaGetErrorString(status), *msg ? msg : func);
+                       file, line, cudaGetErrorName(status), status,
+                       cudaGetErrorString(status), msg ? (*msg ? msg : func) : func);
         if (crash)  abort();
         return true;
     }

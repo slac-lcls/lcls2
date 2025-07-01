@@ -2,8 +2,9 @@
 
 #include "GpuAsyncLib.hh"
 #include "psdaq/service/EbDgram.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "psalg/utils/SysLog.hh"
-#include "drp/drp.hh"                   // For PGPEvent
 
 using logging = psalg::SysLog;
 using namespace XtcData;
@@ -11,24 +12,58 @@ using namespace Pds;
 using namespace Drp::Gpu;
 using json = nlohmann::json;
 
+namespace Drp {
+  class PGPEvent;
+  namespace Gpu {
+
+// The functionality of the Drp::Detector is need to set up each of the panels
+// However, the data description and handling in the GPU case will be different,
+// so we create a Drp Detector class to handle just the protion we need.
+// Derive from Drp::XpmDetector so it can be made non-abstract.
+class XpmDetector : public Drp::XpmDetector
+{
+public:
+  XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
+  using Drp::XpmDetector::event;
+  void event(XtcData::Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event) override { /* Not used */ }
+};
+
+class FexDef : public VarDef
+{
+public:
+  enum index
+    {
+      array_fex
+    };
+
+  FexDef()
+  {
+    Alg fex("fex", 0, 0, 0);
+    NameVec.push_back({"array_fex", Name::UINT8, 1});
+  }
+};
+  } // Gpu
+} // Drp
+
+
 EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   Drp::Gpu::Detector(&para, &pool)
 {
   // Call common code to set up a vector of Drp::EpixUHRemus
-  _initialize<Drp::AreaDetector>(para, pool);
+  _initialize<Drp::Gpu::XpmDetector>(para, pool);
 
   // Check there is enough space in the DMA buffers for this many pixels
   assert(NPixels <= (pool.dmaSize() - sizeof(DmaDsc) - sizeof(TimingHeader)) / sizeof(uint16_t));
 
   // Set up buffers
-  pool.createCalibBuffers(m_pool->nbuffers(), m_dets.size(), NPixels);
+  pool.createCalibBuffers(m_dets.size(), NPixels);
 
   // Allocate space for the calibration constants for each panel
-  m_peds_h.resize(m_dets.size());
-  m_gains_h.resize(m_dets.size());
+  m_peds_d.resize(m_dets.size());
+  m_gains_d.resize(m_dets.size());
   for (unsigned i = 0; i < m_dets.size(); ++i) {
-    chkError(cudaMalloc(&m_peds_h[i],  NGains * NPixels * sizeof(*m_peds_h[i])));
-    chkError(cudaMalloc(&m_gains_h[i], NGains * NPixels * sizeof(*m_gains_h[i])));
+    chkError(cudaMalloc(&m_peds_d[i],  NGains * NPixels * sizeof(*m_peds_d[i])));
+    chkError(cudaMalloc(&m_gains_d[i], NGains * NPixels * sizeof(*m_gains_d[i])));
   }
 }
 
@@ -36,8 +71,8 @@ EpixUHRemu::~EpixUHRemu()
 {
   printf("*** EpixUHRemu dtor 1\n");
   for (unsigned i = 0; i < m_dets.size(); ++i) {
-    chkError(cudaFree(m_peds_h[i]));
-    chkError(cudaFree(m_gains_h[i]));
+    chkError(cudaFree(m_peds_d[i]));
+    chkError(cudaFree(m_gains_d[i]));
   }
   printf("*** EpixUHRemu dtor 2\n");
 
@@ -48,6 +83,52 @@ EpixUHRemu::~EpixUHRemu()
   printf("*** EpixUHRemu dtor 4\n");
 }
 
+unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
+{
+  logging::info("Gpu::EpixUHRemu configure");
+  unsigned rc = 0;
+
+  // Configure the XpmDetector for each panel in turn
+  // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
+  unsigned i = 0;
+  for (const auto& det : m_dets) {
+    printf("*** Gpu::EpixUHRemu configure for %u start\n", i);
+    rc = det->configure(config_alias, xtc, bufEnd);
+    printf("*** Gpu::EpixUHRemu configure for %u done: rc %d, sz %u\n", i, rc, xtc.sizeofPayload());
+    if (rc) {
+      logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_params[i].device);
+      break;
+    }
+    ++i;
+  }
+
+  Alg fexAlg("fex", 0, 0, 0);
+  NamesId fexNamesId(nodeId, FexNamesIndex);
+  Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
+                                            m_para->detName.c_str(), fexAlg,
+                                            m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
+  FexDef myFexDef;
+  fexNames.add(xtc, bufEnd, myFexDef);
+  m_namesLookup[fexNamesId] = NameIndex(fexNames);
+
+  logging::info("Gpu::EpixUHRemu configure: xtc size %u", xtc.sizeofPayload());
+
+  return 0;
+}
+
+size_t EpixUHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, unsigned payloadSize)
+{
+  logging::info("Gpu::EpixUHRemu event");
+
+  // FEX is Reduced data
+  NamesId fexNamesId(nodeId, FexNamesIndex);
+  DescribedData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
+
+  fex.set_data_length(payloadSize);
+  unsigned fex_shape[MaxRank] = {payloadSize};
+  fex.set_array_shape(FexDef::array_fex, fex_shape);
+  return (uint8_t*)fex.data() - (uint8_t*)&dgram;
+}
 
 unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 {
@@ -66,8 +147,8 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
   std::vector<float> peds(NPixels, 0.0);
   std::vector<float> gains(NPixels, 1.0);
   for (unsigned i = 0; i < m_dets.size(); ++i) {
-    auto peds_d  = m_peds_h[i];
-    auto gains_d = m_gains_h[i];
+    auto peds_d  = m_peds_d[i];
+    auto gains_d = m_gains_d[i];
     for (unsigned gn = 0; gn < NGains; ++gn) {
       chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyHostToDevice));
       chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyHostToDevice));
@@ -80,22 +161,21 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 }
 
 // This kernel performs the data calibration
-static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
+static __global__ void _calibrate(float*   const* const __restrict__ calibBuffers,
                                   uint16_t const* const __restrict__ in,
                                   const unsigned&                    index,
                                   const unsigned                     panel,
-                                  const unsigned                     nPanels,
                                   float* const         __restrict__  peds_,
                                   float* const         __restrict__  gains_)
 {
   int pixel = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const __restrict__ out = &calibBuffers[index * nPanels * EpixUHRemu::NPixels];
+  auto const __restrict__ out = &calibBuffers[index][panel * EpixUHRemu::NPixels];
 
   const auto gainMask = (1 << EpixUHRemu::GainOffset) - 1;
   for (int i = pixel; i < EpixUHRemu::NPixels; i += blockDim.x * gridDim.x) {
     const auto gain     = (in[i] >> EpixUHRemu::GainOffset) & ((1 << EpixUHRemu::GainBits) - 1);
-    const auto peds     = peds_  + gain * EpixUHRemu::NPixels;
-    const auto gains    = gains_ + gain * EpixUHRemu::NPixels;
+    const auto peds     = &peds_ [gain * EpixUHRemu::NPixels];
+    const auto gains    = &gains_[gain * EpixUHRemu::NPixels];
     const auto data     = in[i] & gainMask;
     out[i] = (float(data) - peds[i]) * gains[i];
   }
@@ -115,10 +195,10 @@ void EpixUHRemu::recordGraph(cudaStream_t&                      stream,
   int threads = 1024;
   int blocks  = (NPixels + threads-1) / threads; // @todo: Limit this?
   auto       pool         = m_pool->getAs<MemPoolGpu>();
-  const auto peds         = m_peds_h[panel];
-  const auto gains        = m_gains_h[panel];
-  auto const calibBuffers = pool->calibBuffers() + panel * NPixels;
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, rawBuffer, index_d, panel, nPanels, peds, gains);
+  const auto peds         = m_peds_d[panel];
+  const auto gains        = m_gains_d[panel];
+  auto const calibBuffers = pool->calibBuffers_d();
+  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, rawBuffer, index_d, panel, peds, gains);
 }
 
 // The class factory

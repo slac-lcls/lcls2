@@ -22,6 +22,7 @@
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
+#include "TebReceiver.hh"
 #include "psdaq/service/IpcUtils.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -331,6 +332,8 @@ PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& conte
     m_pyAppTime(0),
     m_pythonDrp(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string PGPDrp::configure(const json& msg)

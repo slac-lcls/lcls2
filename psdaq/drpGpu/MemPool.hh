@@ -57,18 +57,24 @@ private:  // Virtuals
 public:
   const CudaContext& context() const { return m_context; }
   const std::vector<DetPanel>& panels() const { return m_panels; }
-  void createHostBuffers(unsigned panel, unsigned nBuffers, size_t size);
+  void createHostBuffers(unsigned panel, size_t size);
   void destroyHostBuffers(unsigned panel);
-  void createCalibBuffers(unsigned nBuffers, unsigned nPanels, unsigned nWords);
+  void createCalibBuffers(unsigned nPanels, unsigned nElements);
   void destroyCalibBuffers();
-  void createReduceBuffers(unsigned nBuffers, unsigned nWords);
+  void createReduceBuffers(size_t nBytes, size_t reserved);
   void destroyReduceBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
-  const auto& hostBuffers_h() const { return m_hostWriteBufs_h; }
-  const auto& hostBuffers_d() const { return m_hostWriteBufs_d; }
-  const auto& hostPnlBufs_d() const { return m_hostPnlWrBufs_d; }
-  const auto& calibBuffers () const { return m_calibBuffers; }
-  const auto& reduceBuffers() const { return m_dataBuffers; }
+  const auto& hostWrtBufsVec_h() const { return m_hostWrtBufsVec_h; }
+  const auto& hostWrtBufsVec_d() const { return m_hostWrtBufsVec_d; }
+  const auto& hostWrtBufs_d()    const { return m_hostWrtBufs_d; }
+  const auto& calibBuffers_h ()  const { return m_calibBufsVec_h; }
+  const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
+  const auto& reduceBuffers_h()  const { return m_reduceBufsVec_h; }
+  const auto& reduceBuffers_d()  const { return m_reduceBuffers_d; }
+  size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
+  size_t calibBufSize()          const { return m_calibBufSize; }
+  size_t reduceBufSize()         const { return m_reduceBufSize; }
+  size_t reduceBufReserved()     const { return m_reduceBufRsvd; }
 private:
   int  _gpuMapFpgaMem(int fd, CUdeviceptr& buffer, uint64_t offset, size_t size, int write);
   void _gpuUnmapFpgaMem(CUdeviceptr& buffer);
@@ -76,11 +82,17 @@ private:
   CudaContext             m_context;
   std::vector<DetPanel>   m_panels;
   unsigned                m_setMaskBytesDone;
-  std::vector<vecpu32_t>  m_hostWriteBufs_h; // [nPanels][nBuffers][nWords]
-  std::vector<uint32_t**> m_hostWriteBufs_d; // [nPanels][nBuffers][nWords]
-  uint32_t***             m_hostPnlWrBufs_d; // [nPanels][nBuffers][nWords]
-  float*                  m_calibBuffers;    // [nBuffers][nPanels][nWords]
-  float*                  m_dataBuffers;     // [nBuffers][nWords]
+  size_t                  m_hostWrtBufsSize;
+  std::vector<vecpu32_t>  m_hostWrtBufsVec_h; // [nPanels][nBuffers][nElements]
+  std::vector<uint32_t**> m_hostWrtBufsVec_d; // [nPanels][nBuffers][nElements]
+  uint32_t***             m_hostWrtBufs_d;    // [nPanels][nBuffers][nElements]
+  size_t                  m_calibBufSize;
+  std::vector<float*>     m_calibBufsVec_h;   // [nBuffers][nPanels * nElements]
+  float**                 m_calibBuffers_d;   // [nBuffers][nPanels * nElements]
+  size_t                  m_reduceBufSize;
+  size_t                  m_reduceBufRsvd;
+  std::vector<uint8_t*>   m_reduceBufsVec_h;  // [nBuffers][nBytes]
+  uint8_t**               m_reduceBuffers_d;  // [nBuffers][nBytes]
 };
 
   } // Gpu

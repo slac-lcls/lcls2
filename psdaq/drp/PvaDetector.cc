@@ -18,6 +18,7 @@
 #include <regex>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -725,6 +726,8 @@ PvDrp::PvDrp(PvParameters& para, MemPoolCpu& pool, PvDetector& det, ZmqContext& 
     m_evtQueue (pool.nbuffers()),
     m_terminate(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string PvDrp::configure(const json& msg)

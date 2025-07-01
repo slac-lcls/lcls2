@@ -18,10 +18,12 @@ namespace Pds {
                    const void*         bufEnd) override;
 #ifdef __NVCC__  // Override only if being built for a GPU
       void   event(cudaStream_t&     stream,
-                   float*            calibBuffers,
+                   float**           calibBuffers,
                    uint32_t** const* out,
                    unsigned&         index,
                    bool&             done) override;
+#else
+      using TriggerPrimitive::event;
 #endif
       size_t size() const override  { return sizeof(TmoTebData); }
     };

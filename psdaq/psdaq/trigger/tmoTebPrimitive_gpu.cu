@@ -9,7 +9,7 @@ using namespace Pds;
 using namespace Pds::Trg;
 using namespace Drp::Gpu;
 
-static __global__ void _event(float*     const  __restrict__ calibBuffers,
+static __global__ void _event(float**    const  __restrict__ calibBuffers,
                               uint32_t** const* __restrict__ out,
                               unsigned&                      index,
                               bool&                          done)
@@ -29,7 +29,7 @@ static __global__ void _event(float*     const  __restrict__ calibBuffers,
 
 // This method presumes that it is being called while the stream is in capture mode
 void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&     stream,
-                                      float*            calibBuffers,
+                                      float**           calibBuffers,
                                       uint32_t** const* out,
                                       unsigned&         index,
                                       bool&             done)

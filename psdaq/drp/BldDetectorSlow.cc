@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -878,6 +879,8 @@ BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& co
     DrpBase(para, pool, det, context),
     m_pgp  (para, *this, &det)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(para, *this));
 }
 
 std::string BldDrp::configure(const json& msg)

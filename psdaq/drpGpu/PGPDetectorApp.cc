@@ -515,7 +515,7 @@ int main(int argc, char* argv[])
     int c;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -556,6 +556,9 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
+                break;
+            case 'W':
+                para.nworkers = std::stoi(optarg);
                 break;
             case 'v':
                 ++para.verbose;
@@ -618,6 +621,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "gpuId")          continue;
+        if (kwargs.first == "reducer")        continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

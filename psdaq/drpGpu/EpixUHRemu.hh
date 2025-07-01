@@ -25,20 +25,20 @@ public:  // ePixUHR parameters:
 public:
   Gpu::Detector* gpuDetector() override { return this; }
 
+  unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
   unsigned beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) override;
+  size_t event(XtcData::Dgram&, const void* bufEnd, unsigned payloadSize) override;
+  using Gpu::Detector::event;
 public:
   void recordGraph(cudaStream_t&                      stream,
                    const unsigned&                    index,
                    const unsigned                     panel,
                    uint16_t const* const __restrict__ data) override;
-  // @todo: To be implemented or moved
-  //void recordReduceGraph(cudaStream_t&             stream,
-  //                       const unsigned&           index,
-  //                       float* const __restrict__ calibBuffers,
-  //                       float* const __restrict__ dataBuffers) override;
 private:
-  std::vector<float*> m_peds_h;  // [NPanels][NGains][NPixels]
-  std::vector<float*> m_gains_h; // [NPanels][NGains][NPixels]
+  enum {FexNamesIndex = NamesIndex::BASE};
+private:
+  std::vector<float*> m_peds_d;  // [NPanels][NGains][NPixels]
+  std::vector<float*> m_gains_d; // [NPanels][NGains][NPixels]
 };
 
   } // Gpu

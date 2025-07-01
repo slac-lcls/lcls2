@@ -280,7 +280,7 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
                    __PRETTY_FUNCTION__, _prms.core[1]);
   }
 
-  logging::info("EB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
+  logging::info("TEB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
 
   int rcPrv = 0;
   while (true)
@@ -292,19 +292,19 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
     {
       if (rc == -FI_ENOTCONN)
       {
-        logging::critical("Receiver thread lost connection with a TEB");
-        throw "Receiver thread lost connection with a TEB";
+        logging::critical("TEB Receiver thread lost connection with a TEB");
+        throw "TEB Receiver thread lost connection with a TEB";
       }
       if (rc == rcPrv)
       {
-        logging::critical("Receiver thread aborting on repeating fatal error: %d", rc);
+        logging::critical("TEB Receiver thread aborting on repeating fatal error: %d", rc);
         throw "Repeating fatal error";
       }
     }
     rcPrv = rc;
   }
 
-  logging::info("Receiver thread finished");
+  logging::info("TEB Receiver thread finished");
 }
 
 int EbCtrbInBase::_process(TebContributor& ctrb)

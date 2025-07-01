@@ -16,15 +16,16 @@ public:
 public:
   Gpu::Detector* gpuDetector() override { return this; }
 public:
+  unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
+  size_t event(XtcData::Dgram&, const void* bufEnd, unsigned payloadSize) override;
+  using Gpu::Detector::event;
+public:
   void recordGraph(cudaStream_t&                      stream,
                    const unsigned&                    index,
                    const unsigned                     panel,
                    uint16_t const* const __restrict__ data) override;
-  // @todo: To be implemented or moved
-  //void recordReduceGraph(cudaStream_t&             stream,
-  //                       const unsigned&           index,
-  //                       float* const __restrict__ calibBuffers,
-  //                       float* const __restrict__ dataBuffers) override;
+private:
+  enum {FexNamesIndex = NamesIndex::BASE};
 private:
   unsigned m_nPixels;
 };

@@ -26,10 +26,12 @@ public:
   unsigned beginstep(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& stepInfo) override;
   unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
   unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
-  void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override { /* Not used */ };
-  void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* Not used */ }
+  //void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override { /* Defaulted */ };
   using Drp::Detector::event;
+  void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* Not used */ }
   void shutdown() override;
+
+  virtual size_t event(XtcData::Dgram& dgram, const void* bufEnd, unsigned payloadSize) = 0;
 
   // @todo: What to do about these?
   //// Scan methods.  Default is to fail.
@@ -38,7 +40,7 @@ public:
 
   Pds::TimingHeader* getTimingHeader(uint32_t index) const override
   {
-    const auto& dmaBuffers = m_pool->getAs<MemPoolGpu>()->hostBuffers_h()[0]; // Reference only worker 0's
+    const auto& dmaBuffers = m_pool->getAs<MemPoolGpu>()->hostWrtBufsVec_h()[0]; // Reference only worker 0's
     auto dsc = dmaBuffers[index];
     static const unsigned DmaDscWords = sizeof(DmaDsc) / sizeof(uint32_t);
     return reinterpret_cast<Pds::TimingHeader*>(&dsc[DmaDscWords]);
