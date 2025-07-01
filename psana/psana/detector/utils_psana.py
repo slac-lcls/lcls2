@@ -77,9 +77,7 @@ def datasource_kwargs_from_string(s, detname=None):
     kwargs for DataSource
     """
     import psana.psexp.utils as ut
-
-    return ut.datasource_kwargs_from_string(s)
-    #return ut.datasource_kwargs_from_string(s, detname=detname)
+    return ut.datasource_kwargs_from_string(s, detname=detname)
 
 
 def data_source_kwargs(**kwa):
