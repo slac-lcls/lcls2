@@ -1179,6 +1179,81 @@ def issue_2025_06_27(args):
     a = np.load(fname)
     print(info_ndarr(a,'nda:'))
 
+
+def issue_2025_06_30(args):
+    """2025_06_30 5:13PM
+       Hi Mikhail,
+       For the epixm in exp=rix100837624,run=34 would you be able to deploy pedestals/offsets to zero and gains to 1
+       so that det.calib values are the same as det.raw?  It would make Alex’s life easier for the beamtime starting tomorrow.
+       We may also need to do it for rix101332624 tomorrow, but I have the impression
+       the constants will automatically propagate there?  Let me know if not…
+       Thanks!
+       chris
+
+       calibman
+       epixm raw/image/calib
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+
+       cdb add -e rix100837624 -d epixm320_000006 -c pedestals    -r 1 -f epixm-zeros.data
+       cdb add -e rix100837624 -d epixm320_000006 -c pixel_offset -r 1 -f epixm-zeros.data
+       cdb add -e rix100837624 -d epixm320_000006 -c pixel_gain   -r 1 -f epixm-ones.data
+    """
+    import os
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.pscalib.calib.NDArrIO import save_txt, load_txt
+
+    sh = (4, 192, 384)
+    fname1 = 'epixm-ones.data'
+    fname0 = 'epixm-zeros.data'
+    a0 = np.zeros(sh, dtype=np.float32)
+    a1 = np.ones(sh, dtype=np.float32)
+    save_txt(fname0, a0, fmt='%.1f')
+    save_txt(fname1, a1, fmt='%.1f')
+    print('saved %s'% fname0, info_ndarr(a0,'a0:'))
+    print('saved %s'% fname1, info_ndarr(a1,'a1:'))
+
+
+def issue_2025_07_01(args):
+    """2025_06_30 5:13PM
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+    subtest = args.subtest if args.subtest is not None else '1'
+
+    ds = DataSource(exp='rix100837624',run=34)
+
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm') # , cmpars=(1,0,0)) #(1,0,0))
+
+    print(info_ndarr(det.raw._pedestals(), 'pedestals', last=5))
+    print(info_ndarr(det.raw._gain(), 'gain', last=5))
+    #print(info_ndarr(det.raw._offset(), 'offset', last=5))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       raw = det.raw.raw(evt)
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+
+       evsel += 1
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       calib = det.raw.calib(evt)
+       print(info_ndarr(raw,   'evt/sel:%6d/%4d raw' % (nev, evsel), last=5))
+       print(info_ndarr(calib, 18*' '+'calib', last=5))
+
 #===
     
 #===
@@ -1247,6 +1322,8 @@ def selector():
     elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
     elif TNAME in ('31',): issue_2025_06_26(args) # me - epixm raw/image/calib
     elif TNAME in ('32',): issue_2025_06_27(args) # philip - calibrepo
+    elif TNAME in ('33',): issue_2025_06_30(args) # cpo-epixm add to DB pedestals=0, pixel_offset=0, pixel_gain=1
+    elif TNAME in ('34',): issue_2025_07_01(args) # cpo-epixm check pedestals, pixel_offset, pixel_gain
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
