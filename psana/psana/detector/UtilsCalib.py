@@ -682,8 +682,9 @@ def pedestals_calibration(parser):
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
 
-  dskwargs = up.datasource_kwargs_from_string(str_dskwargs) # , detname=detname)
+  dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=detname)
   logger.info('DataSource kwargs: %s' % str(dskwargs))
+
   try:
     ds = DataSource(**dskwargs)
   except Exception as err:
