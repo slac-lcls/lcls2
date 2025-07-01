@@ -22,6 +22,8 @@ USAGE = 'Usage:'\
       + '\n  %s -k /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101332224/xtc/mfx101332224-r0007-s001-c000.xtc2 -d epix100 -o ./work' % SCRNAME\
       + '\n  %s -k exp=mfx101332224,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101332224/xtc/ -d epix100 -o ./work # (704, 768)' % SCRNAME\
       + '\n  %s -k exp=mfx101332224,run=7 -d epix100 -o ./work # (704, 768)' % SCRNAME\
+      + '\n  %s -k "{\'exp\':\'rix101333324\',\'run\':70,\'detectors\':[\'archon\',]}" -d archon -o ./work' % SCRNAME\
+      + '\n  %s -k exp=rix101333324,run=70 -d archon -o ./work' % SCRNAME\
       + '\n\nHelp:\n  %s -h' % SCRNAME
 
 
@@ -56,7 +58,7 @@ def argument_parser():
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None    # 20180910111049 or run number <10000
-    d_version = 'V2025-03-28'
+    d_version = 'V2025-07-01'
     d_run_end = 'end'
     d_comment = 'no comment'
     d_plotim  = 0
