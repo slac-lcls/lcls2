@@ -489,6 +489,7 @@ static void usage(const char* p)
   printf("         -V              [dump registers]\n");
   printf("         -m              [disable DRAM monitoring]\n");
   printf("         -M              [enable DRAM monitoring]\n");
+  printf("         -U              [user reset to clear readout pipeline]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
   printf("         -R              [reset timing receiver]\n");
@@ -510,6 +511,7 @@ int main(int argc, char* argv[])
     bool rxTimRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
+    bool userRst   = false;
     bool loopback  = false;
     int clksel     = 1; // LCLS2 default
     int dramMon    = -1;
@@ -522,7 +524,7 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rRsStTLmMFVD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rRsStTULmMFVD:C:1")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
@@ -535,6 +537,7 @@ int main(int argc, char* argv[])
       case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
       case 'T': timingRst = true; break;
+      case 'U': userRst   = true; break;
       case 'V': dumpReg   = true; break;
       case 'm': dramMon   = 0;    break;
       case 'M': dramMon   = 1;    break;
@@ -723,6 +726,10 @@ int main(int argc, char* argv[])
         v &= ~0x1;
         set_reg32( 0x00c00020, v);
       }
+    }
+
+    if (userRst) {
+      set_reg32( 0x00800000,(1<<31));
     }
 
     if (dramMon==1) {

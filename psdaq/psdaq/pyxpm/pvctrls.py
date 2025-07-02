@@ -4,6 +4,8 @@ import traceback
 import threading
 import socket
 import struct
+import datetime
+import math
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvseq import *
@@ -114,13 +116,19 @@ class IdxRegH(PVHandler):
         retry_wlock(self.cmd,pv,value)
 
 class L0DelayH(IdxRegH):
-    def __init__(self, valreg, idxreg, idx, pvu, archive=None):
-        super(L0DelayH,self).__init__(valreg, idxreg, idx, archive)
+    def __init__(self, valreg, app, idx, pvu, archive=None):
+        super(L0DelayH,self).__init__(valreg, app.partition, idx, archive)
+        self.app = app
         self.pvu = pvu
 
     def handle(self, pv, value):
         logging.info(f'Setting L0Delay[{self._idx}] to {pipelinedepth_from_delay(value):x}')
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
+
+        # Toggle L0Reset for this group (set or post?)
+        self.app.groupL0Reset.set(1<<self._idx)
+        time.sleep(1.e-3)
+        self.app.groupL0Reset.set(0)
 
         curr = self.pvu.current()
         curr['value'] = value*_fidPeriod
@@ -333,7 +341,7 @@ class GroupSetup(object):
             provider.add(name+':'+label+'_ns',pvu)
 
             pv = SharedPV(initial=NTScalar('I').wrap(init), 
-                          handler=L0DelayH(reg,self._app.partition,group,pvu,archive=name+':'+label))
+                          handler=L0DelayH(reg,self._app,group,pvu,archive=name+':'+label))
             provider.add(name+':'+label,pv)
             if set:
                 self._app.partition.set(group)
@@ -475,7 +483,6 @@ class GroupCtrls(object):
             return pv
 
         self._pv_l0Reset   = _addPV('GroupL0Reset'  ,app.groupL0Reset)
-        #self._pv_l0Enable  = _addPV('GroupL0Enable' ,app.groupL0Enable)
         self._pv_l0Enable  = addPVC(f'{name}:GroupL0Enable','I',0,self.groupEnable)
         self._pv_l0Disable = _addPV('GroupL0Disable',app.groupL0Disable)
         self._pv_MsgInsert = _addPV('GroupMsgInsert',app.groupMsgInsert)
@@ -515,9 +522,46 @@ class GroupCtrls(object):
                 logging.info(f'Set L0Delay[{i}] to {self._app.pipelineDepth.get():x}')
         lock.release()
 
+class ClockControl(object):
+
+    _epoch = datetime.datetime(1990,1,1)
+
+    def __init__(self, xpm):
+        #  Set the initial timestamp
+        ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
+        ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
+        xpm.CuGenerator.timeStamp.set(ts)
+        print(f'Wrote {ts:016x} to timestamp')
+
+        self._reg = xpm.CuGenerator.clockControl
+        self._mode = 0
+
+    def update(self, ts):
+
+        ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
+        dsec = (ts[1] + 1.e-9*ts[0]) - ut + 2.e-3  # Latency of 2ms in writing
+        
+#        print(f'ClockControl.update {ts[0]:08x} {ts[1]:08x} {int(ut):08x}.{int(math.fmod(ut,1)*1.e9):08x} {dsec}')
+
+        if self._reg is None:
+            pass
+        else:
+            if self._mode==0 and dsec < -0.005:  # Lagging
+                self._mode = 1
+                self._reg.set(0x1f0c05)
+                print(f'ClockControl.update ut={ut}  dsec={dsec}.  Lagging.  Raise clock rate')
+            elif self._mode==0 and dsec > 0.005: # Leading
+                self._mode = -1
+                self._reg.set(0x150805)
+                print(f'ClockControl.update ut={ut}  dsec={dsec}.  Leading.  Reduce clock rate')
+            elif (self._mode==1 and dsec > 0) or (self._mode==-1 and dsec<0):  # Recovered
+                self._mode = 0
+                self._reg.set(0x0d0505)
+                print(f'ClockControl.update ut={ut}  dsec={dsec}.  Recovered')
+
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3):
+    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3, imageName=None):
         global provider
         provider = p
         global lock
@@ -553,6 +597,8 @@ class PVCtrls(object):
         self._pv_amcDumpPLL = []
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm)
+
+        self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
 
         self._group = GroupCtrls(name, app, stats)
 
@@ -595,7 +641,7 @@ class PVCtrls(object):
         logging.info('monStreamPeriod {}'.format(app.monStreamPeriod.get()))
         app.monStreamPeriod.set(104166667)
         app.monStreamEnable.set(1)
-        
+
         #  Launch the zmq polling thread
         self._zthread = threading.Thread(target=self.zrcv)
         self._zthread.start()
@@ -693,14 +739,17 @@ class PVCtrls(object):
                     # seqInvalid
                     if self._seq:
                         u = struct.unpack_from(f'<B',msg,offset)[0] # seqInvalid
-                        offset += 1
                         for i in range(NCODES//4):
                             if u&(1<<i):
                                 logging.warning(f'Seq {i} is invalid.  Resetting.')
                                 self._seq[i]._eng.reset()
-                    else:
-                        offset += 1
-                                
+                    offset += 1
+
+                    if self._clock_control:
+                        ts = struct.unpack_from('<2I',msg,offset)
+                        self._clock_control.update(ts)
+                    offset += 8
+
                     # check for a dropped "step done"
                     for i in range(8):
                         g = self._group._groups[i]

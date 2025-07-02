@@ -1,7 +1,7 @@
 import os
 from psana import utils
 
-logger = utils.Logger()
+logger = utils.get_logger(name="timestamp_sort_h5.utils")
 
 
 def get_dask_client(
@@ -11,7 +11,7 @@ def get_dask_client(
     # also check how dask cleans up its tmp dir try cluster.close()
     # SBATCH_PARTITION
     from dask_jobqueue import SLURMCluster
-    from dask.distributed import Client, progress
+    from dask.distributed import Client
 
     account = os.environ.get("SLURM_JOB_ACCOUNT", "")
     if not account:

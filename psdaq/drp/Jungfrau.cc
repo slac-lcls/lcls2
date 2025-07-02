@@ -287,6 +287,8 @@ void Jungfrau::_connectionInfo(PyObject*)
 
         // clear out any old serial numbers from previous calls
         m_serNos.clear();
+        // Clearout the old data in delimited string.
+        m_para->serNo = std::string("");
 
         for (size_t i=0; i < m_nModules; ++i) {
             // construct the LCLS1 style Jungfrau serial id
@@ -375,6 +377,12 @@ unsigned Jungfrau::_configure_module(size_t mod,
                                       mod,
                                       sls::ToString(it->second).c_str());
                         m_slsDet->setGainMode(it->second, pos);
+                        if ((gainModeEnums[gainMode] == "FIX_G1") ||
+                            (gainModeEnums[gainMode] == "FIX_G2")) {
+                            m_inFixedGain = true;
+                        } else {
+                            m_inFixedGain = false;
+                        }
                     } else {
                         logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
                                        gainModeEnums[gainMode].c_str(),
@@ -551,6 +559,22 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     }
 }
 
+
+/**
+ * Count the number of "hot" pixels in the raw data to feed to the detector protection
+ * IOC. Counts number of pixels in low gain that are over a threshold.
+ * Results from this function are recorded in the XTC, and are sent via the
+ * trigger primitive to TEB (if .so is loaded). The TEB trigger plugin will communicate
+ * with the IOC to actually activate the detector protection mechanism.
+ * NOTE: Gain is negative when switched to low/medium gain in the DYNAMIC
+ *       (auto-switching) mode; however, it is positive when in the FIXED low/medium gain
+ *       mode. Thresholds are treated as if the gain mode were positive for both
+ *       cases - the class keeps track of the gain mode to make sure it does the
+ *       calculation properly.
+ * @param rawData Pointer to the underlying raw data.
+ * @param hotPixelThreshold The ADU threshold above which a pixel is considered "hot".
+ * @param numPixels Number of pixels in the raw data.
+ */
 uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels) {
     uint32_t numHotPixels {0};
     static const uint16_t gain_bits = 3 << 14;
@@ -558,8 +582,9 @@ uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThresh
 
     for (size_t i=0; i<numPixels; ++i) {
         uint16_t value = rawData[i];
-        if (((value & gain_bits) == gain_bits) &&
-            ((data_bits - (value & data_bits)) > hotPixelThreshold)) {
+        bool overThresh = m_inFixedGain ? (value & data_bits) > hotPixelThreshold :
+                                          (data_bits - (value & data_bits)) > hotPixelThreshold;
+        if (((value & gain_bits) == gain_bits) && overThresh) {
             numHotPixels++;
         }
     }
@@ -669,10 +694,11 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
 
         // check the framenum is the expected value
         if (framenum != m_expectedFrameNum) {
-          logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %lu",
+          logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %ld - ts %lu",
                          moduleIdx, segNo, slsHost,
                          framenum, m_expectedFrameNum,
-                         framenum - m_expectedFrameNum);
+                         static_cast<int64_t>(framenum - m_expectedFrameNum),
+                         timestamp);
           dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
 
@@ -761,6 +787,12 @@ unsigned Jungfrau::stepScan(const nlohmann::json& stepInfo, Xtc& xtc, const void
                                       mod,
                                       sls::ToString(it->second).c_str());
                         m_slsDet->setGainMode(it->second, pos);
+                        if ((gainModeEnums[gainMode] == "FIX_G1") ||
+                            (gainModeEnums[gainMode] == "FIX_G2")) {
+                            m_inFixedGain = true;
+                        } else {
+                            m_inFixedGain = false;
+                        }
                     } else {
                         logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
                                        gainModeEnums[gainMode].c_str(),

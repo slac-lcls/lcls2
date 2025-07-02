@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
         Drp::PGPDetectorApp app(para);
         app.initialize();
         app.run();
-        std::cout<<"end of drp main\n";
+        logging::info("End of drp main");
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

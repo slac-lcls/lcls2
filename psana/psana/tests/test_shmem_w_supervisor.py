@@ -1,13 +1,13 @@
 # Test shmem datasource with pubsub broadcasting
 
 import os
+import socket
 import subprocess
 import sys
-import pytest
-import socket
 
-client_count = 3  # number of clients in test (1 supervisor, 3 clients)
-calib_prefetch_count = 1  # number of calib prefetchers
+import pytest
+
+client_count = 4  # number of clients in test (1 supervisor, 3 clients)
 dgram_count  = 64 # number of expected datagrams per client
 
 @pytest.mark.skipif(sys.platform == 'darwin' or os.getenv('LCLS_TRAVIS') is not None, reason="shmem not supported on mac and centos7 failing in travis for unknown reasons")
@@ -15,7 +15,7 @@ class Test:
 
     @staticmethod
     def launch_server(tmp_file,pid):
-        cmd_args = ['shmemServer','-c',str(client_count+calib_prefetch_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
+        cmd_args = ['shmemServer','-c',str(client_count),'-n','10','-f',tmp_file,'-p','shmem_test_'+pid,'-s','0x80000']
         return subprocess.Popen(cmd_args)
 
     def launch_supervisor(self,pid,supervisor_ip_addr):
@@ -27,11 +27,6 @@ class Test:
         shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'
         cmd_args = ['python',shmem_file,pid,'0',supervisor_ip_addr]
         return subprocess.Popen(cmd_args)
-
-    def launch_calib_prefetch(self,pid):
-        cmd_args = ['python', '-m', 'psana.pscalib.app.calib_prefetch', '--shmem', f'shmem_test_{pid}', '--log-level', 'DEBUG']
-        return subprocess.Popen(cmd_args)
-
 
     @staticmethod
     def setup_input_files(tmp_path):
@@ -47,9 +42,6 @@ class Test:
         tmp_file = self.setup_input_files(tmp_path)
         srv = self.launch_server(tmp_file,pid)
         assert srv is not None,"server launch failure"
-
-        # launch calib prefetcher
-        self.launch_calib_prefetch(pid)
 
         # shmem_ds uses host addr and port determined externally for
         # calibration constant broadcasting. In this test, we simulate

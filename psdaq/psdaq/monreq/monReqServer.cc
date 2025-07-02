@@ -184,7 +184,7 @@ namespace Pds {
 
       // Clear the counter here because _init() will cause it to count
       _requestCount = 0;
-      _bufUseCnts->clear();
+      if (_bufUseCnts)  _bufUseCnts->clear();
 
       _init();
     }
@@ -199,8 +199,8 @@ namespace Pds {
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
       if (UNLIKELY(_prms.verbose >= VL_EVENT))
-        printf("_copyDatagram:   dg %p, ts %u.%09u to %p\n",
-               dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
+        fprintf(stderr, "_copyDatagram:   dg %p, ts %u.%09u to %p\n",
+                dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
       // The dg payload is a directory of contributions to the built event.
       // Iterate over the directory and construct, in shared memory, the event
@@ -237,8 +237,8 @@ namespace Pds {
       unsigned idx = dg->xtc.src.value();
 
       if (UNLIKELY(_prms.verbose >= VL_EVENT))
-        printf("_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
-               dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
+        fprintf(stderr, "_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
+                dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
 
       if (idx >= _bufFreeList.size())
       {
@@ -266,7 +266,7 @@ namespace Pds {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
         for (unsigned i = 0; i < _bufFreeList.size(); ++i)
         {
-          printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
+          fprintf(stderr, "Free list entry %u: %u\n", i, _bufFreeList.peek(i));
         }
       }
       //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
@@ -294,7 +294,7 @@ namespace Pds {
       if (rc == 0)
       {
         ++_requestCount;
-        _bufUseCnts->observe(double(idx));
+        if (_bufUseCnts)  _bufUseCnts->observe(double(idx));
         _monTrgMetric.start(idx);
         _appPrcMetric.accumulate(idx);
       }
@@ -309,14 +309,14 @@ namespace Pds {
           logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
           for (unsigned i = 0; i < _bufFreeList.size(); ++i)
           {
-            printf("Free list entry %u: %u\n", i, _bufFreeList.peek(i));
+            fprintf(stderr, "Free list entry %u: %u\n", i, _bufFreeList.peek(i));
           }
         }
       }
 
       if (UNLIKELY(_prms.verbose >= VL_EVENT))
-        printf("_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
-               iTeb, data, rc);
+        fprintf(stderr, "_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
+                iTeb, data, rc);
     }
 
   private:
@@ -342,6 +342,7 @@ namespace Pds {
     int  configure();
     void unconfigure();
     void disconnect();
+    void shutdown();
     void run();
   private:                              // For EventBuilder
     virtual
@@ -417,8 +418,21 @@ int Meb::resetCounters()
   return 0;
 }
 
+void Meb::shutdown()
+{
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
+  EbAppBase::shutdown();
+}
+
 void Meb::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 
@@ -429,7 +443,7 @@ void Meb::unconfigure()
 {
   if (_pool)
   {
-    printf("Directory datagram pool:\n");
+    fprintf(stderr, "Directory datagram pool:\n");
     _pool->dump();
   }
   _pool.reset();
@@ -496,7 +510,7 @@ int Meb::connect(const std::shared_ptr<MetricExporter> exporter)
   int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.addrs, _prms.ports, _prms.id, "TEB");
   if (rc)  return rc;
 
-  rc = EbAppBase::connect(MEB_TR_BUFFERS, exporter);
+  rc = EbAppBase::connect(_prms.maxBuffers, MEB_TR_BUFFERS, exporter);
   if (rc)  return rc;
 
   return 0;
@@ -570,7 +584,7 @@ void Meb::process(EbEvent* event)
 {
   if (_prms.verbose >= VL_DETAILED)
   {
-    printf("Meb::process event dump:\n");
+    fprintf(stderr, "Meb::process event dump:\n");
     event->dump(1, _trCount + _eventCount);
   }
 
@@ -622,9 +636,9 @@ void Meb::process(EbEvent* event)
   {
     logging::critical("%s:\n  Dgram pool allocation of size %zd failed:",
                       __PRETTY_FUNCTION__, sizeof(Dgram) + sz);
-    printf("Directory datagram pool\n");
+    fprintf(stderr, "Directory datagram pool\n");
     _pool->dump();
-    printf("Meb::process event dump:\n");
+    fprintf(stderr, "Meb::process event dump:\n");
     event->dump(1, -1);
     abort();
   }
@@ -642,9 +656,9 @@ void Meb::process(EbEvent* event)
     unsigned    src = dg->xtc.src.value();
     const char* svc = TransitionId::name(dg->service());
     auto        cnt = dg->isEvent() ? _eventCount : _trCount;
-    printf("MEB processed %5lu %15s  [%8u] @ "
-           "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, ts %u.%09u\n",
-           cnt, svc, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
+    fprintf(stderr, "MEB processed %5lu %15s  [%8u] @ "
+            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, ts %u.%09u\n",
+            cnt, svc, idx, dg, ctl, pid, env, sz, src, dg->time.seconds(), dg->time.nanoseconds());
   }
   else
   {
@@ -1002,39 +1016,45 @@ int MebApp::_parseConnectionParams(const json& body)
 }
 
 static
-void _printGroups(unsigned groups, const u64arr_t& array)
+void _printGroups(const char* which, unsigned groups, const u64arr_t& array)
 {
+  char buffer[8*24];
+  int i = 0;
+
+  groups &= 0xff;                       // Prevent buffer overrun
+
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    printf("%u: 0x%016lx  ", group, array[group]);
+    i += snprintf(&buffer[i], sizeof(buffer), "%u: 0x%016lx  ", group, array[group]);
   }
-  printf("\n");
+  logging::info("  Readout group %-12s    %s", which, buffer);
 }
 
 void MebApp::_printParams(const MebParams& prms) const
 {
-  printf("\nParameters of MEB ID %u (%s:%s):\n",               prms.id,
-                                                               prms.ifAddr.c_str(), prms.ebPort.c_str());
-  printf("  Thread core numbers:        %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Instrument:                 %s\n",                 prms.instrument.c_str());
-  printf("  Partition:                  %u\n",                 prms.partition);
-  printf("  Alias:                      %s\n",                 prms.alias.c_str());
-  printf("  Bit list of contributors:   0x%016lx, cnt: %zu\n", prms.contributors,
-                                                               std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:  ");                    _printGroups(prms.rogs, prms.contractors);
-  printf("  # of TEB requestees:        %zu\n",                prms.addrs.size());
-  printf("  Buffer duration:            %u\n",                 prms.maxEntries);
-  printf("  Max # of entries / buffer:  0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
-  printf("  # of event      buffers:    0x%08x = %u\n",        prms.numEvBuffers, prms.numEvBuffers);
-  printf("  # of transition buffers:    0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
-  printf("  Max buffer size:            0x%08x = %u\n",        prms.maxBufferSize, prms.maxBufferSize);
-  printf("  # of event message queues:  0x%08x = %u\n",        prms.nevqueues, prms.nevqueues);
-  printf("  Distribute:                 %s\n",                 prms.ldist ? "yes" : "no");
-  printf("  Tag:                        %s\n",                 prms.tag.c_str());
-  printf("\n");
+  logging::info("");
+  logging::info("Parameters of MEB ID %u (%s:%s):",                 prms.id,
+                                                                    prms.ifAddr.c_str(), prms.ebPort.c_str());
+  logging::info("  Thread core numbers:        %d, %d",             prms.core[0], prms.core[1]);
+  logging::info("  Instrument:                 %s",                 prms.instrument.c_str());
+  logging::info("  Partition:                  %u",                 prms.partition);
+  logging::info("  Alias:                      %s",                 prms.alias.c_str());
+  logging::info("  Bit list of contributors:   0x%016lx, cnt: %zu", prms.contributors,
+                                                                    std::bitset<64>(prms.contributors).count());
+  _printGroups("contractors:", prms.rogs, prms.contractors);
+  logging::info("  # of TEB requestees:        %zu",                prms.addrs.size());
+  logging::info("  Buffer duration:            %u",                 prms.maxEntries);
+  logging::info("  Max # of entries / buffer:  0x%08x = %u",        prms.maxEntries, prms.maxEntries);
+  logging::info("  # of event      buffers:    0x%08x = %u",        prms.numEvBuffers, prms.numEvBuffers);
+  logging::info("  # of transition buffers:    0x%08x = %u",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
+  logging::info("  Max buffer size:            0x%08x = %u",        prms.maxBufferSize, prms.maxBufferSize);
+  logging::info("  # of event message queues:  0x%08x = %u",        prms.nevqueues, prms.nevqueues);
+  logging::info("  Distribute:                 %s",                 prms.ldist ? "yes" : "no");
+  logging::info("  Tag:                        %s",                 prms.tag.c_str());
+  logging::info("");
 }
 
 

@@ -245,7 +245,15 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
             //
             const uint8_t* p = (const uint8_t*)m_pool->dmaBuffers[dmaIndex]+sizeof(Pds::TimingHeader);
             const uint8_t* const p_end = p + data_size;
+            //  Add some error checking in this iteration
+            const Pds::HSD::EventHeader* _EH = reinterpret_cast<const Pds::HSD::EventHeader*>(m_pool->dmaBuffers[dmaIndex]);
+            unsigned streams = _EH->streams();
             do {
+                if (streams==0) {
+                    logging::warning("Exiting stream header error checking at %p (end = %p)", p, p_end);
+                    _EH->dump();
+                    break;
+                }
                 const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
                 if (stream.overflow() ||
                     stream.unlocked()) {
@@ -255,8 +263,12 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
                     dgram.xtc.damage.increase(Damage::UserDefined);
                     break;
                 }
-                p += stream.num_samples()*sizeof(uint16_t);
+                streams &= ~(1<<stream.stream_id());
+                p += sizeof(stream);                        // step past the header
+                p += stream.num_samples()*sizeof(uint16_t); //   and its payload
             } while( p < p_end);
+
+            logging::debug("Exited stream header error checking at %p (end = %p), streams = %x", p, p_end, streams);
 
             // example showing how to use psalg Hsd code to extract data.
             // we are now not using this code since it was too complex

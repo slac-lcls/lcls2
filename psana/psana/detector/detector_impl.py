@@ -146,4 +146,12 @@ class DetectorImpl:
 
                 setattr(self, field, func)
 
+    def _apply_calibc_preload_cache(self):
+        """Applies any cached _calibc_ attributes saved in _calibc_preload_cache, then clears the cache."""
+        if hasattr(self, "_calibc_preload_cache"):
+            preload = self._calibc_preload_cache
+            for attr, val in preload.items():
+                setattr(self._calibc_, attr, val)
+            del self._calibc_preload_cache
+
 #EOF

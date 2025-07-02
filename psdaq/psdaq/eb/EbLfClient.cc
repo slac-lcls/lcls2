@@ -55,13 +55,13 @@ int EbLfClient::connect(EbLfCltLink** link,
   if (_verbose)
   {
     void* data = fab;                   // Something since data can't be NULL
-    printf("EbLfClient: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-           fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
+    fprintf(stderr, "EbLfClient: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
-  if (_verbose > 1)  printf("EbLfClient: tx_attr.size = %zd\n", cqSize);
+  if (_verbose > 1)  fprintf(stderr, "EbLfClient: tx_attr.size = %zd\n", cqSize);
   CompletionQueue* txcq   = new CompletionQueue(fab, cqSize);
   if (!txcq)
   {
@@ -71,7 +71,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   }
 
   if (_verbose)
-    printf("EbLfClient is waiting %u ms for server %s:%s\n", msTmo, peer, port);
+    fprintf(stderr, "EbLfClient is waiting %u ms for server %s:%s\n", msTmo, peer, port);
 
   EventQueue*      eq   = nullptr;
   CompletionQueue* rxcq = nullptr;
@@ -115,10 +115,10 @@ int EbLfClient::connect(EbLfCltLink** link,
     delete ep;
     return (dT <= msTmo) ? rc : -FI_EAGAIN;
   }
-  if (_verbose > 1)  printf("EbLfClient: connect() took %lu ms\n", dT);
+  if (_verbose > 1)  fprintf(stderr, "EbLfClient: connect() took %lu ms\n", dT);
 
   int rxDepth = fab->info()->rx_attr->size;
-  if (_verbose > 1)  printf("EbLfClient: rx_attr.size = %d\n", rxDepth);
+  if (_verbose > 1)  fprintf(stderr, "EbLfClient: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfCltLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
@@ -135,7 +135,7 @@ int EbLfClient::disconnect(EbLfCltLink* link)
   if (!link)  return FI_SUCCESS;
 
   if (_verbose)
-    printf("EbLfClient: Disconnecting from EbLfServer %d\n", link->id());
+    fprintf(stderr, "EbLfClient: Disconnecting from EbLfServer %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
   delete link;

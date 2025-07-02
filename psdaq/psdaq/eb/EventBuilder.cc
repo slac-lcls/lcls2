@@ -35,7 +35,7 @@ EventBuilder::EventBuilder(unsigned        timeout,
   _ebTime      (0),
   _verbose     (verbose)
 {
-  printf("EventBuilder timeout is %u ms, %lu ns\n", timeout, _eventTimeout.count());
+  fprintf(stderr, "EventBuilder timeout is %u ms, %lu ns\n", timeout, _eventTimeout.count());
 }
 
 EventBuilder::~EventBuilder()
@@ -58,6 +58,7 @@ int EventBuilder::initialize(unsigned epochs,
 
   // Revisit the factor of 2: it seems like the sum of the values over all RoGs
   // may be closer to the right answer
+  // The factor of 2 is obsolete given that the common RoG always triggers?
   auto nep = 2 * epochs;
   auto nev = 2 * epochs * entries;
 
@@ -72,8 +73,8 @@ int EventBuilder::initialize(unsigned epochs,
   _epochLut.resize(nep, nullptr);
   _eventLut.resize(nev, nullptr);
 
-  printf("*** EB Epoch list size %zu\n", _epochLut.size());
-  printf("*** EB Event list size %zu\n", _eventLut.size());
+  fprintf(stderr, "*** EB Epoch list size %zu\n", _epochLut.size());
+  fprintf(stderr, "*** EB Event list size %zu\n", _eventLut.size());
 
   _arrTime.resize(sources);
 
@@ -185,7 +186,7 @@ EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 
   fprintf(stderr, "%s:\n  Unable to allocate epoch: key %014lx\n",
           __PRETTY_FUNCTION__, key);
-  printf(" epochFreelist:\n");
+  fprintf(stderr, " epochFreelist:\n");
   _epochFreelist->dump();
   dump(1);
   while(1);                             // Hang so we can inspect
@@ -244,7 +245,7 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
 
   fprintf(stderr, "%s:\n  Unable to allocate event: %15s %014lx\n",
           __PRETTY_FUNCTION__, TransitionId::name(ctrb->service()), ctrb->pulseId());
-  printf("  eventFreelist:\n");
+  fprintf(stderr, "  eventFreelist:\n");
   _eventFreelist->dump();
   dump(1);
   while(1);                             // Hang so we can inspect
@@ -311,17 +312,17 @@ void EventBuilder::_fixup(EbEvent*             event,
   if (_fixupCnt + _tmoEvtCnt < 100)
   {
     const EbDgram* dg = event->creator();
-    printf("%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, latency %ld ms\n",
-           age < _eventTimeout ? "Fixed-up" : "Timed-out",
-           TransitionId::name(dg->service()), event->sequence(), event->_size,
-           event->_remaining, dg->readoutGroups(), event->_contract,
-           std::chrono::duration_cast<ms_t>(age).count(),
-           latency<ms_t>(dg->time));
+    fprintf(stderr, "%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, latency %ld ms\n",
+            age < _eventTimeout ? "Fixed-up" : "Timed-out",
+            TransitionId::name(dg->service()), event->sequence(), event->_size,
+            event->_remaining, dg->readoutGroups(), event->_contract,
+            std::chrono::duration_cast<ms_t>(age).count(),
+            latency<ms_t>(dg->time));
     if (age < _eventTimeout)
-      printf("Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx, latency %ld ms\n",
-             TransitionId::name(due->creator()->service()), due->sequence(),
-             due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
-             latency<ms_t>(due->creator()->time));
+      fprintf(stderr, "Flushed by %15s %014lx, size %5zu, with remaining %016lx, RoGs %04hx, contract %016lx, latency %ld ms\n",
+              TransitionId::name(due->creator()->service()), due->sequence(),
+              due->_size, due->_remaining, dg->readoutGroups(), due->_contract,
+              latency<ms_t>(due->creator()->time));
   }
 
   if (age < _eventTimeout)  ++_fixupCnt;
@@ -515,9 +516,9 @@ void EventBuilder::process(const EbDgram*    buffer,
       unsigned  ctl = ctrb->control();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
       size_t    sz  = sizeof(*ctrb) + ctrb->xtc.sizeofPayload();
-      printf("EB found a ctrb                                 @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, pld [%08x, %08x], imm %08x, due %014lx%s\n",
-             ctrb, ctl, pid, env, sz, src, pld[0], pld[1], imm, due ? due->sequence() : 0ul, ctrb->isEOL() ? ", EOL" : "");
+      fprintf(stderr, "EB found a ctrb                                 @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, pld [%08x, %08x], imm %08x, due %014lx%s\n",
+              ctrb, ctl, pid, env, sz, src, pld[0], pld[1], imm, due ? due->sequence() : 0ul, ctrb->isEOL() ? ", EOL" : "");
     }
 
     if (ctrb->isEOL())  break;
@@ -550,7 +551,7 @@ void EventBuilder::process(const EbDgram*    buffer,
 
 void EventBuilder::dump(unsigned detail) const
 {
-  printf("\nEvent builder dump:\n");
+  fprintf(stderr, "\nEvent builder dump:\n");
 
   const EbEpoch* const last  = _pending.empty();
   EbEpoch*             epoch = _pending.forward();
@@ -566,11 +567,11 @@ void EventBuilder::dump(unsigned detail) const
       epoch->dump(detail, 0);
   }
   else
-    printf(" Event Builder has no pending events...\n");
+    fprintf(stderr, " Event Builder has no pending events...\n");
 
-  printf("Event Builder epoch pool:\n");
+  fprintf(stderr, "Event Builder epoch pool:\n");
   _epochFreelist->dump();
 
-  printf("Event Builder event pool:\n");
+  fprintf(stderr, "Event Builder event pool:\n");
   _eventFreelist->dump();
 }

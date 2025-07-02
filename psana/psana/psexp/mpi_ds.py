@@ -3,8 +3,10 @@ import sys
 import time
 
 import numpy as np
+from contextlib import contextmanager
 
-from psana import dgram, utils
+from psana import dgram
+from psana import utils
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
@@ -18,10 +20,6 @@ from psana.smalldata import SmallData
 
 if mode == "mpi":
     from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
 
 
 class InvalidEventBuilderCores(Exception):
@@ -41,6 +39,8 @@ class RunParallel(Run):
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
+
+        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
 
         super()._setup_envstore()
 
@@ -62,7 +62,7 @@ class RunParallel(Run):
             if i % 1000 == 0:
                 en = time.time()
                 ana_rate = 1 / (en - st)
-                logger.debug(f"ANARATE {ana_rate:.2f} kHz")
+                self.logger.debug(f"ANARATE {ana_rate:.2f} kHz")
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 
@@ -79,11 +79,42 @@ class RunParallel(Run):
         elif nodetype == "eb":
             self.eb_node.start()
         elif nodetype == "bd":
-            for evt in self.bd_node.start():
-                yield evt
+            yield from self.bd_node.start()
         elif nodetype == "srv":
             return
 
+    @contextmanager
+    def build_table(self):
+        """
+        Context manager for building timestamp-offset table.
+        Returns True only on BigDataNode if the table was successfully built.
+
+        Requires PS_EB_NODES=1 for broadcast mode.
+        """
+        if os.environ.get("PS_EB_NODES", "1") != "1":
+            raise RuntimeError("build_table() currently supports only PS_EB_NODES=1")
+
+        success = False
+        if nodetype == "smd0":
+            self.smd0.start()
+        elif nodetype == "eb":
+            self.eb_node.start_broadcast()
+        elif nodetype == "bd":
+            self.bd_node.start_smdonly()
+            success = bool(self._ts_table)
+        yield success
+
+    def event(self, ts):
+        offsets = self._ts_table.get(ts)
+        if offsets is None:
+            raise ValueError(f"Timestamp {ts} not found in offset table.")
+
+        dgrams = [None] * len(self.configs)
+        for i, (offset, size) in offsets.items():
+            buf = os.pread(self.ds.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
+
+        return Event(dgrams=dgrams, run=self)
 
 def safe_mpi_abort(msg):
     print(msg)
@@ -167,7 +198,7 @@ class MPIDataSource(DataSourceBase):
                 [os.open(smd_file, os.O_RDONLY) for smd_file in self.smd_files],
                 dtype=np.int32,
             )
-            logger.debug(f"mpi_ds: smd0 opened smd_fds: {self.smd_fds}")
+            self.logger.debug(f"smd0 opened smd_fds: {self.smd_fds}")
             self.smdr_man = SmdReaderManager(self.smd_fds, self.dsparms)
             configs = self.smdr_man.get_next_dgrams()
             nbytes = np.array(

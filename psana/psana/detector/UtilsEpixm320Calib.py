@@ -21,13 +21,17 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2024-04-09 by Mikhail Dubrovin
 """
-from psana.detector.Utils import info_dict
 
-#from psana.detector.UtilsCalib import * # logging
+import sys
+import psana
+from psana.detector.Utils import info_dict
+import psana.pscalib.calib.CalibConstants as cc
+from psana.detector.UtilsCalib import * # logging
 import psana.detector.UtilsCalib as uc
+#import psana.detector.utils_psana as up
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge, calib_file_name
 import json
-
+import logging
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -58,7 +62,7 @@ def pedestals_calibration(parser):
   shortname = None
 
   logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
-  ds = DataSource(**dskwargs)
+  ds = psana.DataSource(**dskwargs)
 
   t0_sec = time()
   tdt = t0_sec
@@ -308,7 +312,8 @@ def save_constants_in_repository(dic_consts, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig', None)
-    uniqueid = kwa.get('uniqueid', 'not-def-id')
+    #uniqueid = kwa.get('uniqueid', 'not-def-id')
+    uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     segids   = kwa.get('segment_ids', [])
     segind   = kwa.get('segind', 0)
@@ -335,6 +340,7 @@ def save_constants_in_repository(dic_consts, **kwa):
 
     #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
+    print('XXX uniqueid', uniqueid)
     segid = uniqueid.split('_')[1]
 
     logger.info('\nsave segment constants for gain mode:%s in repo for segment id: %s' % (gainmode, segid))
@@ -372,7 +378,8 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
-    uniqueid = kwa.get('uniqueid', 'not-def-id')
+    #uniqueid = kwa.get('uniqueid', 'not-def-id')
+    uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
     segind   = kwa.get('segind', 0)

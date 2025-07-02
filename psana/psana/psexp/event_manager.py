@@ -10,11 +10,7 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 
 if mode == "mpi":
-    from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
+    pass
 
 
 class ExitId:
@@ -38,6 +34,7 @@ class EventManager(object):
         view,
         ds,
         run,
+        smd=False,
     ):
         if view:
             pf = PacketFooter(view=view)
@@ -58,6 +55,9 @@ class EventManager(object):
         self.smd_view = view
         self.i_evt = 0
         self.exit_id = ExitId.NoError
+        self.smd_mode = smd
+
+        self.logger = utils.get_logger(dsparms=self.ds.dsparms, name=utils.get_class_name(self))
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}
@@ -288,8 +288,8 @@ class EventManager(object):
             offset += got
             size -= got
 
-            logger.info(
-                f"Warning: bigdata read retry#{i_retry}/{self.max_retries} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}"
+            self.logger.warning(
+                f"bigdata read retry#{i_retry}/{self.max_retries} {self.dm.fds_map[fd]} ask={size} offset={offset} got={got}"
             )
 
             time.sleep(1)
@@ -298,7 +298,7 @@ class EventManager(object):
         sum_read_nbytes = memoryview(chunk).nbytes  # for prometheus counter
         if sum_read_nbytes > 0:
             rate = (sum_read_nbytes / 1e6) / (en - st)
-            logger.debug(
+            self.logger.debug(
                 f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)"
             )
             self.read_gauge.set(rate)
@@ -361,6 +361,7 @@ class EventManager(object):
                 self.dm.n_files == 0
                 or not self.isEvent(self.service_array[self.i_evt, i_smd])
                 or self.use_smds[i_smd]
+                or self.smd_mode
             ):
                 view = self.smd_view
                 offset = self.smd_offset_array[self.i_evt, i_smd]

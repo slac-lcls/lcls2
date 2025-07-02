@@ -81,11 +81,19 @@ int EbAppBase::resetCounters()
 
 void EbAppBase::shutdown()
 {
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
   _transport.shutdown();
 }
 
 void EbAppBase::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 
@@ -155,7 +163,7 @@ int EbAppBase::_setupMetrics(const MetricExporter_t exporter)
   return 0;
 }
 
-int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
+int EbAppBase::connect(unsigned maxEvBuffers, unsigned maxTrBuffers, const MetricExporter_t exporter)
 {
   int      rc;
   unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
@@ -173,7 +181,7 @@ int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
   // Initialize the event builder
   auto duration = _prms.maxEntries;
   _maxEntries   = _prms.maxEntries;
-  _maxEvBuffers = (EB_TMO_MS / 1000) * (_prms.maxBuffers / _prms.maxEntries);
+  _maxEvBuffers = (EB_TMO_MS / 1000) * (maxEvBuffers / _prms.maxEntries);
   _maxTrBuffers = maxTrBuffers;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
@@ -236,8 +244,10 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
                        __PRETTY_FUNCTION__, peer, rmtId, regSize);
         return ENOMEM;
       }
-
       _regSize[rmtId] = regSize;
+
+      logging::info("Allocated %.1f GB region for %u transitions of %zu B and %u buffers of %zu B for inbound link with %3s ID %d",
+                    double(regSize)/1e9, _maxTrBuffers, _maxTrSize[rmtId], prms.numBuffers[rmtId], regEntrySize, peer, rmtId);
     }
 
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
@@ -366,7 +376,7 @@ int EbAppBase::process()
   }
   _lastPid[src] = idg->pulseId();
 
-  _ctrbSrc->observe(double(src));       // Revisit: For testing
+  if (_ctrbSrc)  _ctrbSrc->observe(double(src)); // Revisit: For testing
 
   if (UNLIKELY(print || (_verbose >= VL_BATCH)))
   {
@@ -374,9 +384,9 @@ int EbAppBase::process()
     uint64_t    pid = idg->pulseId();
     unsigned    ctl = idg->control();
     const char* svc = TransitionId::name(idg->service());
-    printf("EbAp rcvd %9lu %15s[%8u]   @ "
-           "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
-           _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
+    fprintf(stderr, "EbAp rcvd %9lu %15s[%8u]   @ "
+            "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
+            _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
   }
 
   auto svc = idg->service();
@@ -418,8 +428,8 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     uint64_t imm = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
     if (UNLIKELY(_verbose >= VL_EVENT))
-      printf("EbAp posts transition buffer index %u to src %2u, %08lx\n",
-             idx, src, imm);
+      fprintf(stderr, "EbAp posts transition buffer index %u to src %2u, %08lx\n",
+              idx, src, imm);
 
     int rc = lnk->post(imm);
     if (rc)
@@ -474,5 +484,5 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
                      srcId, _prms.drps[srcId].c_str());
   }
 
-  _fixupSrc->observe(double(srcId));
+  if (_fixupSrc)  _fixupSrc->observe(double(srcId));
 }

@@ -131,7 +131,9 @@ def loop_run_step_evt(args):
   #from psana import DataSource
   #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc', max_events=1000)
 
-  ds = DataSource(**datasource_kwargs_from_string(args.dskwargs))
+  dskwargs = datasource_kwargs_from_string(args.dskwargs)
+  print('dskwargs', dskwargs)
+  ds = DataSource(**dskwargs)
 
   if do_loopruns:
     for irun, run in enumerate(ds.runs()):

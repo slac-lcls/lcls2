@@ -28,18 +28,18 @@ def updatePvC(pv,v,timev):
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             pv.post(value)
             
-NFPLINKS = 14
-sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
-              'ModuleAbsent' : ('ai',[0]*NFPLINKS),
-              'TxPower'      : ('af',[0]*NFPLINKS),
-              'RxPower'      : ('af',[0]*NFPLINKS)}
-
 class SFPStatus(object):
+
+    NFPLINKS = 14
+    sfpStatus  = {'LossOfSignal' : ('ai',[0]*NFPLINKS),
+                  'ModuleAbsent' : ('ai',[0]*NFPLINKS),
+                  'TxPower'      : ('af',[0]*NFPLINKS),
+                  'RxPower'      : ('af',[0]*NFPLINKS)}
 
     def __init__(self, name, xpm, nLinks=14):
         self._xpm   = xpm
-        self._pv    = addPVT(name,sfpStatus)
-        self._value = toDict(sfpStatus)
+        self._pv    = addPVT(name,self.sfpStatus)
+        self._value = toDict(self.sfpStatus)
         self._link  = 0
         self._nlinks= nLinks
 
@@ -62,6 +62,37 @@ class SFPStatus(object):
                 txp,rxp = amc.SfpI2c.get_pwr()
                 self._value['TxPower'][self._link] = txp
                 self._value['RxPower'][self._link] = rxp
+
+        self._link += 1
+        if self._link==self._nlinks:
+            self._link = 0
+            value = self._pv.current()
+            value['value'] = self._value
+            value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
+            self._pv.post(value)
+
+class QSFPStatus(object):
+
+    NFPLINKS = 8
+    qsfpStatus  = {'TxPower'      : ('af',[0]*NFPLINKS),
+                   'RxPower'      : ('af',[0]*NFPLINKS)}
+
+    def __init__(self, name, xpm, nLinks=2):
+        self._xpm   = xpm
+        self._pv    = addPVT(name,self.qsfpStatus)
+        self._value = toDict(self.qsfpStatus)
+        self._link  = 0
+        self._nlinks= nLinks
+
+    def update(self):
+
+        j = self._link % 2
+        self._xpm.AxiPcieCore.I2cMux.set((1<<4) if j==0 else (1<<1))
+        rxp = self._xpm.AxiPcieCore.QSFP.getRxPwr()
+        txp = self._xpm.AxiPcieCore.QSFP.getTxBiasI()
+        for lane in range(4):
+            self._value['TxPower'][4*self._link+lane] = txp[lane]
+            self._value['RxPower'][4*self._link+lane] = rxp[lane]
 
         self._link += 1
         if self._link==self._nlinks:
@@ -464,7 +495,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True, tsSync=None,nAMCs=2,noTiming=False):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False):
         setProvider(p)
         global lock
         lock     = m
@@ -478,8 +509,6 @@ class PVStats(object):
         self.fwbuild = addPV(name+':FwBuild','s',axiv.BuildStamp.get())
         self.usRxEn  = addPV(name+':UsRxEnable','I',self._app.usRxEnable.get())
         self.cuRxEn  = addPV(name+':CuRxEnable','I',self._app.cuRxEnable.get())
-
-        self._tsSync = tsSync
 
         self._links = []
         for i in range(32):
@@ -508,7 +537,7 @@ class PVStats(object):
         if hasSfp:
             self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm,7*nAMCs)
         else:
-            self._sfpStat  = None
+            self._sfpStat  = QSFPStatus  (name+':QSFPSTATUS',self._xpm)
 
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):
@@ -541,11 +570,11 @@ class PVStats(object):
         offset = self._monClks.handle(msg,offset,timev)
         return offset
 
-    def update(self, cycle, cuMode=False):
+    def update(self, cycle, noTiming=False, cuMode=False):
         try:
-            if self._tsSync:
-                self._tsSync.update()
-            if cuMode:
+            if noTiming:
+                pass
+            elif cuMode:
                 self._cuTiming.update()
                 self._cuGen   .update()
             else:

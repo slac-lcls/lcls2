@@ -5,6 +5,7 @@ from datetime import datetime
 import subprocess
 import time
 import logging
+import shlex
 from subprocess import CalledProcessError, PIPE
 
 LOCALHOST = socket.gethostname()
@@ -85,7 +86,7 @@ class SbatchManager:
                 os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
             )
         else:
-            self.output_path = output
+            self.output_path = os.path.join( output, now.strftime("%Y"), now.strftime("%m"))
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
@@ -295,12 +296,15 @@ class SbatchManager:
         found_ld_library_path = False
         if "env" in details:
             if details["env"] != "":
-                envs = details["env"].split()
+                envs = shlex.split(details["env"], posix=True)
                 for i, env in enumerate(envs):
                     env_name, env_var = env.split("=")
                     if env_name == "LD_LIBRARY_PATH":
                         found_ld_library_path = True
-                    cnf_env += "," + env
+                    sanitized_env = env
+                    if " " in env_var:
+                        sanitized_env = f'{env_name}="{env_var}"'
+                    cnf_env += "," + sanitized_env
         env_opt += cnf_env
 
         if not found_ld_library_path:

@@ -80,8 +80,8 @@ int EbLfServer::listen(const std::string& addr,
   {
     Fabric* fab  = _pep->fabric();
     void*   data = fab;                 // Something since data can't be NULL
-    printf("EbLfServer: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-           fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
+    fprintf(stderr, "EbLfServer: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
+            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
   }
 
   bool rc;
@@ -101,8 +101,8 @@ int EbLfServer::listen(const std::string& addr,
   }
 
   if (_verbose)
-    printf("EbLfServer is listening for up to %u client(s) on %s:%s\n",
-           nLinks, addr.c_str(), port.c_str());
+    fprintf(stderr, "EbLfServer is listening for up to %u client(s) on %s:%s\n",
+            nLinks, addr.c_str(), port.c_str());
 
   return 0;
 }
@@ -124,8 +124,8 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
 
   struct fi_info* info   = fab->info();
   size_t          cqSize = nLinks * info->rx_attr->size;
-  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
-                            info->rx_attr->size, info->tx_attr->size);
+  if (_verbose > 1)  fprintf(stderr, "EbLfServer: rx_attr.size = %zd, tx_attr.size = %zd\n",
+                             info->rx_attr->size, info->tx_attr->size);
   if (!_rxcq)                           // All links share the same rxCQ
   {
     _rxcq = new CompletionQueue(fab, cqSize);
@@ -150,10 +150,10 @@ int EbLfServer::connect(EbLfSvrLink** link, unsigned nLinks, int msTmo)
   }
   auto t1(std::chrono::steady_clock::now());
   auto dT(std::chrono::duration_cast<ms_t>(t1 - t0).count());
-  if (_verbose > 1)  printf("EbLfServer: accept() took %lu ms\n", dT);
+  if (_verbose > 1)  fprintf(stderr, "EbLfServer: accept() took %lu ms\n", dT);
 
   int rxDepth = info->rx_attr->size;
-  if (_verbose > 1)  printf("EbLfServer: rx_attr.size = %d\n", rxDepth);
+  if (_verbose > 1)  fprintf(stderr, "EbLfServer: rx_attr.size = %d\n", rxDepth);
   *link = new EbLfSvrLink(ep, rxDepth, _verbose, _pending, _posting);
   if (!*link)
   {
@@ -176,7 +176,7 @@ int EbLfServer::setupMr(void* region, size_t size)
 
 int EbLfServer::pollEQ()
 {
-  int rc;
+  int rc = FI_SUCCESS;
 
   bool                  cmEntry;
   struct fi_eq_cm_entry entry;
@@ -192,8 +192,8 @@ int EbLfServer::pollEQ()
       if (_linkByEp.find(ep) != _linkByEp.end())
       {
         EbLfSvrLink* link = _linkByEp[ep];
-        if (_verbose)
-          printf("EbLfClient %d disconnected on far side\n", link->id());
+        //if (_verbose)
+          fprintf(stderr, "EbLfClient %d disconnected on far side\n", link->id());
         rc = -FI_ENOTCONN;
       }
       else
@@ -238,7 +238,7 @@ int EbLfServer::disconnect(EbLfSvrLink* link)
   if (!link)  return FI_SUCCESS;
 
   if (_verbose)
-    printf("EbLfServer: Disconnecting from EbLfClient %d\n", link->id());
+    fprintf(stderr, "EbLfServer: Disconnecting from EbLfClient %d\n", link->id());
 
   Endpoint* ep = link->endpoint();
   delete link;
@@ -314,8 +314,11 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     }
     else                               // Notify of unexpected error
     {
-      if (_rxcq && rc == -FI_EAVAIL)   // Return actual error instead of EAVAIL
+      if (_rxcq && (rc == -FI_EAVAIL)) { // Return actual error instead of EAVAIL
         rc = dumpCqError(_rxcq, __PRETTY_FUNCTION__);
+        fprintf(stderr, "%s: Returning rc %d after CQ error dump\n",  // @todo: Remove after we find seg fault cause
+                __PRETTY_FUNCTION__, rc);
+      }
       else
         fprintf(stderr, "%s:\n  Error reading Rx CQ: rc %d: %s\n",
                 __PRETTY_FUNCTION__, rc,
@@ -337,14 +340,17 @@ int Pds::Eb::EbLfServer::poll(uint64_t* data)
   int rc = _poll(&cqEntry, flags);
   *data = cqEntry.data;
 
-  if (rc > 0 || rc == -FI_EAGAIN)
+  if ((rc > 0) || (rc == -FI_EAGAIN))
     return rc;
 
   if (pollEQ() == -FI_ENOTCONN)        // rc uninteresting if disconnected
     return -FI_ENOTCONN;
 
-  if (_rxcq && rc == -FI_EAVAIL)       // Return actual error instead of EAVAIL
+  if (_rxcq && (rc == -FI_EAVAIL)) {   // Return actual error instead of EAVAIL
     rc = dumpCqError(_rxcq, __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s: Returning rc %d after CQ error dump\n",  // @todo: Remove after we find seg fault cause
+            __PRETTY_FUNCTION__, rc);
+  }
   else
     fprintf(stderr, "%s:\n  Error reading Rx CQ: rc %d: %s\n",
             __PRETTY_FUNCTION__, rc,

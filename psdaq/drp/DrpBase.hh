@@ -192,6 +192,7 @@ protected:
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
     std::mutex m_lock;
+    bool m_dmaOverrun;
 };
 
 class PV;

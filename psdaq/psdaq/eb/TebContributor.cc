@@ -59,7 +59,8 @@ TebContributor::TebContributor(const TebCtrbParams& prms,
   _latPid     (0),
   _latency    (0),
   _age        (0),
-  _entries    (0)
+  _entries    (0),
+  _running    (false)
 {
 }
 
@@ -92,15 +93,17 @@ void TebContributor::startup(EbCtrbInBase& in)
 
 void TebContributor::shutdown()
 {
-  if (!_links.empty())                  // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-  }
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
 }
 
 void TebContributor::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 
@@ -109,7 +112,7 @@ void TebContributor::disconnect()
 
 void TebContributor::unconfigure()
 {
-  if (!_links.empty())             // Avoid unconfiguring again if already done
+  if (_running.load(std::memory_order_relaxed)) // Avoid unconfiguring again if already done
   {
     _running.store(false, std::memory_order_release);
 
@@ -378,9 +381,9 @@ void TebContributor::_post(const Batch& batch)
     if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("CtrbOut posts %9lu    batch[%8u]    @ "
-             "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
-             _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+      fprintf(stderr, "CtrbOut posts %9lu    batch[%8u]    @ "
+              "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
+              _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
     }
     else
     {
@@ -518,9 +521,9 @@ void TebContributor::_post(const EbDgram* dgram)
         unsigned    ctl    = dgram->control();
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
-        printf("CtrbOut posts    %15s              @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
-               svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
+        fprintf(stderr, "CtrbOut posts    %15s              @ "
+                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
+                svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
         print = false;                  // Just once for now
       }
       else

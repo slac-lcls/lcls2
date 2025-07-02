@@ -54,6 +54,8 @@ class DevRoot(pr.Root):
                  enableConfig   = False,
                  enVcMask       = 0x3, # Enable lane mask
                  isXpmGen       = True,
+                 isUED          = False,
+                 xvcPort        = None,
                  **kwargs):
 
         print(f'DevRoot dataDebug {dataDebug}')
@@ -87,6 +89,7 @@ class DevRoot(pr.Root):
             name        = 'XPM',
             memBase     = self.memMap,
             isXpmGen    = isXpmGen,
+            isUED       = isUED,
         ))
 
         # Create empty list
@@ -112,6 +115,14 @@ class DevRoot(pr.Root):
 
         print(f'enVcMask {enVcMask} {self.enVcMask}')
 
+        # Add XVC
+        if xvcPort:
+            print(f'Connecting XVC to port {xvcPort}')
+            self.dmaStreams[1][0] = rogue.hardware.axi.AxiStreamDma(dev,0x100,1)
+            self.xvc = rogue.protocols.xilinx.Xvc(xvcPort)
+            self.addProtocol(self.xvc)
+            self.dmaStreams[1][0] == self.xvc
+            
         # Check if not doing simulation
         if (dev != 'sim'):
 

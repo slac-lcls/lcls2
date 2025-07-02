@@ -35,6 +35,8 @@ BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
     FileWriterBase(),
     m_fd(0), m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize)
 {
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriter",
+                  double(m_buffer.size())/1e9, 1, bufferSize);
 }
 
 BufferedFileWriter::~BufferedFileWriter()
@@ -206,6 +208,9 @@ void BufferedFileWriterMT::_initialize(size_t bufferSize)
         }
         m_free.push(b);
     }
+
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriterMT",
+                  double(m_free.size() * m_bufferSize)/1e9, m_free.size(), m_bufferSize);
 }
 
 int BufferedFileWriterMT::open(const std::string& fileName)

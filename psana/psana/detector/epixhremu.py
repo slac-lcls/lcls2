@@ -98,6 +98,7 @@ class epixhremu_fex_0_0_1(ad.AreaDetector):
 
         # Hard code shape and data type because they're properies of the detector
         self._decompressed = np.empty_like(np.ndarray(shape=(144,192*4), dtype=np.float32))
+        self._data_bit_mask = eb.M14
 
     def _calib(self, evt, **kwargs) -> Array2d:
         segs = self._segments(evt)

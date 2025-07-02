@@ -877,6 +877,383 @@ def issue_2025_05_07():
         print('median dt, msec: %.3f' % np.median(arrdt))
 
 
+def issue_2025_05_14():
+    """test QComboBox for control_gui"""
+
+    from PyQt5.QtWidgets import QComboBox, QMainWindow, QApplication
+    from PyQt5.QtCore import Qt
+    import sys
+
+    class CustomQComboBox(QComboBox):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+
+        def keyPressEvent(self, event):
+            #print('event.key():', event.key())
+            if event.key() in (Qt.Key_Up, Qt.Key_Down):
+                event.ignore()  # Ignore up and down arrow keys
+            else:
+                super().keyPressEvent(event) # Default behavior for other keys
+
+        def wheelEvent(self, event):
+            event.ignore()
+            #print('event:', dir(event), '\n')
+            #print('event.angleDelta().y():', event.angleDelta().y(), '\n')
+            #super().wheelEvent(event) # Default behavior
+            #if event.angleDelta().y() in (120, -120):
+            #    event.ignore()  # Ignore up and down arrow keys
+            #else:
+            #    super().keyPressEvent(event) # Default behavior for other keys
+
+    class MainWindow(QMainWindow):
+        def __init__(self):
+            super().__init__()
+            combobox = CustomQComboBox()
+            combobox.addItems(['One', 'Two', 'Three', 'Four'])
+            # Connect signals to the methods.
+            combobox.activated.connect(self.activated)
+            combobox.currentTextChanged.connect(self.text_changed)
+            combobox.currentIndexChanged.connect(self.index_changed)
+
+            self.setCentralWidget(combobox)
+
+        def activated(Self, index):
+            print("Activated index:", index)
+
+        def text_changed(self, s):
+            print("Text changed:", s)
+
+        def index_changed(self, index):
+            print("Index changed", index)
+
+    app = QApplication(sys.argv)
+    w = MainWindow()
+    w.show()
+    app.exec_()
+
+
+def issue_2025_05_16(fname='test-array.npy', USE_GZIP=True): #False):
+    """test gzip.open save and load"""
+    from time import time
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+
+    if USE_GZIP:
+        import gzip
+        fname += '.gz'
+
+    # Create a sample numpy array
+    arr = np.random.rand(32,3,512,1024).astype(np.float32)
+    print(info_ndarr(arr, 'random array'))
+
+    t0_sec = time()
+    #f = gzip.open(fname, 'wb')
+    #np.save(f, arr)
+    #f.close()
+    if USE_GZIP:
+      with gzip.open(fname, 'wb') as f:
+        np.save(f, arr)
+    else:
+        np.save(fname, arr)
+
+    print('dt=%.3f us USE_GZIP=%s save' % (time() - t0_sec, str(USE_GZIP)))
+    # USE_GZIP=True:  8.836us - 176532 test-array.npy.gz
+    # USE_GZIP=False: 0.232us - 196612 test-array.npy compression factor = 0.9
+
+    t0_sec = time()
+    #f = gzip.open(fname, 'rb')
+    #loaded_arr = np.load(f)
+    #f.close()
+
+    loaded_arr = None
+    if USE_GZIP:
+      with gzip.open(fname, 'rb') as f:
+        loaded_arr = np.load(f)
+    else:
+        loaded_arr = np.load(fname)
+    print('dt=%.3f us USE_GZIP=%s load' % (time() - t0_sec, str(USE_GZIP)))
+    # USE_GZIP=True: dt=1.286
+    # USE_GZIP=False: dt=0.486 us
+    # Verify that the loaded array is the same as the original array
+    np.testing.assert_array_equal(arr, loaded_arr)
+
+
+def issue_2025_06_05():
+    """test for excessive output
+       epixquad det.raw.calib/image - zeros
+       datinfo -k exp=mfxdet23,run=120 -d epixuhr
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    #ds = DataSource(exp='mfxdet23', run=120)
+    ds = DataSource(exp='mfxdet23', run=9)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixuhr')
+    events = 10
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            if raw is None: continue
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img   = det.raw.image(evt)
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:%3d' % nevt)
+            arrdt[nevt] = dt_sec
+            #print('evt:%3d dt=%.3f msec  raw+calib+image' % (nevt, dt_sec))
+            print(ndu.info_ndarr(calib, 'evt:%3d calib'% nevt, last=10))
+            print('min: %f max: %f' % (np.min(calib),np.max(calib)))
+            if flimg is None:
+                flimg = fleximage(img, h_in=11, w_in=11)
+            #print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('test of geometry', fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_06_06():
+    """timing of jungfrau_dark_proc with split for steps and panels
+       datinfo -k exp=mfx100852324,run=7 -d jungfrau
+       sbatch -p milano --account lcls:mfx100852324 --mem 8GB --cpus-per-task 5 -o work1
+       cmd: jungfrau_dark_proc -o /sdf/data/lcls/ds/mfx/mfx100852324/results/calib_view -d jungfrau -k exp=mfx100852324,run=6,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx100852324/xtc --stepnum 2 --stepmax 3 -L INFO --segind 9
+    """
+    import os
+    import numpy as np
+    from time import time
+
+    for step in range(3):
+        for panel in range(32):
+            print('step:%d panel:%02d' % (step, panel))
+
+
+def issue_2025_06_17():
+    """       datinfo -k exp=mfx100852324,run=7 -d epix100_0
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx100852324', run=13)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epix100_0')
+    #peds = det.raw._pedestals()
+    calibc = det.calibconst
+    print('det.calibconst:', calibc['pedestals'][1])
+    print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+
+    events = 5
+    for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            t0_sec = time()
+            raw   = det.raw.raw(evt)
+            dt_sec = (time() - t0_sec)*1000
+            print(ndu.info_ndarr(raw,   'evt:%3d dt=%.3f msec for det.raw.raw(evt):' % (nevt, dt_sec)))
+
+
+def issue_2025_06_25(subtest=1):
+    """test for detectors=['archon',]
+       datinfo -k exp=rixx1017523,run=418 -d archon   (600, 4800) 1836 evts
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+
+    dskwargs = None
+    if subtest in (None, '1'):
+        dskwargs = {'exp':'rixx1017523', 'run':418}
+        #ds = DataSource(exp='rixx1017523',run=418)
+    elif subtest == '2':
+        dskwargs = {'exp':'rixx1017523', 'run':418, 'detectors':['archon']}
+        #ds = DataSource(exp='rixx1017523',run=418, detectors=['archon'])
+    elif subtest == '3':
+        str_dskwargs = 'exp=rixx1017523,run=418'
+        detname = 'archon'
+        dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=detname)
+    elif subtest == '4':
+        kwa = {'dskwargs':'exp=rixx1017523,run=418',
+               'det':'archon'}
+        dskwargs = up.data_source_kwargs(**kwa)
+    else:
+        kwa = {'dskwargs':"{'exp':'rixx1017523', 'run':418, 'detectors':['archon']}",
+               'det':'archon'}
+        dskwargs = up.data_source_kwargs(**kwa)
+
+    print('subtest:%s dskwargs:%s' % (subtest, str(dskwargs)))
+    ds = DataSource(**dskwargs)
+
+    orun = next(ds.runs())
+    det = orun.Detector('archon', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       t0_sec = time()
+       raw = det.raw.raw(evt)
+       dt_sec = (time() - t0_sec)*1000
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+       evsel += 1
+
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       print(info_ndarr(raw, 'evt/sel:%6d/%4d dt=%.3f msec  raw' % (nev, evsel, dt_sec), last=10))
+
+
+def issue_2025_06_26(args):
+    """epixm raw/image/calib
+       datinfo -k exp=rix101332624,run=208 -d c_epixm
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+    subtest = args.subtest if args.subtest is not None else '1'
+
+    ds = DataSource(exp='rix101332624',run=208)
+
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm') # , cmpars=(1,0,0)) #(1,0,0))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       raw = det.raw.raw(evt)
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+
+       evsel += 1
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+
+       t0_sec = time()
+       nda = det.raw.calib(evt)
+       #nda = det.raw.image(evt)
+       dt_sec = (time() - t0_sec)*1000
+
+       nda = raw
+       #nda = calib
+       #nda = image
+       print(info_ndarr(nda, 'evt/sel:%6d/%4d dt=%.3f msec  nda' % (nev, evsel, dt_sec), last=5))
+
+
+def issue_2025_06_27(args):
+    """epixm raw/image/calib
+       datinfo -k exp=rix101332624,run=208 -d c_epixm
+    """
+    import os
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+
+    fname = '/sdf/home/p/philiph/psana/jungfrau/psana2/gains/pixel_offset.npy'
+
+    a = np.load(fname)
+    print(info_ndarr(a,'nda:'))
+
+
+def issue_2025_06_30(args):
+    """2025_06_30 5:13PM
+       Hi Mikhail,
+       For the epixm in exp=rix100837624,run=34 would you be able to deploy pedestals/offsets to zero and gains to 1
+       so that det.calib values are the same as det.raw?  It would make Alex’s life easier for the beamtime starting tomorrow.
+       We may also need to do it for rix101332624 tomorrow, but I have the impression
+       the constants will automatically propagate there?  Let me know if not…
+       Thanks!
+       chris
+
+       run test_issues_2025.py for issue_2025_06_30 to make epixm-zeros.data and epixm-ones.data
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+
+       calibman
+       cdb add -e rix100837624 -d epixm320_000006 -c pedestals    -r 1 -f epixm-zeros.data
+       cdb add -e rix100837624 -d epixm320_000006 -c pixel_offset -r 1 -f epixm-zeros.data
+       cdb add -e rix100837624 -d epixm320_000006 -c pixel_gain   -r 1 -f epixm-ones.data
+       calibman
+    """
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.pscalib.calib.NDArrIO import save_txt, load_txt
+
+    sh = (4, 192, 384)
+    fname1 = 'epixm-ones.data'
+    fname0 = 'epixm-zeros.data'
+    a0 = np.zeros(sh, dtype=np.float32)
+    a1 = np.ones(sh, dtype=np.float32)
+    save_txt(fname0, a0, fmt='%.1f')
+    save_txt(fname1, a1, fmt='%.1f')
+    print('saved %s'% fname0, info_ndarr(a0,'a0:'))
+    print('saved %s'% fname1, info_ndarr(a1,'a1:'))
+
+
+def issue_2025_07_01(args):
+    """test that issue_2025_06_30 is resolved - print pedestals, pixel_offset, pixel_gain for epixm320
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+    """
+    import numpy as np
+    from time import time
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.utils_psana as up
+    subtest = args.subtest if args.subtest is not None else '1'
+
+    ds = DataSource(exp='rix100837624',run=34)
+
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm') # , cmpars=(1,0,0)) #(1,0,0))
+
+    print(info_ndarr(det.raw._pedestals(), 'pedestals', last=5))
+    print(info_ndarr(det.raw._gain(), 'gain', last=5))
+    #print(info_ndarr(det.raw._offset(), 'offset', last=5))
+
+    events = 10
+    evsel = 0
+
+    for nev, evt in enumerate(orun.events()):
+       raw = det.raw.raw(evt)
+
+       if raw is None:
+           print('evt:%3d - raw is None' % nev, end='\r')
+           continue
+
+       evsel += 1
+       if evsel>events:
+           print('BREAK for nev>%d' % events)
+           break
+
+       calib = det.raw.calib(evt)
+       print(info_ndarr(raw,   'evt/sel:%6d/%4d raw' % (nev, evsel), last=5))
+       print(info_ndarr(calib, 18*' '+'calib', last=5))
+
 #===
     
 #===
@@ -932,10 +1309,21 @@ def selector():
     elif TNAME in ('17',): issue_2025_04_11() # me - access to multiple calibconst
     elif TNAME in ('18',): issue_2025_04_17() # cpo - timing for large np.array with OPENBLAS_NUM_THREADS=1/0 - resulting time difference 2.5%
     elif TNAME in ('19',): issue_2025_04_21() # me - timing of jungfrau 16M, the same as issue_2025_04_10, but for jungfrau 16M
-    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad det.raw.calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified calibration type "gain"
+    elif TNAME in ('20',): issue_2025_04_22() # cpo - epixquad calib/image are 0. epix10ka_deploy_constants deployed zeros - misidentified "gain"
     elif TNAME in ('21',): issue_2025_04_23() # cpo - jungfrau16M image for 4 drp panels
     elif TNAME in ('22',): issue_2025_04_29() # Philip/cpo - jungfrau16M constants shape:(3, 19, 512, 1024).
     elif TNAME in ('23',): issue_2025_05_07() # me - test of the detector axis shape:(796, 6144)
+    elif TNAME in ('24',): issue_2025_05_14() # me - test QComboBox for control_gui
+    elif TNAME in ('25',): issue_2025_05_16(USE_GZIP=True)  # me - test with gzip save and load
+    elif TNAME in ('26',): issue_2025_05_16(USE_GZIP=False) # me - test  w/o gzip save and load
+    elif TNAME in ('27',): issue_2025_06_05() # Seshu & Chris - too many messages epixuhr | INFO ] TBD, psana.detector.calibconstants | WARNING ]
+    elif TNAME in ('28',): issue_2025_06_06() # Chris - jungfrau_dark_proc split for steps and panels
+    elif TNAME in ('29',): issue_2025_06_17() # Chris - calibconstants run range
+    elif TNAME in ('30',): issue_2025_06_25(args.subtest) # Patrik - test for detectors=['archon',]
+    elif TNAME in ('31',): issue_2025_06_26(args) # me - epixm raw/image/calib
+    elif TNAME in ('32',): issue_2025_06_27(args) # philip - calibrepo
+    elif TNAME in ('33',): issue_2025_06_30(args) # cpo - epixm add to DB pedestals=0, pixel_offset=0, pixel_gain=1
+    elif TNAME in ('34',): issue_2025_07_01(args) # test that issue_2025_06_30 is resolved - print pedestals, pixel_offset, pixel_gain for epixm320
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

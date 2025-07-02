@@ -7,17 +7,19 @@ def main():
     defaults = {
         "--events": 1000,
         "--hutch": "asc",
-        "--detname": "jungfrau_0",
+        "--detname": "jungfrau",
         "--scantype": "pedestal",
         "--record": 1,
         "--config": "BEAM",
+        "--nprocs": 5,
     }
 
     scan = ConfigScanBase(defargs=defaults)
     args = scan.args
 
     keys = []
-    keys.append(f'{args.detname}:user.gainMode')
+    for i in range(args.nprocs):
+        keys.append(f'{args.detname}_{i}:user.gainMode')
 
     def steps():
         d = {}
@@ -26,7 +28,8 @@ def main():
         metad['scantype'] = 'pedestal'
         for gain in range(3):
             #  Set the detector level config change
-            d[f'{args.detname}:user.gainMode'] = gain
+            for i in range(args.nprocs):
+                d[f'{args.detname}_{i}:user.gainMode'] = gain
             #  Set the global meta data
             metad['step'] = gain
             metad['gainMode'] = gain

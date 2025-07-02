@@ -6,6 +6,7 @@ import os
 import sys
 logger = ad.logging.getLogger(__name__)
 import psana.detector.UtilsEpix100 as ue100
+from psana.pyalgos.generic.NDArrUtils import divide_protected
 
 
 class epix100hw_raw_2_0_1(ad.AreaDetectorRaw):

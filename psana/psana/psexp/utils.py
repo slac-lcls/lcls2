@@ -7,7 +7,7 @@ from psana import DataSource
 # a DataSource object. Used by utilities like "detnames".
 
 
-def datasource_kwargs_from_string(dsstring):
+def datasource_kwargs_from_string(dsstring, detname=None):
     """
     Accepts (str) dsstring as
     0. xtc file name,
@@ -36,12 +36,12 @@ def datasource_kwargs_from_string(dsstring):
     if dsstring.lstrip()[0] == "{":
         return eval(dsstring)
 
+    kwargs = {}
     if "=" in dsstring:
         if ":" in dsstring:
             print('Error: DataSource fields in psana2 must be split with "," not ":"')
             sys.exit(-1)
         # experiment/run specified, or shmem
-        kwargs = {}
         for kwarg in dsstring.split(","):
             k, v = kwarg.split("=")
             val = (
@@ -66,13 +66,13 @@ def datasource_kwargs_from_string(dsstring):
                 except ValueError:
                     val = v
             kwargs[k] = val
-        return kwargs
+        #return kwargs
     else:
         # filename specified
-        return {
-            "files": dsstring,
-        }
+        kwargs["files"] = dsstring
 
+    if detname is not None: kwargs["detectors"] = [detname,]
+    return kwargs
 
 def datasource_kwargs_to_string(**kwargs):
     """returns string presentation for dict of DataSource kwargs"""

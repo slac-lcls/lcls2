@@ -12,7 +12,7 @@ from psana import utils
 # Get and merge parent comm to get the common comm
 comm = MPI.Comm.Get_parent()
 common_comm = comm.Merge(True)
-logger = utils.Logger(myrank=common_comm.Get_rank())
+logger = utils.get_logger(name="parallel_h5_write")
 
 
 # Get input parameters from root
@@ -40,7 +40,7 @@ in_pytbl = tb.open_file(in_h5fname, "r")
 in_f = h5py.File(in_h5fname, "r")
 ts_len = in_f["timestamp"].shape[0]
 chunk_size = (chunk_size,)
-logger.debug(f"start slice-and-write")
+logger.debug("start slice-and-write")
 
 # Start receving data
 while True:

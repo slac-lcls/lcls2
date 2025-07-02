@@ -46,15 +46,17 @@ int MebContributor::resetCounters()
 
 void MebContributor::shutdown()
 {
-  if (!_links.empty())                  // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-  }
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be an Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
 }
 
 void MebContributor::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 
@@ -154,8 +156,10 @@ int MebContributor::_linksConfigure(const MebCtrbParams&       prms,
                        __PRETTY_FUNCTION__, peer, rmtId, regSize);
         return ENOMEM;
       }
-
       _regSize[rmtId] = regSize;
+
+      logging::info("Allocated %.1f GB region for %u transitions of %zu B and %u L1Accepts of %zu B for outbound link with %3s ID %d",
+                    double(regSize)/1e9, MEB_TR_BUFFERS, _maxTrSize, prms.maxEvents[rmtId], _maxEvSize, peer, rmtId);
     }
 
     int rc = link->prepare(_region[rmtId], _regSize[rmtId], _maxEvSize, "MEB");
@@ -227,9 +231,9 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     unsigned ctl    = ddg->control();
     uint32_t env    = ddg->env;
     void*    rmtAdx = (void*)link->rmtAdx(offset);
-    printf("MebCtrb posts %9lu    monEvt [%8u]  @ "
-           "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
-           _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
+    fprintf(stderr, "MebCtrb posts %9lu    monEvt [%8u]  @ "
+            "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
+            _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
   }
   else
   {
@@ -373,16 +377,16 @@ int MebContributor::post(const EbDgram* dgram)
 
     if (UNLIKELY(print || (_verbose >= VL_BATCH)))
     {
-      printf("MebCtrb rcvd transition buffer           [%2u] @ "
-             "%16p, ofs %016zx = %08zx + %2u * %08zx,     src %2u\n",
-             idx, (void*)link->rmtAdx(0), offset, _bufRegSize[src], idx, _maxTrSize, src);
+      fprintf(stderr, "MebCtrb rcvd transition buffer           [%2u] @ "
+              "%16p, ofs %016zx = %08zx + %2u * %08zx,     src %2u\n",
+              idx, (void*)link->rmtAdx(0), offset, _bufRegSize[src], idx, _maxTrSize, src);
 
       unsigned ctl    = dgram->control();
       uint32_t env    = dgram->env;
       void*    rmtAdx = (void*)link->rmtAdx(offset);
-      printf("MebCtrb posts %9lu %15s       @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
-             _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
+      fprintf(stderr, "MebCtrb posts %9lu %15s       @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
+              _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
       print = false;                    // Print only once per call
     }
     else
