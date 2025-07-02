@@ -790,8 +790,6 @@ void TebReceiverBase::resetCounters(bool all = false)
 
 void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 {
-    printf("*** TebRcvrBase::process: idx %u\n", index);
-
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sTebReceiver: jumping index %u  previous index %u  diff %d%s",
@@ -898,6 +896,7 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
         }
     }
 
+    // Complete processing and dispose of the event
     complete(index, result);
 }
 
