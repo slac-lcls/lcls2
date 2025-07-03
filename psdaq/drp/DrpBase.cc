@@ -187,33 +187,6 @@ unsigned MemPool::allocateDma()
 
 void MemPool::freeDma(unsigned count, uint32_t* indices)
 {
-    // Check that the sentinel value at the end of the buffer is still there
-    for (unsigned i = 0; i < count; ++i) {
-        auto idx = indices[i];
-        const auto buffer = (uint8_t*)dmaBuffers[idx];
-        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
-        if (word[0] != 0xabababab) [[unlikely]] {
-            if (!(m_dmaOverrun & 0x01)) {
-                const auto th = (const Pds::TimingHeader*)buffer;
-                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
-                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
-                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
-                m_dmaOverrun |= 0x01;
-            }
-        }
-        // The driver allocates the DMA pool, so we have no control over what comes after it
-        // Unclear how to recognize overruns, so commenting this out for now
-        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
-        //    if (!(m_dmaOverrun & 0x02)) {
-        //        const auto th = (const Pds::TimingHeader*)buffer;
-        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
-        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
-        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
-        //        m_dmaOverrun |= 0x02;
-        //    }
-        //}
-    }
-
     _freeDma(count, indices);
 
     m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
@@ -389,6 +362,33 @@ MemPoolCpu::~MemPoolCpu()
 
 void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
 {
+    // Check that the sentinel value at the end of the buffer is still there
+    for (unsigned i = 0; i < count; ++i) {
+        auto idx = indices[i];
+        const auto buffer = (uint8_t*)dmaBuffers[idx];
+        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
+        if (word[0] != 0xabababab) [[unlikely]] {
+            if (!(m_dmaOverrun & 0x01)) {
+                const auto th = (const Pds::TimingHeader*)buffer;
+                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
+                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
+                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
+                m_dmaOverrun |= 0x01;
+            }
+        }
+        // The driver allocates the DMA pool, so we have no control over what comes after it
+        // Unclear how to recognize overruns, so commenting this out for now
+        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
+        //    if (!(m_dmaOverrun & 0x02)) {
+        //        const auto th = (const Pds::TimingHeader*)buffer;
+        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
+        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
+        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
+        //        m_dmaOverrun |= 0x02;
+        //    }
+        //}
+    }
+
     dmaRetIndexes(m_fd, count, indices);
 }
 
