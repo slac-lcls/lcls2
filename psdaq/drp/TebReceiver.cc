@@ -8,6 +8,7 @@
 
 using namespace XtcData;
 using namespace Drp;
+using namespace Pds;
 using namespace Pds::Eb;
 using logging = psalg::SysLog;
 using us_t = std::chrono::microseconds;
@@ -53,8 +54,12 @@ void TebReceiver::_writeDgram(Dgram* dgram)
 
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
-    Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
-    TransitionId::Value transitionId = dgram->service();
+    // This function is called by the base class's process() method to complete
+    // processing and dispose of the event.  It presumes that the caller has
+    // already vetted index and result
+    TransitionId::Value transitionId = result.service();
+    auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
+                                                        : m_pool.transitionDgrams[index];
 
     if (writing()) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
