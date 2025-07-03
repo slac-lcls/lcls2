@@ -111,6 +111,9 @@ void TebReceiver::startReducers()
 
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
+  // This function is called by the base class's process() method to complete
+  // processing and dispose of the event.  It presumes that the caller has
+  // already vetted index and result
   printf("*** TebRcvr::complete: 1 idx %u, reducer %u\n", index, m_reducer);
 
   // @todo: Could index substitute for m_worker?
