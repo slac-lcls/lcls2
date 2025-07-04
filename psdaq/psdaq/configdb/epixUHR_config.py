@@ -157,6 +157,8 @@ def panel_init(detectorRoot):
         write_to_detector(detectorRoot.Core.Si5345Pll.enable,                   False)
         write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,                      False)
         write_to_detector(detectorRoot.App.VINJ_DAC.rampEn,                     False)
+
+
 #
 #  Initialize the rogue accessor
 #
@@ -402,7 +404,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         pll.LoadCsvFile(pathPll+'PllConfig'+'.csv')    
         panel_ASIC_init(detectorRoot, asics)
                
-    base['bypass']   = detectorRoot.numOfAsics * [0x2]  # Enable Timing (bit-0) and Data (bit-1)
+    base['bypass']   = detectorRoot.numOfAsics * [0x2]  # bitposition enables ['Bypass','Timeout','Blowoff',]
     base['batchers'] = detectorRoot.numOfAsics * [1]  # list of active batchers
     
     for i in range(detectorRoot.numOfAsics):
@@ -449,12 +451,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
  #       for i in range(detectorRoot.numOfAsics):
  #           write_to_detector(getattr(detectorRoot.App, f'BatcherEventBuilder{i+1}').enable, base['batchers'][i] == 1)
             
-        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable, app['GTReadoutBoardCtrl']['enable']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.enable,               app['GTReadoutBoardCtrl']['enable']==1)
         write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.pwrEnableAnalogBoard, app['GTReadoutBoardCtrl']['pwrEnableAnalogBoard'])
-        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0, app['GTReadoutBoardCtrl']['timingOutEn0']==1)
-        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1, app['GTReadoutBoardCtrl']['timingOutEn1']==1)
-        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2, app['GTReadoutBoardCtrl']['timingOutEn2']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn0,         app['GTReadoutBoardCtrl']['timingOutEn0']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn1,         app['GTReadoutBoardCtrl']['timingOutEn1']==1)
+        write_to_detector(detectorRoot.App.GTReadoutBoardCtrl.timingOutEn2,         app['GTReadoutBoardCtrl']['timingOutEn2']==1)
         
+        # Enables the use of the oscilloscope
         timingOutEnum=['asicR0', 'asicACQ', 'asicSRO', 'asicInj', 'asicGlbRstN', 'timingRunTrigger', 'timingDaqTrigger', 'acqStart', 'dataSend', '_0', '_1']
         timingOutMux0_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux0'])
         timingOutMux1_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux1'])
@@ -478,11 +481,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                
         write_to_detector(detectorRoot.App.ADS1217.enable, cfg['user']['App']['ADS1217']['enable']==1)	
         write_to_detector(detectorRoot.App.ADS1217.adcStartEnManual, cfg['user']['App']['ADS1217']['adcStartEnManual']	)        
-        
-        #Need to turn PixNumModeEn true to modify Gain
-        for i in asics: 
-            write_to_detector(getattr(detectorRoot.App,f"Asic{i}").PixNumModeEn, True)
-            
+                    
         csvCfg = 0
     
     if writeCalibRegs:
@@ -492,6 +491,10 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         gainMapSelection=np.zeros((4, 168, 192))
         gainValSelection=np.zeros(4)
         
+        #Need to turn PixNumModeEn true to modify Gain
+        for i in asics: 
+            write_to_detector(getattr(detectorRoot.App,f"Asic{i}").PixNumModeEn, True)
+
         write_to_detector(detectorRoot.App.EpixUhrMatrixConfig.enable, True)
         
         #Gain value can be set via single value or via CSV file, also it is possible to select the same value 
@@ -566,12 +569,12 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                     gainValSelection[i-1]=gainValue
                     getattr(detectorRoot.App,f"Asic{i}").progPixelMatrixConstantValue(gainValue)
         
-                    
+        # deactivate gain modification            
         for i in asics: write_to_detector(getattr(detectorRoot.App,f"Asic{i}").PixNumModeEn, False)
         
         #Charge Injection definitions
         if(cfg['user']['App']['VINJ_DAC']['enable']==1):
-            write_to_detector(detectorRoot.App.WaveformControl.InjEn,  True    )
+            write_to_detector(detectorRoot.App.WaveformControl.InjEn,  True   )
             write_to_detector(detectorRoot.App.VINJ_DAC.enable,        True   )
             write_to_detector(detectorRoot.App.VINJ_DAC.dacEn,         True   )
             
@@ -683,7 +686,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     segids[0] = id
     top = cdict()
-    top.setAlg('config', [3,1,0])
+    top.setAlg('config', [3,2,0])
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
@@ -743,7 +746,7 @@ def epixUHR_scan_keys(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [3,1,0])
+            top.setAlg('config', [3,2,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
             top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
@@ -808,7 +811,7 @@ def epixUHR_update(update):
         for seg in range(1):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [3,1,0])
+            top.setAlg('config', [3,2,0])
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
             top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels

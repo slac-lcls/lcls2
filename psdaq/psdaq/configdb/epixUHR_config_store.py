@@ -22,7 +22,7 @@ import os
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [3,1,0])
+    top.setAlg('config', [3,2,0])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
@@ -103,9 +103,13 @@ def epixUHR_cdict():
         
     top.set("expert.App.WaveformControl.enable",					1			  	,'boolEnum')
     top.set("expert.App.WaveformControl.GlblRstPolarity",			1			  	,'boolEnum')
-    top.set("expert.App.WaveformControl.SR0Polarity",				0			  	,'boolEnum')
-    top.set("expert.App.WaveformControl.SR0Delay",				    1195			,'UINT32'  )
-    top.set("expert.App.WaveformControl.SR0Width",				    1    			,'UINT8'   )
+    top.set("expert.App.WaveformControl.AsicSroEn",				    1			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.SroPolarity",				0			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.SroDelay",				    1195			,'UINT32'  )
+    top.set("expert.App.WaveformControl.SroWidth",				    1    			,'UINT8'   )
+    top.set("expert.App.WaveformControl.AsicAcqEn", 				1			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.AsicR0En",  				1			  	,'boolEnum')
+    
     top.set("expert.App.WaveformControl.AcqPolarity",				0			  	,'boolEnum')
     top.set("expert.App.WaveformControl.AcqDelay",				    655				,'UINT32'  )
     top.set("expert.App.WaveformControl.AcqWidth",				    535				,'UINT32'  )
