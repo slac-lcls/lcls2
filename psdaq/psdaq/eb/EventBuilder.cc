@@ -362,6 +362,7 @@ void EventBuilder::_flush(const EbEvent* const due)
     while (event != lastEvent)
     {
       const auto age{now - event->_t0};
+      _age = age.count();               // So we can watch events time out
 
       // Retire all events up to a newer event, limited by due.
       // Since EbEvents are created in time order, older incomplete events can
