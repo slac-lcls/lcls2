@@ -161,9 +161,9 @@ static drpreg_t drpregs[] = { {0x02, "cdr_swap_mode"},
 
 #define NEWTEM
 #ifdef NEWTEM
-#define XMA_REG(i)       (0x00C28000 + i)
-#define TEB_REG(i)       (0x00C29000 + i)
-#define TRG_LANES(i)     (0x00C29000 + i*0x100)
+#define XMA_REG(i)       (0x00C48000 + i)
+#define TEB_REG(i)       (0x00C49000 + i)
+#define TRG_LANES(i)     (0x00C49000 + i*0x100)
 #else
 #define XMA_REG(i)       (0x00C20000 + i)
 #define TEB_REG(i)       (0x00C20100 + i)
@@ -253,12 +253,12 @@ static inline void set_i2c(int reg, uint32_t value) {
 #endif
 }
 
-static void print_mig_lane(const char* name, int addr, int offset, int mask)
+static void print_hmb_lane(const char* name, int addr, int offset, int mask)
 {
-    const unsigned MIG_LANES = 0x00800080;
+    const unsigned HMB_LANES = 0x00800000;
     printf("%20.20s", name);
     for(int i=0; i<lanes; i++) {
-      uint32_t reg = get_reg32( MIG_LANES + i*32 + addr);
+      uint32_t reg = get_reg32( HMB_LANES + i*256 + addr);
       printf(" %8x", (reg >> offset) & mask);
     }
     printf("\n");
@@ -507,6 +507,7 @@ int main(int argc, char* argv[])
     bool status    = false;
     bool ringb     = false;
     bool dumpReg   = false;
+    long long int gpu_bypass = 0;
     bool timingRst = false;
     bool rxTimRst = false;
     bool tcountRst = false;
@@ -524,7 +525,7 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rRsStTULmMFVD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rRsStTULmMFVD:C:1:w:")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
@@ -543,6 +544,7 @@ int main(int argc, char* argv[])
       case 'M': dramMon   = 1;    break;
       case 'F': frameRst  = true; break;
       case 'D': delayVal  = strtoul(optarg,&endptr,0); break;
+      case 'w': gpu_bypass = strtoul(optarg,&endptr,0); break;
       case 'C': partition = strtoul(optarg,&endptr,0);
         if (*endptr==',') {
           length = strtoul(endptr+1,&endptr,0);
@@ -639,38 +641,38 @@ int main(int argc, char* argv[])
     //
     if (1) {
         //    if (core_pcie) {
-      double txrefclk, rxrefclk;
-      measure_clks(txrefclk,rxrefclk);
+      // double txrefclk, rxrefclk;
+      // measure_clks(txrefclk,rxrefclk);
 
-      static const unsigned txrefclk_min[] = {118,185};
-      static const unsigned txrefclk_max[] = {120,186};
+      // static const unsigned txrefclk_min[] = {118,185};
+      // static const unsigned txrefclk_max[] = {120,186};
 
-      setup_clk |= ( txrefclk < txrefclk_min[clksel] ||
-                     txrefclk > txrefclk_max[clksel] );
+      // setup_clk |= ( txrefclk < txrefclk_min[clksel] ||
+      //                txrefclk > txrefclk_max[clksel] );
 
-      if (setup_clk) {
-        select_si570();
-        reset_si570();
+      // if (setup_clk) {
+      //   select_si570();
+      //   reset_si570();
 
-        double f = read_si570();
-        if (clksel)
-            set_si570(f);
-        else
-            set_si570_119m(f);
-        read_si570();
+      //   double f = read_si570();
+      //   if (clksel)
+      //       set_si570(f);
+      //   else
+      //       set_si570_119m(f);
+      //   read_si570();
 
-        double txrefclk, rxrefclk;
-        measure_clks(txrefclk,rxrefclk);
-      }
-      else if (reset_clk) {
-        select_si570();
-        reset_si570();
+      //   double txrefclk, rxrefclk;
+      //   measure_clks(txrefclk,rxrefclk);
+      // }
+      // else if (reset_clk) {
+      //   select_si570();
+      //   reset_si570();
 
-        // Revisit: Unused:  double f = read_si570();
+      //   // Revisit: Unused:  double f = read_si570();
 
-        double txrefclk, rxrefclk;
-        measure_clks(txrefclk,rxrefclk);
-      }
+      //   double txrefclk, rxrefclk;
+      //   measure_clks(txrefclk,rxrefclk);
+      // }
 
       timingRst |= setup_clk;
 
@@ -678,40 +680,40 @@ int main(int argc, char* argv[])
       //  Dump timing link stats before resetting
       //
       if (timingRst || rxTimRst || tcountRst) {
-        print_word("SOFcounts" , 0x00c00000);
-        print_word("RxRstDone" , 0x00c00014);
-        print_word("RxDecErrs" , 0x00c00018);
-        print_word("RxDspErrs" , 0x00c0001c);
+        print_word("SOFcounts" , 0x00c80000);
+        print_word("RxRstDone" , 0x00c80014);
+        print_word("RxDecErrs" , 0x00c80018);
+        print_word("RxDspErrs" , 0x00c8001c);
       }
 
       if (timingRst) {
         printf("Reset timing PLL\n");
-        unsigned v = get_reg32( 0x00c00020);
+        unsigned v = get_reg32( 0x00c80020);
         /*
-        ** PLL reset can hang the timing link
+        ** PLL reset can hang the timing link (8_0000 TimingCore)
         */
         v |= 0x80;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000);
         v &= ~0x80;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000000);
         v |= 0x8;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000);
         v &= ~0x8;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000000);
       }
 
       if (rxTimRst) {
         printf("Reset timing Rx\n");
-        unsigned v = get_reg32( 0x00c00020);
+        unsigned v = get_reg32( 0x00c80020);
         v |= 0x8;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000);
         v &= ~0x8;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(1000000);
       }
 
@@ -719,60 +721,61 @@ int main(int argc, char* argv[])
       tcountRst |= timingRst;
       if (tcountRst) {
         printf("Reset timing counters\n");
-        unsigned v = get_reg32( 0x00c00020) | 1;
+        unsigned v = get_reg32( 0x00c80020) | 1;
         v &= ~(1<<5);  // clear linkDown latch
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
         usleep(100);
         v &= ~0x1;
-        set_reg32( 0x00c00020, v);
+        set_reg32( 0x00c80020, v);
       }
     }
 
-    if (userRst) {
-      set_reg32( 0x00800000,(1<<31));
-    }
+    // if (userRst) {
+    //   set_reg32( 0x00800000,(1<<31));
+    // }
 
-    if (dramMon==1) {
-      unsigned v = get_reg32( 0x00800000);
-      v |= 1;
-      set_reg32( 0x00800000,v);
-    }
-    else if (dramMon==0) {
-      unsigned v = get_reg32( 0x00800000);
-      v &= ~1;
-      set_reg32( 0x00800000,v);
-    }
+    // if (dramMon==1) {
+    //   unsigned v = get_reg32( 0x00800000);
+    //   v |= 1;
+    //   set_reg32( 0x00800000,v);
+    // }
+    // else if (dramMon==0) {
+    //   unsigned v = get_reg32( 0x00800000);
+    //   v &= ~1;
+    //   set_reg32( 0x00800000,v);
+    // }
 
-    //  set new defaults for pause threshold
-    const unsigned MIG_LANES = 0x00800080;
-    for(int i=0; i<lanes; i++) {
-        unsigned v = get_reg32( MIG_LANES + i*32 + 4);
-        v &= ~(0x3ff<<8);
-        v |= (0x3f<<8);
-        set_reg32( MIG_LANES + i*32+4, v);
-    }
+    // //  set new defaults for pause threshold
+    // const unsigned MIG_LANES = 0x00800080;
+    // for(int i=0; i<lanes; i++) {
+    //     unsigned v = get_reg32( MIG_LANES + i*32 + 4);
+    //     v &= ~(0x3ff<<8);
+    //     v |= (0x3f<<8);
+    //     set_reg32( MIG_LANES + i*32+4, v);
+    // }
 
     if (status) {
       //      uint32_t lanes = get_reg32( RESOURCES);
       //      uint32_t lanes = 4;
       printf("  lanes             :  %u\n", lanes);
 
-      printf("  monEnable         :  %u\n", get_reg32( 0x00800000)&1);
+      // printf("  monEnable         :  %u\n", get_reg32( 0x00800000)&1);
 
-      printf("\n-- migLane Registers --\n");
-      print_mig_lane("blockSize  ", 0, 0, 0x1f);
-      print_mig_lane("blocksPause", 4, 8, 0x3ff);
-      print_mig_lane("blocksFree ", 8, 0, 0x1ff);
-      print_mig_lane("blocksQued ", 8,12, 0x1ff);
-      print_mig_lane("writeQueCnt",12, 0, 0xff);
-      print_mig_lane("wrIndex    ",16, 0, 0x1ff);
-      print_mig_lane("wcIndex    ",20, 0, 0x1ff);
-      print_mig_lane("rdIndex    ",24, 0, 0x1ff);
+      printf("\n-- hmbLane AxiStreamDmaV2Fifo Registers --\n");
+      print_hmb_lane("Version", 0, 0, 0xf);
+      print_hmb_lane("baseAddr(24b)", 4, 8, 0xffffff);
+      print_hmb_lane("buffFrameWidth", 24, 0, 0xff);
+      print_hmb_lane("axibuffWidth", 24, 8, 0xff);
+      print_hmb_lane("burstByte", 24, 16, 0xfff);
+      print_hmb_lane("rdBuffCnt", 28, 0, 0xffff);
+      print_hmb_lane("wrBuffCnt", 28, 16, 0xffff);
+      print_hmb_lane("pauseCnt", 32, 0, 0xffff);
+      print_hmb_lane("sAxisCtrlpause", 32, 16, 0x1);
 
-      print_clk_rate("axilOther  ",0);
-      print_clk_rate("timingRef  ",4);
-      print_clk_rate("migA       ",8);
-      print_clk_rate("migB       ",12);
+      // print_clk_rate("axilOther  ",0);
+      // print_clk_rate("timingRef  ",4);
+      // print_clk_rate("migA       ",8);
+      // print_clk_rate("migB       ",12);
 
       // TDetSemi
       print_lane("length"    , 0x00a00000,  0, 4, 0xffffff, lanes);
@@ -808,22 +811,22 @@ int main(int argc, char* argv[])
       //      if (core_pcie) {
       if (1) {
         // TDetTiming
-        print_word("SOFcounts" , 0x00c00000);
-        print_word("EOFcounts" , 0x00c00004);
-        print_word("Msgcounts" , 0x00c00008);
-        print_word("CRCerrors" , 0x00c0000c);
-        print_word("RxRecClks" , 0x00c00010);
-        print_word("RxRstDone" , 0x00c00014);
-        print_word("RxDecErrs" , 0x00c00018);
-        print_word("RxDspErrs" , 0x00c0001c);
-        print_word("CSR"       , 0x00c00020);
-        print_field("  linkUp" , 0x00c00020, 1, 1);
-        print_field("  polar"  , 0x00c00020, 2, 1);
-        print_field("  clksel" , 0x00c00020, 4, 1);
-        print_field("  ldown"  , 0x00c00020, 5, 1);
-        print_word("MsgDelay"  , 0x00c00024);
-        print_word("TxRefClks" , 0x00c00028);
-        print_word("BuffByCnts", 0x00c0002c);
+        print_word("SOFcounts" , 0x00c80000);
+        print_word("EOFcounts" , 0x00c80004);
+        print_word("Msgcounts" , 0x00c80008);
+        print_word("CRCerrors" , 0x00c8000c);
+        print_word("RxRecClks" , 0x00c80010);
+        print_word("RxRstDone" , 0x00c80014);
+        print_word("RxDecErrs" , 0x00c80018);
+        print_word("RxDspErrs" , 0x00c8001c);
+        print_word("CSR"       , 0x00c80020);
+        print_field("  linkUp" , 0x00c80020, 1, 1);
+        print_field("  polar"  , 0x00c80020, 2, 1);
+        print_field("  clksel" , 0x00c80020, 4, 1);
+        print_field("  ldown"  , 0x00c80020, 5, 1);
+        print_word("MsgDelay"  , 0x00c80024);
+        print_word("TxRefClks" , 0x00c80028);
+        print_word("BuffByCnts", 0x00c8002c);
 
         print_field("RxAlign_tgt ",0x00c10100,0,0xff);
         print_field("RxAlign_mask",0x00c10100,8,0xff);
@@ -880,11 +883,11 @@ int main(int argc, char* argv[])
     }
 
     if (delayVal>=0) {
-      unsigned v = get_reg32(0x00c00024);
+      unsigned v = get_reg32(0x00c80024);
       v |= (1<<31);
-      set_reg32(0x00c00024,v);
+      set_reg32(0x00c80024,v);
       usleep(1);
-      set_reg32(0x00c00024,delayVal);
+      set_reg32(0x00c80024,delayVal);
     }
 
     if (frameRst) {
@@ -908,7 +911,7 @@ int main(int argc, char* argv[])
       for(int i=0; i<8; i++)
         if (links&(1<<i)) {
           set_reg32( 0x00a00000+4*i, v);
-          set_reg32( 0x00800084+32*i, 0x1f00);
+          // set_reg32( 0x00800084+32*i, 0x1f00);
           set_reg32( TRG_LANES(i)+4, partition);
           set_reg32( TRG_LANES(i)+8, 16);
           set_reg32( TRG_LANES(i)+0, 3);
@@ -922,15 +925,24 @@ int main(int argc, char* argv[])
             }
     }
 
-    if (loopback) {
-        usleep(100000); // allow some settling time before changing loopback
-        unsigned lb = get_reg32( 0x00c30100 );
-        printf("Loopback read %x\n",lb);
-        lb ^= 2;
-        set_reg32( 0x00c30100, lb);
-        printf("Loopback wrote %x\n",lb);
-    }
+    // if (loopback) {
+    //     usleep(100000); // allow some settling time before changing loopback
+    //     unsigned lb = get_reg32( 0x00c30100 );
+    //     printf("Loopback read %x\n",lb);
+    //     lb ^= 2;
+    //     set_reg32( 0x00c30100, lb);
+    //     printf("Loopback wrote %x\n",lb);
+    // }
 
-    return 0;
+   if (gpu_bypass>0) {
+        unsigned v = get_reg32( 0x0002802c);
+        print_word("demux route dest, mask",0x0002802c);
+        v = gpu_bypass;
+        set_reg32( 0x0002802c, v);
+        printf("gpu bypassed \n");
+   }
+
+ return 0;
 }
+
 
