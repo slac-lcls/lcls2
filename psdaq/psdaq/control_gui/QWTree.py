@@ -7,7 +7,7 @@ Usage ::
     # Run test: python lcls2/psana/psana/graphqt/QWTree.py
     # Run test: python lcls2/psana/psana/graphqt/QWTree.py
 
-    #from psana.graphqt.QWTree import QWTree
+    #from psana2.graphqt.QWTree import QWTree
     psdaq.control_gui.QWTree import QWTree
     w = QWTree()
 
@@ -21,8 +21,8 @@ from PyQt5.QtWidgets import QTreeView, QVBoxLayout, QAbstractItemView
 from PyQt5.QtGui import QStandardItemModel, QStandardItem
 from PyQt5.QtCore import Qt, QModelIndex
 
-#from psana.graphqt.CMConfigParameters import cp
-#from psana.pyalgos.generic.Logger import logger
+#from psana2.graphqt.CMConfigParameters import cp
+#from psana2.pyalgos.generic.Logger import logger
 from psdaq.control_gui.QWIcons import icon
 
 #------------------------------
@@ -187,7 +187,7 @@ class QWTree(QTreeView) :
 
     def set_style(self):
         self.header().hide()
-        #from psana.graphqt.Styles import style
+        #from psana2.graphqt.Styles import style
         self.setWindowIcon(icon.icon_monitor)
         self.setContentsMargins(0,0,0,0)
         self.setStyleSheet("QTreeView::item:hover{background-color:#00FFAA;}")

@@ -33,7 +33,7 @@ from PyQt5.QtWidgets import QWidget, QFileDialog, QHBoxLayout, QVBoxLayout,\
                             QPushButton, QTextEdit, QComboBox
                             # QSizePolicy, QCheckBox, QFrame
 from psdaq.control_gui.Utils import load_textfile, save_textfile
-#from psana.pyalgos.generic.Utils import load_textfile, save_textfile
+#from psana2.pyalgos.generic.Utils import load_textfile, save_textfile
 
 #------------------------------
 
@@ -109,7 +109,7 @@ class QWEditText(QWidget) :
     def set_icons(self):
         try :
           from psdaq.control_gui.QWIcons import icon
-          #from psana.graphqt.QWIcons import icon
+          #from psana2.graphqt.QWIcons import icon
           icon.set_icons()
           #self.but_cancel.setIcon(icon.icon_button_cancel)
           #self.but_apply .setIcon(icon.icon_button_ok)

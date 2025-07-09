@@ -1,5 +1,5 @@
 from psana import DataSource
-from psana.dgramedit import AlgDef, DetectorDef, DataType
+from psana2.dgramedit import AlgDef, DetectorDef, DataType
 import psana.psexp.TransitionId
 import sys
 import numpy as np

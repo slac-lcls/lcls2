@@ -117,7 +117,7 @@ fi
 
 if [ $no_ana == 0 ]; then
     # to build psana with setuptools
-    cd psana
+    cd psana2
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
     # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo

@@ -207,7 +207,7 @@ for N, worker_node in enumerate(ami_worker_nodes):
     procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}', flags:'spu',
                          cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}' })
     procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}', flags:'s', env:epics_env,
-                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}' })
+                         cmd:f'ami-node --hutch {hutch} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana2://shmem={hutch}' })
 
 procmgr_config.extend(procmgr_ami)
 
@@ -229,6 +229,6 @@ procmgr_config.extend(procmgr_ami)
 #         procmgr_ami.append({ host:worker_node, id:f'ami-meb{N}_{instance}', flags:'spu',
 #                              cmd:f'{meb_cmd} -d -n 64 -q {ami_workers_per_node}' })
 #         procmgr_ami.append({ host:worker_node, id:f'ami-node_{N}_{instance}', flags:'s', env:epics_env,
-#                              cmd:f'ami-node -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana://shmem={hutch}{instance}' })
+#                              cmd:f'ami-node -p {base_port} --hutch {hutch}_{instance} --prometheus-dir {prom_dir} -N {N} -n {ami_workers_per_node} -H {ami_manager_node} --log-level warning worker -b {heartbeat_period} psana2://shmem={hutch}{instance}' })
 
 #     procmgr_config.extend(procmgr_ami)
