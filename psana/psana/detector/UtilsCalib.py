@@ -542,14 +542,10 @@ def add_metadata_kwargs(orun, odet, **kwa):
 
     trun_sec = up.seconds(orun.timestamp) # 1607569818.532117 sec
 
-    # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
+    # check opt "-t" if constants need to be deployed with diffiernt time stamp
     tstamp = kwa.get('tstamp', None)
-    use_external_run = tstamp is not None and tstamp<10000
-    use_external_ts  = tstamp is not None and tstamp>9999
     tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
-                  if use_external_ts else trun_sec
-    ivalid_run = tstamp if use_external_run else orun.runnum\
-                  if not use_external_ts else 0
+                 if tstamp is not None else trun_sec
 
     v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
     segment_ids = None if v is None else v()
@@ -567,7 +563,8 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['time_stamp'] = str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec))
     kwa['tsshort']    = str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec))
     kwa['tstamp_orig']= str_tstamp(fmt=cc.TSFORMAT, time_sec=int(trun_sec))
-    kwa['run']        = ivalid_run
+    kwa['run_beg']    = run_beg = kwa.get('run_beg', None)
+    kwa['run']        = orun.runnum if run_beg is None else run_beg
     kwa['run_end']    = kwa.get('run_end', 'end')
     kwa['run_orig']   = orun.runnum
     kwa['version']    = kwa.get('version', 'N/A')
