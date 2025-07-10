@@ -49,10 +49,13 @@ class DetectorImpl:
         var_name=None,
         **kwargs
     ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
-        if det_name not in cls._registry:
-            cls._registry[det_name] = super().__new__(cls)
+        if det_name == "scan":
+            return super().__new__(cls)
+        mangled_name: str = f"{det_name}:{drp_class_name}"
+        if mangled_name not in cls._registry:
+            cls._registry[mangled_name] = super().__new__(cls)
         else:
-            cls._registry[det_name]._reset(
+            cls._registry[mangled_name]._reset(
                 det_name=det_name,
                 drp_class_name=drp_class_name,
                 configinfo=configinfo,
@@ -61,7 +64,7 @@ class DetectorImpl:
                 var_name=var_name,
                 **kwargs
             )
-        return cls._registry[det_name]
+        return cls._registry[mangled_name]
 
     def __init__(
         self,
