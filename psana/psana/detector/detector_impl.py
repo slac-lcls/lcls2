@@ -36,9 +36,53 @@ class MissingDet:
     ):  # support only one arg - following detector interface proposal
         return None
 
-
 class DetectorImpl:
+    _registry = {}
+
+    def __new__(
+        cls,
+        det_name,
+        drp_class_name,
+        configinfo,
+        calibconst,
+        env_store=None,
+        var_name=None,
+        **kwargs
+    ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
+        if det_name not in cls._registry:
+            cls._registry[det_name] = super().__new__(cls)
+        else:
+            cls._registry[det_name]._reset(
+                det_name=det_name,
+                drp_class_name=drp_class_name,
+                configinfo=configinfo,
+                calibconst=calibconst,
+                env_store=env_store,
+                var_name=var_name,
+                **kwargs
+            )
+        return cls._registry[det_name]
+
     def __init__(
+        self,
+        det_name,
+        drp_class_name,
+        configinfo,
+        calibconst,
+        env_store=None,
+        var_name=None,
+        **kwargs
+    ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
+        self._reset(
+            det_name,
+            drp_class_name,
+            configinfo,
+            calibconst,
+            env_store=env_store,
+            var_name=var_name,
+            **kwargs
+        )
+    def _reset(
         self,
         det_name,
         drp_class_name,

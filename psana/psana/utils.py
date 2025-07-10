@@ -82,3 +82,27 @@ class Logger:
     def warning(self, msg, *args, **kwargs): self.logger.warning(msg, *args, **kwargs)
     def error(self, msg, *args, **kwargs): self.logger.error(msg, *args, **kwargs)
     def critical(self, msg, *args, **kwargs): self.logger.critical(msg, *args, **kwargs)
+
+class WeakList(list):
+    """Wrapper to make a list weak referenceable."""
+    ...
+class WeakDict(dict):
+    """Wrapper to make a dict weak referenceable."""
+    ...
+
+def make_weak_refable(d):
+    """Return a weak-referenceable wrapper of a dictionary.
+
+    Used, e.g., for calibration constants.
+    """
+    new_d = WeakDict({})
+    for key in d:
+        if isinstance(d[key], dict):
+            new_d[key] = make_weak_refable(WeakDict(d[key]))
+        elif isinstance(d[key], tuple):
+            new_d[key] = WeakList(list(d[key]))
+        elif d[key] == None:
+            new_d[key] = WeakDict({})
+        else:
+            new_d[key] = d[key]
+    return new_d

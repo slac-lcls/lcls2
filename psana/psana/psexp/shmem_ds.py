@@ -57,9 +57,11 @@ class ShmemDataSource(DataSourceBase):
         if self.supervisor:
             super()._setup_run_calibconst()
             if self.supervisor == 1:
-                self._pub_socket.send(self.dsparms.calibconst)
+                self._pub_socket.send(self._calib_const)
         else:
-            self.dsparms.calibconst = self._sub_socket.recv()
+            self._clear_calibconst()
+            self._calib_const = self._sub_socket.recv()
+            self._create_weak_calibconst()
         self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def _start_run(self):
