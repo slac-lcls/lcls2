@@ -49,7 +49,7 @@ class DetectorImpl:
         var_name=None,
         **kwargs
     ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
-        if det_name == "scan":
+        if det_name in ("scan", "epics"): # Require multiple instances
             return super().__new__(cls)
         mangled_name: str = f"{det_name}:{drp_class_name}"
         if mangled_name not in cls._registry:
