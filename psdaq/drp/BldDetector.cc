@@ -744,6 +744,15 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
 
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return nPgpInRx();});
+
     return 0;
 }
 
