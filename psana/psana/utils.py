@@ -96,6 +96,8 @@ def make_weak_refable(d):
     Used, e.g., for calibration constants.
     """
     new_d = WeakDict({})
+    if d is None:
+        return new_d
     for key in d:
         if isinstance(d[key], dict):
             new_d[key] = make_weak_refable(WeakDict(d[key]))
