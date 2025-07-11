@@ -28,6 +28,7 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 #include <mutex>
+#include <sys/prctl.h>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
@@ -549,6 +550,10 @@ void Meb::run()
   {
     logging::error("%s:\n  Error from pinThread:\n  %s",
                    __PRETTY_FUNCTION__, strerror(rc));
+  }
+  logging::info("MEB is starting with process ID %lu", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "Meb", 0, 0, 0) == -1) {
+    perror("prctl");
   }
 
   int rcPrv = 0;

@@ -8,6 +8,7 @@
 #include <map>
 #include <algorithm>
 #include <getopt.h>
+#include <sys/prctl.h>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "drp/RunInfoDef.hh"
@@ -260,6 +261,11 @@ int EaDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 void EaDrp::_worker()
 {
+    logging::info("EpicsArch worker is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "epicsArch/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     m_terminate.store(false, std::memory_order_release);
 
     // Reset counters to avoid 'jumping' errors reconfigures

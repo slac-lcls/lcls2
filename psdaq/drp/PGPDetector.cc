@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -152,6 +153,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
     pythonTime = 0ll;
 
     logging::info("Worker %u is starting with process ID %lu", threadNum, syscall(SYS_gettid));
+    char nameBuf[16];
+    snprintf(nameBuf, sizeof(nameBuf), "drp/Worker%d", threadNum);
+    if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     while (true) {
 
@@ -517,6 +523,9 @@ void PGPDrp::reader()
     auto tInitial = fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
     logging::info("PGP reader is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/PGPreader", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     // Reset counters to avoid 'jumping' errors on reconfigures
     pool.resetCounters();
@@ -649,6 +658,9 @@ void PGPDrp::reader()
 void PGPDrp::collector()
 {
     logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     int64_t worker = 0L;
     Batch batch;

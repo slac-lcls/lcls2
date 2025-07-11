@@ -8,6 +8,7 @@
 #include <memory>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <net/if.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
@@ -587,6 +588,11 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
 {
+    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     // Reset counters to avoid 'jumping' errors on reconfigures
     m_pool.resetCounters();
     resetEventCounter();

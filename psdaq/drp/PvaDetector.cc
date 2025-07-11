@@ -16,6 +16,7 @@
 #include <fstream>      // std::ifstream
 #include <cctype>       // std::isspace
 #include <regex>
+#include <sys/prctl.h>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "RunInfoDef.hh"
@@ -865,6 +866,9 @@ void PvDrp::_worker()
                     1500 };
 
     logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_pva/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     // Reset counters to avoid 'jumping' errors on reconfigures
     pool.resetCounters();

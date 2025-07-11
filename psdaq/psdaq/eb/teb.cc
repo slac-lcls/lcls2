@@ -37,6 +37,7 @@
 #include <exception>
 #include <algorithm>                    // For std::fill()
 #include <chrono>
+#include <sys/prctl.h>
 #include <Python.h>
 
 #include "rapidjson/document.h"
@@ -445,6 +446,10 @@ void Teb::run()
   {
     logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
                    __PRETTY_FUNCTION__, _prms.core[0]);
+  }
+  logging::info("TEB is starting with process ID %lu", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "Teb", 0, 0, 0) == -1) {
+    perror("prctl");
   }
 
   _batch.start = nullptr;
