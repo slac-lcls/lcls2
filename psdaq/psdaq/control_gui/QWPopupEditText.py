@@ -32,7 +32,7 @@ from PyQt5.QtCore import Qt
 from psdaq.control_gui.QWEditText import QWEditText
 
 #from psdaq.control_gui.Utils import load_textfile, save_textfile
-#from psana.pyalgos.generic.Utils import load_textfile, save_textfile
+#from psana2.pyalgos.generic.Utils import load_textfile, save_textfile
 
 #------------------------------
 
@@ -112,7 +112,7 @@ class QWPopupEditText(QDialog) :
 
     def set_icons(self):
         try :
-          #from psana.graphqt.QWIcons import icon
+          #from psana2.graphqt.QWIcons import icon
           from psdaq.control_gui.QWIcons import icon
           icon.set_icons()
           self.but_cancel.setIcon(icon.icon_button_cancel)

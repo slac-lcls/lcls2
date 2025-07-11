@@ -140,7 +140,7 @@ class QWList(QListView) :
 
 
     def set_style(self):
-        #from psana.graphqt.Styles import style
+        #from psana2.graphqt.Styles import style
         #self.setWindowIcon(icon.icon_monitor)
         #self.layout().setContentsMargins(0,0,0,0)
 

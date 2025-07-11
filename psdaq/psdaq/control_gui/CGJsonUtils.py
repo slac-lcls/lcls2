@@ -33,7 +33,7 @@ import json
 from psdaq.control_gui.CGDaqControl import daq_control #, DaqControl #, worker_set_state
 from psdaq.control_gui.CGConfigParameters import cp
 
-#from psana.pyalgos.generic.Utils import load_textfile
+#from psana2.pyalgos.generic.Utils import load_textfile
 from psdaq.control_gui.Utils import load_textfile
 
 #--------------------
