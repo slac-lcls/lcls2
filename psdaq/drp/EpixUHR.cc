@@ -19,6 +19,9 @@ using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
+//  Limit error messages per enable/disable cycle
+static const unsigned NERROR_PRINTS = 20;
+
 namespace Drp {
 
 #define ADD_FIELD(name,ntype,ndim)  NameVec.push_back({#name, Name::ntype, ndim})
@@ -138,6 +141,7 @@ void EpixUHR::_connectionInfo(PyObject* mbytes)
 
 unsigned EpixUHR::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
+    m_nprints = NERROR_PRINTS;
     logging::debug("EpixUHR enable");
     monStreamDisable();
     return 0;
@@ -251,8 +255,12 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
     unsigned m_asic_check = __builtin_popcount(m_asics)+2;
     
     if (subframes.size() != m_asic_check) {
-        logging::error("Missing data: subframe size %d [%d]\n",
-                        subframes.size(), m_asic_check);
+        if (m_nprints) {
+	    logging::error("Missing data: subframe size %d [%d]\n",
+                           subframes.size(), m_asic_check);
+	    if (!--m_nprints)
+  	        logging::error("...truncating");
+	}
         xtc.damage.increase(XtcData::Damage::MissingData);
         return;
     }
@@ -279,15 +287,23 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData
         if (q_asics & (1<<q)) {
     
             if (subframes.size() < (a+2)) {
-                logging::error("Missing data from asic %d\n", q);
+  	        if (m_nprints) {
+		    logging::error("Missing data from asic %d\n", q);
+		    if (!--m_nprints)
+		        logging::error("...truncating");
+		}
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
 
             }
             else if (subframes[a+2].num_elem() != headerSize+asicSize) {
             // else if (subframes[q+2].num_elem() != 2*(asicSize+headerSize)) {
-                logging::error("Wrong size frame %d [%d] from asic %d\n",
-                                subframes[a+2].num_elem()/2, asicSize+headerSize, q);
+  	        if (m_nprints) {
+		    logging::error("Wrong size frame %d [%d] from asic %d\n",
+				   subframes[a+2].num_elem()/2, asicSize+headerSize, q);
+		    if (!--m_nprints)
+		        logging::error("...truncating");
+		}
                 xtc.damage.increase(XtcData::Damage::MissingData);
                 q_asics ^= (1<<q);
             }
