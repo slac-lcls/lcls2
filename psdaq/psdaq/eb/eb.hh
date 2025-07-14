@@ -127,6 +127,7 @@ namespace Pds {
       string_t  ebPort;            // EB port to serve
       string_t  mrqPort;           // Mon request port to receive on
       string_t  instrument;        // Instrument name for monitoring
+      string_t  collSrv;           // Collection server
       unsigned  partition;         // The chosen system
       string_t  alias;             // Unique name passed on cmd line
       unsigned  id;                // EB instance identifier

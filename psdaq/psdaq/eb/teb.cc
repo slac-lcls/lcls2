@@ -879,7 +879,7 @@ static std::string getHostname()
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&);
+  TebApp(EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo(const json& msg) override;
@@ -909,9 +909,8 @@ private:
   bool                                 _unconfigFlag;
 };
 
-TebApp::TebApp(const std::string& collSrv,
-               EbParams&          prms) :
-  CollectionApp(collSrv, prms.partition, "teb", prms.alias),
+TebApp::TebApp(EbParams& prms) :
+  CollectionApp(prms.collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _mrqPortEph  (prms.mrqPort.empty()),
@@ -1381,7 +1380,6 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
-  std::string    collSrv;
   EbParams       prms;
   std::string    kwargs_str;
 
@@ -1395,7 +1393,7 @@ int main(int argc, char **argv)
   {
     switch (op)
     {
-      case 'C':  collSrv            = optarg;                       break;
+      case 'C':  prms.collSrv       = optarg;                       break;
       case 'p':  prms.partition     = std::stoi(optarg);            break;
       case 'P':  prms.instrument    = optarg;                       break;
       case 'A':  prms.ifAddr        = optarg;                       break;
@@ -1438,7 +1436,7 @@ int main(int argc, char **argv)
     logging::critical("-p: partition number is mandatory");
     return 1;
   }
-  if (collSrv.empty())
+  if (prms.collSrv.empty())
   {
     logging::critical("-C: collection server is mandatory");
     return 1;
@@ -1482,7 +1480,7 @@ int main(int argc, char **argv)
 
   try
   {
-    TebApp app(collSrv, prms);
+    TebApp app(prms);
 
     app.run();
 
