@@ -95,8 +95,7 @@ def argument_parser():
     h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
-    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS, '\
-                'if None - run time is used, default = %s' % str(d_tstamp)
+    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
     h_version = 'constants version, default = %s' % str(d_version)
     h_run_beg = 'first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
