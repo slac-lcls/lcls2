@@ -418,7 +418,7 @@ int MemPoolCpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
-    m_tmo         {100},
+    m_tmo         {100},                // ms
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
