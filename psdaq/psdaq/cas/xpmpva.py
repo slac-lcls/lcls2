@@ -539,6 +539,8 @@ class PatternTab(QtWidgets.QWidget):
         super(PatternTab,self).__init__()
 
         l = QtWidgets.QVBoxLayout()
+        l.addWidget(PvEditEvt(f'{pvbase}PATT:L0Select',0))
+
         v20b = (1<<20)-1
         l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
 
