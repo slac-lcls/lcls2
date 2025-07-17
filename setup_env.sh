@@ -42,14 +42,16 @@ export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 # for procmgr
 export TESTRELDIR=$RELDIR/install
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
-export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,PS_PARALLEL='none'
+export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
 
 # for daqbatch
 export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
-export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,PS_PARALLEL='none'
+export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
 
 # cpo: seems that in more recent versions blas is creating many threads
 export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 # cpo: getting intermittent file-locking issue on ffb, so try this
 export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking
