@@ -9,7 +9,8 @@ def main():
                '--hutch'   :'rix',
                '--detname' :'epixm_0',
                '--scantype':'pedestal',
-               '--record'  :1}
+               '--record'  :1,
+               '--run_type':'DARK'}
 
     aargs = [('--gain-modes', {'type':str,'nargs':'+','choices':['SH','SL','AHL','User'],
                                'default':['AHL','SH'],
