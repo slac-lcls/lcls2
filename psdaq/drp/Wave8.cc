@@ -184,6 +184,7 @@ unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 
 void Wave8::_event(XtcData::Xtc& xtc,
                    const void* bufEnd,
+                   uint64_t l1count,
                    std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);

@@ -634,7 +634,7 @@ class BldDetector : public XpmDetector
 {
 public:
     BldDetector(Parameters& para, MemPoolCpu& pool) : XpmDetector(&para, &pool) { virtChan = 0; }
-    void event(Dgram& dgram, const void* bufEnd, PGPEvent* event) override {}
+    void event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override {}
 };
 
 

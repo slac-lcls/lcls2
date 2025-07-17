@@ -235,7 +235,7 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
 //                   0:  Timing
 //                   2:  ASIC2/3 2B interleaved
 //
-void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
     

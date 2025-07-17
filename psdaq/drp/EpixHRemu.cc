@@ -220,7 +220,7 @@ unsigned EpixHRemu::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const json& 
     return 0;
 }
 
-void EpixHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void EpixHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     // raw data
     NamesId rawNamesId(nodeId,RawNamesIndex);

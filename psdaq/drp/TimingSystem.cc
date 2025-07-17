@@ -189,7 +189,7 @@ bool TimingSystem::scanEnabled() {
     return true;
 }
 
-void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system

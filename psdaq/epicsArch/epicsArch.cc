@@ -165,7 +165,7 @@ unsigned EaDetector::unconfigure()
     return 0;
 }
 
-void EaDetector::event(Dgram&, const void* bufEnd, PGPEvent*)
+void EaDetector::event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t)
 {
     // Unused
 }

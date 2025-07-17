@@ -203,7 +203,7 @@ unsigned Digitizer::configure(const std::string& config_alias, Xtc& xtc, const v
     return 0;
 }
 
-void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     CreateData hsd(dgram.xtc, bufEnd, m_namesLookup, m_evtNamesId);
 

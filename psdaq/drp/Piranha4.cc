@@ -322,7 +322,7 @@ unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
     return 0;
 }
 
-void Piranha4::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Piranha4::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     if (m_sim) m_sim->event(xtc,bufEnd,subframes);
     if (m_tt && !m_tt->event(xtc,bufEnd,subframes))

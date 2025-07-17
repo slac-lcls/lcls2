@@ -317,7 +317,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,const void* bufEnd,XtcData::ConfigIt
     return 0;
 }
 
-void Opal::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Opal::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     if (m_sim) m_sim->event(xtc,bufEnd,subframes);
     if (m_tt && !m_tt->event(xtc,bufEnd,subframes))

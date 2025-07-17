@@ -519,9 +519,6 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
         m_slsDet->setTimingMode(sls::defs::TRIGGER_EXPOSURE);
         m_slsDet->setNumberOfTriggers(std::numeric_limits<int64_t>::max());
         m_slsDet->setNumberOfFrames(1);
-        // sync the internal frame counter of all the modules
-        m_expectedFrameNum = 1;
-        m_slsDet->setNextFrameNumber(m_expectedFrameNum);
 
         // Atomic counter for configuration threads to signal failure
         std::atomic<unsigned> numFailed{0};
@@ -547,11 +544,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
             return 1;
         }
 
-        // Put all of the modules in the acquiring state
-        m_slsDet->startDetector();
-        // startDetector does not check that aquisition actually started, so check it
-        auto status = m_slsDet->getDetectorStatus();
-        return !status.contains_only(sls::defs::RUNNING, sls::defs::WAITING);
+        return 0;
     }
     catch (const sls::RuntimeError &err) {
         logging::error("Failed to configure Jungfrau modules: %s", err.what());
@@ -559,6 +552,48 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     }
 }
 
+unsigned Jungfrau::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo)
+{
+  try {
+    // reset the internal frame counter of all the modules - the l1count gets reset on begin run
+    m_slsDet->setNextFrameNumber(1);
+    return 0;
+  }
+  catch (const sls::RuntimeError &err) {
+    logging::error("Failed to reset Jungfrau modules frame counters: %s", err.what());
+    return 1;
+  }
+}
+
+unsigned Jungfrau::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
+{
+  try {
+    // Put all of the modules in the acquiring state
+    m_slsDet->startDetector();
+    // startDetector does not check that aquisition actually started, so check it
+    auto status = m_slsDet->getDetectorStatus();
+    return !status.contains_only(sls::defs::RUNNING, sls::defs::WAITING);
+  }
+  catch (const sls::RuntimeError &err) {
+    logging::error("Failed to start Jungfrau modules: %s", err.what());
+    return 1;
+  }
+}
+
+unsigned Jungfrau::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
+{
+  try {
+    // Take all of the moudles out of the acquiring state
+    m_slsDet->stopDetector();
+    // stopDetector does not check that aquisition actually stopped, so check it
+    auto status = m_slsDet->getDetectorStatus();
+    return !status.contains_only(sls::defs::IDLE, sls::defs::STOPPED);
+  }
+  catch (const sls::RuntimeError &err) {
+    logging::error("Failed to stop Jungfrau modules: %s", err.what());
+    return 1;
+  }
+}
 
 /**
  * Count the number of "hot" pixels in the raw data to feed to the detector protection
@@ -594,6 +629,7 @@ uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThresh
 
 void Jungfrau::_event(XtcData::Xtc& xtc,
                       const void* bufEnd,
+                      uint64_t l1count,
                       std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     // Will need to loop over modules to extract data from each subframe
@@ -693,11 +729,11 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         }
 
         // check the framenum is the expected value
-        if (framenum != m_expectedFrameNum) {
+        if (framenum != l1count) {
           logging::error("Out-of-Order data: lane-seg-host[%zu-%u-%s] unexpected frame num %lu [%lu] -> diff %ld - ts %lu",
                          moduleIdx, segNo, slsHost,
-                         framenum, m_expectedFrameNum,
-                         static_cast<int64_t>(framenum - m_expectedFrameNum),
+                         framenum, l1count,
+                         static_cast<int64_t>(framenum - l1count),
                          timestamp);
           dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
@@ -714,8 +750,6 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
         // Add the damage from this module to the parent Xtc
         xtc.damage.increase(dataXtc.damage.value());
     }
-
-    m_expectedFrameNum++;
 }
 
 std::string Jungfrau::_buildDetId(uint64_t sensor_id,

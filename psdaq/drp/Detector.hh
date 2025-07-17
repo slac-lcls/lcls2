@@ -42,7 +42,7 @@ public:
     virtual unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) {return 0;};
     virtual unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) {return 0;};
     virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
-    virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) = 0;
+    virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
     virtual void shutdown() {};
 

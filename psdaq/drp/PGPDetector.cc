@@ -190,7 +190,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
                 EbDgram* dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, para.rogMask);
 
                 const void* bufEnd = (char*)dgram + pool.bufferSize();
-                det.event(*dgram, bufEnd, event);
+                det.event(*dgram, bufEnd, event, batch.l1count);
 
                 if ( pythonDrp) {
                     Dgram* inpDg = dgram;
@@ -579,6 +579,11 @@ void PGPDrp::reader()
             bool stateTransition = (transitionId != TransitionId::L1Accept) &&
                                    (transitionId != TransitionId::SlowUpdate);
 
+            // keep track of the number of L1Accepts seen in the batch
+            if (transitionId == TransitionId::L1Accept) {
+              m_batch.l1count++;
+            }
+
             // send batch to worker if batch is full or if it's a transition
             if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) || stateTransition) {
 
@@ -698,4 +703,5 @@ void PGPDrp::resetEventCounter()
 {
     m_batch.start = 1;
     m_batch.size = 0;
+    m_batch.l1count = 0;
 }
