@@ -4,6 +4,7 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.xpmmini import *
 from psdaq.cas.xpm_utils import timTxId
 import rogue
+from psdaq.utils import enable_high_rate_encoder_dev
 import high_rate_encoder_dev
 import time
 import json
@@ -83,6 +84,8 @@ def hrencoder_init(
     weakref.finalize(hr_enc, hr_enc.stop)
     hr_enc.start()
 
+    hr_enc.StopRun()
+
     return hr_enc
 
 
@@ -93,8 +96,6 @@ def hrencoder_connectionInfo(hr_enc, alloc_json_str):
 
     rxId = hr_enc.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     hr_enc.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-
-    hr_enc.StopRun()
 
     connect_info = {}
     connect_info["paddr"] = rxId

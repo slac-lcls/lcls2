@@ -1,3 +1,4 @@
+from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId
@@ -29,6 +30,12 @@ def supervisor_info(json_msg):
                 nworker+=1
     return supervisor,nworker
 
+def dumpTiming(tim):
+    logging.warning(f'FidCount  : {tim.FidCount.get()}')
+    logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
+    logging.warning(f'RxDecErrs : {tim.RxDecErrCount.get()}')
+    logging.warning(f'RxDspErrs : {tim.RxDspErrCount.get()}')
+
 def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     global args
 
@@ -40,9 +47,12 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
     root.__enter__()
 
-    logging.info('Reset timing data path')
-    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.C_RxReset()
-    time.sleep(0.1)
+##  Moved to connectionInfo so supervisor can execute it only once
+#    logging.info('Reset timing data path')
+#    dumpTiming(root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx)
+#    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.C_RxReset()
+#    time.sleep(0.1)
+#    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
 
     args['root'] = root.PcieControl.DevKcu1500
     args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
@@ -60,6 +70,13 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     if barrier_global.supervisor:
         
+        logging.info('Reset timing data path')
+        tim = root.TDetTiming.TimingFrameRx
+        dumpTiming(tim)
+        tim.C_RxReset()
+        time.sleep(0.1)
+        tim.ClearRxCounters()
+
         if args["timebase"]=="186M":
             clockrange = (180.,190.)
         elif args["timebase"]=="119M":
@@ -75,12 +92,13 @@ def xpmdet_connectionInfo(alloc_json_str):
 
                 if (rate < clockrange[0] or rate > clockrange[1]):
                     root.I2CBus.programSi570(119. if args["timebase"]=="119M" else 1300/7.)
-                    tim = root.TDetTiming.TimingFrameRx
                     tim.RxPllReset.set(1)
                     tim.RxPllReset.set(0)
                     time.sleep(0.0001)
+                    dumpTiming(tim)
                     tim.C_RxReset()
                     time.sleep(0.1)
+                    tim.ClearRxCounters()
             else:
                 logging.warning('Supervisor is not I2cBus manager')
 
@@ -94,28 +112,30 @@ def xpmdet_connectionInfo(alloc_json_str):
             teb.ResetCounters()
             teb.FifoReset()
 
-    barrier_global.wait()
-
-    xpmdet_unconfig()
-
-    rxId = xma.RxId.get()
-    logging.info('rxId {:x}'.format(rxId))
-        
-    if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
-        logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
-        tim = root.TDetTiming.TimingFrameRx
-        tim.RxPllReset.set(1)
-        tim.RxPllReset.set(0)
-        time.sleep(0.0001)
-        tim.C_RxReset()
-        time.sleep(0.1)
+        xpmdet_unconfig()
 
         rxId = xma.RxId.get()
         logging.info('rxId {:x}'.format(rxId))
-
+        
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
-            logging.critical(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Aborting.  Try TxPllReset.");
-            raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
+            logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
+            tim = root.TDetTiming.TimingFrameRx
+            tim.RxPllReset.set(1)
+            tim.RxPllReset.set(0)
+            time.sleep(0.0001)
+            dumpTiming(tim)
+            tim.C_RxReset()
+            time.sleep(1.0)
+            tim.ClearRxCounters()
+
+            rxId = xma.RxId.get()
+            if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
+                logging.critical(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Aborting.  Try TxPllReset.");
+                raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
+    barrier_global.wait()
+
+    rxId = xma.RxId.get()
+    logging.info('rxId {:x}'.format(rxId))
 
     connect_info = {}
     connect_info['paddr'] = rxId

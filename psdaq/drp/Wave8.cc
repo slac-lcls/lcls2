@@ -168,10 +168,6 @@ Wave8::Wave8(Parameters* para, MemPool* pool) :
     BEBDetector(para, pool)
 {
     _init(para->kwargs["epics_prefix"].c_str());
-
-    if (para->kwargs.find("timebase")!=para->kwargs.end() &&
-        para->kwargs["timebase"]==std::string("119M"))
-        m_debatch = true;
 }
 
 unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
@@ -188,6 +184,7 @@ unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
 
 void Wave8::_event(XtcData::Xtc& xtc,
                    const void* bufEnd,
+                   uint64_t l1count,
                    std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);

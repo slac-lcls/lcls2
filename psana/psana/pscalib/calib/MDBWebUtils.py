@@ -51,14 +51,30 @@ import sys
 import numpy as np
 import io
 
+from psana.pscalib.calib.CalibDoc import CalibDoc
 import psana.pscalib.calib.CalibConstants as cc
-from requests import get, post, delete #put
+import requests as req
+get, delete = req.get, req.delete # req.put
 
 from time import time
 from numpy import fromstring
 import psana.pscalib.calib.MDBUtils as mu
 import psana.pyalgos.generic.Utils as gu
 from subprocess import call
+
+def info_dict(d, cmt='', offset='  '):
+    """ returns (str) dict content"""
+    s = '%s\n%sinfo_dict' % (cmt, offset)
+    for k,v in d.items():
+        if isinstance(v,dict): s = info_dict(v, cmt='', offset = offset+'  ')
+        else: s = '%s\n%sk:%s t:%s v:%s' % (s, offset, str(k).ljust(10), type(v), str(v)[:60])
+    return s
+
+
+def post(url, **kwa):
+    print('XXX MDBWebUtils: post url:%s' % url) # info_dict(kwa, cmt='kwa', offset='  ')
+    return req.post(url, **kwa)
+
 
 def has_kerberos_ticket():
     """Checks to see if the user has a valid Kerberos ticket."""
@@ -90,6 +106,9 @@ def request(url, query=None):
         (url, str(query), r.ok, r.status_code, r.reason)
     s += '\nTry command: curl -s "%s"' % url
     logger.debug(s)
+    if r.status_code == 503:
+        logger.warning(s)
+        sys.exit(1)
     return None
 
 
@@ -113,7 +132,7 @@ def collection_names(dbname, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/test_db/test_coll?query_string=%7B%20%22item%22..."
 def find_docs(dbname, colname, query={}, url=cc.URL):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}."""
-    uri = '%s/%s/%s'%(url,dbname,colname)
+    uri = '%s/%s/%s'%(url.rstrip('/'),dbname,colname)
     query_string=str(query).replace("'",'"')
     logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
     r = request(uri, {"query_string": query_string})
@@ -132,7 +151,6 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
        1. finds all documents for query
        2. select the latest for run or time_sec
     """
-
     logger.debug('find_doc input pars dbname: %s colname: %s query:%s' % (dbname, colname, str(query)))
 
     docs = find_docs(dbname, colname, query, url)
@@ -143,14 +161,20 @@ def find_doc(dbname, colname, query={}, url=cc.URL): #query={'ctype':'pedestals'
 
 def select_latest_doc(docs, query):
     """Returns a single document for query selected by time_sec (if available) or run."""
+    if docs is None: return None
+
     if len(docs)==0:
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
         #logger.warning('find_docs returns list of length 0 for query: %s' % query)
         return None
 
-    qkeys = query.keys()
-    key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    for d in docs:
+        d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'])
+
+    #qkeys = query.keys()
+    #key_sort = 'time_sec' if 'time_sec' in qkeys else 'run'
+    key_sort = 'tsec_id'
 
     logger.debug('select_latest_doc: %s\nkey_sort: %s' % (str(query), key_sort))
     vals = [int(d[key_sort]) for d in docs]
@@ -164,10 +188,22 @@ def select_latest_doc(docs, query):
     return None
 
 
+def select_doc_in_run_range(docs, rnum):
+    """uses psana.pscalib.calib.CalibDoc"""
+    cdocs = [CalibDoc(d) for d in docs]
+    cdocs_sorted = sorted([cd for cd in cdocs if cd.valid])
+    #print('XXX in select_doc_in_run_range - cdocs_sorted:\n  %s' % '\n  '.join([d.info_calibdoc() for d in cdocs_sorted]))
+    for d in cdocs_sorted[::-1]:
+        if d.valid and d.begin <= rnum and rnum <= d.end:
+            logger.debug('selected calibdoc: %s' % d.info_calibdoc())
+            return d.doc
+    return None # if no matching found
+
+
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/cspad_0001/5b6893e81ead141643fe4344"
 def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
     """Returns document for docid."""
-    r = request('%s/%s/%s/%s'%(url,dbname,colname,docid))
+    r = request('%s/%s/%s/%s'%(url.rstrip('/'),dbname,colname,docid))
     if r is None: return None
     return r.json()
 
@@ -175,7 +211,7 @@ def get_doc_for_docid(dbname, colname, docid, url=cc.URL):
 # curl -s "https://pswww.slac.stanford.edu/calib_ws/cdb_cxic0415/gridfs/5b6893d91ead141643fe3f6a"
 def get_data_for_id(dbname, dataid, url=cc.URL):
     """Returns raw data from GridFS, at this level there is no info for parsing."""
-    r = request('%s/%s/gridfs/%s'%(url,dbname,dataid))
+    r = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,dataid))
     if r is None: return None
     logger.debug('get_data_for_docid:'\
                 +'\n  r.status_code: %s\n  r.headers: %s\n  r.encoding: %s\n  r.content: %s...\n' %
@@ -199,8 +235,8 @@ def get_data_for_doc(dbname, doc, url=cc.URL):
         logger.debug("get_data_for_doc: key 'id_data' is missing in selected document...")
         return None
 
-    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url,dbname,idd)))
-    r2 = request('%s/%s/gridfs/%s'%(url,dbname,idd))
+    #print('curl -s "%s"' % ('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd)))
+    r2 = request('%s/%s/gridfs/%s'%(url.rstrip('/'),dbname,idd))
     if r2 is None: return None
     s = r2.content
 
@@ -211,11 +247,13 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
+    logger.debug('dbnames_collection_query input parameters:\n' +\
+                 '    det:%s exp:%s ctype:%s run:%s time_sec:%s vers:%s dtype:%s dbsuffix:%s kwa:%s' %\
+                 (det, exp, ctype, str(run), str(time_sec), vers, str(dtype), dbsuffix, str(kwa)))
     short = pro_detector_name(det, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
     logger.debug('short: %s dbsuffix: %s' % (short, dbsuffix))
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
-
     return resp
 
 
@@ -270,14 +308,26 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, url=cc
     return resp
 
 
+def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
+    """print for debugging"""
+    print('\n\ncalib_constants_all_types docs_for_type %s' % ct)
+    for i,d in enumerate(docs_for_type):
+        shortname = d['shortname']
+        if(shortname != detname_short): continue
+        tsec_id, tstamp_id = mu.sec_and_ts_from_id(d['_id'])
+        print('  doc:%02d experiment:%s ctype:%12s shortname:%s run:%3s run_end:%s tstamp_id:%s' %\
+              (i, d['experiment'], ct, shortname, str(d['run']), str(d['run_end']), tstamp_id))
+
+
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
     """Returns constants for all ctype-s."""
     t0_sec = time()
     ctype=None
+
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
-    #print('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
+    logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
 
     docs = find_docs(dbname, colname, query, url)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
@@ -291,7 +341,11 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     resp = {}
     for ct in ctypes:
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
-        doc = select_latest_doc(docs_for_type, query)
+        #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')
+
+        doc = select_doc_in_run_range(docs_for_type, run)
+        #doc = select_latest_doc(docs_in_run_range, query)
+
         if doc is None: continue
         resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
         #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
@@ -327,8 +381,14 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     d = f.read()
     #logger.debug('add_data byte-data:',d)
     resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
-    logger.debug('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
-    id = resp.json().get('_id',None)
+    logger.info('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+
+    try:
+        id = resp.json().get('_id',None)
+    except Exception as e:
+        logger.warning('JSONDecodeError: %s' % str(e))
+        return None
+
     if id is None: logger.warning('id_data is None')
     return id
 
@@ -350,7 +410,7 @@ def add_data_and_doc(data, _dbname, _colname, url=cc.URL_KRB, krbheaders=cc.KRBH
 
     # check permission
     t0_sec = time()
-    if not valid_post_privilege(_dbname, url_krb=url): return None
+    if not valid_post_privilege(_dbname, url_krb=cc.URL_KRB): return None
 
     id_data = add_data(_dbname, data, url, krbheaders)
     if id_data is None: return None
@@ -522,6 +582,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
 
 def pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
     """Returns short detector name if its length exceeds cc.MAX_DETNAME_SIZE chars."""
+    if detname is None: return None
     assert isinstance(detname,str), 'unexpected detname: %s' % str(detname)
     return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
@@ -714,7 +775,7 @@ def valid_post_privilege(dbname, url_krb=cc.URL_KRB):
     logger.debug('valid_post_privilege ws_url: %s'% ws_url)
 
     try:
-        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(ws_url).hostname).getAuthHeaders()
+        krbh_test = cc.KerberosTicket("HTTP@" + cc.urlparse(cc.URL_KRB_HEADERS).hostname).getAuthHeaders()
     except Exception as err: #except kerberos.GSSError as err:
         logger.warning('KerberosTicket error: %s' % str(err))
         logger.warning('BEFORE RUNNING THIS SCRIPT TRY COMMAND: kinit')

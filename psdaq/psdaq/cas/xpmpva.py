@@ -539,6 +539,8 @@ class PatternTab(QtWidgets.QWidget):
         super(PatternTab,self).__init__()
 
         l = QtWidgets.QVBoxLayout()
+        l.addWidget(PvEditEvt(f'{pvbase}PATT:L0Select',0))
+
         v20b = (1<<20)-1
         l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
 
@@ -666,6 +668,8 @@ class Ui_MainWindow(object):
 
             if 'Kcu' not in v:
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
+            else:
+                tw.addTab(PvTableDisplay(pvbase+'QSFPSTATUS',[f'QSFP{int(j/4)}-{(j%4)}' for j in range(8)]),'QSFPs')
 
             stack.addWidget(tw)
 

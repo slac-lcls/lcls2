@@ -25,7 +25,7 @@ jobs:
           auto-update-conda: true
           activate-environment: build-conda-env
           channels: lcls-ii, conda-forge
-          environment-file: .daq_20241215.txt
+          environment-file: .daq_20250402.txt
 
       - name: Build
         run:

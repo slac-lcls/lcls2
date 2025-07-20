@@ -88,18 +88,27 @@ public:
         return &m_buffer[offset];
     }
     size_t size() const {return m_size;}
-    size_t bufferSize() const {return m_bufferSize;}
+    uint8_t* buffer() const { return m_buffer; }
+    size_t bufferSize() const {return m_bufferSize;} // L1Accepts
+    size_t trBufSize()  const {return m_trBufSize;}
+    uint8_t* trBuffer() const { return m_trBuffer; }
+    unsigned nTrBuffers() const { return m_nTrBuffers; }
+    unsigned nL1Buffers() const { return m_nL1Buffers; }
 private:
     size_t   m_size;
-    size_t   m_bufferSize;
     uint8_t* m_buffer;
+    size_t   m_bufferSize;              // L11Accepts
+    size_t   m_trBufSize;
+    uint8_t* m_trBuffer;
+    unsigned m_nTrBuffers;
+    unsigned m_nL1Buffers;
 };
 
 class MemPool
 {
 public:
-    MemPool(Parameters& para);
-    ~MemPool();
+    MemPool(const Parameters& para);
+    virtual ~MemPool() {};
     Pebble pebble;
     std::vector<PGPEvent> pgpEvents;
     std::vector<Pds::EbDgram*> transitionDgrams;
@@ -109,27 +118,32 @@ public:
     unsigned dmaSize() const {return m_dmaSize;}
     unsigned nbuffers() const {return m_nbuffers;}
     size_t bufferSize() const {return pebble.bufferSize();}
-    int fd() const {return m_fd;}
+    virtual int fd() const = 0;
     void shutdown();
     Pds::EbDgram* allocateTr();
-    void freeTr(Pds::EbDgram* dgram) { m_transitionBuffers.push(dgram); }
-    unsigned countDma();
+    void freeTr(Pds::EbDgram* dgram);
+    unsigned allocateDma();
     unsigned allocate();
-    void freeDma(std::vector<uint32_t>& indices, unsigned count);
+    void freeDma(unsigned count, uint32_t* indices);
     void freePebble();
+    void flushPebble();
     int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
                                       m_dmaFrees.load(std::memory_order_relaxed); }
     int64_t inUse() const { return m_allocs.load(std::memory_order_relaxed) -
                                    m_frees.load(std::memory_order_relaxed); }
+    int64_t trInUse() const { return m_transitionBuffers.guess_size(); }
     void resetCounters();
-    int setMaskBytes(uint8_t laneMask, unsigned virtChan);
+    virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) = 0;
+    template <typename T> T* getAs() { return static_cast<T*>( this ); }
+protected:
+    void _initialize(const Parameters&);
 private:
+    virtual void _freeDma(unsigned count, uint32_t* indices) = 0;
+protected:
     unsigned m_nDmaBuffers;             // Rounded up dmaCount
     unsigned m_nbuffers;
     unsigned m_dmaCount;
     unsigned m_dmaSize;
-    int m_fd;
-    bool m_setMaskBytesDone;
     SPSCQueue<void*> m_transitionBuffers;
     std::atomic<uint64_t> m_dmaAllocs;
     std::atomic<uint64_t> m_dmaFrees;
@@ -137,6 +151,23 @@ private:
     std::atomic<uint64_t> m_frees;
     std::mutex m_lock;
     std::condition_variable m_condition;
+    uint8_t m_dmaOverrun;
+    uint8_t m_l1Overrun;
+    uint8_t m_trOverrun;
+};
+
+class MemPoolCpu : public MemPool
+{
+public:
+    MemPoolCpu(const Parameters&);
+    virtual ~MemPoolCpu();
+    virtual int fd() const override {return m_fd;}
+    virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
+private:
+    virtual void _freeDma(unsigned count, uint32_t* indices) override;
+private:
+    int m_fd;
+    bool m_setMaskBytesDone;
 };
 
 }

@@ -230,7 +230,7 @@ Pds::TimingHeader* EpixM320::getTimingHeader(uint32_t index) const
 //                   0:  Timing
 //                   2:  ASIC3 2B interleaved
 //
-void EpixM320::_event(Xtc& xtc, const void* bufEnd, std::vector< Array<uint8_t> >& subframes)
+void EpixM320::_event(Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< Array<uint8_t> >& subframes)
 {
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const size_t headerSize  = EpixMPanelDef::HeaderSize;

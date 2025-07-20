@@ -20,6 +20,7 @@ namespace Drp {
 
 class GpuDetector;
 
+
 class GpuWorkerFactory : public Pds::Dl
 {
 public:
@@ -102,13 +103,13 @@ private:
     void _unconfigure();
     void _disconnect();
 private:
-    DrpBase                              m_drp;
     Parameters&                          m_para;
+    MemPoolGpu                           m_pool;
+    DrpBase                              m_drp;
     GpuWorkerFactory                     m_factory;
-    std::thread                          m_gpuThread;
+    Detector*                            m_det;
     std::thread                          m_collectorThread;
     std::unique_ptr<GpuDetector>         m_gpuDetector;
-    Detector*                            m_det;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     bool                                 m_unconfigure;
     PyThreadState*                       m_pysave;

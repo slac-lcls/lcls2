@@ -11,51 +11,57 @@ static const unsigned MAX_PROM_PORTS = 100;
 using logging = psalg::SysLog;
 
 std::unique_ptr<prometheus::Exposer>
-    Pds::createExposer(const std::string& prometheusDir,
-                       const std::string& hostname)
+Pds::createExposer(const std::string& prometheusDir,
+                   const std::string& hostname)
 {
+    return createExposer(prometheusDir, hostname, 0);
+}
+
+std::unique_ptr<prometheus::Exposer>
+Pds::createExposer(const std::string& prometheusDir,
+                   const std::string& hostname,
+                   unsigned           portOffset)
+{
+    // Allow prometheus monitoring to be disabled
+    if (prometheusDir.empty())  return {};
+
     std::unique_ptr<prometheus::Exposer> exposer;
 
     // Find and register a port to use with Prometheus for run-time monitoring
-    unsigned port = 0;
+    unsigned port;
     for (unsigned i = 0; i < MAX_PROM_PORTS; ++i) {
         try {
-            port = PROM_PORT_BASE + i;
-            // If prometheus_cpp_version is 0.9.0:
-            //exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), "/metrics", 1);
+            port = PROM_PORT_BASE + (i + portOffset)%MAX_PROM_PORTS;
+
+            // An exception will be thrown if the port is in use
             exposer = std::make_unique<prometheus::Exposer>("0.0.0.0:"+std::to_string(port), 1);
-            if (!prometheusDir.empty()) {
-                std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i) + ".yaml";
-                struct stat buf;
-                if (stat(fileName.c_str(), &buf) != 0) {
-                    FILE* file = fopen(fileName.c_str(), "w");
-                    if (file) {
-                        logging::debug("Writing %s\n", fileName.c_str());
-                        fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
-                        fclose(file);
-                    }
-                    else {
-                        // %m will be replaced by the string strerror(errno)
-                        logging::warning("Error creating file %s: %m", fileName.c_str());
-                    }
-                }
-                else {
-                    // File already exists; no need to rewrite it
-                }
-            }
-            else {
-                logging::warning("Unable to update Prometheus configuration: directory not provided");
+
+            // Write the file only when the port is available
+            std::string fileName = prometheusDir + "/drpmon_" + hostname + "_" + std::to_string(i+portOffset) + ".yaml";
+            // Even when the file exists, write it so that the its date is refreshed
+            FILE* file = fopen(fileName.c_str(), "w");
+            if (file) {
+                logging::debug("Writing %s\n", fileName.c_str());
+                fprintf(file, "- targets:\n    - '%s:%d'\n", hostname.c_str(), port);
+                fclose(file);
+            } else {
+                // %m will be replaced by the string strerror(errno)
+                logging::debug("Error creating file %s: %m", fileName.c_str());
+                exposer.reset();
+                continue;           // Try another port
             }
             break;
         }
         catch(const std::runtime_error& e) {
-            logging::debug("Could not start run-time monitoring server on port %d", port);
-            logging::debug("%s", e.what());
+            logging::debug("Could not start run-time monitoring server on port %d:\n  %s",
+                           port, e.what());
         }
     }
 
     if (exposer) {
-        logging::info("Providing run-time monitoring data on port %d", port);
+        logging::info("Prometheus run-time monitoring data is on port %d", port);
+    } else {
+        logging::warning("No port found for prometheus run-time monitoring data");
     }
 
     return exposer;

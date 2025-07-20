@@ -20,7 +20,7 @@ public:
     int open(const std::string& fileName);
     int close();
     void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
-    const uint64_t writing() const { return m_writing; }
+    uint64_t writing() const { return m_writing; }
 private:
     int m_fd;
     size_t m_count;
@@ -40,11 +40,11 @@ public:
     void flush();
     void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
     void run();
-    const uint64_t depth() const { return m_depth; }
-    const uint64_t size()  const { return m_size; }
-    const uint64_t writing() const { return m_writing; }
-    const uint64_t freeBlocked()  const { return m_freeBlocked; }
-    const uint64_t pendBlocked()  const { return m_pendBlocked; }
+    uint64_t depth() const { return m_depth; }
+    uint64_t size()  const { return m_size; }
+    uint64_t writing() const { return m_writing; }
+    uint64_t freeBlocked()  const { return m_freeBlocked; }
+    uint64_t pendBlocked()  const { return m_pendBlocked; }
 private:
     void _initialize(size_t bufferSize);
 private:
@@ -77,11 +77,11 @@ public:
     int close();
     void writeEvent(const void* data, size_t size, XtcData::TimeStamp ts);
     void run();
-    const uint64_t depth      (size_t i) const { return m_fileWriters[i]->depth(); }
-    const uint64_t size       (size_t i) const { return m_fileWriters[i]->size(); }
-    const uint64_t writing    (size_t i) const { return m_fileWriters[i]->writing(); }
-    const uint64_t freeBlocked(size_t i) const { return m_fileWriters[i]->freeBlocked(); }
-    const uint64_t pendBlocked(size_t i) const { return m_fileWriters[i]->pendBlocked(); }
+    uint64_t depth      (size_t i) const { return m_fileWriters[i]->depth(); }
+    uint64_t size       (size_t i) const { return m_fileWriters[i]->size(); }
+    uint64_t writing    (size_t i) const { return m_fileWriters[i]->writing(); }
+    uint64_t freeBlocked(size_t i) const { return m_fileWriters[i]->freeBlocked(); }
+    uint64_t pendBlocked(size_t i) const { return m_fileWriters[i]->pendBlocked(); }
 private:
     std::vector< std::unique_ptr<BufferedFileWriterMT> > m_fileWriters;
     size_t m_index;

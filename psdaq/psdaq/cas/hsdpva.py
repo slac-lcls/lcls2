@@ -358,17 +358,50 @@ def main():
     print(QtCore.PYQT_VERSION_STR)
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("base", help="pv base to monitor", nargs='+', default="DAQ:LAB2:HSD:DEV06_3E:A")
+    parser.add_argument("base", help="pv base to monitor", nargs='+', )
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument("-u", help="pv base to monitor in hutch", action="store_true")
     args = parser.parse_args()
-
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
+    base=[]
+    if args.u:
+        logging.info(f"hutch selection")
+        if args.base[0] == "TMO": 
+            logging.info("TMO")
+            base_sub="DAQ:TMO:HSD:1_"
+            base_FPGAs=["1B","1A","3E","3D","01","DA","B2","B1","89","88",]
+            sub_FPGAs=["A","B"]
+            
+            for FPGA in base_FPGAs:
+                for sub in sub_FPGAs:
+                    card=base_sub+FPGA+":"+sub
+                    base.append(card)
+        
+        if args.base[0] == "RIX":
+            logging.info("RIX")
+            base_sub="DAQ:RIX:HSD:1_"
+            base_FPGAs=["1B","1A","3D","3E",]
+            sub_FPGAs=["A","B"]
+            
+            for FPGA in base_FPGAs:
+                for sub in sub_FPGAs:
+                    card=base_sub+FPGA+":"+sub
+                    base.append(card)
+        if args.base[0] not in  ["TMO", "RIX"]:
+            logging.error("Please provide one of the following hutches with the option d: TMO, RIX") 
+            sys.exit()
+        print(base)   
+    else:
+        logging.info("base is provided")
+        base=args.base
+    
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()
+    
     ui = Ui_MainWindow()
-    ui.setupUi(MainWindow,args.base)
+    ui.setupUi(MainWindow,base)
     MainWindow.updateGeometry()
 
     MainWindow.show()

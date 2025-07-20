@@ -235,11 +235,12 @@ class Table:
         self._dbg    = dbg
         self._pad    = None
         self._size_y = 0
-        self._size_x = 12 + 1          # Add space for detName column
+        self._size_x = 16
         self.metrics = {}
         for metric, query in queries.items():
             self.metrics[metric] = PromMetric(srvurl, query, self._size_x)
             self._size_x += self.metrics[metric].width() # Includes the column separating space
+            self._dbg.write('metric %s, width %d, size_x %d\n' % (metric, self.metrics[metric].width(), self._size_x))
         self._showInstance = False
         self._rarrow = False
         self._darrow = False
@@ -250,14 +251,14 @@ class Table:
 
         if showInstance != self._showInstance:
             self._showInstance = showInstance
-            size_x += 20 if showInstance else -20
+            size_x += 21 if showInstance else -21
 
         # Set up a sub-window that fits the whole Table
         if size_y > self._size_y or size_x != self._size_x:
             self._size_y = size_y
             self._size_x = size_x
 
-            self._dbg.write('pad size_y, size_x: %d, %d\n' % (size_y, size_x))
+            self._dbg.write('pad size_y, size_x: max(%d, %d), max(%d, %d)\n' % (height, size_y, width, size_x))
 
             self._pad = curses.newpad(max(height, size_y), max(width, size_x))
 
@@ -275,10 +276,10 @@ class Table:
         start_row = max(0,               start_row)
         self._start_row = start_row
 
-        tw = 12
+        tw = 16             # DetName width
         cols = 1            # DetName
         if showInstance:
-            tw += 20
+            tw += 21
             cols += 1       # Instance
         tot_cols = cols + len(self.metrics)
         for metric in self.metrics.values():
@@ -299,6 +300,8 @@ class Table:
         self._rarrow = tot_cols > cols and start_col < tot_cols - cols
         self._darrow = tot_rows > rows and start_row < tot_rows - rows
 
+        return size_x
+
     def _header(self, width):
         self._pad.attron(curses.color_pair(2))
         sc = 0
@@ -309,7 +312,7 @@ class Table:
         cw = 0
         if self._showInstance:
             header = 'Instance'
-            cw = 20
+            cw = 21
             self._pad.addstr(y, x, header)
             self._pad.addstr(y, x + len(header), " " * (cw - len(header)))
             if sc < self._start_col:
@@ -317,7 +320,7 @@ class Table:
                 sc += 1
             x += cw
         header = 'DetName'
-        cw = 12
+        cw = 16                 # DetName width
         self._pad.addstr(y, x, header)
         self._pad.addstr(y, x + len(header), " " * (cw - len(header)))
         if sc < self._start_col:
@@ -329,7 +332,7 @@ class Table:
             self._dbg.write('cw %d, x %d, len %d, %d %d, header "%s"\n' %
                       (cw, x, len(header), x+len(header), cw - len(header), header))
             if x - start_x + cw <= width:
-                self._dbg.write('y %d, x %d, header \'%s\'\n' % (y, x, header))
+                self._dbg.write('y %d, x %d, header \'%s\', cw %d, end %d vs %d\n' % (y, x, header, cw, x+cw, self._size_x))
                 self._pad.addstr(y, x, f'%{cw}s' % header)
                 if sc < self._start_col:
                     start_x += cw
@@ -349,7 +352,7 @@ class Table:
             y = 1 + nInstance  # !+ to skip over header
             x = 0
             if self._showInstance:
-                cw = 20
+                cw = 21
                 self._pad.addstr(y, x, instance, curses.color_pair(2))
                 if sr < self._start_row:
                     start_y += rh
@@ -357,19 +360,20 @@ class Table:
                 x += cw
 
             sample = samples[instance]
-            cw = 12
+            cw = 16             # DetName width
             self._pad.addstr(y, x, sample[0], curses.color_pair(1))
+            self._dbg.write('y %d, x %d, sample[0] "%s"\n' % (y, x, sample[0]))
             if sr < self._start_row:
                 start_y += rh
                 sr += 1
-            sx = x + cw
             for item, values in sample[1].items():      # Columns
-                x = sx + self.metrics[item].column()
+                x = self.metrics[item].column()
                 fn = self.metrics[item].dpyFmt
                 cw = self.metrics[item].width()         # Includes the column separating space
                 entry, color = fn(values[1], cw - 1)    # Exclude the column separator space
                 if x - start_x + len(entry) <= width:
                     self._pad.addstr(y, x, f'%{cw}s' % entry, curses.color_pair(color))
+                    self._dbg.write('y %d, x %d, cw %d, entry "%s"\n' % (y, x, cw, entry))
                     if sr < self._start_row:
                         start_y += rh
                         sr += 1
@@ -450,12 +454,14 @@ def draw(stdscr, srvurl, args, listOfQueries, dbg):
 
             y = 0
             last_row = 0
+            size_x = 0
             for table in tables:
                 samples = update(table.metrics, time)
                 last_row += 1 + len(samples) + 1 # +1 for header, +1 for trailing blank line
-                table.update(len(samples), start_row, start_col, showInstance, ht, width)
+                sx = table.update(len(samples), start_row, start_col, showInstance, ht, width)
                 rows = table.draw(samples, ht, width, y)
                 y += rows + 1
+                if sx > size_x: size_x = sx
                 #if y < height - (2 if time is None else 3):
                 #    stdscr.addstr(y-1, 0, ' ' * width) # Clear line between tables
                 #break # Temporary for debugging
@@ -483,9 +489,8 @@ def draw(stdscr, srvurl, args, listOfQueries, dbg):
                 if start_row > 0:                  start_row -= 1
                 if start_row < 0:                  start_row  = 0
             elif k == curses.KEY_RIGHT:
-                start_col += 1
-                #if start_col < size_x - width:     start_col += 1
-                #if start_col > size_x - width:     start_col  = size_x - width
+                if start_col < size_x - width:     start_col += 1
+                if start_col > size_x - width:     start_col  = size_x - width
             elif k == curses.KEY_LEFT:
                 if start_col > 0:                  start_col -= 1
                 if start_col < 0:                  start_col  = 0
@@ -538,7 +543,7 @@ def test(srvurl, args, listOfQueries, dbg):
         print('samples:', samples)
 
         print(0, 0, 'DetName')
-        w = 12
+        w = 16                  # DetName width
         for header, metric in table.metrics.items():
             print(0, w, header)
             w += metric.width() # Includes the column separating space
@@ -591,6 +596,7 @@ def daqStats(srvurl, args):
         entry  = f'%0{width}x' % (int(value))
         return entry, color
 
+    #   Header name    : (Prometheus query,                  Format fn,  Help string,                                          Column width)
     drpQueries = {
 #        'EvtCt'        : (_q(args, 'TCtbO_EvtCt'),               _fmtN,    'DRP: Event rate',                                              10),
         'EvtRt'        : (_r(args, 'TCtbO_EvtCt'),             _fmtF,    'DRP: Event rate',                                               8),

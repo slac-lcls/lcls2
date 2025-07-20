@@ -51,10 +51,10 @@ class Pv(object):
         self.__value__ = None
         self.isStruct = isStruct
         if callback:
-            logger.info("Monitoring PV %s", self.pvname)
+            logger.debug("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
                 self.__value__ = self.to_value(newval)
-                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
+                logger.debug("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
                 callback(err=None)
             try:
                 self.subscription = pvactx.monitor(self.pvname, monitor_cb)
@@ -84,11 +84,11 @@ class Pv(object):
         except TimeoutError as e:
             logger.error("Timeout exception getting from PV %s", self.pvname)
             raise
-        logger.info("Current value of PV %s Value %s", self.pvname, self.__value__)
+        logger.debug("Current value of PV %s Value %s", self.pvname, self.__value__)
         return self.__value__
 
     def put(self, newval, wait=None):
-        logger.info("Putting to PV %s current value %s new value %s", self.pvname, self.__value__, newval)
+        logger.debug("Putting to PV %s current value %s new value %s", self.pvname, self.__value__, newval)
         try:
             ret =  pvactx.put(self.pvname, newval, wait=wait)
         except TimeoutError as e:
@@ -99,19 +99,19 @@ class Pv(object):
 
     def monitor(self, callback):
         if callback:
-            logger.info("Monitoring PV %s", self.pvname)
+            logger.debug("Monitoring PV %s", self.pvname)
             def monitor_cb(newval):
                 if self.isStruct:
                     self.__value__ = newval
                 else:
                     self.__value__ = newval.raw.value
-                logger.info("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
+                logger.debug("Received monitor event for PV %s, received %s", self.pvname, self.__value__)
                 callback(err=None)
             self.subscription = pvactx.monitor(self.pvname, monitor_cb)
 
 
 def initPvMon(mon, pvname, isStruct=False):
-    logger.info("Monitoring PV %s", pvname)
+    logger.debug("Monitoring PV %s", pvname)
     mon.pv = Pv(pvname, mon.update, isStruct=isStruct)
 
 class PvDisplay(QtWidgets.QLabel):

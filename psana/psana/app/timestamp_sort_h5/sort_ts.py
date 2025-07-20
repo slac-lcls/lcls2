@@ -1,17 +1,14 @@
 from mpi4py import MPI
-import os, sys
-import time
+import os
+import sys
 import h5py
 import numpy as np
-import dask
 import dask.array as da
 import dask.dataframe as dd
 
 from psana.app.timestamp_sort_h5.utils import get_dask_client, create_virtual_dataset
 
 from psana import utils
-
-logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
 
 
 class TsSort:
@@ -23,6 +20,7 @@ class TsSort:
         self.n_ranks = n_ranks
         self.n_procs = n_procs
         self.n_jobs = n_jobs
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def sort(self):
         client, cluster = get_dask_client(self.n_procs, n_jobs=self.n_jobs)
@@ -74,19 +72,19 @@ class TsSort:
                 en = n_samples
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
             common_comm.Send(inds_arr[st:en].astype(np.int64), tag=i, dest=rankreq[0])
-            logger.debug(f"Sent {st}:{en} part:{i} to writer {rankreq[0]}")
+            self.logger.debug(f"Sent {st}:{en} part:{i} to writer {rankreq[0]}")
 
-        logger.debug(f"Done sending")
+        self.logger.debug("Done sending")
 
         # Kill clients
         for i in range(common_comm.Get_size() - 1):
             common_comm.Recv(rankreq, source=MPI.ANY_SOURCE)
-            logger.debug(f"Kill rank{rankreq[0]}")
+            self.logger.debug(f"Kill rank{rankreq[0]}")
             common_comm.Send(bytearray(), dest=rankreq[0])
 
         # Create virtual dataset
         create_virtual_dataset(self.in_h5fname, self.out_h5fname, n_files)
-        logger.debug(f"Done joining part files. Output: {self.out_h5fname}")
+        self.logger.debug(f"Done joining part files. Output: {self.out_h5fname}")
 
         common_comm.Barrier()
         common_comm.Abort(1)

@@ -40,16 +40,21 @@ BW2 = 0o100000 # 32768 or 2<<14 or 1<<15
 BW3 = 0o140000 # 49152 or 3<<14
 MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 
-MAX_DETNAME_SIZE = 40
+MAX_DETNAME_SIZE = 20
 
 def is_true(cond, msg, method=logger.debug):
     if cond: method(msg)
     return cond
 
+def jungfrau_segments_tot(segnum_max):
+    """Returns total number of segments in the detector 1,2,8,32 depending on segnum_max"""
+    return 1 if segnum_max<1 else\
+           2 if segnum_max<2 else\
+           8 if segnum_max<8 else\
+           32
 
 class Cache():
-    """ Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants.
-    """
+    """ Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
     def __init__(self):
         self.calibcons = {}
 
@@ -100,11 +105,19 @@ class DetCache():
         self.detname = det._det_name
         logger.info('%s add_calibcons for detname: %s %s' % (30*'_', self.detname, 30*'_'))
 
+        #print('XXX det._sorted_segment_inds', det._sorted_segment_inds)
+        #print('XXX det._segment_numbers', det._segment_numbers)
+        #print('XXX det.raw(evt).shape', det.raw(evt).shape)
+
         self.calibc = det._calibconst
+        if self.calibc is None: return
         keys = self.calibc.keys()
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         #raw  = np.array(det.raw(evt), dtype=np.float32)
         peds, meta_peds = self._calibcons_for_ctype('pedestals') # shape:(3, <nsegs>, 512, 1024) dtype:float32
+
+        #print('XXX peds.shape', peds.shape)
+        #sys.exit('TEST EXIT')
 
         if is_true(peds is None, 'peds is None' , method = logger.info): return
         logger.debug('metadata for pedestals:\n%s' % str(meta_peds))
@@ -285,7 +298,7 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
 
         logger.debug('TIME: common-mode correction time = %.6f sec' % (time()-t0_sec_cm))
 
-        arrf *= factor
+    arrf *= factor
     return arrf if mask is None else arrf * mask
 
 #EOF

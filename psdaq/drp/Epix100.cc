@@ -19,7 +19,6 @@ using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
-static unsigned cpocount=0;
 //#define DEBUG_PRINT
 
 namespace Drp {
@@ -78,7 +77,6 @@ Epix100::Epix100(Parameters* para, MemPool* pool) :
     m_env_empty   (true)
 {
     _init(para->detName.c_str());  // an argument is required here
-
     epix = this;
 
     struct sigaction sa;
@@ -102,13 +100,13 @@ void Epix100::_connectionInfo(PyObject* mbytes)
 
 unsigned Epix100::enable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
-    // monStreamDisable();
+    monStreamDisable();
     return 0;
 }
 
 unsigned Epix100::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
-    // monStreamEnable();
+    monStreamEnable();
     return 0;
 }
 
@@ -153,7 +151,7 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
 //              2:   Timing frame detailed
 //              3:   epix100
 //
-void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
 

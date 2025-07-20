@@ -1,16 +1,20 @@
-import os, sys
-from dataclasses import dataclass, field
-import asyncio
-import psutil
+import os
+import sys
+import socket
 from datetime import datetime
 import subprocess
-
-import socket
+import time
+import logging
+import shlex
+from subprocess import CalledProcessError, PIPE
 
 LOCALHOST = socket.gethostname()
 SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
+RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
+
+logger = logging.getLogger(__name__)
 
 
 class PSbatchSubCommand:
@@ -19,12 +23,55 @@ class PSbatchSubCommand:
     RESTART = 2
 
 
-def call_subprocess(*args):
-    cc = subprocess.run(args, capture_output=True)
-    output = None
-    if not cc.returncode:
-        output = str(cc.stdout.strip(), "utf-8")
-    return output
+def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
+    """
+    Calls a subprocess, with retries for specific Slurm commands,
+    and graceful handling for 'scontrol show job'.
+
+    Parameters:
+    - *args: Command and arguments to pass to subprocess.
+    - max_retries: Max number of retries before failing (only applies to retryable commands).
+    - retry_delay: Delay between retries in seconds.
+
+    Returns:
+    - Decoded output string from the subprocess call, or None if suppressed.
+
+    Raises:
+    - CalledProcessError: If the command fails after all retries (unless handled gracefully).
+    """
+    cmd = args[0]
+    is_retryable = cmd in RETRYABLE_CMDS
+    is_scontrol_show_job = (
+        cmd == "scontrol"
+        and len(args) >= 3
+        and args[1] == "show"
+        and args[2] == "job"
+    )
+
+    attempt = 0
+    while True:
+        try:
+            output = subprocess.check_output(args, stderr=PIPE).strip()
+            return output.decode("utf-8")
+        except CalledProcessError as e:
+            cmd_str = " ".join(args)
+            stderr_text = e.stderr.decode("utf-8").strip()
+
+            if is_scontrol_show_job:
+                logger.debug("Command '%s' failed (non-critical): %s", cmd_str, stderr_text)
+                return None
+
+            if not is_retryable or attempt >= max_retries:
+                logger.error("Subprocess call '%s' failed.%s\nError: %s",
+                             cmd_str,
+                             f" Reached max retries ({max_retries})." if is_retryable else "",
+                             stderr_text)
+                raise
+
+            attempt += 1
+            logger.warning("Attempt %d/%d: Subprocess call '%s' failed.\nError: %s\nRetrying in %d sec...",
+                           attempt, max_retries, cmd_str, stderr_text, retry_delay)
+            time.sleep(retry_delay)
 
 
 class SbatchManager:
@@ -39,7 +86,7 @@ class SbatchManager:
                 os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
             )
         else:
-            self.output_path = output
+            self.output_path = os.path.join( output, now.strftime("%Y"), now.strftime("%m"))
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
@@ -60,7 +107,7 @@ class SbatchManager:
         return comment
 
     def get_node_features(self):
-        lines = call_subprocess("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
+        lines = run_slurm_with_retries("sinfo", "-N", "-h", "-o", '"%N %f"').splitlines()
         node_features = {}
         for line in lines:
             node, features = line.strip('"').split()
@@ -71,7 +118,7 @@ class SbatchManager:
         """Returns a dictionary containing values obtained from scontrol
         with the given jobparms list. Returns {} if this job does not exist.
         """
-        output = call_subprocess("scontrol", "show", "job", job_id)
+        output = run_slurm_with_retries("scontrol", "show", "job", job_id)
         results = {}
         if output is not None:
             scontrol_lines = output.splitlines()
@@ -85,67 +132,79 @@ class SbatchManager:
         return results
 
     def get_job_info(self, use_sacct=False):
-        """Returns formatted output from squeue by the current user"""
+        """
+        Retrieves job information from Slurm using `squeue` or `sacct`.
+        Handles transient failures with retries, logs malformed lines,
+        and always returns a dictionary to ensure GUI stability.
+
+        Returns:
+            dict: Mapping of job comment strings to job detail dictionaries.
+        """
         user = self.user
         if not user:
-            print(f"Cannot list jobs for user. $USER variable is not set.")
-        else:
+            logger.warning("Cannot list jobs: $USER is not set.")
+            return {}
+
+        try:
             if use_sacct:
                 format_string = "JobID,Comment%30,JobName,State,NodeList"
-                lines = call_subprocess(
+                output = run_slurm_with_retries(
                     "sacct", "-u", user, "-n", f"--format={format_string}"
-                ).splitlines()
+                )
             else:
                 format_string = '"%i %k %j %T %R"'
-                lines = call_subprocess(
+                output = run_slurm_with_retries(
                     "squeue", "-u", user, "-h", "-o", format_string
-                ).splitlines()
+                )
+        except Exception as e:
+            logger.warning("Failed to retrieve job info using Slurm: %s", str(e))
+            return {}
 
         job_details = {}
-        for i, job_info in enumerate(lines):
+        lines = output.splitlines()
+
+        for job_info in lines:
             cols = job_info.strip('"').split()
-            # Check that JobId column has all the characters as digit
+            if len(cols) < 1:
+                logger.debug("Skipping empty or malformed job line: %s", job_info)
+                continue
             if not cols[0].isdigit():
+                logger.debug("Skipping non-numeric JobID in job line: %s", job_info)
                 continue
 
-            success = True
             if len(cols) == 5:
                 job_id, comment, job_name, state, nodelist = cols
             elif len(cols) > 5:
                 job_id, comment, job_name, state = cols[:4]
                 nodelist = " ".join(cols[5:])
             else:
-                success = False
+                logger.debug("Unexpected number of fields in job line: %s", job_info)
+                continue
 
-            if success:
-                # Get logfile from job_id
-                scontrol_result = call_subprocess("scontrol", "show", "job", job_id)
-                logfile = ""
-                if scontrol_result is not None:
-                    scontrol_lines = scontrol_result.splitlines()
-                    for scontrol_line in scontrol_lines:
-                        if scontrol_line.find("StdOut") > -1:
-                            scontrol_cols = scontrol_line.split("=")
-                            logfile = scontrol_cols[1]
+            # Attempt to get logfile path from scontrol
+            logfile = ""
+            scontrol_result = run_slurm_with_retries("scontrol", "show", "job", job_id)
+            if scontrol_result is not None:
+                for line in scontrol_result.splitlines():
+                    if "StdOut=" in line:
+                        try:
+                            logfile = line.split("StdOut=")[1].strip()
+                            if not logfile:
+                                logfile = "unknown.log"
+                        except IndexError:
+                            logger.debug("Malformed StdOut line in scontrol output: %s", line)
+                            logfile = "unknown.log"
 
-                # Results from sacct also show old jobs with the same name.
-                # We choose the oldest job and returns its values.
-                if comment not in job_details:
-                    job_details[comment] = {
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "state": state,
-                        "nodelist": nodelist,
-                        "logfile": logfile,
-                    }
-                elif int(job_id) > int(job_details[comment]["job_id"]):
-                    job_details[comment] = {
-                        "job_id": job_id,
-                        "job_name": job_name,
-                        "state": state,
-                        "nodelist": nodelist,
-                        "logfile": logfile,
-                    }
+            # Store job info (prefer latest job_id if duplicate comment exists)
+            if comment not in job_details or int(job_id) > int(job_details[comment]["job_id"]):
+                job_details[comment] = {
+                    "job_id": job_id,
+                    "job_name": job_name,
+                    "state": state,
+                    "nodelist": nodelist,
+                    "logfile": logfile,
+                }
+
         return job_details
 
     def get_output_filepath(self, node, job_name):
@@ -212,6 +271,7 @@ class SbatchManager:
         env_opt += ",CONDA_DEFAULT_ENV"
         env_opt += ",CONDA_EXE"
         env_opt += ",CONFIGDB_AUTH"
+        env_opt += ",SUBMODULEDIR"
 
         # Build PATH and PYTHONPATH from scratch
         daq_path = "$TESTRELDIR/bin"
@@ -236,12 +296,15 @@ class SbatchManager:
         found_ld_library_path = False
         if "env" in details:
             if details["env"] != "":
-                envs = details["env"].split()
+                envs = shlex.split(details["env"], posix=True)
                 for i, env in enumerate(envs):
                     env_name, env_var = env.split("=")
                     if env_name == "LD_LIBRARY_PATH":
                         found_ld_library_path = True
-                    cnf_env += "," + env
+                    sanitized_env = env
+                    if " " in env_var:
+                        sanitized_env = f'{env_name}="{env_var}"'
+                    cnf_env += "," + sanitized_env
         env_opt += cnf_env
 
         if not found_ld_library_path:
@@ -286,7 +349,7 @@ class SbatchManager:
     def generate_as_step(self, sbjob, node_features):
         sb_script = "#!/bin/bash\n"
         sb_script += f"#SBATCH --partition={SLURM_PARTITION}" + "\n"
-        sb_script += f"#SBATCH --job-name=main" + "\n"
+        sb_script += "#SBATCH --job-name=main" + "\n"
         output = self.get_output_filepath(LOCALHOST, "slurm")
         sb_script += f"#SBATCH --output={output}" + "\n"
         sb_header = ""
@@ -331,7 +394,6 @@ class SbatchManager:
         sb_script += f"#SBATCH --comment={details['comment']}" + "\n"
 
         n_cores = self.get_n_cores(details)
-        n_tasks = 1
 
         if node_features is None:
             sb_script += f"#SBATCH --nodelist={node} -c {n_cores}" + "\n"

@@ -36,9 +36,56 @@ class MissingDet:
     ):  # support only one arg - following detector interface proposal
         return None
 
-
 class DetectorImpl:
+    _registry = {}
+
+    def __new__(
+        cls,
+        det_name,
+        drp_class_name,
+        configinfo,
+        calibconst,
+        env_store=None,
+        var_name=None,
+        **kwargs
+    ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
+        if det_name in ("scan", "epics"): # Require multiple instances
+            return super().__new__(cls)
+        mangled_name: str = f"{det_name}:{drp_class_name}"
+        if mangled_name not in cls._registry:
+            cls._registry[mangled_name] = super().__new__(cls)
+        else:
+            cls._registry[mangled_name]._reset(
+                det_name=det_name,
+                drp_class_name=drp_class_name,
+                configinfo=configinfo,
+                calibconst=calibconst,
+                env_store=env_store,
+                var_name=var_name,
+                **kwargs
+            )
+        return cls._registry[mangled_name]
+
     def __init__(
+        self,
+        det_name,
+        drp_class_name,
+        configinfo,
+        calibconst,
+        env_store=None,
+        var_name=None,
+        **kwargs
+    ):  # self._kwargs=kwargs is intercepted by AreaDetectorRaw < AreaDetector
+        self._reset(
+            det_name,
+            drp_class_name,
+            configinfo,
+            calibconst,
+            env_store=env_store,
+            var_name=var_name,
+            **kwargs
+        )
+    def _reset(
         self,
         det_name,
         drp_class_name,
@@ -61,9 +108,7 @@ class DetectorImpl:
         self._var_name = var_name
 
     def _seg_configs(self):
-        """
-        Gather up all the segment configs into an easier-to-use dictionary
-        """
+        """Gather up all the segment configs into an easier-to-use dictionary"""
         seg_configs = {}
         for dgram in self._configs:
             if hasattr(dgram, self._det_name):
@@ -91,11 +136,15 @@ class DetectorImpl:
             return None
 
     def _info(self, evt):
-        # check for missing data
+        """check for missing data"""
         segments = self._segments(evt)
         if segments is None:
             return None
         return segments[0]
+
+    def _segment_ids(self):
+        """Returns list of detector segment ids"""
+        return self._uniqueid.split('_')[1:]
 
     @staticmethod
     def _return_types(rtype, rrank):
@@ -143,3 +192,13 @@ class DetectorImpl:
                         return getattr(info, field)
 
                 setattr(self, field, func)
+
+    def _apply_calibc_preload_cache(self):
+        """Applies any cached _calibc_ attributes saved in _calibc_preload_cache, then clears the cache."""
+        if hasattr(self, "_calibc_preload_cache"):
+            preload = self._calibc_preload_cache
+            for attr, val in preload.items():
+                setattr(self._calibc_, attr, val)
+            del self._calibc_preload_cache
+
+#EOF

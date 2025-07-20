@@ -19,39 +19,62 @@ elemCols = 192
 import os
 
 
-def recursive_list(dictionary):
-    for key, value in dictionary.items():
-        if type(value) is dict:
-            yield from recursive_list(value)
-        else:
-            yield (key, value)
-
-
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [2,1,0])
+    top.setAlg('config', [3,2,0])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
     for n in range(1, 5):
         top.set(f"expert.App.Asic{n}.enable",							1   ,	"boolEnum")
-        top.set(f"expert.App.Asic{n}.DacVthr",							53	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVthrGain",						3	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVfiltGain",						2	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVfilt",							30	,	'UINT8'   )	
-        top.set(f"expert.App.Asic{n}.DacVrefCdsGain",					2	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVrefCds",						44	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVprechGain",				    2	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.DacVprech",						34	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.CompEnGenEn",						1	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.CompEnGenCfg",						5	,	'UINT8'   )
-        top.set(f"expert.App.Asic{n}.BiasPxlCsa",                       0   ,   "UINT8"   )						
-        top.set(f"expert.App.Asic{n}.BiasPxlBuf",                       0   ,   "UINT8"   )						
-        top.set(f"expert.App.Asic{n}.BiasAdcComp",                      0   ,   "UINT8"   )						
-        top.set(f"expert.App.Asic{n}.BiasAdcRef",                       0   ,   "UINT8"   )
+        top.set(f"expert.App.Asic{n}.TpsDacGain",       1, "UINT8")
+        top.set(f"expert.App.Asic{n}.TpsDac",           34, "UINT8")
+        top.set(f"expert.App.Asic{n}.TpsGr",            12, "UINT8")
+        top.set(f"expert.App.Asic{n}.TpsMux",           0, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasTpsBuffer",    5, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasTps",          4, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasTpsDac",       4, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasDac",          4, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrCtrlDacTps",    3, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrCtrlDacComp",   0, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVthrGain",      3, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVthr",          32, "UINT8")
+        top.set(f"expert.App.Asic{n}.PpbitBe",          1, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasPxlCsa",       1, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasPxlBuf",       1, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasAdcComp",      1, "UINT8")
+        top.set(f"expert.App.Asic{n}.BiasAdcRef",       1, "UINT8")
+        top.set(f"expert.App.Asic{n}.CmlRxBias",        3, "UINT8")
+        top.set(f"expert.App.Asic{n}.CmlTxBias",        3, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVfiltGain",     2, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVfilt",         30  , "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVrefCdsGain",   2, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVrefCds",       50, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVprechGain",    2, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacVprech",        34, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrCtrlDacFilt",   2, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrCtrlDacAdcRef", 2, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrCtrlDacPrechCds", 2, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrfCtrlDacAll",   2, "UINT8")
+        top.set(f"expert.App.Asic{n}.BgrDisable",       0, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefpGain",  3, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefp",      53, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefnGain",  0, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefn",      12, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefCmGain", 1, "UINT8")
+        top.set(f"expert.App.Asic{n}.DacAdcVrefCm",     35, "UINT8")
+        top.set(f"expert.App.Asic{n}.AdcCalibEn",       0, "UINT8")
+        top.set(f"expert.App.Asic{n}.CompEnGenEn",      1, "UINT8")
+        top.set(f"expert.App.Asic{n}.CompEnGenCfg",     5, "UINT8")
+        top.set(f"expert.App.Asic{n}.CfgAutoflush",     0, "UINT8")
+        top.set(f"expert.App.Asic{n}.ExternalFlushN",   1, "UINT8")
+        top.set(f"expert.App.Asic{n}.ClusterDvMask",    16383, "UINT32")
+        top.set(f"expert.App.Asic{n}.PixNumModeEn",     0 , "UINT8")
+        top.set(f"expert.App.Asic{n}.SerializerTestEn", 0, "UINT8")
+  
         top.set(f"expert.App.BatcherEventBuilder{n}.enable",			1   ,	"boolEnum")
-        top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT8'   )
+        top.set(f"expert.App.BatcherEventBuilder{n}.Timeout",			0	,   'UINT32'   )
         
     conv = functools.partial(int, base=16)
     pathPll='/cds/home/p/psrel/EpixUHR/pll/'
@@ -67,22 +90,26 @@ def epixUHR_cdict():
             
     pathpix='/cds/home/p/psrel/EpixUHR/pixelBitMaps_prod/'
     #pixelBitMapDic = {'_FL_FM_FH':0, '_FL_FM_FH_InjOff':1, '_allConfigs':2, '_allPx_52':3, '_allPx_AutoHGLG_InjOff':4, '_allPx_AutoHGLG_InjOn':5, '_allPx_AutoMGLG_InjOff':6, '_allPx_AutoMGLG_InjOn':7, '_allPx_FixedHG_InjOff':8, '_allPx_FixedHG_InjOn':9, '_allPx_FixedLG_InjOff':10, '_allPx_FixedLG_InjOn':11, '_allPx_FixedMG_InjOff':12, '_allPx_FixedMG_InjOn':13, '_crilin':14, '_crilin_epixuhr100k':15, '_defaults':16, '_injection_corners':17, '_injection_corners_px1':18, '_management':19, '_management_epixuhr100k':20, '_management_inj':21, '_maskedCSA':22, '_truck':23, '_truck_epixuhr100k':24, '_xtalk_hole':25}
-    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, '_7_on_the_fly'}
+    pixelBitMapDic = {'_0_default':0, '_1_injection_truck':1, '_2_injection_corners_FHG':2, '_3_injection_corners_AHGLG1':3, '_4_extra_config':4, '_5_extra_config':5, '_6_truck2':6, '_7_on_the_fly':7}
     top.define_enum('pixelMapEnum', pixelBitMapDic)
     
     base = 'expert.pixelBitMaps.' 
     for pixelmap in pixelBitMapDic:
         if ('on_the_fly' not in pixelmap): top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
     for n in range(1, 5):
-        base = f'expert.App.Asic{n}.'
+        base = f'user.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')
         top.set(base+"SetGainValue",							    48              ,'UINT8'   )    
         
     top.set("expert.App.WaveformControl.enable",					1			  	,'boolEnum')
     top.set("expert.App.WaveformControl.GlblRstPolarity",			1			  	,'boolEnum')
-    top.set("expert.App.WaveformControl.SR0Polarity",				0			  	,'boolEnum')
-    top.set("expert.App.WaveformControl.SR0Delay",				    1195			,'UINT32'  )
-    top.set("expert.App.WaveformControl.SR0Width",				    1    			,'UINT8'   )
+    top.set("expert.App.WaveformControl.AsicSroEn",				    1			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.SroPolarity",				0			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.SroDelay",				    1195			,'UINT32'  )
+    top.set("expert.App.WaveformControl.SroWidth",				    1    			,'UINT8'   )
+    top.set("expert.App.WaveformControl.AsicAcqEn", 				1			  	,'boolEnum')
+    top.set("expert.App.WaveformControl.AsicR0En",  				1			  	,'boolEnum')
+    
     top.set("expert.App.WaveformControl.AcqPolarity",				0			  	,'boolEnum')
     top.set("expert.App.WaveformControl.AcqDelay",				    655				,'UINT32'  )
     top.set("expert.App.WaveformControl.AcqWidth",				    535				,'UINT32'  )

@@ -62,4 +62,6 @@ inline auto Pds::fast_monotonic_clock::get_resolution(clockid_t clkId) noexcept 
     return convert(t);
 }
 
+#undef MAYBE_UNUSED
+
 #endif

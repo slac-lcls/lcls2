@@ -79,7 +79,7 @@ unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const jso
     return 0;
 }
 
-void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     // fex data
     NamesId fexNamesId(nodeId,FexNamesIndex);

@@ -27,14 +27,14 @@ def run_terminate(ds):
 def run_test_early_termination():
     xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
     os.environ['PS_SMD_N_EVENTS'] = '2'
-    
+
     # Tests RunParallel and RunSerial """
-    ds = DataSource(exp='xpptut13', run=1, dir=xtc_dir)
+    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir)
     run_terminate(ds)
 
     # Tests RunSingleFile
     if size == 1:
-        xtc_file = os.path.join(xtc_dir, 'data-r0001-s00.xtc2')
+        xtc_file = os.path.join(xtc_dir, 'xpptut15-r0014-s000-c000.xtc2')
         ds = DataSource(files=xtc_file)
         run_terminate(ds)
 

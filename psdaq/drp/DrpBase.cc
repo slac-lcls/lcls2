@@ -10,12 +10,10 @@
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
 #include "xtcdata/xtc/Smd.hh"
-#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/epicstools/PVBase.hh"
 
@@ -37,6 +35,8 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
                                 unsigned run_num, std::string hostname);
 static json createPulseIdMsg(uint64_t pulseId);
 static json createChunkRequestMsg();
+
+static const unsigned EvtCtrMask = 0xffffff;
 
 namespace Drp {
 
@@ -82,45 +82,64 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
 {
     size_t algnSz = 16;                    // For cache boundaries
     m_bufferSize  = algnSz * ((l1BufSize + algnSz - 1) / algnSz);
+    m_trBufSize   = algnSz * ((trBufSize + algnSz - 1) / algnSz);
 
+    // Round up to an integer number of pages for both L1 and transition buffers
     size_t pgSz   = sysconf(_SC_PAGESIZE); // For shmem/MMU
-    m_size        = nL1Buffers*m_bufferSize + nTrBuffers*trBufSize;
-    m_size        = pgSz * ((m_size + pgSz - 1) / pgSz);
+    size_t l1Sz   = pgSz * (((nL1Buffers*m_bufferSize + pgSz - 1) / pgSz) + 1); // +1 for overrun detection
+    size_t trSz   = pgSz * (((nTrBuffers*m_trBufSize  + pgSz - 1) / pgSz) + 1); // +1 for overrun detection
+    m_size        = l1Sz + trSz;
     m_buffer      = nullptr;
     int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
     if (ret) {
         logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
         throw "Pebble creation failed";
     }
+    m_trBuffer = m_buffer + l1Sz;
+
+    m_nTrBuffers = nTrBuffers;
+    m_nL1Buffers = nL1Buffers;
+
+    logging::info("Allocated %.1f GB pebble for %u transitions of %zu B and %u L1Accepts of %zu B",
+                  double(m_size)/1e9, nTrBuffers, trBufSize, nL1Buffers, l1BufSize);
+
+    // Store a sentinel value at the end of the buffers for debugging overruns
+    auto buf = m_buffer + m_bufferSize - sizeof(uint32_t);
+    for (unsigned i = 0; i < nL1Buffers; ++i) {
+        *(uint32_t*)buf = 0xcdcdcdcd;
+        buf += m_bufferSize;
+    }
+    *(uint32_t*)(buf - m_bufferSize + sizeof(uint32_t)) = 0xcdcdcdcd; // Also 1st word of page after L1 buffer pool
+    buf = m_trBuffer + m_trBufSize - sizeof(uint32_t);
+    for (unsigned i = 0; i < nTrBuffers; ++i) {
+        *(uint32_t*)buf = 0xefefefef;
+        buf += m_trBufSize;
+    }
+    *(uint32_t*)(buf - m_trBufSize + sizeof(uint32_t)) = 0xefefefef; // Also 1st word of page after transition pool
 }
 
-MemPool::MemPool(Parameters& para) :
+MemPool::MemPool(const Parameters& para) :
     m_transitionBuffers(nextPowerOf2(Pds::Eb::TEB_TR_BUFFERS)), // See eb.hh
     m_dmaAllocs(0),
     m_dmaFrees(0),
     m_allocs(0),
-    m_frees(0)
+    m_frees(0),
+    m_dmaOverrun(0),
+    m_l1Overrun(0),
+    m_trOverrun(0)
 {
-    m_fd = open(para.device.c_str(), O_RDWR);
-    if (m_fd < 0) {
-        logging::critical("Error opening %s: %s", para.device.c_str(), strerror(errno));
-        throw "Error opening kcu1500!!";
-    }
-    logging::info("PGP device '%s' opened", para.device.c_str());
+}
 
-    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
-    if (dmaBuffers == NULL ) {
-        logging::critical("Failed to map dma buffers: %s", strerror(errno));
-        abort();
-    }
+void MemPool::_initialize(const Parameters& para)
+{
     logging::info("dmaCount %u,  dmaSize %u", m_dmaCount, m_dmaSize);
 
     // make sure there are more buffers in the pebble than in the pgp driver
     // otherwise the pebble buffers will be overwritten by the pgp event builder
     m_nDmaBuffers = nextPowerOf2(m_dmaCount);
-    if (m_nDmaBuffers > 0xffffff) {     // Mask for evtCounter
-        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (%u)",
-                          m_nDmaBuffers, 0xffffff);
+    if (m_nDmaBuffers > EvtCtrMask+1) {
+        logging::critical("nDmaBuffers (%u) can't exceed evtCounter range (0:%u)",
+                          m_nDmaBuffers, EvtCtrMask);
         abort();
     }
 
@@ -131,42 +150,71 @@ MemPool::MemPool(Parameters& para) :
     // be RDMAed from to the MEB
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
-                      : std::stoul(para.kwargs["pebbleBufSize"]);
+                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufSize"]);
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
                       ? m_nDmaBuffers
-                      : std::stoul(para.kwargs["pebbleBufCount"]);
+                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
     if (m_nbuffers < m_nDmaBuffers) {
-      logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
-                        m_nbuffers, m_nDmaBuffers);
-      abort();
+        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+                          m_nbuffers, m_nDmaBuffers);
+        abort();
     }
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
     logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
-    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, para.maxTrSize);
+    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, pebble.trBufSize());
 
     pgpEvents.resize(m_nDmaBuffers);
     transitionDgrams.resize(m_nbuffers);
 
     // Put the transition buffer pool at the end of the pebble buffers
-    uint8_t* buffer = pebble[m_nbuffers];
+    uint8_t* buffer = pebble.trBuffer();
     for (size_t i = 0; i < m_transitionBuffers.size(); i++) {
-        m_transitionBuffers.push(&buffer[i * para.maxTrSize]);
+        m_transitionBuffers.push(&buffer[i * pebble.trBufSize()]);
     }
-    m_setMaskBytesDone = false;
 }
 
-MemPool::~MemPool()
+unsigned MemPool::allocateDma()
 {
-   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
-   close(m_fd);
-}
+    // Actually, the DMA buffer is allocated by the f/w and we only account for it here
 
-unsigned MemPool::countDma()
-{
     auto allocs = m_dmaAllocs.fetch_add(1, std::memory_order_acq_rel);
 
     return allocs;
+}
+
+void MemPool::freeDma(unsigned count, uint32_t* indices)
+{
+    // Check that the sentinel value at the end of the buffer is still there
+    for (unsigned i = 0; i < count; ++i) {
+        auto idx = indices[i];
+        const auto buffer = (uint8_t*)dmaBuffers[idx];
+        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
+        if (word[0] != 0xabababab) [[unlikely]] {
+            if (!(m_dmaOverrun & 0x01)) {
+                const auto th = (const Pds::TimingHeader*)buffer;
+                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
+                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
+                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
+                m_dmaOverrun |= 0x01;
+            }
+        }
+        // The driver allocates the DMA pool, so we have no control over what comes after it
+        // Unclear how to recognize overruns, so commenting this out for now
+        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
+        //    if (!(m_dmaOverrun & 0x02)) {
+        //        const auto th = (const Pds::TimingHeader*)buffer;
+        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
+        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
+        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
+        //        m_dmaOverrun |= 0x02;
+        //    }
+        //}
+    }
+
+    _freeDma(count, indices);
+
+    m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
 }
 
 unsigned MemPool::allocate()
@@ -184,14 +232,7 @@ unsigned MemPool::allocate()
         });
     }
 
-    return allocs;
-}
-
-void MemPool::freeDma(std::vector<uint32_t>& indices, unsigned count)
-{
-    dmaRetIndexes(m_fd, count, indices.data());
-
-    m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
+    return allocs & (m_nbuffers - 1);
 }
 
 void MemPool::freePebble()
@@ -205,16 +246,74 @@ void MemPool::freePebble()
         std::lock_guard<std::mutex> lock(m_lock);
         m_condition.notify_one();
     }
+
+    // Check that the sentinel value at the end of the buffer is still there
+    const auto dgram = (Pds::EbDgram*)pebble[frees & (m_nbuffers - 1)];
+    const auto word = (uint32_t*)((uint8_t*)dgram + pebble.bufferSize() - sizeof(uint32_t));
+    auto idx = ((uint8_t*)dgram - pebble.buffer()) / pebble.bufferSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+    if (word[0] != 0xcdcdcdcd) [[unlikely]] {
+        if (!(m_l1Overrun & 0x01)) {
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] overrun: %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xcdcdcdcd);
+            m_l1Overrun |= 0x01;
+        }
+    }
+    // Check that the sentinel value at start of the space after the buffer pool is still there
+    if ((idx == pebble.nL1Buffers()-1) && (word[1] != 0xcdcdcdcd)) [[unlikely]] {
+        if (!(m_l1Overrun & 0x02)) {
+            logging::error("(%014lx, %u.%09u, %s, %zu) L1 buffer[%zu] pool overrun: %08x %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xcdcdcdcd);
+            m_l1Overrun |= 0x02;
+        }
+    }
+}
+
+void MemPool::flushPebble()
+{
+    while (inUse()) {
+        freePebble();
+    }
 }
 
 Pds::EbDgram* MemPool::allocateTr()
 {
     void* dgram = nullptr;
-    if (!m_transitionBuffers.pop(dgram)) {
+    if (!m_transitionBuffers.pop(dgram)) [[unlikely]] {
         // See comments for setting the number of transition buffers in eb.hh
         return nullptr;
     }
     return static_cast<Pds::EbDgram*>(dgram);
+}
+
+void MemPool::freeTr(Pds::EbDgram* dgram)
+{
+    // Do this check before freeing the dgram in case it is reallocated
+    // Check that the sentinel value at the end of the buffer is still there
+    const auto word = (uint32_t*)((uint8_t*)dgram + pebble.trBufSize() - sizeof(uint32_t));
+    auto idx = ((uint8_t*)dgram - pebble.trBuffer()) / pebble.trBufSize();
+    auto sz = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+    if (word[0] != 0xefefefef) [[unlikely]] {
+        if (!(m_trOverrun & 0x01)) {
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] overrun: %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), sz, idx, word[0], 0xefefefef);
+            m_trOverrun |= 0x01;
+        }
+    }
+    // Check that the sentinel value at start of the space after the buffer pool is still there
+    if ((idx == pebble.nTrBuffers()-1) && (word[1] != 0xefefefef)) [[unlikely]] {
+        if (!(m_trOverrun & 0x02)) {
+            logging::error("(%014lx, %u.%09u, %s, %zu) Tr buffer[%zu] pool overrun: %08x %08x vs %08x",
+                           dgram->pulseId(), dgram->time.seconds(), dgram->time.nanoseconds(),
+                           TransitionId::name(dgram->service()), sz, idx, word[0], word[1], 0xefefefef);
+            m_trOverrun |= 0x02;
+        }
+    }
+
+    m_transitionBuffers.push(dgram);
 }
 
 void MemPool::resetCounters()
@@ -223,18 +322,24 @@ void MemPool::resetCounters()
         m_dmaAllocs.store(0);
         m_dmaFrees .store(0);
     } else {
+        // This means DMA buffers were lost and we don't have their indices to free them
+        // (return them to the PGP FPGA).  Can run with fewer buffers but crash instead?
         logging::warning("DMA counters cannot be reset while buffers are still in use: "
                          "Allocs %lu, Frees %lu, inUse %ld",
                          m_dmaAllocs.load(), m_dmaFrees.load(), dmaInUse());
     }
-    if (inUse() == 0) {
-        m_allocs   .store(0);
-        m_frees    .store(0);
-    } else {
-        logging::warning("Not resetting pebble counters when buffers are still in use: "
+
+    if (inUse()) {
+        logging::warning("Pebble counters reset although buffers are still in use: "
                          "Allocs %lu, Frees %lu, inUse %ld",
                          m_allocs.load(), m_frees.load(), inUse());
     }
+    m_allocs.store(0);
+    m_frees .store(0);
+
+    m_dmaOverrun = 0;
+    m_l1Overrun = 0;
+    m_trOverrun = 0;
 }
 
 void MemPool::shutdown()
@@ -242,7 +347,50 @@ void MemPool::shutdown()
     m_transitionBuffers.shutdown();
 }
 
-int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
+MemPoolCpu::MemPoolCpu(const Parameters& para) :
+    MemPool(para),
+    m_setMaskBytesDone(false)
+{
+    m_fd = open(para.device.c_str(), O_RDWR);
+    if (m_fd < 0) {
+        logging::critical("Error opening %s: %m", para.device.c_str());
+        abort();
+    }
+    logging::info("PGP device '%s' opened", para.device.c_str());
+
+    dmaBuffers = dmaMapDma(m_fd, &m_dmaCount, &m_dmaSize);
+    if (dmaBuffers == NULL ) {
+        logging::critical("Failed to map DMA buffers: %m");
+        abort();
+    }
+
+    // Store a sentinel value at the end of the buffers for debugging overruns
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+        uint8_t* buf = (uint8_t*)(dmaBuffers[i]);
+        *(uint32_t*)(buf + m_dmaSize - sizeof(uint32_t)) = 0xabababab;
+    }
+
+    // Continue with initialization of the base class
+    _initialize(para);
+}
+
+MemPoolCpu::~MemPoolCpu()
+{
+   auto rc = dmaUnMapDma(m_fd, dmaBuffers);
+   if (rc) {
+     logging::error("Failed to unmap DMA buffers: %m");
+   }
+
+   logging::debug("%s: Closing PGP device file descriptor", __PRETTY_FUNCTION__);
+    close(m_fd);
+}
+
+void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
+{
+    dmaRetIndexes(m_fd, count, indices);
+}
+
+int MemPoolCpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 {
     int retval = 0;
     if (m_setMaskBytesDone) {
@@ -270,14 +418,14 @@ int MemPool::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
-    m_tmo         {0},
+    m_tmo         {100},                // ms
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
     dmaFlags      (maxRetCnt),
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
-    m_lastTid     (XtcData::TransitionId::Reset),
+    m_lastTid     (TransitionId::Unconfigure),
     m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
@@ -289,7 +437,8 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nMissingRoGs(0),
     m_nTmgHdrError(0),
     m_nPgpJumps   (0),
-    m_nNoTrDgrams (0)
+    m_nNoTrDgrams (0),
+    m_dmaOverrun  (false)
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
     if (pool.dmaCount() < m_dmaIndices.size()) {
@@ -300,6 +449,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
 
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
+    m_t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
 
     pool.resetCounters();
 }
@@ -311,29 +461,20 @@ PgpReader::~PgpReader()
 
 int32_t PgpReader::read()
 {
-    if (m_tmo) {                        // If in interrupt mode...
+    if (m_tmo) {                     // Interrupt mode
         // Wait for DMAed data to become available
         if (poll(&m_pfd, 1, m_tmo) < 0) {
             logging::error("%s: poll() error: %m", __PRETTY_FUNCTION__);
-            return 0;
         }
-        if (m_pfd.revents == 0) {
-            return 0;                   // Timed out
-        }
-        if (m_pfd.revents == POLLIN) {  // When DMAed data is available...
-            m_tmo = 0;                  // switch to polling mode
-            m_t0  = Pds::fast_monotonic_clock::now();
-        }
-    }
+    }                                // Else polling mode
 
-    int rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    auto rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    if (rc > 0) {
+        auto t1 { Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) };
 
-    if ((rc == 0) && (m_tmo == 0)) {    // If no DMAed data and in polling mode...
-        auto t1 { Pds::fast_monotonic_clock::now() };
-
-        if (t1 - m_t0 >= ms_t{1}) {
-            m_tmo = 10;                 // switch to interrupt mode after 1 ms
-        }
+        auto dt = std::chrono::duration_cast<ms_t>(t1 - m_t0).count();
+        m_tmo = dt/rc < 1 ? 0 : 10;  // Polling if rate > 1 kHz else interrupt mode
+        m_t0  = t1;
     }
 
     return rc;
@@ -341,13 +482,21 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
-  // Return buffers queued for freeing
-  if (m_count)  m_pool.freeDma(m_dmaIndices, m_count);
-  m_count = 0;
+    unsigned cnt = m_count;
 
-  // Also return buffers queued for reading, without adjusting counters
-  int32_t ret = read();
-  if (ret > 0)  dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+    // Return DMA buffers queued for freeing
+    if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
+    m_count = 0;
+
+    // Also return DMA buffers queued for reading, without adjusting counters
+    int32_t ret;
+    while ( (ret = read()) ) {
+        dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
+        cnt += ret;
+    }
+
+    // Free any in-use pebble buffers
+    m_pool.flushPebble();
 }
 
 const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
@@ -360,13 +509,31 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
     // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
     // which thus won't have the expected header.  Take the exact match as an overflow indicator.
-    if (size == m_pool.dmaSize()) {
+    if (size >= m_pool.dmaSize()) [[unlikely]] {
         logging::critical("DMA overflowed buffer: %d vs %d", size, m_pool.dmaSize());
         abort();
     }
+    if (index > m_pool.dmaCount()-1) [[unlikely]] {
+        if (!m_dmaOverrun) {
+            logging::error("DMA buffer index (%u) is out of range [0:%u]", index, m_pool.dmaCount()-1);
+            m_dmaOverrun = true;
+        }
+    }
 
     const Pds::TimingHeader* timingHeader = det->getTimingHeader(index);
-    uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
+
+    // Measure TimingHeader arrival latency as early as possible
+    if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+        m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
+        m_latPid = timingHeader->pulseId();
+    }
+    if (timingHeader->error()) [[unlikely]] {
+        if (m_nTmgHdrError++ < 5) {     // Limit prints at rate
+            logging::error("Timing header error bit is set");
+        }
+    }
+
+    uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
     DmaBuffer* buffer = &event->buffers[lane];
@@ -374,130 +541,111 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     buffer->index = index;
     event->mask |= (1 << lane);
 
-    m_pool.countDma(); // DMA buffer was allocated when f/w incremented evtCounter
+    m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
     uint32_t flag = dmaFlags[current];
     uint32_t err  = dmaErrors[current];
-    if (err) {
-        logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
-        //  How do I return this buffer?
-        ++m_lastComplete;
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nDmaErrors;
-        return nullptr;
-    }
-
-    if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-        ++m_nTmgHdrError;
-    }
-    XtcData::TransitionId::Value transitionId = timingHeader->service();
-    //{
-    //  uint32_t lane = dest[current] >> 8;
-    //  uint32_t vc   = dest[current] & 0xff;
-    //  auto event_header = timingHeader;
-    //  printf("Size %u B | Dest %u.%u | Transition id %d | pulse id %014lx | env %08x | event counter %u | index %u\n",
-    //         size, lane, vc, transitionId, event_header->pulseId(), event_header->env, event_header->evtCounter, index);
-    //  //for(unsigned i=0; i<32; i++) //i<((size+3)>>2); i++)
-    //  //  printf("%08x%c",reinterpret_cast<uint32_t*>(m_pool.dmaBuffers[index])[i], (i&7)==7 ? '\n':' ');
-    //}
-    auto rogs = timingHeader->readoutGroups();
-    if ((rogs & (1 << m_para.partition)) == 0) {
-        logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId(), m_para.partition, timingHeader->env);
-        ++m_lastComplete;
-        handleBrokenEvent(*event);
-        freeDma(event);                 // Leaves event mask = 0
-        ++m_nNoComRoG;
-        return nullptr;
-    }
-    if (transitionId == XtcData::TransitionId::SlowUpdate) {
-        uint16_t missingRogs = m_para.rogMask & ~rogs;
-        if (missingRogs) {
-            logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                           XtcData::TransitionId::name(transitionId),
-                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                           timingHeader->pulseId(), missingRogs, timingHeader->env);
-            ++m_lastComplete;
-            handleBrokenEvent(*event);
-            freeDma(event);             // Leaves event mask = 0
-            ++m_nMissingRoGs;
-            return nullptr;
+    if (err) [[unlikely]] {
+        if (m_nDmaErrors++ < 5) {       // Limit prints at rate
+            logging::error("DMA with error 0x%x  flag 0x%x",err,flag);
         }
+        // This assumes the DMA succeeded well enough that evtCounter is valid
+        ++m_lastComplete;
+        handleBrokenEvent(*event);
+        freeDma(event);                 // Leaves event mask = 0
+        return nullptr;
     }
 
+    TransitionId::Value transitionId = timingHeader->service();
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
-    logging::debug("PGPReader  lane %u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
-                   lane, size,
+    logging::debug("PGPReader  lane %u.%u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
+                   lane, dest[current] & 0xff, size,
                    reinterpret_cast<const uint64_t*>(data)[0], // PulseId
                    reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
                    reinterpret_cast<const uint32_t*>(data)[4], // env
                    flag, err);
 
     if (event->mask == m_para.laneMask) {
-        // Allocate a pebble buffer once the event is built
-        auto counter = m_pool.allocate(); // This can block
-        event->pebbleIndex = counter & (m_pool.nbuffers() - 1);
-
-        if (transitionId != XtcData::TransitionId::L1Accept) {
-            if (transitionId != XtcData::TransitionId::SlowUpdate) {
-                logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
-                              XtcData::TransitionId::name(transitionId),
-                              timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                              timingHeader->pulseId());
-            }
-            else {
-                logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
-                               XtcData::TransitionId::name(transitionId),
-                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                               timingHeader->pulseId());
-            }
-            if (transitionId == XtcData::TransitionId::BeginRun) {
-                resetEventCounter();
-            }
+        if (transitionId == TransitionId::BeginRun) {
+            resetEventCounter();        // Compensate for the ClearReadout sent before BeginRun
         }
-        if (evtCounter != ((m_lastComplete + 1) & 0xffffff)) {
-            auto evtCntDiff = evtCounter - m_lastComplete;
-            logging::error("%sPGPReader: Jump in complete l1Count %u -> %u | difference %d, DMA size %u%s",
-                           RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
-            logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
-                           data[0], data[1], data[2], data[3], data[4], data[5], XtcData::TransitionId::name(transitionId));
-            logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
-                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], XtcData::TransitionId::name(m_lastTid));
-            m_nPgpJumps += evtCntDiff;
-
-            if ((evtCntDiff < 0) || (evtCntDiff > 100)) {
-                logging::critical("PGPReader: Aborting on crazy jump in event counter: %d\n", evtCntDiff);
-                abort();
-            }
-
-            if (m_lastComplete == evtCounter) {}  // something else is going on
-            else {
-                for (unsigned e=m_lastComplete+1; e!=evtCounter; e++) {
-                    PGPEvent* brokenEvent = &m_pool.pgpEvents[e & (m_pool.nDmaBuffers() - 1)];
-                    logging::error("broken event:  %08x", brokenEvent->mask);
-                    handleBrokenEvent(*brokenEvent);
-                    freeDma(brokenEvent);   // Leaves event mask = 0
+        if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
+            if (m_lastTid != TransitionId::Unconfigure) {
+                if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
+                    auto evtCntDiff = evtCounter - m_lastComplete;
+                    logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
+                                   RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
+                    logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
+                                   data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
+                    logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
+                                   m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
                 }
+                // Try to handle out-of-sequence events
+            } else if (transitionId != TransitionId::Configure) {
+                freeDma(event);         // Leaves event mask = 0
+                return nullptr;         // Drain everything before Configure
             }
         }
         m_lastComplete = evtCounter;
         m_lastTid = transitionId;
         memcpy(m_lastData, data, 24);
 
+        auto rogs = timingHeader->readoutGroups();
+        if ((rogs & (1 << m_para.partition)) == 0) [[unlikely]] {
+            // Events without the common readout group would mess up the TEB and MEB, so filter them out here
+            logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
+                           TransitionId::name(transitionId),
+                           timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                           timingHeader->pulseId(), m_para.partition, timingHeader->env);
+            handleBrokenEvent(*event);
+            freeDma(event);                 // Leaves event mask = 0
+            ++m_nNoComRoG;
+            return nullptr;
+        }
+        if (transitionId == TransitionId::SlowUpdate) {
+            uint16_t missingRogs = m_para.rogMask & ~rogs;
+            if (missingRogs) [[unlikely]] {
+                // SlowUpdates that don't have all readout groups triggered would mess up psana, so filter them out here
+                // This is true for other transitions as well, but those are caught by control.py
+                logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
+                               TransitionId::name(transitionId),
+                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                               timingHeader->pulseId(), missingRogs, timingHeader->env);
+                handleBrokenEvent(*event);
+                freeDma(event);             // Leaves event mask = 0
+                ++m_nMissingRoGs;
+                return nullptr;
+            }
+        }
+
+        if (transitionId != TransitionId::L1Accept) {
+            if (transitionId != TransitionId::SlowUpdate) {
+                logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
+                              TransitionId::name(transitionId),
+                              timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                              timingHeader->pulseId());
+            }
+            else {
+                logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
+                               TransitionId::name(transitionId),
+                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                               timingHeader->pulseId());
+            }
+        }
+
+        // Allocate a pebble buffer once the event is built
+        event->pebbleIndex = m_pool.allocate(); // This can block
+
         // Allocate a transition datagram from the pool.  Since a
         // SPSCQueue is used (not an SPMC queue), this can be done here,
         // but not in the workers or there will be concurrency issues.
-        if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId != TransitionId::L1Accept) {
             uint32_t evtIndex = event->pebbleIndex;
             m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
-            if (!m_pool.transitionDgrams[evtIndex]) {
-                ++m_nNoTrDgrams;
+            if (!m_pool.transitionDgrams[evtIndex]) [[unlikely]] {
                 freeDma(event);         // Leaves event mask = 0
                 m_pool.freePebble();    // Avoid leaking pebbles on errors
+                ++m_nNoTrDgrams;
                 return nullptr;         // Can happen during shutdown
             }
         }
@@ -506,31 +654,16 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         return nullptr;                 // Event is still incomplete
     }
 
-    // Determine the difference between epochs and clock offsets.
-    // We ignore the time difference due to the two clocks not
-    // being read at quite the same point in time.
-    if (transitionId == XtcData::TransitionId::Configure) {
-        _setTimeOffset(timingHeader->time);
-    }
-    if (timingHeader->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-        m_latency = std::chrono::duration_cast<us_t>(age(timingHeader->time)).count();
-        m_latPid = timingHeader->pulseId();
-    }
     return timingHeader;
 }
 
-void PgpReader::_setTimeOffset(const XtcData::TimeStamp& time) {
-    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
-    auto tTh = (std::chrono::seconds    { time.seconds()     } +
-                std::chrono::nanoseconds{ time.nanoseconds() });
-    m_tOffset = now - tTh;
-}
-
-std::chrono::nanoseconds PgpReader::age(const XtcData::TimeStamp& time) const {
-    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
-    auto tTh = (std::chrono::seconds    { time.seconds()     } +
-                std::chrono::nanoseconds{ time.nanoseconds() });
-    return now - tTh - m_tOffset;
+std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {
+//    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC).time_since_epoch();
+//    auto tTh = (std::chrono::seconds    { time.seconds()     } +
+//                std::chrono::nanoseconds{ time.nanoseconds() });
+//    return now - tTh - m_tOffset;
+    using ns_t = std::chrono::nanoseconds;
+    return ns_t{ Pds::Eb::latency<ns_t>(time) };
 }
 
 void PgpReader::freeDma(PGPEvent* event)
@@ -546,7 +679,7 @@ void PgpReader::freeDma(PGPEvent* event)
             m_dmaIndices[m_count++] = event->buffers[i].index;
             if (m_count == m_dmaIndices.size()) {
                 // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
-                m_pool.freeDma(m_dmaIndices, m_count);
+                m_pool.freeDma(m_count, m_dmaIndices.data());
                 m_count = 0;
             }
         }
@@ -564,13 +697,11 @@ std::string Drp::FileParameters::runName()
 }
 
 EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, Pds::Eb::MebContributor& mon) :
+                       MemPool& pool, ZmqSocket& inprocSend, DrpBase& drp) :
   EbCtrbInBase(tPrms),
   m_pool(pool),
-  m_det(nullptr),
-  m_pgp(nullptr),
+  m_drp(drp),
   m_tsId(-1u),
-  m_mon(mon),
   m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] != "no"), // Default to "yes"
   m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
@@ -613,21 +744,20 @@ int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 
 int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
-    m_lastTid = XtcData::TransitionId::Unconfigure; // @todo: Check
+    m_lastTid = TransitionId::Unconfigure;
 
-    int rc = _setupMetrics(exporter);
-    if (rc)  return rc;
+    if (exporter) {
+      int rc = _setupMetrics(exporter);
+      if (rc)  return rc;
+    }
 
-    rc = this->EbCtrbInBase::connect(exporter);
+    // On the timing system DRP, EbReceiver needs to know its node ID
+    if (m_para.detType == "ts")  m_tsId = m_drp.nodeId();
+
+    int rc = this->EbCtrbInBase::connect(exporter);
     if (rc)  return rc;
 
     return 0;
-}
-
-void EbReceiver::configure(Detector* detector, const PgpReader* pgpReader)
-{
-    m_det = detector;
-    m_pgp = pgpReader;
 }
 
 void EbReceiver::unconfigure()
@@ -800,11 +930,11 @@ void EbReceiver::resetCounters(bool all = false)
 
     if (all)  m_lastIndex = -1u;
     m_damage = 0;
-    m_dmgType->clear();
+    if (m_dmgType)  m_dmgType->clear();
     m_latency = 0;
 }
 
-void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
+void EbReceiver::_writeDgram(Dgram* dgram)
 {
     size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
     m_fileWriter.writeEvent(dgram, size, dgram->time);
@@ -812,10 +942,10 @@ void EbReceiver::_writeDgram(XtcData::Dgram* dgram)
     // small data writing
     Smd smd;
     const void* bufEnd = m_smdWriter.buffer + sizeof(m_smdWriter.buffer);
-    XtcData::NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    XtcData::Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
-                                            m_smdWriter.namesLookup, namesId);
-    m_smdWriter.writeEvent(smdDgram, sizeof(XtcData::Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
+    NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
+    Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
+                                   m_smdWriter.namesLookup, namesId);
+    m_smdWriter.writeEvent(smdDgram, sizeof(Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
     m_offset += size;
 }
 
@@ -823,14 +953,15 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 {
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s", RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
+        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s",
+                          RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         error = true;
     }
 
     Pds::EbDgram* dgram = (Pds::EbDgram*)m_pool.pebble[index];
     uint64_t pulseId = dgram->pulseId();
-    XtcData::TransitionId::Value transitionId = dgram->service();
-    if (transitionId != XtcData::TransitionId::L1Accept) {
+    TransitionId::Value transitionId = dgram->service();
+    if (transitionId != TransitionId::L1Accept) {
         if (transitionId == 0) {
             logging::warning("transitionId == 0 in %s", __PRETTY_FUNCTION__);
         }
@@ -846,7 +977,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
     if (pulseId == 0) {
-        logging::critical("%spulseId %14lx, ts %u.%09u, tid %d, env %08x%s",
+        logging::critical("%spulseId %014lx, ts %u.%09u, tid %d, env %08x%s",
                           RED_ON, pulseId, dgram->time.seconds(), dgram->time.nanoseconds(), dgram->service(), dgram->env, RED_OFF);
         error = true;
     }
@@ -861,8 +992,8 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     }
 
     if (error) {
-        logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, XtcData::TransitionId::name(transitionId), dgram->env);
-        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, XtcData::TransitionId::name(m_lastTid));
+        logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, TransitionId::name(transitionId), dgram->env);
+        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, TransitionId::name(m_lastTid));
         abort();
     }
 
@@ -878,44 +1009,44 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         while (damage) {
             unsigned dmgType = __builtin_ffsl(damage) - 1;
             damage &= ~(1 << dmgType);
-            m_dmgType->observe(dmgType);
+            if (m_dmgType)  m_dmgType->observe(dmgType);
         }
     }
 
     // pass everything except L1 accepts and slow updates to control level
-    if ((transitionId != XtcData::TransitionId::L1Accept)) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-            if (transitionId == XtcData::TransitionId::Configure) {
+    if ((transitionId != TransitionId::L1Accept)) {
+        if (transitionId != TransitionId::SlowUpdate) {
+            if (transitionId == TransitionId::Configure) {
                 // Cache Configure Dgram for writing out after files are opened
-                XtcData::Dgram* configDgram = dgram;
+                Dgram* configDgram = dgram;
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
                 memcpy(m_configureBuffer.data(), configDgram, size);
             }
-            if (transitionId == XtcData::TransitionId::BeginRun)
+            if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
 
             logging::info("EbReceiver saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
+                           TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
         else {
             logging::debug("EbReceiver saw %s @ %u.%09u (%014lx)",
-                           XtcData::TransitionId::name(transitionId),
+                           TransitionId::name(transitionId),
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
     }
     else { // L1Accept
         // On just the timing system DRP, save the trigger information
-        if (m_det && (m_det->nodeId == m_tsId)) {
+        if (m_drp.nodeId() == m_tsId) {
             const void* bufEnd = (char*)dgram + m_pool.bufferSize();
-            m_det->event(*dgram, bufEnd, result);
+            m_drp.detector().event(*dgram, bufEnd, result);
         }
     }
 
-    if (m_writing && !m_chunkRequest && (transitionId == XtcData::TransitionId::L1Accept)) {
+    if (m_writing && !m_chunkRequest && (transitionId == TransitionId::L1Accept)) {
         if (chunkSize() > DefaultChunkThresh) {
             // request chunking opportunity
             chunkRequestSet();
@@ -925,24 +1056,24 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
 
-    // To write/monitor event, require the primary readout group to have triggered
-    // Events for which the primary RoG didn't trigger are counted as bypass events
+    // To write/monitor event, require the commmon readout group to have triggered
+    // Events for which the common RoG didn't trigger are counted as NoComRoG errors
     if (dgram->readoutGroups() & (1 << m_para.partition)) {
         if (m_writing) {                    // Won't ever be true for Configure
             // write event to file if it passes event builder or if it's a transition
             if (result.persist() || result.prescale()) {
                 _writeDgram(dgram);
             }
-            else if (transitionId != XtcData::TransitionId::L1Accept) {
-                if (transitionId == XtcData::TransitionId::BeginRun) {
+            else if (transitionId != TransitionId::L1Accept) {
+                if (transitionId == TransitionId::BeginRun) {
                     m_offset = 0; // reset offset when writing out a new file
-                    _writeDgram(reinterpret_cast<XtcData::Dgram*>(m_configureBuffer.data()));
+                    _writeDgram(reinterpret_cast<Dgram*>(m_configureBuffer.data()));
                 }
                 _writeDgram(dgram);
-                if ((transitionId == XtcData::TransitionId::Enable) && m_chunkRequest) {
+                if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
                     logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
                     reopenFiles();
-                } else if (transitionId == XtcData::TransitionId::EndRun) {
+                } else if (transitionId == TransitionId::EndRun) {
                     logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
                     closeFiles();
                 }
@@ -953,20 +1084,21 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
 
         // Measure latency before sending dgram for monitoring
         if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-            m_latency = std::chrono::duration_cast<us_t>(m_pgp->age(dgram->time)).count();
+            m_latency = Pds::Eb::latency<us_t>(dgram->time);
             m_latPid = dgram->pulseId();
         }
 
-        if (m_mon.enabled()) {
+        auto& mon = m_drp.mebContributor();
+        if (mon.enabled()) {
             // L1Accept
             if (result.isEvent()) {
                 if (result.monitor()) {
-                    m_mon.post(dgram, result.monBufNo());
+                    mon.post(dgram, result.monBufNo());
                 }
             }
             // Other Transition
             else {
-                m_mon.post(dgram);
+                mon.post(dgram);
             }
         }
     }
@@ -977,7 +1109,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
     if (dgram->xtc.src.value() == 0) {  // Do this on only one DRP
         static auto _t0(tp);
         static bool _enabled(false);
-        if (transitionId == XtcData::TransitionId::Enable) {
+        if (transitionId == TransitionId::Enable) {
             _t0 = tp;
             _enabled = true;
         }
@@ -1021,10 +1153,18 @@ static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& 
   return true;
 }
 
-DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
-    pool(para), m_para(para), m_inprocSend(&context, ZMQ_PAIR)
+DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& context) :
+    pool(pool_), m_para(para), m_det(det), m_inprocSend(&context, ZMQ_PAIR)
 {
-    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName());
+    // Try to reduce clutter in grafana by picking the same port on each invocation.
+    // Since DRPs on the same node have unique lane masks use the lowest bit set as an
+    // offset into the port space.  If the port is in use, a search is done.
+    unsigned portOffset = ffs(para.laneMask) - 1; // Assumes laneMask is never 0
+    size_t found = para.device.rfind('_');
+    if ((found != std::string::npos) && isdigit(para.device[found+1])) {
+        portOffset += PGP_MAX_LANES * std::stoi(para.device.substr(found+1, para.device.size()));
+    }
+    m_exposer = Pds::createExposer(para.prometheusDir, _getHostName(), portOffset);
 
     m_tPrms.instrument = para.instrument;
     m_tPrms.partition  = para.partition;
@@ -1043,26 +1183,28 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
     m_mPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_mPrms.maxEvSize  = pool.bufferSize();
-    m_mPrms.maxTrSize  = para.maxTrSize;
+    m_mPrms.maxEvSize  = pool.pebble.bufferSize();
+    m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
     m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
 
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *m_mebContributor);
+    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *this);
 
     m_inprocSend.connect("inproc://drp");
 
     if (para.outputDir.empty()) {
-        logging::info("output dir: n/a");
+        logging::info("Output dir: n/a");
     } else {
         // Induce the automounter to mount in case user enables recording
         struct stat statBuf;
         std::string statPth = para.outputDir + "/" + para.instrument;
+        logging::info("Output dir: %s", statPth.c_str());
         if (::stat(statPth.c_str(), &statBuf) < 0) {
-            logging::error("%s: stat(%s) error: %m", __PRETTY_FUNCTION__, statPth.c_str());
+            logging::error("stat(%s) error: %m", statPth.c_str());
+        } else {
+            logging::info("Output dir: ready");
         }
-        logging::info("output dir: %s", statPth.c_str());
     }
 
     //  Add pva_addr to the environment
@@ -1071,9 +1213,9 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
         char* p = getenv("EPICS_PVA_ADDR_LIST");
         char envBuff[256];
         if (p)
-            sprintf(envBuff,"%s %s", p, a);
+            snprintf(envBuff,sizeof(envBuff), "%s %s", p, a);
         else
-            sprintf(envBuff,"%s", a);
+            snprintf(envBuff, sizeof(envBuff), "%s", a);
         logging::info("Setting env %s\n", envBuff);
         if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
             perror("setenv pva_addr");
@@ -1082,6 +1224,10 @@ DrpBase::DrpBase(Parameters& para, ZmqContext& context) :
 
 void DrpBase::shutdown()
 {
+    // If connect() ran but the system didn't get into the Connected state,
+    // there won't be a Disconnect transition, so disconnect() here
+    disconnect();                       // Does no harm if already done
+
     m_tebContributor->shutdown();
     m_mebContributor->shutdown();
     m_ebRecv->shutdown();
@@ -1127,6 +1273,10 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
                   [&](){return pool.inUse();});
     exporter->constant("drp_pebble_in_use_max", labels, pool.nbuffers());
 
+    exporter->add("drp_trbufs_in_use", labels, Pds::MetricType::Gauge,
+                  [&](){return pool.trInUse();});
+    exporter->constant("drp_trbufs_in_use_max", labels, pool.pebble.nTrBuffers());
+
     exporter->addFloat("drp_deadtime", labels,
                        [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
 
@@ -1135,22 +1285,27 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 
 std::string DrpBase::connect(const json& msg, size_t id)
 {
+    // If triggers had been left running, they will have been stopped during Allocate
+    // Flush anything that accumulated
+    pgpFlush();
+
     // Save a copy of the json so we can use it to connect to the config database on configure
     m_connectMsg = msg;
     m_collectionId = id;
 
     // If the exporter already exists, replace it so that previous metrics are deleted
-    m_exporter = std::make_shared<Pds::MetricExporter>();
     if (m_exposer) {
+        m_exporter = std::make_shared<Pds::MetricExporter>();
         m_exposer->RegisterCollectable(m_exporter);
     }
 
-    int rc = setupMetrics(m_exporter);
-    if (rc) {
-        return std::string{"Failed to set up metrics"};
+    if (m_exporter) {
+        if (setupMetrics(m_exporter)) {
+            return std::string{"Failed to set up metrics"};
+        }
     }
 
-    rc = parseConnectionParams(msg["body"], id);
+    int rc = parseConnectionParams(msg["body"], id);
     if (rc) {
         return std::string{"Connection parameters error - see log"};
     }
@@ -1170,9 +1325,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
     if (rc) {
         return std::string{"EbReceiver connect failed"};
     }
-
-    // On the timing system DRP, EbReceiver needs to know its node ID
-    if (m_para.detType == "ts")  m_ebRecv->tsId(m_nodeId);
 
     return std::string{};
 }
@@ -1252,20 +1404,20 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
 void DrpBase::runInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
-    XtcData::Alg runInfoAlg("runinfo", 0, 0, 1);
-    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::Names& runInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                    "runinfo", runInfoAlg,
-                                                                    "runinfo", "", runInfoNamesId);
+    Alg runInfoAlg("runinfo", 0, 0, 1);
+    NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
+    Names& runInfoNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                  "runinfo", runInfoAlg,
+                                                  "runinfo", "", runInfoNamesId);
     RunInfoDef myRunInfoDef;
     runInfoNames.add(xtc, bufEnd, myRunInfoDef);
-    namesLookup[runInfoNamesId] = XtcData::NameIndex(runInfoNames);
+    namesLookup[runInfoNamesId] = NameIndex(runInfoNames);
 }
 
 void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const RunInfo& runInfo)
 {
-    XtcData::NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
-    XtcData::CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
+    NamesId runInfoNamesId(xtc.src.value(), NamesIndex::RUNINFO);
+    CreateData runinfo(xtc, bufEnd, namesLookup, runInfoNamesId);
     runinfo.set_string(RunInfoDef::EXPT, runInfo.experimentName.c_str());
     runinfo.set_value(RunInfoDef::RUNNUM, runInfo.runNumber);
 }
@@ -1273,20 +1425,20 @@ void DrpBase::runInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup
 void DrpBase::chunkInfoSupport(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup)
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
-    XtcData::Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
-    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::Names& chunkInfoNames = *new(xtc, bufEnd) XtcData::Names(bufEnd,
-                                                                      "chunkinfo", chunkInfoAlg,
-                                                                      "chunkinfo", "", chunkInfoNamesId);
+    Alg chunkInfoAlg("chunkinfo", 0, 0, 1);
+    NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    Names& chunkInfoNames = *new(xtc, bufEnd) Names(bufEnd,
+                                                    "chunkinfo", chunkInfoAlg,
+                                                    "chunkinfo", "", chunkInfoNamesId);
     ChunkInfoDef myChunkInfoDef;
     chunkInfoNames.add(xtc, bufEnd, myChunkInfoDef);
-    namesLookup[chunkInfoNamesId] = XtcData::NameIndex(chunkInfoNames);
+    namesLookup[chunkInfoNamesId] = NameIndex(chunkInfoNames);
 }
 
 void DrpBase::chunkInfoData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, const ChunkInfo& chunkInfo)
 {
-    XtcData::NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
-    XtcData::CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
+    NamesId chunkInfoNamesId(xtc.src.value(), NamesIndex::CHUNKINFO);
+    CreateData chunkinfo(xtc, bufEnd, namesLookup, chunkInfoNamesId);
     chunkinfo.set_string(ChunkInfoDef::FILENAME, chunkInfo.filename.c_str());
     chunkinfo.set_value(ChunkInfoDef::CHUNKID, chunkInfo.chunkId);
 }
@@ -1331,6 +1483,10 @@ void DrpBase::unconfigure()
 
 void DrpBase::disconnect()
 {
+    // If configure() ran but the system didn't get into the Configured state,
+    // there won't be an Unconfigure transition, so unconfigure() here
+    unconfigure();                      // Does no harm if already done
+
     m_tebContributor->disconnect();
     if (m_mPrms.addrs.size() != 0) {
         m_mebContributor->disconnect();
@@ -1351,13 +1507,13 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     const std::string triggerConfig = body["trigger_config"];
 
     // In the following, _0 is added in prints to show the default segment number
-    logging::info("DrpBase: Fetching trigger info from ConfigDb/%s/%s_0",
+    logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
                   configAlias.c_str(), triggerConfig.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
-        logging::error("%s:\n  Document '%s_0' not found in ConfigDb/%s",
-                       __PRETTY_FUNCTION__, triggerConfig.c_str(), configAlias.c_str());
+        logging::error("Document '%s_0' not found in ConfigDb/%s",
+                       triggerConfig.c_str(), configAlias.c_str());
         return -1;
     }
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
@@ -1377,29 +1533,34 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
+    if (!top.HasMember("soname")) {
+        logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+        return -1;
+    }
+    std::string soname(top["soname"].GetString());
+    if (m_det.gpuDetector())  soname += "_gpu";
+
     //  Look for the detector-specific producer first
     std::string symbol("create_producer");
     symbol +=  "_" + m_para.detName;
-    m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+    m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
     if (m_triggerPrimitive) {
-        logging::info("%s:\n  Created detector-specific TriggerPrimitive [%s]",
-                      __PRETTY_FUNCTION__, symbol.c_str());
+        logging::info("Created detector-specific TriggerPrimitive [%s]", symbol.c_str());
     }
     else {
         // Now try the generic producer
         symbol = std::string("create_producer");
-        m_triggerPrimitive = m_trigPrimFactory.create(top, triggerConfig, symbol);
+        m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
         if (!m_triggerPrimitive) {
-            logging::error("%s:\n  Failed to create TriggerPrimitive",
-                           __PRETTY_FUNCTION__);
+            logging::error("Failed to create TriggerPrimitive; try '-v'");
             return -1;
         }
+        logging::info("Created generic TriggerPrimitive [%s]", symbol.c_str());
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
     if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
-        logging::error("%s:\n  Failed to configure TriggerPrimitive",
-                    __PRETTY_FUNCTION__);
+        logging::error("TriggerPrimitive::configure() failed");
         return -1;
     }
 
@@ -1538,30 +1699,31 @@ void DrpBase::printParams() const
 {
     using namespace Pds::Eb;
 
-    printf("\nParameters of Contributor ID %d (%s:%s):\n",         m_tPrms.id,
-                                                                   m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    printf("  Thread core numbers:          %d, %d\n",             m_tPrms.core[0], m_tPrms.core[1]);
-    printf("  Instrument:                   %s\n",                 m_tPrms.instrument.c_str());
-    printf("  Partition:                    %u\n",                 m_tPrms.partition);
-    printf("  Alias (detName, detSeg):      %s ('%s', %u)\n",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
-    printf("  Readout group receipient:     0x%02x\n",             m_tPrms.readoutGroup);
-    printf("  Readout group contractor:     0x%02x\n",             m_tPrms.contractor);
-    printf("  Bit list of TEBs:             0x%016lx, cnt: %zu\n", m_tPrms.builders,
-                                                                   std::bitset<64>(m_tPrms.builders).count());
-    printf("  Number of MEBs:               %zu\n",                m_mPrms.addrs.size());
-    printf("  Batching state:               %s\n",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
-    printf("  Batch duration:               0x%014x = %u ticks\n", m_tPrms.maxEntries, m_tPrms.maxEntries);
-    printf("  Batch pool depth:             0x%08x = %u\n",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
-    printf("  Max # of entries / batch:     0x%08x = %u\n",        m_tPrms.maxEntries, m_tPrms.maxEntries);
-    printf("  # of TEB contrib.   buffers:  0x%08x = %u\n",        pool.nbuffers(), pool.nbuffers());
-    printf("  # of TEB transition buffers:  0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
-    printf("  Max  TEB contribution  size:  0x%08zx = %zu\n",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
-    printf("  Max  MEB L1Accept      size:  0x%08zx = %zu\n",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
-    printf("  Max  MEB transition    size:  0x%08zx = %zu\n",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
+    logging::info("");
+    logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
+                                                                        m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
+    logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
+    logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
+    logging::info("  Partition:                    %u",                 m_tPrms.partition);
+    logging::info("  Alias (detName, detSeg):      %s ('%s', %u)",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
+    logging::info("  Readout group receipient:     0x%02x",             m_tPrms.readoutGroup);
+    logging::info("  Readout group contractor:     0x%02x",             m_tPrms.contractor);
+    logging::info("  Bit list of TEBs:             0x%016lx, cnt: %zu", m_tPrms.builders,
+                                                                        std::bitset<64>(m_tPrms.builders).count());
+    logging::info("  Number of MEBs:               %zu",                m_mPrms.addrs.size());
+    logging::info("  Batching state:               %s",                 m_tPrms.maxEntries > 1 ? "Enabled" : "Disabled");
+    logging::info("  Batch duration:               0x%014x = %u ticks", m_tPrms.maxEntries, m_tPrms.maxEntries);
+    logging::info("  Batch pool depth:             0x%08x = %u",        pool.nbuffers() / m_tPrms.maxEntries, pool.nbuffers() / m_tPrms.maxEntries);
+    logging::info("  Max # of entries / batch:     0x%08x = %u",        m_tPrms.maxEntries, m_tPrms.maxEntries);
+    logging::info("  # of TEB contrib.   buffers:  0x%08x = %u",        pool.nbuffers(), pool.nbuffers());
+    logging::info("  # of TEB transition buffers:  0x%08x = %u",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+    logging::info("  Max  TEB contribution  size:  0x%08zx = %zu",      m_tPrms.maxInputSize, m_tPrms.maxInputSize);
+    logging::info("  Max  MEB L1Accept      size:  0x%08zx = %zu",      m_mPrms.maxEvSize, m_mPrms.maxEvSize);
+    logging::info("  Max  MEB transition    size:  0x%08zx = %zu",      m_mPrms.maxTrSize, m_mPrms.maxTrSize);
     for (unsigned i = 0; i < m_mPrms.maxEvents.size(); ++i)
-      printf("  # of MEB %u contrib. buffers:  0x%08x = %u\n",      i, m_mPrms.maxEvents[i], m_mPrms.maxEvents[i]);
-    printf("  # of MEB transition buffers:  0x%08x = %u\n",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
-    printf("\n");
+      logging::info("  # of MEB %u contrib. buffers:  0x%08x = %u",      i, m_mPrms.maxEvents[i], m_mPrms.maxEvents[i]);
+    logging::info("  # of MEB transition buffers:  0x%08x = %u",        MEB_TR_BUFFERS, MEB_TR_BUFFERS);
+    logging::info("");
 }
 
 }

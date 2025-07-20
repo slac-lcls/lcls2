@@ -100,7 +100,8 @@ class AreaDetector(DetectorImpl):
             logger.debug('AreaDetector._calibconstants - make CalibConstants')
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
-            self._calibc_ = CalibConstants(cc, **kwa)
+            self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
+            self._apply_calibc_preload_cache()
         return self._calibc_
 
 
@@ -136,8 +137,10 @@ class AreaDetector(DetectorImpl):
 
     def _fname_geotxt_default(self):
         """returns (str) file name for default geometry constants lcls2/psana/psana/pscalib/geometry/data/geometry-def-*.data"""
-        dir_detector = os.path.abspath(os.path.dirname(__file__))
-        return '%s/../%s' % (dir_detector, self._path_geo_default)
+        dir_psana = os.path.abspath(os.path.dirname(__file__)).rstrip('detector')
+        path = os.path.join(dir_psana, self._path_geo_default)
+        #print('default geometry:', path)
+        return path # os.path.join(dir_psana, self._path_geo_default)
 
 
     def _det_geotxt_default(self):
@@ -149,6 +152,7 @@ class AreaDetector(DetectorImpl):
 
     def _det_geo(self):
         """Returns cached object self._geo of GeometryAccess() from CalibConstants, loads it from default file if missing in CalibConstants."""
+        if self._path_geo_default is None: return None
         self._geo = self._det_calibconst('geo')
         if self._geo is None:
             geotxt = self._det_geotxt_default()
@@ -212,6 +216,11 @@ class AreaDetector(DetectorImpl):
         #return self._det_calibconst('shape_as_daq')
 
 
+#    def _segment_ids(self):
+#        """Returns list of detector segment ids"""
+#        return self._uniqueid.split('_')[1:]
+
+
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
         nsegs_tot = self._number_of_segments_total()
         nsegs_daq = self._number_of_segments_daq()
@@ -250,7 +259,7 @@ class AreaDetector(DetectorImpl):
             logger.debug('AreaDetector._maskalgos - make MaskAlgos')
             cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
             if is_none(cc, 'self._calibconst is None'): return None
-            self._maskalgos_ = MaskAlgos(cc, **kwa)
+            self._maskalgos_ = MaskAlgos(cc, self._det_name, **kwa)
         return self._maskalgos_
 
 

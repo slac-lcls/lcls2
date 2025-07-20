@@ -15,7 +15,10 @@ else
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
-    conda activate daq_20241215
+    # export SUBMODULEDIR=/cds/home/b/batyuk/tools
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_07032025
+#    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_05142025
+    conda activate daq_20250402
 fi
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
@@ -30,7 +33,6 @@ if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
     #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
-    export NVCC_PREPEND_FLAGS='-ccbin '${CC} # Ensure the correct host compiler is used with nvcc
 fi
 
 RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
@@ -40,14 +42,16 @@ export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 # for procmgr
 export TESTRELDIR=$RELDIR/install
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
-export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,PS_PARALLEL='none'
+export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
 
 # for daqbatch
 export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
-export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,PS_PARALLEL='none'
+export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
 
 # cpo: seems that in more recent versions blas is creating many threads
 export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
 # cpo: getting intermittent file-locking issue on ffb, so try this
 export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking

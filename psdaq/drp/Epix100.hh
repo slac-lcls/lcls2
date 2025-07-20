@@ -20,6 +20,7 @@ protected:
     void           _connectionInfo(PyObject*) override;
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&, const void* bufEnd,
+                              uint64_t l1count,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 public:
     void           monStreamEnable ();

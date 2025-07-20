@@ -37,6 +37,7 @@
 #include <exception>
 #include <algorithm>                    // For std::fill()
 #include <chrono>
+#include <sys/prctl.h>
 #include <Python.h>
 
 #include "rapidjson/document.h"
@@ -246,6 +247,10 @@ int Teb::resetCounters()
 
 void Teb::shutdown()
 {
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
+
   _mrqTransport.shutdown();
 
   EbAppBase::shutdown();
@@ -253,6 +258,10 @@ void Teb::shutdown()
 
 void Teb::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _mrqLinks)  _mrqTransport.disconnect(link);
   _mrqLinks.clear();
 
@@ -330,13 +339,18 @@ int Teb::connect(const MetricExporter_t exporter)
   for (unsigned i = 0; i < _prms.numMrqs; ++i)
     _monBufLists.emplace_back(_prms.numMebEvBufs[i]);
 
-  int rc = _setupMetrics(exporter);
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
+
+  int rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
   if (rc)  return rc;
 
-  rc = linksConnect(_mrqTransport, _mrqLinks, _prms.id, "MRQ");
-  if (rc)  return rc;
-
-  rc = EbAppBase::connect(TEB_TR_BUFFERS, exporter);
+  const unsigned maxEvBufs = TICK_RATE; // Buffers needed per second at max rate
+  const unsigned maxTrBufs = TEB_TR_BUFFERS;
+  rc = EbAppBase::connect(maxEvBufs, maxTrBufs, exporter);
   if (rc)  return rc;
 
   rc = linksConnect(_l3Transport, _l3Links, _prms.addrs, _prms.ports, _prms.id, "DRP");
@@ -432,6 +446,10 @@ void Teb::run()
   {
     logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
                    __PRETTY_FUNCTION__, _prms.core[0]);
+  }
+  logging::info("TEB is starting with process ID %lu", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "Teb", 0, 0, 0) == -1) {
+    perror("prctl");
   }
 
   _batch.start = nullptr;
@@ -531,7 +549,7 @@ void Teb::process(EbEvent* event)
 
   if (UNLIKELY(_prms.verbose >= VL_DETAILED))
   {
-    printf("Teb::process event dump:\n");
+    fprintf(stderr, "Teb::process event dump:\n");
     event->dump(1, _trCount + _eventCount);
   }
 
@@ -623,9 +641,9 @@ void Teb::process(EbEvent* event)
       unsigned    src = rdg->xtc.src.value();
       unsigned    env = rdg->env;
       uint32_t*   pld = reinterpret_cast<uint32_t*>(rdg->xtc.payload());
-      printf("TEB processed %15s result [%8u] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, dsts %016lx, res [%08x, %08x]\n",
-             svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
+      fprintf(stderr, "TEB processed %15s result [%8u] @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, dsts %016lx, res [%08x, %08x]\n",
+              svc, idx, rdg, ctl, pid, env, sz, src, dsts, pld[0], pld[1]);
     }
 
     _tryPost(rdg, dsts, idx);
@@ -662,9 +680,9 @@ void Teb::process(EbEvent* event)
       size_t      sz  = sizeof(dgram) + dgram->xtc.sizeofPayload();
       unsigned    src = dgram->xtc.src.value();
       unsigned    env = dgram->env;
-      printf("TEB processed %15s ACK    [%8u] @ "
-             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
-             svc, idx, dgram, ctl, pid, env, sz, src, imm);
+      fprintf(stderr, "TEB processed %15s ACK    [%8u] @ "
+              "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, src %2u, data %08x\n",
+              svc, idx, dgram, ctl, pid, env, sz, src, imm);
     }
 
     // Make the transition buffer available to the contributor again
@@ -752,7 +770,7 @@ void Teb::_post(const Batch& batch)
   size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -
                      reinterpret_cast<const char*>(batch.start)) + maxResultSize;
-  unsigned offset = batch.idx * maxResultSize;
+  size_t   offset = batch.idx * maxResultSize;
   uint64_t data   = ImmData::value(ImmData::NoResponse_Buffer, _prms.id, batch.idx);
   uint64_t destns = batch.dsts; // & ~_trimmed;
   _entries = extent / maxResultSize;
@@ -779,9 +797,9 @@ void Teb::_post(const Batch& batch)
   if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
   {
     uint64_t pid = batch.start->pulseId();
-    printf("TEB posts          %9lu result  [%8u] @ "
-           "%16p,         pid %014lx, ofs %08x, sz %6zd, dst %016lx\n",
-           _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
+    fprintf(stderr, "TEB posts          %9lu result  [%8u] @ "
+            "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
+            _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
   }
 
   // uint64_t pid = batch.start->pulseId();
@@ -798,8 +816,8 @@ void Teb::_post(const Batch& batch)
     if (UNLIKELY(_prms.verbose >= VL_BATCH))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("                                      to DRP %2u @ %16p\n",
-             dst, rmtAdx);
+      fprintf(stderr, "                                      to DRP %2u @ %16p\n",
+              dst, rmtAdx);
     }
 
     int rc = link->post(batch.start, extent, offset, data);
@@ -861,7 +879,7 @@ static std::string getHostname()
 class TebApp : public CollectionApp
 {
 public:
-  TebApp(const std::string& collSrv, EbParams&);
+  TebApp(EbParams&);
   virtual ~TebApp();
 public:                                 // For CollectionApp
   json connectionInfo(const json& msg) override;
@@ -891,9 +909,8 @@ private:
   bool                                 _unconfigFlag;
 };
 
-TebApp::TebApp(const std::string& collSrv,
-               EbParams&          prms) :
-  CollectionApp(collSrv, prms.partition, "teb", prms.alias),
+TebApp::TebApp(EbParams& prms) :
+  CollectionApp(prms.collSrv, prms.partition, "teb", prms.alias),
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _mrqPortEph  (prms.mrqPort.empty()),
@@ -962,9 +979,9 @@ void TebApp::handleConnect(const json& msg)
   _connectMsg = msg;
 
   // If the exporter already exists, replace it so that previous metrics are deleted
-  _exporter = std::make_shared<MetricExporter>();
   if (_exposer)
   {
+    _exporter = std::make_shared<MetricExporter>();
     _exposer->RegisterCollectable(_exporter);
   }
 
@@ -1026,33 +1043,37 @@ int TebApp::_configure(const json& msg)
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
   {
-    logging::error("%s:\n  Document '%s_0' not found in ConfigDb",
-                   __PRETTY_FUNCTION__, triggerConfig.c_str());
+    logging::error("Document '%s_0' not found in ConfigDb/%s",
+                   triggerConfig.c_str(), configAlias.c_str());
     return -1;
   }
 
   if (!triggerConfig.empty())  _buildContract(top);
 
+  if (!top.HasMember("soname")) {
+    logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+    return -1;
+  }
+  std::string soname(top["soname"].GetString());
+
   const std::string symbol("create_consumer");
-  Trigger* trigger = _factory.create(top, triggerConfig, symbol);
+  Trigger* trigger = _factory.create(soname, symbol);
   if (!trigger)
   {
-    logging::error("%s:\n  Failed to create Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Failed to create Trigger; try '-v'");
     return -1;
   }
 
   if (trigger->configure(_connectMsg, top, _prms))
   {
-    logging::error("%s:\n  Failed to configure Trigger",
-                   __PRETTY_FUNCTION__);
+    logging::error("Trigger::configure() failed");
     return -1;
   }
 
 # define _FETCH(key, item)                                              \
   if (top.HasMember(key))  item = top[key].GetUint();                   \
-  else { logging::error("%s:\n  Key '%s' not found in Document %s",     \
-                        __PRETTY_FUNCTION__, key, triggerConfig.c_str()); \
+  else { logging::error("Key '%s' not found in Document %s",            \
+                        key, triggerConfig.c_str());                    \
          rc = -1; }
 
   unsigned prescale;  _FETCH("prescale", prescale);
@@ -1060,8 +1081,7 @@ int TebApp::_configure(const json& msg)
 # undef _FETCH
 
   rc = _teb->configure(trigger, prescale);
-  if (rc)  logging::error("%s:\n  Failed to configure TEB",
-                          __PRETTY_FUNCTION__);
+  if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);
 
@@ -1271,41 +1291,48 @@ int TebApp::_parseConnectionParams(const json& body)
   return rc;
 }
 
-static void _printGroups(unsigned groups, const EbAppBase::u64arr_t& array)
+static
+void _printGroups(const char* which, unsigned groups, const EbAppBase::u64arr_t& array)
 {
+  char buffer[8*24];
+  int i = 0;
+
+  groups &= 0xff;                       // Prevent buffer overrun
+
   while (groups)
   {
     unsigned group = __builtin_ffs(groups) - 1;
     groups &= ~(1 << group);
 
-    printf("%u: 0x%016lx  ", group, array[group]);
+    i += snprintf(&buffer[i], sizeof(buffer), "%u: 0x%016lx  ", group, array[group]);
   }
-  printf("\n");
+  logging::info("  Readout group %-12s    %s", which, buffer);
 }
 
 void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
 {
-  printf("Parameters of TEB ID %d (%s:%s):\n",                   prms.id,
-                                                                 prms.ifAddr.c_str(), prms.ebPort.c_str());
-  printf("  Thread core numbers:          %d, %d\n",             prms.core[0], prms.core[1]);
-  printf("  Instrument:                   %s\n",                 prms.instrument.c_str());
-  printf("  Partition:                    %u\n",                 prms.partition);
-  printf("  Alias:                        %s\n",                 prms.alias.c_str());
-  printf("  Bit list of contributors:     0x%016lx, cnt: %zu\n", prms.contributors,
-                                                                 std::bitset<64>(prms.contributors).count());
-  printf("  Readout group contractors:    ");                    _printGroups(prms.rogs, prms.contractors);
-  printf("  Readout group receivers:      ");                    _printGroups(prms.rogs, prms.receivers);
-  printf("  Number of MEB requestors:     %u\n",                 prms.numMrqs);
-  printf("  Batch duration:               0x%08x = %u ticks\n",  prms.maxEntries, prms.maxEntries);
-  printf("  Batch pool depth:             0x%08x = %u\n",        prms.maxBuffers / prms.maxEntries, prms.maxBuffers / prms.maxEntries);
-  printf("  Max # of entries / batch:     0x%08x = %u\n",        prms.maxEntries, prms.maxEntries);
-  printf("  # of contrib. buffers:        0x%08x = %u\n",        prms.maxBuffers, prms.maxBuffers);
-  printf("  Max result     EbDgram size:  0x%08zx = %zu\n",      trigger->size(), trigger->size());
-  printf("  Max transition EbDgram size:  0x%08zx = %zu\n",      prms.maxTrSize[0], prms.maxTrSize[0]);
+  logging::info("");
+  logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
+                                                                      prms.ifAddr.c_str(), prms.ebPort.c_str());
+  logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
+  logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
+  logging::info("  Partition:                    %u",                 prms.partition);
+  logging::info("  Alias:                        %s",                 prms.alias.c_str());
+  logging::info("  Bit list of contributors:     0x%016lx, cnt: %zu", prms.contributors,
+                                                                      std::bitset<64>(prms.contributors).count());
+  _printGroups("contractors:", prms.rogs, prms.contractors);
+  _printGroups("receivers:", prms.rogs, prms.receivers);
+  logging::info("  Number of MEB requestors:     %u",                 prms.numMrqs);
+  logging::info("  Batch duration:               0x%08x = %u ticks",  prms.maxEntries, prms.maxEntries);
+  logging::info("  Batch pool depth:             0x%08x = %u",        prms.maxBuffers / prms.maxEntries, prms.maxBuffers / prms.maxEntries);
+  logging::info("  Max # of entries / batch:     0x%08x = %u",        prms.maxEntries, prms.maxEntries);
+  logging::info("  # of contrib. buffers:        0x%08x = %u",        prms.maxBuffers, prms.maxBuffers);
+  logging::info("  Max result     EbDgram size:  0x%08zx = %zu",      trigger->size(), trigger->size());
+  logging::info("  Max transition EbDgram size:  0x%08zx = %zu",      prms.maxTrSize[0], prms.maxTrSize[0]);
   for (unsigned i = 0; i < _prms.numMebEvBufs.size(); ++i)
-    printf("  # of MEB %u event buffers:     0x%08x = %u\n",      i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
-  printf("  # of transition  buffers:     0x%08x = %u\n",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
-  printf("\n");
+    logging::info("  # of MEB %u event buffers:     0x%08x = %u",     i, _prms.numMebEvBufs[i], _prms.numMebEvBufs[i]);
+  logging::info("  # of transition  buffers:     0x%08x = %u",        TEB_TR_BUFFERS, TEB_TR_BUFFERS);
+  logging::info("");
 }
 
 
@@ -1353,7 +1380,6 @@ int main(int argc, char **argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
   int            op           = 0;
-  std::string    collSrv;
   EbParams       prms;
   std::string    kwargs_str;
 
@@ -1367,7 +1393,7 @@ int main(int argc, char **argv)
   {
     switch (op)
     {
-      case 'C':  collSrv            = optarg;                       break;
+      case 'C':  prms.collSrv       = optarg;                       break;
       case 'p':  prms.partition     = std::stoi(optarg);            break;
       case 'P':  prms.instrument    = optarg;                       break;
       case 'A':  prms.ifAddr        = optarg;                       break;
@@ -1410,7 +1436,7 @@ int main(int argc, char **argv)
     logging::critical("-p: partition number is mandatory");
     return 1;
   }
-  if (collSrv.empty())
+  if (prms.collSrv.empty())
   {
     logging::critical("-C: collection server is mandatory");
     return 1;
@@ -1454,7 +1480,7 @@ int main(int argc, char **argv)
 
   try
   {
-    TebApp app(collSrv, prms);
+    TebApp app(prms);
 
     app.run();
 

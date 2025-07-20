@@ -4,8 +4,10 @@ import os
 import time
 from collections import OrderedDict
 
+from psdaq.utils import enable_epix_100a_gen2 # To find epix100_gen2
 import epix100a_gen2  # To find ePixFpga
 import ePixFpga as fpga
+from psdaq.utils import enable_lcls2_epix_hr_pcie # To find lcls2_epix_hr_pcie
 import lcls2_epix_hr_pcie
 import pyrogue
 import rogue
@@ -155,6 +157,34 @@ def epix100_connectionInfo(base, alloc_json_str):
     d["paddr"] = rxId
     d["serno"] = epixhrid
 
+    # Check that the timing link is up from XPM-side
+    if rxId != 0xFFFFFFFE:
+        from p4p.client.thread import Context
+        from p4p.nt.scalar import ntint
+        xpm: int = (rxId >> 16) & 0xFF
+        port: int = (rxId >> 0) & 0xFF
+        # May not work for kcu xpm. Ignore NEH/FEH determination
+        # Could get IP address to figure this out using:
+        # '10.0.{:}.{:}'.format((v>>12)&0xf,100+((v>>8)&0xf))
+        linkrx_pv: str = f"DAQ:FEH:XPM:{xpm}:LinkRxReady{port}"
+        ctx: Context = Context("pva")
+        ret: ntint = ctx.get(linkrx_pv)
+        print(f"INFO:epix100:Checking timing link at: {linkrx_pv}")
+        count: int = 0
+        while ret != 1:
+            print(
+                "WARNING:epix100:Timing link (deadtime path) is down! "
+                "Attempting to recover."
+            )
+            # pbase will be defined if rxId is not 0xFFFFFFFE
+            #pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            pbase.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+            count += 1
+            time.sleep(1)
+            ret = ctx.get(linkrx_pv)
+            if ret == 1:
+                print(f"INFO:epix100:Timing link recovered after {count} reset(s).")
+
     return d
 
 
@@ -184,8 +214,7 @@ def epix100_config(base, connect_str, cfgtype, detname, detsegm, rog):
         "PartitionDelay[%d]" % group,
     ).get()
     rawStart = cfg["user"]["start_ns"]
-    # triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-    triggerDelay = 100
+    triggerDelay = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
     logging.debug(
         "partitionDelay {:}  rawStart {:}  triggerDelay {:}".format(
             partitionDelay, rawStart, triggerDelay
@@ -392,3 +421,26 @@ def epix100_update(update):
     ].TriggerDelay.set(triggerDelay)
 
     return json.dumps(newcfg)
+
+
+def epix100_external_trigger(base):
+    cbase = base['cam']
+    # Switch to external triggering
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AutoRunEnable.set(0)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(True)
+
+
+def epix100_internal_trigger(base):
+    cbase = base['cam']
+    # Switch to internal triggering
+    cbase.ePix100aFPGA.EpixFpgaRegisters.DaqTriggerEnable.set(False)
+    cbase.ePix100aFPGA.EpixFpgaRegisters.AutoRunEnable.set(1)
+
+
+def epix100_enable(base):
+    epix100_external_trigger(base)
+
+
+def epix100_disable(base):
+    time.sleep(0.005)  # Need to make sure readout of last event is complete
+    epix100_internal_trigger(base)

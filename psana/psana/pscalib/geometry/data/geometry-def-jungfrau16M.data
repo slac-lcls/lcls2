@@ -5,8 +5,8 @@
 # EXPERIMENT any
 # DETECTOR   jungfrau16M
 # CALIB_TYPE geometry
-# COMMENT:01 Manually created as an example for the 8-segment Jungfrau4M detector
-# COMMENT:02 2020-01-13 use Rebecca's drawing LCL5004-007815 to exaluate design segment centers
+# COMMENT:01 Manually created as an example for the 832-segment Jungfrau16M detector
+# COMMENT:02 2025-04-01 https://confluence.slac.stanford.edu/spaces/PSDM/pages/582477509/Jungfrau+16M
 # COMMENT:03 2020-01-21 Philip and Kaz segment numeration: from left to right, from top to bottom on design plot
 # COMMENT:04 Dan - pixel (0,0) of each segment is in bottom-left corner on the same plot
 # COMMENT:05 command to test geometry: python Detector/examples/ex_jungfrau_images.py 42
@@ -27,45 +27,45 @@
 
 # HDR PARENT IND      OBJECT     IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
 
-JFQUAD:V1    0    JUNGFRAU:V2    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    3    66941.7  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    0    JUNGFRAU:V2    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    0   -114300  -146925    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    1    -36375  -146925    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    2     41550  -141825    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    3    119475  -141825    0      0       0   0   	 0.0      0.0      0.0
 
-JFQUAD:V1    1    JUNGFRAU:V2    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    3    66941.7  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    1    JUNGFRAU:V2    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    4   -114300  -105675    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    5    -36375  -105675    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    6     41550  -100575    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    7    119475  -100575    0      0       0   0   	 0.0      0.0      0.0
 
-JFQUAD:V1    2    JUNGFRAU:V2    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    3    66941.7  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    2    JUNGFRAU:V2    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    8   -114300   -64425    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2    9    -36375   -64425    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   10     41550   -59325    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   11    119475   -59325    0      0       0   0   	 0.0      0.0      0.0
 
-JFQUAD:V1    3    JUNGFRAU:V2    0   -56807.1  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    1   -15557.5  44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    2    25692.1  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    3    66941.7  33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    4   -66941.7 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    5   -25692.1 -33921.7     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    6    15557.5 -44005.5     0      90     180   0   	 0.0      0.0      0.0
-JFQUAD:V1    3    JUNGFRAU:V2    7    56807.1 -44005.5     0      90     180   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   12   -114300   -23175    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   13    -36375   -23175    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   14     41550   -18075    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   15    119475   -18075    0      0       0   0   	 0.0      0.0      0.0
 
-JFCAMERA:V1    0    JFQUAD:V1    0   -100000   -100000     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JFQUAD:V1    1   -100000    100000     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JFQUAD:V1    2    100000    100000     0      90     180   0   	 0.0      0.0      0.0
-JFCAMERA:V1    0    JFQUAD:V1    3    100000   -100000     0      90     180   0   	 0.0      0.0      0.0
 
-IP:V1          0    JFCAMERA:V1  0         0         0  100000    90       0   0         0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   16   -119475    18075    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   17    -41550    18075    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   18     36375    23175    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   19    114300    23175    0      0       0   0   	 0.0      0.0      0.0
+
+JFDET:V1    0    JUNGFRAU:V2   20   -119475    59325    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   21    -41550    59325    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   22     36375    64425    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   23    114300    64425    0      0       0   0   	 0.0      0.0      0.0
+
+JFDET:V1    0    JUNGFRAU:V2   24   -119475   100575    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   25    -41550   100575    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   26     36375   105675    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   27    114300   105675    0      0       0   0   	 0.0      0.0      0.0
+
+JFDET:V1    0    JUNGFRAU:V2   28   -119475   141825    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   29    -41550   141825    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   30     36375   146925    0      0       0   0   	 0.0      0.0      0.0
+JFDET:V1    0    JUNGFRAU:V2   31    114300   146925    0      0       0   0   	 0.0      0.0      0.0
+
+IP:V1       0       JFDET:V1    0     2587.5       0   100000     90      0   0          0.0      0.0      0.0

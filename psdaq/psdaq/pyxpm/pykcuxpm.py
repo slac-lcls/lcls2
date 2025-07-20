@@ -22,6 +22,8 @@ from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.tssync import TsSync
 import psdaq.pyxpm.autosave as autosave
 
+MIN_FW_VERSION = 0x030c0100
+
 class NoLock(object):
     def __init__(self):
         self._level=0
@@ -58,10 +60,12 @@ def main():
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     parser.add_argument('--dev', type=str, required=True, help="device file" )
     parser.add_argument('--db', type=str, default=None, help="save/restore db, for example [https://pswww.slac.stanford.edu/ws-auth/devconfigdb/ws/,configDB,LAB2,PROD]")
+    parser.add_argument('--norestore', action='store_true', help='skip restore (clean save)')
     parser.add_argument('-F', type=float, default=1.076923e-6, help='fiducial period (sec)')
     parser.add_argument('-C', type=int, default=200, help='clocks per fiducial')
     parser.add_argument('-G', action='store_true', help='is generator')
-
+    parser.add_argument('-U', action='store_true', help='is UED')
+    parser.add_argument('--xvc', default=None, type=int, help='XVC port (2542)')
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
@@ -74,6 +78,8 @@ def main():
         dataDebug = True,
         enVcMask  = 0xF,
         isXpmGen  = args.G,
+        isUED     = args.U,
+        xvcPort   = args.xvc,
     )
 
     # Start the system
@@ -85,6 +91,10 @@ def main():
 
     # Print the AxiVersion Summary
     axiv.printStatus()
+    fwver = axiv.FpgaVersion.get()
+
+    if fwver < MIN_FW_VERSION:
+        raise RuntimeError(f'Firmware version {fwver:x} is less than min required {MIN_FW_VERSION:x}')
 
     #provider = StaticProvider(__name__)
     provider = MyProvider(__name__)
@@ -92,14 +102,14 @@ def main():
 
     lock = Lock()
 
-    autosave.set(args.P,args.db,None)
+    autosave.set(args.P,args.db,None,norestore=args.norestore)
 
-    tsSync = TsSync(args.P,base.XPM.TpgMini) if args.G else None
+    imageName = axiv.ImageName.get()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False, tsSync=tsSync)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
 #    base.handle(pvstats.handle)
 
-    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, paddr=pvstats.paddr, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, paddr=pvstats.paddr, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
     base.handle(pvctrls.handle)
 
     pvxtpg = None

@@ -70,3 +70,18 @@ class Test:
             os.path.dirname(os.path.realpath(__file__)), "run_smalldata.py"
         )
         subprocess.check_call(["mpirun", "-n", "6", "python", run_smalldata], env=env)
+
+    def test_loop_callback(self, tmp_path):
+        # Note that the test generates its own test files in .tmp_smd0/.tmp
+        env = dict(
+            list(os.environ.items())
+            + [
+                ("TEST_XTC_DIR", str(tmp_path)),
+            ]
+        )
+        run_loop_callback = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "run_loop_callback.py"
+        )
+        subprocess.check_call(
+            ["mpirun", "-n", "3", "python", run_loop_callback], env=env
+        )

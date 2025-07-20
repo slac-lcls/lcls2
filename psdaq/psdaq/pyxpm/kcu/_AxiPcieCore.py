@@ -9,7 +9,7 @@
 #-----------------------------------------------------------------------------
 
 import pyrogue              as pr
-import cameralink_gateway # to get surf
+from psdaq.utils import enable_cameralink_gateway # to get surf
 import surf.axi             as axi
 import surf.devices.micron  as micron
 import surf.devices.nxp     as nxp
@@ -133,7 +133,7 @@ class AxiPcieCore(pr.Device):
                  description = 'Base components of the PCIe firmware core',
                  useBpi      = False,
                  useSpi      = False,
-                 numDmaLanes = 1,
+                 numDmaLanes = 2,
                  boardType   = None,
                  **kwargs):
         super().__init__(description=description, **kwargs)

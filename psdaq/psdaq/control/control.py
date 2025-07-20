@@ -461,8 +461,7 @@ class DaqPVA():
             self.report_error(f"self.ctxt.put({pvName}, {val}) failed")
         else:
             retval = True
-            #logging.debug(f"self.ctxt.put({pvName}, {val})")
-            logging.info(f"self.ctxt.put({pvName}, {val})")
+            logging.debug(f"self.ctxt.put({pvName}, {val})")
 
         return retval
 
@@ -531,7 +530,7 @@ class DaqXPM():
         l0d = self.pva.pv_get(pvl)
         if l0d is None:
             logging.debug(f'setup_common() failed getting L0Delays from {pvl}')
-            return False                
+            return False
         #l0max = max(l0d)+1
         l0max = 99
         # The value of 99 shouldn't be necessary, according to simulation.
@@ -540,7 +539,7 @@ class DaqXPM():
         pv = f'{self.pv_xpm_base}:CommonL0Delay'
         if not self.pva.pv_put(pv,l0max):
             logging.debug(f'setup_common() failed setting CommonL0Delay')
-            return False            
+            return False
         return True
 
     #
@@ -559,7 +558,7 @@ class DaqXPM():
             if groups & (1 << g):
                 pv = self.pv_xpm_base + f':PART:{g}:Recording'
                 self.pva.pv_put(pv, recording)
-                    
+
     #
     #  DaqXPM.clear_readout
     #
@@ -570,7 +569,7 @@ class DaqXPM():
             msg = {'type' :'set_reg',
                    'reg'  :'groupL0Reset',
                    'value':groups}
-            self.push.send_json(msg)            
+            self.push.send_json(msg)
         self.insert_transition(groups, ControlDef.transitionId['ClearReadout'])
         time.sleep(1.0)
 
@@ -619,9 +618,9 @@ class DaqXPM():
             if rval:
                 rval = self.pva.pv_put(self.pvGroupMsgInsert, groups)
         else:
-            msg = {'type'  :'set_idx_reg', 
-                   'reg'   :'msgHdr', 
-                   'groups':groups, 
+            msg = {'type'  :'set_idx_reg',
+                   'reg'   :'msgHdr',
+                   'groups':groups,
                    'value' :id}
             self.push.send_json(msg)
             msg = {'type' :'set_reg',
@@ -629,7 +628,7 @@ class DaqXPM():
                    'value':groups}
             self.push.send_json(msg)
             rval = True
-            
+
         return rval
 
     #
@@ -735,7 +734,7 @@ class CollectionManager():
         self.pva = DaqPVA(report_error=self.report_error)
 
         # instanciate DaqXPM object
-        self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva, 
+        self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva,
                           zctxt=self.context, xpm_host=args.X, report_error=self.report_error)
 
         # instantiate RunParams object
@@ -819,6 +818,8 @@ class CollectionManager():
         }
         self.lastTransition = 'reset'
         self.recording = False
+        self.defaultRunType = 'DATA'
+        self.runType = self.defaultRunType
 
         self.collectMachine = Machine(self, ControlDef.states, initial='reset')
 
@@ -882,6 +883,10 @@ class CollectionManager():
     def cmstate_levels(self):
         return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
 
+    def _process_run_type_keys(self, msg_body):
+        if "run_type" in msg_body:
+            self.runType = msg_body["run_type"]
+
     def service_requests(self):
         # msg['header']['key'] formats:
         #  setstate.STATE
@@ -896,6 +901,7 @@ class CollectionManager():
             body = msg['body']
             if key[0] == 'setstate':
                 # handle_setstate() sends reply internally
+                self._process_run_type_keys(body)
                 self.phase1Info.update(body)
                 self.handle_setstate(key[1])
                 answer = None
@@ -1426,7 +1432,7 @@ class CollectionManager():
         if not ok:
             self.report_error(err_msg)
             return False
-            
+
         # Advertise recording status
         self.xpm.recording(self.groups,self.recording)
 
@@ -1975,10 +1981,14 @@ class CollectionManager():
     def start_run(self, experiment_name):
         run_num = 0
         ok = False
-        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
-        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        base_url = self.url if not self.url.endswith("/") else self.url[:-1]
+        serverURLPrefix = f"{base_url}/run_control/{experiment_name}/ws"
+        logging.debug(f"serverURLPrefix = {serverURLPrefix}")
         try:
-            resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(self.user, self.password))
+            startRunEndpoint = f"{serverURLPrefix}/start_run?run_type={self.runType}"
+            # Revert runType back to the default in case next request does not have a type
+            self.runType = self.defaultRunType
+            resp = requests.post(startRunEndpoint, auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
             logging.error("start_run (user=%s) exception: %s" % (self.user, ex))
         else:
@@ -2181,11 +2191,12 @@ class CollectionManager():
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
 
         # readout_count and group_mask are optional
+        self.group_mask = self.groups
         try:
-            self.group_mask    = self.phase1Info['configure']['group_mask']
+            #self.group_mask    = self.phase1Info['configure']['group_mask']
             self.readout_count = self.phase1Info['configure']['readout_count']
         except KeyError:
-            self.group_mask    = 1 << self.platform
+            #self.group_mask    = 1 << self.platform
             self.readout_count = 0
 
         # step_group is optional
@@ -2294,8 +2305,9 @@ class CollectionManager():
     def condition_enable(self):
         # readout_count and group_mask are optional
         group_mask    = self.group_mask
+        readout_count = self.readout_count
         try:
-            group_mask    = self.phase1Info['enable']['group_mask']
+            #group_mask    = self.phase1Info['enable']['group_mask']
             readout_count = self.phase1Info['enable']['readout_count']
         except KeyError:
             readout_count = 0
@@ -2308,10 +2320,10 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        if (self.readout_count > 0):
+        if (readout_count > 0):
             # set EPICS PVs.
             # StepEnd is a cumulative count.
-            self.readoutCumulative[self.step_group] += self.readout_count
+            self.readoutCumulative[self.step_group] += readout_count
             self.xpm.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
         # phase 2

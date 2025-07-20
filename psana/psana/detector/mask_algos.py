@@ -28,11 +28,11 @@ from psana.detector.NDArrUtils import info_ndarr
 
 class MaskAlgos:
 
-    def __init__(self, calibconst, **kwa):
+    def __init__(self, calibconst, detname, **kwa):
         """calibconst: dict from DB
         """
         logger.debug('__init__')
-        self.cco = CalibConstants(calibconst, **kwa)
+        self.cco = CalibConstants(calibconst, detname, **kwa)
         self._mask = None
 
 

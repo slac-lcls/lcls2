@@ -72,7 +72,7 @@ unsigned TimingBEB::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::C
     return 0;
 }
 
-void TimingBEB::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TimingBEB::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     TSDef.createDataETM(xtc, bufEnd, m_namesLookup, m_evtNamesId, subframes[0].data(), subframes[subframes.size()-1].data());
 }

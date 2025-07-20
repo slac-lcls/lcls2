@@ -7,6 +7,19 @@
 #include <map>
 
 namespace BldNames {
+    class UsdUsbDataV1 : public XtcData::VarDef {
+    public:
+        UsdUsbDataV1();
+        static unsigned mcaddr(const char*);
+        static std::vector<unsigned> arraySizes();
+    };
+    class SpectrometerDataV1 : public XtcData::VarDef {
+    public:
+        SpectrometerDataV1();
+        // Entry [X]=Y means entry X has shape determined by value of entry Y
+        static std::map<unsigned,unsigned> arraySizeMap();
+        static std::vector<unsigned> byteSizes();
+    };
     class EBeamDataV7 : public XtcData::VarDef {
     public:
         EBeamDataV7();

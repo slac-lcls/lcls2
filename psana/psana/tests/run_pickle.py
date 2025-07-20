@@ -8,7 +8,7 @@ def test_run_pickle(tmp_path=None):
         xtc_dir = os.path.join(os.getcwd(),'.tmp')
     else:
         xtc_dir = str(tmp_path / '.tmp')
-    ds = DataSource(exp='xpptut13', dir=xtc_dir, filter=filter)
+    ds = DataSource(exp='xpptut15', dir=xtc_dir, filter=filter)
     run = next(ds.runs())
     run_new = pickle.loads(pickle.dumps(run))
     assert run == run_new

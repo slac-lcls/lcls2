@@ -19,13 +19,11 @@ data_dir = '/cds/data/psdm/tst'
 trig_dir = '/cds/home/opr/tmoopr/daq/trigger'
 
 task_set = 'taskset 0xffbfeffbfe '
-batching = 'batching=yes'
-directIO = 'directIO=yes'
 scripts  = f'script_path={trig_dir}'
 
 std_opts = '-P '+hutch+' -C '+collect_host+' -M '+prom_dir
-std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_0'+' -k '+batching+','+directIO
-std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_1'+' -k '+batching+','+directIO
+std_opts0 = std_opts+' -o '+data_dir+' -d /dev/datadev_0'
+std_opts1 = std_opts+' -o '+data_dir+' -d /dev/datadev_1'
 
 teb_cmd  = task_set+' teb '         +std_opts+' -k '+scripts
 meb_cmd  = task_set+' monReqServer '+std_opts
@@ -87,7 +85,7 @@ procmgr_ami = [
 #
  { host:ami_manager_node, id:'ami-global',  flags:'s', cmd:f'ami-global --hutch {hutch} --prometheus-dir {prom_dir} -N 0 -n {ami_num_workers}' },
  { host:ami_manager_node, id:'ami-manager', flags:'s', cmd:f'ami-manager --hutch {hutch} --prometheus-dir {prom_dir} -n {ami_num_workers*ami_workers_per_node} -N {ami_num_workers}' },
- {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}/{hutch}' },
+ {                        id:'ami-client',  flags:'s', cmd:f'ami-client -H {ami_manager_node} --prometheus-dir {prom_dir}' },
 ]
 
 #

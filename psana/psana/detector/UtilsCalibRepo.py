@@ -25,34 +25,16 @@ import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as ups
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile
-
-
-def fname_prefix(detname, ind, tstamp, exp, runnum, dirname=None):
-    """ <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007     -pixel_status-Normal.data """
-    fnpref = '%s-s%02d-%s-%s-r%04d' % (detname, ind, tstamp, exp, runnum)
-    return fnpref if dirname is None else '%s/%s' % (dirname, fnpref)
-
-
-def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
-    return fmt % (fprefix, ctype, gainmode)
-
-
-def set_repoman_and_logger(kwa):
-    repoman = kwa.get('repoman', None)
-    if repoman is None:
-       from psana.detector.RepoManager import init_repoman_and_logger
-       repoman = kwa['repoman'] = init_repoman_and_logger(parser=None, **kwa)
-    return repoman
-
+from psana.detector.RepoManager import set_repoman_and_logger, fname_prefix, calib_file_name
 
 def save_constants_in_repository(dic_consts, **kwa):
-    """dic_consts = {<ctype>: <nda-for-ctype>,...}
-    """
+    """dic_consts = {<ctype>: <nda-for-ctype>,...}"""
+
     #CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
     #repoman  = kwa.get('repoman', None)
     expname  = kwa.get('exp', None)
     #detname  = kwa.get('detname', None)
-    #dettype  = kwa.get('dettype', None)
+    dettype  = kwa.get('dettype', None)
     #deploy   = kwa.get('deploy', False)
     #dirrepo  = kwa.get('dirrepo', './work')
     #dirmode  = kwa.get('dirmode',  0o2775)
@@ -63,34 +45,35 @@ def save_constants_in_repository(dic_consts, **kwa):
     runnum   = kwa.get('run_orig', None)
     #uniqueid = kwa.get('uniqueid', 'not-def-id')
     segids   = kwa.get('segment_ids', [])  # self._uniqueid.split('_')[1]
-    seginds  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers
+    segnums  = kwa.get('segment_inds', []) # self._sorted_segment_inds # _segment_numbers in entire det
+    segind   = kwa.get('segind', None) # segment index in det.raw.raw
     gainmode = kwa.get('gainmode', None)
     #longname = kwa.get('longname', 'non-def-longname') # odet.raw._uniqueid
     shortname= kwa.get('shortname', 'non-def-shortname') # uc.detector_name_short(longname)
 
     repoman = set_repoman_and_logger(kwa)
-
-#    if repoman is None:
-#       from psana.detector.RepoManager import init_repoman_and_logger
-#       repoman = init_repoman_and_logger(parser=None, **kwa)
+    repoman.makedir_dettype(dettype)
 
     d = ups.dict_filter(kwa, list_keys=('dskwargs', 'dirrepo', 'ctype',\
                                         'dettype', 'tsshort', 'detname', 'longname', 'shortname',\
                                         'gainmode', 'segment_ids', 'segment_inds', 'version'))
-    logger.debug('save_constants_in_repository kwa:', kwa)
+    logger.debug('save_constants_in_repository kwa: %s' % uts.info_dict(kwa))
     logger.info('essential kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
 
     dic_ctype_fmt = uc.dic_ctype_fmt(**kwa)
 
-    for i,(segind,segid) in enumerate(zip(seginds, segids)):
-      logger.info('%s next segment\n   save segment constants for gain mode: %s in repo for raw ind:%02d segment ind:%02d id: %s'%\
-                  (20*'-', gainmode, i, segind, segid))
+    for i,(segnum,segid) in enumerate(zip(segnums, segids)):
+
+      if segind is not None and i != segind:
+          logger.debug('---- skip daq segment:%02d, segnum:%02d id:%s   save only --segind %d' % (i, segnum, segid, segind))
+          continue
+
+      logger.info('%s next segment\n   save segment constants for gain mode: %s in repo for raw ind:%02d segment num:%02d id: %s'%\
+                  (20*'-', gainmode, i, segnum, segid))
 
       for ctype, nda in dic_consts.items():
-
         dir_ct = repoman.makedir_ctype(segid, ctype)
-        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
-
+        fprefix = fname_prefix(shortname, segnum, tsshort, expname, runnum, dir_ct)
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = dic_ctype_fmt.get(ctype,'%.5f')
         arr2d = nda if nda.ndim == 2 else nda[i,:]
@@ -105,13 +88,15 @@ def _set_segment_ind_and_id(kwa):
     segind   = kwa.get('segind', None)
     seg_inds = kwa.get('segment_inds', [])
     seg_ids  = kwa.get('segment_ids', [])
+
+    if segind is None: return
+
     assert segind in seg_inds,\
-      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds: %s'%\
+      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds(): %s'%\
       (segind, str(seg_inds))
     segid = seg_ids[seg_inds.index(segind)]
-    kwa['segment_inds'] = [segind,]
-    kwa['segment_ids'] = [segid,]
-#    return segind, segid
+    kwa['segment_inds'] = seg_inds[segind,]
+    kwa['segment_ids'] = seg_ids[segid,]
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
@@ -194,7 +179,7 @@ def save_segment_constants_in_repository(**kwa):
     odet = orun.Detector(kwa.get('detname', None))
 
     kwa_save = uc.add_metadata_kwargs(orun, odet, **kwa)
-    _set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
+    #_set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
     _check_gainmode(**kwa_save)
     _check_ctype(kwa_save)
     _set_tstamp(kwa_save)
@@ -217,11 +202,10 @@ if __name__ == "__main__":
            'detname'     : 'jungfrau',\
            'dirrepo'     : './work',\
            'ctype'       : 'pedestals',\
-           'gainmode'    : 'DYNAMIC',\
+           'gainmode'    : 'g0',\
            'segind'      : 1,\
            'tstampbegin' : '20250101000000',\
            'fname2darr'  : 'test_2darr.npy',\
-           'dirrepo'     : './work',\
            'version'     : '2025-03-14',\
     }
 

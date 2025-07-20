@@ -353,7 +353,7 @@ cdef class EventBuilder:
 
         # For Non L1, check that all dgrams show up
         if not TransitionId.isEvent(proxy_evt.service) and cn_dgrams != self.nsmds:
-            msg = f'TransitionId {proxy_evt.service} incomplete (ts:{proxy_evt.timestamp}) expected:{self.nsmds} received:{cn_dgrams}'
+            msg = f'TransitionId {TransitionId.name(proxy_evt.service)} incomplete (ts:{proxy_evt.timestamp}) expected:{self.nsmds} received:{cn_dgrams}'
             raise RuntimeError(msg)
         return proxy_evt
 

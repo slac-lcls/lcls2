@@ -489,8 +489,10 @@ static void usage(const char* p)
   printf("         -V              [dump registers]\n");
   printf("         -m              [disable DRAM monitoring]\n");
   printf("         -M              [enable DRAM monitoring]\n");
+  printf("         -U              [user reset to clear readout pipeline]\n");
   printf("         -t              [reset timing counters]\n");
   printf("         -T              [reset timing PLL]\n");
+  printf("         -R              [reset timing receiver]\n");
   printf("         -F              [reset frame counters]\n");
   printf("         -C partition[,length[,links]] [configure simcam]\n");
   printf("         -L              [toggle loopback mode]\n");
@@ -506,8 +508,10 @@ int main(int argc, char* argv[])
     bool ringb     = false;
     bool dumpReg   = false;
     bool timingRst = false;
+    bool rxTimRst = false;
     bool tcountRst = false;
     bool frameRst  = false;
+    bool userRst   = false;
     bool loopback  = false;
     int clksel     = 1; // LCLS2 default
     int dramMon    = -1;
@@ -520,7 +524,7 @@ int main(int argc, char* argv[])
     char* endptr;
 
     int c;
-    while((c = getopt(argc, argv, "cd:l:rsStTLmMFVD:C:1")) != EOF) {
+    while((c = getopt(argc, argv, "cd:l:rRsStTULmMFVD:C:1")) != EOF) {
       switch(c) {
       case '1': clksel = 0; break;
       case 'd': dev = optarg; break;
@@ -528,10 +532,12 @@ int main(int argc, char* argv[])
       case 'l': lanes = strtoul(optarg,&endptr,0); break;
       case 'L': loopback = true; break;
       case 'r': reset_clk = true; break;
+      case 'R': rxTimRst  = true; break;
       case 's': status    = true; break;
       case 'S': ringb     = true; break;
       case 't': tcountRst = true; break;
       case 'T': timingRst = true; break;
+      case 'U': userRst   = true; break;
       case 'V': dumpReg   = true; break;
       case 'm': dramMon   = 0;    break;
       case 'M': dramMon   = 1;    break;
@@ -667,6 +673,17 @@ int main(int argc, char* argv[])
       }
 
       timingRst |= setup_clk;
+
+      //
+      //  Dump timing link stats before resetting
+      //
+      if (timingRst || rxTimRst || tcountRst) {
+        print_word("SOFcounts" , 0x00c00000);
+        print_word("RxRstDone" , 0x00c00014);
+        print_word("RxDecErrs" , 0x00c00018);
+        print_word("RxDspErrs" , 0x00c0001c);
+      }
+
       if (timingRst) {
         printf("Reset timing PLL\n");
         unsigned v = get_reg32( 0x00c00020);
@@ -684,9 +701,21 @@ int main(int argc, char* argv[])
         usleep(1000);
         v &= ~0x8;
         set_reg32( 0x00c00020, v);
-        usleep(100000);
+        usleep(1000000);
       }
 
+      if (rxTimRst) {
+        printf("Reset timing Rx\n");
+        unsigned v = get_reg32( 0x00c00020);
+        v |= 0x8;
+        set_reg32( 0x00c00020, v);
+        usleep(1000);
+        v &= ~0x8;
+        set_reg32( 0x00c00020, v);
+        usleep(1000000);
+      }
+
+      tcountRst |= rxTimRst;
       tcountRst |= timingRst;
       if (tcountRst) {
         printf("Reset timing counters\n");
@@ -697,6 +726,10 @@ int main(int argc, char* argv[])
         v &= ~0x1;
         set_reg32( 0x00c00020, v);
       }
+    }
+
+    if (userRst) {
+      set_reg32( 0x00800000,(1<<31));
     }
 
     if (dramMon==1) {

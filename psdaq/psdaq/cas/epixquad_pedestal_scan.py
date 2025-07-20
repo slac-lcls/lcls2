@@ -8,7 +8,8 @@ def main():
                '--hutch'   :'ued',
                '--detname' :'epixquad_0',
                '--scantype':'pedestal',
-               '--record'  :1}
+               '--record'  :1,
+               '--run_type':'DARK'}
 
     scan = ConfigScanBase(defargs=defargs)
     args = scan.args

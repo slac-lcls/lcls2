@@ -25,7 +25,7 @@ def my_filter(evt):
 def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut13', run=1, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
+    ds = DataSource(exp='xpptut15', run=14, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
@@ -39,18 +39,18 @@ def run_serial_read(n_events, batch_size=1, filter_fn=0):
                 cn_events += 1
             cn_steps +=1
             result['evt_per_step'][i] = cn_evt_per_step
-        
+
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
     print(f'rank={rank} result={result}')
     return result
-    
+
 def check_results(results, expected_result):
     for result in results:
         assert result == expected_result
 
 def test_runsinglefile_steps():
-    ds = DataSource(files=os.path.join(xtc_dir,'.tmp','data-r0001-s00.xtc2'))
+    ds = DataSource(files=os.path.join(xtc_dir,'.tmp','xpptut15-r0014-s000-c000.xtc2'))
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}
@@ -62,7 +62,7 @@ def test_runsinglefile_steps():
                 cn_events += 1
             cn_steps +=1
             result['evt_per_step'][i] = cn_evt_per_step
-        
+
     result['n_steps'] = cn_steps
     result['n_events'] = cn_events
     return result
@@ -75,10 +75,10 @@ if __name__ == "__main__":
         if rank == 0:
             p.mkdir()
             setup_input_files(p, n_files=2, slow_update_freq=4, n_motor_steps=3, n_events_per_step=10, gen_run2=False)
-    
+
     comm.Barrier()
-    
-    # Test run.steps() 
+
+    # Test run.steps()
     test_cases = [\
             (51, 1, 0), \
             (51, 1, my_filter), \
@@ -88,10 +88,10 @@ if __name__ == "__main__":
             (19, 1, 0), \
             (1, 1, my_filter), \
             (1, 1, 0), \
-            (3, 4, my_filter), 
+            (3, 4, my_filter),
             (3, 4, 0), \
              ]
-    
+
     for test_case in test_cases:
         result = run_serial_read(test_case[0], batch_size=test_case[1], filter_fn=test_case[2])
         result = comm.gather(result, root=0)
@@ -104,13 +104,13 @@ if __name__ == "__main__":
                     sum_events_per_step += np.asarray(result[i]['evt_per_step'], dtype=np.int32)
                 sum_events += result[i]['n_events']
                 n_steps = np.max([n_steps, result[i]['n_steps']])
-            
-            assert all(sum_events_per_step == [10,10,10]) 
+
+            assert all(sum_events_per_step == [10,10,10])
             assert sum_events == 30
             assert n_steps == 3
-    
+
     # Test run.steps() for RunSingleFile
     if size == 1:
         result = test_runsinglefile_steps()
-        assert result == {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}        
+        assert result == {'evt_per_step': [10, 10, 10], 'n_steps': 3, 'n_events': 30}
 

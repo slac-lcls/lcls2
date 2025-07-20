@@ -50,6 +50,9 @@ int BatchManager::initialize(size_t maxEntrySize, unsigned maxEntries, unsigned 
 
     // Save the allocated size, which may be more than the required size
     _regSize = regSize;
+
+    fprintf(stderr, "Allocated %.1f GB region for %u %u entry batches of %zu B\n",
+            double(regSize)/1e9, numBatches, maxEntries, maxEntrySize);
   }
 
   _mask         = ~uint64_t(maxEntries - 1);
@@ -66,7 +69,7 @@ void BatchManager::shutdown()
 
 void BatchManager::dump() const
 {
-  printf("\nBatchManager dump:\n");
-  printf("  Region base %p  size %zd  maxBatchSize %zd  maxEntrySize %zd\n",
-         _region, _regSize, _maxBatchSize, _maxEntrySize);
+  fprintf(stderr, "\nBatchManager dump:\n");
+  fprintf(stderr, "  Region base %p  size %zd  maxBatchSize %zd  maxEntrySize %zd\n",
+          _region, _regSize, _maxBatchSize, _maxEntrySize);
 }

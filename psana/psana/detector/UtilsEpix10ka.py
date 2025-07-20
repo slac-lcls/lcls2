@@ -36,7 +36,6 @@ If you use all or part of it, please give an appropriate acknowledgment.
 
 Created on 2020-12-03 by Mikhail Dubrovin for LCLS2 from LCLS1
 """
-
 import os
 import sys
 import numpy as np
@@ -50,8 +49,8 @@ from psana.detector.UtilsMask import merge_masks, DTYPE_MASK
 from psana.detector.UtilsCommonMode import common_mode_cols,\
   common_mode_rows_hsplit_nbanks, common_mode_2d_hsplit_nbanks
 
-GAIN_MODES    = ['FH','FM','FL','AHL-H','AML-M','AHL-L','AML-L']
-GAIN_MODES_IN = ['FH','FM','FL','AHL-H','AML-M']
+GAIN_MODES    = ['FH','FM','FL','AHL_H','AML_M','AHL_L','AML_L']
+GAIN_MODES_IN = ['FH','FM','FL','AHL_H','AML_M']
 
 B04 =    0o20 #    16 or 1<<4   (5-th bit starting from 1)
 B05 =    0o40 #    32 or 1<<5   (6-th bit starting from 1)
@@ -113,7 +112,7 @@ class Storage:
         gain = det_raw._gain()      # - 4d gains  (7, <nsegs>, 352, 384)
         peds = det_raw._pedestals() # - 4d pedestals
 
-        # 'FH','FM','FL','AHL-H','AML-M','AHL-L','AML-L'
+        # 'FH','FM','FL','AHL_H','AML_M','AHL_L','AML_L'
         #self.gf4 = np.ones_like(raw, dtype=np.int32) * 0.25 # 0.3333 # M - perefierial
         #self.gf6 = np.ones_like(raw, dtype=np.int32) * 1    # L - center
         #if self.dcfg is None: self.dcfg = det_raw._config_object() #config_object_det_raw(det_raw)
@@ -143,31 +142,6 @@ class Storage:
                     +info_ndarr(self.gfac, '\n  gfac')\
                     +info_ndarr(self.mask, '\n  mask')\
                     +'\n  common-mode correction parameters cmpars: %s' % str(self.cmpars))
-
-
-#def data2x2ToTwo2x1(arr2x2):
-#    """Converts array shaped as CSPAD2x2 data (185,388,2) to two 2x1 arrays with shape=(2,185,388)."""
-#    arr2x2.shape = (185,388,2)
-#    return np.array([arr2x2[:,:,0], arr2x2[:,:,1]])
-
-#def two2x1ToData2x2(arrTwo2x1):
-#    """Converts array shaped as two 2x1 arrays (2,185,388) or (2*185,388) to CSPAD2x2 data shape=(185,388,2)."""
-#    arrTwo2x1.shape = (2,185,388)
-#    arr2x2 = np.array(list(zip(arrTwo2x1[0].flatten(), arrTwo2x1[1].flatten())))
-#    arr2x2.shape = (185,388,2)
-#    return arr2x2
-
-
-#def arr7grToPerPixelCons_v0(arr7gr):
-#    """Converts array shaped as (7, <number-of-segments>, 352, 384), dt=6.7ms"""
-#    sh = arr7gr.shape
-#    assert arr7gr.ndim == 4
-#    assert sh[-2:] == (352, 384)
-#    arrperpix = np.array(list(zip([arr7gr[gr].flatten() for gr in range(7)])))
-#    arrperpix.shape = (7, sh[1]*352*384)
-#    arrperpix = arrperpix.T
-#    arrperpix.shape = (sh[1], 352, 384, 7)
-#    return arrperpix
 
 
 def arr7grToPerPixelCons(arr7gr):
@@ -282,12 +256,6 @@ def cbits_config_epixhr1x4(cob, shape=(144, 768)):
 
     #logger.info('TIME2 in cbits_config_epixhr2x2 = %.6f sec' % (time()-t0_sec))
     return cbits
-
-
-
-
-
-
 
 
 def cbits_config_epixhr2x2(cob, shape=(288, 384)):

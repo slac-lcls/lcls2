@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <net/if.h>
 #include <sys/resource.h>
+#include <ctime>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -395,7 +396,8 @@ void CollectionApp::run()
             logging::debug("topic:  %s", topic.c_str());
 
             std::string key = msg["header"]["key"];
-            logging::info("received key = %s", key.c_str());
+            time_t rawTime;  time (&rawTime);   // Current time
+            logging::info("received key = %s @ %s", key.c_str(), ctime(&rawTime));
             std::ostringstream ss;
             ss << std::setw(4) << msg;
             logging::debug("%s", ss.str().c_str());

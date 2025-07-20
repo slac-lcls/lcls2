@@ -1,3 +1,6 @@
+import time
+
+from psana import utils
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
@@ -13,6 +16,8 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0]
         self.runnum_list_index = 0
+
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
 
         # Setup socket for calibration constant broadcast if supervisor
         # is set (1=I am supervisor, 0=I am not supervisor).
@@ -48,13 +53,16 @@ class ShmemDataSource(DataSourceBase):
         return False
 
     def _setup_run_calibconst(self):
+        st = time.monotonic()
         if self.supervisor:
             super()._setup_run_calibconst()
             if self.supervisor == 1:
-                self._pub_socket.send(self.dsparms.calibconst)
-
+                self._pub_socket.send(self._calib_const)
         else:
-            self.dsparms.calibconst = self._sub_socket.recv()
+            self._clear_calibconst()
+            self._calib_const = self._sub_socket.recv()
+            self._create_weak_calibconst()
+        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def _start_run(self):
         found_next_run = False

@@ -18,29 +18,51 @@ struct Batch
 {
     uint32_t start;
     uint32_t size;
+    uint64_t l1count;
 };
 
-class DrpBase;
+class PGPDrp;
 
-class PGPDetector : public PgpReader
+class Pgp: public PgpReader
 {
 public:
-    PGPDetector(const Parameters& para, DrpBase& drp, Detector* det, bool pythonDrp,
-                int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, size_t shemeSize);
-    virtual ~PGPDetector();
-    void reader(std::shared_ptr<Pds::MetricExporter> exporter, Detector* det, Pds::Eb::TebContributor& tebContributor);
-    void collector(Pds::Eb::TebContributor& tebContributor);
+    Pgp(const Parameters& para, MemPool& pool, Detector& det, PGPDrp& m_drp);
     virtual void handleBrokenEvent(const PGPEvent& event) override;
     virtual void resetEventCounter() override;
-    void shutdown();
 private:
     static const int MAX_RET_CNT_C = 1000;
+    PGPDrp& m_drp;
+};
+
+class PGPDrp : public DrpBase
+{
+public:
+    PGPDrp(Parameters&, MemPool&, Detector&, ZmqContext&,
+           int* inpMqId, int* resMqId, int* inpShmId, int* resShmId, size_t shemeSize);
+    virtual ~PGPDrp() {}
+    void reader();
+    void collector();
+    void handleBrokenEvent(const PGPEvent& event);
+    void resetEventCounter();
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
+private:
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
+private:
+    const Parameters& m_para;
+    Detector& m_det;
+    Pgp m_pgp;
     std::vector<SPSCQueue<Batch> > m_workerInputQueues;
     std::vector<SPSCQueue<Batch> > m_workerOutputQueues;
+    std::thread m_pgpThread;
     std::vector<std::thread> m_workerThreads;
+    std::thread m_collectorThread;
     std::atomic<bool> m_terminate;
+    uint64_t m_nDmaRet;
+    uint64_t m_nevents;
     Batch m_batch;
-    unsigned m_nodeId;
     int* m_inpMqId;
     int* m_resMqId;
     int* m_inpShmId;
@@ -50,7 +72,7 @@ private:
     unsigned m_flushTmo;
     size_t m_shmemSize;
     int64_t m_pyAppTime;
-    bool pythonDrp;
+    bool m_pythonDrp;
 };
 
 }

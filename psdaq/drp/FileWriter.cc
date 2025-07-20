@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>      // std::setfill, std::setw
+#include <sys/prctl.h>
 #include "FileWriter.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -34,6 +35,8 @@ static inline ssize_t _write(int fd, const void* buffer, size_t count)
 BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
     m_fd(0), m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
 {
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriter",
+                  double(m_buffer.size())/1e9, 1, bufferSize);
 }
 
 BufferedFileWriter::~BufferedFileWriter()
@@ -204,6 +207,9 @@ void BufferedFileWriterMT::_initialize(size_t bufferSize)
         }
         m_free.push(b);
     }
+
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriterMT",
+                  double(m_free.size() * m_bufferSize)/1e9, m_free.size(), m_bufferSize);
 }
 
 int BufferedFileWriterMT::open(const std::string& fileName)
@@ -316,6 +322,11 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
 
 void BufferedFileWriterMT::run()
 {
+    logging::info("BufferedFileWriterMT is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/FileWriter", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     while (true) {
         std::chrono::milliseconds tmo{100};
         m_pendBlocked += 1;
@@ -340,6 +351,8 @@ void BufferedFileWriterMT::run()
         m_free.push(b);
         m_depth = m_free.count();
     }
+
+    logging::info("BufferedFileWriterMT is exiting");
 }
 
 BufferedMultiFileWriterMT::BufferedMultiFileWriterMT(size_t bufferSize,

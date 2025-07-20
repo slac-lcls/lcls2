@@ -41,14 +41,12 @@ data_dir = f"/cds/data/drpsrcf"
 trig_dir = f"/cds/home/c/claus/lclsii/daq/runs/eb/data/srcf"
 
 task_set = ""
-batching = "batching=yes"
-directIO = "directIO=yes"
 scripts = f"script_path={trig_dir}"
 # network  = 'ep_provider=sockets,ep_domain=eno1'
 
 std_opts = f"-P {hutch} -C {collect_host} -M {prom_dir}"  # -k {network}'
-std_opts0 = f"{std_opts} -d /dev/datadev_0 -o {data_dir} -k {batching},{directIO}"
-std_opts1 = f"{std_opts} -d /dev/datadev_1 -o {data_dir} -k {batching},{directIO}"
+std_opts0 = f"{std_opts} -d /dev/datadev_0 -o {data_dir}"
+std_opts1 = f"{std_opts} -d /dev/datadev_1 -o {data_dir}"
 
 teb_cmd = f"{task_set} teb " + std_opts + f" -k {scripts}"
 meb_cmd = f"{task_set} monReqServer {std_opts}"

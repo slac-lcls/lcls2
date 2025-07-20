@@ -1,5 +1,4 @@
 import getpass
-import logging
 import os
 import socket
 import time
@@ -14,11 +13,8 @@ from psana.psexp.tools import mode
 
 if mode == "mpi":
     from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
     size = MPI.COMM_WORLD.Get_size()
 else:
-    logger = utils.Logger()
     size = 1
 
 PUSH_INTERVAL_SECS = 5
@@ -34,8 +30,9 @@ HTTP_EXPOSER_STARTED = False
 
 
 def createExposer(prometheusCfgDir):
+    logger = utils.get_logger(name="prometheus_manager.createExposer")
     if prometheusCfgDir == "":
-        logging.warning(
+        logger.warning(
             "Unable to update Prometheus configuration: directory not provided"
         )
         return
@@ -58,7 +55,7 @@ def createExposer(prometheusCfgDir):
                     with open(fileName, "wt") as f:
                         f.write(f"- targets:\n    - {hostname}:{port}\n")
                 except Exception as ex:
-                    logging.error(f"Error creating file {fileName}: {ex}")
+                    logger.error(f"Error creating file {fileName}: {ex}")
                     return False
             else:
                 pass  # File exists; no need to rewrite it
@@ -68,7 +65,7 @@ def createExposer(prometheusCfgDir):
         except OSError:
             pass  # Port in use
         port += 1
-    logging.error("No available port found for providing run-time monitoring")
+    logger.error("No available port found for providing run-time monitoring")
     return False
 
 
@@ -103,7 +100,6 @@ class PrometheusManager(object):
         "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)", ()),
         "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder", ()),
     }
-
     def __init__(self, job=None):
         self.username = getpass.getuser()
         self.rank = 0
@@ -112,6 +108,7 @@ class PrometheusManager(object):
             self.job = default_job_id
         else:
             self.job = job
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def set_rank(self, rank):
         self.rank = rank
@@ -139,7 +136,7 @@ class PrometheusManager(object):
                     registry=self.registry,
                     timeout=None,
                 )
-            logger.debug(
+            self.logger.debug(
                 f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
             )
             time.sleep(PUSH_INTERVAL_SECS)
@@ -156,7 +153,7 @@ class PrometheusManager(object):
                 f"{PUSH_GATEWAY}/metrics/job/{self.job}/rank/{i_rank}",
             ]
             Popen(args)
-            logger.debug(f"CLEANUP {args}")
+            self.logger.debug(f"CLEANUP {args}")
 
     def create_exposer(self, prometheus_cfg_dir):
         return createExposer(prometheus_cfg_dir)
@@ -171,7 +168,7 @@ class PrometheusManager(object):
             elif metric_type == "Gauge":
                 self.registry.register(Gauge(metric_name, desc, labelnames))
         else:
-            logger.info(
+            self.logger.info(
                 f"Warning: {metric_name} is not found in the list of available prometheus metrics"
             )
 

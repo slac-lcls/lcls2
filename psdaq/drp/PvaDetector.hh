@@ -6,32 +6,29 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <Python.h>
 #include "DrpBase.hh"
 #include "XpmDetector.hh"
 #include "spscqueue.hh"
 #include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
 
-
 namespace Drp {
 
 struct PvParameters;
-class  PvDetector;
 
 class Pgp : public PgpReader
 {
 public:
-    Pgp(const Parameters& para, DrpBase& drp, Detector* det);
+    Pgp(const Parameters& para, MemPool& pool, Detector* det);
     Pds::EbDgram* next(uint32_t& evtIndex);
-    const uint64_t nDmaRet() { return m_nDmaRet; }
+    const uint64_t nDmaRet() const { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
     Detector* m_det;
-    Pds::Eb::TebContributor& m_tebContributor;
     static const int MAX_RET_CNT_C = 100;
     int32_t m_available;
     int32_t m_current;
-    unsigned m_nodeId;
     uint64_t m_nDmaRet;
 };
 
@@ -60,7 +57,8 @@ public:
     void startup();
     void shutdown();
     void timeout(const PgpReader& pgp, std::chrono::milliseconds timeout);
-    int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType, int& rank);
+    int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType,
+                   int& rank, size_t bufferSize);
     unsigned id() const { return m_id; }
     const std::string& alias() const { return m_alias; }
     uint64_t nUpdates() const { return m_nUpdates; }
@@ -97,18 +95,47 @@ private:
 class PvDetector : public XpmDetector
 {
 public:
-    PvDetector(PvParameters& para, DrpBase& drp);
-    unsigned connect(std::string& msg);
+    PvDetector(PvParameters&, MemPoolCpu&);
+    ~PvDetector();
+    unsigned connect(const nlohmann::json&, const std::string& collectionId, std::string& msg);
     unsigned disconnect();
-  //    std::string sconfigure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd);
-    unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ };
-    void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override { /* unused */ };
+    unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
     unsigned unconfigure();
-    const PgpReader* pgp() { return &m_pgp; }
+    using Detector::enable;             // Avoid 'hidden' warning
+    void enable();
+    using Detector::disable;            // Avoid 'hidden' warning
+    void disable();
+    void event_(XtcData::Dgram& evt, const void* bufEnd, const XtcData::Xtc& pv);
+    void event(XtcData::Dgram& evt, const void* bufEnd, PGPEvent*, uint64_t l1count) override { /* unused */ };
+    void event(XtcData::Dgram& evt, const void* bufEnd, const Pds::Eb::ResultDgram&) override { /* unused */ };
+public:
+    const std::vector< std::shared_ptr<PvMonitor> >& pvMonitors() const { return m_pvMonitors; }
 private:
+    static const unsigned maxSupportedPVs = 64;
+    enum {
+      ConfigNamesIndex = NamesIndex::BASE,
+      RawNamesIndex = unsigned(ConfigNamesIndex) + maxSupportedPVs,
+      InfoNamesIndex = unsigned(RawNamesIndex) + maxSupportedPVs,
+    };
+    std::atomic<bool>                         m_running;
+    std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
+    PyObject*                                 m_pyModule;
+    std::string                               m_connectJson;
+};
+
+
+class PvDrp : public DrpBase
+{
+public:
+    PvDrp(PvParameters&, MemPoolCpu&, PvDetector&, ZmqContext&);
+    virtual ~PvDrp() {}
+    std::string configure(const nlohmann::json& msg);
+    unsigned unconfigure();
+protected:
+    void pgpFlush() override { m_pgp.flush(); }
+private:
+    int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _worker();
-    void _event(XtcData::Dgram& dgram, const void* bufEnd, const XtcData::Xtc& pvXtc);
     void _timeout(std::chrono::milliseconds timeout);
     void _matchUp();
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
@@ -124,16 +151,12 @@ private:
       uint32_t _spare;                  // For alignment purposes
     };
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, InfoNamesIndex};
-    PvParameters& m_para;
-    DrpBase& m_drp;
+    const PvParameters& m_para;
+    PvDetector& m_det;
     Pgp m_pgp;
-    std::vector< std::shared_ptr<PvMonitor> > m_pvMonitors;
     std::thread m_workerThread;
     SPSCQueue<Event> m_evtQueue;
     std::atomic<bool> m_terminate;
-    std::atomic<bool> m_running;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
     uint64_t m_nEvents;
     uint64_t m_nUpdates;
     uint64_t m_nMissed;
@@ -161,10 +184,10 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 private:
-    DrpBase m_drp;
     PvParameters& m_para;
-    std::unique_ptr<PvDetector> m_pvDetector;
-    Detector* m_det;
+    MemPoolCpu m_pool;
+    std::unique_ptr<PvDetector> m_det;
+    std::unique_ptr<PvDrp> m_drp;
     bool m_unconfigure;
 };
 

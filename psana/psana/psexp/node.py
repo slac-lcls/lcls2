@@ -6,15 +6,13 @@ from psana import utils
 from psana.dgram import Dgram
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
+from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
+from psana.psexp import TransitionId
 
 if mode == "mpi":
     from mpi4py import MPI
-
-    logger = utils.Logger(myrank=MPI.COMM_WORLD.Get_rank())
-else:
-    logger = utils.Logger()
 
 import time
 
@@ -90,7 +88,6 @@ class Communicators(object):
 
         self.smd_comm = self.comm.Create(self.smd_group)
         self.bd_main_comm = self.comm.Create(self.bd_main_group)
-        self._bd_only_comm = self.comm.Create(self._bd_only_group)
 
         if self.smd_comm != MPI.COMM_NULL:
             self.smd_rank = self.smd_comm.Get_rank()
@@ -118,9 +115,6 @@ class Communicators(object):
 
     def bd_group(self):
         return self._bd_only_group
-
-    def bd_only_comm(self):
-        return self._bd_only_comm
 
     def srv_group(self):
         return self._srv_group
@@ -260,15 +254,17 @@ class Smd0(object):
         self.wait_gauge = ds.dsparms.prom_man.get_metric("psana_smd0_wait")
         self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_smd0_rate")
 
+        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
-        logger.debug(f"TIMELINE 1. SMD0GOTCHUNK {st_req}", level=3)
+        self.logger.debug(f"TIMELINE 1. SMD0GOTCHUNK {st_req}")
 
         req = self.comms.smd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
-        logger.debug(f"TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}", level=3)
-        logger.debug(f"WAITTIME SMD0-EB (0-{rankreq[0]}) {en_req-st_req:.5f}")
+        self.logger.debug(f"TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}")
+        self.logger.debug(f"WAITTIME SMD0-EB (0-{rankreq[0]}) {en_req-st_req:.5f}")
         self.wait_gauge.set(en_req - st_req)
 
     def start(self):
@@ -292,7 +288,7 @@ class Smd0(object):
 
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
-            logger.debug(f"TIMELINE 2.1 SMD0GOTSTEPHIST {time.monotonic()}", level=3)
+            self.logger.debug(f"TIMELINE 2.1 SMD0GOTSTEPHIST {time.monotonic()}")
 
             # Update step buffers (after getting the missing steps
             step_views = [
@@ -300,9 +296,7 @@ class Smd0(object):
                 for i in range(self.smdr_man.n_files)
             ]
             self.step_hist.extend_buffers(step_views, rankreq[0])
-            logger.debug(
-                f"TIMELINE 2.2 SMD0STEPHISTUPDATED {time.monotonic()}", level=3
-            )
+            self.logger.debug(f"TIMELINE 2.2 SMD0STEPHISTUPDATED {time.monotonic()}")
 
             # Prevent race condition by making a copy of data
             repack_smds[rankreq[0]] = self.smdr_man.smdr.repack_parallel(
@@ -311,18 +305,16 @@ class Smd0(object):
                 intg_stream_id=self.smdr_man.dsparms.intg_stream_id,
             )
 
-            logger.debug(f"TIMELINE 3. SMD0GOTREPACK {time.monotonic()}", level=3)
+            self.logger.debug(f"TIMELINE 3. SMD0GOTREPACK {time.monotonic()}")
 
             requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                 repack_smds[rankreq[0]], dest=rankreq[0]
             )
 
-            logger.debug(
-                f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}", level=3
-            )
+            self.logger.debug(f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}")
 
             en = time.monotonic()
-            logger.debug(
+            self.logger.debug(
                 f"RATE SMD0-EB (0-{rankreq[0]}) {(self.smdr_man.got_events/(en-st))*1e-3} kHz"
             )
             self.rate_gauge.set((self.smdr_man.got_events / (en - st)) * 1e-3)
@@ -330,14 +322,14 @@ class Smd0(object):
             # Check for terminating signal
             t_req_test = t_req.Test()
             if t_req_test:
-                logger.debug(
+                self.logger.debug(
                     f"MESSAGE SMD0-TERM-FROMRANK{t_rankreq[0]} (t_req_test:{t_req_test})"
                 )
                 break
 
             found_endrun = self.smdr_man.smdr.found_endrun()
             if found_endrun:
-                logger.debug("MESSAGE SMD0-ENDRUN")
+                self.logger.debug("MESSAGE SMD0-ENDRUN")
                 break
 
         # end for (smd_chunk, step_chunk)
@@ -397,6 +389,7 @@ class EventBuilderNode(object):
         self.wait_smd0_gauge = ds.dsparms.prom_man.get_metric("psana_eb_wait_smd0")
         self.wait_bd_gauge = ds.dsparms.prom_man.get_metric("psana_eb_wait_bd")
         self.requests = []
+        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
 
     def _init_requests(self):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
@@ -435,21 +428,19 @@ class EventBuilderNode(object):
         req = self.comms.bd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
-        logger.debug(
+        self.logger.debug(
             f"WAITTIME EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {en_req-st_req:.5f}"
         )
         self.wait_bd_gauge.set(en_req - st_req)
 
     def _request_data(self, smd_comm):
         st = time.monotonic()
-        logger.debug(
+        self.logger.debug(
             f"TIMELINE 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}",
-            level=3,
         )
         smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
-        logger.debug(
+        self.logger.debug(
             f"TIMELINE 6. EB{self.comms.world_rank}DONESENDREQ {time.monotonic()}",
-            level=3,
         )
         info = MPI.Status()
         smd_comm.Probe(source=0, status=info)
@@ -458,10 +449,10 @@ class EventBuilderNode(object):
         req = smd_comm.Irecv(smd_chunk, source=0)
         req.Wait()
         en = time.monotonic()
-        logger.debug(
-            f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}", level=3
+        self.logger.debug(
+            f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}"
         )
-        logger.debug(
+        self.logger.debug(
             f"WAITTIME EB-SMD0 ({self.comms.smd_rank}-0) {en-st:.5f} ({count/1e3:.5f}KB)"
         )
         self.wait_smd0_gauge.set(en - st)
@@ -485,9 +476,8 @@ class EventBuilderNode(object):
             eb_man = EventBuilderManager(
                 smd_chunk, self.configs, self.dsparms, self.dm.get_run()
             )
-            logger.debug(
+            self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
-                level=3,
             )
 
             # Build batches of events
@@ -503,21 +493,18 @@ class EventBuilderNode(object):
                     smd_batch, _ = smd_batch_dict[0]
                     step_batch, _ = step_batch_dict[0]
 
-                    logger.debug(
+                    self.logger.debug(
                         f"TIMELINE 9. EB{self.comms.world_rank}REQBD {time.monotonic()}",
-                        level=3,
                     )
                     if waiting_bds:
                         rankreq[0] = waiting_bds.pop()
-                        logger.debug(
+                        self.logger.debug(
                             f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMQUEUE {time.monotonic()}",
-                            level=3,
                         )
                     else:
                         self._request_rank(rankreq)
-                        logger.debug(
+                        self.logger.debug(
                             f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMREQ {time.monotonic()}",
-                            level=3,
                         )
 
                     missing_step_views = self.step_hist.get_buffer(rankreq[0])
@@ -525,16 +512,14 @@ class EventBuilderNode(object):
                         smd_batch, missing_step_views, self.configs, client=rankreq[0]
                     )
 
-                    logger.debug(
+                    self.logger.debug(
                         f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
-                        level=3,
                     )
                     self.requests[rankreq[0] - 1] = bd_comm.Isend(
                         batches[rankreq[0]], dest=rankreq[0]
                     )
-                    logger.debug(
+                    self.logger.debug(
                         f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
-                        level=3,
                     )
 
                     if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
@@ -549,7 +534,7 @@ class EventBuilderNode(object):
                     # Check if destinations are valid
                     destinations = np.asarray(list(smd_batch_dict.keys()))
                     if any(destinations > n_bd_nodes):
-                        logger.debug(
+                        self.logger.debug(
                             f"MESSAGE INVALID_DEST ({destinations}). MUST BE <= {n_bd_nodes} (#N_BDS)"
                         )
                         break
@@ -586,16 +571,15 @@ class EventBuilderNode(object):
                 # end else -> if 0 in smd_batch_dict.keys()
 
                 t1 = time.monotonic()
-                logger.debug(
+                self.logger.debug(
                     f"RATE EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {(eb_man.eb.nevents/(t1-t0))*1e-3:.5f} kHz"
                 )
                 self.rate_gauge.set((eb_man.eb.nevents / (t1 - t0)) * 1e-3)
                 t0 = time.monotonic()
 
             # end for smd_batch_dict in ...
-            logger.debug(
+            self.logger.debug(
                 f"TIMELINE 12.1 EB{self.comms.world_rank}DONEALLBATCHES {time.monotonic()}",
-                level=3,
             )
 
         # end While True
@@ -612,23 +596,20 @@ class EventBuilderNode(object):
                 bytearray(), missing_step_views, self.configs, client=dest_rank
             )
             if batches[dest_rank]:
-                logger.debug(
+                self.logger.debug(
                     f"TIMELINE 12.2 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}",
-                    level=3,
                 )
                 self.requests[dest_rank - 1] = bd_comm.Isend(
                     batches[dest_rank], dest_rank
                 )
-                logger.debug(
+                self.logger.debug(
                     f"TIMELINE 12.3 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{dest_rank+1} {time.monotonic()}",
-                    level=3,
                 )
                 waiting_bds.remove(dest_rank)
         wait_for(self.requests)
 
-        logger.debug(
+        self.logger.debug(
             f"TIMELINE 12.4 EB{self.comms.world_rank}DONEMISSSTEPS {time.monotonic()}",
-            level=3,
         )
 
         # Check if the rest of bds need missing steps from the last batch
@@ -640,30 +621,28 @@ class EventBuilderNode(object):
                 bytearray(), missing_step_views, self.configs, client=rankreq[0]
             )
             if batches[rankreq[0]]:
-                logger.debug(
+                self.logger.debug(
                     f"TIMELINE 12.5 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}",
-                    level=3,
                 )
                 self.requests[rankreq[0] - 1] = bd_comm.Isend(
                     batches[rankreq[0]], dest=rankreq[0]
                 )
-                logger.debug(
+                self.logger.debug(
                     f"TIMELINE 12.6 EB{self.comms.world_rank}SENDMISSINGSTEPTOBD{rankreq[0]+1} {time.monotonic()}",
-                    level=3,
                 )
             else:
                 waiting_bds.append(rankreq[0])
         wait_for(self.requests)
 
-        logger.debug(
-            f"TIMELINE 12.7 EB{self.comms.world_rank}DONE {time.monotonic()}", level=3
+        self.logger.debug(
+            f"TIMELINE 12.7 EB{self.comms.world_rank}DONE {time.monotonic()}",
         )
 
         # end While True: done - kill idling nodes
         self._init_requests()
         for dest_rank in waiting_bds:
             self.requests[dest_rank - 1] = bd_comm.Isend(bytearray(), dest=dest_rank)
-            logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
+            self.logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
 
         # - kill all other nodes
@@ -671,8 +650,32 @@ class EventBuilderNode(object):
         for i in range(n_bd_nodes - len(waiting_bds)):
             self._request_rank(rankreq)
             self.requests[rankreq[0] - 1] = bd_comm.Isend(bytearray(), dest=rankreq[0])
-            logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
+            self.logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
+
+    def start_broadcast(self):
+        smd_comm = self.comms.smd_comm
+        bd_comm = self.comms.bd_comm
+
+        while True:
+            smd_chunk = self._request_data(smd_comm)
+            if not smd_chunk:
+                break
+
+            eb_man = EventBuilderManager(
+                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+            )
+
+            for smd_batch_dict, _ in eb_man.batches():
+                smd_batch, _ = smd_batch_dict[0]
+
+                # Broadcast to all BD ranks including self
+                smd_batch_np = np.frombuffer(smd_batch, dtype='B')
+                bd_comm.bcast(smd_batch_np, root=0)
+
+        # Send empty array to signal termination
+        bd_comm.bcast(np.array([], dtype='B'), root=0)
+
 
 
 class BigDataNode(object):
@@ -682,20 +685,19 @@ class BigDataNode(object):
         self.comms = ds.comms
         self.wait_gauge = ds.dsparms.prom_man.get_metric("psana_bd_wait")
         self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_bd_rate")
+        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
 
     def start(self):
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
-            logger.debug(
+            self.logger.debug(
                 f"TIMELINE 13. BD{self.comms.world_rank}SENDREQTOEB {time.monotonic()}",
-                level=3,
             )
             req = bd_comm.Isend(np.array([bd_rank], dtype="i"), dest=0)
             req.Wait()
-            logger.debug(
+            self.logger.debug(
                 f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
-                level=3,
             )
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
@@ -704,12 +706,11 @@ class BigDataNode(object):
             st_req = time.monotonic()
             req = bd_comm.Irecv(chunk, source=0)
             req.Wait()
-            logger.debug(
+            self.logger.debug(
                 f"TIMELINE 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}",
-                level=3,
             )
             en_req = time.monotonic()
-            logger.debug(
+            self.logger.debug(
                 f"WAITTIME BD-EB ({bd_rank}-{self.comms.smd_rank}) {en_req-st_req:.5f}"
             )
             self.wait_gauge.set(en_req - st_req)
@@ -726,8 +727,38 @@ class BigDataNode(object):
                 if i_evt % 1000 == 0:
                     t1 = time.monotonic()
                     rate = 1 / (t1 - t0)
-                    logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
+                    self.logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
                     self.rate_gauge.set(rate)
                     t0 = time.monotonic()
 
             yield evt
+
+    def start_smdonly(self):
+        bd_comm = self.comms.bd_comm
+
+        def get_smd():
+            smd_batch_np = bd_comm.bcast(None, root=0)  # receive the broadcast
+            count = smd_batch_np.size
+            return bytearray(smd_batch_np) if count > 0 else bytearray()
+
+        t0 = time.monotonic()
+
+        events = SmdEvents(self.ds, self.run, get_smd=get_smd)
+        self.run._ts_table = {}
+
+        cn_events = 0
+        cn_pass = 0
+        for evt in events:
+            cn_events += 1
+            if evt.service() != TransitionId.L1Accept:
+                continue
+
+            ts = evt.timestamp
+            self.run._ts_table[ts] = {
+                i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
+                for i, d in enumerate(evt._dgrams)
+                if d is not None and hasattr(d, 'smdinfo')
+            }
+            cn_pass += 1
+
+        self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")

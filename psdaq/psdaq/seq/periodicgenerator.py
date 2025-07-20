@@ -10,24 +10,6 @@ import psdaq.configdb.tsdef as ts # for marker/interval mapping
 
 verbose = False
 
-#
-#  Need a control sequence with periodic triggers at different rates and phasing
-#  The periods will be the minimum bunch spacing for SXR and HXR delivery
-#  The 'args' parameter shall have .period,.start_bucket lists for each 
-#  sequence bit
-#
-def gcd(a,b):
-    d = min(a,b)
-    y = max(a,b)
-    while True:
-        r = y%d
-        if r == 0:
-            return d
-        d = r
-
-def lcm(a,b):
-    return a*b // gcd(a,b)
-
 def myunion(s0,s1):
     return set(s0) | set(s1)
 
@@ -67,19 +49,18 @@ class PeriodicGenerator(object):
             self.period    = [period]
             self.start     = [start]
         if marker in ts.FixedIntvsDict.keys():
-            self.syncins = f'FixedRateSync( marker=\"{marker}\"'
+            self.syncins = f'Wait( marker=\"{marker}\"'
         elif marker[0]=='a':
             rate, tslots = marker[1:].split('t')
             tsm = 0
             for t in tslots:
                 tsm |= 1<<(int(t)-1)
-            self.syncins = f'ACRateSync( {tsm}, \"{rate}\"'
+            self.syncins = f'WaitA( {tsm}, \"{rate}\"'
         else:
             options = list(ts.FixedIntvsDict.keys())
             options.append( f'a{ts.acRates}t[1..6]')
             raise ValueError(f'marker {marker} not recognized. Options are {options}')
 
-        print(f'#syncins = \"{self.syncins}\"')
         self.repeat = repeat
         self.notify = notify
 
@@ -96,20 +77,9 @@ class PeriodicGenerator(object):
     def _wait(self, intv):
         if intv <= 0:
             raise ValueError
-        if intv >= 2048:
-            self.instr.append('iinstr = len(instrset)')
-            #  _Wait for 2048 intervals
-            self.instr.append(f'instrset.append( {self.syncins}, occ=2048) )')
-            self.ninstr += 1
-            if intv >= 4096:
-                #  Branch conditionally to previous instruction
-                self.instr.append('instrset.append( Branch.conditional(line=iinstr, counter=3, value={}) )'.format(int(intv/2048)-1))
-                self.ninstr += 1
-
-        rint = intv%2048
-        if rint:
-            self.instr.append(f'instrset.append( {self.syncins}, occ={rint} ) )' )
-            self.ninstr += 1
+        #  Use the WaitX macro to simplify the output
+        self.instr.append(f'instrset.append( {self.syncins}, occ={intv} ) )' )
+        self.ninstr += 1
 
     def _fill_instr(self):
         #  Common period (subharmonic)
@@ -150,7 +120,7 @@ class PeriodicGenerator(object):
                 self.ninstr += 1
 
             self.instr.append('last = len(instrset)')
-            self.instr.append('instrset.append( FixedRateSync(marker="1H",occ=1) )')
+            self.instr.append('instrset.append( Wait(marker="1H",occ=1) )')
             self.instr.append('instrset.append( Branch.unconditional(last) )')
             self.ninstr += 2
 
@@ -238,7 +208,7 @@ class PeriodicGenerator(object):
                     #  Check that period is a marker interval and pattern does not exceed the marker interval
                     if period==v['intv'] and start<rem:
                         print(f'PeriodicGenerator: Filling remainder {rem} with sync to {k}, start {start}, period {period}')
-                        self.instr.append(f'instrset.append( FixedRateSync(marker="{k}",occ=1) )')
+                        self.instr.append(f'instrset.append( Wait(marker="{k}",occ=1) )')
                         return True
             #  No resync
             self._wait(rem)

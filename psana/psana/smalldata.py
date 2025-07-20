@@ -497,6 +497,15 @@ class Server:  # (hdf5 handling)
         return
 
     def write_to_file(self, dataset_name, datagroup, cache):
+        # --- HOT PATCH (2025-06-22): skip writing cache with no data ---
+        # Avoids TypeError when cache.data is None (e.g. detector never produced data).
+        # This happens for variable-length datasets that were registered but never filled.
+        # See traceback from tmo-preproc/preproc_tab_v2.py using SmallData done().
+        if cache.data is None or cache.size == 0:
+            print(f"[WARN] Skipping flush for {datagroup}/{dataset_name}: no data to write ({cache.data=}, {cache.size=})")
+            cache.reset()
+            return
+        # --- END HOT PATCH ---
         if datagroup == ALIGN_GROUP_DEFAULT:
             dset = self.file_handle.get(dataset_name)
         else:

@@ -32,9 +32,6 @@ class SeqUser:
         self.running  = Pv(prefix+':RUNNING', self.changed)
         self._idx     = 0
         self.lock     = None
-
-        xpmpf = ':'.join(prefix.split(':')[:4])
-        self.seqcodes = Pv(xpmpf+':SEQCODES',isStruct=True)
         self.eng      = int(prefix.split(':')[-1])
 
     def changed(self,err=None):
@@ -63,6 +60,9 @@ class SeqUser:
 
     def load(self, title, instrset, descset=None):
         self.desc.put(title,wait=tmo)
+
+        # Before encoding, run the preprocessor to expand any macros
+        instrset = preproc(instrset)
 
         encoding = [len(instrset)]
         for instr in instrset:
@@ -97,19 +97,7 @@ class SeqUser:
         #  (Optional for XPM) Write descriptions for each bit in the sequence
         if descset!=None:
             self.seqbname.put(descset,wait=tmo)
-            
-            seqcodes = self.seqcodes.get()
-            desc     = seqcodes.value.Description
-            for e in range(4*self.eng,4*self.eng+4):
-                desc[e] = ''
-            for i,d in enumerate(descset):
-                desc[4*self.eng+i] = d
 
-            v = seqcodes.value
-            v.Description = desc
-            seqcodes.value = v
-            self.seqcodes.put(seqcodes,wait=tmo)
-                
         self._idx = idx
 
     def begin(self, wait=False, refresh=False):
@@ -129,14 +117,12 @@ class SeqUser:
 
     #  Move from one set to the next without stopping
     def execute(self, title, instrset, descset=None, sync=False, refresh=False):
-        self.clean(self.idxrun.get())
         self.load (title,instrset,descset)
         if sync:
             self.sync(refresh)  # schedule the reset
         else:
             self.begin(refresh) # reset now
-        #self.idxrun.put(self._idx,wait=tmo)
-        #self.start.put(2,wait=tmo)
+        self.clean()
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
@@ -150,9 +136,8 @@ def main():
     files = []
     engineMask = 0
 
-    seqcodes_pv = Pv(f'{args.pv}:SEQCODES',isStruct=True)
-    seqcodes = seqcodes_pv.get()
-    desc = seqcodes.value.Description
+    seqcodes_pv = Pv(f'{args.pv}:SEQCODENAMES')
+    desc = seqcodes_pv.get()
 
     for s in args.seq:
         sengine,fname = s.split(':',1)
@@ -170,7 +155,12 @@ def main():
             config['refresh']=False
         print(f'refresh  {config["refresh"]}')
         if args.verbose:
-            print('instrset:')
+            print('instrset (before preproc):')
+            for i in config["instrset"]:
+                print(i)
+        config['instrset'] = preproc(config['instrset'])
+        if args.verbose:
+            print('instrset (after preproc):')
             for i in config["instrset"]:
                 print(i)
 
@@ -186,12 +176,9 @@ def main():
             desc[4*engine+e] = d
         print(f'desc {desc}')
 
-    if args.start:
-        v = seqcodes.value
-        v.Description = desc
-        seqcodes.value = v
-        seqcodes_pv.put(seqcodes,wait=tmo)
+    seqcodes_pv.put(desc,wait=tmo)
 
+    if args.start:
         pvSeqReset = Pv(f'{args.pv}:SeqReset')
         pvSeqReset.put(engineMask,wait=tmo)
 

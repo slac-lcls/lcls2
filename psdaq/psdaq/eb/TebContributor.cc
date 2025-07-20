@@ -57,7 +57,10 @@ TebContributor::TebContributor(const TebCtrbParams& prms,
   _eventCount (0),
   _batchCount (0),
   _latPid     (0),
-  _latency    (0)
+  _latency    (0),
+  _age        (0),
+  _entries    (0),
+  _running    (false)
 {
 }
 
@@ -90,15 +93,17 @@ void TebContributor::startup(EbCtrbInBase& in)
 
 void TebContributor::shutdown()
 {
-  if (!_links.empty())                  // Avoid shutting down if already done
-  {
-    unconfigure();
-    disconnect();
-  }
+  // If connect() ran but the system didn't get into the Connected state,
+  // there won't be a Disconnect transition, so disconnect() here
+  disconnect();                         // Does no harm if already done
 }
 
 void TebContributor::disconnect()
 {
+  // If configure() ran but the system didn't get into the Configured state,
+  // there won't be an Unconfigure transition, so unconfigure() here
+  unconfigure();                        // Does no harm if already done
+
   for (auto link : _links)  _transport.disconnect(link);
   _links.clear();
 
@@ -107,7 +112,7 @@ void TebContributor::disconnect()
 
 void TebContributor::unconfigure()
 {
-  if (!_links.empty())             // Avoid unconfiguring again if already done
+  if (_running.load(std::memory_order_relaxed)) // Avoid unconfiguring again if already done
   {
     _running.store(false, std::memory_order_release);
 
@@ -145,15 +150,18 @@ int TebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
 
 int TebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
 {
-  int rc = _setupMetrics(exporter);
-  if (rc)  return rc;
+  if (exporter)
+  {
+    int rc = _setupMetrics(exporter);
+    if (rc)  return rc;
+  }
 
   _links    .resize(_prms.addrs.size());
   _trBuffers.resize(_links.size());
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
+  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
   if (rc)  return rc;
 
   return 0;
@@ -334,7 +342,7 @@ void TebContributor::_post(const Batch& batch)
     uint64_t     pid    = batch.start->pulseId();
     unsigned     dst    = (pid / _prms.maxEntries) % _numEbs;
     EbLfCltLink* link   = _links[dst];
-    unsigned     offset = link->lclOfs(batch.start);
+    size_t       offset = link->lclOfs(batch.start);
     uint32_t     idx    = offset / _prms.maxInputSize;
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
@@ -373,9 +381,9 @@ void TebContributor::_post(const Batch& batch)
     if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
-      printf("CtrbOut posts %9lu    batch[%8u]    @ "
-             "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
-             _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
+      fprintf(stderr, "CtrbOut posts %9lu    batch[%8u]    @ "
+              "%16p,         pid %014lx,               sz %6zd, TEB %2u @ %16p, data %08x\n",
+              _batchCount, idx, batch.start, pid, extent, dst, rmtAdx, data);
     }
     else
     {
@@ -513,9 +521,9 @@ void TebContributor::_post(const EbDgram* dgram)
         unsigned    ctl    = dgram->control();
         const char* svc    = TransitionId::name(dgram->service());
         void*       rmtAdx = (void*)link->rmtAdx(offset);
-        printf("CtrbOut posts    %15s              @ "
-               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
-               svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
+        fprintf(stderr, "CtrbOut posts    %15s              @ "
+                "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x\n",
+                svc, dgram, ctl, pid, env, sz, src, rmtAdx, data);
         print = false;                  // Just once for now
       }
       else
