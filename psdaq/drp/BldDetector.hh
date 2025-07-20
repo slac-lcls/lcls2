@@ -93,7 +93,9 @@ public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
         unsigned timestampPos, unsigned pulseIdPos,
         unsigned headerSize, unsigned payloadSize,
-        uint64_t timestampCorr = 0);
+        uint64_t timestampCorr = 0, bool varLenArr=false,
+        std::vector<unsigned> entryByteSizes={},      // For varLenArr Bld
+        std::map<unsigned,unsigned> arraySizeMap={}); // For varLenArr Bld
 
     // Copy constructor.
     Bld(const Bld&);
@@ -105,6 +107,8 @@ public:
     virtual void clear(uint64_t ts) override;
     virtual uint64_t next() override;
     virtual void initDevice() override;
+
+    void _calcVarPayloadSize();
 };
 
 class KMicroscopeBld : public BldBase {
@@ -260,7 +264,6 @@ private:
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
 
-    DrpBase                   m_drp;
     Parameters&               m_para;
     MemPoolCpu                m_pool;
     std::unique_ptr<Detector> m_det;
@@ -270,8 +273,8 @@ private:
 
 class BldDetector : public XpmDetector {
 public:
-    BldDetector(Parameters& para, DrpBase& drp);
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    BldDetector(Parameters& para, MemPoolCpu& pool);
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
 };
 
 } // namespace Drp

@@ -211,20 +211,6 @@ target_link_libraries(drp_kmicro_test
     ${Readline_LIBRARY}
 )
 
-
-add_executable(drp_kmicro_test
-    test_kmicro.cc
-)
-
-target_link_libraries(drp_kmicro_test
-    pipecallbackhandler_lib
-    drpbase
-    trigger
-    epicstools
-    mmhw
-    ${Readline_LIBRARY}
-)
-
 #if(CMAKE_CUDA_COMPILER)
 #    message(CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}")
 #    message(INSTALL_INTERFACE="$<INSTALL_INTERFACE>")

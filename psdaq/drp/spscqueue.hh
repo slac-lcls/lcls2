@@ -172,11 +172,6 @@ public:
                 m_read_index.load(std::memory_order_acquire)) >= m_capacity;
     }
 
-    bool is_full() {
-        return (m_write_index.load(std::memory_order_acquire) -
-                m_read_index.load(std::memory_order_acquire)) >= m_capacity;
-    }
-
     int guess_size() const
     {
         int ret = m_write_index.load(std::memory_order_acquire) -

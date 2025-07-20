@@ -581,6 +581,27 @@ void Bld::_calcVarPayloadSize()
     m_payloadSize = payloadSize;
 }
 
+Bld::Bld(unsigned mcaddr, unsigned port, unsigned interface,
+         unsigned timestampPos, unsigned pulseIdPos,
+         unsigned headerSize, unsigned payloadSize,
+         uint64_t timestampCorr,
+         bool varLenArr,
+         std::vector<unsigned> entryByteSizes,
+         std::map<unsigned, unsigned> arraySizeMap)
+  : BldBase(mcaddr, port, interface,
+            timestampPos, pulseIdPos,
+            headerSize, payloadSize,
+            timestampCorr, varLenArr,
+            std::move(entryByteSizes),
+            std::move(arraySizeMap))
+{
+  // Any additional Bld-specific initialization can go here
+}
+
+Bld::~Bld()
+{
+}
+
 //  Read ahead and clear events older than ts (approximate)
 // MONA: k-micro might not need this
 void Bld::clear(uint64_t ts)
@@ -748,14 +769,6 @@ void KMicroscopeBld::initDevice(){
     logging::debug("KMicroscopeBld::initDevice - startMeasurement");
 }
 
-// Constructor Implementation
-BldDetector::BldDetector(Parameters& para, MemPoolCpu& pool)
-    : XpmDetector(&para, &pool) { virtChan = 0; }
-
-// Override event method (currently empty)
-void BldDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) {}
-
-
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
@@ -766,6 +779,13 @@ Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
         logging::error("Failed to allocate lane/vc");
     }
 }
+
+// Constructor Implementation
+BldDetector::BldDetector(Parameters& para, MemPoolCpu& pool)
+    : XpmDetector(&para, &pool) { virtChan = 0; }
+
+// Override event method (currently empty)
+void BldDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) {}
 
 EbDgram* Pgp::_handle(uint32_t& evtIndex)
 {
@@ -836,14 +856,6 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                                               {"alias", m_para.alias}};
     m_nevents = 0L;
 
-    // This block is for debugging no. of matched and missed events
-    uint64_t matchedEvents = 0;
-    uint64_t missedEvents = 0;
-    uint64_t last_nevents = 0;
-    uint64_t last_matched = 0;
-    uint64_t last_missed = 0;
-    constexpr uint64_t printInterval = 100000;  // Print every this many events
-
     exporter->add("drp_event_rate", labels, MetricType::Rate,
                   [&](){return m_nevents;});
     m_nmissed = 0L;
@@ -887,6 +899,15 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
 {
     logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+
+    // This block is for debugging no. of matched and missed events
+    uint64_t matchedEvents = 0;
+    uint64_t missedEvents = 0;
+    uint64_t last_nevents = 0;
+    uint64_t last_matched = 0;
+    uint64_t last_missed = 0;
+    constexpr uint64_t printInterval = 100000;  // Print every this many events
+
     if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
         perror("prctl");
     }
@@ -1108,7 +1129,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                             // Pulse ID matching.
                             if (bldValue[i] == timingHeader->pulseId()) {
                                 matchedEvents++;
-                                XtcData::NamesId namesId(m_nodeId, BldNamesIndex + i);
+                                XtcData::NamesId namesId(m_det->nodeId, BldNamesIndex + i);
                                 m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId, m_para);
                                 logging::debug("Found bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
                                                 i, timingHeader->pulseId(), bldValue[i], dgram->pulseId());
@@ -1138,9 +1159,9 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                     _sendToTeb(*dgram, index);
                     m_nevents++;
                     // Print every n events
-                    if (nevents % printInterval == 0) {
+                    if (m_nevents % printInterval == 0) {
                         // Deltas
-                        uint64_t delta_nevents = nevents - last_nevents;
+                        uint64_t delta_nevents = m_nevents - last_nevents;
                         uint64_t delta_matched = matchedEvents - last_matched;
                         uint64_t delta_missed  = missedEvents - last_missed;
 
@@ -1148,10 +1169,10 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                         double delta_percentMissed  = (delta_nevents > 0) ? (delta_missed  / (double)delta_nevents) * 100.0 : 0.0;
 
                         logging::info("[Pgp::worker] Interval-> Events: %llu (Total: %llu), Matched: %llu (%.2f%%), Missed: %llu (%.2f%%)",
-                                    delta_nevents, nevents, delta_matched, delta_percentMatched, delta_missed, delta_percentMissed);
+                                    delta_nevents, m_nevents, delta_matched, delta_percentMatched, delta_missed, delta_percentMissed);
 
                         // Update last_* for next interval
-                        last_nevents = nevents;
+                        last_nevents = m_nevents;
                         last_matched = matchedEvents;
                         last_missed  = missedEvents;
                     }
