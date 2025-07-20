@@ -21,6 +21,7 @@ ERROR_PATTERNS = [
     re.compile(r'(?i)\berror\b'),
     re.compile(r'(?i)\bsegmentation fault\b'),
     re.compile(r'(?i)\bDuplicate\b'),
+    re.compile(r'(?i)\bcore dumped\b'),
     re.compile(r'!{2,}'),        # double-bang (!!) warnings
 ]
 
