@@ -3,85 +3,95 @@ from .event_manager import EventManager
 
 
 class Events:
+    """
+    An iterator class for retrieving events from a run.
+
+    Handles different run modes:
+    - RunSerial: receives batches from a serial manager (smdr_man)
+    - RunParallel: fetches SMD batches using get_smd()
+    - RunSingleFile / RunShmem: reads directly from a DgramManager
+
+    This class abstracts the complexity of batching, filtering empty events,
+    and respecting termination signals, providing a uniform interface via `__next__()`.
+    """
     def __init__(self, ds, run, get_smd=None, smdr_man=None):
-        self.ds = ds
-        self.run = run
-        self.get_smd = get_smd  # RunParallel
-        self.smdr_man = smdr_man  # RunSerial
-        self._evt_man = iter([])
-        self._batch_iter = iter([])
-        self.st_yield = 0
-        self.en_yield = 0
+        self.ds = ds                 # Reference to the DataSource
+        self.run = run               # The current Run object
+        self.get_smd = get_smd       # Callable to retrieve SMD batches (RunParallel)
+        self.smdr_man = smdr_man     # Serial batch manager (RunSerial)
+        self._evt_man = iter([])     # Current EventManager instance
+        self._batch_iter = iter([])  # Iterator over batches for RunSerial
 
     def __iter__(self):
         return self
 
+    def _is_valid_batch(self, batch_dict):
+        return batch_dict and 0 in batch_dict and batch_dict[0]
+
     def __next__(self):
+        """
+        Retrieve the next valid event, skipping empty ones.
+
+        Raises:
+            StopIteration: When the data source is exhausted or termination is requested.
+        """
         if self.smdr_man:
-            # RunSerial
-
-            # Checks if users ask to exit
-            if self.ds.dsparms.terminate_flag:
-                raise StopIteration
-
-            try:
-                evt = next(self._evt_man)
-                if not any(evt._dgrams):
-                    return (
-                        self.__next__()
-                    )  # FIXME: MONA find better way to handle empty event.
-                self.smdr_man.last_seen_event = evt
-                return evt
-            except StopIteration:
+            # RunSerial: iterate over batches, skipping empty ones
+            while True:
+                if self.ds.dsparms.terminate_flag:
+                    raise StopIteration
                 try:
-                    batch_dict, _ = next(self._batch_iter)
+                    evt = next(self._evt_man)
+                    if not any(evt._dgrams):
+                        continue
+                    self.smdr_man.last_seen_event = evt
+                    return evt
+                except StopIteration:
+                    try:
+                        batch_dict, _ = next(self._batch_iter)
+                        # Skip empty or malformed batches
+                        if not self._is_valid_batch(batch_dict):
+                            continue
+                        self._evt_man = EventManager(
+                            batch_dict[0][0],
+                            self.ds,
+                            self.run,
+                        )
+                    except StopIteration:
+                        # Refill the batch iterator from the serial batch manager
+                        self._batch_iter = next(self.smdr_man)
+
+        elif self.get_smd:
+            # RunParallel: fetch batch from get_smd() when needed
+            while True:
+                try:
+                    evt = next(self._evt_man)
+                    if not any(evt._dgrams):
+                        continue
+                    return evt
+                except StopIteration:
+                    smd_batch = self.get_smd()
+                    if smd_batch == bytearray():
+                        raise StopIteration
+
                     self._evt_man = EventManager(
-                        batch_dict[0][0],
+                        smd_batch,
                         self.ds,
                         self.run,
                     )
-                    return self.__next__()
-                except StopIteration:
-                    self._batch_iter = next(self.smdr_man)
-                    return self.__next__()
-
-        elif self.get_smd:
-            # RunParallel
-            try:
-                evt = next(self._evt_man)
-                if not any(evt._dgrams):
-                    return self.__next__()
-                return evt
-            except StopIteration:
-                smd_batch = self.get_smd()
-                if smd_batch == bytearray():
+        else:
+            # RunSingleFile or RunShmem: read directly from the DgramManager
+            while True:
+                # Checks if users ask to exit
+                if self.ds.dsparms.terminate_flag:
                     raise StopIteration
 
-                self._evt_man = EventManager(
-                    smd_batch,
-                    self.ds,
-                    self.run,
-                )
-                evt = next(self._evt_man)
+                evt = next(self.ds.dm)
+
+                # Update environment store with non-event transitions
+                if not TransitionId.isEvent(evt.service()):
+                    self.run.esm.update_by_event(evt)
+
                 if not any(evt._dgrams):
-                    return self.__next__()
-
+                    continue
                 return evt
-        else:
-            # RunSingleFile or RunShmem - get event from DgramManager
-
-            # Checks if users ask to exit
-            if self.ds.dsparms.terminate_flag:
-                raise StopIteration
-
-            evt = next(self.ds.dm)
-
-            # TODO: MONA Update EnvStore here instead of inside DgramManager.
-            # To mirror withe RunSerial/RunParallel, consider moving update
-            # into DgramManager.
-            if not TransitionId.isEvent(evt.service()):
-                self.run.esm.update_by_event(evt)
-
-            if not any(evt._dgrams):
-                return self.__next__()
-            return evt
