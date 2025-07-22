@@ -131,11 +131,11 @@ class LinkStatus(object):
         updatePv(self._pv_rxReady    ,(u>>3)&1,timev)
 
         v = (u>>5)&0xffff
-        updatePv(self._pv_rxErr,v-self._rxErr,timev)
+        updatePv(self._pv_rxErr,(v-self._rxErr)&0xffff,timev)
         self._rxErr = v
 
         v = (u>>21)&0xffffffff
-        updatePv(self._pv_rxRcv,v-self._rxRcv,timev)
+        updatePv(self._pv_rxRcv,(v-self._rxRcv)&0xffffffff,timev)
         self._rxRcv = v
 
         updatePv(self._pv_rxIsXpm,(u>>53)&1,timev)
@@ -214,9 +214,9 @@ class TimingStatus(object):
         self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount, "RxDspErrs")
         self._bypassRstCount  = updatePv(self._pv_bypassRsts, self._device.BypassResetCount.get(), self._bypassRstCount)
         self._bypassDoneCount = updatePv(self._pv_bypassDones, self._device.BypassDoneCount.get(), self._bypassDoneCount)
-        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount, self._fidLimits)
-        self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
-        self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
+        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount) #, self._fidLimits)
+#        self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
+#        self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
 
         v = self._device.RxLinkUp.get()
         if v is not None:

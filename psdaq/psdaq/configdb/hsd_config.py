@@ -203,6 +203,13 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     # hsd_thr_ilv_native_fine firmware expects xpre,xpost in # of super samples (4 samples)
     fex_xpre       = int((fex['xpre' ]+3)/4)
     fex_xpost      = int((fex['xpost']+3)/4)
+    keepRows = ctxt.get(epics_prefix+':KEEPROWS')
+    if keepRows is None:
+        raise RuntimeException('Unable to get KEEPROWS')
+    if not (fex_xpost < keepRows*10):
+        raise ValueError(f'xpost {fex_xpost} must be less than {keepRows*40}')
+    if not (fex_xpre < keepRows*10):
+        raise ValueError(f'xpost {fex_xpre} must be less than {keepRows*40}')
 
     # overwrite expert fields from user input
     expert = cfg['expert']
@@ -249,50 +256,33 @@ def hsd_unconfig(prefix):
     global epics_prefix
     epics_prefix = prefix
     
-    # disable both A and B detectors
     ctxt = Context('pva')
-    epics_prefix_A = epics_prefix[:-1]+"A"
-    epics_prefix_B = epics_prefix[:-1]+"B"
     
-    valuesA = ctxt.get(epics_prefix_A+':CONFIG')
-    if valuesA['enable'] ==1 :
-        valuesA['enable'] = 0
-        print(epics_prefix_A)
-        ctxt.put(epics_prefix_A+':CONFIG',valuesA,wait=True)
+    def epics_unconfig(pvname):
+        valuesA = ctxt.get(pvname+':CONFIG')
+        if valuesA['enable'] ==1 :
+            valuesA['enable'] = 0
+            print(pvname)
+            ctxt.put(pvname+':CONFIG',valuesA,wait=True)
 
-        #  This handshake seems to be necessary, or at least the .get()
-        complete = False
-        for i in range(100):
-            complete = ctxt.get(epics_prefix_A+':READY')!=0
-            if complete: break
-            print('hsd_unconfig wait for complete',i)
-            time.sleep(0.1)
-        if complete:
-            print('hsd unconfig complete')
+            #  This handshake seems to be necessary, or at least the .get()
+            complete = False
+            for i in range(100):
+                complete = ctxt.get(pvname+':READY')!=0
+                if complete: break
+                print('hsd_unconfig wait for complete',i)
+                time.sleep(0.1)
+            if complete:
+                print('hsd unconfig complete')
+            else:
+                raise Exception('timed out waiting for hsd_unconfig')
         else:
-            raise Exception('timed out waiting for hsd_unconfig')
-    else:
-        print(f'{epics_prefix_A}: enable already false')
+            print(f'{pvname}: enable already false')
     
-    valuesB = ctxt.get(epics_prefix_B+':CONFIG')
-    if valuesB['enable'] == 1 :
-        valuesB['enable'] = 0
-        print(epics_prefix_B)
-        ctxt.put(epics_prefix_B+':CONFIG',valuesB,wait=True)
-
-    #  This handshake seems to be necessary, or at least the .get()
-        complete = False
-        for i in range(100):
-            complete = ctxt.get(epics_prefix_B+':READY')!=0
-            if complete: break
-            print('hsd_unconfig wait for complete',i)
-            time.sleep(0.1)
-        if complete:
-            print('hsd unconfig complete')
-        else:
-            raise Exception('timed out waiting for hsd_unconfig')
-    else:
-        print(f'{epics_prefix_B}: enable already false')
+    # disable both A and B detectors, so we don't get unwanted deadtime
+    # from a detector not in the partition.
+    epics_unconfig(prefix[:-1]+"A")
+    epics_unconfig(prefix[:-1]+"B")
 
     ctxt.close()
 

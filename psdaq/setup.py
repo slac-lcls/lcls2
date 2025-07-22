@@ -150,6 +150,8 @@ if 'PSDAQ' in BUILD_LIST :
             'bldgmd = psdaq.cas.bldgmd:main',
             'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
             'wave8pvs = psdaq.cas.wave8pvs:main',
+            'setup_tdrp = psdaq.cas.setup_tdrp:main',
+            'pytdrp = psdaq.cas.pytdrp:main',
             'pyxpm = psdaq.pyxpm.pyxpm:main',
             'pykcuxpm = psdaq.pyxpm.pykcuxpm:main',
             'amccpromload = psdaq.pyxpm.amccpromload:main',

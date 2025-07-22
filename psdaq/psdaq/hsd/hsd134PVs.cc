@@ -220,7 +220,7 @@ int main(int argc, char** argv)
     printf("BuildStamp: %s\n",buildStamp.c_str());
     unsigned buildVersion = m->version().FpgaVersion;
 
-    const unsigned pvaaSize=10;
+    const unsigned pvaaSize=12;
     Pds_Epics::EpicsPVA* pvaa[pvaaSize];  // need to maintain a reference long enough for putFrom to complete
 
     for(unsigned i=0; i<2; i++) {
@@ -316,6 +316,16 @@ int main(int argc, char** argv)
             usleep(1000);
         pvPaddr.putFrom(uplink);
         printf("plink [0x%x]\n", uplink);
+    }
+
+    unsigned keepRows = m->chip(0).fex._stream[1].info[0] & 0xff;
+    for(unsigned i=0; i<2; i++) {
+        std::string sprefix(prefix);
+        sprefix += (i==0) ? ":A:KEEPROWS" : ":B:KEEPROWS";
+        Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i+10] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+        while(!pvBuild.connected())
+            usleep(1000);
+        pvBuild.putFrom(keepRows);
     }
 
     StatsTimer* timer = new StatsTimer(*m);
