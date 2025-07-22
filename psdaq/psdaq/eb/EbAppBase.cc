@@ -498,10 +498,19 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 
   if (fixupCnt() + timeoutCnt() < 100)
   {
-    logging::error("Fixup %s, %014lx, size %zu, source %d (%s)",
+    time_t now;  time (&now);   // Current time
+    logging::error("%s, %014lx, size %zu is missing src %u (%s) @ %s",
                    TransitionId::name(event->creator()->service()),
-                   event->sequence(), event->size(),
-                   srcId, _prms.drps[srcId].c_str());
+                   event->sequence(), event->size(), srcId,
+                   _prms.drps[srcId].c_str(), ctime(&now));
+  }
+  else {
+    auto msg("Too many events missing a contribution.  Aborting.");
+    json jmsg = createAsyncErrMsg(_prms.alias, msg);
+    _notifySocket.send(jmsg.dump());
+    logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
+                      fixupCnt(), timeoutCnt());
+    abort();
   }
 
   if (_fixupSrc)  _fixupSrc->observe(double(srcId));
