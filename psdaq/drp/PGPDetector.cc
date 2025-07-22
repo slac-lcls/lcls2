@@ -494,6 +494,7 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
                   [&](){return m_pgp.nPgpInUser();});
     exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
