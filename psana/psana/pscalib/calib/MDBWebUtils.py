@@ -18,8 +18,11 @@ Usage ::
     _ = wu.get_data_for_docid(dbname, colname, docid, url=cc.URL)
     _ = wu.get_data_for_doc(dbname, doc, url=cc.URL)
     data,doc = wu.calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL)
+
+    # USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
     d = wu.calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix='')
     d = {ctype:(data,doc),}
+    cc,doc = wu.calib_constants_for_ctype(detlongname, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix='')
 
     id = wu.add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     id = wu.add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
@@ -189,7 +192,7 @@ def select_latest_doc(docs, query):
 
 
 def select_doc_in_run_range(docs, rnum):
-    """uses psana.pscalib.calib.CalibDoc"""
+    """uses psana.pscalib.calib.CalibDoc in order to sort documents"""
     cdocs = [CalibDoc(d) for d in docs]
     cdocs_sorted = sorted([cd for cd in cdocs if cd.valid])
     #print('XXX in select_doc_in_run_range - cdocs_sorted:\n  %s' % '\n  '.join([d.info_calibdoc() for d in cdocs_sorted]))
@@ -275,7 +278,7 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
         logger.debug('document is not available for query: %s' % str(query))
-        return (None, None)
+        return None
     return (get_data_for_doc(dbname, doc, url), doc)
 
 
@@ -320,42 +323,64 @@ def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
 
 
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
-    """Returns constants for all ctype-s."""
+    """ USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+        Returns constants for all ctype-s."""
     t0_sec = time()
     ctype=None
+    longname = det
+    logger.debug('detlongname: %s exp: %s run: %s time_sec: %s vers: %s' % (longname, exp, str(run), time_sec, vers))
 
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
+    logger.debug('dbname: %s db_det: %s db_exp: %s colname: %s query: %s dbsuffix: %s'%\
+                (dbname, db_det, db_exp, colname, query, dbsuffix))
     logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
 
     docs = find_docs(dbname, colname, query, url)
-    #logger.debug('find_docs: number of docs found: %d' % len(docs))
+    logger.debug('find_docs: number of docs found: %s' % (str(len(docs)) if docs is not None else None))
     #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
-    if docs is None: return None
-
-    ctypes = set([d.get('ctype',None) for d in docs])
-    ctypes.discard(None)
-    logger.debug('calib_constants_all_types - found ctypes: %s' % str(ctypes))
 
     resp = {}
-    for ct in ctypes:
-        docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
-        #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')
+    if docs is not None:
 
-        doc = select_doc_in_run_range(docs_for_type, run)
-        #doc = select_latest_doc(docs_in_run_range, query)
+        ctypes = set([d.get('ctype', None) for d in docs])
+        ctypes.discard(None)
+        logger.debug('calib_constants_all_types - found ctypes: %s' % str(ctypes))
 
-        if doc is None: continue
-        resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
-        #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
+        for ct in ctypes:
+            docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
+            #print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002')
 
-    #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
+            doc = select_doc_in_run_range(docs_for_type, run)
+            #doc = select_latest_doc(docs_in_run_range, query)
+
+            if doc is None: continue
+            resp[ct] = (get_data_for_doc(dbname, doc, url), doc)
+            #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
+
+        #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers, url)
 
     #print('time 4: %.6f sec - check for missing types in the det DB' % (time()-t0_sec))
 
+    return resp
+
+
+def calib_constants_for_ctype(detlongname, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, url=cc.URL, dbsuffix=''):
+    """ USED BY psana/app/calibvalidity.py to find specific doc
+        The same as calib_constants_all_types, BUT for a selected ctype"""
+
+    logger.info('detlongname: %s exp: %s run: %s time_sec: %s vers: %s' % (detlongname, exp, str(run), time_sec, vers))
+    # search in EXPERIMENT DB
+    resp = calib_constants(detlongname, exp, ctype, run, time_sec, vers, url, dbsuffix)
+
+    if resp is None:
+        # search in DETECTOR DB
+        exp=None
+        run=9999
+        resp = calib_constants(detlongname, exp, ctype, run, time_sec, vers, url, dbsuffix)
     return resp
 
 
