@@ -13,6 +13,8 @@
 
 #include <cuda_runtime.h>
 
+#include <sys/prctl.h>
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Drp;
@@ -144,6 +146,9 @@ void TebReceiver::_recorder()
   unsigned worker = 0;
 
   logging::info("Recorder is starting with process ID %lu\n", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "drp_gpu/Recorder", 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
@@ -516,6 +521,9 @@ void PGPDrp::_collector()
 
   // Now run the CPU side of the Collector
   logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "drp_gpu/Collector", 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
   auto trgPrimitive = triggerPrimitive();
 

@@ -17,7 +17,7 @@ namespace Drp {
   class PGPEvent;
   namespace Gpu {
 
-// The functionality of the Drp::Detector is need to set up each of the panels
+// The functionality of the Drp::Detector is needed to set up each of the panels
 // However, the data description and handling in the GPU case will be different,
 // so we create a Drp Detector class to handle just the protion we need.
 // Derive from Drp::XpmDetector so it can be made non-abstract.
@@ -26,7 +26,7 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event) override { /* Not used */ }
+  void event(Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event, uint64_t count) override { /* Not used */ }
 };
 
 class FexDef : public VarDef

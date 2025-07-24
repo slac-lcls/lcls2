@@ -25,7 +25,7 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(XtcData::Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event) override { /* Not used */ }
+  void event(XtcData::Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event, uint64_t count) override { /* Not used */ }
 };
 
 class FexDef : public VarDef
