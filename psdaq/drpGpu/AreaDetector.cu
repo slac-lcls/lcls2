@@ -26,7 +26,7 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(XtcData::Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event) override { /* Not used */ }
+  void event(Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event) override { /* Not used */ }
 };
 
 class FexDef : public VarDef
@@ -108,26 +108,47 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
   return 0;
 }
 
-size_t AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, unsigned payloadSize)
+size_t AreaDetector::event(Dgram& dgram, const void* bufEnd, unsigned payloadSize)
 {
+  // The Dgram header is constructed in the pebble buffer, and this buffer is
+  // not used to hold all of the data.  However, bufEnd needs to point to a
+  // location that makes it seem like the buffer is big enough to contain both
+  // the header and data so that the Xtc allocate in fex.set_array_shape() can
+  // succeed.  This may be larger than the pebble buffer and we therefore must
+  // be careful not to write beyond its end.  This is checked for below.
   logging::info("Gpu::AreaDetector event: dg %p, extent %u, size %u", &dgram, dgram.xtc.extent, payloadSize);
 
   // FEX is Reduced data
   NamesId fexNamesId(nodeId, FexNamesIndex);
-  printf("*** Gpu::AreaDetector event: fexNamesId %08x\n", unsigned(fexNamesId));
-  //DescribedData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
   CreateData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
+
+  // CreateData places into the Dgram, in one contiguous block:
+  // - the ShapesData Xtc
+  // - the Shapes Xtc with its payload
+  // - the Data Xtc (the payload of which is on the GPU)
+  // Measure the size of the header block
   auto headerSize = (uint8_t*)dgram.xtc.next() - (uint8_t*)&dgram;
   printf("*** Gpu::AreaDetector event: payloadSz %u, length %p - %p = %zd\n",
          dgram.xtc.sizeofPayload(), dgram.xtc.next(), &dgram, headerSize);
 
-  //fex.set_data_length(payloadSize);
+  auto pool = m_pool->getAs<MemPoolGpu>();
+  // Make sure the header will fit in the space reserved for it on the GPU
+  if (size_t(headerSize) > pool->reduceBufReserved()) {
+    logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
+                      headerSize, pool->reduceBufReserved());
+    abort();
+  }
+  // Make sure the header fits in the pebble buffer
+  if (size_t(headerSize) > pool->pebble.bufferSize()) {
+    logging::critical("Header is too large (%zu) for pebble buffer (%zu)",
+                      headerSize, pool->pebble.bufferSize());
+    abort();
+  }
+
+  // Update the header with the size and shape of the data payload
+  // This does not write beyond headerSize bytes into the pebble buffer
   unsigned fex_shape[MaxRank] = { payloadSize };
   fex.set_array_shape(FexDef::fex, fex_shape);
-  //auto headerSize = (uint8_t*)fex.data() - (uint8_t*)&dgram;
-  //auto headerSize = (uint8_t*)fex.get_ptr() - (uint8_t*)&dgram;
-  //printf("*** Gpu::AreaDetector event: offset to data: %p - %p = %zd\n",
-  //       fex.data(), &dgram, headerSize);
   return headerSize;
 }
 
