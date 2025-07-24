@@ -175,6 +175,7 @@ if 'PSANA' in BUILD_LIST :
             'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
             'caliblogs           = psana.app.caliblogs:do_main',
             'calibrepo           = psana.app.calibrepo:do_main',
+            'calibvalidity       = psana.app.calibvalidity:do_main',
             'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
         ]
     }
