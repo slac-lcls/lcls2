@@ -151,17 +151,17 @@ static __global__ void _waitForDMA(const volatile uint32_t* __restrict__ mem,
                                    const cuda::atomic<int>&              terminate,
                                    bool*                    __restrict__ done)
 {
-  printf("*** waitForDMA 1.%u\n", instance);
+  //printf("*** Reader waitForDMA 1.%u\n", instance);
 
   // Allocate the index of the next set of intermediate buffers to be used
   *head = readerQueue.prepare(instance);
-  printf("*** waitForDMA 2.%u, mem %p\n", instance, mem);
+  //printf("*** Reader waitForDMA 2.%u, mem %p\n", instance, mem);
 
   // Wait for data to be DMAed
   while (*mem == 0) {
     if ( (*done = terminate.load(cuda::memory_order_acquire)) )  break;
   }
-  printf("*** waitForDMA 3.%u, *mem %08x, done = %u\n", instance, *mem, *done);
+  //printf("*** Reader waitForDMA 3.%u, *mem %08x, done = %u\n", instance, *mem, *done);
 }
 
 // This copies the DmaDsc and TimingHeader into a host-visible buffer
@@ -171,21 +171,21 @@ static __global__ void _event(uint32_t** const __restrict__ outBufs,
                               const unsigned&               idx,
                               const bool&                   done)
 {
-  printf("*** _event 1.%u, done %d, idx %u\n", instance, done, idx);
+  //printf("*** Reader _event 1.%u, done %d, idx %u\n", instance, done, idx);
   if (done)  return;
-  //printf("*** _event 1.%ua, done %d, idx %u, outBufs %p\n", instance, done, idx, outBufs);
-  //printf("*** _event 1.%ub, done %d, idx %u, *outBufs %p\n", instance, done, idx, *outBufs);
+  //printf("*** Reader _event 1.%ua, done %d, idx %u, outBufs %p\n", instance, done, idx, outBufs);
+  //printf("*** Reader _event 1.%ub, done %d, idx %u, *outBufs %p\n", instance, done, idx, *outBufs);
 
   uint32_t* const __restrict__ out = outBufs[idx];
-  //printf("*** _event 1.%uc, done %d, idx %u\n", instance, done, idx);
+  //printf("*** Reader _event 1.%uc, done %d, idx %u\n", instance, done, idx);
 
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   auto nWords = (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(*out);
-  printf("*** _event 2.%u, offset %d, nWords %lu\n", instance, offset, nWords);
+  //printf("*** Reader _event 2.%u, offset %d, nWords %lu\n", instance, offset, nWords);
   for (int i = offset; i < nWords; i += blockDim.x * gridDim.x) {
     out[i] = in[i];
   }
-  printf("*** _event 3.%u\n", instance);
+  //printf("*** Reader _event 3.%u\n", instance);
 }
 
 // This will re-launch the current graph
@@ -193,15 +193,15 @@ static __global__ void _graphLoop(const unsigned&     idx,
                                   Gpu::RingIndexDtoD& readerQueue,
                                   const bool&         done)
 {
-  printf("*** Reader graphLoop 1, done %d\n", done);
+  //printf("*** Reader graphLoop 1, done %d\n", done);
   if (done)  return;
-  printf("*** Reader graphLoop 1a, idx %u\n", idx);
+  //printf("*** Reader graphLoop 1a, idx %u\n", idx);
 
   readerQueue.produce(idx);
-  printf("*** Reader graphLoop 2, idx %u\n", idx);
+  //printf("*** Reader graphLoop 2, idx %u\n", idx);
 
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  printf("*** Reader graphLoop 3\n");
+  //printf("*** Reader graphLoop 3\n");
 }
 
 cudaGraph_t Reader::_recordGraph(cudaStream_t& stream,
