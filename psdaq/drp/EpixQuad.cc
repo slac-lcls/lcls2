@@ -192,7 +192,7 @@ static float _getThermistorTemp(uint16_t x)
 }
 #endif
 
-void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
 

@@ -58,7 +58,8 @@ def argument_parser():
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
     d_deploy  = False
     d_tstamp  = None    # 20180910111049 or run number <10000
-    d_version = 'V2025-07-01'
+    d_version = 'V2025-07-10'
+    d_run_beg = None
     d_run_end = 'end'
     d_comment = 'no comment'
     d_plotim  = 0
@@ -94,9 +95,9 @@ def argument_parser():
     h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
-    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
-                'By default run time is used, default = %s' % str(d_tstamp)
+    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
     h_version = 'constants version, default = %s' % str(d_version)
+    h_run_beg = 'first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
@@ -131,6 +132,7 @@ def argument_parser():
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-t', '--tstamp',  default=d_tstamp,     type=int,   help=h_tstamp)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
+    parser.add_argument('-B', '--run_beg', default=d_run_beg,    type=int,   help=h_run_beg)
     parser.add_argument('-R', '--run_end', default=d_run_end,    type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,    type=str,   help=h_comment)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)

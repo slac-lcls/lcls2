@@ -83,6 +83,9 @@ class EventManager(object):
 
         evt = self._get_next_evt()
 
+        if evt is None:
+            raise StopIteration
+
         # Update EnvStore - this is the earliest we know if this event is a Transition
         # make sure we update the envstore now rather than later.
         if not self.isEvent(evt.service()):
@@ -385,8 +388,12 @@ class EventManager(object):
                     self.bd_buf_offsets[i_smd] + self.bd_size_array[self.i_evt, i_smd]
                     > memoryview(self.bd_bufs[i_smd]).nbytes
                 ):
-                    self._fill_bd_chunk(i_smd)
-                    self.chunk_indices[i_smd] += 1
+                    # Guard: Only fill chunk if cutoff exists
+                    if self.chunk_indices[i_smd] >= len(self.cutoff_indices[i_smd]):
+                        return None
+                    else:
+                        self._fill_bd_chunk(i_smd)
+                        self.chunk_indices[i_smd] += 1
 
                 # This is the offset of bd buffer! and not what stored in smd dgram,
                 # which in contrast points to the location of disk.

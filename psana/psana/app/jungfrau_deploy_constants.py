@@ -35,7 +35,8 @@ def argument_parser():
     d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-04-30'
+    d_version = 'V2025-07-14'
+    d_run_beg = None
     d_run_end = 'end'
     d_comment = 'no comment'
     d_dbsuffix= ''
@@ -46,8 +47,7 @@ def argument_parser():
                 ' or pythonic dict of generic kwargs, e.g.:'\
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, default = %s' % d_detname
-    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS or run number(<10000) for constants selection in repo. '\
-                'By default run time is used, default = %s' % str(d_tstamp)
+    h_tstamp  = 'non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
     h_nsegstot= 'total number of segments in the detector at deployment, '\
                 'None - auto-defined from max segment index in data, default = %s' % str(d_nsegstot)
@@ -60,6 +60,7 @@ def argument_parser():
               + '"o" - offset, "x" - max, "n" - min, "e" - status_extra, default = %s' % d_ctdepl
     h_paninds = 'comma-separated panel indexds to generate constants for subset of panels (ex.: quad from 2M), default = %s' % d_paninds
     h_version = 'constants version, default = %s' % str(d_version)
+    h_run_beg = 'first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_dbsuffix= 'suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
@@ -77,6 +78,7 @@ def argument_parser():
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,   type=str,   help=h_ctdepl)
     parser.add_argument('-I', '--paninds', default=d_paninds,  type=str,   help=h_paninds)
     parser.add_argument('-v', '--version', default=d_version,  type=str,   help=h_version)
+    parser.add_argument('-B', '--run_beg', default=d_run_beg,  type=int,   help=h_run_beg)
     parser.add_argument('-R', '--run_end', default=d_run_end,  type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
     parser.add_argument('-S', '--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)

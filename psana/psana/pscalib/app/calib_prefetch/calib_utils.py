@@ -4,6 +4,7 @@ import time
 
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
+from psana.utils import make_weak_refable
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -20,7 +21,6 @@ class CalibSource:
         self.check_before_update = check_before_update
         self.log = log
         self.detectors = detectors
-        self.det_cache_managers = {}
 
     def on_run_begin(self, run):
         """
@@ -30,11 +30,12 @@ class CalibSource:
         run (psana.Run): The current run object.
         """
         for detname in self.detectors:
+            if detname not in run.detnames:
+                continue
             det = run.Detector(detname)
             det._run = run  # Attach run to detector for event access
             cache_mgr = DetectorCacheManager(det, check_before_update=self.check_before_update, logger=self.log)
             cache_mgr.ensure()
-            self.det_cache_managers[detname] = cache_mgr
 
     def run_loop(self):
         from psana import DataSource
@@ -61,9 +62,13 @@ class CalibSource:
                 output_dir=self.output_dir,
                 check_before_update=self.check_before_update,
             )
+            # Clear old constants and garbage collect if this isn't the first run
+            ds._clear_calibconst()
             loaded_data = try_load_data_from_file(self.log, self.output_dir)
             # Attach the retrieved calibconst to be used in Detector caching
-            ds.dsparms.calibconst = loaded_data.get('calib_const')
+            ds._calib_const = make_weak_refable(loaded_data.get('calib_const'))
+            # Setup weak references - this populates ds.dsparms.calibconst
+            ds._create_weak_calibconst()
             self.on_run_begin(run)
 
 def update_calib(expcode, latest_run, latest_info, log, output_dir, check_before_update=False):
@@ -154,3 +159,4 @@ def try_load_data_from_file(log, output_dir="/dev/shm"):
     except Exception as e:
         log.warning(f"Error loading calib pickle file: {e}")
         return None
+

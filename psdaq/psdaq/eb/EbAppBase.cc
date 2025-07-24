@@ -33,6 +33,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+using json             = nlohmann::json;
 using logging          = psalg::SysLog;
 using MetricExporter_t = std::shared_ptr<MetricExporter>;
 using ms_t             = std::chrono::milliseconds;
@@ -48,15 +49,19 @@ static unsigned _ebTimeout(const EbParams& prms)
 
 EbAppBase::EbAppBase(const EbParams&    prms,
                      const std::string& pfx) :
-  EventBuilder(_ebTimeout(prms), prms.verbose),
-  _transport  (prms.verbose, prms.kwargs),
-  _verbose    (prms.verbose),
-  _lastPid    (0),
-  _bufferCnt  (0),
-  _id         (-1),
-  _pfx        (pfx),
-  _prms       (prms)
+  EventBuilder (_ebTimeout(prms), prms.verbose),
+  _transport   (prms.verbose, prms.kwargs),
+  _verbose     (prms.verbose),
+  _lastPid     (0),
+  _bufferCnt   (0),
+  _id          (-1),
+  _notifySocket{&_context, ZMQ_PUSH},
+  _notifyPid   (0),
+  _pfx         (pfx),
+  _prms        (prms)
 {
+  // ZMQ socket for reporting errors
+  _notifySocket.connect({"tcp://" + _prms.collSrv + ":" + std::to_string(CollectionApp::zmq_base_port + _prms.partition)});
 }
 
 EbAppBase::~EbAppBase()
@@ -72,6 +77,7 @@ EbAppBase::~EbAppBase()
 int EbAppBase::resetCounters()
 {
   _bufferCnt = 0;
+  _notifyPid = 0;
   if (_fixupSrc)  _fixupSrc->clear();
   if (_ctrbSrc)   _ctrbSrc ->clear();
   EventBuilder::resetCounters();
@@ -476,12 +482,35 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
+  // Alert user to missing contribution(s) for one event only
+  if (!_notifyPid)
+  {
+    _notifyPid = event->sequence();
+    auto msg(std::string(_pfx) + " didn't hear from:");
+    json jmsg = createAsyncErrMsg(_prms.alias, msg);
+    _notifySocket.send(jmsg.dump());
+  }
+  if (event->sequence() == _notifyPid)
+  {
+    json jmsg = createAsyncErrMsg(_prms.alias, _prms.drps[srcId]);
+    _notifySocket.send(jmsg.dump());
+  }
+
   if (fixupCnt() + timeoutCnt() < 100)
   {
-    logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
-                     TransitionId::name(event->creator()->service()),
-                     event->sequence(), event->size(),
-                     srcId, _prms.drps[srcId].c_str());
+    time_t now;  time (&now);   // Current time
+    logging::error("%s, %014lx, size %zu is missing src %u (%s) @ %s",
+                   TransitionId::name(event->creator()->service()),
+                   event->sequence(), event->size(), srcId,
+                   _prms.drps[srcId].c_str(), ctime(&now));
+  }
+  else {
+    auto msg("Too many events missing a contribution.  Aborting.");
+    json jmsg = createAsyncErrMsg(_prms.alias, msg);
+    _notifySocket.send(jmsg.dump());
+    logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
+                      fixupCnt(), timeoutCnt());
+    abort();
   }
 
   if (_fixupSrc)  _fixupSrc->observe(double(srcId));

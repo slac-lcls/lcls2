@@ -104,12 +104,12 @@ def main():
 
     autosave.set(args.P,args.db,None,norestore=args.norestore)
 
-    tsSync = TsSync(args.P,base.XPM.TpgMini) if args.G else None
+    imageName = axiv.ImageName.get()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False, tsSync=tsSync)
+    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
 #    base.handle(pvstats.handle)
 
-    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, paddr=pvstats.paddr, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9)
+    pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, paddr=pvstats.paddr, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
     base.handle(pvctrls.handle)
 
     pvxtpg = None

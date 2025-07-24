@@ -634,7 +634,7 @@ def jungfrau_deploy_constants(parser):
                     + '\n    save in %s\n' % fmerge)
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
 
-        if deploy:
+        if True:
           kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
           kwa_depl['repoman'] = repoman
           kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
@@ -649,9 +649,11 @@ def jungfrau_deploy_constants(parser):
           kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
 
           d = ups.dict_filter(kwa_depl, list_keys=('dskwargs', 'dirrepo','dettype', 'tsshort', \
+                'run', 'run_orig', 'run_beg', 'run_end',\
                 'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
           logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
 
+        if deploy:
           expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
 
           resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS

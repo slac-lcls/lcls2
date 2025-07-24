@@ -17,6 +17,7 @@
 #include <cmath>
 #include <Python.h>
 #include <arpa/inet.h>
+#include <sys/prctl.h>
 #include <Eigen/Dense>
 #include <Eigen/QR>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
@@ -216,7 +217,10 @@ void UdpReceiver::loopbackSend()
 
 void UdpReceiver::_udpReceiver()
 {
-    logging::info("UDP receiver thread started");
+    logging::info("UDP receiver thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_udp/Receiver", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     fd_set readfds, masterfds;
     struct timeval timeout;
@@ -893,6 +897,15 @@ int UdpDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInRx();});
+
     return 0;
 }
 
@@ -907,6 +920,11 @@ void UdpDrp::_worker()
                     1500 };
 
     const ms_t no_tmo{ 0 };
+
+    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_udp/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     // Reset counters to avoid 'jumping' errors reconfigures
     pool.resetCounters();

@@ -6,7 +6,6 @@ import logging
 from datetime import datetime
 from p4p.nt import NTScalar
 from p4p.nt import NTTable
-from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvhandler import *
 
 lock     = None
@@ -144,7 +143,7 @@ class LinkStatus(object):
         return offset
 
 class TimingStatus(object):
-    def __init__(self, name, device, linkUpdate=None):
+    def __init__(self, name, device, linkUpdate, fidRate):
         self._name = name
         self._device = device
         self._device.update()
@@ -163,8 +162,8 @@ class TimingStatus(object):
 
         self._vLast = 0
 
-        def _addPVF(label):
-            return addPV(name+':'+label,'f')
+        def _addPVF(label,valueAlarm=False):
+            return addPV(name+':'+label,'f',valueAlarm=valueAlarm)
 
         self._pv_rxClkCount  = _addPVF('RxClks')
         self._pv_txClkCount  = _addPVF('TxClks')
@@ -174,20 +173,29 @@ class TimingStatus(object):
         self._pv_rxDspErrs   = _addPVF('RxDspErrs')
         self._pv_bypassRsts  = _addPVF('BypassRsts')
         self._pv_bypassDones = _addPVF('BypassDones')
-        self._pv_rxLinkUp    = _addPVF('RxLinkUp')
-        self._pv_fids        = _addPVF('FIDs')
+        self._pv_rxLinkUp    = _addPVF('RxLinkUp',valueAlarm=True)
+        self._pv_fids        = _addPVF('FIDs',valueAlarm=True)
+        self._fidLimits = [0.95*fidRate,1.05*fidRate]
         self._pv_sofs        = _addPVF('SOFs')
         self._pv_eofs        = _addPVF('EOFs')
         self._pv_rxAlign     = addPV(name+':RxAlign', 'aI', [0]*65)
 
     def update(self):
 
-        def updatePv(pv,nv,ov,verbose=False,nb=32):
+        def updatePv(pv,nv,ov,verbose=False,nb=32,limits=None):
             if nv is not None:
                 value = pv.current()
                 mask = (1<<nb)-1
-                value['value'] = (nv-ov)&mask if (nv!=ov or (nv&mask)!=((-1)&mask)) else -1.
+                result = (nv-ov)&mask if (nv!=ov or (nv&mask)!=((-1)&mask)) else -1.
+                value['value'] = result
                 value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+                if limits is not None:
+                    if result < limits[0]:
+                        value['alarm']['severity'] = AlarmSevr.MAJOR.value
+                        value['alarm']['status'  ] = AlarmStatus.LOLO.value
+                    elif result > limits[1]:
+                        value['alarm']['severity'] = AlarmSevr.MAJOR.value
+                        value['alarm']['status'  ] = AlarmStatus.HIHI.value
                 pv.post(value)
                 if type(verbose) is type("") and nv != ov:
                     logging.warning(f'*** {datetime.now()} {self._name+":"+verbose} changed: {ov} -> {nv} @ {timev}')
@@ -206,7 +214,7 @@ class TimingStatus(object):
         self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount, "RxDspErrs")
         self._bypassRstCount  = updatePv(self._pv_bypassRsts, self._device.BypassResetCount.get(), self._bypassRstCount)
         self._bypassDoneCount = updatePv(self._pv_bypassDones, self._device.BypassDoneCount.get(), self._bypassDoneCount)
-        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount)
+        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount, self._fidLimits)
         self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
         self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
 
@@ -214,14 +222,21 @@ class TimingStatus(object):
         if v is not None:
             value = self._pv_rxLinkUp.current()
             value['value'] = v
+            if v==0:
+                value.alarm.severity = AlarmSevr,MAJOR.value
+                value.alarm.status   = AlarmStatus.STATE.value
+                value.alarm.message  = 'Input link down'
+            else:
+                value.alarm.severity = AlarmSevr.NONE.value
+                value.alarm.status   = AlarmStatus.NONE.value
+                value.alarm.message  = 'Input link up'
+
             value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
             self._pv_rxLinkUp.post(value)
 
             if v != self._vLast:
                 logging.warning(f'*** {datetime.now()} {self._name}:RxLinkUp changed: {self._vLast} -> {v} @ {timev}')
                 self._vLast = v
-#                if v and self._linkUpdate:
-#                    self._linkUpdate()
 
             #  Link was down but now is up
             if v and self._device.RxDown.get():
@@ -495,7 +510,7 @@ class PVMmcmPhaseLock(object):
 
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False):
+    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False,fidRate=13e6/14.):
         setProvider(p)
         global lock
         lock     = m
@@ -523,8 +538,8 @@ class PVStats(object):
             self._groups.append(GroupStats(name+':PART:%d'%i,self._app,i))
 
         self._pattern = PatternStats(name+':PATT')
-        self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp)
-        self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp)
+        self._usTiming = TimingStatus(name+':Us',xpm.UsTiming,self.usLinkUp,fidRate)
+        self._cuTiming = TimingStatus(name+':Cu',xpm.CuTiming,self.cuLinkUp,360.)
 
         if not noTiming:
             #  Expose for dumping the input link locking status

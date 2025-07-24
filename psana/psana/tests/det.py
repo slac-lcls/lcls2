@@ -6,7 +6,7 @@ import unittest
 
 def det(files):
     ds = DataSource(files=files)
-    for run in ds.runs(): # Detector is created based on per-run config. 
+    for run in ds.runs(): # Detector is created based on per-run config.
         hsd = run.Detector('xpphsd')
         cspad = run.Detector('xppcspad')
         

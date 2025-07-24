@@ -35,7 +35,7 @@ public:  // Implementation of Detector
     void           connectionShutdown() override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
-    void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     void           shutdown      () override;
 
     unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
@@ -49,6 +49,7 @@ protected:  // This is the sub class interface
     virtual unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&)=0; // attach descriptions to xtc
     virtual void           _event    (XtcData::Xtc&,     // fill xtc from subframes
                                       const void* bufEnd,
+                                      uint64_t l1count,
                                       std::vector< XtcData::Array<uint8_t> >&) {}
 protected:
     void _init(const char*);  // Must call from subclass constructor

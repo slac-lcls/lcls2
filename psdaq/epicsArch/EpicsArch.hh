@@ -37,7 +37,7 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     unsigned unconfigure();
     void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
 public:
     const std::unique_ptr<EpicsArchMonitor>& monitor() const { return m_monitor; }
     const uint64_t nStales() const { return m_nStales; }

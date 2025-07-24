@@ -1,5 +1,6 @@
 import pytest
 from psana import DataSource
+from psana.utils import WeakDict
 from setup_input_files import setup_input_files
 
 @pytest.mark.parametrize("case, setup_dsparms", [
@@ -25,4 +26,4 @@ def test_check_empty_calibconst_with_datasource(tmp_path, case, setup_dsparms):
     # Assert expectations
     assert hasattr(run.dsparms, "calibconst"), f"{case}: calibconst attribute missing"
     assert det_name in run.dsparms.calibconst, f"{case}: detector not in calibconst"
-    assert run.dsparms.calibconst[det_name] is None, f"{case}: detector value is not None"
+    assert run.dsparms.calibconst[det_name] == WeakDict({}), f"{case}: detector value is not empty dict"

@@ -802,7 +802,7 @@ def deploy_constants(parser):
     repoman = init_repoman_and_logger(parser=parser, **kwa)
 
     detname    = kwa.get('det', None)
-    tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
+    tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS
     dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     deploy     = kwa.get('deploy', False)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
@@ -821,6 +821,7 @@ def deploy_constants(parser):
     proc       = kwa.get('proc', 'prsg')
     paninds    = kwa.get('paninds', None)
     version    = kwa.get('version', 'N/A')
+    run_beg    = kwa.get('run_beg', None)
     run_end    = kwa.get('run_end', 'end')
     comment    = kwa.get('comment', 'no comment')
     dbsuffix   = kwa.get('dbsuffix', '')
@@ -933,13 +934,17 @@ def deploy_constants(parser):
 
         if True: # deploy:
 
-          # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
-          use_external_run = tstamp is not None and tstamp<10000
-          use_external_ts  = tstamp is not None and tstamp>9999
+#          # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
+#          use_external_run = tstamp is not None and tstamp<10000
+#          use_external_ts  = tstamp is not None and tstamp>9999
+#          tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
+#                  if use_external_ts else cpdic.get('trun_sec', None)
+#          ivalid_run = tstamp if use_external_run else irun\
+#                  if not use_external_ts else 0
+
           tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
-                  if use_external_ts else cpdic.get('trun_sec', None)
-          ivalid_run = tstamp if use_external_run else irun\
-                  if not use_external_ts else 0
+                       if tstamp is not None else cpdic.get('trun_sec', None)
+          ivalid_run = irun if run_beg is None else run_beg
 
           dtype = 'ndarray'
 
@@ -957,6 +962,7 @@ def deploy_constants(parser):
             'tsshort'    : str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec)),
             'tstamp_orig': cpdic.get('tsrun_dark', None),
             'run'        : ivalid_run,
+            'run_beg'    : run_beg,
             'run_end'    : run_end,
             'run_orig'   : irun,
             'version'    : version,
@@ -966,7 +972,7 @@ def deploy_constants(parser):
             'dbsuffix'   : dbsuffix
           }
           d = dict_filter(kwa, list_keys=('experiment', 'detname', 'detector', 'shortname', 'ctype',\
-                                          'run', 'run_orig', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'iofname', 'version'))
+                                          'run', 'run_orig', 'run_beg', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'iofname', 'version'))
           logger.info('partial metadata:\n  %s' % '\n  '.join(['%16s: %s' %(k,v) for k,v in d.items()]))
 
           data = mu.data_from_file(fmerge, octype, dtype, True)

@@ -6,6 +6,9 @@ from .datasource import DataSource as DataSource
 # Calls MPI_Abort when one or more (but not all) cores fail.
 from psana.psexp.tools import mode
 
+
+xtc_version = 2
+
 # Checks that we are in MPI and not Legion mode
 if mode == "mpi":
     # We only need the MPI_Abort when working with > 1 core.

@@ -286,11 +286,15 @@ class PVInhibit(object):
         forceUpdate(self._inh.inhEn)
         self._inh.inhEn.set(value)
 
-class GroupSetup(object):
-    def __init__(self, name, app, group, stats, init=None):
-        self._group = group
-        self._app   = app
-        self._stats = stats
+class RateSetup(object):
+    def __init__(self, name, reg, partition=None):
+        self._reg = reg  # app.l0RateSel, app.pattRateSel
+        if partition is None:
+            self._partitionReg = None
+            self._group = None
+        else:
+            self._partitionReg = partition[0]
+            self._group        = partition[1]
 
         def _addPV(label,cmd,init=0,set=False):
             n = f'{name}:{label}'
@@ -309,6 +313,63 @@ class GroupSetup(object):
         self._pv_EventCode  = _addPV('L0Select_EventCode'     ,self.put,0)
         self._pv_Sequence   = _addPV('L0Select_Sequence'      ,self.put,0)
         self._pv_SeqBit     = _addPV('L0Select_SeqBit'        ,self.put,0)        
+    def put(self, pv, val):
+        lock.acquire()
+        if self._partitionReg is not None:
+            self._partitionReg.set(self._group)
+        forceUpdate(self._reg)
+        mode = self._pv_L0Select.current()['value']
+        if mode == RateSel.FixedRate:
+            self.setFixedRate()
+        elif mode == RateSel.ACRate:
+            self.setACRate()
+        elif mode == RateSel.EventCode:
+            self.setEventCode()
+        elif mode == RateSel.Sequence:
+            self.setSequence()
+        else:
+            logging.warning('L0Select mode invalid {}'.format(mode))
+        lock.release()
+
+    def setFixedRate(self):
+        rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
+        self._reg.set(rateVal)
+        
+    def setACRate(self):
+        acRate = self._pv_ACRate    .current()['value']
+        acTS   = self._pv_ACTimeslot.current()['value']
+        rateVal = (1<<14) | ((acTS&0x3f)<<3) | (acRate&0x7)
+        self._reg.set(rateVal)
+
+    def setEventCode(self):
+        code   = self._pv_EventCode.current()['value']
+        rateVal = (2<<14) | ((code&0x3f0)<<4) | (code&0xf)
+        self._reg.set(rateVal)
+
+    def setSequence(self):
+        seqIdx = self._pv_Sequence.current()['value']
+        seqBit = self._pv_SeqBit  .current()['value']
+        rateVal = (2<<14) | ((seqIdx&0x3f)<<8) | (seqBit&0xf)
+        self._reg.set(rateVal)
+
+class GroupSetup(object):
+    def __init__(self, name, app, group, stats, init=None):
+        self._group = group
+        self._app   = app
+        self._stats = stats
+
+        self._rates = RateSetup(name, app.l0RateSel, (app.partition, group))
+
+        def _addPV(label,cmd,init=0,set=False):
+            n = f'{name}:{label}'
+            pv = SharedPV(initial=NTScalar('I').wrap(init), 
+                          handler=PVHandler(cmd,archive=n))
+            provider.add(n,pv)
+            if set:
+                cmd(pv,init)
+                autosave.add(n,init)
+            return pv
+
         self._pv_DstMode    = _addPV('DstSelect'              ,self.put,1)
         self._pv_DstMask    = _addPV('DstSelect_Mask'         ,self.put,0)
         self._pv_Run        = _addPV('Run'                    ,self.run   ,0)
@@ -352,6 +413,7 @@ class GroupSetup(object):
         self._pv_L0Delay    = _addPV('L0Delay'   , app.pipelineDepth, init['L0Delay'][group] if init else 90, set=True)
 
         #  initialize
+        self._rates.put(None,None)
         self.put(None,None)
 
         def _addPV(label):
@@ -370,27 +432,6 @@ class GroupSetup(object):
 
     def dump(self):
         logging.warning(f'Group: {self._group}  Master: {self._app.l0Master.get()}  RateSel: {self._app.l0RateSel.get():x}  DestSel: {self._app.l0DestSel.get():x}  Ena: {self._app.l0En.get()}')
-
-    def setFixedRate(self):
-        rateVal = (0<<14) | (self._pv_FixedRate.current()['value']&0xf)
-        self._app.l0RateSel.set(rateVal)
-        
-    def setACRate(self):
-        acRate = self._pv_ACRate    .current()['value']
-        acTS   = self._pv_ACTimeslot.current()['value']
-        rateVal = (1<<14) | ((acTS&0x3f)<<3) | (acRate&0x7)
-        self._app.l0RateSel.set(rateVal)
-
-    def setEventCode(self):
-        code   = self._pv_EventCode.current()['value']
-        rateVal = (2<<14) | ((code&0x3f0)<<4) | (code&0xf)
-        self._app.l0RateSel.set(rateVal)
-
-    def setSequence(self):
-        seqIdx = self._pv_Sequence.current()['value']
-        seqBit = self._pv_SeqBit  .current()['value']
-        rateVal = (2<<14) | ((seqIdx&0x3f)<<8) | (seqBit&0xf)
-        self._app.l0RateSel.set(rateVal)
 
     def setDestn(self):
         mode = self._pv_DstMode.current()['value']
@@ -428,19 +469,6 @@ class GroupSetup(object):
     def put(self, pv, val):
         lock.acquire()
         self._app.partition.set(self._group)
-        forceUpdate(self._app.l0RateSel)
-        mode = self._pv_L0Select.current()['value']
-        if mode == RateSel.FixedRate:
-            self.setFixedRate()
-        elif mode == RateSel.ACRate:
-            self.setACRate()
-        elif mode == RateSel.EventCode:
-            self.setEventCode()
-        elif mode == RateSel.Sequence:
-            self.setSequence()
-        else:
-            logging.warning('L0Select mode invalid {}'.format(mode))
-
         forceUpdate(self._app.l0DestSel)
         self.setDestn()
         lock.release()
@@ -493,6 +521,8 @@ class GroupCtrls(object):
 
         # need to sync commonL0Delay to group delays/commonGroups
         self._pv_ComDelay  = addPVC(f'{name}:CommonL0Delay','I',0,self.updateCommon)
+        # pattern statistics update period
+        self._pattRateSetup = RateSetup(name+':PATT', app.pattRateSel)
 
     def groupEnable(self, pv, val):
         lock.acquire()
@@ -530,10 +560,11 @@ class ClockControl(object):
         #  Set the initial timestamp
         ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
         ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
-        xpm.CuGenerator.timeStamp.set(ts)
+        xpm.TPGMini.TStampWr.set(ts)
+        xpm.TPGMini.TStampSet.set(1)
         print(f'Wrote {ts:016x} to timestamp')
 
-        self._reg = xpm.CuGenerator.clockControl
+        self._reg = xpm.TPGMini.ClockAdvanceRate
         self._mode = 0
 
     def update(self, ts):
@@ -548,15 +579,15 @@ class ClockControl(object):
         else:
             if self._mode==0 and dsec < -0.005:  # Lagging
                 self._mode = 1
-                self._reg.set(0x1f0c05)
+                self._reg.set(0x050c1f)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Lagging.  Raise clock rate')
             elif self._mode==0 and dsec > 0.005: # Leading
                 self._mode = -1
-                self._reg.set(0x150805)
+                self._reg.set(0x050815)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Leading.  Reduce clock rate')
             elif (self._mode==1 and dsec > 0) or (self._mode==-1 and dsec<0):  # Recovered
                 self._mode = 0
-                self._reg.set(0x0d0505)
+                self._reg.set(0x05050d)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Recovered')
 
 class PVCtrls(object):

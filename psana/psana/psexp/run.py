@@ -6,7 +6,7 @@ from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
-from psana.utils import Logger
+from psana.utils import Logger, WeakDict
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -115,9 +115,9 @@ class Run(object):
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constants - set default value to None
         if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
-            self.dsparms.calibconst = {det_name: None}
+            self.dsparms.calibconst = {det_name: WeakDict({})}
         elif det_name not in self.dsparms.calibconst:
-            self.dsparms.calibconst[det_name] = None
+            self.dsparms.calibconst[det_name] = WeakDict({})
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names

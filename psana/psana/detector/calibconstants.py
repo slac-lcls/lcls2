@@ -53,8 +53,20 @@ def is_none(par, msg, logger_method=logger.debug):
     if resp: logger_method(msg)
     return resp
 
+def is_dict_like(d):
+    import weakref
+    return isinstance(d, dict) or isinstance(d, weakref.WeakValueDictionary)
+
 class CalibConstants:
-    def __init__(self, calibconst, **kwa):
+    _registry = {}
+    def __new__(cls, calibconst, detname, **kwargs):
+        if detname not in cls._registry:
+            cls._registry[detname] = super().__new__(cls)
+        else:
+            cls._registry[detname]._reset(calibconst)
+        return cls._registry[detname]
+
+    def __init__(self, calibconst, detname, **kwa):
         """
         Parameters
         ----------
@@ -63,8 +75,10 @@ class CalibConstants:
         """
         logger.debug('__init__') #  self.__class__.__name__
 
-        assert isinstance(calibconst, dict), 'Input parameter should be dict: %s' % str(calibconst)
+        assert is_dict_like(calibconst), 'Input parameter should be dict-like: %s' % str(calibconst)
+        self._reset(calibconst)
 
+    def _reset(self, calibconst):
         self._calibconst = calibconst
         self._geo = None
         self._pedestals = None

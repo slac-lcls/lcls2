@@ -84,6 +84,8 @@ def hrencoder_init(
     weakref.finalize(hr_enc, hr_enc.stop)
     hr_enc.start()
 
+    hr_enc.StopRun()
+
     return hr_enc
 
 
@@ -94,8 +96,6 @@ def hrencoder_connectionInfo(hr_enc, alloc_json_str):
 
     rxId = hr_enc.App.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     hr_enc.App.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-
-    hr_enc.StopRun()
 
     connect_info = {}
     connect_info["paddr"] = rxId

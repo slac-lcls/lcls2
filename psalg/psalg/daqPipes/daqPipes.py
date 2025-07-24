@@ -8,6 +8,18 @@ import requests
 import argparse
 import curses
 
+# Name the colors
+_white   = 1
+_black   = 2
+_cyan    = 3
+_red     = 4
+_yellow  = 5
+_green   = 6
+_magenta = 7
+
+_maxDetNameSz  = 16
+_maxInstanceSz = 21
+_defColWidth   = 12
 
 class Debug:
     def __init__(self, args, filename):
@@ -27,7 +39,7 @@ class Debug:
                 self._file.close()
 
 class PromMetric:
-    def __init__(self, srvurl, query, column, width=16):
+    def __init__(self, srvurl, query, column, width=_defColWidth):
         self._srvurl = srvurl
         self._query  = query[0]
         self.dpyFmt  = query[1] # A callable function, so no '_'
@@ -141,7 +153,7 @@ def showHelp(stdscr, args, metrics):
 
         line = f'DAQ blockages monitor for partition {args.part}, instrument "{args.inst}"'
         if r >= start_row:
-            stdscr.addstr(y, x, line, curses.color_pair(1))
+            stdscr.addstr(y, x, line, curses.color_pair(_white))
             y += 1
         r += 1
 
@@ -161,13 +173,13 @@ def showHelp(stdscr, args, metrics):
                 ('q', 'Quit'),]
 
         if r >= start_row:
-            stdscr.addstr(y, x, line, curses.color_pair(1))
+            stdscr.addstr(y, x, line, curses.color_pair(_white))
             y += 1
         r += 1
         for key in keys:
             if r >= start_row:
-                stdscr.addstr(y, 2+x,    key[0], curses.color_pair(1))
-                stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(1))
+                stdscr.addstr(y, 2+x,    key[0], curses.color_pair(_white))
+                stdscr.addstr(y, 2+x+14, key[1], curses.color_pair(_white))
                 y += 1
             r += 1
 
@@ -176,14 +188,14 @@ def showHelp(stdscr, args, metrics):
         r += 1
         line = 'Column header descriptions:'
         if r >= start_row:
-            stdscr.addstr(y, x, line, curses.color_pair(1))
+            stdscr.addstr(y, x, line, curses.color_pair(_white))
             y += 1
         r += 1
         last_row = r
         for column, metric in metrics.items():
             if r >= start_row:
-                stdscr.addstr(y, 2+x,    column,         curses.color_pair(1))
-                stdscr.addstr(y, 2+x+14, metric.descr(), curses.color_pair(1))
+                stdscr.addstr(y, 2+x,    column,         curses.color_pair(_white))
+                stdscr.addstr(y, 2+x+14, metric.descr(), curses.color_pair(_white))
                 y += 1
             r += 1
             if y > height - 2:  break
@@ -192,11 +204,12 @@ def showHelp(stdscr, args, metrics):
         last_row -= height - 1
 
         y = height - 1
-        stdscr.addstr(y, x, "Scroll or hit any character to continue", curses.color_pair(1))
+        stdscr.addstr(y, x, "Scroll or hit any character to continue", curses.color_pair(_white))
 
         # Wait for next input
         k = stdscr.getch()
 
+        # Handle operator key presses
         if   k == curses.KEY_DOWN:
             if start_row < last_row:  start_row += 1
             if start_row > last_row:  start_row  = last_row
@@ -229,11 +242,13 @@ def draw(stdscr, args, metrics, size_x):
 
     # Start colors in curses
     curses.start_color()
-    curses.init_pair(1, curses.COLOR_WHITE,  curses.COLOR_BLACK)
-    curses.init_pair(2, curses.COLOR_BLACK,  curses.COLOR_WHITE)
-    curses.init_pair(3, curses.COLOR_CYAN,   curses.COLOR_BLACK)
-    curses.init_pair(4, curses.COLOR_RED,    curses.COLOR_BLACK)
-    curses.init_pair(5, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(_white,   curses.COLOR_WHITE,   curses.COLOR_BLACK)
+    curses.init_pair(_black,   curses.COLOR_BLACK,   curses.COLOR_WHITE)
+    curses.init_pair(_cyan,    curses.COLOR_CYAN,    curses.COLOR_BLACK)
+    curses.init_pair(_red,     curses.COLOR_RED,     curses.COLOR_BLACK)
+    curses.init_pair(_yellow,  curses.COLOR_YELLOW,  curses.COLOR_BLACK)
+    curses.init_pair(_green,   curses.COLOR_GREEN,   curses.COLOR_BLACK)
+    curses.init_pair(_magenta, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
 
     # Attempt to turn off the cursor
     curses.curs_set(False)
@@ -241,6 +256,7 @@ def draw(stdscr, args, metrics, size_x):
     # Update the screen periodically, independent of input
     stdscr.timeout(1000)
 
+    # Send debug output to a file, if requested
     dbg = Debug(args, "./daqPipes.dbg")
 
     # Loop where k is the last character pressed
@@ -250,7 +266,7 @@ def draw(stdscr, args, metrics, size_x):
     start_row = 0               # In units of rows    of some height
     start_col = 0               # In units of columns of some width
     size_y = 0
-    size_x = 16 + size_x + 1    # Add space for detName column
+    size_x += _maxDetNameSz + 1 # Add space for detName column
     new_y_size = size_y
     new_x_size = size_x
     showInstance = False
@@ -284,6 +300,7 @@ def draw(stdscr, args, metrics, size_x):
 
                 pad = curses.newpad(max(height, size_y), max(width, size_x))
 
+            # Clear the sub-window
             pad.erase()
 
             dbg.write('len(samples): %d, size_y %d\n' % (len(samples), size_y))
@@ -297,10 +314,10 @@ def draw(stdscr, args, metrics, size_x):
             start_row = min(tot_rows - rows, start_row)
             start_row = max(0,               start_row)
 
-            tw = 16             # DetName width
+            tw = _maxDetNameSz  # DetName width
             cols = 1            # DetName
             if showInstance:
-                tw += 21
+                tw += _maxInstanceSz
                 cols += 1       # Instance
             tot_cols = cols + len(metrics)
             for metric in metrics.values():
@@ -319,7 +336,7 @@ def draw(stdscr, args, metrics, size_x):
                                                     max(0, tot_cols - cols)))
 
             # Render header bar
-            pad.attron(curses.color_pair(2))
+            pad.attron(curses.color_pair(_black))
             sc = 0
             start_x = 0
             y = 0
@@ -327,7 +344,7 @@ def draw(stdscr, args, metrics, size_x):
             cw = 0
             if showInstance:
                 header = 'Instance'
-                cw = 21
+                cw = _maxInstanceSz
                 pad.addstr(y, x, header)
                 pad.addstr(y, x + len(header), " " * (cw - len(header)))
                 if sc < start_col:
@@ -335,7 +352,7 @@ def draw(stdscr, args, metrics, size_x):
                     sc += 1
                 x += cw
             header = 'DetName'
-            cw = 16             # DetName width
+            cw = _maxDetNameSz  # DetName width
             pad.addstr(y, x, header)
             pad.addstr(y, x + len(header), " " * (cw - len(header)))
             if sc < start_col:
@@ -353,7 +370,7 @@ def draw(stdscr, args, metrics, size_x):
                         start_x += cw
                         sc += 1
             dbg.write('sc %d, start_x %d\n' % (sc, start_x))
-            pad.attroff(curses.color_pair(2))
+            pad.attroff(curses.color_pair(_black))
 
             # Render the columns
             rh = 1                  # Revisit: For now row height is 1 line
@@ -365,16 +382,16 @@ def draw(stdscr, args, metrics, size_x):
                 y = 1 + nInstance
                 x = 0
                 if showInstance:
-                    cw = 21
-                    pad.addstr(y, x, instance, curses.color_pair(2))
+                    cw = _maxInstanceSz
+                    pad.addstr(y, x, instance, curses.color_pair(_black))
                     if sr < start_row:
                         start_y += rh
                         sr += 1
                     x += cw
 
                 sample = samples[instance]
-                cw = 16         # DetName width
-                pad.addstr(y, x, sample[0], curses.color_pair(1))
+                cw = _maxDetNameSz # DetName width
+                pad.addstr(y, x, sample[0], curses.color_pair(_white))
                 if sr < start_row:
                     start_y += rh
                     sr += 1
@@ -405,7 +422,7 @@ def draw(stdscr, args, metrics, size_x):
             if time is not None:
                 entry = str(datetime.fromtimestamp(time))
                 entry = entry + ',  step = ' + str(step) + ' s'
-                pad.addstr(start_y + height - 1, 0, entry, curses.color_pair(2))
+                pad.addstr(start_y + height - 1, 0, entry, curses.color_pair(_black))
 
             # Refresh the screen
             stdscr.refresh()
@@ -414,6 +431,7 @@ def draw(stdscr, args, metrics, size_x):
             # Wait for next input
             k = stdscr.getch()
 
+            # Handle operator key presses
             if   k == curses.KEY_DOWN:
                 if start_row < size_y - height:  start_row += 1
                 if start_row > size_y - height:  start_row  = size_y - height
@@ -447,7 +465,7 @@ def draw(stdscr, args, metrics, size_x):
                     time = datetime.fromisoformat(args.start).timestamp()
             elif k == ord('i'):
                 showInstance = not showInstance
-                new_x_size += 21 if showInstance else -21
+                new_x_size += _maxInstanceSz if showInstance else -_maxInstanceSz
             elif k == ord('h') or k == ord('?'):
                 showHelp(stdscr, args, metrics)
                 k = 0
@@ -469,7 +487,7 @@ def test(args, metrics):
     print('samples:', samples)
 
     print(0, 0, 'DetName')
-    w = 16                      # DetName width
+    w = _maxDetNameSz           # DetName width
     for header, metric in metrics.items():
         print(0, w, header)
         w += metric.width()
@@ -495,6 +513,12 @@ def daqPipes(srvurl, args):
         else:
             return f'{m}{{instrument="{a.inst}",partition="{a.part}",eb="{eb}"}}'
 
+    # Format the metrics into queries with the scope limiting labels
+    DRP_PgpCtMax  = _q(args, 'drp_num_pgp_bufs')
+    DRP_PgpInUsr  = _q(args, 'drp_num_pgp_in_user')
+    DRP_PgpInHw   = _q(args, 'drp_num_pgp_in_hw')
+    DRP_PgpInPre  = _q(args, 'drp_num_pgp_in_prehw')
+    DRP_PgpInRx   = _q(args, 'drp_num_pgp_in_rx')
     DRP_DmaCtMax  = _q(args, 'drp_dma_in_use_max')
     DRP_DmaInUse  = _q(args, 'drp_dma_in_use')
     DRP_WrkQueDp  = _q(args, 'drp_worker_queue_depth')
@@ -503,7 +527,6 @@ def daqPipes(srvurl, args):
     TCtb_BEMax    = _q(args, 'TCtb_BEMax')
     TCtbO_BtEnt   = _q(args, 'TCtbO_BtEnt')
     TCtb_IUMax    = _q(args, 'TCtb_IUMax')
-#    TCtb_IUBats   = _q(args, 'TCtb_IUBats')
     TCtbO_IFMax   = _q(args, 'TCtbO_IFMax')
     TCtbO_InFlt   = _q(args, 'TCtbO_InFlt')
     TCtbO_BatCt   = _q(args, 'TCtbO_BatCt')
@@ -522,81 +545,102 @@ def daqPipes(srvurl, args):
     MRQ_BufCt     = _q(args, 'MRQ_BufCt')
     MRQ_BufCtMax  = _q(args, 'MRQ_BufCtMax')
 
+    # Set up a set of formatting functions to turn a query result value into a
+    # colored table cell entry
     def _fmtPct(value):
         number = float(value)
-        color  = 3 if number < 95.0 else 5 if number < 99.0 else 4
+        color  = _cyan if number < 95.0 else _yellow if number < 99.0 else _red
         #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
-        entry  = '% 11.6f' % (number)
+        entry  = '% 6.2f' % (number) # Ignores space needed for a sign
+        return entry, color
+
+    def _fmtPctIC(value):       # Inverted color
+        number = float(value)
+        color  = _red if number < 1.0 else _yellow if number < 5.0 else _cyan
+        #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
+        entry  = '% 6.2f' % (number) # Ignores space needed for a sign
         return entry, color
 
     def _fmtPctNC(value):       # No Color
         number = float(value)
-        color  = 3
+        color  = _cyan
         #entry  = ('% 11.6f' if '.' in value else '% 11.0f') % (number)
-        entry  = '% 11.6f' % (number)
+        entry  = '% 6.2f' % (number) # Ignores space needed for a sign
         return entry, color
 
     def _fmtBool(value):
         number = int(value)
-        color  = 3 if number == 0 else 4
+        color  = _green if number == 0 else _red
         #entry  = '   ok' if number == 0 else '  blk' if number < 2 else ('  blk%d' % number)
-        if number == 0:
-            entry = '   ok'
-        elif number == 1:
-            entry = '  blk'
-        elif number < 10:
-            entry = ' blk%1d' % number
-        elif number < 100:
-            entry = 'blk%2d' % number
-        else:
-            entry = value #hex(number)
+        if   number == 0:   entry = '   ok'
+        elif number == 1:   entry = '  blk'
+        elif number < 10:   entry = ' blk%1d' % number
+        elif number < 100:  entry = 'blk%2d' % number
+        else:               entry = value #hex(number)
+        return entry, color
+
+    def _fmtBoolNC(value):      # No Color
+        number = int(value)
+        color  = _cyan
+        #entry  = '   ok' if number == 0 else '  blk' if number < 2 else ('  blk%d' % number)
+        if   number == 0:   entry = '   ok'
+        elif number == 1:   entry = '  blk'
+        elif number < 10:   entry = ' blk%1d' % number
+        elif number < 100:  entry = 'blk%2d' % number
+        else:               entry = value #hex(number)
         return entry, color
 
     def _fmtHex(value):
         number = int(value)
-        color  = 3 if number == 0 else 4
+        color  = _green if number == 0 else _red
         entry  = '   ok' if number == 0 else '%016x' % (number)
         return entry, color
 
+    # Set up the list of prometheus queries in the order they will appear on the screen (l to r)
     queries = {
-        '%_DMA_occ'   : (f'100.0*{DRP_DmaInUse}/{DRP_DmaCtMax}',
-                         _fmtPct, 'Percentage of occupied DRP DMA buffers'),
-        '%_WkrI_occ'  : (f'100.0*{DRP_WrkInQue}/{DRP_WrkQueDp}',
-                         _fmtPct, 'Percentage occupancy of all Input work queues on a DRP'),
-        '%_WkrO_occ'  : (f'100.0*{DRP_WrkOutQue}/{DRP_WrkQueDp}',
-                         _fmtPct, 'Percentage occupancy of all Output work queues on a DRP'),
-        '%_IBat_occ'  : (f'100.0*{TCtbO_BtEnt}/{TCtb_BEMax}',
-                         _fmtPctNC, 'Entry occupancy of DRP-to-TEB (Input) batches'),
-#        '%_Bat_InUse' : (f'100.0*{TCtb_IUBats}/{TCtb_IUMax}',
-#                         _fmtPct, 'Percentage of DRP Input batches allocated'),
-#        'Bat_Wtg'     : (_q(args, 'TCtbO_BtWtg'),
-#                         _fmtBool, 'Indicator of the DRP Input batch pool being exhausted', 7),
-        '%_Bat_InFlt' : (f'100.0*{TCtbO_InFlt}/{TCtbO_IFMax}',
-                         _fmtPct, 'Percentage of DRP Input batches queued to await a Result'),
+        # key         : (query, format func., help string, cell width)
+        '%InUsr'      : (f'100.0*{DRP_PgpInUsr}/{DRP_PgpCtMax}',
+                         _fmtPct, 'Percentage of PGP buffers in user', 6),
+        '%InHw'       : (f'100.0*{DRP_PgpInHw}/{DRP_PgpCtMax}',
+                         _fmtPct, 'Percentage of PGP buffers in hw', 6),
+        '%InPre'      : (f'100.0*{DRP_PgpInPre}/{DRP_PgpCtMax}',
+                         _fmtPct, 'Percentage of PGP buffers in pre-hw queue', 6),
+        '%InRx'       : (f'100.0*{DRP_PgpInRx}/{DRP_PgpCtMax}',
+                         _fmtPct, 'Percentage of PGP buffers in Rx queue', 6),
+        '%DMA'        : (f'100.0*{DRP_DmaInUse}/{DRP_DmaCtMax}',
+                         _fmtPct, 'Percentage of occupied DRP DMA buffers', 6),
+        '%WkrI'       : (f'100.0*{DRP_WrkInQue}/{DRP_WrkQueDp}',
+                         _fmtPct, 'Percentage occupancy of all Input work queues on a DRP', 6),
+        '%WkrO'       : (f'100.0*{DRP_WrkOutQue}/{DRP_WrkQueDp}',
+                         _fmtPct, 'Percentage occupancy of all Output work queues on a DRP', 6),
+        '%IBat'       : (f'100.0*{TCtbO_BtEnt}/{TCtb_BEMax}',
+                         _fmtPctNC, 'Entry occupancy of DRP-to-TEB (Input) batches', 6),
+        '%BatInFlt'   : (f'100.0*{TCtbO_InFlt}/{TCtbO_IFMax}',
+                         _fmtPct, 'Percentage of DRP Input batches queued to await a Result', 9),
         'DRP->TEB'    : (_q(args, 'TCtbO_TxPdg'),
                          _fmtBool, 'Indicator of when traffic from DRP to TEB is stalled', 8),
-        '%_TEB_Full'  : (f'100.0*({TEB_EvAlCt}-{TEB_EvFrCt})/{TEB_EvPlDp}',
-                         _fmtPct, 'Percentage of allocated TEB event buffers'),
-        '%_RBat_occ'  : (f'100.0*{TEB_BtEnt}/{TEB_BEMax}',
-                         _fmtPctNC, 'Entry occupancy of TEB-to-DRP (Result) batches'),
+        '%TEB'        : (f'100.0*({TEB_EvAlCt}-{TEB_EvFrCt})/{TEB_EvPlDp}',
+                         _fmtPct, 'Percentage of allocated TEB event buffers', 6),
+        '%RBat'       : (f'100.0*{TEB_BtEnt}/{TEB_BEMax}',
+                         _fmtPctNC, 'Entry occupancy of TEB-to-DRP (Result) batches', 6),
         'TEB->DRP'    : (_q(args, 'TEB_TxPdg'),
-                         _fmtHex, 'Indicator of when traffic from TEB to DRP is stalled', 16),
-        '%_FileW_occ' : (f'100.0*(1.0 - {DRP_RecDp}/{DRP_RecDpMax})',
-                         _fmtPct, 'Percentage occupancy of the recording queue'),
-        'FlWrB'       : (_q(args, 'DRP_fileWriting'),
-                         _fmtBool, 'Indicates when file writing is stalled', 6),
-        'BfFrB'       : (_q(args, 'DRP_bufFreeBlk'),
-                         _fmtBool, 'Indicates when FileWriter is blocked for a free buffer', 6),
+                         _fmtHex, 'Indicator of when traffic from TEB to DRP is stalled', 8),
+        '%FileW'      : (f'100.0*(1.0 - {DRP_RecDp}/{DRP_RecDpMax})',
+                         _fmtPct, 'Percentage occupancy of the recording queue', 6),
         'BfPndB'      : (_q(args, 'DRP_bufPendBlk'),
-                         _fmtBool, 'Indicates when FileWriter is blocked on a pending buffer', 6),
+                         _fmtBoolNC, 'Indicates when FileWriter is pending for a buffer', 6),
+        'FlWrB'       : (_q(args, 'DRP_fileWriting'),
+                         _fmtBool, 'Indicates when file writing is stalled', 5),
+        'BfFrB'       : (_q(args, 'DRP_bufFreeBlk'),
+                         _fmtBool, 'Indicates when FileWriter is blocked freeing a buffer', 5),
         'SmdWrB'      : (_q(args, 'DRP_smdWriting'),
                          _fmtBool, 'Indicates when SMD file writing is stalled', 6),
         'DRP->MEB'    : (_q(args, 'MCtbO_TxPdg'),
                          _fmtBool, 'Indicator of when traffic from DRP to MEB is blocked', 8),
-        '%_MEB_Full'  : (f'100.0*({MEB_EvAlCt}-{MEB_EvFrCt})/{MEB_EvPlDp}',
-                         _fmtPct, 'Percentage of allocated MEB event buffers'),
-        '%_MonReqOcc' : (f'100.0*({MRQ_BufCt}/{MRQ_BufCtMax})',
-                         _fmtPct, 'Percentage of occupied shmem buffers'),
+        '%MEB'        : (f'100.0*({MEB_EvAlCt}-{MEB_EvFrCt})/{MEB_EvPlDp}',
+                         _fmtPct, 'Percentage of allocated MEB event buffers', 6),
+        '%MonReq'     : (f'100.0*({MRQ_BufCt}/{MRQ_BufCtMax})',
+                         _fmtPctIC, 'Percentage of occupied shmem buffers', 6),
     }
 
     width   = 0

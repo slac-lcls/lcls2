@@ -81,6 +81,7 @@ unsigned HREncoder::_configure(Xtc& xtc, const void* bufEnd, ConfigIter&)
 
 void HREncoder::_event(XtcData::Xtc& xtc,
                    const void* bufEnd,
+                   uint64_t l1count,
                    std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned index = 0;

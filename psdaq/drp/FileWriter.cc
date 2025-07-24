@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>      // std::setfill, std::setw
+#include <sys/prctl.h>
 #include "FileWriter.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -323,6 +324,11 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
 
 void BufferedFileWriterMT::run()
 {
+    logging::info("BufferedFileWriterMT is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/FileWriter", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     while (true) {
         std::chrono::milliseconds tmo{100};
         m_pendBlocked += 1;
@@ -347,6 +353,8 @@ void BufferedFileWriterMT::run()
         m_free.push(b);
         m_depth = m_free.count();
     }
+
+    logging::info("BufferedFileWriterMT is exiting");
 }
 
 

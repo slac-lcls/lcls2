@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <sys/types.h>
+#include <sys/prctl.h>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
@@ -291,6 +292,9 @@ void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
   }
 
   logging::info("TEB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "drp/TEBreceiver", 0, 0, 0) == -1) {
+      perror("prctl");
+  }
 
   int rcPrv = 0;
   while (true)

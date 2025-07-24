@@ -8,7 +8,8 @@ def main():
                '--hutch'   :'mfx',
                '--detname' :'epixuhr_0',
                '--scantype':'pedestal',
-               '--record'  :1}
+               '--record'  :1,
+               '--run_type':'DARK'}
 
     aargs = [('--gain-modes',  {'type':str,
                                'default':'FHG, FMG, FLG1, FLG2, AHLG1, AHLG2, AMLG1, AMLG2',

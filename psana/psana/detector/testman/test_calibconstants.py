@@ -22,9 +22,9 @@ def dict_calib_constants(exp="ueddaq02", detname="epixquad", runnum=0):
     return d
 
 
-def test_calib_constants():
-    d = dict_calib_constants()
-    cc = CalibConstants(d)
+def test_calib_constants(exp="ueddaq02", detname="epixquad"):
+    d = dict_calib_constants(exp=exp, detname=detname)
+    cc = CalibConstants(d, detname)
     print(info_ndarr(cc.pedestals(), 'pedestals'))
     print(info_ndarr(cc.rms(), 'rms'))
     print(info_ndarr(cc.status(), 'status'))

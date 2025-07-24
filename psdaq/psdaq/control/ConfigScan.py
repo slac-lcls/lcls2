@@ -66,10 +66,15 @@ class ConfigScan:
                 # scan values for the daq to record to xtc2).
 
                 # set DAQ state
-                if phase1 is None:
+                if phase1 is None and self.args.run_type is None:
                     errMsg = self.control.setState(state)
                 else:
-                    errMsg = self.control.setState(state, oldjson.loads(phase1))
+                    phase1_dict = {}
+                    if phase1 is not None:
+                        phase1_dict.update(oldjson.loads(phase1))
+                    if self.args.run_type is not None:
+                        phase1_dict.update({"run_type": self.args.run_type})
+                    errMsg = self.control.setState(state, phase1_dict)
                 if errMsg is not None:
                     logging.error('%s' % errMsg)
                     continue

@@ -818,6 +818,8 @@ class CollectionManager():
         }
         self.lastTransition = 'reset'
         self.recording = False
+        self.defaultRunType = 'DATA'
+        self.runType = self.defaultRunType
 
         self.collectMachine = Machine(self, ControlDef.states, initial='reset')
 
@@ -881,6 +883,10 @@ class CollectionManager():
     def cmstate_levels(self):
         return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
 
+    def _process_run_type_keys(self, msg_body):
+        if "run_type" in msg_body:
+            self.runType = msg_body["run_type"]
+
     def service_requests(self):
         # msg['header']['key'] formats:
         #  setstate.STATE
@@ -895,6 +901,7 @@ class CollectionManager():
             body = msg['body']
             if key[0] == 'setstate':
                 # handle_setstate() sends reply internally
+                self._process_run_type_keys(body)
                 self.phase1Info.update(body)
                 self.handle_setstate(key[1])
                 answer = None
@@ -1974,10 +1981,14 @@ class CollectionManager():
     def start_run(self, experiment_name):
         run_num = 0
         ok = False
-        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
-        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        base_url = self.url if not self.url.endswith("/") else self.url[:-1]
+        serverURLPrefix = f"{base_url}/run_control/{experiment_name}/ws"
+        logging.debug(f"serverURLPrefix = {serverURLPrefix}")
         try:
-            resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(self.user, self.password))
+            startRunEndpoint = f"{serverURLPrefix}/start_run?run_type={self.runType}"
+            # Revert runType back to the default in case next request does not have a type
+            self.runType = self.defaultRunType
+            resp = requests.post(startRunEndpoint, auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
             logging.error("start_run (user=%s) exception: %s" % (self.user, ex))
         else:

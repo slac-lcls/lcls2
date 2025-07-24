@@ -19,7 +19,6 @@ using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
-static unsigned cpocount=0;
 //#define DEBUG_PRINT
 
 namespace Drp {
@@ -152,7 +151,7 @@ unsigned Epix100::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
 //              2:   Timing frame detailed
 //              3:   epix100
 //
-void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
 

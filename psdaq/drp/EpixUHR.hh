@@ -26,6 +26,7 @@ protected:
     void           _connectionInfo(PyObject*) override;
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void           _event    (XtcData::Xtc&, const void* bufEnd,
+                              uint64_t l1count,
                               std::vector< XtcData::Array<uint8_t> >&) override;
 private:
     void           __event   (XtcData::Xtc&, const void* bufEnd,
@@ -39,6 +40,7 @@ protected:
     XtcData::NamesId  m_evtNamesId[2];
     unsigned          m_asics;
     bool              m_descramble;
+    unsigned          m_nprints;
   };
 
 }

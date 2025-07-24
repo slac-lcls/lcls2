@@ -290,11 +290,15 @@ class MPIDataSource(DataSourceBase):
         if nodetype == "smd0":
             super()._setup_run_calibconst()
         else:
-            self.dsparms.calibconst = None
+            # _setup_run_calibconst runs this
+            self._clear_calibconst()
 
-        self.dsparms.calibconst = self.comms.psana_comm.bcast(
-            self.dsparms.calibconst, root=0
+        self._calib_const = self.comms.psana_comm.bcast(
+            self._calib_const, root=0
         )
+        if nodetype != "smd0":
+            # smd0 already did this in _setup_run_calibconst
+            self._create_weak_calibconst()
 
     def _start_run(self):
         if self._setup_beginruns():  # try to get next run from current files

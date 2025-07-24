@@ -8,6 +8,7 @@
 #include <memory>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <net/if.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "TebReceiver.hh"
@@ -573,11 +574,26 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return nPgpJumps();});
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
+
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return nPgpInRx();});
+
     return 0;
 }
 
 void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
 {
+    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     // Reset counters to avoid 'jumping' errors on reconfigures
     m_pool.resetCounters();
     resetEventCounter();

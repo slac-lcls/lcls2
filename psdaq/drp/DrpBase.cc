@@ -10,7 +10,6 @@
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
@@ -420,7 +419,7 @@ int MemPoolCpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, unsigned dmaFreeCnt) :
     m_para        (para),
     m_pool        (pool),
-    m_tmo         {0},
+    m_tmo         {100},                // ms
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
@@ -451,6 +450,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
 
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
+    m_t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
 
     pool.resetCounters();
 }
@@ -462,29 +462,20 @@ PgpReader::~PgpReader()
 
 int32_t PgpReader::read()
 {
-    if (m_tmo) {                        // If in interrupt mode...
+    if (m_tmo) {                     // Interrupt mode
         // Wait for DMAed data to become available
         if (poll(&m_pfd, 1, m_tmo) < 0) {
             logging::error("%s: poll() error: %m", __PRETTY_FUNCTION__);
-            return 0;
         }
-        if (m_pfd.revents == 0) {
-            return 0;                   // Timed out
-        }
-        if (m_pfd.revents == POLLIN) {  // When DMAed data is available...
-            m_tmo = 0;                  // switch to polling mode
-            m_t0  = Pds::fast_monotonic_clock::now();
-        }
-    }
+    }                                // Else polling mode
 
-    int rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    auto rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    if (rc > 0) {
+        auto t1 { Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) };
 
-    if ((rc == 0) && (m_tmo == 0)) {    // If no DMAed data and in polling mode...
-        auto t1 { Pds::fast_monotonic_clock::now() };
-
-        if (t1 - m_t0 >= ms_t{1}) {
-            m_tmo = 10;                 // switch to interrupt mode after 1 ms
-        }
+        auto dt = std::chrono::duration_cast<ms_t>(t1 - m_t0).count();
+        m_tmo = dt/rc < 1 ? 0 : 10;  // Polling if rate > 1 kHz else interrupt mode
+        m_t0  = t1;
     }
 
     return rc;

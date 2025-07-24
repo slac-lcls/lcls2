@@ -8,7 +8,8 @@ def main():
                '--detname' :'epixhr_0',
                '--scantype':'pedestal',
                '--events'  :1000,
-               '--record'  :1}
+               '--record'  :1,
+               '--run_type':'DARK'}
 
     scan = ConfigScanBase(defargs=defargs)
     args = scan.args

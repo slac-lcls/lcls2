@@ -28,6 +28,7 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 #include <mutex>
+#include <sys/prctl.h>
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 #define LIKELY(expr)    __builtin_expect(!!(expr), 1)
@@ -550,6 +551,10 @@ void Meb::run()
     logging::error("%s:\n  Error from pinThread:\n  %s",
                    __PRETTY_FUNCTION__, strerror(rc));
   }
+  logging::info("MEB is starting with process ID %lu", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "Meb", 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
   int rcPrv = 0;
   while (lRunning)
@@ -720,7 +725,7 @@ static std::string getHostname()
 class MebApp : public CollectionApp
 {
 public:
-  MebApp(const std::string& collSrv, MebParams&);
+  MebApp(MebParams&);
   virtual ~MebApp();
 public:                                 // For CollectionApp
   json connectionInfo(const json& msg) override;
@@ -746,9 +751,8 @@ private:
   bool                                 _unconfigFlag;
 };
 
-MebApp::MebApp(const std::string& collSrv,
-               MebParams&         prms) :
-  CollectionApp(collSrv, prms.partition, "meb", prms.alias),
+MebApp::MebApp(MebParams& prms) :
+  CollectionApp(prms.collSrv, prms.partition, "meb", prms.alias),
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _exposer     (createExposer(prms.prometheusDir, getHostname())),
@@ -1085,7 +1089,6 @@ void usage(char* progname)
 int main(int argc, char** argv)
 {
   const unsigned NO_PARTITION = unsigned(-1u);
-  std::string    collSrv;
   MebParams      prms;
   std::string    kwargs_str;
 
@@ -1125,7 +1128,7 @@ int main(int argc, char** argv)
         prms.ldist = true;
         break;
       case 'A':  prms.ifAddr        = optarg;                      break;
-      case 'C':  collSrv            = optarg;                      break;
+      case 'C':  prms.collSrv       = optarg;                      break;
       case '1':  prms.core[0]       = atoi(optarg);                break;
       case '2':  prms.core[1]       = atoi(optarg);                break;
       case 'u':  prms.alias         = optarg;                      break;
@@ -1169,7 +1172,7 @@ int main(int argc, char** argv)
     logging::critical("-n: max buffers is mandatory");
     return 1;
   }
-  if (collSrv.empty())
+  if (prms.collSrv.empty())
   {
     logging::critical("-C: collection server is mandatory");
     return 1;
@@ -1218,7 +1221,7 @@ int main(int argc, char** argv)
 
   try
   {
-    MebApp app(collSrv, prms);
+    MebApp app(prms);
 
     app.run();
 

@@ -205,9 +205,9 @@ class DevPcie(pr.Device):
             offset = 0x00840000,
         ))
 
-        self.add(timing.TPGMiniCore(
+        self.add(xpm.TPGMini(
             memBase = memBase,
-            name   = 'TpgMini',
+            name   = 'TPGMini',
             offset = 0x00830000,
         ))
 
@@ -269,35 +269,46 @@ class DevPcie(pr.Device):
 
         if self.isXpmGen:
             if self.isUED:
-                self.TpgMini.BaseControl.set(238)
+                self.TPGMini.BaseControl.set(238)
                 #  Set the fixed rate markers
-                self.TpgMini.FixedRateDiv[0].set(500000)
-                self.TpgMini.FixedRateDiv[1].set(  1000)
-                self.TpgMini.FixedRateDiv[2].set(   500)
-                self.TpgMini.FixedRateDiv[3].set(   100)
-                self.TpgMini.FixedRateDiv[4].set(    50)
-                self.TpgMini.FixedRateDiv[5].set(    10)
-                self.TpgMini.FixedRateDiv[6].set(     5)
+                self.TPGMini.FixedRateDiv[0].set(500000)
+                self.TPGMini.FixedRateDiv[1].set(  1000)
+                self.TPGMini.FixedRateDiv[2].set(   500)
+                self.TPGMini.FixedRateDiv[3].set(   100)
+                self.TPGMini.FixedRateDiv[4].set(    50)
+                self.TPGMini.FixedRateDiv[5].set(    10)
+                self.TPGMini.FixedRateDiv[6].set(     5)
                 #  And some rate markers tied to beam simulation
-                self.TpgMini.FixedRateDiv[7].set(     1)  # beam request
-                self.TpgMini.FixedRateDiv[8].set(  1000)  # dest b1
-                self.TpgMini.FixedRateDiv[9].set(   500)  # dest b2
-                self.TpgMini.RateReload.set(1)
+                self.TPGMini.FixedRateDiv[7].set(     1)  # beam request
+                self.TPGMini.FixedRateDiv[8].set(  1000)  # dest b1
+                self.TPGMini.FixedRateDiv[9].set(   500)  # dest b2
+                self.TPGMini.RateReload.set(1)
+
             else:
-                self.TpgMini.BaseControl.set(200)
+                self.TPGMini.BaseControl.set(200)
                 #  Set the fixed rate markers
-                self.TpgMini.FixedRateDiv[0].set(910000)
-                self.TpgMini.FixedRateDiv[1].set( 91000)
-                self.TpgMini.FixedRateDiv[2].set(  9100)
-                self.TpgMini.FixedRateDiv[3].set(   910)
-                self.TpgMini.FixedRateDiv[4].set(    91)
-                self.TpgMini.FixedRateDiv[5].set(    13)
-                self.TpgMini.FixedRateDiv[6].set(     1)
+                self.TPGMini.FixedRateDiv[0].set(910000)
+                self.TPGMini.FixedRateDiv[1].set( 91000)
+                self.TPGMini.FixedRateDiv[2].set(  9100)
+                self.TPGMini.FixedRateDiv[3].set(   910)
+                self.TPGMini.FixedRateDiv[4].set(    91)
+                self.TPGMini.FixedRateDiv[5].set(    13)
+                self.TPGMini.FixedRateDiv[6].set(     1)
                 #  And some rate markers tied to beam simulation
-                self.TpgMini.FixedRateDiv[7].set(  9100)  # beam request
-                self.TpgMini.FixedRateDiv[8].set( 91000)  # dest b1
-                self.TpgMini.FixedRateDiv[9].set(  9100)  # dest b2
-                self.TpgMini.RateReload.set(1)
+                self.TPGMini.FixedRateDiv[7].set(  9100)  # beam request
+                self.TPGMini.FixedRateDiv[8].set( 91000)  # dest b1
+                self.TPGMini.FixedRateDiv[9].set(  9100)  # dest b2
+                self.TPGMini.RateReload.set(1)
+
+            #  Set the AC rate markers
+            self.TPGMini.ACRateDiv[0].set(120)
+            self.TPGMini.ACRateDiv[1].set( 60)
+            self.TPGMini.ACRateDiv[2].set( 12)
+            self.TPGMini.ACRateDiv[3].set(  6)
+            self.TPGMini.ACRateDiv[4].set(  2)
+            self.TPGMini.ACRateDiv[5].set(  1)
+            self.TPGMini.ACRateReload.set(1)
+
 
         #  Reset to realign the rate markers
         self.DevReset.clearTimingPhyReset.set(0)

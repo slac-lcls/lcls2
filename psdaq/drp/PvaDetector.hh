@@ -106,7 +106,7 @@ public:
     using Detector::disable;            // Avoid 'hidden' warning
     void disable();
     void event_(XtcData::Dgram& evt, const void* bufEnd, const XtcData::Xtc& pv);
-    void event(XtcData::Dgram& evt, const void* bufEnd, PGPEvent*) override { /* unused */ };
+    void event(XtcData::Dgram& evt, const void* bufEnd, PGPEvent*, uint64_t l1count) override { /* unused */ };
     void event(XtcData::Dgram& evt, const void* bufEnd, const Pds::Eb::ResultDgram&) override { /* unused */ };
 public:
     const std::vector< std::shared_ptr<PvMonitor> >& pvMonitors() const { return m_pvMonitors; }

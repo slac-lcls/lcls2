@@ -12,6 +12,7 @@
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 #include <nlohmann/json.hpp>
@@ -162,6 +163,10 @@ public:
     uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    int64_t  nPgpInUser()   const { return dmaGetRxBuffinUserCount  (m_pool.fd()); }
+    int64_t  nPgpInHw()     const { return dmaGetRxBuffinHwCount    (m_pool.fd()); }
+    int64_t  nPgpInPreHw()  const { return dmaGetRxBuffinPreHwQCount(m_pool.fd()); }
+    int64_t  nPgpInRx()     const { return dmaGetRxBuffinSwQCount   (m_pool.fd()); }
     std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
 private:
     void _setTimeOffset(const XtcData::TimeStamp& time);

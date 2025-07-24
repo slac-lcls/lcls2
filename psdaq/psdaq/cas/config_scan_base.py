@@ -45,6 +45,7 @@ class ConfigScanBase(object):
         add_argument('--record', type=int, choices=range(0, 2), default=None, help='recording flag')
         add_argument('--hutch' , type=str, default=None, help='hutch (shortcut for -p,-C)')
         add_argument('--nprocs', type=int, required=False, help='Number of drp segments/processes for the detector `detname`')
+        add_argument('--run_type', type=str, required=False, help='Specify a run `type`, e.g. `DARK`.')
         parser.add_argument('-v', action='store_true', help='be verbose')
 
         for a in userargs:

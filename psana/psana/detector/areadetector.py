@@ -100,7 +100,7 @@ class AreaDetector(DetectorImpl):
             logger.debug('AreaDetector._calibconstants - make CalibConstants')
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
-            self._calibc_ = CalibConstants(cc, **kwa)
+            self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
             self._apply_calibc_preload_cache()
         return self._calibc_
 
@@ -259,7 +259,7 @@ class AreaDetector(DetectorImpl):
             logger.debug('AreaDetector._maskalgos - make MaskAlgos')
             cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
             if is_none(cc, 'self._calibconst is None'): return None
-            self._maskalgos_ = MaskAlgos(cc, **kwa)
+            self._maskalgos_ = MaskAlgos(cc, self._det_name, **kwa)
         return self._maskalgos_
 
 

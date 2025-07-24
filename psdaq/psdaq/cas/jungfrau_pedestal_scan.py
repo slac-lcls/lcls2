@@ -6,12 +6,13 @@ def main():
     # default command line arguments
     defaults = {
         "--events": 1000,
-        "--hutch": "asc",
+        "--hutch": "mfx",
         "--detname": "jungfrau",
         "--scantype": "pedestal",
         "--record": 1,
         "--config": "BEAM",
         "--nprocs": 5,
+        "--run_type": "DARK",
     }
 
     scan = ConfigScanBase(defargs=defaults)

@@ -15,7 +15,7 @@ public:
     unsigned beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) override;
     // Avoid "overloaded virtual function "Drp::Detector::event" is only partially overridden" warning
     using Detector::event;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
 private:
     enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex};
 };
