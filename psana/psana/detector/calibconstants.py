@@ -71,6 +71,8 @@ class CalibConstants:
         Parameters
         ----------
         calibconst: dict - retrieved from DB by method calib_constants_all_types from psana.pscalib.calib.MDBWebUtils.
+        calib_constants_all_types is USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+
         **kwa: not used
         """
         logger.debug('__init__') #  self.__class__.__name__
