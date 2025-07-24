@@ -23,27 +23,17 @@ using logging = psalg::SysLog;
 using us_t    = std::chrono::microseconds;
 
 
-static
-cudaStream_t _getStream()
-{
-  /** Allocate a stream **/
-  cudaStream_t stream;
-  chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
-
-  return stream;
-}
-
-TebReceiver::TebReceiver(const Parameters& para, DrpBase& drp,
+TebReceiver::TebReceiver(const Parameters&        para,
+                         DrpBase&                 drp,
                          const std::atomic<bool>& terminate_h,
                          const cuda::atomic<int>& terminate_d) :
   TebReceiverBase(para, drp),
-  m_mon         (drp.mebContributor()),
-  m_terminate_h (terminate_h),
-  m_terminate_d (terminate_d),
-  m_stream      (_getStream()),
-  m_reducer     (0),
-  m_resultQueue (drp.pool.nbuffers()),
-  m_para        (para)
+  m_mon          (drp.mebContributor()),
+  m_terminate_h  (terminate_h),
+  m_terminate_d  (terminate_d),
+  m_reducer      (0),
+  m_resultQueue  (drp.pool.nbuffers()),
+  m_para         (para)
 {
 }
 
@@ -91,22 +81,22 @@ void TebReceiver::setupReducers(std::shared_ptr<Collector> collector)
   }
   printf("*** TebRcvr::setupReducers: 3\n");
 
+  // Set up the file writers
+  // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufSize() + memPool.reduceBufReserved();
-  m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true, m_stream);
+  size_t maxBufSize = 16 * 1024 * 1024UL;
+  //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
+  m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
   printf("*** TebRcvr::setupReducers: 4\n");
-}
 
-void TebReceiver::startRecorder()
-{
-  m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
-}
-
-void TebReceiver::startReducers()
-{
+  // Start the Data Reducers
   for (auto& reducer : m_reducers) {
     reducer.start();
   }
+
+  // Start the Data Recorder
+  m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
 }
 
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
@@ -155,6 +145,11 @@ void TebReceiver::_recorder()
 
   logging::info("Recorder is starting with process ID %lu\n", syscall(SYS_gettid));
 
+  // Create a GPU stream in the recorder thread context and register it with the
+  // fileWriter during phase 1 of Configure before files are opened during BeginRun
+  chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+  m_fileWriter->registerStream(m_stream);
+
   auto outputQueue = m_reducers[0].outputQueue();
 
   // Collect completion information from the reducer kernels in time order
@@ -191,28 +186,14 @@ void TebReceiver::_recorder()
       uint32_t dataSize;
       auto pSize = buf - sizeof(dataSize);
       chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
-      cudaStreamSynchronize(m_stream);
+      chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
       printf("*** TebRcvr::recorder: 3 sz %u, extent %u\n", dataSize, dgram->xtc.extent);
 
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + memPool.reduceBufReserved() + memPool.reduceBufSize();
-      //// Xtc creation writes _after_ the space reserved for the data (which is not used on the CPU),
-      //// so the pebble size must be large enough to accomodate that to avoid stepping on whatever follows
-      // Ensure that the EbDgram, _excluding_ the data payload, fits in the pebble buffer
-      //void* bufEnd = (char*)dgram + memPool.pebble.bufferSize();
       printf("*** TebRcvr::recorder: 3 payloadSz %zu, rsvdSz %zu\n", memPool.reduceBufSize(), memPool.reduceBufReserved());
       printf("*** TebRcvr::recorder: 3 dg %p + %zu = %p\n", (Dgram*)dgram, memPool.reduceBufReserved() + memPool.reduceBufSize(), bufEnd);
       size = m_drp.detector().gpuDetector()->event(*dgram, bufEnd, dataSize);
-      if (size > memPool.reduceBufReserved()) {
-        logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
-                          size, memPool.reduceBufReserved());
-        abort();
-      }
-      if (size > memPool.pebble.bufferSize()) {
-        logging::critical("Header is too large (%zu) for pebble buffer (%zu)",
-                          size, memPool.pebble.bufferSize());
-        abort();
-      }
       buf -= size;                      // Pointer to the start of the Dgram
     } else {  // Transitions
       size = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
@@ -243,15 +224,10 @@ void TebReceiver::_recorder()
       const Xtc& shapes = *data.next();
       p = (uint32_t*)&shapes;
       printf("*** 2nd: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
-      //p = (uint32_t*)shapes.payload();
-      //printf("*** pld: %p: %08x %08x %08x %08x %08x\n", p, p[0], p[1], p[2], p[3], p[4]);
       unsigned sz = sizeof(shapes) + shapes.sizeofPayload();
-      //printf("*** shapes size %u, data size %u, total size %zu\n", sz, data.sizeofPayload(), (uint8_t*)&p[5] - (uint8_t*)((Dgram*)dgram));
       printf("*** shapes size %u, data size %u, total size %zu\n", sz, shapes.sizeofPayload(), (uint8_t*)shapes.next() - (uint8_t*)((Dgram*)dgram));
-      //uint8_t* pShape = memPool.reduceBuffers_h()[index] + data.sizeofPayload();
-      //chkError(cudaMemcpyAsync(pShape, (void*)&shapes, sz, cudaMemcpyHostToDevice, m_stream));
     }
-    cudaStreamSynchronize(m_stream);
+    //chkError(cudaStreamSynchronize(m_stream));    // @todo: Not needed?
 
     TransitionId::Value transitionId = dgram->service();
     printf("*** size %zu + sizeofPayload %u = %zu\n", size, dgram->xtc.sizeofPayload(), size + dgram->xtc.sizeofPayload());
@@ -264,7 +240,7 @@ void TebReceiver::_recorder()
       logging::critical("Datagram is too large (%zu) for reduce buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
                         size, memPool.reduceBufSize() + memPool.reduceBufReserved(),
                         dgram->pulseId(), dgram->time.value(), dgram->env);
-      //abort();
+      abort();
     }
     m_evtSize = size;
 
@@ -298,7 +274,7 @@ void TebReceiver::_recorder()
           }
           printf("*** TebRcvr::recorder: 4a idx %u, cfgBuf %p, cfgDg %p, sz %zu\n", m_configureIndex, cfgBuf, cfgDgram, cfgSize);
           chkError(cudaMemcpyAsync((void*)cfgBuf, cfgDgram, cfgSize, cudaMemcpyHostToDevice, m_stream));
-          cudaStreamSynchronize(m_stream);
+          //chkError(cudaStreamSynchronize(m_stream)); // @todo: Not needed?
           printf("*** TebRcvr::recorder: 4b idx %u\n", m_configureIndex);
           uint32_t* p = (uint32_t*)cfgDgram;
           printf("cfg: ");
@@ -337,15 +313,18 @@ void TebReceiver::_recorder()
           auto sizeofPayload = dgram->xtc.sizeofPayload();
           const auto data    = memPool.reduceBuffers_h()[index];
           chkError(cudaMemcpyAsync((void*)payload, data, sizeofPayload, cudaMemcpyDeviceToHost, m_stream));
-          cudaStreamSynchronize(m_stream);
+          chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
 
           m_mon.post(dgram, result->monBufNo());
         }
-      } else {                          // Other Transition
+      } else {                          // Other Transition already on the CPU
         m_mon.post(dgram);
       }
     }
     printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
+
+    // Synchronize before releasing buffers
+    chkError(cudaStreamSynchronize(m_stream));
 
     // Release the GPU intermediate buffers for reuse
     m_collector->freeDma(index);
@@ -534,12 +513,6 @@ void PGPDrp::_collector()
 
   // Start the Collector on the GPU
   m_collector->start();
-
-  // Start the Data Reducer
-  static_cast<TebReceiver&>(tebReceiver()).startReducers();
-
-  // Start the Data Recorder
-  static_cast<TebReceiver&>(tebReceiver()).startRecorder();
 
   // Now run the CPU side of the Collector
   logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));

@@ -6,7 +6,6 @@
 #include <nlohmann/json.hpp>
 #include "drp/DrpBase.hh"
 #include "drp/spscqueue.hh"
-#include "drp/FileWriter.hh"
 #include "Reader.hh"
 #include "Collector.hh"
 #include "Reducer.hh"
@@ -45,8 +44,6 @@ public:
   FileWriterBase& fileWriter() override { return *m_fileWriter; }
   SmdWriterBase& smdWriter() override { return *m_smdWriter; };
   void setupReducers(std::shared_ptr<Collector>);
-  void startReducers();
-  void startRecorder();
 protected:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels) override;
@@ -60,7 +57,7 @@ private:
   const std::atomic<bool>&               m_terminate_h;    // Avoid PCIe transfer of _d
   const cuda::atomic<int>&               m_terminate_d;    // Managed memory pointer
   cudaStream_t                           m_stream;
-  std::unique_ptr<FileWriter>            m_fileWriter;
+  std::unique_ptr<FileWriterAsync>       m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>        m_smdWriter;
   unsigned                               m_reducer;   // For cycling through reducers
   SPSCQueue<const Pds::Eb::ResultDgram*> m_resultQueue;

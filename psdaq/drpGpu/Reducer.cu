@@ -53,12 +53,11 @@ Reducer::Reducer(unsigned                 instance,
   // Prepare buffers to receive the reduced data,
   // prepended with some reserved space for the datagram header
   // The application only sees the pointer to the data buffer
-  // @todo: Get these sizes from Gpu::Detector?
-  size_t headerSize = sizeof(Dgram) + 2 * sizeof(Xtc);
-  size_t shapesSize = sizeof(Xtc) + MaxRank * sizeof(uint32_t);
-  printf("*** Reducer ctor: calibSz %zu, hdrSz %zu, shpSz %zu\n", m_pool.calibBufSize(), headerSize, shapesSize);
-  //m_pool.createReduceBuffers(m_pool.calibBufSize() + shapesSize, headerSize);
-  m_pool.createReduceBuffers(m_pool.calibBufSize(), shapesSize + headerSize);
+  // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
+  // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU
+  // @todo: Get the header size from Gpu::Detector?
+  size_t headerSize = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  m_pool.createReduceBuffers(m_pool.calibBufSize(), headerSize);
 
   // Set up the reducer algorithm
   m_algo = _setupAlgo();
