@@ -65,6 +65,10 @@ class epixuhr_config_3_1_0(DetectorImpl):
 class epixuhr_config_3_2_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
+
+class epixuhrhw_config_3_2_0(DetectorImpl):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args)
         
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
