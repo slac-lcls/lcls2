@@ -47,10 +47,12 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
-def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp')):
-    from collections import OrderedDict
-    return OrderedDict([(k, d.get(k, None)) for k in list_keys])
-    #return {k:v for k,v in d.items() if k in list_keys}
+def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp'), ordered=True):
+    if ordered:
+        from collections import OrderedDict
+        return OrderedDict([(k, d.get(k, None)) for k in list_keys])
+    else:
+        return {k:v for k,v in d.items() if k in list_keys}
 
 
 def datasource_kwargs_from_string(s, detname=None):
