@@ -3,14 +3,17 @@
 
    import psana.pscalib.calib.UtilsCalibValidity as ucv
 """
+import sys
 import psana.pscalib.calib.MDBUtils as mu
 import psana.pscalib.calib.MDBWebUtils as wu
 from time import time, gmtime, localtime, strftime
+#import logging
+#logger = logging.getLogger(__name__)
 
-def dict_filter(keys=('experiment', 'detname', 'detector', 'shortname', 'ctype', 'run', 'run_orig',\
-                      'run_beg', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'iofname', 'version')):
+def dict_filter(d, keys=('experiment', 'detname', 'detector', 'shortname', 'ctype', 'run', 'run_orig',\
+                         'run_beg', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'version', 'longname'), ordered=False):
     import psana.detector.utils_psana as ups # seconds, data_source_kwargs
-    return ups.dict_filter(doc, list_keys=keys)
+    return ups.dict_filter(d, list_keys=keys, ordered=ordered)
 
 def tstamp_from_sec(tsec, fmt='%Y%m%d_%H%M%S', gmt=False):
     return strftime(fmt, gmtime(tsec) if gmt else localtime(tsec))
@@ -36,7 +39,7 @@ def info_run_validity_ranges(dbname, colname, ctype='pedestals'):
        2) select doc for each run range interval
     """
     docs = wu.find_docs(dbname, colname, query={'ctype':ctype}) # , url=cc.URL)
-    s = '\nlist of docs for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
+    s = '\nlist of constants for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
     run_boardes = set()
     for d in docs:
       d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'], fmt='%Y%m%d_%H%M%S', gmt=False)
@@ -60,7 +63,7 @@ def info_time_validity_ranges(shortname, ctype='pedestals', fmt='%Y%m%d_%H%M%S',
     colname = shortname
     docs = wu.find_docs(dbname, colname, query={'ctype':ctype}) # , url=cc.URL)
     s = '\nDB document keys: %s' % str(docs[0].keys())
-    s += '\n\nlist of docs for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
+    s += '\n\nlist of constants for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
     times_sec = set()
     time_stamps = set()
     sorted_docs = sorted(docs, key=lambda x: x['time_sec'])
@@ -81,14 +84,33 @@ def info_time_validity_ranges(shortname, ctype='pedestals', fmt='%Y%m%d_%H%M%S',
 
 def print_calib_constants_for_ctype(expname, detlongname, ctype='pedestals', run=None, time_sec=None):
     resp = wu.calib_constants_for_ctype(detlongname, exp=expname, ctype=ctype, run=run, time_sec=time_sec, vers=None, dbsuffix='')
-    print('selected constants in calib_constants_for_ctype:\n%s\n' % (str(resp[1] if resp is not None else None)))
+    if resp is not None:
+        d = dict_filter(resp[1])
+        print('selected constants in calib_constants_for_ctype:\n%s\n' % str(d))
 
 
-def _calib_validity_ranges(exp, shortname, ctype='pedestals'):
+def _calib_validity_ranges(exp, shortname, ctype='pedestals', show='rtd'):
     dbname = 'cdb_%s' % exp
     colname = shortname
-    print(info_time_validity_ranges(shortname, ctype))
-    print(info_run_validity_ranges(dbname, colname, ctype))
+    if ('t' in show): print(info_time_validity_ranges(shortname, ctype))
+    if ('r' in show): print(info_run_validity_ranges(dbname, colname, ctype))
+
+
+def dict_from_str(s):
+    """converts str of arguments like
+       exp=mfx101332224,run=66,shortname=jungfrau_000003,ctype=pedestals
+       to dict = {'exp':'mfx101332224', 'run'=66, 'shortname'='jungfrau_000003', 'ctype'='pedestals'}
+    """
+    d = {}
+    if s is not None:
+        flds = s.split(',')
+        for f in flds:
+            k,v = f.split('=')
+            d[k] = v
+        run = d.get('run', None)
+        if run is not None:
+            d[run] = int(run) # str to int
+    return d
 
 
 def calib_validity_ranges(**kwa):
@@ -97,9 +119,10 @@ def calib_validity_ranges(**kwa):
 
     exp = None
     shortname = None
-    ctype  = kwa.get('ctype', 'pedestals')
-    direct = kwa.get('direct', None)
-    if direct is None:
+    ctype   = kwa.get('ctype', 'pedestals')
+    allargs = kwa.get('allargs', None)
+    show    = kwa.get('show', 'rtd')
+    if allargs is None:
         from psana import DataSource
         import psana.detector.UtilsCalib as uc
         import psana.detector.utils_psana as up
@@ -107,16 +130,29 @@ def calib_validity_ranges(**kwa):
         print('dskwargs:%s' % str(dskwargs))
         ds = DataSource(**dskwargs)
         orun = next(ds.runs())
-        odet = orun.Detector(kwa['detname'])
+        runnum=orun.runnum
+        try:
+            odet = orun.Detector(kwa['detname'])
+        except Exception as err:
+            print('Detector("%s") is not available for %s.\n    %s'%\
+                  (kwa['detname'], str(dskwargs), err))
+            sys.exit('Exit processing')
+
         longname = odet.raw._uniqueid
         shortname = uc.detector_name_short(longname)
         exp = dskwargs['exp']
-        print_calib_constants_for_ctype(exp, longname, ctype, run=orun.runnum, time_sec=time())
+        if ('d' in show):
+            print_calib_constants_for_ctype(exp, longname, ctype, run=runnum, time_sec=time())
     else:
-        exp, shortname = direct.split(',')
+        d = dict_from_str(allargs)
+        exp       = d.get('exp', None)
+        shortname = d.get('shortname', None)
+        ctype     = d.get('ctype', 'pedestals')
+        runnum    = d.get('run', None)
+        #print_calib_constants_for_ctype(exp, longname, ctype, run=runnum, time_sec=time())
 
     print('exp: %s shortname: %s ctype: %s' % (exp, shortname, ctype))
-    _calib_validity_ranges(exp, shortname, ctype=ctype)
+    _calib_validity_ranges(exp, shortname, ctype=ctype, show=show)
 
 
 if __name__ == "__main__":
