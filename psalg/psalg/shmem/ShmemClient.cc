@@ -281,11 +281,40 @@ void ShmemClient::free(int index, size_t size)
 }
 
 /*
-** ++
-**
-**
-** --
+* Return a new transition or l1accept datagram
+* @param index Buffer index updated by reference. Used by client app to free
+*        (release) buffer once done with it.
+* @param size Buffer size updated by reference.
+* @param eventSkipped If transitionsOnly below is true, this reference will be set
+*        to true if an event (l1Accept) was actually skipped. This is to allow client
+*        applications to determine if NULL is an expected return value.
+* @param transitionsOnly If true, only return transitions (if available), skipping
+*        any l1accepts that may be pending. Can be used by client applications to
+*        ensure reading of all transitions without also draining off any l1accepts
+*        that may otherwise be discarded. Default: false (see header)
+*
 */
+void* ShmemClient::get(int& index, size_t& size, bool& eventSkipped, bool transitionsOnly)
+{
+  index = -1;
+  size = 0;
+
+  while (1) {
+    if (::poll(_pfd, _nfd, -1) > 0) {
+          if (_pfd[0].revents & POLLIN) { // Transition
+            return _handler->transition(index, size);
+          } else if (transitionsOnly) {
+            // Application requested to skip any events (L1Accept)
+            // Instead of blocking return NULL, application must handle this
+            eventSkipped = true;
+            return NULL;
+          } else if (_pfd[1].revents & POLLIN) { // Event
+            return _handler->event(index, size);
+          }
+    }
+  }
+  return NULL;
+}
 
 void* ShmemClient::get(int& index, size_t& size)
 {

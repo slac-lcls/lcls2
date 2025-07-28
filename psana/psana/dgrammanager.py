@@ -3,6 +3,8 @@ import time
 import getopt
 import mmap
 import pprint
+import threading
+from collections import deque
 
 try:
     # doesn't exist on macos
@@ -74,7 +76,14 @@ class DgramManager(object):
         self.shm_inp_mv = None
         self.shm_res_mv = None
         self.shm_size = None
-        self.shmem_kwargs = {"index": -1, "size": 0, "cli_cptr": None}
+        self.shmem_kwargs = {
+            "index": -1,
+            "size": 0,
+            "cli_cptr": None,
+            "eventSkipped": False,    # ShmemClient sets True if transitionsOnly is True
+                                      # and an event was actually skipped.
+            "transitionsOnly": False, # Used to skip draining L1Accepts if True
+        }
         self.configs = []
         self._timestamps = []  # built when iterating
         self._run = run
@@ -104,6 +113,16 @@ class DgramManager(object):
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
                     self.set_configs([d])
+                    self._shmem_lock = threading.Lock()
+                    # Notifies consumer thread an event is available
+                    self._shmem_event = threading.Event()
+                    self._transitions = deque()
+                    # Holds the last event read from a shmem buffer
+                    self._last_event = None
+                    # If set to True, will prevent reading off new l1accept datagrams from shmem
+                    self._skip_event = False
+                    self._shmem_thread = threading.Thread(target=self._shmem_reader, daemon=True)
+                    self._shmem_thread.start()
                 elif xtc_files[0] == "drp":
                     self.det_name = self.tag.det_name
                     self.det_segment = self.tag.det_segment
@@ -413,16 +432,11 @@ class DgramManager(object):
             self.found_endrun = False
         return fake_endruns
 
-    def __next__(self):
-        """only support sequential read - no event building"""
-        if self.buffered_beginruns:
-            self.found_endrun = False
-            evt = Event(self.buffered_beginruns, run=self._run)
-            self._timestamps += [evt.timestamp]
-            self.buffered_beginruns = []
-            return evt
+    def _shmem_reader(self):
+        while True:
+            with self._shmem_lock:
+                self.shmem_kwargs["transitionsOnly"] = self._skip_event
 
-        if self.shmem_cli:
             view = self.shmem_cli.get(self.shmem_kwargs)
             if view:
                 # Release shmem buffer after copying Transition data
@@ -440,7 +454,27 @@ class DgramManager(object):
                 # use the most recent configure datagram
                 config = self.configs[len(self.configs) - 1]
                 d = dgram.Dgram(config=config, view=view)
+
+                with self._shmem_lock:
+                    if d.service() != TransitionId.L1Accept:
+                        self._transitions.append(d)
+                    else:
+                        self._last_event = d
+                        # Set this to True so if this reader thread gets back to
+                        # reading the shmem buffers before the consumption thread
+                        # has processed the data, it will not drain unneeded datagrams
+                        self._skip_event = True
+                        # Signal to consumption thread that a new L1Datagram is available
+                        self._shmem_event.set()
+            elif self.shmem_kwargs["eventSkipped"]:
+                # This only happens if we requested to skip an event, and it actually
+                # was skipped. When this happens, NULL is returned, but this is expected
+                # so continue on here normally
+                # Reset the bool so we don't get here accidentally next time
+                self.shmem_kwargs["eventSkipped"] = False
+                continue
             else:
+                # NULL for some other reason
                 view = self._connect_shmem_cli(self.tag)
                 config = self.configs[len(self.configs) - 1]
                 d = dgram.Dgram(config=config, view=view)
@@ -448,6 +482,34 @@ class DgramManager(object):
                     self.set_configs([d])
                 else:
                     raise RuntimeError(f"Configure expected, got {d.service()}")
+
+    def __next__(self):
+        """only support sequential read - no event building"""
+        if self.buffered_beginruns:
+            self.found_endrun = False
+            evt = Event(self.buffered_beginruns, run=self._run)
+            self._timestamps += [evt.timestamp]
+            self.buffered_beginruns = []
+            return evt
+
+        if self.shmem_cli:
+            with self._shmem_lock:
+                # If we were previously skipping event reads, it is now okay to replace
+                # the event buffer. This is because the __next__ method must have been
+                # called another time, so previous buffer has been used.
+                # Call now, before waiting on _shmem_event so a new event datagram can
+                # be grabbed from a shmem buffer by the reader thread.
+                self._skip_event = False
+            while True:
+                if len(self._transitions) > 0: # Can we still have a race here?
+                    with self._shmem_lock:
+                        d = self._transitions.popleft()
+                    break
+                elif self._shmem_event.is_set():
+                    with self._shmem_lock:
+                        d = self._last_event      # Grab new event
+                        self._shmem_event.clear() # Clear datagram notification
+                    break
             dgrams = [d]
         elif self.mq_inp:
             if self._stop_iteration:
