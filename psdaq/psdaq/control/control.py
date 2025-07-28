@@ -217,6 +217,9 @@ class RunParams:
                         if item[xid]['active'] != 1:
                             # skip inactive detector
                             continue
+                        if item[xid]['monitor'] == 1:
+                            # skip "monitor-only" detector
+                            continue
                         unique_id = item[xid]['proc_info']['alias']
                         alias, seg = unique_id.rsplit(sep='_', maxsplit=1)
                         if not seg.isnumeric():
@@ -1422,12 +1425,40 @@ class CollectionManager():
                 ok = False
                 err_msg = "Failed to start a run with recording enabled"
             else:
-                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':self.run_number}}
+                self.phase1Info['beginrun'] = {
+                    'run_info': {
+                        'experiment_name': self.experiment_name,
+                        'run_number': self.run_number
+                    },
+                    'monitor_info': {},
+                }
+                for level, item in self.cmstate_levels().items():
+                    if level == "drp":
+                        for xid in item.keys():
+                            try:
+                                unique_id = item[xid]['proc_info']['alias']
+                                self.phase1Info['beginrun']['monitor_info'][unique_id] = item[xid]['monitor']
+                            except Exception as err:
+                                print(f"error: {err}")
                 self.runParams.beginrun(self.experiment_name)
         else:
             # NOT RECORDING: by convention, run_number == 0
             self.run_number = 0
-            self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':0}}
+            self.phase1Info['beginrun'] = {
+                    'run_info': {
+                        'experiment_name': self.experiment_name,
+                        'run_number': 0
+                    },
+                    'monitor_info': {},
+                }
+            for level, item in self.cmstate_levels().items():
+                if level == "drp":
+                    for xid in item.keys():
+                        try:
+                            unique_id = item[xid]['proc_info']['alias']
+                            self.phase1Info['beginrun']['monitor_info'][unique_id] = item[xid]['monitor']
+                        except Exception as err:
+                            print(f"error: {err}")
 
         if not ok:
             self.report_error(err_msg)
@@ -1684,6 +1715,11 @@ class CollectionManager():
                         self.report_warning('ignoring attempt to clear the control level active flag')
                         body[level][key2]['active'] = 1
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
+                    self.cmstate[level][int(key2)]['monitor'] = body[level][key2]['monitor']
+                    if body[level][key2]['monitor']:
+                        alias = body[level][key2]['proc_info']['alias']
+                        responder = f'{level}/{alias}'
+                        self.report_warning(f"{responder} set to MONITOR ONLY.")
                     if level == 'drp' or level == 'tpr':
                         # drp readout group
                         self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
