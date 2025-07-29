@@ -121,6 +121,7 @@ class DgramManager(object):
                     self._last_event = None
                     # If set to True, will prevent reading off new l1accept datagrams from shmem
                     self._skip_event = False
+                    self._last_disable_ts = 0
                     self._shmem_thread = threading.Thread(target=self._shmem_reader, daemon=True)
                     self._shmem_thread.start()
                 elif xtc_files[0] == "drp":
@@ -456,8 +457,10 @@ class DgramManager(object):
                 d = dgram.Dgram(config=config, view=view)
 
                 with self._shmem_lock:
-                    if d.service() != TransitionId.L1Accept:
+                    if (transition_id := d.service()) != TransitionId.L1Accept:
                         self._transitions.append(d)
+                        if transition_id == TransitionId.Disable:
+                            self._last_disable_ts = d.timestamp()
                     else:
                         self._last_event = d
                         # Set this to True so if this reader thread gets back to
@@ -509,6 +512,10 @@ class DgramManager(object):
                     with self._shmem_lock:
                         d = self._last_event      # Grab new event
                         self._shmem_event.clear() # Clear datagram notification
+                        # Check if you have a newer disable
+                        if self._last_disable_ts > d.timestamp():
+                            # Just continue, there should be a disable in the queue now
+                            continue
                     break
             dgrams = [d]
         elif self.mq_inp:
