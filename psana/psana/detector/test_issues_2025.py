@@ -1296,7 +1296,22 @@ def issue_2025_07_23():
     #calib_const = wu.calib_constants_all_types(longname, run=runnum)
     print('calib_const.keys:', calib_const.keys())
 
+def issue_2025_07_29():
+    """ cpo - epix10ka missing geometry
 
+        datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
+    """
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq123',run=192)
+    myrun = next(ds.runs())
+    epix = myrun.Detector('epix10ka')
+    for nevt,evt in enumerate(myrun.events()):
+        print(epix.raw.raw(evt).shape)
+        print(epix.raw.image(evt))
+        if nevt>10: break
+
+
+    
 #===
     
 #===
@@ -1370,6 +1385,7 @@ def selector():
     elif TNAME in ('35',): issue_2025_07_16() # test for runs validity tool
     elif TNAME in ('36',): issue_2025_07_22() # test time to get shortname from longname
     elif TNAME in ('37',): issue_2025_07_23() # test wu.calib_constants_all_types
+    elif TNAME in ('38',): issue_2025_07_29() # cpo - epix10ka missing geometry
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
