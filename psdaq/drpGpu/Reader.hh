@@ -42,10 +42,10 @@ public:
   MemPool& pool()  const { return m_pool; }
   RingIndexDtoD* queue() { return m_readerQueue.d; }
 private:
-  int         _setupGraphs(int instance);
-  cudaGraph_t _recordGraph(cudaStream_t& stream,
-                           CUdeviceptr   hwWritePtr,
-                           CUdeviceptr   hwWriteStart);
+  int         _setupGraphs(unsigned instance);
+  cudaGraph_t _recordGraph(unsigned    instance,
+                           CUdeviceptr hwWritePtr,
+                           CUdeviceptr hwWriteStart);
   void        _reader(Detector&, ReaderMetrics&);
 private:
   MemPoolGpu&                  m_pool;
@@ -53,7 +53,6 @@ private:
   const cuda::atomic<int>&     m_terminate_d;
   bool*                        m_done;      // Cache for m_terminate_d
   std::vector<cudaStream_t>    m_streams;
-  std::vector<cudaGraph_t>     m_graphs; // @todo: Goes away?
   std::vector<cudaGraphExec_t> m_graphExecs;
   Ptr<RingIndexDtoD>           m_readerQueue;
   unsigned*                    m_head[MAX_BUFFERS];

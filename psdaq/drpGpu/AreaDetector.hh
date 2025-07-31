@@ -17,7 +17,7 @@ public:
   Gpu::Detector* gpuDetector() override { return this; }
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
-  size_t event(XtcData::Dgram&, const void* bufEnd, unsigned payloadSize) override;
+  void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
   void recordGraph(cudaStream_t&                      stream,
@@ -25,7 +25,12 @@ public:
                    const unsigned                     panel,
                    uint16_t const* const __restrict__ data) override;
 private:
-  enum {FexNamesIndex = NamesIndex::BASE};
+  // @todo: Revisit: Must match detector definition
+  enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
+  enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
+         EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
+         FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
+         ReducerNamesIndex };         // index for xtc NamesId
 private:
   unsigned m_nPixels;
 };

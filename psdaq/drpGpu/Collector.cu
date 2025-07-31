@@ -30,7 +30,6 @@ Collector::Collector(const Parameters&         para,
   m_triggerPrimitive(triggerPrimitive),
   m_terminate_h     (terminate_h),
   m_terminate_d     (terminate_d),
-  m_graph           (0),
   m_last            (0),
   m_lastPid         (0),
   m_latPid          (0),
@@ -49,7 +48,7 @@ Collector::Collector(const Parameters&         para,
   chkError(cudaMalloc(&m_collectorQueue.d,                     sizeof(*m_collectorQueue.d)));
   chkError(cudaMemcpy( m_collectorQueue.d, m_collectorQueue.h, sizeof(*m_collectorQueue.d), cudaMemcpyHostToDevice));
 
-  /** Create the Collector EB stream **/
+  // Create the Collector EB stream
   chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
   logging::debug("Done with creating collector stream");
 
@@ -74,7 +73,6 @@ Collector::~Collector()
 {
   printf("*** Collector dtor 1\n");
   chkError(cudaGraphExecDestroy(m_graphExec));
-  chkError(cudaGraphDestroy(m_graph)); // @todo: Goes away?
   printf("*** Collector dtor 2\n");
 
   chkError(cudaFree(m_tail));
@@ -99,31 +97,30 @@ int Collector::_setupGraph()
 {
   printf("*** Collector setupGraph 1\n");
   // Build the graph
-  if (m_graph == 0) {        // @todo: Graphs can be created on the stack
-    logging::debug("Recording collector graph");
-    auto& hostWriteBufs = m_pool.hostWrtBufsVec_h();
-    for (unsigned panel = 0; panel < m_pool.panels().size(); ++panel) {
-      printf("*** Collector setupGraph attach 1: panel %u, sz %zu\n", panel, m_collectorQueue.h->size());
-      // hostWriteBufs[panel][0] is the base pointer for the entire allocation, i.e., all nBuffers
-      chkError(cudaStreamAttachMemAsync(m_stream, hostWriteBufs[panel][0], 0, cudaMemAttachHost));
-      printf("*** Collector setupGraph attach 2\n");
-    }
-    printf("*** Collector setupGraph 2\n");
-    m_graph = _recordGraph(m_stream);
-    if (m_graph == 0)
-      return -1;
+  logging::debug("Recording collector graph");
+  auto& hostWriteBufs = m_pool.hostWrtBufsVec_h();
+  for (unsigned panel = 0; panel < m_pool.panels().size(); ++panel) {
+    printf("*** Collector setupGraph attach 1: panel %u, sz %zu\n", panel, m_collectorQueue.h->size());
+    // hostWriteBufs[panel][0] is the base pointer for the entire allocation, i.e., all nBuffers
+    chkError(cudaStreamAttachMemAsync(m_stream, hostWriteBufs[panel][0], 0, cudaMemAttachHost));
+    printf("*** Collector setupGraph attach 2\n");
+  }
+  printf("*** Collector setupGraph 2\n");
+  cudaGraph_t graph = _recordGraph(m_stream);
+  if (graph == 0) {
+    return -1;
   }
   printf("*** Collector setupGraph 3\n");
 
   // Instantiate the graph
-  if (chkError(cudaGraphInstantiate(&m_graphExec, m_graph, cudaGraphInstantiateFlagDeviceLaunch),
+  if (chkError(cudaGraphInstantiate(&m_graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
                "Collector graph create failed")) {
     return -1;
   }
   printf("*** Collector setupGraph 4\n");
 
-  // @todo: No need to hang on to the stream info
-  //cudaGraphDestroy(m_graph);
+  // No need to hang on to the stream info
+  cudaGraphDestroy(graph);
 
   // Upload the graph so it can be launched by the scheduler kernel later
   logging::debug("Uploading Collector graph...");
@@ -144,7 +141,7 @@ static __global__ void _collector(unsigned*         __restrict__ head,
                                   const cuda::atomic<int>&       terminate,
                                   bool*             __restrict__ done)
 {
-  printf("*** _collector 1 tail %u, head %u\n", *tail, *head);
+  printf("### _collector 1 tail %u, head %u\n", *tail, *head);
   int panel = blockIdx.x * blockDim.x + threadIdx.x;
 
   // Refresh the head if the tail has caught up to it
@@ -152,7 +149,7 @@ static __global__ void _collector(unsigned*         __restrict__ head,
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
   if (*tail == *head) {
-    printf("*** _collector 2\n");
+    printf("### _collector 2\n");
     __shared__ unsigned hd0;
 
     // Get one intermediate buffer index per FPGA
@@ -160,13 +157,13 @@ static __global__ void _collector(unsigned*         __restrict__ head,
     while ((hdN = readerQueues[panel].consume()) == *head) { // This can block
       if ( (*done = terminate.load(cuda::memory_order_acquire)) )  return;
     }
-    printf("*** _collector 3, hdN %u\n", hdN);
+    printf("### _collector 3, hdN %u\n", hdN);
     if (panel == 0)  hd0 = hdN;
 
-    printf("*** _collector 4, hd0 %u\n", hd0);
+    printf("### _collector 4, hd0 %u\n", hd0);
     // @todo: grp.sync();
     __syncthreads();
-    printf("*** _collector 5\n");
+    printf("### _collector 5\n");
 
     if (hdN != hd0) {                   // Do this even for panel == 0?
       printf("Index mismatch for FPGA[%u]: %u != %u", panel, hdN, hd0);
@@ -176,14 +173,14 @@ static __global__ void _collector(unsigned*         __restrict__ head,
     if (panel == 0) *head = hdN;
   }
 
-  printf("*** _collector 6, tail %u, head %u\n", *tail, *head);
-  printf("*** _collector 6a, in %p\n", in);
-  printf("*** _collector 6b, in[%u] %p\n", panel, in[panel]);
-  printf("*** _collector 6c, in[%u][%u] %p\n", panel, *tail, in[panel][*tail]);
-  printf("*** _collector 6d, in[%u][%u][0] %08x\n", panel, *tail, in[panel][*tail][0]);
-  printf("*** _collector 6e, in[%u][%u][1] %08x\n", panel, *tail, in[panel][*tail][1]);
-  printf("*** _collector 6f, in[%u][%u][8] %08x\n", panel, *tail, in[panel][*tail][8]);
-  printf("*** _collector 6g, in[%u][%u][9] %08x\n", panel, *tail, in[panel][*tail][9]);
+  printf("### _collector 6, tail %u, head %u\n", *tail, *head);
+  printf("### _collector 6a, in %p\n", in);
+  printf("### _collector 6b, in[%u] %p\n", panel, in[panel]);
+  printf("### _collector 6c, in[%u][%u] %p\n", panel, *tail, in[panel][*tail]);
+  printf("### _collector 6d, in[%u][%u][0] %08x\n", panel, *tail, in[panel][*tail][0]);
+  printf("### _collector 6e, in[%u][%u][1] %08x\n", panel, *tail, in[panel][*tail][1]);
+  printf("### _collector 6f, in[%u][%u][8] %08x\n", panel, *tail, in[panel][*tail][8]);
+  printf("### _collector 6g, in[%u][%u][9] %08x\n", panel, *tail, in[panel][*tail][9]);
 
   // Check that the Pulse ID is the same for all FPGAs
   const unsigned  thOs = sizeof(DmaDsc) / sizeof(***in);
@@ -194,7 +191,7 @@ static __global__ void _collector(unsigned*         __restrict__ head,
     printf("Pulse ID mismatch for FPGA[%u] @ index %u: %014lx != %014lx", panel, *tail, pidN, pid0);
     return;                             // abort(); ???
   }
-  printf("*** _collector 7, pid %014lx, env %08x\n", pid0, in[0][*tail][thOs+4]);
+  printf("### _collector 7, pid %014lx, env %08x\n", pid0, in[0][*tail][thOs+4]);
 
   // @todo: Copy only one device's DmaDsc and TimingHeader to the host?
   //        Currently, these are in managed memory, which resides on the device
@@ -209,16 +206,16 @@ static __global__ void _graphLoop(unsigned*      idx,
                                   RingIndexDtoH& collectorQueue,
                                   const bool&    done)
 {
-  printf("*** Collector graphLoop 1\n");
+  printf("### Collector graphLoop 1\n");
   if (done)  return;
-  printf("*** Collector graphLoop 1a, idx %u\n", *idx);
+  printf("### Collector graphLoop 1a, idx %u\n", *idx);
 
   // Push index to host
   *idx = collectorQueue.produce(*idx);
-  printf("*** Collector graphLoop 2, idx %u\n", *idx);
+  printf("### Collector graphLoop 2, idx %u\n", *idx);
 
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  printf("*** Collector graphLoop 3\n");
+  printf("### Collector graphLoop 3\n");
 }
 
 cudaGraph_t Collector::_recordGraph(cudaStream_t& stream)

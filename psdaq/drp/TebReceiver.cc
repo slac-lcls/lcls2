@@ -82,7 +82,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
         }
     }
 
-    m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+    m_evtSize = sizeof(Dgram) + dgram->xtc.sizeofPayload();
 
     // Measure latency before sending dgram for monitoring
     if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz

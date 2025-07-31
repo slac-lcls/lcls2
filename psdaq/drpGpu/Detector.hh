@@ -26,12 +26,8 @@ public:
   unsigned beginstep(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& stepInfo) override;
   unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
   unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
-  //void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override { /* Defaulted */ };
   using Drp::Detector::event;
-  void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override { /* Not used */ }
   void shutdown() override;
-
-  virtual size_t event(XtcData::Dgram& dgram, const void* bufEnd, unsigned payloadSize) = 0;
 
   // @todo: What to do about these?
   //// Scan methods.  Default is to fail.

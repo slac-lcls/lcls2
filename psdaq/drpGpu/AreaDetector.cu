@@ -26,21 +26,21 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event, uint64_t count) override { /* Not used */ }
+  void event(Dgram&, const void* bufEnd, Drp::PGPEvent*, uint64_t count) override { /* Not used */ }
 };
 
-class FexDef : public VarDef
+class RawDef : public VarDef
 {
 public:
   enum index
   {
-    fex
+    raw
   };
 
-  FexDef()
+  RawDef()
   {
-    Alg fex("fex", 0, 0, 0);
-    NameVec.push_back({"fex", Name::UINT8, 1});
+    Alg raw("raw", 0, 0, 0);
+    NameVec.push_back({"raw", Name::UINT8, 1});
   }
 };
   } // Gpu
@@ -72,7 +72,7 @@ AreaDetector::~AreaDetector()
   printf("*** AreaDetector dtor 1\n");
   auto pool = m_pool->getAs<MemPoolGpu>();
   pool->destroyCalibBuffers();
-  printf("*** AreaDetector dtor 4\n");
+  printf("*** AreaDetector dtor 2\n");
 }
 
 unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
@@ -82,74 +82,39 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
 
   // Configure the XpmDetector for each panel in turn
   // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
-  unsigned i = 0;
+  unsigned panel = 0;
   for (const auto& det : m_dets) {
-    printf("*** Gpu::AreaDetector configure for %u start\n", i);
+    printf("*** Gpu::AreaDetector configure for %u start\n", panel);
     rc = det->configure(config_alias, xtc, bufEnd);
-    printf("*** Gpu::AreaDetector configure for %u done: rc %d, sz %u\n", i, rc, xtc.sizeofPayload());
+    printf("*** Gpu::AreaDetector configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
     if (rc) {
-      logging::error("Gpu::AreaDetector::configure failed for %s\n", m_params[i].device);
+      logging::error("Gpu::AreaDetector::configure failed for %s\n", m_params[panel].device);
       break;
     }
-    ++i;
+    ++panel;
   }
 
-  Alg fexAlg("fex", 0, 0, 0);
-  NamesId fexNamesId(nodeId, FexNamesIndex);
-  Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
-                                            m_para->detName.c_str(), fexAlg,
-                                            m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
-  FexDef myFexDef;
-  fexNames.add(xtc, bufEnd, myFexDef);
-  m_namesLookup[fexNamesId] = NameIndex(fexNames);
+#if 0  // @todo: Deal with prescaled raw or calibrated data for each panel here?
+  Alg alg("raw", 0, 0, 0);
+  NamesId namesId(nodeId, EventNamesIndex + panel);
+  Names& names = *new(xtc, bufEnd) Names(bufEnd,
+                                         m_para->detName.c_str(), alg,
+                                         m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
+  RawDef dataDef;
+  names.add(xtc, bufEnd, dataDef);
+  m_namesLookup[namesId] = NameIndex(names);
 
   logging::info("Gpu::AreaDetector configure: xtc size %u", xtc.sizeofPayload());
+#endif
 
   return 0;
 }
 
-size_t AreaDetector::event(Dgram& dgram, const void* bufEnd, unsigned payloadSize)
+void AreaDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t count)
 {
-  // The Dgram header is constructed in the pebble buffer, and this buffer is
-  // not used to hold all of the data.  However, bufEnd needs to point to a
-  // location that makes it seem like the buffer is big enough to contain both
-  // the header and data so that the Xtc allocate in fex.set_array_shape() can
-  // succeed.  This may be larger than the pebble buffer and we therefore must
-  // be careful not to write beyond its end.  This is checked for below.
-  logging::info("Gpu::AreaDetector event: dg %p, extent %u, size %u", &dgram, dgram.xtc.extent, payloadSize);
+  logging::info("Gpu::AreaDetector event");
 
-  // FEX is Reduced data
-  NamesId fexNamesId(nodeId, FexNamesIndex);
-  CreateData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
-
-  // CreateData places into the Dgram, in one contiguous block:
-  // - the ShapesData Xtc
-  // - the Shapes Xtc with its payload
-  // - the Data Xtc (the payload of which is on the GPU)
-  // Measure the size of the header block
-  auto headerSize = (uint8_t*)dgram.xtc.next() - (uint8_t*)&dgram;
-  printf("*** Gpu::AreaDetector event: payloadSz %u, length %p - %p = %zd\n",
-         dgram.xtc.sizeofPayload(), dgram.xtc.next(), &dgram, headerSize);
-
-  auto pool = m_pool->getAs<MemPoolGpu>();
-  // Make sure the header will fit in the space reserved for it on the GPU
-  if (size_t(headerSize) > pool->reduceBufReserved()) {
-    logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
-                      headerSize, pool->reduceBufReserved());
-    abort();
-  }
-  // Make sure the header fits in the pebble buffer
-  if (size_t(headerSize) > pool->pebble.bufferSize()) {
-    logging::critical("Header is too large (%zu) for pebble buffer (%zu)",
-                      headerSize, pool->pebble.bufferSize());
-    abort();
-  }
-
-  // Update the header with the size and shape of the data payload
-  // This does not write beyond headerSize bytes into the pebble buffer
-  unsigned fex_shape[MaxRank] = { payloadSize };
-  fex.set_array_shape(FexDef::fex, fex_shape);
-  return headerSize;
+  // @todo: Deal with prescaled raw or calibrated data for each panel here?
 }
 
 // This kernel performs the data calibration

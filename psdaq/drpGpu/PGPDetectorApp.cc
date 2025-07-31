@@ -351,6 +351,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             else {
                 m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
                 m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp->reducerConfigure(xtc, bufEnd);
             }
         }
     }

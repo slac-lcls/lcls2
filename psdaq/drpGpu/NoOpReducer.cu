@@ -2,53 +2,56 @@
 
 #include "GpuAsyncLib.hh"
 #include "MemPool.hh"
+#include "Detector.hh"
 #include "drp/drp.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "psalg/utils/SysLog.hh"
 
+using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
 
-#if 0 // @todo: Revisit
 namespace Drp {
   namespace Gpu {
 
-#define ADD_FIELD(name,ntype,ndim)  NameVec.push_back({#name, Name::ntype, ndim})
+class NoOpReducerDef : public VarDef
+{
+public:
+  enum index { noOp };
 
-    class NoOpReducerDef : public VarDef
-    {
-    public:
-      enum index { raw, numfields };
-
-      NoOpReducerDef() {
-        ADD_FIELD(noOp, UINT8, 0);
-      }
-    } noOpReducerDef;
+  NoOpReducerDef()
+  {
+    NameVec.push_back({"noOp", Name::UINT8, 1});
+  }
+};
   } // Gpu
 } // Drp
-#endif
 
 
-NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool) :
-  ReducerAlgo(para, pool, Alg("NoOp", 0, 0, 0)),
+NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
+  ReducerAlgo(para, pool, det),
   _calibSize(pool.calibBufSize())
 {
 }
 
+// GPU kernel for actually performing the data reduction
+// In this case, the calibrated data is just copied to the output buffer
 static __global__ void _noOpReduce(const unsigned&              index,
                                    float**   const __restrict__ calibBuffers,
                                    uint8_t** const __restrict__ dataBuffers,
                                    unsigned  const              count)
 {
-  printf("*** noOpReduce 1, &index %p\n", &index);
-  printf("*** noOpReduce 1,  index %u\n", index);
+  printf("### noOpReduce 1, &index %p\n", &index);
+  printf("### noOpReduce 1,  index %u\n", index);
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   float* __restrict__ calib = calibBuffers[index];
   float* __restrict__ data  = (float*)(dataBuffers[index]);
-  printf("*** noOpReduce 2, count %u\n", count);
+  printf("### noOpReduce 2, count %u\n", count);
   for (unsigned i = offset; i < count; i += blockDim.x * gridDim.x) {
     data[i] = calib[i];
   }
-  *(uint32_t*)data = 0xdeadbeef;        // @todo: temporary!
-  printf("*** noOpReduce 3\n");
+  printf("### noOpReduce 3\n");
 }
 
 // This routine records the graph that does the data reduction
@@ -68,34 +71,51 @@ void NoOpReducer::recordGraph(cudaStream_t&   stream,
   *extent = _calibSize;
 }
 
-# if 0 // @todo: Revisit
-unsigned NoOpReducer::configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
+unsigned NoOpReducer::configure(Xtc& xtc, const void* bufEnd)
 {
-  // copy the detName, detType, detId from the Config Names
-  Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
+  // Set up the names for L1Accept data
+  Alg alg("noOp", 0, 0, 0);
+  NamesId namesId(m_det.nodeId, ReducerNamesIndex);
+  Names& names = *new(xtc, bufEnd) Names(bufEnd,
+                                         m_para.detName.c_str(), alg,
+                                         m_para.detType.c_str(), m_para.serNo.c_str(), namesId, m_para.detSegment);
+  NoOpReducerDef reducerDef;
+  names.add(xtc, bufEnd, reducerDef);
+  m_det.namesLookup()[namesId] = NameIndex(names);
 
-  // set up the names for L1Accept data
-  // Generic panel data
- {
-   Alg alg("noOp", 0, 0, 0);
-   m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
-   logging::debug("Constructing panel eventNames src 0x%x", unsigned(m_evtNamesId[0]));
-   Names& names = *new(xtc, bufEnd) Names(bufEnd,
-                                          configNames.detName(), alg,
-                                          configNames.detType(), configNames.detId(), m_evtNamesId[0], m_para->detSegment);
-   names.add(xtc, bufEnd, NoOpReduceDef);
-   m_namesLookup[m_evtNamesId[0]] = NameIndex(names);
- }
+ return 0;
 }
 
-void NoOpReducer::event(Xtc& xtc, const void* bufEnd)
+void NoOpReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
 {
+  // The Xtc header is constructed in the CPU's pebble buffer, but this buffer
+  // is not used to hold all of the data.  However, bufEnd has to point to a
+  // location that makes it appear that the buffer is large enough to contain
+  // both the header and data so that the Xtc allocate in data.set_array_shape()
+  // can succeed.  This may be larger than the pebble buffer and we therefore
+  // must be careful not to write beyond its end.
+  logging::info("NoOpReducer event: xtc %p, extent %u, size %u", &xtc, xtc.extent, dataSize);
+
+  // Data is Reduced data
+  NamesId namesId(m_det.nodeId, ReducerNamesIndex);
+
+  // CreateData places into the Xtc, in one contiguous block:
+  // - the ShapesData Xtc
+  // - the Shapes Xtc with its payload
+  // - the Data Xtc (the payload of which is on the GPU)
+  CreateData data(xtc, bufEnd, m_det.namesLookup(), namesId);
+
+  // Update the header with the size and shape of the data payload.
+  // This does not write beyond the Xtc header in the pebble buffer.
+  unsigned dataShape[MaxRank] = { dataSize };
+  data.set_array_shape(NoOpReducerDef::noOp, dataShape);
 }
-#endif
 
 // The class factory
 
-extern "C" Drp::Gpu::ReducerAlgo* createReducer(const Drp::Parameters& para, const Drp::Gpu::MemPoolGpu& pool)
+extern "C" Drp::Gpu::ReducerAlgo* createReducer(const Drp::Parameters&      para,
+                                                const Drp::Gpu::MemPoolGpu& pool,
+                                                Drp::Gpu::Detector&         det)
 {
-  return new Drp::Gpu::NoOpReducer(para, pool);
+  return new Drp::Gpu::NoOpReducer(para, pool, det);
 }

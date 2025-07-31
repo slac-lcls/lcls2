@@ -53,26 +53,26 @@ public:
 //    //
 //    //auto next = (idx+1) & (m_capacity-1);
 //    //
-//    ////printf("*** DtoH rb::prepare 1, cursor %d\n", m_cursor->load());
-//    ////printf("*** DtoH rb::prepare 2, next %d\n", next);
+//    ////printf("### DtoH rb::prepare 1, cursor %d\n", m_cursor->load());
+//    ////printf("### DtoH rb::prepare 2, next %d\n", next);
 //    //m_cursor->store(next, cuda::memory_order_release);
-//    ////printf("*** DtoH rb::prepare 3, cursor %d, ret %d\n", m_cursor->load(), idx);
+//    ////printf("### DtoH rb::prepare 3, cursor %d, ret %d\n", m_cursor->load(), idx);
 //    m_head->store(idx, cuda::memory_order_release);      // Advance new head
 //    return idx;                                          // Caller now handles buffer[idx]
 //  }
 
   __device__ unsigned produce(unsigned idx)              // Move  head forward
   {
-    printf("*** DtoH rb::produce 1, idx %d, head %d\n", idx, m_head->load());
+    printf("### DtoH rb::produce 1, idx %d, head %d\n", idx, m_head->load());
     auto next = (idx+1)&(m_capacity-1);
-    printf("*** DtoH rb::produce 2, nxt %d\n", next);
+    printf("### DtoH rb::produce 2, nxt %d\n", next);
     //while (m_tail->load(cuda::memory_order_acquire) == next) { // Wait for tail to advance while full
     //  if (m_terminate_d.load(cuda::memory_order_acquire))
     //    break;
     //}
-    printf("*** DtoH rb::produce 3, tail %d\n", m_tail->load());
+    printf("### DtoH rb::produce 3, tail %d\n", m_tail->load());
     m_head->store(next, cuda::memory_order_release);     // Publish new head
-    printf("*** DtoH rb::produce 4, head %d\n", m_head->load());
+    printf("### DtoH rb::produce 4, head %d\n", m_head->load());
     return next;
   }
 

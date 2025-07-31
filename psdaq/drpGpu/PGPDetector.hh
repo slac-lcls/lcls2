@@ -34,6 +34,12 @@ class RingIndexDtoD;
 class RingIndexDtoH;
 class RingIndexHtoD;
 
+struct ResultItems
+{
+  unsigned                    index;
+  const Pds::Eb::ResultDgram* result;
+};
+
 class TebReceiver: public Drp::TebReceiverBase
 {
 public:
@@ -43,27 +49,27 @@ public:
   ~TebReceiver() override;
   FileWriterBase& fileWriter() override { return *m_fileWriter; }
   SmdWriterBase& smdWriter() override { return *m_smdWriter; };
-  void setupReducers(std::shared_ptr<Collector>);
+  void setup(std::shared_ptr<Collector>, std::shared_ptr<Reducer>);
 protected:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels) override;
   void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
   void _recorder();
-  void _writeDgram(XtcData::Dgram*, void* devPtr, size_t size);
+  void _writeDgram(XtcData::Dgram*, void* devPtr);
 private:
-  std::vector<Reducer>                   m_reducers;
-  Pds::Eb::MebContributor&               m_mon;
-  const std::atomic<bool>&               m_terminate_h;    // Avoid PCIe transfer of _d
-  const cuda::atomic<int>&               m_terminate_d;    // Managed memory pointer
-  cudaStream_t                           m_stream;
-  std::unique_ptr<FileWriterAsync>       m_fileWriter;
-  std::unique_ptr<Drp::SmdWriter>        m_smdWriter;
-  unsigned                               m_reducer;   // For cycling through reducers
-  SPSCQueue<const Pds::Eb::ResultDgram*> m_resultQueue;
-  std::shared_ptr<Collector>             m_collector;
-  std::thread                            m_recorderThread;
-  const Parameters&                      m_para;
+  std::shared_ptr<Reducer>         m_reducer;
+  Pds::Eb::MebContributor&         m_mon;
+  const std::atomic<bool>&         m_terminate_h;    // Avoid PCIe transfer of _d
+  const cuda::atomic<int>&         m_terminate_d;    // Managed memory pointer
+  cudaStream_t                     m_stream;
+  std::unique_ptr<FileWriterAsync> m_fileWriter;
+  std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
+  unsigned                         m_worker;   // For cycling through reducers
+  SPSCQueue<ResultItems>           m_resultQueue;
+  std::shared_ptr<Collector>       m_collector;
+  std::thread                      m_recorderThread;
+  const Parameters&                m_para;
 };
 
 class PGPDrp : public DrpBase
@@ -73,6 +79,8 @@ public:
   virtual ~PGPDrp();
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
+  void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
+  { m_reducer->configure(xtc, bufEnd); }
 protected:
   void pgpFlush() override;
 private:
@@ -85,6 +93,7 @@ private:
   cuda::atomic<int>*         m_terminate_d;    // Managed memory pointer
   std::vector<Reader>        m_readers;        // One reader per panel
   std::shared_ptr<Collector> m_collector;
+  std::shared_ptr<Reducer>   m_reducer;
   std::thread                m_collectorThread;
   uint64_t                   m_nNoTrDgrams;
   ReaderMetrics              m_wkrMetrics;

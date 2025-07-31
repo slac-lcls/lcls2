@@ -78,7 +78,6 @@ private:
   const cuda::atomic<int>&     m_terminate_d;
   bool*                        m_done;      // Cache for m_terminate_d
   cudaStream_t                 m_stream;
-  cudaGraph_t                  m_graph; // @todo: Goes away?
   cudaGraphExec_t              m_graphExec;
   RingIndexDtoD*               m_readerQueues_d; // A device pointer to [nPanels]
   Ptr<RingIndexDtoH>           m_collectorQueue;

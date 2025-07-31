@@ -9,18 +9,16 @@ namespace Drp {
 class NoOpReducer : public ReducerAlgo
 {
 public:
-  NoOpReducer(const Parameters& para, const MemPoolGpu& pool);
+  NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~NoOpReducer() {}
 
-  virtual void recordGraph(cudaStream_t&   stream,
-                           const unsigned& index,
-                           float**   const calibBuffer,
-                           uint8_t** const dataBuffer,
-                           unsigned*       extent) override;
-#if 0 // @todo: Revisit
-  virtual unsigned configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
-  virtual void     event    (XtcData::Xtc&, const void* bufEnd) override;
-#endif
+  void recordGraph(cudaStream_t&   stream,
+                   const unsigned& index,
+                   float**   const calibBuffer,
+                   uint8_t** const dataBuffer,
+                   unsigned*       extent) override;
+  unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
+  void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
   size_t _calibSize;                    // Bytes
 };

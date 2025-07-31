@@ -25,21 +25,21 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(XtcData::Dgram& dgram, const void* bufEnd, Drp::PGPEvent* event, uint64_t count) override { /* Not used */ }
+  void event(XtcData::Dgram&, const void* bufEnd, Drp::PGPEvent*, uint64_t count) override { /* Not used */ }
 };
 
-class FexDef : public VarDef
+class RawDef : public VarDef
 {
 public:
   enum index
     {
-      array_fex
+      array_raw
     };
 
-  FexDef()
+  RawDef()
   {
-    Alg fex("fex", 0, 0, 0);
-    NameVec.push_back({"array_fex", Name::UINT8, 1});
+    Alg raw("raw", 0, 0, 0);
+    NameVec.push_back({"array_raw", Name::UINT8, 1});
   }
 };
   } // Gpu
@@ -76,11 +76,9 @@ EpixUHRemu::~EpixUHRemu()
   }
   printf("*** EpixUHRemu dtor 2\n");
 
-  printf("*** EpixUHRemu dtor 3\n");
-
   auto pool = m_pool->getAs<MemPoolGpu>();
   pool->destroyCalibBuffers();
-  printf("*** EpixUHRemu dtor 4\n");
+  printf("*** EpixUHRemu dtor 3\n");
 }
 
 unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
@@ -90,44 +88,37 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
 
   // Configure the XpmDetector for each panel in turn
   // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
-  unsigned i = 0;
+  unsigned panel = 0;
   for (const auto& det : m_dets) {
-    printf("*** Gpu::EpixUHRemu configure for %u start\n", i);
+    printf("*** Gpu::EpixUHRemu configure for %u start\n", panel);
     rc = det->configure(config_alias, xtc, bufEnd);
-    printf("*** Gpu::EpixUHRemu configure for %u done: rc %d, sz %u\n", i, rc, xtc.sizeofPayload());
+    printf("*** Gpu::EpixUHRemu configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
     if (rc) {
-      logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_params[i].device);
+      logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_params[panel].device);
       break;
     }
-    ++i;
+    ++panel;
   }
 
-  Alg fexAlg("fex", 0, 0, 0);
-  NamesId fexNamesId(nodeId, FexNamesIndex);
-  Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
-                                            m_para->detName.c_str(), fexAlg,
-                                            m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
-  FexDef myFexDef;
-  fexNames.add(xtc, bufEnd, myFexDef);
-  m_namesLookup[fexNamesId] = NameIndex(fexNames);
+  Alg alg("raw", 0, 0, 0);
+  NamesId namesId(nodeId, EventNamesIndex); // + panel);
+  Names& names = *new(xtc, bufEnd) Names(bufEnd,
+                                         m_para->detName.c_str(), alg,
+                                         m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
+  RawDef dataDef;
+  names.add(xtc, bufEnd, dataDef);
+  m_namesLookup[namesId] = NameIndex(names);
 
   logging::info("Gpu::EpixUHRemu configure: xtc size %u", xtc.sizeofPayload());
 
   return 0;
 }
 
-size_t EpixUHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, unsigned payloadSize)
+void EpixUHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t count)
 {
   logging::info("Gpu::EpixUHRemu event");
 
-  // FEX is Reduced data
-  NamesId fexNamesId(nodeId, FexNamesIndex);
-  DescribedData fex(dgram.xtc, bufEnd, m_namesLookup, fexNamesId);
-
-  fex.set_data_length(payloadSize);
-  unsigned fex_shape[MaxRank] = {payloadSize};
-  fex.set_array_shape(FexDef::array_fex, fex_shape);
-  return (uint8_t*)fex.data() - (uint8_t*)&dgram;
+  // @todo: Deal with prescaled raw or calibrated data for each panel here?
 }
 
 unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)

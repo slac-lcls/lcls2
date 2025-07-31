@@ -58,26 +58,26 @@ public:
 
   __device__ unsigned consume()                          // Return current head
   {
-    //printf("*** HtoD rb::consume 1\n");
+    //printf("### HtoD rb::consume 1\n");
     auto tail = m_tail->load(cuda::memory_order_acquire);
-    //printf("*** HtoD rb::consume 2, tail %d, head %d\n", tail, m_head->load(cuda::memory_order_acquire));
+    //printf("### HtoD rb::consume 2, tail %d, head %d\n", tail, m_head->load(cuda::memory_order_acquire));
     unsigned idx;
     while (tail == (idx = m_head->load(cuda::memory_order_acquire))) { // Wait for head to advance while empty
-      //printf("*** HtoD rb::consume idx %d\n", idx);
+      //printf("### HtoD rb::consume idx %d\n", idx);
       if (m_terminate_d.load(cuda::memory_order_acquire))
         break;
     }
-    //printf("*** HtoD rb::consume 3, idx %d\n", idx);
+    //printf("### HtoD rb::consume 3, idx %d\n", idx);
     return idx;                                          // Caller now processes buffer[idx]
   }
 
   __device__ void release(const unsigned idx)            // Move tail forward
   {
-    printf("*** HtoD rb::release 1, idx %d\n", idx);
+    printf("### HtoD rb::release 1, idx %d\n", idx);
     assert(idx == m_tail->load(cuda::memory_order_acquire)); // Require in-order freeing
-    printf("*** HtoD rb::release 2, cap %d\n", m_capacity);
+    printf("### HtoD rb::release 2, cap %d\n", m_capacity);
     m_tail->store((idx+1)&(m_capacity-1), cuda::memory_order_release); // Publish new tail
-    printf("*** HtoD rb::release 3, tail %d\n", m_tail->load());
+    printf("### HtoD rb::release 3, tail %d\n", m_tail->load());
   }
 
   size_t size()
