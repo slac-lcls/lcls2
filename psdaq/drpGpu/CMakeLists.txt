@@ -36,7 +36,7 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(drp_gpu
         PGPDetectorApp.cc
-        PGPDetector.cu
+        PGPDetector.cc
         Reader.cu
         Collector.cu
         Reducer.cu
