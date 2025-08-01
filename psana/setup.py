@@ -140,6 +140,7 @@ if 'PSANA' in BUILD_LIST :
             'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
             'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
             'cdb                 = psana.pscalib.app.cdb:cdb_cli',
+            'cdb2                = psana.pscalib.app.cdb2:cdb_cli',
             'proc_info           = psana.pscalib.app.proc_info:do_main',
             'proc_control        = psana.pscalib.app.proc_control:do_main',
             'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
