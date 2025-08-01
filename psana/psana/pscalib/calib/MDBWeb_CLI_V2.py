@@ -8,9 +8,16 @@ import sys
 from psana.pscalib.calib.MDB_CLI import * # gu, mu, etc
 import psana.pscalib.calib.MDBWebUtils as wu
 import psana.detector.utils_psana as up
+from psana.detector.Utils import info_dict
 import logging
 logger = logging.getLogger(__name__)
 cc = wu.cc
+
+
+def datasource_kwargs_from_string(str_dskwargs, detname=None):
+    dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=detname)
+    logger.info('DataSource kwargs: %s' % str(dskwargs))
+    return dskwargs
 
 
 class MDBWeb_CLI(MDB_CLI):
@@ -100,14 +107,19 @@ class MDBWeb_CLI(MDB_CLI):
         else:
             mu.request_confirmation()
 
+
     def get(self):
         """Finds requested document and associated data and saves them in files."""
         # self._warning()
         kwa        = self.kwargs
+        _dskwargs  = kwa.get('dskwargs', None)
+        dskwargs = datasource_kwargs_from_string(_dskwargs, detname=None)
+        exp = dskwargs['exp']
+        run = dskwargs['run']
+        kwa['experiment'] = exp
+        kwa['run'] = run
         det        = kwa.get('detector', None)
-        exp        = kwa.get('experiment', None)
         ctype      = kwa.get('ctype', None)
-        run        = kwa.get('run', None)
         vers       = kwa.get('version', None)
         prefix     = kwa.get('iofname', None)
         dbsuffix   = kwa.get('dbsuffix', '')
@@ -117,7 +129,15 @@ class MDBWeb_CLI(MDB_CLI):
         if time_stamp is not None:
            time_sec = gu.time_sec_from_stamp(tsformat, time_stamp)
 
-        data,doc = wu.calib_constants(det, exp, ctype, run, time_sec, vers, url=cc.URL, dbsuffix=dbsuffix)
+        print('XXXX exp: %s run: %d det: %s ctype: %s time_sec: %d vers: %s dbsuffix: %s' % (exp, run, det, ctype, time_sec, vers, dbsuffix))
+        #self.defs = vars(parser.parse_args([]))
+        print('XXXX defs: %s' % self.defs)
+        _vers = None if vers == self.defs['version'] else vers
+        print('XXXX _vers: %s' % _vers)
+        resp = wu.calib_constants(det, exp, ctype, run, time_sec, vers=_vers, url=cc.URL, dbsuffix=dbsuffix)
+        if resp is None:
+            sys.exit('wu.calib_constants returns None')
+        data, doc = resp
         logger.debug('data: %s' % str(data)[:150])
         logger.info('doc: %s' % str(doc))
 
@@ -131,31 +151,42 @@ class MDBWeb_CLI(MDB_CLI):
     def add(self):
         """Adds calibration constants to database from file."""
         kwa = self.kwargs
+        print('input kwa: %s' % str(kwa))
+        _dskwargs = kwa.get('dskwargs', None)
+        run_beg   = kwa.get('run_beg', 'None')
         fname     = kwa.get('iofname', 'None')
         ctype     = kwa.get('ctype', 'None')
         dtype     = kwa.get('dtype', 'None')
         det       = kwa.get('detector', None)
-        shortname = kwa.get('shortname', None)
-        exp       = kwa.get('experiment', None)
-        runnum    = kwa.get('run', None)
         dbsuffix  = kwa.get('dbsuffix', None)
         verb      = self.strloglev == 'DEBUG'
+        dskwargs  = datasource_kwargs_from_string(_dskwargs, detname=None)
+        exp = dskwargs['exp']
+        run = dskwargs['run']
+        kwa['run'] = run if run_beg is None else run_beg
+        kwa['run_orig'] = run
+        kwa['experiment'] = exp = dskwargs['exp']
 
-        print('input kwa: %s' % str(kwa))
+        d = up.get_config_info_for_dataset_detname(**kwa)
 
-        if shortname is None:
-            kwa.setdefault('dskwargs', 'exp=%s,run=%d' % (exp, runnum))
-            d = up.get_config_info_for_dataset_detname(**kwa)
-            print('metadata from DataSource run and run.Detector:', d)
-            shortname = d.get('shortname', None)
-            longname = d.get('longname', None)
-            kwa['det'] = shortname
-        #det = longname
-        det = shortname
+        print('\nmetadata from DataSource run and run.Detector:', d)
+        kwa['shortname'] = shortname = d.get('shortname', None)
+        kwa['longname'] = longname = d.get('longname', None)
+        kwa['detname'] = det
+        kwa['dettype'] = d['dettype']
+        kwa['det'] = det = shortname
+        kwa['tstamp_orig'] = d['tstamp_orig']
+        kwa['trun_sec']    = d['trun_sec']
+        kwa['tsec_orig']   = d['tsec_orig']
+        kwa['run_orig']    = d['run_orig']
+
         if not os.path.exists(fname):
             sys.exit('\nNot found file: %s' % fname)
         data = mu.data_from_file(fname, ctype, dtype, verb)
-        resp = wu.deploy_constants(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
+
+        s = info_dict(kwa, fmt='  %12s: %s', sep='\n')
+        logger.info('\nMetadata for document in DB:\n%s\n' % s)
+        resp = wu.deploy_constants(data, exp, longname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwa)
         #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp if resp is not None
 
     def test(self):
@@ -174,11 +205,11 @@ class MDBWeb_CLI(MDB_CLI):
         elif mode == 'add'   : self.add()
 
         # pymongo access from MDB_CLI
-        elif mode == 'convert': self.convert()
-        elif mode == 'delall' : self.delall()
-        elif mode == 'export' : self.exportdb()
-        elif mode == 'import' : self.importdb()
-        elif mode == 'test'   : self.test()
+#        elif mode == 'convert': self.convert()
+#        elif mode == 'delall' : self.delall()
+#        elif mode == 'export' : self.exportdb()
+#        elif mode == 'import' : self.importdb()
+#        elif mode == 'test'   : self.test()
 
         else: logger.warning('Non-implemented command mode "%s"\n  Known modes: %s' % (mode,', '.join(MODES)))
 
