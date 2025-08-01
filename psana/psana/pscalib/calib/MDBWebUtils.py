@@ -75,7 +75,7 @@ def info_dict(d, cmt='', offset='  '):
 
 
 def post(url, **kwa):
-    print('XXX MDBWebUtils: post url:%s' % url) # info_dict(kwa, cmt='kwa', offset='  ')
+    logger.debug('post url:%s kwa: %s' % (url, kwa))
     return req.post(url, **kwa)
 
 
@@ -495,6 +495,7 @@ def detector_dbname(detname_short, **kwargs):
     #logger.debug('detector_dbname detname: %s dbsuffix: %s' % (detname_short, dbsuffix))
     assert isinstance(dbsuffix, str)
     dbname_det = mu.db_prefixed_name(detname_short)
+    logger.info('dbname_det: %s dbsuffix: %s' % (dbname_det, dbsuffix))
     if dbsuffix: dbname_det += '_%s'% dbsuffix
     assert len(dbname_det) < 50
     logger.debug('detector_dbname detname: %s dbsuffix: %s returns: %s' % (detname_short, dbsuffix, dbname_det))
@@ -543,7 +544,8 @@ def deploy_constants(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBH
 
     logger.debug('deployed with id_data_exp:%s and id_data_det:%s id_doc_exp:%s id_doc_det:%s' %\
                  (id_data_exp, id_data_det, id_doc_exp, id_doc_det))
-    logger.info('  constants are deployed in DB(s) for exp:%s det:%s dbsuffix:%s ctype:%s' % (exp, detname, dbsuffix, ctype))
+    logger.info('  constants are deployed in DB(s) for exp:%s det:%s dbsuffix:%s ctype:%s run:%d run_beg:%s run_end:%s'%\
+                (exp, detname, dbsuffix, ctype, kwa['run'], str(kwa.get('run_beg',None)), str(kwa.get('run_end',None))))
 
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
 
