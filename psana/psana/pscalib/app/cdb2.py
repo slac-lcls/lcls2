@@ -11,58 +11,66 @@ from psana.pyalgos.generic.logger import config_logger, STR_LEVEL_NAMES
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 import psana.pscalib.calib.CalibConstants as cc
-from psana.pscalib.calib.MDBWeb_CLI import cdb_web, MODES  #  cdb  # includes import from MDB_CLI
+from psana.pscalib.calib.MDBWeb_CLI_V2 import cdb_web, MODES  #  cdb  # includes import from MDB_CLI
 
 
 USAGE = '\nCommand: cdb <mode> [options]'\
     '\n              modes: %s\n'%(', '.join(MODES))\
   + '\nExamples:\n'\
-    '  cdb\n'\
-    '  cdb -h\n'\
-    '  cdb print\n'\
-    '  cdb print --dbname cdb_testexper --colname testdet_1234 [--docid <document-id>]\n'\
-    '  cdb print -d testdet_1234 [--docid <document-id>]\n'\
-    '  cdb print -e testexper\n'\
-    '  cdb convert -e cxif5315 -p <password>\n'\
-    '  cdb convert -e amox23616 -p <password>\n'\
-    '  cdb get -e testexper -d testdet_1234 -r 21 -c test_ctype\n'\
-    '  cdb get -e exp12345 -d detector_1234 -c testdict -r 23 -f mydict\n'\
-    '  cdb get -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds\n'\
-    '  cdb get -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo\n'\
-    '  cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
-    '  cdb get -d opal1000_test -c pop_rbfs -r 50 -i pkl -f my_pop_rbfs\n'\
-    '  cdb add -e cxic0415 -d cspad_0001 -c geometry -r 100 -f mygeo -i txt -l DEBUG\n'\
-    '  cdb add -e testexper -d testdet_1234 -c test_ctype -r 123 -f cm-confpars.txt -i txt -l DEBUG\n'\
-    '  cdb add -e exp12345 -d detector_1234 -c pedestals -r 123 -f mypeds.data\n'\
-    '  cdb add -e new55555 -d detnew_5555   -c pedestals -r 123 -f mypeds.data\n'\
-    '  cdb add -e amox27716 -d tmo_quadanode -c calibcfg -r 100 -f configuration_quad.txt -i txt\n'\
-    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
-    '  cdb add -e amox27716 -d ele_opal -c pop_rbfs -r 50 -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
-    '  cdb add -e amox23616 -d xtcav -c pedestals -r 104 -f xtcav_peds.data -i xtcav\n'\
-    '  cdb add -e rixx45619 -d epixhr2x2_000001 -r1 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
-    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
-    '  cdb add -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c geometry -f mygeo -i txt -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
-    '  cdb get -e rixx45619 -d epixhr2x2_000001 -r 100 -c pedestals -f mypeds.txt -S mytestdb\n'\
-    '  cdb print --dbname cdb_epixhr2x2_000001_mytestdb\n'\
-    '  cdb deldb  --dbname cdb_testexper -C\n'\
-    '  cdb delcol --dbname cdb_testexper --colname testdet_1234 -C\n'\
-    '  cdb deldoc --dbname cdb_testexper --colname testdet_1234 --docid <document-id> -C\n'\
-    '  cdb deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -w -C\n'\
-    '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -w -C\n'\
-    '  cdb deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -w -C\n'\
-    '  cdb delcol -e cxix25615 -d cspad_0001 -u <username> -p <password> -w -C\n'\
-    '  cdb delcol -d cspad_0001 -u <username> -p <password> -w -C\n'\
-    '  cdb deldb -e amox23616 -u <username> -p <password> -w -C\n'\
-    '  cdb deldb -d opal1000_0059 -u <username> -p <password> -w -C\n'\
-    '  cdb delall\n'\
-    '  cdb export --dbname cdb_exp12345\n'\
-    '  cdb import --dbname cdb_exp12345 --iofname cdb-...arc\n'\
-    '  cdb print --host=psanagpu115 --port=27017 --stout=1000'
+    '  cdb2\n'\
+    '  cdb2 -h\n'\
+    '  cdb2 print\n'\
+    '  cdb2 print --dbname cdb_jungfrau_000003_mytestdb\n'\
+    '  cdb2 print --dbname cdb_jungfrau_000003_mytestdb --colname jungfrau_000003\n'\
+    '  cdb2 print --dbname cdb_jungfrau_000003_mytestdb --colname jungfrau_000003 --docid 688aa95d76d702c925246602\n'\
+    '  cdb2 print --dbname cdb_testexper --colname testdet_1234 [--docid <document-id>]\n'\
+    '  cdb2 print -d testdet_1234 [--docid <document-id>]\n'\
+    '  cdb2 print -e testexper\n'\
+    '  cdb2 print --dbname cdb_epixhr2x2_000001_mytestdb\n'\
+    '  cdb2 add -k exp=mfx101332224,run=66 -d jungfrau -c pedestals -f clb-mfx101332224-jungfrau_000003-r0066-pedestals.data -S mytestdb -B 81 -R 85\n'\
+    '  cdb2 get -k exp=mfx101332224,run=66 -d jungfrau -c pedestals -f myconsts -S mytestdb -L DEBUG\n'\
+    '  cdb2 deldoc --dbname cdb_jungfrau_000003_mytestdb --colname jungfrau_000003 --docid 688aa95d76d702c925246602   -C\n'\
+    '  cdb2 delcol --dbname cdb_jungfrau_000003_mytestdb --colname jungfrau_000003   -C\n'\
+    '  cdb2 deldb  --dbname cdb_jungfrau_000003_mytestdb   -C\n'\
+    '\n'\
+    '  N/T cdb2 - stands for Not-Tested but should work\n'\
+    '  N/T cdb2 add -k exp=cxic0415,run=100 -d cspad_0001 -c geometry -f mygeo -i txt\n'\
+    '  N/T cdb2 add -k exp=amox27716,run=50 -d ele_opal -c pop_rbfs -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.json -i json\n'\
+    '  N/T cdb2 add -k exp=amox27716,run=50 -d ele_opal -c pop_rbfs -f /sdf/group/lcls/ds/ana/detector/calib/misc/calib-amox27716-r50-opal-pop-rbfs-xiangli.pkl -i pkl\n'\
+    '  N/T cdb2 add -k exp=exp12345,run=123 -d testdet_1234 -c test_ctype -f cm-confpars.txt -i txt -l DEBUG\n'\
+    '  N/T cdb2 add -k exp=amox23616,run=104 -d xtcav -c pedestals -f xtcav_peds.data -i xtcav\n'\
+    '\n'
+
+#    '  N/T cdb2 add -k exp=exp12345,run=123 -d detector_1234 -c pedestals -f mypeds.data\n'\
+#    '  N/T cdb2 add -k exp=new55555,run=123 -d detnew_5555   -c pedestals -f mypeds.data\n'\
+#    '  N/T cdb2 add -k exp=amox27716,run=100 -d tmo_quadanode -c calibcfg -f configuration_quad.txt -i txt\n'\
+#    '  N/T cdb2 add -k exp=rixx45619,run=1 -d epixhr2x2_000001 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+#    '  N/T cdb2 add -k exp=rixx45619,run=1 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c pedestals -f mypeds -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+#    '  N/T cdb2 get -k exp=cxic0415,run= -e cxic0415 -d cspad_0001 -c pedestals -s 1520977960 -f mypeds  ??????\n'\
+#    '  N/T cdb2 get -k exp=cxic0415,run=100 -d cspad_0001 -c geometry -f mygeo\n'\
+#    '  N/T cdb2 deldb  --dbname cdb_testexper -C\n'\
+#    '  N/T cdb2 delcol --dbname cdb_testexper --colname testdet_1234 -C\n'\
+#    '  N/T cdb2 deldoc --dbname cdb_mfx101332224 --colname testdet_1234 --docid <document-id> -C\n'\
+#    '\n'
+
+#    '  cdb2 deldoc -e exp12345 -d detector_1234 -c pedestals -r 123 -v 05 -u <username> -p <password> -w -C\n'\
+#    '  cdb2 deldoc -e cxix25615 -d cspad_0001 -c pedestals -r 125 -u <username> -p <password> -w -C\n'\
+#    '  cdb2 deldoc -e cxix25615 -d cspad_0001 -c pedestals -s 1520977960 -u <username> -p <password> -w -C\n'\
+#    '  cdb2 delcol -e cxix25615 -d cspad_0001 -u <username> -p <password> -w -C\n'\
+#    '  cdb delcol -d cspad_0001 -u <username> -p <password> -w -C\n'\
+#    '  cdb deldb -e amox23616 -u <username> -p <password> -w -C\n'\
+#    '  cdb deldb -d opal1000_0059 -u <username> -p <password> -w -C\n'\
+#    '  cdb delall\n'\
+#    '   ??????cdb get -d cspad_0001 -c pedestals -r 100 -f mypeds\n'\
+#    '   ??????cdb get -d opal1000_test -c pop_rbfs -r 50 -i pkl -f my_pop_rbfs\n'\
+#    '  cdb add -k exp=,run= -e rixx45619 -d epixhr2x2_000001 -t 2021-10-01T00:00:00-0800 -c geometry -f mygeo -i txt -S mytestdb # <== DEPLOY IN YOUR OWN DETECTOR-DB\n'\
+#    '  cdb get -k exp=,run= -e rixx45619 -d epixhr2x2_000001 -r 100 -c pedestals -f mypeds.txt -S mytestdb\n'\
 
 
 def argument_parser():
     from argparse import ArgumentParser
 
+    d_dskwargs   = None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
     d_mode       = 'print'
     d_ctout      = 5000
     d_stout      = 30000
@@ -71,7 +79,6 @@ def argument_parser():
     d_docid      = None
     d_experiment = None
     d_detector   = None
-#    d_shortname  = None # e.g. jungfrau_000003
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_dtype      = None
     d_run        = 0
@@ -79,7 +86,7 @@ def argument_parser():
     d_run_end    = 'end'
     d_time_stamp = None # '2001-09-08T18:46:40-0700'
     d_time_sec   = None
-    d_version    = 'V2025-07-29'
+    d_version    = 'V2025-07-30'
     d_confirm    = False
     d_iofname    = None # './fname.txt'
     d_comment    = 'no comment'
@@ -87,18 +94,22 @@ def argument_parser():
     d_cdbonly    = True
     d_dbsuffix   = ''
 
+    h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
+                ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
+                ' or <fname.xtc> or files=<fname.xtc>'\
+                ' or pythonic dict of generic kwargs, e.g.:'\
+                ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_mode       = 'Mode of DB access, one of %s, default = %s' % (str(MODES), d_mode)
     h_ctout      = 'connect timeout connectTimeoutMS, default = %d' % d_ctout
     h_stout      = 'socket timeout serverSelectionTimeoutMS, default = %d' % d_stout
     h_dbname     = 'database name, works for mode "print" or "delete", default = %s' % d_dbname
     h_colname    = 'collection name, works for mode "print" or "delete", default = %s' % d_colname
     h_docid      = 'document Id, works for mode "print" or "delete", default = %s' % d_docid
-    h_experiment = 'experiment name, default = %s' % d_experiment
-    h_detector   = 'detector name for run.Detector or short detector name like in DB collections, default = %s' % d_detector
-#    h_shortname  = 'ALTERNATIVE TO --detector: short detector name, like in DB collections, default = %s' % d_shortname
+    h_experiment = 'experiment name (for some commands, see examples), default = %s' % d_experiment
+    h_detector   = 'detector name for run.Detector, default = %s' % d_detector
     h_ctype      = 'calibration constant type, default = %s' % d_ctype
     h_dtype      = 'i/o file data type (None - array, txt, xtcav, json, pkl), default = %s' % d_dtype
-    h_run        = 'run number (current/begin), default = %s' % str(d_run)
+    h_run        = 'run number current/begin (for some commands, see examples), default = %s' % str(d_run)
     h_run_beg    = 'run number (begin if different from --run), default = %s' % str(d_run_beg)
     h_run_end    = 'run number (end), default = %s' % str(d_run_end)
     h_time_stamp = 'time stamp in format like 2020-05-22T01:02:03-0800, default = %s' % d_time_stamp
@@ -113,6 +124,7 @@ def argument_parser():
 
     parser = ArgumentParser(description='CLI for LCLS2 calibration data base', usage=USAGE)
 
+    parser.add_argument('-k', '--dskwargs',   default=d_dskwargs,   type=str, help=h_dskwargs)
     parser.add_argument('mode', nargs='?',    default=d_mode,       type=str, help=h_mode)
     parser.add_argument('--ctout',            default=d_ctout,      type=int, help=h_ctout)
     parser.add_argument('--stout',            default=d_stout,      type=int, help=h_stout)
@@ -120,7 +132,6 @@ def argument_parser():
     parser.add_argument('--colname',          default=d_colname,    type=str, help=h_colname)
     parser.add_argument('--docid',            default=d_docid,      type=str, help=h_docid)
     parser.add_argument('-d', '--detector',   default=d_detector,   type=str, help=h_detector)
-#    parser.add_argument('-D', '--shortname',  default=d_shortname,  type=str, help=h_shortname)
     parser.add_argument('-e', '--experiment', default=d_experiment, type=str, help=h_experiment)
     parser.add_argument('-t', '--time_stamp', default=d_time_stamp, type=str, help=h_time_stamp)
     parser.add_argument('-s', '--time_sec',   default=d_time_sec,   type=int, help=h_time_sec)
@@ -132,7 +143,7 @@ def argument_parser():
     parser.add_argument('-v', '--version',    default=d_version,    type=str, help=h_version)
     parser.add_argument('-f', '--iofname',    default=d_iofname,    type=str, help=h_iofname)
     parser.add_argument('-m', '--comment',    default=d_comment,    type=str, help=h_comment)
-    parser.add_argument('-l', '--loglevel',   default=d_loglevel,   type=str, help=h_loglevel)
+    parser.add_argument('-L', '--loglevel',   default=d_loglevel,   type=str, help=h_loglevel)
     parser.add_argument('-S', '--dbsuffix',   default=d_dbsuffix,   type=str, help=h_dbsuffix)
     parser.add_argument('-C', '--confirm',    action='store_true',  help=h_confirm)
     parser.add_argument('--cdbonly',          action='store_false', help=h_cdbonly)
