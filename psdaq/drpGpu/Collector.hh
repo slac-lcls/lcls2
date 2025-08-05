@@ -79,6 +79,7 @@ private:
   bool*                        m_done;      // Cache for m_terminate_d
   cudaStream_t                 m_stream;
   cudaGraphExec_t              m_graphExec;
+  std::vector<RingIndexDtoD*>  m_readerQueues_h; // A host vector of [nPanels]
   RingIndexDtoD*               m_readerQueues_d; // A device pointer to [nPanels]
   Ptr<RingIndexDtoH>           m_collectorQueue;
   unsigned*                    m_head;
