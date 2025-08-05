@@ -65,7 +65,7 @@ int TebReceiver::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 void TebReceiver::setup(std::shared_ptr<Collector> collector,
                         std::shared_ptr<Reducer>   reducer)
 {
-  printf("*** TebRcvr::setup: 1\n");
+  //printf("*** TebRcvr::setup: 1\n");
 
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
 
@@ -80,7 +80,7 @@ void TebReceiver::setup(std::shared_ptr<Collector> collector,
   //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
   m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
-  printf("*** TebRcvr::setup: 4\n");
+  //printf("*** TebRcvr::setup: 2\n");
 
   // Start the Data Recorder
   m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
@@ -88,10 +88,10 @@ void TebReceiver::setup(std::shared_ptr<Collector> collector,
 
 void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
 {
-  uint32_t* p = (uint32_t*)dgram;
-  printf("wDg: ");
-  for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-  printf("\n");
+  //uint32_t* p = (uint32_t*)dgram;
+  //printf("wDg: ");
+  //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
+  //printf("\n");
 
   size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
   m_fileWriter->writeEvent(devPtr, size, dgram->time);
@@ -113,15 +113,15 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   // This function is called by the base class's process() method to complete
   // processing and dispose of the event.  It presumes that the caller has
   // already vetted index and result
-  printf("*** TebRcvr::complete: 1 idx %u\n", index);
+  //printf("*** TebRcvr::complete: 1 idx %u\n", index);
 
   // Start up a reducer
   m_reducer->start(m_worker++, index);
-  printf("*** TebRcvr::complete: 2\n");
+  //printf("*** TebRcvr::complete: 2\n");
 
   // Pass parameters to the recorder thread
   m_resultQueue.push({index, &result});
-  printf("*** TebRcvr::complete: 3\n");
+  //printf("*** TebRcvr::complete: 3\n");
 }
 
 void TebReceiver::_recorder()
@@ -140,7 +140,7 @@ void TebReceiver::_recorder()
   m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufReserved() + memPool.reduceBufSize();
-  printf("*** TebRcvr::recorder: redBufSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufSize(), memPool.reduceBufReserved(), maxSize);
+  //printf("*** TebRcvr::recorder: redBufSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufSize(), memPool.reduceBufReserved(), maxSize);
 
   // Collect completion information from the reducer kernels in time order
   while (!m_terminate_h.load(std::memory_order_acquire)) {
@@ -148,13 +148,17 @@ void TebReceiver::_recorder()
     ResultItems items;
     m_resultQueue.pop(items);
     auto result = items.result;
-    printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
-           result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
+    //printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
+    //       result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
-    auto head  = m_reducer->receive(worker++, index); // This blocks until result is ready from GPU
-    printf("*** TebRcvr::recorder: 1 reducer %u, head %u, idx %u\n", worker-1, head, index);
+    /*auto head  =*/ m_reducer->receive(worker++, index); // This blocks until result is ready from GPU
+    //printf("*** TebRcvr::recorder: 1 reducer %u, head %u, idx %u\n", worker-1, head, index);
+
+    // Release the GPU intermediate buffers for reuse
+    m_collector->freeDma(index);        // @todo: Bad name
+    //printf("*** TebRcvr::recorder: 2, freeDma idx %u\n", index);
 
     auto dgram = result->isEvent() ? (EbDgram*)m_pool.pebble[index] : m_pool.transitionDgrams[index];
     if (dgram->pulseId() != result->pulseId()) {
@@ -162,11 +166,11 @@ void TebReceiver::_recorder()
                         index, dgram->pulseId(), result->pulseId());
       abort();
     }
-    printf("*** TebRcvr::recorder: 2 dg[%u] pid %014lx, env %08x\n", index, dgram->pulseId(), dgram->env);
+    //printf("*** TebRcvr::recorder: 2 dg[%u] pid %014lx, env %08x\n", index, dgram->pulseId(), dgram->env);
 
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = memPool.reduceBuffers_h()[index];
-    printf("*** TebRcvr::recorder: 3 idx %u, buf %p\n", index, buffer);
+    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p\n", index, buffer);
     size_t cpSize, dgSize;
     if (dgram->isEvent()) {
       // Fetch the size of the reduced L1Accept payload from the GPU
@@ -174,17 +178,17 @@ void TebReceiver::_recorder()
       auto pSize = buffer - sizeof(dataSize);
       chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
       chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
-      printf("*** TebRcvr::recorder: 3 sz %u, extent %u\n", dataSize, dgram->xtc.extent);
+      //printf("*** TebRcvr::recorder: 3 sz %u, extent %u\n", dataSize, dgram->xtc.extent);
 
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
-      printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
+      //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
       m_reducer->event(dgram->xtc, bufEnd, dataSize);
 
       // Measure the size of the header block
       auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram) - dataSize;
-      printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %u = %zd\n",
-             dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
+      //printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %u = %zd\n",
+      //       dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
 
       // Make sure the header will fit in the space reserved for it on the GPU
       if (size_t(headerSize) > memPool.reduceBufReserved()) {
@@ -208,80 +212,78 @@ void TebReceiver::_recorder()
       dgSize  = cpSize;
     }
 
-    printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
+    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
     if (dgSize > maxSize) {
       logging::critical("Datagram is too large (%zu) for reduce buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
                         dgSize, maxSize, dgram->pulseId(), dgram->time.value(), dgram->env);
       abort();
     }
 
-    uint32_t* p = (uint32_t*)((Dgram*)dgram);
-    printf("all: ");
-    for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-    printf("\n");
+    //uint32_t* p = (uint32_t*)((Dgram*)dgram);
+    //printf("all: ");
+    //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
+    //printf("\n");
 
     // Copy the dgram header to the GPU if it's an L1Accept or
     // the whole datagram if it's a transition
     chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
-    if (dgram->isEvent()) {
-      const Xtc& parent = dgram->xtc;
-      const Xtc& shapesData = (Xtc&)*parent.payload();
-      auto p = (uint32_t*)&shapesData;
-      printf("*** 1st: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
-      const Xtc& data = (Xtc&)*shapesData.payload();
-      p = (uint32_t*)&data;
-      printf("*** pld: %p: %08x %08x %08x %08x %08x %08x %08x %08x\n", p, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-      const Xtc& shapes = *data.next();
-      p = (uint32_t*)&shapes;
-      printf("*** 2nd: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
-      unsigned sz = sizeof(shapes) + shapes.sizeofPayload();
-      printf("*** shapes size %u, data size %u, total size %zu\n", sz, shapes.sizeofPayload(), (uint8_t*)shapes.next() - (uint8_t*)((Dgram*)dgram));
-    }
-    //chkError(cudaStreamSynchronize(m_stream));    // @todo: Not needed?
+    //if (dgram->isEvent()) {
+    //  const Xtc& parent = dgram->xtc;
+    //  const Xtc& shapesData = (Xtc&)*parent.payload();
+    //  auto p = (uint32_t*)&shapesData;
+    //  printf("*** 1st: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
+    //  const Xtc& data = (Xtc&)*shapesData.payload();
+    //  p = (uint32_t*)&data;
+    //  printf("*** pld: %p: %08x %08x %08x %08x %08x %08x %08x %08x\n", p, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    //  const Xtc& shapes = *data.next();
+    //  p = (uint32_t*)&shapes;
+    //  printf("*** 2nd: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
+    //  unsigned sz = sizeof(shapes) + shapes.sizeofPayload();
+    //  printf("*** shapes size %u, data size %u, total size %zu\n", sz, shapes.sizeofPayload(), (uint8_t*)shapes.next() - (uint8_t*)((Dgram*)dgram));
+    //}
 
     TransitionId::Value transitionId = dgram->service();
 
     if (writing()) {                  // Won't ever be true for Configure
-      printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
+      //printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
       // write event to file if it passes event builder or if it's a transition
       if (result->persist() || result->prescale()) {
-        printf("*** TebRcvr::recorder: persist or prescale\n");
-        uint32_t* p = (uint32_t*)dgram;
-        printf("l1:  ");
-        for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-        printf("\n");
+        //printf("*** TebRcvr::recorder: persist or prescale\n");
+        //uint32_t* p = (uint32_t*)dgram;
+        //printf("l1:  ");
+        //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
+        //printf("\n");
         _writeDgram(dgram, buffer);     // Only (some) L1Accepts written here
       }
       else if (transitionId != TransitionId::L1Accept) {
-        printf("*** TebRcvr::recorder: transitionId %u\n", transitionId);
+        //printf("*** TebRcvr::recorder: transitionId %u\n", transitionId);
         if (transitionId == TransitionId::BeginRun) {
           offsetReset(); // reset offset when writing out a new file
-          printf("*** TebRcvr::recorder: BeginRun 1\n");
+          //printf("*** TebRcvr::recorder: BeginRun 1\n");
           auto cfgDgram = reinterpret_cast<Dgram*>(m_configureBuffer.data());
-          printf("*** TebRcvr::recorder: BeginRun 2 cfgDg %p\n", cfgDgram);
+          //printf("*** TebRcvr::recorder: BeginRun 2 cfgDg %p\n", cfgDgram);
           auto cfgSize  = sizeof(*cfgDgram) + cfgDgram->xtc.sizeofPayload();
-          printf("*** TebRcvr::recorder: BeginRun 3 cfgSz %zu\n", cfgSize);
+          //printf("*** TebRcvr::recorder: BeginRun 3 cfgSz %zu\n", cfgSize);
           auto cfgBuf   = memPool.reduceBuffers_h()[m_configureIndex] - sizeof(Dgram);
-          printf("*** TebRcvr::recorder: BeginRun 4 cfgBuf %p\n", cfgBuf);
+          //printf("*** TebRcvr::recorder: BeginRun 4 cfgBuf %p\n", cfgBuf);
           if (cfgSize > maxSize) {
             logging::critical("Configure dgram (%zu) is too big for GPU's buffer (%zu)",
                               cfgSize, maxSize);
             abort();
           }
-          printf("*** TebRcvr::recorder: 4a idx %u, cfgBuf %p, cfgDg %p, sz %zu\n", m_configureIndex, cfgBuf, cfgDgram, cfgSize);
+          //printf("*** TebRcvr::recorder: 4a idx %u, cfgBuf %p, cfgDg %p, sz %zu\n", m_configureIndex, cfgBuf, cfgDgram, cfgSize);
           chkError(cudaMemcpyAsync((void*)cfgBuf, cfgDgram, cfgSize, cudaMemcpyHostToDevice, m_stream));
-          //chkError(cudaStreamSynchronize(m_stream)); // @todo: Not needed?
-          printf("*** TebRcvr::recorder: 4b idx %u\n", m_configureIndex);
-          uint32_t* p = (uint32_t*)cfgDgram;
-          printf("cfg: ");
-          for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-          printf("\n");
+          //printf("*** TebRcvr::recorder: 4b idx %u\n", m_configureIndex);
+          //uint32_t* p = (uint32_t*)cfgDgram;
+          //printf("cfg: ");
+          //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
+          //printf("\n");
           _writeDgram(cfgDgram, cfgBuf);
         }
-        uint32_t* p = (uint32_t*)dgram;
-        printf("%02d:  ", transitionId);
-         for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-        printf("\n");
+        //uint32_t* p = (uint32_t*)dgram;
+        //printf("%02d:  ", transitionId);
+        //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
+        //printf("\n");
         _writeDgram(dgram, buffer);
         if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
           logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
@@ -292,7 +294,7 @@ void TebReceiver::_recorder()
         }
       }
     }
-    printf("*** TebRcvr::recorder: 5 sz %zu, writing %d\n", dgSize, writing());
+    //printf("*** TebRcvr::recorder: 5 sz %zu, writing %d\n", dgSize, writing());
 
     m_evtSize = dgSize;
 
@@ -301,7 +303,7 @@ void TebReceiver::_recorder()
       m_latency = Pds::Eb::latency<us_t>(dgram->time);
       m_latPid = dgram->pulseId();
     }
-    printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
+    //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
 
     if (m_mon.enabled()) {
       if (result->isEvent()) {          // L1Accept
@@ -319,26 +321,24 @@ void TebReceiver::_recorder()
         m_mon.post(dgram);
       }
     }
-    printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
+    //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
 
     // Synchronize before releasing buffers
     chkError(cudaStreamSynchronize(m_stream));
 
-    // Release the GPU intermediate buffers for reuse
-    m_collector->freeDma(index);
-    printf("*** TebRcvr::recorder: 8, freeDma idx %u\n", index);
-
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {
         m_pool.freeTr(dgram);
-        printf("*** TebRcvr::recorder: 7, freeTr %014lx\n", dgram->pulseId());
+        //printf("*** TebRcvr::recorder: 8, freeTr %014lx\n", dgram->pulseId());
     }
 
     // Free the pebble datagram buffer
     m_pool.freePebble();
-    printf("*** TebRcvr::recorder: 7, freePebble\n");
+    //printf("*** TebRcvr::recorder: 8, freePebble\n");
 
+    // Free the reduce buffer
     m_reducer->release(index);
+    //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
   }
 
   logging::info("Recorder thread is exiting");
@@ -396,8 +396,8 @@ std::string PGPDrp::configure(const json& msg)
   // Set up the communication queues between the various stages
   auto& memPool = *pool.getAs<MemPoolGpu>();
   auto trgPrimitive = triggerPrimitive();
-  printf("*** PGPDrp: trgPrm %p, sz %zu\n", trgPrimitive, sizeof(*trgPrimitive));
-  printf("*** PGPDrp: trgPrm->size %zu\n", trgPrimitive->size());
+  //printf("*** PGPDrp: trgPrm %p, sz %zu\n", trgPrimitive, sizeof(*trgPrimitive));
+  //printf("*** PGPDrp: trgPrm->size %zu\n", trgPrimitive->size());
   auto tpSz = trgPrimitive ? trgPrimitive->size() : 0;
 
   // Set up a Reader per PGP card (panel) to receive DMAed data and calibrate it
@@ -593,7 +593,7 @@ void PGPDrp::_collector()
           // Store the SlowUpdate's payload in the transition datagram
           const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
           m_det.slowupdate(trDgram->xtc, bufEnd);
-          printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
+          //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
         } else {                // Transition
           // copy the temporary xtc created on phase 1 of the transition
           // into the real location
@@ -602,12 +602,12 @@ void PGPDrp::_collector()
           const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
           auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
           memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-          printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
+          //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
         }
       }
 
       // Post level-3 input datagram to the TEB
-      printf("*** Collector: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
+      //printf("*** Collector: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
       tebContributor().process(pebbleIndex);
 
       // Time out batches for the TEB
