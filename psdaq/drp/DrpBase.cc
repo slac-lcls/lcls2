@@ -1028,20 +1028,28 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 class PV : public Pds_Epics::PVBase
 {
 public:
-  PV(const char* pvName) : PVBase(pvName) {}
-  virtual ~PV() {}
+    PV(const char* pvName) : PVBase(pvName), m_ready(getComplete(5)) {} // seconds
+    virtual ~PV() {}
 public:
-  void updated() {}
-  bool ready()   { return getComplete(); }
+    void updated() {}
+    bool ready()   { return m_ready; }
+private:
+    bool m_ready;
 };
 
-static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
+static bool _pvGetVecElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
 {
-  if (!pv || !pv->ready())  return false;
+    if (!pv || !pv->ready()) {
+        if (pv) {
+            logging::critical("PV %s didn't connect\n", pv->name().c_str());
+            abort();
+        }
+        return false;
+    }
 
-  value = pv->getVectorElemAt<double>(element);
+    value = pv->getVectorElemAt<double>(element);
 
-  return true;
+    return true;
 }
 
 DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& context) :
@@ -1167,7 +1175,7 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
     exporter->constant("drp_trbufs_in_use_max", labels, pool.pebble.nTrBuffers());
 
     exporter->addFloat("drp_deadtime", labels,
-                       [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+                       [&](double& value){return _pvGetVecElem(m_deadtimePv, m_xpmPort, value);});
 
     return 0;
 }
@@ -1182,6 +1190,12 @@ std::string DrpBase::connect(const json& msg, size_t id)
     m_connectMsg = msg;
     m_collectionId = id;
 
+    // Parse the connection parameters before they're used by the following stuff
+    int rc = parseConnectionParams(msg["body"], id);
+    if (rc) {
+        return std::string{"Connection parameters error - see log"};
+    }
+
     // If the exporter already exists, replace it so that previous metrics are deleted
     if (m_exposer) {
         m_exporter = std::make_shared<Pds::MetricExporter>();
@@ -1192,11 +1206,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
         if (setupMetrics(m_exporter)) {
             return std::string{"Failed to set up metrics"};
         }
-    }
-
-    int rc = parseConnectionParams(msg["body"], id);
-    if (rc) {
-        return std::string{"Connection parameters error - see log"};
     }
 
     rc = m_tebContributor->connect(m_exporter);
