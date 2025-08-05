@@ -52,7 +52,7 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         logger.debug('CGWPartitionTable.on_item_selected: "%s" is selected' % (item.text() if item is not None else None))
 
     def on_item_changed(self, item):
-        if item.column() != self.column_cbx(): return
+        if item.column() not in (self.column_cbx(), self.column_mon()): return
         item_id = self._si_model.item(item.row(), self.column_id())
         if item_id._is_collapser: self.set_group_check_state(item)
         state = ['UNCHECKED', 'TRISTATE', 'CHECKED'][item.checkState()]
@@ -95,6 +95,9 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
     def column_grp(self): return self.approved_column_for_title(1, 'grp')
 
     def column_id (self): return self.approved_column_for_title(3, 'ID')
+
+    # This is also a checkbox
+    def column_mon (self): return self.approved_column_for_title(4, 'Monitor')
 
     def set_readout_group_number(self, item):
         if not self.is_column_for_title(item.column(), 'grp'): return
@@ -144,17 +147,20 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
         if not self.is_column_for_title(col, 'ID'): return
 
         col_cbx, model=self.column_cbx(), self._si_model
+        col_mon = self.column_mon()
         segname_sel = item.text()
         detname = self.detname(segname_sel)
         #msg = 'CGWPartitionTable %s of detector: %s' % ({True:'COLLAPSE', False:'EXPAND'}[do_collapse], detname)
         #logger.debug(msg)
         #print(msg)
 
-        group_cbx_items = []
+        group_cbx_items = [] # Used for active/inactive checkboxes
+        group_mon_items = [] # Used for monitor/no monitor checkboxes
         for r in range(model.rowCount()):
             segname = model.item(r, col).text()
             if not self.detname(segname) == detname: continue
             group_cbx_items.append(model.item(r,col_cbx))
+            group_mon_items.append(model.item(r,col_mon))
             if r == row: continue
 
             #if self.isRowHidden(r):
@@ -165,8 +171,11 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
 
         check_state = 0 if all([i.checkState()==0 for i in group_cbx_items]) else\
                       2 if all([i.checkState()==2 for i in group_cbx_items]) else 1
+        check_state_mon = 0 if all([i.checkState()==0 for i in group_mon_items]) else\
+                          2 if all([i.checkState()==2 for i in group_mon_items]) else 1
 
         item_cbx = model.item(row, col_cbx)
+        item_mon = model.item(row, col_mon)
 
         item._is_collapser = do_collapse
 
@@ -175,16 +184,25 @@ class CGWPartitionTable(QWTableOfCheckBoxes):
             item.setToolTip('Click to EXPAND detector segmanes')
             item_cbx._old_check_state = item_cbx.checkState()
             item_cbx._group_cbx_items = tuple(group_cbx_items)
+
+            # Use same attribute name for monitor column as used for active/inactive
+            # to simplify logic in other functions
+            item_mon._old_check_state = item_mon.checkState()
+            item_mon._group_cbx_items = tuple(group_mon_items)
         else:
-            if check_state == 1: check_state = item_cbx._old_check_state
+            if check_state == 1:
+                check_state = item_cbx._old_check_state
+                check_state_mon = item_mon._old_check_state
             #item._is_collapser = False
             item_cbx._group_cbx_items = ()
+            item_mon._group_cbx_items = ()
             item.setToolTip('Click to COLLAPSE detector segmanes')
 
         #item_cbx.setCheckable(not do_collapse)
 
         self.disconnect_item_changed_from(self.on_item_changed)
         item_cbx.setCheckState(check_state)
+        item_mon.setCheckState(check_state_mon)
         item.setBackground(QBrush(QColor('yellow' if item._is_collapser else 'white')))
         self.connect_item_changed_to(self.on_item_changed)
 

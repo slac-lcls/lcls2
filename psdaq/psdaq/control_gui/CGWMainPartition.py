@@ -41,7 +41,7 @@ from psdaq.control_gui.CGConfigParameters import cp
 class CGWMainPartition(QGroupBox):
     """
     """
-    TABTITLE_H = ['sel', 'grp', 'level/pid/host', 'ID']
+    TABTITLE_H = ['sel', 'grp', 'level/pid/host', 'ID', 'Monitor']
 
     def __init__(self, parent=None):
 

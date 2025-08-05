@@ -157,13 +157,17 @@ def get_platform():
 
                 has_grp = pname=='drp' or pname=='tpr'
                 readgr = v['det_info']['readout'] if has_grp else ''
-
+                if "monitor" in v:
+                    monitor = v['monitor'] == 1
+                else:
+                    monitor = False
                 flag = 6 if has_grp else 2
                 if v['hidden'] == 1: flag += 16
                 list2d.append([[v['active']==1, ''],\
                                [False, str(readgr), flag, "^([0-9]|1[0-5])$"],\
                                [False, flds[0], 2],\
-                               [False, alias, 2]])
+                               [False, alias, 2],
+                               [monitor, '']])
 
     except Exception as ex:
         logger.error('Exception in parsing dict_platf (3): %s' % ex)
@@ -197,7 +201,9 @@ def set_platform(dict_platf, list2d):
 
                 status = rec[0][0] # bool
                 int_active = {True:1, False:0}[status]
+                int_monitor = {True:1, False:0}[rec[4][0]]
                 dict_platf[pname][k]['active'] = int_active
+                dict_platf[pname][k]['monitor'] = int_monitor
                 if pname=='drp' or pname=='tpr':
                     val = rec[1][1]
                     if isinstance(val, str) and val.isdigit():

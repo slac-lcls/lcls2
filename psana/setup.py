@@ -140,6 +140,7 @@ if 'PSANA' in BUILD_LIST :
             'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
             'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
             'cdb                 = psana.pscalib.app.cdb:cdb_cli',
+            'cdb2                = psana.pscalib.app.cdb2:cdb_cli',
             'proc_info           = psana.pscalib.app.proc_info:do_main',
             'proc_control        = psana.pscalib.app.proc_control:do_main',
             'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
@@ -175,6 +176,7 @@ if 'PSANA' in BUILD_LIST :
             'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
             'caliblogs           = psana.app.caliblogs:do_main',
             'calibrepo           = psana.app.calibrepo:do_main',
+            'calibvalidity       = psana.app.calibvalidity:do_main',
             'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
         ]
     }

@@ -32,7 +32,7 @@ class epix10ka_raw_2_0_1(eb.epix_base):
         self._data_gain_bit = eb.B14
         self._gain_bit_shift = 9
         self._gains_def = (16.4, 5.466, 0.164) # epix10ka ADU/keV H:M:L = 1 : 1/3 : 1/100
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix10ka-TBD.data'
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix10kaquad.data'
 
 
     def _cbits_config_segment(self, cob):

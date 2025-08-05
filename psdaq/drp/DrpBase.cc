@@ -1275,6 +1275,23 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             run_number = phase1Info["run_info"]["run_number"];
         }
     }
+    // Check for monitoring only detectors - only check if run_number != 0 (i.e. recording)
+    // If recording, set run_number back to 0 if a "monitoring only" detector
+    // Setting back to run_number = 0 convinces this DRP it is not recording.
+    if (run_number) {
+        if (phase1Info.find("monitor_info") != phase1Info.end()) {
+            std::string unique_id = m_para.detName + "_" + std::to_string(m_para.detSegment);
+            for (auto it = phase1Info["monitor_info"].begin(); it != phase1Info["monitor_info"].end(); ++it) {
+                if (it.key() == unique_id) {
+                    if (it.value() == 1) {
+                        logging::info("Detector %s selected for monitor only. No data will be recorded.",
+                                      unique_id.c_str());
+                        run_number = 0;
+                    }
+                }
+            }
+        }
+    }
     runInfo.experimentName = experiment_name;
     runInfo.runNumber = run_number;
 
