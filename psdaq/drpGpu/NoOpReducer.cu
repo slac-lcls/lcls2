@@ -42,16 +42,16 @@ static __global__ void _noOpReduce(const unsigned&              index,
                                    uint8_t** const __restrict__ dataBuffers,
                                    unsigned  const              count)
 {
-  printf("### noOpReduce 1, &index %p\n", &index);
-  printf("### noOpReduce 1,  index %u\n", index);
+  //printf("### noOpReduce 1, &index %p\n", &index);
+  //printf("### noOpReduce 1,  index %u\n", index);
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   float* __restrict__ calib = calibBuffers[index];
   float* __restrict__ data  = (float*)(dataBuffers[index]);
-  printf("### noOpReduce 2, count %u\n", count);
+  //printf("### noOpReduce 2, count %u\n", count);
   for (unsigned i = offset; i < count; i += blockDim.x * gridDim.x) {
     data[i] = calib[i];
   }
-  printf("### noOpReduce 3\n");
+  //printf("### noOpReduce 3\n");
 }
 
 // This routine records the graph that does the data reduction
@@ -61,13 +61,13 @@ void NoOpReducer::recordGraph(cudaStream_t&   stream,
                               uint8_t** const dataBuffers,
                               unsigned*       extent)
 {
-  printf("*** NoOpReducer::recordGraph: &index %p, calibSize %zu\n", &index, _calibSize);
+  //printf("*** NoOpReducer::recordGraph: &index %p, calibSize %zu\n", &index, _calibSize);
 
   unsigned count = _calibSize / sizeof(**calibBuffers);
-  //int threads = 1024;
-  //int blocks  = (count + threads-1) / threads; // @todo: Limit this?
-  //_noOpReduce<<<blocks, threads, 0, stream>>>(index, calibBuffers, dataBuffers, 1);
-  _noOpReduce<<<1, 1, 0, stream>>>(index, calibBuffers, dataBuffers, count);
+  int threads = 1024;
+  int blocks  = (count + threads-1) / threads; // @todo: Limit this?
+  _noOpReduce<<<blocks, threads, 0, stream>>>(index, calibBuffers, dataBuffers, 1);
+  //_noOpReduce<<<1, 1, 0, stream>>>(index, calibBuffers, dataBuffers, count);
   *extent = _calibSize;
 }
 
@@ -94,7 +94,7 @@ void NoOpReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
   // both the header and data so that the Xtc allocate in data.set_array_shape()
   // can succeed.  This may be larger than the pebble buffer and we therefore
   // must be careful not to write beyond its end.
-  logging::info("NoOpReducer event: xtc %p, extent %u, size %u", &xtc, xtc.extent, dataSize);
+  //printf("*** NoOpReducer event: xtc %p, extent %u, size %u", &xtc, xtc.extent, dataSize);
 
   // Data is Reduced data
   NamesId namesId(m_det.nodeId, ReducerNamesIndex);
