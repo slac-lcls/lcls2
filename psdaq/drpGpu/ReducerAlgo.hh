@@ -1,10 +1,11 @@
 #pragma once
 
+#include "Detector.hh"                  // For NamesIndex enums
 #include "drp/drp.hh"                   // For NamesIndex
 #include "xtcdata/xtc/ShapesData.hh"    // For Alg
 #include "xtcdata/xtc/NamesLookup.hh"
 
-// @todo: Redefined? class cudaStream_t;
+#include <cuda_runtime.h>
 
 namespace XtcData {
   class Xtc;
@@ -15,14 +16,6 @@ namespace Drp {
 
   namespace Gpu {
     class MemPoolGpu;
-    class Detector;
-
-    // @todo: Revisit: Must match detector definition
-    enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
-    enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
-           EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
-           FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
-           ReducerNamesIndex };         // index for xtc NamesId
 
 class ReducerAlgo
 {

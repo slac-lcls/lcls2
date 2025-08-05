@@ -10,6 +10,12 @@
 namespace Drp {
   namespace Gpu {
 
+    enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
+    enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
+           EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
+           FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
+           ReducerNamesIndex };         // index for xtc NamesId
+
 class Detector : public Drp::Detector
 {
 public:
