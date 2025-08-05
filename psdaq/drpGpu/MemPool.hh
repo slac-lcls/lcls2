@@ -14,6 +14,18 @@
 
 #include "drp/drp.hh"
 
+// If the HOST_REARMS_DMA  macro is defined, the GPU DRP can be run without
+// privileges.  The CPU rearms the DMA buffers for writing as early as possible,
+// but necessarily later than when the GPU can rearm them.  This will impact
+// performance so this definition is normally commented out.  In order to have
+// the GPU rearm the DMA buffers, the process must run with an as yet to be
+// determined privilege (cap_sys_rawio, perhaps?), but I've not had success yet
+// doing that.  Instead, set the executable up with root ownership and suid:
+//
+// sudo chown root $TESTRELDIR/bin/drp_gpu; sudo chmod u+s $TESTRELDIR/bin/drp_gpu
+//
+//#define HOST_REARMS_DMA                 // Commented out => need sudo
+
 namespace Drp {
   namespace Gpu {
 

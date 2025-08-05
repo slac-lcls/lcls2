@@ -40,7 +40,7 @@ public:
   void start();
 public:
   MemPool& pool()  const { return m_pool; }
-  RingIndexDtoD* queue() { return m_readerQueue.d; }
+  Ptr<RingIndexDtoD>& queue() { return m_readerQueue; }
 private:
   int         _setupGraphs(unsigned instance);
   cudaGraph_t _recordGraph(unsigned    instance,

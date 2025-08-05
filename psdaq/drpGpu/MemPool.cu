@@ -14,6 +14,7 @@ using namespace Drp::Gpu;
 namespace Drp {
   namespace Gpu {
 
+    [[maybe_unused]]
     static const unsigned GPU_OFFSET      = GPU_ASYNC_CORE_OFFSET;
     static const size_t   DMA_BUFFER_SIZE = 384*1024; // ePixUHR = 192*168*6 ASICs * 2B
 
@@ -40,7 +41,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   m_reduceBuffers_d (nullptr)
 {
   // @todo: Get the DMA size from somewhere - query the device?  No, the device is told below.
-  //        Get it from the command line?
+  //        Get it from the command line?  Get it from the GPU::Detector?
   m_dmaSize  = DMA_BUFFER_SIZE;
   m_dmaCount = MAX_BUFFERS;             // @todo: Find this out from the f/w
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
@@ -79,20 +80,24 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     if (res < 0)  logging::error("Error in gpuRemNvidiaMemory\n");
     logging::debug("Done with gpuRemNvidiaMemory() cleanup\n");
 
+#ifndef HOST_REARMS_DMA
     ////////////////////////////////////////////////
     // Map FPGA register space to GPU
     ////////////////////////////////////////////////
 
-    /** Map the GpuAsyncCore FPGA registers **/
+    // Map the GpuAsyncCore FPGA registers
+    // This causes 'operation not permitted' if the process doesn't have sufficient privileges
     if (gpuMapHostFpgaMem(&panel.swFpgaRegs, panel.gpu.fd(), GPU_OFFSET, 0x100000) < 0) {
       logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
+      logging::info("Consider rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
       abort();
     }
 
-    /** Compute 'write start' register location using the device pointer to GpuAsyncCore **/
+    // Compute 'write start' register location using the device pointer to GpuAsyncCore
     panel.hwWriteStart = panel.swFpgaRegs.dptr + 0x300;
 
     logging::debug("Mapped FPGA registers");
+#endif
 
     // @todo: For now we complain if the number of DMA buffers in f/w doesn't match MAX_BUFFERS.
     //        In the future, we should ensure all units have the same value and use that number.
@@ -111,12 +116,14 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
         logging::critical("Failed to alloc buffer list for %s at number %zd", device.c_str(), i);
         abort();
       }
+#ifndef HOST_REARMS_DMA
       auto dmaBufAddr0 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
       auto dmaBufAddr1 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i)+4);
       auto dmaBufSize  = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
       uint64_t dmaBufAddr = ((uint64_t)dmaBufAddr1 << 32) | dmaBufAddr0;
       printf("*** DMA buffer[%d] dptr %p, addr %p, size %u\n",
              i, (void*)panel.dmaBuffers[i].dptr, (void*)dmaBufAddr, dmaBufSize);
+#endif
     }
 
     logging::debug("Done with device mem alloc for %s\n", device.c_str());
@@ -124,6 +131,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
+  pgpEvents.resize(m_nbuffers);         // @todo: Revisit this hack - w/o this have only 4 buffers
 
   // Set up intermediate buffer pointers
   m_hostWrtBufsVec_h.resize(m_panels.size());
@@ -131,19 +139,19 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   chkError(cudaMalloc(&m_hostWrtBufs_d,    m_panels.size() * sizeof(*m_hostWrtBufs_d)));
   chkMemory          ( m_hostWrtBufs_d,    m_panels.size(),  sizeof(*m_hostWrtBufs_d), "hostWrtBufs");
   chkError(cudaMemset( m_hostWrtBufs_d, 0, m_panels.size() * sizeof(*m_hostWrtBufs_d)));
-  printf("*** MemPool ctor: hostWrtBufs_d %p\n", m_hostWrtBufs_d);
+  //printf("*** MemPool ctor: hostWrtBufs_d %p\n", m_hostWrtBufs_d);
 
   m_calibBufsVec_h.resize(nbuffers());
   chkError(cudaMalloc(&m_calibBuffers_d,    nbuffers() * sizeof(*m_calibBuffers_d)));
   chkMemory          ( m_calibBuffers_d,    nbuffers(),  sizeof(*m_calibBuffers_d), "calibBuffers");
   chkError(cudaMemset( m_calibBuffers_d, 0, nbuffers() * sizeof(*m_calibBuffers_d)));
-  printf("*** MemPool ctor: calibBuffers_d %p\n", m_calibBuffers_d);
+  //printf("*** MemPool ctor: calibBuffers_d %p\n", m_calibBuffers_d);
 
   m_reduceBufsVec_h.resize(nbuffers());
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));
   chkMemory          ( m_reduceBuffers_d,    nbuffers(),  sizeof(*m_reduceBuffers_d), "reduceBuffers");
   chkError(cudaMemset( m_reduceBuffers_d, 0, nbuffers() * sizeof(*m_reduceBuffers_d)));
-  printf("*** MemPool ctor: reduceBuffers_d %p\n", m_reduceBuffers_d);
+  //printf("*** MemPool ctor: reduceBuffers_d %p\n", m_reduceBuffers_d);
 
   logging::debug("Done with setting up memory\n");
 }
@@ -220,13 +228,13 @@ void MemPoolGpu::createHostBuffers(unsigned panel, size_t size)
   // Allocate buffers for the DMA descriptors, TimingHeaders and TEB input data
   // in managed memory so that they are visible on both the CPU and the GPU
   auto nBufs = nbuffers();
-  printf("*** createHostBufs 1: sz %zu, nbufs %u\n", m_hostWrtBufsVec_h.size(), nBufs);
+  //printf("*** createHostBufs 1: sz %zu, nbufs %u\n", m_hostWrtBufsVec_h.size(), nBufs);
   m_hostWrtBufsVec_h[panel].resize(nBufs);
-  printf("*** createHostBufs 2: sz %zu\n", m_hostWrtBufsVec_h[panel].size());
+  //printf("*** createHostBufs 2: sz %zu\n", m_hostWrtBufsVec_h[panel].size());
   // Allocate a device array to store nBufs ptrs
   chkError(cudaMalloc(&m_hostWrtBufsVec_d[panel], nBufs * sizeof(*m_hostWrtBufsVec_d[panel])));
   chkMemory          ( m_hostWrtBufsVec_d[panel], nBufs,  sizeof(*m_hostWrtBufsVec_d[panel]), "hostWrtBufsVec");
-  printf("*** createHostBufs 2a: hostWrtBufsVec_d %p\n", m_hostWrtBufsVec_d[panel]);
+  //printf("*** createHostBufs 2a: hostWrtBufsVec_d %p\n", m_hostWrtBufsVec_d[panel]);
   // Allocate managed memory for each of the nBufs buffers and store the ptr in a host std::vector
   uint8_t* hostWriteBufBase;
   chkError(cudaMallocManaged(&hostWriteBufBase,    nBufs * size));
@@ -235,16 +243,16 @@ void MemPoolGpu::createHostBuffers(unsigned panel, size_t size)
   for (unsigned i = 0; i < nBufs; ++i) {
     m_hostWrtBufsVec_h[panel][i] = (uint32_t*)(hostWriteBufBase + i * size);
   }
-  printf("*** createHostBufs 2b: hostWrtBufsVec_h[%u][0] %p\n", panel, m_hostWrtBufsVec_h[panel][0]);
+  //printf("*** createHostBufs 2b: hostWrtBufsVec_h[%u][0] %p\n", panel, m_hostWrtBufsVec_h[panel][0]);
   // Copy the array of managed memory buffer ptrs to the device
   chkError(cudaMemcpy(m_hostWrtBufsVec_d[panel], m_hostWrtBufsVec_h[panel].data(),
                       m_hostWrtBufsVec_h[panel].size() * sizeof(m_hostWrtBufsVec_h[panel][0]),
                       cudaMemcpyHostToDevice));
-  printf("*** createHostBufs 2c: hostWrtBufsVec_d[%u] %p\n", panel, m_hostWrtBufsVec_d[panel]);
+  //printf("*** createHostBufs 2c: hostWrtBufsVec_d[%u] %p\n", panel, m_hostWrtBufsVec_d[panel]);
   // Insert the dptr to the array of buffers into the panel dptr array
   chkError(cudaMemcpy(&m_hostWrtBufs_d[panel], &m_hostWrtBufsVec_d[panel],
                       sizeof(m_hostWrtBufsVec_d[panel]), cudaMemcpyHostToDevice));
-  printf("*** createHostBufs 2d: hostWrtBufs_d %p\n", m_hostWrtBufs_d);
+  //printf("*** createHostBufs 2d: hostWrtBufs_d %p\n", m_hostWrtBufs_d);
 
   if (m_hostWrtBufsSize) {
     if (m_hostWrtBufsSize != size) {
@@ -254,9 +262,9 @@ void MemPoolGpu::createHostBuffers(unsigned panel, size_t size)
   } else {
     m_hostWrtBufsSize = size;
   }
-  logging::info("Host write buffers for panel %u: %p : %p, sz %zu * %u\n", panel,
-                m_hostWrtBufsVec_h[panel][0], m_hostWrtBufsVec_h[panel][nBufs-1], size, nBufs);
-  printf("*** createHostBufs 3: size %zu\n", size);
+  logging::info("Host write buffers for panel %u: %p : %p, size %u * %zu B\n", panel,
+                m_hostWrtBufsVec_h[panel][0], m_hostWrtBufsVec_h[panel][nBufs-1], nBufs, size);
+  //printf("*** createHostBufs 3: size %zu\n", size);
 }
 
 void MemPoolGpu::destroyHostBuffers(unsigned panel)
@@ -297,8 +305,8 @@ void MemPoolGpu::createCalibBuffers(unsigned nPanels, unsigned nElements)
                       m_calibBufsVec_h.size() * sizeof(*m_calibBuffers_d),
                       cudaMemcpyHostToDevice));
   m_calibBufSize = size;
-  logging::info("Calibration buffers: %p : %p, sz %zu * %u\n",
-                m_calibBufsVec_h[0], m_calibBufsVec_h[nBufs-1], size, nBufs);
+  logging::info("Calibration buffers: %p : %p, size %u * %zu B\n",
+                m_calibBufsVec_h[0], m_calibBufsVec_h[nBufs-1], nBufs, size);
 }
 
 void MemPoolGpu::destroyCalibBuffers()
@@ -338,8 +346,8 @@ void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved)
                       cudaMemcpyHostToDevice));
   m_reduceBufSize = nBytes;             // Doesn't include the reserved portion!
   m_reduceBufRsvd = reserved;
-  logging::info("Reduce buffers: [base %p] %p : %p, sz (%zu + %zu) * %u\n", reduceBufferBase,
-                m_reduceBufsVec_h[0], m_reduceBufsVec_h[nBufs-1], nBytes, reserved, nBufs);
+  logging::info("Reduce buffers: [base %p] %p : %p, size %u * (%zu + %zu) B\n", reduceBufferBase,
+                m_reduceBufsVec_h[0], m_reduceBufsVec_h[nBufs-1], nBufs, reserved, nBytes);
 }
 
 void MemPoolGpu::destroyReduceBuffers()
