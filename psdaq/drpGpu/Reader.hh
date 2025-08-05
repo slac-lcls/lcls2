@@ -13,7 +13,7 @@
 
 #include "drp/drp.hh"
 #include "MemPool.hh"                   // For Ptr
-#include "ringIndex_DtoD.hh"
+#include "RingIndex_DtoD.hh"
 
 namespace Pds {
   class TimingHeader;

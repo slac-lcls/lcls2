@@ -7,8 +7,8 @@
 #include <cuda/atomic>
 
 #include "MemPool.hh"
-#include "ringIndex_DtoH.hh"
-#include "ringIndex_HtoD.hh"
+#include "RingIndex_DtoH.hh"
+#include "RingIndex_HtoD.hh"
 #include "ReducerAlgo.hh"
 #include "psdaq/service/Dl.hh"
 

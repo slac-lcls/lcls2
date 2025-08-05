@@ -8,8 +8,8 @@
 #include <cuda/atomic>
 
 #include "MemPool.hh"
-#include "ringIndex_DtoD.hh"
-#include "ringIndex_DtoH.hh"
+#include "RingIndex_DtoD.hh"
+#include "RingIndex_DtoH.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 namespace Pds {
