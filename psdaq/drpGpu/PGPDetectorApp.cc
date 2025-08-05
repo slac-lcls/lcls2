@@ -115,7 +115,7 @@ Drp::Gpu::Detector* DetectorFactory::_instantiate(Pds::Dl&           dl,
                                                   Parameters&        para,
                                                   MemPoolGpu&        pool)
 {
-    logging::debug("Loading object symbols from library '%s'", soName.c_str());
+    logging::debug("Loading library '%s'", soName.c_str());
 
     if (dl.open(soName, RTLD_LAZY))
     {

@@ -25,7 +25,7 @@ class XpmDetector : public Drp::XpmDetector
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(XtcData::Dgram&, const void* bufEnd, Drp::PGPEvent*, uint64_t count) override { /* Not used */ }
+  void event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t count) override { /* Not used */ }
 };
 
 class RawDef : public VarDef
@@ -49,7 +49,7 @@ public:
 EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   Drp::Gpu::Detector(&para, &pool)
 {
-  // Call common code to set up a vector of Drp::EpixUHRemus
+  // Call common code to set up a vector of Drp::XpmDetectors
   _initialize<Drp::Gpu::XpmDetector>(para, pool);
 
   // Check there is enough space in the DMA buffers for this many pixels

@@ -19,14 +19,14 @@ namespace Drp {
 
 // The functionality of the Drp::Detector is needed to set up each of the panels
 // However, the data description and handling in the GPU case will be different,
-// so we create a Drp Detector class to handle just the protion we need.
+// so we create a Drp Detector class to handle just the portion we need.
 // Derive from Drp::XpmDetector so it can be made non-abstract.
 class XpmDetector : public Drp::XpmDetector
 {
 public:
   XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
   using Drp::XpmDetector::event;
-  void event(Dgram&, const void* bufEnd, Drp::PGPEvent*, uint64_t count) override { /* Not used */ }
+  void event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t count) override { /* Not used */ }
 };
 
 class RawDef : public VarDef
@@ -50,8 +50,7 @@ public:
 AreaDetector::AreaDetector(Parameters& para, MemPoolGpu& pool) :
   Drp::Gpu::Detector(&para, &pool)
 {
-  // Call common code to set up a vector of Drp::AreaDetectors
-  //_initialize<Drp::AreaDetector>(para, pool);
+  // Call common code to set up a vector of Drp::XpmDetectors
   _initialize<Drp::Gpu::XpmDetector>(para, pool);
 
   // Use a non-generic hack to determine the number of pixels
@@ -84,9 +83,9 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
   // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
   unsigned panel = 0;
   for (const auto& det : m_dets) {
-    printf("*** Gpu::AreaDetector configure for %u start\n", panel);
+    //printf("*** Gpu::AreaDetector configure for %u start\n", panel);
     rc = det->configure(config_alias, xtc, bufEnd);
-    printf("*** Gpu::AreaDetector configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
+    //printf("*** Gpu::AreaDetector configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
     if (rc) {
       logging::error("Gpu::AreaDetector::configure failed for %s\n", m_params[panel].device);
       break;
@@ -138,21 +137,21 @@ void AreaDetector::recordGraph(cudaStream_t&                      stream,
                                const unsigned                     panel,
                                uint16_t const* const __restrict__ rawBuffer)
 {
-  printf("*** AreaDetector record: 1\n");
+  //printf("*** AreaDetector record: 1\n");
   auto nPanels = m_dets.size();
 
   // Check that panel is within range
   assert (panel < nPanels);
-  printf("*** AreaDetector record: 2\n");
+  //printf("*** AreaDetector record: 2\n");
 
   int threads = 1024;
   int blocks  = (m_nPixels + threads-1) / threads; // @todo: Limit this?
-  printf("*** AreaDetector record: 3, panel %u, threads %d, blocks %d, nPixels %d\n", panel, threads, blocks, m_nPixels);
+  //printf("*** AreaDetector record: 3, panel %u, threads %d, blocks %d, nPixels %d\n", panel, threads, blocks, m_nPixels);
   auto       pool         = m_pool->getAs<MemPoolGpu>();
   auto const calibBuffers = pool->calibBuffers_d();
-  printf("*** AreaDetector record: 4, calibBufSz %zu\n", pool->calibBufSize());
+  //printf("*** AreaDetector record: 4, calibBufSz %zu\n", pool->calibBufSize());
   _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, rawBuffer, index_d, panel, m_nPixels);
-  printf("*** AreaDetector record: 5\n");
+  //printf("*** AreaDetector record: 5\n");
 }
 
 // The class factory

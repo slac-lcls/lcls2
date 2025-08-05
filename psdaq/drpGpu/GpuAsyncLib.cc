@@ -120,17 +120,17 @@ bool checkError(CUresult status, const char* const func, const char* const file,
         CUresult ok         = cuGetErrorString(status, &perrstr);
         const char* perrnam = 0;
         CUresult ok2        = cuGetErrorName(status, &perrnam);
-        const auto message = msg ? (*msg ? msg : func) : func; // Just in case, but msg is never 0
+        const char* message = msg ? msg : ""; // Just in case, but msg is never 0
         if (ok == CUDA_SUCCESS && ok2 == CUDA_SUCCESS) {
             if (perrstr) {
-                logging::error("%s:%d:  %s (%i): '%s'%s",
+                logging::error("%s:%d:  %s (%i): '%s' %s",
                                file, line, perrnam, status, perrstr, message);
             } else {
-                logging::error("%s:%d:  %s (%i): unknown error%s",
+                logging::error("%s:%d:  %s (%i): unknown error %s",
                                file, line, perrnam, status, message);
             }
         } else {
-            logging::error("%s:%d:  status %i: unknown error%s",
+            logging::error("%s:%d:  status %i: unknown error %s",
                            file, line, status, message);
         }
         if (crash)  abort();
@@ -143,9 +143,9 @@ bool checkError(cudaError status, const char* const func, const char* const file
                 const int line, const bool crash, const char* const msg)
 {
     if (status != cudaSuccess) {
-        logging::error("%s:%d:  %s (%i): '%s' - %s",
+        logging::error("%s:%d:  %s (%i): '%s' %s",
                        file, line, cudaGetErrorName(status), status,
-                       cudaGetErrorString(status), msg ? (*msg ? msg : func) : func);
+                       cudaGetErrorString(status), msg ? msg : "");
         if (crash)  abort();
         return true;
     }
