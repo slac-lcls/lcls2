@@ -804,9 +804,11 @@ def option_parser():
 
     return parser
 
-
-if __name__ == '__main__':
+def do_main():
     omc = OpticalMetrologyCheck()
     sys.exit()
+
+if __name__ == '__main__':
+    do_main()
 
 # EOF

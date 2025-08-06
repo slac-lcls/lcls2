@@ -91,9 +91,11 @@ def proc_optical_metrology_epix10ka2m():
 
     OpticalMetrologyEpix10ka2M(parser)
 
-
-if __name__ == '__main__':
+def do_main():
     proc_optical_metrology_epix10ka2m()
     sys.exit()
+
+if __name__ == '__main__':
+    do_main()
 
 # EOF
