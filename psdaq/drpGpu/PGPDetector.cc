@@ -127,6 +127,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 void TebReceiver::_recorder()
 {
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
+  //auto  bufMask = memPool.nbuffers() - 1;
   unsigned worker = 0;
 
   logging::info("Recorder is starting with process ID %lu\n", syscall(SYS_gettid));
@@ -153,8 +154,12 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
-    /*auto head  =*/ m_reducer->receive(worker++, index); // This blocks until result is ready from GPU
+    //auto tail  = (index+1) & bufMask;
+    /*auto head  =*/ m_reducer->receive(worker++); // This blocks until result is ready from GPU
     //printf("*** TebRcvr::recorder: 1 reducer %u, head %u, idx %u\n", worker-1, head, index);
+    //if (head != index) {
+    //  printf("*** TebRcvr::recorder: 1 reducer %u, head %u != tail %u\n", worker-1, head, index);
+    //}
 
     // Release the GPU intermediate buffers for reuse
     m_collector->freeDma(index);        // @todo: Bad name
@@ -243,6 +248,21 @@ void TebReceiver::_recorder()
     //}
 
     TransitionId::Value transitionId = dgram->service();
+
+    if (transitionId != XtcData::TransitionId::L1Accept) {
+      if (transitionId != XtcData::TransitionId::SlowUpdate) {
+        logging::info("Recorder   saw %s @ %u.%09u (%014lx)",
+                      XtcData::TransitionId::name(transitionId),
+                      dgram->time.seconds(), dgram->time.nanoseconds(),
+                      dgram->pulseId());
+      }
+      else {
+        logging::debug("Recorder   saw %s @ %u.%09u (%014lx)",
+                       XtcData::TransitionId::name(transitionId),
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       dgram->pulseId());
+      }
+    }
 
     if (writing()) {                  // Won't ever be true for Configure
       //printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
@@ -473,8 +493,8 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
   m_colMetrics.m_dmaSize = 0;
   exporter->add("drp_dma_size", labels, MetricType::Gauge,
                 [&](){return m_colMetrics.m_dmaSize.load();});
-  //exporter->add("drp_th_latency", labels, MetricType::Gauge,
-  //              [&](){return latency();});
+  exporter->add("drp_th_latency", labels, MetricType::Gauge,
+                [&](){return m_colMetrics.m_latency.load();});
   m_colMetrics.m_nDmaErrors = 0;
   exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
                 [&](){return m_colMetrics.m_nDmaErrors.load();});

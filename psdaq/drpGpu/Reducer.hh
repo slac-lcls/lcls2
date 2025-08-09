@@ -29,7 +29,7 @@ public:
           const cuda::atomic<int>& terminate_d);
   ~Reducer();
   void start(unsigned worker, unsigned index);
-  unsigned receive(unsigned worker, unsigned index);
+  unsigned receive(unsigned worker);
   void release(unsigned index) const { m_outputQueue.h->release(index); }
   void configure(XtcData::Xtc& xtc, const void* bufEnd)
   { m_algo->configure(xtc, bufEnd); }
@@ -47,6 +47,7 @@ private:
   const cuda::atomic<int>&     m_terminate_d;
   bool*                        m_done;  // Cache for m_terminate_d
   std::vector<cudaStream_t>    m_streams;
+  std::vector<cudaEvent_t>     m_events;
   std::vector<cudaGraphExec_t> m_graphExecs;
   Ptr<RingIndexHtoD>           m_reducerQueue;
   Ptr<RingIndexDtoH>           m_outputQueue;

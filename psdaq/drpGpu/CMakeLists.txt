@@ -53,12 +53,14 @@ if(CMAKE_CUDA_COMPILER)
         mmhw
         xtcdata::xtc
         nlohmann_json::nlohmann_json
+        #cudadevrt
         CUDA::cudart
         CUDA::cuda_driver
         CUDA::cuFile            # cufile is not found, but cuFile is
     )
     set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(drp_gpu PUBLIC -O3)
+    #target_link_options(drp_gpu PUBLIC "-rdc=true")
 
 #--- Detector libraries
 

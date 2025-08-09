@@ -245,7 +245,6 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t& stream)
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWriteBufs[tail]
   // @todo: Deal with transitions
-  // @todo: Provide a GPU-enabled base class for TriggerPrimitive
   if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
     m_triggerPrimitive->event(stream,
                               calibBuffers,
