@@ -204,6 +204,21 @@ static __global__ void _graphLoop(const unsigned&     idx,
   //printf("### Reader graphLoop 3\n");
 }
 
+/******************************************************************************
+ * Records a CUDA graph for later instantiation and execution.
+ * The nodes within a CUDA graph define the execution steps of what amounts to
+ * a "command buffer", in traditional graphics terms.  Edges between nodes on
+ * the graph define dependencies.  The execution flow of the GPU DRP
+ * application can be accurately described using the graph structure as defined
+ * by the CUDA graph API.  Normally, CUDA API calls that run on the GPU (i.e.
+ * cuStreamWriteXXX) are converted into an internal representation and inserted
+ * into a command buffer within the CUDA driver.  The sync functions can then
+ * be used to describe dependencies between steps, however this involves the
+ * host and thus introduces latency between steps.  In the case of CUDA graphs,
+ * we can avoid host involvement completely and simply give the GPU a list of
+ * instructions to execute.  We can even tell the GPU to launch new graphs on
+ * its own, if we wanted to cut host involvement out entirely.
+ ******************************************************************************/
 cudaGraph_t Reader::_recordGraph(unsigned    instance,
                                  CUdeviceptr dmaBuffer,
                                  CUdeviceptr hwWriteStart)
@@ -227,6 +242,9 @@ cudaGraph_t Reader::_recordGraph(unsigned    instance,
    ****************************************************************************/
   chkError(cuMemsetD32Async(dmaBuffer + 4, 0, 1, stream));
 
+  // Wipe the buffer (for debugging; normally commented out for performance)
+  //chkError(cuMemsetD32Async(dmaBuffer, 0, m_pool.dmaSize() / 4, stream));
+
 #ifndef HOST_REARMS_DMA
   // Write to the DMA start register in the FPGA to trigger the write
   chkError(cuMemsetD8Async(hwWriteStart + 4 * instance, 1, 1, stream));
@@ -238,10 +256,8 @@ cudaGraph_t Reader::_recordGraph(unsigned    instance,
    * Originally this was a call to cuStreamWait, but that is not supported by
    * graphs, so instead we use a waitForDMA kernel to spin on the location
    * until data is ready to be processed.
-   * @todo: This may have negative implications on GPU scheduling.
-   *        Need to profile!!!
+   * @todo: This may have negative implications on GPU scheduling.  Profile it!
    ****************************************************************************/
-  uint32_t bufMask = m_pool.nbuffers() - 1;
   _waitForDMA<<<1, 1, 1, stream>>>((uint32_t*)(dmaBuffer + 4),
                                    instance,
                                    *m_readerQueue.d,
@@ -249,9 +265,6 @@ cudaGraph_t Reader::_recordGraph(unsigned    instance,
                                    m_terminate_d,
                                    m_done);
   //printf("*** Reader record 3.%d\n", instance);
-
-  // An alternative to the above kernel is to do the waiting on the CPU instead...
-  //chkError(cuLaunchHostFunc(stream, check_memory, (void*)buffer));
 
   // Copy the DMA descriptor and the timing header to host-visible managed memory buffers
   constexpr auto iPayload { (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(uint32_t) };

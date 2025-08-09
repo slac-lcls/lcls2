@@ -16,7 +16,7 @@ namespace Drp {
 
     [[maybe_unused]]
     static const unsigned GPU_OFFSET      = GPU_ASYNC_CORE_OFFSET;
-    static const size_t   DMA_BUFFER_SIZE = 384*1024; // ePixUHR = 192*168*6 ASICs * 2B
+    static const size_t   DMA_BUFFER_SIZE = 192*168 * 6 * 2; // ePixUHR = 6 ASICs, 2B/pixel
 
   } // Gpu
 } // Drp
@@ -42,7 +42,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 {
   // @todo: Get the DMA size from somewhere - query the device?  No, the device is told below.
   //        Get it from the command line?  Get it from the GPU::Detector?
-  m_dmaSize  = DMA_BUFFER_SIZE;
+  m_dmaSize  = ((DMA_BUFFER_SIZE + 0xffff) >> 16) << 16; // Round up to multiple of 64 kB
   m_dmaCount = MAX_BUFFERS;             // @todo: Find this out from the f/w
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
@@ -67,11 +67,14 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // Setup memory
   ////////////////////////////////////
 
+  // Parse the device spec for the list of unit numbers to handle
   std::vector<int> units;
-  auto pos = para.device.find("_", 0);
-  getRange(para.device.substr(pos+1, para.device.length()), units);
+  auto under = para.device.find("_", 0);
+  auto base = para.device.substr(0, under+1);
+  getRange(para.device.substr(under+1, para.device.length()), units);
+
   for (auto unit : units) {
-    std::string device(para.device.substr(0, pos+1) + std::to_string(unit));
+    std::string device(base + std::to_string(unit));
     auto& panel = m_panels.emplace_back(device);
     logging::info("PGP device '%s' opened", device.c_str());
 
@@ -79,6 +82,19 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     int res = gpuRemNvidiaMemory(panel.gpu.fd());
     if (res < 0)  logging::error("Error in gpuRemNvidiaMemory\n");
     logging::debug("Done with gpuRemNvidiaMemory() cleanup\n");
+
+    ////////////////////////////////////////////////
+    // Create write buffers
+    ////////////////////////////////////////////////
+
+    // Allocate DMA buffers on the GPU
+    // This handles allocating buffers on the device and registering them with the driver.
+    for (unsigned i = 0; i < dmaCount(); ++i) {
+      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSize(), 1) != 0) {
+        logging::critical("Failed to allocate DMA buffers for %s at number %zd", device.c_str(), i);
+        abort();
+      }
+    }
 
 #ifndef HOST_REARMS_DMA
     ////////////////////////////////////////////////
@@ -97,7 +113,6 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     panel.hwWriteStart = panel.swFpgaRegs.dptr + 0x300;
 
     logging::debug("Mapped FPGA registers");
-#endif
 
     // @todo: For now we complain if the number of DMA buffers in f/w doesn't match MAX_BUFFERS.
     //        In the future, we should ensure all units have the same value and use that number.
@@ -109,22 +124,15 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
       if (maxBuffers < MAX_BUFFERS)  abort();
     }
 
-    // Allocate DMA buffers on the GPU
-    // This handles allocating buffers on the device and registering them with the driver.
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSize(), 1) != 0) {
-        logging::critical("Failed to alloc buffer list for %s at number %zd", device.c_str(), i);
-        abort();
-      }
-#ifndef HOST_REARMS_DMA
       auto dmaBufAddr0 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
       auto dmaBufAddr1 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i)+4);
       auto dmaBufSize  = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
       uint64_t dmaBufAddr = ((uint64_t)dmaBufAddr1 << 32) | dmaBufAddr0;
-      printf("*** DMA buffer[%d] dptr %p, addr %p, size %u\n",
-             i, (void*)panel.dmaBuffers[i].dptr, (void*)dmaBufAddr, dmaBufSize);
-#endif
+      logging::debug("DMA buffer[%d] dptr %p, addr %p, size %u",
+                     i, (void*)panel.dmaBuffers[i].dptr, (void*)dmaBufAddr, dmaBufSize);
     }
+#endif
 
     logging::debug("Done with device mem alloc for %s\n", device.c_str());
   }

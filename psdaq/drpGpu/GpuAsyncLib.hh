@@ -15,7 +15,7 @@
  **/
 #pragma once
 
-#include "utils.h"
+#include "Utils.h"
 
 #include <string>
 #include "psdaq/aes-stream-drivers/GpuAsync.h"

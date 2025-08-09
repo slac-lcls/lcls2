@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <time.h>
+#include <type_traits>
 
 inline void putByte(uint8_t byte) {
     putc("0123456789ABCDEF"[byte & 0xF], stdout);
@@ -75,4 +76,21 @@ static inline double curTime() {
     timespec tp;
     clock_gettime(CLOCK_MONOTONIC, &tp);
     return double(tp.tv_sec) + (double(tp.tv_nsec) / 1e9);
+}
+
+namespace util {
+  template<typename A, typename B>
+  typename std::common_type<A, B>::type min(const A& a, const B& b) {
+    return a < b ? a : b;
+  }
+
+  template<typename A, typename B>
+  typename std::common_type<A, B>::type max(const A& a, const B& b) {
+    return a > b ? a : b;
+  }
+
+  template<typename A, typename B, typename C>
+  typename std::common_type<A, B, C>::type clamp(const A& val, const B& lower, const C& upper) {
+    return val < lower ? lower : (val > upper ? upper : val);
+  }
 }
