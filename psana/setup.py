@@ -180,7 +180,7 @@ if 'PSANA' in BUILD_LIST :
             'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
             'optical_metrology_check      = psana.pscalib.app.optical_metrology_check:do_main',
             'optical_metrology_epix10ka2m = psana.pscalib.app.optical_metrology_epix10ka2m:do_main',
-            'make_or_print_nparray        = psana.app.make_or_print_numpy_array:do_main',
+            'make_or_print_npyarray = psana.app.make_or_print_numpy_array:do_main',
         ]
     }
 
