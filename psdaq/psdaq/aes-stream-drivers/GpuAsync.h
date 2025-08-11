@@ -54,7 +54,7 @@ struct GpuNvidiaData {
  * @fd: File descriptor for the device.
  * @write: Write access flag (1 for write access, 0 for read-only).
  * @address: Memory address of the GPU region to add.
- * @size: Size of the memory region to add.
+ * @size: Size of the memory region to add. This must be a multiple of 64kb
  *
  * This function adds a specified memory region to the NVIDIA GPU, allowing
  * for the region to be accessed as specified by the write flag.
