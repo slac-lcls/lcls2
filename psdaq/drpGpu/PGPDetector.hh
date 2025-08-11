@@ -66,7 +66,7 @@ private:
   std::unique_ptr<FileWriterAsync> m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
   unsigned                         m_worker;   // For cycling through reducers
-  SPSCQueue<ResultItems>           m_resultQueue;
+  SPSCQueue<ResultItems>           m_recordQueue;
   std::shared_ptr<Collector>       m_collector;
   std::thread                      m_recorderThread;
   const Parameters&                m_para;

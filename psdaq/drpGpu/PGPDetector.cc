@@ -34,7 +34,7 @@ TebReceiver::TebReceiver(const Parameters&        para,
   m_terminate_h  (terminate_h),
   m_terminate_d  (terminate_d),
   m_worker       (0),
-  m_resultQueue  (drp.pool.nbuffers()),
+  m_recordQueue  (drp.pool.nbuffers()),
   m_para         (para)
 {
 }
@@ -58,6 +58,8 @@ int TebReceiver::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 {
   exporter->add("DRP_smdWriting",  labels, Pds::MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
   exporter->add("DRP_fileWriting", labels, Pds::MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
+  exporter->add("DRP_recordQueue", labels, Pds::MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
+  exporter->add("DRP_reduceTime",  labels, Pds::MetricType::Gauge, [&](){ return m_reducer ? m_reducer->reduceTime() : 0; });
 
   return 0;
 }
@@ -120,7 +122,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   //printf("*** TebRcvr::complete: 2\n");
 
   // Pass parameters to the recorder thread
-  m_resultQueue.push({index, &result});
+  m_recordQueue.push({index, &result});
   //printf("*** TebRcvr::complete: 3\n");
 }
 
@@ -147,7 +149,7 @@ void TebReceiver::_recorder()
   while (!m_terminate_h.load(std::memory_order_acquire)) {
     // Wait for a new Result to appear from the TEB
     ResultItems items;
-    m_resultQueue.pop(items);
+    m_recordQueue.pop(items);
     auto result = items.result;
     //printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
     //       result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
@@ -356,8 +358,8 @@ void TebReceiver::_recorder()
     m_pool.freePebble();
     //printf("*** TebRcvr::recorder: 8, freePebble\n");
 
-    // Free the reduce buffer
-    m_reducer->release(index);
+    //// Free the reduce buffer
+    //m_reducer->release(index);
     //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
   }
 

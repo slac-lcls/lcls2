@@ -10,7 +10,10 @@ using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp;
 using namespace Drp::Gpu;
+using namespace Pds;
 using namespace Pds::Eb;
+
+using us_t = std::chrono::microseconds;
 
 
 Reducer::Reducer(const Parameters&        para,
@@ -22,17 +25,18 @@ Reducer::Reducer(const Parameters&        para,
   m_algo       (nullptr),
   m_terminate_h(terminate_h),
   m_terminate_d(terminate_d),
+  m_reduce_us  (0),
   m_para       (para)
 {
-  // Set up buffer index queue for Host to Reducer comms
-  m_reducerQueue.h = new Gpu::RingIndexHtoD(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
-  chkError(cudaMalloc(&m_reducerQueue.d,                   sizeof(*m_reducerQueue.d)));
-  chkError(cudaMemcpy( m_reducerQueue.d, m_reducerQueue.h, sizeof(*m_reducerQueue.d), cudaMemcpyHostToDevice));
+  //// Set up buffer index queue for Host to Reducer comms
+  //m_reducerQueue.h = new Gpu::RingIndexHtoD(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
+  //chkError(cudaMalloc(&m_reducerQueue.d,                   sizeof(*m_reducerQueue.d)));
+  //chkError(cudaMemcpy( m_reducerQueue.d, m_reducerQueue.h, sizeof(*m_reducerQueue.d), cudaMemcpyHostToDevice));
 
-  // Set up buffer index queue for Reducer to Host comms
-  m_outputQueue.h = new Gpu::RingIndexDtoH(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
-  chkError(cudaMalloc(&m_outputQueue.d,                  sizeof(*m_outputQueue.d)));
-  chkError(cudaMemcpy( m_outputQueue.d, m_outputQueue.h, sizeof(*m_outputQueue.d), cudaMemcpyHostToDevice));
+  //// Set up buffer index queue for Reducer to Host comms
+  //m_outputQueue.h = new Gpu::RingIndexDtoH(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
+  //chkError(cudaMalloc(&m_outputQueue.d,                  sizeof(*m_outputQueue.d)));
+  //chkError(cudaMemcpy( m_outputQueue.d, m_outputQueue.h, sizeof(*m_outputQueue.d), cudaMemcpyHostToDevice));
 
   // Set up a done flag to cache m_terminate's value and avoid some PCIe transactions
   chkError(cudaMalloc(&m_done,    sizeof(*m_done)));
@@ -41,12 +45,16 @@ Reducer::Reducer(const Parameters&        para,
 
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
-  //m_events.resize(m_para.nworkers);
+  //m_begEvents.resize(m_para.nworkers);
+  //m_endEvents.resize(m_para.nworkers);
+  m_t0.resize(m_para.nworkers);
   m_heads.resize(m_para.nworkers);
   m_tails.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_streams.size(); ++i) {
     chkFatal(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
     //chkError(cudaEventCreateWithFlags(&m_events[i], cudaEventDisableTiming));
+    //chkError(cudaEventCreate(&m_begEvents[i]));
+    //chkError(cudaEventCreate(&m_endEvents[i]));
 
     // Keep track of the head and tail indices of the Reducer stream
     chkError(cudaMalloc(&m_heads[i],    sizeof(*m_heads[i])));
@@ -101,6 +109,8 @@ Reducer::~Reducer()
     chkError(cudaFree(m_tails[i]));
     chkError(cudaFree(m_heads[i]));
 
+    //chkError(cudaEventDestroy(m_endEvents[i]));
+    //chkError(cudaEventDestroy(m_begEvents[i]));
     chkError(cudaStreamDestroy(m_streams[i]));
   }
   printf("*** Reducer dtor 4\n");
@@ -108,13 +118,13 @@ Reducer::~Reducer()
   chkError(cudaFree(m_done));
   printf("*** Reducer dtor 5\n");
 
-  chkError(cudaFree(m_outputQueue.d));
-  delete m_outputQueue.h;
-  printf("*** Reducer dtor 6\n");
+  //chkError(cudaFree(m_outputQueue.d));
+  //delete m_outputQueue.h;
+  //printf("*** Reducer dtor 6\n");
 
-  chkError(cudaFree(m_reducerQueue.d));
-  delete m_reducerQueue.h;
-  printf("*** Reducer dtor 7\n");
+  //chkError(cudaFree(m_reducerQueue.d));
+  //delete m_reducerQueue.h;
+  //printf("*** Reducer dtor 7\n");
 }
 
 ReducerAlgo* Reducer::_setupAlgo(Detector& det)
@@ -314,10 +324,17 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
 
 void Reducer::start(unsigned worker, unsigned index)
 {
-  auto  instance  = worker % m_para.nworkers;
+  auto instance = worker % m_para.nworkers;
+  //if (instance+1 > m_begEvents.size()) {
+  //  cudaEvent_t event;
+  //  chkError(cudaEventCreate(&event));
+  //  m_begEvents.push_back(event);
+  //}
+
   auto& head      = m_heads[instance];
   auto& tail      = m_tails[instance];
   auto& stream    = m_streams[instance];
+  //auto& begEvent  = m_begEvents[instance];
   auto& graphExec = m_graphExecs[instance];
 
   //printf("*** Reducer[%d] starting", instance);
@@ -340,6 +357,9 @@ void Reducer::start(unsigned worker, unsigned index)
   } while (h != t);                     // Wait if the kernel is still processing
   chkError(cudaMemcpyAsync((void*)tail, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
 
+  //chkError(cudaEventRecord(begEvent, 0));
+  m_t0[instance] = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
   // Launch the Reducer graph
   chkFatal(cudaGraphLaunch(graphExec, stream));
 
@@ -348,18 +368,31 @@ void Reducer::start(unsigned worker, unsigned index)
 
 unsigned Reducer::receive(unsigned worker)
 {
-  auto  instance = worker % m_para.nworkers;
+  auto instance = worker % m_para.nworkers;
+  //if (instance+1 > m_endEvents.size()) {
+  //  cudaEvent_t event;
+  //  chkError(cudaEventCreate(&event));
+  //  m_endEvents.push_back(event);
+  //}
+
   //auto& head     = m_heads[instance];
   auto& stream   = m_streams[instance];
-  //auto& event    = m_events[instance];
+  //auto& begEvent = m_begEvents[instance];
+  //auto& endEvent = m_endEvents[instance];
   //printf("*** Reducer::receive[%u]: 1\n", instance);
 
   //auto index = m_outputQueue.h->consume();
   //printf("*** Reducer::receive[%u]: 2 idx %u\n", instance, index);
 
-  // Wait for the graph to produce the next index
-  //chkError(cudaStreamWaitEvent(stream, event, 0));
-  //chkError(cudaEventSynchronize(event));
+  //// Wait for the graph to produce the next index
+  ////chkError(cudaStreamWaitEvent(stream, event, 0));
+  //chkError(cudaEventRecord(endEvent, 0));
+  //chkError(cudaEventSynchronize(endEvent));
+  //float ms;
+  //chkError(cudaEventElapsedTime(&ms, begEvent, endEvent));
+  //m_reduce_us = unsigned(1000. * ms);
+  auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+  m_reduce_us = std::chrono::duration_cast<us_t>(now - m_t0[instance]).count();
 
   //unsigned index;
   //chkError(cudaMemcpyAsync((void*)&index, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
