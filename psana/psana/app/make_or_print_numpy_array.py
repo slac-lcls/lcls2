@@ -11,7 +11,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = '\n  %s -s <shape> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s -s 512,1024 -m 10 -r 1 -t np.float64 -f nda-random.npy  # create' % SCRNAME\
+      + '\n  %s -s 512,1024 -m 10 -r 1 -t np.float64 -f nda-random.npy  # create and save' % SCRNAME\
       + '\n  %s -i nda-random.npy  # load and print array from file' % SCRNAME\
 
 def make_random_nda(shape=(704, 768), mean=100, rms=10, dtype=np.float64, fname='fake.npy'):
@@ -33,16 +33,16 @@ def argument_parser():
     d_shape   = '(704,768)'
     d_mean    = 2
     d_rms     = 0
-    d_dtype   = 'np.float64'
-    d_fname   = 'nda-random.npy'
+    d_dtype   = 'np.float32'
+    d_fname   = 'ndarray.npy'
     d_ifname  = None
 
-    h_shape   = 'shape of the array, comma-separated, no-spaces, e.g.: (704,768), (512,1024), default: %s' % d_shape
+    h_shape   = 'shape of the array, comma-separated, no-spaces, e.g.: (704,768) - epix100, (352, 384) - epix10ka (512,1024) - JF, default: %s' % d_shape
     h_mean    = 'central value of normal distribution, default: %0.3f' % d_mean
     h_rms     = 'rms of normal distribution or 0 for constant mean array, default: %0.3f' % d_rms
     h_dtype   = 'str data type, default: %s' % d_dtype
     h_fname   = 'output file name, default: %s' % d_fname
-    h_ifname  = 'nput file name - IF NOT None - prints content, default: %s' % d_ifname
+    h_ifname  = 'input file name - IF NOT None - prints content, default: %s' % d_ifname
 
     parser = ArgumentParser(usage=USAGE,  description='creates(random)/saves/loads/prints numpy array')
     parser.add_argument('-s', '--shape',  default=d_shape, type=str,   help=h_shape)
@@ -50,7 +50,7 @@ def argument_parser():
     parser.add_argument('-r', '--rms',    default=d_rms,   type=float, help=h_rms)
     parser.add_argument('-t', '--dtype',  default=d_dtype, type=str,   help=h_dtype)
     parser.add_argument('-f', '--fname',  default=d_fname, type=str,   help=h_fname)
-    parser.add_argument('-i', '--ifname', default=d_fname, type=str,   help=h_ifname)
+    parser.add_argument('-i', '--ifname', default=d_ifname,type=str,   help=h_ifname)
 
     return parser
 
@@ -72,7 +72,6 @@ def do_main():
     else:
         make_random_nda(shape=eval(args.shape), mean=args.mean, rms=args.rms,\
                         dtype=eval(args.dtype), fname=args.fname)
-
 
 if __name__ == "__main__":
     do_main()
