@@ -23,6 +23,7 @@ Created on 2021-02-16 by Mikhail Dubrovin
 """
 
 from psana.detector.Utils import info_dict, str_tstamp #, info_namespace, info_command_line
+import psana.detector.UtilsCalib as uc
 
 def seconds(ts, epoch_offset_sec=631152000) -> float:
     """
@@ -245,7 +246,8 @@ def dict_detector(odet):
 def info_detector(det, cmt='detector info:', sep='\n    '):
 
     calibconst = det.raw._calibconst
-
+    longname = det.raw._uniqueid
+    shortname = uc.detector_name_short(longname)
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
@@ -253,7 +255,8 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
         +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
-        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))
+        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))\
+        +'%sshortname: %s' % (sep, shortname)
         #+'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
         #+'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
         #+'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
@@ -301,7 +304,6 @@ def get_config_info_for_dataset_detname(**kwargs):
     import logging
     logger = logging.getLogger(__name__)
     from psana import DataSource
-    import psana.detector.UtilsCalib as uc
     detname = kwargs.get('detector', None)
     idx     = kwargs.get('idx', None)
     dskwargs = data_source_kwargs(**kwargs)
