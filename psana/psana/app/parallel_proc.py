@@ -6,7 +6,8 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 USAGE = '\n  %s --cmd <"command"> --opt <optional-paraneter> --vals <parameter-values> [<other-kwargs>]' % SCRNAME\
       + '\n                submits jobs with different --opt <optional-paraneter> values from the (str) list of --vals <parameter-values>'\
       + '\n\nExample:'\
-      + '\n  %s --cmd "epix10ka_pedestals_calibration -k exp=uedc00104,run=177 -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4' % SCRNAME
+      + '\n  %s --cmd "epix10ka_pedestals_calibration -k exp=uedc00104,run=177 -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4' % SCRNAME\
+      + '\n  %s --cmd "epix10ka_pedestals_calibration -k exp=uedc00104,run=177,dir=/sdf/data/lcls/ds/ued/uedc00104/xtc/ -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4' % SCRNAME
 #      + '\n  %s --cmd "epix10ka_pedestals_calibration -k \\"exp=uedc00104, run=177\\" -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4 # DOES NOT WORK' % SCRNAME
 
 import logging
