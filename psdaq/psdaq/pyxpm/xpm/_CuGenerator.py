@@ -94,17 +94,6 @@ class CuGenerator(pr.Device):
             verify       = False,
         ))
 
-        self.add(pr.RemoteVariable(    
-            name         = "clockControl",
-            description  = "Rate of timestamp advance",
-            offset       =  0x20,
-            bitSize      =  32,
-            bitOffset    =  0,
-            base         = pr.UInt,
-            mode         = "RW",
-            verify       = False,
-        ))
-
         @self.command(name="ClearFiducialErr", description="Clear the fiducial error latch",)
         def ClearFiducialErr():
             self.cuFiducialIntv.set(0)

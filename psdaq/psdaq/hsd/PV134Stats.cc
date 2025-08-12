@@ -133,19 +133,21 @@ namespace Pds {
           v.timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs - _p_monTiming[i].timerrcntsum;
           v.timrstcntsum= tpr.RxRstDone                 - _p_monTiming[i].timrstcntsum;
           v.trigcntsum  = reg.countAcquire;
-          v.readcntsum  = reg.countRead;
-          v.startcntsum = reg.countStart;
+          // v.readcntsum  = reg.countRead;
+          // v.startcntsum = reg.countStart;
           // v.queuecntsum = reg.countQueue;
-          v.trigcnt     = v.trigcntsum - _v_monTiming[i].trigcntsum;
+          v.trigcntrate = v.trigcntsum - _v_monTiming[i].trigcntsum;
           unsigned group = teb.group&0xf;
           v.group       = group;
-          v.msgdelayset = _m.tem().xma().messageDelay[group];
-          //          v.msgdelayget = (reg.msgDelay>>16)&0xff;
-          v.headercntl0 = teb.l0Count;
-          v.headercntof = (teb.status>>0)&0xf;
-          v.headerfifow = (teb.status>>4)&0x1f;
-          v.headerfifor = (teb.pauseThresh>>0)&0x1f;
-          //          v.headerfifor = (reg.headerFifo>> 4)&0xf;
+          v.l0delay     = _m.tem().xma().messageDelay[group];
+          v.hdrcount    = teb.l0Count;
+          v.chndatapaus = (teb.status>>1)&0x1;
+          v.hdrfifopaus = (teb.status>>3)&0x1;
+          v.hdrfifoof   = (teb.status>>2)&0x1;
+          v.hdrfifoofl  = (teb.status>>0)&0x1;
+          v.hdrfifow    = (teb.status>>4)&0x1f;
+          v.hdrfifor    = (teb.pauseThresh>>0)&0x1f;
+
           v.fulltotrig  = (teb.fullToTrig>> 0)&0xfff;
           v.nfulltotrig = (teb.nfullToTrig>>0)&0xfff;
           PVPUT(monTiming); }

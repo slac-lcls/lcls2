@@ -32,6 +32,10 @@ using logging = psalg::SysLog;
 
 #include "psdaq/app/AppUtils.hh"
 
+#include <rogue/hardware/axi/AxiStreamDma.h>
+#include <rogue/protocols/xilinx/Xvc.h>
+#include <rogue/Helpers.h>
+
 extern int optind;
 
 using Pds::Task;
@@ -128,6 +132,7 @@ void usage(const char* p) {
     printf("Options: -P <prefix>  (default: DAQ:LAB2:HSD)\n");
     printf("         -D <db_url,instrument,obj0,obj1[,L]> : 'L' uploads to database\n");
     printf("         -E           (abort on error)\n");
+    printf("         -X <port>    (connect XVC)\n");
 }
 
 static PyObject* _check(PyObject* obj)
@@ -147,6 +152,7 @@ int main(int argc, char** argv)
     int c;
     bool lUsage = false;
 
+    unsigned xvcPort   = 0;
     const char* dev    = 0;
     const char* prefix = "DAQ:LAB2:HSD";
     bool lInternalTiming = false;
@@ -155,8 +161,10 @@ int main(int argc, char** argv)
     bool lverbose    = false;
     unsigned    busId  = 0;
     const char* db_args[5] = {0,0,0,0,0};
+    std::shared_ptr<rogue::hardware::axi::AxiStreamDma> _dma;
+    std::shared_ptr<rogue::protocols::xilinx::Xvc>      _xvc;
 
-    while ( (c=getopt( argc, argv, "d:D:ELP:Ivh")) != EOF ) {
+    while ( (c=getopt( argc, argv, "d:D:ELP:IX:vh")) != EOF ) {
         switch(c) {
         case 'd':
             dev    = optarg;      break;
@@ -179,6 +187,8 @@ int main(int argc, char** argv)
             lLoopback = true; break;
         case 'P':
             prefix = optarg;      break;
+        case 'X':
+            xvcPort = strtoul(optarg,NULL,0); break;
         case 'v':
             lverbose = true;      break;
         case '?':
@@ -205,6 +215,13 @@ int main(int argc, char** argv)
         exit(1);
     }
 
+    if (xvcPort) {
+        _dma = rogue::hardware::axi::AxiStreamDma::create(dev,0,1);
+        _xvc = rogue::protocols::xilinx::Xvc::create(xvcPort);
+        //(*_dma) == _xvc;
+        rogueStreamConnectBiDir(_dma, _xvc);
+    }
+
     int fd = open(dev, O_RDWR);
     if (fd<0) {
         perror("Open device failed");
@@ -220,13 +237,14 @@ int main(int argc, char** argv)
     printf("BuildStamp: %s\n",buildStamp.c_str());
     unsigned buildVersion = m->version().FpgaVersion;
 
-    const unsigned pvaaSize=12;
-    Pds_Epics::EpicsPVA* pvaa[pvaaSize];  // need to maintain a reference long enough for putFrom to complete
+    std::vector< Pds_Epics::EpicsPVA* > pvaa;
 
     for(unsigned i=0; i<2; i++) {
         std::string sprefix(prefix);
         sprefix += (i==0) ? ":A:FWBUILD" : ":B:FWBUILD";
-        Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+        Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+        pvaa.push_back(pv);
+        Pds_Epics::EpicsPVA& pvBuild = *pv;
         while(!pvBuild.connected())
             usleep(1000);
         pvBuild.putFrom(buildStamp);
@@ -235,7 +253,9 @@ int main(int argc, char** argv)
     for(unsigned i=0; i<2; i++) {
         std::string sprefix(prefix);
         sprefix += (i==0) ? ":A:FWVERSION" : ":B:FWVERSION";
-        Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i+2] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+        Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+        pvaa.push_back(pv);
+        Pds_Epics::EpicsPVA& pvBuild = *pv;
         while(!pvBuild.connected())
             usleep(1000);
         pvBuild.putFrom(buildVersion);
@@ -291,13 +311,17 @@ int main(int argc, char** argv)
         for(unsigned i=0; i<2; i++) {
             std::string sprefix(prefix);
             sprefix += ":"+std::string(1,'A'+i)+":PADDR";
-            { Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+4] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+            Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+            pvaa.push_back(pv);
+            { Pds_Epics::EpicsPVA& pvPaddr = *pv;
                 while(!pvPaddr.connected())
                     usleep(1000);
                 pvPaddr.putFrom(paddr); }
             /*  Do this in PVStats::update
             sprefix += "_U";
-            { Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+6] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+            Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+            pvaa.push_back(pv);
+            { Pds_Epics::EpicsPVA& pvPaddr = *pv;
                 while(!pvPaddr.connected())
                     usleep(1000);
                 pvPaddr.putFrom(upaddr); }
@@ -311,7 +335,9 @@ int main(int argc, char** argv)
         unsigned uplink = m->pgp()[i*4]->remoteLinkId();
         std::string sprefix(prefix);
         sprefix += ":"+std::string(1,'A'+i)+":PLINK";
-        Pds_Epics::EpicsPVA& pvPaddr = *(pvaa[i+8] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+        Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+        pvaa.push_back(pv);
+        Pds_Epics::EpicsPVA& pvPaddr = *pv;
         while(!pvPaddr.connected())
             usleep(1000);
         pvPaddr.putFrom(uplink);
@@ -322,7 +348,9 @@ int main(int argc, char** argv)
     for(unsigned i=0; i<2; i++) {
         std::string sprefix(prefix);
         sprefix += (i==0) ? ":A:KEEPROWS" : ":B:KEEPROWS";
-        Pds_Epics::EpicsPVA& pvBuild = *(pvaa[i+10] = new Pds_Epics::EpicsPVA(sprefix.c_str()));
+        Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+        pvaa.push_back(pv);
+        Pds_Epics::EpicsPVA& pvBuild = *pv;
         while(!pvBuild.connected())
             usleep(1000);
         pvBuild.putFrom(keepRows);
@@ -337,7 +365,7 @@ int main(int argc, char** argv)
 
     //  Cleanup PV references
     usleep(100000);
-    for(unsigned i=0; i<pvaaSize; i++) {
+    for(unsigned i=0; i<pvaa.size(); i++) {
         delete pvaa[i];
     }
 

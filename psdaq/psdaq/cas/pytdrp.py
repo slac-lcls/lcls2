@@ -28,7 +28,7 @@ def tdet(args):
 
     return (root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx,
             root.PcieControl.DevKcu1500.TDetTiming.TriggerEventManager.XpmMessageAligner,
-            getattr(root.PcieControl.DevKcu1500.TDetTiming,'TriggerEventBuffer[0]'))
+            getattr(root.PcieControl.DevKcu1500.TDetTiming.TriggerEventManager,'TriggerEventBuffer[0]'))
 
 def lppa(args):
     from psdaq.utils import enable_lcls2_pgp_pcie_apps
@@ -57,7 +57,7 @@ def lppa(args):
 
     return (root.DevPcie.Hsio.TimingRx.TimingFrameRx,
             root.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,
-            getattr(root.DevPcie.Hsio.TimingRx,'TriggerEventBuffer[0]'))
+            getattr(root.DevPcie.Hsio.TimingRx.TriggerEventManager,'TriggerEventBuffer[0]'))
 
 def lepx(args):
     from psdaq.utils import enable_lcls2_epix_hr_pcie
@@ -86,7 +86,7 @@ def lepx(args):
 
     return (root.DevPcie.Hsio.TimingRx.TimingFrameRx,
             root.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,
-            getattr(root.DevPcie.Hsio.TimingRx,'TriggerEventBuffer[0]'))
+            getattr(root.DevPcie.Hsio.TimingRx.TriggerEventManager,'TriggerEventBuffer[0]'))
 
 def ludp(args):
     from psdaq.utils import enable_lcls2_udp_pcie_apps
@@ -109,7 +109,7 @@ def ludp(args):
 
     return (root.DevPcie.Hsio.TimingRx.TimingFrameRx,
             root.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,
-            getattr(root.DevPcie.Hsio.TimingRx,'TriggerEventBuffer[0]'))
+            getattr(root.DevPcie.Hsio.TimingRx.TriggerEventManager,'TriggerEventBuffer[0]'))
 
 class MyProvider(StaticProvider):
     def __init__(self, name):
@@ -157,7 +157,7 @@ def main():
     parser.add_argument('--pgp4', type=argBool, default=0, help='true = PGPv4, false = PGP2b')
     parser.add_argument('--boardType', default='XilinxKcu1500', help='(None, SlacPgpCardG4, XilinxKcu1500, XilinxVariumC1100)')
 #    parser.add_argument('--qsa', action='store_true', help='T=SFP,F=QSFP')
-    parser.add_argument('--period', default=1.0, help='Update period')
+    parser.add_argument('--period', type=float, default=1.0, help='Update period')
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,

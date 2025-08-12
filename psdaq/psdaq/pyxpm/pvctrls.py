@@ -631,6 +631,14 @@ class PVCtrls(object):
 
         self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
 
+        if 'XTPG' in imageName:
+            #  Set the initial timestamp
+            ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
+            ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
+            xpm.TPGMiniStream.TStampWr.set(ts)
+            xpm.TPGMiniStream.TStampSet.set(1)
+            print(f'Wrote {ts:016x} to timestamp')
+
         self._group = GroupCtrls(name, app, stats)
 
         def _addPV(label,reg):

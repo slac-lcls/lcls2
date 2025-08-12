@@ -301,8 +301,18 @@ class CuStatus(object):
         updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
         updatePv(self._pv_pulseId     , self._device.pulseId          .get())
         updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
-        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
         updatePv(self._pv_PhCuToSC    , self._phase .phase())
+
+        def updatePv(pv,v):
+            if v is not None:
+                value = pv.current()
+                if value==1 and v==1:   # skip redundant updates
+                    continue
+                value['value'] = v
+                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+                pv.post(value)
+
+        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
 
 class NoCuStatus(object):
     def __init__(self, name):

@@ -157,7 +157,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     print(monTiming)
 
     # fetch the xpm delay
-    partitionDelay = monTiming.msgdelayset
+    partitionDelay = monTiming.l0delay
     print('partitionDelay {:}'.format(partitionDelay))
 
     #
@@ -203,13 +203,16 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     # hsd_thr_ilv_native_fine firmware expects xpre,xpost in # of super samples (4 samples)
     fex_xpre       = int((fex['xpre' ]+3)/4)
     fex_xpost      = int((fex['xpost']+3)/4)
-    keepRows = ctxt.get(epics_prefix+':KEEPROWS')
+    keepRows = ctxt.get(epics_prefix+':KEEPROWS').value
     if keepRows is None:
         raise RuntimeException('Unable to get KEEPROWS')
-    if not (fex_xpost < keepRows*10):
-        raise ValueError(f'xpost {fex_xpost} must be less than {keepRows*40}')
-    if not (fex_xpre < keepRows*10):
-        raise ValueError(f'xpost {fex_xpre} must be less than {keepRows*40}')
+    if keepRows == 0:
+        logging.warning('Firmware version doesnt support KEEPROWS checking')
+    else:
+        if not (fex_xpost < keepRows*10):
+            raise ValueError(f'xpost {fex_xpost} must be less than {keepRows*40}')
+        if not (fex_xpre < keepRows*10):
+            raise ValueError(f'xpost {fex_xpre} must be less than {keepRows*40}')
 
     # overwrite expert fields from user input
     expert = cfg['expert']

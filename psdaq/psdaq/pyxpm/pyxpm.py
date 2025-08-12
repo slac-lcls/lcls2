@@ -112,6 +112,9 @@ def main():
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
 
+    if isGen:
+        xpm.TPGMini.setup(False)
+
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
                       noTiming=args.T, fidRate=1./args.F)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)

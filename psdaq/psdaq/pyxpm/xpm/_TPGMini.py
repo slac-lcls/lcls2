@@ -257,3 +257,48 @@ class TPGMini(pr.Device):
             mode         = "RO",
             pollInterval = 1,
         ))
+
+    def setup(self,isUED):
+        if True:
+            if isUED:
+                self.BaseControl.set(238)
+                #  Set the fixed rate markers
+                self.FixedRateDiv[0].set(500000)
+                self.FixedRateDiv[1].set(  1000)
+                self.FixedRateDiv[2].set(   500)
+                self.FixedRateDiv[3].set(   100)
+                self.FixedRateDiv[4].set(    50)
+                self.FixedRateDiv[5].set(    10)
+                self.FixedRateDiv[6].set(     5)
+                #  And some rate markers tied to beam simulation
+                self.FixedRateDiv[7].set(     1)  # beam request
+                self.FixedRateDiv[8].set(  1000)  # dest b1
+                self.FixedRateDiv[9].set(   500)  # dest b2
+                self.RateReload.set(1)
+
+            else:
+                self.BaseControl.set(200)
+                #  Set the fixed rate markers
+                self.FixedRateDiv[0].set(910000)
+                self.FixedRateDiv[1].set( 91000)
+                self.FixedRateDiv[2].set(  9100)
+                self.FixedRateDiv[3].set(   910)
+                self.FixedRateDiv[4].set(    91)
+                self.FixedRateDiv[5].set(    13)
+                self.FixedRateDiv[6].set(     1)
+                #  And some rate markers tied to beam simulation
+                self.FixedRateDiv[7].set(  9100)  # beam request
+                self.FixedRateDiv[8].set( 91000)  # dest b1
+                self.FixedRateDiv[9].set(  9100)  # dest b2
+                self.RateReload.set(1)
+
+            #  Set the AC rate markers
+            self.ACRateDiv[0].set(120)
+            self.ACRateDiv[1].set( 60)
+            self.ACRateDiv[2].set( 12)
+            self.ACRateDiv[3].set(  6)
+            self.ACRateDiv[4].set(  2)
+            self.ACRateDiv[5].set(  1)
+            self.ACRateReload.set(1)
+
+
