@@ -178,6 +178,7 @@ if 'PSANA' in BUILD_LIST :
             'calibrepo           = psana.app.calibrepo:do_main',
             'calibvalidity       = psana.app.calibvalidity:do_main',
             'geometry_convert    = psana.app.geometry_convert:do_main',
+            'geometry_image      = psana.app.geometry_image:do_main',
             'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
             'optical_metrology_check      = psana.pscalib.app.optical_metrology_check:do_main',
             'optical_metrology_epix10ka2m = psana.pscalib.app.optical_metrology_epix10ka2m:do_main',
