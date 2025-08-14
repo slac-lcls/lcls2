@@ -316,10 +316,13 @@ def fig_img_proj_cbar(img, **kwa):
     gr.draw_fig(fig)
     return fig, axim, axcb, imsh, cbar
 
-
-if __name__ == "__main__":
+def do_main():
     if len(sys.argv)<2: sys.exit('Try command> %s -h' % SCRNAME)
     geometry_image()
+    return 0
+
+if __name__ == "__main__":
+    do_main()
     sys.exit('End of %s' % SCRNAME)
 
 # EOF
