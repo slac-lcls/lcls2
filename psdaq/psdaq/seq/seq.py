@@ -110,14 +110,13 @@ class ACRateSync(Instruction):
         for i in range(self.args[3]):
             while True:
                 acphase = engine.frame % FixedToACFids
-                if acphase:
-                    engine.frame += FixedToACFids - acphase
+                engine.frame += FixedToACFids - acphase
                 acframe = int(engine.frame/FixedToACFids)
                 ts = acframe % 6
 #                print('  frame {:}  ts {:}'.format(engine.acframe,ts))
                 if ((1<<ts)&mask)!=0 and (int(acframe/6)%intv)==0:
                     break
-                engine.frame += FixedToACFids
+#                engine.frame += FixedToACFids
 
         engine.request = 0
         engine.modes  |= 2
