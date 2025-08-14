@@ -2,26 +2,26 @@
 
 """
       + '\n== TEST epix10ka2m:'\
-      + '\n  cp /reg/g/psdm/detector/data_test/geometry/geo-epix10ka2m-test.txt .'\
+      + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-test.txt .'\
       + '\n  %s -f geo-epix10ka2m-test.txt -o geo-epix10ka2m-test-cframe-psana.geom --cframe 0' % scrname\
       + '\n  %s -d epix10ka -f geo-epix10ka2m-test-cframe-psana.geom -o geo-epix10ka2m-test-back.txt' % scrname\
       + '\n  then see the minor difference between geo-epix10ka2m-test.txt and geo-epix10ka2m-test-back.txt'\
       + '\n  or check image with each of geometry files:'\
-      + '\n  geometry_image -g geo-epix10ka2m-test-back.txt -a /reg/g/psdm/detector/data_test/npy/nda-mfxc00118-r0184-epix10ka2m-silver-behenate-max.txt -R10 -i0'\
+      + '\n  geometry_image -g geo-epix10ka2m-test-back.txt -a /sdf/group/lcls/ds/ana/detector/data2_test/npy/nda-mfxc00118-r0184-epix10ka2m-silver-behenate-max.txt -R10 -i0'\
       + '\n'\
       + '\n== TEST cspad (xpp for complete consistency between initial and final file):'\
-      + '\n  cp /reg/g/psdm/detector/data_test/geometry/geo-cspad-test.data .'\
+      + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-cspad-test.data .'\
       + '\n  %s -f geo-cspad-test.data -o geo-cspad-test-cframe-psana.geom --cframe 0' % scrname\
       + '\n  %s -d cspadv2 -f geo-cspad-test-cframe-psana.geom -o geo-cspad-test-back.data' % scrname\
-      + '\n  geometry_image -g geo-cspad-test.data -a /reg/g/psdm/detector/data_test/npy/nda-mfx11116-r0624-e005365-MfxEndstation-0-Cspad-0-max.txt -R10 -i0'\
+      + '\n  geometry_image -g geo-cspad-test.data -a /sdf/group/lcls/ds/ana/detector/data2_test/npy/nda-mfx11116-r0624-e005365-MfxEndstation-0-Cspad-0-max.txt -R10 -i0'\
       + '\n'\
       + '\n== TEST jungfrau:'\
-      + '\n  cp /reg/g/psdm/detector/data_test/geometry/geo-jungfrau-8-test.data .'\
+      + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-jungfrau-8-test.data .'\
       + '\n  %s -f geo-jungfrau-8-test.data -o geo-jungfrau-8-test-cframe-psana.geom --cframe 0' % scrname\
       + '\n  %s -d jungfrau -f geo-jungfrau-8-test-cframe-psana.geom -o geo-jungfrau-8-test-back.data' % scrname\
-      + '\n  geometry_image -g geo-jungfrau-8-test.data -a /reg/g/psdm/detector/data_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy -R10 -i0'\
+      + '\n  geometry_image -g geo-jungfrau-8-test.data -a /sdf/group/lcls/ds/ana/detector/data2_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy -R10 -i0'\
 """
-
+#    /sdf/group/lcls/ds/ana/detector/data2_test/ >>> /sdf/group/lcls/ds/ana/detector/data2_test/
 import sys
 #from Detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, STR_LEVEL_NAMES
 from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, STR_LEVEL_NAMES
@@ -33,11 +33,11 @@ def do_main():
 
     scrname = sys.argv[0].rsplit('/')[-1]
 
-    fname_jungfrau_8     = '/reg/g/psdm/detector/data_test/geometry/geo-jungfrau-8-segment.data'
-    fname_epix10ka2m_16  = '/reg/g/psdm/detector/data_test/geometry/geo-epix10ka2m-16-segment.data'
-    fname_epix10ka2m_def = '/reg/g/psdm/detector/data_test/geometry/geo-epix10ka2m-default.data'
-    fname_cspad_cxi      = '/reg/g/psdm/detector/data_test/geometry/geo-cspad-cxi.data'
-    fname_pnccd_amo      = '/reg/g/psdm/detector/data_test/geometry/geo-pnccd-amo.data'
+    fname_jungfrau_8     = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-jungfrau-8-segment.data'
+    fname_epix10ka2m_16  = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-16-segment.data'
+    fname_epix10ka2m_def = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-default.data'
+    fname_cspad_cxi      = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-cspad-cxi.data'
+    fname_pnccd_amo      = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-pnccd-amo.data'
 
     d_dettype = 'epix10ka'
     d_fname   = fname_epix10ka2m_16
@@ -59,13 +59,15 @@ def do_main():
     usage = '\n  %s -h' % scrname\
       + '\n  %s -f %s -o geo-crystfel.geom' % (scrname, d_fname)\
       + '\n'\
-      + '\n  cp /reg/g/psdm/detector/data_test/geometry/geo-cspad-xpp.data .'\
+      + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-cspad-xpp.data .'\
       + '\n  %s -f geo-cspad-xpp.data -o geo-cspad-xpp-crystfel.geom                 # conversion from psana to crystfel' % scrname\
       + '\n  %s -d cspadv2 -f geo-cspad-xpp-crystfel.geom -o geo-cspad-xpp-back.data # conversion from crystfel to psana' % scrname\
       + '\n'\
-      + '\n  cp /reg/g/psdm/detector/data_test/geometry/geo-jungfrau-8-segment.data .'\
+      + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-jungfrau-8-segment.data .'\
       + '\n  %s -f geo-jungfrau-8-segment.data -o geo-jungfrau-8-segment.geom        # conversion from psana to crystfel' % scrname\
       + '\n  %s -f geo-jungfrau-8-segment.data -o geo-jungfrau-8-segment.geom --dsname exp=cxic00318:run=123:smd --zpvname CXI:DS1:MMS:06.RBV' % scrname\
+      + '\n  %s -d jungfrau -f geo-jungfrau-8-test-cframe-psana.geom -o geo-jungfrau-8-test-back.data  # conversion from crystfel to psana' % scrname\
+      + '\n  (TBD) geometry_image -g geo-jungfrau-8-test.data -a /sdf/group/lcls/ds/ana/detector/data_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy'
       + '\n'
 
     parser = argparse.ArgumentParser(usage=usage, description='Converts geometry constants from psana to CrystFEL format and backward (see --fname).')
@@ -94,7 +96,7 @@ def do_main():
         convert_crystfel_to_geometry(args)
     else:
 #        from PSCalib.UtilsConvert import convert_geometry_to_crystfel
-        from psana.pscalib.geometry.UtilsConvertCryst import convert_geometry_to_crystfel
+        from psana.pscalib.geometry.UtilsConvert import convert_geometry_to_crystfel
         convert_geometry_to_crystfel(args)
 
     sys.exit('END OF %s' % scrname)
