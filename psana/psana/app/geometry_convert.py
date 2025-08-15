@@ -28,8 +28,10 @@ from psana.detector.UtilsLogging import logging, DICT_NAME_TO_LEVEL, STR_LEVEL_N
 #import logging
 
 import argparse
+SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 def do_main():
+    if len(sys.argv)<2: sys.exit('Try command> %s -h' % SCRNAME)
 
     scrname = sys.argv[0].rsplit('/')[-1]
 
@@ -66,8 +68,8 @@ def do_main():
       + '\n  cp /sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-jungfrau-8-segment.data .'\
       + '\n  %s -f geo-jungfrau-8-segment.data -o geo-jungfrau-8-segment.geom        # conversion from psana to crystfel' % scrname\
       + '\n  %s -f geo-jungfrau-8-segment.data -o geo-jungfrau-8-segment.geom --dsname exp=cxic00318:run=123:smd --zpvname CXI:DS1:MMS:06.RBV' % scrname\
-      + '\n  %s -d jungfrau -f geo-jungfrau-8-test-cframe-psana.geom -o geo-jungfrau-8-test-back.data  # conversion from crystfel to psana' % scrname\
-      + '\n  (TBD) geometry_image -g geo-jungfrau-8-test.data -a /sdf/group/lcls/ds/ana/detector/data_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy'
+      + '\n  %s -d jungfrau -f geo-jungfrau-8-segment.geom -o geo-jungfrau-8-test-back.data  # conversion from crystfel to psana' % scrname\
+      + '\n  (TBD) geometry_image -g geo-jungfrau-8-test.data -a /sdf/group/lcls/ds/ana/detector/data_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy'\
       + '\n'
 
     parser = argparse.ArgumentParser(usage=usage, description='Converts geometry constants from psana to CrystFEL format and backward (see --fname).')
