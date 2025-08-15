@@ -1,10 +1,19 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d: %(message)s', level=logging.INFO)
 SCRNAME = sys.argv[0].rsplit('/')[-1]
+
+test_geo = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-test.txt'
+test_nda = '/sdf/group/lcls/ds/ana/detector/data2_test/npy/nda-mfxc00118-r0183-silver-behenate-max.txt'
+usage = '\n  Example:'\
+      + '\n    cp %s .' % (test_geo)\
+      + '\n    cp %s .' % (test_nda)\
+      + '\n    %s -g %s -a %s' % (SCRNAME, os.path.basename(test_geo), os.path.basename(test_nda))\
+      + '\n'
 
 def argument_parser():
 
@@ -31,12 +40,7 @@ def argument_parser():
     d_rmax     = None
     d_show     = 'image'
 
-    usage = 'E.g.: %s -h # brief info about content' % SCRNAME
-          #+ '\n  or: %s %s -i -e -p -S 5 # skip 5 calib-cycles and plot graphics' % (SCRNAME, d_dsname)\
-          #+ '\n  or: %s %s -e -p -s --detname %s -f %s' % (SCRNAME, d_dsname, d_detname, d_prefix)
-    print(usage)
-
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(usage=usage, description='Plots image from numpy array shaped as raw in DAQ using specified geometry file')
     parser.add_argument('-t', '--tname',     type=str,   default=d_tname,     help='test name: 1,2,3,..., default: %s'%d_tname)
     parser.add_argument('-g', '--geofname',  type=str,   default=d_geofname,  help='geometry constants file name, default: %s'%d_geofname)
     parser.add_argument('-a', '--ndafname',  type=str,   default=d_ndafname,  help='text ndarray file name, default: %s'%d_ndafname)
@@ -66,7 +70,7 @@ def argument_parser():
 
 
 def fname_geo_and_nda_for_tname(tname):
-    """ Returns hardwired geo and nda file names for tname"""
+    """Returns hardwired geo and nda file names for tname"""
     fname_geo, fname_nda = None, None
     if tname == '1':
       fname_geo = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-cspad-test.data'
@@ -77,8 +81,8 @@ def fname_geo_and_nda_for_tname(tname):
       fname_nda = '/sdf/group/lcls/ds/ana/detector/data_test/npy/nda-cxilv9518-r0008-jungfrau-lysozyme-max.npy'
       #shape = (2,512,1024)
     elif tname == '3':
-      fname_geo = '/sdf/group/lcls/ds/ana/detector/data2_test/geometry/geo-epix10ka2m-test.txt'
-      fname_nda = '/sdf/group/lcls/ds/ana/detector/data2_test/npy/nda-mfxc00118-r0183-silver-behenate-max.txt'
+      fname_geo = test_geo
+      fname_nda = test_nda
       #shape = (16,352,384)
     else:
       msg = 'Not-recognized test name: %s' % tname
@@ -317,7 +321,9 @@ def fig_img_proj_cbar(img, **kwa):
     return fig, axim, axcb, imsh, cbar
 
 def do_main():
-    if len(sys.argv)<2: sys.exit('Try command> %s -h' % SCRNAME)
+    if len(sys.argv)<2:
+        print(usage)
+        sys.exit('EXIT due to missing parameters\nTry > %s -h' % SCRNAME)
     geometry_image()
     return 0
 
