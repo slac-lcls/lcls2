@@ -45,12 +45,14 @@ public:
   {
     //printf("***   HtoD rb::produce 1, idx %d, head %d\n", idx, m_head->load());
     auto next = (idx+1)&(m_capacity-1);
-    //printf("***   HtoD rb::produce 2, nxt %d\n", next);
-    //while (m_tail->load(cuda::memory_order_acquire) == next) { // Wait for tail to advance while full
-    //  if (m_terminate_h.load(std::memory_order_acquire))
-    //    break;
-    //}
-    //printf("***   HtoD rb::produce 3, tail %d\n", m_tail->load());
+    auto tail = m_tail->load(cuda::memory_order_acquire);
+    //printf("***   HtoD rb::produce 2, nxt %d, tail %d\n", next, tail);
+    while (next == tail) {                               // Wait for tail to advance while full
+      if (m_terminate_h.load(std::memory_order_acquire))
+        break;
+      tail = m_tail->load(cuda::memory_order_acquire);   // Refresh tail
+    }
+    //printf("***   HtoD rb::produce 3, tail %d\n", tail);
     m_head->store(next, cuda::memory_order_release);     // Publish new head
     //printf("***   HtoD rb::produce 4, head %d\n", m_head->load());
     return next;
@@ -60,23 +62,25 @@ public:
   {
     //printf("###   HtoD rb::consume 1\n");
     auto tail = m_tail->load(cuda::memory_order_acquire);
-    //printf("###   HtoD rb::consume 2, tail %d, head %d\n", tail, m_head->load(cuda::memory_order_acquire));
-    unsigned idx;
-    while (tail == (idx = m_head->load(cuda::memory_order_acquire))) { // Wait for head to advance while empty
-      //printf("###   HtoD rb::consume idx %d\n", idx);
+    auto head = m_head->load(cuda::memory_order_acquire);
+    //printf("###   HtoD rb::consume 2, tail %d, head %d\n", tail, head);
+    while (tail == head) {                               // Wait for head to advance while empty
+      //printf("###   HtoD rb::consume idx %d\n", head);
       if (m_terminate_d.load(cuda::memory_order_acquire))
         break;
+      head = m_head->load(cuda::memory_order_acquire);   // Refresh head
     }
-    //printf("###   HtoD rb::consume 3, idx %d\n", idx);
-    return idx;                                          // Caller now processes buffer[idx]
+    //printf("###   HtoD rb::consume 3, idx %d\n", head);
+    return head;                                         // Caller now processes buffers up to [head]
   }
 
   __device__ void release(const unsigned idx)            // Move tail forward
   {
     //printf("###   HtoD rb::release 1, idx %d\n", idx);
     assert(idx == m_tail->load(cuda::memory_order_acquire)); // Require in-order freeing
-    //printf("###   HtoD rb::release 2, cap %d\n", m_capacity);
-    m_tail->store((idx+1)&(m_capacity-1), cuda::memory_order_release); // Publish new tail
+    auto next = (idx+1)&(m_capacity-1);
+    //printf("###   HtoD rb::release 2, nxt %d, cap %d\n", next, m_capacity);
+    m_tail->store(next, cuda::memory_order_release);     // Publish new tail
     //printf("###   HtoD rb::release 3, tail %d\n", m_tail->load());
   }
 
@@ -92,7 +96,6 @@ public:
   }
 
 private:
-  // Not sure why nvcc says the __*__ modifiers are "ignored"
   cuda::atomic<unsigned, cuda::thread_scope_system>* m_head;   // Must stay coherent across device and host
   cuda::atomic<unsigned, cuda::thread_scope_system>* m_tail;   // Must stay coherent across device and host
   const unsigned           m_capacity;
