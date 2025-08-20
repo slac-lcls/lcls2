@@ -175,24 +175,29 @@ def main():
         print(f'*** LINK {link} ***')
 
         linkid = link
-        base.XpmApp.link.set(linkid)
+        drplink = link
 
         #GTH Config
         imageId = base.AxiVersion.ImageName.get()
+        #  xpm_noRTM has the DRP regs at link-1
         if imageId == 'xpm_noRTM' and linkid <= 6:
-            linkid -= 1
+            drplink -= 1
 
-        if linkid < 0 or linkid > 13:
-            print("Error: linkid does not exists")
+        if drplink < 0 or drplink > 13:
+            print("Error: link does not exist")
             continue
+
+        base.XpmApp.link.set(linkid)
         
+        link_rxready   = base.XpmApp.link_rxReady.get()
         link_rxcdrlock = base.XpmApp.link_rxcdrlock.get()
         link_rxpmarstdone = base.XpmApp.link_rxpmarstdone.get()
         link_txpmarstdone = base.XpmApp.link_txResetDone.get()
 
         #base.XpmApp.link_eyescanrst.set(0x00)
 
-        if link_rxcdrlock != 0x01 or link_rxpmarstdone != 0x01:
+#        if link_rxcdrlock != 0x01 or link_rxpmarstdone != 0x01:
+        if link_rxready != 0x01 or link_rxpmarstdone != 0x01:
             print("Link not locked: CDR not locked, link not connected or data quality too bad")
             continue
 
@@ -207,17 +212,18 @@ def main():
         else:
             target = args.target
 
-        link_rxRcvCnts = 0
-        link_rxErrCnts = 0
+        if False:
+            link_rxRcvCnts = 0
+            link_rxErrCnts = 0
 
-        while link_rxRcvCnts < (1/target):
-            base.XpmApp.link_gthCntRst.set(0x01)
-            base.XpmApp.link_gthCntRst.set(0x00)
-            time.sleep(0.1)
-            link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
-            link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
+            while link_rxRcvCnts < (1/target):
+                base.XpmApp.link_gthCntRst.set(0x01)
+                base.XpmApp.link_gthCntRst.set(0x00)
+                time.sleep(0.1)
+                link_rxRcvCnts += base.XpmApp.link_rxRcvCnts.get()*20
+                link_rxErrCnts += base.XpmApp.link_rxErrCnts.get()
 
-        print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
+            print('BER: {:.2e} ({} err/ {} rcv)'.format((link_rxErrCnts/link_rxRcvCnts), link_rxErrCnts, link_rxRcvCnts))
 
         if args.gui:
             pyrogue.pydm.runPyDM(
@@ -231,12 +237,12 @@ def main():
                 if args.write:
                     fbase = f'{args.write}/xpm.{args.ip}.{link}'
                     fname = fbase+'.png'
-                    result = base.Link[linkid].bathtubPlot(fname)
+                    result = base.Link[drplink].bathtubPlot(fname)
                     f=open(fbase+'.dat',mode='w')
                     f.write(f'BER:{result}\n')
                     f.close()
                 else:
-                    result = base.Link[linkid].bathtubPlot()                
+                    result = base.Link[drplink].bathtubPlot()                
 
                 if result < 0.5:  # success
                     break
@@ -249,7 +255,7 @@ def main():
                 time.sleep(0.01)
                 
         if args.eye:
-            base.Link[linkid].eyePlot(target=target)
+            base.Link[drplink].eyePlot(target=target)
 
     base.stop()
 

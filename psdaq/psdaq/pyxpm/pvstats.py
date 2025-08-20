@@ -218,6 +218,12 @@ class TimingStatus(object):
 #        self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
 #        self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
 
+        oflow = (1<<32)-1
+        if (self._rxDecErrCount==oflow or self._rxDspErrCount==oflow):
+            self._device.RxCountReset.set(1)
+            time.sleep(10.e-6)
+            self._device.RxCountReset.set(0)
+
         v = self._device.RxLinkUp.get()
         if v is not None:
             value = self._pv_rxLinkUp.current()
@@ -306,11 +312,10 @@ class CuStatus(object):
         def updatePv(pv,v):
             if v is not None:
                 value = pv.current()
-                if value==1 and v==1:   # skip redundant updates
-                    continue
-                value['value'] = v
-                value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
-                pv.post(value)
+                if not (value==v):   # skip redundant updates
+                    value['value'] = v
+                    value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+                    pv.post(value)
 
         updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
 

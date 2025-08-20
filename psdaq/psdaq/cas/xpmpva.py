@@ -316,7 +316,6 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "EOFs"       )
     LblPushButtonX( lor, pvbase, "RxReset" )
     LblPushButtonX( lor, pvbase, "RxCountReset" )
-    LblPushButtonX( lor, pvbase, "RxCountReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
     w = QtWidgets.QWidget()
