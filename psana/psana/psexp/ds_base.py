@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import socket
-import threading
 import time
 import weakref
 from dataclasses import dataclass
@@ -20,10 +19,11 @@ import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
 from psana.pscalib.app.calib_prefetch import calib_utils
-from psana.psexp.prometheus_manager import PrometheusManager
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
+from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_manager
+
 
 if mode == "mpi":
     pass
@@ -48,7 +48,6 @@ class DsParms:
     max_events: int
     filter: int
     destination: int
-    prom_man: int
     max_retries: int
     live: bool
     smd_inprogress_converted: int
@@ -212,16 +211,12 @@ class DataSourceBase(abc.ABC):
         # Final sanity check
         assert self.batch_size > 0, "batch_size must be greater than 0"
 
-        # Create Prometheus manager
-        self.prom_man = PrometheusManager(job=self.prom_jobid)
-
         # Package up DataSource parameters
         self.dsparms = DsParms(
             self.batch_size,
             self.max_events,
             self.filter,
             self.destination,
-            self.prom_man,
             self.max_retries,
             self.live,
             self.smd_inprogress_converted,
@@ -233,7 +228,7 @@ class DataSourceBase(abc.ABC):
             smd_callback=self.smd_callback,
         )
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=log_level, logfile=log_file, name=utils.get_class_name(self))
 
         # Warn about unrecognized kwargs
         known_keys = {
@@ -568,37 +563,33 @@ class DataSourceBase(abc.ABC):
         return self.smalldata_obj
 
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
+        """Start Prometheus either via push gateway (default) or HTTP exposer.
+        With the singleton, this is safe to call multiple times."""
         if not self.monitor:
-            self.logger.debug("RUN W/O PROMETHEUS CLENT")
-        elif prom_cfg_dir is None:  # Use push gateway
-            self.prom_man.rank = mpi_rank
-            self.logger.debug(
-                f"START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
-            )
-            self.e = threading.Event()
-            self.t = threading.Thread(
-                name="PrometheusThread%s" % (mpi_rank),
-                target=self.prom_man.push_metrics,
-                args=(self.e,),
-                daemon=True,
-            )
-            self.t.start()
-        else:  # Use http exposer
-            self.logger.debug(
-                "START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
-            )
-            self.e = None
-            self.prom_man.create_exposer(prom_cfg_dir)
-
-    def _end_prometheus_client(self, mpi_rank=0):
-        if not self.monitor:
+            self.logger.debug("RUN W/O PROMETHEUS CLIENT")
             return
 
-        if self.e is not None:  # Push gateway case only
+        if prom_cfg_dir is None:  # Push-gateway mode
+            pm = ensure_pusher(rank=mpi_rank)   # starts pusher once per process
             self.logger.debug(
-                "END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
+                f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
             )
-            self.e.set()
+        else:  # HTTP exposer mode (DAQ-style scrape)
+            pm = get_prom_manager()
+            self.logger.debug(
+                f"START PROMETHEUS HTTP EXPOSER (PROM_CFG_DIR:{prom_cfg_dir})"
+            )
+            pm.create_exposer(prom_cfg_dir)      # safe: only starts once per process
+
+    def _end_prometheus_client(self):
+        """Stop the push-gateway pusher if running. Exposer stays up (matches previous behavior)."""
+        if not self.monitor:
+            return
+        try:
+            stop_pusher()  # no-op if nothing running
+            self.logger.debug("END PROMETHEUS CLIENT (pusher stopped)")
+        except Exception as ex:
+            self.logger.debug(f"END PROMETHEUS CLIENT: stop_pusher() raised {ex!r}")
 
     @property
     def _configs(self):

@@ -17,6 +17,7 @@ from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode
 from psana.smalldata import SmallData
+from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -40,7 +41,7 @@ class RunParallel(Run):
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
 
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
 
         super()._setup_envstore()
 
@@ -50,7 +51,7 @@ class RunParallel(Run):
             self.eb_node = EventBuilderNode(ds)
         elif nodetype == "bd":
             self.bd_node = BigDataNode(ds, self)
-            self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
+            self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
 
     def events(self):
         evt_iter = self.start()

@@ -17,7 +17,7 @@ class ShmemDataSource(DataSourceBase):
         self.runnum_list = [0]
         self.runnum_list_index = 0
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
 
         # Setup socket for calibration constant broadcast if supervisor
         # is set (1=I am supervisor, 0=I am not supervisor).

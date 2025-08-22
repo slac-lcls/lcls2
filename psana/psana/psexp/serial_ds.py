@@ -28,7 +28,7 @@ class SerialDataSource(DataSourceBase):
         self._setup_run()
         super()._start_prometheus_client()
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
 
     def __del__(self):
         super()._close_opened_smd_files()

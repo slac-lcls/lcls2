@@ -8,6 +8,7 @@ from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
+from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     pass
@@ -49,7 +50,7 @@ class EventManager(object):
         self.esm = self.run.esm
         self.n_smd_files = len(self.smd_configs)
         self.filter_fn = self.ds.dsparms.filter
-        self.read_gauge = self.ds.dsparms.prom_man.get_metric("psana_bd_read")
+        self.read_gauge = get_prom_manager().get_metric("psana_bd_read")
         self.max_retries = self.ds.dsparms.max_retries
         self.use_smds = self.ds.dsparms.use_smds
         self.smd_view = view
@@ -57,7 +58,7 @@ class EventManager(object):
         self.exit_id = ExitId.NoError
         self.smd_mode = smd
 
-        self.logger = utils.get_logger(dsparms=self.ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=self.ds.dsparms.log_level, logfile=self.ds.dsparms.log_file, name=utils.get_class_name(self))
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}

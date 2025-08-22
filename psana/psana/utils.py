@@ -15,15 +15,12 @@ def get_class_name(obj):
         return str(type(obj))  # fallback for non-class cases
 
 
-def get_logger(dsparms=None, name=None, timestamp=False):
+def get_logger(level="INFO", logfile=None, name=None, timestamp=False):
     if mode == "mpi":
         from mpi4py import MPI
         rank = MPI.COMM_WORLD.Get_rank()
     else:
         rank = 0
-
-    level = getattr(dsparms, "log_level", "INFO")
-    logfile = getattr(dsparms, "log_file", None)
 
     # Add .rankX suffix if logfile is defined and running in MPI
     if logfile and rank is not None:
@@ -103,7 +100,7 @@ def make_weak_refable(d):
             new_d[key] = make_weak_refable(WeakDict(d[key]))
         elif isinstance(d[key], tuple):
             new_d[key] = WeakList(list(d[key]))
-        elif d[key] == None:
+        elif d[key] is None:
             new_d[key] = WeakDict({})
         else:
             new_d[key] = d[key]

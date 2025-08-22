@@ -8,7 +8,6 @@ from prometheus_client import (CollectorRegistry, Counter, Gauge, Summary,
                                push_to_gateway, start_http_server)
 from prometheus_client.exposition import tls_auth_handler
 
-from psana import utils
 from psana.psexp.tools import mode
 
 if mode == "mpi":
@@ -28,11 +27,54 @@ PROM_PORT_BASE = 9200  # Used by the http exposer; Value should match DAQ's
 
 HTTP_EXPOSER_STARTED = False
 
+import threading
+
+_singleton = None
+_singleton_lock = threading.Lock()
+_pusher_event = None
+_pusher_thread = None
+
+def get_prom_manager(job=None):
+    """Return the process-wide PrometheusManager instance."""
+    global _singleton
+    with _singleton_lock:
+        if _singleton is None:
+            _singleton = PrometheusManager(job=job)
+        elif job and _singleton.job != job:
+            # Optional: update job on first mismatch, or warn
+            _singleton.job = job
+        return _singleton
+
+def ensure_pusher(rank=0):
+    """Start exactly one push loop in this process. Safe to call many times."""
+    global _pusher_event, _pusher_thread
+    pm = get_prom_manager()
+    pm.set_rank(rank)
+    if _pusher_thread is None or not _pusher_thread.is_alive():
+        _pusher_event = threading.Event()
+        _pusher_thread = threading.Thread(
+            name=f"PrometheusThread{rank}",
+            target=pm.push_metrics,  # uses the event to stop
+            args=(_pusher_event,),
+            daemon=True,
+        )
+        _pusher_thread.start()
+    return pm
+
+def stop_pusher():
+    global _pusher_event, _pusher_thread
+    if _pusher_event:
+        _pusher_event.set()
+    if _pusher_thread:
+        try: _pusher_thread.join(timeout=2)
+        except Exception: pass
+    _pusher_event = None
+    _pusher_thread = None
+
 
 def createExposer(prometheusCfgDir):
-    logger = utils.get_logger(name="prometheus_manager.createExposer")
     if prometheusCfgDir == "":
-        logger.warning(
+        print(
             "Unable to update Prometheus configuration: directory not provided"
         )
         return
@@ -55,17 +97,17 @@ def createExposer(prometheusCfgDir):
                     with open(fileName, "wt") as f:
                         f.write(f"- targets:\n    - {hostname}:{port}\n")
                 except Exception as ex:
-                    logger.error(f"Error creating file {fileName}: {ex}")
+                    print(f"Error creating file {fileName}: {ex}")
                     return False
             else:
                 pass  # File exists; no need to rewrite it
-            logger.info(f"Providing run-time monitoring data on port {port}")
+            print(f"Providing run-time monitoring data on port {port}")
             HTTP_EXPOSER_STARTED = True
             return True
         except OSError:
             pass  # Port in use
         port += 1
-    logger.error("No available port found for providing run-time monitoring")
+    print("No available port found for providing run-time monitoring")
     return False
 
 
@@ -108,7 +150,6 @@ class PrometheusManager(object):
             self.job = default_job_id
         else:
             self.job = job
-        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def set_rank(self, rank):
         self.rank = rank
@@ -136,9 +177,6 @@ class PrometheusManager(object):
                     registry=self.registry,
                     timeout=None,
                 )
-            self.logger.debug(
-                f"TS: %s PUSHED JOBID:{self.job} RANK:{self.rank} {e.isSet()=}"
-            )
             time.sleep(PUSH_INTERVAL_SECS)
 
     def delete_all_metrics_on_pushgateway(self, n_ranks=0):
@@ -153,7 +191,6 @@ class PrometheusManager(object):
                 f"{PUSH_GATEWAY}/metrics/job/{self.job}/rank/{i_rank}",
             ]
             Popen(args)
-            self.logger.debug(f"CLEANUP {args}")
 
     def create_exposer(self, prometheus_cfg_dir):
         return createExposer(prometheus_cfg_dir)
@@ -168,7 +205,7 @@ class PrometheusManager(object):
             elif metric_type == "Gauge":
                 self.registry.register(Gauge(metric_name, desc, labelnames))
         else:
-            self.logger.info(
+            print(
                 f"Warning: {metric_name} is not found in the list of available prometheus metrics"
             )
 
