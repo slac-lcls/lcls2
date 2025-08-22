@@ -1311,7 +1311,32 @@ def issue_2025_07_29():
         if nevt>10: break
 
 
-    
+
+def issue_2025_08_19():
+    """Philip - pixel_gain are not deployed/used?
+       datinfo -k exp=mfxdaq23,run=31 -d epix100_0
+    """
+    expname = 'mfxdaq23'
+    runnum  = 31
+    detname = 'epix100_0'
+
+    ds, orun, odet = ds_run_det(exp=expname, run=runnum, detname=detname) #, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    longname = odet.raw._uniqueid
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(longname, exp=expname, run=runnum)
+    #calib_const = wu.calib_constants_all_types(longname, run=runnum)
+    print('calib_const.keys:', calib_const.keys())
+
+    import psana.pscalib.calib.MDBWebUtils as wu
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={'ctype':'pixel_gain'})
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run": {"$lte": 31}})
+    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":31})
+    print(docs)
+
 #===
     
 #===
@@ -1385,7 +1410,8 @@ def selector():
     elif TNAME in ('35',): issue_2025_07_16() # test for runs validity tool
     elif TNAME in ('36',): issue_2025_07_22() # test time to get shortname from longname
     elif TNAME in ('37',): issue_2025_07_23() # test wu.calib_constants_all_types
-    elif TNAME in ('38',): issue_2025_07_29() # cpo - epix10ka missing geometry
+    elif TNAME in ('38',): issue_2025_07_29() # Chris - epix10ka missing geometry
+    elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
