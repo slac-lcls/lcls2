@@ -65,6 +65,7 @@ def main():
         detectors=args.detectors
     )
     run = next(ds.runs())
+    run.Detector(args.detectors[0])
 
     local_count = 0
     for i_evt, evt in enumerate(run.events()):
