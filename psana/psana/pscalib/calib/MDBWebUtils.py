@@ -27,6 +27,8 @@ Usage ::
     id = wu.add_data_from_file(dbname, fname, sfx=None, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     id = wu.add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     id = wu.add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
+    is_exp = wu.is_doc_from_exp_db(doc):
+    id = replace_document(doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
     id_data, id_doc = wu.add_data_and_doc(data, dbname, colname, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
     id_data_exp, id_data_det, id_doc_exp, id_doc_det =\
       wu.add_data_and_two_docs(data, exp, det, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS, **kwargs)
@@ -57,7 +59,7 @@ import io
 from psana.pscalib.calib.CalibDoc import CalibDoc
 import psana.pscalib.calib.CalibConstants as cc
 import requests as req
-get, delete = req.get, req.delete # req.put
+get, delete, put = req.get, req.delete, req.put
 
 from time import time
 from numpy import fromstring
@@ -424,6 +426,36 @@ def add_document(dbname, colname, doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS)
 
     resp = post(url+dbname+'/'+colname+'/', headers=krbheaders, json=doc)
     logger.debug('add_document: %s\n  to %s/%s resp: %s' % (str(doc), dbname, colname, resp.text))
+    id = resp.json().get('_id',None)
+    if id is None: logger.warning('id_document is None')
+    return id
+
+
+def is_doc_from_exp_db(doc):
+    """uses doc 'id_doc_exp' and 'id_data_exp' which should be 0 for exp_db"""
+    id_doc_exp  = doc.get('id_doc_exp', None)
+    id_data_exp = doc.get('id_data_exp', None)
+    return id_doc_exp == 0 and id_data_exp == 0
+
+
+def replace_document(doc, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
+    """Rreplace document for database, collection using the same _id
+       doc should have items for 'detector', 'experiment', '_id'
+       Murali: requests.put("https://pswwworpsdmint/calib_ws/cdb_tstx00117/epixquad/5fc6911af587a598cbb1a601", json=doc)
+    """
+    check_kerberos_ticket()
+    shortname  = doc.get('detector', None)
+    experiment = doc.get('experiment', None)
+    _id        = doc.get('_id', None)
+    if shortname is None:
+        logger.warning('document does not have key "detector", doc: %s' % str(doc))
+        return None
+    dbname = mu.db_prefixed_name(experiment)
+    colname = shortname
+    _url = url+dbname+'/'+colname+'/'+_id
+    logger.info('replace_document url: %s' % _url)
+    resp = put(_url, headers=krbheaders, json=doc)
+    logger.info('replace_document: %s\n== for %s/%s\n== resp: %s' % (str(doc), dbname, colname, resp.text))
     id = resp.json().get('_id',None)
     if id is None: logger.warning('id_document is None')
     return id
