@@ -25,3 +25,6 @@ save_doc_and_data_in_file = wu.mu.save_doc_and_data_in_file
 db_prefixed_name = wu.mu.db_prefixed_name
 insert_document_and_data = wu.insert_document_and_data
 replace_document = wu.replace_document
+is_doc_from_exp_db = wu.is_doc_from_exp_db
+
+# EOF
