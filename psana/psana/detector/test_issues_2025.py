@@ -1333,8 +1333,8 @@ def issue_2025_08_19():
 
     import psana.pscalib.calib.MDBWebUtils as wu
 #    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={'ctype':'pixel_gain'})
-#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run": {"$lte": 31}})
-    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":31})
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run": 31})
+    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":{"$lte": 31}})
     print(docs)
 
 #===
