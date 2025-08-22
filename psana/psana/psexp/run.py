@@ -7,6 +7,7 @@ from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
 from psana.utils import Logger, WeakDict
+from psana.psexp.prometheus_manager import get_prom_manager
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -438,7 +439,7 @@ class RunSerial(Run):
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
         self.dsparms = ds.dsparms
-        self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
+        self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
         RunHelper(self)
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
