@@ -112,7 +112,7 @@ def main():
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
 
-    if isGen:
+    if isGen or isXTPG:
         xpm.TPGMini.setup(False)
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
