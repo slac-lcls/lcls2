@@ -99,7 +99,7 @@ def datasource_arguments(args):
     args.fname: str - xtc2 file name
     args.expname: str - experiment name
     args.runs: int run number or str with comma-separated run numbers
-    args.detname: str - detector name
+    args.detname: str - detector name for run.Detector(detname)
     args.det:     str - detector name
     args.evtmax: int - maximal number of events to process
 
@@ -304,7 +304,8 @@ def get_config_info_for_dataset_detname(**kwargs):
     import logging
     logger = logging.getLogger(__name__)
     from psana import DataSource
-    detname = kwargs.get('detector', None)
+    detname = kwargs.get('detector', None)  # backward compatability for some scripts
+    detname = kwargs.get('detname', detname)
     idx     = kwargs.get('idx', None)
     dskwargs = data_source_kwargs(**kwargs)
     try:
@@ -348,7 +349,8 @@ def get_config_info_for_dataset_detname(**kwargs):
           cpdic['shape']      = odet.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2 or (144,768) for epixhremu
           cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
           cpdic['longname']   = longname
-          cpdic['shortname']  = uc.detector_name_short(longname)
+          cpdic['shortname']  = shortname = uc.detector_name_short(longname)
+          cpdic['detector']   = shortname
           cpdic['det_name']   = odet._det_name # odet.raw._det_name epixquad
           cpdic['dettype']    = odet._dettype # epix
           #cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
