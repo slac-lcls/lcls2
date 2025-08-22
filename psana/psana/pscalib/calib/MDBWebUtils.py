@@ -544,7 +544,7 @@ def deploy_constants(data, exp, detname_long, url=cc.URL_KRB, krbheaders=cc.KRBH
 
     logger.debug('deployed with id_data_exp:%s and id_data_det:%s id_doc_exp:%s id_doc_det:%s' %\
                  (id_data_exp, id_data_det, id_doc_exp, id_doc_det))
-    logger.info('  constants are deployed in DB(s) for exp:%s det:%s dbsuffix:%s ctype:%s run:%d run_beg:%s run_end:%s'%\
+    logger.info('  constants are deployed in DB(s) for exp:%s detector:%s dbsuffix:%s ctype:%s run:%d run_beg:%s run_end:%s'%\
                 (exp, detname, dbsuffix, ctype, kwa['run'], str(kwa.get('run_beg',None)), str(kwa.get('run_end',None))))
 
     return id_data_exp, id_data_det, id_doc_exp, id_doc_det
