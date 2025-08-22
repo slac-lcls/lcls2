@@ -183,7 +183,7 @@ class MPIDataSource(DataSourceBase):
     def __del__(self):
         if nodetype == "smd0":
             super()._close_opened_smd_files()
-        self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
+        self._end_prometheus_client()
 
     def terminate(self):
         self.comms.terminate()
