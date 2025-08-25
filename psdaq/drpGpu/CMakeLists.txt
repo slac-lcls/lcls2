@@ -23,7 +23,7 @@ if(CMAKE_CUDA_COMPILER)
 #--- DRP program
 
     add_library(drpbase_gpu SHARED
-        MemPool.cu
+        MemPool.cc
         GpuAsyncLib.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
