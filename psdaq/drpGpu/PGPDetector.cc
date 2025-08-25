@@ -86,6 +86,9 @@ void TebReceiver::setup(std::shared_ptr<Collector> collector,
 
   // Start the Data Recorder
   m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
+
+  // Start the Reducers
+  //m_reducer->startup();
 }
 
 void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
@@ -104,21 +107,25 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
   NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
   Dgram* smdDgram = smd.generate(dgram, m_smdWriter->buffer.data(), bufEnd, chunkSize(), size,
                                  m_smdWriter->namesLookup, namesId);
-  // @todo: Revisit: smdDgram should be a device pointer
-  // @todo: Revisit: Shouldn't the smd writing be done from the CPU instead of the GPU?
   m_smdWriter->writeEvent(smdDgram, sizeof(Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
   offsetAppend(size);
 }
 
+/** This function is called by the base class's process() method to complete
+ *  processing and dispose of the event.  It presumes that the caller has
+ *  already vetted index and result
+ */
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
-  // This function is called by the base class's process() method to complete
-  // processing and dispose of the event.  It presumes that the caller has
-  // already vetted index and result
   //printf("*** TebRcvr::complete: 1 idx %u\n", index);
 
-  // Start up a reducer
-  m_reducer->start(m_worker++, index);
+  //*(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0; // @todo: Override the result data for debugging
+
+  // Start up a reducer only when there is a need for its result
+  // Running the reducer on transitions is a no-op, so avoid its overhead
+  if (result.isEvent() && (result.persist() || result.monitor())) {
+    m_reducer->start(m_worker++, index);
+  }
   //printf("*** TebRcvr::complete: 2\n");
 
   // Pass parameters to the recorder thread
@@ -147,7 +154,7 @@ void TebReceiver::_recorder()
 
   // Collect completion information from the reducer kernels in time order
   while (!m_terminate_h.load(std::memory_order_acquire)) {
-    // Wait for a new Result to appear from the TEB
+    // Wait for a new Result to appear from the TEB via the complete() method above
     ResultItems items;
     m_recordQueue.pop(items);
     auto result = items.result;
@@ -156,30 +163,44 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
-    //auto tail  = (index+1) & bufMask;
-    /*auto head  =*/ m_reducer->receive(worker++); // This blocks until result is ready from GPU
-    //printf("*** TebRcvr::recorder: 1 reducer %u, head %u, idx %u\n", worker-1, head, index);
-    //if (head != index) {
-    //  printf("*** TebRcvr::recorder: 1 reducer %u, head %u != tail %u\n", worker-1, head, index);
-    //}
+    if (result->persist() || result->monitor()) {
+      m_reducer->receive(worker++, index); // This blocks until result is ready from GPU
+    }
 
     // Release the GPU intermediate buffers for reuse
     m_collector->freeDma(index);        // @todo: Bad name
     //printf("*** TebRcvr::recorder: 2, freeDma idx %u\n", index);
 
+    // Look up the datagram, whether transition or L1Accept
     auto dgram = result->isEvent() ? (EbDgram*)m_pool.pebble[index] : m_pool.transitionDgrams[index];
-    if (dgram->pulseId() != result->pulseId()) {
+    if (dgram->pulseId() != result->pulseId()) { // Sanity check
       logging::critical("Pulse IDs differ: idx %u, %014lx, %014lx\n",
                         index, dgram->pulseId(), result->pulseId());
       abort();
     }
     //printf("*** TebRcvr::recorder: 2 dg[%u] pid %014lx, env %08x\n", index, dgram->pulseId(), dgram->env);
 
+    TransitionId::Value transitionId = dgram->service();
+    if (transitionId != TransitionId::L1Accept) {
+      if (transitionId != TransitionId::SlowUpdate) {
+        logging::info("Recorder   saw %s @ %u.%09u (%014lx)",
+                      TransitionId::name(transitionId),
+                      dgram->time.seconds(), dgram->time.nanoseconds(),
+                      dgram->pulseId());
+      }
+      else {
+        logging::debug("Recorder   saw %s @ %u.%09u (%014lx)",
+                       TransitionId::name(transitionId),
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       dgram->pulseId());
+      }
+    }
+
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = memPool.reduceBuffers_h()[index];
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p\n", index, buffer);
     size_t cpSize, dgSize;
-    if (dgram->isEvent()) {
+    if (dgram->isEvent() && (result->persist() || result->monitor())) {
       // Fetch the size of the reduced L1Accept payload from the GPU
       uint32_t dataSize;
       auto pSize = buffer - sizeof(dataSize);
@@ -231,39 +252,24 @@ void TebReceiver::_recorder()
     //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
     //printf("\n");
 
-    // Copy the dgram header to the GPU if it's an L1Accept or
-    // the whole datagram if it's a transition
-    chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
-    //if (dgram->isEvent()) {
-    //  const Xtc& parent = dgram->xtc;
-    //  const Xtc& shapesData = (Xtc&)*parent.payload();
-    //  auto p = (uint32_t*)&shapesData;
-    //  printf("*** 1st: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
-    //  const Xtc& data = (Xtc&)*shapesData.payload();
-    //  p = (uint32_t*)&data;
-    //  printf("*** pld: %p: %08x %08x %08x %08x %08x %08x %08x %08x\n", p, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-    //  const Xtc& shapes = *data.next();
-    //  p = (uint32_t*)&shapes;
-    //  printf("*** 2nd: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
-    //  unsigned sz = sizeof(shapes) + shapes.sizeofPayload();
-    //  printf("*** shapes size %u, data size %u, total size %zu\n", sz, shapes.sizeofPayload(), (uint8_t*)shapes.next() - (uint8_t*)((Dgram*)dgram));
-    //}
-
-    TransitionId::Value transitionId = dgram->service();
-
-    if (transitionId != XtcData::TransitionId::L1Accept) {
-      if (transitionId != XtcData::TransitionId::SlowUpdate) {
-        logging::info("Recorder   saw %s @ %u.%09u (%014lx)",
-                      XtcData::TransitionId::name(transitionId),
-                      dgram->time.seconds(), dgram->time.nanoseconds(),
-                      dgram->pulseId());
-      }
-      else {
-        logging::debug("Recorder   saw %s @ %u.%09u (%014lx)",
-                       XtcData::TransitionId::name(transitionId),
-                       dgram->time.seconds(), dgram->time.nanoseconds(),
-                       dgram->pulseId());
-      }
+    if (writing() || transitionId == TransitionId::Configure) {
+      // Copy the dgram header to the GPU if it's an L1Accept or the whole
+      // datagram when it's a transition
+      chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
+      //if (dgram->isEvent()) {
+      //  const Xtc& parent = dgram->xtc;
+      //  const Xtc& shapesData = (Xtc&)*parent.payload();
+      //  auto p = (uint32_t*)&shapesData;
+      //  printf("*** 1st: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
+      //  const Xtc& data = (Xtc&)*shapesData.payload();
+      //  p = (uint32_t*)&data;
+      //  printf("*** pld: %p: %08x %08x %08x %08x %08x %08x %08x %08x\n", p, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+      //  const Xtc& shapes = *data.next();
+      //  p = (uint32_t*)&shapes;
+      //  printf("*** 2nd: %p: %08x %08x %08x\n", p, p[0], p[1], p[2]);
+      //  unsigned sz = sizeof(shapes) + shapes.sizeofPayload();
+      //  printf("*** shapes size %u, data size %u, total size %zu\n", sz, shapes.sizeofPayload(), (uint8_t*)shapes.next() - (uint8_t*)((Dgram*)dgram));
+      //}
     }
 
     if (writing()) {                  // Won't ever be true for Configure
@@ -318,14 +324,14 @@ void TebReceiver::_recorder()
     }
     //printf("*** TebRcvr::recorder: 5 sz %zu, writing %d\n", dgSize, writing());
 
-    m_evtSize = dgSize;
-
     // Measure latency before sending dgram for monitoring
     if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
       m_latency = Pds::Eb::latency<us_t>(dgram->time);
       m_latPid = dgram->pulseId();
     }
     //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
+
+    m_evtSize = dgSize;
 
     if (m_mon.enabled()) {
       if (result->isEvent()) {          // L1Accept
@@ -346,7 +352,7 @@ void TebReceiver::_recorder()
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
 
     // Synchronize before releasing buffers
-    chkError(cudaStreamSynchronize(m_stream));
+    //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
 
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {
@@ -566,7 +572,7 @@ void PGPDrp::_collector()
 
       auto pid = timingHeader->pulseId();
       if (pid <= lastPid)
-        logging::error("PulseId did not advance: %014lx <= %014lx", pid, lastPid);
+        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
       lastPid = pid;
 
       // Allocate a pebble buffer

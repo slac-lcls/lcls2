@@ -30,8 +30,9 @@ public:
           const std::atomic<bool>& terminate_h,
           const cuda::atomic<int>& terminate_d);
   ~Reducer();
+  void startup();
   void start(unsigned worker, unsigned index);
-  unsigned receive(unsigned worker);
+  void receive(unsigned worker, unsigned index);
   //void release(unsigned index) const { m_outputQueue.h->release(index); }
   void configure(XtcData::Xtc& xtc, const void* bufEnd)
   { m_algo->configure(xtc, bufEnd); }
@@ -59,6 +60,8 @@ private:
   //Ptr<RingIndexDtoH>           m_outputQueue;
   std::vector<unsigned*>       m_heads;
   std::vector<unsigned*>       m_tails;
+  //std::vector< cuda::atomic<unsigned, cuda::thread_scope_system>* > m_heads; // Must stay coherent across device and host
+  //std::vector< cuda::atomic<unsigned, cuda::thread_scope_system>* > m_tails; // Must stay coherent across device and host
   uint64_t                     m_reduce_us;
   const Parameters&            m_para;
 };

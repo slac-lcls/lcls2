@@ -318,8 +318,10 @@ void dmaTgtSet(const DataGPU& gpu, DmaTgt_t tgt)
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
 }
 
+/** Function to reset the DMA buffer index */
 void dmaIdxReset(const DataGPU& gpu)
 {
+    // Toggle the writeEnable register to reset the DMA buffer index
     const uint64_t writeEnReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
     uint32_t value;
     auto rc = dmaReadRegister(gpu.fd(), writeEnReg, &value);

@@ -374,24 +374,48 @@ unsigned Collector::_checkTimingHeader(unsigned index) const
 
 unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 {
+  //struct trace_t
+  //{
+  //  unsigned tail;
+  //  unsigned head;
+  //  uint64_t pid;
+  //  uint64_t lastPid;
+  //};
+  //static std::vector<struct trace_t> traceBuffer(2048);
+  //static unsigned itb = 0;
+
   const auto& hostWriteBufs = m_pool.hostWrtBufsVec_h()[0]; // When no error, hdrs in all are the same
   const uint32_t bufferMask = m_collectorQueue.h->size() - 1;
 
+  uint64_t lastPid = m_lastPid;
+
   unsigned head = m_collectorQueue.h->consume(); // This can block
   unsigned tail = m_last;
+  //if (tail != head)  printf("Collector::receive: tail %u, head %u\n", tail, head);
   while (tail != head) {
     const volatile auto dsc = (DmaDsc*)(hostWriteBufs[tail]);
     const volatile auto th  = (TimingHeader*)&dsc[1];
 
-    uint64_t pid;
-    while (!m_terminate_h.load(std::memory_order_acquire)) {
-      pid = th->pulseId();
-      if (pid > m_lastPid)  break;
-      if (!m_lastPid && !pid)  break; // Expect lastPid to be 0 only on startup
-    }
-    if (m_terminate_h.load(std::memory_order_acquire))  break;
-    if (!pid)  continue;              // Search for a DMA buffer with data in it
-    m_lastPid = pid;
+    //uint64_t pid;
+    //while (!m_terminate_h.load(std::memory_order_acquire)) {
+    //  pid = th->pulseId();
+    //  if (pid > lastPid)  break;
+    //  if (!m_lastPid && !pid)  break; // Expect lastPid to be 0 only on startup
+    //}
+    //if (m_terminate_h.load(std::memory_order_acquire))  break;
+    //if (!pid)  continue;              // Search for a DMA buffer with data in it
+    ////m_lastPid = pid;
+
+    //traceBuffer[itb].tail    = tail;
+    //traceBuffer[itb].head    = head;
+    //traceBuffer[itb].pid     = pid;
+    //traceBuffer[itb].lastPid = lastPid;
+    //itb = (itb + 1) % traceBuffer.size();
+
+    uint64_t pid = th->pulseId();
+    if (pid <= lastPid)
+      logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
+    lastPid = pid;
 
 #ifdef HOST_REARMS_DMA
     // Write to the DMA start register in the FPGA
@@ -485,8 +509,8 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
       if (m_lastTid != TransitionId::Unconfigure) {
         if ((metrics.m_nPgpJumps < 5) || m_para.verbose) { // Limit prints at rate
           auto evtCntDiff = evtCounter - m_lastComplete;
-          logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
-                         RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
+          logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s, tail %u, head %u",
+                         RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF, tail, head);
           logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
                          data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
           logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
@@ -495,9 +519,18 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
         handleBrokenEvent(*event);
         freeDma(event);                 // Leaves event mask = 0
         metrics.m_nPgpJumps += 1;
+        //for (unsigned i = 0; i < traceBuffer.size(); ++i) {
+        //  unsigned j = (itb + i) % traceBuffer.size();
+        //  auto& tb = traceBuffer[j];
+        //  printf("%4u:%4u: t %4u h %4u p %014lx l %014lx\n", i, j, tb.tail, tb.head, tb.pid, tb.lastPid);
+        //}
+        //sleep(10);
+        //printf("cur: p %014lx, e %u\n", th->pulseId(), th->evtCounter & EvtCtrMask);
+        //abort();
         continue;                       // Throw away out-of-sequence events
       } else if (transitionId != TransitionId::Configure) {
         freeDma(event);                 // Leaves event mask = 0
+        //abort();
         continue;                       // Drain
       }
     }
@@ -552,6 +585,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
   }
   unsigned nEvents = (head - m_last) & bufferMask;
   m_last = tail;
+  m_lastPid = lastPid;
 
   return nEvents;
 }

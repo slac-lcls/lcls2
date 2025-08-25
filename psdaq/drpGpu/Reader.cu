@@ -177,7 +177,7 @@ static __global__ void _event(uint32_t** const __restrict__ outBufs,
   //printf("### Reader _event 1.%ub, done %d, idx %u, *outBufs %p\n", instance, done, idx, *outBufs);
 
   uint32_t* const __restrict__ out = outBufs[idx];
-  //printf("### Reader _event 1.%uc, done %d, idx %u\n", instance, done, idx);
+  //if (threadIdx.x == 0)  printf("### Reader _event 1.%uc, done %d, idx %u, pid %08x%08x\n", instance, done, idx, in[9], in[8]);
 
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   auto nWords = (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(*out);
