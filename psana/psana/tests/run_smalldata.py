@@ -91,7 +91,9 @@ def gen_h5(source='xtc', pid=None):
     # DgramManager for threaded shared memory has a thread that doesn't exit
     # After end run the reading thread tries to reconnect and enters a loop
     # at the ShmemClient.cc level
-    ds.dm.close_reader()
+    if hasattr(ds, "dm"):
+        # Guard for NullDataSource
+        ds.dm.close_reader()
 
     if smd.summary:
         smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)
