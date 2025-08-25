@@ -51,6 +51,7 @@ def launch_client(pid, supervisor=-1, supervisor_ip_addr=None, cached_detectors=
             assert np.array_equal(cspad.raw.image(evt), np.vstack((padarray, padarray)))
             dg_count += 1
 
+    ds.dm.close_reader()
     return dg_count
 
 # ------------------------------

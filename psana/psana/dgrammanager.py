@@ -181,6 +181,8 @@ class DgramManager(object):
             status = int(self.shmem_cli.connect(tag, 0))
             if status == 0:
                 break
+            elif status == -42:
+                return "EARLYEXIT"
             time.sleep(0.01)
         assert not status, "shmem connect failure %d" % status
         # wait for first configure datagram - blocking
@@ -497,6 +499,9 @@ class DgramManager(object):
                 # NULL for some other reason
                 if self._shmem_thread_continue:
                     view = self._connect_shmem_cli(self.tag)
+                    if view == "EARLYEXIT":
+                        print("dgrammanager: Early exit encountered.")
+                        return
                     config = self.configs[len(self.configs) - 1]
                     d = dgram.Dgram(config=config, view=view)
                     if d.service() == TransitionId.Configure:

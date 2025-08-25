@@ -45,6 +45,10 @@ def gen_h5(source='xtc', pid=None):
         xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
         ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=lambda x : True, batch_size=2)
     elif source == 'shmem':
+        # Add a timeout to break infinite reads in reader thread
+        # Needed since introducing the threaded dgrammanager for shared memory
+        os.environ["PSANA_TESTS_SHMEM_TMO"] = "10" # In seconds
+
         ds = DataSource(shmem='shmem_test_' + pid)
 
     smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5,
