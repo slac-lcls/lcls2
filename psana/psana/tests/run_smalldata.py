@@ -83,6 +83,11 @@ def gen_h5(source='xtc', pid=None):
         # Future: We might need to test in case where where actually have multple
         # runs. For this, we may need an eof flag coming from the datasource.
         break
+    # Similar to Mona's comment above... We hang here because a change in the
+    # DgramManager for threaded shared memory has a thread that doesn't exit
+    # After end run the reading thread tries to reconnect and enters a loop
+    # at the ShmemClient.cc level
+    ds.dm.close_reader()
 
     if smd.summary:
         smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)
@@ -203,7 +208,7 @@ def main(tmp_path):
     if platform.system()!='Darwin' and os.getenv('LCLS_TRAVIS') is None:
         # cpo: this started hanging on aug 12 2025 presumably because of
         # changes to shmem to allow queuing of transitions
-        #run_test('shmem', tmp_path)
+        run_test('shmem', tmp_path)
         pass
     return
 

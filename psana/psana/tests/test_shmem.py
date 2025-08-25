@@ -16,7 +16,7 @@ class Test:
         return subprocess.Popen(cmd_args)
 
     def launch_client(self,pid):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py' 
         cmd_args = ['python',shmem_file,pid]
         return subprocess.Popen(cmd_args)
                 
