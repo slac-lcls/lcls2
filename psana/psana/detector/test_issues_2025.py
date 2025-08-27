@@ -1337,6 +1337,25 @@ def issue_2025_08_19():
     docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":{"$lte": 31}})
     print(docs)
 
+
+
+
+def issue_2025_08_26():
+    """       datinfo -k exp=ascdaq023,run=43 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq023',run=43)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+
+    #print('XXX', det.raw._segment_numbers)
+    for nevt,evt in enumerate(myrun.events()):
+      if nevt>10: break
+      calib = det.raw.calib(evt)
+      if calib is None:
+        print('none')
+        continue
+      print(nevt,calib.shape)
 #===
     
 #===
@@ -1412,6 +1431,7 @@ def selector():
     elif TNAME in ('37',): issue_2025_07_23() # test wu.calib_constants_all_types
     elif TNAME in ('38',): issue_2025_07_29() # Chris - epix10ka missing geometry
     elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
+    elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
