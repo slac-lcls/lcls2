@@ -5,8 +5,10 @@ from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
 from psana.detector.areadetector import AreaDetectorRaw, sgs, sys
 
-def is_true(cond, msg, method=logger.debug):
-    if cond: method(msg)
+#import psana.detector.Utils as ut
+#is_true = ut.is_true
+def is_true(cond, msg, logger_method=logger.debug):
+    if cond: logger_method(msg)
     return cond
 
 class axis_raw_1_0_0(AreaDetectorRaw):
@@ -33,11 +35,11 @@ class axis_raw_1_0_0(AreaDetectorRaw):
         raw = self.raw(evt) if nda is None else nda
         if raw is None: return None
         peds = self._calibconst['pedestals'][0]
-        if is_true(peds is None, 'no axis pedestals', method=logger.warning):
+        if is_true(peds is None, 'no axis pedestals', logger_method=logger.warning):
             return raw
         if is_true(peds.shape != raw.shape,\
                    f'incorrect axis pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
-                   method=logger.warning):
+                   logger_method=logger.warning):
             return raw
         cal = raw-peds
         return cal
