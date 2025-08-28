@@ -42,8 +42,11 @@ MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 
 MAX_DETNAME_SIZE = 20
 
-def is_true(cond, msg, method=logger.debug):
-    if cond: method(msg)
+#import psana.detector.Utils as ut
+#is_true = ut.is_true
+
+def is_true(cond, msg, logger_method=logger.debug):
+    if cond: logger_method(msg)
     return cond
 
 def jungfrau_segments_tot(segnum_max):
@@ -108,16 +111,16 @@ class DetCache():
                    + ndau.info_ndarr(det.raw(evt), '\n  raw(evt)')
                     )
         if is_true(self.calibc is None, 'det._calibconst is None > CALIB CONSTANTS ARE NOT AVAILABLE FOR %s' % self.detname,\
-                   method=logger.warning): return
+                   logger_method=logger.warning): return
 
         keys = self.calibc.keys()
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         if is_true(not('pedestals' in keys), 'PEDESTALS ARE NOT AVAILABLE det.raw.calib(evt) will return det.raw.raw(evt)',\
-                   method = logger.warning): return
+                   logger_method = logger.warning): return
 
         peds, meta_peds = self._calibcons_for_ctype('pedestals') # shape:(3, <nsegs>, 512, 1024) dtype:float32
         if is_true(peds is None, 'peds is None, det.raw.calib(evt) will return det.raw.raw(evt)',\
-                   method = logger.warning): return
+                   logger_method = logger.warning): return
 
         d = up.dict_filter(meta_peds, list_keys=('ctype', 'experiment', 'run', 'run_orig', 'run_beg', 'run_end', 'time_stamp',\
                                                  'tstamp_orig', 'detname', 'longname', 'shortname',\
@@ -129,13 +132,13 @@ class DetCache():
         offs, meta_offs = self._calibcons_for_ctype('pixel_offset')
 
         self.gfac = np.ones_like(peds) if is_true(gain is None, 'pixel_gain constants missing, use default ones',\
-                                                  method = logger.warning) else\
+                                                  logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
         logger.info(ndau.info_ndarr(self.gfac, 'gain factors'))
 
         self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
-                                    method = logger.warning) else\
+                                    logger_method = logger.warning) else\
                     peds + offs
 
         self.cmps = self.kwa.get('cmpars', None)
@@ -180,7 +183,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     arr = det.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
 
     if is_true(arr is None, 'det.raw(evt) and nda_raw are None, return None',\
-               method = logger.warning): return None
+               logger_method = logger.warning): return None
 
     odc = cache.detcache_for_detname(det._det_name)
     first_entry = odc is None
