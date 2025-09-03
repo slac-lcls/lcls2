@@ -207,7 +207,7 @@ class TimingStatus(object):
 
         self._device.update()
         self._rxClkCount      = updatePv(self._pv_rxClkCount, self._device.RxClkCount.get()<<4, self._rxClkCount)
-        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
+#        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
         self._rxRstCount      = updatePv(self._pv_rxRstCount, self._device.RxRstCount.get(), self._rxRstCount)
         self._crcErrCount     = updatePv(self._pv_crcErrCount, self._device.CrcErrCount.get(), self._crcErrCount)
         self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount, "RxDecErrs")
@@ -229,7 +229,7 @@ class TimingStatus(object):
             value = self._pv_rxLinkUp.current()
             value['value'] = v
             if v==0:
-                value.alarm.severity = AlarmSevr,MAJOR.value
+                value.alarm.severity = AlarmSevr.MAJOR.value
                 value.alarm.status   = AlarmStatus.STATE.value
                 value.alarm.message  = 'Input link down'
             else:
@@ -377,6 +377,7 @@ class GroupStats(object):
         self._pv_numL0Inh  = _addPVF('NumL0Inh')
         self._pv_numL0Acc  = _addPVF('NumL0Acc')
         self._pv_numL1     = _addPVF('NumL1')
+        self._pv_numDlyOF  = _addPVF('NumDlyOF')
         self._pv_deadFrac  = _addPVF('DeadFrac')
         self._pv_deadTime  = _addPVF('DeadTime')
 
@@ -405,8 +406,9 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
-
+        numDlyOF = struct.unpack_from('<B',msg,offset)[0]
         offset += 1
+
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
 #       Does this get() cause problems via multi-threading?
@@ -445,7 +447,9 @@ class GroupStats(object):
             self._numL0Inh= numL0Inh
         else:
             updatePvC(self._pv_running, False, timev)
-            
+
+        updatePv(self._pv_numDlyOF, numDlyOF, timev)
+
         if True:
             if self._linkInhTm:
                 den = fidPeriod
