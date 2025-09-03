@@ -152,7 +152,8 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 }
 
 // This kernel performs the data calibration
-static __global__ void _calibrate(float*   const* const __restrict__ calibBuffers,
+static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
+                                  const size_t                       calibBufsCnt,
                                   uint16_t const* const __restrict__ in,
                                   const unsigned&                    index,
                                   const unsigned                     panel,
@@ -160,7 +161,7 @@ static __global__ void _calibrate(float*   const* const __restrict__ calibBuffer
                                   float* const         __restrict__  gains_)
 {
   int pixel = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const __restrict__ out = &calibBuffers[index][panel * EpixUHRemu::NPixels];
+  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * EpixUHRemu::NPixels];
 
   const auto gainMask = (1 << EpixUHRemu::GainOffset) - 1;
   for (int i = pixel; i < EpixUHRemu::NPixels; i += blockDim.x * gridDim.x) {
@@ -173,10 +174,10 @@ static __global__ void _calibrate(float*   const* const __restrict__ calibBuffer
 }
 
 // This routine records the graph that calibrates the data
-void EpixUHRemu::recordGraph(cudaStream_t&                      stream,
-                             const unsigned&                    index_d,
-                             const unsigned                     panel,
-                             uint16_t const* const __restrict__ rawBuffer)
+void EpixUHRemu::recordGraph(cudaStream_t&         stream,
+                             const unsigned&       index_d,
+                             const unsigned        panel,
+                             uint16_t const* const rawBuffer)
 {
   auto nPanels = m_dets.size();
 
@@ -189,7 +190,8 @@ void EpixUHRemu::recordGraph(cudaStream_t&                      stream,
   const auto peds         = m_peds_d[panel];
   const auto gains        = m_gains_d[panel];
   auto const calibBuffers = pool->calibBuffers_d();
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, rawBuffer, index_d, panel, peds, gains);
+  auto const calibBufsCnt = pool->calibBufsSize();
+  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, peds, gains);
 }
 
 // The class factory

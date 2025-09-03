@@ -30,23 +30,24 @@ public:
 
 
 NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
-  ReducerAlgo(para, pool, det),
-  _calibSize(pool.calibBufSize())
+  ReducerAlgo(para, pool, det)
 {
 }
 
 // GPU kernel for actually performing the data reduction
 // In this case, the calibrated data is just copied to the output buffer
-static __global__ void _noOpReduce(const unsigned&              index,
-                                   float**   const __restrict__ calibBuffers,
-                                   uint8_t** const __restrict__ dataBuffers,
-                                   unsigned  const              count)
+static __global__ void _noOpReduce(const unsigned&                 index,
+                                   float const* const __restrict__ calibBuffers,
+                                   const size_t                    calibBufsCnt,
+                                   uint8_t    * const __restrict__ dataBuffers,
+                                   const size_t                    dataBufsCnt,
+                                   unsigned const                  count)
 {
   //printf("### noOpReduce 1, &index %p\n", &index);
   //printf("### noOpReduce 1,  index %u\n", index);
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
-  float* __restrict__ calib = calibBuffers[index];
-  float* __restrict__ data  = (float*)(dataBuffers[index]);
+  float const* const __restrict__ calib = &calibBuffers[index * calibBufsCnt];
+  float*       const __restrict__ data  = (float*)(&dataBuffers[index * dataBufsCnt]);
   //printf("### noOpReduce 2, count %u\n", count);
   for (unsigned i = offset; i < count; i += blockDim.x * gridDim.x) {
     data[i] = calib[i];
@@ -55,20 +56,21 @@ static __global__ void _noOpReduce(const unsigned&              index,
 }
 
 // This routine records the graph that does the data reduction
-void NoOpReducer::recordGraph(cudaStream_t&   stream,
-                              const unsigned& index,
-                              float**   const calibBuffers,
-                              uint8_t** const dataBuffers,
-                              unsigned*       extent)
+void NoOpReducer::recordGraph(cudaStream_t&      stream,
+                              const unsigned&    index,
+                              float const* const calibBuffers,
+                              const size_t       calibBufsCnt,
+                              uint8_t    * const dataBuffers,
+                              const size_t       dataBufsCnt,
+                              unsigned*          extent)
 {
   //printf("*** NoOpReducer::recordGraph: &index %p, calibSize %zu\n", &index, _calibSize);
 
-  unsigned count = _calibSize / sizeof(**calibBuffers);
   int threads = 1024;
-  int blocks  = (count + threads-1) / threads; // @todo: Limit this?
-  _noOpReduce<<<blocks, threads, 0, stream>>>(index, calibBuffers, dataBuffers, 1);
-  //_noOpReduce<<<1, 1, 0, stream>>>(index, calibBuffers, dataBuffers, count);
-  *extent = _calibSize;
+  int blocks  = (calibBufsCnt + threads-1) / threads; // @todo: Limit this?
+  _noOpReduce<<<blocks, threads, 0, stream>>>(index, calibBuffers, calibBufsCnt, dataBuffers, dataBufsCnt, 1);
+  //_noOpReduce<<<1, 1, 0, stream>>>(index, calibBuffers, calibBufsCnt, dataBuffers, dataBufsCnt, calibBufsCnt);
+  *extent = calibBufsCnt * sizeof(*calibBuffers);
 }
 
 unsigned NoOpReducer::configure(Xtc& xtc, const void* bufEnd)

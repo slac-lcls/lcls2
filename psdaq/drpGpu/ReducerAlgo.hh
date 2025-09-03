@@ -23,11 +23,13 @@ public:
   ReducerAlgo(const Parameters& para, const MemPoolGpu& pool, Detector& det) : m_para(para), m_pool(pool), m_det(det) {}
   virtual ~ReducerAlgo() {}
 
-  virtual void recordGraph(cudaStream_t&   stream,
-                           const unsigned& index,
-                           float**   const calibBuffer,
-                           uint8_t** const dataBuffer,
-                           unsigned*       extent) = 0;
+  virtual void recordGraph(cudaStream_t&      stream,
+                           const unsigned&    index,
+                           float const* const calibBuffers,
+                           const size_t       calibBufsCnt,
+                           uint8_t    * const dataBuffers,
+                           const size_t       dataBufsCnt,
+                           unsigned*          extent) = 0;
   virtual unsigned configure(XtcData::Xtc&, const void* bufEnd) = 0;                  // attach descriptions to xtc
   virtual void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) {} // fill xtc data description
 protected:

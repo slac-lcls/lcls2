@@ -12,10 +12,13 @@ LcReducer::LcReducer(const Parameters& para, const MemPoolGpu& pool) :
 }
 
 // This routine records the graph that does the data reduction
-void LcReducer::recordGraph(cudaStream_t&                stream,
-                            const unsigned&              index,
-                            float**   const __restrict__ calibBuffers,
-                            uint8_t** const __restrict__ dataBuffers)
+void LcReducer::recordGraph(cudaStream_t&      stream,
+                            const unsigned&    index,
+                            float const* const calibBuffers,
+                            const size_t       calibBufsCnt,
+                            uint8_t    * const dataBuffers,
+                            const size_t       dataBufsCnt,
+                            unsigned*          extent)
 {
   int* d_fullcarry;
   cudaMalloc((void **)&d_fullcarry, chunks * sizeof(int));

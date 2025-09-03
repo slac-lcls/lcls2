@@ -58,7 +58,7 @@ class Collector
 {
 public:
   Collector(const Parameters&, MemPoolGpu&, std::vector<Reader>&, Pds::Trg::TriggerPrimitive*,
-            const std::atomic<bool>& terminate_h, const cuda::atomic<int>& terminate_d);
+            const std::atomic<bool>& terminate, const cuda::atomic<uint8_t>& terminate_d);
   ~Collector(); // = default;
   void start();
   void freeDma(unsigned index);
@@ -74,9 +74,8 @@ private:
 private:
   MemPoolGpu&                  m_pool;
   Pds::Trg::TriggerPrimitive*  m_triggerPrimitive;
-  const std::atomic<bool>&     m_terminate_h;
-  const cuda::atomic<int>&     m_terminate_d;
-  bool*                        m_done;      // Cache for m_terminate_d
+  const std::atomic<bool>&     m_terminate;
+  const cuda::atomic<uint8_t>& m_terminate_d;
   cudaStream_t                 m_stream;
   cudaGraphExec_t              m_graphExec;
   std::vector<RingIndexDtoD*>  m_readerQueues_h; // A host vector of [nPanels]

@@ -27,8 +27,8 @@ class Reducer
 {
 public:
   Reducer(const Parameters&, MemPoolGpu&, Detector&,
-          const std::atomic<bool>& terminate_h,
-          const cuda::atomic<int>& terminate_d);
+          const std::atomic<bool>&     terminate_h,
+          const cuda::atomic<uint8_t>& terminate_d);
   ~Reducer();
   void startup();
   void start(unsigned worker, unsigned index);
@@ -45,25 +45,20 @@ private:
   cudaGraph_t  _recordGraph(unsigned instance);
 private:
   using timePoint_t = std::chrono::time_point<Pds::fast_monotonic_clock>;
-  MemPoolGpu&                  m_pool;
-  Pds::Dl                      m_dl;
-  ReducerAlgo*                 m_algo;
-  const std::atomic<bool>&     m_terminate_h;
-  const cuda::atomic<int>&     m_terminate_d;
-  bool*                        m_done;  // Cache for m_terminate_d
-  std::vector<cudaStream_t>    m_streams;
-  //std::vector<cudaEvent_t>     m_begEvents;
-  //std::vector<cudaEvent_t>     m_endEvents;
-  std::vector<timePoint_t>     m_t0;
-  std::vector<cudaGraphExec_t> m_graphExecs;
-  //Ptr<RingIndexHtoD>           m_reducerQueue;
-  //Ptr<RingIndexDtoH>           m_outputQueue;
-  std::vector<unsigned*>       m_heads;
-  std::vector<unsigned*>       m_tails;
-  //std::vector< cuda::atomic<unsigned, cuda::thread_scope_system>* > m_heads; // Must stay coherent across device and host
-  //std::vector< cuda::atomic<unsigned, cuda::thread_scope_system>* > m_tails; // Must stay coherent across device and host
-  uint64_t                     m_reduce_us;
-  const Parameters&            m_para;
+  MemPoolGpu&                   m_pool;
+  Pds::Dl                       m_dl;
+  ReducerAlgo*                  m_algo;
+  const std::atomic<bool>&      m_terminate;
+  const cuda::atomic<uint8_t>&  m_terminate_d;
+  std::vector<cudaStream_t>     m_streams;
+  std::vector<timePoint_t>      m_t0;
+  std::vector<cudaGraphExec_t>  m_graphExecs;
+  std::vector<unsigned*>        m_heads_h;
+  std::vector<unsigned*>        m_heads_d;
+  std::vector<unsigned*>        m_tails_h;
+  std::vector<unsigned*>        m_tails_d;
+  uint64_t                      m_reduce_us;
+  const Parameters&             m_para;
 };
 
   } // Gpu

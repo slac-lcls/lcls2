@@ -12,10 +12,13 @@ public:
   LcReducer(const Parameters& para, MemPoolGpu& pool) {}
   virtual ~LcReducer() {}
 
-  virtual void recordGraph(cudaStream_t&                stream,
-                           const unsigned&              index,
-                           float** const   __restrict__ calibBuffer,
-                           uint8_t** const __restrict__ dataBuffer) override;
+  virtual void recordGraph(cudaStream_t&      stream,
+                           const unsigned&    index,
+                           float const* const calibBuffers,
+                           const size_t       calibBufsCnt,
+                           uint8_t    * const dataBuffers,
+                           const size_t       dataBufsCnt,
+                           unsigned*          extent) override;
 };
 
   } // Gpu

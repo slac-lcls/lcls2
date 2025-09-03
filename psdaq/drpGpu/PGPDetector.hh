@@ -43,13 +43,12 @@ struct ResultItems
 class TebReceiver: public Drp::TebReceiverBase
 {
 public:
-  TebReceiver(const Parameters&, DrpBase&,
-              const std::atomic<bool>& terminate_h,
-              const cuda::atomic<int>& terminate_d);
+  TebReceiver(const Parameters&, DrpBase&, const std::atomic<bool>& terminate);
   ~TebReceiver() override;
   FileWriterBase& fileWriter() override { return *m_fileWriter; }
   SmdWriterBase& smdWriter() override { return *m_smdWriter; };
-  void setup(std::shared_ptr<Collector>, std::shared_ptr<Reducer>);
+  void setup();
+  void teardown();
 protected:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels) override;
@@ -58,14 +57,12 @@ private:
   void _recorder();
   void _writeDgram(XtcData::Dgram*, void* devPtr);
 private:
-  std::shared_ptr<Reducer>         m_reducer;
   Pds::Eb::MebContributor&         m_mon;
-  const std::atomic<bool>&         m_terminate_h;    // Avoid PCIe transfer of _d
-  const cuda::atomic<int>&         m_terminate_d;    // Managed memory pointer
+  const std::atomic<bool>&         m_terminate;
   cudaStream_t                     m_stream;
   std::unique_ptr<FileWriterAsync> m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
-  unsigned                         m_worker;   // For cycling through reducers
+  unsigned                         m_worker;      // For cycling through reducers
   SPSCQueue<ResultItems>           m_recordQueue;
   std::shared_ptr<Collector>       m_collector;
   std::thread                      m_recorderThread;
@@ -80,7 +77,11 @@ public:
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
   void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
-  { m_reducer->configure(xtc, bufEnd); }
+                                                  { m_reducer->configure(xtc, bufEnd); }
+  void reducerStart(unsigned wkr, unsigned idx)   { m_reducer->start(wkr, idx); }
+  void reducerReceive(unsigned wkr, unsigned idx) { m_reducer->receive(wkr, idx); }
+  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz) { m_reducer->event(xtc, be, sz); }
+  void freeBufs(unsigned idx)                     { m_collector->freeDma(idx); } // @todo: Bad name
 protected:
   void pgpFlush() override;
 private:
@@ -89,11 +90,11 @@ private:
 private:
   const Parameters&          m_para;
   Detector&                  m_det;
-  std::atomic<bool>          m_terminate_h;    // Avoid PCIe transfer of _d
-  cuda::atomic<int>*         m_terminate_d;    // Managed memory pointer
+  std::atomic<bool>          m_terminate;
+  cuda::atomic<uint8_t>*     m_terminate_d;
   std::vector<Reader>        m_readers;        // One reader per panel
-  std::shared_ptr<Collector> m_collector;
-  std::shared_ptr<Reducer>   m_reducer;
+  std::unique_ptr<Collector> m_collector;
+  std::unique_ptr<Reducer>   m_reducer;
   std::thread                m_collectorThread;
   uint64_t                   m_nNoTrDgrams;
   ReaderMetrics              m_wkrMetrics;
