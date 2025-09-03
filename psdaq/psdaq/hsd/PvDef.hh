@@ -115,6 +115,7 @@ namespace Pds {
       int32_t oor_inb_0;
       int32_t oor_inb_1;
       int32_t alarm;
+      int32_t oor_fex;
     };
 
     class MonJesd {

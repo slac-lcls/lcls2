@@ -115,7 +115,8 @@ monAdc   = {'oor_ina_0' :('i',0),
             'oor_ina_1' :('i',0),
             'oor_inb_0' :('i',0),
             'oor_inb_1' :('i',0),
-            'alarm'     :('i',0) }
+            'alarm'     :('i',0),
+            'oor_fex'   :('i',0) }
 
 monJesdTtl = {'ttl' :('as',['GTResetDone','RxDataValid','RxDataNAlign','SyncStatus','RxBufferOF','RxBufferUF',
                             'CommaPos','ModuleEn','SysRefDet','CommaDet','DispErr','DecErr','BuffLatency','CdrStatus'])}
