@@ -288,8 +288,8 @@ class Server:  # (hdf5 handling)
 
         if self.filename is not None:
             self.file_handle = h5py.File(self.filename, "w", libver="latest")
-            if self.swmr_mode:
-                self.file_handle.swmr_mode(True)
+            # SWMR mode will be enabled after first dataset creation
+            self._swmr_enabled = False
 
         return
 
@@ -461,6 +461,11 @@ class Server:  # (hdf5 handling)
             dtype=dtype,
             chunks=(self.cache_size,) + shape,
         )
+        
+        # Enable SWMR mode after first dataset is created
+        if self.swmr_mode and not self._swmr_enabled:
+            self.file_handle.swmr_mode = True
+            self._swmr_enabled = True
 
         if is_var:
             if is_len:
@@ -720,12 +725,12 @@ class SmallData:  # (client)
             if self._first_open and self._full_filename is not None:
                 fh = h5py.File(self._full_filename, "w", libver="latest")
                 if self.swmr_mode:
-                    fh.swmr_mode(True)
+                    fh.swmr_mode = True
                 self._first_open = False
             else:
                 fh = h5py.File(self._full_filename, "r+", libver="latest")
                 if self.swmr_mode:
-                    fh.swmr_mode(True)
+                    fh.swmr_mode = True
 
         elif MODE == "SERIAL":
             fh = self._server.file_handle
