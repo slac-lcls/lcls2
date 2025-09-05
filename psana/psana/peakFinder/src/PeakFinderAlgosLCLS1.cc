@@ -1,5 +1,5 @@
 
-#include "../PeakFinderAlgosLCLS1.hh"
+#include "../include/PeakFinderAlgosLCLS1.hh"
 #include <sstream>   // for stringstream
 #include <cmath>     // floor, ceil
 #include <iomanip>   // for std::typedef

@@ -32,11 +32,14 @@ else:
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
+
+
 BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
-    #print('Build c++ python-extensions: %s' % str(BUILD_LIST))
+
+print('Build c++ python-extensions: %s' % str(BUILD_LIST))
 
 
 # allows a version number to be passed to the setup

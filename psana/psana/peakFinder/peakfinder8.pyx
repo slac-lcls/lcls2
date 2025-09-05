@@ -21,7 +21,7 @@ from libc.stdint cimport int8_t
 
 import numpy
 
-cdef extern from "peakfinder8.hh":
+cdef extern from "include/peakfinder8.hh":
 
     ctypedef struct tPeakList:
         long	    nPeaks
@@ -51,7 +51,7 @@ cdef extern from "peakfinder8.hh":
     void allocatePeakList(tPeakList* peak_list, long max_num_peaks)
     void freePeakList(tPeakList peak_list)
 
-cdef extern from "peakfinder8.hh":
+cdef extern from "include/peakfinder8.hh":
 
    #
     int peakfinder8(tPeakList *peaklist, float *data, char *mask, float *pix_r,
