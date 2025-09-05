@@ -95,6 +95,11 @@ static std::chrono::nanoseconds secs_to_ns(double secs)
     return std::chrono::duration_cast<std::chrono::nanoseconds>(dursecs);
 }
 
+static double ns_to_secs(std::chrono::nanoseconds nsecs)
+{
+    return std::chrono::duration<double>(nsecs).count();
+}
+
 static unsigned calc_shm_id(const std::string& device, uint8_t laneMask)
 {
     unsigned shm_id = 0;
@@ -312,6 +317,46 @@ void Jungfrau::_connectionInfo(PyObject*)
     }
 }
 
+void Jungfrau::_loadConfigEnums(size_t mod, XtcData::Names& configNames, XtcData::ConfigIter& configo)
+{
+    XtcData::ShapesData& shape = configo.getShape(mod);
+    XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
+    for (size_t i=0; i < configNames.num(); ++i) {
+        XtcData::Name& name = configNames.get(i);
+        const char* start = name.name();
+        const char* enumDelimiter = std::strchr(start, ':');
+        if (enumDelimiter) {
+            std::string enumName(start, enumDelimiter - start);
+            std::string enumType(enumDelimiter + 1);
+            uint32_t enumValue = desc.get_value<uint32_t>(i);
+            // if it starts with "user." or "expert." its a value field not an enum
+            if (!enumName.starts_with("user.") && !enumName.starts_with("expert.")) {
+                m_configEnums[enumType][enumValue] = enumName;
+            }
+        }
+    }
+}
+
+bool Jungfrau::_configueDAC(size_t mod, sls::defs::dacIndex dac, int value, bool mV)
+{
+    sls::Positions pos{static_cast<int>(mod)};
+
+    logging::info("Setting module %zu dac %s to %d", mod, sls::ToString(dac).c_str(), value);
+    m_slsDet->setDAC(dac, value, mV, pos);
+
+    int valueRbv = m_slsDet->getDAC(dac, mV, pos).squash();
+    if (valueRbv != value) {
+        logging::error("Failed readback check of %s for module %zu: %d [%d]",
+                       sls::ToString(dac).c_str(),
+                       mod,
+                       valueRbv,
+                       value);
+        return false;
+    } else {
+        return true;
+    }
+}
+
 void Jungfrau::_configure_module_thread(size_t mod,
                                         XtcData::Names& configNames,
                                         XtcData::ConfigIter& configo,
@@ -326,132 +371,259 @@ unsigned Jungfrau::_configure_module(size_t mod,
 {
     logging::info("Configuring module %zu - [segment: %u, hostname: %s]",
                    mod, m_segNos[mod], m_slsHosts[mod].c_str());
+
+    // hold the extracted config db values
+    bool boot = false;
+    uint8_t biasVoltage = 0;
+    double trigDelay = 0.;
+    double exposureTime = 0.;
+    double exposurePeriod = 0.;
+    uint16_t port = 0;
+    sls::defs::gainMode gainMode = sls::defs::DYNAMIC;
+    sls::defs::speedLevel speedLevel = sls::defs::HALF_SPEED;
+    sls::defs::detectorSettings gain0 = sls::defs::GAIN0;
+    std::string jungfrauMac, kcuMac, jungfrauIp, kcuIp;
+    // dac values from expert config
+    uint16_t vb_ds      = 0;
+    uint16_t vb_comp    = 0;
+    uint16_t vb_pixbuf  = 0;
+    uint16_t vref_ds    = 0;
+    uint16_t vref_comp  = 0;
+    uint16_t vref_prech = 0;
+    uint16_t vin_com    = 0;
+    uint16_t vdd_prot   = 0;
+
     sls::Positions pos{static_cast<int>(mod)};
     XtcData::ShapesData& shape = configo.getShape(mod);
     XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
+
+    // Extract the configuration data values but dont do Jungfrau SDK configuration...
+    for (size_t i=0; i < configNames.num(); ++i) {
+        XtcData::Name& name = configNames.get(i);
+        if (strcmp(name.name(), "user.bias_voltage_v") == 0) {
+            biasVoltage = desc.get_value<uint8_t>(i);
+        } else if (strcmp(name.name(), "user.hot_pixel_threshold") == 0) {
+            uint16_t threshold = desc.get_value<uint16_t>(i);
+            logging::info("Pixels above %u will be counted as hot pixels.", threshold);
+            m_hotPixelThreshold = threshold;
+        } else if (strcmp(name.name(), "user.max_hot_pixels") == 0) {
+            uint32_t maxHotPixels = desc.get_value<uint32_t>(i);
+            logging::info("Maximum number of hot pixels (across all panels) before trip: %u .",
+                          maxHotPixels);
+            m_maxHotPixels = maxHotPixels;
+        } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
+            trigDelay = desc.get_value<double>(i);
+        } else if (strcmp(name.name(), "user.exposure_time_s") == 0) {
+            exposureTime = desc.get_value<double>(i);
+        } else if (strcmp(name.name(), "user.exposure_period") == 0) {
+            exposurePeriod = desc.get_value<double>(i);
+        } else if (strcmp(name.name(), "user.port") == 0) {
+            port = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "user.gainMode:gainModeEnum") == 0) {
+            uint32_t gainModeRaw = desc.get_value<uint32_t>(i);
+            auto& gainModeEnums = m_configEnums["gainModeEnum"];
+            if (gainModeEnums.find(gainModeRaw) != gainModeEnums.end()) {
+                auto it = slsGainEnumMap.find(gainModeEnums[gainModeRaw]);
+                if (it != slsGainEnumMap.end()) {
+                    gainMode = it->second;
+                    if ((gainModeEnums[gainMode] == "FIX_G1") ||
+                        (gainModeEnums[gainMode] == "FIX_G2")) {
+                        m_inFixedGain = true;
+                    } else {
+                        m_inFixedGain = false;
+                    }
+                } else {
+                    logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
+                                   gainModeEnums[gainModeRaw].c_str(),
+                                   mod);
+                    return 1;
+                }
+            } else {
+                logging::error("Invalid gainMode enum value for module %zu: %u", mod, gainModeRaw);
+                return 1;
+            }
+        } else if (strcmp(name.name(), "user.speedLevel:speedLevelEnum") == 0) {
+            uint32_t speedLevelRaw = desc.get_value<uint32_t>(i);
+            auto& speedLevelEnums = m_configEnums["speedLevelEnum"];
+            if (speedLevelEnums.find(speedLevelRaw) != speedLevelEnums.end()) {
+                auto it = slsSpeedLevelMap.find(speedLevelEnums[speedLevelRaw]);
+                if (it != slsSpeedLevelMap.end()) {
+                    speedLevel = it->second;
+                } else {
+                    logging::error("Enum value %s for module %zu is an invalid parameter for setReadoutSpeed()",
+                                   speedLevelEnums[speedLevelRaw].c_str(),
+                                   mod);
+                    return 1;
+                }
+            } else {
+                logging::error("Invalid speedLevel enum value for module %zu: %u", mod, speedLevelRaw);
+                return 1;
+            }
+        } else if (strcmp(name.name(), "user.gain0:gain0Enum") == 0) {
+            uint32_t gain0Raw = desc.get_value<uint32_t>(i);
+            auto& gain0Enums = m_configEnums["gain0Enum"];
+            if (gain0Enums.find(gain0Raw) != gain0Enums.end()) {
+                auto it = slsDetSettingsMap.find(gain0Enums[gain0Raw]);
+                if (it != slsDetSettingsMap.end()) {
+                    gain0 = it->second;
+                } else {
+                    logging::error("Enum value %s for module %zu is an invalid parameter for setSettings()",
+                                   gain0Enums[gain0Raw].c_str(),
+                                   mod);
+                    return 1;
+                }
+            } else {
+                logging::error("Invalid gain0 enum value for module %zu: %u", mod, gain0Raw);
+                return 1;
+            }
+        } else if (strcmp(name.name(), "user.jungfrau_mac") == 0) {
+            jungfrauMac = desc.get_array<char>(i).const_data();
+        } else if (strcmp(name.name(), "user.kcu_mac") == 0) {
+            kcuMac = desc.get_array<char>(i).const_data();
+        } else if (strcmp(name.name(), "user.jungfrau_ip") == 0) {
+            jungfrauIp = desc.get_array<char>(i).const_data();
+        } else if (strcmp(name.name(), "user.kcu_ip") == 0) {
+            kcuIp = desc.get_array<char>(i).const_data();
+        } else if (strcmp(name.name(), "expert.vb_ds") == 0) {
+            vb_ds = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vb_comp") == 0) {
+            vb_comp = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vb_pixbuf") == 0) {
+            vb_pixbuf = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vref_ds") == 0) {
+            vref_ds = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vref_comp") == 0) {
+            vref_comp = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vref_prech") == 0) {
+            vref_prech = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vin_com") == 0) {
+            vin_com = desc.get_value<uint16_t>(i);
+        } else if (strcmp(name.name(), "expert.vdd_prot") == 0) {
+            vdd_prot = desc.get_value<uint16_t>(i);
+        }
+    }
+
     try {
+        /* This preserves the original lcls1 ordering of the configuration! */
+
+        // configure detector mac address
+        logging::info("Setting module %zu destination udp port to %u", mod, port);
+        m_slsDet->setDestinationUDPPort(port, pos[0]);
+        logging::info("Setting module %zu kcuIp to %s", mod, kcuIp.c_str());
+        m_slsDet->setDestinationUDPIP(sls::HostnameToIp(kcuIp.c_str()), pos);
+        logging::info("Setting module %zu kcuMac to %s", mod, kcuMac.c_str());
+        m_slsDet->setDestinationUDPMAC(sls::MacAddr(kcuMac), pos);
+        logging::info("Setting module %zu jungfrauIp to %s", mod, jungfrauIp.c_str());
+        m_slsDet->setSourceUDPIP(sls::HostnameToIp(jungfrauIp.c_str()), pos);
+        logging::info("Setting module %zu jungfrauMac to %s", mod, jungfrauMac.c_str());
+        m_slsDet->setSourceUDPMAC(sls::MacAddr(jungfrauMac), pos);
+        m_slsDet->validateUDPConfiguration(pos);
+
+        // configure dacs
+        _configueDAC(mod, sls::defs::VB_DS, vb_ds);
+        _configueDAC(mod, sls::defs::VB_COMP, vb_comp);
+        _configueDAC(mod, sls::defs::VB_PIXBUF, vb_pixbuf);
+        _configueDAC(mod, sls::defs::VREF_DS, vref_ds);
+        _configueDAC(mod, sls::defs::VREF_COMP, vref_comp);
+        _configueDAC(mod, sls::defs::VREF_PRECH, vref_prech);
+        _configueDAC(mod, sls::defs::VIN_COM, vin_com);
+        _configueDAC(mod, sls::defs::VDD_PROT, vdd_prot);
+
         // check if the chip is powered on
         if (!m_slsDet->getPowerChip(pos).squash()) {
             logging::info("Powering on chip for module %zu", mod);
             m_slsDet->setPowerChip(true, pos);
+            // chip was off so do full boot procedure
+            boot = true;
         }
-        for (size_t i=0; i < configNames.num(); ++i) {
-            XtcData::Name& name = configNames.get(i);
-            // Extract the configuration data values and do Jungfrau SDK configuration...
-            if (strcmp(name.name(), "user.bias_voltage_v") == 0) {
-                uint8_t biasVoltage = desc.get_value<uint8_t>(i);
-                logging::info("Setting module %zu bias voltage to %u", mod, biasVoltage);
-                m_slsDet->setHighVoltage(biasVoltage, pos);
-            } else if (strcmp(name.name(), "user.hot_pixel_threshold") == 0) {
-                uint16_t threshold = desc.get_value<uint16_t>(i);
-                logging::info("Pixels above %u will be counted as hot pixels.", threshold);
-                m_hotPixelThreshold = threshold;
-            } else if (strcmp(name.name(), "user.max_hot_pixels") == 0) {
-                uint32_t maxHotPixels = desc.get_value<uint32_t>(i);
-                logging::info("Maximum number of hot pixels (across all panels) before trip: %u .",
-                              maxHotPixels);
-                m_maxHotPixels = maxHotPixels;
-            } else if (strcmp(name.name(), "user.trigger_delay_s") == 0) {
-                double trigDelay = desc.get_value<double>(i);
-                logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
-                m_slsDet->setDelayAfterTrigger(secs_to_ns(trigDelay), pos);
-            } else if (strcmp(name.name(), "user.exposure_time_s") == 0) {
-                double exposureTime = desc.get_value<double>(i);
-                logging::info("Setting module %zu exposureTime to %f s", mod, exposureTime);
-                m_slsDet->setExptime(secs_to_ns(exposureTime), pos);
-            } else if (strcmp(name.name(), "user.exposure_period") == 0) {
-                double exposurePeriod = desc.get_value<double>(i);
-                logging::info("Setting module %zu exposurePeriod to %f s", mod, exposurePeriod);
-                m_slsDet->setPeriod(secs_to_ns(exposurePeriod), pos);
-            } else if (strcmp(name.name(), "user.port") == 0) {
-                uint16_t port = desc.get_value<uint16_t>(i);
-                logging::info("Setting module %zu destination udp port to %u", mod, port);
-                m_slsDet->setDestinationUDPPort(port, pos[0]);
-            } else if (strcmp(name.name(), "user.gainMode:gainModeEnum") == 0) {
-                uint32_t gainMode = desc.get_value<uint32_t>(i);
-                auto& gainModeEnums = m_configEnums["gainModeEnum"];
-                if (gainModeEnums.find(gainMode) != gainModeEnums.end()) {
-                    auto it = slsGainEnumMap.find(gainModeEnums[gainMode]);
-                    if (it != slsGainEnumMap.end()) {
-                        logging::info("Setting module %zu gainMode to %s",
-                                      mod,
-                                      sls::ToString(it->second).c_str());
-                        m_slsDet->setGainMode(it->second, pos);
-                        if ((gainModeEnums[gainMode] == "FIX_G1") ||
-                            (gainModeEnums[gainMode] == "FIX_G2")) {
-                            m_inFixedGain = true;
-                        } else {
-                            m_inFixedGain = false;
-                        }
-                    } else {
-                        logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
-                                       gainModeEnums[gainMode].c_str(),
-                                       mod);
-                        return 1;
-                    }
-                } else {
-                    logging::error("Invalid gainMode enum value for module %zu: %u", mod, gainMode);
-                    return 1;
-                }
-            } else if (strcmp(name.name(), "user.speedLevel:speedLevelEnum") == 0) {
-                uint32_t speedLevel = desc.get_value<uint32_t>(i);
-                auto& speedLevelEnums = m_configEnums["speedLevelEnum"];
-                if (speedLevelEnums.find(speedLevel) != speedLevelEnums.end()) {
-                    auto it = slsSpeedLevelMap.find(speedLevelEnums[speedLevel]);
-                    if (it != slsSpeedLevelMap.end()) {
-                        logging::info("Setting module %zu speedLevel to %s",
-                                      mod,
-                                      sls::ToString(it->second).c_str());
-                        m_slsDet->setReadoutSpeed(it->second, pos);
-                    } else {
-                        logging::error("Enum value %s for module %zu is an invalid parameter for setReadoutSpeed()",
-                                       speedLevelEnums[speedLevel].c_str(),
-                                       mod);
-                        return 1;
-                    }
-                } else {
-                    logging::error("Invalid speedLevel enum value for module %zu: %u", mod, speedLevel);
-                    return 1;
-                }
-            } else if (strcmp(name.name(), "user.gain0:gain0Enum") == 0) {
-                uint32_t gain0 = desc.get_value<uint32_t>(i);
-                auto& gain0Enums = m_configEnums["gain0Enum"];
-                if (gain0Enums.find(gain0) != gain0Enums.end()) {
-                    auto it = slsDetSettingsMap.find(gain0Enums[gain0]);
-                    if (it != slsDetSettingsMap.end()) {
-                        logging::info("Setting module %zu gain0 to %s",
-                                      mod,
-                                      sls::ToString(it->second).c_str());
-                        m_slsDet->setSettings(it->second, pos);
-                    } else {
-                        logging::error("Enum value %s for module %zu is an invalid parameter for setSettings()",
-                                       gain0Enums[gain0].c_str(),
-                                       mod);
-                        return 1;
-                    }
-                } else {
-                    logging::error("Invalid gain0 enum value for module %zu: %u", mod, gain0);
-                    return 1;
-                }
-            } else if (strcmp(name.name(), "user.jungfrau_mac") == 0) {
-                std::string jungfrauMac(desc.get_array<char>(i).const_data());
-                logging::info("Setting module %zu jungfrauMac to %s", mod, jungfrauMac.c_str());
-                m_slsDet->setSourceUDPMAC(sls::MacAddr(jungfrauMac), pos);
-            } else if (strcmp(name.name(), "user.kcu_mac") == 0) {
-                std::string kcuMac(desc.get_array<char>(i).const_data());
-                logging::info("Setting module %zu kcuMac to %s", mod, kcuMac.c_str());
-                m_slsDet->setDestinationUDPMAC(sls::MacAddr(kcuMac), pos);
-            } else if (strcmp(name.name(), "user.jungfrau_ip") == 0) {
-                std::string jungfrauIp(desc.get_array<char>(i).const_data());
-                logging::info("Setting module %zu jungfrauIp to %s", mod, jungfrauIp.c_str());
-                m_slsDet->setSourceUDPIP(sls::HostnameToIp(jungfrauIp.c_str()), pos);
-            } else if (strcmp(name.name(), "user.kcu_ip") == 0) {
-                std::string kcuIp(desc.get_array<char>(i).const_data());
-                logging::info("Setting module %zu kcuIp to %s", mod, kcuIp.c_str());
-                m_slsDet->setDestinationUDPIP(sls::HostnameToIp(kcuIp.c_str()), pos);
+
+        // configure clock speed
+        sls::defs::speedLevel speedLevelRbv = m_slsDet->getReadoutSpeed(pos).squash();
+        if (boot || (speedLevelRbv != speedLevel)) {
+            logging::info("Setting module %zu clock speed to %s", mod, sls::ToString(speedLevel).c_str());
+            m_slsDet->setReadoutSpeed(speedLevel, pos);
+            sleep(1);
+            speedLevelRbv = m_slsDet->getReadoutSpeed(pos).squash();
+            if (speedLevelRbv != speedLevel) {
+                logging::error("Failed readback check of clock speed for module %zu: %s [%s]",
+                               mod,
+                               sls::ToString(speedLevelRbv).c_str(),
+                               sls::ToString(speedLevel).c_str());
+                return 1;
             }
         }
-        m_slsDet->validateUDPConfiguration(pos);
+
+        // configure trigger internal delay from seeing trigger to starting frame acquisition
+        logging::info("Setting module %zu trigger delay to %f s", mod, trigDelay);
+        m_slsDet->setDelayAfterTrigger(secs_to_ns(trigDelay), pos);
+        sls::ns trigDelayRbv = m_slsDet->getDelayAfterTrigger(pos).squash();
+        if (trigDelayRbv != secs_to_ns(trigDelay)) {
+            logging::error("Failed readback check of trigger delay for module %zu: %f [%f]",
+                           mod,
+                           ns_to_secs(trigDelayRbv),
+                           trigDelay);
+            return 1;
+        }
+
+        // configure the period between acquistions in free run mode - this should have no effect in triggered mode...
+        logging::info("Setting module %zu exposure period to %f s", mod, exposurePeriod);
+        m_slsDet->setPeriod(secs_to_ns(exposurePeriod), pos);
+        sls::ns exposurePeriodRbv = m_slsDet->getPeriod(pos).squash();
+        if (exposurePeriodRbv != secs_to_ns(exposurePeriod)) {
+            logging::error("Failed readback check of exposure period for module %zu: %f [%f]",
+                           mod,
+                           ns_to_secs(exposurePeriodRbv),
+                           exposurePeriod);
+            return 1;
+        }
+
+        // configure the exposure time
+        logging::info("Setting module %zu exposure time to %f s", mod, exposureTime);
+        m_slsDet->setExptime(secs_to_ns(exposureTime), pos);
+        sls::ns exposureTimeRbv = m_slsDet->getExptime(pos).squash();
+        if (exposureTimeRbv != secs_to_ns(exposureTime)) {
+            logging::error("Failed readback check of exposure time for module %zu: %f [%f]",
+                           mod,
+                           ns_to_secs(exposureTimeRbv),
+                           exposureTime);
+            return 1;
+        }
+
+        // configure the bias voltage of the sensor
+        logging::info("Setting module %zu bias voltage to %u", mod, biasVoltage);
+        m_slsDet->setHighVoltage(biasVoltage, pos);
+        uint32_t biasVoltageRbv = m_slsDet->getHighVoltage(pos).squash();
+        if (biasVoltageRbv != biasVoltage) {
+            logging::error("Failed readback check of bias voltage for module %zu: %u [%u]",
+                           mod,
+                           biasVoltageRbv,
+                           biasVoltage);
+            return 1;
+        }
+
+        // configure gain0 setting
+        logging::info("Setting module %zu gain0 setting to %s", mod, sls::ToString(gain0).c_str());
+        m_slsDet->setSettings(gain0, pos);
+        sls::defs::detectorSettings gain0Rbv = m_slsDet->getSettings(pos).squash();
+        if (gain0Rbv != gain0) {
+            logging::error("Failed readback check of gain0 setting for module %zu: %s [%s]",
+                           mod,
+                           sls::ToString(gain0Rbv).c_str(),
+                           sls::ToString(gain0).c_str());
+            return 1;
+        }
+
+        // configure the main gain mode setting
+        logging::info("Setting module %zu gain mode to %s", mod, sls::ToString(gainMode).c_str());
+        m_slsDet->setGainMode(gainMode, pos);
+        sls::defs::gainMode gainModeRbv = m_slsDet->getGainMode(pos).squash();
+        if (gainModeRbv != gainMode) {
+            logging::error("Failed readback check of gain mode for module %zu: %s [%s]",
+                           mod,
+                           sls::ToString(gainModeRbv).c_str(),
+                           sls::ToString(gainMode).c_str());
+            return 1;
+        }
 
         return 0;
     }
@@ -494,22 +666,7 @@ unsigned Jungfrau::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     XtcData::Names& configNames = detector::configNames(configo); //psalg/detector/UtilsConfig.hh
     // Load the enum values into m_configEnums. Assume all modules have the same
     // enum values so use module 0 for this...
-    XtcData::ShapesData& shape = configo.getShape(0);
-    XtcData::DescData desc(shape, configo.namesLookup()[shape.namesId()]);
-    for (size_t i=0; i < configNames.num(); ++i) {
-        XtcData::Name& name = configNames.get(i);
-        const char* start = name.name();
-        const char* enumDelimiter = std::strchr(start, ':');
-        if (enumDelimiter) {
-            std::string enumName(start, enumDelimiter - start);
-            std::string enumType(enumDelimiter + 1);
-            uint32_t enumValue = desc.get_value<uint32_t>(i);
-            // if it starts with "user." or "expert." its a value field not an enum
-            if (!enumName.starts_with("user.") && !enumName.starts_with("expert.")) {
-                m_configEnums[enumType][enumValue] = enumName;
-            }
-        }
-    }
+    _loadConfigEnums(0, configNames, configo);
 
     try {
         // Take all of the modules out of the acquiring state
