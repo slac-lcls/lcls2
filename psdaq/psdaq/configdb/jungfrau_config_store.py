@@ -67,7 +67,7 @@ def write_to_daq_config_db(args):
     top.set("user.bias_voltage_v", 200, "UINT8") # Int??
     top.set("user.trigger_delay_s", 0.000238, "DOUBLE")
     top.set("user.exposure_time_s", 0.00001, "DOUBLE")
-    top.set("user.exposure_period", 0.2, "DOUBLE")
+    top.set("user.exposure_period", 0.005, "DOUBLE")
     top.set("user.port", 8192, "UINT16")
 
     top.define_enum(
@@ -80,7 +80,7 @@ def write_to_daq_config_db(args):
             "FIX_G2":4,
         }
     )
-    top.set("user.gainMode", 3, "gainModeEnum")
+    top.set("user.gainMode", 0, "gainModeEnum")
 
     top.define_enum("gain0Enum", {"normal":0, "high":1})
     top.set("user.gain0", 0, "gain0Enum")
@@ -97,6 +97,15 @@ def write_to_daq_config_db(args):
 
     top.set("user.jungfrau_mac", "aa:bb:cc:dd:ee:ff", "CHARSTR")
     top.set("user.jungfrau_ip", "10.0.0.15", "CHARSTR")
+
+    top.set("expert.vb_ds", 1000, "UINT16")
+    top.set("expert.vb_comp", 1220, "UINT16")
+    top.set("expert.vb_pixbuf", 750, "UINT16")
+    top.set("expert.vref_ds", 480, "UINT16")
+    top.set("expert.vref_comp", 420, "UINT16")
+    top.set("expert.vref_prech", 1450, "UINT16")
+    top.set("expert.vin_com", 1053, "UINT16")
+    top.set("expert.vdd_prot", 3000, "UINT16")
 
     # For Kcu1500/C1100
     top.set("user.kcu_mac", "08:00:56:00:00:00", "CHARSTR")
