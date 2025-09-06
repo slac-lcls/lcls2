@@ -46,10 +46,10 @@ from psana.detector.NDArrUtils import info_ndarr, shape_nda_as_3d, reshape_to_3d
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
     """
-    assert mask1.size == mask2.size, 'Mask sizes should be equal'
-
     if mask1 is None: return mask2
     if mask2 is None: return mask1
+
+    assert mask1.size == mask2.size, 'Mask sizes should be equal'
 
     if mask1.shape != mask2.shape:
         if mask1.ndim > mask2.ndim: mask2.shape = mask1.shape
@@ -90,7 +90,7 @@ def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STA
     return st1
 
 
-def mask_neighbors(mask, rad=5, ptrn='r'):
+def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK):
     """In mask array increase region of masked pixels around bad by radial paramerer rad.
        Parameters:
        -----------
