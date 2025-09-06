@@ -56,26 +56,25 @@ def jungfrau_segments_tot(segnum_max):
            8 if segnum_max<8 else\
            32
 
-class Cache():
-    """Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
-    def __init__(self):
-        self.calibcons = {}
-
-    def add_detcache(self, det, evt, **kwa):
-        detname = det._det_name # i.e.: jungfrau
-        assert isinstance(detname, str)
-        logger.debug('add_detcache for detector name: %s' % detname)
-        o = self.calibcons[detname] = DetCache(det, evt, **kwa)
-        return o
-
-    def detcache_for_detname(self, detname):
-        return self.calibcons.get(detname, None)
-
-    def detcache_for_detobject(self, det):
-        return self.detcache_for_detname(det._det_name)
-
-cache = Cache() # singleton
-
+#class Cache():
+#    """Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
+#    def __init__(self):
+#        self.calibcons = {}
+#
+#    def add_detcache(self, det, evt, **kwa):
+#        detname = det._det_name # i.e.: jungfrau
+#        assert isinstance(detname, str)
+#        logger.debug('add_detcache for detector name: %s' % detname)
+#        o = self.calibcons[detname] = DetCache(det, evt, **kwa)
+#        return o
+#
+#    def detcache_for_detname(self, detname):
+#        return self.calibcons.get(detname, None)
+#
+#    def detcache_for_detobject(self, det):
+#        return self.detcache_for_detname(det._det_name)
+#
+#cache = Cache() # singleton
 
 class DetCache():
     """Cash of calibration constants for jungfrau."""
@@ -185,11 +184,12 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     if is_true(arr is None, 'det.raw(evt) and nda_raw are None, return None',\
                logger_method = logger.warning): return None
 
-    odc = cache.detcache_for_detname(det._det_name)
+    odc = det._odc # cache.detcache_for_detname(det._det_name)
     first_entry = odc is None
 
     if first_entry:
-        odc = cache.add_detcache(det, evt, **kwa)
+        det._odc = odc = DetCache(det, evt, **kwa) # cache.add_detcache(det, evt, **kwa)
+        logger.info(det._info_calibconst())
 
     if odc.poff is None: return arr
 
