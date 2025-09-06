@@ -25,6 +25,8 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         self._gain_modes = ('g0', 'g1', 'g2')
         self._data_bit_mask = 0x3fff
 
+        self._odc = None # object for caching detector calibration constants
+
 #        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
 #        self._gain_modes = ('DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2')
 
