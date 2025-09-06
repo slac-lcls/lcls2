@@ -31,6 +31,7 @@ Usage::
   v = o.pix_rc()
   v = o.pix_xyz()
   v = o.interpol_pars()
+  s = o.info_calibconst()
 
 2022-07-07 created by Mikhail Dubrovin
 """
@@ -48,6 +49,7 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
 
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
+#from psana.detector.Utils import is_none
 def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
     if resp: logger_method(msg)
@@ -340,5 +342,17 @@ class CalibConstants:
     def pix_xyz(self): return self._pix_xyz
 
     def interpol_pars(self): return self._interpol_pars
+
+    def info_calibconst(self):
+        """grabs det.raw._calibconst from self and returns info about available constants"""
+        cc =self.calibconst()
+        keys = cc.keys()
+        s = '    det.raw._calibconst.keys(): %s' % (', '.join(keys))
+        for k,v in cc.items():
+            nda, meta = v
+            s += info_ndarr(nda, '\n    %s from exp:%s run:%04d' % (k.ljust(12), meta['experiment'], meta['run']), last=5)\
+                 if k != 'geometry' else '\n    %s from exp:%s run:%04d\n%s'%\
+                    (k, meta['experiment'], meta['run'], str(v)[:500])
+        return s
 
 # EOF
