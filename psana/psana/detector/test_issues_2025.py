@@ -1338,8 +1338,6 @@ def issue_2025_08_19():
     print(docs)
 
 
-
-
 def issue_2025_08_26():
     """       datinfo -k exp=ascdaq023,run=43 -d jungfrau
     """
@@ -1356,6 +1354,56 @@ def issue_2025_08_26():
         print('none')
         continue
       print(nevt,calib.shape)
+
+
+def issue_2025_08_28(subtest='0o7777'):
+    """test det.raw.calib()
+       datinfo -k exp=mfx100852324,run=7 -d epix100_0
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx100852324', run=13)
+    myrun = next(ds.runs())
+#    det = myrun.Detector('epix100_0', logmet_init=logger.info)
+    det = myrun.Detector('epix100_0')
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+    if isubset & 1:
+        #peds = det.raw._pedestals()
+        calibc = det.calibconst
+        print('===\ndet.calibconst:', calibc['pedestals'][1])
+        print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+        print('===\n', det.raw._info_calibconst(), '\n===\n')
+
+    if isubset & 2:
+        print('=== test of mask methods ===')
+        mask_def = det.raw._mask_default()
+        print(ndu.info_ndarr(mask_def,                          '     det.raw._mask_default()         :'))
+        print(ndu.info_ndarr(det.raw._mask_calib_or_default(),  '     det.raw._mask_calib_or_default():'))
+        print(ndu.info_ndarr(det.raw._mask_from_status(),       '     det.raw._mask_from_status()     :'))
+        print(ndu.info_ndarr(det.raw._mask_neighbors(mask_def), '     det.raw._mask_neighbors()       :'))
+        print(ndu.info_ndarr(det.raw._mask_edges(),             '     det.raw._mask_edges()           :'))
+        print(ndu.info_ndarr(det.raw._mask_center(),            '     det.raw._mask_center()          :'))
+        print(ndu.info_ndarr(det.raw._mask_comb(),              '     det.raw._mask_comb()            :'))
+        print(ndu.info_ndarr(det.raw._mask(),                   '     det.raw._mask()                 :'))
+        print('===\n')
+
+#    kwa = {'status':True, 'neighbors':True, 'edges':True, 'center':True, 'calib':True, 'umask':None}
+    events = 5
+    for nevt,evt in enumerate(myrun.events()):
+        if nevt>events-1: break
+        t0_sec = time()
+        #raw   = det.raw.raw(evt)
+        nda   = det.raw.calib(evt) #, **kwa)
+        dt_sec = (time() - t0_sec)*1000
+        print(ndu.info_ndarr(nda,   'evt:%3d dt=%.3f msec for det.raw.calib(evt):' % (nevt, dt_sec)))
+
+
 #===
     
 #===
@@ -1432,6 +1480,7 @@ def selector():
     elif TNAME in ('38',): issue_2025_07_29() # Chris - epix10ka missing geometry
     elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
     elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
+    elif TNAME in ('41',): issue_2025_08_28(args.subtest) # me - epix100 test det.raw.calib(evt)
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
