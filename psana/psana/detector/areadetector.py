@@ -72,16 +72,11 @@ from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
 
-is_none = ut.is_none
-
-#def is_none(par, msg, logger_method=logger.debug):
-#    resp = par is None
-#    if resp: logger_method(msg)
-#    return resp
-
+is_none, is_true = ut.is_none, ut.is_true
 
 class AreaDetector(DetectorImpl):
     """Collection of methods common for self = det.raw, det.fex, etc."""
+
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetector.__init__')
         DetectorImpl.__init__(self, *args, **kwargs)
@@ -93,6 +88,7 @@ class AreaDetector(DetectorImpl):
         self._segment_numbers = self._sorted_segment_inds  # [0, 1, 2,... 17, 18, 19]
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
+        self._logmet_init = kwargs.get('logmet_init', logger.debug)
 
 
     def _calibconstants(self, **kwa):
@@ -104,6 +100,11 @@ class AreaDetector(DetectorImpl):
             self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
             self._apply_calibc_preload_cache()
         return self._calibc_
+
+
+    def _info_calibconst(self):
+        return 'det.raw._info_calibconst for %s\n' % self._det_name\
+             + self._calibconstants().info_calibconst()
 
 
     def _arr_for_daq_segments(self, arr, **kwa):
@@ -125,14 +126,13 @@ class AreaDetector(DetectorImpl):
                self._arr_for_daq_segments(cc_for_ctype, **kwa)
 
 
-    def _pedestals(self, **kwa):   return self._det_calibconst('pedestals', **kwa)
-    def _rms(self, **kwa):         return self._det_calibconst('rms', **kwa)
-    def _status(self, **kwa):      return self._det_calibconst('status', **kwa)
-    def _mask_calib(self, **kwa):  return self._det_calibconst('mask_calib', **kwa)
-    def _common_mode(self, **kwa): return self._det_calibconst('common_mode', **kwa)
-    def _gain(self, **kwa):        return self._det_calibconst('gain', **kwa)
-    def _gain_factor(self, **kwa): return self._det_calibconst('gain_factor', **kwa)
-
+    def _pedestals(self, **kwa):    return self._det_calibconst('pedestals', **kwa)
+    def _rms(self, **kwa):          return self._det_calibconst('rms', **kwa)
+    def _status(self, **kwa):       return self._det_calibconst('status', **kwa)
+    def _mask_calib(self, **kwa):   return self._det_calibconst('mask_calib', **kwa)
+    def _common_mode(self, **kwa):  return self._det_calibconst('common_mode', **kwa)
+    def _gain(self, **kwa):         return self._det_calibconst('gain', **kwa)
+    def _gain_factor(self, **kwa):  return self._det_calibconst('gain_factor', **kwa)
     def _det_geotxt_and_meta(self): return self._det_calibconst('geotxt_and_meta')
 
 
@@ -152,7 +152,9 @@ class AreaDetector(DetectorImpl):
 
 
     def _det_geo(self):
-        """Returns cached object self._geo of GeometryAccess() from CalibConstants, loads it from default file if missing in CalibConstants."""
+        """Returns cached object self._geo of GeometryAccess() from CalibConstants,
+           loads it from default file if missing in CalibConstants.
+        """
         if self._path_geo_default is None: return None
         self._geo = self._det_calibconst('geo')
         if self._geo is None:
@@ -256,56 +258,45 @@ class AreaDetector(DetectorImpl):
 
 
     def _maskalgos(self, **kwa):
-        if self._maskalgos_ is None:
-            logger.debug('AreaDetector._maskalgos - make MaskAlgos')
+        if is_none(self._maskalgos_, 'AreaDetector._maskalgos - make MaskAlgos, **kwa: %s' % str(kwa),\
+                   logger_method=logger.debug):
             cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
-            if is_none(cc, 'self._calibconst is None'): return None
+            if is_none(cc, 'self._calibconst is None', logger_method=logger.debug): return None
+            kwa.setdefault('logmet_init', self._logmet_init)
             self._maskalgos_ = MaskAlgos(cc, self._det_name, **kwa)
         return self._maskalgos_
 
 
-    def _mask_default(self, dtype=DTYPE_MASK, **kwa):
+    def _mask_method_wrapper(self, metname, **kwa):
         o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_default(dtype=dtype)
-        return self._arr_for_daq_segments(m, **kwa)
+        logger.debug('in _mask_method_wrapper(%s, **kwa) **kwa: %s' % (metname, str(kwa)))
+        if is_none(o, 'self._maskalgos is None', logger_method=logger.debug): return None
+        met = getattr(o, metname, None)
+        if is_none(met, 'metname %s IS NOT FOUND IN MaskAlgos', logger_method=logger.warning): return None
+        mask = met(**kwa)
+        return self._arr_for_daq_segments(mask, **kwa)
 
+
+    def _mask_default(self, dtype=DTYPE_MASK, **kwa):
+        return self._mask_method_wrapper('mask_default', dtype=DTYPE_MASK, **kwa)
 
     def _mask_calib_or_default(self, dtype=DTYPE_MASK, **kwa):
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_calib_or_default(dtype=dtype)
-        return self._arr_for_daq_segments(m, **kwa)
+        return self._mask_method_wrapper('mask_calib_or_default', dtype=DTYPE_MASK, **kwa)
 
-
-    def _mask_from_status(self, status_bits=0xffff, stextra_bits=(1<<64)-1, stci_bits=(1<<64)-1, gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
-        logger.debug('in AreaDetector._mask_from_status ==== should be re-implemented for multi-gain detectors')
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits, stci_bits=stci_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
-
+    def _mask_from_status(self, status_bits=0xffff, stextra_bits=(1<<64)-1, stci_bits=(1<<64)-1,\
+                          gain_range_inds=None, dtype=DTYPE_MASK, **kwa):
+        return self._mask_method_wrapper('mask_from_status', status_bits=status_bits, stextra_bits=stextra_bits,\
+                                         stci_bits=stci_bits, gain_range_inds=gain_range_inds, dtype=dtype, **kwa)
 
     def _mask_neighbors(self, mask, rad=9, ptrn='r', **kwa):
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_neighbors(mask, rad=rad, ptrn=ptrn, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
-
+        return self._mask_method_wrapper('mask_neighbors', mask=mask, rad=rad, ptrn=ptrn, **kwa)
 
     def _mask_edges(self, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_edges(width=width, edge_rows=edge_rows, edge_cols=edge_cols, dtype=dtype, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
-
+        return self._mask_method_wrapper('mask_edges', width=width, edge_rows=edge_rows, edge_cols=edge_cols, dtype=dtype, **kwa)
 
     def _mask_center(self, wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa):
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_center(wcenter=wcenter, center_rows=center_rows, center_cols=center_cols, dtype=dtype, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
-
+        return self._mask_method_wrapper('mask_center', wcenter=wcenter, center_rows=center_rows, center_cols=center_cols,\
+                                         dtype=dtype, **kwa)
 
     def _mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa):
         """Returns combined mask controlled by the keyword arguments.
@@ -328,24 +319,21 @@ class AreaDetector(DetectorImpl):
                                        number of masked center rows and columns in the segment,
                                        works for cspad2x1, epix100, epix10ka, jungfrau panels
            - calib    : bool : False - apply user's defined mask from pixel_mask constants
-           - umask  : np.array: None - apply user's defined mask from input parameters (shaped as data)
+           - umask    : np.array: None - apply user's defined mask from input parameters (shaped as data)
+           - dtype    : np.dtype: np.uint8 - mask array data type
 
            Returns
            -------
            np.array: dtype=np.uint8, shape as det.raw - mask array of 1 or 0 or None if all switches are False.
         """
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
+        return self._mask_method_wrapper('mask_comb', status=status, neighbors=neighbors, edges=edges,\
+                                         center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
 
-
-    def _mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
+    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
+              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
         """Returns cached mask."""
-        o = self._maskalgos()
-        if o is None: return None
-        m = o.mask(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
-        return self._arr_for_daq_segments(m, **kwa)
+        return self._mask_method_wrapper('mask', status=status, neighbors=neighbors, edges=edges, center=center,\
+                                         calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
 
 
 class AreaDetectorRaw(AreaDetector):
