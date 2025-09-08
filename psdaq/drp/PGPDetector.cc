@@ -585,7 +585,7 @@ void PGPDrp::reader()
 
             // keep track of the number of L1Accepts seen in the batch
             if (transitionId == TransitionId::L1Accept) {
-              m_batch.l1count++;
+                m_batch.l1count++;
             }
 
             // send batch to worker if batch is full or if it's a transition
