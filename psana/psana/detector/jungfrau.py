@@ -62,6 +62,10 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         return uj.calib_jungfrau(self, evt, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
+    def __init__(self, *args, **kwa):
+        logger.debug('jungfrau_raw_0_2_0.__init__')
+        jungfrau_raw_0_1_0.__init__(self, *args, **kwa)
+
     def num_hot_pixels(self, evt):
         n_hot_pixels = 0
         segs = self._segments(evt)
