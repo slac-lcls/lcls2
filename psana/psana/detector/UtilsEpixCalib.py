@@ -24,7 +24,7 @@ Created on 2024-09-08 by Mikhail Dubrovin from UtilsEpixm320Calib
 
 import sys
 import psana
-from psana.detector.Utils import info_dict
+from psana.detector.Utils import info_dict, is_true, is_none
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.UtilsCalib import * # logging
 import psana.detector.UtilsCalib as uc
@@ -55,7 +55,7 @@ def pedestals_calibration(parser):
   detname = kwa.get('det', None)
   nrecs   = kwa.get('nrecs', 100)
   stepnum = kwa.get('stepnum', None)
-  stepmax = kwa.get('stepmax', 1)
+  stepmax = kwa.get('stepmax', None)
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
@@ -96,8 +96,11 @@ def pedestals_calibration(parser):
         dettype = odet.raw._dettype
         repoman.set_dettype(dettype)
 
+    gain_modes = odet.raw._gain_modes # i.e. for epixuhr: ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
     logger.info('created %s detector object' % detname)
     logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+    logger.info('odet.raw._gain_modes: %s' % str(odet.raw._gain_modes))
+    logger.info('odet.raw._data_bit_mask: %s' % oct(odet.raw._data_bit_mask))
 
     try:
       step_docstring = orun.Detector('step_docstring')
@@ -115,11 +118,11 @@ def pedestals_calibration(parser):
 
       metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
 
-      print('\n==== Begin step %1d ====' % istep)
+      logger.info('\n==== Begin step %1d ====' % istep)
       logger.info('Step %1d docstring: %s' % (istep, str(metadic)))
       ss = ''
 
-      if istep >= stepmax:
+      if stepmax is not None and istep >= stepmax:
           logger.info('==== Step:%02d loop is terminated --stepmax=%d' % (istep, stepmax))
           break_steps = True
           break
@@ -150,8 +153,7 @@ def pedestals_calibration(parser):
         nevrun += 1
         nevtot += 1
 
-        if ievt < evskip:
-            logger.debug('==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip))
+        if is_true(ievt < evskip, '==== Ev:%04d is skipped --evskip=%d' % (ievt,evskip), logger_method=logger.debug):
             continue
         elif evskip>0 and (ievt == evskip):
             logger.info('Events < --evskip=%d are skipped' % evskip)
@@ -209,8 +211,8 @@ def pedestals_calibration(parser):
           longname = kwa_depl['longname'] # odet.raw._uniqueid
           if shortname is None:
             shortname = detector_name_short(longname)
-          print('detector long  name: %s' % longname)
-          print('detector short name: %s' % shortname)
+          logger.info('detector long  name: %s' % longname\
+                     +'detector short name: %s' % shortname)
           kwa_depl['shortname'] = shortname
 
           #kwa_depl['segment_ids'] = odet.raw._segment_ids()
@@ -223,7 +225,7 @@ def pedestals_calibration(parser):
           del(dpo)
           dpo=None
 
-          print('==== End of step %1d ====\n' % istep)
+          logger.info('==== End of step %1d ====\n' % istep)
 
       if break_steps:
         logger.info('terminate_steps')
@@ -272,7 +274,7 @@ def gain_mode_name(odet, asic=0):
 
 def gain_mode(odet, metadic, nstep):
     """gain mode potential check using step, metadata from docstring, and config.
-       curreently just print available inffo and return the gain mod from metadic/docstring
+       curreently just print available info and return the gain mod from metadic/docstring
     """
     s  = 'gain mode consistency check\n  nstep: %d' % nstep
     s += '\n  metadic: %s' % str(metadic)
@@ -340,7 +342,7 @@ def save_constants_in_repository(dic_consts, **kwa):
 
     #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
-    print('XXX uniqueid', uniqueid)
+    logger.info('uniqueid %s' % uniqueid)
     segid = uniqueid.split('_')[1]
 
     logger.info('\nsave segment constants for gain mode:%s in repo for segment id: %s' % (gainmode, segid))
@@ -352,7 +354,7 @@ def save_constants_in_repository(dic_consts, **kwa):
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
-        print(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
+        logger.info(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
 
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         ###save_2darray_in_textfile(nda, fname, filemode, fmt)
