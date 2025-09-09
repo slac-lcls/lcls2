@@ -1404,6 +1404,28 @@ def issue_2025_08_28(subtest='0o7777'):
         print(ndu.info_ndarr(nda,   'evt:%3d dt=%.3f msec for det.raw.calib(evt):' % (nevt, dt_sec)))
 
 
+def issue_2025_09_29():
+    """datinfo -k exp=mfx100848724,run=51 -d jungfrau
+    """
+    from psana import DataSource
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    ds = DataSource(exp='mfx100848724',run=51,max_events=3600,batch_size=1,detectors=['jungfrau'])
+    #ds = DataSource(exp='mfx100848724',run=51)
+    myrun = next(ds.runs())
+    odet = myrun.Detector('jungfrau')
+
+    if True:
+        calibc = odet.calibconst
+        print('===\ndet.calibconst:', calibc['pedestals'][1])
+        print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+        print('===\n', odet.raw._info_calibconst(), '\n===\n')
+
+    for nevt,evt in enumerate(myrun.events()):
+        if nevt>5: break
+        print(ndu.info_ndarr(odet.raw.raw(evt), 'evt:%3d raw:' % nevt))
+        image = odet.raw.image(evt)
+        print(ndu.info_ndarr(image, 'evt:%3d image:' % nevt))
+
 #===
     
 #===
@@ -1481,6 +1503,7 @@ def selector():
     elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
     elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
     elif TNAME in ('41',): issue_2025_08_28(args.subtest) # me - epix100 test det.raw.calib(evt)
+    elif TNAME in ('42',): issue_2025_09_29() # Chris - jf - missing constants
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
