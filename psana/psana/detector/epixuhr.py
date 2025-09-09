@@ -69,7 +69,7 @@ class epixuhr_config_3_2_0(DetectorImpl):
 class epixuhrhw_config_3_2_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
-        
+
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
@@ -78,6 +78,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         self._segment_numbers = [0,1,2,3]
         self._nwarnings = 0
         self._nwarnings_max = kwargs.get('nwarnings_max', 5)
+        self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
 
     def _array(self, evt) -> Array2d:
         f = None
