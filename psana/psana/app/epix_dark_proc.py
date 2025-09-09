@@ -11,13 +11,13 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 USAGE = 'Usage:'\
       + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
       + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
-      + '\nExamples:'\
       + '\nTests:'\
-      + '\n  %s -k exp=ascdaq123,run=4 -d epixm -o ./work # data on psana' % SCRNAME\
-      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work # data on psana' % SCRNAME\
-      + '\n  %s -k exp=tstx00417,run=324,dir=/drpneh/data/tst/tstx00417/xtc/ -d epixm -o ./work # data on drp-neh-cmp001' % SCRNAME\
-      + '\n  %s -k exp=tstx00417,run=328,dir=/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc -d epixm -o ./work # on s3df IN WROND DIRECTORY' % SCRNAME\
+      + '\n  %s -k exp=mfxdet23,run=15 -d epixuhr -o work1 # data on psana' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
+#      + '\n  %s -k exp=ascdaq123,run=4 -d epixm -o ./work # data on psana' % SCRNAME\
+#      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work # data on psana' % SCRNAME\
+#      + '\n  %s -k exp=tstx00417,run=324,dir=/drpneh/data/tst/tstx00417/xtc/ -d epixm -o ./work # data on drp-neh-cmp001' % SCRNAME\
+#      + '\n  %s -k exp=tstx00417,run=328,dir=/sdf/data/lcls/ds/rix/rixx1005922/scratch/xtc -d epixm -o ./work # on s3df IN WROND DIRECTORY' % SCRNAME\
 
 
 def do_main():
@@ -49,7 +49,7 @@ def argument_parser():
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
-    d_stepmax = 3
+    d_stepmax = None
     d_evskip  = 0       # number of events to skip in the beginning of each step
     d_events  = 1000000 # last event number in the step to process
     d_dirmode = 0o2775
