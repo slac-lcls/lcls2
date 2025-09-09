@@ -29,6 +29,7 @@ namespace psalg {
       //
       int connect(const char* tag, int tr_index=0);
       void* get(int& index, size_t& size);
+      void* get(int& index, size_t& size, bool& eventSkipped, bool transitionsOnly = false);
       void free(int index, size_t size);
 
     private:

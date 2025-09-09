@@ -126,9 +126,9 @@ class L0DelayH(IdxRegH):
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
         # Toggle L0Reset for this group (set or post?)
-        self.app.groupL0Reset.set(1<<self._idx)
-        time.sleep(1.e-3)
-        self.app.groupL0Reset.set(0)
+#        self.app.groupL0Reset.set(1<<self._idx)
+#        time.sleep(1.e-3)
+#        self.app.groupL0Reset.set(0)
 
         curr = self.pvu.current()
         curr['value'] = value*_fidPeriod
@@ -630,6 +630,14 @@ class PVCtrls(object):
         self._cu    = CuGenCtrls(name+':XTPG', xpm)
 
         self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
+
+        if 'XTPG' in imageName:
+            #  Set the initial timestamp
+            ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
+            ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
+            xpm.TPGMiniStream.TStampWr.set(ts)
+            xpm.TPGMiniStream.TStampSet.set(1)
+            print(f'Wrote {ts:016x} to timestamp')
 
         self._group = GroupCtrls(name, app, stats)
 

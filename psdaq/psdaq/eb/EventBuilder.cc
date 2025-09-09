@@ -329,7 +329,7 @@ void EventBuilder::_fixup(EbEvent*             event,
   else                      ++_tmoEvtCnt;
 }
 
-void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
+void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
@@ -382,14 +382,14 @@ void EventBuilder::_flush(const EbEvent* const due)
       }
       if (event == due)
       {
-        _retire(epoch, event);
+        _retire(event);
 
         return;
       }
 
       EbEvent* next = event->forward();
 
-      _retire(epoch, event);
+      _retire(event);
 
       event = next;
     }

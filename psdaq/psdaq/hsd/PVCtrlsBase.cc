@@ -165,6 +165,7 @@ namespace Pds {
         //  Baseline correction parameters
         fex._stream[1].parms[12]=PVGET(fex_corr_baseline);
         fex._stream[1].parms[13]=PVGET(fex_corr_accum);
+        // fex._stream[1].parms[14]=PVGET(fex_corr_wrap);
       }
       fex._streams= streamMask | (fullEvt<<8) | (rawStreams<<16);
     

@@ -18,6 +18,8 @@ namespace XtcData
 
 class Xtc
 {
+#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
+
 public:
     Xtc() : damage(0), extent(0){};
     Xtc(const Xtc& xtc)
@@ -53,8 +55,9 @@ public:
     }
     void* operator new(size_t size, char* p, const void* end)
     {
-      if (end && (&p[size] > end)) {
-            printf("*** %s:%d: Insufficient space for %zu bytes\n",__FILE__,__LINE__,size);
+        if (end && UNLIKELY((&p[size] > end))) {
+            fprintf(stderr , "*** %s:%d: Insufficient space for %zu bytes (buffer %p, end %p)\n",
+                    __FILE__,__LINE__,size,p,end);
             abort(); // Set gdb breakpoint to reported file:line to see how it got here
         }
         return (void*)p;
@@ -67,7 +70,22 @@ public:
     {
         return p.alloc(size, end);
     }
-
+    void operator delete(void* p)       // Needed to avoid compiler warning
+    {
+      std::free(p);
+    }
+    void operator delete(void* ptr, char* p, const void* end) // Needed to avoid compiler warning
+    {
+      // Nothing to do
+    }
+    void operator delete(void* ptr, Xtc* p, const void* end) // Needed to avoid compiler warning
+    {
+      // Nothing to do
+    }
+    void operator delete(void* ptr, Xtc& p, const void* end) // Needed to avoid compiler warning
+    {
+      // Nothing to do
+    }
     char* payload() const
     {
         return (char*)(this + 1);
@@ -84,14 +102,12 @@ public:
     {
         return (const Xtc*)((char*)this + extent);
     }
-
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-
     void* alloc(size_t size, const void* end)
     {
         void* buffer = next();
         if (end && UNLIKELY((char*)buffer + size > end)){
-            printf("*** %s:%d: Insufficient space for %zu bytes\n",__FILE__,__LINE__,size);
+            fprintf(stderr, "*** %s:%d: Insufficient space for %zu bytes (buffer %p, end %p, extent %u)\n",
+                    __FILE__,__LINE__,size,buffer,end,extent);
             abort(); // Set gdb breakpoint to reported file:line to see how it got here
         }
         extent += size;

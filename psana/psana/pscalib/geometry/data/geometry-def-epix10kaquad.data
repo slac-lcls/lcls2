@@ -1,0 +1,29 @@
+
+# COMMENT:00 detector:epix10kaquad experiment:N/A
+# COMMENT:01 constants generated from optical metrology
+# COMMENT:02 processor version 1 - panels only, no quads
+# COMMENT:03 command:optical_metrology_epix10ka2m -i 2020-11-20-epix10kaquad0-ued-metrology.txt -r3 -A0 -Z-100000
+# DATE_TIME 2020-11-22 18:27:20 PST
+# USER dubrovin
+# CALIB_TYPE geometry
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT IND     OBJECT IND    X0[um]   Y0[um]   Z0[um]   ROT-Z  ROT-Y  ROT-X     TILT-Z    TILT-Y    TILT-X
+
+      CAMERA  0  EPIX10KA:V1  0     20248   -20908      -60       0      0      0   -0.26706  -0.26778   0.06324
+      CAMERA  0  EPIX10KA:V1  1    -20144   -20823       10       0      0      0   -0.00289  -0.00361   0.25845
+      CAMERA  0  EPIX10KA:V1  2     20150    20934      -19       0      0      0    0.25623  -0.06640   0.05466
+      CAMERA  0  EPIX10KA:V1  3    -20254    20797       68       0      0      0    0.08590  -0.07868  -0.08667
+          IP  0       CAMERA  0         0        0  -100000      90      0      0    0.00000   0.00000   0.00000

@@ -20,8 +20,10 @@ if(CMAKE_CUDA_COMPILER)
     #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
     #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
 
+#--- DRP program
+
     add_library(drpbase_gpu SHARED
-        MemPool.cu
+        MemPool.cc
         GpuAsyncLib.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
@@ -34,9 +36,11 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(drp_gpu
         PGPDetectorApp.cc
-        PGPDetector.cu
-        Worker.cu
+        PGPDetector.cc
+        Reader.cu
         Collector.cu
+        Reducer.cu
+        FileWriter.cc
     )
     target_include_directories(drp_gpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -49,11 +53,16 @@ if(CMAKE_CUDA_COMPILER)
         mmhw
         xtcdata::xtc
         nlohmann_json::nlohmann_json
+        #cudadevrt
         CUDA::cudart
         CUDA::cuda_driver
+        CUDA::cuFile            # cufile is not found, but cuFile is
     )
     set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(drp_gpu PUBLIC -O3)
+    #target_link_options(drp_gpu PUBLIC "-rdc=true")
+
+#--- Detector libraries
 
     add_library(AreaDetector_gpu SHARED
         Detector.cc
@@ -95,6 +104,27 @@ if(CMAKE_CUDA_COMPILER)
     set_target_properties(EpixUHRemu_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRemu_gpu PUBLIC -O3)
 
+#--- Reducer libraries
+
+    add_library(NoOpReducer SHARED
+        NoOpReducer.cu
+    )
+    target_include_directories(NoOpReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(NoOpReducer
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(NoOpReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(NoOpReducer PUBLIC -O3)
+
+#--- Tools
+
     add_executable(pgpread_gpu
         pgpread.cc
         GpuAsyncLib.cc
@@ -115,6 +145,7 @@ if(CMAKE_CUDA_COMPILER)
         drp_gpu
         AreaDetector_gpu
         EpixUHRemu_gpu
+        NoOpReducer
         pgpread_gpu
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

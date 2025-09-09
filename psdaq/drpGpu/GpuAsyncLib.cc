@@ -1,3 +1,5 @@
+#include <string>
+
 #include "GpuAsyncLib.hh"
 
 #include "psdaq/aes-stream-drivers/GpuAsyncRegs.h"
@@ -5,6 +7,20 @@
 
 using logging = psalg::SysLog;
 
+
+// -------------------------------------------------------------------
+
+static std::string errorString(CUresult res) {
+    const char* ptr = nullptr;
+    std::string s;
+    cuGetErrorName(res, &ptr);
+    s = ptr;
+    return s;
+}
+
+static std::string errorString(cudaError_t res) {
+    return cudaGetErrorName(res);
+}
 
 // -------------------------------------------------------------------
 
@@ -19,10 +35,16 @@ DataGPU::DataGPU(const char* path) {
 // -------------------------------------------------------------------
 
 CudaContext::CudaContext() {
-    chkFatal(cuInit(0), "Error while initting cuda");
+
+    CUresult status;
+    if ((status = cuInit(0)) != CUDA_SUCCESS) {
+        logging::critical("Error while initting cuda, code %d", status);
+        abort();
+    }
 }
 
 bool CudaContext::init(int device, bool quiet) {
+
     int devs = 0;
     if (chkError(cuDeviceGetCount(&devs)))
         return false;
@@ -39,8 +61,11 @@ bool CudaContext::init(int device, bool quiet) {
     }
 
     // Actually get the device...
-    if (chkError(cuDeviceGet(&device_, device), "Could not get GPU device!"))
+    CUresult status;
+    if ((status = cuDeviceGet(&device_, device)) != CUDA_SUCCESS) {
+        logging::error("Could not get GPU device! code=%d", status);
         return false;
+    }
 
     // Spew device name
     char name[256];
@@ -84,17 +109,20 @@ bool CudaContext::init(int device, bool quiet) {
 
 void CudaContext::listDevices() {
     int devs = 0;
-    if (chkError(cuDeviceGetCount(&devs), "Unable to get GPU device count"))
+    CUresult status;
+    if ((status = cuDeviceGetCount(&devs)) != CUDA_SUCCESS) {
+        logging::error("Unable to get GPU device count");
         return;
+    }
 
     for (int i = 0; i < devs; ++i) {
         CUdevice dev;
-        if (chkError(cuDeviceGet(&dev, i))) {
+        if (cuDeviceGet(&dev, i) != CUDA_SUCCESS) {
             logging::error("Unable to get GPU device %d", i);
             continue;
         }
         char name[256];
-        if (chkError(cuDeviceGetName(name, sizeof(name), dev))) {
+        if (cuDeviceGetName(name, sizeof(name), dev) != CUDA_SUCCESS) {
             logging::error("Unable to get name of GPU device %d", i);
             continue;
         }
@@ -112,22 +140,26 @@ int CudaContext::getAttribute(CUdevice_attribute attr) {
 
 // -------------------------------------------------------------------
 
-bool checkError(CUresult status, const char* func, const char* file, int line, bool crash, const char* msg)
+bool checkError(CUresult status, const char* const func, const char* const file,
+                const int line, const bool crash, const char* const msg)
 {
     if (status != CUDA_SUCCESS) {
         const char* perrstr = 0;
         CUresult ok         = cuGetErrorString(status, &perrstr);
         const char* perrnam = 0;
         CUresult ok2        = cuGetErrorName(status, &perrnam);
-        if (!msg)  msg = func;          // Just in case, but msg is never 0
+        const char* message = msg ? msg : ""; // Just in case, but msg is never 0
         if (ok == CUDA_SUCCESS && ok2 == CUDA_SUCCESS) {
             if (perrstr) {
-                logging::error("%s:%d:  %s (%i): '%s'%s", file, line, perrnam, status, perrstr, *msg ? msg : func);
+                logging::error("%s:%d:  %s (%i): '%s' %s",
+                               file, line, perrnam, status, perrstr, message);
             } else {
-                logging::error("%s:%d:  %s (%i): unknown error%s", file, line, perrnam, status, *msg ? msg : func);
+                logging::error("%s:%d:  %s (%i): unknown error %s",
+                               file, line, perrnam, status, message);
             }
         } else {
-            logging::error("%s:%d:  status %i: unknown error%s", file, line, status, *msg ? msg : func);
+            logging::error("%s:%d:  status %i: unknown error %s",
+                           file, line, status, message);
         }
         if (crash)  abort();
         return true;
@@ -135,12 +167,13 @@ bool checkError(CUresult status, const char* func, const char* file, int line, b
     return false;
 }
 
-bool checkError(cudaError status, const char* func, const char* file, int line, bool crash, const char* msg)
+bool checkError(cudaError status, const char* const func, const char* const file,
+                const int line, const bool crash, const char* const msg)
 {
     if (status != cudaSuccess) {
-        if (!msg)  msg = func;          // Just in case, but msg is never 0
-        logging::error("%s:%d:  %s (%i): '%s' - %s",
-                       file, line, cudaGetErrorName(status), status, cudaGetErrorString(status), *msg ? msg : func);
+        logging::error("%s:%d:  %s (%i): '%s' %s",
+                       file, line, cudaGetErrorName(status), status,
+                       cudaGetErrorString(status), msg ? msg : "");
         if (crash)  abort();
         return true;
     }
@@ -153,12 +186,12 @@ int gpuInitBufferState(GpuBufferState_t* b, int fd, size_t bufSize)
 {
     // Allocate buffers on the GPU
     if (gpuMapFpgaMem(&b->bwrite, fd, 0, bufSize, 1) != 0) {
-        perror("gpuMapFpgaMem: write");
+        logging::error("gpuMapFpgaMem: write: %m");
         return -1;
     }
 
     if (gpuMapFpgaMem(&b->bread, fd, 0, bufSize, 0) != 0) {
-        perror("gpuMapFpgaMem: read");
+        logging::error("gpuMapFpgaMem: read: %m");
         gpuUnmapFpgaMem(&b->bwrite);
         return -1;
     }
@@ -207,10 +240,18 @@ int gpuMapHostFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t si
 
 int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, int write)
 {
+    CUresult result = {};
+    cudaError_t err = {};
     memset(outmem, 0, sizeof(*outmem));
 
-    uint8_t* dp;
-    if (cudaMalloc(&dp, size) != cudaSuccess) {
+    if ((size & 0xFFFF) != 0) {
+        logging::error("gpuMapFpgaMem: Size MUST be a multiple of 64k!!");
+        return -1;
+    }
+
+    uint8_t* dp = 0;
+    if ((err = cudaMalloc(&dp, size)) != cudaSuccess) {
+        logging::error("cudaMalloc(%zu): %s", size, errorString(err).c_str());
         return -1;
     }
     outmem->dptr = reinterpret_cast<CUdeviceptr>(dp);
@@ -219,14 +260,15 @@ int gpuMapFpgaMem(GpuDmaBuffer_t* outmem, int fd, uint64_t offset, size_t size, 
 
     int flag = 1;
     // This attribute is required for peer shared memory. It will synchronize every synchronous memory operation on this block of memory.
-    if (cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, outmem->dptr) != CUDA_SUCCESS) {
+    if ((result = cuPointerSetAttribute(&flag, CU_POINTER_ATTRIBUTE_SYNC_MEMOPS, outmem->dptr)) != CUDA_SUCCESS) {
+        logging::error("cuPointerSetAttribute: %d (%s)", result, errorString(result).c_str());
         cuMemFree(outmem->dptr);
         outmem = {};
         return -1;
     }
 
     if (gpuAddNvidiaMemory(fd, write, outmem->dptr, outmem->size) < 0) {
-        logging::critical("gpuAddNvidiaMemory failed");
+        logging::critical("gpuAddNvidiaMemory failed: %m");
         abort();
         cuMemFree(outmem->dptr);
         outmem = {};
@@ -276,8 +318,10 @@ void dmaTgtSet(const DataGPU& gpu, DmaTgt_t tgt)
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
 }
 
+/** Function to reset the DMA buffer index */
 void dmaIdxReset(const DataGPU& gpu)
 {
+    // Toggle the writeEnable register to reset the DMA buffer index
     const uint64_t writeEnReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
     uint32_t value;
     auto rc = dmaReadRegister(gpu.fd(), writeEnReg, &value);

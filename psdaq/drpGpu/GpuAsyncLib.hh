@@ -15,7 +15,7 @@
  **/
 #pragma once
 
-#include "utils.h"
+#include "Utils.h"
 
 #include <string>
 #include "psdaq/aes-stream-drivers/GpuAsync.h"
@@ -241,3 +241,27 @@ void dmaTgtSet(const DataGPU&, DmaTgt_t);
  * \param fd The file descriptor of the PGP PCIe device
  */
 void dmaIdxReset(const DataGPU&);
+
+/**
+ * Class for timing various things
+ */
+struct GPUTimer
+{
+  cudaEvent_t beg, end;
+  GPUTimer() {
+    cudaEventCreate(&beg);
+    cudaEventCreate(&end);
+  }
+  ~GPUTimer() {
+    cudaEventDestroy(beg);
+    cudaEventDestroy(end);
+  }
+  void start() { cudaEventRecord(beg, 0); }
+  double stop() {
+    cudaEventRecord(end, 0);
+    cudaEventSynchronize(end);
+    float ms;
+    cudaEventElapsedTime(&ms, beg, end);
+    return ms;
+  }
+};

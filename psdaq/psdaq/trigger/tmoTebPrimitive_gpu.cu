@@ -9,18 +9,22 @@ using namespace Pds;
 using namespace Pds::Trg;
 using namespace Drp::Gpu;
 
-static __global__ void _event(float*     const  __restrict__ calibBuffers,
-                              uint32_t** const* __restrict__ out,
-                              unsigned&                      index,
-                              bool&                          done)
+static __global__ void _event(float     const* const __restrict__ calibBuffers,
+                              const size_t                        calibBufsCnt,
+                              uint32_t* const* const __restrict__ out,
+                              const size_t                        outBufsCnt,
+                              const unsigned&                     index,
+                              const size_t                        nPanels)
 {
   // Analyze calibBuffers for all panels to determine TEB input data for the trigger
-  // Example dummy summary input data:
-  const uint32_t write_   = 0xdeadbeef;
-  const uint32_t monitor_ = 0x12345678;
+  //float* __restrict__ calibBuf = &calibBuffers[index * calibBufsCnt]; // nPanels * nElements of data follow
 
-  unsigned  tebInpOs = (sizeof(DmaDsc) + sizeof(TimingHeader)) / sizeof(***out);
-  uint32_t* tebInp   = &out[0][index][tebInpOs];   // Only panel 0 receives the summary
+  // Example dummy summary input data:
+  const uint32_t write_  { 0xdeadbeef };
+  const uint32_t monitor_{ 0x12345678 };
+
+  constexpr unsigned     tebInpOs = (sizeof(DmaDsc) + sizeof(TimingHeader)) / sizeof(**out);
+  uint32_t* __restrict__ tebInp   = &out[0][index * outBufsCnt + tebInpOs];   // Only panel 0 receives the summary
   // @todo: Need a __host__ ctor for TmoTebData?
   //new(tebInp) TmoTebData(write_, monitor_);        // Must be no larger than size()
   tebInp[0] = write_;
@@ -28,13 +32,15 @@ static __global__ void _event(float*     const  __restrict__ calibBuffers,
 }
 
 // This method presumes that it is being called while the stream is in capture mode
-void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&     stream,
-                                      float*            calibBuffers,
-                                      uint32_t** const* out,
-                                      unsigned&         index,
-                                      bool&             done)
+void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&          stream,
+                                      float     const* const calibBuffers,
+                                      const size_t           calibBufsCnt,
+                                      uint32_t* const* const out,
+                                      const size_t           outBufsCnt,
+                                      const unsigned&        index,
+                                      const unsigned         nPanels)
 {
   printf("*** TTP:event 1\n");
-  _event<<<1, 1, 0, stream>>>(calibBuffers, out, index, done);
+  _event<<<1, 1, 0, stream>>>(calibBuffers, calibBufsCnt, out, outBufsCnt, index, nPanels);
   printf("*** TTP:event 2\n");
 }

@@ -71,6 +71,8 @@ class CalibConstants:
         Parameters
         ----------
         calibconst: dict - retrieved from DB by method calib_constants_all_types from psana.pscalib.calib.MDBWebUtils.
+        calib_constants_all_types is USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+
         **kwa: not used
         """
         logger.debug('__init__') #  self.__class__.__name__
@@ -104,7 +106,7 @@ class CalibConstants:
     def cons_and_meta_for_ctype(self, ctype='pedestals'):
         logger.debug('cons_and_meta_for_ctype(ctype="%s")'%ctype)
         cc = self.calibconst()
-        if cc is None: return None
+        if cc is None: return None, None
         cons_and_meta = cc.get(ctype, None)
         if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.debug): return None, None
         return cons_and_meta

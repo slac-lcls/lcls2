@@ -1254,6 +1254,108 @@ def issue_2025_07_01(args):
        print(info_ndarr(raw,   'evt/sel:%6d/%4d raw' % (nev, evsel), last=5))
        print(info_ndarr(calib, 18*' '+'calib', last=5))
 
+
+def issue_2025_07_16():
+    """test info calibration validity"""
+    import psana.pscalib.calib.UtilsCalibValidity as ucv
+    from time import time
+    t0_sec = time()
+    ucv._calib_validity_ranges('mfx101332224', 'jungfrau_000003', ctype='pedestals')
+    print('Consumed time (sec): %.6f' % (time()-t0_sec))
+
+
+def issue_2025_07_22():
+    """test time to get shortname from longname
+    """
+    from time import time
+    import psana.detector.UtilsCalib as uc
+    #longname = odet.raw._uniqueid
+    longname = 'jungfrau_9000000000000-230921-3007f0217_9000000000000-230921-3001c01f5_9000000000000-230921-3007f0239_9000000000000-230921-3007f01c7'
+    t0_sec = time()
+    shortname = uc.detector_name_short(longname)
+    print('uc.detector_name_short(longname) consumed time (sec): %.6f' % (time()-t0_sec))
+    print('longname: %s\nshortname: %s' % (longname, shortname))
+
+
+def issue_2025_07_23():
+    """ detnames exp=mfx101332224,run=66 #,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc
+        datinfo -k exp=mfx101332224,run=66 -d jungfrau
+    """
+    expname = 'mfx101332224'
+    runnum = 66
+    detname = 'jungfrau'
+
+    ds, orun, odet = ds_run_det(exp=expname, run=runnum, detname=detname) #, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    longname = odet.raw._uniqueid
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(longname, exp=expname, run=runnum)
+    #calib_const = wu.calib_constants_all_types(longname, run=runnum)
+    print('calib_const.keys:', calib_const.keys())
+
+def issue_2025_07_29():
+    """ cpo - epix10ka missing geometry
+
+        datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
+    """
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq123',run=192)
+    myrun = next(ds.runs())
+    epix = myrun.Detector('epix10ka')
+    for nevt,evt in enumerate(myrun.events()):
+        print(epix.raw.raw(evt).shape)
+        print(epix.raw.image(evt))
+        if nevt>10: break
+
+
+
+def issue_2025_08_19():
+    """Philip - pixel_gain are not deployed/used?
+       datinfo -k exp=mfxdaq23,run=31 -d epix100_0
+    """
+    expname = 'mfxdaq23'
+    runnum  = 31
+    detname = 'epix100_0'
+
+    ds, orun, odet = ds_run_det(exp=expname, run=runnum, detname=detname) #, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    longname = odet.raw._uniqueid
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(longname, exp=expname, run=runnum)
+    #calib_const = wu.calib_constants_all_types(longname, run=runnum)
+    print('calib_const.keys:', calib_const.keys())
+
+    import psana.pscalib.calib.MDBWebUtils as wu
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={'ctype':'pixel_gain'})
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run": 31})
+    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":{"$lte": 31}})
+    print(docs)
+
+
+
+
+def issue_2025_08_26():
+    """       datinfo -k exp=ascdaq023,run=43 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq023',run=43)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+
+    #print('XXX', det.raw._segment_numbers)
+    for nevt,evt in enumerate(myrun.events()):
+      if nevt>10: break
+      calib = det.raw.calib(evt)
+      if calib is None:
+        print('none')
+        continue
+      print(nevt,calib.shape)
 #===
     
 #===
@@ -1324,6 +1426,12 @@ def selector():
     elif TNAME in ('32',): issue_2025_06_27(args) # philip - calibrepo
     elif TNAME in ('33',): issue_2025_06_30(args) # cpo - epixm add to DB pedestals=0, pixel_offset=0, pixel_gain=1
     elif TNAME in ('34',): issue_2025_07_01(args) # test that issue_2025_06_30 is resolved - print pedestals, pixel_offset, pixel_gain for epixm320
+    elif TNAME in ('35',): issue_2025_07_16() # test for runs validity tool
+    elif TNAME in ('36',): issue_2025_07_22() # test time to get shortname from longname
+    elif TNAME in ('37',): issue_2025_07_23() # test wu.calib_constants_all_types
+    elif TNAME in ('38',): issue_2025_07_29() # Chris - epix10ka missing geometry
+    elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
+    elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

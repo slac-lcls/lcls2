@@ -56,7 +56,7 @@ namespace Pds {
       public:
         Stream() {}
       public:
-        Mmhw::Reg rsvd [4];
+        Mmhw::Reg info [4];
         Mmhw::Reg parms[60];
       } _stream[4];
     };

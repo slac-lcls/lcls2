@@ -122,10 +122,14 @@ namespace Pds_Epics {
         }
     }
 
-    bool EpicsPVA::getComplete() {
+    // As it stands, this function can be called only once due to the use of a std::promise.
+    // If the PV connects, it returns true and the PV can be accessed with the other methods.
+    // If it doesn't, the PV must be abandoned as this function can't be used to check
+    // whether it connected later.
+    bool EpicsPVA::getComplete(unsigned tmo) {
         if (_strct != NULL) { return true; }
         std::future<pvd::PVStructure::const_shared_pointer> ft = _promise.get_future();
-        std::future_status status = ft.wait_for(std::chrono::seconds(30));
+        std::future_status status = ft.wait_for(std::chrono::seconds(tmo));
         if (status == std::future_status::ready) {
             _strct = ft.get();
             // Sending the onConnect message after the get; most users expect the data to be available on connect.

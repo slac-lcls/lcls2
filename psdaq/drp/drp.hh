@@ -118,7 +118,7 @@ public:
     unsigned dmaSize() const {return m_dmaSize;}
     unsigned nbuffers() const {return m_nbuffers;}
     size_t bufferSize() const {return pebble.bufferSize();}
-    virtual int fd() const = 0;
+    virtual int fd(unsigned unit=0) const = 0;
     void shutdown();
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram);
@@ -161,7 +161,7 @@ class MemPoolCpu : public MemPool
 public:
     MemPoolCpu(const Parameters&);
     virtual ~MemPoolCpu();
-    virtual int fd() const override {return m_fd;}
+    virtual int fd(unsigned unit=0) const override {return m_fd;}
     virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:
     virtual void _freeDma(unsigned count, uint32_t* indices) override;

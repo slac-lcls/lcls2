@@ -150,7 +150,8 @@ def do_main():
 
     t0_sec = time()
     jungfrau_dark_proc(parser)
-    sys.exit('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
+    logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
+    sys.exit(0)
 
 
 if __name__ == "__main__":

@@ -67,7 +67,7 @@ import pickle
 
 import os
 import sys
-from time import time
+from time import time, gmtime, localtime, strftime
 import json
 
 import numpy as np
@@ -162,14 +162,17 @@ def timestamp_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     return str(id) # protection aginst non-valid id
 
 
-def sec_and_ts_from_id(id): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
+def sec_and_ts_from_id(id, fmt='%Y%m%d_%H%M%S', gmt=False): # e.g. id=5b6cde201ead14514d1301f1 or ObjectId
     """Converts MongoDB (str) id to (int) sec."""
     assert isinstance(id, str)
     assert len(id) == 24
     oid = ObjectId(id)
     str_ts = str(oid.generation_time) # '2018-03-14 21:59:37+00:00'
     tobj = Time.parse(str_ts)         # Time object from parsed string
-    return int(tobj.sec()), str_ts    # 1521064777
+    tsec = int(tobj.sec())            # 1521064777
+    if fmt is not None:
+        str_ts = strftime(fmt, gmtime(tsec) if gmt else localtime(tsec))
+    return tsec, str_ts
 
 
 def timestamp_doc(doc):

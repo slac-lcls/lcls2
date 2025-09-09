@@ -11,6 +11,7 @@
 #include <sys/prctl.h>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "drp/TebReceiver.hh"
 #include "drp/RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -184,6 +185,8 @@ EaDrp::EaDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& cont
     m_pgp      (para, pool, &det),
     m_terminate(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string EaDrp::configure(const json& msg)

@@ -20,7 +20,7 @@ import json
 from psana import DataSource
 from psana.detector.dir_root import DIR_REPO_EPIX10KA
 from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict, is_none
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 import psana.detector.UtilsCalib as uc
@@ -31,10 +31,10 @@ from psana.detector.UtilsLogging import init_file_handler
 merge_panels = uc.merge_panels
 
 
-def is_none(par, msg, logger_method=logger.debug):
-    resp = par is None
-    if resp: logger_method(msg)
-    return resp
+#def is_none(par, msg, logger_method=logger.debug):
+#    resp = par is None
+#    if resp: logger_method(msg)
+#    return resp
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):

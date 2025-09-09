@@ -131,11 +131,11 @@ class LinkStatus(object):
         updatePv(self._pv_rxReady    ,(u>>3)&1,timev)
 
         v = (u>>5)&0xffff
-        updatePv(self._pv_rxErr,v-self._rxErr,timev)
+        updatePv(self._pv_rxErr,(v-self._rxErr)&0xffff,timev)
         self._rxErr = v
 
         v = (u>>21)&0xffffffff
-        updatePv(self._pv_rxRcv,v-self._rxRcv,timev)
+        updatePv(self._pv_rxRcv,(v-self._rxRcv)&0xffffffff,timev)
         self._rxRcv = v
 
         updatePv(self._pv_rxIsXpm,(u>>53)&1,timev)
@@ -207,23 +207,29 @@ class TimingStatus(object):
 
         self._device.update()
         self._rxClkCount      = updatePv(self._pv_rxClkCount, self._device.RxClkCount.get()<<4, self._rxClkCount)
-        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
+#        self._txClkCount      = updatePv(self._pv_txClkCount, self._device.TxClkCount.get()<<4, self._txClkCount)
         self._rxRstCount      = updatePv(self._pv_rxRstCount, self._device.RxRstCount.get(), self._rxRstCount)
         self._crcErrCount     = updatePv(self._pv_crcErrCount, self._device.CrcErrCount.get(), self._crcErrCount)
         self._rxDecErrCount   = updatePv(self._pv_rxDecErrs, self._device.RxDecErrCount.get(), self._rxDecErrCount, "RxDecErrs")
         self._rxDspErrCount   = updatePv(self._pv_rxDspErrs, self._device.RxDspErrCount.get(), self._rxDspErrCount, "RxDspErrs")
         self._bypassRstCount  = updatePv(self._pv_bypassRsts, self._device.BypassResetCount.get(), self._bypassRstCount)
         self._bypassDoneCount = updatePv(self._pv_bypassDones, self._device.BypassDoneCount.get(), self._bypassDoneCount)
-        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount, self._fidLimits)
-        self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
-        self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
+        self._fidCount        = updatePv(self._pv_fids, self._device.FidCount.get(), self._fidCount) #, self._fidLimits)
+#        self._sofCount        = updatePv(self._pv_sofs, self._device.sofCount.get(), self._sofCount)
+#        self._eofCount        = updatePv(self._pv_eofs, self._device.eofCount.get(), self._eofCount)
+
+        oflow = (1<<32)-1
+        if (self._rxDecErrCount==oflow or self._rxDspErrCount==oflow):
+            self._device.RxCountReset.set(1)
+            time.sleep(10.e-6)
+            self._device.RxCountReset.set(0)
 
         v = self._device.RxLinkUp.get()
         if v is not None:
             value = self._pv_rxLinkUp.current()
             value['value'] = v
             if v==0:
-                value.alarm.severity = AlarmSevr,MAJOR.value
+                value.alarm.severity = AlarmSevr.MAJOR.value
                 value.alarm.status   = AlarmStatus.STATE.value
                 value.alarm.message  = 'Input link down'
             else:
@@ -301,8 +307,17 @@ class CuStatus(object):
         updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
         updatePv(self._pv_pulseId     , self._device.pulseId          .get())
         updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
-        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
         updatePv(self._pv_PhCuToSC    , self._phase .phase())
+
+        def updatePv(pv,v):
+            if v is not None:
+                value = pv.current()
+                if not (value==v):   # skip redundant updates
+                    value['value'] = v
+                    value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
+                    pv.post(value)
+
+        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
 
 class NoCuStatus(object):
     def __init__(self, name):
@@ -362,6 +377,7 @@ class GroupStats(object):
         self._pv_numL0Inh  = _addPVF('NumL0Inh')
         self._pv_numL0Acc  = _addPVF('NumL0Acc')
         self._pv_numL1     = _addPVF('NumL1')
+        self._pv_numDlyOF  = _addPVF('NumDlyOF')
         self._pv_deadFrac  = _addPVF('DeadFrac')
         self._pv_deadTime  = _addPVF('DeadTime')
 
@@ -390,8 +406,9 @@ class GroupStats(object):
         (numL0   ,offset) = bytes2Int(msg,offset)
         (numL0Inh,offset) = bytes2Int(msg,offset)
         (numL0Acc,offset) = bytes2Int(msg,offset)
-
+        numDlyOF = struct.unpack_from('<B',msg,offset)[0]
         offset += 1
+
         rT = l0Ena*fidPeriod
         updatePv(self._pv_runTime , rT, timev)
 #       Does this get() cause problems via multi-threading?
@@ -430,7 +447,9 @@ class GroupStats(object):
             self._numL0Inh= numL0Inh
         else:
             updatePvC(self._pv_running, False, timev)
-            
+
+        updatePv(self._pv_numDlyOF, numDlyOF, timev)
+
         if True:
             if self._linkInhTm:
                 den = fidPeriod

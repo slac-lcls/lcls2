@@ -10,6 +10,12 @@
 namespace Drp {
   namespace Gpu {
 
+    enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
+    enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
+           EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
+           FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
+           ReducerNamesIndex };         // index for xtc NamesId
+
 class Detector : public Drp::Detector
 {
 public:
@@ -26,8 +32,6 @@ public:
   unsigned beginstep(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& stepInfo) override;
   unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
   unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
-  void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override { /* Not used */ };
-  void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* Not used */ }
   using Drp::Detector::event;
   void shutdown() override;
 
@@ -38,16 +42,18 @@ public:
 
   Pds::TimingHeader* getTimingHeader(uint32_t index) const override
   {
-    const auto& dmaBuffers = m_pool->getAs<MemPoolGpu>()->hostBuffers_h()[0]; // Reference only worker 0's
-    auto dsc = dmaBuffers[index];
-    static const unsigned DmaDscWords = sizeof(DmaDsc) / sizeof(uint32_t);
+    auto       memPool    = m_pool->getAs<MemPoolGpu>();
+    const auto dmaBuffers = memPool->hostWrtBufsVec_h()[0]; // Reference only panel 0's
+    const auto cnt        = memPool->hostWrtBufsSize()/sizeof(*dmaBuffers);
+    auto       dsc        = &dmaBuffers[index * cnt];
+    constexpr unsigned DmaDscWords = sizeof(DmaDsc) / sizeof(uint32_t);
     return reinterpret_cast<Pds::TimingHeader*>(&dsc[DmaDscWords]);
   }
 
-  virtual void recordGraph(cudaStream_t&                      stream,
-                           const unsigned&                    index,
-                           const unsigned                     panel,
-                           uint16_t const* const __restrict__ data) = 0;
+  virtual void recordGraph(cudaStream_t&         stream,
+                           const unsigned&       index_d,
+                           const unsigned        panel,
+                           uint16_t const* const data) = 0;
 protected:
   template<typename T>
   void _initialize(Parameters& para, MemPoolGpu& pool) {

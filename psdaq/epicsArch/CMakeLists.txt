@@ -1,6 +1,7 @@
 find_package(PythonLibs REQUIRED)
 
 add_executable(epicsArch
+    ../drp/TebReceiver.cc        # @todo: Is there something better than this path specification?
     EpicsArchMonitor.cc
     EpicsMonitorPv.cc
     PvConfigFile.cc

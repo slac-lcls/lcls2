@@ -98,7 +98,8 @@ def do_main():
     dirs_scripts = os.path.join(args.dirconstants, 'scripts')
     s = info_logfiles(dirs_scripts, args.detname, args.year, args.show_files)
     print('\ndirs for scripts in %s    %s' % (dirs_scripts, s))
-    print('\ninstrument directories:%s\n' % info_xtc2dirs())
+    print('\ninstrument directories:%s' % info_xtc2dirs())
+    print('\ncalib constants repository:\n  /sdf/group/lcls/ds/ana/detector/calib2/constants\n')
 
 if __name__ == "__main__":
     do_main()

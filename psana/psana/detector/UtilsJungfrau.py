@@ -42,19 +42,22 @@ MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 
 MAX_DETNAME_SIZE = 20
 
-def is_true(cond, msg, method=logger.debug):
-    if cond: method(msg)
+#import psana.detector.Utils as ut
+#is_true = ut.is_true
+
+def is_true(cond, msg, logger_method=logger.debug):
+    if cond: logger_method(msg)
     return cond
 
 def jungfrau_segments_tot(segnum_max):
-    """Returns total number of segments in the detector 1,2,8,32 depending on segnum_max"""
+    """Returns total number of segments in the detector 1,2,8,32 depending on segnum_max."""
     return 1 if segnum_max<1 else\
            2 if segnum_max<2 else\
            8 if segnum_max<8 else\
            32
 
 class Cache():
-    """ Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
+    """Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
     def __init__(self):
         self.calibcons = {}
 
@@ -75,19 +78,16 @@ cache = Cache() # singleton
 
 
 class DetCache():
-    """ Cash of calibration constants for jungfrau.
-    """
+    """Cash of calibration constants for jungfrau."""
     def __init__(self, det, evt, **kwa):
-        self.poff = None
-        #self.arr1 = None
         self.kwa = kwa
-        self.gfac = None
-        self.cmps = None
-        self.mask = None
-        #self.outa = None
-        self.inds = None
-        self.loop_banks = True
         self.isset = False
+        self.poff = None # peds + offs
+        self.gfac = None # 1/gain, keV/ADU
+        self.cmps = None # common mode parameters
+        self.mask = None # combined mask
+        self.inds = None # panel indices in daq
+        self.loop_banks = True
         self.add_calibcons(det, evt)
 
     def kwargs_are_the_same(self, **kwa):
@@ -103,48 +103,47 @@ class DetCache():
     def add_calibcons(self, det, evt):
 
         self.detname = det._det_name
-        logger.info('%s add_calibcons for detname: %s %s' % (30*'_', self.detname, 30*'_'))
+        self.inds    = det._sorted_segment_inds # det._segment_numbers
+        self.calibc  = det._calibconst
 
-        #print('XXX det._sorted_segment_inds', det._sorted_segment_inds)
-        #print('XXX det._segment_numbers', det._segment_numbers)
-        #print('XXX det.raw(evt).shape', det.raw(evt).shape)
+        logger.info('%s add_calibcons for _det_name: %s %s' % (30*'_', self.detname, 30*'_'))
+        logger.info('\n  _sorted_segment_inds: %s' % str(self.inds)\
+                   + ndau.info_ndarr(det.raw(evt), '\n  raw(evt)')
+                    )
+        if is_true(self.calibc is None, 'det._calibconst is None > CALIB CONSTANTS ARE NOT AVAILABLE FOR %s' % self.detname,\
+                   logger_method=logger.warning): return
 
-        self.calibc = det._calibconst
-        if self.calibc is None: return
         keys = self.calibc.keys()
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
-        #raw  = np.array(det.raw(evt), dtype=np.float32)
+        if is_true(not('pedestals' in keys), 'PEDESTALS ARE NOT AVAILABLE det.raw.calib(evt) will return det.raw.raw(evt)',\
+                   logger_method = logger.warning): return
+
         peds, meta_peds = self._calibcons_for_ctype('pedestals') # shape:(3, <nsegs>, 512, 1024) dtype:float32
+        if is_true(peds is None, 'peds is None, det.raw.calib(evt) will return det.raw.raw(evt)',\
+                   logger_method = logger.warning): return
 
-        #print('XXX peds.shape', peds.shape)
-        #sys.exit('TEST EXIT')
-
-        if is_true(peds is None, 'peds is None' , method = logger.info): return
-        logger.debug('metadata for pedestals:\n%s' % str(meta_peds))
-        d = up.dict_filter(meta_peds, list_keys=('ctype', 'experiment', 'run', 'run_orig', 'time_stamp',\
-                                              'tstamp_orig', 'detname', 'longname', 'shortname',\
-                                              'data_dtype', 'data_shape', 'version', 'uid'))
+        d = up.dict_filter(meta_peds, list_keys=('ctype', 'experiment', 'run', 'run_orig', 'run_beg', 'run_end', 'time_stamp',\
+                                                 'tstamp_orig', 'detname', 'longname', 'shortname',\
+                                                 'data_dtype', 'data_shape', 'version', 'uid'))
         logger.info('partial metadata for pedestals:\n  %s' % '\n  '.join(['%15s: %s' % (k,v) for k,v in d.items()]))
         logger.info(ndau.info_ndarr(peds, 'pedestals'))
 
         gain, meta_gain = self._calibcons_for_ctype('pixel_gain')
         offs, meta_offs = self._calibcons_for_ctype('pixel_offset')
 
-        self.gfac = np.ones_like(peds) if is_true(gain is None, 'pixel_gain constants missing, use default ones') else\
+        self.gfac = np.ones_like(peds) if is_true(gain is None, 'pixel_gain constants missing, use default ones',\
+                                                  logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
-
-        self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros') else\
-                    peds + offs
 
         logger.info(ndau.info_ndarr(self.gfac, 'gain factors'))
 
-        #self.arr1 = np.ones(peds.shape[1:], dtype=np.int8)
-        #self.outa = np.zeros(peds.shape[1:], dtype=np.float32)
+        self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
+                                    logger_method = logger.warning) else\
+                    peds + offs
 
         self.cmps = self.kwa.get('cmpars', None)
         self.loop_banks = self.kwa.get('loop_banks', True)
-        #self.mask = det.mask_total(evt, **self.kwa)
-        self.inds = det._sorted_segment_inds
+        self.mask = det.mask_total(evt, **self.kwa)
         logger.info('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
@@ -152,7 +151,6 @@ class DetCache():
                       'loop over banks %s' % self.loop_banks))
 
         self.isset = True
-        #sys.exit('TEST EXIT')
 
 
 def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
@@ -183,16 +181,17 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     nda_raw = kwa.get('nda_raw', None)
 
     arr = det.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
-    #logger.debug(ndau.info_ndarr(arr, 'raw'))
 
-    if arr is None:
-        return None
+    if is_true(arr is None, 'det.raw(evt) and nda_raw are None, return None',\
+               logger_method = logger.warning): return None
 
     odc = cache.detcache_for_detname(det._det_name)
     first_entry = odc is None
 
     if first_entry:
         odc = cache.add_detcache(det, evt, **kwa)
+
+    if odc.poff is None: return arr
 
     if kwa != odc.kwa:
         logger.warning('IGNORED ATTEMPT to call det.calib/image with different **kwargs (due to caching)'\

@@ -21,6 +21,7 @@
 #include <Eigen/Dense>
 #include <Eigen/QR>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -782,6 +783,9 @@ UdpDrp::UdpDrp(UdpParameters& para, MemPoolCpu& pool, UdpEncoder& det, ZmqContex
     m_terminate   (false),
     m_running     (false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
+
     if (para.kwargs.find("slowGroup") != para.kwargs.end())
         para.slowGroup = std::stoi(para.kwargs["slowGroup"]);
     else

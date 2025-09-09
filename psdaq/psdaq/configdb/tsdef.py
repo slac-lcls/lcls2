@@ -26,6 +26,10 @@ if 'ued' in socket.gethostname():
                    "10H" :{"intv":6  ,"marker":2}, 
                    "30H" :{"intv":2  ,"marker":1}, 
                    "60H" :{"intv":1  ,"marker":0}}
+
+    FixedFidRate  = 500e3            # seqplot
+    FixedToACFids = int(500e3/360)   # needed for seqplot simulation
+
 else:
     fixedRates  = ['1.02Hz','10.2Hz','102Hz','1.02kHz','10.2kHz','71.4kHz','929kHz', 'Undef7', 'Undef8', 'Undef9' ]
     fixedRateHzToMarker = {'929kHz':6, '71kHz':5, '10kHz':4, '1kHz':3, '100Hz':2, '10Hz':1, '1Hz':0}
@@ -50,5 +54,6 @@ else:
                    "30H" :{"intv":2  ,"marker":4}, 
                    "60H" :{"intv":1  ,"marker":5}}
 
-
+    FixedFidRate  = 910e3                 # seqplot
+    FixedToACFids = int(910e3/0.98/360)   # needed for seqplot simulation
 

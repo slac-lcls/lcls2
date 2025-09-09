@@ -23,6 +23,7 @@
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
+#include "TebReceiver.hh"
 #include "psdaq/service/IpcUtils.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -337,6 +338,8 @@ PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& conte
     m_pyAppTime(0),
     m_pythonDrp(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -494,6 +497,7 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
                   [&](){return m_pgp.nPgpInUser();});
     exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
@@ -581,7 +585,7 @@ void PGPDrp::reader()
 
             // keep track of the number of L1Accepts seen in the batch
             if (transitionId == TransitionId::L1Accept) {
-              m_batch.l1count++;
+                m_batch.l1count++;
             }
 
             // send batch to worker if batch is full or if it's a transition

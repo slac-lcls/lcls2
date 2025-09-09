@@ -6,16 +6,19 @@
 using namespace Drp::Gpu;
 
 
-LcReducer::LcReducer(Parameters& para, MemPoolGpu& pool) :
-  Gpu::ReducerAlgo(&para, &pool)
+LcReducer::LcReducer(const Parameters& para, const MemPoolGpu& pool) :
+  Gpu::ReducerAlgo(para, pool, Alg("LC", 0, 0, 0))
 {
 }
 
 // This routine records the graph that does the data reduction
-void LcReducer::recordGraph(cudaStream_t&             stream,
-                            const unsigned            index,
-                            float* const __restrict__ calibBuffers,
-                            float* const __restrict__ dataBuffers)
+void LcReducer::recordGraph(cudaStream_t&      stream,
+                            const unsigned&    index,
+                            float const* const calibBuffers,
+                            const size_t       calibBufsCnt,
+                            uint8_t    * const dataBuffers,
+                            const size_t       dataBufsCnt,
+                            unsigned*          extent)
 {
   int* d_fullcarry;
   cudaMalloc((void **)&d_fullcarry, chunks * sizeof(int));
@@ -28,7 +31,7 @@ void LcReducer::recordGraph(cudaStream_t&             stream,
 
 // The class factory
 
-extern "C" Drp::Gpu::ReducerAlgo* createReducer(Drp::Parameters& para, Drp::Gpu::MemPoolGpu& pool)
+extern "C" Drp::Gpu::ReducerAlgo* createReducer(const Drp::Parameters& para, Drp::Gpu::MemPoolGpu& pool)
 {
   return new Drp::Gpu::LcReducer(para, pool);
 }

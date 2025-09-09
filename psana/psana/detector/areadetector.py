@@ -72,11 +72,12 @@ from psana.detector.mask_algos import MaskAlgos, DTYPE_MASK, DTYPE_STATUS
 from amitypes import Array2d, Array3d
 import psana.detector.Utils as ut
 
+is_none = ut.is_none
 
-def is_none(par, msg, logger_method=logger.debug):
-    resp = par is None
-    if resp: logger_method(msg)
-    return resp
+#def is_none(par, msg, logger_method=logger.debug):
+#    resp = par is None
+#    if resp: logger_method(msg)
+#    return resp
 
 
 class AreaDetector(DetectorImpl):
@@ -348,7 +349,7 @@ class AreaDetector(DetectorImpl):
 
 
 class AreaDetectorRaw(AreaDetector):
-    """Collection of methods for self = det.raw, e.g. det.raw.raw(...), det.raw.calib(...) etc."""
+    """Collection of methods for self = det.raw, e.g. det.raw.raw(...)/calib/image etc."""
 
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetectorRaw.__init__') #  self.__class__.__name__
@@ -380,21 +381,27 @@ class AreaDetectorRaw(AreaDetector):
 
 
     def calib(self, evt, **kwa) -> Array3d:
-        """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac.
+        """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac * mask.
            Should be overridden for more complicated cases.
         """
+        logger_method = logger.debug
         #print('XXX AreaDetectorRaw.calib')
-        logger.debug('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
+        logger_method('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
         raw = self.raw(evt)
-        if is_none(raw, 'det.raw.raw(evt) is None'): return None
+        if is_none(raw, 'det.raw.raw(evt) is None', logger_method): return None
 
         peds = self._pedestals()
-        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'): return raw
-
+        if is_none(peds, 'det.raw._pedestals() is None, return raw', logger_method): return raw
         arr = raw - peds
+
         gfac = self._gain_factor()
-        return arr*gfac if gfac != 1 else arr
+        if is_none(gfac, 'det.raw._gain_factor() is None, return raw - peds', logger_method): return arr
+        if gfac != 1: arr *= gfac
+
+        mask = self._mask(**kwa)
+        if is_none(mask, 'det.raw._mask() is None - return (raw - peds)*gfac', logger_method): return arr
+        return arr*mask
 
 
 if __name__ == "__main__":

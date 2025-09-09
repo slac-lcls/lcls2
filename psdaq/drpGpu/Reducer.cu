@@ -1,37 +1,107 @@
 #include "Reducer.hh"
-#include "ReducerAlgo.hh"
+
+#include "Detector.hh"
 
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/eb/ResultDgram.hh"
+#include "ReducerAlgo.hh"
 
 using logging = psalg::SysLog;
+using namespace XtcData;
 using namespace Drp;
 using namespace Drp::Gpu;
+using namespace Pds;
+using namespace Pds::Eb;
+
+using us_t = std::chrono::microseconds;
 
 
-Reducer::Reducer(const Parameters& para, MemPoolGpu& pool) :
-  m_pool   (pool),
-  m_reducer(nullptr),
-  m_para   (para)
+Reducer::Reducer(const Parameters&            para,
+                 MemPoolGpu&                  pool,
+                 Detector&                    det,
+                 const std::atomic<bool>&     terminate,
+                 const cuda::atomic<uint8_t>& terminate_d) :
+  m_pool       (pool),
+  m_algo       (nullptr),
+  m_terminate  (terminate),
+  m_terminate_d(terminate_d),
+  m_reduce_us  (0),
+  m_para       (para)
 {
-  /** Create the Reducer stream **/
-  chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
-  logging::debug("Done with creating stream");
+  // Create the Reducer streams
+  m_streams.resize(m_para.nworkers);
+  m_t0.resize(m_para.nworkers);
+  m_heads_h.resize(m_para.nworkers);
+  m_heads_d.resize(m_para.nworkers);
+  m_tails_h.resize(m_para.nworkers);
+  m_tails_d.resize(m_para.nworkers);
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    chkFatal(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
 
-  m_reducer = _setupReducer();
-  if (!m_reducer) {
-    logging::critical("Error setting up Reducer");
+    // Keep track of the head and tail indices of the Reducer stream
+    chkError(cudaHostAlloc(&m_heads_h[i], sizeof(*m_heads_h[i]), cudaHostAllocDefault));
+    chkError(cudaHostGetDevicePointer(&m_heads_d[i], m_heads_h[i], 0));
+    *m_heads_h[i] = 0;
+    chkError(cudaHostAlloc(&m_tails_h[i], sizeof(*m_tails_h[i]), cudaHostAllocDefault));
+    chkError(cudaHostGetDevicePointer(&m_tails_d[i], m_tails_h[i], 0));
+    *m_tails_h[i] = 0;
+  }
+  logging::debug("Done with creating %u Reducer streams", m_streams.size());
+
+  // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
+  // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
+  auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  auto payloadSize = m_pool.calibBufsSize();
+  auto totalSize   = headerSize + payloadSize;
+  if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
+
+  // Prepare buffers to receive the reduced data,
+  // prepended with some reserved space for the datagram header.
+  // The application sees only the pointer to the data buffer.
+  m_pool.createReduceBuffers(payloadSize, headerSize);
+
+  // Set up the reducer algorithm
+  m_algo = _setupAlgo(det);
+  if (!m_algo) {
+    logging::critical("Error setting up Reducer Algorithm");
     abort();
+  }
+
+  // Prepare the CUDA graphs
+  m_graphExecs.resize(m_streams.size());
+  for (unsigned i = 0; i < m_streams.size(); ++i) {
+    if (_setupGraph(i)) {
+      logging::critical("Failed to set up Reducer graph");
+      abort();
+    }
   }
 }
 
 Reducer::~Reducer()
 {
-  chkError(cudaStreamDestroy(m_stream));
+  printf("*** Reducer dtor 1\n");
+  for (auto& graphExec : m_graphExecs) {
+    chkError(cudaGraphExecDestroy(graphExec));
+  }
+  printf("*** Reducer dtor 2\n");
 
-  if (m_reducer)  delete m_reducer;
+  if (m_algo)  delete m_algo;
+  m_dl.close();
+  printf("*** Reducer dtor 3\n");
+
+  m_pool.destroyReduceBuffers();
+  printf("*** Reducer dtor 4\n");
+
+  for (unsigned i = 0; i < m_streams.size(); ++i) {
+    chkError(cudaFreeHost(m_tails_h[i]));
+    chkError(cudaFreeHost(m_heads_h[i]));
+
+    chkError(cudaStreamDestroy(m_streams[i]));
+  }
+  printf("*** Reducer dtor 5\n");
 }
 
-ReducerAlgo* Reducer::_setupReducer()
+ReducerAlgo* Reducer::_setupAlgo(Detector& det)
 {
   // @todo: In the future, find out which Reducer to load from the Detector's configDb entry
   //        For now, load it according to a command line kwarg parameter
@@ -40,12 +110,13 @@ ReducerAlgo* Reducer::_setupReducer()
     logging::error("Missing required kwarg 'reducer'");
     return nullptr;
   }
-  reducer = m_para.kwargs["reducer"];
+  reducer = const_cast<Parameters&>(m_para).kwargs["reducer"];
 
-  if (m_reducer)  delete m_reducer;     // If the object exists, delete it
-  m_dl.close();                         // If a lib is open, close it first
+  if (m_algo)  delete m_algo;     // If the object exists, delete it
+  m_dl.close();                   // If a lib is open, close it first
 
   const std::string soName("lib"+reducer+".so");
+  logging::debug("Loading library '%s'", soName.c_str());
   if (m_dl.open(soName, RTLD_LAZY)) {
     logging::error("Error opening library '%s'", soName.c_str());
     return nullptr;
@@ -57,7 +128,7 @@ ReducerAlgo* Reducer::_setupReducer()
                    symName.c_str(), soName.c_str());
     return nullptr;
   }
-  auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool);
+  auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool, det);
   if (!instance)
   {
     logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
@@ -66,172 +137,160 @@ ReducerAlgo* Reducer::_setupReducer()
   return instance;
 }
 
-int Reducer::_setupGraph()
+int Reducer::_setupGraph(unsigned instance)
 {
+  cudaGraph_t      graph;
+  cudaGraphExec_t& graphExec = m_graphExecs[instance];
+  cudaStream_t     stream    = m_streams[instance];
+
+  // Build the graph
+  logging::debug("Recording Reducer graph %u", instance);
+  graph = _recordGraph(instance);
+  if (graph == 0) {
+    return -1;
+  }
+
+  // Instantiate the executable graph
+  if (chkError(cudaGraphInstantiate(&graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
+               "Reducer graph create failed")) {
+    return -1;
+  }
+
+  // No need to hang on to the stream info
+  cudaGraphDestroy(graph);
+
+  // Upload the graph so it can be launched by the scheduler kernel later
+  logging::debug("Uploading Reducer graph %u...", instance);
+  if (chkError(cudaGraphUpload(graphExec, stream), "Reducer graph upload failed")) {
+    return -1;
+  }
+
   return 0;
 }
 
-void Reducer::start(Detector* det, GpuMetrics& metrics)
+/** This kernel receives a message from TebReceiver that indicates which
+ * calibBuffer is ready for reducing.
+ */
+static __global__ void _receive(unsigned* const __restrict__ head,
+                                unsigned* const __restrict__ tail,
+                                const cuda::atomic<uint8_t>& terminate)
 {
-  m_terminate_h.store(false, std::memory_order_release);
+  //printf("### _receive 1 done %d, tail %u, head %u\n", terminate.load(), *tail, *head);
 
-  // Launch the forwarding thread
-  m_thread = std::thread(&Reducer::_reduce, std::ref(*this),
-                         std::ref(*det), std::ref(metrics));
+  // Wait for the head to advance with respect to the tail
+  auto t = *tail;
+  while (*head == t) {
+     if (terminate.load(cuda::memory_order_acquire))  break;
+  }
+  //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, termiate.load());
 }
 
-void Reducer::stop()
+/** This will re-launch the current graph */
+static __global__ void _graphLoop(unsigned* const __restrict__ head,
+                                  unsigned* const __restrict__ tail,
+                                  uint8_t*  const __restrict__ dataBuffers,
+                                  const size_t                 dataBufsCnt,
+                                  const unsigned               extent,
+                                  const cuda::atomic<uint8_t>& terminate)
 {
-  logging::warning("Gpu::Reducer::stop called");
+  //printf("### Reducer graphLoop 1, done %d, idx %u\n", terminate.load(), *index);
+  if (terminate.load(cuda::memory_order_acquire))  return;
+  //printf("### Reducer graphLoop 1a, index %u\n", *index);
 
-  chkError(cuCtxSetCurrent(m_pool.context().context()));
+  // Store the extent with the data
+  auto data = (uint32_t*)(&dataBuffers[*tail * dataBufsCnt]);
+  data[-1] = extent;            // @todo: Revisit this kludge to set the extent
 
-  // Stop and clean up the streams
-  m_terminate_h.store(true, std::memory_order_release);
+  //printf("### Reducer graphLoop: 2 t %u, h %u\n", *tail, *head);
 
-  logging::info("Shutting down Reducer stream");
-  __sync_fetch_and_add(m_terminate_d, 1);
+  // Signal that this worker is done
+  *tail = *head;                   // With nworkers > 1, head - tail may be > 1
+
+  // Commented out to let TebRcvr::complete() launch the graph
+  //cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  //printf("### Reducer graphLoop 3\n");
 }
 
-void Reducer::_reduce()
+cudaGraph_t Reducer::_recordGraph(unsigned instance)
 {
-  const uint32_t bufferMask = m_ringIndex_h->size() - 1;
-  unsigned tail = 0;
-  unsigned head = 0;
+  auto stream       = m_streams[instance];
+  auto calibBuffers = m_pool.calibBuffers_d();
+  auto calibBufsCnt = m_pool.calibBufsSize() / sizeof(*calibBuffers);
+  auto dataBuffers  = m_pool.reduceBuffers_d();
+  auto dataBufsCnt  = m_pool.reduceBufsSize() / sizeof(*dataBuffers);
 
-  uint64_t lastPid = 0;
-  while (!m_terminate_h.load(std::memory_order_acquire)) {
-    tail = head;
-    head = m_ringIndex_h->consume();
-    unsigned index = tail;
-    while (index != head) {
-      unsigned nDmaRet = head - index;
-      const volatile auto dsc = (DmaDsc*)(m_hostWriteBufs[index]);
-      const volatile auto th  = (TimingHeader*)&dsc[1];
-
-      metrics.m_nDmaRet.store(0);
-      // Wait for the GPU to have processed an event
-      //chkFatal(cuCtxSynchronize());
-      //chkError(cuStreamSynchronize(m_dmaStreams[index]));
-      uint64_t pid;
-      while (!m_terminate_h.load(std::memory_order_acquire)) {
-        pid = th->pulseId();
-        if (pid > lastPid)  break;
-        if (!lastPid && !pid)  break;   // Expect lastPid to be 0 only on startup
-      }
-      if (m_terminate_h.load(std::memory_order_acquire))  break;
-      if (!pid)  continue;              // Search for a DMA buffer with data in it
-      lastPid = pid;
-
-      metrics.m_nDmaRet.store(nDmaRet);
-      m_pool.allocateDma();
-
-      logging::debug("*** dma %d hdr: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x\n",
-                     index, dsc->error, dsc->size, dsc->_rsvd[0], dsc->_rsvd[1], dsc->_rsvd[2],
-                     dsc->_rsvd[3], dsc->_rsvd[4], dsc->_rsvd[5]);
-      logging::debug("**G dma %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x\n",
-                     index, th->control(), th->pulseId(), th->time.value(), th->env, th->evtCounter,
-                     th->_opaque[0], th->_opaque[1]);
-
-      uint32_t size = dsc->size;
-      ///uint32_t lane = 0;                  // The lane is always 0 for GPU-enabled PGP devices
-      metrics.m_dmaSize   = size;
-      metrics.m_dmaBytes += size;
-      // @todo: Is this the case here also?
-      // dmaReadBulkIndex() returns a maximum size of m_pool.dmaSize(), never larger.
-      // If the DMA overflowed the buffer, the excess is returned in a 2nd DMA buffer,
-      // which thus won't have the expected header.  Take the exact match as an overflow indicator.
-      if (size == m_pool.dmaSize()) {
-        logging::critical("%d DMA overflowed buffer: %d vs %d", index, size, m_pool.dmaSize());
-        //abort();
-      }
-
-      const Pds::TimingHeader* timingHeader = th; //det.getTimingHeader(index);
-      if (!timingHeader)  printf("*** No timingHeader at ctr %d\n", th->evtCounter);
-      ///uint32_t evtCounter = timingHeader->evtCounter & 0xffffff;
-      ///unsigned pgpIndex = evtCounter & bufferMask;
-      ///PGPEvent*  event  = &m_pool.pgpEvents[pgpIndex];
-      ///if (!event)  printf("*** No pgpEvent for ctr %d\n", pgpIndex);
-      ///DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
-      ///if (!buffer)  printf("*** No pgpEvent.buffer for lane %d, ctr %d\n", lane, pgpIndex);
-      ///buffer->size = size;                       //   "
-      ///buffer->index = index;                     //   "
-      ///event->mask |= (1 << lane);
-
-      if (dsc->error) {
-        logging::error("DMA error 0x%x",dsc->error);
-        ///handleBrokenEvent(*event);
-        freeDma(index);                 // Leaves event mask = 0
-        metrics.m_nDmaErrors += 1;
-        continue;
-      }
-
-      if (timingHeader->error()) {
-        logging::error("Timing header error bit is set");
-        metrics.m_nTmgHdrError += 1;
-      }
-      XtcData::TransitionId::Value transitionId = timingHeader->service();
-
-      auto rogs = timingHeader->readoutGroups();
-      if ((rogs & (1 << m_para.partition)) == 0) {
-        logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
-                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                       timingHeader->pulseId(), m_para.partition, timingHeader->env);
-        ///handleBrokenEvent(*event);
-        freeDma(index);                 // Leaves event mask = 0
-        metrics.m_nNoComRoG += 1;
-        continue;
-      }
-
-      // @todo: Shouldn't this check for missing RoGs on all transitions?
-      if (transitionId == XtcData::TransitionId::SlowUpdate) {
-        uint16_t missingRogs = m_para.rogMask & ~rogs;
-        if (missingRogs) {
-          logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                         XtcData::TransitionId::name(transitionId),
-                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                         timingHeader->pulseId(), missingRogs, timingHeader->env);
-          ///handleBrokenEvent(*event);
-          freeDma(index);             // Leaves event mask = 0
-          metrics.m_nMissingRoGs += 1;
-          continue;
-        }
-      }
-
-      const uint32_t* data = reinterpret_cast<const uint32_t*>(th);
-      logging::debug("GpuWorker  size %u  hdr %016lx.%016lx.%08x  err 0x%x",
-                     size,
-                     reinterpret_cast<const uint64_t*>(data)[0], // PulseId
-                     reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
-                     reinterpret_cast<const uint32_t*>(data)[4], // env
-                     dsc->error);
-
-      if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
-          logging::info("GpuWorker  saw %s @ %u.%09u (%014lx)",
-                        XtcData::TransitionId::name(transitionId),
-                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                        timingHeader->pulseId());
-        }
-        else {
-          logging::debug("GpuWorker  saw %s @ %u.%09u (%014lx)",
-                         XtcData::TransitionId::name(transitionId),
-                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                         timingHeader->pulseId());
-        }
-        if (transitionId == XtcData::TransitionId::BeginRun) {
-          resetEventCounter();
-        }
-      }
-
-      metrics.m_nevents += 1;
-      m_dmaQueue.push(index);
-      index = (index+1)&bufferMask;
-    }
+  if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
+               "Reducer stream begin capture failed")) {
+    return 0;
   }
 
-  m_dmaQueue.shutdown();
+  // Handle messages from TebReceiver to process an event
+  _receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_tails_d[instance], m_terminate_d);
 
-  logging::debug("Gpu::Reducer exiting");
+  // Perform the reduction algorithm
+  unsigned extent;
+  m_algo->recordGraph(stream, *m_heads_d[instance], calibBuffers, calibBufsCnt, dataBuffers, dataBufsCnt, &extent);
+
+  // Re-launch! Additional behavior can be put in graphLoop as needed.
+  _graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
+                                  m_tails_d[instance],
+                                  dataBuffers,
+                                  dataBufsCnt,
+                                  extent,
+                                  m_terminate_d);
+
+  // Signal to the host that the worker is done
+  //chkError(cudaEventRecord(event, stream));
+
+  cudaGraph_t graph;
+  if (chkError(cudaStreamEndCapture(stream, &graph),
+               "Reducer stream end capture failed")) {
+    return 0;
+  }
+
+  return graph;
+}
+
+void Reducer::startup()
+{
+  // Launch the Reducer graphs
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
+  }
+}
+
+void Reducer::start(unsigned worker, unsigned index)
+{
+  auto  instance  = worker % m_para.nworkers;
+  auto  head      = m_heads_h[instance];
+  auto  stream    = m_streams[instance];
+  auto& graphExec = m_graphExecs[instance];
+
+  // Wait for the graph to finish executing before updating head
+  //unsigned h, t;
+  //do {
+  //  chkError(cudaMemcpyAsync((void*)&h, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
+  //  chkError(cudaMemcpyAsync((void*)&t, tail, sizeof(*tail), cudaMemcpyDeviceToHost, stream));
+  //  chkError(cudaStreamSynchronize(stream));
+  //  //printf("*** Reducer::start[%u]: tail %d, head %d\n", instance, t, h);
+  //} while (h != t);                     // Wait if the kernel is still processing
+  //chkError(cudaMemcpyAsync((void*)head, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
+  *head = index;
+
+  m_t0[instance] = fast_monotonic_clock::now(CLOCK_MONOTONIC);
+
+  // Launch the Reducer graph
+  chkFatal(cudaGraphLaunch(graphExec, stream));
+}
+
+void Reducer::receive(unsigned worker, unsigned index)
+{
+  auto  instance = worker % m_para.nworkers;
+  auto& stream   = m_streams[instance];
+
+  // Wait for the graph to complete
+  chkError(cudaStreamSynchronize(stream));
+
+  auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+  m_reduce_us = std::chrono::duration_cast<us_t>(now - m_t0[instance]).count();
 }

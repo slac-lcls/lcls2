@@ -16,8 +16,9 @@ class Test:
         return subprocess.Popen(cmd_args)
 
     def launch_client(self,pid):
-        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py'  
+        shmem_file = os.path.dirname(os.path.realpath(__file__))+'/shmem_client.py' 
         cmd_args = ['python',shmem_file,pid]
+
         return subprocess.Popen(cmd_args)
                 
     @staticmethod
@@ -32,6 +33,10 @@ class Test:
         cli = []
         pid = str(os.getpid())
         tmp_file = self.setup_input_files(tmp_path)
+
+        # Add a timeout to break infinite reads in reader thread
+        # Needed since introducing the threaded dgrammanager for shared memory
+        os.environ["PSANA_TESTS_SHMEM_TMO"] = "10" # In seconds
 
         # cpo and mona deided that for the test, we will use ephemeral port for 
         # the server and clients communication. This is not bulletproof because

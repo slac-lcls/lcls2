@@ -116,8 +116,8 @@ def _check_gainmode(**kwa):
         lst_gainmodes = DIC_GAIN_MODE.keys() # ['DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2']
         _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype)
     elif dettype == 'epix10ka':
-        from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
-        lst_gainmodes = GAIN_MODES_IN # ['FH','FM','FL','AHL-H','AML-M']
+        from psana.detector.UtilsEpix10ka import GAIN_MODES #, GAIN_MODES_IN
+        lst_gainmodes = GAIN_MODES # ['FH','FM','FL','AHL-H','AML-M','AHL_L','AML_L']
         _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype)
 #    return gmode
 

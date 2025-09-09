@@ -9,12 +9,16 @@ namespace Drp {
 class LcReducer : public ReducerAlgo
 {
 public:
-  LcReducer(Parameters* para, MemPoolGpu* pool) {}
+  LcReducer(const Parameters& para, MemPoolGpu& pool) {}
   virtual ~LcReducer() {}
 
-  virtual void recordGraph(cudaStream_t&             stream,
-                           float* const __restrict__ calibBuffer,
-                           float* const __restrict__ dataBuffer) override;
+  virtual void recordGraph(cudaStream_t&      stream,
+                           const unsigned&    index,
+                           float const* const calibBuffers,
+                           const size_t       calibBufsCnt,
+                           uint8_t    * const dataBuffers,
+                           const size_t       dataBufsCnt,
+                           unsigned*          extent) override;
 };
 
   } // Gpu

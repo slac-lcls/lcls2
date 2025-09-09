@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 from psdaq.seq.seq import preproc
 from psdaq.seq.globals import *
+from psdaq.configdb.tsdef import *
 
 f=None
 verbose=False
@@ -181,10 +182,10 @@ def main():
             print(f'{i}: {ins}')
         config['instrset'] = preproc(config['instrset'])
 
-        seq = SeqUser(start=int(args.time[0]*TPGSEC),stop=int(args.time[1]*TPGSEC),acmode=False)
+        seq = SeqUser(start=int(args.time[0]*FixedFidRate),stop=int(args.time[1]*FixedFidRate),acmode=False)
         seq.execute(config['title'],config['instrset'],config['descset'])
 
-        ydata = np.array(seq.ydata)+int(engine)*4+272
+        ydata = np.array(seq.ydata)+int(engine)*4+256
         plot.add(fname, seq.xdata, ydata)
 
     MainWindow = QtWidgets.QMainWindow()

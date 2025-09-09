@@ -13,7 +13,7 @@
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
 #include "psalg/utils/SysLog.hh"
-#include "xtcdata/xtc/Smd.hh"
+#include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/epicstools/PVBase.hh"
 
@@ -24,6 +24,7 @@
 #endif
 
 using namespace XtcData;
+using namespace Pds::Eb;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
@@ -92,7 +93,8 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
     m_buffer      = nullptr;
     int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
     if (ret) {
-        logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
+        logging::critical("Failed to create pebble of size %zu for %u transitions of %zu B and %u L1Accepts of %zu B: %s\n",
+                          m_size, nTrBuffers, trBufSize, nL1Buffers, l1BufSize, strerror(ret));
         throw "Pebble creation failed";
     }
     m_trBuffer = m_buffer + l1Sz;
@@ -161,8 +163,8 @@ void MemPool::_initialize(const Parameters& para)
     }
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
-    logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
-    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, pebble.trBufSize());
+    logging::info("nL1Buffers %u,  pebble buffer size %zu B", m_nbuffers, pebble.bufferSize());
+    logging::info("nTrBuffers %u,  transition buffer size %zu B", nTrBuffers, pebble.trBufSize());
 
     pgpEvents.resize(m_nDmaBuffers);
     transitionDgrams.resize(m_nbuffers);
@@ -185,33 +187,6 @@ unsigned MemPool::allocateDma()
 
 void MemPool::freeDma(unsigned count, uint32_t* indices)
 {
-    // Check that the sentinel value at the end of the buffer is still there
-    for (unsigned i = 0; i < count; ++i) {
-        auto idx = indices[i];
-        const auto buffer = (uint8_t*)dmaBuffers[idx];
-        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
-        if (word[0] != 0xabababab) [[unlikely]] {
-            if (!(m_dmaOverrun & 0x01)) {
-                const auto th = (const Pds::TimingHeader*)buffer;
-                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
-                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
-                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
-                m_dmaOverrun |= 0x01;
-            }
-        }
-        // The driver allocates the DMA pool, so we have no control over what comes after it
-        // Unclear how to recognize overruns, so commenting this out for now
-        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
-        //    if (!(m_dmaOverrun & 0x02)) {
-        //        const auto th = (const Pds::TimingHeader*)buffer;
-        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
-        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
-        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
-        //        m_dmaOverrun |= 0x02;
-        //    }
-        //}
-    }
-
     _freeDma(count, indices);
 
     m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
@@ -387,6 +362,33 @@ MemPoolCpu::~MemPoolCpu()
 
 void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
 {
+    // Check that the sentinel value at the end of the buffer is still there
+    for (unsigned i = 0; i < count; ++i) {
+        auto idx = indices[i];
+        const auto buffer = (uint8_t*)dmaBuffers[idx];
+        const auto word = (uint32_t*)(buffer + m_dmaSize - sizeof(uint32_t));
+        if (word[0] != 0xabababab) [[unlikely]] {
+            if (!(m_dmaOverrun & 0x01)) {
+                const auto th = (const Pds::TimingHeader*)buffer;
+                logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] overrun: %08x vs %08x",
+                               th->pulseId(), th->time.seconds(), th->time.nanoseconds(),
+                               TransitionId::name(th->service()), idx, word[0], 0xabababab);
+                m_dmaOverrun |= 0x01;
+            }
+        }
+        // The driver allocates the DMA pool, so we have no control over what comes after it
+        // Unclear how to recognize overruns, so commenting this out for now
+        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
+        //    if (!(m_dmaOverrun & 0x02)) {
+        //        const auto th = (const Pds::TimingHeader*)buffer;
+        //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
+        //                       th.pulseId(), th->time.seconds(), th->time.nanoseconds(),
+        //                       TransitionId::name(th->service()), idx, word[0], word[1], 0xabababab);
+        //        m_dmaOverrun |= 0x02;
+        //    }
+        //}
+    }
+
     dmaRetIndexes(m_fd, count, indices);
 }
 
@@ -686,7 +688,7 @@ void PgpReader::freeDma(PGPEvent* event)
     }
 }
 
-std::string Drp::FileParameters::runName()
+std::string Drp::FileParameters::runName() const
 {
     std::ostringstream ss;
     ss << m_experimentName <<
@@ -696,53 +698,44 @@ std::string Drp::FileParameters::runName()
     return ss.str();
 }
 
-EbReceiver::EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-                       MemPool& pool, ZmqSocket& inprocSend, DrpBase& drp) :
-  EbCtrbInBase(tPrms),
-  m_pool(pool),
+TebReceiverBase::TebReceiverBase(const Parameters& para, DrpBase& drp) :
+  EbCtrbInBase(drp.tebPrms()),
+  m_pool(drp.pool),
   m_drp(drp),
   m_tsId(-1u),
-  m_fileWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize), para.kwargs["directIO"] != "no"), // Default to "yes"
-  m_smdWriter(std::max(pool.pebble.bufferSize(), para.maxTrSize)),
   m_writing(false),
-  m_inprocSend(inprocSend),
+  m_inprocSend(drp.inprocSend()),
   m_offset(0),
   m_chunkOffset(0),
-  m_chunkRequest(false),
   m_chunkPending(false),
+  m_chunkRequest(false),
   m_configureBuffer(para.maxTrSize),
-  m_damage(0),
   m_evtSize(0),
   m_latPid(0),
   m_latency(0),
+  m_damage(0),
   m_para(para)
 {
 }
 
-int EbReceiver::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
+int TebReceiverBase::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
     std::map<std::string, std::string> labels
         {{"instrument", m_para.instrument},
          {"partition", std::to_string(m_para.partition)},
          {"detname", m_para.detName},
          {"alias", m_para.alias}};
+    m_dmgType = exporter->histogram("DRP_DamageType", labels, 16);
     exporter->add("DRP_Damage"    ,   labels, Pds::MetricType::Gauge,   [&](){ return m_damage; });
     exporter->add("DRP_RecordSize",   labels, Pds::MetricType::Counter, [&](){ return m_offset; });
-    exporter->add("DRP_RecordDepth",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.depth(); });
-    exporter->constant("DRP_RecordDepthMax", labels, m_fileWriter.size());
-    m_dmgType = exporter->histogram("DRP_DamageType", labels, 16);
-    exporter->add("DRP_smdWriting",   labels, Pds::MetricType::Gauge,   [&](){ return m_smdWriter.writing(); });
-    exporter->add("DRP_fileWriting",  labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.writing(); });
-    exporter->add("DRP_bufFreeBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.freeBlocked(); });
-    exporter->add("DRP_bufPendBlk",   labels, Pds::MetricType::Gauge,   [&](){ return m_fileWriter.pendBlocked(); });
     exporter->add("DRP_evtSize",      labels, Pds::MetricType::Gauge,   [&](){ return m_evtSize; });
     exporter->add("DRP_evtLatency",   labels, Pds::MetricType::Gauge,   [&](){ return m_latency; });
     exporter->add("DRP_transitionId", labels, Pds::MetricType::Gauge,   [&](){ return m_lastTid; });
 
-    return 0;
+    return setupMetrics(exporter, labels);
 }
 
-int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
+int TebReceiverBase::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
 {
     m_lastTid = TransitionId::Unconfigure;
 
@@ -751,7 +744,7 @@ int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
       if (rc)  return rc;
     }
 
-    // On the timing system DRP, EbReceiver needs to know its node ID
+    // On the timing system DRP, TebReceiver needs to know its node ID
     if (m_para.detType == "ts")  m_tsId = m_drp.nodeId();
 
     int rc = this->EbCtrbInBase::connect(exporter);
@@ -760,36 +753,37 @@ int EbReceiver::connect(const std::shared_ptr<Pds::MetricExporter> exporter)
     return 0;
 }
 
-void EbReceiver::unconfigure()
+void TebReceiverBase::unconfigure()
 {
     closeFiles();                       // Close files when BeginRun has failed
     this->EbCtrbInBase::unconfigure();
 }
 
-std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId)
+std::string TebReceiverBase::openFiles(const RunInfo& runInfo)
 {
-    std::string retVal = std::string{};     // return empty string on success
+    std::string retVal{};               // return empty string on success
     if (runInfo.runNumber) {
         m_chunkOffset = m_offset = 0;
         std::ostringstream ss;
         ss << runInfo.experimentName <<
               "-r" << std::setfill('0') << std::setw(4) << runInfo.runNumber <<
-              "-s" << std::setw(3) << nodeId <<
+              "-s" << std::setw(3) << m_drp.nodeId() <<
               "-c000";
         std::string runName = ss.str();
         // data
-        std::string exptDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName};
+        std::string exptDir{m_para.outputDir + "/" + m_para.instrument + "/" + runInfo.experimentName};
         local_mkdir(exptDir.c_str());
-        std::string dataDir = {exptDir + "/xtc"};
+        std::string dataDir{exptDir + "/xtc"};
         local_mkdir(dataDir.c_str());
-        std::string path = {"/" + para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
-        std::string absolute_path = {para.outputDir + path};
+        std::string path{"/" + m_para.instrument + "/" + runInfo.experimentName + "/xtc/" + runName + ".xtc2"};
+        std::string absolute_path{m_para.outputDir + path};
+        std::string hostname{_getHostName()};
         // cpo suggests leaving this print statement in because
         // filesystems can hang in ways we can't timeout/detect
         // and this print statement may speed up debugging significantly.
         std::cout << "Opening file " << absolute_path << std::endl;
         logging::info("Opening file '%s'", absolute_path.c_str());
-        if (m_fileWriter.open(absolute_path) == 0) {
+        if (fileWriter().open(absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
             json msg = createFileReportMsg(path, absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
@@ -797,12 +791,12 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
             retVal = {"Failed to open file '" + absolute_path + "'"};
         }
         // smalldata
-        std::string smalldataDir = {para.outputDir + "/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata"};
+        std::string smalldataDir{m_para.outputDir + "/" + m_para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata"};
         local_mkdir(smalldataDir.c_str());
-        std::string smalldata_path = {"/" + para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata/" + runName + ".smd.xtc2"};
-        std::string smalldata_absolute_path = {para.outputDir + smalldata_path};
+        std::string smalldata_path{"/" + m_para.instrument + "/" + runInfo.experimentName + "/xtc/smalldata/" + runName + ".smd.xtc2"};
+        std::string smalldata_absolute_path{m_para.outputDir + smalldata_path};
         logging::info("Opening file '%s'", smalldata_absolute_path.c_str());
-        if (m_smdWriter.open(smalldata_absolute_path) == 0) {
+        if (smdWriter().open(smalldata_absolute_path) == 0) {
             timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
             json msg = createFileReportMsg(smalldata_path, smalldata_absolute_path, tt, tt, runInfo.runNumber, hostname);
             m_inprocSend.send(msg.dump());
@@ -813,21 +807,21 @@ std::string EbReceiver::openFiles(const Parameters& para, const RunInfo& runInfo
             m_writing = true;
             // cache file parameters for use by reopenFiles() (data file chunking)
             logging::debug("initializing m_fileParameters...");
-            new((void *)&m_fileParameters) FileParameters(para, runInfo, hostname, nodeId);
+            m_fileParameters = std::make_unique<FileParameters>(m_para, runInfo, hostname, m_drp.nodeId());
         }
     }
     return retVal;
 }
 
 // return true if incremented chunkId
-bool EbReceiver::advanceChunkId()
+bool TebReceiverBase::advanceChunkId()
 {
     bool status = false;
 //  m_chunkPending_sem.take();
     if (!m_chunkPending) {
-        logging::debug("%s: m_fileParameters.advanceChunkId()", __PRETTY_FUNCTION__);
-        m_fileParameters.advanceChunkId();
-        logging::debug("%s: m_chunkPending = true  chunkId = %u", __PRETTY_FUNCTION__, m_fileParameters.chunkId());
+        logging::debug("%s: m_fileParameters->advanceChunkId()", __PRETTY_FUNCTION__);
+        m_fileParameters->advanceChunkId();
+        logging::debug("%s: m_chunkPending = true  chunkId = %u", __PRETTY_FUNCTION__, m_fileParameters->chunkId());
         m_chunkPending = true;
         status = true;
     }
@@ -835,41 +829,41 @@ bool EbReceiver::advanceChunkId()
     return status;
 }
 
-std::string EbReceiver::reopenFiles()
+std::string TebReceiverBase::reopenFiles()
 {
     logging::debug("entered %s", __PRETTY_FUNCTION__);
     if (m_writing == false) {
         logging::error("%s: m_writing is false", __PRETTY_FUNCTION__);
         return std::string("reopenFiles: m_writing is false");
     }
-    std::string outputDir = m_fileParameters.outputDir();
-    std::string instrument = m_fileParameters.instrument();
-    std::string experimentName = m_fileParameters.experimentName();
-    unsigned runNumber = m_fileParameters.runNumber();
-    std::string hostname = m_fileParameters.hostname();
+    const std::string& outputDir = m_fileParameters->outputDir();
+    const std::string& instrument = m_fileParameters->instrument();
+    const std::string& experimentName = m_fileParameters->experimentName();
+    unsigned           runNumber = m_fileParameters->runNumber();
+    const std::string& hostname = m_fileParameters->hostname();
 
-    std::string retVal = std::string{};     // return empty string on success
+    std::string retVal{};               // return empty string on success
     m_chunkRequest = false;
     m_chunkOffset = m_offset;
 
     // close data file (for old chunk)
-    logging::debug("%s: calling m_fileWriter.close()...", __PRETTY_FUNCTION__);
-    m_fileWriter.close();
+    logging::debug("%s: calling fileWriter.close()...", __PRETTY_FUNCTION__);
+    fileWriter().close();
 
     // open data file (for new chunk)
-    std::string runName = m_fileParameters.runName();
-    std::string exptDir = {outputDir + "/" + instrument + "/" + experimentName};
+    const std::string& runName = m_fileParameters->runName();
+    std::string exptDir{outputDir + "/" + instrument + "/" + experimentName};
     local_mkdir(exptDir.c_str());
-    std::string dataDir = {exptDir + "/xtc"};
+    std::string dataDir{exptDir + "/xtc"};
     local_mkdir(dataDir.c_str());
-    std::string path = {"/" + instrument + "/" + experimentName + "/xtc/" + runName + ".xtc2"};
-    std::string absolute_path = {outputDir + path};
+    std::string path{"/" + instrument + "/" + experimentName + "/xtc/" + runName + ".xtc2"};
+    std::string absolute_path{outputDir + path};
     // cpo suggests leaving this print statement in because
     // filesystems can hang in ways we can't timeout/detect
     // and this print statement may speed up debugging significantly.
     std::cout << "Opening file " << absolute_path << std::endl;
     logging::info("%s: Opening file '%s'", __PRETTY_FUNCTION__, absolute_path.c_str());
-    if (m_fileWriter.open(absolute_path) == 0) {
+    if (fileWriter().open(absolute_path) == 0) {
         timespec tt; clock_gettime(CLOCK_REALTIME,&tt);
         json msg = createFileReportMsg(path, absolute_path, tt, tt, runNumber, hostname);
         m_inprocSend.send(msg.dump());
@@ -882,35 +876,25 @@ std::string EbReceiver::reopenFiles()
     return retVal;
 }
 
-std::string EbReceiver::closeFiles()
+std::string TebReceiverBase::closeFiles()
 {
     logging::debug("%s: m_writing is %s", __PRETTY_FUNCTION__, m_writing ? "true" : "false");
     if (m_writing) {
         m_writing = false;
-        logging::debug("calling m_smdWriter.close()...");
-        m_smdWriter.close();
-        logging::debug("calling m_fileWriter.close()...");
-        m_fileWriter.close();
+        logging::debug("calling smdWriter.close()...");
+        smdWriter().close();
+        logging::debug("calling fileWriter.close()...");
+        fileWriter().close();
     }
     return std::string{};
 }
 
-uint64_t EbReceiver::chunkSize()
-{
-    return m_offset - m_chunkOffset;
-}
-
-bool EbReceiver::chunkPending()
-{
-    return m_chunkPending;
-}
-
-void EbReceiver::chunkRequestSet()
+void TebReceiverBase::chunkRequestSet()
 {
     m_chunkRequest = true;
 }
 
-void EbReceiver::chunkReset()
+void TebReceiverBase::chunkReset()
 {
     // clean up the state left behind by a previous run
     m_chunkOffset = 0;
@@ -919,12 +903,7 @@ void EbReceiver::chunkReset()
     m_chunkPending = false;
 }
 
-bool EbReceiver::writing()
-{
-    return m_writing;
-}
-
-void EbReceiver::resetCounters(bool all = false)
+void TebReceiverBase::resetCounters(bool all = false)
 {
     EbCtrbInBase::resetCounters();
 
@@ -934,26 +913,11 @@ void EbReceiver::resetCounters(bool all = false)
     m_latency = 0;
 }
 
-void EbReceiver::_writeDgram(Dgram* dgram)
-{
-    size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-    m_fileWriter.writeEvent(dgram, size, dgram->time);
-
-    // small data writing
-    Smd smd;
-    const void* bufEnd = m_smdWriter.buffer + sizeof(m_smdWriter.buffer);
-    NamesId namesId(dgram->xtc.src.value(), NamesIndex::OFFSETINFO);
-    Dgram* smdDgram = smd.generate(dgram, m_smdWriter.buffer, bufEnd, chunkSize(), size,
-                                   m_smdWriter.namesLookup, namesId);
-    m_smdWriter.writeEvent(smdDgram, sizeof(Dgram) + smdDgram->xtc.sizeofPayload(), smdDgram->time);
-    m_offset += size;
-}
-
-void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
+void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 {
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
-        logging::critical("%sEbReceiver: jumping index %u  previous index %u  diff %d%s",
+        logging::critical("%sTebReceiver: jumping index %u  previous index %u  diff %d%s",
                           RED_ON, index, m_lastIndex, index - m_lastIndex, RED_OFF);
         error = true;
     }
@@ -1020,6 +984,7 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
                 // Cache Configure Dgram for writing out after files are opened
                 Dgram* configDgram = dgram;
                 size_t size = sizeof(*configDgram) + configDgram->xtc.sizeofPayload();
+                m_configureIndex = index;
                 memcpy(m_configureBuffer.data(), configDgram, size);
             }
             if (transitionId == TransitionId::BeginRun)
@@ -1028,12 +993,12 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
 
-            logging::info("EbReceiver saw %s @ %u.%09u (%014lx)",
+            logging::info("TebRcvr    saw %s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
         else {
-            logging::debug("EbReceiver saw %s @ %u.%09u (%014lx)",
+            logging::debug("TebRcvr    saw %s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
@@ -1056,101 +1021,36 @@ void EbReceiver::process(const Pds::Eb::ResultDgram& result, unsigned index)
         }
     }
 
-    // To write/monitor event, require the commmon readout group to have triggered
-    // Events for which the common RoG didn't trigger are counted as NoComRoG errors
-    if (dgram->readoutGroups() & (1 << m_para.partition)) {
-        if (m_writing) {                    // Won't ever be true for Configure
-            // write event to file if it passes event builder or if it's a transition
-            if (result.persist() || result.prescale()) {
-                _writeDgram(dgram);
-            }
-            else if (transitionId != TransitionId::L1Accept) {
-                if (transitionId == TransitionId::BeginRun) {
-                    m_offset = 0; // reset offset when writing out a new file
-                    _writeDgram(reinterpret_cast<Dgram*>(m_configureBuffer.data()));
-                }
-                _writeDgram(dgram);
-                if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
-                    logging::debug("%s calling reopenFiles()", __PRETTY_FUNCTION__);
-                    reopenFiles();
-                } else if (transitionId == TransitionId::EndRun) {
-                    logging::debug("%s calling closeFiles()", __PRETTY_FUNCTION__);
-                    closeFiles();
-                }
-            }
-        }
-
-        m_evtSize = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-
-        // Measure latency before sending dgram for monitoring
-        if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-            m_latency = Pds::Eb::latency<us_t>(dgram->time);
-            m_latPid = dgram->pulseId();
-        }
-
-        auto& mon = m_drp.mebContributor();
-        if (mon.enabled()) {
-            // L1Accept
-            if (result.isEvent()) {
-                if (result.monitor()) {
-                    mon.post(dgram, result.monBufNo());
-                }
-            }
-            // Other Transition
-            else {
-                mon.post(dgram);
-            }
-        }
-    }
-
-#if 0  // For "Pause/Resume" deadtime test:
-    // For this test, SlowUpdates either need to obey deadtime or be turned off.
-    // Also, the TEB and MEB must not time out events.
-    if (dgram->xtc.src.value() == 0) {  // Do this on only one DRP
-        static auto _t0(tp);
-        static bool _enabled(false);
-        if (transitionId == TransitionId::Enable) {
-            _t0 = tp;
-            _enabled = true;
-        }
-        if (_enabled && (tp - _t0 > std::chrono::seconds(1 * 60))) { // Delay a bit before sleeping
-            printf("*** EbReceiver: Inducing deadtime by sleeping for 30s at PID %014lx, ts %9u.%09u\n",
-                   pulseId, dgram->time.seconds(), dgram->time.nanoseconds());
-            std::this_thread::sleep_for(std::chrono::seconds(30));
-            _t0 = tp;
-            _enabled = false;
-            printf("*** EbReceiver: Continuing after sleeping for 30s\n");
-        }
-    }
-#endif
-
-    // Free the transition datagram buffer
-    if (!dgram->isEvent()) {
-        m_pool.freeTr(dgram);
-    }
-
-    // Free the pebble datagram buffer
-    m_pool.freePebble();
+    // Complete processing and dispose of the event
+    complete(index, result);
 }
 
 
 class PV : public Pds_Epics::PVBase
 {
 public:
-  PV(const char* pvName) : PVBase(pvName) {}
-  virtual ~PV() {}
+    PV(const char* pvName) : PVBase(pvName), m_ready(getComplete(5)) {} // seconds
+    virtual ~PV() {}
 public:
-  void updated() {}
-  bool ready()   { return getComplete(); }
+    void updated() {}
+    bool ready()   { return m_ready; }
+private:
+    bool m_ready;
 };
 
-static bool _pvVectElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
+static bool _pvGetVecElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
 {
-  if (!pv || !pv->ready())  return false;
+    if (!pv || !pv->ready()) {
+        if (pv) {
+            logging::critical("PV %s didn't connect\n", pv->name().c_str());
+            abort();
+        }
+        return false;
+    }
 
-  value = pv->getVectorElemAt<double>(element);
+    value = pv->getVectorElemAt<double>(element);
 
-  return true;
+    return true;
 }
 
 DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& context) :
@@ -1176,7 +1076,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<Pds::Eb::TebContributor>(m_tPrms, pool.nbuffers());
+    m_tebContributor = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -1187,9 +1087,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
-    m_mebContributor = std::make_unique<Pds::Eb::MebContributor>(m_mPrms);
-
-    m_ebRecv = std::make_unique<EbReceiver>(m_para, m_tPrms, pool, m_inprocSend, *this);
+    m_mebContributor = std::make_unique<MebContributor>(m_mPrms);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1198,7 +1096,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     } else {
         // Induce the automounter to mount in case user enables recording
         struct stat statBuf;
-        std::string statPth = para.outputDir + "/" + para.instrument;
+        std::string statPth{para.outputDir + "/" + para.instrument};
         logging::info("Output dir: %s", statPth.c_str());
         if (::stat(statPth.c_str(), &statBuf) < 0) {
             logging::error("stat(%s) error: %m", statPth.c_str());
@@ -1230,7 +1128,7 @@ void DrpBase::shutdown()
 
     m_tebContributor->shutdown();
     m_mebContributor->shutdown();
-    m_ebRecv->shutdown();
+    m_tebReceiver->shutdown();
 }
 
 json DrpBase::connectionInfo(const std::string& ip)
@@ -1238,9 +1136,9 @@ json DrpBase::connectionInfo(const std::string& ip)
     m_tPrms.ifAddr = ip;
     m_tPrms.port.clear();               // Use an ephemeral port
 
-    int rc = m_ebRecv->startConnection(m_tPrms.port);
+    int rc = m_tebReceiver->startConnection(m_tPrms.port);
     if (rc)  {
-        logging::critical("Error starting EbReceiver connection");
+        logging::critical("Error starting TebReceiver connection");
         abort();
     }
 
@@ -1278,7 +1176,7 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
     exporter->constant("drp_trbufs_in_use_max", labels, pool.pebble.nTrBuffers());
 
     exporter->addFloat("drp_deadtime", labels,
-                       [&](double& value){return _pvVectElem(m_deadtimePv, m_xpmPort, value);});
+                       [&](double& value){return _pvGetVecElem(m_deadtimePv, m_xpmPort, value);});
 
     return 0;
 }
@@ -1293,6 +1191,12 @@ std::string DrpBase::connect(const json& msg, size_t id)
     m_connectMsg = msg;
     m_collectionId = id;
 
+    // Parse the connection parameters before they're used by the following stuff
+    int rc = parseConnectionParams(msg["body"], id);
+    if (rc) {
+        return std::string{"Connection parameters error - see log"};
+    }
+
     // If the exporter already exists, replace it so that previous metrics are deleted
     if (m_exposer) {
         m_exporter = std::make_shared<Pds::MetricExporter>();
@@ -1303,11 +1207,6 @@ std::string DrpBase::connect(const json& msg, size_t id)
         if (setupMetrics(m_exporter)) {
             return std::string{"Failed to set up metrics"};
         }
-    }
-
-    int rc = parseConnectionParams(msg["body"], id);
-    if (rc) {
-        return std::string{"Connection parameters error - see log"};
     }
 
     rc = m_tebContributor->connect(m_exporter);
@@ -1321,9 +1220,9 @@ std::string DrpBase::connect(const json& msg, size_t id)
         }
     }
 
-    rc = m_ebRecv->connect(m_exporter);
+    rc = m_tebReceiver->connect(m_exporter);
     if (rc) {
-        return std::string{"EbReceiver connect failed"};
+        return std::string{"TebReceiver connect failed"};
     }
 
     return std::string{};
@@ -1347,20 +1246,20 @@ std::string DrpBase::configure(const json& msg)
         }
     }
 
-    rc = m_ebRecv->EbCtrbInBase::configure(m_numTebBuffers);
+    rc = m_tebReceiver->EbCtrbInBase::configure(m_numTebBuffers);
     if (rc) {
-        return std::string{"EbReceiver configure failed"};
+        return std::string{"TebReceiver configure failed"};
     }
 
     printParams();
 
     // start eb receiver thread
-    m_tebContributor->startup(*m_ebRecv);
+    m_tebContributor->startup(*m_tebReceiver);
 
     // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
-    m_ebRecv->resetCounters(true);
+    m_tebReceiver->resetCounters(true);
     return std::string{};
 }
 
@@ -1377,6 +1276,23 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
             run_number = phase1Info["run_info"]["run_number"];
         }
     }
+    // Check for monitoring only detectors - only check if run_number != 0 (i.e. recording)
+    // If recording, set run_number back to 0 if a "monitoring only" detector
+    // Setting back to run_number = 0 convinces this DRP it is not recording.
+    if (run_number) {
+        if (phase1Info.find("monitor_info") != phase1Info.end()) {
+            std::string unique_id = m_para.detName + "_" + std::to_string(m_para.detSegment);
+            for (auto it = phase1Info["monitor_info"].begin(); it != phase1Info["monitor_info"].end(); ++it) {
+                if (it.key() == unique_id) {
+                    if (it.value() == 1) {
+                        logging::info("Detector %s selected for monitor only. No data will be recorded.",
+                                      unique_id.c_str());
+                        run_number = 0;
+                    }
+                }
+            }
+        }
+    }
     runInfo.experimentName = experiment_name;
     runInfo.runNumber = run_number;
 
@@ -1389,15 +1305,15 @@ std::string DrpBase::beginrun(const json& phase1Info, RunInfo& runInfo)
         if (m_para.outputDir.empty()) {
             msg = "Cannot record due to missing output directory";
         } else {
-            msg = m_ebRecv->openFiles(m_para, runInfo, _getHostName(), m_nodeId);
+            msg = m_tebReceiver->openFiles(runInfo);
         }
     }
 
     // Same time as the TEBs and MEBs
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
-    m_ebRecv->resetCounters();
-    m_ebRecv->chunkReset();
+    m_tebReceiver->resetCounters();
+    m_tebReceiver->chunkReset();
     return msg;
 }
 
@@ -1450,20 +1366,20 @@ std::string DrpBase::endrun(const json& phase1Info)
 
 std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo)
 {
-    std::string retval = std::string{};
+    std::string retval{};
 
-    logging::debug("%s: writing() is %s", __PRETTY_FUNCTION__, m_ebRecv->writing() ? "true" : "false");
+    logging::debug("%s: writing() is %s", __PRETTY_FUNCTION__, m_tebReceiver->writing() ? "true" : "false");
     chunkRequest = false;
-    if (m_ebRecv->writing()) {
-        logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_ebRecv->chunkSize());
-        if (m_ebRecv->chunkSize() > EbReceiver::DefaultChunkThresh / 2ull) {
-            if (m_ebRecv->advanceChunkId()) {
+    if (m_tebReceiver->writing()) {
+        logging::debug("%s: chunkSize() = %lu", __PRETTY_FUNCTION__, m_tebReceiver->chunkSize());
+        if (m_tebReceiver->chunkSize() > TebReceiverBase::DefaultChunkThresh / 2ull) {
+            if (m_tebReceiver->advanceChunkId()) {
                 logging::debug("%s: advanceChunkId() returned true", __PRETTY_FUNCTION__);
                 // request new chunk after this Enable dgram is written
                 chunkRequest = true;
-                m_ebRecv->chunkRequestSet();
-                chunkInfo.filename = {m_ebRecv->fileParameters()->runName() + ".xtc2"};
-                chunkInfo.chunkId = m_ebRecv->fileParameters()->chunkId();
+                m_tebReceiver->chunkRequestSet();
+                chunkInfo.filename = m_tebReceiver->fileParameters().runName() + ".xtc2";
+                chunkInfo.chunkId = m_tebReceiver->fileParameters().chunkId();
                 logging::debug("%s: chunkInfo.filename = %s", __PRETTY_FUNCTION__, chunkInfo.filename.c_str());
                 logging::debug("%s: chunkInfo.chunkId  = %u", __PRETTY_FUNCTION__, chunkInfo.chunkId);
             }
@@ -1478,7 +1394,7 @@ void DrpBase::unconfigure()
     if (m_mPrms.addrs.size() != 0) {
         m_mebContributor->unconfigure();
     }
-    m_ebRecv->unconfigure();
+    m_tebReceiver->unconfigure();
 }
 
 void DrpBase::disconnect()
@@ -1491,7 +1407,7 @@ void DrpBase::disconnect()
     if (m_mPrms.addrs.size() != 0) {
         m_mebContributor->disconnect();
     }
-    m_ebRecv->disconnect();
+    m_tebReceiver->disconnect();
 
     if (m_exporter) {
         m_exporter.reset();
@@ -1538,7 +1454,14 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         return -1;
     }
     std::string soname(top["soname"].GetString());
-    if (m_det.gpuDetector())  soname += "_gpu";
+    if (m_det.gpuDetector()) {
+        auto found = soname.rfind('.');
+        if (found == std::string::npos) {
+            logging::error("Trigger library name is missing its extension: %s", soname.c_str());
+            return -1;
+        }
+        soname = soname.substr(0, found) + "_gpu" + soname.substr(found, soname.size()-found);
+    }
 
     //  Look for the detector-specific producer first
     std::string symbol("create_producer");

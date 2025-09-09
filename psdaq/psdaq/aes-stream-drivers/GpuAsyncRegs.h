@@ -53,9 +53,9 @@ static inline void writeGpuAsyncReg(volatile void* baseptr, const struct GpuAsyn
 
 #define GPU_ASYNC_DEF_REG(_name, _off, _bitOff, _bitMask)           \
 static const struct GpuAsyncRegister GpuAsyncReg_ ## _name = {      \
-    .offset = _off,                                                 \
-    .bitOffset = _bitOff,                                           \
-    .bitMask = _bitMask                                             \
+    .offset = (_off),                                               \
+    .bitOffset = (_bitOff),                                         \
+    .bitMask = (_bitMask)                                           \
 };
 
 GPU_ASYNC_DEF_REG(ArCache,      0x4, 0,  0xFF);
@@ -82,7 +82,9 @@ GPU_ASYNC_DEF_REG(DynamicRouteDests0, 0x2C, 8,  0xFF00);
 GPU_ASYNC_DEF_REG(DynamicRouteMasks1, 0x2C, 16, 0xFF0000);
 GPU_ASYNC_DEF_REG(DynamicRouteDests1, 0x2C, 24, 0xFF000000);
 
-GPU_ASYNC_DEF_REG(Version, 0x30, 0, 0x1);
+GPU_ASYNC_DEF_REG(Version, 0x30, 0, 0xFF);
+
+GPU_ASYNC_DEF_REG(AxiWriteTimeoutCnt, 0x34, 0, 0xFFFFFFFF);
 
 // The following register defintiions are firmware specific. GpuAsyncCore can have up to 16 buffers, but defaults to 4.
 // You must check the MaxBuffers register for the true value
@@ -91,9 +93,9 @@ GPU_ASYNC_DEF_REG(Version, 0x30, 0, 0x1);
 
 #define GPU_ASYNC_REG_WRITE_BASE 256
 
-#define GPU_ASYNC_REG_WRITE_ADDR_L_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + _i * 16 + 0)
-#define GPU_ASYNC_REG_WRITE_ADDR_H_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + _i * 16 + 4)
-#define GPU_ASYNC_REG_WRITE_SIZE_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + _i * 16 + 8)
+#define GPU_ASYNC_REG_WRITE_ADDR_L_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + (_i) * 16 + 0)
+#define GPU_ASYNC_REG_WRITE_ADDR_H_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + (_i) * 16 + 4)
+#define GPU_ASYNC_REG_WRITE_SIZE_OFFSET(_i) (GPU_ASYNC_REG_WRITE_BASE + (_i) * 16 + 8)
 
 #define GPU_ASYNC_DEF_WRITE_REGISTER(_i) \
     GPU_ASYNC_DEF_REG(WriteBuffer ## _i ## _WriteAddrL, GPU_ASYNC_REG_WRITE_ADDR_L_OFFSET(_i), 0, 0xFFFFFFFF) \
@@ -123,8 +125,8 @@ GPU_ASYNC_DEF_WRITE_REGISTER(15)
 
 #define GPU_ASYNC_REG_READ_BASE 512
 
-#define GPU_ASYNC_REG_READ_ADDR_L_OFFSET(_i) (GPU_ASYNC_REG_READ_BASE + _i * 16 + 0)
-#define GPU_ASYNC_REG_READ_ADDR_H_OFFSET(_i) (GPU_ASYNC_REG_READ_BASE + _i * 16 + 4)
+#define GPU_ASYNC_REG_READ_ADDR_L_OFFSET(_i) (GPU_ASYNC_REG_READ_BASE + (_i) * 16 + 0)
+#define GPU_ASYNC_REG_READ_ADDR_H_OFFSET(_i) (GPU_ASYNC_REG_READ_BASE + (_i) * 16 + 4)
 
 #define GPU_ASYNC_DEF_READ_REGISTER(_i) \
     GPU_ASYNC_DEF_REG(ReadBuffer ## _i ## _ReadAddrL, GPU_ASYNC_REG_READ_ADDR_L_OFFSET(_i), 0, 0xFFFFFFFF) \
@@ -153,7 +155,7 @@ GPU_ASYNC_DEF_READ_REGISTER(15)
 
 #define GPU_ASYNC_REG_WRITE_DETECT_BASE 768
 
-#define GPU_ASYNC_REG_WRITE_DETECT_OFFSET(_i) (GPU_ASYNC_REG_WRITE_DETECT_BASE + _i * 4)
+#define GPU_ASYNC_REG_WRITE_DETECT_OFFSET(_i) (GPU_ASYNC_REG_WRITE_DETECT_BASE + (_i) * 4)
 
 #define GPU_ASYNC_DEF_WRITE_DETECT_REGISTER(_i) \
     GPU_ASYNC_DEF_REG(WriteBuffer ## _i ## _WriteEn, GPU_ASYNC_REG_WRITE_DETECT_OFFSET(_i), 0, 0xFFFFFFFF)
@@ -181,8 +183,8 @@ GPU_ASYNC_DEF_WRITE_DETECT_REGISTER(15)
 
 #define GPU_ASYNC_REG_READ_DETECT_BASE 1024
 
-#define GPU_ASYNC_REG_REMOTE_READ_SIZE_OFFSET(_i) (GPU_ASYNC_REG_READ_DETECT_BASE + _i * 4 + 0)
-#define GPU_ASYNC_REG_REMOTE_READ_DETECT_OFFSET(_i) (GPU_ASYNC_REG_READ_DETECT_BASE + _i * 4 + 4)
+#define GPU_ASYNC_REG_REMOTE_READ_SIZE_OFFSET(_i) (GPU_ASYNC_REG_READ_DETECT_BASE + (_i) * 4 + 0)
+#define GPU_ASYNC_REG_REMOTE_READ_DETECT_OFFSET(_i) (GPU_ASYNC_REG_READ_DETECT_BASE + (_i) * 4 + 4)
 
 #define GPU_ASYNC_DEF_READ_DETECT_REGISTER(_i) \
     GPU_ASYNC_DEF_REG(ReadBuffer ## _i ## _RemoteReadSize,  GPU_ASYNC_REG_REMOTE_READ_SIZE_OFFSET(_i), 0, 0xFFFFFFFF) \
@@ -211,9 +213,9 @@ GPU_ASYNC_DEF_READ_DETECT_REGISTER(15)
 
 #define GPU_ASYNC_REG_LATENCY_BASE 1280
 
-#define GPU_ASYNC_REG_LATENCY_TOTAL_OFFSET(_i) (GPU_ASYNC_REG_LATENCY_BASE + _i * 16 + 0)
-#define GPU_ASYNC_REG_LATENCY_GPU_OFFSET(_i)   (GPU_ASYNC_REG_LATENCY_BASE + _i * 16 + 4)
-#define GPU_ASYNC_REG_LATENCY_WRITE_OFFSET(_i) (GPU_ASYNC_REG_LATENCY_BASE + _i * 16 + 8)
+#define GPU_ASYNC_REG_LATENCY_TOTAL_OFFSET(_i) (GPU_ASYNC_REG_LATENCY_BASE + (_i) * 16 + 0)
+#define GPU_ASYNC_REG_LATENCY_GPU_OFFSET(_i)   (GPU_ASYNC_REG_LATENCY_BASE + (_i) * 16 + 4)
+#define GPU_ASYNC_REG_LATENCY_WRITE_OFFSET(_i) (GPU_ASYNC_REG_LATENCY_BASE + (_i) * 16 + 8)
 
 #define GPU_ASYNC_DEF_LATENCY_REGISTER(_i) \
     GPU_ASYNC_DEF_REG(Latency ## _i ## _Total,  GPU_ASYNC_REG_LATENCY_TOTAL_OFFSET(_i), 0, 0xFFFFFFFF) \

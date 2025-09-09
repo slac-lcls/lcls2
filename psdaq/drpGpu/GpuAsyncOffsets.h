@@ -1,4 +1,3 @@
-
 #pragma once
 
 /*****************************************************************
@@ -47,7 +46,7 @@
 #define GPU_ASYNC_RD_LATENCY(_n)			(0x50C + (_n*16))
 
 /** Max buffers, must match firmware value **/
-#define MAX_BUFFERS                         4
+#define MAX_BUFFERS                         8
 
 
 /*****************************************************************

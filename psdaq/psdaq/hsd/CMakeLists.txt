@@ -84,6 +84,7 @@ target_link_libraries(hsd134PVs
     ${EPICS_PVACLIENT_LIB}
     Threads::Threads
     app
+    rogue-core
     hsd
     mmhw
     rt

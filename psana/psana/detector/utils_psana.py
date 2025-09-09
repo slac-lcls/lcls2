@@ -23,6 +23,7 @@ Created on 2021-02-16 by Mikhail Dubrovin
 """
 
 from psana.detector.Utils import info_dict, str_tstamp #, info_namespace, info_command_line
+import psana.detector.UtilsCalib as uc
 
 def seconds(ts, epoch_offset_sec=631152000) -> float:
     """
@@ -47,10 +48,12 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
-def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp')):
-    from collections import OrderedDict
-    return OrderedDict([(k, d.get(k, None)) for k in list_keys])
-    #return {k:v for k,v in d.items() if k in list_keys}
+def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp'), ordered=True):
+    if ordered:
+        from collections import OrderedDict
+        return OrderedDict([(k, d.get(k, None)) for k in list_keys])
+    else:
+        return {k:v for k,v in d.items() if k in list_keys}
 
 
 def datasource_kwargs_from_string(s, detname=None):
@@ -96,7 +99,7 @@ def datasource_arguments(args):
     args.fname: str - xtc2 file name
     args.expname: str - experiment name
     args.runs: int run number or str with comma-separated run numbers
-    args.detname: str - detector name
+    args.detname: str - detector name for run.Detector(detname)
     args.det:     str - detector name
     args.evtmax: int - maximal number of events to process
 
@@ -243,7 +246,8 @@ def dict_detector(odet):
 def info_detector(det, cmt='detector info:', sep='\n    '):
 
     calibconst = det.raw._calibconst
-
+    longname = det.raw._uniqueid
+    shortname = uc.detector_name_short(longname)
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
@@ -251,7 +255,8 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
         +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
         +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
-        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))
+        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))\
+        +'%sshortname: %s' % (sep, shortname)
         #+'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
         #+'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
         #+'%s             _hidden: %s' % (sep, ' '.join([v for v in dir(det) if (v[0]=='_' and v[1]!='_')]))\
@@ -260,5 +265,106 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
 
 def info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):', sep='\n '):
     return cmt + sep.join(det.raw._uniqueid.split('_'))
+
+
+#def ds_and_det(**kwa):
+#        from psana import DataSource
+#        import psana.detector.UtilsCalib as uc
+#        import psana.detector.utils_psana as up
+#
+#        dskwargs = up.data_source_kwargs(**kwa)
+#        print('kwa:%s' % str(kwa))
+#        print('dskwargs:%s' % str(dskwargs))
+#
+#        ds = DataSource(**dskwargs)
+#        orun = next(ds.runs())
+#        runnum=orun.runnum
+#        try:
+#            odet = orun.Detector(kwa['detname'])
+#        except Exception as err:
+#            print('Detector("%s") is not available for %s.\n    %s'%\
+#                  (kwa['detname'], str(dskwargs), err))
+#            sys.exit('Exit processing')
+#
+#        longname = odet.raw._uniqueid
+#        shortname = uc.detector_name_short(longname)
+#        exp = dskwargs['exp']
+
+
+def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
+    """Returns (str) tstamp_run, tstamp_now#, e.g. (str) 20201209191018, 20201217140026
+    """
+    ts_run = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=trun_sec)
+    ts_now = str_tstamp(fmt='%Y%m%d%H%M%S', time_sec=None)
+    return ts_run, ts_now
+
+
+def get_config_info_for_dataset_detname(**kwargs):
+    import sys
+    import logging
+    logger = logging.getLogger(__name__)
+    from psana import DataSource
+    detname = kwargs.get('detector', None)  # backward compatability for some scripts
+    detname = kwargs.get('detname', detname)
+    idx     = kwargs.get('idx', None)
+    dskwargs = data_source_kwargs(**kwargs)
+    try:
+        ds = DataSource(**dskwargs)
+    except Exception as err:
+        print('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
+        #sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
+        return {}
+
+    logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
+    logger.debug('ds.detectors = %s' % str(ds.detectors))
+    logger.debug('ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files)))
+
+    orun = next(ds.runs())
+    if orun:
+
+      logger.debug('==run.runnum   : %d' % orun.runnum)        # 27
+      logger.debug('  run.detnames : %s' % str(orun.detnames)) # {'epixquad'}
+      logger.debug('  run.expt     : %s', orun.expt)           # ueddaq02
+
+      runtstamp = orun.timestamp    # 4193682596073796843 relative to 1990-01-01
+      trun_sec = seconds(runtstamp) # 1607569818.532117 sec
+      #tstamp_run = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
+      tstamp_run, tstamp_now = tstamps_run_and_now(int(trun_sec)) # (str) 20201209191018, 20201217140026
+      logger.debug('  run.timestamp: %d' % orun.timestamp)
+      logger.debug('  run unix epoch time %06f sec' % trun_sec)
+      logger.debug('  run tstamp: %s' % tstamp_run)
+      logger.debug('  now tstamp: %s' % tstamp_now)
+
+      try:
+          odet = orun.Detector(detname)
+      except Exception as err:
+          print('Detector("%s") is not available for %s.\n    %s'%\
+                (detname, str(dskwargs), err))
+          odet = None
+
+      cpdic = {}
+
+      if odet is not None:
+          longname = odet.raw._uniqueid
+          cpdic['shape']      = odet.raw._seg_geo.shape() # (352, 384) for epix10ka or (288,384) for epixhr2x2 or (144,768) for epixhremu
+          cpdic['panel_ids']  = odet.raw._segment_ids() #ue.segment_ids_det(odet)
+          cpdic['longname']   = longname
+          cpdic['shortname']  = shortname = uc.detector_name_short(longname)
+          cpdic['detector']   = shortname
+          cpdic['det_name']   = odet._det_name # odet.raw._det_name epixquad
+          cpdic['dettype']    = odet._dettype # epix
+          #cpdic['gain_mode']  = ue.find_gain_mode(odet.raw, evt=None) #data=raw: distinguish 5-modes w/o data
+          #cpdic['panel_inds'] = odet.raw._segment_indices() #ue.segment_indices_det(odet)
+          #cpdic['gains_def']  = odet.raw._gains_def # e.g. for epix10ka (16.4, 5.466, 0.164) ADU/keV
+
+      cpdic['expname']     = orun.expt   # experiment name
+      cpdic['strsrc']      = None
+      cpdic['tstamp']      = tstamp_run # (str) 20201209191018
+      cpdic['tstamp_now']  = tstamp_now # (str) 20201217140026
+      cpdic['tsec_orig']   = cpdic['trun_sec'] = int(trun_sec) # 1607569818.532117 sec
+      cpdic['tstamp_orig'] = cpdic['tsrun_dark'] = str_tstamp(time_sec=int(trun_sec)) #fmt='%Y-%m-%dT%H:%M:%S%z'
+      cpdic['run_orig']    = cpdic['runnum'] = orun.runnum
+      cpdic['dettype']     = cpdic.get('dettype', None)
+      return cpdic
 
 #EOF

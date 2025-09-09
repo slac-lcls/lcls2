@@ -9,12 +9,18 @@ namespace Drp {
 class NoOpReducer : public ReducerAlgo
 {
 public:
-  NoOpReducer(Parameters* para, MemPoolGpu* pool) {}
+  NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~NoOpReducer() {}
 
-  virtual void recordGraph(cudaStream_t&             stream,
-                           float* const __restrict__ calibBuffer,
-                           float* const __restrict__ dataBuffer) override;
+  void recordGraph(cudaStream_t&      stream,
+                   const unsigned&    index,
+                   float const* const calibBuffers,
+                   const size_t       calibBufsCnt,
+                   uint8_t    * const dataBuffers,
+                   const size_t       dataBufsCnt,
+                   unsigned*          extent) override;
+  unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
+  void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 };
 
   } // Gpu

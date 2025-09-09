@@ -569,8 +569,6 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    bool core_pcie = true;
-
     {
       struct AxiVersion axiv;
       axiVersionGet(fd, &axiv);
@@ -586,8 +584,6 @@ int main(int argc, char* argv[])
         printf("%08x%c", userValue, (i&7)==7 ? '\n':' ');
       }
 
-      core_pcie = (axiv.userValues[2] == 0);
-
       if (strstr((char*)axiv.buildString,"DrpTDet")==0) {
           printf("Unexpected firmware image. Exiting.\n");
           return 1;
@@ -597,7 +593,6 @@ int main(int argc, char* argv[])
     //
     //  Update ID advertised on timing link
     //
-    //    if (updateId && core_pcie) {
     if (updateId) {
       struct addrinfo hints;
       struct addrinfo* result;
@@ -638,7 +633,6 @@ int main(int argc, char* argv[])
     //  Measure si570 clock output
     //
     if (1) {
-        //    if (core_pcie) {
       double txrefclk, rxrefclk;
       measure_clks(txrefclk,rxrefclk);
 
@@ -805,7 +799,6 @@ int main(int argc, char* argv[])
       print_lane("fullToTrig" , TEB_REG(0x38),  0, 256, 0xfff);
       print_lane("nfullToTrig", TEB_REG(0x3c),  0, 256, 0xfff);
 
-      //      if (core_pcie) {
       if (1) {
         // TDetTiming
         print_word("SOFcounts" , 0x00c00000);
