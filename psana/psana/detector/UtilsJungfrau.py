@@ -112,7 +112,10 @@ class DetCache():
         if is_true(self.calibc is None, 'det._calibconst is None > CALIB CONSTANTS ARE NOT AVAILABLE FOR %s' % self.detname,\
                    logger_method=logger.warning): return
 
-        keys = self.calibc.keys()
+        keys = [k for k in self.calibc.keys()]     # because self.calibc is WikiDict.... and self.calibc.keys() is a generator...
+
+        #print('XXXX keys', keys, type(keys))
+
         logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         if is_true(not('pedestals' in keys), 'PEDESTALS ARE NOT AVAILABLE det.raw.calib(evt) will return det.raw.raw(evt)',\
                    logger_method = logger.warning): return
@@ -142,7 +145,7 @@ class DetCache():
 
         self.cmps = self.kwa.get('cmpars', None)
         self.loop_banks = self.kwa.get('loop_banks', True)
-        self.mask = det.mask_total(evt, **self.kwa)
+        self.mask = det._mask(evt, **self.kwa)
         logger.info('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
