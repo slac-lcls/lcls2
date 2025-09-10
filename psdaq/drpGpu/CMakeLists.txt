@@ -123,6 +123,27 @@ if(CMAKE_CUDA_COMPILER)
     set_target_properties(NoOpReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(NoOpReducer PUBLIC -O3)
 
+#--- Reducer libraries
+
+    add_library(LcReducer SHARED
+        LcReducer.cu
+    )
+    target_include_directories(LcReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        /cds/home/c/claus/git/LC-framework/install/include
+    )
+    target_link_libraries(LcReducer
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+        /cds/home/c/claus/git/LC-framework/install/lib/liblc-compressor.a
+    )
+    set_target_properties(LcReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(LcReducer PUBLIC -O3)
+
 #--- Tools
 
     add_executable(pgpread_gpu
@@ -146,6 +167,7 @@ if(CMAKE_CUDA_COMPILER)
         AreaDetector_gpu
         EpixUHRemu_gpu
         NoOpReducer
+        LcReducer
         pgpread_gpu
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

@@ -200,15 +200,16 @@ void TebReceiver::_recorder()
 
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
-    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p\n", index, buffer);
+    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
     size_t cpSize, dgSize;
     if (dgram->isEvent() && (result->persist() || result->monitor())) {
       // Fetch the size of the reduced L1Accept payload from the GPU
-      uint32_t dataSize;
+      size_t dataSize;
       auto pSize = buffer - sizeof(dataSize);
+      //printf("*** TebRcvr::recorder: idx %u, buf %p, pSz %p\n", index, buffer, pSize);
       chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
       chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
-      //printf("*** TebRcvr::recorder: 3 sz %u, extent %u\n", dataSize, dgram->xtc.extent);
+      //printf("*** TebRcvr::recorder: 3 sz %zu, extent %u\n", dataSize, dgram->xtc.extent);
 
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;

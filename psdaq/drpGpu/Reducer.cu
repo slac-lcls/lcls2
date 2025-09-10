@@ -48,10 +48,17 @@ Reducer::Reducer(const Parameters&            para,
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
 
+  // Set up the reducer algorithm
+  m_algo = _setupAlgo(det);
+  if (!m_algo) {
+    logging::critical("Error setting up Reducer Algorithm");
+    abort();
+  }
+
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
   auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
-  auto payloadSize = m_pool.calibBufsSize();
+  auto payloadSize = m_algo->payloadSize();
   auto totalSize   = headerSize + payloadSize;
   if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
@@ -59,13 +66,6 @@ Reducer::Reducer(const Parameters&            para,
   // prepended with some reserved space for the datagram header.
   // The application sees only the pointer to the data buffer.
   m_pool.createReduceBuffers(payloadSize, headerSize);
-
-  // Set up the reducer algorithm
-  m_algo = _setupAlgo(det);
-  if (!m_algo) {
-    logging::critical("Error setting up Reducer Algorithm");
-    abort();
-  }
 
   // Prepare the CUDA graphs
   m_graphExecs.resize(m_streams.size());
@@ -180,26 +180,18 @@ static __global__ void _receive(unsigned* const __restrict__ head,
   // Wait for the head to advance with respect to the tail
   auto t = *tail;
   while (*head == t) {
-     if (terminate.load(cuda::memory_order_acquire))  break;
+    if (terminate.load(cuda::memory_order_acquire))  break;
   }
-  //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, termiate.load());
+  //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, terminate.load());
 }
 
 /** This will re-launch the current graph */
 static __global__ void _graphLoop(unsigned* const __restrict__ head,
                                   unsigned* const __restrict__ tail,
-                                  uint8_t*  const __restrict__ dataBuffers,
-                                  const size_t                 dataBufsCnt,
-                                  const unsigned               extent,
                                   const cuda::atomic<uint8_t>& terminate)
 {
-  //printf("### Reducer graphLoop 1, done %d, idx %u\n", terminate.load(), *index);
+  //printf("### Reducer graphLoop: 1, done %d, idx %u\n", terminate.load(), *index);
   if (terminate.load(cuda::memory_order_acquire))  return;
-  //printf("### Reducer graphLoop 1a, index %u\n", *index);
-
-  // Store the extent with the data
-  auto data = (uint32_t*)(&dataBuffers[*tail * dataBufsCnt]);
-  data[-1] = extent;            // @todo: Revisit this kludge to set the extent
 
   //printf("### Reducer graphLoop: 2 t %u, h %u\n", *tail, *head);
 
@@ -208,16 +200,19 @@ static __global__ void _graphLoop(unsigned* const __restrict__ head,
 
   // Commented out to let TebRcvr::complete() launch the graph
   //cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  //printf("### Reducer graphLoop 3\n");
+  //printf("### Reducer graphLoop: 3\n");
 }
 
 cudaGraph_t Reducer::_recordGraph(unsigned instance)
 {
   auto stream       = m_streams[instance];
   auto calibBuffers = m_pool.calibBuffers_d();
-  auto calibBufsCnt = m_pool.calibBufsSize() / sizeof(*calibBuffers);
+  auto calibBufsSz  = m_pool.calibBufsSize();
+  auto calibBufsCnt = calibBufsSz / sizeof(*calibBuffers);
   auto dataBuffers  = m_pool.reduceBuffers_d();
-  auto dataBufsCnt  = m_pool.reduceBufsSize() / sizeof(*dataBuffers);
+  auto dataBufsRsvd = m_pool.reduceBufsReserved();
+  auto dataBufsSz   = m_pool.reduceBufsSize();
+  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "Reducer stream begin capture failed")) {
@@ -228,15 +223,16 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
   _receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_tails_d[instance], m_terminate_d);
 
   // Perform the reduction algorithm
-  unsigned extent;
-  m_algo->recordGraph(stream, *m_heads_d[instance], calibBuffers, calibBufsCnt, dataBuffers, dataBufsCnt, &extent);
+  m_algo->recordGraph(stream,
+                      *m_heads_d[instance],
+                      calibBuffers,
+                      calibBufsCnt,
+                      dataBuffers,
+                      dataBufsCnt);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed.
   _graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
                                   m_tails_d[instance],
-                                  dataBuffers,
-                                  dataBufsCnt,
-                                  extent,
                                   m_terminate_d);
 
   // Signal to the host that the worker is done

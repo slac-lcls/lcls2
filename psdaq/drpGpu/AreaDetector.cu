@@ -120,10 +120,11 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
                                   const unsigned                     panel,
                                   const unsigned                     nPixels)
 {
-  int pixel = blockIdx.x * blockDim.x + threadIdx.x;
+  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  int stride = blockDim.x * gridDim.x;
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
 
-  for (int i = pixel; i < nPixels; i += blockDim.x * gridDim.x) {
+  for (int i = pixel; i < nPixels; i += stride) {
     out[i] = float(in[i]);
   }
 }
