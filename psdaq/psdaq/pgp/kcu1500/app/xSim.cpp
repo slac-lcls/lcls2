@@ -762,15 +762,15 @@ int main(int argc, char* argv[])
       // printf("  monEnable         :  %u\n", get_reg32( 0x00800000)&1);
 
       printf("\n-- hmbLane AxiStreamDmaV2Fifo Registers --\n");
-      print_hmb_lane("Version", 0, 0, 0xf);
-      print_hmb_lane("baseAddr(24b)", 4, 8, 0xffffff);
-      print_hmb_lane("buffFrameWidth", 24, 0, 0xff);
-      print_hmb_lane("axibuffWidth", 24, 8, 0xff);
-      print_hmb_lane("burstByte", 24, 16, 0xfff);
-      print_hmb_lane("rdBuffCnt", 28, 0, 0xffff);
-      print_hmb_lane("wrBuffCnt", 28, 16, 0xffff);
-      print_hmb_lane("pauseCnt", 32, 0, 0xffff);
-      print_hmb_lane("sAxisCtrlpause", 32, 16, 0x1);
+     // print_hmb_lane("Version", 0, 0, 0xf);
+     // print_hmb_lane("baseAddr(24b)", 4, 8, 0xffffff);
+     // print_hmb_lane("buffFrameWidth", 24, 0, 0xff);
+     // print_hmb_lane("axibuffWidth", 24, 8, 0xff);
+     // print_hmb_lane("burstByte", 24, 16, 0xfff);
+     // print_hmb_lane("rdBuffCnt", 28, 0, 0xffff);
+     // print_hmb_lane("wrBuffCnt", 28, 16, 0xffff);
+     // print_hmb_lane("pauseCnt", 32, 0, 0xffff);
+     // print_hmb_lane("sAxisCtrlpause", 32, 16, 0x1);
 
       // print_clk_rate("axilOther  ",0);
       // print_clk_rate("timingRef  ",4);
