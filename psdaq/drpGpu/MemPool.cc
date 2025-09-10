@@ -45,6 +45,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     m_dmaSize = std::stoul(const_cast<Parameters&>(para).kwargs["dmaSize"]);
   else
     m_dmaSize = DMA_BUFFER_SIZE;
+  m_dmaSize  = ((m_dmaSize + 0xffff) >> 16) << 16; // Round up to multiple of 64 kB for alignment requirement
   m_dmaCount = MAX_BUFFERS;             // @todo: Find this out from the f/w
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
@@ -91,11 +92,10 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
     // Allocate DMA buffers on the GPU
     // This handles allocating buffers on the device and registering them with the driver.
-    auto dmaSz = ((dmaSize() + 0xffff) >> 16) << 16; // Round up to multiple of 64 kB for alignment requirement
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSz, 1) != 0) {
+      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSize(), 1) != 0) {
         logging::critical("Failed to allocate DMA buffers of size %zu for %s at number %zd",
-                          dmaSz, device.c_str(), i);
+                          dmaSize(), device.c_str(), i);
         abort();
       }
     }

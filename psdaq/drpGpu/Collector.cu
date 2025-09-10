@@ -335,6 +335,12 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     const auto dmaDsc       = (DmaDsc*)(&hostWrtBufs[tail * hostWrtBufsCnt]);
     const auto timingHeader = (TimingHeader*)&dmaDsc[1];
 
+    // Check for DMA buffer overflow
+    if (dmaDsc->error & 0x4) {
+      logging::critical("DMA overflowed buffer of size %d B", m_pool.dmaSize());
+      exit(EXIT_FAILURE);
+    }
+
     // Wait for pulse ID to become non-zero
     uint64_t pid = timingHeader->pulseId();
     while (pid <= lastPid) {
@@ -392,12 +398,6 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     uint32_t lane = 0;      // The lane is always 0 for GPU-enabled PGP devices
     metrics.m_dmaSize   = size;
     metrics.m_dmaBytes += size;
-
-    // Check for DMA buffer overflow
-    if (dmaDsc->error & 0x4) {
-      logging::critical("%d DMA overflowed buffer: %d vs %d", tail, size, m_pool.dmaSize());
-      abort();                          // @todo: Still necessary to abort?
-    }
 
     if (timingHeader->error()) {
         if (metrics.m_nTmgHdrError < 5) { // Limit prints at rate
