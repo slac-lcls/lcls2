@@ -49,7 +49,7 @@ def write_to_daq_config_db(args):
 
     top: mcdict = mcdict(args.yaml)
     top.setInfo("jungfrau", args.name, args.segm, args.id, "No comment")
-    top.setAlg("config", [0,2,0])
+    top.setAlg("config", [0,3,0])
 
     help_str: str = (
         "-- user --\n"
