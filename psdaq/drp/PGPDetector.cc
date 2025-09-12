@@ -565,6 +565,9 @@ void PGPDrp::reader()
                         m_batch.start += m_batch.size;
                         m_batch.size = 0;
                         batchId += m_para.batchSize;
+                        // now that dispatched the batch to worker add the pending L1 count for the next batch
+                        m_batch.l1count += pendingL1;
+                        pendingL1 = 0;
                     }
                 }
             }
