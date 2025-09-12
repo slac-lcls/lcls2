@@ -41,7 +41,7 @@ private:
                             uint64_t firmware,
                             std::string software,
                             std::string hostname);
-    uint32_t _countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels);
+    uint32_t _countNumHotPixels(size_t mod, uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels);
     void _loadConfigEnums(size_t mod, XtcData::Names& configNames, XtcData::ConfigIter& configo);
     bool _configueDAC(size_t mod, sls::defs::dacIndex dac, int value, bool mV = false);
     void _configure_module_thread(size_t mod,
@@ -54,7 +54,7 @@ private:
     unsigned m_nModules { 0 };
     uint16_t m_hotPixelThreshold { 15000 };
     uint32_t m_maxHotPixels { 3400 };
-    bool m_inFixedGain { false }; // Need to know if in fixed gain for hot pixel calc.
+    std::vector<bool> m_inFixedGain; // Need to know if in fixed gain for hot pixel calc.
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;

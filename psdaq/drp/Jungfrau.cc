@@ -187,6 +187,8 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
     }
     // Jungfrau always needs to take the m_multiSegment path
     m_multiSegment = true; // From BEBDetector
+    // Initialize the per module in fixed gain vector
+    m_inFixedGain = std::vector<bool>(m_nModules, false);
 
     if (para->kwargs.find("segNums") != para->kwargs.end()) {
         // BEBDetector will use the underscore delimited string to construct
@@ -428,9 +430,9 @@ unsigned Jungfrau::_configure_module(size_t mod,
                     gainMode = it->second;
                     if ((gainModeEnums[gainMode] == "FIX_G1") ||
                         (gainModeEnums[gainMode] == "FIX_G2")) {
-                        m_inFixedGain = true;
+                        m_inFixedGain[mod] = true;
                     } else {
-                        m_inFixedGain = false;
+                        m_inFixedGain[mod] = false;
                     }
                 } else {
                     logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
@@ -763,18 +765,19 @@ unsigned Jungfrau::disable(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann
  *       mode. Thresholds are treated as if the gain mode were positive for both
  *       cases - the class keeps track of the gain mode to make sure it does the
  *       calculation properly.
+ * @param mod Module the data comes from.
  * @param rawData Pointer to the underlying raw data.
  * @param hotPixelThreshold The ADU threshold above which a pixel is considered "hot".
  * @param numPixels Number of pixels in the raw data.
  */
-uint32_t Jungfrau::_countNumHotPixels(uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels) {
+uint32_t Jungfrau::_countNumHotPixels(size_t mod, uint16_t* rawData, uint16_t hotPixelThreshold, uint32_t numPixels) {
     uint32_t numHotPixels {0};
     static const uint16_t gain_bits = 3 << 14;
     static const uint16_t data_bits = (1 << 14) - 1;
 
     for (size_t i=0; i<numPixels; ++i) {
         uint16_t value = rawData[i];
-        bool overThresh = m_inFixedGain ? (value & data_bits) > hotPixelThreshold :
+        bool overThresh = m_inFixedGain[mod] ? (value & data_bits) > hotPixelThreshold :
                                           (data_bits - (value & data_bits)) > hotPixelThreshold;
         if (((value & gain_bits) == gain_bits) && overThresh) {
             numHotPixels++;
@@ -895,7 +898,8 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
           dataXtc.damage.increase(XtcData::Damage::OutOfOrder);
         }
 
-        uint32_t numHotPixels = _countNumHotPixels(frame.data(),
+        uint32_t numHotPixels = _countNumHotPixels(moduleIdx,
+                                                   frame.data(),
                                                    m_hotPixelThreshold,
                                                    JungfrauData::Rows*JungfrauData::Cols);
         cd.set_value(JungfrauDef::frame_cnt, framenum);
@@ -980,9 +984,9 @@ unsigned Jungfrau::stepScan(const nlohmann::json& stepInfo, Xtc& xtc, const void
                         m_slsDet->setGainMode(it->second, pos);
                         if ((gainModeEnums[gainMode] == "FIX_G1") ||
                             (gainModeEnums[gainMode] == "FIX_G2")) {
-                            m_inFixedGain = true;
+                            m_inFixedGain[mod] = true;
                         } else {
-                            m_inFixedGain = false;
+                            m_inFixedGain[mod] = false;
                         }
                     } else {
                         logging::error("Enum value %s for module %zu is an invalid parameter for setGainMode()",
