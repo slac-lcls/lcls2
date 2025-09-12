@@ -991,9 +991,14 @@ def issue_2025_06_05():
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
     #ds = DataSource(exp='mfxdet23', run=120)
-    ds = DataSource(exp='mfxdet23', run=9)
+    #ds = DataSource(exp='mfxdet23', run=9)
+    ds = DataSource(exp='mfxdet23', run=17)
     myrun = next(ds.runs())
     det = myrun.Detector('epixuhr')
+
+    print('det.raw._number_of_segments_total()', det.raw._number_of_segments_total())
+    print('det.raw._segment_numbers', det.raw._segment_numbers)
+
     events = 10
     arrdt = np.empty(events, dtype=np.float64)
     if True:
@@ -1404,8 +1409,9 @@ def issue_2025_08_28(subtest='0o7777'):
         print(ndu.info_ndarr(nda,   'evt:%3d dt=%.3f msec for det.raw.calib(evt):' % (nevt, dt_sec)))
 
 
-def issue_2025_09_29():
+def issue_2025_09_09():
     """datinfo -k exp=mfx100848724,run=51 -d jungfrau
+       REASON: now self.calibc is WikiDict.... and self.calibc.keys() is a generator... in stead of expected list
     """
     from psana import DataSource
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
@@ -1425,6 +1431,58 @@ def issue_2025_09_29():
         print(ndu.info_ndarr(odet.raw.raw(evt), 'evt:%3d raw:' % nevt))
         image = odet.raw.image(evt)
         print(ndu.info_ndarr(image, 'evt:%3d image:' % nevt))
+
+
+def issue_2025_09_10(subtest='0o7777'):
+    """access epixuhr configuration
+       datinfo -k exp=mfxdet23,run=120 -d epixuhr
+       config_dump exp=mfxdet23,run=17 epixuhr config
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+
+    ds = DataSource(exp='mfxdet23', run=17)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixuhr')
+
+    print('det.raw._number_of_segments_total()', det.raw._number_of_segments_total())
+    print('det.raw._segment_numbers', det.raw._segment_numbers)
+
+    #cfgs = getattr(det, 'config')._seg_configs() # dict for {<segnum>: <psana.container.Container object>}
+    cfgs = det.config._seg_configs()
+
+    if isubset & 1:
+        print('cfgs:', cfgs)
+        print('type(cfgs):', type(cfgs))
+        print('cfgs[0]:', cfgs[0])
+
+    if isubset & 2:
+        from psana.app.config_dump import dump
+        attrlist=[]
+        for myobj in cfgs.values():
+            dump(myobj, attrlist)
+
+    if isubset & 4:
+      for segnum in det.raw._segment_numbers:
+        cfg = cfgs.get(segnum, None)
+        if cfg is None:
+            print('segment %d configuration is None' % segnum)
+            continue
+        segcfg = cfg.config
+        #print('segment %d configuration: %s' % (segnum, str(dir(cfg.config))))
+        print('gainAsic:', segcfg.gainAsic)
+        print(ndu.info_ndarr(segcfg.gainCSVAsic, 'gainCSVAsic:'))
+
+    if isubset & 8:
+        print(det.raw._info_seg_gainAsics(sep='  '))
+        print(det.raw._info_seg_gainCSVAsics(sep='\n  '))
+
 
 #===
     
@@ -1503,7 +1561,8 @@ def selector():
     elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
     elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
     elif TNAME in ('41',): issue_2025_08_28(args.subtest) # me - epix100 test det.raw.calib(evt)
-    elif TNAME in ('42',): issue_2025_09_29() # Chris - jf - missing constants
+    elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
+    elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
