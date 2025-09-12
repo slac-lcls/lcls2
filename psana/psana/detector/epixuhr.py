@@ -1,5 +1,5 @@
 #from time import time
-#from psana.detector.NDArrUtils import info_ndarr
+from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
@@ -21,61 +21,76 @@ class epixuhr_config_0_0_0(DetectorImpl):
     def __init__(self, *args, **kwargs):
         super().__init__(*args)
 
-class epixuhrhw_config_1_1_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+epixuhrhw_config_1_1_0 = epixuhrhw_config_0_1_0
+epixuhrhw_config_2_1_0 = epixuhrhw_config_0_1_0
+epixuhrhw_config_2_1_1 = epixuhrhw_config_0_1_0
+epixuhrhw_config_3_0_0 = epixuhrhw_config_0_1_0
+epixuhrhw_config_3_1_0 = epixuhrhw_config_0_1_0
+epixuhrhw_config_3_2_0 = epixuhrhw_config_0_1_0
 
-class epixuhr_config_1_0_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+epixuhr_config_1_0_0   = epixuhr_config_0_0_0
+epixuhr_config_2_0_0   = epixuhr_config_0_0_0
+epixuhr_config_2_1_1   = epixuhr_config_0_0_0
+epixuhr_config_3_0_0   = epixuhr_config_0_0_0
+epixuhr_config_3_1_0   = epixuhr_config_0_0_0
+epixuhr_config_3_2_0   = epixuhr_config_0_0_0
 
-class epixuhrhw_config_2_1_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhrhw_config_1_1_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhr_config_2_0_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhr_config_1_0_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
+
+#class epixuhrhw_config_2_1_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
+
+#class epixuhr_config_2_0_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
 #from now on both hw and not have same version number
-class epixuhrhw_config_2_1_1(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhrhw_config_2_1_1(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhr_config_2_1_1(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhr_config_2_1_1(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhrhw_config_3_0_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhrhw_config_3_0_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhr_config_3_0_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhr_config_3_0_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhrhw_config_3_1_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhrhw_config_3_1_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhr_config_3_1_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhr_config_3_1_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhr_config_3_2_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhr_config_3_2_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
-class epixuhrhw_config_3_2_0(DetectorImpl):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args)
+#class epixuhrhw_config_3_2_0(DetectorImpl):
+#    def __init__(self, *args, **kwargs):
+#        super().__init__(*args)
 
 class epixuhr_raw_0_0_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._seg_geo = eb.sgs.Create(segname='EPIXUHRASIC:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr.data'
-        self._segment_numbers = [0,1,2,3]
+        self._segment_numbers = [0,1,2,3] # REPLACED BY _asic_numbers
+        self._asic_numbers = [0,1,2,3]
         self._nwarnings = 0
         self._nwarnings_max = kwargs.get('nwarnings_max', 5)
         self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
@@ -104,11 +119,60 @@ class epixuhr_raw_0_0_0(eb.epix_base):
          00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-02,
          00016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206-ASIC-03]
          for det.raw._uniqueid: epixuhr_0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
-         and self._segment_numbers = [0, 1, 2, 3]
+         and self._asic_numbers = [0, 1, 2, 3]
         """
         id = self._uniqueid.split('_')[1] # 0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
-        return ['%s-ASIC-%02d' % (id,i) for i in self._segment_numbers]
+        return ['%s-ASIC-%02d' % (id,i) for i in self._asic_numbers]
 
+    def _seg_config(self, segnum=0):
+        """returns segment configuration object for specified segment
+           Q: assuming that segment/panel consists of 4 ASICs, do we expect detectors with more then 1 segment???
+        """
+        logger.info('_seg_config for %s segnum=%d' % (self._det_name, segnum))
+        cfgs = self._seg_configs()
+        if is_none(cfgs, '%s self._seg_config(segnum=%d) is None' % (self._det_name, segnum), logger.warning):
+            return None
+        return cfgs.get(segnum, None)
+
+    def _seg_gainAsics(self, segnum=0):
+        scfg = self._seg_config(segnum)
+        if scfg is None: return None
+        return scfg.config.gainAsic
+
+    def _seg_gainCSVAsics(self, segnum=0):
+        scfg = self._seg_config(segnum)
+        if scfg is None: return None
+        return scfg.config.gainCSVAsic
+
+    def _gainAsic(self, asicnum, segnum=0):
+        agains = self._seg_gainAsic(segnum=0)
+        if agains is None: return None
+        return agains[asicnum]
+
+    def _gainCSVAsic(self, asicnum, segnum=0):
+        agains = self._seg_gainCSVAsic(segnum=0)
+        if agains is None: return None
+        return agains[asicnum]
+
+    def _info_seg_gainAsics(self, sep='  '):
+        return sep.join(['%sASIC:%d %s' % (sep,i,s)\
+                         for i,s in enumerate(self._seg_gainAsics())])
+
+    def _info_seg_gainCSVAsics(self, sep='\n  '):
+        return sep.join([info_ndarr(nda, '%sASIC:%d gainCSVAsics' % (sep,i))\
+                         for i,nda in enumerate(self._seg_gainCSVAsics())])
+
+
+    def _segs_xxx(self, segnum):
+        for segnum in self._asic_numbers:
+          cfg = cfgs.get(segnum, None)
+          if cfg is None:
+            print('segment %d configuration is None' % segnum)
+            continue
+          segcfg = cfg.config
+          #print('segment %d configuration: %s' % (segnum, str(dir(cfg.config))))
+          print('gainAsic:', segcfg.gainAsic)
+          print(info_ndarr(segcfg.gainCSVAsic, 'gainCSVAsic:'))
 
 #####################
 # PIETRO'S descrambler
@@ -237,7 +301,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
 
         # Subtract pedestals
         peds = self._pedestals()
-        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'):
+        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)', logger_method=logmet):
             return raw
         #print(info_ndarr(peds,'XXX peds', first=1000, last=1005))
 
