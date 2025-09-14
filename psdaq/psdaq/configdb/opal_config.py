@@ -92,8 +92,8 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     # there appear to be no options to tell ClinkDevRoot to use
     # LCLS2 timing (without reading yaml files, which we don't
     # want to do) so set it by hand here.
-##    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-##    time.sleep(3.5)
+    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    time.sleep(3.5)
 
     # TODO: To be removed, now commented out xpm glitch workaround
     # Open a new thread here
