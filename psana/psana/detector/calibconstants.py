@@ -81,6 +81,7 @@ class CalibConstants:
 
         assert is_dict_like(calibconst), 'Input parameter should be dict-like: %s' % str(calibconst)
         self._reset(calibconst)
+        self._kwa = kwa
 
     def _reset(self, calibconst):
         self._calibconst = calibconst
@@ -162,7 +163,9 @@ class CalibConstants:
 
     def number_of_segments_total(self):
         shape = self.shape_as_daq()
-        return None if shape is None else shape[-3] # (7,n,352,384) - define through calibration constants
+        return None if shape is None else\
+               1 if len(shape) < 3 else\
+               shape[-3] # (7,n,352,384) - define through calibration constants
 
     def segment_numbers_total(self):
         """Returns total list of segment numbers."""
@@ -192,10 +195,15 @@ class CalibConstants:
         return self._geo
 
     def seg_geo(self):
+        """returns SegGeometry object from full GeometryAccess object or None if GeometryAccess is None"""
         logger.debug('seg_geo')
+
+        odet = self._kwa.get('odet', None)
+        if odet is not None:
+            return odet._seg_geo
         geo = self.geo()
-        if is_none(geo, 'geo is None', logger_method=logger.debug): return None
-        return geo.get_seg_geo().algo
+        if is_none(geo, 'in seg_geo() both odet and self.geo() are None'):
+            return geo.get_seg_geo().algo
 
     def pixel_coords(self, **kwa):
         """DEPRECATED - can't load detector-dependent default geometry here...
@@ -203,7 +211,7 @@ class CalibConstants:
         """
         logger.debug('pixel_coords')
         geo = self.geo()
-        if is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'in pixel_coords geo is None'): return None
 
         #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
         return geo.get_pixel_coords(\
@@ -216,7 +224,7 @@ class CalibConstants:
         """
         logger.debug('pixel_coord_indexes')
         geo = self.geo()
-        if is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'in pixel_coord_indexes geo is None'): return None
 
         return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
