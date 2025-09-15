@@ -257,17 +257,25 @@ class AreaDetector(DetectorImpl):
         return o.image(_nda, segnums=segnums, **kwa)
 
 
-    def _maskalgos(self, **kwa):
-        if is_none(self._maskalgos_, 'AreaDetector._maskalgos - make MaskAlgos, **kwa: %s' % str(kwa),\
+    def _maskalgos(self):
+        """ returns cached (in self._maskalgos_) MaskAlgos.
+            Uses self._kwargs from AreaDetector to initialize MaskAlgos
+        """
+        if is_none(self._maskalgos_, 'AreaDetector._maskalgos - make MaskAlgos, **AreaDetector._kwargs: %s' % str(self._kwargs),\
                    logger_method=logger.debug):
             cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
             if is_none(cc, 'self._calibconst is None', logger_method=logger.debug): return None
-            kwa.setdefault('logmet_init', self._logmet_init)
-            self._maskalgos_ = MaskAlgos(cc, self._det_name, **kwa)
+            mkwa = self._kwargs
+            mkwa.setdefault('logmet_init', self._logmet_init)
+            mkwa.setdefault('odet', self) # need it to get self._seg_geo
+            self._maskalgos_ = MaskAlgos(cc, self._det_name, **mkwa)
         return self._maskalgos_
 
 
     def _mask_method_wrapper(self, metname, **kwa):
+        """wrapper for all _mask_* methods to utilise them from class MaskAlgos.
+           Use it in stead of similar decorator
+        """
         o = self._maskalgos()
         logger.debug('in _mask_method_wrapper(%s, **kwa) **kwa: %s' % (metname, str(kwa)))
         if is_none(o, 'self._maskalgos is None', logger_method=logger.debug): return None
