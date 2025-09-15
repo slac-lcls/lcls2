@@ -29,21 +29,27 @@ from psana.detector.NDArrUtils import info_ndarr
 class MaskAlgos:
 
     def __init__(self, calibconst, detname, **kwa):
-        """calibconst: dict from DB"""
+        """calibconst: (dict) from DB
+           detname (str) - any unique detector name to cach info in CalibConstants
+           self._kwa = kwa (dict) - should be THE MAJOR WAY to pass kwargs to mask methods
+        """
         logger.debug('__init__')
         self.cco = CalibConstants(calibconst, detname, **kwa)
         self._mask = None
+        self._kwa = kwa
+        #self._odet = kwa.get('odet', None) # use it dynamically
+        #self._seg_geo = _odet._seg_geo
         self.logmet_init = kwa.get('logmet_init', logger.debug)
         self.logmet_init('MaskAlgos.__init__(%s, **kwa)' % detname)
 
 
-    def mask_default(self, dtype=DTYPE_MASK):
+    def mask_default(self, dtype=DTYPE_MASK, **kwa):
         shape = self.cco.shape_as_daq()
         self.logmet_init('mask_default(dtype=%s)' % type(dtype))
         return None if shape is None else np.ones(shape, dtype=dtype)
 
 
-    def mask_calib_or_default(self, dtype=DTYPE_MASK):
+    def mask_calib_or_default(self, dtype=DTYPE_MASK, **kwa):
         mask = self.cco.mask_calib()
         self.logmet_init('mask_calib_or_default(dtype=%s)' % type(dtype))
         return self.mask_default(dtype) if mask is None else mask.astype(dtype)
@@ -137,21 +143,27 @@ class MaskAlgos:
         center_rows: int number of edge rows to mask for all ASICs
         center_cols: int number of edge columns to mask for all ASICs
         dtype: numpy dtype of the output array
-        **kwa: is not used
+        **kwa: other kwargs
         Returns
         -------
         mask: np.ndarray, ndim=3, shaped as full detector data, mask of the panel and asic edges
         """
         logger.debug('epix_base.mask_edges')
-        seg_geo = self.cco.seg_geo()
-        if is_none(seg_geo, 'self.cco.seg_geo() is None', logger_method=logger.warning): return None
+
+        #_kwa = self.cco._kwa
+        odet = self._kwa.get('odet', None)
+        seg_geo = self.cco.seg_geo() if odet is None else\
+                  odet._seg_geo
+        if is_none(seg_geo, 'self.cco.seg_geo() is None and AreaDetector object is None', logger_method=logger.warning):
+             return None
+
         self.logmet_init('MaskAlgos.mask_center wcenter:%d, center_rows:%d, center_cols:%d, dtype:%s, **kwa: %s'%\
                          (wcenter, center_rows, center_cols, str(dtype), str(kwa)))
         mask1 = seg_geo.pixel_mask_array(width=0, edge_rows=0, edge_cols=0,\
                   center_rows=center_rows, center_cols=center_cols, dtype=dtype, **kwa)
         nsegs = self.cco.number_of_segments_total()
         if is_none(nsegs, '_number_of_segments_total is None, return None'): return None
-        return np.stack([mask1 for i in range(nsegs)])
+        return mask1 if nsegs==1 else np.stack([mask1 for i in range(nsegs)])
 
 
     def mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
