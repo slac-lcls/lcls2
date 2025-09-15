@@ -90,7 +90,7 @@ def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STA
     return st1
 
 
-def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK):
+def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK, **kwa):
     """In mask array increase region of masked pixels around bad by radial paramerer rad.
        Parameters:
        -----------
@@ -122,7 +122,7 @@ def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK):
     return mmask
 
 
-def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
+def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
     """Returns mask with a requested number of row and column pixels masked - set to 0.
 
        Parameters
