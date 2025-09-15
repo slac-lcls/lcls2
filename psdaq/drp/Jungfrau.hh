@@ -35,7 +35,6 @@ private:
     void _connectionInfo(PyObject*) override;
     unsigned _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;
     void _event(XtcData::Xtc&, const void* bufEnd, uint64_t l1count, std::vector<XtcData::Array<uint8_t>>&) override;
-    bool _stopAcquisition();
     std::string _buildDetId(uint64_t sensor_id,
                             uint64_t board_id,
                             uint64_t firmware,
