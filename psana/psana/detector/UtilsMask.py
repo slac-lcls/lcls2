@@ -59,7 +59,7 @@ def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     return np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
 
 
-def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
+def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
     """Merges mask bits over gain range index.
        gain_range_inds list(uint) - list of gain range inices in array mask[i,:]
        gain_range_inds=(0,1,2,3,4) for epix10ka/quad/2m mask array mask.shape=(7, <num-segments>, 352, 384) merging to (<num-segments>, 352, 384)
@@ -75,7 +75,7 @@ def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
     return mask1
 
 
-def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS):
+def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS, **kwa):
     """Merges status bits over gain range index.
        Originaly intended for epix10ka(quad/2m) status array status.shape=(7, 16, 352, 384) merging to (16, 352, 384)
        Also can be used with Jungfrau status array status.shape=(7, 8, 512, 512) merging to (8, 512, 512)
