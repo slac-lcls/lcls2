@@ -1363,7 +1363,7 @@ def issue_2025_08_26():
 
 def issue_2025_08_28(subtest='0o7777'):
     """test det.raw.calib()
-       datinfo -k exp=mfx100852324,run=7 -d epix100_0
+       datinfo -k exp=mfx100852324,run=13 -d epix100_0
     """
     import os
     import numpy as np
