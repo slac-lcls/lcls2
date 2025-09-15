@@ -221,7 +221,7 @@ class SmdReaderManager(object):
                 time.sleep(1)
             retries += 1
 
-        if not success:
+        if not success and not self.smdr.found_endrun():
             log_func = self.logger.error if is_integrating else self.logger.info
             log_func(f"Unable to build {'integrating' if is_integrating else 'normal'} batch after {retries} retries.")
 

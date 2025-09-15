@@ -1,9 +1,7 @@
-import pytest
 import random
 import vals
 import numpy as np
 
-# Only import MPI if available
 try:
     from mpi4py import MPI
     mpi_available = True
@@ -13,9 +11,7 @@ except ImportError:
 from psana import DataSource
 from setup_input_files import setup_input_files
 
-@pytest.mark.skipif(not mpi_available or MPI.COMM_WORLD.Get_size() < 3,
-                    reason="Requires MPI with at least 3 ranks")
-def test_runparallel_build_table(tmp_path):
+def test_run_build_table(tmp_path):
     """
     Test for building the timestamp-to-offset table in RunParallel with MPI.
     This ensures that psana2 can selectively fetch events by timestamp.
@@ -24,7 +20,7 @@ def test_runparallel_build_table(tmp_path):
     """
     xtc_dir = prepare_xtc_dir(tmp_path)
 
-    ds = DataSource(exp='xpptut15', run=14, dir=str(xtc_dir))
+    ds = DataSource(exp='xpptut15', run=14, dir=str(xtc_dir), log_level='DEBUG')
     run = next(ds.runs())
 
     # Only BigDataNode ranks will populate _ts_table
@@ -65,10 +61,6 @@ if __name__ == "__main__":
     import tempfile
     from pathlib import Path
 
-    if not mpi_available or MPI.COMM_WORLD.Get_size() < 3:
-        print("This script requires MPI with at least 3 ranks.")
-        exit(0)
-
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_path = Path(tmpdir)
-        test_runparallel_build_table(tmp_path)
+        test_run_build_table(tmp_path)
