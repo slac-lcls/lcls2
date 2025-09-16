@@ -847,7 +847,7 @@ def issue_2025_05_07():
 
     ds = DataSource(exp='rix101333324', run=46)
     myrun = next(ds.runs())
-    det = myrun.Detector('axis_svls')
+    det = myrun.Detector('axis_svls', logmet_init=logger.info)
     events = 5
     arrdt = np.empty(events, dtype=np.float64)
     if True:
@@ -1303,7 +1303,6 @@ def issue_2025_07_23():
 
 def issue_2025_07_29():
     """ cpo - epix10ka missing geometry
-
         datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
     """
     from psana import DataSource
@@ -1484,6 +1483,75 @@ def issue_2025_09_10(subtest='0o7777'):
         print(det.raw._info_seg_gainCSVAsics(sep='\n  '))
 
 
+def issue_2025_09_16(subtest='0o7777'):
+    """test of the detector axis, shape:(796, 6144)
+       det_dark_proc -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+       datinfo -k exp=mfx100852324,run=13 -d epix100_0
+       datinfo -k exp=mfxdaq23,run=31 -d epix100_0
+       datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
+       datinfo -k exp=mfx100848724,run=51 -d jungfrau
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+
+    dskwa = {'exp':'rix101333324', 'run':46,  'detectors':['axis_svls',]} if isubset &  1 else\
+            {'exp':'rix100837624', 'run':34,  'detectors':['c_epixm',]}   if isubset &  2 else\
+            {'exp':'mfx100852324', 'run':13,  'detectors':['epix100_0',]} if isubset &  4 else\
+            {'exp':'mfxdaq23',     'run':31,  'detectors':['epix100_0',]} if isubset &  8 else\
+            {'exp':'ascdaq123',    'run':192, 'detectors':['epix10ka',]}  if isubset & 16 else\
+            {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
+            {}
+    ds = DataSource(**dskwa)
+
+    myrun = next(ds.runs())
+    #det = myrun.Detector(dskwa['detectors'][0])
+    det = myrun.Detector(dskwa['detectors'][0], logmet_init=logger.info)
+    events = 5
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        width_in = 15
+
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            img = det.raw.image(evt, nda=calib) # raw
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec for det.raw.image(evt)' % (nevt, dt_sec))
+            print(ndu.info_ndarr(raw,   '  raw  :'))
+            print(ndu.info_ndarr(calib, '  calib:'))
+            print(ndu.info_ndarr(img,   '  img  :'))
+            if flimg is None:
+                aspratio = float(img.shape[0])/float(img.shape[1]) * 1.1 # heigh/width
+                #print('image aspect ratio: %0.3f' % aspratio)
+                flimg = fleximage(img, h_in=aspratio*width_in, w_in=width_in)
+            flimg.update(img)
+            flimg.fig.suptitle('evt:%02d detector: %s' % (nevt,dskwa['detectors'][0]), fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+
+
+
+
+
+
 #===
     
 #===
@@ -1563,6 +1631,7 @@ def selector():
     elif TNAME in ('41',): issue_2025_08_28(args.subtest) # me - epix100 test det.raw.calib(evt)
     elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
     elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
+    elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
