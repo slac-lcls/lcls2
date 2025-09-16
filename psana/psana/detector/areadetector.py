@@ -94,11 +94,13 @@ class AreaDetector(DetectorImpl):
     def _calibconstants(self, **kwa):
         """Returns cached object of CalibConstants derived from DetectorImpl._calibconst - dict from DB."""
         if self._calibc_ is None:
-            logger.debug('AreaDetector._calibconstants - make CalibConstants')
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
+            kwa.setdefault('logmet_init', self._logmet_init)
             self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
             self._apply_calibc_preload_cache()
+            self._logmet_init('AreaDetector._calibconstants - makes CalibConstants\n%s'%\
+                              self._calibc_.info_calibconst())
         return self._calibc_
 
 
