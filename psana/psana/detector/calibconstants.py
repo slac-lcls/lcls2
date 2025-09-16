@@ -82,6 +82,7 @@ class CalibConstants:
         assert is_dict_like(calibconst), 'Input parameter should be dict-like: %s' % str(calibconst)
         self._reset(calibconst)
         self._kwa = kwa
+        self._logmet_init = kwa.get('logmet_init', logger.debug)
 
     def _reset(self, calibconst):
         self._calibconst = calibconst
@@ -246,15 +247,16 @@ class CalibConstants:
         if segnums is None:
             segnums = self.segment_numbers_total()
 
-        logger.info(info_ndarr(segnums, 'preserve pixel indices for segments '))
+        logmet_init = self._logmet_init
+        logmet_init(info_ndarr(segnums, 'preserve pixel indices for segments '))
 
-        logger.info(info_ndarr(resp, 'self.pixel_coord_indexes '))
+        logmet_init(info_ndarr(resp, 'self.pixel_coord_indexes '))
 
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
         for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
-        logger.info(s)
+        logmet_init(s)
 
         mapmode = kwa.get('mapmode',2)
         fillholes = kwa.get('fillholes',True)
@@ -358,9 +360,13 @@ class CalibConstants:
         s = '    det.raw._calibconst.keys(): %s' % (', '.join(keys))
         for k,v in cc.items():
             nda, meta = v
-            s += info_ndarr(nda, '\n    %s from exp:%s run:%04d' % (k.ljust(12), meta['experiment'], meta['run']), last=5)\
-                 if k != 'geometry' else '\n    %s from exp:%s run:%04d\n%s'%\
-                    (k, meta['experiment'], meta['run'], str(v)[:500])
+            if k == 'geometry': continue
+            s += info_ndarr(nda, '\n    %s from exp:%s run:%04d' % (k.ljust(12), meta['experiment'], meta['run']), last=5)
+
+        geo = cc.get('geometry', None)
+        s += '\n    geometry is missing' if geo is None else\
+             '\n    geometry from exp:%s run:%04d\n%s'%\
+                    (meta['experiment'], meta['run'], str(geo)[:500])
         return s
 
 # EOF
