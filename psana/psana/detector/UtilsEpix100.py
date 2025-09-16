@@ -38,7 +38,7 @@ def calib_epix100(det_raw, evt, cmpars=None, **kwa): #cmpars=(0,7,100,10)):
 
     gfac = det_raw._gain_factor()# - 3d gain factors shape:(1, 704, 768)
     peds = det_raw._pedestals()
-    mask = det_raw._mask(**kwa)
+    mask = det_raw._mask() # **kwa
     _cmpars  = cmpars #(0,7,100,10) #None #cmpars # det_raw._common_mode() if cmpars is None else cmpars
 
     if peds is None: return raw
