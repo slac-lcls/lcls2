@@ -87,6 +87,7 @@ class DetCache():
         self.mask = None # combined mask
         self.inds = None # panel indices in daq
         self.loop_banks = True
+        self._logmet_init = kwa.get('logmet_init', logger.debug)
         self.add_calibcons(det, evt)
 
     def kwargs_are_the_same(self, **kwa):
@@ -104,9 +105,10 @@ class DetCache():
         self.detname = det._det_name
         self.inds    = det._sorted_segment_inds # det._segment_numbers
         self.calibc  = det._calibconst
+        logmet_init = self._logmet_init
 
-        logger.info('%s add_calibcons for _det_name: %s %s' % (30*'_', self.detname, 30*'_'))
-        logger.info('\n  _sorted_segment_inds: %s' % str(self.inds)\
+        logmet_init('%s add_calibcons for _det_name: %s %s' % (30*'_', self.detname, 30*'_'))
+        logmet_init('\n  _sorted_segment_inds: %s' % str(self.inds)\
                    + ndau.info_ndarr(det.raw(evt), '\n  raw(evt)')
                     )
         if is_true(self.calibc is None, 'det._calibconst is None > CALIB CONSTANTS ARE NOT AVAILABLE FOR %s' % self.detname,\
@@ -116,7 +118,7 @@ class DetCache():
 
         #print('XXXX keys', keys, type(keys))
 
-        logger.info('det.raw._calibconst.keys: %s' % (', '.join(keys)))
+        logmet_init('det.raw._calibconst.keys: %s' % (', '.join(keys)))
         if is_true(not('pedestals' in keys), 'PEDESTALS ARE NOT AVAILABLE det.raw.calib(evt) will return det.raw.raw(evt)',\
                    logger_method = logger.warning): return
 
@@ -127,8 +129,8 @@ class DetCache():
         d = up.dict_filter(meta_peds, list_keys=('ctype', 'experiment', 'run', 'run_orig', 'run_beg', 'run_end', 'time_stamp',\
                                                  'tstamp_orig', 'detname', 'longname', 'shortname',\
                                                  'data_dtype', 'data_shape', 'version', 'uid'))
-        logger.info('partial metadata for pedestals:\n  %s' % '\n  '.join(['%15s: %s' % (k,v) for k,v in d.items()]))
-        logger.info(ndau.info_ndarr(peds, 'pedestals'))
+        logmet_init('partial metadata for pedestals:\n  %s' % '\n  '.join(['%15s: %s' % (k,v) for k,v in d.items()]))
+        logmet_init(ndau.info_ndarr(peds, 'pedestals'))
 
         gain, meta_gain = self._calibcons_for_ctype('pixel_gain')
         offs, meta_offs = self._calibcons_for_ctype('pixel_offset')
@@ -137,7 +139,7 @@ class DetCache():
                                                   logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
-        logger.info(ndau.info_ndarr(self.gfac, 'gain factors'))
+        logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
         self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
                                     logger_method = logger.warning) else\
@@ -146,7 +148,7 @@ class DetCache():
         self.cmps = self.kwa.get('cmpars', None)
         self.loop_banks = self.kwa.get('loop_banks', True)
         self.mask = det._mask(evt, **self.kwa)
-        logger.info('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
+        logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
                       ndau.info_ndarr(self.inds, 'inds'),\
@@ -192,7 +194,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
 
     if first_entry:
         det._odc = odc = DetCache(det, evt, **kwa) # cache.add_detcache(det, evt, **kwa)
-        logger.info(det._info_calibconst())
+        #logger.info(det._info_calibconst()) # is called in AreaDetector
 
     if odc.poff is None: return arr
 
