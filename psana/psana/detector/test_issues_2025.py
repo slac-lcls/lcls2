@@ -1492,6 +1492,7 @@ def issue_2025_09_16(subtest='0o7777'):
        datinfo -k exp=mfxdaq23,run=31 -d epix100_0
        datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
        datinfo -k exp=mfx100848724,run=51 -d jungfrau
+       datinfo -k exp=ascdaq18,run=407 -d epixhr
     """
     import os
     import numpy as np
@@ -1508,6 +1509,7 @@ def issue_2025_09_16(subtest='0o7777'):
             {'exp':'mfxdaq23',     'run':31,  'detectors':['epix100_0',]} if isubset &  8 else\
             {'exp':'ascdaq123',    'run':192, 'detectors':['epix10ka',]}  if isubset & 16 else\
             {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
+            {'exp':'ascdaq18',     'run':407, 'detectors':['epixhr',]}    if isubset & 64 else\
             {}
     ds = DataSource(**dskwa)
 
