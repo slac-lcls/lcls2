@@ -85,7 +85,7 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, snrmax=8):
 
 
 def feature_01(block, databits=0x3FFF, snrmax=8):
-    
+
     logger.info("""Feature 1: mean intensity of frames in good range""")
     #block = block & databits
     #block = np.bitwise_and(block, databits)
