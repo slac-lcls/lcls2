@@ -406,6 +406,7 @@ class Server:  # (hdf5 handling)
                 cb(flatten_event_data_dict)
 
         # end for grp_event_data...
+        if self.swmr_mode: self.file_handle.flush()
         return
 
     def _get_data_info(self, data, dataset_name):
