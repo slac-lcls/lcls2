@@ -55,7 +55,6 @@ install(FILES
 #)
 
 install(TARGETS calib
-		#test_CalibPars # this installs under psalg/build/psalg/calib/
     EXPORT psalgTargets
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib

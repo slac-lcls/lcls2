@@ -18,9 +18,13 @@ target_include_directories(psana PUBLIC
     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/hsd/include>
 )
 
-# Link the executable with the MyLibrary library
+# Link the executable
 target_link_libraries(psana PUBLIC psalg::alloc)
 target_link_libraries(psana PUBLIC psalg::digitizer)
+target_link_libraries(psana PUBLIC psalg::utils)
+target_link_libraries(psana PUBLIC psalg::calib)
+
+
 
 add_custom_command(TARGET psana
                    POST_BUILD
