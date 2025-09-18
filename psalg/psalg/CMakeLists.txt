@@ -11,6 +11,7 @@ endif()
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
+    XTC_LINK.cc
 ###   utils/src/Logger.cc
 )
 
