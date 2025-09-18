@@ -119,6 +119,9 @@ def segment_geometry(**kwa):
     elif segname=='JUNGFRAU:V2':
         from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
         return jungfrau_front
+    elif segname=='JUNGFRAU:V3':
+        from psana.pscalib.geometry.SegGeometryJungfrauV3 import jungfrau_with_wide
+        return jungfrau_with_wide
     elif segname=='PNCCD:V1':
         from psana.pscalib.geometry.SegGeometryMatrixV1 import segment_one
         return segment_one
