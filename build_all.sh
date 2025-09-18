@@ -12,7 +12,7 @@ fi
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
-force_clean=0
+force_clean=1
 no_ana=0
 build_ext_list=""
 PSANA_PATH=`pwd`/psana
@@ -37,7 +37,7 @@ while getopts "c:p:s:b:fdar" opt; do
     ;;
     b) build_ext_list="$OPTARG"
     ;;
-    f) force_clean=1                       # Force clean is required building between rhel6&7
+    f) force_clean=0                       # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -126,7 +126,7 @@ cd ..
 ###############
 # Build psdaq
 ###############
-if [ $no_daq == 0 ]; then
+# if [ $no_daq == 0 ]; then
     # to build psdaq with setuptools
     cmake_build psdaq 1
     cd psdaq
@@ -138,7 +138,7 @@ if [ $no_daq == 0 ]; then
     fi
     pip install --no-deps --prefix=$INSTDIR $pipOptions .
     cd ..
-fi
+# fi
 
 ###############
 # Build psana
