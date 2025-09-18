@@ -17,7 +17,7 @@ namespace XtcData {
 
 class VarDef;
 
-static const int MaxNameSize = 256;
+static const int MaxNameSize = 258;
 
 class AlgVersion {
 public:
