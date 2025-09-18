@@ -3,6 +3,7 @@
 Class :py:class:`SegGeometryJungfrauV2` describes the Jungfrau V2 sensor geometry
 =================================================================================
 
+V1 - regular matrix (512x1024) of 2x4 (256x256)-matrix asics
 V2 - Y axis is flipped comparing to V1
 
 Data array for Jungfrau 512x1024 segment is shaped as (1,512,1024),
@@ -39,7 +40,7 @@ has a matrix-like numeration for rows and columns with gaps between 2x4 ASICs
 
 Usage::
 
-    from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_one as sg
+    from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
 
     sg.print_seg_info(0o377)
 
@@ -95,16 +96,13 @@ class SegGeometryJungfrauV2(SegGeometryJungfrauV1):
 
     _name = 'SegGeometryJungfrauV2'
 
-
     def __init__(sp, **kwa):
         logger.debug('SegGeometryJungfrauV2.__init__()')
         SegGeometryJungfrauV1.__init__(sp)
 
 
     def make_pixel_coord_arrs(sp):
-        """Makes [512,1024] maps of x, y, and z pixel coordinates
-        with origin in the center of 2x4
-        """
+        """Makes [512,1024] maps of x, y, and z pixel coordinates with origin in the center of 2x4"""
         x_asic = np.arange(sp._casic)*sp._pixs
         x0 = np.array((-512-2.5, -256.5, 1.5, 256+3.5))*sp._pixs
         sp.x_arr_um = np.hstack([x_asic+x0[0], x_asic+x0[1], x_asic+x0[2], x_asic+x0[3]])
