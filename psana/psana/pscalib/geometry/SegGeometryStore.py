@@ -18,6 +18,7 @@ Usage::
     sg = sgs.Create(segname='PNCCD:V1')
     sg = sgs.Create(segname='JUNGFRAU:V1')
     sg = sgs.Create(segname='JUNGFRAU:V2')
+    sg = sgs.Create(segname='JUNGFRAU:V3')
     sg = sgs.Create(segname='MTRX:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:192:384:50:50') # the same as EPIXMASIC:V1
