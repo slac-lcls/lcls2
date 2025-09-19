@@ -1,7 +1,8 @@
-from psana.detector.detector_impl import DetectorImpl
+#from psana.detector.detector_impl import DetectorImpl
+from psana.detector.areadetector import DetectorImpl, AreaDetectorRaw
 from amitypes import Array1d
 
-class piranha4_raw_2_0_0(DetectorImpl):
+class piranha4_raw_2_0_0(AreaDetectorRaw):
     def __init__(self, *args, **kwa):
         super().__init__(*args)
 
@@ -10,7 +11,7 @@ class piranha4_raw_2_0_0(DetectorImpl):
         if segs is None: return None
         return segs[0].image[:,0]
 
-class piranha4_raw_2_1_0(DetectorImpl):
+class piranha4_raw_2_1_0(AreaDetectorRaw):
     def __init__(self, *args, **kwa):
         super().__init__(*args)
 
@@ -28,7 +29,6 @@ class piranha4_ttavg_1_0_0(DetectorImpl):
     def __init__(self, *args, **kwa):
         super(piranha4_ttavg_1_0_0, self).__init__(*args)
         self._add_fields()
-
 
 class piranha4_simfex_1_0_0(DetectorImpl):
     def __init__(self, *args, **kwa):
