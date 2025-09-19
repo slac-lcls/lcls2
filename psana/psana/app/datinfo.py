@@ -105,7 +105,9 @@ def ds_run_det(args):
     else: print('det.raw._config_object  : MISSING')
 
     print(info_detector(det, cmt='detector info\n    ', sep='\n    '))
-    print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
+    seg_geo = getattr(det.raw, '_seg_geo', None)
+    if seg_geo is not None:
+      print('det.raw._seg_geo.shape():', seg_geo.shape() if seg_geo is not None else '_seg_geo is None')
 
 
 def selected_record(nrec):
@@ -150,7 +152,9 @@ def loop_run_step_evt(args):
       try:    step_docstring = run.Detector('step_docstring')
       except: step_docstring = None
       print('step_docstring detector object is %s' % ('missing' if step_docstring is None else 'created'))
-      print('det.raw._seg_geo.shape():', det.raw._seg_geo.shape() if det.raw._seg_geo is not None else '_seg_geo is None')
+      seg_geo = getattr(det.raw, '_seg_geo', None)
+      if seg_geo is not None:
+        print('det.raw._seg_geo.shape():', seg_geo.shape() if seg_geo is not None else '_seg_geo is None')
 
       timing = run.Detector('timing') if 'timing' in run.detnames else None
       if timing is not None: timing.raw._add_fields()
