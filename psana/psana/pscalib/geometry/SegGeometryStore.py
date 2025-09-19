@@ -18,7 +18,6 @@ Usage::
     sg = sgs.Create(segname='PNCCD:V1')
     sg = sgs.Create(segname='JUNGFRAU:V1')
     sg = sgs.Create(segname='JUNGFRAU:V2')
-    sg = sgs.Create(segname='JUNGFRAU:V3')
     sg = sgs.Create(segname='MTRX:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:512:512:54:54')
     sg = sgs.Create(segname='MTRX:V2:192:384:50:50') # the same as EPIXMASIC:V1
@@ -120,9 +119,6 @@ def segment_geometry(**kwa):
     elif segname=='JUNGFRAU:V2':
         from psana.pscalib.geometry.SegGeometryJungfrauV2 import jungfrau_front
         return jungfrau_front
-    elif segname=='JUNGFRAU:V3':
-        from psana.pscalib.geometry.SegGeometryJungfrauV3 import jungfrau_with_wide
-        return jungfrau_with_wide
     elif segname=='PNCCD:V1':
         from psana.pscalib.geometry.SegGeometryMatrixV1 import segment_one
         return segment_one
