@@ -251,7 +251,7 @@ void Reader::start()
   const auto& panel = m_pool.panels()[m_panel];
 
   // Ensure that timing messages are DMAed to the GPU
-  dmaTgtSet(panel.gpu, DmaTgt_t::GPU);
+  dmaTgtSet(panel.gpu, DmaTgt_t::TGT_GPU);
 
   // Ensure that the DMA round-robin index starts with buffer 0
   dmaIdxReset(panel.gpu);

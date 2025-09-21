@@ -303,9 +303,9 @@ DmaTgt_t dmaTgtGet(const DataGPU& gpu)
 
     DmaTgt_t tgt;
     switch (regVal) {
-        case CPU:  tgt = CPU;  break;
-        case GPU:  tgt = GPU;  break;
-        default:   tgt = ERR;  break;
+        case TGT_CPU:  tgt = TGT_CPU;  break;
+        case TGT_GPU:  tgt = TGT_GPU;  break;
+        default:       tgt = TGT_ERR;  break;
     }
     return tgt;
 }
