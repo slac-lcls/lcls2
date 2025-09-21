@@ -49,12 +49,12 @@ TebReceiver::~TebReceiver()
   printf("*** TebRcvr::dtor: 3\n");
 }
 
-int TebReceiver::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter,
+int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                              std::map<std::string, std::string>&        labels)
 {
-  exporter->add("DRP_smdWriting",  labels, Pds::MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
-  exporter->add("DRP_fileWriting", labels, Pds::MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
-  exporter->add("DRP_recordQueue", labels, Pds::MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
+  exporter->add("DRP_smdWriting",  labels, MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
+  exporter->add("DRP_fileWriting", labels, MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
+  exporter->add("DRP_recordQueue", labels, MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
 
   return 0;
 }
@@ -62,6 +62,7 @@ int TebReceiver::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporte
 void TebReceiver::setup()
 {
   //printf("*** TebRcvr::setup: 1\n");
+  m_worker = 0;
 
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
 
@@ -126,7 +127,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   // Start up a reducer only when there is a need for its result
   // Running the reducer on transitions is a no-op, so avoid its overhead
   if (result.isEvent() && (result.persist() || result.monitor())) {
-    static_cast<PGPDrp&>(m_drp).reducerStart(m_worker++, index);
+    static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
+    m_worker = (m_worker + 1) % m_para.nworkers;
   }
 
   // Pass parameters to the recorder thread
@@ -165,8 +167,10 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
+    size_t dataSize;
     if (result->persist() || result->monitor()) {
-      drp.reducerReceive(worker++, index); // This blocks until result is ready from GPU
+      drp.reducerReceive(worker, dataSize); // This blocks until result is ready from GPU
+      worker = (worker + 1) % m_para.nworkers;
     }
 
     // Release the GPU intermediate buffers for reuse
@@ -203,13 +207,13 @@ void TebReceiver::_recorder()
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
     size_t cpSize, dgSize;
     if (dgram->isEvent() && (result->persist() || result->monitor())) {
-      // Fetch the size of the reduced L1Accept payload from the GPU
-      size_t dataSize;
-      auto pSize = buffer - sizeof(dataSize);
-      //printf("*** TebRcvr::recorder: idx %u, buf %p, pSz %p\n", index, buffer, pSize);
-      chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
-      chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
-      //printf("*** TebRcvr::recorder: 3 sz %zu, extent %u\n", dataSize, dgram->xtc.extent);
+      //// Fetch the size of the reduced L1Accept payload from the GPU
+      //size_t dataSize;
+      //auto pSize = buffer - sizeof(dataSize);
+      ////printf("*** TebRcvr::recorder: idx %u, buf %p, pSz %p\n", index, buffer, pSize);
+      //chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
+      //chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
+      ////printf("*** TebRcvr::recorder: 3 sz %zu, extent %u\n", dataSize, dgram->xtc.extent);
 
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
@@ -218,11 +222,13 @@ void TebReceiver::_recorder()
 
       // Measure the size of the header block
       auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram) - dataSize;
-      //printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %u = %zd\n",
+      //printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
       //       dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
 
       // Make sure the header will fit in the space reserved for it on the GPU
       if (size_t(headerSize) > memPool.reduceBufsReserved()) {
+        printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
+               dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
         logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
                           headerSize, memPool.reduceBufsReserved());
         abort();
@@ -329,7 +335,7 @@ void TebReceiver::_recorder()
 
     // Measure latency before sending dgram for monitoring
     if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
-      m_latency = Pds::Eb::latency<us_t>(dgram->time);
+      m_latency = Eb::latency<us_t>(dgram->time);
       m_latPid = dgram->pulseId();
     }
     //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
@@ -490,7 +496,7 @@ unsigned PGPDrp::unconfigure()
   return 0;
 }
 
-int PGPDrp::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
+int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
   auto& memPool = *pool.getAs<MemPoolGpu>();
 
@@ -552,8 +558,7 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
   exporter->add("drp_num_pgp_in_rx",    labels, MetricType::Gauge,
                 [&](){return memPool.nPgpInRx(unit);});
 
-  exporter->add("DRP_reduceTime",  labels, Pds::MetricType::Gauge,
-                [&](){ return m_reducer ? m_reducer->reduceTime() : 0; });
+  m_reducer->setupMetrics(exporter, labels);
 
   return 0;
 }

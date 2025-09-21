@@ -2,19 +2,19 @@
 
 #include "ReducerAlgo.hh"
 
-#include "lcdaq/lc-compressor-QUANT_ABS_0_f32-BIT_4-RZE_1.hh"
+#include "cuSZp.h"
 
 namespace Drp {
   namespace Gpu {
 
-class LcReducer : public ReducerAlgo
+class CuSZpReducer : public ReducerAlgo
 {
 public:
-  LcReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~LcReducer() {}
+  CuSZpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
+  virtual ~CuSZpReducer() {}
 
-  bool   hasGraph() const override { return true; }
-  size_t payloadSize() const override { return m_compressor.maxSize(); }
+  bool   hasGraph() const override { return false; }
+  size_t payloadSize() const override { return m_pool.calibBufsSize(); }
   void   recordGraph(cudaStream_t       stream,
                      const unsigned&    index,
                      float const* const calibBuffer,
@@ -25,7 +25,7 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  LC_framework::LC_Compressor m_compressor;
+  double m_errorBound;
 };
 
   } // Gpu

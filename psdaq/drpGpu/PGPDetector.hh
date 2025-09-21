@@ -77,11 +77,11 @@ public:
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
   void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
-                                                  { m_reducer->configure(xtc, bufEnd); }
-  void reducerStart(unsigned wkr, unsigned idx)   { m_reducer->start(wkr, idx); }
-  void reducerReceive(unsigned wkr, unsigned idx) { m_reducer->receive(wkr, idx); }
+                                                { m_reducer->configure(xtc, bufEnd); }
+  void reducerStart(unsigned wkr, unsigned idx) { m_reducer->start(wkr, idx); }
+  void reducerReceive(unsigned wkr, size_t& sz) { m_reducer->receive(wkr, sz); }
   void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz) { m_reducer->event(xtc, be, sz); }
-  void freeBufs(unsigned idx)                     { m_collector->freeDma(idx); } // @todo: Bad name
+  void freeBufs(unsigned idx)                   { m_collector->freeDma(idx); } // @todo: Bad name
 protected:
   void pgpFlush() override;
 private:
