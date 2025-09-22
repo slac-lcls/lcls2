@@ -222,9 +222,15 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     shseg = arr.shape[-2:] # (512, 1024)
     outa = np.zeros_like(arr, dtype=np.float32)
 
+    #print('XXX inds:', inds)
+    #print('XXX _sorted..., _segment_numbers:', det._sorted_segment_inds , det._segment_numbers)
     for iraw,i in enumerate(inds):
         arr1  = arr[iraw,:]
-        mask1 = None if mask is None else mask[i,:]
+
+        #print('XXX i:', i)
+        #print(info_ndarr(mask, 'XXX mask:'))
+
+        mask1 = None if mask is None else mask[i,:] if i<mask.shape[0] else mask[0,:]
         gfac1 = None if gfac is None else gfac[:,i,:,:]
         poff1 = None if poff is None else poff[:,i,:,:]
         arr1.shape  = (1,) + shseg
