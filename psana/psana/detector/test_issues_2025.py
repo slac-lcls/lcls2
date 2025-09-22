@@ -1551,14 +1551,14 @@ def issue_2025_09_16(subtest='0o7777'):
 def issue_2025_09_18(subtest='0o7777'):
     """test calib server
        curl -s "https://psextapi.slac.stanford.edu/calib_ws/cdb_ascdaq023"
-       datinfo -k exp=rix101237525,run=55,dir=/cds/data/drpsrcf/rix/rix101237525/xtc
+       datinfo -k exp=ascdaq023,run=37,dir=/cds/data/drpsrcf/asc/ascdaq023/xtc/ -d jungfrau
     """
     from psana.detector.NDArrUtils import info_ndarr
 
     from psana import DataSource
-    ds = DataSource(exp='rix101237525',run=55,dir='/cds/data/drpsrcf/rix/rix101237525/xtc')
+    ds = DataSource(exp='ascdaq023',run=37,dir='/cds/data/drpsrcf/asc/ascdaq023/xtc')
     orun = next(ds.runs())
-    det = orun.Detector('c_piranha', logmet_init=logger.info)
+    det = orun.Detector('jungfrau', logmet_init=logger.info)
     print('calibconst.keys():', [k for k in det.raw._calibconst.keys()])
     for i,evt in enumerate(orun.events()):
         #print('evt %03d' % i)
@@ -1647,7 +1647,7 @@ def selector():
     elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
     elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
     elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
-    elif TNAME in ('45',): issue_2025_09_18(args.subtest) # test calib server
+    elif TNAME in ('45',): issue_2025_09_18(args.subtest) # test calibconst server
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
