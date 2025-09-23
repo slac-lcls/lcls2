@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "simxtc2")           continue;  // Opal
             if (kwargs.first == "simtime")           continue;  // Opal
             if (kwargs.first == "ttpv")              continue;  // Opal
+            if (kwargs.first == "ttpv_minp")         continue;  // Opal
         }
         if (para.detType == "tt")
             if (kwargs.first == "ttreffile")         continue;  // OpalTTFex

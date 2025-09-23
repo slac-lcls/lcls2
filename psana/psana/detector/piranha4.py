@@ -32,5 +32,5 @@ class piranha4_ttavg_1_0_0(DetectorImpl):
 
 class piranha4_simfex_1_0_0(DetectorImpl):
     def __init__(self, *args, **kwa):
-        super(piranha4_simfex_1_0_0, self).__init__(self, *args, **kwa)
+        super(piranha4_simfex_1_0_0, self).__init__(*args, **kwa)
         self._add_fields()
