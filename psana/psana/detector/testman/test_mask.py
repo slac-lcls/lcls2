@@ -152,7 +152,7 @@ def test_mask(tname):
     """
     """
     from psana import DataSource
-    ds = DataSource(exp='uedcom103',run=7, dir='/cds/data/psdm/prj/public01/xtc')
+    ds = DataSource(exp='ued101066', run=181, dir='/sdf/data/lcls/ds/prj/public01/xtc')
     orun = next(ds.runs())
     det = orun.Detector('epixquad')  # epixquad is replaced by epix10ka_000002
     peds, meta = det.calibconst['pedestals']

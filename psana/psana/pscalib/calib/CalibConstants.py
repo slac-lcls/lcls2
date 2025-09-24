@@ -33,10 +33,23 @@ from krtc import KerberosTicket
 from urllib.parse import urlparse
 import getpass
 
+# CLI set SIT_PSDM_OFFSITE for test:
+# export SIT_PSDM_OFFSITE="is set"
+# echo $SIT_PSDM_OFFSITE
+# curl -s "https://psextapi.slac.stanford.edu/calib_ws/cdb_ascdaq023"
+#...detector/test_issues_2025.py 45
+
+IS_OFFSITE = os.environ.get('SIT_PSDM_OFFSITE', None) is not None
 URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
-URL = 'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
-URL_KRB = 'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
-URL_KRB_HEADERS = 'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
+
+#print('IS_OFFSITE:', IS_OFFSITE)
+
+URL = 'https://psextapi.slac.stanford.edu/calib_ws/' if IS_OFFSITE else\
+      'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
+URL_KRB = 'https://psextapi.slac.stanford.edu/ws-kerb/calib_ws/' if IS_OFFSITE else\
+          'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
+URL_KRB_HEADERS = URL_KRB if IS_OFFSITE else\
+                  'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
 
 HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
 PORT = 9307

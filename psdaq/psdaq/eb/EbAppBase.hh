@@ -6,6 +6,7 @@
 #include "EbLfServer.hh"
 
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Collection.hh"
 
 #include <cstdint>
 #include <cstddef>
@@ -42,7 +43,7 @@ namespace Pds {
       int              startConnection(const std::string& ifAddr,
                                        std::string&       port,
                                        unsigned           nLinks);
-      int              connect(unsigned maxTrBuffers, const MetricExporter_t);
+      int              connect(unsigned maxEvBuffers, unsigned maxTrBuffers, const MetricExporter_t);
       int              configure();
       void             unconfigure();
       void             disconnect();
@@ -82,6 +83,9 @@ namespace Pds {
       uint64_t                  _idxSrcs;
       unsigned                  _id;
       MetricExporter_t          _exporter;
+      ZmqContext                _context;
+      ZmqSocket                 _notifySocket;
+      uint64_t                  _notifyPid;
       const std::string         _pfx;
       const EbParams&           _prms;
     };

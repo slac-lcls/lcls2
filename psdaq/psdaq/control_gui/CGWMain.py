@@ -226,15 +226,16 @@ class CGWMain(QWZMQListener):
     def closeEvent(self, e):
         logger.debug('%s.closeEvent' % self._name)
 
-        resp = confirm_or_cancel_dialog_box(parent=None,
-                                            text='Close window?',\
-                                            title='Confirm or cancel')
-        if not resp:
-            logger.warning('Closing window is cancelled')
-            e.ignore()
-            return
-
-        logger.debug('Closing window is confirmed')
+        # Ric commented this out 6/24/25
+        #resp = confirm_or_cancel_dialog_box(parent=None,
+        #                                    text='Close window?',\
+        #                                    title='Confirm or cancel')
+        #if not resp:
+        #    logger.warning('Closing window is cancelled')
+        #    e.ignore()
+        #    return
+        #
+        #logger.debug('Closing window is confirmed')
 
         # save app-configuration parameters
         #try:

@@ -14,6 +14,29 @@ from p4p import Value, Type
 
 from psdaq.hsd.pvdef import *
 
+#  My alarm implementation
+import json
+from enum import Enum
+
+class AlarmSevr(Enum):
+    NONE = 0
+    MINOR = 1
+    MAJOR = 2
+    INVALID = 3
+
+class AlarmStatus(Enum):
+    NONE = 0
+    READ = 1
+    WRITE = 2
+    HIGH  = 3
+    HIHI  = 4
+    LOW   = 5
+    LOLO  = 6
+    STATE = 7
+    CHANGE_OF_STATE = 8
+    COMM  = 9
+    TIMEOUT = 10
+
 #import pyrogue as pr
 
 logger = logging.getLogger(__name__)
@@ -50,11 +73,50 @@ class DefaultPVHandler(object):
         if self.callback is not None:
             self.callback(postedval)
 
+class PVHandlerAlarm(object):
+    type = None
+
+    def __init__(self,limits=(0,1),callback=None):
+        self.limits   = limits
+        self.callback = callback
+
+    def put(self, pv, op):
+        postedval = op.value()
+        postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
+        if postedval['value'] < self.limits[0]:
+            postedval['alarm'] = {'severity': AlarmSevr.MAJOR.value,
+                                  'status'  : AlarmStatus.LOLO.value}
+        elif postedval['value'] > self.limits[1]:
+            postedval['alarm'] = {'severity': AlarmSevr.MAJOR.value,
+                                  'status'  : AlarmStatus.HIHI.value}
+        else:
+            postedval['alarm'] = {'severity': AlarmSevr.NONE.value,
+                                  'status'  : AlarmStatus.NONE.value}
+
+        pv.post(postedval)
+        op.done()
+        if self.callback is not None:
+            self.callback(postedval)
+
 class ChipServer(object):
-    def __init__(self, provider, prefix, start):
+    def __init__(self, provider, prefix, start, alarmFile):
         self.provider = provider
         self.prefix = prefix
 
+        try:
+            alarms = json.load(open(alarmFile,'r'))
+        except:
+            print(f'Error opening alarms file {alarmFile}.')
+            alarms = {}
+
+        def getLimits(name):
+            if name in alarms:
+                result = alarms[name]
+            else:
+                print(f'Limits for {name} not found.  Defaulting to NO ALARMS')
+                result = [-10000000000,10000000000]
+            return result
+        
         #  Make configuration one PV access for each readout channel
         if start:
             daqConfig['enable'] = ('i',1)
@@ -79,6 +141,10 @@ class ChipServer(object):
                                     handler=DefaultPVHandler())
         self.pLink       = SharedPV(initial=NTScalar('I').wrap({'value':0}),
                                     handler=DefaultPVHandler())
+        self.keepRows    = SharedPV(initial=NTScalar('I').wrap({'value':3}),
+                                    handler=DefaultPVHandler())
+        self.fexOor      = SharedPV(initial=NTScalar('I',valueAlarm=True).wrap({'value':0}),
+                                    handler=PVHandlerAlarm(getLimits(prefix+':FEXOOR')))
         self.monTiming   = MySharedPV(monTiming)
         self.monPgp      = MySharedPV(monPgp)
         self.monRawBuf   = MySharedPV(monBuf)
@@ -96,6 +162,8 @@ class ChipServer(object):
         self.provider.add(prefix+':PADDR'     ,self.pAddr)
         self.provider.add(prefix+':PADDR_U'   ,self.pAddr_u)
         self.provider.add(prefix+':PLINK'     ,self.pLink)
+        self.provider.add(prefix+':KEEPROWS'  ,self.keepRows)
+        self.provider.add(prefix+':FEXOOR'    ,self.fexOor)
         self.provider.add(prefix+':MONTIMING' ,self.monTiming)
         self.provider.add(prefix+':MONPGP'    ,self.monPgp)
         self.provider.add(prefix+':MONRAWBUF' ,self.monRawBuf)
@@ -119,9 +187,9 @@ class ChipServer(object):
         pass
 
 class PVAServer(object):
-    def __init__(self, provider_name, prefix, start):
+    def __init__(self, provider_name, prefix, start, alarmFile):
         self.provider = StaticProvider(provider_name)
-        self.chip     = ChipServer(self.provider, prefix, start)
+        self.chip     = ChipServer(self.provider, prefix, start, alarmFile)
 
     def forever(self):
         Server.forever(providers=[self.provider])
@@ -134,6 +202,7 @@ def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
     parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
+    parser.add_argument('-A', required=False, default='', help='Alarm limits input file', metavar='FILE')
     parser.add_argument('-s', '--start', action='store_true', help='start acq')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
@@ -141,7 +210,7 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    server = PVAServer(__name__, args.P, args.start)
+    server = PVAServer(__name__, args.P, args.start, args.A)
 
     try:
         # process PVA transactions

@@ -27,6 +27,9 @@ elif sys.argv[1]=="-w": #xpp wave8
 elif sys.argv[1]=="-i": #xpp ipimb
     print('XPP IPIMB:')
     multicast_group = '239.255.24.40'
+elif sys.argv[1]=="-p": #sxr pcav
+    print('SXR PCAV:')
+    multicast_group = '239.255.25.03'
 
 # Create the socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

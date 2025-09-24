@@ -44,7 +44,7 @@ T* Pds::Trg::Factory<T>::create(const std::string& soname,
   using namespace rapidjson;
   using logging = psalg::SysLog;
 
-  logging::debug("Loading symbols from library '%s'", soname.c_str());
+  logging::debug("Loading library '%s'", soname.c_str());
 
   if (_object)                          // If the object exists,
   {

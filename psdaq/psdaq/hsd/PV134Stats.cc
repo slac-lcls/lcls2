@@ -57,6 +57,7 @@ namespace Pds {
            _monJesd,
            _monEnv,
            _monAdc,
+           _fexOor,
            _monLinkId,  // PADDR_U
            _NumberOf };
 
@@ -86,6 +87,7 @@ namespace Pds {
       PV_ADD (monJesd);
       PV_ADD (monEnv);
       PV_ADD (monAdc);
+      PV_ADD (fexOor);
       _pv[_monLinkId            ] = new EpicsPVA(STOU(pvbase_a + "PADDR_U").c_str());
       _pv[_monLinkId + _NumberOf] = new EpicsPVA(STOU(pvbase_b + "PADDR_U").c_str());
 #undef PV_ADD
@@ -133,19 +135,21 @@ namespace Pds {
           v.timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs - _p_monTiming[i].timerrcntsum;
           v.timrstcntsum= tpr.RxRstDone                 - _p_monTiming[i].timrstcntsum;
           v.trigcntsum  = reg.countAcquire;
-          v.readcntsum  = reg.countRead;
-          v.startcntsum = reg.countStart;
+          // v.readcntsum  = reg.countRead;
+          // v.startcntsum = reg.countStart;
           // v.queuecntsum = reg.countQueue;
-          v.trigcnt     = v.trigcntsum - _v_monTiming[i].trigcntsum;
+          v.trigcntrate = v.trigcntsum - _v_monTiming[i].trigcntsum;
           unsigned group = teb.group&0xf;
           v.group       = group;
-          v.msgdelayset = _m.tem().xma().messageDelay[group];
-          //          v.msgdelayget = (reg.msgDelay>>16)&0xff;
-          v.headercntl0 = teb.l0Count;
-          v.headercntof = (teb.status>>0)&0xf;
-          v.headerfifow = (teb.status>>4)&0x1f;
-          v.headerfifor = (teb.pauseThresh>>0)&0x1f;
-          //          v.headerfifor = (reg.headerFifo>> 4)&0xf;
+          v.l0delay     = _m.tem().xma().messageDelay[group];
+          v.hdrcount    = teb.l0Count;
+          v.chndatapaus = (teb.status>>1)&0x1;
+          v.hdrfifopaus = (teb.status>>3)&0x1;
+          v.hdrfifoof   = (teb.status>>2)&0x1;
+          v.hdrfifoofl  = (teb.status>>0)&0x1;
+          v.hdrfifow    = (teb.status>>4)&0x1f;
+          v.hdrfifor    = (teb.pauseThresh>>0)&0x1f;
+
           v.fulltotrig  = (teb.fullToTrig>> 0)&0xfff;
           v.nfulltotrig = (teb.nfullToTrig>>0)&0xfff;
           PVPUT(monTiming); }
@@ -232,8 +236,16 @@ namespace Pds {
           v.oor_inb_0 = _m.optfmc().adcOutOfRange[i*4+2];
           v.oor_inb_1 = _m.optfmc().adcOutOfRange[i*4+3];
           v.alarm     = _m.optfmc().adcOutOfRange[i*1+8];
-          PVPUT(monAdc); }
-      }
+          //  FEX baseline correction - out of range
+          v.oor_fex   = fex._stream[1].parms[15];
+          PVPUT(monAdc);
+
+          Pds_Epics::EpicsPVA& pv = *_pv[_fexOor+i*_NumberOf];
+          if (pv.connected())
+              pv.putFrom(v.oor_fex);
+        }
+
+      }  // for(unsigned i=0; i<2; i++)
 
       { MonEnv v;
         EnvMon mon = _m.mon();

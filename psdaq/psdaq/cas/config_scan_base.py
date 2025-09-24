@@ -13,9 +13,11 @@ import numpy as np
 #    Defaults for platform, collection host, groups
 #
 hutch_def = {'tmo':(0,'drp-srcf-mon001'),
-             'rix':(0,'drp-srcf-cmp004'),
+             'rix':(0,'drp-srcf-mon002'),
              'ued':(0,'drp-ued-cmp002'),
-             'asc':(2,'drp-det-cmp001')}
+             'asc':(2,'drp-det-cmp001'),
+             #'mfx':(3,'drp-srcf-cmp041'),
+            }
 
 class ConfigScanBase(object):
     def __init__(self, userargs=[], defargs={}):
@@ -42,6 +44,8 @@ class ConfigScanBase(object):
         add_argument('--events', type=int, default=2000, help='events per step (default 2000)')
         add_argument('--record', type=int, choices=range(0, 2), default=None, help='recording flag')
         add_argument('--hutch' , type=str, default=None, help='hutch (shortcut for -p,-C)')
+        add_argument('--nprocs', type=int, required=False, help='Number of drp segments/processes for the detector `detname`')
+        add_argument('--run_type', type=str, required=False, help='Specify a run `type`, e.g. `DARK`.')
         parser.add_argument('-v', action='store_true', help='be verbose')
 
         for a in userargs:
@@ -93,7 +97,10 @@ class ConfigScanBase(object):
         for v in platform['drp'].values():
             if v['active']==1:
                 group_mask |= 1<<(v['det_info']['readout'])
-                if v['proc_info']['alias'] == args.detname:
+                # For multi-segment/process detector args.detname may not have
+                # segment number, so just check that it is in the alias instead
+                # of equality
+                if args.detname in v['proc_info']['alias']:
                     step_group = v['det_info']['readout']
 
         if step_group is None:
@@ -151,12 +158,12 @@ class ConfigScanBase(object):
                           "group_mask"   : group_mask,
                           'step_keys'    : keys,
                           "step_group"   : step_group, 
-                          "events"       : args.events, 
+                          "readout_count": args.events, 
                           }  # we should have a separate group param
 
         enable_dict = {'group_mask'   : group_mask,
                        'step_group'   : step_group,
-                       'events'       : args.events,
+                       "readout_count": args.events, 
                        }
 
         keys_dict = {   "configure": configure_dict,
@@ -165,27 +172,33 @@ class ConfigScanBase(object):
         
         for step in steps():
             # update
+            # step value is defined from teh yield in the script:
+            # yield (d, float(step), json.dumps(metad)) 
             
-            if "events" in step[2]: 
-                configure_dict["readout_count"] = int(eval(step[2])["events"])
-                enable_dict['readout_count']    = int(eval(step[2])["events"] )
-                print(f"Number of events: {eval(step[2])['events']}")
+            d = step[0]
+            nstep = step[1]
+            metad = json.loads(step[2])
+            
+            if "events" in metad.keys(): 
+                configure_dict["readout_count"] = metad["events"]
+                enable_dict['readout_count']    = metad["events"]
+                print(f"Number of events: {metad['events']}")
             # config scan setup
                 keys_dict = {   "configure": configure_dict,
                                 "enable":    enable_dict}
             
-            scan.update(value=step[1])
+            scan.update(value=nstep)
 
             my_step_data = {}
             for motor in scan.getMotors():
                 my_step_data.update({motor.name: motor.position})
-                my_step_data.update({'step_docstring': step[2]})
+                my_step_data.update({'step_docstring': json.dumps(metad)})
 
             data["motors"] = my_step_data
 
             beginStepBlock = scan.getBlock(transition="BeginStep", data=data)
             values_dict = \
-                          {"beginstep": {"step_values":        step[0],
+                          {"beginstep": {"step_values":        d,
                                          "ShapesDataBlockHex": beginStepBlock}}
             # trigger
             scan.trigger(phase1Info = {**keys_dict, **values_dict})
@@ -196,3 +209,9 @@ class ConfigScanBase(object):
 
         scan.push_socket.send_string('shutdown') #shutdown the daq communicator thread
         scan.comm_thread.join()
+
+        if args.record is not None:
+            # Recording was requested, now we turn it off
+            if args.record == 1:
+                print("Setting record back to False")
+                rv = control.setRecord(False)

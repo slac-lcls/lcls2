@@ -133,7 +133,7 @@ class AxiPcieCore(pr.Device):
                  description = 'Base components of the PCIe firmware core',
                  useBpi      = False,
                  useSpi      = False,
-                 numDmaLanes = 1,
+                 numDmaLanes = 2,
                  boardType   = None,
                  **kwargs):
         super().__init__(description=description, **kwargs)

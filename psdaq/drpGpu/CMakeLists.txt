@@ -20,8 +20,10 @@ if(CMAKE_CUDA_COMPILER)
     #message(CMAKE_CXX_COMPILER='${CMAKE_CXX_COMPILER}')
     #message(NVCC_PREPEND_FLAGS='$ENV{NVCC_PREPEND_FLAGS}')
 
+#--- DRP program
+
     add_library(drpbase_gpu SHARED
-        MemPool.cu
+        MemPool.cc
         GpuAsyncLib.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
@@ -34,9 +36,11 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(drp_gpu
         PGPDetectorApp.cc
-        PGPDetector.cu
-        Worker.cu
+        PGPDetector.cc
+        Reader.cu
         Collector.cu
+        Reducer.cu
+        FileWriter.cc
     )
     target_include_directories(drp_gpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -49,11 +53,16 @@ if(CMAKE_CUDA_COMPILER)
         mmhw
         xtcdata::xtc
         nlohmann_json::nlohmann_json
+        #cudadevrt
         CUDA::cudart
         CUDA::cuda_driver
+        CUDA::cuFile            # cufile is not found, but cuFile is
     )
     set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(drp_gpu PUBLIC -O3)
+    #target_link_options(drp_gpu PUBLIC "-rdc=true")
+
+#--- Detector libraries
 
     add_library(AreaDetector_gpu SHARED
         Detector.cc
@@ -95,6 +104,105 @@ if(CMAKE_CUDA_COMPILER)
     set_target_properties(EpixUHRemu_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRemu_gpu PUBLIC -O3)
 
+#--- Reducer libraries
+
+    # Add the following to your environment instead of appending to the hardcoded CMAKE_PREFIX_PATH:
+    #   export CUSZ_DIR=~/git/cuSZ/install/lib64/cmake/CUSZ
+    #   export cuSZp_DIR=~/git/cuSZp/install/cmake
+
+    #list(APPEND CMAKE_PREFIX_PATH "/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ;/cds/home/c/claus/git/cuSZp/install/cmake")
+
+    add_library(NoOpReducer SHARED
+        NoOpReducer.cu
+    )
+    target_include_directories(NoOpReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(NoOpReducer
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(NoOpReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(NoOpReducer PUBLIC -O3)
+
+#--- LC
+
+    add_library(lc-compressor STATIC IMPORTED)
+    set_target_properties(lc-compressor PROPERTIES
+        IMPORTED_LOCATION "/cds/home/c/claus/git/LC-framework/install/lib/liblc-compressor.a"
+        INTERFACE_INCLUDE_DIRECTORIES "/cds/home/c/claus/git/LC-framework/install/include"
+    )
+
+    add_library(LcReducer SHARED
+        LcReducer.cu
+    )
+    target_include_directories(LcReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        /cds/home/c/claus/git/LC-framework/install/include
+    )
+    target_link_libraries(LcReducer
+        lc-compressor
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(LcReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(LcReducer PUBLIC -O3)
+
+#--- cuSZ
+
+    find_package(CUSZ REQUIRED)
+
+    add_library(CuSzReducer SHARED
+        CuSzReducer.cu
+    )
+    target_include_directories(CuSzReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(CuSzReducer
+        CUSZ::cusz
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(CuSzReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(CuSzReducer PUBLIC -O3)
+
+#--- cuSZp
+
+    find_package(cuSZp REQUIRED)
+
+    add_library(CuSZpReducer SHARED
+        CuSZpReducer.cu
+    )
+    target_include_directories(CuSZpReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+        /cds/home/c/claus/git/cuSZp/install/include  # @todo: fix this abs path
+    )
+    target_link_libraries(CuSZpReducer
+        cuSZp::cuSZp_shared
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(CuSZpReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(CuSZpReducer PUBLIC -O3)
+
+#--- Tools
+
     add_executable(pgpread_gpu
         pgpread.cc
         GpuAsyncLib.cc
@@ -115,6 +223,10 @@ if(CMAKE_CUDA_COMPILER)
         drp_gpu
         AreaDetector_gpu
         EpixUHRemu_gpu
+        NoOpReducer
+        LcReducer
+        CuSzReducer
+        CuSZpReducer
         pgpread_gpu
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib

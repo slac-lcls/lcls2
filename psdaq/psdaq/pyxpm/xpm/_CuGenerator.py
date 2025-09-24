@@ -37,7 +37,8 @@ class CuGenerator(pr.Device):
             bitSize      =  64,
             bitOffset    =  0x00,
             base         = pr.UInt,
-            mode         = "RO",
+            mode         = "RW",
+            verify       = False,
         ))
 
         self.add(pr.RemoteVariable(    
@@ -47,7 +48,8 @@ class CuGenerator(pr.Device):
             bitSize      =  64,
             bitOffset    =  0x00,
             base         = pr.UInt,
-            mode         = "RO",
+            mode         = "RW",
+            verify       = False,
         ))
 
         self.add(pr.RemoteVariable(    

@@ -7,6 +7,7 @@ from psdaq.cas.collection_widget import CollectionWidget
 from .xpm_utils import *
 
 Transitions = [('ClearReadout',0),
+               ('Ping'       ,1),
                ('Configure'  ,2),
                ('BeginRun'   ,4),
                ('Enable'     ,8),
@@ -102,17 +103,28 @@ class XpmDeadTime(object):
         self.dtmax[group] = dtmax
         self.callback(group)
 
+def xpmTree(base,xpm):
+    result = [xpm]
+    pvbase = f'{base}:XPM:{xpm}'
+    xvalues = pvactx.get([f'{pvbase}:FwBuild'],throw=False)
+    nDsLinks = 8 if 'Kcu' in xvalues[0] else 14
+    xnames = [f'{pvbase}:RemoteLinkId{i}' for i in range(nDsLinks)]
+    xvalues = pvactx.get(xnames,throw=False)
+    for i,v in enumerate(xvalues):
+        if isinstance(v,int) and (v>>24)==0xff:
+            leaf = (v>>16)&0xff
+            result.extend(xpmTree(base,leaf))
+    return result
+
 class DeadTime(object):
-    def __init__(self,pvbase,groups,det):
+    def __init__(self,pvbase,xpm,groups,det):
         self.xpm = []
         self.det = det        # dictionary of QLabel widget tuples
 
-        # test for existing xpms
-        xnames = [pvbase+':XPM:%d:PAddr'%i for i in range(10)]
-        xvalues = pvactx.get(xnames,throw=False)
-        for i,v in enumerate(xvalues):
-            if isinstance(v,int):
-                self.xpm.append(XpmDeadTime(pvbase,i,groups,self.update))
+        # construct the tree of xpms
+        for x in xpmTree(pvbase,xpm):
+            print(f'Adding {pvbase}:XPM:{x} to deadtime tree')
+            self.xpm.append(XpmDeadTime(pvbase,x,groups,self.update))
 
     def update(self,group):
         # Loop through the results from all xpms for this group and update the widget
@@ -194,7 +206,7 @@ class PvGroupStats(QtWidgets.QWidget):
                 self.det[g] = (QtWidgets.QLabel(),QtWidgets.QLabel())
                 glo.addWidget(self.det[g][0],len(stats)+i+1,0)
                 glo.addWidget(self.det[g][1],len(stats)+i+1,i+1)
-            self.deadtime = DeadTime(base,groups,self.det)
+            self.deadtime = DeadTime(base,xpm,groups,self.det)
 
         lo.addLayout(glo)
         lo.addStretch()

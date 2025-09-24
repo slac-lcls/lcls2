@@ -437,7 +437,8 @@ cdef class DgramEdit:
                 self.uiter.set_cfg(False)
             self.buf = <char *>malloc(bufsize)
             pycap_buf = PyCapsule_New(<char *>self.buf, "buf", NULL)
-            self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize, config_pydgram=config_dgramedit.pydg)
+            config_pydgram = config_dgramedit.get_pydgram() if config_dgramedit is not None else None
+            self.pydg = self.uiter.createTransition(transition_id, ts, pycap_buf, bufsize, config_pydgram=config_pydgram)
         else:
             raise IOError, "Unsupported input arguments"
 

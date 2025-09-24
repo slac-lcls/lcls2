@@ -691,6 +691,16 @@ class XpmApp(pr.Device):
             ))
 
         self.add(pr.RemoteVariable(    
+            name         = "pattRateSel",
+            description  = "pattern stats rate select",
+            offset       =  0x90,
+            bitSize      =  16,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
+
+        self.add(pr.RemoteVariable(    
             name         = "inhTmCnt",
             description  = "Inhibit time counts by link",
             offset       =  0x120,

@@ -128,10 +128,10 @@ int32_t Fmc134Ctrl::reset()
         unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x03, &dword);
 
         if (dword == 0xF) {
-                printf("Initial Lane Alignment Complete\n");
+             printf("%s:%d Initial Lane Alignment Complete\n", __FILE__, __LINE__);
         }
         else {
-                printf("\n\nADC Initial Lane Alignment Failed!\n");
+             printf("\n\n%s:%d ADC Initial Lane Alignment Failed!\n", __FILE__, __LINE__);
                 printf("reg7 = 0x%X\n\n", dword);
                 return FMC134_ERR_ADC_INIT;
         }
@@ -219,10 +219,10 @@ int32_t Fmc134Ctrl::default_init(Fmc134Cpld& cpld, unsigned mode, bool lSkipMFA)
         unitapi_read_register(fmc_unit,   FMC134Offset::AddrCtrl+0x03, &dword);
 
         if (dword == 0xF) {
-                printf("Initial Lane Alignment Complete\n");
+                printf("%s:%d Initial Lane Alignment Complete\n", __FILE__, __LINE__);
         }
         else {
-                printf("\n\nADC Initial Lane Alignment Failed!\n");
+                printf("\n\n%s:%d ADC Initial Lane Alignment Failed!\n", __FILE__, __LINE__);
                 printf("reg7 = 0x%X\n\n", dword);
                 return lSkipMFA ? FMC134_ERR_OK : FMC134_ERR_ADC_INIT;
         }

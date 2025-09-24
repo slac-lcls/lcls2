@@ -64,7 +64,7 @@ def epix100_init(
             pgp4=True,
             pollEn=False,
             initRead=False,
-            pcieBoardType="Kcu1500",
+            pcieBoardType="XilinxKcu1500",
             serverPort=9120,
         )
         pbase.__enter__()
@@ -156,6 +156,34 @@ def epix100_connectionInfo(base, alloc_json_str):
     d = {}
     d["paddr"] = rxId
     d["serno"] = epixhrid
+
+    # Check that the timing link is up from XPM-side
+    if rxId != 0xFFFFFFFE:
+        from p4p.client.thread import Context
+        from p4p.nt.scalar import ntint
+        xpm: int = (rxId >> 16) & 0xFF
+        port: int = (rxId >> 0) & 0xFF
+        # May not work for kcu xpm. Ignore NEH/FEH determination
+        # Could get IP address to figure this out using:
+        # '10.0.{:}.{:}'.format((v>>12)&0xf,100+((v>>8)&0xf))
+        linkrx_pv: str = f"DAQ:FEH:XPM:{xpm}:LinkRxReady{port}"
+        ctx: Context = Context("pva")
+        ret: ntint = ctx.get(linkrx_pv)
+        print(f"INFO:epix100:Checking timing link at: {linkrx_pv}")
+        count: int = 0
+        while ret != 1:
+            print(
+                "WARNING:epix100:Timing link (deadtime path) is down! "
+                "Attempting to recover."
+            )
+            # pbase will be defined if rxId is not 0xFFFFFFFE
+            #pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+            pbase.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+            count += 1
+            time.sleep(1)
+            ret = ctx.get(linkrx_pv)
+            if ret == 1:
+                print(f"INFO:epix100:Timing link recovered after {count} reset(s).")
 
     return d
 

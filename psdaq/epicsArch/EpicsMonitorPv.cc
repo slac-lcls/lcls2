@@ -172,6 +172,12 @@ namespace Drp
 
     std::lock_guard<std::mutex> lock(_mutex);
 
+    if (!_size) {
+        logging::error("EpicsMonitorPv::addToXtc: %s data returns no data - likely invalid.",
+                       name().c_str());
+        damage.increase(XtcData::Damage::Corrupted);
+    }
+
     // Now there's an Xtc buffer, copy data from the temporary buffer into it
     auto sizeXtc = _size;
     if (sizeXtc > _pData.size())        // Xtc will still be navigable

@@ -101,21 +101,21 @@ def dict_calib_constants(exp='uedcom103', detname='epix10ka_000002', runnum=7):
     return d
 
 
-def calib_constants(dcc):
+def calib_constants(dcc, detname):
     from psana.detector.calibconstants import CalibConstants
-    return CalibConstants(dcc)
+    return CalibConstants(dcc, detname)
 
 
-def mask_algos(dcc):
-    return MaskAlgos(dcc)
+def mask_algos(dcc, detname):
+    return MaskAlgos(dcc, detname)
 
 
 def test_mask_algos(tname):
     """
     """
     dcc = dict_calib_constants(exp='uedcom103', detname='epix10ka_000002', runnum=7)
-    mo = mask_algos(dcc)
-    cc = calib_constants(dcc)
+    mo = mask_algos(dcc, 'epix10ka_000002')
+    cc = calib_constants(dcc, 'epix10ka_000002')
     #logging.info(info_ndarr(cc.pedestals(), 'pedestals'))
     #logging.info(info_ndarr(mo.mask_from_status(), 'pedestals'))
 

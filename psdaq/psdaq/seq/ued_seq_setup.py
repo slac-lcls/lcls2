@@ -32,6 +32,7 @@ def main():
     parser.add_argument('--cam', type=int, default=1, help="Andor camera number (1,3)")
     parser.add_argument("--eng", type=int, default=0, help="sequence engine; default=0")
     parser.add_argument("--period", type=float, default=None, help="camera exposure setting (sec)")
+    parser.add_argument("--a60" , action='store_true', help="60Hz continuous mode")
     parser.add_argument("--test", action='store_true', help="test only")
     parser.add_argument("--ac"  , action='store_true', help="ac time base")
     parser.add_argument("--margin", type=float, default=None, help="addition to trigger interval")
@@ -76,7 +77,8 @@ def main():
             
     if args.period is None:
         #  Program the sequence
-        path = f'{os.path.dirname(os.path.realpath(__file__))}/ued_360Hz.py'
+        fname = 'ued_60Hz.py' if args.a60 else 'ued_360Hz.py'
+        path = f'{os.path.dirname(os.path.realpath(__file__))}/{fname}'
         cmd = ["seqprogram","--pv", args.pv,"--seq", f'{args.eng}:{path}', '--start','--reset']
         print(cmd)
         if not args.test and campv is not None:

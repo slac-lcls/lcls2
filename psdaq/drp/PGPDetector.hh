@@ -18,6 +18,7 @@ struct Batch
 {
     uint32_t start;
     uint32_t size;
+    uint64_t l1count;
 };
 
 class PGPDrp;

@@ -330,7 +330,7 @@ std::vector< XtcData::Array<uint8_t> > BEBDetector::_subframes(void* buffer, uns
     return subframes;
 }
 
-void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     // The subframes structure will be 
     // elem[0] = Timing Header, 
@@ -357,7 +357,7 @@ void BEBDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* eve
         mask &= mask - 1;
     }
 
-    _event(dgram.xtc, bufEnd, subframes);
+    _event(dgram.xtc, bufEnd, l1count, subframes);
 }
 
 void BEBDetector::shutdown()

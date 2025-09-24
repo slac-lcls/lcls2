@@ -3,7 +3,7 @@ import time
 import copy
 import socket
 from datetime import datetime, timezone, timedelta
-from math import isnan
+from math import isnan, isinf
 import json as oldjson
 import zmq
 import zmq.utils.jsonapi as json
@@ -189,8 +189,8 @@ class RunParams:
         for name, value in zip(nameList, valueList):
             if isinstance(value, TimeoutError):
                 self.collection.report_warning(f"failed to read PVA PV {name}")
-            elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan)")
+            elif type(value) == type(1.0) and (isnan(value) or isinf(value)):
+                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan/inf)")
             else:
                 params[name] = value
 
@@ -202,8 +202,8 @@ class RunParams:
         for name, value in zip(nameList, valueList):
             if value is None:
                 self.collection.report_warning(f"failed to read CA PV {name}")
-            elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan)")
+            elif type(value) == type(1.0) and (isnan(value) or isinf(value)):
+                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan/inf)")
             else:
                 params[name] = value
 
@@ -216,6 +216,9 @@ class RunParams:
                     try:
                         if item[xid]['active'] != 1:
                             # skip inactive detector
+                            continue
+                        if item[xid]['monitor'] == 1:
+                            # skip "monitor-only" detector
                             continue
                         unique_id = item[xid]['proc_info']['alias']
                         alias, seg = unique_id.rsplit(sep='_', maxsplit=1)
@@ -818,6 +821,8 @@ class CollectionManager():
         }
         self.lastTransition = 'reset'
         self.recording = False
+        self.defaultRunType = 'DATA'
+        self.runType = self.defaultRunType
 
         self.collectMachine = Machine(self, ControlDef.states, initial='reset')
 
@@ -881,6 +886,10 @@ class CollectionManager():
     def cmstate_levels(self):
         return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
 
+    def _process_run_type_keys(self, msg_body):
+        if "run_type" in msg_body:
+            self.runType = msg_body["run_type"]
+
     def service_requests(self):
         # msg['header']['key'] formats:
         #  setstate.STATE
@@ -895,6 +904,7 @@ class CollectionManager():
             body = msg['body']
             if key[0] == 'setstate':
                 # handle_setstate() sends reply internally
+                self._process_run_type_keys(body)
                 self.phase1Info.update(body)
                 self.handle_setstate(key[1])
                 answer = None
@@ -1415,12 +1425,40 @@ class CollectionManager():
                 ok = False
                 err_msg = "Failed to start a run with recording enabled"
             else:
-                self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':self.run_number}}
+                self.phase1Info['beginrun'] = {
+                    'run_info': {
+                        'experiment_name': self.experiment_name,
+                        'run_number': self.run_number
+                    },
+                    'monitor_info': {},
+                }
+                for level, item in self.cmstate_levels().items():
+                    if level == "drp":
+                        for xid in item.keys():
+                            try:
+                                unique_id = item[xid]['proc_info']['alias']
+                                self.phase1Info['beginrun']['monitor_info'][unique_id] = item[xid]['monitor']
+                            except Exception as err:
+                                print(f"error: {err}")
                 self.runParams.beginrun(self.experiment_name)
         else:
             # NOT RECORDING: by convention, run_number == 0
             self.run_number = 0
-            self.phase1Info['beginrun'] = {'run_info':{'experiment_name':self.experiment_name, 'run_number':0}}
+            self.phase1Info['beginrun'] = {
+                    'run_info': {
+                        'experiment_name': self.experiment_name,
+                        'run_number': 0
+                    },
+                    'monitor_info': {},
+                }
+            for level, item in self.cmstate_levels().items():
+                if level == "drp":
+                    for xid in item.keys():
+                        try:
+                            unique_id = item[xid]['proc_info']['alias']
+                            self.phase1Info['beginrun']['monitor_info'][unique_id] = item[xid]['monitor']
+                        except Exception as err:
+                            print(f"error: {err}")
 
         if not ok:
             self.report_error(err_msg)
@@ -1677,6 +1715,11 @@ class CollectionManager():
                         self.report_warning('ignoring attempt to clear the control level active flag')
                         body[level][key2]['active'] = 1
                     self.cmstate[level][int(key2)]['active'] = body[level][key2]['active']
+                    self.cmstate[level][int(key2)]['monitor'] = body[level][key2]['monitor']
+                    if body[level][key2]['monitor']:
+                        alias = body[level][key2]['proc_info']['alias']
+                        responder = f'{level}/{alias}'
+                        self.report_warning(f"{responder} set to MONITOR ONLY.")
                     if level == 'drp' or level == 'tpr':
                         # drp readout group
                         self.cmstate[level][int(key2)]['det_info']['readout'] = body[level][key2]['det_info']['readout']
@@ -1974,10 +2017,14 @@ class CollectionManager():
     def start_run(self, experiment_name):
         run_num = 0
         ok = False
-        serverURLPrefix = "{0}run_control/{1}/ws/".format(self.url + "/" if not self.url.endswith("/") else self.url, experiment_name)
-        logging.debug('serverURLPrefix = %s' % serverURLPrefix)
+        base_url = self.url if not self.url.endswith("/") else self.url[:-1]
+        serverURLPrefix = f"{base_url}/run_control/{experiment_name}/ws"
+        logging.debug(f"serverURLPrefix = {serverURLPrefix}")
         try:
-            resp = requests.post(serverURLPrefix + "start_run", auth=HTTPBasicAuth(self.user, self.password))
+            startRunEndpoint = f"{serverURLPrefix}/start_run?run_type={self.runType}"
+            # Revert runType back to the default in case next request does not have a type
+            self.runType = self.defaultRunType
+            resp = requests.post(startRunEndpoint, auth=HTTPBasicAuth(self.user, self.password))
         except Exception as ex:
             logging.error("start_run (user=%s) exception: %s" % (self.user, ex))
         else:

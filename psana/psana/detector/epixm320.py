@@ -85,20 +85,20 @@ class epixm320_raw_0_0_0(eb.epix_base):
 #        if segs is None: return None
 #        return segs[0].raw # shape=(4, 192, 384)
 
+
     def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
-        """ TBD - when pedestals are availavle..."""
+        """  """
         #logger.debug('%s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
         #print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
-        if evt is None: return None
+        if is_none(evt, 'evt is None - return None', logger.debug): return None
 
         #t0_sec = time()
         raw = self.raw(evt)
-        if is_none(raw, 'self.raw(evt) is None - return None'):
-            return raw
+        if is_none(raw, 'self.raw(evt) is None - return None'): return None
 
         # Subtract pedestals
         peds = self._pedestals()
-        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)'):
+        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)', logger.debug):
             return raw
         #print(info_ndarr(peds,'XXX peds', first=1000, last=1005))
 
@@ -110,18 +110,21 @@ class epixm320_raw_0_0_0(eb.epix_base):
         arrf -= pedgr
 
         #print('XXX time for calib: %.6f sec' % (time()-t0_sec)) # 4ms on drp-neh-cmp001
+        mask = self._mask()
 
-        return arrf
+        #print(info_ndarr(mask,'XXX mask', first=1000, last=1005)) # IT WORKS mask is available
 
+        return arrf if is_none(mask, 'det.raw._mask() is None - return raw-peds', logger.info) else\
+               arrf * mask
 
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
 #        if evt is None: return None
 #        return self.raw(evt)[0].reshape(768,384)
 
-# EOF
 
 def _to_u32(data):
     return (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
+
 
 class epixm320_raw_0_1_0(epixm320_raw_0_0_0):
     def __init__(self, *args, **kwargs):
@@ -176,3 +179,6 @@ class epixm320_raw_0_1_0(epixm320_raw_0_0_0):
         segments = self._segments(evt)
         if segments is None: return None
         return [ _to_u32(segments[0].trailer[i][4:8]) for i in range(4) ]
+
+# EOF
+

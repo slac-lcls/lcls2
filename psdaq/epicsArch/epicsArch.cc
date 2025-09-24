@@ -8,8 +8,10 @@
 #include <map>
 #include <algorithm>
 #include <getopt.h>
+#include <sys/prctl.h>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "drp/TebReceiver.hh"
 #include "drp/RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -164,7 +166,7 @@ unsigned EaDetector::unconfigure()
     return 0;
 }
 
-void EaDetector::event(Dgram&, const void* bufEnd, PGPEvent*)
+void EaDetector::event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t)
 {
     // Unused
 }
@@ -183,6 +185,8 @@ EaDrp::EaDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& cont
     m_pgp      (para, pool, &det),
     m_terminate(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string EaDrp::configure(const json& msg)
@@ -246,11 +250,25 @@ int EaDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInRx();});
+
     return 0;
 }
 
 void EaDrp::_worker()
 {
+    logging::info("EpicsArch worker is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "epicsArch/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     m_terminate.store(false, std::memory_order_release);
 
     // Reset counters to avoid 'jumping' errors reconfigures

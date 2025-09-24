@@ -317,7 +317,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,const void* bufEnd,XtcData::ConfigIt
     return 0;
 }
 
-void Opal::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Opal::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     if (m_sim) m_sim->event(xtc,bufEnd,subframes);
     if (m_tt && !m_tt->event(xtc,bufEnd,subframes))
@@ -744,8 +744,8 @@ void OpalTTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcD
         NameIndex&  index  = m_timinput.namesLookup[namesId];
         ShapesData& shapes = *m_timinput.shapesdata[namesId];
         DescData descdata(shapes, index);
-        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
 #ifdef DBUG
+        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
         const uint16_t* p = (const uint16_t*)(info._seqInfo);
         printf("seq:");
         for(unsigned i=0; i<16; i++)

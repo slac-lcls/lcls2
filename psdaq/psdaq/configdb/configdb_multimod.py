@@ -24,7 +24,10 @@ def nested_set(dic, keys, value):
 def configdb_multimod(URI_CONFIGDB = 'https://pswww.slac.stanford.edu/ws-kerb/configdb/ws', DEV = 'BEAM',ROOT_CONFIGDB = 'configDB', INSTRUMENT = 'tmo', DETECTOR=['hsd_0'] , CONFIG_KEY=['user','raw','prescale'], CONFIG_VALUE=1, MODIFY=False):
     
     sout=[]
-    confdb = configdb(URI_CONFIGDB, INSTRUMENT, create=False, root=ROOT_CONFIGDB )
+    if "ws-auth" in URI_CONFIGDB:
+        confdb = configdb(URI_CONFIGDB, INSTRUMENT, create=False, root=ROOT_CONFIGDB, user=f"{INSTRUMENT}opr")
+    else:
+        confdb = configdb(URI_CONFIGDB, INSTRUMENT, create=False, root=ROOT_CONFIGDB )
     
     for det in DETECTOR:
         

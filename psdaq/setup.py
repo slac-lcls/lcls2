@@ -150,6 +150,9 @@ if 'PSDAQ' in BUILD_LIST :
             'bldgmd = psdaq.cas.bldgmd:main',
             'hpsdbuscas = psdaq.cas.hpsdbuscas:main',
             'wave8pvs = psdaq.cas.wave8pvs:main',
+            'setup_tdrp = psdaq.cas.setup_tdrp:main',
+            'pytdrp = psdaq.cas.pytdrp:main',
+            'pytdet_collector = psdaq.cas.pytdet_collector:main',
             'pyxpm = psdaq.pyxpm.pyxpm:main',
             'pykcuxpm = psdaq.pyxpm.pykcuxpm:main',
             'amccpromload = psdaq.pyxpm.amccpromload:main',
@@ -160,6 +163,7 @@ if 'PSDAQ' in BUILD_LIST :
             'ts_config_scan = psdaq.control.ts_config_scan:main',
             'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
+            'hsd_epics_exporter = psdaq.cas.hsd_epics_exporter:main',
             'fixed_rate_table = psdaq.seq.fixed_rate_table:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',
@@ -174,7 +178,9 @@ if 'PSDAQ' in BUILD_LIST :
             'cnf2py = psdaq.slurm.cnftopy:_do_main',
             'daqstat = psdaq.slurm.daqstat:_do_main',
             'daqlog_header = psdaq.slurm.daqlog_header:_do_main',
-            'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main'
+            'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main',
+            'jungfrau_gain_mode = psdaq.configdb.jungfrau_gain_mode:change_gain_mode',
+            'jungfrau_protection = psdaq.configdb.jungfrau_protection:change_protection_settings',
         ]
     }
 

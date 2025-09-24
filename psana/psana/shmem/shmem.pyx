@@ -1,9 +1,14 @@
 
+from libcpp cimport bool
+
 cdef extern from "psalg/shmem/ShmemClient.hh" namespace "psalg::shmem":
     cdef cppclass ShmemClient:
         int connect(const char* tag, int tr_index)
-        void *get(int& ev_index, size_t& buf_size)
-        void free(int ev_index, size_t buf_size)
+        # Mark nogil so GIL can be released when calling into them
+        # Otherwise have to link ShmemClient to Python and release GIL there
+        # Release required for multi-threaded dgrammanager implementation
+        void *get(int& ev_index, size_t& buf_size, bool& eventSkipped, bool transitionsOnly) nogil
+        void free(int ev_index, size_t buf_size) nogil
 
 cdef class PyShmemClient:
     """ Python wrapper for C++ class.
@@ -19,6 +24,7 @@ cdef class PyShmemClient:
         del self.client
 
     def connect(self, tag, tr_index):
+        # GIL fine here currently as method is called from main thread
         cdef int status = -1
         status = self.client.connect(tag.encode(),tr_index)
         return status
@@ -29,7 +35,14 @@ cdef class PyShmemClient:
         cdef int ev_index = -1
         cdef size_t buf_size = 0
 
-        buf = <char*>self.client.get(ev_index,buf_size)
+        # Coerece bool
+        cdef bool eventSkipped = args['eventSkipped']
+        cdef bool transitionsOnly = args['transitionsOnly']
+
+        with nogil:
+            buf = <char*>self.client.get(ev_index,buf_size,eventSkipped,transitionsOnly)
+        # Need to update this reference before returning None
+        args['eventSkipped'] = eventSkipped
         if buf == NULL:
           return
 
@@ -43,7 +56,17 @@ cdef class PyShmemClient:
         return cview
 
     def free(self,dgram):
-        self.client.free(dgram._shmem_index,dgram._shmem_size)
+        # Need to coerce values before releasing GIL since coercion could throw
+        # an exception
+        cdef int idx = dgram._shmem_index
+        cdef size_t size = dgram._shmem_size
+        with nogil:
+            self.client.free(idx, size)
 
     def freeByIndex(self, index, size):
-        self.client.free(index, size)
+        # Need to coerce values before releasing GIL since coercion could throw
+        # an exception
+        cdef int idx = index
+        cdef size_t c_size = size
+        with nogil:
+            self.client.free(idx, c_size)

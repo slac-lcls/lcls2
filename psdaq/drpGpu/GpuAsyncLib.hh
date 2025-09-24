@@ -15,7 +15,7 @@
  **/
 #pragma once
 
-#include "utils.h"
+#include "Utils.h"
 
 #include <string>
 #include "psdaq/aes-stream-drivers/GpuAsync.h"
@@ -232,7 +232,7 @@ deviceFunc inline AxiWrDesc64_t UnpackAxiWriteDescriptor(const void* data)
  * \param fd The file descriptor of the PGP PCIe device
  * \param mode The enumerated value of the destination
  */
-enum DmaTgt_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
+enum DmaTgt_t { TGT_CPU=0x0000ffff, TGT_GPU=0xffff0000, TGT_ERR=-1u };
 DmaTgt_t dmaTgtGet(const DataGPU&);
 void dmaTgtSet(const DataGPU&, DmaTgt_t);
 
@@ -241,3 +241,27 @@ void dmaTgtSet(const DataGPU&, DmaTgt_t);
  * \param fd The file descriptor of the PGP PCIe device
  */
 void dmaIdxReset(const DataGPU&);
+
+/**
+ * Class for timing various things
+ */
+struct GPUTimer
+{
+  cudaEvent_t beg, end;
+  GPUTimer() {
+    cudaEventCreate(&beg);
+    cudaEventCreate(&end);
+  }
+  ~GPUTimer() {
+    cudaEventDestroy(beg);
+    cudaEventDestroy(end);
+  }
+  void start() { cudaEventRecord(beg, 0); }
+  double stop() {
+    cudaEventRecord(end, 0);
+    cudaEventSynchronize(end);
+    float ms;
+    cudaEventElapsedTime(&ms, beg, end);
+    return ms;
+  }
+};

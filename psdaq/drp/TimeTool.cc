@@ -56,7 +56,7 @@ unsigned TimeTool::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     return 0;
 }
 
-void TimeTool::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void TimeTool::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId);
 

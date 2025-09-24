@@ -6,18 +6,21 @@ def main():
     # default command line arguments
     defaults = {
         "--events": 1000,
-        "--hutch": "asc",
-        "--detname": "jungfrau_0",
+        "--hutch": "mfx",
+        "--detname": "jungfrau",
         "--scantype": "pedestal",
         "--record": 1,
         "--config": "BEAM",
+        "--nprocs": 5,
+        "--run_type": "DARK",
     }
 
     scan = ConfigScanBase(defargs=defaults)
     args = scan.args
 
     keys = []
-    keys.append(f'{args.detname}:user.gainMode')
+    for i in range(args.nprocs):
+        keys.append(f'{args.detname}_{i}:user.gainMode')
 
     def steps():
         d = {}
@@ -26,7 +29,8 @@ def main():
         metad['scantype'] = 'pedestal'
         for gain in range(3):
             #  Set the detector level config change
-            d[f'{args.detname}:user.gainMode'] = gain
+            for i in range(args.nprocs):
+                d[f'{args.detname}_{i}:user.gainMode'] = gain
             #  Set the global meta data
             metad['step'] = gain
             metad['gainMode'] = gain

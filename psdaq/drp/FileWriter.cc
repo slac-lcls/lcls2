@@ -6,6 +6,7 @@
 #include <iostream>
 #include <sstream>
 #include <iomanip>      // std::setfill, std::setw
+#include <sys/prctl.h>
 #include "FileWriter.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -32,8 +33,11 @@ static inline ssize_t _write(int fd, const void* buffer, size_t count)
 
 
 BufferedFileWriter::BufferedFileWriter(size_t bufferSize) :
-    m_fd(0), m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize), m_writing(0)
+    FileWriterBase(),
+    m_fd(0), m_count(0), m_batch_starttime(0,0), m_buffer(bufferSize)
 {
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriter",
+                  double(m_buffer.size())/1e9, 1, bufferSize);
 }
 
 BufferedFileWriter::~BufferedFileWriter()
@@ -119,7 +123,7 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
         m_writing += 1;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
             logging::critical("File writing failed");
-            throw "File writing failed";
+            abort();
         }
         m_writing -= 1;
         // reset these to prepare for the new batch
@@ -128,12 +132,13 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     }
 
     if (size>(m_buffer.size() - m_count)) {
-        std::cout<<"Buffer size "<<(m_buffer.size()-m_count)<<" too small for dgram with size "<<size<<'\n';
-        throw "FileWriter.cc buffer size too small";
+        logging::critical("BFW Buffer size %zu too small for dgram with size %zu", m_buffer.size()-m_count, size);
+        abort();
     }
     memcpy(m_buffer.data()+m_count, data, size); // test if copy is slow
     m_count += size;
 }
+
 
 static const unsigned FIFO_DEPTH     = 64;
 static const unsigned FIFO_DEPTH_DIO = 2;
@@ -145,13 +150,13 @@ static size_t roundUpSize(size_t bufSize, size_t quantum)
 }
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
+    FileWriterBase(),
     m_fd(0),
     m_batch_starttime(0,0),
     m_free(FIFO_DEPTH),
     m_pend(FIFO_DEPTH),
     m_depth(m_free.size()),
     m_size(m_free.size()),
-    m_writing(0),
     m_freeBlocked(0),
     m_pendBlocked(0),
     m_terminate(false),
@@ -162,13 +167,13 @@ BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize) :
 }
 
 BufferedFileWriterMT::BufferedFileWriterMT(size_t bufferSize, bool dio) :
+    FileWriterBase(),
     m_fd(0),
     m_batch_starttime(0,0),
     m_free(dio ? FIFO_DEPTH_DIO : FIFO_DEPTH),
     m_pend(dio ? FIFO_DEPTH_DIO : FIFO_DEPTH),
     m_depth(m_free.size()),
     m_size(m_free.size()),
-    m_writing(0),
     m_freeBlocked(0),
     m_pendBlocked(0),
     m_terminate(false),
@@ -200,10 +205,13 @@ void BufferedFileWriterMT::_initialize(size_t bufferSize)
     for (unsigned i=0; i<m_free.size(); i++) {
         if (posix_memalign((void**)&b.p, sysconf(_SC_PAGESIZE), m_bufferSize)) {
           logging::critical("BufferedFileWriterMT posix_memalign: %m");
-          throw "BufferedFileWriterMT posix_memalign";
+          abort();
         }
         m_free.push(b);
     }
+
+    logging::info("Allocated %.1f GB for %u buffers of %zu B in BufferedFileWriterMT",
+                  double(m_free.size() * m_bufferSize)/1e9, m_free.size(), m_bufferSize);
 }
 
 int BufferedFileWriterMT::open(const std::string& fileName)
@@ -307,8 +315,8 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
 
     Buffer& b = m_free.front();
     if (size>(m_bufferSize - b.count)) {
-        std::cout<<"Buffer size "<<(m_bufferSize-b.count)<<" too small for dgram with size "<<size<<'\n';
-        throw "FileWriterMT.cc buffer size too small";
+        logging::critical("BFWMT Buffer size %zu too small for dgram with size %zu", m_bufferSize-b.count, size);
+        abort();
     }
     memcpy(b.p+b.count, data, size);
     b.count += size;
@@ -316,6 +324,11 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
 
 void BufferedFileWriterMT::run()
 {
+    logging::info("BufferedFileWriterMT is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/FileWriter", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     while (true) {
         std::chrono::milliseconds tmo{100};
         m_pendBlocked += 1;
@@ -332,7 +345,7 @@ void BufferedFileWriterMT::run()
         m_writing += 1;
         if (_write(m_fd, b.p, b.count) == -1) {
             logging::critical("File writing failed MT");
-            throw "File writing failed";
+            abort();
         }
         m_writing -= 1;
         m_pend.pop(b);
@@ -340,17 +353,31 @@ void BufferedFileWriterMT::run()
         m_free.push(b);
         m_depth = m_free.count();
     }
+
+    logging::info("BufferedFileWriterMT is exiting");
 }
+
 
 BufferedMultiFileWriterMT::BufferedMultiFileWriterMT(size_t bufferSize,
                                                      size_t numFiles) :
+    FileWriterBase(),
     m_index(0)
 {
     while (numFiles--) {
-        m_fileWriters.push_back(std::make_unique<BufferedFileWriterMT>(bufferSize));
+      m_fileWriters.push_back(std::make_unique<BufferedFileWriterMT>(bufferSize));
     }
 }
 
+BufferedMultiFileWriterMT::BufferedMultiFileWriterMT(size_t bufferSize,
+                                                     size_t numFiles,
+                                                     bool   dio) :
+    FileWriterBase(),
+    m_index(0)
+{
+    while (numFiles--) {
+      m_fileWriters.push_back(std::make_unique<BufferedFileWriterMT>(bufferSize, dio));
+    }
+}
 
 BufferedMultiFileWriterMT::~BufferedMultiFileWriterMT()
 {
@@ -380,7 +407,6 @@ int BufferedMultiFileWriterMT::open(const std::string& fileName)
   return rv;
 }
 
-
 int BufferedMultiFileWriterMT::close()
 {
   int rv = 0;
@@ -398,18 +424,11 @@ void BufferedMultiFileWriterMT::writeEvent(const void* data, size_t size, XtcDat
   m_index = (m_index + 1) % m_fileWriters.size();
 }
 
-SmdWriter::SmdWriter(size_t bufferSize) : BufferedFileWriter(bufferSize)
-{
-}
 
-void SmdWriter::addNames(XtcData::Xtc& parent, const void* bufEnd, unsigned nodeId)
+SmdWriter::SmdWriter(size_t bufferSize, size_t maxTrSize) :
+    SmdWriterBase(maxTrSize),
+    m_fileWriter(bufferSize)
 {
-    XtcData::Alg alg("offsetAlg", 0, 0, 0);
-    XtcData::NamesId namesId(nodeId, 0);
-    XtcData::Names& offsetNames = *new(parent, bufEnd) XtcData::Names(bufEnd, "info", alg, "offset", "", namesId);
-    SmdDef smdDef;
-    offsetNames.add(parent, bufEnd, smdDef);
-    namesLookup[namesId] = XtcData::NameIndex(offsetNames);
 }
 
 }

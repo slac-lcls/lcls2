@@ -409,10 +409,13 @@ class EyeGth(pr.Device):
         status = self.ES_CONTROL_STATUS.get()
         np = 0
         ts1 = time.perf_counter()
-        while (status & 0x01) != 1:
+        while (status & 0x01) != 1 and np < 100:
             time.sleep(0.1)
             status = self.ES_CONTROL_STATUS.get()
             np += 1
+        if np==100:
+            print('Wait for ready status stalled.')
+            return (0,0)
         #print("Wait for ready status: {}(5) {}".format(status,np))
 
         ts2 = time.perf_counter()

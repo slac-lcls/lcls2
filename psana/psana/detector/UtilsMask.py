@@ -46,10 +46,10 @@ from psana.detector.NDArrUtils import info_ndarr, shape_nda_as_3d, reshape_to_3d
 def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
     """
-    assert mask1.size == mask2.size, 'Mask sizes should be equal'
-
     if mask1 is None: return mask2
     if mask2 is None: return mask1
+
+    assert mask1.size == mask2.size, 'Mask sizes should be equal'
 
     if mask1.shape != mask2.shape:
         if mask1.ndim > mask2.ndim: mask2.shape = mask1.shape
@@ -59,7 +59,7 @@ def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
     return np.asarray(np.select((cond,), (1,), default=0), dtype=dtype)
 
 
-def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
+def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK, **kwa):
     """Merges mask bits over gain range index.
        gain_range_inds list(uint) - list of gain range inices in array mask[i,:]
        gain_range_inds=(0,1,2,3,4) for epix10ka/quad/2m mask array mask.shape=(7, <num-segments>, 352, 384) merging to (<num-segments>, 352, 384)
@@ -75,7 +75,7 @@ def merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK):
     return mask1
 
 
-def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS):
+def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS, **kwa):
     """Merges status bits over gain range index.
        Originaly intended for epix10ka(quad/2m) status array status.shape=(7, 16, 352, 384) merging to (16, 352, 384)
        Also can be used with Jungfrau status array status.shape=(7, 8, 512, 512) merging to (8, 512, 512)
@@ -90,7 +90,7 @@ def merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STA
     return st1
 
 
-def mask_neighbors(mask, rad=5, ptrn='r'):
+def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK, **kwa):
     """In mask array increase region of masked pixels around bad by radial paramerer rad.
        Parameters:
        -----------
@@ -122,7 +122,7 @@ def mask_neighbors(mask, rad=5, ptrn='r'):
     return mmask
 
 
-def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK):
+def mask_edges(mask, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
     """Returns mask with a requested number of row and column pixels masked - set to 0.
 
        Parameters

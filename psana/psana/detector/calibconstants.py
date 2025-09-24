@@ -31,6 +31,7 @@ Usage::
   v = o.pix_rc()
   v = o.pix_xyz()
   v = o.interpol_pars()
+  s = o.info_calibconst()
 
 2022-07-07 created by Mikhail Dubrovin
 """
@@ -48,23 +49,42 @@ from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
 
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
+#from psana.detector.Utils import is_none
 def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
     if resp: logger_method(msg)
     return resp
 
+def is_dict_like(d):
+    import weakref
+    return isinstance(d, dict) or isinstance(d, weakref.WeakValueDictionary)
+
 class CalibConstants:
-    def __init__(self, calibconst, **kwa):
+    _registry = {}
+    def __new__(cls, calibconst, detname, **kwargs):
+        if detname not in cls._registry:
+            cls._registry[detname] = super().__new__(cls)
+        else:
+            cls._registry[detname]._reset(calibconst)
+        return cls._registry[detname]
+
+    def __init__(self, calibconst, detname, **kwa):
         """
         Parameters
         ----------
         calibconst: dict - retrieved from DB by method calib_constants_all_types from psana.pscalib.calib.MDBWebUtils.
+        calib_constants_all_types is USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+
         **kwa: not used
         """
         logger.debug('__init__') #  self.__class__.__name__
 
-        assert isinstance(calibconst, dict), 'Input parameter should be dict: %s' % str(calibconst)
+        assert is_dict_like(calibconst), 'Input parameter should be dict-like: %s' % str(calibconst)
+        self._reset(calibconst)
+        self._kwa = kwa
+        self._logmet_init = kwa.get('logmet_init', logger.debug)
 
+    def _reset(self, calibconst):
         self._calibconst = calibconst
         self._geo = None
         self._pedestals = None
@@ -90,7 +110,7 @@ class CalibConstants:
     def cons_and_meta_for_ctype(self, ctype='pedestals'):
         logger.debug('cons_and_meta_for_ctype(ctype="%s")'%ctype)
         cc = self.calibconst()
-        if cc is None: return None
+        if cc is None: return None, None
         cons_and_meta = cc.get(ctype, None)
         if is_none(cons_and_meta, 'calibconst["%s"] is None'%ctype, logger_method=logger.debug): return None, None
         return cons_and_meta
@@ -144,7 +164,9 @@ class CalibConstants:
 
     def number_of_segments_total(self):
         shape = self.shape_as_daq()
-        return None if shape is None else shape[-3] # (7,n,352,384) - define through calibration constants
+        return None if shape is None else\
+               1 if len(shape) < 3 else\
+               shape[-3] # (7,n,352,384) - define through calibration constants
 
     def segment_numbers_total(self):
         """Returns total list of segment numbers."""
@@ -174,10 +196,15 @@ class CalibConstants:
         return self._geo
 
     def seg_geo(self):
+        """returns SegGeometry object from full GeometryAccess object or None if GeometryAccess is None"""
         logger.debug('seg_geo')
+
+        odet = self._kwa.get('odet', None)
+        if odet is not None:
+            return odet._seg_geo
         geo = self.geo()
-        if is_none(geo, 'geo is None', logger_method=logger.debug): return None
-        return geo.get_seg_geo().algo
+        if is_none(geo, 'in seg_geo() both odet and self.geo() are None'):
+            return geo.get_seg_geo().algo
 
     def pixel_coords(self, **kwa):
         """DEPRECATED - can't load detector-dependent default geometry here...
@@ -185,7 +212,7 @@ class CalibConstants:
         """
         logger.debug('pixel_coords')
         geo = self.geo()
-        if is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'in pixel_coords geo is None'): return None
 
         #return geo.get_pixel_xy_at_z(self, zplane=None, oname=None, oindex=0, do_tilt=True, cframe=0)
         return geo.get_pixel_coords(\
@@ -198,7 +225,7 @@ class CalibConstants:
         """
         logger.debug('pixel_coord_indexes')
         geo = self.geo()
-        if is_none(geo, 'geo is None'): return None
+        if is_none(geo, 'in pixel_coord_indexes geo is None'): return None
 
         return geo.get_pixel_coord_indexes(\
             pix_scale_size_um  = kwa.get('pix_scale_size_um',None),\
@@ -220,15 +247,16 @@ class CalibConstants:
         if segnums is None:
             segnums = self.segment_numbers_total()
 
-        logger.info(info_ndarr(segnums, 'preserve pixel indices for segments '))
+        logmet_init = self._logmet_init
+        logmet_init(info_ndarr(segnums, 'preserve pixel indices for segments '))
 
-        logger.info(info_ndarr(resp, 'self.pixel_coord_indexes '))
+        logmet_init(info_ndarr(resp, 'self.pixel_coord_indexes '))
 
         rows, cols = self._pix_rc = [reshape_to_3d(a)[segnums,:,:] for a in resp]
 
         s = 'evaluate_pixel_coord_indexes:'
         for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
-        logger.info(s)
+        logmet_init(s)
 
         mapmode = kwa.get('mapmode',2)
         fillholes = kwa.get('fillholes',True)
@@ -324,5 +352,21 @@ class CalibConstants:
     def pix_xyz(self): return self._pix_xyz
 
     def interpol_pars(self): return self._interpol_pars
+
+    def info_calibconst(self):
+        """grabs det.raw._calibconst from self and returns info about available constants"""
+        cc =self.calibconst()
+        keys = cc.keys()
+        s = '    det.raw._calibconst.keys(): %s' % (', '.join(keys))
+        for k,v in cc.items():
+            nda, meta = v
+            if k == 'geometry': continue
+            s += info_ndarr(nda, '\n    %s from exp:%s run:%04d' % (k.ljust(12), meta['experiment'], meta['run']), last=5)
+
+        geo = cc.get('geometry', None)
+        s += '\n    geometry is missing' if geo is None else\
+             '\n    geometry from exp:%s run:%04d\n%s'%\
+                    (meta['experiment'], meta['run'], str(geo)[:500])
+        return s
 
 # EOF

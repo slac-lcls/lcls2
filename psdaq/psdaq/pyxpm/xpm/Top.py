@@ -41,9 +41,10 @@ class Top(pr.Device):
                     fidPrescale = 200,
                     numDDC      = 0,
                     noTiming    = False,
+                    fwVersion   = 0,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
-        self.fwVersion = 0x030B0000
+        self.fwVersion = fwVersion
 
         if noTiming:
             self.mmcmParms = []
@@ -152,6 +153,12 @@ class Top(pr.Device):
             offset = 0x08800000,
         ))
 
+        self.add(xpm.TPGMini(
+            memBase = self.srp,
+            name = 'TPGMini',
+            offset = 0x08880000,
+        ))
+
         
         for i in range(len(Top.mmcmParms)):
             self.add(xpm.MmcmPhaseLock(
@@ -195,7 +202,14 @@ class Top(pr.Device):
                 name   = 'CuGthRx',
                 offset = 0x0c000000,
             ))        
-                       
+
+        # XTPG
+        self.add(xpm.TPGMini(
+            memBase = self.srp,
+            name    = 'TPGMiniStream',
+            offset  = 0x0c100000,
+        ))
+
         self.add(xpm.XpmApp(
             memBase = self.srp,
             name   = 'XpmApp',

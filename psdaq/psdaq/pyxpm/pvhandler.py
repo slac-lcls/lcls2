@@ -4,8 +4,28 @@ from p4p.nt import NTTable
 import psdaq.pyxpm.autosave as autosave
 import time
 import logging
+from enum import Enum
 
 provider = None
+
+class AlarmSevr(Enum):
+    NONE = 0
+    MINOR = 1
+    MAJOR = 2
+    INVALID = 3
+
+class AlarmStatus(Enum):
+    NONE = 0
+    READ = 1
+    WRITE = 2
+    HIGH  = 3
+    HIHI  = 4
+    LOW   = 5
+    LOLO  = 6
+    STATE = 7
+    CHANGE_OF_STATE = 8
+    COMM  = 9
+    TIMEOUT = 10
 
 def setVerbose(v):
     pass
@@ -50,7 +70,7 @@ _ctype = {'?':'UINT8',
           'f':'FLOAT',
           'd':'DOUBLE'}
 
-def addPV(name,ctype,init=0,archive=False):
+def addPV(name,ctype,init=0,archive=False,valueAlarm=False):
     if archive:
         if len(ctype)==2 and ctype[0]=='a':
             xtype = _ctype[ctype[1]]
@@ -59,7 +79,7 @@ def addPV(name,ctype,init=0,archive=False):
         handler = DefaultPVHandler(name,xtype)
     else:
         handler = DefaultPVHandler()
-    pv = SharedPV(initial=NTScalar(ctype).wrap(init), handler=handler)
+    pv = SharedPV(initial=NTScalar(ctype,valueAlarm=valueAlarm).wrap(init), handler=handler)
     provider.add(name, pv)
     return pv
 

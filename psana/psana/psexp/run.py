@@ -1,16 +1,19 @@
 import inspect
 import time
+import os
+from contextlib import contextmanager
 
 from psana import dgram
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
-from psana.utils import Logger
+from psana.utils import Logger, WeakDict
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
 from .events import Events
+from .smd_events import SmdEvents
 from .step import Step
 from .tools import RunHelper
 
@@ -113,12 +116,11 @@ class Run(object):
         return self.runnum
 
     def _check_empty_calibconst(self, det_name):
-        # Some detectors do not have calibration constant - set default value to None
-        if not hasattr(self.dsparms, "calibconst"):
-            self.dsparms.calibconst = {det_name: None}
-        else:
-            if det_name not in self.dsparms.calibconst:
-                self.dsparms.calibconst[det_name] = None
+        # Some detectors do not have calibration constants - set default value to None
+        if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
+            self.dsparms.calibconst = {det_name: WeakDict({})}
+        elif det_name not in self.dsparms.calibconst:
+            self.dsparms.calibconst[det_name] = WeakDict({})
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names
@@ -245,14 +247,24 @@ class Run(object):
 
     @property
     def detinfo(self):
+        """
+        Returns a mapping of detector interface attributes, guarding against
+        infinite recursion during attribute enumeration.
+        """
         info = {}
-        for (detname, det_xface_name), det_xface_class in self.dsparms.det_classes[
-            "normal"
-        ].items():
-            #            info[(detname,det_xface_name)] = _enumerate_attrs(det_xface_class)
-            info[(detname, det_xface_name)] = _enumerate_attrs(
-                getattr(self.Detector(detname), det_xface_name)
+        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+            try:
+                xface_obj = getattr(self.Detector(detname), det_xface_name)
+                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+            except RecursionError:
+                msg = (
+                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
+                f"(Consider reviewing custom attributes for missing '_' prefix)"
             )
+                info[(detname, det_xface_name)] = msg
+                self.logger.warning(msg)
+            except Exception as e:
+                info[(detname, det_xface_name)] = f"<error: {e}>"
         return info
 
     @property
@@ -409,6 +421,8 @@ class RunSerial(Run):
         self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
+        self._smd_iter = None
+        self._ts_table = None
 
     def events(self):
         for evt in self._evt_iter:
@@ -424,6 +438,44 @@ class RunSerial(Run):
                 return
             if evt.service() == TransitionId.BeginStep:
                 yield Step(evt, self._evt_iter)
+
+    @contextmanager
+    def build_table(self):
+        """
+        Context manager for building timestamp-offset table in RunSerial.
+        Useful in both serial and MPI modes to isolate this setup step.
+        Returns True if table was successfully built.
+        """
+        if self._smd_iter is None:
+            self._smd_iter = SmdEvents(self.ds, self, smdr_man=self.ds.smdr_man)
+
+        self._ts_table = {}
+        for evt in self._smd_iter:
+            if evt.service() != TransitionId.L1Accept:
+                continue
+
+            ts = evt.timestamp
+            self._ts_table[ts] = {
+                i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
+                for i, d in enumerate(evt._dgrams)
+                if d is not None and hasattr(d, 'smdinfo')
+            }
+        yield bool(self._ts_table)
+
+    def event(self, ts):
+        if self._ts_table is None:
+            raise RuntimeError("build_table() must be called before event(ts)")
+
+        offsets = self._ts_table.get(ts)
+        if offsets is None:
+            raise ValueError(f"Timestamp {ts} not found in offset table.")
+
+        dgrams = [None] * len(self.configs)
+        for i, (offset, size) in offsets.items():
+            buf = os.pread(self.ds.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
+
+        return Event(dgrams=dgrams, run=self)
 
 
 class RunLegion(Run):

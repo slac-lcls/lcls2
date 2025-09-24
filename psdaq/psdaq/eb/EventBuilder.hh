@@ -86,7 +86,7 @@ namespace Pds {
                                 unsigned imm,
                                 const time_point_t&);
       void              _fixup(EbEvent*, ns_t age, const EbEvent* const due);
-      void              _retire(EbEpoch*, EbEvent*);
+      void              _retire(EbEvent*);
       void              _flush(const EbEvent* const due);
       void              _flush();
       void              _tryFlush();

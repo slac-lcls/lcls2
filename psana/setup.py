@@ -143,6 +143,7 @@ if 'PSANA' in BUILD_LIST :
             'merge_mask_ndarrays = psana.pyalgos.app.merge_mask_ndarrays:do_main',
             'merge_max_ndarrays  = psana.pyalgos.app.merge_max_ndarrays:do_main',
             'cdb                 = psana.pscalib.app.cdb:cdb_cli',
+            'cdb2                = psana.pscalib.app.cdb2:cdb_cli',
             'proc_info           = psana.pscalib.app.proc_info:do_main',
             'proc_control        = psana.pscalib.app.proc_control:do_main',
             'proc_new_datasets   = psana.pscalib.app.proc_new_datasets:do_main',
@@ -162,8 +163,9 @@ if 'PSANA' in BUILD_LIST :
             'epix10ka_deploy_constants = psana.app.epix10ka_deploy_constants:do_main',
             'epix10ka_raw_calib_image  = psana.app.epix10ka_raw_calib_image:do_main',
             'epix10ka_calib_components = psana.app.epix10ka_calib_components:__main__',
-            'epixm320_dark_proc        = psana.app.epixm320_dark_proc:do_main',
             'epixm320_charge_injection = psana.app.epixm320_charge_injection:do_main',
+            'epixm320_dark_proc  = psana.app.epixm320_dark_proc:do_main',
+            'epix_dark_proc      = psana.app.epix_dark_proc:do_main',
             'datinfo             = psana.app.datinfo:do_main',
             'det_dark_proc       = psana.app.det_dark_proc:do_main',
             'det_pixel_status    = psana.app.det_pixel_status:do_main',
@@ -178,7 +180,13 @@ if 'PSANA' in BUILD_LIST :
             'jungfrau_deploy_constants = psana.app.jungfrau_deploy_constants:do_main',
             'caliblogs           = psana.app.caliblogs:do_main',
             'calibrepo           = psana.app.calibrepo:do_main',
+            'calibvalidity       = psana.app.calibvalidity:do_main',
+            'geometry_convert    = psana.app.geometry_convert:do_main',
+            'geometry_image      = psana.app.geometry_image:do_main',
             'calib_prefetch      = psana.pscalib.app.calib_prefetch.__main__:main',
+            'optical_metrology_check      = psana.pscalib.app.optical_metrology_check:do_main',
+            'optical_metrology_epix10ka2m = psana.pscalib.app.optical_metrology_epix10ka2m:do_main',
+            'make_or_print_npyarray = psana.app.make_or_print_numpy_array:do_main',
         ]
     }
 

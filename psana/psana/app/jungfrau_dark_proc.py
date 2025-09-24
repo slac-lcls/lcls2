@@ -19,6 +19,7 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -45,14 +46,14 @@ def argument_parser():
     d_int_hi  = M14-3   # highest intensity accepted for dark evaluation, ex: 16000
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
     d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
-    d_rms_lo  = 0.001   # rms ditribution low
-    d_rms_hi  = M14-3   # rms ditribution high, ex: 16000
-    d_rmsnlo  = 6.0     # rms ditribution number-of-sigmas low
-    d_rmsnhi  = 6.0     # rms ditribution number-of-sigmas high
+    d_rms_lo  = 0.001   # rms distribution low
+    d_rms_hi  = M14-3   # rms distribution high, ex: 16000
+    d_rmsnlo  = 6.0     # rms distribution number-of-sigmas low
+    d_rmsnhi  = 6.0     # rms distribution number-of-sigmas high
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-04-30'
+    d_version = 'V2025-06-07'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
@@ -149,7 +150,8 @@ def do_main():
 
     t0_sec = time()
     jungfrau_dark_proc(parser)
-    sys.exit('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
+    logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
+    sys.exit(0)
 
 
 if __name__ == "__main__":

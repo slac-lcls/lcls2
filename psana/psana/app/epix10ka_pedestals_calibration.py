@@ -38,8 +38,8 @@ def do_main():
     #if args.det  == 'tst_epixm': sys.exit('TEST EXIT FOR %s' % args.det)
     pedestals_calibration(parser)
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
-
-    sys.exit('End of %s' % SCRNAME)
+    logger.info('End of %s' % SCRNAME)
+    sys.exit(0)
 
 
 def argument_parser():

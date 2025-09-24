@@ -16,8 +16,10 @@
 #include <fstream>      // std::ifstream
 #include <cctype>       // std::isspace
 #include <regex>
+#include <sys/prctl.h>
 #include <Python.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "xtcdata/xtc/Damage.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -210,7 +212,7 @@ int PvMonitor::getParams(std::string&    fieldName,
                          name().c_str(), m_rank, rank);
     }
 
-    m_payloadSize = m_nelem * Name::get_element_size(xtcType);
+    m_payloadSize = m_nelem * Name::get_element_size(xtcType); // Doesn't include overhead
     if (m_payloadSize > bufferSize) {
         auto msg("PV "+name()+" size too big; see log");
         json jmsg = createAsyncErrMsg(m_para.alias, msg);
@@ -245,7 +247,7 @@ void PvMonitor::shutdown()
 
 void PvMonitor::onConnect()
 {
-    logging::debug("PV  %s connected", name().c_str());
+    logging::debug("PV %s connected", name().c_str());
 
     if (m_state == NotReady) {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -739,6 +741,8 @@ PvDrp::PvDrp(PvParameters& para, MemPoolCpu& pool, PvDetector& det, ZmqContext& 
     m_evtQueue (pool.nbuffers()),
     m_terminate(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string PvDrp::configure(const json& msg)
@@ -840,6 +844,15 @@ int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInRx();});
+
     return 0;
 }
 
@@ -856,6 +869,9 @@ void PvDrp::_worker()
                     1500 };
 
     logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_pva/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     // Reset counters to avoid 'jumping' errors on reconfigures
     pool.resetCounters();

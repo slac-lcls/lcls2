@@ -12,6 +12,7 @@
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
+#include "psdaq/aes-stream-drivers/DmaDriver.h"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 #include <nlohmann/json.hpp>
@@ -69,68 +70,76 @@ public:
         m_chunkId = 0;
     }
 
-    bool advanceChunkId()           { ++ m_chunkId; return true; }
+    bool advanceChunkId()                { ++m_chunkId; return true; }
     // getters
-    std::string outputDir()         { return m_outputDir; }
-    std::string instrument()        { return m_instrument; }
-    unsigned runNumber()            { return m_runNumber; }
-    std::string experimentName()    { return m_experimentName; }
-    std::string hostname()          { return m_hostname; }
-    unsigned nodeId()               { return m_nodeId; }
-    unsigned chunkId()              { return m_chunkId; }
-    std::string runName();
+    const std::string& outputDir()       const { return m_outputDir; }
+    const std::string& instrument()      const { return m_instrument; }
+    unsigned runNumber()                 const { return m_runNumber; }
+    const std::string& experimentName()  const { return m_experimentName; }
+    const std::string& hostname()        const { return m_hostname; }
+    unsigned nodeId()                    const { return m_nodeId; }
+    unsigned chunkId()                   const { return m_chunkId; }
+    std::string runName() const;
 };
 
 class PgpReader;
 class DrpBase;
 
-class EbReceiver : public Pds::Eb::EbCtrbInBase
+class TebReceiverBase : public Pds::Eb::EbCtrbInBase
 {
 public:
-    EbReceiver(Parameters& para, Pds::Eb::TebCtrbParams& tPrms,
-               MemPool& pool, ZmqSocket& inprocSend, DrpBase& drp);
-    void process(const Pds::Eb::ResultDgram& result, unsigned index) override;
+  TebReceiverBase(const Parameters&, DrpBase&);
+    virtual ~TebReceiverBase() {}
+protected:
+    void process(const Pds::Eb::ResultDgram&, unsigned index) override;
 public:
     void resetCounters(bool all);
-    int  connect(const std::shared_ptr<Pds::MetricExporter> exporter);
+    int  connect(const std::shared_ptr<Pds::MetricExporter>);
     void unconfigure();
-    std::string openFiles(const Parameters& para, const RunInfo& runInfo, std::string hostname, unsigned nodeId);
+    std::string openFiles(const RunInfo& runInfo);
     bool advanceChunkId();
     std::string reopenFiles();
     std::string closeFiles();
-    uint64_t chunkSize();
-    bool chunkPending();
+    uint64_t chunkSize() const { return m_offset - m_chunkOffset; }
     void chunkRequestSet();
     void chunkReset();
-    bool writing();
+    void offsetReset() { m_offset = 0; }
+    void offsetAppend(size_t size) { m_offset += size; }
+    bool writing() const { return m_writing; }
     static const uint64_t DefaultChunkThresh = 500ull * 1024ull * 1024ull * 1024ull;    // 500 GB
-    FileParameters *fileParameters()    { return &m_fileParameters; }
+    const FileParameters& fileParameters() const { return *m_fileParameters; }
+    virtual FileWriterBase& fileWriter() = 0;
+    virtual SmdWriterBase& smdWriter() = 0;
+protected:
+    virtual int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
+                             std::map<std::string, std::string>& labels) = 0;
+    virtual void complete(unsigned index, const Pds::Eb::ResultDgram& result) = 0;
 private:
     int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
-    void _writeDgram(XtcData::Dgram* dgram);
-private:
+protected:
     MemPool& m_pool;
     DrpBase& m_drp;
+private:
     unsigned m_tsId;
-    BufferedFileWriterMT m_fileWriter;
-    SmdWriter m_smdWriter;
     bool m_writing;
     ZmqSocket& m_inprocSend;
     uint32_t m_lastIndex;
-    uint32_t m_lastEvtCounter;
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
     uint64_t m_offset;
     uint64_t m_chunkOffset;
-    bool m_chunkRequest;
     bool m_chunkPending;
+protected:
+    bool m_chunkRequest;
+    unsigned m_configureIndex;
     std::vector<uint8_t> m_configureBuffer;
-    uint64_t m_damage;
     uint64_t m_evtSize;
     uint64_t m_latPid;
     int64_t m_latency;
+private:
+    uint64_t m_damage;
     std::shared_ptr<Pds::PromHistogram> m_dmgType;
-    FileParameters m_fileParameters;
+    std::unique_ptr<FileParameters> m_fileParameters;
     const Parameters& m_para;
 };
 
@@ -154,6 +163,10 @@ public:
     uint64_t nTmgHdrError() const { return m_nTmgHdrError; }
     uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
+    int64_t  nPgpInUser()   const { return dmaGetRxBuffinUserCount  (m_pool.fd()); }
+    int64_t  nPgpInHw()     const { return dmaGetRxBuffinHwCount    (m_pool.fd()); }
+    int64_t  nPgpInPreHw()  const { return dmaGetRxBuffinPreHwQCount(m_pool.fd()); }
+    int64_t  nPgpInRx()     const { return dmaGetRxBuffinSwQCount   (m_pool.fd()); }
     std::chrono::nanoseconds age(const XtcData::TimeStamp& time) const;
 private:
     void _setTimeOffset(const XtcData::TimeStamp& time);
@@ -184,6 +197,7 @@ protected:
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
     std::mutex m_lock;
+    bool m_dmaOverrun;
 };
 
 class PV;
@@ -192,6 +206,9 @@ class DrpBase
 {
 public:
     DrpBase(Parameters& para, MemPool& pool, Detector& det, ZmqContext& context);
+protected:
+    void setTebReceiver(std::unique_ptr<TebReceiverBase> tebRecv) { m_tebReceiver = std::move(tebRecv); }
+public:
     void shutdown();
     nlohmann::json connectionInfo(const std::string& ip);
     std::string connect(const nlohmann::json& msg, size_t id);
@@ -206,10 +223,12 @@ public:
     void chunkInfoSupport(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
     void chunkInfoData   (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const ChunkInfo& chunkInfo);
     Detector& detector() const {return m_det; }
-    Pds::Eb::TebContributor& tebContributor() {return *m_tebContributor;}
-    Pds::Eb::MebContributor& mebContributor() {return *m_mebContributor;}
+    Pds::Eb::TebContributor& tebContributor() const {return *m_tebContributor;}
+    Pds::Eb::MebContributor& mebContributor() const {return *m_mebContributor;}
+    TebReceiverBase& tebReceiver() const {return *m_tebReceiver;}
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
-    prometheus::Exposer* exposer() {return m_exposer.get();}
+    prometheus::Exposer* exposer() const { return m_exposer.get(); }
+    ZmqSocket& inprocSend() { return m_inprocSend; }
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
     bool isSupervisor() const {return m_isSupervisor;}
@@ -228,7 +247,7 @@ private:
     Pds::Eb::MebCtrbParams m_mPrms;
     std::unique_ptr<Pds::Eb::TebContributor> m_tebContributor;
     std::unique_ptr<Pds::Eb::MebContributor> m_mebContributor;
-    std::unique_ptr<EbReceiver> m_ebRecv;
+    std::unique_ptr<TebReceiverBase> m_tebReceiver;
     std::unique_ptr<prometheus::Exposer> m_exposer;
     std::shared_ptr<Pds::MetricExporter> m_exporter;
     ZmqSocket m_inprocSend;

@@ -16,7 +16,7 @@ public:
     EpixHRemu(Parameters* para, MemPool* pool);
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     unsigned beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) override;
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override;
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
 public:
     const unsigned numAsics    = 4;
     const unsigned elemRows    = 144;

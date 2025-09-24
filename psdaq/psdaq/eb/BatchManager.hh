@@ -17,8 +17,8 @@ namespace Pds {
     public:
       int    initialize(size_t maxEntrySize, unsigned maxEntries, unsigned numBatches);
       void   shutdown();
-      void*  fetch(unsigned idx);
-      void*  batchRegion()     const;
+      void*  fetch(unsigned idx) const;
+      void*  batchRegion() const;
       size_t batchRegionSize() const;
       bool   expired(uint64_t pid, uint64_t start) const;
     public:
@@ -47,7 +47,7 @@ size_t Pds::Eb::BatchManager::batchRegionSize() const
 }
 
 inline
-void* Pds::Eb::BatchManager::fetch(unsigned index)
+void* Pds::Eb::BatchManager::fetch(unsigned index) const
 {
   return _region  + index * _maxEntrySize;
 }

@@ -29,7 +29,7 @@ namespace Pds {
       void unconfigure();
       void disconnect();
       void shutdown();
-      bool enabled() { return _enabled; }
+      bool enabled() const { return _enabled; }
     public:
       int  post(const Pds::EbDgram* dataDatagram); // Transitions
       int  post(const Pds::EbDgram* dataDatagram,

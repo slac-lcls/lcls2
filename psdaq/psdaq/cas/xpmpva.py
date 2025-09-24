@@ -303,7 +303,6 @@ class PvRxAlign(QtWidgets.QWidget):
 def addTiming(self,pvbase):
     lor = QtWidgets.QVBoxLayout()
     PvLabel(self,lor, pvbase, "RxClks"     )
-    PvLabel(self,lor, pvbase, "TxClks"     )
     PvLabel(self,lor, pvbase, "RxRsts"     )
     PvLabel(self,lor, pvbase, "CrcErrs"    )
     PvLabel(self,lor, pvbase, "RxDecErrs"  )
@@ -312,10 +311,7 @@ def addTiming(self,pvbase):
     PvLabel(self,lor, pvbase, "BypassDones")
     PvLabel(self,lor, pvbase, "RxLinkUp"   )
     PvLabel(self,lor, pvbase, "FIDs"       )
-    PvLabel(self,lor, pvbase, "SOFs"       )
-    PvLabel(self,lor, pvbase, "EOFs"       )
     LblPushButtonX( lor, pvbase, "RxReset" )
-    LblPushButtonX( lor, pvbase, "RxCountReset" )
     LblPushButtonX( lor, pvbase, "RxCountReset" )
     lor.addWidget( PvRxAlign(pvbase+'RxAlign','RxAlign') )
     lor.addStretch()
@@ -329,7 +325,6 @@ class PvMmcm(QtWidgets.QWidget):
         layout = QtWidgets.QHBoxLayout()
 
         pv = Pv(pvname)
-#        v = pv.get()
         v = pv.get()
 
         v0 = int(v[0])
@@ -539,6 +534,8 @@ class PatternTab(QtWidgets.QWidget):
         super(PatternTab,self).__init__()
 
         l = QtWidgets.QVBoxLayout()
+        l.addWidget(PvEditEvt(f'{pvbase}PATT:L0Select',0))
+
         v20b = (1<<20)-1
         l.addWidget(PvTableDisplay(f'{pvbase}PATT:GROUPS', [f'Group{i}' for i in range(8)], (0, v20b, v20b, v20b, 0)))
 

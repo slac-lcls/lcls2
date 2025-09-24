@@ -1,18 +1,14 @@
-#------------------------------
+
 """
 Created on 2008-10-08 by Andrei Salnikov
 """
-#------------------------------
 import sys
 import time
-
 import psana.pscalib.calib.TimeFormat as TimeFormat
-#------------------------------
 
 class Time() :
-    """Common time class. 
-    
-    Counts time since the standard UNIX epoch. Provides nanosecond precision.
+    """Common time class,
+       counts time since the standard UNIX epoch. Provides nanosecond precision.
     """
     def __init__ ( self, sec = None, nsec = 0 ) :
         """Constructor.
@@ -23,10 +19,6 @@ class Time() :
         if nsec < 0 or nsec > 999999999 : raise ValueError("nanoseconds value out of range")
         self._sec = sec ;
         self._nsec = nsec ;
-
-    #-------------------
-    #  Public methods --
-    #-------------------
 
     def sec(self) :
         return self._sec
@@ -73,7 +65,7 @@ class Time() :
     def __ne__(self, other):
         self._is_valid_to_compare(other)
         return ((self._sec,self._nsec) != (other._sec,other._nsec))
- 
+
     def __lt__(self, other):
         self._is_valid_to_compare(other)
         return ((self._sec,self._nsec) < (other._sec,other._nsec))
@@ -91,14 +83,10 @@ class Time() :
         return ((self._sec,self._nsec) >= (other._sec,other._nsec))
 
     def __hash__ ( self ):
-        """ calculate hash value for use in dictionaries, returned hash value 
+        """ calculate hash value for use in dictionaries, returned hash value
         should be 32-bit integer """
         if self._sec is None : raise ValueError ( "Time.__hash__: invalid time value" )
         return hash( (self._sec, self._nsec) )
-
-    #--------------------------------
-    #  Static/class public methods --
-    #--------------------------------
 
     @staticmethod
     def now():
@@ -119,10 +107,8 @@ class Time() :
         """ Convert string presentation into time object """
         sec, nsec = TimeFormat.parseTime( s )
         return Time( sec, nsec )
-    
-#------------------------------
 
 if __name__ == "__main__" :
     sys.exit ( "Module is not supposed to be run as main module" )
 
-#------------------------------
+# EOF

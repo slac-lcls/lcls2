@@ -33,6 +33,7 @@ using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
 using namespace Pds::Eb;
+using json             = nlohmann::json;
 using logging          = psalg::SysLog;
 using MetricExporter_t = std::shared_ptr<MetricExporter>;
 using ms_t             = std::chrono::milliseconds;
@@ -48,15 +49,19 @@ static unsigned _ebTimeout(const EbParams& prms)
 
 EbAppBase::EbAppBase(const EbParams&    prms,
                      const std::string& pfx) :
-  EventBuilder(_ebTimeout(prms), prms.verbose),
-  _transport  (prms.verbose, prms.kwargs),
-  _verbose    (prms.verbose),
-  _lastPid    (0),
-  _bufferCnt  (0),
-  _id         (-1),
-  _pfx        (pfx),
-  _prms       (prms)
+  EventBuilder (_ebTimeout(prms), prms.verbose),
+  _transport   (prms.verbose, prms.kwargs),
+  _verbose     (prms.verbose),
+  _lastPid     (0),
+  _bufferCnt   (0),
+  _id          (-1),
+  _notifySocket{&_context, ZMQ_PUSH},
+  _notifyPid   (0),
+  _pfx         (pfx),
+  _prms        (prms)
 {
+  // ZMQ socket for reporting errors
+  _notifySocket.connect({"tcp://" + _prms.collSrv + ":" + std::to_string(CollectionApp::zmq_base_port + _prms.partition)});
 }
 
 EbAppBase::~EbAppBase()
@@ -72,6 +77,7 @@ EbAppBase::~EbAppBase()
 int EbAppBase::resetCounters()
 {
   _bufferCnt = 0;
+  _notifyPid = 0;
   if (_fixupSrc)  _fixupSrc->clear();
   if (_ctrbSrc)   _ctrbSrc ->clear();
   EventBuilder::resetCounters();
@@ -163,7 +169,7 @@ int EbAppBase::_setupMetrics(const MetricExporter_t exporter)
   return 0;
 }
 
-int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
+int EbAppBase::connect(unsigned maxEvBuffers, unsigned maxTrBuffers, const MetricExporter_t exporter)
 {
   int      rc;
   unsigned nCtrbs = std::bitset<64>(_prms.contributors).count();
@@ -181,7 +187,7 @@ int EbAppBase::connect(unsigned maxTrBuffers, const MetricExporter_t exporter)
   // Initialize the event builder
   auto duration = _prms.maxEntries;
   _maxEntries   = _prms.maxEntries;
-  _maxEvBuffers = (EB_TMO_MS / 1000) * (_prms.maxBuffers / _prms.maxEntries);
+  _maxEvBuffers = (EB_TMO_MS / 1000) * (maxEvBuffers / _prms.maxEntries);
   _maxTrBuffers = maxTrBuffers;
   rc = initialize(_maxEvBuffers + _maxTrBuffers, _maxEntries, nCtrbs, duration);
   if (rc)  return rc;
@@ -244,8 +250,10 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
                        __PRETTY_FUNCTION__, peer, rmtId, regSize);
         return ENOMEM;
       }
-
       _regSize[rmtId] = regSize;
+
+      logging::info("Allocated %.1f GB region for %u transitions of %zu B and %u buffers of %zu B for inbound link with %3s ID %d",
+                    double(regSize)/1e9, _maxTrBuffers, _maxTrSize[rmtId], prms.numBuffers[rmtId], regEntrySize, peer, rmtId);
     }
 
     if ( (rc = link->setupMr(_region[rmtId], regSize, peer)) )
@@ -374,7 +382,7 @@ int EbAppBase::process()
   }
   _lastPid[src] = idg->pulseId();
 
-  _ctrbSrc->observe(double(src));       // Revisit: For testing
+  if (_ctrbSrc)  _ctrbSrc->observe(double(src)); // Revisit: For testing
 
   if (UNLIKELY(print || (_verbose >= VL_BATCH)))
   {
@@ -474,13 +482,36 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
 {
   event->damage(Damage::DroppedContribution);
 
-  if (fixupCnt() + timeoutCnt() < 100)
+  // Alert user to missing contribution(s) for one event only
+  if (!_notifyPid)
   {
-    logging::warning("Fixup %s, %014lx, size %zu, source %d (%s)",
-                     TransitionId::name(event->creator()->service()),
-                     event->sequence(), event->size(),
-                     srcId, _prms.drps[srcId].c_str());
+    _notifyPid = event->sequence();
+    auto msg(std::string(_pfx) + " didn't hear from:");
+    json jmsg = createAsyncErrMsg(_prms.alias, msg);
+    _notifySocket.send(jmsg.dump());
+  }
+  if (event->sequence() == _notifyPid)
+  {
+    json jmsg = createAsyncErrMsg(_prms.alias, _prms.drps[srcId]);
+    _notifySocket.send(jmsg.dump());
   }
 
-  _fixupSrc->observe(double(srcId));
+  if (fixupCnt() + timeoutCnt() < 100)
+  {
+    time_t now;  time (&now);   // Current time
+    logging::error("%s, %014lx, size %zu is missing src %u (%s) @ %s",
+                   TransitionId::name(event->creator()->service()),
+                   event->sequence(), event->size(), srcId,
+                   _prms.drps[srcId].c_str(), ctime(&now));
+  }
+  else {
+    auto msg("Too many events missing a contribution.  Aborting.");
+    json jmsg = createAsyncErrMsg(_prms.alias, msg);
+    _notifySocket.send(jmsg.dump());
+    logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
+                      fixupCnt(), timeoutCnt());
+    abort();
+  }
+
+  if (_fixupSrc)  _fixupSrc->observe(double(srcId));
 }

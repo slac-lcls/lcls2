@@ -17,7 +17,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 #M14 = 0o37777 # 14-bits, 2 bits for gain mode switch
 
-DESCRIPTION = 'Proceses dark run xtc data for simple detectors like epix100, archon'
+DESCRIPTION = 'add per-panel/per-gain-range constants to repository for jungfrau, epix10ka, etc'
 USAGE = DESCRIPTION\
       + '\n\nUsage:'\
       + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
@@ -38,7 +38,7 @@ def argument_parser():
     d_detname = None # 'jungfrau'
     d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-04-09'
+    d_version = 'V2025-06-27'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'

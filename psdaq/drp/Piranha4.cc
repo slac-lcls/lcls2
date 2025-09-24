@@ -1,6 +1,7 @@
 #include "Piranha4.hh"
 #include "Piranha4TTFex.hh"
 #include "psdaq/service/Semaphore.hh"
+#include "psdaq/service/SysClk.hh"
 #include "psdaq/epicstools/EpicsPVA.hh"
 #include "psdaq/epicstools/EpicsProviders.hh"
 
@@ -117,6 +118,9 @@ namespace Drp {
             double                *m_vec;
             pvd::shared_vector<const double> m_ttvec;
             const char            *m_ttpv;
+            Pds::Semaphore        m_ttpv_sem;
+            unsigned              m_ttpv_minperiod;
+            unsigned              m_ttpv_prev;
         };
 
         class TTSim {
@@ -322,7 +326,7 @@ unsigned Piranha4::_configure(XtcData::Xtc&        xtc,
     return 0;
 }
 
-void Piranha4::_event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
+void Piranha4::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     if (m_sim) m_sim->event(xtc,bufEnd,subframes);
     if (m_tt && !m_tt->event(xtc,bufEnd,subframes))
@@ -361,11 +365,13 @@ TT::TT(Piranha4& d, Parameters* para) :
     m_background_empty(true),
     m_fex             (para),
     m_vec             (new double[6]),
-    m_ttvec           (m_vec,0,6) 
+    m_ttvec           (m_vec,0,6),
+    m_ttpv_sem        (Pds::Semaphore::FULL),
+    m_ttpv_prev       (0)
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
-        logging::info("Connecting to pv %s\n", m_ttpv);
+        logging::info("Connecting to pv %s", m_ttpv);
         try {
             m_fex_pv = pvac::ClientChannel(Pds_Epics::EpicsProviders::ca().connect(m_ttpv));
             m_request = pvd::createRequest("field(value)");
@@ -373,18 +379,20 @@ TT::TT(Piranha4& d, Parameters* para) :
             const pvd::PVFieldPtrArray& fields = cpv->getPVFields();
             for(unsigned i=0; i<fields.size(); i++) {
                 const pvd::PVFieldPtr field = fields[i];
-                logging::info("%s [%s] [%s]\n",
+                logging::info("%s [%s] [%s]",
                               field->getFieldName().c_str(),
                               field->getFullName().c_str(),
                               field->getField()->getID().c_str());
             }
-            logging::info("Connection complete\n");
+            logging::info("Connection complete");
         } catch(...) {
             d._fatal_error("Error connecting to feedback PV");
         }
+
+        m_ttpv_minperiod = unsigned( strtod(MLOOKUP(m_para->kwargs,"ttpv_minp","0.01"),NULL)*1.e9/ Pds::SysClk::nsPerTick());
     }
     else {
-        logging::info("No feedback pv specified\n");
+        logging::info("No feedback pv specified");
     }
 }
 
@@ -488,13 +496,19 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
     }
     else if (result == Piranha4TTFex::VALID) {
         if (m_ttpv) {
-            m_vec[0] = m_fex.amplitude();
-            m_vec[1] = m_fex.filtered_position();
-            m_vec[2] = m_fex.filtered_pos_ps();
-            m_vec[3] = m_fex.filtered_fwhm();
-            m_vec[4] = m_fex.next_amplitude();
-            m_vec[5] = m_fex.ref_amplitude();
-            m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
+            m_ttpv_sem.take();
+            unsigned now = Pds::SysClk::sample();
+            if (now - m_ttpv_prev > m_ttpv_minperiod) {
+                m_ttpv_prev = now;
+                m_vec[0] = m_fex.amplitude();
+                m_vec[1] = m_fex.filtered_position();
+                m_vec[2] = m_fex.filtered_pos_ps();
+                m_vec[3] = m_fex.filtered_fwhm();
+                m_vec[4] = m_fex.next_amplitude();
+                m_vec[5] = m_fex.ref_amplitude();
+                m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
+            }
+            m_ttpv_sem.give();
         }
         //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
@@ -513,7 +527,7 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
 
         if (m_fex.write_evt_averages()) {
 #ifdef DBUG
-            printf("writing averages sized %zu %zu\n",sig.size(),ref.size());
+            logging::debug("writing averages sized %zu %zu",sig.size(),ref.size());
 #endif
             CreateData cdp(xtc, bufEnd, m_det.namesLookup(), m_avgNamesId);
             copy_average(double, sig, AvgDef::avg_sig);
@@ -609,7 +623,7 @@ void TTSimL1::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
     L1PAYLOAD(PdsL1::EvrDataV4     ,e);
     L1PAYLOAD(PdsL1::TimeToolDataV1,t);
     if (m_evtindex >= m_evtbuffer.size()) {
-        printf("Resetting input events\n");
+        logging::info("Resetting input events");
         m_evtindex=0;
     }
 
@@ -632,7 +646,7 @@ void TTSimL1::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
     subframes[2] = Array<uint8_t>(m_framebuffer.data(), shape, 1);
 
 #ifdef DBUG
-    printf("Copied %d pixels into subframes\n", f._pixels);
+    logging::debug("Copied %d pixels into subframes", f._pixels);
 #endif
 
     // transfer event codes into EventInfo
@@ -657,6 +671,9 @@ TTSimL2::TTSimL2(const char* evtxtc, const char* timxtc, Piranha4& d, Parameters
         perror("Error opening file");
         exit(1);
     }
+    else {
+        logging::info("Opened %s",evtxtc);
+    }
 
     m_iter = new XtcData::XtcFileIterator(fd, 0x400000);
 
@@ -664,6 +681,9 @@ TTSimL2::TTSimL2(const char* evtxtc, const char* timxtc, Piranha4& d, Parameters
     if (fd < 0) {
         perror("Error opening file");
         exit(1);
+    }
+    else {
+        logging::info("Opened %s",timxtc);
     }
 
     m_timiter = new XtcData::XtcFileIterator(fd, 0x40000);
@@ -739,7 +759,7 @@ void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
         if (dg)                                                         \
             break;                                                      \
         else {                                                          \
-            logging::info("Rewind input xtc\n");                        \
+            logging::info("Rewind input xtc");                        \
             iter->rewind();                                             \
         }                                                               \
     }
@@ -780,8 +800,8 @@ void TTSimL2::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData:
         NameIndex&  index  = m_timinput.namesLookup[namesId];
         ShapesData& shapes = *m_timinput.shapesdata[namesId];
         DescData descdata(shapes, index);
-        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
 #ifdef DBUG
+        EventInfo& info = *new(subframes[3].data()) EventInfo(descdata);
         const uint16_t* p = (const uint16_t*)(info._seqInfo);
         printf("seq:");
         for(unsigned i=0; i<16; i++)

@@ -131,6 +131,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "simxtc2")           continue;  // Opal
             if (kwargs.first == "simtime")           continue;  // Opal
             if (kwargs.first == "ttpv")              continue;  // Opal
+            if (kwargs.first == "ttpv_minp")         continue;  // Opal
         }
         if (para.detType == "tt")
             if (kwargs.first == "ttreffile")         continue;  // OpalTTFex
@@ -160,7 +161,7 @@ int main(int argc, char* argv[])
         Drp::PGPDetectorApp app(para);
         app.initialize();
         app.run();
-        std::cout<<"end of drp main\n";
+        logging::info("End of drp main");
         return 0;
     }
     catch (std::exception& e)  { logging::critical("%s", e.what()); }

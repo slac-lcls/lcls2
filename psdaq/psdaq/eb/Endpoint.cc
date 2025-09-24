@@ -700,7 +700,7 @@ bool Info::initialize()
   hints->ep_attr->type = FI_EP_MSG;
   hints->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
   hints->caps = FI_MSG | FI_RMA;
-  hints->mode = FI_LOCAL_MR | FI_RX_CQ_DATA;
+  hints->mode = FI_RX_CQ_DATA;           // Included FI_LOCAL_MR, which is ignored and deprecated as of v1.6
   hints->domain_attr->cq_data_size = 4;  /* required minimum */
 
   return true;
@@ -921,7 +921,7 @@ bool Fabric::initialize(const char* node, const char* service, uint64_t flags)
 
     CHECK_ERR(fi_getinfo(FIVER, node ? node : ANY_ADDR, service, flags, _hints, &_info), "fi_getinfo");
     // sockets provider and maybe others ignore the hints so let's explicitly set the mr_mode bits.
-    if (_info->domain_attr->mr_mode == FI_MR_UNSPEC) {
+    if (_info->domain_attr->mr_mode == 0) { // Was FI_MR_UNSPEC, which is deprecated as of v1.6
       _info->domain_attr->mr_mode = FI_MR_LOCAL | FI_MR_VIRT_ADDR | FI_MR_ALLOCATED | FI_MR_PROV_KEY;
     }
     CHECK_ERR(fi_fabric(_info->fabric_attr, &_fabric, NULL), "fi_fabric");

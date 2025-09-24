@@ -56,7 +56,7 @@ namespace Pds {
     public:
       void        process(const Pds::EbDgram* datagram);
       unsigned    index(const Pds::EbDgram* datagram) const;
-      void*       fetch(unsigned index);
+      void*       fetch(unsigned index) const;
       void        process(unsigned index);
       bool        timeout();
     public:
@@ -104,7 +104,7 @@ unsigned Pds::Eb::TebContributor::index(const Pds::EbDgram* dgram) const
 }
 
 inline
-void* Pds::Eb::TebContributor::fetch(unsigned index)
+void* Pds::Eb::TebContributor::fetch(unsigned index) const
 {
   return _batMan.fetch(index);
 }

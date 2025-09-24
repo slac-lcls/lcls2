@@ -20,7 +20,7 @@ import json
 from psana import DataSource
 from psana.detector.dir_root import DIR_REPO_EPIX10KA
 from psana.detector.UtilsEpix import FNAME_PANEL_ID_ALIASES, alias_for_id
-from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict
+from psana.detector.Utils import log_rec_at_start, str_tstamp, create_directory, save_textfile, set_file_access_mode, time_sec_from_stamp, get_login, info_dict, is_none
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, save_2darray_in_textfile, save_ndarray_in_textfile
 import psana.detector.UtilsEpix10ka as ue
 import psana.detector.UtilsCalib as uc
@@ -31,10 +31,10 @@ from psana.detector.UtilsLogging import init_file_handler
 merge_panels = uc.merge_panels
 
 
-def is_none(par, msg, logger_method=logger.debug):
-    resp = par is None
-    if resp: logger_method(msg)
-    return resp
+#def is_none(par, msg, logger_method=logger.debug):
+#    resp = par is None
+#    if resp: logger_method(msg)
+#    return resp
 
 
 def find_file_for_timestamp(dirname, pattern, tstamp):
@@ -379,6 +379,11 @@ def pedestals_calibration(parser):
     dettype    = None
 
     dskwargs = data_source_kwargs(**kwa)
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc', 'detectors': ['epixquad',]} # then  'step_docstring' does not work!
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc', 'detectors': []}
+    #dskwargs = {'exp': 'ued1011059', 'run': 3, 'dir': '/sdf/data/lcls/ds/ued/ued1011059/xtc'}
+    logger.info('dskwargs: %s' % str(dskwargs))
+
     try: ds = DataSource(**dskwargs)
     except Exception as err:
         logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
@@ -797,7 +802,7 @@ def deploy_constants(parser):
     repoman = init_repoman_and_logger(parser=parser, **kwa)
 
     detname    = kwa.get('det', None)
-    tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS or run number(<10000)
+    tstamp     = kwa.get('tstamp', None) # (int) time stamp in format YYYYmmddHHMMSS
     dirrepo    = kwa.get('dirrepo', DIR_REPO_EPIX10KA)
     deploy     = kwa.get('deploy', False)
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
@@ -816,6 +821,7 @@ def deploy_constants(parser):
     proc       = kwa.get('proc', 'prsg')
     paninds    = kwa.get('paninds', None)
     version    = kwa.get('version', 'N/A')
+    run_beg    = kwa.get('run_beg', None)
     run_end    = kwa.get('run_end', 'end')
     comment    = kwa.get('comment', 'no comment')
     dbsuffix   = kwa.get('dbsuffix', '')
@@ -928,13 +934,17 @@ def deploy_constants(parser):
 
         if True: # deploy:
 
-          # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
-          use_external_run = tstamp is not None and tstamp<10000
-          use_external_ts  = tstamp is not None and tstamp>9999
+#          # check opt "-t" if constants need to be deployed with diffiernt time stamp or run number
+#          use_external_run = tstamp is not None and tstamp<10000
+#          use_external_ts  = tstamp is not None and tstamp>9999
+#          tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
+#                  if use_external_ts else cpdic.get('trun_sec', None)
+#          ivalid_run = tstamp if use_external_run else irun\
+#                  if not use_external_ts else 0
+
           tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
-                  if use_external_ts else cpdic.get('trun_sec', None)
-          ivalid_run = tstamp if use_external_run else irun\
-                  if not use_external_ts else 0
+                       if tstamp is not None else cpdic.get('trun_sec', None)
+          ivalid_run = irun if run_beg is None else run_beg
 
           dtype = 'ndarray'
 
@@ -952,6 +962,7 @@ def deploy_constants(parser):
             'tsshort'    : str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec)),
             'tstamp_orig': cpdic.get('tsrun_dark', None),
             'run'        : ivalid_run,
+            'run_beg'    : run_beg,
             'run_end'    : run_end,
             'run_orig'   : irun,
             'version'    : version,
@@ -961,7 +972,7 @@ def deploy_constants(parser):
             'dbsuffix'   : dbsuffix
           }
           d = dict_filter(kwa, list_keys=('experiment', 'detname', 'detector', 'shortname', 'ctype',\
-                                          'run', 'run_orig', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'iofname', 'version'))
+                                          'run', 'run_orig', 'run_beg', 'run_end', 'time_stamp', 'tstamp_orig', 'dettype', 'iofname', 'version'))
           logger.info('partial metadata:\n  %s' % '\n  '.join(['%16s: %s' %(k,v) for k,v in d.items()]))
 
           data = mu.data_from_file(fmerge, octype, dtype, True)

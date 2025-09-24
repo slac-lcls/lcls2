@@ -4,6 +4,7 @@ import time
 
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
+from psana.utils import make_weak_refable
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -20,7 +21,6 @@ class CalibSource:
         self.check_before_update = check_before_update
         self.log = log
         self.detectors = detectors
-        self.det_cache_managers = {}
 
     def on_run_begin(self, run):
         """
@@ -30,11 +30,12 @@ class CalibSource:
         run (psana.Run): The current run object.
         """
         for detname in self.detectors:
+            if detname not in run.detnames:
+                continue
             det = run.Detector(detname)
             det._run = run  # Attach run to detector for event access
             cache_mgr = DetectorCacheManager(det, check_before_update=self.check_before_update, logger=self.log)
             cache_mgr.ensure()
-            self.det_cache_managers[detname] = cache_mgr
 
     def run_loop(self):
         from psana import DataSource
@@ -54,25 +55,39 @@ class CalibSource:
             self.log.debug(f"Detected new run: {runnum} {expt=}")
             det_info = {k: v.uniqueid for k, v in run.dsparms.configinfo_dict.items()}
             update_calib(
-                expcode=expt,
-                latest_run=runnum,
+                latest_run=run,
                 latest_info=det_info,
                 log=self.log,
                 output_dir=self.output_dir,
                 check_before_update=self.check_before_update,
             )
+            # Clear old constants and garbage collect if this isn't the first run
+            ds._clear_calibconst()
             loaded_data = try_load_data_from_file(self.log, self.output_dir)
             # Attach the retrieved calibconst to be used in Detector caching
-            ds.dsparms.calibconst = loaded_data.get('calib_const')
+            ds._calib_const = make_weak_refable(loaded_data.get('calib_const'))
+            # Setup weak references - this populates ds.dsparms.calibconst
+            ds._create_weak_calibconst()
             self.on_run_begin(run)
 
-def update_calib(expcode, latest_run, latest_info, log, output_dir, check_before_update=False):
+def get_detnames_from_detinfo(detinfo_dict):
+    """
+    Extracts detector names from detinfo keys, ignoring types.
+
+    Args:
+        detinfo_dict (dict): Dictionary with keys as (detname, dettype) tuples
+
+    Returns:
+        set[str]: Set of unique detector names
+    """
+    return {k[0] for k in detinfo_dict.keys()}
+
+def update_calib(latest_run, latest_info, log, output_dir, check_before_update=False):
     """
     Update calibration constants by saving latest_info to a pickle file.
 
     Args:
-        expcode (str): Experiment code.
-        latest_run (int): Latest run number.
+        latest_run (Run): Latest run object.
         latest_info (dict): Detector info to store.
         log (Logger): Logger for debug/info output.
         output_dir (str): Output directory for calib pickle.
@@ -84,15 +99,22 @@ def update_calib(expcode, latest_run, latest_info, log, output_dir, check_before
         log.debug(f"{GREEN}[Checked complete]{RESET} - no need to update calib constants.")
         return
 
-    log.debug(f"Fetching calib constants for r{latest_run:04d}...")
+    expcode, latest_runnum = latest_run.expt, latest_run.runnum
+    detnames_in_detinfo = get_detnames_from_detinfo(latest_run.detinfo)
+    log.debug(f"{CYAN}[Updating]{RESET} - {len(latest_info)} detectors in detinfo: {detnames_in_detinfo}")
+    log.debug(f"Fetching calib constants for r{latest_runnum:04d}...")
     try:
         calib_const = {}
         for det_name, det_uid in latest_info.items():
             if expcode == "xpptut15":
                 det_uid = "cspad_detnum1234"
+            # Skip detectors not existing in the detinfo
+            if det_name not in detnames_in_detinfo:
+                log.debug(f"Skipping {det_name} as it is not in detinfo.")
+                continue
             t0 = time.time()
-            calib_const[det_name] = calib_constants_all_types(det_uid, exp=expcode, run=latest_run, dbsuffix="")
-            log.debug(f"Fetched calib_const for {det_name} {latest_run=} in {time.time() - t0:.2f}s")
+            calib_const[det_name] = calib_constants_all_types(det_uid, exp=expcode, run=latest_runnum, dbsuffix="")
+            log.debug(f"Fetched calib_const for {det_name} {latest_runnum=} in {time.time() - t0:.2f}s")
             if not calib_const[det_name]:
                 log.warning(f"{det_name} returns {calib_const[det_name]}")
     except Exception as e:

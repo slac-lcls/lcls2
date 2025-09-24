@@ -1,4 +1,5 @@
 import abc
+import gc
 import glob
 import json
 import logging
@@ -7,7 +8,9 @@ import re
 import socket
 import threading
 import time
+import weakref
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -23,10 +26,20 @@ from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
 
 if mode == "mpi":
-    from mpi4py import MPI
+    pass
 
 class InvalidDataSourceArgument(Exception):
     pass
+
+
+def _log_file_list(logger, title, files):
+    if not files:
+        logger.debug(f"{title}: (empty)")
+        return
+
+    dir_path = Path(files[0]).parent
+    filenames = [Path(f).name for f in files]
+    logger.debug(f"{title}:\n  {dir_path}/\n    " + "\n    ".join(filenames))
 
 
 @dataclass
@@ -42,6 +55,8 @@ class DsParms:
     timestamps: np.ndarray
     intg_det: str
     intg_delta_t: int
+    log_level: str
+    log_file: str
     smd_callback: int = 0
     terminate_flag: bool = False
 
@@ -65,7 +80,6 @@ class DsParms:
             if self.intg_det in self.det_stream_id_table:
                 stream_id = self.det_stream_id_table[self.intg_det]
         return stream_id
-
 
 class DataSourceBase(abc.ABC):
     """
@@ -117,8 +131,8 @@ class DataSourceBase(abc.ABC):
         Integration delay in seconds.
     smd_callback : callable or int
         Callback for SMD event handling.
-    psmon_publish : bool
-        Enable publishing to psmon (legacy).
+    psmon_publish : psmon.publish
+        Enable publishing to psmon (default: None).
     prom_jobid : str
         Prometheus job ID tag.
     skip_calib_load : str
@@ -138,11 +152,10 @@ class DataSourceBase(abc.ABC):
 
     def __init__(self, **kwargs):
         # Setup logger
-        rank = MPI.COMM_WORLD.Get_rank() if mode == "mpi" else None
         log_level = kwargs.get("log_level", logging.INFO)
+        log_file = kwargs.get("log_file", None)
         if isinstance(log_level, str):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
-        self.logger = utils.Logger(myrank=rank, level=log_level)
 
         # Default values
         self.filter = kwargs.get("filter", 0)
@@ -165,6 +178,7 @@ class DataSourceBase(abc.ABC):
         self.intg_delta_t = kwargs.get("intg_delta_t", 0)
         self.current_retry_no = 0
         self.smd_callback = kwargs.get("smd_callback", 0)
+        self.psmon_publish = kwargs.get("psmon_publish", None)
         self.prom_jobid = kwargs.get("prom_jobid", None)
         self.skip_calib_load = kwargs.get("skip_calib_load", [])
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
@@ -172,6 +186,14 @@ class DataSourceBase(abc.ABC):
         self.cached_detectors = kwargs.get("cached_detectors", [])
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
+
+        # Calibration constant structures
+        # Held by _calib_const, _cc_weak holds weak references to the sub-dicts
+        # dsparms.calibconst holds a weak reference to _cc_weak
+        self._calib_const = None
+        """Holds calibration constants for all detectors."""
+        self._cc_weak = utils.WeakDict({})
+        """Holds weakrefs to each detectors constants. Passed via weakref in dsparms."""
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -206,8 +228,12 @@ class DataSourceBase(abc.ABC):
             self.timestamps,
             self.intg_det,
             self.intg_delta_t,
-            self.smd_callback,
+            log_level,
+            log_file,
+            smd_callback=self.smd_callback,
         )
+
+        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
 
         # Warn about unrecognized kwargs
         known_keys = {
@@ -217,7 +243,7 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
-            "log_level"
+            "log_level", "log_file"
         }
         for k in kwargs:
             if k not in known_keys:
@@ -245,7 +271,7 @@ class DataSourceBase(abc.ABC):
         # Note that you can use zmq instead by specifying zmq server
         # in the env var. below.
         PSPLOT_LIVE_ZMQ_SERVER = os.environ.get("PSPLOT_LIVE_ZMQ_SERVER", "")
-        if hasattr(self, "psmon_publish"):
+        if getattr(self, "psmon_publish", None) is not None:
             publish = self.psmon_publish
             publish.init()
             # Send fully qualified hostname
@@ -486,8 +512,8 @@ class DataSourceBase(abc.ABC):
         self.smd_files = smd_files
         self.xtc_files = xtc_files
 
-        self.logger.debug("smd_files:\n" + "\n".join(self.smd_files))
-        self.logger.debug("xtc_files:\n" + "\n".join(self.xtc_files))
+        _log_file_list(self.logger, "smd_files", self.smd_files)
+        _log_file_list(self.logger, "xtc_files", self.xtc_files)
 
         # Set default flag for replacing smalldata with bigda files.
         self.dsparms.set_use_smds([False] * self.n_files)
@@ -543,11 +569,11 @@ class DataSourceBase(abc.ABC):
 
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
         if not self.monitor:
-            self.logger.debug("ds_base: RUN W/O PROMETHEUS CLENT")
+            self.logger.debug("RUN W/O PROMETHEUS CLENT")
         elif prom_cfg_dir is None:  # Use push gateway
             self.prom_man.rank = mpi_rank
             self.logger.debug(
-                f"ds_base: START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
+                f"START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
             )
             self.e = threading.Event()
             self.t = threading.Thread(
@@ -559,7 +585,7 @@ class DataSourceBase(abc.ABC):
             self.t.start()
         else:  # Use http exposer
             self.logger.debug(
-                "ds_base: START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
+                "START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
             )
             self.e = None
             self.prom_man.create_exposer(prom_cfg_dir)
@@ -570,7 +596,7 @@ class DataSourceBase(abc.ABC):
 
         if self.e is not None:  # Push gateway case only
             self.logger.debug(
-                "ds_base: END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
+                "END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
             )
             self.e.set()
 
@@ -687,9 +713,33 @@ class DataSourceBase(abc.ABC):
 
             for smd_fd in smd_fds:
                 os.close(smd_fd)
-            self.logger.debug(f"ds_base: close tmp smd fds:{smd_fds}")
+            self.logger.debug(f"close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
+
+    def _clear_calibconst(self):
+        """Explicitly clear calibration constants and force garbage collection.
+
+        Helps to prevent leakage of calibration constants between runs.
+        """
+        if self._calib_const is not None:
+            self._calib_const = None
+            gc.collect()
+            self._calib_const = utils.WeakDict({})
+            self._cc_weak = utils.WeakDict({})
+
+    def _create_weak_calibconst(self):
+        """Setup weak references to calibration constants.
+
+        Pass along only weak references to large calibration data structures
+        since references are held in many places downstream making garbage
+        collection unreliable if any one object leaks/has circular references.
+        """
+        if self._calib_const is not None:
+            for key in self._calib_const:
+                self._cc_weak[key] = weakref.WeakValueDictionary(self._calib_const[key])
+        # Only use dsparms.calibconst to pass to runs, detectors etc.
+        self.dsparms.calibconst = weakref.proxy(self._cc_weak)
 
     def _setup_run_calibconst(self):
         """
@@ -707,16 +757,13 @@ class DataSourceBase(abc.ABC):
         Returns:
             None
         """
-
-        if self.skip_calib_load == 'all':
-            self.logger.debug(f"_setup_run_calibconst skipped {self.skip_calib_load=}")
-            return
-
         runinfo = self._get_runinfo()
         if not runinfo:
             return
         expt, runnum, _ = runinfo
         self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
+
+        self._clear_calibconst()
 
         if self.use_calib_cache:
             self.logger.debug("using calibration constant from shared memory, if exists")
@@ -728,29 +775,30 @@ class DataSourceBase(abc.ABC):
                 except Exception as e:
                     self.logger.warning(f"failed to retrieve calib_const: {e}")
                 if loaded_data is not None:
-                    calib_const = loaded_data.get("calib_const")
+                    self._calib_const = utils.make_weak_refable(loaded_data.get("calib_const"))
                     existing_info = loaded_data.get("det_info")
                 if existing_info != latest_info:
-                    calib_const = None
+                    self._calib_const = utils.WeakDict({})
                     self.logger.warning("det_info in pickle file does not matched with the latest run")
-                elif calib_const:
-                    self.logger.debug(f"received calib_const for {','.join(calib_const.keys())}")
+                    self.logger.warning(f"{existing_info=}")
+                    self.logger.warning(f"{latest_info=}")
+                elif self._calib_const:
+                    self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
                     break
                 max_retry += 1
                 self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
                 time.sleep(1)
-
-            self.dsparms.calibconst = calib_const
         else:
-            self.dsparms.calibconst = {}
+            if self._calib_const is None:
+                self._calib_const = utils.WeakDict({})
             for det_name, configinfo in self.dsparms.configinfo_dict.items():
                 if expt:
                     if expt == "xpptut15":
                         det_uniqueid = "cspad_detnum1234"
                     else:
                         det_uniqueid = configinfo.uniqueid
-                    if hasattr(self, "skip_calib_load") and det_name in self.skip_calib_load:
-                        self.dsparms.calibconst[det_name] = None
+                    if hasattr(self, "skip_calib_load") and (det_name in self.skip_calib_load or self.skip_calib_load=="all"):
+                        self._calib_const[det_name] = utils.WeakDict({})
                         continue
                     st = time.monotonic()
                     calib_const = wu.calib_constants_all_types(
@@ -758,12 +806,13 @@ class DataSourceBase(abc.ABC):
                     )
                     en = time.monotonic()
                     self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
-                    self.dsparms.calibconst[det_name] = calib_const
+                    self._calib_const[det_name] = utils.make_weak_refable(calib_const)
                 else:
                     self.logger.info(
-                        "ds_base: Warning: cannot access calibration constant (exp is None)"
+                        "Warning: cannot access calibration constant (exp is None)"
                     )
-                    self.dsparms.calibconst[det_name] = None
+                    self._calib_const[det_name] = utils.WeakDict({})
+        self._create_weak_calibconst()
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)
@@ -784,4 +833,3 @@ class DataSourceBase(abc.ABC):
         if self.smd_fds is not None:
             for fd in self.smd_fds:
                 os.close(fd)
-            self.logger.debug(f"ds_base: close smd fds: {self.smd_fds}")

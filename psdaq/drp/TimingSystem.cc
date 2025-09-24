@@ -92,6 +92,17 @@ void TimingSystem::_addJson(Xtc& xtc, const void* bufEnd, NamesId& configNamesId
     check(json_bytes);
     char* json = (char*)PyBytes_AsString(json_bytes);
 
+    // save the serial number so it can be added to the raw data as well
+    Document *json_doc = new Document();
+    ParseResult json_ok = json_doc->Parse(json);
+    if (!json_ok) {
+      throw "Bad JSON";
+    }
+    if (json_doc->HasMember("detId:RO")) {
+      m_para->serNo = (*json_doc)["detId:RO"].GetString();
+    }
+    delete json_doc;
+
     // convert to json to xtc
     auto config_end = config_buf + sizeof(config_buf);
     unsigned len = Pds::translateJson2Xtc(json, config_buf, config_end, configNamesId, m_para->detName.c_str(), m_para->detSegment);
@@ -189,7 +200,7 @@ bool TimingSystem::scanEnabled() {
     return true;
 }
 
-void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     int lane = __builtin_ffs(event->mask) - 1;
     // there should be only one lane of data in the timing system

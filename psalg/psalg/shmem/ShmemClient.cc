@@ -1,5 +1,7 @@
+#include <cstdlib>
 #include <stdlib.h>
 #include <stdio.h>
+#include <chrono>
 #include <unistd.h>
 #include <time.h>
 #include <string.h>
@@ -42,6 +44,12 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
   struct mq_attr mymq_attr;
   mqd_t queue;
   bool first = true;
+  const char* test_tmo_env = std::getenv("PSANA_TESTS_SHMEM_TMO");
+  int tmo = 0;
+  if (test_tmo_env) {
+    tmo = std::atoi(test_tmo_env);
+  }
+  auto start = std::chrono::steady_clock::now();
   while(1) {
     queue = mq_open(name, flags, perms, &mymq_attr);
     if (queue == (mqd_t)-1) {
@@ -52,6 +60,13 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
       if (first) {
         first = false;
         printf("Waiting for queue %s to appear\n",name);
+      }
+      if (tmo) {
+        auto now = std::chrono::steady_clock::now();
+        if (now - start >= std::chrono::seconds(tmo)) {
+          printf("Failed to open queue %s. Breaking after PSANA_TESTS_SHMEM_TMO=%d sec\n",name,tmo);
+          break;
+        }
       }
       sleep(1);
     }
@@ -281,11 +296,40 @@ void ShmemClient::free(int index, size_t size)
 }
 
 /*
-** ++
-**
-**
-** --
+* Return a new transition or l1accept datagram
+* @param index Buffer index updated by reference. Used by client app to free
+*        (release) buffer once done with it.
+* @param size Buffer size updated by reference.
+* @param eventSkipped If transitionsOnly below is true, this reference will be set
+*        to true if an event (l1Accept) was actually skipped. This is to allow client
+*        applications to determine if NULL is an expected return value.
+* @param transitionsOnly If true, only return transitions (if available), skipping
+*        any l1accepts that may be pending. Can be used by client applications to
+*        ensure reading of all transitions without also draining off any l1accepts
+*        that may otherwise be discarded. Default: false (see header)
+*
 */
+void* ShmemClient::get(int& index, size_t& size, bool& eventSkipped, bool transitionsOnly)
+{
+  index = -1;
+  size = 0;
+
+  while (1) {
+    if (::poll(_pfd, _nfd, -1) > 0) {
+          if (_pfd[0].revents & POLLIN) { // Transition
+            return _handler->transition(index, size);
+          } else if (transitionsOnly) {
+            // Application requested to skip any events (L1Accept)
+            // Instead of blocking return NULL, application must handle this
+            eventSkipped = true;
+            return NULL;
+          } else if (_pfd[1].revents & POLLIN) { // Event
+            return _handler->event(index, size);
+          }
+    }
+  }
+  return NULL;
+}
 
 void* ShmemClient::get(int& index, size_t& size)
 {
@@ -333,15 +377,27 @@ int ShmemClient::connect(const char* tag, int tr_index) {
     perror("Opening myTrFd socket");
     delete[] qname;
     return 1;
-    }
+  }
+
+  const char* test_tmo_env = std::getenv("PSANA_TESTS_SHMEM_TMO");
+  int test_tmo = 0;
+  if (test_tmo_env) {
+    test_tmo = std::atoi(test_tmo_env);
+  }
 
   XtcMonitorMsg::discoveryQueue(tag,qname);
-  ssize_t rv;
+  ssize_t rv = -1;
   do {
       mqd_t discoveryQueue = _openQueue(qname, O_RDONLY, PERMS_IN);
       if (discoveryQueue == (mqd_t)-1) {
           sleep(1);
-          continue;
+          if (test_tmo) {
+              printf("Exiting early due to requested timeout.\n");
+              _shutdown();
+              return -42;
+          } else {
+              continue;
+          }
       }
 
       printf("[%p] Reading discoveryQueue %d\n",this, discoveryQueue);
@@ -360,11 +416,13 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   saddr.sin_port        = htons(port);
 
   printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
+  unsigned retries = 0;
   while (::connect(_myTrFd, (sockaddr*)&saddr, sizeof(saddr)) < 0) {
-      printf("[%p] Error connecting myTrFd socket\n",this);
+      if (!retries++)  perror("Error connecting myTrFd socket (will retry)");
       sleep(1);
-      printf("[%p] Connecting to XtcMonitor server on port %d (%d)\n",this,port,_myTrFd);
   }
+  printf("[%p] Connected to XtcMonitor server on port %d (%d) after %d retries\n",
+         this,port,_myTrFd,retries);
 
 #ifdef DBUG
   socklen_t addrlen = sizeof(sockaddr_in);
@@ -394,7 +452,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
 
   XtcMonitorMsg::sharedMemoryName(tag, qname);
   printf("Opening shared memory %s of size 0x%zx (0x%x * 0x%zx)\n",
-	 qname,sizeOfShm,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
+         qname,sizeOfShm,myMsg.numberOfBuffers(),myMsg.sizeOfBuffers());
 
   int shm = shm_open(qname, OFLAGS, PERMS_IN);
   if (shm < 0) perror("shm_open");

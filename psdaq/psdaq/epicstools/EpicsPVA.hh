@@ -207,7 +207,8 @@ namespace Pds_Epics {
     bool  _nType;
     bool  _connected;
 
-    bool getComplete();
+    bool getComplete(unsigned tmo);   // seconds
+    bool getComplete() { return getComplete(30); }
   };
 };
 

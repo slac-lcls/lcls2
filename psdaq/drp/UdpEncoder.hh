@@ -166,7 +166,7 @@ public:
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     unsigned unconfigure();
     void event_(XtcData::Dgram& dgram, const void* const bufEnd, const encoder_frame_t& frame, uint32_t *rawValue, uint32_t *interpolatedValue);
-    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event) override { /* unused */ }
+    void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override { /* unused */ }
 public:
     void addNames(unsigned segment, XtcData::Xtc& xtc, const void* bufEnd);
     const std::shared_ptr<UdpReceiver>& udpReceiver() const { return m_udpReceiver; }

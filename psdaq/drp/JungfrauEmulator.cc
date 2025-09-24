@@ -172,7 +172,7 @@ unsigned JungfrauEmulator::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const
     return 0;
 }
 
-void JungfrauEmulator::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event)
+void JungfrauEmulator::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count)
 {
     // Jungfrau panel size: 512x1024 pixels
     // 1 fiber/panel with up to 7 panels coming in on one node (1 per lane)

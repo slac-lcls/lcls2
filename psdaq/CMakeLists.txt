@@ -11,6 +11,7 @@ if(CUDAToolkit_FOUND)
   enable_language(CUDA)
   # Ensure nvcc uses the host compiler from our environment
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin $ENV{CC}")
+  #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin $ENV{CC} -rdc=true")
 endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")

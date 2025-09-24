@@ -103,16 +103,18 @@ namespace Pds {
         v.timerrcntsum= tpr.RxDecErrs + tpr.RxDspErrs - _p_monTiming[0].timerrcntsum;
         v.timrstcntsum= tpr.RxRstDone                 - _p_monTiming[0].timrstcntsum;
         v.trigcntsum  = reg.countAcquire;
-        v.readcntsum  = reg.countRead;
-        v.startcntsum = reg.countStart;
-        v.queuecntsum = reg.countQueue;
-        v.trigcnt     = v.trigcntsum - _v_monTiming[0].trigcntsum;
-        v.msgdelayset = reg.msgDelay&0xff;
-        v.msgdelayget = (reg.msgDelay>>16)&0xff;
-        v.headercntl0 = reg.headerCnt&0xffff;
-        v.headercntof = (reg.headerCnt>>24)&0xff;
-        v.headerfifow = (hdrf._wrFifoCnt>> 0)&0xf;
-        v.headerfifor = (hdrf._rdFifoCnt>> 0)&0xf;
+        //        v.readcntsum  = reg.countRead;
+        //        v.startcntsum = reg.countStart;
+        //        v.queuecntsum = reg.countQueue;
+        v.trigcntrate = v.trigcntsum - _v_monTiming[0].trigcntsum;
+        v.l0delay     = reg.msgDelay&0xff;
+        //        v.msgdelayget = (reg.msgDelay>>16)&0xff;
+        v.hdrcount    = reg.headerCnt&0xffff;
+        v.hdrfifopaus = (reg.headerCnt>>24)&0xff;
+        v.hdrfifoof   = -1;
+        v.hdrfifoofl  = -1;
+        v.hdrfifow    = (hdrf._wrFifoCnt>> 0)&0xf;
+        v.hdrfifor    = (hdrf._rdFifoCnt>> 0)&0xf;
         PVPUT(monTiming); }
 
       { MonPgp v;

@@ -134,16 +134,16 @@ int main(int argc, char* argv[]) {
     auto tgt = dmaTgtGet(gpu0);
     const char* tgtName = "";
     switch (tgt) {
-        case DmaTgt_t::CPU:  tgtName = "CPU";  break;
-        case DmaTgt_t::GPU:  tgtName = "GPU";  break;
-        default:             tgtName = "ERR";  break;
+        case DmaTgt_t::TGT_CPU:  tgtName = "CPU";  break;
+        case DmaTgt_t::TGT_GPU:  tgtName = "GPU";  break;
+        default:                 tgtName = "ERR";  break;
     };
     if (lverbose)  printf("DMA target is changing from %s to %s\n",
                           tgtName, cpu ? "CPU" : "GPU");
-    if (!cpu && tgt != GPU)
-        dmaTgtSet(gpu0, DmaTgt_t::GPU);
-    else if (cpu && tgt != CPU)
-        dmaTgtSet(gpu0, DmaTgt_t::CPU);
+    if (!cpu && tgt != DmaTgt_t::TGT_GPU)
+        dmaTgtSet(gpu0, DmaTgt_t::TGT_GPU);
+    else if (cpu && tgt != DmaTgt_t::TGT_CPU)
+        dmaTgtSet(gpu0, DmaTgt_t::TGT_CPU);
 
     ////////////////////////////////////////////////
     // Create write and read buffers

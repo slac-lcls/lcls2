@@ -58,6 +58,7 @@ int EventBuilder::initialize(unsigned epochs,
 
   // Revisit the factor of 2: it seems like the sum of the values over all RoGs
   // may be closer to the right answer
+  // The factor of 2 is obsolete given that the common RoG always triggers?
   auto nep = 2 * epochs;
   auto nev = 2 * epochs * entries;
 
@@ -328,7 +329,7 @@ void EventBuilder::_fixup(EbEvent*             event,
   else                      ++_tmoEvtCnt;
 }
 
-void EventBuilder::_retire(EbEpoch* epoch, EbEvent* event)
+void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
@@ -361,6 +362,7 @@ void EventBuilder::_flush(const EbEvent* const due)
     while (event != lastEvent)
     {
       const auto age{now - event->_t0};
+      _age = age.count();               // So we can watch events time out
 
       // Retire all events up to a newer event, limited by due.
       // Since EbEvents are created in time order, older incomplete events can
@@ -380,14 +382,14 @@ void EventBuilder::_flush(const EbEvent* const due)
       }
       if (event == due)
       {
-        _retire(epoch, event);
+        _retire(event);
 
         return;
       }
 
       EbEvent* next = event->forward();
 
-      _retire(epoch, event);
+      _retire(event);
 
       event = next;
     }

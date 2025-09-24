@@ -37,11 +37,16 @@ unsigned Drp::Gpu::Detector::configure(const std::string& config_alias, Xtc& xtc
   unsigned rc = 0;
 
   // Configure each panel in turn
+  // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
+  // @todo: Calling the CPU Detector's configure for each panel seems wrong as that nominally
+  //        also sets up the Xtc for the CPU Detector's data, which is different from the
+  //        GPU Detector's data.  Get rid of this method to force it to be overridden by the
+  //        GPU Detector's implementation?
   unsigned i = 0;
   for (const auto& det : m_dets) {
-    printf("*** Gpu::AreaDetector configure for %u start\n", i);
+    printf("*** Gpu::Detector configure for %u start\n", i);
     rc = det->configure(config_alias, xtc, bufEnd);
-    printf("*** Gpu::AreaDetector configure for %u done: rc %d\n", i, rc);
+    printf("*** Gpu::Detector configure for %u done: rc %d, sz %u\n", i, rc, xtc.sizeofPayload());
     if (rc) {
       logging::error("Gpu::Detector::configure failed for %s\n", m_params[i].device);
       break;

@@ -134,7 +134,7 @@ class Storage:
 
         self.cmpars = det_raw._common_mode() if cmpars is None else cmpars
 
-        logger.info('\n  det_name: %s' % det_raw._det_name\
+        logger.debug('\n  det_name: %s' % det_raw._det_name\
                     +'\n  peds and gfac reshape time: %.3f msec' % dt_sec\
                     +'\n  shape_as_daq %s' % str(self.shape_as_daq)\
                     +info_ndarr(gain, '\n  gain')\

@@ -27,7 +27,7 @@ def argument_parser():
     d_show_files = False
     d_deploy  = False
     d_logmode = 'INFO'
-    d_version = 'V2025-03-10'
+    d_version = 'V2025-07-15'
     d_comment = 'no comment'
 
 #    h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
@@ -58,6 +58,9 @@ def argument_parser():
 
     return parser
 
+
+def info_xtc2dirs(sep='\n  '):
+    return sep + sep.join(('/sdf/data/lcls/ds/', '/sdf/data/lcls/drpsrcf/ffb/'))
 
 def info_logfiles(topdir, detname, year, show_files=False):
     gap = '    '
@@ -95,7 +98,8 @@ def do_main():
     dirs_scripts = os.path.join(args.dirconstants, 'scripts')
     s = info_logfiles(dirs_scripts, args.detname, args.year, args.show_files)
     print('\ndirs for scripts in %s    %s' % (dirs_scripts, s))
-
+    print('\ninstrument directories:%s' % info_xtc2dirs())
+    print('\ncalib constants repository:\n  /sdf/group/lcls/ds/ana/detector/calib2/constants\n')
 
 if __name__ == "__main__":
     do_main()

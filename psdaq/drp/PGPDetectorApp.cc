@@ -375,6 +375,8 @@ PGPDetectorApp::~PGPDetectorApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
     if (m_pythonDrp) {
         logging::info("Cleaning up DrpPython");
         cleanupDrpPython(keyBase, m_inpMqId, m_resMqId, m_inpShmId, m_resShmId, m_para.nworkers);
@@ -387,6 +389,8 @@ PGPDetectorApp::~PGPDetectorApp()
     if (m_inpMqId)   delete [] m_inpMqId;
 
     if (m_det)  delete m_det;
+
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
     try {
         PyGILState_Ensure();
@@ -596,6 +600,12 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
         else {
             m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        }
+        unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
+        if (error) {
+          std::string errorMsg = "Phase 1 error in Detector::beginrun()";
+          body["err_info"] = errorMsg;
+          logging::error("%s", errorMsg.c_str());
         }
     }
     else if (key == "endrun") {

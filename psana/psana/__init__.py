@@ -1,10 +1,13 @@
-from .datasource import DataSource
+from .datasource import DataSource as DataSource
 
 # from .smalldata import SmallData
 
 
 # Calls MPI_Abort when one or more (but not all) cores fail.
 from psana.psexp.tools import mode
+
+
+xtc_version = 2
 
 # Checks that we are in MPI and not Legion mode
 if mode == "mpi":
@@ -13,11 +16,9 @@ if mode == "mpi":
 
     if MPI.COMM_WORLD.Get_size() > 1:
         import sys
-        import logging
+        from psana import utils
 
-        logger = logging.getLogger(__name__)
-        handler = logging.StreamHandler(stream=sys.stderr)
-        logger.addHandler(handler)
+        logger = utils.get_logger(name="psana.__init__")
 
         # Global error handler
         def global_except_hook(exc_type, exc_value, exc_traceback):

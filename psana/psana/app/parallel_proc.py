@@ -4,7 +4,11 @@ import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = '\n  %s --cmd <"command"> --opt <optional-paraneter> --vals <parameter-values> [<other-kwargs>]' % SCRNAME\
-      + '\n  %s --cmd "epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r 422" --opt stepnum --vals 0,1,2,3,4' % SCRNAME
+      + '\n                submits jobs with different --opt <optional-paraneter> values from the (str) list of --vals <parameter-values>'\
+      + '\n\nExample:'\
+      + '\n  %s --cmd "epix10ka_pedestals_calibration -k exp=uedc00104,run=177 -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4' % SCRNAME\
+      + '\n  %s --cmd "epix10ka_pedestals_calibration -k exp=uedc00104,run=177,dir=/sdf/data/lcls/ds/ued/uedc00104/xtc/ -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4' % SCRNAME
+#      + '\n  %s --cmd "epix10ka_pedestals_calibration -k \\"exp=uedc00104, run=177\\" -d epixquad -o ./work1" --opt stepnum --vals 0,1,2,3,4 # DOES NOT WORK' % SCRNAME
 
 import logging
 logger = logging.getLogger(__name__)
@@ -15,7 +19,7 @@ from time import time, sleep
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_cmd     = 'epix10ka_pedestals_calibration -e ueddaq02 -d epixquad -r 422 -o ./work'
+    d_cmd     = 'epix10ka_pedestals_calibration -k exp=uedc00104,run=177 -d epixquad -o ./work1'
     d_opt     = 'stepnum'
     d_vals    = '0,1,2,3,4'
     d_logpref = './log'
@@ -58,6 +62,8 @@ def do_main():
     save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0)
 
     print('Usage:%s\n' % USAGE)
+    if len(sys.argv) < 2:
+        sys.exit('EXIT due to missing arguments')
 
     parser = argument_parser()
     args = parser.parse_args()

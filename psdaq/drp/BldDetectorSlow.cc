@@ -8,8 +8,10 @@
 #include <memory>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
+#include <sys/prctl.h>
 #include <net/if.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -572,11 +574,26 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return nPgpJumps();});
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return nNoTrDgrams();});
+
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return nPgpInRx();});
+
     return 0;
 }
 
 void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
 {
+    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
     // Reset counters to avoid 'jumping' errors on reconfigures
     m_pool.resetCounters();
     resetEventCounter();
@@ -878,6 +895,8 @@ BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& co
     DrpBase(para, pool, det, context),
     m_pgp  (para, *this, &det)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(para, *this));
 }
 
 std::string BldDrp::configure(const json& msg)

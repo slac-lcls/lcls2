@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
+#include <sys/prctl.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
@@ -22,6 +23,7 @@
 #include "DrpBase.hh"
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
+#include "TebReceiver.hh"
 #include "psdaq/service/IpcUtils.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -152,6 +154,11 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
     pythonTime = 0ll;
 
     logging::info("Worker %u is starting with process ID %lu", threadNum, syscall(SYS_gettid));
+    char nameBuf[16];
+    snprintf(nameBuf, sizeof(nameBuf), "drp/Worker%d", threadNum);
+    if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     while (true) {
 
@@ -184,7 +191,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
                 EbDgram* dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, para.rogMask);
 
                 const void* bufEnd = (char*)dgram + pool.bufferSize();
-                det.event(*dgram, bufEnd, event);
+                det.event(*dgram, bufEnd, event, ++batch.l1count);
 
                 if ( pythonDrp) {
                     Dgram* inpDg = dgram;
@@ -331,6 +338,8 @@ PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& conte
     m_pyAppTime(0),
     m_pythonDrp(false)
 {
+    // Set the TebReceiver we will use in the base class
+    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -488,6 +497,16 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
 
+    exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
+    exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInUser();});
+    exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInHw();});
+    exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInPreHw();});
+    exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nPgpInRx();});
+
     if (m_pythonDrp) {
         exporter->add("drp_py_app_time", labels, MetricType::Gauge,
                       [&](){return m_pyAppTime;});
@@ -501,6 +520,7 @@ void PGPDrp::reader()
     const unsigned bufferMask = pool.nDmaBuffers() - 1;
     int64_t worker = 0L;
     uint64_t batchId = 0L;
+    uint64_t pendingL1 = 0L;
 
     enum TmoState { None, Started, Finished };
     TmoState tmoState(TmoState::None);
@@ -508,6 +528,9 @@ void PGPDrp::reader()
     auto tInitial = fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
     logging::info("PGP reader is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/PGPreader", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     // Reset counters to avoid 'jumping' errors on reconfigures
     pool.resetCounters();
@@ -542,6 +565,9 @@ void PGPDrp::reader()
                         m_batch.start += m_batch.size;
                         m_batch.size = 0;
                         batchId += m_para.batchSize;
+                        // now that dispatched the batch to worker add the pending L1 count for the next batch
+                        m_batch.l1count += pendingL1;
+                        pendingL1 = 0;
                     }
                 }
             }
@@ -560,6 +586,11 @@ void PGPDrp::reader()
 
             bool stateTransition = (transitionId != TransitionId::L1Accept) &&
                                    (transitionId != TransitionId::SlowUpdate);
+
+            // keep track of the number of L1Accepts seen in the batch
+            if (transitionId == TransitionId::L1Accept) {
+                pendingL1++;
+            }
 
             // send batch to worker if batch is full or if it's a transition
             if (((batchId ^ timingHeader->pulseId()) & ~(m_para.batchSize - 1)) || stateTransition) {
@@ -623,6 +654,9 @@ void PGPDrp::reader()
                 m_batch.start = timingHeader->evtCounter + 1;
                 m_batch.size = 0;
                 batchId = timingHeader->pulseId();
+                // now that dispatched the batch to worker add the pending L1 count for the next batch
+                m_batch.l1count += pendingL1;
+                pendingL1 = 0;
             }
         }
     }
@@ -640,6 +674,9 @@ void PGPDrp::reader()
 void PGPDrp::collector()
 {
     logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
     int64_t worker = 0L;
     Batch batch;
@@ -677,4 +714,5 @@ void PGPDrp::resetEventCounter()
 {
     m_batch.start = 1;
     m_batch.size = 0;
+    m_batch.l1count = 0;
 }
