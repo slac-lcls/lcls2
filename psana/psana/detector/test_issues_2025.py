@@ -1493,6 +1493,7 @@ def issue_2025_09_16(subtest='0o7777'):
        datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
        datinfo -k exp=mfx100848724,run=51 -d jungfrau
        datinfo -k exp=ascdaq18,run=407 -d epixhr
+       datinfo -k exp=mfx100848724,run=51 -d epix100_0
     """
     import os
     import numpy as np
@@ -1510,6 +1511,7 @@ def issue_2025_09_16(subtest='0o7777'):
             {'exp':'ascdaq123',    'run':192, 'detectors':['epix10ka',]}  if isubset & 16 else\
             {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
             {'exp':'ascdaq18',     'run':407, 'detectors':['epixhr',]}    if isubset & 64 else\
+            {'exp':'mfx100848724', 'run':51,  'detectors':['epix100_0',]} if isubset & 128 else\
             {}
     ds = DataSource(**dskwa)
 
@@ -1527,7 +1529,9 @@ def issue_2025_09_16(subtest='0o7777'):
             raw   = det.raw.raw(evt)
             calib = det.raw.calib(evt)
             t0_sec = time()
-            img = det.raw.image(evt, nda=calib) # raw
+            mask = det.raw._mask() # raw
+            #img = det.raw.image(evt, nda=calib) # raw/calib
+            img = det.raw.image(evt, nda=mask) # mask
             dt_sec = (time() - t0_sec)*1000
             #print('evt:', nevt)
             arrdt[nevt] = dt_sec
@@ -1566,6 +1570,15 @@ def issue_2025_09_18(subtest='0o7777'):
         print(info_ndarr(det.raw.raw(evt),   'evt %03d raw:' % i))
         print(info_ndarr(det.raw.calib(evt), '      calib:'))
 
+def issue_2025_09_19(subtest='0o7777'):
+    """
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101237525',run=55,dir='/cds/data/drpsrcf/rix/rix101237525/xtc')
+    myrun = next(ds.runs())
+    for evt in myrun.events():
+        print('got event')
+        break
 
 #===
     
@@ -1647,7 +1660,7 @@ def selector():
     elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
     elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
     elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
-    elif TNAME in ('45',): issue_2025_09_18(args.subtest) # test calibconst server
+    elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
