@@ -62,6 +62,10 @@ using namespace Pds::Eb;
 
 #include <rdma/fi_errno.h>
 
+#ifndef OFI_MR_BASIC_MAP
+#define OFI_MR_BASIC_MAP (FI_MR_ALLOCATED | FI_MR_PROV_KEY | FI_MR_VIRT_ADDR)
+#endif
+
 enum precision
 {
   NANO  = 1,
@@ -765,7 +769,8 @@ int run_suite_pingpong(struct ct_pingpong *ct)
                  ct->opts.dst_addr,
                  ct->opts.ep_type,
                  FI_MSG,
-                 FI_CONTEXT | FI_LOCAL_MR,
+                 FI_CONTEXT, // Obsolete: | FI_LOCAL_MR,
+                 FI_MR_LOCAL | OFI_MR_BASIC_MAP, // New
                  ct->opts.domain,
                  ct->opts.provider);
 
