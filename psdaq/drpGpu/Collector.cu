@@ -53,8 +53,15 @@ Collector::Collector(const Parameters&            para,
   chkError(cudaMalloc(&m_collectorQueue.d,                     sizeof(*m_collectorQueue.d)));
   chkError(cudaMemcpy( m_collectorQueue.d, m_collectorQueue.h, sizeof(*m_collectorQueue.d), cudaMemcpyHostToDevice));
 
-  // Create the Collector EB stream
-  chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioLo-1};
+  logging::debug("Collector stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+
+  // Create the Collector EB stream with higher priority than the Reader
+  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   logging::debug("Done with creating collector stream");
 
   // Keep track of the head and tail indices of the Collector stream

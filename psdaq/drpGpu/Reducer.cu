@@ -30,6 +30,13 @@ Reducer::Reducer(const Parameters&            para,
   m_reduce_us  (0),
   m_para       (para)
 {
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioHi+1};
+  logging::debug("Reducer stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
   m_t0.resize(m_para.nworkers);
@@ -38,7 +45,7 @@ Reducer::Reducer(const Parameters&            para,
   m_tails_h.resize(m_para.nworkers);
   m_tails_d.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    chkFatal(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
+    chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
 
     // Keep track of the head and tail indices of the Reducer stream
     chkError(cudaHostAlloc(&m_heads_h[i], sizeof(*m_heads_h[i]), cudaHostAllocDefault));

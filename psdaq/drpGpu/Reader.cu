@@ -33,10 +33,18 @@ Reader::Reader(unsigned                     panel,
   chkError(cudaMalloc(&m_readerQueue.d,                  sizeof(*m_readerQueue.d)));
   chkError(cudaMemcpy( m_readerQueue.d, m_readerQueue.h, sizeof(*m_readerQueue.d), cudaMemcpyHostToDevice));
 
-  // Allocate a stream per buffer
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioLo};
+  logging::debug("Reader stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+
+  // Allocate a stream per buffer at lowest priority so that higher priority can
+  // be given to downstream stages that help drain the system
   m_streams.resize(m_pool.dmaCount());
   for (auto& stream : m_streams) {
-    chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+    chkFatal(cudaStreamCreateWithPriority(&stream, cudaStreamNonBlocking, prio));
   }
 
   // Keep track of the head index of each Reader stream

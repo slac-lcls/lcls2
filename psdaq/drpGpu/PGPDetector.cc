@@ -146,9 +146,17 @@ void TebReceiver::_recorder()
   //auto  bufMask = memPool.nbuffers() - 1;
   unsigned worker = 0;
 
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioHi};
+  logging::debug("Recorder stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
-  chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+  // The highest priority is to dispose of the data
+  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
@@ -167,7 +175,7 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
-    size_t dataSize;
+    size_t dataSize;                    // Receives the size of the reduced L1Accept payload
     if (result->persist() || result->monitor()) {
       drp.reducerReceive(worker, dataSize); // This blocks until result is ready from GPU
       worker = (worker + 1) % m_para.nworkers;
@@ -207,14 +215,6 @@ void TebReceiver::_recorder()
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
     size_t cpSize, dgSize;
     if (dgram->isEvent() && (result->persist() || result->monitor())) {
-      //// Fetch the size of the reduced L1Accept payload from the GPU
-      //size_t dataSize;
-      //auto pSize = buffer - sizeof(dataSize);
-      ////printf("*** TebRcvr::recorder: idx %u, buf %p, pSz %p\n", index, buffer, pSize);
-      //chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
-      //chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
-      ////printf("*** TebRcvr::recorder: 3 sz %zu, extent %u\n", dataSize, dgram->xtc.extent);
-
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
       //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
@@ -262,8 +262,7 @@ void TebReceiver::_recorder()
     //printf("\n");
 
     if (writing() || transitionId == TransitionId::Configure) {
-      // Copy the dgram header to the GPU if it's an L1Accept or the whole
-      // datagram when it's a transition
+      // Copy the dgram header to the GPU if it's an L1Accept or the whole datagram when it's a transition
       chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
       //if (dgram->isEvent()) {
       //  const Xtc& parent = dgram->xtc;
