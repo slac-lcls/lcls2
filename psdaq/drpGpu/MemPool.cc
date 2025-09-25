@@ -64,6 +64,34 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     logging::critical("CUDA initialize failed");
     abort();
   }
+
+  struct RequiredExts_t {
+    CUdevice_attribute attr;
+    const char* name;
+  } RequiredExts[] {
+  {CU_DEVICE_ATTRIBUTE_GPU_DIRECT_RDMA_SUPPORTED, "GPUDirectRDMA"},
+    //{CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1, "StreamMemOpsV1"},
+  {CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY, "MapHostMemory"},
+    };
+
+  for (auto e : RequiredExts) {
+    if (!m_context.getAttribute(e.attr)) {
+      logging::critical("Device is missing required extension: %s", e.name);
+      abort();
+    }
+  }
+
+  logging::info("GPU Device Attributes:");
+
+  logging::info("  Unified addressing: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING));
+  logging::info("  Concurrent kernels: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_CONCURRENT_KERNELS));
+  logging::info("  Compute preemption: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_COMPUTE_PREEMPTION_SUPPORTED));
+  logging::info("  Can map host memory: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_CAN_MAP_HOST_MEMORY));
+  logging::info("  Number of multiprocessors: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT));
+  logging::info("  Max threads per multiprocessor: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR));
+  logging::info("  Max blocks per multiprocessor: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR));
+  logging::info("  Max threads per block: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK));
+
   logging::debug("Done with context setup\n");
 
   ////////////////////////////////////
