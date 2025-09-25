@@ -140,12 +140,13 @@ void AreaDetector::recordGraph(cudaStream_t&         stream,
   // Check that panel is within range
   assert (panel < nPanels);
 
-  int threads = 1024;
-  int blocks  = (m_nPixels + threads-1) / threads; // @todo: Limit this?
+  unsigned   chunks{128};               // Number of pixels handled per thread
+  unsigned   tpb   {256};               // Threads per block
+  unsigned   bpg   {(m_nPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
   auto       pool         = m_pool->getAs<MemPoolGpu>();
   auto const calibBuffers = pool->calibBuffers_d();
   auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, m_nPixels);
+  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, m_nPixels);
 }
 
 // The class factory
