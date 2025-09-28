@@ -181,6 +181,7 @@ if 'PSDAQ' in BUILD_LIST :
             'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main',
             'jungfrau_gain_mode = psdaq.configdb.jungfrau_gain_mode:change_gain_mode',
             'jungfrau_protection = psdaq.configdb.jungfrau_protection:change_protection_settings',
+            'detector_protection_monitor = psdaq.trigger.detector_protection_monitor:main',
         ]
     }
 
