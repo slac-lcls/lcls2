@@ -43,6 +43,7 @@ namespace Pds {
         chid m_npix_overId; ///< Number of hot pixels found
         std::string m_tripperPV;
         bool m_tripped {false};
+        bool m_printTrippedWarning {true};
         ca_client_context* m_context;
     };
     };
@@ -127,8 +128,11 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
     if (foundJungfrau) {
         if (hotPixelCnt > maxHotPixels) {
             m_tripped = true;
-            std::cout << "Tripped: " << hotPixelCnt << ", " << maxHotPixels << ", "
-                      << hotPixelThresh << std::endl;
+            if (m_printTrippedWarning) {
+                std::cout << "Tripped: " << hotPixelCnt << ", " << maxHotPixels << ", "
+                          << hotPixelThresh << std::endl;
+                m_printTrippedWarning = false;
+            }
         }
         SEVCHK(ca_put(DBR_LONG, m_aduId, &hotPixelThresh), "Put to tripper :ADU PV failed!");
         SEVCHK(ca_put(DBR_LONG, m_npixId, &maxHotPixels), "Put to tripper :NPIX PV failed!");
@@ -140,8 +144,14 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
         long enable = 1;
         SEVCHK(ca_put(DBR_LONG, m_blockId, &enable), "Put to tripper :BLOCK PV failed!");
         ca_flush_io();
-        //wrt = false;
-        //mon = false;
+        // Hutch requests the mechanism does not latch
+        // It will re-activate, however, until the hot pixel count goes below threshold
+        m_tripped = false;
+    } else if (!m_printTrippedWarning) {
+        // We are no longer activating the m_tripped flag, but we previously tripped
+        // in the past. So now, re-activate the printing flag so if we trip in the
+        // future it will print a new message
+        m_printTrippedWarning = true;
     }
     // Insert the trigger values into a Result EbDgram
     result.persist(wrt);

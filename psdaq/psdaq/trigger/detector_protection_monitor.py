@@ -123,6 +123,21 @@ class MonitorQObject(QMainWindow):
         self._pix_over_threshold_bar: QProgressBar = QProgressBar(self)
         self._pix_over_threshold_bar.setGeometry(80, 80, 340, 20)
         self._pix_over_threshold_bar.setMaximum(100)
+
+        warning_label_text: str = (
+            "(Do not close this window or the 'trip' notifications will also stop)"
+        )
+        self._warning_label_font: QFont = QFont()
+        self._warning_label_font.setFamily("Verdana")
+        self._warning_label_font.setPointSize(10)
+
+        self._warning_label: QLabel = QLabel(warning_label_text, self)
+        self._warning_label.setFont(self._warning_label_font)
+        self._warning_label.setAlignment(Qt.AlignCenter)
+        self._warning_label.setWordWrap(True)
+        self._warning_label.setMinimumSize(500, 50)
+        self._warning_label.setMaximumSize(500, 50)
+        self._warning_label.move(0, 100)
         ############################
 
         # Setup monitoring
@@ -175,7 +190,8 @@ class MonitorQObject(QMainWindow):
             # Redundant - the thread sets the bool False already, but just in case...
             self.reportSignal.emit(False)
             print(
-                f"DETECTOR TRIPPED! ADU: {self._adu_thresh}, Pixels Over Threshold: {self._npix_ot}"
+                f"DETECTOR PROTECTION ACTIVATED! Pulse picker closed. "
+                 "ADU: {self._adu_thresh}, Pixels Over Threshold: {self._npix_ot}"
             )
 
             title: str = f"{self._detname} Tripped"
