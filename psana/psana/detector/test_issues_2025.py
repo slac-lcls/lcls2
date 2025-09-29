@@ -1570,6 +1570,7 @@ def issue_2025_09_18(subtest='0o7777'):
         print(info_ndarr(det.raw.raw(evt),   'evt %03d raw:' % i))
         print(info_ndarr(det.raw.calib(evt), '      calib:'))
 
+
 def issue_2025_09_19(subtest='0o7777'):
     """
     """
@@ -1580,6 +1581,84 @@ def issue_2025_09_19(subtest='0o7777'):
         print('got event')
         break
 
+
+def issue_2025_09_26(subtest='0o7777'):
+    """plot test images
+       datinfo -k /sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2 -d jungfrau
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2',\
+           'gain_range_inds': (0,)}
+    ds = DataSource(**kwa)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau', logmet_init=logger.info)
+    peds = det.raw._pedestals()
+    mask = det.raw._mask();
+    mask_default = det.raw._mask_default()
+    mask_calib_or_default = det.raw._mask_calib_or_default()
+    mask_edges = det.raw._mask_edges(edge_rows=0, edge_cols=0)
+    mask_center = det.raw._mask_center()
+    mask_neighbors = det.raw._mask_neighbors(mask_default)
+    stat = det.raw._status() #; stat.shape = (3*512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)); mask.shape = (512, 1024)
+    print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
+    print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
+    print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
+    print(ndu.info_ndarr(mask_default,          'XXX _mask_default', last=10))
+    print(ndu.info_ndarr(mask_calib_or_default, 'XXX _mask_calib_or_default', last=10))
+    print(ndu.info_ndarr(mask_edges,            'XXX _mask_edges', last=10))
+    print(ndu.info_ndarr(mask_center,           'XXX _mask_center', last=10))
+    print(ndu.info_ndarr(mask_neighbors,        'XXX _mask_neighbors', last=10))
+    print(ndu.info_ndarr(mask,                  'XXX _mask', last=10))
+    events = 10
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            print(ndu.info_ndarr(raw, '    raw', last=10))
+            if raw is None: continue
+
+            print('evt:%03d begin calib'%nevt)
+            calib = det.raw.calib(evt)
+            print(ndu.info_ndarr(calib, '    calib', last=10))
+            print('>> end calib')
+            #img = det.raw.image(evt)
+            #img = calib
+            img = mask_edges
+            #img = stat
+            #img = det.raw.image(evt, nda=calib)
+            #img = calib; img.shape = (512, 1024)
+            #img = raw; img.shape = (512, 1024)
+            #img = ndu.reshape_to_3d(peds)
+            img.shape = (512, 1024)
+            #img = peds[0,0,:]
+            #img = peds; img.shape = (3*512, 1024)
+            #print('evt:', nevt)
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=6, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('evt %02d test image'%nevt, fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+
+
+
+
+
+
+
+
+    
 #===
     
 #===
@@ -1661,6 +1740,7 @@ def selector():
     elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
     elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
     elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
+    elif TNAME in ('46',): issue_2025_09_26(args.subtest) # plot test images
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
