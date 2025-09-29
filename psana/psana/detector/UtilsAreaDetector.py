@@ -91,8 +91,8 @@ def statistics_of_pixel_arrays(rows, cols, rc_tot_max=None):
     img_sta = np.zeros(img_shape, dtype=np.uint16)
     for r,c in zipped_rows_cols: img_sta[r,c]+=1 # 1.8 sec
     # DOES NOT WORK FOR MULTI-ENTRIES... img_sta[rows.ravel(),cols.ravel()] += np.ones(rows.size, dtype=np.uint16) # 11ms
-    logger.debug('XXX statistics_of_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec)) # 1.8 sec
-    logger.debug('XXX np.bincount(img_sta): %s' % str(np.bincount(img_sta.ravel(), minlength=10)))
+    logger.debug('statistics_of_pixel_arrays consumed time (sec) = %.6f' % (time()-t0_sec)) # 1.8 sec
+    logger.debug('np.bincount(img_sta): %s' % str(np.bincount(img_sta.ravel(), minlength=10)))
 
     t0_sec = time()
     cond = img_sta>1
@@ -275,8 +275,8 @@ def statistics_of_holes(rows, cols, **kwa):
     logger.debug(info_ndarr(hole_inds1d, 'hole_inds1d:'))
 
     hole_rows, hole_cols = hole_rows_cols(img_holes)
-    logger.debug(info_ndarr(hole_rows, 'XXXC statistics_of_holes hole hrows:',last=10))
-    logger.debug(info_ndarr(hole_cols, 'XXXC statistics_of_holes hole hcols:',last=10))
+    logger.debug(info_ndarr(hole_rows, 'statistics_of_holes hole hrows:',last=10))
+    logger.debug(info_ndarr(hole_cols, 'statistics_of_holes hole hcols:',last=10))
 
     return img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d
 
