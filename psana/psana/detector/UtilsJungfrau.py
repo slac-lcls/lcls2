@@ -244,7 +244,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
             + info_ndarr(poff1, '\n  poff1')\
             + info_ndarr(out1,  '\n  out1 '))
         outa[iraw,:] = out1[0,:]
-    logger.debug(info_ndarr(outa, 'XXX  outa '))
+    logger.debug(info_ndarr(outa, '     outa '))
     return outa
 
 
