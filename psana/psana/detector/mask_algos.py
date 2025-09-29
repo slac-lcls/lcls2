@@ -10,7 +10,6 @@ Usage::
   o = MaskAlgos(calibconst, **kwa)
   v = o.cco  # CalibConstants object
 
-
 2022-07-08 created by Mikhail Dubrovin
 """
 
@@ -21,10 +20,8 @@ import numpy as np
 from psana.detector.calibconstants import CalibConstants
 import psana.detector.UtilsMask as um
 DTYPE_MASK, DTYPE_STATUS = um.DTYPE_MASK, um.DTYPE_STATUS
-
 from psana.detector.Utils import is_none
 from psana.detector.NDArrUtils import info_ndarr
-
 
 class MaskAlgos:
 
