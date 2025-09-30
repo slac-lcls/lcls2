@@ -26,6 +26,7 @@ target_link_libraries(psana PUBLIC psalg::calib)
 
 
 
+
 add_custom_command(TARGET psana
                    POST_BUILD
 		   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"

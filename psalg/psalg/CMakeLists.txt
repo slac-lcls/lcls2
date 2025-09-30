@@ -46,6 +46,9 @@ else()
     )
 endif()
 
+target_link_libraries(psalg PUBLIC xtcdata)
+
+
 # datareader - test of data reader from non-xtc files
 add_executable(datareader
     app/datareader.cc
