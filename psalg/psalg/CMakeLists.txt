@@ -11,6 +11,7 @@ endif()
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
+    XTC_LINK.cc
 ###   utils/src/Logger.cc
 )
 
@@ -44,6 +45,9 @@ else()
         rt
     )
 endif()
+
+target_link_libraries(psalg PUBLIC xtcdata)
+
 
 # datareader - test of data reader from non-xtc files
 add_executable(datareader
