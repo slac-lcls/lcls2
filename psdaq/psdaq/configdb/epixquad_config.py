@@ -29,6 +29,8 @@ ocfg = None
 segids = None
 seglist = [0,1,2,3,4]
 
+DEBUG_PIXEL_MASK_SAVED=False
+
 def mode(a):
     uniqueValues = np.unique(a).tolist()
     uniqueCounts = [len(np.nonzero(a == uv)[0])
@@ -255,8 +257,13 @@ def user_to_expert(base, cfg, full=False):
 
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
+    # MONA: Use gate_ns (user-requested acquisition window in nanoseconds) to compute AsicAcqWidth.
+    # NOTE: This will overwrite whatever value is stored in the configDB.
+    # The conversion assumes a timing clock period defined by ASIC_SYSCLK_NS
+    # (e.g. 10ns for epix-quad and 6.4ns for epix-quad-1kfps).
     if (hasUser and 'gate_ns' in cfg['user']):
-        triggerWidth = int(cfg['user']['gate_ns']/10)
+        ASIC_SYSCLK_NS = 10   # nanoseconds per sysclk tick for this camera
+        triggerWidth = int(cfg['user']['gate_ns'] / ASIC_SYSCLK_NS)
         if triggerWidth < 1:
             logging.error('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
             raise ValueError('triggerWidth computes to < 1')
@@ -278,6 +285,7 @@ def user_to_expert(base, cfg, full=False):
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
             a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
             a = a.reshape(-1).tolist()
+
             for i in range(16):
                 d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
         logging.debug('pixel_map len {}'.format(len(a)))
@@ -330,7 +338,12 @@ def config_expert(base, cfg, writePixelMap=True):
             #  Would like to send a 3d array
             a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
             pixelConfigMap = np.reshape(a,(16,178,192))
-            if True:
+
+            # Enable here to test pixel by pixel write
+            #shape = (16, 178, 192)
+            #pixelConfigMap = np.random.choice([8, 12], size=shape, p=[0.5, 0.5]).astype(np.uint8)
+
+            if False:
                 #
                 #  Accelerated matrix configuration (~2 seconds)
                 #
@@ -341,6 +354,11 @@ def config_expert(base, cfg, writePixelMap=True):
                 core.enable.set(True)
                 core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
                 core.enable.set(False)
+                if DEBUG_PIXEL_MASK_SAVED:
+                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
+                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
+
+
             else:
                 #
                 #  Pixel by pixel matrix configuration (up to 15 minutes)
@@ -350,14 +368,14 @@ def config_expert(base, cfg, writePixelMap=True):
                 #
                 for i in asics:
                     saci = cbase.Epix10kaSaci[i]
-                    saci.PrepareMultiConfig()
+                    saci.PrepareMultiConfig.set(0)
 
                 #  Set the whole ASIC to its most common value
                 masic = {}
                 for i in asics:
                     masic[i] = mode(pixelConfigMap[i])
                     saci = cbase.Epix10kaSaci[i]
-                    saci.WriteMatrixData(masic)  # 0x4000 v 0x84000
+                    saci.WriteMatrixData.set(masic[i])  # 0x4000 v 0x84000
 
                 #  Now fix any pixels not at the common value
                 banks = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
@@ -365,9 +383,12 @@ def config_expert(base, cfg, writePixelMap=True):
                     saci = cbase.Epix10kaSaci[i]
                     nrows = pixelConfigMap.shape[1]
                     ncols = pixelConfigMap.shape[2]
-                    for y in range(nrows):
-                        for x in range(ncols):
-                            if pixeConfigMap[i,y,x]!=masic[i]:
+
+                    writeView = pixelConfigMap[:, :nrows, :ncols]
+
+                    for row in range(nrows):
+                        for col in range(ncols):
+                            if pixelConfigMap[i,row,col]!=masic[i]:
                                 if row >= (nrows>>1):
                                     mrow = row - (nrows>>1)
                                     if col < (ncols>>1):
@@ -384,11 +405,15 @@ def config_expert(base, cfg, writePixelMap=True):
                                     else:
                                         offset = 1
                                         mcol = (ncols-1) - col
-                                bank = (mcol % (48<<2)) / 48
+                                bank = int((mcol % (48<<2)) / 48)
                                 bankOffset = banks[bank]
-                                saci.RowCounter(y)
-                                saci.ColCounter(bankOffset | (mcol%48))
-                                saci.WritePixelData(pixelConfigMap[i,y,x])
+                                saci.RowCounter.set(row)
+                                saci.ColCounter.set(bankOffset | (mcol%48))
+                                saci.WritePixelData.set(int(pixelConfigMap[i,row,col]))
+
+                if DEBUG_PIXEL_MASK_SAVED:
+                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
+                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
 
             logging.debug('SetAsicsMatrix complete')
         else:
