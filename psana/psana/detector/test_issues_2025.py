@@ -1592,11 +1592,15 @@ def issue_2025_09_26(subtest='0o7777'):
     from psana.detector.UtilsGraphics import gr, fleximage
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
-    kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2',\
-           'gain_range_inds': (0,)}
-    ds = DataSource(**kwa)
+    ds_kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2'}
+    ds = DataSource(**ds_kwa)
     myrun = next(ds.runs())
-    det = myrun.Detector('jungfrau', logmet_init=logger.info)
+
+    dkwa = {'status': True,
+               'logmet_init': logger.info,
+               'gain_range_inds': (0,)}
+    det = myrun.Detector('jungfrau', **dkwa)
+
     peds = det.raw._pedestals()
     mask = det.raw._mask();
     mask_default = det.raw._mask_default()
@@ -1605,7 +1609,7 @@ def issue_2025_09_26(subtest='0o7777'):
     mask_center = det.raw._mask_center()
     mask_neighbors = det.raw._mask_neighbors(mask_default)
     stat = det.raw._status() #; stat.shape = (3*512, 1024)
-    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)); mask.shape = (512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)) #; mask_stat.shape = (512, 1024)
     print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
     print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
     print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
@@ -1630,7 +1634,8 @@ def issue_2025_09_26(subtest='0o7777'):
             print('>> end calib')
             #img = det.raw.image(evt)
             #img = calib
-            img = mask_edges
+            img = mask
+            #img = mask_edges
             #img = stat
             #img = det.raw.image(evt, nda=calib)
             #img = calib; img.shape = (512, 1024)
