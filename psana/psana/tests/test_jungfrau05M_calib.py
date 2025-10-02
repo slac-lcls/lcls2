@@ -22,8 +22,11 @@ def test_jungfrau05M_calib():
     correctanswer=np.array(([0.142126, -0.518305, 0.285803, 0.088172, 0.141285],\
                             [-0.186004, -0.307364, -0.370457, -0.146206, 0.492853]))
 
-    dirscr = os.path.dirname(os.path.realpath(__file__))
-    ds_kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2',}
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    fname = os.path.join(dir_path, 'test_data/detector/test_jungfrau05M_calib.xtc2')
+    #ds = DataSource(files=fname)
+    #ds_kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2',}
+    ds_kwa = {'files': fname,}
     ds = DataSource(**ds_kwa)
     myrun = next(ds.runs())
 
