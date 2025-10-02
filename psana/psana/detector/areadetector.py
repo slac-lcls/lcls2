@@ -259,17 +259,18 @@ class AreaDetector(DetectorImpl):
         return o.image(_nda, segnums=segnums, **kwa)
 
 
-    def _maskalgos(self):
+    def _maskalgos(self, logger_method=logger.debug):
         """ returns cached (in self._maskalgos_) MaskAlgos.
             Uses self._kwargs from AreaDetector to initialize MaskAlgos
         """
         if is_none(self._maskalgos_, 'AreaDetector._maskalgos - make MaskAlgos, **AreaDetector._kwargs: %s' % str(self._kwargs),\
-                   logger_method=logger.debug):
+                   logger_method=logger_method):
             cc = self._calibconst   # defined in DetectorImpl from detector_impl.py
-            if is_none(cc, 'self._calibconst is None', logger_method=logger.debug): return None
+            if is_none(cc, 'self._calibconst is None', logger_method=logger_method): return None
             mkwa = self._kwargs
             mkwa.setdefault('logmet_init', self._logmet_init)
             mkwa.setdefault('odet', self) # need it to get self._seg_geo
+            logger_method('in AreaDetector creating MaskAlgos for _det_name:%s with **mkwa:%s'%(self._det_name, str(mkwa)))
             self._maskalgos_ = MaskAlgos(cc, self._det_name, **mkwa)
         return self._maskalgos_
 
@@ -339,11 +340,16 @@ class AreaDetector(DetectorImpl):
         return self._mask_method_wrapper('mask_comb', status=status, neighbors=neighbors, edges=edges,\
                                          center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
 
-    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
-              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
-        """Returns cached mask."""
-        return self._mask_method_wrapper('mask', status=status, neighbors=neighbors, edges=edges, center=center,\
-                                         calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
+    def _mask(self, **kwa):
+        """Returns cached mask. **kwargs passed from Detector(..., **kwargs)"""
+        logger.debug('in AreaDetector._mask(**kwa - not used, set them in Detector(..., **kwa))')
+        return self._mask_method_wrapper('mask')
+
+#    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
+#              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
+#        """Returns cached mask. Dict of kwargs is the same as in _mask_comb."""
+#        return self._mask_method_wrapper('mask', status=status, neighbors=neighbors, edges=edges, center=center,\
+#                                         calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
 
 
 class AreaDetectorRaw(AreaDetector):
@@ -368,6 +374,7 @@ class AreaDetectorRaw(AreaDetector):
         -------
         raw data: np.array, ndim=3, shape: as data
         """
+
         #print('XXX AreaDetectorRaw.raw')
         if evt is None: return None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
@@ -382,8 +389,8 @@ class AreaDetectorRaw(AreaDetector):
         """Returns calibrated array of data shaped as daq: calib = (raw - peds) * gfac * mask.
            Should be overridden for more complicated cases.
         """
-        logger_method = logger.debug
-        #print('XXX AreaDetectorRaw.calib')
+        logger_method = kwa.get('logger_method', logger.debug)
+        logger_method('AreaDetectorRaw.calib')
         logger_method('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
                       +'\n  If needed more, it needs to be re-implemented for this detector type.')
         raw = self.raw(evt)
@@ -397,6 +404,7 @@ class AreaDetectorRaw(AreaDetector):
         if is_none(gfac, 'det.raw._gain_factor() is None, return raw - peds', logger_method): return arr
         if gfac != 1: arr *= gfac
 
+        #logger_method('AAAAAAAA2 call det._mask(**self.kwa) from AreaDetectorRaw.calib')
         mask = self._mask(**kwa)
         if is_none(mask, 'det.raw._mask() is None - return (raw - peds)*gfac', logger_method): return arr
         return arr*mask
