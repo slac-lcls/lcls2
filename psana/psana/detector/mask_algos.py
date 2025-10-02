@@ -37,7 +37,7 @@ class MaskAlgos:
         #self._odet = kwa.get('odet', None) # use it dynamically
         #self._seg_geo = _odet._seg_geo
         self.logmet_init = kwa.get('logmet_init', logger.debug)
-        self.logmet_init('MaskAlgos.__init__(%s, **kwa)' % detname)
+        self.logmet_init('MaskAlgos.__init__(%s, **%s)' % (detname, str(kwa)))
 
 
     def mask_default(self, dtype=DTYPE_MASK, **kwa):
@@ -205,7 +205,7 @@ class MaskAlgos:
             gain_range_inds = kwa.get('gain_range_inds', None) # (0,1,2,3,4) works for epix10ka
             mask = self.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits,\
                                          gain_range_inds=gain_range_inds, dtype=dtype)
-            #self.logmet_init(info_ndarr(mask, 'in mask_comb after mask_from_status'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_from_status'))
 
 #        if unbond and (self.is_cspad2x2() or self.is_cspad()):
 #            mask_unbond = self.mask_geo(par, width=0, wcenter=0, mbits=4) # mbits=4 - unbonded pixels for cspad2x1 segments
@@ -215,7 +215,7 @@ class MaskAlgos:
             rad  = kwa.get('rad', 5)
             ptrn = kwa.get('ptrn', 'r')
             mask = um.mask_neighbors(mask, rad=rad, ptrn=ptrn)
-            #self.logmet_init(info_ndarr(mask, 'in mask_comb after mask_neighbors:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_neighbors:'))
 
         if edges:
             width = kwa.get('width', 0)
@@ -223,7 +223,7 @@ class MaskAlgos:
             ecols = kwa.get('edge_cols', 1)
             mask_edges = self.mask_edges(width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
             mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype)
-            #self.logmet_init(info_ndarr(mask, 'in mask_comb after mask_edges:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_edges:'))
 
         if center:
             wcent = kwa.get('wcenter', 0)
@@ -231,28 +231,37 @@ class MaskAlgos:
             ccols = kwa.get('center_cols', 1)
             mask_center = self.mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols, dtype=dtype)
             mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype)
-            #self.logmet_init(info_ndarr(mask, 'in mask_comb after mask_center:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_center:'))
 
         if calib:
             mask_calib = self.mask_calib_or_default(dtype=dtype)
             mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype)
-            #self.logmet_init(info_ndarr(mask, 'in mask_comb after mask_calib:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_calib:'))
 
         if umask is not None:
             mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype)
+            #self.logmet_init(info_ndarr(mask, 'in mask_comb after umask:'))
 
         self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb at exit:'))
 
         return mask
 
 
-    def mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
-             force_update=False, dtype=DTYPE_MASK, **kwa):
-        """returns cached mask_comb."""
+#    def mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
+#             force_update=False, dtype=DTYPE_MASK, **kwa):
+#             self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center,\
+#                                       calib=calib, umask=umask, dtype=dtype, **kwa)
+    def mask(self, **kwa):
+        """returns cached mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
+        Control parameter
+        force_update (bool) allows to re-evaluate cached mask for newly passed **kwa
+        """
+        force_update = kwa.get('force_update', False)
+        if force_update: self._kwa = kwa
         if self._mask is None or force_update:
-           self.logmet_init('MaskAlgos.mask -> mask_comb')
-           self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center,\
-                                       calib=calib, umask=umask, dtype=dtype, **kwa)
+           self.logmet_init('MaskAlgos.mask(**kwa) calls mask_comb(**self._kwa)'+\
+                            '\n  with self._kwa from Detector(detname,**kwa)   kwa:%s' % str(self._kwa))
+           self._mask = self.mask_comb(**self._kwa)
         return self._mask
 
 
