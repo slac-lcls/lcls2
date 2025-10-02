@@ -96,7 +96,7 @@ class DetCache():
     def _calibcons_for_ctype(self, ctype):
         nda_and_meta = self.calibc.get(ctype, None)
         if nda_and_meta is None:
-            logger.warning('---> calibcons for ctype: %s are non-available, use default' % ctype)
+            logger.debug('calibcons for ctype: %s are NON-AVAILABLE, use default' % ctype)
             return None, None
         return nda_and_meta # - 4d shape:(3, <nsegs>, 512, 1024)
 
@@ -142,12 +142,14 @@ class DetCache():
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
         self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
-                                    logger_method = logger.warning) else\
+                                    logger_method = logger.debug) else\
                     peds + offs
 
         self.cmps = self.kwa.get('cmpars', None)
         self.loop_banks = self.kwa.get('loop_banks', True)
-        self.mask = det._mask(evt, **self.kwa)
+
+        logger.debug('before call det._mask(**self.kwa) from UtilsJungfrau DetCache.add_calibcons self.kwa: %s' % str(self.kwa))
+        self.mask = det._mask(**self.kwa)
         logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
@@ -181,6 +183,8 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
       - mbits - DEPRECATED parameter of the det.mask_comb(...)
       - mask - user defined mask passed as optional parameter
     """
+
+    logger.debug('calib_jungfrau **kwa: %s' % str(kwa))
 
     nda_raw = kwa.get('nda_raw', None)
 
