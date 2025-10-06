@@ -101,10 +101,12 @@ def main():
     REGISTRY.register(c)
     if args.G:
         for name in args.G.split(','):
-            c.registerGlobalPV(name, args.P + ':' + name)
+            for pv in args.P.split(','):
+                c.registerGlobalPV(name, pv + ':' + name)
     if args.N is not None:
         for name in args.N:
-            c.registerPV(name, args.P + ':PART:%d:' + name)
+            for pv in args.P.split(','):
+                c.registerPV(name, pv + ':PART:%d:' + name)
     c.collect()
     #start_http_server(9200)
     rc = createExposer(args.M)
