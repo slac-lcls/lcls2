@@ -91,6 +91,7 @@ def parse_args():
     parser.add_argument('--use_calib_cache', action='store_true',
                         help='Use cached calibration constants if available (default: False)')
     parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode (default: False)')
+    parser.add_argument('--live', action='store_true', help='Enable live mode (default: False)')
     return parser.parse_args()
 
 def main():
@@ -102,6 +103,31 @@ def main():
     start = MPI.Wtime()
     t0 = time.time()
 
+    # Print all DataSource arguments
+    if rank == 0:
+        print("DataSource arguments:")
+        print(f"  exp={args.exp}")
+        print(f"  run={args.run}")
+        print(f"  max_events={args.max_events}")
+        print(f"  batch_size={args.batch_size}")
+        print(f"  log_level={args.log_level}")
+        print(f"  detectors={args.detectors}")
+        print(f"  use_calib_cache={args.use_calib_cache}")
+        print(f"  cached_detectors={args.cached_detectors}")
+        print(f"  monitor={args.monitor}")
+        print(f"  live={args.live}")
+
+    # Construct dir if live is set
+    if args.live:
+        # Replace expcode in template path with input expcode
+        dir_path = f"/sdf/data/lcls/drpsrcf/ffb/tmo/{args.exp}/xtc"
+        if rank == 0:
+            print(f"Live mode: dir set to {dir_path}")
+    else:
+        dir_path = None
+        if rank == 0:
+            print("Live mode not set: dir is None")
+
     ds = DataSource(
         exp=args.exp,
         run=args.run,
@@ -111,8 +137,11 @@ def main():
         detectors=args.detectors,
         use_calib_cache=args.use_calib_cache,
         cached_detectors=args.cached_detectors,
-        monitor=args.monitor
+        monitor=args.monitor,
+        live=args.live,
+        dir=dir_path
     )
+
     run = next(ds.runs())
     det = None
     if args.debug_detector:
@@ -124,7 +153,7 @@ def main():
     local_count = 0
 
     ti0 = time.time()
-    interval = 10
+    interval = 1000
     for i_evt, evt in enumerate(run.events()):
         if det:
             if det_name == 'epix10ka':
@@ -133,9 +162,9 @@ def main():
             elif det_name == 'jungfrau':
                 img = det.raw.image(evt)
                 #print_memory_usage(rank, i_evt, interval=interval)
-                if i_evt % interval == 0 and i_evt > 0:
-                    print(f"[Rank {rank}] Event {i_evt}: Rate: {interval/(time.time()-ti0):.1f} Hz")
-                    ti0 = time.time()
+        if i_evt % interval == 0 and i_evt > 0:
+            print(f"[Rank {rank}] Event {i_evt}: Rate: {interval/(time.time()-ti0):.1f} Hz")
+            ti0 = time.time()
 
         local_count += 1
     t1 = time.time()
