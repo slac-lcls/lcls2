@@ -191,7 +191,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
                 EbDgram* dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, para.rogMask);
 
                 const void* bufEnd = (char*)dgram + pool.bufferSize();
-                det.event(*dgram, bufEnd, event, batch.l1count);
+                det.event(*dgram, bufEnd, event, ++batch.l1count);
 
                 if ( pythonDrp) {
                     Dgram* inpDg = dgram;
@@ -520,6 +520,7 @@ void PGPDrp::reader()
     const unsigned bufferMask = pool.nDmaBuffers() - 1;
     int64_t worker = 0L;
     uint64_t batchId = 0L;
+    uint64_t pendingL1 = 0L;
 
     enum TmoState { None, Started, Finished };
     TmoState tmoState(TmoState::None);
@@ -564,6 +565,9 @@ void PGPDrp::reader()
                         m_batch.start += m_batch.size;
                         m_batch.size = 0;
                         batchId += m_para.batchSize;
+                        // now that dispatched the batch to worker add the pending L1 count for the next batch
+                        m_batch.l1count += pendingL1;
+                        pendingL1 = 0;
                     }
                 }
             }
@@ -585,7 +589,7 @@ void PGPDrp::reader()
 
             // keep track of the number of L1Accepts seen in the batch
             if (transitionId == TransitionId::L1Accept) {
-              m_batch.l1count++;
+                pendingL1++;
             }
 
             // send batch to worker if batch is full or if it's a transition
@@ -650,6 +654,9 @@ void PGPDrp::reader()
                 m_batch.start = timingHeader->evtCounter + 1;
                 m_batch.size = 0;
                 batchId = timingHeader->pulseId();
+                // now that dispatched the batch to worker add the pending L1 count for the next batch
+                m_batch.l1count += pendingL1;
+                pendingL1 = 0;
             }
         }
     }

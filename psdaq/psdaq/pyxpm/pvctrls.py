@@ -126,9 +126,9 @@ class L0DelayH(IdxRegH):
         retry_wlock(self.cmd,pv,pipelinedepth_from_delay(value))
 
         # Toggle L0Reset for this group (set or post?)
-        self.app.groupL0Reset.set(1<<self._idx)
-        time.sleep(1.e-3)
-        self.app.groupL0Reset.set(0)
+#        self.app.groupL0Reset.set(1<<self._idx)
+#        time.sleep(1.e-3)
+#        self.app.groupL0Reset.set(0)
 
         curr = self.pvu.current()
         curr['value'] = value*_fidPeriod

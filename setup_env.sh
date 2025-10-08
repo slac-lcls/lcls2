@@ -15,9 +15,13 @@ else
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_08152025
-#    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_05142025
-    conda activate daq_20250402
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_09152025
+
+    osrel=`uname -r`
+    case $osrel in
+        *el9*) conda activate daq_20250402_r9;;
+        *)     conda activate daq_20250402;;
+    esac
 fi
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
@@ -67,3 +71,7 @@ fi
 
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
+
+# For GPU builds, until a better solution is found
+export CUSZ_DIR=/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ
+export cuSZp_DIR=/cds/home/c/claus/git/cuSZp/install/cmake

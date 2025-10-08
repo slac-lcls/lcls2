@@ -847,7 +847,7 @@ def issue_2025_05_07():
 
     ds = DataSource(exp='rix101333324', run=46)
     myrun = next(ds.runs())
-    det = myrun.Detector('axis_svls')
+    det = myrun.Detector('axis_svls', logmet_init=logger.info)
     events = 5
     arrdt = np.empty(events, dtype=np.float64)
     if True:
@@ -991,9 +991,14 @@ def issue_2025_06_05():
     import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
     #ds = DataSource(exp='mfxdet23', run=120)
-    ds = DataSource(exp='mfxdet23', run=9)
+    #ds = DataSource(exp='mfxdet23', run=9)
+    ds = DataSource(exp='mfxdet23', run=17)
     myrun = next(ds.runs())
     det = myrun.Detector('epixuhr')
+
+    print('det.raw._number_of_segments_total()', det.raw._number_of_segments_total())
+    print('det.raw._segment_numbers', det.raw._segment_numbers)
+
     events = 10
     arrdt = np.empty(events, dtype=np.float64)
     if True:
@@ -1298,7 +1303,6 @@ def issue_2025_07_23():
 
 def issue_2025_07_29():
     """ cpo - epix10ka missing geometry
-
         datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
     """
     from psana import DataSource
@@ -1309,6 +1313,354 @@ def issue_2025_07_29():
         print(epix.raw.raw(evt).shape)
         print(epix.raw.image(evt))
         if nevt>10: break
+
+
+
+def issue_2025_08_19():
+    """Philip - pixel_gain are not deployed/used?
+       datinfo -k exp=mfxdaq23,run=31 -d epix100_0
+    """
+    expname = 'mfxdaq23'
+    runnum  = 31
+    detname = 'epix100_0'
+
+    ds, orun, odet = ds_run_det(exp=expname, run=runnum, detname=detname) #, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00417/xtc')
+    print('odet.raw._uniqueid', odet.raw._uniqueid) # epixhremu_00cafe0002-0000000000-0000000000-0000000000-...
+    print('odet.raw._det_name', odet.raw._det_name) # epixhr_emu
+    print('odet.raw._dettype',  odet.raw._dettype)  # epixhremu
+
+    longname = odet.raw._uniqueid
+    import psana.pscalib.calib.MDBWebUtils as wu
+    calib_const = wu.calib_constants_all_types(longname, exp=expname, run=runnum)
+    #calib_const = wu.calib_constants_all_types(longname, run=runnum)
+    print('calib_const.keys:', calib_const.keys())
+
+    import psana.pscalib.calib.MDBWebUtils as wu
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={'ctype':'pixel_gain'})
+#    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run": 31})
+    docs = wu.find_docs('cdb_mfxdaq23', 'epix100_000005', query={"detector": "epix100_000005", "run":{"$lte": 31}})
+    print(docs)
+
+
+def issue_2025_08_26():
+    """       datinfo -k exp=ascdaq023,run=43 -d jungfrau
+    """
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq023',run=43)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau')
+
+    #print('XXX', det.raw._segment_numbers)
+    for nevt,evt in enumerate(myrun.events()):
+      if nevt>10: break
+      calib = det.raw.calib(evt)
+      if calib is None:
+        print('none')
+        continue
+      print(nevt,calib.shape)
+
+
+def issue_2025_08_28(subtest='0o7777'):
+    """test det.raw.calib()
+       datinfo -k exp=mfx100852324,run=13 -d epix100_0
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds = DataSource(exp='mfx100852324', run=13)
+    myrun = next(ds.runs())
+#    det = myrun.Detector('epix100_0', logmet_init=logger.info)
+    det = myrun.Detector('epix100_0')
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+    if isubset & 1:
+        #peds = det.raw._pedestals()
+        calibc = det.calibconst
+        print('===\ndet.calibconst:', calibc['pedestals'][1])
+        print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+        print('===\n', det.raw._info_calibconst(), '\n===\n')
+
+    if isubset & 2:
+        print('=== test of mask methods ===')
+        mask_def = det.raw._mask_default()
+        print(ndu.info_ndarr(mask_def,                          '     det.raw._mask_default()         :'))
+        print(ndu.info_ndarr(det.raw._mask_calib_or_default(),  '     det.raw._mask_calib_or_default():'))
+        print(ndu.info_ndarr(det.raw._mask_from_status(),       '     det.raw._mask_from_status()     :'))
+        print(ndu.info_ndarr(det.raw._mask_neighbors(mask_def), '     det.raw._mask_neighbors()       :'))
+        print(ndu.info_ndarr(det.raw._mask_edges(),             '     det.raw._mask_edges()           :'))
+        print(ndu.info_ndarr(det.raw._mask_center(),            '     det.raw._mask_center()          :'))
+        print(ndu.info_ndarr(det.raw._mask_comb(),              '     det.raw._mask_comb()            :'))
+        print(ndu.info_ndarr(det.raw._mask(),                   '     det.raw._mask()                 :'))
+        print('===\n')
+
+#    kwa = {'status':True, 'neighbors':True, 'edges':True, 'center':True, 'calib':True, 'umask':None}
+    events = 5
+    for nevt,evt in enumerate(myrun.events()):
+        if nevt>events-1: break
+        t0_sec = time()
+        #raw   = det.raw.raw(evt)
+        nda   = det.raw.calib(evt) #, **kwa)
+        dt_sec = (time() - t0_sec)*1000
+        print(ndu.info_ndarr(nda,   'evt:%3d dt=%.3f msec for det.raw.calib(evt):' % (nevt, dt_sec)))
+
+
+def issue_2025_09_09():
+    """datinfo -k exp=mfx100848724,run=51 -d jungfrau
+       REASON: now self.calibc is WikiDict.... and self.calibc.keys() is a generator... in stead of expected list
+    """
+    from psana import DataSource
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    ds = DataSource(exp='mfx100848724',run=51,max_events=3600,batch_size=1,detectors=['jungfrau'])
+    #ds = DataSource(exp='mfx100848724',run=51)
+    myrun = next(ds.runs())
+    odet = myrun.Detector('jungfrau')
+
+    if True:
+        calibc = odet.calibconst
+        print('===\ndet.calibconst:', calibc['pedestals'][1])
+        print(ndu.info_ndarr(calibc['pedestals'][0], 'peds:'))
+        print('===\n', odet.raw._info_calibconst(), '\n===\n')
+
+    for nevt,evt in enumerate(myrun.events()):
+        if nevt>5: break
+        print(ndu.info_ndarr(odet.raw.raw(evt), 'evt:%3d raw:' % nevt))
+        image = odet.raw.image(evt)
+        print(ndu.info_ndarr(image, 'evt:%3d image:' % nevt))
+
+
+def issue_2025_09_10(subtest='0o7777'):
+    """access epixuhr configuration
+       datinfo -k exp=mfxdet23,run=120 -d epixuhr
+       config_dump exp=mfxdet23,run=17 epixuhr config
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+
+    ds = DataSource(exp='mfxdet23', run=17)
+    myrun = next(ds.runs())
+    det = myrun.Detector('epixuhr')
+
+    print('det.raw._number_of_segments_total()', det.raw._number_of_segments_total())
+    print('det.raw._segment_numbers', det.raw._segment_numbers)
+
+    #cfgs = getattr(det, 'config')._seg_configs() # dict for {<segnum>: <psana.container.Container object>}
+    cfgs = det.config._seg_configs()
+
+    if isubset & 1:
+        print('cfgs:', cfgs)
+        print('type(cfgs):', type(cfgs))
+        print('cfgs[0]:', cfgs[0])
+
+    if isubset & 2:
+        from psana.app.config_dump import dump
+        attrlist=[]
+        for myobj in cfgs.values():
+            dump(myobj, attrlist)
+
+    if isubset & 4:
+      for segnum in det.raw._segment_numbers:
+        cfg = cfgs.get(segnum, None)
+        if cfg is None:
+            print('segment %d configuration is None' % segnum)
+            continue
+        segcfg = cfg.config
+        #print('segment %d configuration: %s' % (segnum, str(dir(cfg.config))))
+        print('gainAsic:', segcfg.gainAsic)
+        print(ndu.info_ndarr(segcfg.gainCSVAsic, 'gainCSVAsic:'))
+
+    if isubset & 8:
+        print(det.raw._info_seg_gainAsics(sep='  '))
+        print(det.raw._info_seg_gainCSVAsics(sep='\n  '))
+
+
+def issue_2025_09_16(subtest='0o7777'):
+    """test of the detector axis, shape:(796, 6144)
+       det_dark_proc -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix101333324,run=46 -d axis_svls
+       datinfo -k exp=rix100837624,run=34 -d c_epixm  # shape:(4, 192, 384)
+       datinfo -k exp=mfx100852324,run=13 -d epix100_0
+       datinfo -k exp=mfxdaq23,run=31 -d epix100_0
+       datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
+       datinfo -k exp=mfx100848724,run=51 -d jungfrau
+       datinfo -k exp=ascdaq18,run=407 -d epixhr
+       datinfo -k exp=mfx100848724,run=51 -d epix100_0
+    """
+    import os
+    import numpy as np
+    from time import time
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+
+    dskwa = {'exp':'rix101333324', 'run':46,  'detectors':['axis_svls',]} if isubset &  1 else\
+            {'exp':'rix100837624', 'run':34,  'detectors':['c_epixm',]}   if isubset &  2 else\
+            {'exp':'mfx100852324', 'run':13,  'detectors':['epix100_0',]} if isubset &  4 else\
+            {'exp':'mfxdaq23',     'run':31,  'detectors':['epix100_0',]} if isubset &  8 else\
+            {'exp':'ascdaq123',    'run':192, 'detectors':['epix10ka',]}  if isubset & 16 else\
+            {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
+            {'exp':'ascdaq18',     'run':407, 'detectors':['epixhr',]}    if isubset & 64 else\
+            {'exp':'mfx100848724', 'run':51,  'detectors':['epix100_0',]} if isubset & 128 else\
+            {}
+    ds = DataSource(**dskwa)
+
+    myrun = next(ds.runs())
+    #det = myrun.Detector(dskwa['detectors'][0])
+    det = myrun.Detector(dskwa['detectors'][0], logmet_init=logger.info)
+    events = 5
+    arrdt = np.empty(events, dtype=np.float64)
+    if True:
+        flimg = None
+        width_in = 15
+
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            calib = det.raw.calib(evt)
+            t0_sec = time()
+            mask = det.raw._mask() # raw
+            #img = det.raw.image(evt, nda=calib) # raw/calib
+            img = det.raw.image(evt, nda=mask) # mask
+            dt_sec = (time() - t0_sec)*1000
+            #print('evt:', nevt)
+            arrdt[nevt] = dt_sec
+            print('evt:%3d dt=%.3f msec for det.raw.image(evt)' % (nevt, dt_sec))
+            print(ndu.info_ndarr(raw,   '  raw  :'))
+            print(ndu.info_ndarr(calib, '  calib:'))
+            print(ndu.info_ndarr(img,   '  img  :'))
+            if flimg is None:
+                aspratio = float(img.shape[0])/float(img.shape[1]) * 1.1 # heigh/width
+                #print('image aspect ratio: %0.3f' % aspratio)
+                flimg = fleximage(img, h_in=aspratio*width_in, w_in=width_in)
+            flimg.update(img)
+            flimg.fig.suptitle('evt:%02d detector: %s' % (nevt,dskwa['detectors'][0]), fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            gr.show(mode='DO NOT HOLD')
+        gr.show()
+        print(ndu.info_ndarr(arrdt, 'arrdt', last=events))
+        print('median dt, msec: %.3f' % np.median(arrdt))
+
+
+def issue_2025_09_18(subtest='0o7777'):
+    """test calib server
+       curl -s "https://psextapi.slac.stanford.edu/calib_ws/cdb_ascdaq023"
+       datinfo -k exp=ascdaq023,run=37,dir=/cds/data/drpsrcf/asc/ascdaq023/xtc/ -d jungfrau
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+
+    from psana import DataSource
+    ds = DataSource(exp='ascdaq023',run=37,dir='/cds/data/drpsrcf/asc/ascdaq023/xtc')
+    orun = next(ds.runs())
+    det = orun.Detector('jungfrau', logmet_init=logger.info)
+    print('calibconst.keys():', [k for k in det.raw._calibconst.keys()])
+    for i,evt in enumerate(orun.events()):
+        #print('evt %03d' % i)
+        if i>10: break
+        print(info_ndarr(det.raw.raw(evt),   'evt %03d raw:' % i))
+        print(info_ndarr(det.raw.calib(evt), '      calib:'))
+
+
+def issue_2025_09_19(subtest='0o7777'):
+    """
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101237525',run=55,dir='/cds/data/drpsrcf/rix/rix101237525/xtc')
+    myrun = next(ds.runs())
+    for evt in myrun.events():
+        print('got event')
+        break
+
+
+def issue_2025_09_26(subtest='0o7777'):
+    """plot test images
+       datinfo -k /sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2 -d jungfrau
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds_kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2'}
+    ds = DataSource(**ds_kwa)
+    myrun = next(ds.runs())
+
+    dkwa = {'status': True,
+               'logmet_init': logger.info,
+               'gain_range_inds': (0,)}
+    det = myrun.Detector('jungfrau', **dkwa)
+
+    peds = det.raw._pedestals()
+    mask = det.raw._mask();
+    mask_default = det.raw._mask_default()
+    mask_calib_or_default = det.raw._mask_calib_or_default()
+    mask_edges = det.raw._mask_edges(edge_rows=0, edge_cols=0)
+    mask_center = det.raw._mask_center()
+    mask_neighbors = det.raw._mask_neighbors(mask_default)
+    stat = det.raw._status() #; stat.shape = (3*512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)) #; mask_stat.shape = (512, 1024)
+    print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
+    print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
+    print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
+    print(ndu.info_ndarr(mask_default,          'XXX _mask_default', last=10))
+    print(ndu.info_ndarr(mask_calib_or_default, 'XXX _mask_calib_or_default', last=10))
+    print(ndu.info_ndarr(mask_edges,            'XXX _mask_edges', last=10))
+    print(ndu.info_ndarr(mask_center,           'XXX _mask_center', last=10))
+    print(ndu.info_ndarr(mask_neighbors,        'XXX _mask_neighbors', last=10))
+    print(ndu.info_ndarr(mask,                  'XXX _mask', last=10))
+    events = 10
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            print(ndu.info_ndarr(raw, '    raw', last=10))
+            if raw is None: continue
+
+            print('evt:%03d begin calib'%nevt)
+            calib = det.raw.calib(evt)
+            print(ndu.info_ndarr(calib, '    calib', last=10))
+            print('>> end calib')
+            #img = det.raw.image(evt)
+            #img = calib
+            img = mask
+            #img = mask_edges
+            #img = stat
+            #img = det.raw.image(evt, nda=calib)
+            #img = calib; img.shape = (512, 1024)
+            #img = raw; img.shape = (512, 1024)
+            #img = ndu.reshape_to_3d(peds)
+            img.shape = (512, 1024)
+            #img = peds[0,0,:]
+            #img = peds; img.shape = (3*512, 1024)
+            #print('evt:', nevt)
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=6, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('evt %02d test image'%nevt, fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+
+
+
+
+
+
 
 
     
@@ -1385,7 +1737,15 @@ def selector():
     elif TNAME in ('35',): issue_2025_07_16() # test for runs validity tool
     elif TNAME in ('36',): issue_2025_07_22() # test time to get shortname from longname
     elif TNAME in ('37',): issue_2025_07_23() # test wu.calib_constants_all_types
-    elif TNAME in ('38',): issue_2025_07_29() # cpo - epix10ka missing geometry
+    elif TNAME in ('38',): issue_2025_07_29() # Chris - epix10ka missing geometry
+    elif TNAME in ('39',): issue_2025_08_19() # Philip - epix100 pixel_gain are not deployed/used?
+    elif TNAME in ('40',): issue_2025_08_26() # Chris - jf - fix det.raw.calib(evt) in case if pedestals are missing?
+    elif TNAME in ('41',): issue_2025_08_28(args.subtest) # me - epix100 test det.raw.calib(evt)
+    elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
+    elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
+    elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
+    elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
+    elif TNAME in ('46',): issue_2025_09_26(args.subtest) # plot test images
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

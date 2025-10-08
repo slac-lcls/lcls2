@@ -77,16 +77,12 @@ AreaDetector::~AreaDetector()
 unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
   logging::info("Gpu::AreaDetector configure");
-  unsigned rc = 0;
 
   // Configure the XpmDetector for each panel in turn
   // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
   unsigned panel = 0;
   for (const auto& det : m_dets) {
-    //printf("*** Gpu::AreaDetector configure for %u start\n", panel);
-    rc = det->configure(config_alias, xtc, bufEnd);
-    //printf("*** Gpu::AreaDetector configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
-    if (rc) {
+    if (det->configure(config_alias, xtc, bufEnd)) {
       logging::error("Gpu::AreaDetector::configure failed for %s\n", m_params[panel].device);
       break;
     }
@@ -117,41 +113,40 @@ void AreaDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t c
 }
 
 // This kernel performs the data calibration
-static __global__ void _calibrate(float*   const* const __restrict__ calibBuffers,
+static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
+                                  const size_t                       calibBufsCnt,
                                   uint16_t const* const __restrict__ in,
                                   const unsigned&                    index,
                                   const unsigned                     panel,
                                   const unsigned                     nPixels)
 {
-  int pixel = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const __restrict__ out = &calibBuffers[index][panel * nPixels];
+  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
+  int stride = gridDim.x * blockDim.x;
+  int pixel  = blockDim.x * blockIdx.x + threadIdx.x;
 
-  for (int i = pixel; i < nPixels; i += blockDim.x * gridDim.x) {
+  for (int i = pixel; i < nPixels; i += stride) {
     out[i] = float(in[i]);
   }
 }
 
 // This routine records the graph that calibrates the data
-void AreaDetector::recordGraph(cudaStream_t&                      stream,
-                               const unsigned&                    index_d,
-                               const unsigned                     panel,
-                               uint16_t const* const __restrict__ rawBuffer)
+void AreaDetector::recordGraph(cudaStream_t&         stream,
+                               const unsigned&       index_d,
+                               const unsigned        panel,
+                               uint16_t const* const rawBuffer)
 {
-  //printf("*** AreaDetector record: 1\n");
   auto nPanels = m_dets.size();
 
   // Check that panel is within range
   assert (panel < nPanels);
-  //printf("*** AreaDetector record: 2\n");
 
-  int threads = 1024;
-  int blocks  = (m_nPixels + threads-1) / threads; // @todo: Limit this?
-  //printf("*** AreaDetector record: 3, panel %u, threads %d, blocks %d, nPixels %d\n", panel, threads, blocks, m_nPixels);
+  unsigned   chunks{128};               // Number of pixels handled per thread
+  unsigned   tpb   {256};               // Threads per block
+  unsigned   bpg   {(m_nPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
   auto       pool         = m_pool->getAs<MemPoolGpu>();
   auto const calibBuffers = pool->calibBuffers_d();
-  //printf("*** AreaDetector record: 4, calibBufSz %zu\n", pool->calibBufSize());
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, rawBuffer, index_d, panel, m_nPixels);
-  //printf("*** AreaDetector record: 5\n");
+  auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
+  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, m_nPixels);
 }
 
 // The class factory

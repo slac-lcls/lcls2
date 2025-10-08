@@ -125,10 +125,18 @@ def event_constants_for_gmaps(gmaps, cons, default=0):
 def map_gain_range_index_for_gmaps(gmaps, default=10):
     return ue.map_gain_range_index_for_gmaps(gmaps, default)
 
-def is_none(val, msg):
-    s = val is None
-    if s: logger.debug(msg)
-    return s
+#import psana.detector.Utils as ut
+#is_none = ut.is_none
+
+def is_none(par, msg, logger_method=logger.debug):
+    resp = par is None
+    if resp: logger_method(msg)
+    return resp
+
+#def is_none(val, msg):
+#    s = val is None
+#    if s: logger.debug(msg)
+#    return s
 
 
 class calib_components_epix():

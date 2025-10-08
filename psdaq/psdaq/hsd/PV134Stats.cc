@@ -57,6 +57,7 @@ namespace Pds {
            _monJesd,
            _monEnv,
            _monAdc,
+           _fexOor,
            _monLinkId,  // PADDR_U
            _NumberOf };
 
@@ -86,6 +87,7 @@ namespace Pds {
       PV_ADD (monJesd);
       PV_ADD (monEnv);
       PV_ADD (monAdc);
+      PV_ADD (fexOor);
       _pv[_monLinkId            ] = new EpicsPVA(STOU(pvbase_a + "PADDR_U").c_str());
       _pv[_monLinkId + _NumberOf] = new EpicsPVA(STOU(pvbase_b + "PADDR_U").c_str());
 #undef PV_ADD
@@ -234,8 +236,16 @@ namespace Pds {
           v.oor_inb_0 = _m.optfmc().adcOutOfRange[i*4+2];
           v.oor_inb_1 = _m.optfmc().adcOutOfRange[i*4+3];
           v.alarm     = _m.optfmc().adcOutOfRange[i*1+8];
-          PVPUT(monAdc); }
-      }
+          //  FEX baseline correction - out of range
+          v.oor_fex   = fex._stream[1].parms[15];
+          PVPUT(monAdc);
+
+          Pds_Epics::EpicsPVA& pv = *_pv[_fexOor+i*_NumberOf];
+          if (pv.connected())
+              pv.putFrom(v.oor_fex);
+        }
+
+      }  // for(unsigned i=0; i<2; i++)
 
       { MonEnv v;
         EnvMon mon = _m.mon();

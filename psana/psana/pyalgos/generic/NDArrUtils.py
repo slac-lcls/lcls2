@@ -85,7 +85,16 @@ import logging
 logger = logging.getLogger('NDArrUtils')
 
 
-def info_ndarr(nda, name='', first=0, last=5):
+def str_formatted(nda, first=0, last=5, vfmt='%0.6f', spa=' '):
+    if vfmt is None:
+        return '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
+    #str(nda.ravel()[first:last])
+    s = spa.join([vfmt % v for v in nda.ravel()[first:last]])
+    suffix = ' ...]' if nda.size>last else ']'
+    return '[%s%s' % (s.lstrip('\n'),suffix)
+
+
+def info_ndarr(nda, name='', first=0, last=5, vfmt=None, spa=' '):
     _name = '%s '%name if name!='' else name
     s = ''
     gap = '\n' if (last-first)>10 else ' '
@@ -96,7 +105,8 @@ def info_ndarr(nda, name='', first=0, last=5):
         s = '%s%s' % (_name, type(nda))
     else:
         a = '' if last == 0 else\
-            '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
+            str_formatted(nda, first=0, last=5, vfmt=vfmt, spa=spa)
+        #    '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
         s = '%sshape:%s size:%d dtype:%s%s%s' % (_name, str(nda.shape), nda.size, nda.dtype, gap, a)
     return s
 

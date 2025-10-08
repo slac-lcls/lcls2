@@ -27,6 +27,7 @@ USAGE = '\nCommand: cdb <mode> [options]'\
     '  cdb2 print -d testdet_1234 [--docid <document-id>]\n'\
     '  cdb2 print -e testexper\n'\
     '  cdb2 print --dbname cdb_epixhr2x2_000001_mytestdb\n'\
+    '  cdb2 add -k exp=mfxdaq23,run=31 -d epix100_0 -c pixel_gain -f run31_lcls2_gains.npy\n'\
     '  cdb2 add -k exp=mfx101332224,run=66 -d jungfrau -c pedestals -f clb-mfx101332224-jungfrau_000003-r0066-pedestals.data -S mytestdb -B 81 -R 85\n'\
     '  cdb2 get -k exp=mfx101332224,run=66 -d jungfrau -c pedestals -f myconsts -S mytestdb -L DEBUG\n'\
     '  cdb2 deldoc --dbname cdb_jungfrau_000003_mytestdb --colname jungfrau_000003 --docid 688aa95d76d702c925246602   -C\n'\
@@ -78,7 +79,7 @@ def argument_parser():
     d_colname    = None
     d_docid      = None
     d_experiment = None
-    d_detector   = None
+    d_detname    = None
     d_ctype      = None # cc.list_calib_names[0], 'pedestals'
     d_dtype      = None
     d_run        = 0
@@ -106,7 +107,7 @@ def argument_parser():
     h_colname    = 'collection name, works for mode "print" or "delete", default = %s' % d_colname
     h_docid      = 'document Id, works for mode "print" or "delete", default = %s' % d_docid
     h_experiment = 'experiment name (for some commands, see examples), default = %s' % d_experiment
-    h_detector   = 'detector name for run.Detector, default = %s' % d_detector
+    h_detname    = 'detector name for run.Detector, default = %s' % d_detname
     h_ctype      = 'calibration constant type, default = %s' % d_ctype
     h_dtype      = 'i/o file data type (None - array, txt, xtcav, json, pkl), default = %s' % d_dtype
     h_run        = 'run number current/begin (for some commands, see examples), default = %s' % str(d_run)
@@ -131,7 +132,7 @@ def argument_parser():
     parser.add_argument('--dbname',           default=d_dbname,     type=str, help=h_dbname)
     parser.add_argument('--colname',          default=d_colname,    type=str, help=h_colname)
     parser.add_argument('--docid',            default=d_docid,      type=str, help=h_docid)
-    parser.add_argument('-d', '--detector',   default=d_detector,   type=str, help=h_detector)
+    parser.add_argument('-d', '--detname',    default=d_detname,    type=str, help=h_detname)
     parser.add_argument('-e', '--experiment', default=d_experiment, type=str, help=h_experiment)
     parser.add_argument('-t', '--time_stamp', default=d_time_stamp, type=str, help=h_time_stamp)
     parser.add_argument('-s', '--time_sec',   default=d_time_sec,   type=int, help=h_time_sec)
@@ -156,8 +157,8 @@ def cdb_cli():
     if len(sys.argv) < 2: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
 
     parser = argument_parser()
-    #args = parser.parse_args() # Namespace, e.g. args.detector
-    #kwargs = vars(args)        # dict, e.g. kwargs['detector']
+    #args = parser.parse_args() # Namespace, e.g. args.detname
+    #kwargs = vars(args)        # dict, e.g. kwargs['detname']
     cdb_web(parser)
 
 

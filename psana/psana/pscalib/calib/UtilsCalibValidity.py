@@ -41,6 +41,10 @@ def info_run_validity_ranges(dbname, colname, ctype='pedestals'):
     docs = wu.find_docs(dbname, colname, query={'ctype':ctype}) # , url=cc.URL)
     s = '\nlist of constants for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
     run_boardes = set()
+
+    if docs is None:
+       return 'docs is None === for dbname:%s colname:%s ctype:%s' % (dbname, colname, ctype)
+
     for d in docs:
       d['tsec_id'], d['tstamp_id'] = mu.sec_and_ts_from_id(d['_id'], fmt='%Y%m%d_%H%M%S', gmt=False)
       s += '\ntsecDB: %d tstampDB: %s run: %4d run_orig: %4d run_beg: %4s run_end: %4s'%\
@@ -86,7 +90,7 @@ def print_calib_constants_for_ctype(expname, detlongname, ctype='pedestals', run
     resp = wu.calib_constants_for_ctype(detlongname, exp=expname, ctype=ctype, run=run, time_sec=time_sec, vers=None, dbsuffix='')
     if resp is not None:
         d = dict_filter(resp[1])
-        print('selected constants in calib_constants_for_ctype:\n%s\n' % str(d))
+        print('selected constants in calib_constants_for_ctype: %s\n%s\n' % (ctype,str(d)))
 
 
 def _calib_validity_ranges(exp, shortname, ctype='pedestals', show='rtd'):

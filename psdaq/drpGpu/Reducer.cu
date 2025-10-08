@@ -3,8 +3,11 @@
 #include "Detector.hh"
 
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "psdaq/eb/ResultDgram.hh"
 #include "ReducerAlgo.hh"
+
+#include <sys/prctl.h>
 
 using logging = psalg::SysLog;
 using namespace XtcData;
@@ -16,58 +19,55 @@ using namespace Pds::Eb;
 using us_t = std::chrono::microseconds;
 
 
-Reducer::Reducer(const Parameters&        para,
-                 MemPoolGpu&              pool,
-                 Detector&                det,
-                 const std::atomic<bool>& terminate_h,
-                 const cuda::atomic<int>& terminate_d) :
+Reducer::Reducer(const Parameters&            para,
+                 MemPoolGpu&                  pool,
+                 Detector&                    det,
+                 const std::atomic<bool>&     terminate,
+                 const cuda::atomic<uint8_t>& terminate_d) :
   m_pool       (pool),
-  m_algo       (nullptr),
-  m_terminate_h(terminate_h),
+  m_terminate  (terminate),
   m_terminate_d(terminate_d),
   m_reduce_us  (0),
   m_para       (para)
 {
-  //// Set up buffer index queue for Host to Reducer comms
-  //m_reducerQueue.h = new Gpu::RingIndexHtoD(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
-  //chkError(cudaMalloc(&m_reducerQueue.d,                   sizeof(*m_reducerQueue.d)));
-  //chkError(cudaMemcpy( m_reducerQueue.d, m_reducerQueue.h, sizeof(*m_reducerQueue.d), cudaMemcpyHostToDevice));
-
-  //// Set up buffer index queue for Reducer to Host comms
-  //m_outputQueue.h = new Gpu::RingIndexDtoH(m_pool.nbuffers(), m_terminate_h, m_terminate_d);
-  //chkError(cudaMalloc(&m_outputQueue.d,                  sizeof(*m_outputQueue.d)));
-  //chkError(cudaMemcpy( m_outputQueue.d, m_outputQueue.h, sizeof(*m_outputQueue.d), cudaMemcpyHostToDevice));
-
-  // Set up a done flag to cache m_terminate's value and avoid some PCIe transactions
-  chkError(cudaMalloc(&m_done,    sizeof(*m_done)));
-  chkError(cudaMemset( m_done, 0, sizeof(*m_done)));
-  //printf("*** Reducer: m_done %p\n", m_done);
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioHi+1};
+  logging::debug("Reducer stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
 
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
-  //m_begEvents.resize(m_para.nworkers);
-  //m_endEvents.resize(m_para.nworkers);
   m_t0.resize(m_para.nworkers);
-  m_heads.resize(m_para.nworkers);
-  m_tails.resize(m_para.nworkers);
-  for (unsigned i = 0; i < m_streams.size(); ++i) {
-    chkFatal(cudaStreamCreateWithFlags(&m_streams[i], cudaStreamNonBlocking));
-    //chkError(cudaEventCreateWithFlags(&m_events[i], cudaEventDisableTiming));
-    //chkError(cudaEventCreate(&m_begEvents[i]));
-    //chkError(cudaEventCreate(&m_endEvents[i]));
+  m_heads_h.resize(m_para.nworkers);
+  m_heads_d.resize(m_para.nworkers);
+  m_tails_h.resize(m_para.nworkers);
+  m_tails_d.resize(m_para.nworkers);
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
 
     // Keep track of the head and tail indices of the Reducer stream
-    chkError(cudaMalloc(&m_heads[i],    sizeof(*m_heads[i])));
-    chkError(cudaMemset( m_heads[i], 0, sizeof(*m_heads[i])));
-    chkError(cudaMalloc(&m_tails[i],    sizeof(*m_tails[i])));
-    chkError(cudaMemset( m_tails[i], 0, sizeof(*m_tails[i])));
+    chkError(cudaHostAlloc(&m_heads_h[i], sizeof(*m_heads_h[i]), cudaHostAllocDefault));
+    chkError(cudaHostGetDevicePointer(&m_heads_d[i], m_heads_h[i], 0));
+    *m_heads_h[i] = 0;
+    chkError(cudaHostAlloc(&m_tails_h[i], sizeof(*m_tails_h[i]), cudaHostAllocDefault));
+    chkError(cudaHostGetDevicePointer(&m_tails_d[i], m_tails_h[i], 0));
+    *m_tails_h[i] = 0;
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
+
+  // Set up the reducer algorithm instances
+  m_algos.resize(m_para.nworkers);
+  if (!_setupAlgos(det)) {
+    logging::critical("Error setting up Reducer Algorithm instances");
+    abort();
+  }
 
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
   auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
-  auto payloadSize = m_pool.calibBufSize();
+  auto payloadSize = m_algos[0]->payloadSize(); // Each instance returns the same value
   auto totalSize   = headerSize + payloadSize;
   if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
@@ -76,91 +76,137 @@ Reducer::Reducer(const Parameters&        para,
   // The application sees only the pointer to the data buffer.
   m_pool.createReduceBuffers(payloadSize, headerSize);
 
-  // Set up the reducer algorithm
-  m_algo = _setupAlgo(det);
-  if (!m_algo) {
-    logging::critical("Error setting up Reducer Algorithm");
-    abort();
+  // Prepare the CUDA graphs
+  if (true) { //m_algos[0]->hasGraph()) {         // Same value for all instances
+    m_graphExecs.resize(m_streams.size());
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      if (_setupGraph(i)) {
+        logging::critical("Failed to set up Reducer graph");
+        abort();
+      }
+    }
   }
 
-  // Prepare the CUDA graphs
-  m_graphExecs.resize(m_streams.size());
-  for (unsigned i = 0; i < m_streams.size(); ++i) {
-    if (_setupGraph(i)) {
-      logging::critical("Failed to set up Reducer graph");
-      abort();
-    }
+  // Set up the worker queues to fit all buffers without getting full
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    m_inputQueues.emplace_back(SPSCQueue<unsigned>(m_pool.nbuffers()));
+    m_outputQueues.emplace_back(SPSCQueue<size_t>(m_pool.nbuffers()));
+  }
+
+  // Start the worker threads
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    m_threads.emplace_back(&Reducer::_worker,
+                           std::ref(*this),
+                           i,
+                           std::ref(m_inputQueues[i]),
+                           std::ref(m_outputQueues[i]));
   }
 }
 
 Reducer::~Reducer()
 {
+  if (m_threads.size())
+    logging::info("Shutting down reducer workers");
+  for (unsigned i = 0; i < m_threads.size(); i++) {
+    m_inputQueues[i].shutdown();
+    if (m_threads[i].joinable()) {
+      m_threads[i].join();
+    }
+  }
+  if (m_threads.size()) {
+    logging::info("Reducer worker threads finished");
+  }
+  for (unsigned i = 0; i < m_outputQueues.size(); i++) {
+    m_outputQueues[i].shutdown();
+  }
+  m_outputQueues.clear();
+  m_inputQueues.clear();
+  m_threads.clear();
+
   printf("*** Reducer dtor 1\n");
   for (auto& graphExec : m_graphExecs) {
     chkError(cudaGraphExecDestroy(graphExec));
   }
+  m_graphExecs.clear();
   printf("*** Reducer dtor 2\n");
 
-  if (m_algo)  delete m_algo;
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    if (m_algos[i])  delete m_algos[i];
+  }
+  m_algos.clear();
   m_dl.close();
   printf("*** Reducer dtor 3\n");
 
-  for (unsigned i = 0; i < m_streams.size(); ++i) {
-    chkError(cudaFree(m_tails[i]));
-    chkError(cudaFree(m_heads[i]));
-
-    //chkError(cudaEventDestroy(m_endEvents[i]));
-    //chkError(cudaEventDestroy(m_begEvents[i]));
-    chkError(cudaStreamDestroy(m_streams[i]));
-  }
+  m_pool.destroyReduceBuffers();
   printf("*** Reducer dtor 4\n");
 
-  chkError(cudaFree(m_done));
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    chkError(cudaFreeHost(m_tails_h[i]));
+    chkError(cudaFreeHost(m_heads_h[i]));
+
+    chkError(cudaStreamDestroy(m_streams[i]));
+  }
+  m_heads_h.clear();
+  m_heads_d.clear();
+  m_tails_h.clear();
+  m_tails_d.clear();
+  m_streams.clear();
   printf("*** Reducer dtor 5\n");
-
-  //chkError(cudaFree(m_outputQueue.d));
-  //delete m_outputQueue.h;
-  //printf("*** Reducer dtor 6\n");
-
-  //chkError(cudaFree(m_reducerQueue.d));
-  //delete m_reducerQueue.h;
-  //printf("*** Reducer dtor 7\n");
 }
 
-ReducerAlgo* Reducer::_setupAlgo(Detector& det)
+int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
+                          std::map<std::string, std::string>&   labels)
+{
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    auto wkr = std::to_string(i);
+    exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues[i].guess_size(); });
+    exporter->add("DRP_outputQueue"+wkr, labels, MetricType::Gauge, [&, i](){ return m_outputQueues[i].guess_size(); });
+  }
+
+  exporter->add("DRP_reduceTime", labels, MetricType::Gauge, [&](){ return m_reduce_us; });
+
+  return 0;
+}
+
+bool Reducer::_setupAlgos(Detector& det)
 {
   // @todo: In the future, find out which Reducer to load from the Detector's configDb entry
   //        For now, load it according to a command line kwarg parameter
   std::string reducer;
   if (m_para.kwargs.find("reducer") == m_para.kwargs.end()) {
     logging::error("Missing required kwarg 'reducer'");
-    return nullptr;
+    return false;
   }
   reducer = const_cast<Parameters&>(m_para).kwargs["reducer"];
 
-  if (m_algo)  delete m_algo;     // If the object exists, delete it
-  m_dl.close();                   // If a lib is open, close it first
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    if (m_algos[i])  delete m_algos[i]; // If the object exists, delete it
+  }
+  m_dl.close();                         // If a lib is open, close it first
 
   const std::string soName("lib"+reducer+".so");
   logging::debug("Loading library '%s'", soName.c_str());
   if (m_dl.open(soName, RTLD_LAZY)) {
     logging::error("Error opening library '%s'", soName.c_str());
-    return nullptr;
+    return false;
   }
   const std::string symName("createReducer");
   auto createFn = m_dl.loadSymbol(symName.c_str());
   if (!createFn) {
     logging::error("Symbol '%s' not found in %s",
                    symName.c_str(), soName.c_str());
-    return nullptr;
+    return false;
   }
-  auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool, det);
-  if (!instance)
-  {
-    logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
-    return nullptr;
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool, det);
+    if (!instance)
+    {
+      logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
+      return false;
+    }
+    m_algos[i] = instance;
   }
-  return instance;
+  return true;
 }
 
 int Reducer::_setupGraph(unsigned instance)
@@ -169,22 +215,18 @@ int Reducer::_setupGraph(unsigned instance)
   cudaGraphExec_t& graphExec = m_graphExecs[instance];
   cudaStream_t     stream    = m_streams[instance];
 
-  //printf("*** Reducer setupGraph 1.%u\n", instance);
   // Build the graph
   logging::debug("Recording Reducer graph %u", instance);
   graph = _recordGraph(instance);
-  //printf("*** Reducer setupGraph 2.%u\n", instance);
   if (graph == 0) {
     return -1;
   }
-  //printf("*** Reducer setupGraph 3.%u\n", instance);
 
   // Instantiate the executable graph
   if (chkError(cudaGraphInstantiate(&graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
                "Reducer graph create failed")) {
     return -1;
   }
-  //printf("*** Reducer setupGraph 4.%u\n", instance);
 
   // No need to hang on to the stream info
   cudaGraphDestroy(graph);
@@ -194,121 +236,76 @@ int Reducer::_setupGraph(unsigned instance)
   if (chkError(cudaGraphUpload(graphExec, stream), "Reducer graph upload failed")) {
     return -1;
   }
-  //printf("*** Reducer setupGraph 5.%u\n", instance);
 
   return 0;
 }
 
-//// This kernel receives a message from TebReceiver that indicates which
-//// calibBuffer is ready for reducing.  If the corresponding output data
-//// buffer is available for filling by the reduction algorithm, the
-//// reduction can proceed.  Otherwise the program stalls.
-//static __global__ void _receive(unsigned*            __restrict__ head,
-//                                unsigned*            __restrict__ tail,
-//                                RingIndexHtoD*       __restrict__ inputQueue,
-//                                const RingIndexDtoH* __restrict__ outputQueue,
-//                                const cuda::atomic<int>&          terminate,
-//                                bool*                __restrict__ done)
-//{
-//  //printf("### _receive 1 done %d, tail %u, head %u\n", *done, *tail, *head);
-//
-//  // Refresh the head when the tail has caught up to it
-//  // It might be desireable to refresh the head on every call, but that could
-//  // prevent progressing the tail toward the head since it blocks when there
-//  // is no change.  @todo: Revisit this
-//  if (*tail == *head) {
-//    //printf("### _receive 2\n");
-//
-//    // Get the next index to process from the TebReceiver message
-//    unsigned idx;
-//    while ((idx = inputQueue->consume()) == *head) { // This can block
-//      if ( (*done = terminate.load(cuda::memory_order_acquire)) )  return;
-//    }
-//    *head = idx;                     // This may advance by more than one count
-//  }
-//
-//  // Stall if the output buffer at the tail index is not free
-//  if (!outputQueue->empty()) {
-//    while (*tail == outputQueue->tail()) {
-//      if ( (*done = terminate.load(cuda::memory_order_acquire)) )  return;
-//    }
-//  }
-//}
-
-// This will re-launch the current graph
-static __global__ void _graphLoop(unsigned*       __restrict__ tail,
-                                  unsigned*       __restrict__ head,
-                                  uint8_t** const __restrict__ dataBuffers,
-                                  unsigned                     extent) //,
-                                  //unsigned                     bufferMask,
-                                  //cudaEvent_t                  event,
-                                  //cudaStream_t                 stream,
-                                  //RingIndexDtoH*  __restrict__ outputQueue,
-                                  //const bool&                  done)
+/** This kernel receives a message from TebReceiver that indicates which
+ * calibBuffer is ready for reducing.
+ */
+static __global__ void _receive(unsigned* const __restrict__ head,
+                                unsigned* const __restrict__ tail,
+                                const cuda::atomic<uint8_t>& terminate)
 {
-  //printf("### Reducer graphLoop 1, done %d, idx %u\n", done, *index);
-  //if (done)  return;
-  //printf("### Reducer graphLoop 1a, index %u\n", *index);
+  //printf("### _receive 1 done %d, tail %u, head %u\n", terminate.load(), *tail, *head);
 
-  // Store the extent with the data
-  auto data = (uint32_t*)(dataBuffers[*tail]);
-  data[-1] = extent;            // @todo: Revisit this kludge to set the extent
+  // Wait for the head to advance with respect to the tail
+  auto t = *tail;
+  while (*head == t) {
+    if (terminate.load(cuda::memory_order_acquire))  break;
+  }
+  //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, terminate.load());
+}
 
-  // Push index to host
-  //*index = outputQueue->produce(*index);
-  //printf("### Reducer graphLoop 2, index %u\n", *index);
-  //*index = (*index + 1) & bufferMask;
-  *head = *tail;
+/** This will re-launch the current graph */
+static __global__ void _graphLoop(unsigned* const __restrict__ head,
+                                  unsigned* const __restrict__ tail,
+                                  const cuda::atomic<uint8_t>& terminate)
+{
+  //printf("### Reducer graphLoop: 1, done %d, idx %u\n", terminate.load(), *index);
+  if (terminate.load(cuda::memory_order_acquire))  return;
 
-  //// Signal to the host that we've produced
-  //cudaEventRecord(event, stream);
+  //printf("### Reducer graphLoop: 2 t %u, h %u\n", *tail, *head);
+
+  // Signal that this worker is done
+  *tail = *head;                   // With nworkers > 1, head - tail may be > 1
 
   // Commented out to let TebRcvr::complete() launch the graph
   //cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  //printf("### Reducer graphLoop 3\n");
+  //printf("### Reducer graphLoop: 3\n");
 }
 
 cudaGraph_t Reducer::_recordGraph(unsigned instance)
 {
-  //printf("*** Reducer::record 1\n");
   auto stream       = m_streams[instance];
-  //auto event        = m_events[instance];
   auto calibBuffers = m_pool.calibBuffers_d();
+  auto calibBufsSz  = m_pool.calibBufsSize();
+  auto calibBufsCnt = calibBufsSz / sizeof(*calibBuffers);
   auto dataBuffers  = m_pool.reduceBuffers_d();
-  //auto bufferMask   = m_pool.nbuffers()-1;
+  auto dataBufsRsvd = m_pool.reduceBufsReserved();
+  auto dataBufsSz   = m_pool.reduceBufsSize();
+  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
 
-  //printf("*** Reducer::record 2\n");
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "Reducer stream begin capture failed")) {
     return 0;
   }
-  //printf("*** Reducer::record 3, head %p, tail %p\n", m_heads[instance], m_tails[instance]);
 
-  //// Handle messages from TebReceiver to process an event
-  //_receive<<<1, 1, 0, stream>>>(m_heads[instance],
-  //                              m_tails[instance],
-  //                              m_reducerQueue.d,
-  //                              m_outputQueue.d,
-  //                              m_terminate_d,
-  //                              m_done);
-  ////printf("*** Reducer::record 4, algo %p\n", m_algo);
+  // Handle messages from TebReceiver to process an event
+  _receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_tails_d[instance], m_terminate_d);
 
   // Perform the reduction algorithm
-  unsigned extent;
-  m_algo->recordGraph(stream, *m_tails[instance], calibBuffers, dataBuffers, &extent);
-  //printf("*** Reducer::record 5\n");
+  m_algos[instance]->recordGraph(stream,
+                                 *m_heads_d[instance],
+                                 calibBuffers,
+                                 calibBufsCnt,
+                                 dataBuffers,
+                                 dataBufsCnt);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed.
-  _graphLoop<<<1, 1, 0, stream>>>(m_tails[instance],
-                                  m_heads[instance],
-                                  dataBuffers,
-                                  extent); //,
-                                  //bufferMask,
-                                  //event,
-                                  //stream,
-                                  //m_outputQueue.d,
-                                  //*m_done);
-  //printf("*** Reducer::record 6\n");
+  _graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
+                                  m_tails_d[instance],
+                                  m_terminate_d);
 
   // Signal to the host that the worker is done
   //chkError(cudaEventRecord(event, stream));
@@ -322,82 +319,59 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
   return graph;
 }
 
-void Reducer::start(unsigned worker, unsigned index)
+void Reducer::startup()
 {
-  auto instance = worker % m_para.nworkers;
-  //if (instance+1 > m_begEvents.size()) {
-  //  cudaEvent_t event;
-  //  chkError(cudaEventCreate(&event));
-  //  m_begEvents.push_back(event);
-  //}
-
-  auto& head      = m_heads[instance];
-  auto& tail      = m_tails[instance];
-  auto& stream    = m_streams[instance];
-  //auto& begEvent  = m_begEvents[instance];
-  auto& graphExec = m_graphExecs[instance];
-
-  //printf("*** Reducer[%d] starting", instance);
-
-  // @todo: Can we arrange for this be done only once in the thread?
-  //chkError(cuCtxSetCurrent(m_pool.context().context()));  // Not needed?
-
-  //printf("*** Reducer::start[%u]: 1 idx %u\n", instance, index);
-  // Indicate which buffer to reduce
-  //m_reducerQueue.h->produce(index);
-  //printf("*** Reducer::start[%u]: 2\n", instance);
-
-  // Wait for the graph to finish executing before updating tail
-  unsigned h, t;
-  do {
-    chkError(cudaMemcpyAsync((void*)&h, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
-    chkError(cudaMemcpyAsync((void*)&t, tail, sizeof(*tail), cudaMemcpyDeviceToHost, stream));
-    chkError(cudaStreamSynchronize(stream));
-    //printf("*** Reducer::start[%u]: tail %d, head %d\n", instance, t, h);
-  } while (h != t);                     // Wait if the kernel is still processing
-  chkError(cudaMemcpyAsync((void*)tail, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
-
-  //chkError(cudaEventRecord(begEvent, 0));
-  m_t0[instance] = fast_monotonic_clock::now(CLOCK_MONOTONIC);
-
-  // Launch the Reducer graph
-  chkFatal(cudaGraphLaunch(graphExec, stream));
-
-  //printf("*** Reducer::start[%u]: 3\n", instance);
+  // Launch the Reducer graphs
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
+  }
 }
 
-unsigned Reducer::receive(unsigned worker)
+void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQueue<size_t>& outputQueue)
 {
-  auto instance = worker % m_para.nworkers;
-  //if (instance+1 > m_endEvents.size()) {
-  //  cudaEvent_t event;
-  //  chkError(cudaEventCreate(&event));
-  //  m_endEvents.push_back(event);
-  //}
+  logging::info("Reducer worker %u is starting with process ID %lu", instance, syscall(SYS_gettid));
+  char nameBuf[16];
+  snprintf(nameBuf, sizeof(nameBuf), "ReducerWkr%d", instance);
+  if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
-  //auto& head     = m_heads[instance];
-  auto& stream   = m_streams[instance];
-  //auto& begEvent = m_begEvents[instance];
-  //auto& endEvent = m_endEvents[instance];
-  //printf("*** Reducer::receive[%u]: 1\n", instance);
+  auto  algo   = m_algos[instance];
+  auto  head   = m_heads_h[instance];
+  auto  tail   = m_tails_h[instance];
+  auto  stream = m_streams[instance];
+  auto& graph  = m_graphExecs[instance];
 
-  //auto index = m_outputQueue.h->consume();
-  //printf("*** Reducer::receive[%u]: 2 idx %u\n", instance, index);
+  unsigned index;
+  while (inputQueue.pop(index)) {
+    if  (algo->hasGraph()) {
+      // Wait for the graph to finish executing before updating head
+      unsigned hd, tl;
+      do {
+        chkError(cudaMemcpyAsync((void*)&hd, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
+        chkError(cudaMemcpyAsync((void*)&tl, tail, sizeof(*tail), cudaMemcpyDeviceToHost, stream));
+        chkError(cudaStreamSynchronize(stream));
+        //printf("*** Reducer::start[%u]: tail %d, head %d\n", instance, tl, hd);
+      } while (hd != tl);                     // Wait if the kernel is still processing
+      chkError(cudaMemcpyAsync((void*)head, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
+      *head = index;
+    }
 
-  //// Wait for the graph to produce the next index
-  ////chkError(cudaStreamWaitEvent(stream, event, 0));
-  //chkError(cudaEventRecord(endEvent, 0));
-  //chkError(cudaEventSynchronize(endEvent));
-  //float ms;
-  //chkError(cudaEventElapsedTime(&ms, begEvent, endEvent));
-  //m_reduce_us = unsigned(1000. * ms);
-  auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-  m_reduce_us = std::chrono::duration_cast<us_t>(now - m_t0[instance]).count();
+    auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
-  //unsigned index;
-  //chkError(cudaMemcpyAsync((void*)&index, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
-  chkError(cudaStreamSynchronize(stream));
+    // Launch the Reducer
+    size_t dataSize;
+    algo->reduce(graph, stream, index, &dataSize);
 
-  //return index;
-  return 0;
+    // Wait for the graph to complete
+    chkError(cudaStreamSynchronize(stream));
+
+    auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+    m_reduce_us = std::chrono::duration_cast<us_t>(now - t0).count();
+
+    // Signal completion to the recorder
+    outputQueue.push(dataSize);
+  }
+
+  logging::info("Reducer worker %u is exiting", instance);
 }

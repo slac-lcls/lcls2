@@ -1,6 +1,9 @@
 import os
+import sys
 import gc
 from psana.psexp.tools import mode
+import logging
+logger = logging.getLogger(__name__)
 
 world_size = 1
 if mode == "mpi":
@@ -76,7 +79,11 @@ def DataSource(*args, **kwargs):
 
         if mode == "mpi":
             if world_size == 1:
-                return SerialDataSource(*args, **kwargs)
+                try:
+                  return SerialDataSource(*args, **kwargs)
+                except FileNotFoundError as err:
+                  logger.error('FileNotFoundError in SerialDataSource for **kwargs: %s\n    %s\n' % (str(kwargs), err))
+                  sys.exit(1)
             else:
 
                 # >> these lines are here to AVOID initializing node.comms

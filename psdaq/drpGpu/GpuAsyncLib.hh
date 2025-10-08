@@ -232,7 +232,7 @@ deviceFunc inline AxiWrDesc64_t UnpackAxiWriteDescriptor(const void* data)
  * \param fd The file descriptor of the PGP PCIe device
  * \param mode The enumerated value of the destination
  */
-enum DmaTgt_t { CPU=0x0000ffff, GPU=0xffff0000, ERR=-1u };
+enum DmaTgt_t { TGT_CPU=0x0000ffff, TGT_GPU=0xffff0000, TGT_ERR=-1u };
 DmaTgt_t dmaTgtGet(const DataGPU&);
 void dmaTgtSet(const DataGPU&, DmaTgt_t);
 

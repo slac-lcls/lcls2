@@ -93,7 +93,8 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
     m_buffer      = nullptr;
     int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
     if (ret) {
-        logging::critical("Pebble creation of size %zu failed: %s\n", m_size, strerror(ret));
+        logging::critical("Failed to create pebble of size %zu for %u transitions of %zu B and %u L1Accepts of %zu B: %s\n",
+                          m_size, nTrBuffers, trBufSize, nL1Buffers, l1BufSize, strerror(ret));
         throw "Pebble creation failed";
     }
     m_trBuffer = m_buffer + l1Sz;
@@ -162,8 +163,8 @@ void MemPool::_initialize(const Parameters& para)
     }
     auto nTrBuffers = m_transitionBuffers.size();
     pebble.create(m_nbuffers, maxL1ASize, nTrBuffers, para.maxTrSize);
-    logging::info("nL1Buffers %u,  pebble buffer size %zu", m_nbuffers, pebble.bufferSize());
-    logging::info("nTrBuffers %u,  transition buffer size %zu", nTrBuffers, pebble.trBufSize());
+    logging::info("nL1Buffers %u,  pebble buffer size %zu B", m_nbuffers, pebble.bufferSize());
+    logging::info("nTrBuffers %u,  transition buffer size %zu B", nTrBuffers, pebble.trBufSize());
 
     pgpEvents.resize(m_nDmaBuffers);
     transitionDgrams.resize(m_nbuffers);

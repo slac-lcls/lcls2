@@ -26,10 +26,14 @@ namespace Drp {
         bool fixedRate(unsigned rate) const { return _fixedRates & (1<<rate); }
         bool acRate(unsigned rate,
                     unsigned tslots) const { return _acRates & (1<<rate) && (_timeSlots&tslots); }
-        bool eventCode(unsigned ec) const { return _seqInfo[ec>>4] & (1<<(ec&0xf)); }
+        bool eventCode(unsigned ec) const { 
+            if (ec==0) return 0; // special case to indicate we don't care
+            return _seqInfo[ec>>4] & (1<<(ec&0xf)); }
         bool sequencer(unsigned word,
                        unsigned bit) const { return _seqInfo[word] & (1<<bit); }
-        bool destination(unsigned destmask) const { return _beamPresent && (_beamDestn & destmask); }
+        bool destination(unsigned dest) const { 
+            if (dest==0) return 0; // special case to indicate we don't care
+            return _beamPresent && (_beamDestn == dest); }
     public:
         uint64_t _pulseId; 
         unsigned _fixedRates  : 10;

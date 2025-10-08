@@ -3,7 +3,7 @@ import time
 import copy
 import socket
 from datetime import datetime, timezone, timedelta
-from math import isnan
+from math import isnan, isinf
 import json as oldjson
 import zmq
 import zmq.utils.jsonapi as json
@@ -189,8 +189,8 @@ class RunParams:
         for name, value in zip(nameList, valueList):
             if isinstance(value, TimeoutError):
                 self.collection.report_warning(f"failed to read PVA PV {name}")
-            elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan)")
+            elif type(value) == type(1.0) and (isnan(value) or isinf(value)):
+                self.collection.report_warning(f"PVA PV {name} not recorded in logbook (nan/inf)")
             else:
                 params[name] = value
 
@@ -202,8 +202,8 @@ class RunParams:
         for name, value in zip(nameList, valueList):
             if value is None:
                 self.collection.report_warning(f"failed to read CA PV {name}")
-            elif type(value) == type(1.0) and isnan(value):
-                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan)")
+            elif type(value) == type(1.0) and (isnan(value) or isinf(value)):
+                self.collection.report_warning(f"CA PV {name} not recorded in logbook (nan/inf)")
             else:
                 params[name] = value
 

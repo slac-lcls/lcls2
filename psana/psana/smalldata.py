@@ -270,11 +270,12 @@ class CacheArray:
 
 
 class Server:  # (hdf5 handling)
-    def __init__(self, filename=None, smdcomm=None, cache_size=10000, callbacks=[]):
+    def __init__(self, filename=None, smdcomm=None, cache_size=10000, callbacks=[], swmr_mode=False):
         self.filename = filename
         self.smdcomm = smdcomm
         self.cache_size = cache_size
         self.callbacks = callbacks
+        self.swmr_mode = swmr_mode
 
         # maps datagroup --> {dataset_name --> (dtype, shape), }
         self._dsets = {}
@@ -286,7 +287,9 @@ class Server:  # (hdf5 handling)
         self.num_events_seen = {}
 
         if self.filename is not None:
-            self.file_handle = h5py.File(self.filename, "w")
+            self.file_handle = h5py.File(self.filename, "w", libver="latest")
+            # SWMR mode will be enabled after first dataset creation
+            self._swmr_enabled = False
 
         return
 
@@ -403,6 +406,7 @@ class Server:  # (hdf5 handling)
                 cb(flatten_event_data_dict)
 
         # end for grp_event_data...
+        if self.swmr_mode: self.file_handle.flush()
         return
 
     def _get_data_info(self, data, dataset_name):
@@ -458,6 +462,11 @@ class Server:  # (hdf5 handling)
             dtype=dtype,
             chunks=(self.cache_size,) + shape,
         )
+        
+        # Enable SWMR mode after first dataset is created
+        if self.swmr_mode and not self._swmr_enabled:
+            self.file_handle.swmr_mode = True
+            self._swmr_enabled = True
 
         if is_var:
             if is_len:
@@ -573,7 +582,7 @@ class SmallData:  # (client)
             self._comm_partition()
 
     def setup_parms(
-        self, filename=None, batch_size=1000, cache_size=None, callbacks=[]
+        self, filename=None, batch_size=1000, cache_size=None, callbacks=[], swmr_mode=False
     ):
         """
         Parameters
@@ -596,11 +605,16 @@ class SmallData:  # (client)
             names and the values are the data themselves. Each event
             processed will have it's own dictionary of this form
             containing the data saved for that event.
+            
+        swmr_mode : bool
+            Enable SWMR (Single Writer Multiple Reader) mode for HDF5 files.
+            Allows concurrent read access while writing.
         """
 
         self.batch_size = batch_size
         self._batch = []
         self._previous_timestamp = -1
+        self.swmr_mode = swmr_mode
 
         if cache_size is None:
             cache_size = batch_size
@@ -649,6 +663,7 @@ class SmallData:  # (client)
                     smdcomm=self._srvcomm,
                     cache_size=cache_size,
                     callbacks=callbacks,
+                    swmr_mode=self.swmr_mode,
                 )
                 self._server.recv_loop()
 
@@ -660,7 +675,8 @@ class SmallData:  # (client)
             self._srv_filename = self._full_filename  # dont hide file
             self._type = "serial"
             self._server = Server(
-                filename=self._srv_filename, cache_size=cache_size, callbacks=callbacks
+                filename=self._srv_filename, cache_size=cache_size, callbacks=callbacks,
+                swmr_mode=self.swmr_mode
             )
 
         return
@@ -709,9 +725,13 @@ class SmallData:  # (client)
         if MODE == "PARALLEL":
             if self._first_open and self._full_filename is not None:
                 fh = h5py.File(self._full_filename, "w", libver="latest")
+                if self.swmr_mode:
+                    fh.swmr_mode = True
                 self._first_open = False
             else:
                 fh = h5py.File(self._full_filename, "r+", libver="latest")
+                if self.swmr_mode:
+                    fh.swmr_mode = True
 
         elif MODE == "SERIAL":
             fh = self._server.file_handle

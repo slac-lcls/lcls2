@@ -123,6 +123,7 @@ class DgramManager(object):
                     self._skip_event = False
                     self._last_disable_ts = 0
                     self._shmem_thread = threading.Thread(target=self._shmem_reader, daemon=True)
+                    self._shmem_thread_continue = True
                     self._shmem_thread.start()
                 elif xtc_files[0] == "drp":
                     self.det_name = self.tag.det_name
@@ -180,6 +181,8 @@ class DgramManager(object):
             status = int(self.shmem_cli.connect(tag, 0))
             if status == 0:
                 break
+            elif status == -42:
+                return "EARLYEXIT"
             time.sleep(0.01)
         assert not status, "shmem connect failure %d" % status
         # wait for first configure datagram - blocking
@@ -433,8 +436,24 @@ class DgramManager(object):
             self.found_endrun = False
         return fake_endruns
 
+    def close_reader(self):
+        """Close the reader thread (if present).
+
+        This is intended to allow breaking of the infinite reading loop.
+        Currently it is used for the ability of tests to work on non-infinite sources
+        of data. I.e. there is not a good reason to use this outside in production.
+
+        This method does nothing if you are not operating on shared memory, i.e.,
+        not using the DgramManager as part of a ShmemDataSource.
+
+        If needed, a more robust solution will be created in the future.
+        """
+        if hasattr(self, "_shmem_thread"):
+            self._shmem_thread_continue = False
+            self._shmem_thread.join()
+
     def _shmem_reader(self):
-        while True:
+        while self._shmem_thread_continue:
             with self._shmem_lock:
                 self.shmem_kwargs["transitionsOnly"] = self._skip_event
 
@@ -478,13 +497,17 @@ class DgramManager(object):
                 continue
             else:
                 # NULL for some other reason
-                view = self._connect_shmem_cli(self.tag)
-                config = self.configs[len(self.configs) - 1]
-                d = dgram.Dgram(config=config, view=view)
-                if d.service() == TransitionId.Configure:
-                    self.set_configs([d])
-                else:
-                    raise RuntimeError(f"Configure expected, got {d.service()}")
+                if self._shmem_thread_continue:
+                    view = self._connect_shmem_cli(self.tag)
+                    if view == "EARLYEXIT":
+                        print("dgrammanager: Early exit encountered.")
+                        return
+                    config = self.configs[len(self.configs) - 1]
+                    d = dgram.Dgram(config=config, view=view)
+                    if d.service() == TransitionId.Configure:
+                        self.set_configs([d])
+                    else:
+                        raise RuntimeError(f"Configure expected, got {d.service()}")
 
     def __next__(self):
         """only support sequential read - no event building"""

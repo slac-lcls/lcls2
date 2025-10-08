@@ -48,17 +48,23 @@ int chkCuFile(CUfileError_t status)
 
 FileWriter::FileWriter(size_t bufferSize, bool dio) :
   FileWriterBase   (),
-  m_fd             (0),
-  m_count          (0),
   m_batch_starttime(0, 0),
-  m_bufferSize     (bufferSize),
   m_buffer_d       (nullptr),
   m_fileOffset     (0),
-  m_dio            (dio)
+  m_bufOffset      (0),         // Always write from the beggining of the buffer
+  m_fd             (0),
+  m_dio            (dio),
+  m_count          (0),
+  m_bufferSize     (bufferSize)
 {
   if (chkCuFile(cuFileDriverOpen())) {
     logging::critical("Error opening cuFile driver");
-    abort();
+    exit(EXIT_FAILURE);
+  }
+
+  if (chkError(cudaMalloc(&m_buffer_d, m_bufferSize))) {
+    logging::error("Failed to allocate GPU buffer of size %zu", m_bufferSize);
+    m_buffer_d = nullptr;
   }
 }
 
@@ -74,11 +80,12 @@ FileWriter::~FileWriter()
 
   if (m_buffer_d) {
     chkError(cudaFree(m_buffer_d));
+    m_buffer_d = nullptr;
   }
 
   if (chkCuFile(cuFileDriverClose())) {
     logging::critical("Error closing cuFile driver");
-    abort();
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -182,13 +189,6 @@ int FileWriter::open(const std::string& fileName)
   }
 
   if (m_bufferSize) {
-    rc = cudaMalloc(&m_buffer_d, m_bufferSize);
-    if (rc != CUDA_SUCCESS) {
-      logging::error("Failed to allocate GPU buffer of size %zu: rc %d", m_bufferSize, rc);
-      close();
-      return rc;
-    }
-
     if ( (rc = chkCuFile(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) ) {
       logging::error("Failed to register GPU buffer %p, size %zu with cuFile",
                      m_buffer_d, m_bufferSize);
@@ -197,6 +197,8 @@ int FileWriter::open(const std::string& fileName)
     }
   }
 
+  _reset();
+
   return rc;
 }
 
@@ -204,14 +206,7 @@ int FileWriter::close()
 {
   int rc = 0;
   if (m_fd > 0) {
-    if (m_count > 0) {
-      logging::debug("Flushing %zu bytes to fd %d", m_count, m_fd);
-      m_writing += 2;
-      _write();
-      m_writing -= 2;
-      m_count = 0;
-      m_batch_starttime = XtcData::TimeStamp(0,0);
-    }
+    _flush();
     cuFileHandleDeregister(m_handle);
     logging::debug("Closing fd %d", m_fd);
     rc = ::close(m_fd);
@@ -220,37 +215,53 @@ int FileWriter::close()
       logging::error("Error closing fd %d: %m", m_fd);
     }
     m_fd = 0;
-  }
 
-  if (m_buffer_d) {
     if (chkCuFile(cuFileBufDeregister(m_buffer_d))) {
       logging::error("Failed to deregister GPU buffer at %p with cuFile", m_buffer_d);
     }
   }
+
   return rc;
+}
+
+void FileWriter::_reset()
+{
+  m_count           = 0;
+  m_bufOffset       = 0;
+  m_fileOffset      = 0;
+  m_batch_starttime = XtcData::TimeStamp(0,0);
+}
+
+void FileWriter::_flush()
+{
+  logging::debug("FileWriter flushing %zu bytes to fd %d", m_count, m_fd);
+  m_writing += 2;
+  _write();
+  m_writing -= 2;
+  m_count = 0;
+  m_batch_starttime = XtcData::TimeStamp(0,0);
 }
 
 ssize_t FileWriter::_write()
 {
-  printf("*** FileWriter::write: 1, count %zu, fileOffset %zd\n", m_count, m_fileOffset);
-  ssize_t rc = cuFileWrite(m_handle, m_buffer_d, m_count, m_fileOffset, 0);
-  if (rc < 0) {
-    if (IS_CUFILE_ERR(rc))
-      logging::error("Write error: buffer %p, count %zu: %s (%zd)", m_buffer_d, m_count, CUFILE_ERRSTR(rc), rc);
-    else
-      logging::error("Write error: buffer %p, count %zu: %m", m_buffer_d, m_count);
-  } else {
-    m_fileOffset += rc;
+  ssize_t rc = 0;
+  if (m_count) {
+    rc = cuFileWrite(m_handle, m_buffer_d, m_count, m_fileOffset, 0);
+    if (rc < 0) {
+      if (IS_CUFILE_ERR(rc))
+        logging::error("Write error: buffer %p, count %zu: %s (%zd)", m_buffer_d, m_count, CUFILE_ERRSTR(rc), rc);
+      else
+        logging::error("Write error: buffer %p, count %zu: %m", m_buffer_d, m_count);
+    } else {
+      m_fileOffset += rc;
+    }
   }
-  printf("*** FileWriter::write: 2 buffer %p, count %zu\n", m_buffer_d, m_count);
 
   return rc;
 }
 
 void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp timestamp)
 {
-  printf("*** FileWriter::writeEvent: 1 ptr %p, sz %zu, t %u.%09u\n", devPtr, size, timestamp.seconds(), timestamp.nanoseconds());
-
   // triggered only when starting from scratch
   if (m_batch_starttime.value()==0) m_batch_starttime = timestamp;
 
@@ -259,9 +270,7 @@ void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp tim
   // write out data if buffer full or batch is too old
   // can't be 1 second without a more precise age calculation, since
   // the seconds field could have "rolled over" since the last event
-  printf("*** FileWriter::writeEvent: 2 bufSz %zu, cnt %zu, age %u\n", m_bufferSize, m_count, age_seconds);
   if ((size > (m_bufferSize - m_count)) || age_seconds>2) {
-    printf("*** FileWriter::writeEvent: 3 buf %p, cnt %zu\n", m_buffer_d, m_count);
     m_writing += 1;
     auto rc = _write();
     if (rc != ssize_t(m_count)) {
@@ -272,56 +281,114 @@ void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp tim
     // reset these to prepare for the new batch
     m_count = 0;
     m_batch_starttime = timestamp;
-    printf("*** FileWriter::writeEvent: 4 buf %p, cnt %zu\n", m_buffer_d, m_count);
   }
 
   if (size > (m_bufferSize - m_count)) {
     logging::critical("Buffer size %zu is too small for dgram of size %zu",
                       m_bufferSize - m_count, size);
-    abort();
+    exit(EXIT_FAILURE);
   }
-  printf("*** FileWriter::writeEvent: 5 buf %p, sz %zu\n", m_buffer_d + m_count, size);
   chkError(cudaMemcpyAsync(m_buffer_d + m_count, devPtr, size, cudaMemcpyDeviceToDevice, m_stream));
   m_count += size;
-  printf("*** FileWriter::writeEvent: 6 cnt %zu\n", m_count);
 }
 
 // ---
 
 FileWriterAsync::FileWriterAsync(size_t bufferSize, bool dio) :
-  FileWriter(bufferSize, dio)
+  FileWriter    (2 * bufferSize, dio),
+  m_counts      {0, 0},
+  m_bufOffset   {0, off_t(bufferSize)},
+  m_index       (0),
+  m_bytesWritten(0),
+  m_bufferSize  (bufferSize)
 {
 }
 
-ssize_t FileWriterAsync::_write()
+void FileWriterAsync::_reset()
 {
-  printf("*** FileWriterAsync::write: 1 buffer %p, count %zu vs %zu\n", m_buffer_d, m_count, m_bufferSize);
+  m_counts[0]       = 0;
+  m_counts[1]       = 0;
+  m_index           = 0;
+  m_bytesWritten    = 0;
+  m_fileOffset      = 0;
+  m_batch_starttime = XtcData::TimeStamp(0,0);
+}
 
-  off_t bufOffset = 0;         // Always write from the beggining of the buffer
-  ssize_t bytesWritten;
-  printf("*** FileWriterAsync::write: 2 buf %p, sz %zu, fileOffset %zd, bufOffset %zd\n",
-         m_buffer_d, m_count, m_fileOffset, bufOffset);
-  if (chkCuFile(cuFileWriteAsync(m_handle, m_buffer_d, &m_count,
-                                 &m_fileOffset, &bufOffset,
-                                 &bytesWritten, m_stream))) {
-    logging::critical("Write error: buffer %p, count %zu", m_buffer_d, m_count);
-    abort();
-  } else {
-    // It seems nonoptimal to synchronize here but attempts to avoid it got messy
-    chkError(cudaStreamSynchronize(m_stream));
-    if (bytesWritten < 0) {
-      if (bytesWritten == -1)
-        logging::critical("cuFileWriteAsync IO error: %m");
-      else
-        logging::critical("cuFileWriteAsync error %zd: %s",
-                          bytesWritten, CUFILE_ERRSTR(bytesWritten));
-      abort();
-    }
-    m_fileOffset += bytesWritten;
-    printf("*** FileWriterAsync::write: 3 bytesWritten: %zd, fileOffset %zd, count %zd\n",
-           bytesWritten, m_fileOffset, m_count);
+void FileWriterAsync::_flush()
+{
+  logging::debug("FileWriterAsync flushing %zu bytes to fd %d", m_counts[m_index], m_fd);
+  m_writing += 2;
+  _write();
+  m_writing -= 2;
+
+  // Wait for the current write to complete and check its completion status
+  chkError(cudaStreamSynchronize(m_stream));
+  if (m_bytesWritten < 0) {
+    if (m_bytesWritten == -1)
+      logging::critical("cuFileWriteAsync IO error: %m");
+    else
+      logging::critical("cuFileWriteAsync error %zd: %s",
+                        m_bytesWritten, CUFILE_ERRSTR(m_bytesWritten));
+    exit(EXIT_FAILURE);
   }
-  printf("*** FileWriterAsync::write: 4 fileOffset %zd\n", m_fileOffset);
+  m_fileOffset += m_bytesWritten;
 
-  return bytesWritten;
+  m_counts[m_index] = 0;
+  m_batch_starttime = XtcData::TimeStamp(0,0);
+}
+
+void FileWriterAsync::_write()
+{
+  // Wait for the previous write to complete and check its completion status
+  chkError(cudaStreamSynchronize(m_stream));
+  if (m_bytesWritten < 0) {
+    if (m_bytesWritten == -1)
+      logging::critical("cuFileWriteAsync IO error: %m");
+    else
+      logging::critical("cuFileWriteAsync error %zd: %s",
+                        m_bytesWritten, CUFILE_ERRSTR(m_bytesWritten));
+    exit(EXIT_FAILURE);
+  }
+  m_fileOffset += m_bytesWritten;
+
+  if (m_counts[m_index]) {
+    if (chkCuFile(cuFileWriteAsync(m_handle, m_buffer_d, &m_counts[m_index],
+                                   &m_fileOffset, &m_bufOffset[m_index],
+                                   &m_bytesWritten, m_stream))) {
+      logging::critical("Write error: buffer %p, count %zu", m_buffer_d, m_counts[m_index]);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  m_index = (m_index + 1) & 0x1;
+}
+
+void FileWriterAsync::writeEvent(const void* devPtr, size_t size, const TimeStamp timestamp)
+{
+  // triggered only when starting from scratch
+  if (m_batch_starttime.value()==0) m_batch_starttime = timestamp;
+
+  // rough calculation: ignore nanoseconds
+  unsigned age_seconds = timestamp.seconds()-m_batch_starttime.seconds();
+  // write out data if buffer full or batch is too old
+  // can't be 1 second without a more precise age calculation, since
+  // the seconds field could have "rolled over" since the last event
+  if ((size > (m_bufferSize - m_counts[m_index])) || age_seconds>2) {
+    // Start a new write
+    m_writing += 1;
+    _write();
+    m_writing -= 1;
+
+    // reset these to prepare for the new batch
+    m_counts[m_index] = 0;
+    m_batch_starttime = timestamp;
+  }
+
+  if (size > (m_bufferSize - m_counts[m_index])) {
+    logging::critical("Buffer size %zu is too small for dgram of size %zu",
+                      m_bufferSize - m_counts[m_index], size);
+    exit(EXIT_FAILURE);
+  }
+  chkError(cudaMemcpyAsync(m_buffer_d + m_bufOffset[m_index] + m_counts[m_index], devPtr, size, cudaMemcpyDeviceToDevice, m_stream));
+  m_counts[m_index] += size;
 }

@@ -5,6 +5,7 @@ Utilities of common use for detector project
 Usage::
 
   from psana.detector.Utils import *
+  import psana.detector.Utils as ut
 
   is_selected = selected_record(nrec)
   s = info_dict(d, fmt='  %12s: %s', sep='\n')
@@ -13,6 +14,8 @@ Usage::
   s = info_command_line_parameters(parser) # for OptionParser
   s = info_parser_arguments(parser) # for ArgumentParser
   save_log_record_at_start(dirrepo, procname, fac_mode=0o664, tsfmt='%Y-%m-%dT%H:%M:%S%z')
+  resp = is_none(par, msg, logger_method=logger.debug)
+  resp = is_true(cond, msg, logger_method=logger.debug)
 
 2020-11-06 created by Mikhail Dubrovin
 """
@@ -31,17 +34,6 @@ time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile
     gu.set_file_access_mode, gu.time_sec_from_stamp, gu.create_directory, gu.file_mode, gu.change_file_ownership
 
 #log_rec_at_start = gu.log_rec_on_start
-#create_directory = gu.create_directory
-
-#def create_directory(dir, mode=0o777, **kwa):
-#    """Creates directory and sets its mode"""
-#    if os.path.exists(dir):
-#        logger.debug('Exists: %s mode(oct): %s' % (dir, oct(file_mode(dir))))
-#    else:
-#        os.makedirs(dir)
-#        os.chmod(dir, mode)
-#        logger.debug('Created: %s, mode(oct)=%s' % (dir, oct(mode)))
-
 
 def selected_record(nrec):
     return nrec<5\
@@ -122,8 +114,7 @@ def log_rec_at_start(tsfmt='%Y-%m-%dT%H:%M:%S%z', **kwa):
 
 def save_log_record_at_start(dirrepo, procname, dirmode=0o2775, filemode=0o664, logmode='INFO', group='ps-users',\
                              tsfmt='%Y-%m-%dT%H:%M:%S%z', umask=0o0):
-    """Adds record at start to the log file <dirrepo>/logs/log-<procname>-<year>.txt.
-    """
+    """Adds record at start to the log file <dirrepo>/logs/log-<procname>-<year>.txt."""
     from psana.detector.RepoManager import RepoManager
     os.umask(umask)
     rec = log_rec_at_start(tsfmt, **{'dirrepo':dirrepo,})
@@ -160,5 +151,10 @@ def is_none(par, msg, logger_method=logger.debug):
     resp = par is None
     if resp: logger_method(msg)
     return resp
+
+
+def is_true(cond, msg, logger_method=logger.debug):
+    if cond: logger_method(msg)
+    return cond
 
 # EOF

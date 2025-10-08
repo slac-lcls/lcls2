@@ -10,7 +10,6 @@ Usage::
   o = MaskAlgos(calibconst, **kwa)
   v = o.cco  # CalibConstants object
 
-
 2022-07-08 created by Mikhail Dubrovin
 """
 
@@ -21,28 +20,35 @@ import numpy as np
 from psana.detector.calibconstants import CalibConstants
 import psana.detector.UtilsMask as um
 DTYPE_MASK, DTYPE_STATUS = um.DTYPE_MASK, um.DTYPE_STATUS
-
 from psana.detector.Utils import is_none
 from psana.detector.NDArrUtils import info_ndarr
-
 
 class MaskAlgos:
 
     def __init__(self, calibconst, detname, **kwa):
-        """calibconst: dict from DB
+        """calibconst: (dict) from DB
+           detname (str) - any unique detector name to cach info in CalibConstants
+           self._kwa = kwa (dict) - should be THE MAJOR WAY to pass kwargs to mask methods
         """
         logger.debug('__init__')
         self.cco = CalibConstants(calibconst, detname, **kwa)
         self._mask = None
+        self._kwa = kwa
+        #self._odet = kwa.get('odet', None) # use it dynamically
+        #self._seg_geo = _odet._seg_geo
+        self.logmet_init = kwa.get('logmet_init', logger.debug)
+        self.logmet_init('MaskAlgos.__init__(%s, **%s)' % (detname, str(kwa)))
 
 
-    def mask_default(self, dtype=DTYPE_MASK):
+    def mask_default(self, dtype=DTYPE_MASK, **kwa):
         shape = self.cco.shape_as_daq()
+        self.logmet_init('mask_default(dtype=%s)' % type(dtype))
         return None if shape is None else np.ones(shape, dtype=dtype)
 
 
-    def mask_calib_or_default(self, dtype=DTYPE_MASK):
+    def mask_calib_or_default(self, dtype=DTYPE_MASK, **kwa):
         mask = self.cco.mask_calib()
+        self.logmet_init('mask_calib_or_default(dtype=%s)' % type(dtype))
         return self.mask_default(dtype) if mask is None else mask.astype(dtype)
 
 
@@ -87,7 +93,7 @@ class MaskAlgos:
         if is_none(smask, 'status_as_mask is None'): return None
 
         grinds = self.gain_range_indexes(gain_range_inds, smask)
-        logger.debug('in MaskAlgos.mask_from_status'\
+        self.logmet_init('MaskAlgos.mask_from_status:'\
                 + '\n   grinds: %s' % str(grinds)\
                 + '\n   status_bits: %s' % hex(status_bits)\
                 + '\n   stextra_bits: %s' % hex(stextra_bits)\
@@ -103,7 +109,7 @@ class MaskAlgos:
         return mask
 
 
-    def mask_neighbors(self, mask, rad=9, ptrn='r'):
+    def mask_neighbors(self, mask, rad=9, ptrn='r', **kwa):
         """Returns 2-d or n-d mask array with increased by radial paramerer rad region around all 0-pixels in the input mask.
 
            Parameter
@@ -116,10 +122,13 @@ class MaskAlgos:
 
            - np.array - mask with masked neighbors, shape = mask.shape
         """
+        self.logmet_init('MaskAlgos.mask_neighbors: rad=%d, ptrn="%s", **kwa: %s' % (rad, ptrn, str(kwa)))
         return um.mask_neighbors(mask, rad, ptrn)
 
 
     def mask_edges(self, width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa):
+        self.logmet_init('MaskAlgos.mask_edges width:%d, edge_rows:%d, edge_cols:%d, dtype:%s, **kwa: %s'%\
+                         (width, edge_rows, edge_cols, str(dtype), str(kwa)))
         return um.mask_edges(self.mask_default(),\
             width=width, edge_rows=edge_rows, edge_cols=edge_cols, dtype=dtype, **kwa)
 
@@ -131,22 +140,31 @@ class MaskAlgos:
         center_rows: int number of edge rows to mask for all ASICs
         center_cols: int number of edge columns to mask for all ASICs
         dtype: numpy dtype of the output array
-        **kwa: is not used
+        **kwa: other kwargs
         Returns
         -------
         mask: np.ndarray, ndim=3, shaped as full detector data, mask of the panel and asic edges
         """
         logger.debug('epix_base.mask_edges')
-        seg_geo = self.cco.seg_geo()
 
+        #_kwa = self.cco._kwa
+        odet = self._kwa.get('odet', None)
+        seg_geo = self.cco.seg_geo() if odet is None else\
+                  odet._seg_geo
+        if is_none(seg_geo, 'self.cco.seg_geo() is None and AreaDetector object is None', logger_method=logger.warning):
+             return None
+
+        self.logmet_init('MaskAlgos.mask_center wcenter:%d, center_rows:%d, center_cols:%d, dtype:%s, **kwa: %s'%\
+                         (wcenter, center_rows, center_cols, str(dtype), str(kwa)))
         mask1 = seg_geo.pixel_mask_array(width=0, edge_rows=0, edge_cols=0,\
                   center_rows=center_rows, center_cols=center_cols, dtype=dtype, **kwa)
         nsegs = self.cco.number_of_segments_total()
-        if is_none(nsegs, '_number_of_segments_total is None'): return None
-        return np.stack([mask1 for i in range(nsegs)])
+        if is_none(nsegs, '_number_of_segments_total is None, return None'): return None
+        return mask1 if nsegs==1 else np.stack([mask1 for i in range(nsegs)])
 
 
-    def mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, dtype=DTYPE_MASK, **kwa):
+    def mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
+                  dtype=DTYPE_MASK, **kwa):
         """Returns combined mask controlled by the keyword arguments.
            Parameters
            ----------
@@ -167,22 +185,27 @@ class MaskAlgos:
                                        number of masked center rows and columns in the segment,
                                        works for cspad2x1, epix100, epix10ka, jungfrau panels
            - calib    : bool : False - apply user's defined mask from pixel_mask constants
-           - umask  : np.array: None - apply user's defined mask from input parameters (shaped as data)
+           - umask    : np.array: None - apply user's defined mask from input parameters (shaped as data)
+           - dtype    : np.dtype: np.uint8 - mask array data type
+           - logmet_init : logger.debug - method for logger
 
            Returns
            -------
            np.array: dtype=np.uint8, shape as det.raw - mask array of 1 or 0 or None if all switches are False.
         """
 
-        logger.debug('MaskAlgos.mask_comb ---- mask evolution')
+        #self.logmet_init('MaskAlgos.mask_comb ---- mask evolution')
+        self.logmet_init('MaskAlgos.mask_comb status=%s, neighbors=%s, edges=%s, center=%s, calib=%s, umask=%s, dtype:%s, **kwa: %s'%\
+                         (status, neighbors, edges, center, calib, umask, str(dtype), str(kwa)))
 
         mask = None
         if status:
             status_bits  = kwa.get('status_bits', (1<<64)-1)
             stextra_bits = kwa.get('stextra_bits', (1<<64)-1)
             gain_range_inds = kwa.get('gain_range_inds', None) # (0,1,2,3,4) works for epix10ka
-            mask = self.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits, gain_range_inds=gain_range_inds, dtype=dtype)
-            logger.debug(info_ndarr(mask, 'in mask_comb after mask_from_status'))
+            mask = self.mask_from_status(status_bits=status_bits, stextra_bits=stextra_bits,\
+                                         gain_range_inds=gain_range_inds, dtype=dtype)
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_from_status'))
 
 #        if unbond and (self.is_cspad2x2() or self.is_cspad()):
 #            mask_unbond = self.mask_geo(par, width=0, wcenter=0, mbits=4) # mbits=4 - unbonded pixels for cspad2x1 segments
@@ -192,7 +215,7 @@ class MaskAlgos:
             rad  = kwa.get('rad', 5)
             ptrn = kwa.get('ptrn', 'r')
             mask = um.mask_neighbors(mask, rad=rad, ptrn=ptrn)
-            logger.debug(info_ndarr(mask, 'in mask_comb after mask_neighbors:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_neighbors:'))
 
         if edges:
             width = kwa.get('width', 0)
@@ -200,7 +223,7 @@ class MaskAlgos:
             ecols = kwa.get('edge_cols', 1)
             mask_edges = self.mask_edges(width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
             mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype)
-            logger.debug(info_ndarr(mask, 'in mask_comb after mask_edges:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_edges:'))
 
         if center:
             wcent = kwa.get('wcenter', 0)
@@ -208,26 +231,37 @@ class MaskAlgos:
             ccols = kwa.get('center_cols', 1)
             mask_center = self.mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols, dtype=dtype)
             mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype)
-            logger.debug(info_ndarr(mask, 'in mask_comb after mask_center:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_center:'))
 
         if calib:
             mask_calib = self.mask_calib_or_default(dtype=dtype)
             mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype)
-            logger.debug(info_ndarr(mask, 'in mask_comb after mask_calib:'))
+            self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_calib:'))
 
         if umask is not None:
             mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype)
+            #self.logmet_init(info_ndarr(mask, 'in mask_comb after umask:'))
 
-        logger.debug(info_ndarr(mask, 'in mask_comb at exit:'))
+        self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb at exit:'))
 
         return mask
 
 
-    def mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
-        """returns cached mask_comb.
+#    def mask(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
+#             force_update=False, dtype=DTYPE_MASK, **kwa):
+#             self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center,\
+#                                       calib=calib, umask=umask, dtype=dtype, **kwa)
+    def mask(self, **kwa):
+        """returns cached mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
+        Control parameter
+        force_update (bool) allows to re-evaluate cached mask for newly passed **kwa
         """
+        force_update = kwa.get('force_update', False)
+        if force_update: self._kwa = kwa
         if self._mask is None or force_update:
-           self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center, calib=calib, umask=umask, dtype=dtype, **kwa)
+           self.logmet_init('MaskAlgos.mask(**kwa) calls mask_comb(**self._kwa)'+\
+                            '\n  with self._kwa from Detector(detname,**kwa)   kwa:%s' % str(self._kwa))
+           self._mask = self.mask_comb(**self._kwa)
         return self._mask
 
 

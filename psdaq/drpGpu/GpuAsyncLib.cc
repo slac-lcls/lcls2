@@ -48,7 +48,7 @@ bool CudaContext::init(int device, bool quiet) {
     int devs = 0;
     if (chkError(cuDeviceGetCount(&devs)))
         return false;
-    logging::debug("Total GPU devices %d", devs);
+    logging::debug("Total GPU devices: %d", devs);
     if (devs <= 0) {
         logging::error("No GPU devices available!");
         return false;
@@ -71,13 +71,14 @@ bool CudaContext::init(int device, bool quiet) {
     char name[256];
     if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
         return false;
-    logging::debug("Selected GPU device: %s", name);
+    logging::info("Selected GPU device: %s", name);
+
+    cudaDeviceProp deviceProp;
+    chkError(cudaGetDeviceProperties(&deviceProp, device_));
+    logging::info("Compute Capability: %d.%d", deviceProp.major, deviceProp.minor);
 
     // Set required attributes
-    int res;
-    if (chkError(cuDeviceGetAttribute(&res, CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1, device_)))
-        return false;
-    if (!res) {
+    if (!getAttribute(CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1)) {
         logging::warning("This device does not support CUDA Stream Operations, this code will not run!");
         logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
                        "if your GPU is supported.");
@@ -91,14 +92,6 @@ bool CudaContext::init(int device, bool quiet) {
     logging::debug("Global memory: %zu MB", global_mem >> 20);
     if (global_mem > (size_t)4 << 30)
         logging::debug("64-bit Memory Address support");
-
-    int value;
-    if (chkError(cuDeviceGetAttribute(&value, CU_DEVICE_ATTRIBUTE_UNIFIED_ADDRESSING, device_)))
-        return false;
-    logging::debug("Device supports unified addressing: %s", value ? "YES" : "NO");
-    if (chkError(cudaDeviceGetAttribute(&value, cudaDevAttrComputePreemptionSupported, device_)))
-        return false;
-    logging::debug("Device supports compute preemption: %s", value ? "YES" : "NO");
 
     // Create context
     if (chkError(cuCtxCreate(&context_, 0, device_)))
@@ -303,9 +296,9 @@ DmaTgt_t dmaTgtGet(const DataGPU& gpu)
 
     DmaTgt_t tgt;
     switch (regVal) {
-        case CPU:  tgt = CPU;  break;
-        case GPU:  tgt = GPU;  break;
-        default:   tgt = ERR;  break;
+        case TGT_CPU:  tgt = TGT_CPU;  break;
+        case TGT_GPU:  tgt = TGT_GPU;  break;
+        default:       tgt = TGT_ERR;  break;
     }
     return tgt;
 }
@@ -318,8 +311,10 @@ void dmaTgtSet(const DataGPU& gpu, DmaTgt_t tgt)
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
 }
 
+/** Function to reset the DMA buffer index */
 void dmaIdxReset(const DataGPU& gpu)
 {
+    // Toggle the writeEnable register to reset the DMA buffer index
     const uint64_t writeEnReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
     uint32_t value;
     auto rc = dmaReadRegister(gpu.fd(), writeEnReg, &value);

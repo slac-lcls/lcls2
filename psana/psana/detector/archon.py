@@ -260,7 +260,6 @@ class archon_raw_1_0_X(AreaDetectorRaw):
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 36, 300
         return np.hstack([a[:,st*i+sf:st*(i+1)] for i in range(self._nbanks)])
 
-    
     def _mask_fake(self, raw_shape, dtype=np.uint8) -> Array2d:
         """returns mask of shape=(<nrows>,4800), with fake pixels of all banks set to 0"""
         sf, st = self._fakePixelsPerBank, self._totPixelsPerBank # = 36, 300

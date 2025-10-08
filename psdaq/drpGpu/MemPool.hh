@@ -62,7 +62,7 @@ public:
   virtual ~MemPoolGpu();
   int initialize(Parameters& para);
 public:   // Virtuals
-  int fd() const override;
+  int fd(unsigned unit=0) const override;
   int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:  // Virtuals
   void _freeDma(unsigned count, uint32_t* indices) override { /* Nothing to do */ }
@@ -79,14 +79,17 @@ public:
   const auto& hostWrtBufsVec_h() const { return m_hostWrtBufsVec_h; }
   const auto& hostWrtBufsVec_d() const { return m_hostWrtBufsVec_d; }
   const auto& hostWrtBufs_d()    const { return m_hostWrtBufs_d; }
-  const auto& calibBuffers_h ()  const { return m_calibBufsVec_h; }
   const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
-  const auto& reduceBuffers_h()  const { return m_reduceBufsVec_h; }
   const auto& reduceBuffers_d()  const { return m_reduceBuffers_d; }
   size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
-  size_t calibBufSize()          const { return m_calibBufSize; }
-  size_t reduceBufSize()         const { return m_reduceBufSize; }
-  size_t reduceBufReserved()     const { return m_reduceBufRsvd; }
+  size_t calibBufsSize()         const { return m_calibBufsSize; }
+  size_t reduceBufsSize()        const { return m_reduceBufsSize; }
+  size_t reduceBufsReserved()    const { return m_reduceBufsRsvd; }
+  // @todo: Right place for these?
+  int64_t nPgpInUser (unsigned unit) const { return dmaGetRxBuffinUserCount  (fd(unit)); }
+  int64_t nPgpInHw   (unsigned unit) const { return dmaGetRxBuffinHwCount    (fd(unit)); }
+  int64_t nPgpInPreHw(unsigned unit) const { return dmaGetRxBuffinPreHwQCount(fd(unit)); }
+  int64_t nPgpInRx   (unsigned unit) const { return dmaGetRxBuffinSwQCount   (fd(unit)); }
 private:
   int  _gpuMapFpgaMem(int fd, CUdeviceptr& buffer, uint64_t offset, size_t size, int write);
   void _gpuUnmapFpgaMem(CUdeviceptr& buffer);
@@ -95,16 +98,14 @@ private:
   std::vector<DetPanel>   m_panels;
   unsigned                m_setMaskBytesDone;
   size_t                  m_hostWrtBufsSize;
-  std::vector<vecpu32_t>  m_hostWrtBufsVec_h; // [nPanels][nBuffers][nElements]
-  std::vector<uint32_t**> m_hostWrtBufsVec_d; // [nPanels][nBuffers][nElements]
-  uint32_t***             m_hostWrtBufs_d;    // [nPanels][nBuffers][nElements]
-  size_t                  m_calibBufSize;
-  std::vector<float*>     m_calibBufsVec_h;   // [nBuffers][nPanels * nElements]
-  float**                 m_calibBuffers_d;   // [nBuffers][nPanels * nElements]
-  size_t                  m_reduceBufSize;
-  size_t                  m_reduceBufRsvd;
-  std::vector<uint8_t*>   m_reduceBufsVec_h;  // [nBuffers][nBytes]
-  uint8_t**               m_reduceBuffers_d;  // [nBuffers][nBytes]
+  std::vector<uint32_t*>  m_hostWrtBufsVec_h; // [nPanels][nBuffers * nElements]
+  std::vector<uint32_t*>  m_hostWrtBufsVec_d; // [nPanels][nBuffers * nElements]
+  uint32_t**              m_hostWrtBufs_d;    // [nPanels][nBuffers * nElements]
+  size_t                  m_calibBufsSize;
+  float*                  m_calibBuffers_d;   // [nBuffers * nPanels * nElements]
+  size_t                  m_reduceBufsSize;
+  size_t                  m_reduceBufsRsvd;
+  uint8_t*                m_reduceBuffers_d;  // [nBuffers * nBytes]
 };
 
   } // Gpu

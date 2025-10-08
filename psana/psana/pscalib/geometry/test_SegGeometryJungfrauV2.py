@@ -93,24 +93,34 @@ if __name__ == "__main__":
     gg.show()
 
 
-  def usage(tname='0'):
-    s = ''
-    if tname in ('0',): s+='\n==== Usage: python %s <test-number>' % sys.argv[0]
-    if tname in ('0','1'): s+='\n 1 - test_xyz_min_max()'
-    if tname in ('0','2'): s+='\n 2 - test_xyz_maps()'
-    if tname in ('0','3'): s+='\n 3 - test_jungfrau_img()'
-    if tname in ('0','4'): s+='\n 4 - test_jungfrau_img_easy()'
-    if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
-    if tname in ('0','6'): s+='\n 6 - test_jungfrau_mask(width=10, wcenter=5)'
-    if tname in ('0','7'): s+='\n 7 - test_jungfrau_mask(width=0, wcenter=0, edge_rows=10, edge_cols=20, center_rows=5, center_cols=10)'
-    return s
+#  def usage(tname='0'):
+#    s = ''
+#    if tname in ('0',): s+='\n==== Usage: python %s <test-number>' % sys.argv[0]
+#    if tname in ('0','1'): s+='\n 1 - test_xyz_min_max()'
+#    if tname in ('0','2'): s+='\n 2 - test_xyz_maps()'
+#    if tname in ('0','3'): s+='\n 3 - test_jungfrau_img()'
+#    if tname in ('0','4'): s+='\n 4 - test_jungfrau_img_easy()'
+#    if tname in ('0','5'): s+='\n 5 - test_pix_sizes()'
+#    if tname in ('0','6'): s+='\n 6 - test_jungfrau_mask(width=10, wcenter=5)'
+#    if tname in ('0','7'): s+='\n 7 - test_jungfrau_mask(width=0, wcenter=0, edge_rows=10, edge_cols=20, center_rows=5, center_cols=10)'
+#    return s
 
 
-if __name__ == "__main__":
+def USAGE(tname=None):
+    import inspect
+    SCRNAME = sys.argv[0].rsplit('/')[-1]
+    return '\n  %s <TNAME>\n' % SCRNAME\
+         + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "tname in" in s])\
+         + '\n\nHELP:\n  list of parameters: ./%s -h\n  list of tests:      ./%s' % (SCRNAME, SCRNAME)
+
+def selector():
     logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
-    if len(sys.argv)==1: logger.info(usage())
+
+    #sg = SegGeometryJungfrauV2(use_wide_pix_center=False)
+
+    if len(sys.argv)==1: logger.info(USAGE())
     elif tname in ('1',): test_xyz_min_max()
     elif tname in ('2',): test_xyz_maps()
     elif tname in ('3',): test_jungfrau_img()
@@ -118,8 +128,10 @@ if __name__ == "__main__":
     elif tname in ('5',): test_pix_sizes()
     elif tname in ('6',): test_jungfrau_mask(width=10, wcenter=5)
     elif tname in ('7',): test_jungfrau_mask(width=0, wcenter=0, edge_rows=10, edge_cols=20, center_rows=5, center_cols=10)
-    else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))
-    if len(sys.argv)>1: logger.info(usage(tname))
+    else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, USAGE()))
+    if len(sys.argv)>1: logger.info(USAGE()) #(tname))
     sys.exit('END OF TEST')
 
+if __name__ == "__main__":
+    selector()
 # EOF

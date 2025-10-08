@@ -35,7 +35,7 @@ class Reader
 {
 public:
   Reader(unsigned panel, const Parameters&, MemPoolGpu&, Detector&,
-         size_t trgPrimitiveSize, const cuda::atomic<int>& terminate_d);
+         size_t trgPrimitiveSize, const cuda::atomic<uint8_t>& terminate_d);
   ~Reader();
   void start();
 public:
@@ -50,8 +50,7 @@ private:
 private:
   MemPoolGpu&                  m_pool;
   Detector&                    m_det;
-  const cuda::atomic<int>&     m_terminate_d;
-  bool*                        m_done;      // Cache for m_terminate_d
+  const cuda::atomic<uint8_t>& m_terminate_d;
   std::vector<cudaStream_t>    m_streams;
   std::vector<cudaGraphExec_t> m_graphExecs;
   Ptr<RingIndexDtoD>           m_readerQueue;

@@ -771,6 +771,8 @@ class DataSourceBase(abc.ABC):
                 if existing_info != latest_info:
                     self._calib_const = utils.WeakDict({})
                     self.logger.warning("det_info in pickle file does not matched with the latest run")
+                    self.logger.warning(f"{existing_info=}")
+                    self.logger.warning(f"{latest_info=}")
                 elif self._calib_const:
                     self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
                     break

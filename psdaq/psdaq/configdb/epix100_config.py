@@ -64,7 +64,7 @@ def epix100_init(
             pgp4=True,
             pollEn=False,
             initRead=False,
-            pcieBoardType="Kcu1500",
+            pcieBoardType="XilinxKcu1500",
             serverPort=9120,
         )
         pbase.__enter__()

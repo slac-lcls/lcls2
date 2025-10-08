@@ -118,7 +118,7 @@ class MDBWeb_CLI(MDB_CLI):
         run = dskwargs['run']
         kwa['experiment'] = exp
         kwa['run'] = run
-        det        = kwa.get('detector', None)
+        detname    = kwa.get('detname', None)
         ctype      = kwa.get('ctype', None)
         vers       = kwa.get('version', None)
         prefix     = kwa.get('iofname', None)
@@ -129,12 +129,12 @@ class MDBWeb_CLI(MDB_CLI):
         if time_stamp is not None:
            time_sec = gu.time_sec_from_stamp(tsformat, time_stamp)
 
-        print('XXXX exp: %s run: %d det: %s ctype: %s time_sec: %d vers: %s dbsuffix: %s' % (exp, run, det, ctype, time_sec, vers, dbsuffix))
+        print('XXXX exp: %s run: %d detname: %s ctype: %s time_sec: %d vers: %s dbsuffix: %s' % (exp, run, detname, ctype, time_sec, vers, dbsuffix))
         #self.defs = vars(parser.parse_args([]))
         print('XXXX defs: %s' % self.defs)
         _vers = None if vers == self.defs['version'] else vers
         print('XXXX _vers: %s' % _vers)
-        resp = wu.calib_constants(det, exp, ctype, run, time_sec, vers=_vers, url=cc.URL, dbsuffix=dbsuffix)
+        resp = wu.calib_constants(detname, exp, ctype, run, time_sec, vers=_vers, url=cc.URL, dbsuffix=dbsuffix)
         if resp is None:
             sys.exit('wu.calib_constants returns None')
         data, doc = resp
@@ -157,7 +157,7 @@ class MDBWeb_CLI(MDB_CLI):
         fname     = kwa.get('iofname', 'None')
         ctype     = kwa.get('ctype', 'None')
         dtype     = kwa.get('dtype', 'None')
-        det       = kwa.get('detector', None)
+        detname   = kwa.get('detname', None)
         dbsuffix  = kwa.get('dbsuffix', None)
         verb      = self.strloglev == 'DEBUG'
         dskwargs  = datasource_kwargs_from_string(_dskwargs, detname=None)
@@ -170,11 +170,12 @@ class MDBWeb_CLI(MDB_CLI):
         d = up.get_config_info_for_dataset_detname(**kwa)
 
         print('\nmetadata from DataSource run and run.Detector:', d)
-        kwa['shortname'] = shortname = d.get('shortname', None)
-        kwa['longname'] = longname = d.get('longname', None)
-        kwa['detname'] = det
-        kwa['dettype'] = d['dettype']
-        kwa['det'] = det = shortname
+        kwa['shortname']   = shortname = d.get('shortname', None)
+        kwa['longname']    = longname = d.get('longname', None)
+        kwa['detname']     = detname
+        kwa['dettype']     = d['dettype']
+        kwa['det']         = shortname
+        kwa['detector']    = shortname
         kwa['tstamp_orig'] = d['tstamp_orig']
         kwa['trun_sec']    = d['trun_sec']
         kwa['tsec_orig']   = d['tsec_orig']
