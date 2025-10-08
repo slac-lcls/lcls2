@@ -1,5 +1,4 @@
 import abc
-import gc
 import glob
 import json
 import logging
@@ -7,7 +6,6 @@ import os
 import re
 import socket
 import time
-import weakref
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,10 +13,8 @@ import numpy as np
 import requests
 from kafka import KafkaProducer
 
-import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
-from psana.pscalib.app.calib_prefetch import calib_utils
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
@@ -185,14 +181,6 @@ class DataSourceBase(abc.ABC):
         self.cached_detectors = kwargs.get("cached_detectors", [])
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
-
-        # Calibration constant structures
-        # Held by _calib_const, _cc_weak holds weak references to the sub-dicts
-        # dsparms.calibconst holds a weak reference to _cc_weak
-        self._calib_const = None
-        """Holds calibration constants for all detectors."""
-        self._cc_weak = utils.WeakDict({})
-        """Holds weakrefs to each detectors constants. Passed via weakref in dsparms."""
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -707,103 +695,6 @@ class DataSourceBase(abc.ABC):
             self.logger.debug(f"close tmp smd fds:{smd_fds}")
 
         self.dsparms.set_use_smds(use_smds)
-
-    def _clear_calibconst(self):
-        """Explicitly clear calibration constants and force garbage collection.
-
-        Helps to prevent leakage of calibration constants between runs.
-        """
-        if self._calib_const is not None:
-            self._calib_const = None
-            gc.collect()
-            self._calib_const = utils.WeakDict({})
-            self._cc_weak = utils.WeakDict({})
-
-    def _create_weak_calibconst(self):
-        """Setup weak references to calibration constants.
-
-        Pass along only weak references to large calibration data structures
-        since references are held in many places downstream making garbage
-        collection unreliable if any one object leaks/has circular references.
-        """
-        if self._calib_const is not None:
-            for key in self._calib_const:
-                self._cc_weak[key] = weakref.WeakValueDictionary(self._calib_const[key])
-        # Only use dsparms.calibconst to pass to runs, detectors etc.
-        self.dsparms.calibconst = weakref.proxy(self._cc_weak)
-
-    def _setup_run_calibconst(self):
-        """
-        Initialize the `dsparms.calibconst` dictionary with calibration constants.
-
-        If `use_calib_cache` is enabled, attempts to load calibration constants from
-        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
-        fetches calibration constants directly from the database for each detector.
-
-        This function supports skipping selected detectors via `skip_calib_load`.
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        runinfo = self._get_runinfo()
-        if not runinfo:
-            return
-        expt, runnum, _ = runinfo
-        self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
-
-        self._clear_calibconst()
-
-        if self.use_calib_cache:
-            self.logger.debug("using calibration constant from shared memory, if exists")
-            calib_const, existing_info, max_retry = (None, None, 0)
-            latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
-            while not calib_const and max_retry < self.fetch_calib_cache_max_retries and existing_info != latest_info:
-                try:
-                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
-                except Exception as e:
-                    self.logger.warning(f"failed to retrieve calib_const: {e}")
-                if loaded_data is not None:
-                    self._calib_const = utils.make_weak_refable(loaded_data.get("calib_const"))
-                    existing_info = loaded_data.get("det_info")
-                if existing_info != latest_info:
-                    self._calib_const = utils.WeakDict({})
-                    self.logger.warning("det_info in pickle file does not matched with the latest run")
-                    self.logger.warning(f"{existing_info=}")
-                    self.logger.warning(f"{latest_info=}")
-                elif self._calib_const:
-                    self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
-                    break
-                max_retry += 1
-                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
-                time.sleep(1)
-        else:
-            if self._calib_const is None:
-                self._calib_const = utils.WeakDict({})
-            for det_name, configinfo in self.dsparms.configinfo_dict.items():
-                if expt:
-                    if expt == "xpptut15":
-                        det_uniqueid = "cspad_detnum1234"
-                    else:
-                        det_uniqueid = configinfo.uniqueid
-                    if hasattr(self, "skip_calib_load") and (det_name in self.skip_calib_load or self.skip_calib_load=="all"):
-                        self._calib_const[det_name] = utils.WeakDict({})
-                        continue
-                    st = time.monotonic()
-                    calib_const = wu.calib_constants_all_types(
-                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
-                    )
-                    en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
-                    self._calib_const[det_name] = utils.make_weak_refable(calib_const)
-                else:
-                    self.logger.info(
-                        "Warning: cannot access calibration constant (exp is None)"
-                    )
-                    self._calib_const[det_name] = utils.WeakDict({})
-        self._create_weak_calibconst()
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)
