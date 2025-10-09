@@ -53,6 +53,26 @@ class RunParallel(Run):
             self.bd_node = BigDataNode(ds, self)
             self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
 
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if nodetype == "smd0":
+            super()._setup_run_calibconst()
+        else:
+            # _setup_run_calibconst runs this
+            self._clear_calibconst()
+
+        self._calib_const = self.comms.psana_comm.bcast(
+            self._calib_const, root=0
+        )
+
+        # workaround for archon crash on rank0 from Gabriel
+        #if nodetype != "smd0":
+        #    # smd0 already did this in _setup_run_calibconst
+        #    self._create_weak_calibconst()
+        self._create_weak_calibconst()
+
+
     def events(self):
         evt_iter = self.start()
         st = time.time()
@@ -287,30 +307,11 @@ class MPIDataSource(DataSourceBase):
                 return True
         # end while True
 
-    def _setup_run_calibconst(self):
-        if nodetype == "smd0":
-            super()._setup_run_calibconst()
-        else:
-            # _setup_run_calibconst runs this
-            self._clear_calibconst()
-
-        self._calib_const = self.comms.psana_comm.bcast(
-            self._calib_const, root=0
-        )
-
-        # workaround for archon crash on rank0 from Gabriel
-        #if nodetype != "smd0":
-        #    # smd0 already did this in _setup_run_calibconst
-        #    self._create_weak_calibconst()
-        self._create_weak_calibconst()
-
     def _start_run(self):
         if self._setup_beginruns():  # try to get next run from current files
-            self._setup_run_calibconst()
             return True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 return True
 
     def runs(self):

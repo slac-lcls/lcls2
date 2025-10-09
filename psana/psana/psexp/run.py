@@ -198,24 +198,32 @@ class Run(object):
             self.logger.debug("using calibration constant from shared memory, if exists")
             calib_const, existing_info, max_retry = (None, None, 0)
             latest_info = self.get_filtered_detinfo()
-            while not calib_const and max_retry < self.ds.fetch_calib_cache_max_retries and existing_info != latest_info:
+
+            while not calib_const and max_retry < self.ds.fetch_calib_cache_max_retries:
                 try:
                     loaded_data = calib_utils.try_load_data_from_file(self.logger)
                 except Exception as e:
                     self.logger.warning(f"failed to retrieve calib_const: {e}")
+                    loaded_data = None
+
                 if loaded_data is not None:
                     self._calib_const = utils.make_weak_refable(loaded_data.get("calib_const"))
                     existing_info = loaded_data.get("det_info")
-                if existing_info != latest_info:
-                    self._calib_const = utils.WeakDict({})
-                    self.logger.warning("det_info in pickle file does not matched with the latest run")
-                    self.logger.warning(f"{existing_info=}")
-                    self.logger.warning(f"{latest_info=}")
-                elif self._calib_const:
-                    self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
-                    break
+
+                if self._calib_const:
+                    if existing_info is None:
+                        self.logger.warning("calib_const loaded but existing_info is missing")
+                    elif not latest_info.items() <= existing_info.items():
+                        self.logger.warning("det_info in pickle file is incomplete for this run")
+                        self.logger.warning(f"{existing_info=}")
+                        self.logger.warning(f"{latest_info=}")
+                        self._calib_const = utils.WeakDict({})
+                    else:
+                        self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
+                        break
+
                 max_retry += 1
-                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.ds.fetch_calib_cache_max_retries})")
                 time.sleep(1)
         else:
             if self._calib_const is None:
@@ -242,7 +250,6 @@ class Run(object):
                     )
                     self._calib_const[det_name] = utils.WeakDict({})
         self._create_weak_calibconst()
-
 
     def Detector(self, name, accept_missing=False, **kwargs):
 
@@ -444,13 +451,29 @@ class Run(object):
 class RunShmem(Run):
     """Yields list of events from a shared memory client (no event building routine)."""
 
-    def __init__(self, ds, run_evt):
+    def __init__(self, ds, run_evt, **kwargs):
         super(RunShmem, self).__init__(ds)
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
+        self.supervisor = kwargs.get('shmem_supervisor', -1)
+        self._pub_socket = kwargs.get('shmem_pub_socket', None)
+        self._sub_socket = kwargs.get('shmem_sub_socket', None)
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        st = time.monotonic()
+        if self.supervisor:
+            super()._setup_run_calibconst()
+            if self.supervisor == 1:
+                self._pub_socket.send(self._calib_const)
+        else:
+            self._clear_calibconst()
+            self._calib_const = self._sub_socket.recv()
+            self._create_weak_calibconst()
+        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def events(self):
 
@@ -472,7 +495,7 @@ class RunShmem(Run):
 class RunDrp(Run):
     """Yields list of events from drp python (no event building routine)."""
 
-    def __init__(self, ds, run_evt):
+    def __init__(self, ds, run_evt, **kwargs):
         super(RunDrp, self).__init__(ds)
         self._evt = run_evt
         self._ds = ds
@@ -481,6 +504,29 @@ class RunDrp(Run):
         super()._setup_envstore()
         self._evt_iter = Events(self._ds, self)
         self._edtbl_config = False
+        # For distributing calibconst
+        self._is_supervisor = kwargs.get('drp_is_supervisor', False)
+        self._is_publisher = kwargs.get('drp_is_publisher', False)
+        self._tcp_pub_socket = kwargs.get('drp_tcp_pub_socket', None)
+        self._ipc_pub_socket = kwargs.get('drp_ipc_pub_socket', None)
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if self._is_supervisor:
+            if self._is_publisher:
+                super()._setup_run_calibconst()
+                self._tcp_pub_socket.send(self.dsparms.calibconst)
+                # This is for drp_python
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+        else:
+            if self._is_publisher:
+                self._calib_const = self._tcp_sub_socket.recv()
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+        self._create_weak_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
@@ -535,6 +581,7 @@ class RunSingleFile(Run):
         self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
+        self._setup_run_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
@@ -630,6 +677,7 @@ class RunLegion(Run):
         self.smdr_man = ds.smdr_man
         self.configs = ds._configs
         super()._setup_envstore()
+        self._setup_run_calibconst()
 
 
 class RunSmallData(Run):

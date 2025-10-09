@@ -1,4 +1,3 @@
-import time
 
 from psana import utils
 from psana.dgrammanager import DgramManager
@@ -52,32 +51,21 @@ class ShmemDataSource(DataSourceBase):
                 return True
         return False
 
-    def _setup_run_calibconst(self):
-        st = time.monotonic()
-        if self.supervisor:
-            super()._setup_run_calibconst()
-            if self.supervisor == 1:
-                self._pub_socket.send(self._calib_const)
-        else:
-            self._clear_calibconst()
-            self._calib_const = self._sub_socket.recv()
-            self._create_weak_calibconst()
-        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
-
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from the current file
-            self._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
     def runs(self):
         while self._start_run():
-            run = RunShmem(self, Event(dgrams=self.beginruns))
+            kwargs = {'shmem_supervisor': self.supervisor,
+                      'shmem_pub_socket': self._pub_socket if self.supervisor == 1 else None,
+                      'shmem_sub_socket': self._sub_socket if self.supervisor == 0 else None}
+            run = RunShmem(self, Event(dgrams=self.beginruns), **kwargs)
             yield run
 
     def is_mpi(self):

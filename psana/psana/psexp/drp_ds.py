@@ -77,32 +77,12 @@ class DrpDataSource(DataSourceBase):
                 self.beginruns = evt._dgrams
                 return True
 
-    def _setup_run_calibconst(self):
-        if self._is_supervisor:
-            if self._is_publisher:
-                super()._setup_run_calibconst()
-                self._tcp_pub_socket.send(self.dsparms.calibconst)
-                # This is for drp_python
-                self._ipc_pub_socket.send(self.dsparms.calibconst)
-            else:
-                self.dsparms.calibconst = self._ipc_sub_socket.recv()
-        else:
-            if self._is_publisher:
-                self.dsparms.calibconst = self._tcp_sub_socket.recv()
-                self._ipc_pub_socket.send(self.dsparms.calibconst)
-            else:
-                self.dsparms.calibconst = self._ipc_sub_socket.recv()
-
-        # Verbose print: print(f"[Python - Worker {self.worker_num}] Done broadcast {self.dsparms.calibconst}]")
-
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from the current file
-            self._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
@@ -110,7 +90,12 @@ class DrpDataSource(DataSourceBase):
         self._edtbl_config = False
         self.curr_dgramedit.save(self.dm.shm_res_mv)
         while self._start_run():
-            run = RunDrp(self, Event(dgrams=self.beginruns))
+            # Extra kwargs for RunDrp
+            kwargs = {'drp_is_supervisor': self._is_supervisor,
+                      'drp_is_publisher': self._is_publisher,
+                      'drp_tcp_pub_socket': self._tcp_pub_socket if self._is_supervisor and self._is_publisher else None,
+                      'drp_ipc_pub_socket': self._ipc_pub_socket if self._is_publisher else None,}
+            run = RunDrp(self, Event(dgrams=self.beginruns), **kwargs)
             yield run
 
         # Delete sockets to avoid getting 'Address already in use' when recreating them
