@@ -4,6 +4,7 @@ import time
 from psana import dgram, utils
 from psana.eventbuilder import EventBuilder
 from psana.smdreader import SmdReader
+from psana.psexp.prometheus_manager import get_prom_manager
 
 from .run import RunSmallData
 
@@ -73,7 +74,7 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
 
         assert self.n_files > 0
 
@@ -92,7 +93,7 @@ class SmdReaderManager(object):
         self._run = None
 
         # Collecting Smd0 performance using prometheus
-        self.read_gauge = self.dsparms.prom_man.get_metric("psana_smd0_read")
+        self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
 
     def force_read(self):
         """

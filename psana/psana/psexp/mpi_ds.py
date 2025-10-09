@@ -17,6 +17,7 @@ from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode
 from psana.smalldata import SmallData
+from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -40,7 +41,7 @@ class RunParallel(Run):
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
 
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
 
         super()._setup_envstore()
 
@@ -50,7 +51,27 @@ class RunParallel(Run):
             self.eb_node = EventBuilderNode(ds)
         elif nodetype == "bd":
             self.bd_node = BigDataNode(ds, self)
-            self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
+            self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
+
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if nodetype == "smd0":
+            super()._setup_run_calibconst()
+        else:
+            # _setup_run_calibconst runs this
+            self._clear_calibconst()
+
+        self._calib_const = self.comms.psana_comm.bcast(
+            self._calib_const, root=0
+        )
+
+        # workaround for archon crash on rank0 from Gabriel
+        #if nodetype != "smd0":
+        #    # smd0 already did this in _setup_run_calibconst
+        #    self._create_weak_calibconst()
+        self._create_weak_calibconst()
+
 
     def events(self):
         evt_iter = self.start()
@@ -182,7 +203,7 @@ class MPIDataSource(DataSourceBase):
     def __del__(self):
         if nodetype == "smd0":
             super()._close_opened_smd_files()
-        self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
+        self._end_prometheus_client()
 
     def terminate(self):
         self.comms.terminate()
@@ -286,30 +307,11 @@ class MPIDataSource(DataSourceBase):
                 return True
         # end while True
 
-    def _setup_run_calibconst(self):
-        if nodetype == "smd0":
-            super()._setup_run_calibconst()
-        else:
-            # _setup_run_calibconst runs this
-            self._clear_calibconst()
-
-        self._calib_const = self.comms.psana_comm.bcast(
-            self._calib_const, root=0
-        )
-
-        # workaround for archon crash on rank0 from Gabriel
-        #if nodetype != "smd0":
-        #    # smd0 already did this in _setup_run_calibconst
-        #    self._create_weak_calibconst()
-        self._create_weak_calibconst()
-
     def _start_run(self):
         if self._setup_beginruns():  # try to get next run from current files
-            self._setup_run_calibconst()
             return True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 return True
 
     def runs(self):
