@@ -12,6 +12,9 @@ using namespace Pds;
 using namespace Drp::Gpu;
 using json = nlohmann::json;
 
+struct ad_domain{ static constexpr char const* name{"AreaDetector"}; };
+using ad_scoped_range = nvtx3::scoped_range_in<ad_domain>;
+
 
 namespace Drp {
   class PGPEvent;
@@ -135,6 +138,8 @@ void AreaDetector::recordGraph(cudaStream_t&         stream,
                                const unsigned        panel,
                                uint16_t const* const rawBuffer)
 {
+  ad_scoped_range r{/*"AreaDetector::recordGraph"*/}; // Expose function name via NVTX
+
   auto nPanels = m_dets.size();
 
   // Check that panel is within range

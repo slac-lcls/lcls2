@@ -107,6 +107,7 @@ if(CMAKE_CUDA_COMPILER)
 #--- Reducer libraries
 
     # Add the following to your environment instead of appending to the hardcoded CMAKE_PREFIX_PATH:
+    #   export PFPL_DIR=~/git/pfpl/install/cmake
     #   export CUSZ_DIR=~/git/cuSZ/install/lib64/cmake/CUSZ
     #   export cuSZp_DIR=~/git/cuSZp/install/cmake
 
@@ -155,6 +156,28 @@ if(CMAKE_CUDA_COMPILER)
     )
     set_target_properties(LcReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(LcReducer PUBLIC -O3)
+
+#--- PFPL
+
+    find_package(PFPL REQUIRED)
+
+    add_library(PfplReducer SHARED
+        PfplReducer.cu
+    )
+    target_include_directories(PfplReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(PfplReducer
+        PFPL::pfpl_shared
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(PfplReducer PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(PfplReducer PUBLIC -O3)
 
 #--- cuSZ
 
@@ -225,6 +248,7 @@ if(CMAKE_CUDA_COMPILER)
         EpixUHRemu_gpu
         NoOpReducer
         LcReducer
+        PfplReducer
         CuSzReducer
         CuSZpReducer
         pgpread_gpu

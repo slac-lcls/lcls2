@@ -18,6 +18,9 @@ using namespace Pds::Eb;
 
 using us_t = std::chrono::microseconds;
 
+struct red_domain{ static constexpr char const* name{"Reducer"}; };
+using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
+
 
 Reducer::Reducer(const Parameters&            para,
                  MemPoolGpu&                  pool,
@@ -277,6 +280,8 @@ static __global__ void _graphLoop(unsigned* const __restrict__ head,
 
 cudaGraph_t Reducer::_recordGraph(unsigned instance)
 {
+  red_scoped_range r{/*"Reducer::_recordGraph"*/}; // Expose function name via NVTX
+
   auto stream       = m_streams[instance];
   auto calibBuffers = m_pool.calibBuffers_d();
   auto calibBufsSz  = m_pool.calibBufsSize();
@@ -329,6 +334,8 @@ void Reducer::startup()
 
 void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQueue<size_t>& outputQueue)
 {
+  red_scoped_range r{/*"Reducer::_worker"*/}; // Expose function name via NVTX
+
   logging::info("Reducer worker %u is starting with process ID %lu", instance, syscall(SYS_gettid));
   char nameBuf[16];
   snprintf(nameBuf, sizeof(nameBuf), "ReducerWkr%d", instance);
@@ -344,6 +351,7 @@ void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQu
 
   unsigned index;
   while (inputQueue.pop(index)) {
+    red_scoped_range loop_range{/*"Reducer::_worker", */nvtx3::payload{index}};
     if  (algo->hasGraph()) {
       // Wait for the graph to finish executing before updating head
       unsigned hd, tl;
@@ -363,8 +371,10 @@ void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQu
     size_t dataSize;
     algo->reduce(graph, stream, index, &dataSize);
 
-    // Wait for the graph to complete
-    chkError(cudaStreamSynchronize(stream));
+    if  (algo->hasGraph()) {
+      // Wait for the graph to complete
+      chkError(cudaStreamSynchronize(stream));
+    }
 
     auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     m_reduce_us = std::chrono::duration_cast<us_t>(now - t0).count();
