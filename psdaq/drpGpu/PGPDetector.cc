@@ -24,6 +24,11 @@ using json    = nlohmann::json;
 using logging = psalg::SysLog;
 using us_t    = std::chrono::microseconds;
 
+struct drp_domain{ static constexpr char const* name{"PGPDrp"}; };
+using drp_scoped_range = nvtx3::scoped_range_in<drp_domain>;
+struct tr_domain{ static constexpr char const* name{"TebReceiver"}; };
+using tr_scoped_range = nvtx3::scoped_range_in<tr_domain>;
+
 
 TebReceiver::TebReceiver(const Parameters&        para,
                          DrpBase&                 drp,
@@ -119,6 +124,8 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
  */
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
+  tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
+
   // Set the nworkers to 0 to run without the Reducer workers in the loop
   if (m_para.nworkers == 0) {
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
@@ -137,6 +144,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
 void TebReceiver::_recorder()
 {
+  tr_scoped_range r{/*"TebReceiver::_recorder"*/}; // Expose function name via NVTX
+
   logging::info("Recorder is starting with process ID %lu\n", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "drp_gpu/Recorder", 0, 0, 0) == -1) {
     perror("prctl");
@@ -175,6 +184,7 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
+    tr_scoped_range loop_range{/*"TebReceiver::_recorder", */nvtx3::payload{index}};
     size_t dataSize;                    // Receives the size of the reduced L1Accept payload
     if (result->persist() || result->monitor()) {
       drp.reducerReceive(worker, dataSize); // This blocks until result is ready from GPU
@@ -564,6 +574,8 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 void PGPDrp::_collector()
 {
+  drp_scoped_range r{/*"PGPDrp::_collector"*/}; // Expose function name via NVTX
+
   pool.resetCounters();                 // Avoid jumps in TebReceiver
 
   // Set up monitoring
@@ -594,17 +606,19 @@ void PGPDrp::_collector()
   uint64_t lastPid = 0;
   unsigned bufIndex = 0;                // Intermediate buffer index
   while (true) {
+    drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
     if (m_terminate.load(std::memory_order_relaxed)) {
       break;
     }
-    TimingHeader* timingHeader;
+
     auto nRet = m_collector->receive(&m_det, m_colMetrics); // This can block
     m_colMetrics.m_nDmaRet.store(nRet);
 
     for (unsigned b = 0; b < nRet; ++b) {
-      timingHeader = m_det.getTimingHeader(bufIndex);
-      uint32_t pgpIndex = timingHeader->evtCounter & bufferMask;
-      PGPEvent* event = &pool.pgpEvents[pgpIndex];
+      drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
+      auto timingHeader = m_det.getTimingHeader(bufIndex);
+      auto pgpIndex = timingHeader->evtCounter & bufferMask;
+      auto event = &pool.pgpEvents[pgpIndex];
       if (event->mask == 0)
         continue;                       // Skip broken event
 
@@ -614,9 +628,9 @@ void PGPDrp::_collector()
       lastPid = pid;
 
       // Allocate a pebble buffer
-      unsigned pebbleIndex = pool.allocate(); // This can block
+      auto pebbleIndex = pool.allocate(); // This can block
       event->pebbleIndex = pebbleIndex;
-      Src src = m_det.nodeId;
+      Src src{m_det.nodeId};
 
       // Make a new dgram in the pebble
       // It must be an EbDgram in order to be able to send it to the MEB
