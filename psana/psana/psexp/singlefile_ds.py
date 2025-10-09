@@ -68,11 +68,9 @@ class SingleFileDataSource(DataSourceBase):
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from the current file
-            super()._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                super()._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
