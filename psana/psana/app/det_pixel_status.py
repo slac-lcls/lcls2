@@ -10,10 +10,7 @@ SCRNAME = sys.argv[0].split('/')[-1]
 
 USAGE ='\n%s works with 2-d raw arrays ONLY! For 3-d the segment index --segind needs to be specified' % SCRNAME\
       +'\n%s -k <dataset> -d <detname> ...' % SCRNAME\
-      +'\nTEST:  %s -k exp=rixx1003721,run=200,intg_det=epixhr -d epixhr -F 1,2,3' % SCRNAME\
-      +'\nEx.1:  %s -k exp=xpplw3319,run=287 -d XppGon.0:Epix100a.3 -F 1,2,3 -n 1000   # dark  processing for Feat.1 & 2 & 3' % SCRNAME\
-      +'\nEx.2:  %s -k exp=xpplw3319,run=293 -d XppGon.0:Epix100a.3 -F 1,6 -n 1000     # light processing for Feat.1 & 6' % SCRNAME\
-      +'\nEx.3:  %s -k exp=xpplw3319,run=293 -d XppGon.0:Epix100a.3 -F 11, -n 1000000  # light processing for Feat.11' % SCRNAME\
+      +'\nTEST 1:  %s -k exp=mfx100848724,run=51 -d epix100_0 -F 1 -n 1000' % SCRNAME\
       +'\n Feature # stands for'\
       +'\n   1: mean intensity of frames in good range'\
       +'\n   2: dark mean in good range'\
@@ -22,13 +19,22 @@ USAGE ='\n%s works with 2-d raw arrays ONLY! For 3-d the segment index --segind 
       +'\n   5: NOT-IMPLEMENTED for gain stage indicator values'\
       +'\n   6: light average SNR of pixels over time'\
       +'\n  11: light intensity max-peds in good range - should be processed separately from all other features on entire/large set of events.'\
+      +'\n'\
       +'\n\nHelp:  %s -h\n' % SCRNAME
+#      +'\nTEST 1:  %s -k exp=rixx1003721,run=200,intg_det=epixhr -d epixhr -F 1,2,3' % SCRNAME\
+#      +'\nEx.1:  %s -k exp=xpplw3319,run=287 -d XppGon.0:Epix100a.3 -F 1,2,3 -n 1000   # dark  processing for Feat.1 & 2 & 3' % SCRNAME\
+#      +'\nEx.2:  %s -k exp=xpplw3319,run=293 -d XppGon.0:Epix100a.3 -F 1,6 -n 1000     # light processing for Feat.1 & 6' % SCRNAME\
+#      +'\nEx.3:  %s -k exp=xpplw3319,run=293 -d XppGon.0:Epix100a.3 -F 11, -n 1000000  # light processing for Feat.11' % SCRNAME\
+
 
 def argument_parser():
     from argparse import ArgumentParser
+
+    d_fname    = None # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
     d_dirrepo  = DIR_REPO_STATUS
-    d_dskwargs = 'exp=rixx1003721,run=200,intg_det=epixhr'  # 'exp=xpplw3319,run=293'
-    d_detname  = 'epixhr'
+#    d_dskwargs = 'exp=rixx1003721,run=200,intg_det=epixhr'  # 'exp=xpplw3319,run=293'
+    d_dskwargs = 'exp=mfx100848724,run=51'
+    d_detname  = 'epix100_0'
     d_events   = 1000
     d_evskip   = 0
     d_stepnum  = None
@@ -40,8 +46,8 @@ def argument_parser():
     d_evcode   = None
     d_segind   = 0
     d_gmode    = None
-    d_nrecs    = 1000
-    d_logmode  = 'INFO'
+    d_nrecs    = 100
+    d_loglevel = 'INFO'
     d_dirmode  = 0o2775
     d_filemode = 0o664
     d_group    = 'ps-users'
@@ -49,7 +55,10 @@ def argument_parser():
     d_gainbits = 0
     d_ctype    = 'status_data'
     d_features = '1,2,3'
+    d_plotim   = 0
+    d_version  = 'V2025-10-06'
 
+    h_fname    = '(str) input file name with accumulated data block and a few other parameters, default = %s' % d_fname
     h_dskwargs = '(str) DataSource parameters, default = %s' % d_dskwargs
     h_detname  = '(str) detector/detname name, default = %s' % d_detname
     h_events   = '(int) maximal number of events total (in runs, steps), default = %d' % d_events
@@ -63,7 +72,7 @@ def argument_parser():
     h_gmode    = '(str) gain mode name-suffix for multi-gain detectors with raw.shape.ndim>3, ex: AHL-H, default = %s' % str(d_gmode)
     h_nrecs    = '(int) number of records to collect data, default = %s' % str(d_nrecs)
     h_dirrepo  = '(str) repository for calibration results, default = %s' % d_dirrepo
-    h_logmode  = '(str) logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
+    h_loglevel = '(str) logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_loglevel)
     h_dirmode  = '(int) mode for all mkdir, default = %s' % oct(d_dirmode)
     h_filemode = '(int) mode for all saved files, default = %s' % oct(d_filemode)
     h_group    = '(str) group ownership for all files, default = %s' % d_group
@@ -71,13 +80,17 @@ def argument_parser():
                  ' ex. "0:144,0:192", default = %s' % d_slice
     h_shwind   = '(str) window shape for feature 6 fitting to plane, ex. "15,15", default = %s' % d_shwind
     h_snrmax   = '(int) width of the good region in terms on number of spread/rms, default = %s' % d_snrmax
-    h_databits = '(int) data bits in ADC for code of intensity, default = %s' % (oct(d_databits) if d_databits is not None else 'None - defined from det.raw._data_bit_mask')
+    h_databits = '(int) data bits in ADC for code of intensity, default = %s' % (oct(d_databits) if d_databits is not None else\
+                                                                                 'None - defined from det.raw._data_bit_mask')
     h_gainbits = '(int) gain mode switch bits in ADC, default = %s' % oct(d_gainbits)
     h_ctype    = '(str) type of calibration constants to save, default = %s' % d_ctype
     h_features = '(str) comma-separated list of Features [JAC-2022, Sadri, Automatic bad pixel mask maker...]'\
                  ' from 1 to 6 to evaluate bad pixels, default = %s' % d_features
+    h_plotim   = 'plot image/s of pedestals, default = %s' % str(d_plotim)
+    h_version  = 'constants version, default = %s' % str(d_version)
 
     parser = ArgumentParser(description=DESCRIPTION, usage=USAGE)
+    parser.add_argument('-f', '--fname',    default=d_fname,    type=str,   help=h_fname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str,   help=h_detname)
     parser.add_argument('-n', '--events',   default=d_events,   type=int,   help=h_events)
@@ -92,7 +105,7 @@ def argument_parser():
     parser.add_argument('-w', '--shwind',   default=d_shwind,   type=str,   help=h_shwind)
     parser.add_argument('-R', '--snrmax',   default=d_snrmax,   type=float, help=h_snrmax)
     parser.add_argument('-t', '--ctype',    default=d_ctype,    type=str,   help=h_ctype)
-    parser.add_argument('-L', '--logmode',  default=d_logmode,  type=str,   help=h_logmode)
+    parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str,   help=h_loglevel)
     parser.add_argument('-o', '--dirrepo',  default=d_dirrepo,  type=str,   help=h_dirrepo)
     parser.add_argument('-F', '--features', default=d_features, type=str,   help=h_features)
     parser.add_argument('--dirmode',        default=d_dirmode,  type=int,   help=h_dirmode)
@@ -101,6 +114,8 @@ def argument_parser():
     parser.add_argument('--databits',       default=d_databits, type=int,   help=h_databits)
     parser.add_argument('--gainbits',       default=d_gainbits, type=int,   help=h_gainbits)
     parser.add_argument('--gmode',          default=d_gmode,    type=str,   help=h_gmode)
+    parser.add_argument('-p', '--plotim',   default=d_plotim,   type=int,   help=h_plotim)
+    parser.add_argument('-v', '--version',  default=d_version,  type=str,   help=h_version)
 
     return parser
 
@@ -113,6 +128,9 @@ def do_main():
     parser = argument_parser()
     args = parser.parse_args() # NameSpace
     kwargs = vars(args)        # dict
+
+    import psana.detector.Utils as ut #info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
+    print(ut.info_parser_arguments(parser))
 
     from psana.detector.UtilsPixelStatus import det_pixel_status
     det_pixel_status(parser)

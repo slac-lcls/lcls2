@@ -4,7 +4,9 @@
 
 Usage::
 
-    import psana.detector.UtilsPixelStatus as ups
+    import psana.detector.UtilsPixelStatus as ups; det_pixel_status = ups.det_pixel_status
+    # OR
+    from psana.detector.UtilsPixelStatus import det_pixel_status
 
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -14,10 +16,16 @@ If you use all or part of it, please give an appropriate acknowledgment.
 """
 
 import os
-from psana.detector.UtilsEventLoop import *
+#import sys
+#import logging
 import numpy as np
 #import psana.detector.UtilsCalib as uc
-from psana.detector.NDArrUtils import info_ndarr
+import psana.detector.UtilsEventLoop as uel
+from psana.detector.UtilsDataBlock import DataBlock
+sys, logging, uc, info_ndarr, message, SCRNAME, EventLoop =\
+   uel.sys, uel.logging, uel.uc, uel.au.info_ndarr, uel.message, uel.SCRNAME, uel.EventLoop
+logger = logging.getLogger(__name__)
+
 
 def tmp_filename(fname=None, suffix='_EventLoopStatus.npy'):
    """returns file name in
@@ -52,7 +60,7 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, snrmax=8):
     """vmin/vmax - absolutly allowed min/max of the value"""
     assert isinstance(arr, np.ndarray)
 
-    logger.info('XXX vmin %.3f: vmax: %.3f' % (vmin, vmax))
+    logger.info('vmin %.3f: vmax: %.3f' % (vmin, vmax))
 
     bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi = find_outliers(arr, title=title, vmin=vmin, vmax=vmax, fmt='%.0f')
 
@@ -87,12 +95,14 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, snrmax=8):
 def feature_01(block, databits=0x3FFF, snrmax=8):
 
     logger.info("""Feature 1: mean intensity of frames in good range""")
-    #block = block & databits
+    _block = block & databits
     #block = np.bitwise_and(block, databits)
-    intensity_mean = np.sum(block, axis=(-2,-1)) / block.size
+    sh_frame = block.shape[-2:]
+    print('frame shape:', sh_frame)
+    intensity_mean = np.sum(_block, axis=(-2,-1)) / block.size
     logger.info(info_ndarr(intensity_mean, '\n  per-record intensity MEAN IN FRAME:', last=20))
 
-    intensity_med = np.median(block, axis=(-2,-1))
+    intensity_med = np.median(_block, axis=(-2,-1))
     logger.info(info_ndarr(intensity_med, '\n  per-record intensity MEDIAN IN FRAME:', last=20))
     arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(intensity_med, title='Feat.1: intensity_med',\
                                          vmin=0, vmax=databits, snrmax=snrmax)
@@ -113,7 +123,7 @@ class EventLoopStatus(EventLoop):
 
     def init_event_loop(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        print('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
+        logger.info('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
         kwa = self.kwa
         #nrecs   = kwa.get('nrecs', 10)
         #self.nrecs  = kwa.get('nrecs',1000)
@@ -125,11 +135,11 @@ class EventLoopStatus(EventLoop):
 
     def begin_run(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        print('=== begin_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
+        logger.info('=== begin_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
 
     def end_run(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        print('=== end_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
+        logger.info('=== end_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
 
     def fname_data_block(self, ext='.npz'):
         fname = '%s-data_block-%s-r%04d-%s' % (self.msgels, self.expname, self.runnum, self.detname)
@@ -140,7 +150,7 @@ class EventLoopStatus(EventLoop):
 
     def begin_step(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        print('begin_step istep/nevtot: %d/%s' % (self.istep, str(self.metadic)))
+        logger.info('begin_step istep/nevtot: %d/%s' % (self.istep, str(self.metadic)))
 
         dbl = self.dbl
         if dbl is None:
@@ -151,23 +161,23 @@ class EventLoopStatus(EventLoop):
             kwa.setdefault('nrecs',10)
             kwa.setdefault('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
 
-            dbl = self.dbl = uc.DataBlock(**kwa)
+            dbl = self.dbl = DataBlock(**kwa)
             dbl.runnum = self.runnum
             dbl.exp = self.expname
             dbl.ts_run, dbl.ts_now = self.ts_run, self.ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FOR
 
             self.fname_block = self.fname_data_block()
             self.exists_fdb = os.path.exists(self.fname_block)
-            print('XXX tmp file: %s   %s' % (self.fname_block, {True:'EXISTS', False:'DOES NOT EXIST'}[self.exists_fdb]))
+            logger.warning('%s tmp file: %s' % ({True:'EXISTS', False:'DOES NOT EXIST'}[self.exists_fdb], self.fname_block))
 
     def end_step(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        print(self.dbl.info_data_block(cmt='XXX berofe saving data_block'))
+        logger.info(self.dbl.info_data_block(cmt='berofe saving data_block'))
         dbl = self.dbl
         dbl.save(self.fname_block)
         del(dbl)
         dbl=None
-        print('==== End of step %1d ====\n' % self.istep)
+        logger.info('==== End of step %1d ====\n' % self.istep)
 
     def proc_event(self, msgmaxnum=5):
         #print('proc_event ievt/nevtot: %d/%d' % (self.ievt, self.nevtot))
@@ -180,12 +190,11 @@ class EventLoopStatus(EventLoop):
     def summary(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         gainmodes = [k for k in self.dic_consts_tot.keys()]
+        gmodes = getattr(self.odet.raw, '_gain_modes', None)
         logger.info('constants'\
                    +'\n  created  for gain modes: %s' % str(gainmodes)\
-                   +'\n  expected for gain modes: %s' % str(self.odet.raw._gain_modes))
-
+                   +'\n  expected for gain modes: %s' % str(gmodes))
         ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
-        gmodes = self.odet.raw._gain_modes #  or gainmodes
         kwa_depl = self.kwa_depl
         kwa_depl['shape_as_daq'] = None if self.odet.raw is None else self.odet.raw._shape_as_daq()
         kwa_depl['exp']          = self.expname
@@ -193,8 +202,6 @@ class EventLoopStatus(EventLoop):
         kwa_depl['run_orig']     = self.runnum
 
         #deploy_constants(ctypes, gmodes, **kwa_depl)
-
-
 
     def feature_02(self):
         logger.info("""Feature 2: dark mean in good range""")
@@ -218,79 +225,22 @@ class EventLoopStatus(EventLoop):
 
 
 def test_features(fname='fname.npz'):
-    dbl = uc.DataBlock()
+    dbl = DataBlock()
     dbl.load(fname=fname)
-    print(dbl.info_data_block(cmt=''))
+    logger.info(dbl.info_data_block(cmt=''))
     good_frames = feature_01(dbl.block, databits=0x3FFF, snrmax=8)
-    print('XXX good_frames', good_frames)
+    logger.info('good_frames %s' % str(good_frames))
 
 
-if __name__ == "__main__":
-
-  def USAGE():
-    import inspect
-    return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
-          +'\n  test dataset: datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc -d jungfrau'
-    #+ '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])
-    #   datinfo -k exp=mfx101332224,run=204 -d jungfrau
-
-  def argument_parser():
-    from argparse import ArgumentParser
-    d_tname    = '0'
-    d_dirrepo  = './work1' # DIR_REPO_JUNGFRAU
-    #d_dskwargs = 'exp=mfxdaq23,run=7' # dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc
-    d_dskwargs = 'exp=mfx101332224,run=204' # dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc
-    d_detname  = 'jungfrau'
-    d_loglevel = 'INFO' # 'DEBUG'
-    d_subtest  = None
-    d_segind   = 3 # None
-    d_nrecs    = 100
-    d_evskip   = 0       # number of events to skip in the beginning of each step
-    d_events   = 1000000 # last event number in the step to process
-
-    h_dirrepo  = 'non-default repository of calibration results, default = %s' % d_dirrepo
-    h_tname    = 'test name, usually numeric number, default = %s' % d_tname
-    h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
-    h_detname  = 'detector name, default = %s' % d_detname
-    h_subtest  = '(str) subtest name, default = %s' % d_subtest
-    h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
-    h_segind   = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
-    h_nrecs    = 'number of records to collect in data block, default = %d' % d_nrecs
-    h_evskip    = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events  = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
-
-    parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME, usage=USAGE())
-    #parser.add_argument('tname',            default=d_tname,   type=str, help=h_tname)
-    parser.add_argument('-o', '--dirrepo',  default=d_dirrepo,  type=str, help=h_dirrepo)
-    parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str, help=h_dskwargs)
-    parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
-    parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
-    parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
-    parser.add_argument('-I', '--segind',   default=d_segind,   type=int, help=h_segind)
-    parser.add_argument('-n', '--nrecs',    default=d_nrecs,    type=int, help=h_nrecs)
-    parser.add_argument('--evskip',         default=d_evskip,   type=int, help=h_evskip)
-    parser.add_argument('--events',         default=d_events,   type=int, help=h_events)
-    return parser
-
-
-if __name__ == "__main__":
-    parser = argument_parser()
-    args = parser.parse_args()
-    #tname = args.tname
-    print(80*'_')
-
-#    kwa = vars(args)
+def det_pixel_status(parser):
+    args = parser.parse_args() # NameSpace
+    kwargs = vars(args)        # dict
     STRLOGLEV = args.loglevel
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
-#    print('XXX tname:', tname)
 
-#    print('XXX tmp_filename:', tmp_filename(fname='data-block.npy', suffix='EventLoopStatus.npy'))
-#    sys.exit('TEST EXIT')fname
+    fname = args.fname # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
 
-#    fname = '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfxdaq23-r0007-jungfrau-seg003-step00-nrecs0100.npz'
-    fname = '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
-    
-    if os.path.exists(fname):
+    if os.path.exists(str(fname)):
         logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
         test_features(fname=fname)
 
@@ -301,4 +251,7 @@ if __name__ == "__main__":
 
     sys.exit('End of %s' % SCRNAME)
 
+
+if __name__ == "__main__":
+    sys.exit('\n  To test/use this module try command: det_pixel_status\n  %s\n' % (53*'='))
 # EOF

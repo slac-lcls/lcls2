@@ -22,6 +22,9 @@ static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 static const unsigned EvtCtrMask = 0xffffff;
 
+struct col_domain{ static constexpr char const* name{"Collector"}; };
+using col_scoped_range = nvtx3::scoped_range_in<col_domain>;
+
 
 Collector::Collector(const Parameters&            para,
                      MemPoolGpu&                  pool,
@@ -168,6 +171,8 @@ static __global__ void _graphLoop(unsigned*                    idx,
 
 cudaGraph_t Collector::_recordGraph(cudaStream_t& stream)
 {
+  col_scoped_range r{/*"Collector::_recordGraph"*/}; // Expose function name via NVTX
+
   auto nPanels        = m_pool.panels().size();
   auto hostWrtBufs_d  = m_pool.hostWrtBufs_d();
   auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(**hostWrtBufs_d);
@@ -318,6 +323,8 @@ unsigned Collector::_checkTimingHeader(unsigned index) const
 
 unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 {
+  col_scoped_range r{/*"Collector::receive"*/}; // Expose function name via NVTX
+
 #if defined(USE_TRACEBUFFER)
   struct trace_t
   {
@@ -339,22 +346,18 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
   unsigned tail = m_last;
   //if (tail != head)  printf("Collector::receive: tail %u, head %u\n", tail, head);
   while (tail != head) {
+    col_scoped_range loop_range{/*"Collector::receive", */nvtx3::payload{tail}};
     const auto dmaDsc       = (DmaDsc*)(&hostWrtBufs[tail * hostWrtBufsCnt]);
     const auto timingHeader = (TimingHeader*)&dmaDsc[1];
-
-    // Check for DMA buffer overflow
-    if (dmaDsc->error & 0x4) {
-      logging::critical("DMA overflowed buffer of size %d B", m_pool.dmaSize());
-      exit(EXIT_FAILURE);
-    }
 
     // Wait for pulse ID to become non-zero
     uint64_t pid = timingHeader->pulseId();
     while (pid <= lastPid) {
-      if (m_terminate.load(std::memory_order_acquire))  break;
+      col_scoped_range loop_range2{/*"Collector::receive wait"*/};
+      if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  break;
       pid = timingHeader->pulseId();
     }
-    if (m_terminate.load(std::memory_order_acquire))  break;
+    if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  break;
 
 #if defined(USE_TRACEBUFFER)
     traceBuffer[itb].tail    = tail;
@@ -364,9 +367,15 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     itb = (itb + 1) % traceBuffer.size();
 #endif
 
-    if (pid <= lastPid)
+    if (pid <= lastPid) [[unlikely]]
       logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
     lastPid = pid;
+
+    // Check for DMA buffer overflow
+    if (dmaDsc->error & 0x4) [[unlikely]] {
+      logging::critical("DMA buffer overflow: size %d B", m_pool.dmaSize());
+      exit(EXIT_FAILURE);
+    }
 
     // Measure TimingHeader arrival latency as early as possible
     if (pid - m_latPid > 1300000/14) { // 10 Hz
@@ -380,7 +389,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     //printf("*** Collector: Enable write to DMA buffer %u\n", dmaIdx);
     for (auto& panel : m_pool.panels()) {
       auto rc = gpuSetWriteEn(panel.gpu.fd(), dmaIdx);
-      if (rc < 0) {
+      if (rc < 0) [[unlikely]] {
         logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
         abort();
       }
@@ -392,7 +401,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     //        Maybe do the test on the GPU and set a flag if they differ and
     //        print here when it is set
     unsigned dmas, ths;
-    if ( (dmas = _checkDmaDsc(tail)) || (ths = _checkTimingHeader(tail)) ) {
+    if ( (dmas = _checkDmaDsc(tail)) || (ths = _checkTimingHeader(tail)) ) [[unlikely]] {
       // Assume we can recover from non-matching panel headers
       logging::error("Headers differ between panels: DmaDsc: %02x, TimingHeader: %02x", dmas, ths);
       freeDma(tail);                    // Leaves event mask = 0
@@ -406,7 +415,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     metrics.m_dmaSize   = size;
     metrics.m_dmaBytes += size;
 
-    if (timingHeader->error()) {
+    if (timingHeader->error()) [[unlikely]] {
         if (metrics.m_nTmgHdrError < 5) { // Limit prints at rate
             logging::error("Timing header error bit is set");
         }
@@ -425,7 +434,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
     m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
-    if (dmaDsc->error) {
+    if (dmaDsc->error) [[unlikely]] {
       // Assume we can recover from non-overflow DMA errors
       if (metrics.m_nDmaErrors < 5) {   // Limit prints at rate
         logging::error("DMA error 0x%x", dmaDsc->error);
@@ -449,7 +458,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     if (transitionId == TransitionId::BeginRun) {
       resetEventCounter();              // Compensate for the ClearReadout sent before BeginRun
     }
-    if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) {
+    if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
       if (m_lastTid != TransitionId::Unconfigure) {
         if ((metrics.m_nPgpJumps < 5) || m_para.verbose) { // Limit prints at rate
           auto evtCntDiff = evtCounter - m_lastComplete;
@@ -498,7 +507,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     }
     if (transitionId == XtcData::TransitionId::SlowUpdate) {
       uint16_t missingRogs = m_para.rogMask & ~rogs;
-      if (missingRogs) {
+      if (missingRogs) [[unlikely]] {
         logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),

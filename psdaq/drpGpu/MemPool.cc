@@ -337,6 +337,11 @@ void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved)
     return;
   }
 
+  // Round up both nBytes and reserved to an integer number of uint64_ts for
+  // buffer alignment purposes
+  nBytes   = sizeof(uint64_t)*((nBytes   + sizeof(uint64_t)-1)/sizeof(uint64_t));
+  reserved = sizeof(uint64_t)*((reserved + sizeof(uint64_t)-1)/sizeof(uint64_t));
+
   // For a each panel, allocate nBufs buffers for reduced data on the GPU,
   // reserving space at the front for the datagram header
   uint8_t* reduceBufferBase;

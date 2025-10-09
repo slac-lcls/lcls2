@@ -9,12 +9,20 @@
 
 #include <thread>
 
+//#include <cuda/barrier>
+//#include <cooperative_groups.h>
+
 using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Pds;
 using namespace Drp;
 using namespace Drp::Gpu;
 
+struct rdr_domain{ static constexpr char const* name{"Reader"}; };
+using rdr_scoped_range = nvtx3::scoped_range_in<rdr_domain>;
+
+//using barrier = cuda::barrier<cuda::thread_scope_block>;
+//namespace cg = cooperative_groups;
 
 Reader::Reader(unsigned                     panel,
                const Parameters&            para,
@@ -129,6 +137,20 @@ static __global__ void _waitForDMA(const volatile uint32_t* __restrict__ mem,
                                    unsigned*                __restrict__ head,
                                    const cuda::atomic<uint8_t>&          terminate)
 {
+//#pragma diag_suppress static_var_with_dynamic_init // @todo: Not working
+//  cg::thread_block cta = cg::this_thread_block();
+//  cg::grid_group grid = cg::this_grid();
+//
+//  __shared__ barrier bar;
+//
+//  if (threadIdx.x == 0) {
+//    init(&bar, blockDim.x);
+//  }
+//
+//  cg::sync(cta);
+//
+//  printf("*** instance %d: thread block rank %d, size %d, warpSize %d\n", instance, cta.thread_rank(), cta.size(), warpSize);
+
   // Allocate the index of the next set of intermediate buffers to be used
   *head = readerQueue.prepare(instance);
 
@@ -190,6 +212,8 @@ cudaGraph_t Reader::_recordGraph(unsigned    instance,
                                  CUdeviceptr dmaBuffer,
                                  CUdeviceptr hwWriteStart)
 {
+  rdr_scoped_range r{/*"Reader::_recordGraph"*/}; // Expose function name via NVTX
+
   auto stream         = m_streams[instance];
   auto hostWrtBufs_d  = m_pool.hostWrtBufsVec_d()[m_panel];
   auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs_d);
