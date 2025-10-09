@@ -340,7 +340,7 @@ def save_constants_in_repository(dic_consts, **kwa):
 
     #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
-    print('XXX uniqueid', uniqueid)
+    logger.info('uniqueid: %s' % uniqueid)
     segid = uniqueid.split('_')[1]
 
     logger.info('\nsave segment constants for gain mode:%s in repo for segment id: %s' % (gainmode, segid))
@@ -348,11 +348,12 @@ def save_constants_in_repository(dic_consts, **kwa):
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(segid, ctype)
+
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
-        print(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
+        logger.info(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
 
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         ###save_2darray_in_textfile(nda, fname, filemode, fmt)
