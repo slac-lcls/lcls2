@@ -1657,13 +1657,22 @@ def issue_2025_09_26(subtest='0o7777'):
         gr.show()
 
 
+def issue_2025_10_09(subtest='0o7777'):
+    """ Chris & Seshu: 'piranha4_raw_2_1_0' object has no attribute '_path_geo_default'
+        datinfo -k exp=rix101265125,run=414 -d c_piranha
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101265125',run=414)
+    myrun = next(ds.runs())
+    det = myrun.Detector('c_piranha')
+    for nevt,evt in enumerate(myrun.events()):
+        raw = det.raw.image(evt)
+        print(nevt)
+        if raw is None:
+            print('none')
+        else:
+            print(nevt,raw.shape)
 
-
-
-
-
-
-    
 #===
     
 #===
@@ -1746,6 +1755,7 @@ def selector():
     elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
     elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
     elif TNAME in ('46',): issue_2025_09_26(args.subtest) # plot test images
+    elif TNAME in ('47',): issue_2025_10_09(args.subtest) # Chris & Seshu: 'piranha4_raw_2_1_0' object has no attribute '_path_geo_default'
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
