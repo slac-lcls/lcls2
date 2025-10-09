@@ -118,6 +118,8 @@ class Run(object):
         if hasattr(ds, "smdr_man"):
             ds.smdr_man.set_run(self)
 
+        self.build_detinfo_dict()
+
         RunHelper(self)
 
     @property
@@ -195,7 +197,7 @@ class Run(object):
         if self.ds.use_calib_cache:
             self.logger.debug("using calibration constant from shared memory, if exists")
             calib_const, existing_info, max_retry = (None, None, 0)
-            latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
+            latest_info = self.get_filtered_detinfo()
             while not calib_const and max_retry < self.ds.fetch_calib_cache_max_retries and existing_info != latest_info:
                 try:
                     loaded_data = calib_utils.try_load_data_from_file(self.logger)
@@ -354,27 +356,57 @@ class Run(object):
     def detnames(self):
         return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
-    @property
-    def detinfo(self):
+    def get_filtered_detinfo(self):
         """
-        Returns a mapping of detector interface attributes, guarding against
-        infinite recursion during attribute enumeration.
+        Returns detector info filtered by detector names present in detinfo.
+
+        Returns:
+            dict[str, str]: A dictionary mapping detector names to unique IDs,
+                            filtered to only include detectors present in self.detinfo.
+        """
+        return {
+            k: v.uniqueid
+            for k, v in self.dsparms.configinfo_dict.items()
+            if k in {dk[0] for dk in self.detinfo.keys()}
+        }
+
+    def build_detinfo_dict(self):
+        """
+        Creates a dictionary of detector interfaces and their enumerated attributes,
+        using minimal instantiation with config=None, calib=None, env=None.
+
+        Returns:
+            dict[tuple[str, str], Any]: Mapping of (detname, xface_name) -> attribute summary
         """
         info = {}
-        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+        for (detname, xface_name), drp_class in self.dsparms.det_classes["normal"].items():
             try:
-                xface_obj = getattr(self.Detector(detname), det_xface_name)
-                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+                # Minimal instantiation with None inputs to avoid side effects
+                config = self.dsparms.configinfo_dict.get(detname, None)
+                calib, env_store, var_name = None, None, None
+                iface = drp_class(
+                    detname,
+                    xface_name,
+                    config,
+                    calib,
+                    env_store,
+                    var_name,
+                )
+
+                info[(detname, xface_name)] = _enumerate_attrs(iface)
+
             except RecursionError:
                 msg = (
-                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
-                f"(Consider reviewing custom attributes for missing '_' prefix)"
-            )
-                info[(detname, det_xface_name)] = msg
+                    f"<error: RecursionError while walking {detname}.{xface_name}> "
+                    f"(Consider reviewing custom attributes for missing '_' prefix)"
+                )
                 self.logger.warning(msg)
+                info[(detname, xface_name)] = msg
+
             except Exception as e:
-                info[(detname, det_xface_name)] = f"<error: {e}>"
-        return info
+                info[(detname, xface_name)] = f"<error: {e}>"
+                self.logger.debug(f"[detinfo-lite] Skipped {detname}.{xface_name}: {e}", exc_info=True)
+        self.detinfo = info
 
     @property
     def epicsinfo(self):
@@ -532,6 +564,7 @@ class RunSerial(Run):
         self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
         self._smd_iter = None
         self._ts_table = None
+        self._setup_run_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
