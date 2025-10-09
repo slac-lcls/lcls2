@@ -85,6 +85,7 @@ class AreaDetector(DetectorImpl):
         self._calibc_ = None
         self._geo = None
         self._seg_geo = None
+        self._path_geo_default = None
         self._segment_numbers = self._sorted_segment_inds  # [0, 1, 2,... 17, 18, 19]
         self._maskalgos_ = None
         self._store_ = None  # detector dependent storage of cached parameters for method calib
