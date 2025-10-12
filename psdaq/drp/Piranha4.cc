@@ -500,12 +500,12 @@ bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Arra
             unsigned now = Pds::SysClk::sample();
             if (now - m_ttpv_prev > m_ttpv_minperiod) {
                 m_ttpv_prev = now;
-                m_vec[0] = m_fex.amplitude();
-                m_vec[1] = m_fex.filtered_position();
-                m_vec[2] = m_fex.filtered_pos_ps();
-                m_vec[3] = m_fex.filtered_fwhm();
-                m_vec[4] = m_fex.next_amplitude();
-                m_vec[5] = m_fex.ref_amplitude();
+                m_vec[0] = m_fex.filtered_position();
+                m_vec[1] = m_fex.filtered_pos_ps();
+                m_vec[2] = m_fex.amplitude();
+                m_vec[3] = m_fex.next_amplitude();
+                m_vec[4] = m_fex.ref_amplitude();
+                m_vec[5] = m_fex.filtered_fwhm();
                 m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
             }
             m_ttpv_sem.give();
@@ -854,3 +854,4 @@ int Drp::Piranha::L2Iter::process(Xtc* xtc, const void* bufEnd)
     }
     return Continue;
 }
+
