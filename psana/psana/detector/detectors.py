@@ -21,3 +21,4 @@ from .axis                  import *
 from .jungfrau              import *
 from .jungfrauemu           import *
 #from .epixhremu             import *
+from .generic               import *
