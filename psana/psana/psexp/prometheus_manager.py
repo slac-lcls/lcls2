@@ -133,14 +133,16 @@ class PrometheusManager(object):
     metrics = {
         "psana_smd0_read": ("Gauge", "Disk reading rate (MB/s) for smd0", ()),
         "psana_smd0_rate": ("Gauge", "Processing rate by smd0 (kHz)", ()),
-        "psana_smd0_wait": ("Gauge", "time spent (s) waiting for EventBuilders", ()),
+        "psana_smd0_wait": ("Gauge", "time Smd0 spent (s) waiting for Eb cores", ()),
         "psana_eb_rate": ("Gauge", "Processing rate by eb (kHz)", ()),
-        "psana_eb_wait_smd0": ("Gauge", "time spent (s) waiting for Smd0", ()),
-        "psana_eb_wait_bd": ("Gauge", "time spent (s) waiting for BigData cores", ()),
+        "psana_eb_wait_smd0": ("Gauge", "time Eb spent (s) waiting for Smd0", ()),
+        "psana_eb_wait_bd": ("Gauge", "time Eb spent (s) waiting for Bd cores", ()),
         "psana_bd_rate": ("Gauge", "Processing rate by bd (kHz)", ()),
         "psana_bd_read": ("Gauge", "Disk reading rate (MB/s) for bd", ()),
-        "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (kHz)", ()),
-        "psana_bd_wait": ("Gauge", "time spent (s) waiting for EventBuilder", ()),
+        "psana_bd_ana_rate": ("Gauge", "User-analysis rate on bd (Hz)", ()),
+        "psana_bd_wait": ("Gauge", "time spent (s) waiting for its Eb", ()),
+        "psana_srv_wait": ("Gauge", "time Srv spent (s) waiting for Bd cores", ()),
+        "psana_srv_rate": ("Gauge", "Processing rate by srv (kHz)", ()),
     }
     def __init__(self, job=None):
         self.username = getpass.getuser()

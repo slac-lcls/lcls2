@@ -1,4 +1,6 @@
 from psana.psexp import TransitionId
+import time
+from psana.psexp.prometheus_manager import get_prom_manager
 
 
 class Step(object):
@@ -11,9 +13,11 @@ class Step(object):
         # RunSmallData can pass proxy_events so that when Step goes
         # through events, it can add all non L1Accept transitions to the list.
         self.proxy_events = proxy_events
+        self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
 
     def events(self):
-        for evt in self.evt_iter:
+        st = time.time()
+        for i, evt in enumerate(self.evt_iter):
             if not TransitionId.isEvent(evt.service()):
                 if evt.service() == TransitionId.EndStep:
                     return
@@ -23,3 +27,9 @@ class Step(object):
                     self.esm.update_by_event(evt)
                 continue
             yield evt
+
+            if i % 1000 == 0:
+                en = time.time()
+                ana_rate = 1000 / (en - st)
+                self.ana_t_gauge.set(ana_rate)
+                st = time.time()

@@ -82,8 +82,8 @@ class RunParallel(Run):
             yield evt
             if i % 1000 == 0:
                 en = time.time()
-                ana_rate = 1 / (en - st)
-                self.logger.debug(f"ANARATE {ana_rate:.2f} kHz")
+                ana_rate = 1000 / (en - st)
+                self.logger.debug(f"ANARATE {ana_rate:.2f} Hz")
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 

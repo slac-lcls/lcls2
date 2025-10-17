@@ -143,6 +143,10 @@ class DataSourceBase(abc.ABC):
         Used internally to avoid repeated file I/O in MPI contexts.
     log_level : int
         Python logging level (e.g., logging.DEBUG, logging.INFO). Default is logging.INFO.
+    log_file : str
+        Log file path. If None, logs to stdout (default: None).
+    auto_tune : bool
+        Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
     """
 
     def __init__(self, **kwargs):
@@ -181,6 +185,7 @@ class DataSourceBase(abc.ABC):
         self.cached_detectors = kwargs.get("cached_detectors", [])
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
+        self.auto_tune = kwargs.get("auto_tune", False)
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -226,7 +231,7 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
-            "log_level", "log_file"
+            "log_level", "log_file", 'auto_tune'
         }
         for k in kwargs:
             if k not in known_keys:
