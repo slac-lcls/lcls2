@@ -21,7 +21,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s -d epixquad -k exp=ueddaq02,run=27 -td -L DEBUG' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=27,max_events=100 -td -L DEBUG' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=30 <--- DOES NOT WORK - missconfigured' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=83 <--- dark' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=84 <--- PARTLY WORKS charge injection' % SCRNAME\
@@ -186,7 +186,7 @@ def loop_run_step_evt(args):
         if not do_loopevts: continue
         ievt, evt, segs = None, None, None
         for ievt, evt in enumerate(step.events()):
-          #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
+          if ievt>args.evtmax: exit('exit by number of events limit --evtmax %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
              segs = det.raw._segment_numbers if det is not None else None
@@ -226,7 +226,7 @@ def do_main():
 
     parser = argument_parser()
     args = parser.parse_args()
-    vars(args)
+    #opts = vars(args)
 
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 
@@ -253,7 +253,7 @@ def argument_parser():
 
     d_dskwargs = None
     d_detname = None # 'epixquad'
-    d_evtmax  = 0 # maximal number of events
+    d_evtmax  = 1000000 # maximal number of events
     d_logmode = 'INFO'
     d_typeinfo= 'DRSE'
 
