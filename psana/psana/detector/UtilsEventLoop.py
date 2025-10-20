@@ -49,6 +49,7 @@ class EventLoop:
         self.args = parser.parse_args()
         self.kwa = vars(self.args)
         logger.info('input parameters:%s' % info_dict(self.kwa))
+        self.repoman = rm.init_repoman_and_logger(parser=self.parser, **self.kwa)
 
     def open_data_sourse(self, logmeth=logger.debug):
         self.dskwargs = dskwargs = data_source_kwargs(**self.kwa)
@@ -101,11 +102,9 @@ class EventLoop:
 
     def event_loop(self):
 
-        args = self.parser.parse_args()
-        defs = self.parser.parse_args([])
-        self.kwa = kwa = vars(args)
-
-        self.repoman = rm.init_repoman_and_logger(parser=self.parser, **kwa)
+        #args = self.parser.parse_args()
+        #defs = self.parser.parse_args([])
+        kwa = self.kwa
 
         s_dskwargs = kwa.get('dskwargs', None)
         detname = kwa.get('detname', None)
@@ -125,6 +124,7 @@ class EventLoop:
         self.nrecs = kwa.get('nrecs', 10)
         shortname = None
         self.detname = detname
+        
 
         self.dskwargs = dskwargs = up.datasource_kwargs_from_string(s_dskwargs)
         logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
