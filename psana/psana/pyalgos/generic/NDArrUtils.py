@@ -105,7 +105,7 @@ def info_ndarr(nda, name='', first=0, last=5, vfmt=None, spa=' '):
         s = '%s%s' % (_name, type(nda))
     else:
         a = '' if last == 0 else\
-            str_formatted(nda, first=0, last=5, vfmt=vfmt, spa=spa)
+            str_formatted(nda, first=first, last=last, vfmt=vfmt, spa=spa)
         #    '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
         s = '%sshape:%s size:%d dtype:%s%s%s' % (_name, str(nda.shape), nda.size, nda.dtype, gap, a)
     return s
