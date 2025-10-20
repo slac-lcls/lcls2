@@ -21,11 +21,6 @@ import os
 import sys
 import numpy as np
 from psana.detector.NDArrUtils import info_ndarr #, divide_protected, reshape_to_2d, save_ndarray_in_textfile
-#import psana.detector.utils_psana as up
-#from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record  # info_command_line
-#import psana.pscalib.calib.CalibConstants as cc
-#from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix
-#SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 
 class DataBlock():
@@ -89,8 +84,7 @@ class DataBlock():
 
     def load(self, fname=None):
         """restore data-block array and other DataBlock attributes from file if available"""
-        #logger.info('Load DataBlock attributes from file: %s' % fname)
-        print('Load DataBlock attributes from file: %s' % fname)
+        logger.info('Load DataBlock attributes from file: %s' % fname)
         assert os.path.exists(fname)
         data = np.load(fname)
         self.block = data['block']   # data['arr_0']
