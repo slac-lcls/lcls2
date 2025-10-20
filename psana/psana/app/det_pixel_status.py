@@ -10,7 +10,7 @@ SCRNAME = sys.argv[0].split('/')[-1]
 
 USAGE ='\n%s works with 2-d raw arrays ONLY! For 3-d the segment index --segind needs to be specified' % SCRNAME\
       +'\n%s -k <dataset> -d <detname> ...' % SCRNAME\
-      +'\nTEST 1:  %s -k exp=mfx100848724,run=51 -d epix100_0 -F 1 -n 1000' % SCRNAME\
+      +'\nTEST 1:  %s -k exp=mfx100848724,run=51 -d epix100_0 -F 1 -r 1000 -p1 -s' % SCRNAME\
       +'\n Feature # stands for'\
       +'\n   1: mean intensity of frames in good range'\
       +'\n   2: dark mean in good range'\
@@ -30,11 +30,11 @@ USAGE ='\n%s works with 2-d raw arrays ONLY! For 3-d the segment index --segind 
 def argument_parser():
     from argparse import ArgumentParser
 
-    d_fname    = None # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
     d_dirrepo  = DIR_REPO_STATUS
 #    d_dskwargs = 'exp=rixx1003721,run=200,intg_det=epixhr'  # 'exp=xpplw3319,run=293'
     d_dskwargs = 'exp=mfx100848724,run=51'
     d_detname  = 'epix100_0'
+    d_nrecs    = 100
     d_events   = 1000
     d_evskip   = 0
     d_stepnum  = None
@@ -44,9 +44,8 @@ def argument_parser():
     d_shwind   = '15,15'
     d_snrmax   = 8.0
     d_evcode   = None
-    d_segind   = 0
+    d_segind   = None
     d_gmode    = None
-    d_nrecs    = 100
     d_loglevel = 'INFO'
     d_dirmode  = 0o2775
     d_filemode = 0o664
@@ -57,8 +56,9 @@ def argument_parser():
     d_features = '1,2,3'
     d_plotim   = 0
     d_version  = 'V2025-10-06'
+    d_reset    = False
+    #d_fname    = '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
 
-    h_fname    = '(str) input file name with accumulated data block and a few other parameters, default = %s' % d_fname
     h_dskwargs = '(str) DataSource parameters, default = %s' % d_dskwargs
     h_detname  = '(str) detector/detname name, default = %s' % d_detname
     h_events   = '(int) maximal number of events total (in runs, steps), default = %d' % d_events
@@ -68,7 +68,7 @@ def argument_parser():
     h_steps    = '(str) list of step numbers (in total for many runs counting from 0) to process or None for all, default = %s' % str(d_steps)
     h_evcode   = '(str) comma separated event codes for selection as OR combination; any negative '\
                  'code inverts selection, default = %s' % str(d_evcode)
-    h_segind   = '(int) segment index for multi-panel detectors with raw.shape.ndim>2, default = %d' % d_segind
+    h_segind   = '(int) segment index for multi-panel detectors with raw.shape.ndim>2, default = %s' % str(d_segind)
     h_gmode    = '(str) gain mode name-suffix for multi-gain detectors with raw.shape.ndim>3, ex: AHL-H, default = %s' % str(d_gmode)
     h_nrecs    = '(int) number of records to collect data, default = %s' % str(d_nrecs)
     h_dirrepo  = '(str) repository for calibration results, default = %s' % d_dirrepo
@@ -88,9 +88,10 @@ def argument_parser():
                  ' from 1 to 6 to evaluate bad pixels, default = %s' % d_features
     h_plotim   = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_version  = 'constants version, default = %s' % str(d_version)
+    h_reset    = '(bool) usereset tmp file to save/load data block, default = %s' % d_reset
+    #h_fname    = '(str) input file name with accumulated data block and a few other parameters, default = %s' % d_fname
 
     parser = ArgumentParser(description=DESCRIPTION, usage=USAGE)
-    parser.add_argument('-f', '--fname',    default=d_fname,    type=str,   help=h_fname)
     parser.add_argument('-k', '--dskwargs', default=d_dskwargs, type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str,   help=h_detname)
     parser.add_argument('-n', '--events',   default=d_events,   type=int,   help=h_events)
@@ -116,6 +117,8 @@ def argument_parser():
     parser.add_argument('--gmode',          default=d_gmode,    type=str,   help=h_gmode)
     parser.add_argument('-p', '--plotim',   default=d_plotim,   type=int,   help=h_plotim)
     parser.add_argument('-v', '--version',  default=d_version,  type=str,   help=h_version)
+    parser.add_argument('-s', '--reset',    action='store_true',            help=h_reset)
+    #parser.add_argument('-f', '--fname',    default=d_fname,    type=str,   help=h_fname)
 
     return parser
 
@@ -130,7 +133,7 @@ def do_main():
     kwargs = vars(args)        # dict
 
     import psana.detector.Utils as ut #info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
-    print(ut.info_parser_arguments(parser))
+    #print(ut.info_parser_arguments(parser))
 
     from psana.detector.UtilsPixelStatus import det_pixel_status
     det_pixel_status(parser)
