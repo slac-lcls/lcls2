@@ -1,7 +1,7 @@
 add_library(alloc INTERFACE)
 
 target_link_libraries(alloc INTERFACE
-    xtcdata::xtc
+    xtc
 )
 
 target_include_directories(alloc INTERFACE

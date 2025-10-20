@@ -12,22 +12,22 @@ add_library(shmemcli SHARED
 )
 
 target_include_directories(shmemcli PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 
 target_include_directories(shmemsrv PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(shmemcli
-  xtcdata::xtc
+  xtc
   rt
 )
 
 target_link_libraries(shmemsrv
-  xtcdata::xtc
+  xtc
 )
 
 add_executable(shmemClient
@@ -35,7 +35,7 @@ add_executable(shmemClient
 )
 
 target_link_libraries(shmemClient
-  xtcdata::xtc
+  xtc
   shmemcli
   rt
 )
@@ -45,7 +45,7 @@ add_executable(shmemWriter
 )
 
 target_link_libraries(shmemWriter
-  xtcdata::xtc
+  xtc
   shmemcli
   rt
 )
@@ -55,13 +55,13 @@ add_executable(shmemServer
 )
 
 target_link_libraries(shmemServer
-  xtcdata::xtc
+  xtc
   shmemsrv
   rt
 )
 
 target_include_directories(shmemcli PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 

@@ -14,14 +14,14 @@ add_library(geometry SHARED
 target_compile_options(geometry PRIVATE ${OpenMP_CXX_FLAGS})
 
 target_include_directories(geometry PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
 )
 
 
 target_link_libraries(geometry ${OpenMP_CXX_FLAGS}
     utils
-    xtcdata::xtc
+    xtc
     CURL::libcurl
 )
 
@@ -46,7 +46,7 @@ install(FILES
 #target_link_libraries(test_CalibPars
 #    psalg
 #    calib
-#    xtcdata::xtc
+#    xtc
 #)
 
 install(TARGETS geometry

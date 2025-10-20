@@ -267,176 +267,176 @@ if 'HEXANODE' in BUILD_LIST :
         CYTHON_EXTS.append(ext)
 
 
-if 'HEXANODE_TEST' in BUILD_LIST :
-  if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
-    ext = Extension("hexanode",
-                    sources=["psana/hexanode/test_ext.pyx",
-                             "psana/hexanode/src/LMF_IO.cc",
-                             "psana/hexanode/src/cfib.cc"],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    extra_link_args = extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+# if 'HEXANODE_TEST' in BUILD_LIST :
+#   if(os.path.isfile(os.path.join(sys.prefix, 'lib', 'libResort64c_x64.a'))):
+#     ext = Extension("hexanode",
+#                     sources=["psana/hexanode/test_ext.pyx",
+#                              "psana/hexanode/src/LMF_IO.cc",
+#                              "psana/hexanode/src/cfib.cc"],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+#                     library_dirs = [os.path.join(instdir, 'lib')],
+#                     extra_link_args = extra_link_args,
+#     )
+#     CYTHON_EXTS.append(ext)
 
 
-if 'CFD' in BUILD_LIST :
-    ext = Extension("constFracDiscrim",
-                    sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
-                             "psana/constFracDiscrim/src/ConstFracDiscrim.cc"],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args,
-                    include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-    )
-    CYTHON_EXTS.append(ext)
+# if 'CFD' in BUILD_LIST :
+#     ext = Extension("constFracDiscrim",
+#                     sources=["psana/constFracDiscrim/constFracDiscrim.pyx",
+#                              "psana/constFracDiscrim/src/ConstFracDiscrim.cc"],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     extra_link_args = extra_link_args,
+#                     include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
+#     )
+#     CYTHON_EXTS.append(ext)
 
 
-if 'DGRAM' in BUILD_LIST :
-    ext = Extension('dgramCreate',
-                    #packages=['psana.peakfinder',],
-                    sources=["psana/peakFinder/dgramCreate.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
-                    #library_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = [np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-                    # include_dirs=[np.get_include(), "../install/include"]
-    )
-    CYTHON_EXTS.append(ext)
+# if 'DGRAM' in BUILD_LIST :
+#     ext = Extension('dgramCreate',
+#                     #packages=['psana.peakfinder',],
+#                     sources=["psana/peakFinder/dgramCreate.pyx"],
+#                     libraries = ['xtc'],
+#                     #include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+#                     #library_dirs = [os.path.join(instdir, 'lib')],
+#                     include_dirs = [np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
+#                     library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     extra_link_args = extra_link_args_rpath,
+#                     # include_dirs=[np.get_include(), "../install/include"]
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.dgramchunk",
-                    sources=["src/dgramchunk.pyx"],
-                    extra_compile_args=extra_c_compile_args,
-                    extra_link_args=extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.dgramchunk",
+#                     sources=["src/dgramchunk.pyx"],
+#                     extra_compile_args=extra_c_compile_args,
+#                     extra_link_args=extra_link_args,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.smdreader",
-                    sources=["psana/smdreader.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs=["psana"],
-                    #include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
-                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    #extra_compile_args=extra_c_compile_args,
-                    extra_compile_args=extra_c_compile_args + openmp_compile_args,
-                    #extra_link_args=extra_link_args,
-                    extra_link_args=extra_link_args + openmp_link_args + extra_link_args_rpath
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.smdreader",
+#                     sources=["psana/smdreader.pyx"],
+#                     libraries = ['xtc'],
+#                     #include_dirs=["psana"],
+#                     #include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
+#                     include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
+#                     library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
+#                     #extra_compile_args=extra_c_compile_args,
+#                     extra_compile_args=extra_c_compile_args + openmp_compile_args,
+#                     #extra_link_args=extra_link_args,
+#                     extra_link_args=extra_link_args + openmp_link_args + extra_link_args_rpath
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.eventbuilder",
-                    sources=["psana/eventbuilder.pyx"],
-                    include_dirs=["psana"],
-                    extra_compile_args=extra_c_compile_args,
-                    extra_link_args=extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.eventbuilder",
+#                     sources=["psana/eventbuilder.pyx"],
+#                     include_dirs=["psana"],
+#                     extra_compile_args=extra_c_compile_args,
+#                     extra_link_args=extra_link_args,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.parallelreader",
-                    sources=["psana/parallelreader.pyx"],
-                    include_dirs=["psana"],
-                    extra_compile_args=extra_c_compile_args + openmp_compile_args,
-                    extra_link_args=extra_link_args + openmp_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.parallelreader",
+#                     sources=["psana/parallelreader.pyx"],
+#                     include_dirs=["psana"],
+#                     extra_compile_args=extra_c_compile_args + openmp_compile_args,
+#                     extra_link_args=extra_link_args + openmp_link_args,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.dgramedit",
-                    sources=["psana/dgramedit.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    #library_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.dgramedit",
+#                     sources=["psana/dgramedit.pyx"],
+#                     libraries = ['xtc'],
+#                     #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+#                     #library_dirs = [os.path.join(instdir, 'lib')],
+#                     include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
+#                     library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     extra_link_args = extra_link_args_rpath,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("quadanode",
-                    sources=["psana/quadanode.pyx"],
-                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("quadanode",
+#                     sources=["psana/quadanode.pyx"],
+#                     include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+#                     library_dirs = [os.path.join(instdir, 'lib')],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     extra_link_args = extra_link_args_rpath,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.dgramlite",
-                    sources=["psana/dgramlite.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    #iibrary_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
-
-
-if 'HSD' in BUILD_LIST :
-    ext = Extension("hsd",
-                    sources=["psana/hsd/hsd.pyx"],
-                    libraries=[],
-                    language="c++",
-                    extra_compile_args=extra_cxx_compile_args,
-                    include_dirs=[np.get_include(),
-                                  "../install/include",
-                                  os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+#     ext = Extension("psana.dgramlite",
+#                     sources=["psana/dgramlite.pyx"],
+#                     libraries = ['xtc'],
+#                     #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
+#                     #iibrary_dirs = [os.path.join(instdir, 'lib')],
+#                     include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
+#                     library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     extra_link_args = extra_link_args_rpath,
+#     )
+#     CYTHON_EXTS.append(ext)
 
 
-if 'NDARRAY' in BUILD_LIST :
-    ext = Extension("ndarray",
-                    sources=["psana/pycalgos/NDArray_ext.pyx",
-                             "psana/peakFinder/src/WFAlgos.cc"],\
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    libraries=[],
-                    extra_link_args = extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
+# if 'HSD' in BUILD_LIST :
+#     ext = Extension("hsd",
+#                     sources=["psana/hsd/hsd.pyx"],
+#                     libraries=[],
+#                     language="c++",
+#                     extra_compile_args=extra_cxx_compile_args,
+#                     include_dirs=[np.get_include(),
+#                                   "../install/include",
+#                                   os.path.join(instdir, 'include')],
+#                     library_dirs = [os.path.join(instdir, 'lib')],
+#                     extra_link_args = extra_link_args_rpath,
+#     )
+#     CYTHON_EXTS.append(ext)
 
 
-if 'PYCALGOS' in BUILD_LIST :
-    ext = Extension("utilsdetector_ext",
-                    sources=["psana/pycalgos/utilsdetector_ext.pyx",
-                             "psana/pycalgos/UtilsDetector.cc"],
-                    #libraries = ['utils'], # for SysLog
-                    libraries = [],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args + ['-O3',],
-                    extra_link_args = extra_link_args_rpath,
-                    #include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-    )
-    CYTHON_EXTS.append(ext)
+# if 'NDARRAY' in BUILD_LIST :
+#     ext = Extension("ndarray",
+#                     sources=["psana/pycalgos/NDArray_ext.pyx",
+#                              "psana/peakFinder/src/WFAlgos.cc"],\
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args,
+#                     include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+#                     library_dirs = [os.path.join(instdir, 'lib')],
+#                     libraries=[],
+#                     extra_link_args = extra_link_args,
+#     )
+#     CYTHON_EXTS.append(ext)
 
-setup(
-    name = 'psana',
-    version = VERSION,
-    license = 'LCLS II',
-    description = 'LCLS II analysis package',
-    install_requires = INSTALL_REQS,
-    packages = PACKAGES,
-    package_data = PACKAGE_DATA,
-    #cmdclass={'build_ext': my_build_ext},
-    ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2, annotate=True),
-    entry_points = ENTRY_POINTS,
-)
+
+# if 'PYCALGOS' in BUILD_LIST :
+#     ext = Extension("utilsdetector_ext",
+#                     sources=["psana/pycalgos/utilsdetector_ext.pyx",
+#                              "psana/pycalgos/UtilsDetector.cc"],
+#                     #libraries = ['utils'], # for SysLog
+#                     libraries = [],
+#                     language="c++",
+#                     extra_compile_args = extra_cxx_compile_args + ['-O3',],
+#                     extra_link_args = extra_link_args_rpath,
+#                     #include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
+#                     include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+#                     library_dirs = [os.path.join(instdir, 'lib')],
+#     )
+#     CYTHON_EXTS.append(ext)
+
+# setup(
+#     name = 'psana',
+#     version = VERSION,
+#     license = 'LCLS II',
+#     description = 'LCLS II analysis package',
+#     install_requires = INSTALL_REQS,
+#     packages = PACKAGES,
+#     package_data = PACKAGE_DATA,
+#     #cmdclass={'build_ext': my_build_ext},
+#     ext_modules = EXTS + cythonize(CYTHON_EXTS, build_dir=CYT_BLD_DIR, language_level=2, annotate=True),
+#     entry_points = ENTRY_POINTS,
+# )
