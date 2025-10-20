@@ -2,7 +2,6 @@ project(psalg)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-find_package(xtcdata REQUIRED)
 find_package(RapidJSON REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)

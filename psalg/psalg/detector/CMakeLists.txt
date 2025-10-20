@@ -15,12 +15,12 @@ add_library(detector SHARED
 )
 
 target_link_libraries(detector
-    xtcdata::xtc
+    xtc
     calib
 )
 
 target_include_directories(detector PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
 )
 
