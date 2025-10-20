@@ -22,7 +22,7 @@ target_include_directories(calib PUBLIC
 target_link_libraries(calib
     utils
     geometry
-    xtcdata::xtc
+    xtc
     CURL::libcurl
 )
 
@@ -51,7 +51,7 @@ install(FILES
 #target_link_libraries(test_CalibPars
 #    psalg
 #    calib
-#    xtcdata::xtc
+#    xtc
 #)
 
 install(TARGETS calib

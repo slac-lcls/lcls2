@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Find the MyLibrary package
-find_package(psalg REQUIRED)
-find_package(xtcdata REQUIRED)
+
 
 add_library(psana SHARED
     peakFinder/src/LocalExtrema.cc
@@ -19,19 +18,16 @@ target_include_directories(psana PUBLIC
 )
 
 # Link the executable
-target_link_libraries(psana PUBLIC psalg::alloc)
-target_link_libraries(psana PUBLIC psalg::digitizer)
-target_link_libraries(psana PUBLIC psalg::utils)
-target_link_libraries(psana PUBLIC psalg::calib)
+target_link_libraries(psana PUBLIC psalg)
+target_link_libraries(psana PUBLIC xtc)
 
-
-
-
+message(STATUS "CMAKE_SOURCE_DIR is: ${CMAKE_SOURCE_DIR}")
 add_custom_command(TARGET psana
-                   POST_BUILD
-		   WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-                   COMMAND echo "BUILDING EXTENSIONS"
-                   COMMAND python setup.py build_ext -f --inplace
-                   COMMAND echo "PIP INSTALLING PSANA"
-                   COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .)
+    POST_BUILD
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/psana"
+    COMMAND echo "BUILDING EXTENSIONS"
+    COMMAND python setup.py build_ext -f --inplace
+    COMMAND echo "PIP INSTALLING PSANA"
+    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .
+)
 

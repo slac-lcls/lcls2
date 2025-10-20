@@ -37,7 +37,7 @@ while getopts "c:p:s:b:fdar" opt; do
     ;;
     b) build_ext_list="$OPTARG"
     ;;
-    f) force_clean=0                       # Force clean is required building between rhel6&7
+    f) force_clean=1                  # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
