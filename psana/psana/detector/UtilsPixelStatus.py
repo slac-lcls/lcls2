@@ -22,8 +22,8 @@ import numpy as np
 #import psana.detector.UtilsCalib as uc
 import psana.detector.UtilsEventLoop as uel
 from psana.detector.UtilsDataBlock import DataBlock
-sys, logging, uc, info_ndarr, message, SCRNAME, EventLoop =\
-   uel.sys, uel.logging, uel.uc, uel.au.info_ndarr, uel.message, uel.SCRNAME, uel.EventLoop
+sys, logging, info_ndarr, message, SCRNAME, EventLoop =\
+   uel.sys, uel.logging, uel.au.info_ndarr, uel.message, uel.SCRNAME, uel.EventLoop
 logger = logging.getLogger(__name__)
 
 
@@ -124,7 +124,9 @@ class EventLoopStatus(EventLoop):
     def init_event_loop(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         logger.info('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
-        kwa = self.kwa
+        #parser = self.parser
+        #args = self.args
+        #kwa = self.kwa
         #nrecs   = kwa.get('nrecs', 10)
         #self.nrecs  = kwa.get('nrecs',1000)
         #kwa['init_event_loop'] = 'OK'
@@ -132,6 +134,7 @@ class EventLoopStatus(EventLoop):
         self.status = None
         self.dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape:(4, 192, 384)}}
         self.kwa_depl = {}
+        self.flimg = None
 
     def begin_run(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
@@ -169,12 +172,19 @@ class EventLoopStatus(EventLoop):
             self.fname_block = self.fname_data_block()
             self.exists_fdb = os.path.exists(self.fname_block)
             logger.warning('%s tmp file: %s' % ({True:'EXISTS', False:'DOES NOT EXIST'}[self.exists_fdb], self.fname_block))
+            if not self.args.reset and self.exists_fdb:
+                dbl.load(fname=self.fname_block)
 
     def end_step(self):
         #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         logger.info(self.dbl.info_data_block(cmt='berofe saving data_block'))
         dbl = self.dbl
-        dbl.save(self.fname_block)
+
+        if self.args.plotim:
+            gr.show()
+
+        if self.args.reset or not self.exists_fdb:
+            dbl.save(self.fname_block)
         del(dbl)
         dbl=None
         logger.info('==== End of step %1d ====\n' % self.istep)
@@ -186,6 +196,27 @@ class EventLoopStatus(EventLoop):
         if self.aslice is not None: raw = raw[self.aslice]
         is_full = self.dbl.event(raw, self.ievt)
         self.status = 2 if is_full else 1
+        if self.args.plotim: self.plot_event()
+
+    def plot_event(self):
+        raw = self.odet.raw.raw(self.evt)
+        logger.info(info_ndarr(raw, 'ievt:%04d raw:' % self.ievt, last=5))
+        img = np.array(raw)
+        img = uel.au.reshape_to_2d(img)
+        sh = img.shape
+        h = 6; w = h*sh[1]/sh[0] + 1
+        if self.flimg is None:
+           global gr, fleximage
+           from psana.detector.UtilsGraphics import gr, fleximage
+           self.flimg = fleximage(img, h_in=h, w_in=w) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+        else:
+           self.flimg.update(img)
+        tit = 'Event %d' % self.ievt
+        self.flimg.fig.suptitle(tit, fontsize=16)
+        gr.set_win_title(self.flimg.fig, titwin=tit)
+        #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+        gr.show(mode='DO NOT HOLD')
+
 
     def summary(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
@@ -238,16 +269,18 @@ def det_pixel_status(parser):
     STRLOGLEV = args.loglevel
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
 
-    fname = args.fname # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
+#    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
+    #fname = args.fname # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
 
-    if os.path.exists(str(fname)):
-        logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
-        test_features(fname=fname)
-
-    else:
-        #evl = EventLoop(parser)
-        evl = EventLoopStatus(parser)
-        evl.event_loop()
+#    if os.path.exists(str(fname)):
+#        test_features(fname=fname)=
+#    else:
+#        evl = EventLoopStatus(parser)
+#        evl.event_loop()
+       
+    evl = EventLoopStatus(parser)
+    evl.event_loop()
+    #test_features(fname=fname)
 
     sys.exit('End of %s' % SCRNAME)
 
