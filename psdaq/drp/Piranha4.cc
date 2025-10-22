@@ -20,6 +20,8 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include <algorithm>
+
 using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -426,7 +428,7 @@ unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIte
 
     // set up the names for L1Accept data
     { m_fexNamesId = NamesId(m_det.nodeId, EventNamesIndex+1);
-        Alg alg("ttfex", 1, 0, 0);
+        Alg alg("ttfex", 1, 0, 1);
         Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                                   m_para->detName.c_str(), alg,
                                                   m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
@@ -486,39 +488,48 @@ unsigned TT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::ConfigIte
 
 bool TT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    m_fex.reset();
-
     std::vector<double> sig, ref;
-    Piranha4TTFex::TTResult result = m_fex.analyze(subframes,sig,ref);
-
+    /* Vector `vec` is std::vector<double> and in order:
+     * [0]: filtered_position
+     * [1]: filtered_pos_ps
+     * [2]: amplitude
+     * [3]: next_amplitude
+     * [4]: ref_amplitude
+     * [5]: filtered_fwhm
+     */
+    auto [vec, result] = m_fex.analyze(subframes,sig,ref);
     if (result == Piranha4TTFex::INVALID) {
         xtc.damage.increase(Damage::UserDefined);
     }
     else if (result == Piranha4TTFex::VALID) {
+        //  Insert the results
         if (m_ttpv) {
+            // By convention PV is updated with a negative error code in amplitude
+            // field (vec[2]). So even if result is invalid we will send the PV update.
             m_ttpv_sem.take();
             unsigned now = Pds::SysClk::sample();
             if (now - m_ttpv_prev > m_ttpv_minperiod) {
                 m_ttpv_prev = now;
-                m_vec[0] = m_fex.filtered_position();
-                m_vec[1] = m_fex.filtered_pos_ps();
-                m_vec[2] = m_fex.amplitude();
-                m_vec[3] = m_fex.next_amplitude();
-                m_vec[4] = m_fex.ref_amplitude();
-                m_vec[5] = m_fex.filtered_fwhm();
+                std::copy(vec.begin(), vec.end(), m_vec);
                 m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
             }
             m_ttpv_sem.give();
         }
-        //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
-        cd.set_value(FexDef::ampl      , m_fex.amplitude());
-        cd.set_value(FexDef::fltpos    , m_fex.filtered_position());
-        cd.set_value(FexDef::fltpos_ps , m_fex.filtered_pos_ps());
-        cd.set_value(FexDef::fltposfwhm, m_fex.filtered_fwhm());
-        cd.set_value(FexDef::nxtampl   , m_fex.next_amplitude());
-        cd.set_value(FexDef::refampl   , m_fex.ref_amplitude());
-
+        /* Vector is in order:
+         * [0]: filtered_position
+         * [1]: filtered_pos_ps
+         * [2]: amplitude
+         * [3]: next_amplitude
+         * [4]: ref_amplitude
+         * [5]: filtered_fwhm
+         */
+        cd.set_value(FexDef::ampl      , vec[2]);
+        cd.set_value(FexDef::fltpos    , vec[0]);
+        cd.set_value(FexDef::fltpos_ps , vec[1]);
+        cd.set_value(FexDef::fltposfwhm, vec[5]);
+        cd.set_value(FexDef::nxtampl   , vec[3]);
+        cd.set_value(FexDef::refampl   , vec[4]);
 #define copy_average(atype, src, index) {                               \
             unsigned shape[1];                                          \
             shape[0] = src.size();                                      \

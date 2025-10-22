@@ -9,8 +9,9 @@
 
 #include "psalg/calib/NDArray.hh"
 
-#include <vector>
 #include <string>
+#include <vector>
+#include <utility>
 
 namespace Drp {
 class Parameters;
@@ -20,12 +21,11 @@ public:
     ~Piranha4TTFex();
  public:
     void configure  (XtcData::ConfigIter&,unsigned);
-    void reset      ();
     void unconfigure();
     enum TTResult { VALID, NOBEAM, NOLASER, INVALID };
-    TTResult analyze    (std::vector< XtcData::Array<uint8_t> >& subframes,
-                         std::vector<double>& sigout,
-                         std::vector<double>& refout);
+    std::pair<std::vector<double>, TTResult> analyze    (std::vector< XtcData::Array<uint8_t> >& subframes,
+                                                         std::vector<double>& sigout,
+                                                         std::vector<double>& refout);
  public:
     bool   write_image       () const { return m_prescale_image; }
     bool   write_averages    () const { return m_prescale_averages; }
@@ -34,13 +34,6 @@ public:
     bool   write_evt_image   ();
     bool   write_evt_averages();
  public:
-    bool   damaged          () const { return !(m_flt_fwhm>0); }
-    double filtered_position() const { return m_flt_position; }
-    double filtered_pos_ps  () const { return m_flt_position_ps; }
-    double filtered_fwhm    () const { return m_flt_fwhm; }
-    double amplitude        () const { return m_amplitude; }
-    double next_amplitude   () const { return m_nxt_amplitude; }
-    double ref_amplitude    () const { return m_ref_amplitude; }
     std::vector<double>& sig_average() { return m_sig_avg; }
     std::vector<double>& ref_average() { return m_ref_avg; }
  public:
@@ -82,13 +75,6 @@ private:
     Pds::Semaphore m_ref_avg_sem;
     std::vector<double> m_ref_avg; // accumulated reference
     int m_pedestal; // from Piranha4 camera configuration
-
-    double m_flt_position;
-    double m_flt_position_ps;
-    double m_flt_fwhm;
-    double m_amplitude;
-    double m_nxt_amplitude;
-    double m_ref_amplitude;
 
     std::vector<unsigned> m_cut;
   };
