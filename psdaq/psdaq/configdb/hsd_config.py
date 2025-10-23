@@ -243,6 +243,13 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     # program the values
     apply_config(ctxt,cfg)
 
+    # clear jesd error latches
+    rst = ctxt.get(epics_prefix+':RESET')
+    rst['jesdclear'] = 1
+    ctxt.put(epics_prefix+':RESET',rst,wait=True)
+    rst['jesdclear'] = 0
+    ctxt.put(epics_prefix+':RESET',rst,wait=False)
+    
     fwver = ctxt.get(epics_prefix+':FWVERSION').value
     fwbld = ctxt.get(epics_prefix+':FWBUILD'  ).value
     cfg['firmwareVersion'] = fwver
