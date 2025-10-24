@@ -1,9 +1,20 @@
 import sys
+import argparse
 import itertools
 import numpy as np
 
 def main():
-    factors = [2,2,2,2,5,5,5,5,7,13]  # product is 910,000
+    parser = argparse.ArgumentParser(description='sequence pva programming')
+    parser.add_argument("--ued", action='store_true', help="verbose output")
+    args = parser.parse_args()
+
+    if args.ued:
+        factors = [2,2,2,2,2,5,5,5,5,5,5]  # product is 500,000
+        base = 500.e3
+    else:
+        factors = [2,2,2,2,5,5,5,5,7,13]  # product is 910,000
+        base = 1300.e6/1400.
+
     iters = [itertools.combinations(factors,i+1) for i in range(len(factors))]
     f = set()
     d = {}
@@ -16,7 +27,6 @@ def main():
     f.add(1)
     d[1] = 1
 
-    base = 1300.e6/1400.
     print(' rate, Hz  | factor | factors')
     for q in sorted(f):
         print(' {:6d}     {:6d}   {}'.format(int(base/float(q)),q,d[q]))
