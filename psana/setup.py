@@ -19,18 +19,9 @@ if not instdir_env:
     raise Exception('Parameter --instdir is missing')
 instdir = instdir_env
 
-
-#######
-
-# instdir = 
-#######
-
 xtcdatadir_env = os.environ.get('XTCDATADIR')
 if not xtcdatadir_env:
     xtcdatadir = instdir_env
-    print("HERE")
-    print(xtcdatadir)
-
 else:
     xtcdatadir = xtcdatadir_env
 
@@ -42,9 +33,7 @@ else:
 
 # Shorter BUILD_LIST can be used to speedup development loop.
 #Command example: ./build_all.sh -b PEAKFINDER:HEXANODE:CFD -md
-
-
-BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
+BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')
 build_list_env = os.environ.get('BUILD_LIST')
 if build_list_env:
     BUILD_LIST = build_list_env.split(':')
@@ -105,26 +94,25 @@ INSTALL_REQS = []
 PACKAGE_DATA = {}
 ENTRY_POINTS = {}
 
+this_file = os.path.abspath(__file__)
+repo_root = os.path.abspath(os.path.join(this_file, "../.."))
 if xtcdatadir_env:
     xtc_headers =  os.path.join(xtcdatadir, 'include')
     xtc_lib_path = os.path.join(xtcdatadir, 'lib')
 else:
-    xtc_headers =  "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/xtcdata"
-    xtc_lib_path = "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/build/xtcdata/xtcdata/xtc"
+    xtc_headers = os.path.join(repo_root, "xtcdata")
+    xtc_lib_path = os.path.join(repo_root, "build", "xtcdata", "xtcdata", "xtc")
 
 if psalgdir_env:
     psalg_headers =  os.path.join(psalgdir, 'include')
     psalg_lib_path =  os.path.join(psalgdir, 'lib')
 else:
-    psalg_headers =  "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/psalg"
+    psalg_headers =  os.path.join(repo_root, "psalg")
     psalg_lib_path = glob.glob(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../build/psalg/psalg/*"))
 )
     
-psana_headers ="/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/psana/psana"
-
-
-
+psana_headers = os.path.join(repo_root, "psana", "psana")
 
 if 'PSANA' in BUILD_LIST :
     dgram_module = Extension('psana.dgram',
