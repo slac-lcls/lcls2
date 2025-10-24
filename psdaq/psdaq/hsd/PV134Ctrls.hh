@@ -28,6 +28,7 @@ namespace Pds {
     private:
       Module134& _m;
       unsigned   _testpattern;
+      unsigned   _inputchan;
     };
   };
 };

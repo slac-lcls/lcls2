@@ -31,7 +31,8 @@ namespace Pds {
 
     PV134Ctrls::PV134Ctrls(Module134& m, Pds::Task& t) :
       PVCtrlsBase(t),
-      _m(m)
+      _m(m),
+      _inputchan(0)
     {}
 
     void PV134Ctrls::_allocate()
@@ -73,11 +74,18 @@ namespace Pds {
         _testpattern = testp;
       }
 
-      _m.i2c().fmc_cpld.adc_input(fmc,PVGET(input_chan));
+      //      _m.i2c().fmc_cpld.adc_input(fmc,PVGET(input_chan)); // This doesn't work
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
-
       _m.i2c_unlock();
-      
+
+      unsigned inputchan = PVGET(input_chan);
+      if (inputchan != _inputchan) {
+          //  Redo the whole ADC/JESD initialization with the input selection
+          std::string adc[2];
+          _m.setup_jesd(false,adc[0],adc[1],inputchan);
+          _inputchan = inputchan;
+      }
+
       FexCfg& fex = _m.chip(fmc).fex;
 
       if (PVGET(enable)==1) {
