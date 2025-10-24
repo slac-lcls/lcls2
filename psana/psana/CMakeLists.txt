@@ -8,7 +8,7 @@ add_library(psana SHARED
     peakFinder/src/PeakFinderAlgos.cc
     peakFinder/src/PeakFinderAlgosLCLS1.cc
     peakFinder/src/WFAlgos.cc
-    PSALG_LINK.cc)
+)
     
 
 # This includes the headers during the build and also installs the headers in the include dir for lcls2
