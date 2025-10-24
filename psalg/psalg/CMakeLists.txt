@@ -11,8 +11,6 @@ endif()
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
-    XTC_LINK.cc
-###   utils/src/Logger.cc
 )
 
 target_include_directories(psalg PUBLIC
@@ -173,4 +171,14 @@ install(TARGETS psalg
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
+)
+
+message(STATUS "CMAKE_SOURCE_DIR is: ${CMAKE_SOURCE_DIR}")
+add_custom_command(TARGET psalg
+    POST_BUILD
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/psalg"
+    COMMAND echo "SETTING PSALG ENTRY POINTS"
+    COMMAND python setup.py build_ext -f --inplace
+    COMMAND echo "PIP INSTALLING PSALG"
+    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .
 )

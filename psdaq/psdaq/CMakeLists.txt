@@ -16,7 +16,3 @@ add_subdirectory(pgp)
 add_subdirectory(monreq)
 add_subdirectory(trigger)
 
-add_library(psdaq SHARED
-    XTC_LINK.cc
-    PSALG_LINK.cc)
-
