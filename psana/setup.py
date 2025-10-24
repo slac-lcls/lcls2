@@ -1,6 +1,7 @@
 import os
 import sys
 import numpy as np
+import glob
 from setuptools import setup, Extension, find_packages
 
 # HIDE WARNING:
@@ -18,9 +19,18 @@ if not instdir_env:
     raise Exception('Parameter --instdir is missing')
 instdir = instdir_env
 
+
+#######
+
+# instdir = 
+#######
+
 xtcdatadir_env = os.environ.get('XTCDATADIR')
 if not xtcdatadir_env:
     xtcdatadir = instdir_env
+    print("HERE")
+    print(xtcdatadir)
+
 else:
     xtcdatadir = xtcdatadir_env
 
@@ -97,15 +107,22 @@ if xtcdatadir_env:
     xtc_headers =  os.path.join(xtcdatadir, 'include')
     xtc_lib_path = os.path.join(xtcdatadir, 'lib')
 else:
-    xtc_headers =  os.path.join(instdir, 'include')
-    xtc_lib_path = os.path.join(instdir, 'lib')
+    xtc_headers =  "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/xtcdata"
+    xtc_lib_path = "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/build/xtcdata/xtcdata/xtc"
 
 if psalgdir_env:
     psalg_headers =  os.path.join(psalgdir, 'include')
     psalg_lib_path =  os.path.join(psalgdir, 'lib')
 else:
-    psalg_headers =  os.path.join(instdir, 'include')
-    psalg_lib_path =  os.path.join(instdir, 'lib')
+    psalg_headers =  "/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/psalg"
+    psalg_lib_path = glob.glob(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "../build/psalg/psalg/*"))
+)
+    
+psana_headers ="/sdf/home/m/mavaylon/mavaylon/gitrepos/new_lcls2/lcls2/psana/psana"
+
+
+
 
 psana_compile = extra_cxx_compile_args.copy()
 psana_link = extra_link_args_rpath.copy()
@@ -192,7 +209,6 @@ if 'PSANA' in BUILD_LIST :
         ]
     }
 
-
 if 'SHMEM' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('shmem',
                     sources=["psana/shmem/shmem.pyx"],
@@ -200,7 +216,7 @@ if 'SHMEM' in BUILD_LIST and sys.platform != 'darwin':
                     #include_dirs = [np.get_include(), os.path.join(instdir, 'include')],
                     #library_dirs = [os.path.join(instdir, 'lib')],
                     include_dirs = [np.get_include(), os.path.join(instdir, 'include'), xtc_headers, psalg_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psalg_lib_path],
+                    library_dirs = [xtc_lib_path]+psalg_lib_path,
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -217,8 +233,8 @@ if 'PEAKFINDER' in BUILD_LIST :
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
-                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include'), xtc_headers, psalg_headers],
+                    library_dirs = [xtc_lib_path]+psalg_lib_path,
     )
     CYTHON_EXTS.append(ext)
 
@@ -231,8 +247,8 @@ if 'PEAKFINDER' in BUILD_LIST :
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
-                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include'), xtc_headers, psalg_headers],
+                    library_dirs = [xtc_lib_path]+psalg_lib_path,
     )
     CYTHON_EXTS.append(ext)
 
@@ -243,8 +259,8 @@ if 'PEAKFINDER' in BUILD_LIST :
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
-                    include_dirs=[np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
+                    include_dirs=[np.get_include(), os.path.join(instdir, 'include'), xtc_headers, psalg_headers],
+                    library_dirs = [xtc_lib_path]+psalg_lib_path,
     )
     CYTHON_EXTS.append(ext)
 
@@ -261,8 +277,8 @@ if 'HEXANODE' in BUILD_LIST :
                                  "psana/hexanode/src/LMF_IO.cc"],
                         language="c++",
                         extra_compile_args = extra_cxx_compile_args,
-                        include_dirs=[os.path.join(sys.prefix,'include'), np.get_include(), os.path.join(instdir, 'include')],
-                        library_dirs = [os.path.join(instdir, 'lib'), os.path.join(sys.prefix, 'lib')],
+                        include_dirs=[np.get_include(), os.path.join(instdir, 'include'), xtc_headers, psalg_headers],
+                        library_dirs = [xtc_lib_path]+psalg_lib_path,
                         libraries=['Resort64c_x64'],
                         extra_link_args = extra_link_args,
         )
