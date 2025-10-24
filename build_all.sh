@@ -11,10 +11,7 @@ fi
 
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
-psana_setup_args=""
-force_clean=0
-no_ana=0
-no_shmem=0
+force_clean=1
 build_ext_list=""
 
 if [ -d "/sdf/group/lcls/" ]
@@ -24,23 +21,17 @@ else
     no_daq=0
 fi
 
-while getopts "c:p:s:b:fdam" opt; do
+while getopts "c:p:b:fd" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
     d) no_daq=1
     ;;
-    a) no_ana=1
-    ;;
-    m) no_shmem=1
-    ;;
     p) pyInstallStyle="$OPTARG"
-    ;;
-    s) psana_setup_args="$OPTARG"
     ;;
     b) build_ext_list="$OPTARG"
     ;;
-    f) force_clean=1                       # Force clean is required building between rhel6&7
+    f) force_clean=1                  # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -69,16 +60,28 @@ if [ $force_clean == 1 ]; then
     if [ -d psalg/build ]; then
         rm -rf psalg/build
     fi
+    if [ -d psana/build ]; then
+        rm -rf psana/build
+    fi
 fi
 
 function cmake_build() {
-    cd $1
-    shift
+    # Capture the install flag
+    make_install=$1
+
+    # Create and navigate to the build directory
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
-    make -j 4 install
-    cd ../..
+
+    # Run CMake configuration with the remaining arguments
+    cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+
+    # Check the make_install flag
+    if [ "$make_install" -eq 1 ]; then
+        make -j 4 install
+    else
+        make -j 4
+    fi
 }
 
 # "python setup.py develop" seems to not create this for you
@@ -90,63 +93,7 @@ else
     pipOptions=""
 fi
 
-cmake_build xtcdata
-
-if [ $no_shmem == 0 ]; then
-    cmake_build psalg
-else
-    cmake_build psalg -DBUILD_SHMEM=OFF
-fi
-cd psalg
-pip install --no-deps --prefix=$INSTDIR $pipOptions .
-cd ..
-
-if [ $no_daq == 0 ]; then
-    # to build psdaq with setuptools
-    cmake_build psdaq
-    cd psdaq
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-    cd ..
-fi
-
-if [ $no_ana == 0 ]; then
-    # to build psana with setuptools
-    cd psana
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-fi
-# The removal of site.py in setup 49.0.0 breaks "develop" installations
-# which are outside the normal system directories: /usr, /usr/local,
-# $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
-# The suggested fix, in the bug report, is the following: "I recommend
-# that the project use pip install --prefix or possibly pip install
-# --target to install packages and supply a sitecustomize.py to ensure
-# that directory ends up as a site dir and gets .pth processing. That
-# approach should be future-proof (at least against the sunset of
-# easy_install). All python setup.py commands in the code above have
-# been replaced with pip commands. The following code implements the
-# sitecustomize.py file. Pip bilds the python modules in a sandbox,
-# so it requires all the code for the module to be in the same
-# folder. The C++ code for the modules built in psana was therefore
-# moved from psalg to psana.
-if [ $pyInstallStyle == "develop" ]; then
-  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ] && \
-     [ ! -f $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py ]; then
-cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
-import site
-
-site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
-EOF
-  fi
-fi
+#########
+# Build #
+#########
+cmake_build 1
