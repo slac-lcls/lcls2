@@ -28,6 +28,6 @@ add_custom_command(TARGET psana
     COMMAND echo "BUILDING EXTENSIONS"
     COMMAND python setup.py build_ext -f --inplace
     COMMAND echo "PIP INSTALLING PSANA"
-    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .
+    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
 )
 
