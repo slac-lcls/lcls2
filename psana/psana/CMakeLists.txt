@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
 
-# Find the MyLibrary package
-
-
 add_library(psana SHARED
     peakFinder/src/LocalExtrema.cc
     peakFinder/src/PeakFinderAlgos.cc
