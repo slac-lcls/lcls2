@@ -1,5 +1,0 @@
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/TypeId.hh"
-#include "xtcdata/xtc/XtcIterator.hh"
-#include "xtcdata/xtc/NamesIter.hh"
