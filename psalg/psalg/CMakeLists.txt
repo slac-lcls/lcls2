@@ -180,5 +180,5 @@ add_custom_command(TARGET psalg
     COMMAND echo "SETTING PSALG ENTRY POINTS"
     COMMAND python setup.py build_ext -f --inplace
     COMMAND echo "PIP INSTALLING PSALG"
-    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} -e .
+    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
 )

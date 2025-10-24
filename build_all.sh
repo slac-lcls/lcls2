@@ -11,9 +11,7 @@ fi
 
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
-psana_setup_args=""
 force_clean=1
-no_ana=0
 build_ext_list=""
 PSANA_PATH=`pwd`/psana
 
@@ -23,17 +21,13 @@ elif [ -d "/sdf/group/lcls/" ]; then
     no_daq=1
 fi
 
-while getopts "c:p:s:b:fdar" opt; do
+while getopts "c:p:b:fd" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
     d) no_daq=1
     ;;
-    a) no_ana=1
-    ;;
     p) pyInstallStyle="$OPTARG"
-    ;;
-    s) psana_setup_args="$OPTARG"
     ;;
     b) build_ext_list="$OPTARG"
     ;;
@@ -73,7 +67,7 @@ fi
 
 function cmake_build() {
     # Capture the install flag
-    make_install=$2
+    make_install=$1
 
     # Create and navigate to the build directory
     mkdir -p build
@@ -103,51 +97,3 @@ fi
 # Build #
 #########
 cmake_build 1
-
-################
-## Build psdaq
-################
-## if [ $no_daq == 0 ]; then
-#    # to build psdaq with setuptools
-#    cmake_build psdaq 1
-#    cd psdaq
-#    # force build of the extensions.  do this because in some cases
-#    # setup.py is unable to detect if an external header file changed
-#    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-#    if [ $pyInstallStyle == "develop" ]; then
-#        python setup.py build_ext -f --inplace
-#    fi
-#    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-#    cd ..
-## fi
-#
-################
-## Build psana
-################
-#if [ $no_ana == 0 ]; then
-#    cmake_build psana 0
-#fi
-## The removal of site.py in setup 49.0.0 breaks "develop" installations
-## which are outside the normal system directories: /usr, /usr/local,
-## $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
-## The suggested fix, in the bug report, is the following: "I recommend
-## that the project use pip install --prefix or possibly pip install
-## --target to install packages and supply a sitecustomize.py to ensure
-## that directory ends up as a site dir and gets .pth processing. That
-## approach should be future-proof (at least against the sunset of
-## easy_install). All python setup.py commands in the code above have
-## been replaced with pip commands. The following code implements the
-## sitecustomize.py file. Pip bilds the python modules in a sandbox,
-## so it requires all the code for the module to be in the same
-## folder. The C++ code for the modules built in psana was therefore
-## moved from psalg to psana.
-#if [ $pyInstallStyle == "develop" ]; then
-#  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ] && \
-#     [ ! -f $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py ]; then
-#cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
-#import site
-#
-#site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
-#EOF
-#  fi
-#fi
