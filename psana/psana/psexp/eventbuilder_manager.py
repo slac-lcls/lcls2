@@ -5,15 +5,19 @@ from .run import RunSmallData
 
 
 class EventBuilderManager(object):
-    def __init__(self, view, configs, dsparms, run):
+    def __init__(self, view, configs, dsparms):
         self.configs = configs
         self.dsparms = dsparms
         self.n_files = len(self.configs)
 
         pf = PacketFooter(view=view)
         views = pf.split_packets()
-        self.eb = EventBuilder(views, self.configs, dsparms=dsparms, run=run)
-        self.run_smd = RunSmallData(run, self.eb)  # only used by smalldata callback
+        self.eb = EventBuilder(views,
+                               self.configs,
+                               filter_timestamps=dsparms.timestamps,
+                               intg_stream_id=dsparms.intg_stream_id,
+                               batch_size=dsparms.batch_size)
+        self.run_smd = RunSmallData(self.eb)  # only used by smalldata callback
 
     def batches(self):
         while True:
