@@ -4,6 +4,7 @@ from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSingleFile
 from pathlib import Path
+from psana import utils
 
 
 class SingleFileDataSource(DataSourceBase):
@@ -59,9 +60,9 @@ class SingleFileDataSource(DataSourceBase):
         return True
 
     def _setup_beginruns(self):
-        for evt in self.dm:
-            if evt.service() == TransitionId.BeginRun:
-                self.beginruns = evt._dgrams
+        for dgrams in self.dm:
+            if utils.first_service(dgrams) == TransitionId.BeginRun:
+                self.beginruns = dgrams
                 return True
         return False
 

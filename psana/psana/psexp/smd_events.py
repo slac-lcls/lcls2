@@ -1,9 +1,12 @@
 from .event_manager import EventManager
 
 class SmdEvents:
-    def __init__(self, ds, run, get_smd=None, smdr_man=None):
-        self.ds = ds
-        self.run = run
+    def __init__(self, configs, dm, max_retries, use_smds, terimate_flag, get_smd=None, smdr_man=None):
+        self.configs = configs
+        self.dm = dm
+        self.max_retries = max_retries
+        self.use_smds = use_smds
+        self.terimate_flag = terimate_flag
         self.get_smd = get_smd
         self.smdr_man = smdr_man
         self._evt_man = iter([])
@@ -19,14 +22,13 @@ class SmdEvents:
         if self.smdr_man:
             # RunSerial: iterate using smdr_man
             while True:
-                if self.ds.dsparms.terminate_flag:
+                if self.terminate_flag:
                     raise StopIteration
                 try:
-                    evt = next(self._evt_man)
-                    if not any(evt._dgrams):
+                    dgrams = next(self._evt_man)
+                    if not any(dgrams):
                         continue
-                    self.smdr_man.last_seen_event = evt
-                    return evt
+                    return dgrams
                 except StopIteration:
                     try:
                         batch_dict, _ = next(self._batch_iter)
@@ -34,8 +36,10 @@ class SmdEvents:
                             continue
                         self._evt_man = EventManager(
                             batch_dict[0][0],
-                            self.ds,
-                            self.run,
+                            self.configs,
+                            self.dm,
+                            self.max_retries,
+                            self.use_smds,
                             smd=True,
                         )
                     except StopIteration:
@@ -45,10 +49,10 @@ class SmdEvents:
             # RunParallel: use get_smd to fetch batches
             while True:
                 try:
-                    evt = next(self._evt_man)
-                    if not any(evt._dgrams):
+                    dgrams = next(self._evt_man)
+                    if not any(dgrams):
                         continue
-                    return evt
+                    return dgrams
                 except StopIteration:
                     smd_batch = self.get_smd()
                     if smd_batch == bytearray():
@@ -56,8 +60,10 @@ class SmdEvents:
 
                     self._evt_man = EventManager(
                         smd_batch,
-                        self.ds,
-                        self.run,
+                        self.configs,
+                        self.dm,
+                        self.max_retries,
+                        self.use_smds,
                         smd=True,
                     )
         else:

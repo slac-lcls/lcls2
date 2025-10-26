@@ -1,4 +1,3 @@
-from . import TransitionId
 from .event_manager import EventManager
 
 
@@ -14,9 +13,12 @@ class Events:
     This class abstracts the complexity of batching, filtering empty events,
     and respecting termination signals, providing a uniform interface via `__next__()`.
     """
-    def __init__(self, ds, run, get_smd=None, smdr_man=None):
-        self.ds = ds                 # Reference to the DataSource
-        self.run = run               # The current Run object
+    def __init__(self, configs, dm, max_retries, use_smds, terimate_flag, get_smd=None, smdr_man=None):
+        self.configs = configs  # Configuration dgrams for event building
+        self.dm = dm              # DgramManager for direct reading
+        self.max_retries = max_retries  # Max retries for event fetching
+        self.use_smds = use_smds  # Flag to indicate SMD usage
+        self.terminate_flag = terimate_flag  # Flag to signal termination
         self.get_smd = get_smd       # Callable to retrieve SMD batches (RunParallel)
         self.smdr_man = smdr_man     # Serial batch manager (RunSerial)
         self._evt_man = iter([])     # Current EventManager instance
@@ -38,14 +40,13 @@ class Events:
         if self.smdr_man:
             # RunSerial: iterate over batches, skipping empty ones
             while True:
-                if self.ds.dsparms.terminate_flag:
+                if self.terminate_flag:
                     raise StopIteration
                 try:
-                    evt = next(self._evt_man)
-                    if not any(evt._dgrams):
+                    dgrams = next(self._evt_man)
+                    if not any(dgrams):
                         continue
-                    self.smdr_man.last_seen_event = evt
-                    return evt
+                    return dgrams
                 except StopIteration:
                     try:
                         batch_dict, _ = next(self._batch_iter)
@@ -54,8 +55,10 @@ class Events:
                             continue
                         self._evt_man = EventManager(
                             batch_dict[0][0],
-                            self.ds,
-                            self.run,
+                            self.configs,
+                            self.dm,
+                            self.max_retries,
+                            self.use_smds,
                         )
                     except StopIteration:
                         # Refill the batch iterator from the serial batch manager
@@ -65,10 +68,10 @@ class Events:
             # RunParallel: fetch batch from get_smd() when needed
             while True:
                 try:
-                    evt = next(self._evt_man)
-                    if not any(evt._dgrams):
+                    dgrams = next(self._evt_man)
+                    if not any(dgrams):
                         continue
-                    return evt
+                    return dgrams
                 except StopIteration:
                     smd_batch = self.get_smd()
                     if smd_batch == bytearray():
@@ -76,22 +79,20 @@ class Events:
 
                     self._evt_man = EventManager(
                         smd_batch,
-                        self.ds,
-                        self.run,
+                        self.configs,
+                        self.dm,
+                        self.max_retries,
+                        self.use_smds,
                     )
         else:
             # RunSingleFile or RunShmem: read directly from the DgramManager
             while True:
                 # Checks if users ask to exit
-                if self.ds.dsparms.terminate_flag:
+                if self.dsparms.terminate_flag:
                     raise StopIteration
 
-                evt = next(self.ds.dm)
+                dgrams = next(self.dm)
 
-                # Update environment store with non-event transitions
-                if not TransitionId.isEvent(evt.service()):
-                    self.run.esm.update_by_event(evt)
-
-                if not any(evt._dgrams):
+                if not any(dgrams):
                     continue
-                return evt
+                return dgrams

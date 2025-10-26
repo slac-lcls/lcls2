@@ -4,7 +4,6 @@ import numpy as np
 
 from psana import utils
 from psana.dgrammanager import DgramManager
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSerial
