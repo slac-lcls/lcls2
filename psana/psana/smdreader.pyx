@@ -152,7 +152,7 @@ cdef class SmdReader:
         # creating any fake dgrams using DgramEdit.
         self.configs = configs
 
-    def force_read(self, smd_inprogress_converted):
+    def force_read(self):
         """
         Force a full read across all streams.
 
