@@ -15,7 +15,7 @@ class BatchIterator(object):
     SmdReaderManager returns this object when a chunk is read.
     """
 
-    def __init__(self, views, configs, run, dsparms):
+    def __init__(self, views, configs, dsparms):
         self.dsparms = dsparms
 
         # Requires all views
@@ -28,8 +28,12 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views, configs, dsparms=dsparms, run=run)
-            self.run_smd = RunSmallData(run, self.eb)
+            self.eb = EventBuilder(views,
+                                   configs,
+                                   filter_timestamps=dsparms.timestamps,
+                                   intg_stream_id=dsparms.intg_stream_id,
+                                   batch_size=dsparms.batch_size)
+            self.run_smd = RunSmallData(self.eb)
 
     def __iter__(self):
         return self
@@ -74,7 +78,7 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
-        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         assert self.n_files > 0
 
@@ -90,7 +94,6 @@ class SmdReaderManager(object):
 
         self.smdr = SmdReader(smd_fds, self.chunksize, dsparms=dsparms)
         self.got_events = -1
-        self._run = None
 
         # Collecting Smd0 performance using prometheus
         self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
@@ -104,7 +107,7 @@ class SmdReaderManager(object):
         regardless of how much data is already present.
         """
         st = time.monotonic()
-        self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+        self.smdr.force_read()
         en = time.monotonic()
         read_rate = self.smdr.got / (1e6 * (en - st))
         self.logger.debug(
@@ -212,7 +215,7 @@ class SmdReaderManager(object):
             if success or self.smdr.found_endrun():
                 break
 
-            self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+            self.smdr.force_read()
 
             if retries == max_retries:
                 return None
@@ -279,7 +282,7 @@ class SmdReaderManager(object):
             raise StopIteration
 
         mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
+        batch_iter = BatchIterator(mmrv_bufs, self.configs, self.dsparms)
         self.got_events = self.smdr.view_size
         return batch_iter
 
@@ -290,9 +293,3 @@ class SmdReaderManager(object):
     @property
     def max_ts(self):
         return self.smdr.max_ts
-
-    def set_run(self, run):
-        self._run = run
-
-    def get_run(self):
-        return self._run

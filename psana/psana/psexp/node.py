@@ -256,7 +256,7 @@ class Smd0(object):
         self.wait_gauge = pm.get_metric("psana_smd0_wait")
         self.rate_gauge = pm.get_metric("psana_smd0_rate")
 
-        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
@@ -392,7 +392,7 @@ class EventBuilderNode(object):
         self.wait_smd0_gauge = pm.get_metric("psana_eb_wait_smd0")
         self.wait_bd_gauge = pm.get_metric("psana_eb_wait_bd")
         self.requests = []
-        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def _init_requests(self):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
@@ -477,7 +477,7 @@ class EventBuilderNode(object):
                 break
 
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+                smd_chunk, self.configs, self.dsparms,
             )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
@@ -666,7 +666,7 @@ class EventBuilderNode(object):
                 break
 
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+                smd_chunk, self.configs, self.dsparms
             )
 
             for smd_batch_dict, _ in eb_man.batches():
@@ -689,7 +689,7 @@ class BigDataNode(object):
         pm = get_prom_manager()
         self.wait_gauge = pm.get_metric("psana_bd_wait")
         self.rate_gauge = pm.get_metric("psana_bd_rate")
-        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def start(self):
         def get_smd():

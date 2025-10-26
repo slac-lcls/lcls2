@@ -41,7 +41,7 @@ class RunParallel(Run):
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
 
-        self.logger = utils.get_logger(level=ds.dsparms.log_level, logfile=ds.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         super()._setup_envstore()
 

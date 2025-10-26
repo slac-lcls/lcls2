@@ -16,7 +16,7 @@ class ShmemDataSource(DataSourceBase):
         self.runnum_list = [0]
         self.runnum_list_index = 0
 
-        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         # Setup socket for calibration constant broadcast if supervisor
         # is set (1=I am supervisor, 0=I am not supervisor).
@@ -45,9 +45,9 @@ class ShmemDataSource(DataSourceBase):
         return True
 
     def _setup_beginruns(self):
-        for evt in self.dm:
-            if evt.service() == TransitionId.BeginRun:
-                self.beginruns = evt._dgrams
+        for dgrams in self.dm:
+            if utils.first_service(dgrams) == TransitionId.BeginRun:
+                self.beginruns = dgrams
                 return True
         return False
 

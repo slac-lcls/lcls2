@@ -6,6 +6,7 @@ from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunDrp
 from psana.psexp.zmq_utils import PubSocket, SubSocket
 from psana.smalldata import SmallData
+from psana import utils
 
 
 class DrpDataSource(DataSourceBase):
@@ -60,21 +61,22 @@ class DrpDataSource(DataSourceBase):
         return True
 
     def _setup_beginruns(self):
-        for evt in self.dm:
-            if not evt:
+        for dgrams in self.dm:
+            if not dgrams:
                 return None
-            if TransitionId.isEvent(evt.service()):
+            service = utils.first_service(dgrams)
+            if TransitionId.isEvent(service):
                 buffer_size = self.dm.pebble_bufsize
             else:
                 buffer_size = self.dm.transition_bufsize
             self.curr_dgramedit = DgramEdit(
-                evt._dgrams[0],
+                dgrams[0],
                 config_dgramedit=self.config_dgramedit,
                 bufsize=buffer_size,
             )
             self.curr_dgramedit.save(self.dm.shm_res_mv)
-            if evt.service() == TransitionId.BeginRun:
-                self.beginruns = evt._dgrams
+            if service == TransitionId.BeginRun:
+                self.beginruns = dgrams
                 return True
 
     def _start_run(self):
