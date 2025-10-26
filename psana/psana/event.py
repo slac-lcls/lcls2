@@ -5,6 +5,7 @@ import datetime
 import numpy as np
 
 from psana.psexp.packet_footer import PacketFooter
+from psana import utils
 
 # TO DO
 # 1) remove comments
@@ -89,23 +90,11 @@ class Event:
 
     @property
     def timestamp(self):
-        ts = None
-        for d in self._dgrams:
-            if d:
-                ts = d.timestamp()
-                break
-        assert ts
-        return ts
+        return utils.first_timestamp(self._dgrams)
 
     @property
     def env(self):
-        r = None
-        for d in self._dgrams:
-            if d:
-                r = d.env()
-                break
-        assert r
-        return r
+        return utils.first_env(self._dgrams)
 
     def run(self):
         return self._run
@@ -150,15 +139,7 @@ class Event:
         return hasattr(self._dgrams[0], "info")
 
     def service(self):
-        service = None
-        for d in self._dgrams:
-            if d:
-                service = (d.env() >> 24) & 0xF
-                if not service:
-                    print(f"expected value between 1-13, got: {service}")
-                    raise
-                break
-        return service
+        return utils.first_service(self._dgrams)
 
     def keepraw(self):
         keepraw = None
@@ -218,7 +199,7 @@ class Event:
             marks the end of this batch.
         """
         intg_dets = []
-        for i, d in enumerate(self._dgrams):
+        for d in self._dgrams:
             if hasattr(d, "_endofbatch"):
                 intg_dets.append(self._run.dsparms.intg_det)
         return intg_dets
