@@ -29,7 +29,7 @@ def run_smd0_task(run):
 
 
 def smd_batches(smd_chunk, run):
-    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms, run)
+    eb_man = EventBuilderManager(smd_chunk, run.configs, run.dsparms)
     for smd_batch_dict, step_batch_dict in eb_man.batches():
         smd_batch, _ = smd_batch_dict[0]
         yield smd_batch

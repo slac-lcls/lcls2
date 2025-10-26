@@ -28,7 +28,7 @@ class SerialDataSource(DataSourceBase):
         self._setup_run()
         super()._start_prometheus_client()
 
-        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def __del__(self):
         super()._close_opened_smd_files()
@@ -83,7 +83,18 @@ class SerialDataSource(DataSourceBase):
 
     def runs(self):
         while self._start_run():
-            run = RunSerial(self, Event(dgrams=self.beginruns))
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunSerial(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                self.smdr_man,        # SmdReaderManager (may be None for non-SMD modes)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+            )
             yield run
 
     def is_mpi(self):

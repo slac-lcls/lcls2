@@ -42,16 +42,16 @@ def _log_file_list(logger, title, files):
 class DsParms:
     batch_size: int
     max_events: int
-    filter: int
-    destination: int
     max_retries: int
     live: bool
-    smd_inprogress_converted: int
     timestamps: np.ndarray
     intg_det: str
     intg_delta_t: int
-    log_level: str
-    log_file: str
+    use_calib_cache: bool
+    cached_detectors: list
+    fetch_calib_cache_max_retries: int
+    skip_calib_load: list
+    dbsuffix: str
     smd_callback: int = 0
     terminate_flag: bool = False
 
@@ -94,8 +94,6 @@ class DataSourceBase(abc.ABC):
         Shared memory identifier (for live mode).
     drp : str
         DRP-specific parameters (not currently used).
-    filter : callable
-        A function that takes an event and returns True/False.
     batch_size : int
         Number of events per batch sent to bigdata core (default: 1000).
     max_events : int
@@ -106,8 +104,6 @@ class DataSourceBase(abc.ABC):
         Detectors to explicitly exclude.
     det_name : str
         Deprecated (use 'detectors').
-    destination : callable or int
-        Callback that returns destination rank (used in event builder).
     live : bool
         Enable live data mode (default: False).
     smalldata_kwargs : dict
@@ -155,9 +151,12 @@ class DataSourceBase(abc.ABC):
         log_file = kwargs.get("log_file", None)
         if isinstance(log_level, str):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
+        utils.configure_logging(level=log_level,
+                        logfile=log_file,
+                        timestamp=False)
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         # Default values
-        self.filter = kwargs.get("filter", 0)
         self.batch_size = kwargs.get("batch_size", 1000)
         self.max_events = kwargs.get("max_events", 0)
         self.detectors = kwargs.get("detectors", [])
@@ -168,7 +167,6 @@ class DataSourceBase(abc.ABC):
         self.dir = kwargs.get("dir", None)
         self.files = kwargs.get("files", None)
         self.shmem = kwargs.get("shmem", None)
-        self.destination = kwargs.get("destination", 0)
         self.monitor = kwargs.get("monitor", False)
         self.small_xtc = kwargs.get("small_xtc", [])
         self.timestamps = kwargs.get("timestamps", np.empty(0, dtype=np.uint64))
@@ -192,11 +190,6 @@ class DataSourceBase(abc.ABC):
         if not self.live:
             os.environ["PS_R_MAX_RETRIES"] = "0"
 
-        # Reset batch_size if a custom destination is set
-        if self.destination != 0:
-            self.logger.debug("Custom destination set. Resetting batch_size to 1.")
-            self.batch_size = 1
-
         # Load timestamps unless MPI context handles it
         if not kwargs.get("mpi_ts", False):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
@@ -208,25 +201,23 @@ class DataSourceBase(abc.ABC):
         self.dsparms = DsParms(
             self.batch_size,
             self.max_events,
-            self.filter,
-            self.destination,
             self.max_retries,
             self.live,
-            self.smd_inprogress_converted,
             self.timestamps,
             self.intg_det,
             self.intg_delta_t,
-            log_level,
-            log_file,
+            self.use_calib_cache,
+            self.cached_detectors,
+            self.fetch_calib_cache_max_retries,
+            self.skip_calib_load,
+            self.dbsuffix,
             smd_callback=self.smd_callback,
         )
 
-        self.logger = utils.get_logger(level=log_level, logfile=log_file, name=utils.get_class_name(self))
-
         # Warn about unrecognized kwargs
         known_keys = {
-            "exp", "run", "dir", "files", "shmem", "drp", "filter", "batch_size",
-            "max_events", "detectors", "xdetectors", "det_name", "destination",
+            "exp", "run", "dir", "files", "shmem", "drp", "batch_size",
+            "max_events", "detectors", "xdetectors", "det_name",
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
@@ -288,30 +279,6 @@ class DataSourceBase(abc.ABC):
                 sub = ClientSocket(PSPLOT_LIVE_ZMQ_SERVER)
                 info["msgtype"] = MonitorMsgType.PSPLOT
                 sub.send(info)
-
-    def smd_inprogress_converted(self):
-        """Returns a list of True/False if smd.xtc2.inprogress has been
-        converted to smd.xtc2.
-
-        Only applies to smalldata files. Bigdata gets read-in at offsets
-        and thus doesn't care about the end of file checking.
-
-        For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files
-        are found on disk. We return False in the case where .inprogress
-        files are not used because this callback is used to check if we
-        should wait for more data on the xtc files. The read-retry will not
-        happen if this callback returns True and there's 0 byte read out.
-
-        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh
-        to mimic a live run for testing this feature.
-        """
-        found_flags = [False] * self.n_files
-
-        for i_file, smd_file in enumerate(self.smd_files):
-            if smd_file.find(".xtc2.inprogress") >= 0:
-                if os.path.isfile(os.path.splitext(smd_file)[0]):
-                    found_flags[i_file] = True
-        return found_flags
 
     @abc.abstractmethod
     def runs(self):
