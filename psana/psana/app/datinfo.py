@@ -5,7 +5,7 @@ import sys
 from time import time
 import json
 
-from psana.detector.Utils import info_dict, info_command_line, info_namespace, info_parser_arguments, str_tstamp
+from psana.detector.Utils import info_dict, info_command_line, info_parser_arguments
 from psana.pyalgos.generic.NDArrUtils import info_ndarr
 import psana.detector.UtilsEpix10ka as ue
 from psana.detector.utils_psana import datasource_kwargs_from_string, info_run, info_detnames_for_dskwargs, info_detector, seconds, timestamp_run
@@ -39,7 +39,7 @@ USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
 
 def ds_run_det(args):
 
-    if not ('d' in args.typeinfo.lower()):
+    if 'd' not in args.typeinfo.lower():
         print('detector information is not requested by -td option - skip it')
         return
 
@@ -69,11 +69,9 @@ def ds_run_det(args):
     print('ds.unique_user_rank:', str(ds.unique_user_rank()))
     print('ds.is_mpi:', str(ds.is_mpi()))
     print('ds.live:', str(ds.live))
-    print('ds.destination:', str(ds.destination))
 
     #sys.exit('TEST EXIT')
 
-    expname = run.expt if run.expt is not None else args.expname # 'mfxc00318'
 
     print('dskwargs:', args.dskwargs)
     #print('run.timestamp :', run.timestamp)
@@ -164,7 +162,7 @@ def loop_run_step_evt(args):
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
       if dcfg is None: print('det.raw._config_object is MISSING')
 
-      cc = det.raw._calibconstants()  # prints cc.info_calibconst()
+      det.raw._calibconstants()  # prints cc.info_calibconst()
 
       for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
@@ -228,7 +226,7 @@ def do_main():
 
     parser = argument_parser()
     args = parser.parse_args()
-    opts = vars(args)
+    vars(args)
 
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 

@@ -126,7 +126,7 @@ def datasource_kwargs(**kwargs):
     fname   = kwargs.get('fname', None)
     exp     = kwargs.get('exp', None)
     runs    = kwargs.get('runs', None)
-    events  = kwargs.get('events', 0)
+    kwargs.get('events', 0)
     #detname = kwargs.get('det', None)
     #if detname is None: detname = kwa.get('detname', None)
 
@@ -149,7 +149,6 @@ def dict_datasource(ds):
       'smalldata_kwargs': ds.smalldata_kwargs,\
       'timestamps': ds.timestamps,\
       'live': ds.live,\
-      'destination': ds.destination,\
       'runnum_list': ds.runnum_list,\
       'detectors': ds.detectors,\
 #      'unique_user_rank': ds.unique_user_rank,\
@@ -171,8 +170,7 @@ def info_datasource(ds):
        + '\n  ds.timestamps: %s' % str(ds.timestamps)\
        + '\n  ds.unique_user_rank: %s' % str(ds.unique_user_rank())\
        + '\n  ds.is_mpi: %s' % str(ds.is_mpi())\
-       + '\n  ds.live: %s' % str(ds.live)\
-       + '\n  ds.destination: %s' % str(ds.destination)
+       + '\n  ds.live: %s' % str(ds.live)
     return s
 
 
@@ -208,7 +206,7 @@ def dict_run(orun):
 
 
 def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
-    t_sec = seconds(run.timestamp)
+    seconds(run.timestamp)
     ts_run = timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S')
     #ts_run = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=t_sec)
     return cmt\
@@ -320,13 +318,12 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
 
 
 def get_config_info_for_dataset_detname(**kwargs):
-    import sys
     import logging
     logger = logging.getLogger(__name__)
     from psana import DataSource
     detname = kwargs.get('detector', None)  # backward compatability for some scripts
     detname = kwargs.get('detname', detname)
-    idx     = kwargs.get('idx', None)
+    kwargs.get('idx', None)
     dskwargs = data_source_kwargs(**kwargs)
     try:
         ds = DataSource(**dskwargs)
