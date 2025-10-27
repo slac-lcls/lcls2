@@ -2,6 +2,7 @@
 #define Hsd_PV134Ctrls_hh
 
 #include "PVCtrlsBase.hh"
+#include "psdaq/service/Semaphore.hh"
 #include <string>
 #include <vector>
 
@@ -11,7 +12,7 @@ namespace Pds {
     class PV134Ctrls : public PVCtrlsBase
     {
     public:
-      PV134Ctrls(Module134&, Pds::Task&);
+      PV134Ctrls(Module134&, Pds::Task&, unsigned);
       ~PV134Ctrls() {}
     public:
       Module134& module() { return _m; }
@@ -27,6 +28,7 @@ namespace Pds {
       int  _nchips  () { return 2; }
     private:
       Module134& _m;
+      Semaphore  _sem;
       unsigned   _testpattern;
       unsigned   _inputchan;
     };

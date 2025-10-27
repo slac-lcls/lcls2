@@ -29,10 +29,11 @@ using Pds::HSD::Jesd204bStatus;
 namespace Pds {
   namespace HSD {
 
-    PV134Ctrls::PV134Ctrls(Module134& m, Pds::Task& t) :
+      PV134Ctrls::PV134Ctrls(Module134& m, Pds::Task& t, unsigned inputchan) :
       PVCtrlsBase(t),
       _m(m),
-      _inputchan(0)
+      _sem(Semaphore::FULL),
+      _inputchan(inputchan)
     {}
 
     void PV134Ctrls::_allocate()
@@ -74,17 +75,8 @@ namespace Pds {
         _testpattern = testp;
       }
 
-      //      _m.i2c().fmc_cpld.adc_input(fmc,PVGET(input_chan)); // This doesn't work
       _m.i2c().fmc_cpld.adc_range(fmc,PVGET(fs_range_vpp));
       _m.i2c_unlock();
-
-      unsigned inputchan = PVGET(input_chan);
-      if (inputchan != _inputchan) {
-          //  Redo the whole ADC/JESD initialization with the input selection
-          std::string adc[2];
-          _m.setup_jesd(false,adc[0],adc[1],inputchan);
-          _inputchan = inputchan;
-      }
 
       FexCfg& fex = _m.chip(fmc).fex;
 
@@ -162,11 +154,17 @@ namespace Pds {
         for(unsigned j=0; j<8; j++) 
           _m.jesd(j).clearErrors();
       }
-      if (PVGET(jesdsetup)) {
-        printf("--jesdsetup\n");
-        std::string adc[2];
-        _m.setup_jesd(false,adc[0],adc[1]);
+
+      _sem.take();  // only once across channels
+      unsigned inputchan = PVGET(jesdsetup);
+      if (inputchan != _inputchan) {
+          //  Redo the whole ADC/JESD initialization with the input selection
+          std::string adc[2];
+          _m.setup_jesd(false,adc[0],adc[1],inputchan);
+          _inputchan = inputchan;
       }
+      _sem.give();
+
       if (PVGET(jesdinit)) {
         printf("--jesdinit\n");
         _m.i2c_lock(I2cSwitch::PrimaryFmc);

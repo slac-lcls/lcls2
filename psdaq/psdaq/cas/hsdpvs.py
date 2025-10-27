@@ -3,9 +3,11 @@
 This implements a PVAccess server that defines the PVs for a HPS server diagnostic bus for conversion to BLD
 Any change to the diagnostic bus description (field names, mask) results in an updated payload structure
 """
+import os
 import sys
 import logging
 import time
+import threading
 
 from p4p.nt import NTScalar
 from p4p.server import Server, StaticProvider
@@ -40,6 +42,7 @@ class AlarmStatus(Enum):
 #import pyrogue as pr
 
 logger = logging.getLogger(__name__)
+alarms = {}
 
 # pv_fieldname, pv_fieldtype, default_value, mmap_address, bit_size, bit_shift
 
@@ -76,17 +79,18 @@ class DefaultPVHandler(object):
 class PVHandlerAlarm(object):
     type = None
 
-    def __init__(self,limits=(0,1),callback=None):
-        self.limits   = limits
+    def __init__(self,name,callback=None):
+        self.name     = name
         self.callback = callback
 
     def put(self, pv, op):
         postedval = op.value()
         postedval['timeStamp.secondsPastEpoch'], postedval['timeStamp.nanoseconds'] = divmod(float(time.time_ns()), 1.0e9)
-        if postedval['value'] < self.limits[0]:
+        limits = alarms[self.name]
+        if postedval['value'] < limits[0]:
             postedval['alarm'] = {'severity': AlarmSevr.MAJOR.value,
                                   'status'  : AlarmStatus.LOLO.value}
-        elif postedval['value'] > self.limits[1]:
+        elif postedval['value'] > limits[1]:
             postedval['alarm'] = {'severity': AlarmSevr.MAJOR.value,
                                   'status'  : AlarmStatus.HIHI.value}
         else:
@@ -99,23 +103,15 @@ class PVHandlerAlarm(object):
             self.callback(postedval)
 
 class ChipServer(object):
-    def __init__(self, provider, prefix, start, alarmFile):
+    def __init__(self, provider, prefix, start):
         self.provider = provider
         self.prefix = prefix
 
-        try:
-            alarms = json.load(open(alarmFile,'r'))
-        except:
-            print(f'Error opening alarms file {alarmFile}.')
-            alarms = {}
-
-        def getLimits(name):
-            if name in alarms:
-                result = alarms[name]
-            else:
+        def setLimits(name):
+            global alarms
+            if name not in alarms:
                 print(f'Limits for {name} not found.  Defaulting to NO ALARMS')
-                result = [-10000000000,10000000000]
-            return result
+                alarms[name] = [-10000000000,10000000000]
         
         #  Make configuration one PV access for each readout channel
         if start:
@@ -143,8 +139,10 @@ class ChipServer(object):
                                     handler=DefaultPVHandler())
         self.keepRows    = SharedPV(initial=NTScalar('I').wrap({'value':3}),
                                     handler=DefaultPVHandler())
+        setLimits(prefix+':FEXOOR')
         self.fexOor      = SharedPV(initial=NTScalar('I',valueAlarm=True).wrap({'value':0}),
-                                    handler=PVHandlerAlarm(getLimits(prefix+':FEXOOR')))
+                                    handler=PVHandlerAlarm(prefix+':FEXOOR'))
+
         self.monTiming   = MySharedPV(monTiming)
         self.monPgp      = MySharedPV(monPgp)
         self.monRawBuf   = MySharedPV(monBuf)
@@ -187,21 +185,46 @@ class ChipServer(object):
         pass
 
 class PVAServer(object):
-    def __init__(self, provider_name, prefix, start, alarmFile):
+    def __init__(self, provider_name, prefix, start):
         self.provider = StaticProvider(provider_name)
-        self.chip     = ChipServer(self.provider, prefix, start, alarmFile)
+        for p in prefix:
+            self.chip     = ChipServer(self.provider, p, start)
 
     def forever(self):
         Server.forever(providers=[self.provider])
 
 
+def update_limits(alarmFile):
+    global alarms
+    try:
+        last = os.stat(alarmFile)
+        alarms |= json.load(open(alarmFile,'r'))
+        print(f'Alarms updated')
+        print(alarms)
+    except:
+        print(f'Error opening alarms file {alarmFile}.')
+        
+    while alarms:
+        time.sleep(5)
+        try:
+            curr = os.stat(alarmFile)
+            if curr.st_mtime > last.st_mtime:
+                print(f'Alarms file {alarmFile} updated.')
+                last = curr
+                alarms |= json.load(open(alarmFile,'r'))
+                print(f'Alarms updated')
+                print(alarms)
+        except:
+            print(f'Error opening alarms file {alarmFile}.')
+
+
 import argparse
 
 def main():
-
+    global alarms
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for High Speed Digitizer')
 
-    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', metavar='PREFIX')
+    parser.add_argument('-P', required=True, help='DAQ:LAB2:HSD:DEV06_3E', nargs='+', metavar='PREFIX')
     parser.add_argument('-A', required=False, default='', help='Alarm limits input file', metavar='FILE')
     parser.add_argument('-s', '--start', action='store_true', help='start acq')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
@@ -210,7 +233,12 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
-    server = PVAServer(__name__, args.P, args.start, args.A)
+    server = PVAServer(__name__, args.P, args.start)
+
+    t = None
+    if args.A:
+        t = threading.Thread(target=update_limits, args=(args.A,))
+        t.start()
 
     try:
         # process PVA transactions
@@ -218,7 +246,9 @@ def main():
     except KeyboardInterrupt:
         print('\nInterrupted')
 
-
+    if t:
+        alarms = None
+        t.join()
 
 if __name__ == '__main__':
     main()
