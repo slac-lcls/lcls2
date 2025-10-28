@@ -29,4 +29,29 @@ jobs:
           channels: lcls-ii, conda-forge
           environment-file: .daq_20250402.txt
 
-      - name: Bui
+      - name: Build
+        run: ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+
+      - name: Run Tests
+        run: |
+          cd psana
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          cd ..
+          export PATH=$(pwd)/install/bin:${PATH}
+          pytest psana/psana/tests/test_HBins.py \
+                 psana/psana/tests/test_Time.py \
+                 psana/psana/tests/test_TimeFormat.py \
+                 psana/psana/tests/test_TimeParse.py \
+                 psana/psana/tests/test_dgramedit.py \
+                 psana/psana/tests/test_dgraminit.py \
+                 psana/psana/tests/test_epix_calib.py \
+                 psana/psana/tests/test_hsd.py \
+                 psana/psana/tests/test_packetfooter.py \
+                 psana/psana/tests/test_psalg.py \
+                 psana/psana/tests/test_py2xtc.py \
+                 psana/psana/tests/test_py2xtc_scan.py \
+                 psana/psana/tests/test_pyalgos.py \
+                 psana/psana/tests/test_sample.py \
+                 psana/psana/tests/test_timetool.py \
+                 psana/psana/tests/test_ts.py \
+                 psana/psana/tests/test_xtc.py
