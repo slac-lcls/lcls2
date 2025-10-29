@@ -146,8 +146,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         appLane = pbase.find(typ=shared.AppLane)
         for devPtr in appLane:
             devPtr.XpmPauseThresh.set(0x20)
-            #MONA changed this on Aug 27 25 to test the 1kHz epix10ka
-            devPtr.EventBuilder.Timeout.set(int(156.25e6/1020))
+            devPtr.EventBuilder.Timeout.set(int(156.25e6/1080))
 
         #  Disable flow control on the PGP lane at the PCIe end
 #        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
@@ -258,17 +257,39 @@ def user_to_expert(base, cfg, full=False):
 
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
 
-    # MONA: Use gate_ns (user-requested acquisition window in nanoseconds) to compute AsicAcqWidth.
-    # NOTE: This will overwrite whatever value is stored in the configDB.
-    # The conversion assumes a timing clock period defined by ASIC_SYSCLK_NS (e.g. 6.4 ns for ePix-Quad).
-    if (hasUser and 'gate_ns' in cfg['user']):
-        ASIC_SYSCLK_NS = 6.4   # nanoseconds per sysclk tick for this camera
-        triggerWidth = int(cfg['user']['gate_ns'] / ASIC_SYSCLK_NS)
-        if triggerWidth < 1:
-            logging.error('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
-            raise ValueError('triggerWidth computes to < 1')
+    # Previously, gate_ns (user-requested acquisition window in nanoseconds)
+    # was used to compute AsicAcqWidth. This option has been removed.
+    # The default acquisition window is fixed to 100 ms (100_000_000 ns).
+    # The corresponding AsicAcqWidth value should be (100_000 / 6.4) ≈ 15625,
+    # where 6.4 ns is the sysclk period for ePixQuad 1kfps.
 
-        d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
+    ASIC_SYSCLK_NS = 6.4  # nanoseconds per sysclk tick for this camera
+    expected_trigger_width = int(100_000 / ASIC_SYSCLK_NS)  # ~15625 ticks
+
+    # Warn if the deprecated user field still exists
+    if hasUser and 'gate_ns' in cfg['user']:
+        logging.warning(
+            "User parameter 'gate_ns' has been removed. "
+            "The acquisition window is fixed to 100 ms. "
+            "Ignoring user-specified value (%s ns).",
+            cfg['user']['gate_ns']
+        )
+
+    # Read AsicAcqWidth directly from firmware
+    try:
+        cbase = base['cam']
+        current_val = cbase.AcqCore.AsicAcqWidth.get()
+        logging.info(
+            "Firmware AsicAcqWidth = %d (expected %d for 100 ms window, sysclk = %.1f ns)",
+            current_val, expected_trigger_width, ASIC_SYSCLK_NS
+        )
+    except Exception as e:
+        logging.warning(
+            "Could not read AsicAcqWidth from firmware: %s. "
+            "Expected ≈ %d for 100 ms window (sysclk = %.1f ns).",
+            e, expected_trigger_width, ASIC_SYSCLK_NS
+        )
+
 
     if full:
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
@@ -531,7 +552,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
 
     #  *HOTFIX* From Julian's YML
-    #  We need to set this only for epixquad 1080 because this value is set to 0x2 in the firmware. 
+    #  We need to set this only for epixquad 1080 because this value is set to 0x2 in the firmware.
     #  /cds/home/j/jumdz/epix-quad/software/yml/ued/epixQuad_ASICs_allAsics_UED_1080Hz_settings.yml
     #  RdoutCore.AdcPipelineDelay is set in the configdb (value=61, or 0xaaaa003d)
     cbase.AcqCore.AsicRoClkT.set(int(0xaaaa0003))
