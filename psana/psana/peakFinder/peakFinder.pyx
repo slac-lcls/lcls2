@@ -74,7 +74,7 @@ cdef class PyAllocArray1D:
         # Increment the reference count of C array
         self.refcnt_ptr[0] += 1
         # Convert to numpy array, which calls __array__
-        arr = np.array(self, copy=False)
+        arr = np.asarray(self)
         return arr
 
     def __array__(self):

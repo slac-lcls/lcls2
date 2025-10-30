@@ -106,6 +106,8 @@ else:
     psalg_headers =  os.path.join(instdir, 'include')
     psalg_lib_path =  os.path.join(instdir, 'lib')
 
+psana_compile = extra_cxx_compile_args.copy()
+psana_link = extra_link_args_rpath.copy()
 if 'PSANA' in BUILD_LIST :
     dgram_module = Extension('psana.dgram',
                             sources = ['src/dgram.cc'],
@@ -114,8 +116,8 @@ if 'PSANA' in BUILD_LIST :
                             #library_dirs = [os.path.join(instdir, 'lib')],
                             include_dirs = ['src', np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
                             library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                            extra_link_args = extra_link_args_rpath,
-                            extra_compile_args = extra_cxx_compile_args)
+                            extra_link_args = psana_link,
+                            extra_compile_args = psana_compile)
 
     container_module = Extension('psana.container',
                             sources = ['src/container.cc'],
