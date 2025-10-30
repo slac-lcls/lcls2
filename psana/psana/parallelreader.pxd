@@ -9,6 +9,7 @@ from libc.errno cimport errno
 from libc.stdint cimport int64_t, uint32_t, uint64_t
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
+from libc.stddef cimport size_t
 
 import array
 
