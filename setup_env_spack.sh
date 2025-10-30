@@ -12,7 +12,11 @@ else
     export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-source /sdf/group/lcls/ds/ana/sw/spack2/activate_ps20240524_dev.sh
+source /sdf/group/lcls/ds/ana/sw/spack2/spack/share/spack/setup-env.sh
+spack env activate /sdf/group/lcls/ds/ana/sw/spack2/envs/ps_20250916
+
+export CC=$(which gcc)
+export CXX=$(which g++)
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
