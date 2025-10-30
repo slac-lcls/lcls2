@@ -5,10 +5,13 @@
 #include <chrono>
 
 #include <cuda_runtime.h>
+#include <cooperative_groups.h>
 
 #include "GpuAsyncLib.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "drp/spscqueue.hh"
+
+namespace cg = cooperative_groups;
 
 using namespace Pds;
 
@@ -545,27 +548,33 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
                                    float    const* const __restrict__ gains,
                                    unsigned const                     nPixels)
 {
-  // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
+  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
   int stride = gridDim.x * blockDim.x;
   int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
 
-  constexpr unsigned TPB{512};
-  __shared__ uint16_t sIn[TPB];
-  __shared__ float    sPeds[1 << GainBits][TPB],
-                      sGains[1 << GainBits][TPB];
+  extern __shared__ uint8_t smem[];
+  auto sIn    = (uint16_t*)smem;                      // uint16_t sIn[TPB];
+  auto sPeds  = (float*)&sIn[blockDim.x];             // float    sPeds[1 << GainBits][TPB];
+  auto sGains = &sPeds[(1 << GainBits) * blockDim.x]; // float    sGains[1 << GainBits][TPB];
 
+  cg::thread_block cta = cg::this_thread_block();
   for (int i = pixel; i < nPixels; i += stride) {
     sIn[threadIdx.x] = in[i];
+    //__syncwarp();
     //__syncthreads();
+    cg::sync(cta);
     auto       datum = sIn[threadIdx.x];
     const auto range = (datum >> GainOffset) & ((1 << GainBits) - 1);
-    sPeds[range][threadIdx.x]  = peds[range * nPixels + i];
-    sGains[range][threadIdx.x] = gains[range * nPixels + i];
+    const auto pgIdx = (range * blockDim.x) + threadIdx.x;
+    sPeds[pgIdx]  = peds[range * nPixels + i];
+    sGains[pgIdx] = gains[range * nPixels + i];
+    //__syncwarp();
     //__syncthreads();
+    cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - sPeds[range][threadIdx.x]) * sGains[range][threadIdx.x];
+    out[i] = (float(datum) - sPeds[pgIdx]) * sGains[pgIdx];
   }
 }
 
@@ -618,17 +627,23 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
   cudaStream_t stream;
   chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
 
-  //const unsigned chunks{128};       // Number of pixels handled per thread
-  const unsigned tpb   {nThreads};  // Threads per block
-  //const unsigned bpg   {(unsigned(nPixels) + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
-  const unsigned bpg   {nBlocks};   // Blocks per grid
+  const unsigned tpb{nThreads};         // Threads per block
+  const unsigned bpg{nBlocks};          // Blocks per grid
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  printf("GPU threads per SM: %u, total threads: %u, pixels per thread: %zu\n",
+         prop.maxThreadsPerMultiProcessor, bpg * tpb, nPixels / (bpg * tpb));
+
+  unsigned nSMs = (bpg * tpb) / prop.maxThreadsPerMultiProcessor;
+  const auto shSize{tpb * (sizeof(uint16_t) + 2 * (1 << GainBits) * sizeof(float))};
+  printf("GPU shared memory use size per block: %zu B, per SM: %zu B\n", shSize, bpg * shSize/nSMs);
 
   // Wait for memmory to stabilize from previous work before performing the test
   asm volatile("mfence" ::: "memory");
 
   // Warm-up
-  const unsigned panel {0};
-  _calibrate3<<<bpg, tpb, 0, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
+  const unsigned panel {0};             // We use only one panel of data in this test
+  _calibrate3<<<bpg, tpb, shSize, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
   chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
 
   // Run and time the calibration test for each event
@@ -637,7 +652,7 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
 
     chkError(cudaMemcpyAsync(index_d, &i, sizeof(i), cudaMemcpyHostToDevice, stream));
 
-    _calibrate3<<<bpg, tpb, 0, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
+    _calibrate3<<<bpg, tpb, shSize, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
     chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
 
     auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
