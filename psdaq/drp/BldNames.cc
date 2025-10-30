@@ -176,26 +176,31 @@ static std::vector<unsigned> _bmmonArraySizes { 0, 0, 0, 16, 16 };
 std::vector<unsigned> BldNames::BeamMonitorV1::arraySizes() { return _bmmonArraySizes; }
 
 static std::map<std::string,unsigned> _bmmonMcaddr
-{ {"MfxBmMon"   ,0xefff183e},
-  {"HfxSb1BmMon",0xefff1843},
-  {"XcsSndDio"  ,0xefff1849},
-  {"MfxUsrDio"  ,0xefff184a},
-  {"XppSb2BmMon",0xefff184b},
-  {"XppSb3BmMon",0xefff184c},
-  {"HfxDg2BmMon",0xefff184d},
-  {"XcsSb1BmMon",0xefff184e},
-  {"XcsSb2BmMon",0xefff184f},
-  {"CxiDg2BmMon",0xefff1850},
-  {"CxiDg3BmMon",0xefff1851},
-  {"MfxDg1BmMon",0xefff1852},
-  {"MfxDg2BmMon",0xefff1853},
-  {"MecXt2BmMon02",0xefff1857},
-  {"MecXt2BmMon03",0xefff1858},
-  {"XppUsrDio"  ,0xefff1859},
-  {"XppAlcDio"  ,0xefff185a},
-  {"XcsUsrDio"  ,0xefff185b},
-  {"CxiUsrDio"  ,0xefff185c},
-  {"MecUsrDio"  ,0xefff185d}, };
+{
+    { "MfxBmMon",      0xefff183e },
+    { "HfxSb1BmMon",   0xefff1843 },
+    { "XcsSndDio",     0xefff1849 },
+    { "MfxUsrDio",     0xefff184a },
+    { "XppSb2BmMon",   0xefff184b },
+    { "XppSb3BmMon",   0xefff184c },
+    { "HfxDg2BmMon",   0xefff184d },
+    { "XcsSb1BmMon",   0xefff184e },
+    { "XcsSb2BmMon",   0xefff184f },
+    { "CxiDg2BmMon",   0xefff1850 },
+    { "CxiDg3BmMon",   0xefff1851 },
+    { "MfxDg1BmMon",   0xefff1852 },
+    { "MfxDg2BmMon",   0xefff1853 },
+    { "MecXt2BmMon02", 0xefff1857 },
+    { "MecXt2BmMon03", 0xefff1858 },
+    { "XppUsrDio",     0xefff1859 },
+    { "XppAlcDio",     0xefff185a },
+    { "XcsUsrDio",     0xefff185b },
+    { "CxiUsrDio",     0xefff185c },
+    { "MecUsrDio",     0xefff185d },
+    { "HxxDg1BmMon",   0xefff185f },
+    { "Em3l0BmMon",    0xefff1860 },
+};
+
 
 
 unsigned BldNames::BeamMonitorV1::mcaddr(const char* n)
