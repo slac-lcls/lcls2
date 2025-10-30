@@ -185,7 +185,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t& stream)
   }
 
   // Collect and event build data from the PGP FPGAs
-  _collector<<<1, nPanels, 1, stream>>>(m_head,
+  _collector<<<1, nPanels, 0, stream>>>(m_head,
                                         m_tail,
                                         m_readerQueues_d,
                                         m_terminate_d);

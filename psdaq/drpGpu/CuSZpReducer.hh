@@ -2,7 +2,7 @@
 
 #include "ReducerAlgo.hh"
 
-#include "cuSZp.h"
+#include <cuSZp.h>
 
 namespace Drp {
   namespace Gpu {
