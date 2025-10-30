@@ -158,15 +158,14 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
                                   size_t   const                     calibBufsCnt,
-                                  uint16_t const* const __restrict__ rawBuffers,
+                                  uint16_t const* const __restrict__ in,
                                   unsigned const&                    index,
                                   unsigned const                     panel,
                                   float    const* const __restrict__ peds_,
                                   float    const* const __restrict__ gains_)
 {
-  // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
+  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * EpixUHRemu::NPixels];
-  auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
   int stride = gridDim.x * blockDim.x;
   int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
 
