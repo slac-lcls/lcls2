@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 project(xtcdata)
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 # cmake commands to possibly use in the future
 
@@ -43,5 +45,4 @@ install(
     DESTINATION lib/cmake/xtcdata
 )
 
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
