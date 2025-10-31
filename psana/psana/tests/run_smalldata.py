@@ -208,6 +208,7 @@ def run_test(mode, tmp_path):
 def main(tmp_path):
 
     import platform
+    # breakpoint()
 
     run_test('xtc', tmp_path)
     # don't test shmem on macOS, and centos7 in TRAVIS is failing for not-understood reasons
