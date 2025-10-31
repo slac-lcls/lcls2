@@ -4,7 +4,7 @@ unset PYTHONPATH
 if [ -d "/sdf/group/lcls/" ]
 then
     # for s3df
-    source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
+    source /sdf/group/lcls/ds/ana/sw/conda2-v5/inst/etc/profile.d/conda.sh
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
