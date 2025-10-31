@@ -31,3 +31,6 @@ install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/psalgConfig.cmake
     DESTINATION lib/cmake/psalg
 )
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)

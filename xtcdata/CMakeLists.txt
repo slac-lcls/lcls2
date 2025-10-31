@@ -42,3 +42,6 @@ install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/xtcdataConfig.cmake
     DESTINATION lib/cmake/xtcdata
 )
+
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
