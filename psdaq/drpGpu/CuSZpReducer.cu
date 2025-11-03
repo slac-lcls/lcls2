@@ -15,6 +15,10 @@ using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
 
+struct cuszp_domain{ static constexpr char const* name{"CuSZpReducer"}; };
+using cuszp_scoped_range = nvtx3::scoped_range_in<cuszp_domain>;
+
+
 namespace Drp {
   namespace Gpu {
 
@@ -58,6 +62,8 @@ void CuSZpReducer::recordGraph(cudaStream_t       stream,
 
 void CuSZpReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
 {
+  cuszp_scoped_range r{/*"CuSZpReducer::reduce"*/}; // Expose function name via NVTX
+
   auto calibBuffers = m_pool.calibBuffers_d();
   auto calibBufsSz  = m_pool.calibBufsSize();
   auto calibBufsCnt = calibBufsSz / sizeof(*calibBuffers);

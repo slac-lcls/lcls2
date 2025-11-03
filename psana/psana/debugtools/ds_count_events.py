@@ -2,82 +2,151 @@
 """
 ds_count_events.py
 
-A simple MPI-enabled script for counting total events processed by all ranks
-for a given experiment and run using psana2.
-
-This is useful for verifying data integrity, debugging incomplete processing,
-and sanity-checking total event counts across distributed ranks.
+MPI-enabled script for counting total events processed by all ranks
+for a given experiment/run or explicit list of XTC2 files using psana2.
 
 ---
 
 Example usage:
 
-    PS_EB_NODES=12 mpirun -n 181 --hostfile slurm_host_test \
-        python ds_count_events.py \
-        --exp rix100818424 \
-        --run 52 \
-        --detectors q_atmopal rix_fim0 \
-        --max_events 10000 \
-        --log_level INFO
+    # Using experiment/run
+    mpirun -n 16 python ds_count_events.py \
+        --exp rix100818424 --run 52
 
-Arguments:
-    -e, --exp         Experiment name (e.g., rix100818424)
-    -r, --run         Run number (e.g., 52)
-    -d, --detectors   (Optional) List of detectors to configure psana with
-    --max_events      (Optional) Maximum number of events to process per rank (default: 0 = all)
-    --log_level       (Optional) psana log level (default: INFO)
+    # Using explicit files (only support single core)
+    python ds_count_events.py \
+        --xtc_files /path/to/run52.xtc2 /path/to/run52.smd.xtc2
 
-The script prints the total number of events processed across all MPI ranks.
-
-Note:
-    - Setting max_events > 0 can be helpful for quick tests or debugging.
-    - The example runs on 4 nodes with slots=1 for the fist node and slots=60
-      for the other three nodes.
+Other options:
+    --detectors q_atmopal rix_fim0
+    --max_events 10000
+    --log_level INFO
 """
 
 import argparse
 from psana import DataSource
 import numpy as np
 from mpi4py import MPI
+import time
+import os
+import psutil
+
+
+def print_memory_usage(rank, i_evt, interval=10):
+    if i_evt % interval == 0:
+        process = psutil.Process(os.getpid())
+        rss_gb = process.memory_info().rss / (1024 ** 3)
+        print(f"[Rank {rank}] Event {i_evt}: RSS Memory = {rss_gb:.2f} GB")
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="MPI tool to count total number of events processed in a given experiment and run."
+        description="Count total number of events from an experiment/run or explicit XTC2 files."
     )
-    parser.add_argument('-e', '--exp', required=True, help='Experiment name, e.g., rix100818424')
-    parser.add_argument('-r', '--run', type=int, required=True, help='Run number')
-    parser.add_argument('-d', '--detectors', nargs='*', default=[], help='Optional list of detector names')
-    parser.add_argument('--max_events', type=int, default=0, help='Maximum number of events to process (default: 0 = all)')
+    parser.add_argument('-e', '--exp', help='Experiment name, e.g. rix100818424')
+    parser.add_argument('-r', '--run', type=int, help='Run number, e.g. 52')
+    parser.add_argument('--xtc_files', nargs='+', help='Explicit list of XTC2 files to process')
+    parser.add_argument('-d', '--detectors', nargs='*', default=[], help='List of detector names')
+    parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
+    parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
+    parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
     parser.add_argument('--log_level', default='INFO', help='Log level (default: INFO)')
+    parser.add_argument('--debug_detector', default=None, help='Detector name for debug prints')
+    parser.add_argument('--use_calib_cache', action='store_true', help='Use cached calibration constants')
+    parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode')
+    parser.add_argument('--live', action='store_true', help='Enable live mode')
     return parser.parse_args()
+
+
+def create_datasource(args, rank):
+    """Construct DataSource depending on whether xtc_files are provided."""
+    if args.xtc_files:
+        if rank == 0:
+            print(f"Using explicit XTC2 files ({len(args.xtc_files)}):")
+            for f in args.xtc_files:
+                print(f"  {f}")
+        ds = DataSource(
+            files=args.xtc_files,
+            max_events=args.max_events,
+            batch_size=args.batch_size,
+            log_level=args.log_level,
+            detectors=args.detectors,
+            use_calib_cache=args.use_calib_cache,
+            cached_detectors=args.cached_detectors,
+            monitor=args.monitor,
+        )
+    else:
+        if args.exp is None or args.run is None:
+            raise ValueError("Either --xtc_files or both --exp and --run must be provided.")
+        if args.live:
+            dir_path = f"/sdf/data/lcls/drpsrcf/ffb/tmo/{args.exp}/xtc"
+        else:
+            dir_path = None
+        if rank == 0:
+            print(f"Using experiment={args.exp}, run={args.run}, dir={dir_path}")
+        ds = DataSource(
+            exp=args.exp,
+            run=args.run,
+            max_events=args.max_events,
+            batch_size=args.batch_size,
+            log_level=args.log_level,
+            detectors=args.detectors,
+            use_calib_cache=args.use_calib_cache,
+            cached_detectors=args.cached_detectors,
+            monitor=args.monitor,
+            live=args.live,
+            dir=dir_path,
+        )
+    return ds
+
 
 def main():
     args = parse_args()
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+    comm.Barrier()
+    start = MPI.Wtime()
+    t0 = time.time()
 
-    ds = DataSource(
-        exp=args.exp,
-        run=args.run,
-        max_events=args.max_events,
-        log_level=args.log_level,
-        detectors=args.detectors
-    )
+    ds = create_datasource(args, rank)
     run = next(ds.runs())
-    run.Detector(args.detectors[0])
+
+    det = run.Detector(args.debug_detector) if args.debug_detector else None
+    if rank == 0 and det:
+        print(f"Debugging detector: {args.debug_detector}")
 
     local_count = 0
+    ti0 = time.time()
+    interval = 1000
+
     for i_evt, evt in enumerate(run.events()):
+        if det and args.debug_detector.lower() == 'epix10ka':
+            _ = det.raw.raw(evt)
+        elif det and args.debug_detector.lower() == 'jungfrau':
+            _ = det.raw.image(evt)
+
+        if i_evt % interval == 0 and i_evt > 0:
+            rate = interval / (time.time() - ti0)
+            print(f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz")
+            ti0 = time.time()
+
         local_count += 1
 
     sendbuf = np.array([local_count], dtype="i")
     recvbuf = np.empty([size, 1], dtype="i") if rank == 0 else None
     comm.Gather(sendbuf, recvbuf, root=0)
+    end = MPI.Wtime()
 
     if rank == 0:
         total = np.sum(recvbuf)
-        print(f"[{args.log_level}] Total events for {args.exp} run {args.run}: {total}")
+        n_ebnodes = int(os.environ.get('PS_EB_NODES', '1'))
+        n_bdnodes = size - n_ebnodes - 1
+        print(f"[{args.log_level}] {n_ebnodes=} {n_bdnodes=} Total events: {total} Rate={total/(end-start):.1f} Hz")
+    else:
+        rate = local_count / (time.time() - t0)
+        print(f"[{args.log_level}] Rank {rank} processed {local_count} events Rate={rate:.1f} Hz")
+
 
 if __name__ == '__main__':
     main()

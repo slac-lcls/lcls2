@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from collections import OrderedDict
+from typing import Dict
 
 from psdaq.utils import enable_epix_100a_gen2 # To find epix100_gen2
 import epix100a_gen2  # To find ePixFpga
@@ -163,10 +164,21 @@ def epix100_connectionInfo(base, alloc_json_str):
         from p4p.nt.scalar import ntint
         xpm: int = (rxId >> 16) & 0xFF
         port: int = (rxId >> 0) & 0xFF
-        # May not work for kcu xpm. Ignore NEH/FEH determination
-        # Could get IP address to figure this out using:
-        # '10.0.{:}.{:}'.format((v>>12)&0xf,100+((v>>8)&0xf))
-        linkrx_pv: str = f"DAQ:FEH:XPM:{xpm}:LinkRxReady{port}"
+        # Full IP can be gotten with: 10.0.{:}.{:}'.format((rxId>>12)&0xf,100+((rxId>>8)&0xf))
+        # We'll	map the	crate ids to various PV	prefixes
+        crate_id_map: Dict[int,str] = {
+            0: "DAQ:ASC:XPM",
+       	    1: "DAQ:NEH:XPM", #	XTPG, RIX, TMO
+       	    2: "DAQ:NEH:XPM", #	RIX
+       	    3: "DAQ:NEH:XPM", #	TMO
+       	    #4 - doesn't exist
+      	    5: "DAQ:NEH:XPM", #	XPM10 and 11 in	the FEE
+       	    6: "DAQ:FEH:XPM", #	FEH Mezz
+            7: "DAQ:FEH:XPM", #	MFX
+       	    8: "DAQ:FEH:XPM", #	XPP
+       	}
+        crate_id: int =	(rxId >> 12) & 0xF
+        linkrx_pv: str = f"{crate_id_map[crate_id]}:{xpm}:LinkRxReady{port}"
         ctx: Context = Context("pva")
         ret: ntint = ctx.get(linkrx_pv)
         print(f"INFO:epix100:Checking timing link at: {linkrx_pv}")

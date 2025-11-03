@@ -241,7 +241,7 @@ class CalibConstants:
 
         logger.debug(info_ndarr(resp, 'detector total rows, cols: '))
         self._rc_tot_max = [np.max(np.ravel(a)) for a in resp]
-        logger.debug('_rc_tot_max: ', self._rc_tot_max)
+        logger.debug('_rc_tot_max: %s' % str(self._rc_tot_max))
 
         # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
         if segnums is None:
@@ -364,7 +364,7 @@ class CalibConstants:
             s += info_ndarr(nda, '\n    %s from exp:%s run:%04d' % (k.ljust(12), meta['experiment'], meta['run']), last=5)
 
         geo = cc.get('geometry', None)
-        s += '\n    geometry is missing' if geo is None else\
+        s += '\n    geometry IS MISSING' if geo is None else\
              '\n    geometry from exp:%s run:%04d\n%s'%\
                     (meta['experiment'], meta['run'], str(geo)[:500])
         return s

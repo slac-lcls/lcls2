@@ -28,11 +28,11 @@ import psana.detector.dir_root as dr
 import psana.detector.UtilsCalib as uc
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge
 import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
-from psana.detector.NDArrUtils import info_ndarr, save_2darray_in_textfile, save_ndarray_in_textfile # import divide_protected
+from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile # import divide_protected
 import psana.detector.Utils as uts # info_dict
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.UtilsCalibRepo import save_constants_in_repository
-from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
+from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs, add_data_and_doc_to_detdb_extended
 
 SCRNAME = os.path.basename(sys.argv[0])
 MAX_DETNAME_SIZE = 20
@@ -535,6 +535,7 @@ def jungfrau_deploy_constants(parser):
     deploy    = kwargs.get('deploy', False)
     detname   = kwargs.get('detname', None)
     ctdepl    = kwargs.get('ctdepl', None) # 'prs'
+    dbsuffix  = kwargs.get('dbsuffix', '')
     max_detname_size = kwargs.setdefault('max_detname_size', MAX_DETNAME_SIZE)
 
     DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
@@ -645,6 +646,7 @@ def jungfrau_deploy_constants(parser):
           kwa_depl['dtype'] = 'ndarray'
           kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
           kwa_depl['shortname'] = shortname
+          kwa_depl['dbsuffix'] = dbsuffix
           kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
           kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
 
@@ -656,12 +658,20 @@ def jungfrau_deploy_constants(parser):
         if deploy:
           expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
 
-          resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+          if dbsuffix:
+              resp = add_data_and_doc_to_detdb_extended(nda, expname, longname, **kwa_depl)
+          else:
+              # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+              resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
           if resp:
               #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
-              logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+              if dbsuffix:
+                  fmt = (None, resp[0], None, resp[1])
+                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
+              else:
+                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
           else:
-              logger.info('constants are not deployed')
+              logger.error('constants are not deployed')
               exit()
         else:
           logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')

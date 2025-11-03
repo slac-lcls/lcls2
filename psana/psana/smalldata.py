@@ -60,12 +60,14 @@ Some Notes:
 
 import glob
 import os
+import time
 from collections.abc import MutableMapping
 
 import h5py
 import numpy as np
 
 from psana.psexp.tools import mode
+from psana.psexp.prometheus_manager import get_prom_manager
 
 # -----------------------------------------------------------------------------
 
@@ -291,15 +293,27 @@ class Server:  # (hdf5 handling)
             # SWMR mode will be enabled after first dataset creation
             self._swmr_enabled = False
 
+        pm = get_prom_manager()
+        self.wait_gauge = pm.get_metric("psana_srv_wait")
+        self.rate_gauge = pm.get_metric("psana_srv_rate")
+
         return
 
     def recv_loop(self):
         num_clients_done = 0
         num_clients = self.smdcomm.Get_size() - 1
         while num_clients_done < num_clients:
+            wait_start = time.time()
             msg = self.smdcomm.recv(source=MPI.ANY_SOURCE)
+            wait_end = time.time()
+            self.wait_gauge.set(wait_end - wait_start)
             if type(msg) is list:
+                proc_start = time.time()
                 self.handle(msg)
+                proc_end = time.time()
+
+                num_evts = len(msg)  # <-- count number of events per batch
+                self.rate_gauge.set((num_evts / (proc_end - proc_start)) * 1e-3)
             elif msg == "done":
                 num_clients_done += 1
 
@@ -462,7 +476,7 @@ class Server:  # (hdf5 handling)
             dtype=dtype,
             chunks=(self.cache_size,) + shape,
         )
-        
+
         # Enable SWMR mode after first dataset is created
         if self.swmr_mode and not self._swmr_enabled:
             self.file_handle.swmr_mode = True
@@ -605,7 +619,7 @@ class SmallData:  # (client)
             names and the values are the data themselves. Each event
             processed will have it's own dictionary of this form
             containing the data saved for that event.
-            
+
         swmr_mode : bool
             Enable SWMR (Single Writer Multiple Reader) mode for HDF5 files.
             Allows concurrent read access while writing.
@@ -683,6 +697,11 @@ class SmallData:  # (client)
 
     def get_rank(self):
         return self._smalldata_comm.Get_rank()
+
+    def get_world_rank(self):
+        if MODE == "SERIAL":
+            return 0
+        return RANK
 
     def _comm_partition(self):
         self._smalldata_group = MPI.Group.Union(self._server_group, self._client_group)

@@ -164,6 +164,7 @@ if 'PSDAQ' in BUILD_LIST :
             'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'hsd_epics_exporter = psdaq.cas.hsd_epics_exporter:main',
+            'hsd_input_select = psdaq.cas.hsd_input_select:main',
             'fixed_rate_table = psdaq.seq.fixed_rate_table:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',
@@ -181,6 +182,7 @@ if 'PSDAQ' in BUILD_LIST :
             'jungfrau_pedestal_scan = psdaq.cas.jungfrau_pedestal_scan:main',
             'jungfrau_gain_mode = psdaq.configdb.jungfrau_gain_mode:change_gain_mode',
             'jungfrau_protection = psdaq.configdb.jungfrau_protection:change_protection_settings',
+            'detector_protection_monitor = psdaq.trigger.detector_protection_monitor:main',
         ]
     }
 

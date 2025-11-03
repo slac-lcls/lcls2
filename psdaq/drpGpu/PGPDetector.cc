@@ -24,6 +24,11 @@ using json    = nlohmann::json;
 using logging = psalg::SysLog;
 using us_t    = std::chrono::microseconds;
 
+struct drp_domain{ static constexpr char const* name{"PGPDrp"}; };
+using drp_scoped_range = nvtx3::scoped_range_in<drp_domain>;
+struct tr_domain{ static constexpr char const* name{"TebReceiver"}; };
+using tr_scoped_range = nvtx3::scoped_range_in<tr_domain>;
+
 
 TebReceiver::TebReceiver(const Parameters&        para,
                          DrpBase&                 drp,
@@ -119,6 +124,8 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
  */
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
+  tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
+
   // Set the nworkers to 0 to run without the Reducer workers in the loop
   if (m_para.nworkers == 0) {
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
@@ -137,6 +144,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
 void TebReceiver::_recorder()
 {
+  tr_scoped_range r{/*"TebReceiver::_recorder"*/}; // Expose function name via NVTX
+
   logging::info("Recorder is starting with process ID %lu\n", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "drp_gpu/Recorder", 0, 0, 0) == -1) {
     perror("prctl");
@@ -146,9 +155,17 @@ void TebReceiver::_recorder()
   //auto  bufMask = memPool.nbuffers() - 1;
   unsigned worker = 0;
 
+  // Get the range of priorities available [ greatest_priority, lowest_priority ]
+  int prioLo;
+  int prioHi;
+  chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
+  int prio{prioHi};
+  logging::debug("Recorder stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
-  chkFatal(cudaStreamCreateWithFlags(&m_stream, cudaStreamNonBlocking));
+  // The highest priority is to dispose of the data
+  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
@@ -167,7 +184,8 @@ void TebReceiver::_recorder()
 
     // Wait for the next GPU Reducer in sequence to complete
     auto index = items.index;
-    size_t dataSize;
+    tr_scoped_range loop_range{/*"TebReceiver::_recorder", */nvtx3::payload{index}};
+    size_t dataSize;                    // Receives the size of the reduced L1Accept payload
     if (result->persist() || result->monitor()) {
       drp.reducerReceive(worker, dataSize); // This blocks until result is ready from GPU
       worker = (worker + 1) % m_para.nworkers;
@@ -207,14 +225,6 @@ void TebReceiver::_recorder()
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
     size_t cpSize, dgSize;
     if (dgram->isEvent() && (result->persist() || result->monitor())) {
-      //// Fetch the size of the reduced L1Accept payload from the GPU
-      //size_t dataSize;
-      //auto pSize = buffer - sizeof(dataSize);
-      ////printf("*** TebRcvr::recorder: idx %u, buf %p, pSz %p\n", index, buffer, pSize);
-      //chkError(cudaMemcpyAsync((void*)&dataSize, pSize, sizeof(dataSize), cudaMemcpyDeviceToHost, m_stream));
-      //chkError(cudaStreamSynchronize(m_stream));  // Must synchronize to get an updated dataSize value
-      ////printf("*** TebRcvr::recorder: 3 sz %zu, extent %u\n", dataSize, dgram->xtc.extent);
-
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
       //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
@@ -262,8 +272,7 @@ void TebReceiver::_recorder()
     //printf("\n");
 
     if (writing() || transitionId == TransitionId::Configure) {
-      // Copy the dgram header to the GPU if it's an L1Accept or the whole
-      // datagram when it's a transition
+      // Copy the dgram header to the GPU if it's an L1Accept or the whole datagram when it's a transition
       chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
       //if (dgram->isEvent()) {
       //  const Xtc& parent = dgram->xtc;
@@ -565,6 +574,8 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
 void PGPDrp::_collector()
 {
+  drp_scoped_range r{/*"PGPDrp::_collector"*/}; // Expose function name via NVTX
+
   pool.resetCounters();                 // Avoid jumps in TebReceiver
 
   // Set up monitoring
@@ -595,17 +606,19 @@ void PGPDrp::_collector()
   uint64_t lastPid = 0;
   unsigned bufIndex = 0;                // Intermediate buffer index
   while (true) {
+    drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
     if (m_terminate.load(std::memory_order_relaxed)) {
       break;
     }
-    TimingHeader* timingHeader;
+
     auto nRet = m_collector->receive(&m_det, m_colMetrics); // This can block
     m_colMetrics.m_nDmaRet.store(nRet);
 
     for (unsigned b = 0; b < nRet; ++b) {
-      timingHeader = m_det.getTimingHeader(bufIndex);
-      uint32_t pgpIndex = timingHeader->evtCounter & bufferMask;
-      PGPEvent* event = &pool.pgpEvents[pgpIndex];
+      drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
+      auto timingHeader = m_det.getTimingHeader(bufIndex);
+      auto pgpIndex = timingHeader->evtCounter & bufferMask;
+      auto event = &pool.pgpEvents[pgpIndex];
       if (event->mask == 0)
         continue;                       // Skip broken event
 
@@ -615,9 +628,9 @@ void PGPDrp::_collector()
       lastPid = pid;
 
       // Allocate a pebble buffer
-      unsigned pebbleIndex = pool.allocate(); // This can block
+      auto pebbleIndex = pool.allocate(); // This can block
       event->pebbleIndex = pebbleIndex;
-      Src src = m_det.nodeId;
+      Src src{m_det.nodeId};
 
       // Make a new dgram in the pebble
       // It must be an EbDgram in order to be able to send it to the MEB

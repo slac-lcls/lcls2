@@ -68,7 +68,7 @@ namespace Pds {
 
         class StatsTimer : public Timer {
         public:
-            StatsTimer(Module134& dev);
+            StatsTimer(Module134& dev, unsigned inputchan);
             ~StatsTimer() { _task->destroy(); }
         public:
             void allocate(const char* prefix);
@@ -101,11 +101,11 @@ static void sigHandler( int signal )
     ::exit(signal);
 }
 
-StatsTimer::StatsTimer(Module134& dev) :
+StatsTimer::StatsTimer(Module134& dev, unsigned inputchan) :
     _dev      (dev),
     _task     (new Task(TaskObject("PtnS"))),
     _pvs      (dev),
-    _pvc      (dev, *_task)
+    _pvc      (dev, *_task, inputchan)
 {
 }
 
@@ -282,10 +282,19 @@ int main(int argc, char** argv)
 
 #if 1
     m->setup_timing(lLoopback);
-    m->setup_jesd(lAbortOnErr,
-                  adc_calib[0],
-                  adc_calib[1],
-                  lInternalTiming);
+
+    //  Get the ADC INPUT selection from the jesdsetup PV and configure now
+    unsigned inputchan;
+    {   std::string sprefix(prefix);
+        sprefix += ":A:RESET";
+        Pds_Epics::EpicsPVA* pv = new Pds_Epics::EpicsPVA(sprefix.c_str());
+        inputchan = pv->getScalarAs<unsigned>("jesdsetup");
+        m->setup_jesd(lAbortOnErr,
+                      adc_calib[0],
+                      adc_calib[1],
+                      inputchan,
+                      lInternalTiming);
+    }
 #endif
 
     if (db_args[4] && db_args[4][0]=='L') {    // Write calibration
@@ -356,7 +365,7 @@ int main(int argc, char** argv)
         pvBuild.putFrom(keepRows);
     }
 
-    StatsTimer* timer = new StatsTimer(*m);
+    StatsTimer* timer = new StatsTimer(*m, inputchan);
 
     ::signal( SIGINT, sigHandler );
 

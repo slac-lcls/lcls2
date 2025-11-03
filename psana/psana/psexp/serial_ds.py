@@ -28,7 +28,7 @@ class SerialDataSource(DataSourceBase):
         self._setup_run()
         super()._start_prometheus_client()
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
 
     def __del__(self):
         super()._close_opened_smd_files()
@@ -75,11 +75,9 @@ class SerialDataSource(DataSourceBase):
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from current files
-            super()._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                super()._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 

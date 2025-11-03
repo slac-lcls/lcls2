@@ -13,6 +13,18 @@ from prometheus_client.core import GaugeMetricFamily, REGISTRY
 PROM_PORT_BASE = 9200
 MAX_PROM_PORTS = 100
 
+class GroupCollector():
+    def __init__(self):
+        self._collectors = []
+
+    def add(self,c):
+        self._collectors.append(c)
+
+    def collect(self):
+        for c in self._collectors:
+            for d in c.collect():
+                yield d
+
 class CustomCollector():
     def __init__(self, provider, hutch, identifier):
         self.ctx    = Context(provider)
@@ -87,9 +99,11 @@ def main():
     parser.add_argument('-M', required=False, help='Prometheus config file directory', metavar='PROMETHEUS_DIR', default='')
     parser.add_argument('-I', required=False, help='e.g. xpm-2', metavar='ID')
     parser.add_argument('-E', required=False, help='pva or ca', metavar='EPICS_PROVIDER', default='pva') # p4p allows only 'pva'?
-    parser.add_argument('-P', required=True,  help='e.g. DAQ:LAB2:XPM:2', metavar='PREFIX')
+    parser.add_argument('-P', required=False,  help='e.g. DAQ:LAB2:XPM:2', metavar='PREFIX', default=None)
+    parser.add_argument('-D', required=False,  help='semi-colon separated list of hutch,id,PV triplets', metavar='TRIPLET', default=None)
     parser.add_argument('-G', required=False, help='Global PVs like CuTiming:CrcErrs', metavar='GLOBALS', default='')
     parser.add_argument('N',  help='e.g. DeadFrac', nargs='*', metavar='NAME')
+    parser.add_argument('-t', '--test', action='store_true', help='test only')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
     args = parser.parse_args()
@@ -97,19 +111,42 @@ def main():
 
     # Start up the server to expose the metrics.
     i = args.I if args.I is not None else args.H  # Default to previous behavior if -I is not given
-    c = CustomCollector(args.E, args.H, i)
-    REGISTRY.register(c)
-    if args.G:
-        for name in args.G.split(','):
-            c.registerGlobalPV(name, args.P + ':' + name)
-    if args.N is not None:
-        for name in args.N:
-            c.registerPV(name, args.P + ':PART:%d:' + name)
-    c.collect()
+
+    d = []
+    if args.D is None:
+        d.append((args.H, i, args.P))
+    else:
+        print(f'args.D {args.D}')
+        for w in args.D.split(','):
+            print(f'w {w}')
+            q = w.split('/')
+            if len(q)==3:
+                d.append(q)
+            else:
+                raise ValueError(f'Error parsing -D {args.D}.  Too few comma-separated ({len(q)}) entries in a triplet.')
+        
+    group = GroupCollector()
+    for entry in d:
+        print(f'Forming CustomCollector with {entry}')
+        c = CustomCollector(args.E, entry[0], entry[1])
+
+        pv = entry[2]
+        if args.G:
+            for name in args.G.split(','):
+                c.registerGlobalPV(name, pv + ':' + name)
+
+        if args.N is not None:
+            for name in args.N:
+                c.registerPV(name, pv + ':PART:%d:' + name)
+
+        group.add(c)
+
+    REGISTRY.register(group)
     #start_http_server(9200)
-    rc = createExposer(args.M)
-    while rc:
-        time.sleep(5)
+    if not args.test:
+        rc = createExposer(args.M)
+        while rc:
+            time.sleep(5)
 
 if __name__ == '__main__':
     main()

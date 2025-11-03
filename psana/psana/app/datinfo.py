@@ -21,7 +21,7 @@ SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 USAGE = '\n  %s -d <detector> -k <datasource-kwargs> [kwargs]' % SCRNAME\
       + '\nCOMMAND EXAMPLES:'\
-      + '\n  %s -d epixquad -k exp=ueddaq02,run=27 -td -L DEBUG' % SCRNAME\
+      + '\n  %s -d epixquad -k exp=ueddaq02,run=27,max_events=100 -td -L DEBUG' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=30 <--- DOES NOT WORK - missconfigured' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=83 <--- dark' % SCRNAME\
       + '\n  %s -d epixquad -k exp=ueddaq02,run=84 <--- PARTLY WORKS charge injection' % SCRNAME\
@@ -51,7 +51,7 @@ def ds_run_det(args):
       print('Can not open DataSource\nCheck if xtc2 file is available')
       sys.exit()
     run = next(ds.runs())
-    det = None if args.detname is None else run.Detector(args.detname)
+    det = None if args.detname is None else run.Detector(args.detname, logmet_init=logger.info)
 
     print('args.detname:%s' % str(args.detname))
     print('DataSource members and methods\ndir(ds):', dir(ds))
@@ -59,10 +59,10 @@ def ds_run_det(args):
     xtc_path = getattr(ds, 'xtc_path', None)
     print('ds.xtc_path:', str(xtc_path))
     if xtc_path is not None:
-      print('ds.n_files:', str(ds.n_files))
-      print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
-      print('ds.xtc_ext:', str(ds.xtc_ext) if hasattr(ds,'xtc_ext') else 'N/A')
-      print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
+      if getattr(ds, 'n_files', None):   print('ds.n_files:', str(ds.n_files))
+      if getattr(ds, 'xtc_files', None): print('ds.xtc_files:\n ', '\n  '.join(ds.xtc_files))
+      if getattr(ds, 'xtc_ext', None):   print('ds.xtc_ext:', str(ds.xtc_ext) if hasattr(ds,'xtc_ext') else 'N/A')
+      if getattr(ds, 'smd_files', None): print('ds.smd_files:\n ', '\n  '.join(ds.smd_files))
     print('ds.shmem:', str(ds.shmem))
     print('ds.smalldata_kwargs:', str(ds.smalldata_kwargs))
     print('ds.timestamps:', str(ds.timestamps))
@@ -143,7 +143,7 @@ def loop_run_step_evt(args):
       print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
       if not do_loopsteps: continue
       print('%s detector object' % args.detname)
-      det = None if args.detname is None else run.Detector(args.detname)
+      det = None if args.detname is None else run.Detector(args.detname, logmet_init=logger.info)
 
       is_epix10ka  = False if det is None else det.raw._dettype == 'epix10ka'
       is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
@@ -163,6 +163,8 @@ def loop_run_step_evt(args):
 
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
       if dcfg is None: print('det.raw._config_object is MISSING')
+
+      cc = det.raw._calibconstants()  # prints cc.info_calibconst()
 
       for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
@@ -186,7 +188,7 @@ def loop_run_step_evt(args):
         if not do_loopevts: continue
         ievt, evt, segs = None, None, None
         for ievt, evt in enumerate(step.events()):
-          #if ievt>args.evtmax: exit('exit by number of events limit %d' % args.evtmax)
+          if ievt>args.evtmax: exit('exit by number of events limit --evtmax %d' % args.evtmax)
           if not selected_record(ievt): continue
           if segs is None:
              segs = det.raw._segment_numbers if det is not None else None
@@ -226,7 +228,7 @@ def do_main():
 
     parser = argument_parser()
     args = parser.parse_args()
-    opts = vars(args)
+    #opts = vars(args)
 
     #?????defs = vars(parser.parse_args([])) # dict of defaults only
 
@@ -253,7 +255,7 @@ def argument_parser():
 
     d_dskwargs = None
     d_detname = None # 'epixquad'
-    d_evtmax  = 0 # maximal number of events
+    d_evtmax  = 1000000 # maximal number of events
     d_logmode = 'INFO'
     d_typeinfo= 'DRSE'
 

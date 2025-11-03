@@ -1493,6 +1493,7 @@ def issue_2025_09_16(subtest='0o7777'):
        datinfo -k exp=ascdaq123,run=192 -d epix10ka  # raw  shape:(4, 352, 384)
        datinfo -k exp=mfx100848724,run=51 -d jungfrau
        datinfo -k exp=ascdaq18,run=407 -d epixhr
+       datinfo -k exp=mfx100848724,run=51 -d epix100_0
     """
     import os
     import numpy as np
@@ -1510,6 +1511,7 @@ def issue_2025_09_16(subtest='0o7777'):
             {'exp':'ascdaq123',    'run':192, 'detectors':['epix10ka',]}  if isubset & 16 else\
             {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
             {'exp':'ascdaq18',     'run':407, 'detectors':['epixhr',]}    if isubset & 64 else\
+            {'exp':'mfx100848724', 'run':51,  'detectors':['epix100_0',]} if isubset & 128 else\
             {}
     ds = DataSource(**dskwa)
 
@@ -1527,7 +1529,9 @@ def issue_2025_09_16(subtest='0o7777'):
             raw   = det.raw.raw(evt)
             calib = det.raw.calib(evt)
             t0_sec = time()
-            img = det.raw.image(evt, nda=calib) # raw
+            mask = det.raw._mask() # raw
+            #img = det.raw.image(evt, nda=calib) # raw/calib
+            img = det.raw.image(evt, nda=mask) # mask
             dt_sec = (time() - t0_sec)*1000
             #print('evt:', nevt)
             arrdt[nevt] = dt_sec
@@ -1566,6 +1570,122 @@ def issue_2025_09_18(subtest='0o7777'):
         print(info_ndarr(det.raw.raw(evt),   'evt %03d raw:' % i))
         print(info_ndarr(det.raw.calib(evt), '      calib:'))
 
+
+def issue_2025_09_19(subtest='0o7777'):
+    """
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101237525',run=55,dir='/cds/data/drpsrcf/rix/rix101237525/xtc')
+    myrun = next(ds.runs())
+    for evt in myrun.events():
+        print('got event')
+        break
+
+
+def issue_2025_09_26(subtest='0o7777'):
+    """plot test images
+       datinfo -k /sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2 -d jungfrau
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+
+    ds_kwa = {'files': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/tests/test_data/detector/test_jungfrau05M_calib.xtc2'}
+    ds = DataSource(**ds_kwa)
+    myrun = next(ds.runs())
+
+    dkwa = {'status': True,
+               'logmet_init': logger.info,
+               'gain_range_inds': (0,)}
+    det = myrun.Detector('jungfrau', **dkwa)
+
+    peds = det.raw._pedestals()
+    mask = det.raw._mask();
+    mask_default = det.raw._mask_default()
+    mask_calib_or_default = det.raw._mask_calib_or_default()
+    mask_edges = det.raw._mask_edges(edge_rows=0, edge_cols=0)
+    mask_center = det.raw._mask_center()
+    mask_neighbors = det.raw._mask_neighbors(mask_default)
+    stat = det.raw._status() #; stat.shape = (3*512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)) #; mask_stat.shape = (512, 1024)
+    print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
+    print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
+    print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
+    print(ndu.info_ndarr(mask_default,          'XXX _mask_default', last=10))
+    print(ndu.info_ndarr(mask_calib_or_default, 'XXX _mask_calib_or_default', last=10))
+    print(ndu.info_ndarr(mask_edges,            'XXX _mask_edges', last=10))
+    print(ndu.info_ndarr(mask_center,           'XXX _mask_center', last=10))
+    print(ndu.info_ndarr(mask_neighbors,        'XXX _mask_neighbors', last=10))
+    print(ndu.info_ndarr(mask,                  'XXX _mask', last=10))
+    events = 10
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(myrun.events()):
+            if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            print(ndu.info_ndarr(raw, '    raw', last=10))
+            if raw is None: continue
+
+            print('evt:%03d begin calib'%nevt)
+            calib = det.raw.calib(evt)
+            print(ndu.info_ndarr(calib, '    calib', last=10))
+            print('>> end calib')
+            #img = det.raw.image(evt)
+            #img = calib
+            img = mask
+            #img = mask_edges
+            #img = stat
+            #img = det.raw.image(evt, nda=calib)
+            #img = calib; img.shape = (512, 1024)
+            #img = raw; img.shape = (512, 1024)
+            #img = ndu.reshape_to_3d(peds)
+            img.shape = (512, 1024)
+            #img = peds[0,0,:]
+            #img = peds; img.shape = (3*512, 1024)
+            #print('evt:', nevt)
+            print('    raw  :', raw.shape)
+            print('    calib:', calib.shape)
+            if flimg is None:
+                flimg = fleximage(img, h_in=6, w_in=11)
+            print('    image:', img.shape)
+            flimg.update(img)
+            flimg.fig.suptitle('evt %02d test image'%nevt, fontsize=16)
+            #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+            # gr.show(mode='DO NOT HOLD')
+        gr.show()
+
+
+def issue_2025_10_09(subtest='0o7777'):
+    """ Chris & Seshu: 'piranha4_raw_2_1_0' object has no attribute '_path_geo_default'
+        datinfo -k exp=rix101265125,run=414 -d c_piranha
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101265125',run=414)
+    myrun = next(ds.runs())
+    det = myrun.Detector('c_piranha')
+    for nevt,evt in enumerate(myrun.events()):
+        raw = det.raw.image(evt)
+        print(nevt)
+        if raw is None:
+            print('none')
+        else:
+            print(nevt,raw.shape)
+
+def issue_2025_10_17():
+    """ Chris archon issue
+        (ps_20241122) [cpo@sdfiana003 lcls2]$ python ~/junk3.py
+        archon raw <error: 'NoneType' object has no attribute 'keys'>
+
+        datinfo -k exp=rix101348225,run=30 -d archon
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101348225', run=30)
+    myrun = next(ds.runs())
+    detector = myrun.Detector('archon')
+    for (detname, det_xface_name), det_attr_list in myrun.detinfo.items():
+        if detname == 'archon': print(detname,det_xface_name,det_attr_list)
 
 #===
     
@@ -1647,7 +1767,10 @@ def selector():
     elif TNAME in ('42',): issue_2025_09_09() # Chris - jf - missing constants
     elif TNAME in ('43',): issue_2025_09_10(args.subtest) # epixuhr - access to configuration
     elif TNAME in ('44',): issue_2025_09_16(args.subtest) # test calib with mask
-    elif TNAME in ('45',): issue_2025_09_18(args.subtest) # test calibconst server
+    elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
+    elif TNAME in ('46',): issue_2025_09_26(args.subtest) # plot test images
+    elif TNAME in ('47',): issue_2025_10_09(args.subtest) # Chris & Seshu: 'piranha4_raw_2_1_0' object has no attribute '_path_geo_default'
+    elif TNAME in ('48',): issue_2025_10_17() # Chris archon issue
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

@@ -329,6 +329,7 @@ void PGPDetectorApp::initialize()
     f.register_type<AreaDetector>    ("cspad");
     f.register_type<Digitizer>       ("hsd");
     f.register_type<EpixQuad>        ("epixquad");
+    f.register_type<EpixQuad>        ("epixquad1kfps");
     f.register_type<EpixHR2x2>       ("epixhr2x2");
     f.register_type<EpixHRemu>       ("epixhremu");
     f.register_type<EpixM320>        ("epixm320");

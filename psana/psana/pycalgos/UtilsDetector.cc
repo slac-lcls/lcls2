@@ -45,12 +45,10 @@ time_t calib_std(const rawd_t *raw, const peds_t *peds, const gain_t *gain, cons
   const peds_t *p = peds;
   const gain_t *g = gain;
   const mask_t *m = mask;
-  out_t  *o = out;
-  //const rawd_t* end = raw+size;
+  out_t *o = out;
   time_point_t t0 = time_now();
   while (r<raw+size) {
     *o++ = ((*r++ & databits) - *p++)*(*g++)*(*m++);
-    //r++; p++; g++; m++; o++;
   }
   return duration_us(time_now() - t0).count();
 }

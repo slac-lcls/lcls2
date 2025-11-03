@@ -1,6 +1,8 @@
 import inspect
 import time
 import os
+import gc
+import weakref
 from contextlib import contextmanager
 
 from psana import dgram
@@ -9,6 +11,10 @@ from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
 from psana.utils import Logger, WeakDict
+from psana.psexp.prometheus_manager import get_prom_manager
+from psana.pscalib.app.calib_prefetch import calib_utils
+import psana.pscalib.calib.MDBWebUtils as wu
+from psana import utils
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -95,6 +101,14 @@ class Run(object):
         self.scan = False
         self.smd_fds = None
 
+        # Calibration constant structures
+        # Held by _calib_const, _cc_weak holds weak references to the sub-dicts
+        # dsparms.calibconst holds a weak reference to _cc_weak
+        self._calib_const = None
+        """Holds calibration constants for all detectors."""
+        self._cc_weak = utils.WeakDict({})
+        """Holds weakrefs to each detectors constants. Passed via weakref in dsparms."""
+
         self.logger = getattr(ds, "logger", None)
         if self.logger is None:
             self.logger = Logger(name="Run")
@@ -103,6 +117,8 @@ class Run(object):
             ds.dm.set_run(self)
         if hasattr(ds, "smdr_man"):
             ds.smdr_man.set_run(self)
+
+        self.build_detinfo_dict()
 
         RunHelper(self)
 
@@ -132,6 +148,108 @@ class Run(object):
             return self.esm.stores["epics"].epics_inv_mapper[det_name]
 
         return None
+
+    def _clear_calibconst(self):
+        """Explicitly clear calibration constants and force garbage collection.
+
+        Helps to prevent leakage of calibration constants between runs.
+        """
+        if self._calib_const is not None:
+            self._calib_const = None
+            gc.collect()
+            self._calib_const = utils.WeakDict({})
+            self._cc_weak = utils.WeakDict({})
+
+    def _create_weak_calibconst(self):
+        """Setup weak references to calibration constants.
+
+        Pass along only weak references to large calibration data structures
+        since references are held in many places downstream making garbage
+        collection unreliable if any one object leaks/has circular references.
+        """
+        if self._calib_const is not None:
+            for key in self._calib_const:
+                self._cc_weak[key] = weakref.WeakValueDictionary(self._calib_const[key])
+        # Only use dsparms.calibconst to pass to runs, detectors etc.
+        self.dsparms.calibconst = weakref.proxy(self._cc_weak)
+
+    def _setup_run_calibconst(self):
+        """
+        Initialize the `dsparms.calibconst` dictionary with calibration constants.
+
+        If `use_calib_cache` is enabled, attempts to load calibration constants from
+        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
+        fetches calibration constants directly from the database for each detector.
+
+        This function supports skipping selected detectors via `skip_calib_load`.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        expt, runnum = self.expt, self.runnum
+        self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
+
+        self._clear_calibconst()
+
+        if self.ds.use_calib_cache:
+            self.logger.debug("using calibration constant from shared memory, if exists")
+            calib_const, existing_info, max_retry = (None, None, 0)
+            latest_info = self.get_filtered_detinfo()
+
+            while not calib_const and max_retry < self.ds.fetch_calib_cache_max_retries:
+                try:
+                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
+                except Exception as e:
+                    self.logger.warning(f"failed to retrieve calib_const: {e}")
+                    loaded_data = None
+
+                if loaded_data is not None:
+                    self._calib_const = utils.make_weak_refable(loaded_data.get("calib_const"))
+                    existing_info = loaded_data.get("det_info")
+
+                if self._calib_const:
+                    if existing_info is None:
+                        self.logger.warning("calib_const loaded but existing_info is missing")
+                    elif not latest_info.items() <= existing_info.items():
+                        self.logger.warning("det_info in pickle file is incomplete for this run")
+                        self.logger.warning(f"{existing_info=}")
+                        self.logger.warning(f"{latest_info=}")
+                        self._calib_const = utils.WeakDict({})
+                    else:
+                        self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
+                        break
+
+                max_retry += 1
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.ds.fetch_calib_cache_max_retries})")
+                time.sleep(1)
+        else:
+            if self._calib_const is None:
+                self._calib_const = utils.WeakDict({})
+            for det_name, configinfo in self.dsparms.configinfo_dict.items():
+                if expt:
+                    if expt == "xpptut15":
+                        det_uniqueid = "cspad_detnum1234"
+                    else:
+                        det_uniqueid = configinfo.uniqueid
+                    if hasattr(self.ds, "skip_calib_load") and (det_name in self.ds.skip_calib_load or self.ds.skip_calib_load=="all"):
+                        self._calib_const[det_name] = utils.WeakDict({})
+                        continue
+                    st = time.monotonic()
+                    calib_const = wu.calib_constants_all_types(
+                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.ds.dbsuffix
+                    )
+                    en = time.monotonic()
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    self._calib_const[det_name] = utils.make_weak_refable(calib_const)
+                else:
+                    self.logger.info(
+                        "Warning: cannot access calibration constant (exp is None)"
+                    )
+                    self._calib_const[det_name] = utils.WeakDict({})
+        self._create_weak_calibconst()
 
     def Detector(self, name, accept_missing=False, **kwargs):
 
@@ -245,27 +363,57 @@ class Run(object):
     def detnames(self):
         return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
-    @property
-    def detinfo(self):
+    def get_filtered_detinfo(self):
         """
-        Returns a mapping of detector interface attributes, guarding against
-        infinite recursion during attribute enumeration.
+        Returns detector info filtered by detector names present in detinfo.
+
+        Returns:
+            dict[str, str]: A dictionary mapping detector names to unique IDs,
+                            filtered to only include detectors present in self.detinfo.
+        """
+        return {
+            k: v.uniqueid
+            for k, v in self.dsparms.configinfo_dict.items()
+            if k in {dk[0] for dk in self.detinfo.keys()}
+        }
+
+    def build_detinfo_dict(self):
+        """
+        Creates a dictionary of detector interfaces and their enumerated attributes,
+        using minimal instantiation with config=None, calib=None, env=None.
+
+        Returns:
+            dict[tuple[str, str], Any]: Mapping of (detname, xface_name) -> attribute summary
         """
         info = {}
-        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+        for (detname, xface_name), drp_class in self.dsparms.det_classes["normal"].items():
             try:
-                xface_obj = getattr(self.Detector(detname), det_xface_name)
-                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+                # Minimal instantiation with None inputs to avoid side effects
+                config = self.dsparms.configinfo_dict.get(detname, None)
+                calib, env_store, var_name = None, None, None
+                iface = drp_class(
+                    detname,
+                    xface_name,
+                    config,
+                    calib,
+                    env_store,
+                    var_name,
+                )
+
+                info[(detname, xface_name)] = _enumerate_attrs(iface)
+
             except RecursionError:
                 msg = (
-                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
-                f"(Consider reviewing custom attributes for missing '_' prefix)"
-            )
-                info[(detname, det_xface_name)] = msg
+                    f"<error: RecursionError while walking {detname}.{xface_name}> "
+                    f"(Consider reviewing custom attributes for missing '_' prefix)"
+                )
                 self.logger.warning(msg)
+                info[(detname, xface_name)] = msg
+
             except Exception as e:
-                info[(detname, det_xface_name)] = f"<error: {e}>"
-        return info
+                info[(detname, xface_name)] = f"<error: {e}>"
+                self.logger.debug(f"[detinfo-lite] Skipped {detname}.{xface_name}: {e}", exc_info=True)
+        self.detinfo = info
 
     @property
     def epicsinfo(self):
@@ -303,13 +451,29 @@ class Run(object):
 class RunShmem(Run):
     """Yields list of events from a shared memory client (no event building routine)."""
 
-    def __init__(self, ds, run_evt):
+    def __init__(self, ds, run_evt, **kwargs):
         super(RunShmem, self).__init__(ds)
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
+        self.supervisor = kwargs.get('shmem_supervisor', -1)
+        self._pub_socket = kwargs.get('shmem_pub_socket', None)
+        self._sub_socket = kwargs.get('shmem_sub_socket', None)
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        st = time.monotonic()
+        if self.supervisor:
+            super()._setup_run_calibconst()
+            if self.supervisor == 1:
+                self._pub_socket.send(self._calib_const)
+        else:
+            self._clear_calibconst()
+            self._calib_const = self._sub_socket.recv()
+            self._create_weak_calibconst()
+        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def events(self):
 
@@ -331,7 +495,7 @@ class RunShmem(Run):
 class RunDrp(Run):
     """Yields list of events from drp python (no event building routine)."""
 
-    def __init__(self, ds, run_evt):
+    def __init__(self, ds, run_evt, **kwargs):
         super(RunDrp, self).__init__(ds)
         self._evt = run_evt
         self._ds = ds
@@ -340,6 +504,29 @@ class RunDrp(Run):
         super()._setup_envstore()
         self._evt_iter = Events(self._ds, self)
         self._edtbl_config = False
+        # For distributing calibconst
+        self._is_supervisor = kwargs.get('drp_is_supervisor', False)
+        self._is_publisher = kwargs.get('drp_is_publisher', False)
+        self._tcp_pub_socket = kwargs.get('drp_tcp_pub_socket', None)
+        self._ipc_pub_socket = kwargs.get('drp_ipc_pub_socket', None)
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if self._is_supervisor:
+            if self._is_publisher:
+                super()._setup_run_calibconst()
+                self._tcp_pub_socket.send(self.dsparms.calibconst)
+                # This is for drp_python
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+        else:
+            if self._is_publisher:
+                self._calib_const = self._tcp_sub_socket.recv()
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+        self._create_weak_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
@@ -394,6 +581,7 @@ class RunSingleFile(Run):
         self.configs = ds._configs
         super()._setup_envstore()
         self._evt_iter = Events(ds, self)
+        self._setup_run_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
@@ -423,6 +611,7 @@ class RunSerial(Run):
         self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
         self._smd_iter = None
         self._ts_table = None
+        self._setup_run_calibconst()
 
     def events(self):
         for evt in self._evt_iter:
@@ -481,13 +670,14 @@ class RunSerial(Run):
 class RunLegion(Run):
     def __init__(self, ds, run_evt):
         self.dsparms = ds.dsparms
-        self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
+        self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
         RunHelper(self)
         self._evt = run_evt
         self.beginruns = run_evt._dgrams
         self.smdr_man = ds.smdr_man
         self.configs = ds._configs
         super()._setup_envstore()
+        self._setup_run_calibconst()
 
 
 class RunSmallData(Run):
