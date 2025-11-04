@@ -27,7 +27,6 @@
 #include <unistd.h>                     // For getopt(), gethostname()
 #include <cstring>
 #include <climits>                      // For HOST_NAME_MAX
-#include <csignal>
 #include <bitset>
 #include <atomic>
 #include <vector>
@@ -63,28 +62,7 @@ using us_t     = std::chrono::microseconds;
 static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
 static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
 
-static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
-
-void sigHandler( int signal )
-{
-  static unsigned callCount(0);
-
-  if (callCount == 0)
-  {
-    logging::info("Shutting down");
-
-    lRunning = 0;
-  }
-
-  if (callCount++)
-  {
-    logging::critical("Aborting on 2nd ^C");
-
-    sigaction(signal, &lIntAction, NULL);
-    raise(signal);
-  }
-}
 
 
 namespace Pds {
@@ -1461,13 +1439,8 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  struct sigaction sigAction;
-
-  sigAction.sa_handler = sigHandler;
-  sigAction.sa_flags   = SA_RESTART;
-  sigemptyset(&sigAction.sa_mask);
-  if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    logging::error("Failed to set up ^C handler");
+  // Set up signal handler
+  initShutdownSignals(prms.alias, [](){ lRunning = 0; });
 
   // Event builder sorts contributions into a time ordered list
   // Then calls the user's process() with complete events to build the result datagram

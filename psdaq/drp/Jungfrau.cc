@@ -163,6 +163,7 @@ public:
 namespace Drp {
 
 static Jungfrau* jungfrau = nullptr;
+static struct sigaction old_actions[64];
 
 static void sigHandler(int signal)
 {
@@ -171,6 +172,9 @@ static void sigHandler(int signal)
         jungfrau->cleanup();
         jungfrau = nullptr;
     }
+
+    sigaction(signal,&old_actions[signal],NULL);
+    raise(signal);
 }
 
 Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
@@ -261,11 +265,19 @@ Jungfrau::Jungfrau(Parameters* para, MemPool* pool) :
 
     struct sigaction sa;
     sa.sa_handler = sigHandler;
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    sigaction(SIGINT ,&sa,NULL);
-    sigaction(SIGABRT,&sa,NULL);
-    sigaction(SIGTERM,&sa,NULL);
+#define REGISTER(t) {                               \
+        if (sigaction(t, &sa, &old_actions[t]) > 0) \
+            printf("Couldn't set up #t handler\n"); \
+    }
+
+    REGISTER(SIGINT);
+    REGISTER(SIGABRT);
+    REGISTER(SIGTERM);
+
+#undef REGISTER
 }
 
 Jungfrau::~Jungfrau()

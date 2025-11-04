@@ -1,3 +1,4 @@
+
 #include "EpixHR2x2.hh"
 #include "psdaq/service/Semaphore.hh"
 #include "xtcdata/xtc/VarDef.hh"
@@ -94,12 +95,15 @@ namespace Drp {
 using Drp::EpixHR2x2;
 
 static EpixHR2x2* epix = 0;
+static struct sigaction old_actions[64];
 
 static void sigHandler(int signal)
 {
   psignal(signal, "epixhr2x2 received signal");
   epix->monStreamEnable();
-  ::exit(signal);
+
+  sigaction(signal,&old_actions[signal],NULL);
+  raise(signal);
 }
 
 EpixHR2x2::EpixHR2x2(Parameters* para, MemPool* pool) :
@@ -115,12 +119,20 @@ EpixHR2x2::EpixHR2x2(Parameters* para, MemPool* pool) :
 
     struct sigaction sa;
     sa.sa_handler = sigHandler;
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    sigaction(SIGINT ,&sa,NULL);
-    sigaction(SIGABRT,&sa,NULL);
-    sigaction(SIGKILL,&sa,NULL);
-    sigaction(SIGSEGV,&sa,NULL);
+#define REGISTER(t) {                               \
+        if (sigaction(t, &sa, &old_actions[t]) > 0) \
+            printf("Couldn't set up #t handler\n"); \
+    }
+
+    REGISTER(SIGINT);
+    REGISTER(SIGABRT);
+    REGISTER(SIGKILL);
+    REGISTER(SIGSEGV);
+
+#undef REGISTER
 }
 
 EpixHR2x2::~EpixHR2x2()

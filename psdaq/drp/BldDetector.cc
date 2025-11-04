@@ -1375,6 +1375,9 @@ int main(int argc, char* argv[])
     }
     */
 
+    // Set up signal handler
+    initShutdownSignals(para.alias, [](){ exit(0); });
+
     para.maxTrSize = 256 * 1024;
     try {
         Drp::BldApp app(para);
