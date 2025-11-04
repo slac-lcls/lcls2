@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include <cuda.h>
+
 int main() {
 
   int nDevices;
@@ -12,7 +14,8 @@ int main() {
     cudaGetDeviceProperties(&prop, i);
     printf("Device Number: %d\n", i);
     printf("  Device name: %s\n", prop.name);
-    printf("  CC: %d.%d\n", prop.major, prop.minor);
+    printf("  SM capability: %d.%d\n", prop.major, prop.minor);
+    printf("  Device Clock Rate (MHz): %d\n", prop.clockRate/1024);
     printf("  Memory Clock Rate (MHz): %d\n", prop.memoryClockRate/1024);
     printf("  Memory Bus Width (bits): %d\n", prop.memoryBusWidth);
     printf("  Peak Memory Bandwidth (GB/s): %.1f\n",
