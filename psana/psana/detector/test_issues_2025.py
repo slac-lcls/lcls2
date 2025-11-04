@@ -314,7 +314,8 @@ def issue_2025_03_06():
     from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d
     from psana import DataSource
     from psana.detector.UtilsGraphics import gr, fleximage
-    from psana.detector.UtilsJungfrau import info_gainbits
+    from psana.detector.UtilsJungfrau import info_gainbits_statistics
+    import psana.detector.UtilsJungfrau as uj
 
     ds = DataSource(exp='ascdaq023',run=37) #, detectors=['jungfrau']) # (600, 4800)
     orun = next(ds.runs())
@@ -349,7 +350,9 @@ def issue_2025_03_06():
        print(info_ndarr(img, '==== evt/sel:%3d/%3d dt=%.3f msec  image' % (nev, evsel, dt_sec), last=10))
        #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
 
-       print('     info_gainbits', info_gainbits(raw))
+       print('     gainbits_statistics',  uj.info_gainbits_statistics(raw))
+       print('     gainrange_statistics', uj.info_gainrange_statistics(raw))
+       print('     gainrange_fractions',  uj.info_gainrange_fractions(raw))
 
        if img.ndim==2 and img.shape[0] == 1:
            img = np.stack(1000*tuple(img))
