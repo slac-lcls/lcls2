@@ -14,12 +14,37 @@ Usage::
 import utilsdetector_ext as udext # !!! NAME utilsdetector_ext is defined in lcls2/psana/setup.py
 from time import time
 
+MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
+
 def calib_std(raw, peds, gain, mask, databits, out):
-    """assume that all numpy arrays have the same shape"""
+    """assuming that all numpy arrays have the same shape"""
     t0_sec = time()
     dt_us_cpp = udext.cy_calib_std(raw.ravel(), peds.ravel(), gain.ravel(), mask.ravel(), raw.size, databits, out.ravel())
     return dt_us_cpp, time()-t0_sec
 #    print('in %s' % sys._getframe().f_code.co_name)
+
+def calib_jungfrau_v0(raw, peds, gain, mask, out):
+    """assuming that raw, mask and out numpy arrays have the same size/shape,
+       while peds, gain have x3 size for 3 gain ranges
+       databits is a mask for databits = 0x3fff
+    """
+    #t0_sec = time()
+    dt_us_cpp = udext.cy_calib_jungfrau_v0(raw.ravel(), peds.ravel(), gain.ravel(), mask.ravel(), raw.size, out.ravel())
+    out.shape = raw.shape
+    return out #, dt_us_cpp, time()-t0_sec
+
+def calib_jungfrau_v1(raw, cc, size_blk, out):
+    """cc.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4)
+       size = size_blk * (int)number_of_blocks
+       jungfrau:
+         * databits = 0x3fff, gain bits 0x6000 0o140000
+         * moving two gain bits to the right raw>>14
+    """
+    #t0_sec = time()
+    assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
+    dt_us_cpp = udext.cy_calib_jungfrau_v1(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    out.shape = raw.shape
+    return out #, dt_us_cpp, time()-t0_sec
 
 if __name__ == "__main__" :
     print("""self-test for calib_std""")
