@@ -12,6 +12,7 @@ bit: 15,14,...,0   Gain range, ind
       0, 0         Normal,       0
       0, 1         ForcedGain1,  1
       1, 1         FixedGain2,   2
+      1, 0         bad switch pixel status 64 catched in UtilsJungfrauCalib.py
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -39,6 +40,7 @@ BW1 =  0o40000 # 16384 or 1<<14 (15-th bit starting from 1)
 BW2 = 0o100000 # 32768 or 2<<14 or 1<<15
 BW3 = 0o140000 # 49152 or 3<<14
 MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
+BSH = 14
 
 MAX_DETNAME_SIZE = 20
 
@@ -86,8 +88,12 @@ class DetCache():
         self.cmps = None # common mode parameters
         self.mask = None # combined mask
         self.inds = None # panel indices in daq
+        self.outa = None # panel indices in daqoutput array, shaped as raw
+        self.gmask = None # gfac * mask
+        self.ccons = None # combined calibration constants, content controlled by cversion
         self.loop_banks = True
         self._logmet_init = kwa.get('logmet_init', logger.debug)
+        self.cversion = kwa.get('cversion', 0) # numerated version of cached constants
         self.add_calibcons(det, evt)
 
     def kwargs_are_the_same(self, **kwa):
@@ -139,6 +145,8 @@ class DetCache():
                                                   logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
+        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32)
+
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
         self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
@@ -150,13 +158,43 @@ class DetCache():
 
         logger.debug('before call det._mask(**self.kwa) from UtilsJungfrau DetCache.add_calibcons self.kwa: %s' % str(self.kwa))
         self.mask = det._mask(**self.kwa)
-        logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s' % (\
+        logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
                       ndau.info_ndarr(self.inds, 'inds'),\
+                      ndau.info_ndarr(self.outa, 'outa'),\
                       'loop over banks %s' % self.loop_banks))
 
+        if self.cversion == 1:
+            self.add_ccons_v1()
+
         self.isset = True
+
+
+    def add_gain_mask(self):
+        """adds product of gain factor and mask: self.gmask = gfac*mask"""
+        self.gmask = np.empty_like(self.gfac)
+        for i in range(3):
+            self.gmask[i,:] = self.gfac[i,:] * self.mask
+
+
+    def add_ccons_v1(self):
+        """make combined calibration constants of V1, where
+           ** ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4),
+           ** peds = peds + offset, gain = gain * mask
+        """
+        self.add_gain_mask()
+        po = self.poff
+        gm = self.gmask
+        self._logmet_init('XXXXX DetCache.add_ccons_v1 combine cached constants:\n  %s\n  %s' % (\
+                      ndau.info_ndarr(self.poff, 'poff'),\
+                      ndau.info_ndarr(self.gmask, 'gmask')))
+        arr0 = np.zeros(self.outa.size)
+        self.ccons = np.vstack((po[0,:].ravel(), po[1,:].ravel(), arr0, po[2,:].ravel(),\
+                                gm[0,:].ravel(), gm[1,:].ravel(), arr0, gm[2,:].ravel()),\
+                                dtype=np.float32).T  # .astype(np.float32)
+
+        print(ndau.info_ndarr(self.ccons, 'XXX ccons', last=8, vfmt='%0.3f'))
 
 
 def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
@@ -252,16 +290,63 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     return outa
 
 
-def info_gainbits(arr):
-    gr0 = arr <  BW1
-    gr1 =(arr >= BW1) & (arr<BW2)
-    gr2 = arr >= BW3
-    arr1 = np.ones_like(arr, dtype=np.uint64)
+def gainbits_statistics(arr):
+    #gb00 = arr & BW3 == 0                                   # 00
+    #gb01 = np.logical_and(arr & BW1 == BW1, arr & BW2 == 0) # 01
+    #gb10 = np.logical_and(arr & BW2 == BW2, arr & BW1 == 0) # 10
+    #gb11 = arr & BW3 == BW3                                 # 11
+
+    gbits = np.array(arr>>14, dtype=np.uint8)
+    gb00, gb01, gb10, gb11 = gbits==0, gbits==1, gbits==2, gbits==3
+
+    arr1 = np.ones_like(arr, dtype=np.uint32)
+    arr_sta_gb00 = np.select((gb00,), (arr1,), 0)
+    arr_sta_gb01 = np.select((gb01,), (arr1,), 0)
+    arr_sta_gb10 = np.select((gb10,), (arr1,), 0)
+    arr_sta_gb11 = np.select((gb11,), (arr1,), 0)
+    ngb00, ngb01, ngb10, ngb11 =\
+        arr_sta_gb00.sum(), arr_sta_gb01.sum(), arr_sta_gb10.sum(), arr_sta_gb11.sum()
+    assert (ngb00 + ngb01 + ngb10 + ngb11) == arr.size
+    total = ngb00 + ngb01 + ngb10 + ngb11
+    return ngb00, ngb01, ngb10, ngb11, total, arr1.size
+
+
+def info_gainbits_statistics(arr, fmt='gainbits statistics 00:%05d  01:%05d  10:%05d  11:%05d  total/arr.size:%6d/%6d'):
+    #ngb00, ngb01, ngb10, ngb11, total, size = gainbits_statistics(arr)
+    return fmt % gainbits_statistics(arr)
+
+
+def gainrange_statistics(arr):
+    #gr0 = arr <  BW1              # 00
+    #gr1 =(arr >= BW1) & (arr<BW2) # 01
+    #gr2 = arr >= BW3              # 11
+    #bad =(arr >= BW2) & (arr<BW3) # 10 - badly frozen pixel
+
+    gbits = np.array(arr>>14, dtype=np.uint8)
+    gr0, gr1, gr2, bad = gbits==0, gbits==1, gbits==3, gbits==2
+
+    arr1 = np.ones_like(arr, dtype=np.uint32)
     arr_sta_gr0 = np.select((gr0,), (arr1,), 0)
     arr_sta_gr1 = np.select((gr1,), (arr1,), 0)
     arr_sta_gr2 = np.select((gr2,), (arr1,), 0)
-    return 'statistics of gainbits 00: %5d  01: %5d  11: %5d' %\
-        (arr_sta_gr0.sum(), arr_sta_gr1.sum(), arr_sta_gr2.sum())
+    arr_sta_bad = np.select((bad,), (arr1,), 0)
+    return arr_sta_gr0.sum(), arr_sta_gr1.sum(), arr_sta_gr2.sum(), arr_sta_bad.sum()
+
+
+def info_gainrange_statistics(arr, fmt='gainrange statistics 0:%d  1:%d  2:%d  bad:%d  total/arr.size:%d/%d'):
+    ngr0, ngr1, ngr2, nbad = gainrange_statistics(arr)
+    return fmt % (ngr0, ngr1, ngr2, nbad, ngr0+ngr1+ngr2+nbad, arr.size)
+
+
+def gainrange_fractions(arr):
+    ngr0, ngr1, ngr2, nbad = gainrange_statistics(arr)
+    total = float(ngr0 + ngr1 + ngr2 + nbad)
+    return ngr0/total, ngr1/total, ngr2/total, nbad/total, total
+
+
+def info_gainrange_fractions(arr, fmt='gainrange fractions 0:%0.4f  1:%0.4f  2:%0.4f  bad:%0.4f  of total:%d'):
+    fgr0, fgr1, fgr2, fbad, total = gainrange_fractions(arr)
+    return fmt % gainrange_fractions(arr)
 
 
 def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
@@ -277,7 +362,9 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
     gr0 = arr <  BW1              # 490 us
     gr1 =(arr >= BW1) & (arr<BW2) # 714 us
     gr2 = arr >= BW3              # 400 us
-
+    #gbits = np.array(arr>>BSH, dtype=np.uint8)
+    #gr0, gr1, gr2, bad = gbits==0, gbits==1, gbits==3, gbits==2
+    #factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=0) # 2msec
     factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=1) # 2msec
     pedoff = np.select((gr0, gr1, gr2), (poff[0,:], poff[1,:], poff[2,:]), default=0)
 
