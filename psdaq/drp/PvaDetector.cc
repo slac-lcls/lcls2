@@ -1484,6 +1484,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Set up signal handler
+    initShutdownSignals(para.alias, [](){ exit(0); });
+
     para.maxTrSize = 256 * 1024;
     try {
         get_kwargs(kwargs_str, para.kwargs);

@@ -96,12 +96,15 @@ namespace Drp {
 using Drp::EpixM320;
 
 static EpixM320* epix = 0;
+static struct sigaction old_actions[64];
 
 static void sigHandler(int signal)
 {
   psignal(signal, "epixm320 received signal");
   epix->monStreamEnable();
-  ::exit(signal);
+
+  sigaction(signal,&old_actions[signal],NULL);
+  raise(signal);
 }
 
 
@@ -122,12 +125,20 @@ EpixM320::EpixM320(Parameters* para, MemPool* pool) :
 
     struct sigaction sa;
     sa.sa_handler = sigHandler;
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    sigaction(SIGINT ,&sa,NULL);
-    sigaction(SIGABRT,&sa,NULL);
-    sigaction(SIGKILL,&sa,NULL);
-    sigaction(SIGSEGV,&sa,NULL);
+#define REGISTER(t) {                               \
+        if (sigaction(t, &sa, &old_actions[t]) > 0) \
+            printf("Couldn't set up #t handler\n"); \
+    }
+
+    REGISTER(SIGINT);
+    REGISTER(SIGABRT);
+    REGISTER(SIGKILL);
+    REGISTER(SIGSEGV);
+
+#undef REGISTER
 }
 
 EpixM320::~EpixM320()

@@ -97,12 +97,15 @@ namespace Drp {
 using Drp::EpixUHR;
 
 static EpixUHR* epix = 0;
+static struct sigaction old_actions[64];
 
 static void sigHandler(int signal)
 {
     psignal(signal, "epixUHR received signal");
     epix->monStreamEnable();
-    ::exit(signal);
+
+    sigaction(signal,&old_actions[signal],NULL);
+    raise(signal);
 }
 
 EpixUHR::EpixUHR(Parameters* para, MemPool* pool) :
@@ -122,12 +125,20 @@ EpixUHR::EpixUHR(Parameters* para, MemPool* pool) :
 
     struct sigaction sa;
     sa.sa_handler = sigHandler;
+    sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    sigaction(SIGINT ,&sa,NULL);
-    sigaction(SIGABRT,&sa,NULL);
-    sigaction(SIGKILL,&sa,NULL);
-    sigaction(SIGSEGV,&sa,NULL);
+#define REGISTER(t) {                               \
+        if (sigaction(t, &sa, &old_actions[t]) > 0) \
+            printf("Couldn't set up #t handler\n"); \
+    }
+
+    REGISTER(SIGINT);
+    REGISTER(SIGABRT);
+    REGISTER(SIGKILL);
+    REGISTER(SIGSEGV);
+
+#undef REGISTER
 }
 
 EpixUHR::~EpixUHR()
@@ -163,7 +174,7 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
         // copy the detName, detType, detId from the Config Names
         Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
         NamesId nid = m_evtNamesId[0] = NamesId(nodeId, EventNamesIndex);
-        
+
         logging::debug("Constructing panel eventNames src 0x%x",
                         unsigned(nid));
         Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
@@ -172,27 +183,27 @@ unsigned EpixUHR::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Con
                                                     configNames.detId(),
                                                     nid,
                                                     m_para->detSegment);
-        
+
         eventNames.add(xtc, bufEnd, epixUHRPanelDef);
-        
+
         m_namesLookup[nid] = NameIndex(eventNames);
-        
+
     }
 
     {
-        
+
         XtcData::Names&    names    = detector::configNames(configo);
-        
+
         XtcData::DescData& descdata = configo.desc_shape();
-        
+
         for(unsigned i=0; i< names.num(); i++) {
             XtcData::Name& name = names.get(i);
             if (strcmp(name.name(),"user.asic_enable")==0){
                 m_asics = descdata.get_value<uint32_t>(name.name());
-        
+
             }
         }
-        
+
     }
 
     return 0;
@@ -210,7 +221,7 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
     //  This may get called multiple times, so we can't overwrite input we need
     uint32_t* p = reinterpret_cast<uint32_t*>(ebh);
     //uint32_t* p = reinterpret_cast<uint32_t*>((char*)ebh+16);
-   
+
     // if (m_descramble) {
     //     //  The nested AxiStreamBatcherEventBuilder seems to have padded every 8B with 8B
     //     if (p[2]==0 && p[3]==0) {
@@ -238,7 +249,7 @@ Pds::TimingHeader* EpixUHR::getTimingHeader(uint32_t index) const
 void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
     unsigned shape[MaxRank] = {0,0,0,0,0};
-    
+
     //  A super row crosses 2 elements; each element contains 2x2 ASICs
     const unsigned elemRows    = 192;
     const unsigned elemRowSize = 168;
@@ -248,12 +259,12 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, st
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x",unsigned(m_evtNamesId[0]));
 
-    // Moved to a 1D array instead of 2D, due to packing of the data (12 instead of 16). 
+    // Moved to a 1D array instead of 2D, due to packing of the data (12 instead of 16).
     shape[0] = 4; shape[1] = elemRows*elemRowSize*12/8; // numrows*numcolumns*numasics*(12Bits/pixel; 8bits/Bytes)
     Array<uint8_t> aframe = cd.allocate<uint8_t>(EpixUHRPanelDef::raw, shape);
-    
+
     unsigned m_asic_check = __builtin_popcount(m_asics)+2;
-    
+
     if (subframes.size() != m_asic_check) {
         if (m_nprints) {
 	    logging::error("Missing data: subframe size %d [%d]\n",
@@ -279,13 +290,13 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, st
     const unsigned numAsics = 4;
     const auto   asicSize    = elemRows*elemRowSize*12/8;
     memset(aframe.data(), 0, numAsics*asicSize);
-    
+
     //  Check which ASICs are in the streams
     unsigned a=0;
     unsigned q_asics = m_asics;
     for(unsigned q=0; q<numAsics; q++) {
         if (q_asics & (1<<q)) {
-    
+
             if (subframes.size() < (a+2)) {
   	        if (m_nprints) {
 		    logging::error("Missing data from asic %d\n", q);
@@ -316,7 +327,7 @@ void EpixUHR::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, st
     a=0;
     for (unsigned asic = 0; asic < numAsics; ++asic) {
         if (q_asics & (1<<asic)) {
-            
+
             auto src = reinterpret_cast<const uint8_t*>(subframes[2 + a].data()) + headerSize;
             auto dst = &frame[asic * asicSize];
             memcpy(dst, src, elemRows*elemRowSize*12/8);

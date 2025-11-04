@@ -1542,6 +1542,10 @@ int main(int argc, char* argv[])
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
+
+        // Set up signal handler
+        initShutdownSignals(para.alias, [](){ exit(0); });
+
         Drp::UdpApp app(para);
         app.run();
         return 0;
