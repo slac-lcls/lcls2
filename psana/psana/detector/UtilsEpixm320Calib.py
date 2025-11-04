@@ -448,7 +448,10 @@ def deploy_constants(ctypes, gainmodes, **kwa):
           logger.info(info_ndarr(data, 'constants loaded from file', last=10))
         except AssertionError as err:
           logger.warning(err)
-          data = np.zeros(shape_as_daq, np.uint16)
+          data = np.ones(shape_as_daq, dtype=np.float32) if ctype in ('pixel_gain', 'pixel_rms') else\
+                 np.zeros(shape_as_daq, dtype=np.float32) if ctype in ('pedestals', 'pixel_offset') else\
+                 np.ones(shape_as_daq, dtype=np.uint16) * 1000 if ctype in ('pixel_max',) else\
+                 np.zeros(shape_as_daq, dtype=np.uint16)
           logger.info(info_ndarr(data, 'substitute array with', last=10))
         dic_nda[gm] = data
 
