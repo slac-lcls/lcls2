@@ -40,7 +40,8 @@ using vecu16_t = std::vector<uint16_t>;
 static void check(const char* const           name,
                   std::vector<vecf32_t>       out,
                   const std::vector<vecf32_t> reference,
-                  std::vector<uint64_t>       calibTimes)
+                  std::vector<uint64_t>       calibTimes,
+                  float                       kernelTime=0.f)
 {
   unsigned nEvents = calibTimes.size();
   double tTot = 0.0f;
@@ -64,7 +65,15 @@ static void check(const char* const           name,
     printf("  %lu", calibTimes[i]);
   }
   printf("\n");
-  printf("  avg: %f us\n", tTot / nEvents);
+  if (kernelTime == 0.f) {
+    printf("  avg: %f us\n", tTot / nEvents);
+  } else {
+    size_t nPixels = out[0].size();
+    size_t mem_size = nPixels * (sizeof(uint16_t) + sizeof(float));
+    float kernelBandwidth = 1000.0f * mem_size / (1024 * 1024 * 1024) / (kernelTime / nEvents);
+    printf("  avg: %f us, throughput = %.4f GB/s, Time = %.5f ms\n",
+           tTot / nEvents, kernelBandwidth, kernelTime / nEvents);
+  }
 }
 
 static void calibrate(vecf32_t&                out,
@@ -371,12 +380,20 @@ static void basicCalibGpu(std::vector<vecf32_t>       out,
   const unsigned bpg   {nBlocks};   // Blocks per grid
   const unsigned panel {0};
 
+  // Initialize CUDA events
+  cudaEvent_t start, stop;
+  chkError(cudaEventCreate(&start));
+  chkError(cudaEventCreate(&stop));
+
   // Wait for memmory to stabilize from previous work before performing the test
   asm volatile("mfence" ::: "memory");
 
   // Warm-up
   _calibrate<<<bpg, tpb, 0, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
   chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
+
+  // Take measurements for loop over kernel launches
+  chkError(cudaEventRecord(start, 0));
 
   // Run and time the calibration test for each event
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -391,6 +408,11 @@ static void basicCalibGpu(std::vector<vecf32_t>       out,
     calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
   }
 
+  chkError(cudaEventRecord(stop, 0));
+  chkError(cudaEventSynchronize(stop));
+  float kernelTime;
+  chkError(cudaEventElapsedTime(&kernelTime, start, stop));
+
   // Retrieve the calibrated data from the GPU
   float* o_d = out_d;
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -400,7 +422,7 @@ static void basicCalibGpu(std::vector<vecf32_t>       out,
   chkError(cudaDeviceSynchronize());
 
   // Check and print some results
-  check("Basic_GPU", out, reference, calibTimes);
+  check("Basic_GPU", out, reference, calibTimes, kernelTime);
 
   // Clean up
   chkError(cudaStreamDestroy(stream));
@@ -496,6 +518,11 @@ static void cacheCalibGpu(std::vector<vecf32_t>       out,
   //const unsigned bpg   {(unsigned(nPixels) + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
   const unsigned bpg   {nBlocks};   // Blocks per grid
 
+  // Initialize CUDA events
+  cudaEvent_t start, stop;
+  chkError(cudaEventCreate(&start));
+  chkError(cudaEventCreate(&stop));
+
   // Wait for memmory to stabilize from previous work before performing the test
   asm volatile("mfence" ::: "memory");
 
@@ -503,6 +530,9 @@ static void cacheCalibGpu(std::vector<vecf32_t>       out,
   const unsigned panel {0};
   _calibrate2<<<bpg, tpb, 0, stream>>>(out_d, nPixels, raw_d, *index_d, panel, pedGains_d, nPixels);
   chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
+
+  // Take measurements for loop over kernel launches
+  chkError(cudaEventRecord(start, 0));
 
   // Run and time the calibration test for each event
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -517,6 +547,11 @@ static void cacheCalibGpu(std::vector<vecf32_t>       out,
     calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
   }
 
+  chkError(cudaEventRecord(stop, 0));
+  chkError(cudaEventSynchronize(stop));
+  float kernelTime;
+  chkError(cudaEventElapsedTime(&kernelTime, start, stop));
+
   // Retrieve the calibrated data from the GPU
   float* o_d = out_d;
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -526,7 +561,7 @@ static void cacheCalibGpu(std::vector<vecf32_t>       out,
   chkError(cudaDeviceSynchronize());
 
   // Check and print some results
-  check("Cache_GPU", out, reference, calibTimes);
+  check("Cache_GPU", out, reference, calibTimes, kernelTime);
 
   // Clean up
   chkError(cudaStreamDestroy(stream));
@@ -555,17 +590,17 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
   int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
 
   extern __shared__ uint8_t smem[];
-  auto sIn    = (uint16_t*)smem;                      // uint16_t sIn[TPB];
-  auto sPeds  = (float*)&sIn[blockDim.x];             // float    sPeds[1 << GainBits][TPB];
+  //auto sIn    = (uint16_t*)smem;                      // uint16_t sIn[TPB];
+  auto sPeds  = (float*)smem; //&sIn[blockDim.x];             // float    sPeds[1 << GainBits][TPB];
   auto sGains = &sPeds[(1 << GainBits) * blockDim.x]; // float    sGains[1 << GainBits][TPB];
 
   cg::thread_block cta = cg::this_thread_block();
   for (int i = pixel; i < nPixels; i += stride) {
-    sIn[threadIdx.x] = in[i];
+    //sIn[threadIdx.x] = in[i];  // Seems like this wouldn't help due to single access
     //__syncwarp();
     //__syncthreads();
-    cg::sync(cta);
-    auto       datum = sIn[threadIdx.x];
+    //cg::sync(cta);
+    auto       datum = in[i]; //sIn[threadIdx.x];
     const auto range = (datum >> GainOffset) & ((1 << GainBits) - 1);
     const auto pgIdx = (range * blockDim.x) + threadIdx.x;
     sPeds[pgIdx]  = peds[range * nPixels + i];
@@ -627,16 +662,14 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
   cudaStream_t stream;
   chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
 
-  const unsigned tpb{nThreads};         // Threads per block
-  const unsigned bpg{nBlocks};          // Blocks per grid
-  cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
-  printf("GPU threads per SM: %u, total threads: %u, pixels per thread: %zu\n",
-         prop.maxThreadsPerMultiProcessor, bpg * tpb, nPixels / (bpg * tpb));
+  const auto tpb{nThreads};             // Threads per block
+  const auto bpg{nBlocks};              // Blocks per grid
+  const auto shSize{tpb * (/*sizeof(uint16_t) +*/ (1 << GainBits) * (sizeof(*peds_d) + sizeof(*gains_d)))};
 
-  unsigned nSMs = (bpg * tpb) / prop.maxThreadsPerMultiProcessor;
-  const auto shSize{tpb * (sizeof(uint16_t) + 2 * (1 << GainBits) * sizeof(float))};
-  printf("GPU shared memory use size per block: %zu B, per SM: %zu B\n", shSize, bpg * shSize/nSMs);
+  // Initialize CUDA events
+  cudaEvent_t start, stop;
+  chkError(cudaEventCreate(&start));
+  chkError(cudaEventCreate(&stop));
 
   // Wait for memmory to stabilize from previous work before performing the test
   asm volatile("mfence" ::: "memory");
@@ -645,6 +678,9 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
   const unsigned panel {0};             // We use only one panel of data in this test
   _calibrate3<<<bpg, tpb, shSize, stream>>>(out_d, nPixels, raw_d, *index_d, panel, peds_d, gains_d, nPixels);
   chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
+
+  // Take measurements for loop over kernel launches
+  chkError(cudaEventRecord(start, 0));
 
   // Run and time the calibration test for each event
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -659,6 +695,11 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
     calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
   }
 
+  chkError(cudaEventRecord(stop, 0));
+  chkError(cudaEventSynchronize(stop));
+  float kernelTime;
+  chkError(cudaEventElapsedTime(&kernelTime, start, stop));
+
   // Retrieve the calibrated data from the GPU
   float* o_d = out_d;
   for (unsigned i = 0; i < raw.size(); ++i) {
@@ -668,7 +709,7 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
   chkError(cudaDeviceSynchronize());
 
   // Check and print some results
-  check("Cache_GPU", out, reference, calibTimes);
+  check("shmem_GPU", out, reference, calibTimes, kernelTime);
 
   // Clean up
   chkError(cudaStreamDestroy(stream));
@@ -677,6 +718,156 @@ static void shmemCalibGpu(std::vector<vecf32_t>       out,
 
   chkError(cudaFree(gains_d));
   chkError(cudaFree(peds_d));
+
+  chkError(cudaFree(raw_d));
+  chkError(cudaFree(out_d));
+}
+
+static __global__ void _calibrate4(float*   const        __restrict__ calibBuffers,
+                                   size_t   const                     calibBufsCnt,
+                                   uint16_t const* const __restrict__ rawBuffers,
+                                   unsigned const&                    index,
+                                   unsigned const                     panel,
+                                   PedGain  const* const __restrict__ pedGains,
+                                   unsigned const                     nPixels)
+{
+  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
+  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
+  auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
+  int stride = gridDim.x * blockDim.x;
+  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+
+  extern __shared__ uint8_t smem[];
+  //auto sIn       = (uint16_t*)smem;                      // uint16_t sIn[TPB];
+  auto sPedGains = (PedGain*)smem; //&sIn[blockDim.x];           // PedGain  sPedGains[1 << GainBits][TPB];
+
+  cg::thread_block cta = cg::this_thread_block();
+  for (int i = pixel; i < nPixels; i += stride) {
+    //sIn[threadIdx.x] = in[i];  // Seems like this wouldn't help due to single access
+    //__syncwarp();
+    //__syncthreads();
+    //cg::sync(cta);
+    auto       datum = in[i]; //sIn[threadIdx.x];
+    const auto range = (datum >> GainOffset) & ((1 << GainBits) - 1);
+    const auto pgIdx = (range * blockDim.x) + threadIdx.x;
+    sPedGains[pgIdx] = pedGains[range * nPixels + i];
+    //__syncwarp();
+    //__syncthreads();
+    cg::sync(cta);
+    datum &= ((1 << GainOffset) - 1);
+    out[i] = (float(datum) - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
+  }
+}
+
+static void shmemPgCalibGpu(std::vector<vecf32_t>       out,
+                            const std::vector<vecu16_t> raw,
+                            const std::vector<vecf32_t> pedestals,
+                            const std::vector<vecf32_t> gains,
+                            std::vector<uint64_t>       calibTimes,
+                            const std::vector<vecf32_t> reference,
+                            unsigned                    nThreads,
+                            unsigned                    nBlocks)
+{
+  // Rearrange calibration constants in a cache friendly way
+  std::vector<PedGain> pg[gains.size()];
+  for (unsigned i = 0; i < gains.size(); ++i) {
+    pg[i].resize(raw[0].size());
+    for (unsigned j = 0; j < raw[0].size(); ++j) {
+      pg[i][j].ped  = pedestals[i][j];
+      pg[i][j].gain = gains[i][j];
+    }
+  }
+
+  // Set up calibrated data buffers on the GPU
+  auto nEvents = out.size();
+  auto nPixels = out[0].size();
+  float* out_d;
+  chkError(cudaMalloc(&out_d,    nEvents * nPixels * sizeof(*out_d)));
+  chkError(cudaMemset( out_d, 0, nEvents * nPixels * sizeof(*out_d)));
+
+  // Set up raw data buffers on the GPU and transfer the data
+  uint16_t* raw_d;
+  chkError(cudaMalloc(&raw_d, nEvents * nPixels * sizeof(*raw_d)));
+  uint16_t* r_d = raw_d;
+  for (unsigned i = 0; i < raw.size(); ++i) {
+    chkError(cudaMemcpy(r_d, raw[i].data(), nPixels * sizeof(*r_d), cudaMemcpyHostToDevice));
+    r_d += nPixels;
+  }
+
+  // Put pedestals and gains for each gain range on the GPU
+  auto nGains  = gains.size();
+  PedGain* pg_d;
+  chkError(cudaMalloc(&pg_d, nGains * nPixels * sizeof(*pg_d)));
+  auto pedGains_d = pg_d;
+  for (unsigned gn = 0; gn < nGains; ++gn) {
+    chkError(cudaMemcpy(pg_d, pg[gn].data(), nPixels * sizeof(*pg_d), cudaMemcpyHostToDevice));
+    pg_d += nPixels;
+  }
+
+  // Manage an event buffer index similar to the DAQ
+  unsigned* index_d;
+  chkError(cudaMalloc(&index_d,    sizeof(index_d)));
+  chkError(cudaMemset( index_d, 0, sizeof(index_d)));
+
+  // Set up a cuda stream in which to do asynchronous work like in the DAQ
+  cudaStream_t stream;
+  chkFatal(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+
+  const auto tpb{nThreads};             // Threads per block
+  const auto bpg{nBlocks};              // Blocks per grid
+  const auto shSize{tpb * (/*sizeof(uint16_t) +*/ (1 << GainBits) * sizeof(*pedGains_d))};
+
+  // Initialize CUDA events
+  cudaEvent_t start, stop;
+  chkError(cudaEventCreate(&start));
+  chkError(cudaEventCreate(&stop));
+
+  // Wait for memmory to stabilize from previous work before performing the test
+  asm volatile("mfence" ::: "memory");
+
+  // Warm-up
+  const unsigned panel {0};             // We use only one panel of data in this test
+  _calibrate4<<<bpg, tpb, shSize, stream>>>(out_d, nPixels, raw_d, *index_d, panel, pedGains_d, nPixels);
+  chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
+
+  // Take measurements for loop over kernel launches
+  chkError(cudaEventRecord(start, 0));
+
+  // Run and time the calibration test for each event
+  for (unsigned i = 0; i < raw.size(); ++i) {
+    auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+
+    chkError(cudaMemcpyAsync(index_d, &i, sizeof(i), cudaMemcpyHostToDevice, stream));
+
+    _calibrate4<<<bpg, tpb, shSize, stream>>>(out_d, nPixels, raw_d, *index_d, panel, pedGains_d, nPixels);
+    chkError(cudaStreamSynchronize(stream)); // Wait for completion of each event
+
+    auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+    calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
+  }
+
+  chkError(cudaEventRecord(stop, 0));
+  chkError(cudaEventSynchronize(stop));
+  float kernelTime;
+  chkError(cudaEventElapsedTime(&kernelTime, start, stop));
+
+  // Retrieve the calibrated data from the GPU
+  float* o_d = out_d;
+  for (unsigned i = 0; i < raw.size(); ++i) {
+    chkError(cudaMemcpy(out[i].data(), o_d, nPixels * sizeof(*out[i].data()), cudaMemcpyDeviceToHost));
+    o_d += nPixels;
+  }
+  chkError(cudaDeviceSynchronize());
+
+  // Check and print some results
+  check("shmem_PG_GPU", out, reference, calibTimes, kernelTime);
+
+  // Clean up
+  chkError(cudaStreamDestroy(stream));
+
+  chkError(cudaFree(index_d));
+
+  chkError(cudaFree(pedGains_d));
 
   chkError(cudaFree(raw_d));
   chkError(cudaFree(out_d));
@@ -739,6 +930,16 @@ int main(int argc, char **argv)
     }
   }
 
+  cudaDeviceProp prop;
+  cudaGetDeviceProperties(&prop, 0);
+  const auto tpMP{prop.maxThreadsPerMultiProcessor};
+  printf("GPU threads per SM: %u, total threads: %u, SMs %.1f, pixels per thread: %u\n",
+         tpMP, nBlocks * nGpuThreads, float(nBlocks * nGpuThreads) / tpMP, nPixels / (nBlocks * nGpuThreads));
+
+  const auto nSMs{(nBlocks * nGpuThreads + tpMP-1) / tpMP};
+  const auto shSize{nGpuThreads * (/*sizeof(uint16_t) +*/ (1 << GainBits) * (sizeof(pedestals[0][0]) + sizeof(gains[0][0])))};
+  printf("GPU shared memory use size per block: %zu B, per SM: %zu B\n\n", shSize, nBlocks * shSize/nSMs);
+
   // Generate data for nEvents events
   std::vector<vecu16_t> raw(nEvents);
   std::vector<uint64_t> nGainEvts(nGains, 0);
@@ -783,6 +984,7 @@ int main(int argc, char **argv)
   basicCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
   cacheCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
   shmemCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
+  shmemPgCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
 
   return 0;
 }
