@@ -208,8 +208,9 @@ void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, s
     }
 #endif
     
+    // FIXME: New firmware shows 4 subframe
     // Expect 3 DMA lanes (0: timing/meta, 1: unused, 2: image)
-	const unsigned expected_subframes = 3;
+	const unsigned expected_subframes = 4;
 
 	if (subframes.size() != expected_subframes) {
 		logging::error("Missing data: subframe count %zu [expected %u]",
