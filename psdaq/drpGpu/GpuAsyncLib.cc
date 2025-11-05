@@ -94,7 +94,11 @@ bool CudaContext::init(int device, bool quiet) {
         logging::debug("64-bit Memory Address support");
 
     // Create context
+#if CUDA_VERSION >= 13000
+    if (chkError(cuCtxCreate(&context_, NULL, 0, device_)))
+#else
     if (chkError(cuCtxCreate(&context_, 0, device_)))
+#endif
         return false;
 
     return true;
