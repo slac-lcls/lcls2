@@ -164,6 +164,7 @@ if 'PSDAQ' in BUILD_LIST :
             'timed_run = psdaq.control.timed_run:main',
             'epics_exporter = psdaq.cas.epics_exporter:main',
             'hsd_epics_exporter = psdaq.cas.hsd_epics_exporter:main',
+            'hsd_input_select = psdaq.cas.hsd_input_select:main',
             'fixed_rate_table = psdaq.seq.fixed_rate_table:main',
             'periodicgenerator = psdaq.seq.periodicgenerator:main',
             'rixgenerator = psdaq.seq.rixgeneratory:main',

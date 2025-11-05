@@ -5,14 +5,14 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/NamesIter.hh"
 
+#define PY_LIMITED_API 0x03090000
 #include <Python.h>
 #include <stdio.h>
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <numpy/arrayobject.h>
-#include <numpy/ndarraytypes.h>
+#include <numpy/ndarrayobject.h>
 #include <structmember.h>
 
 using namespace XtcData;
@@ -417,65 +417,156 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
             for (unsigned j = 0; j < name.rank(); j++) {
                 dims[j] = shape[j];
             }
+	    PyArrayObject* arrObj;
             switch (name.type()) {
             case Name::UINT8: {
                 auto arr = descdata.get_array<uint8_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT8, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_UINT8,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::UINT16: {
                 auto arr = descdata.get_array<uint16_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT16, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_UINT16,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::UINT32: {
                 auto arr = descdata.get_array<uint32_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT32, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_UINT32,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::UINT64: {
                 auto arr = descdata.get_array<uint64_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_UINT64, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_UINT64,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::INT8: {
                 auto arr = descdata.get_array<int8_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT8, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_INT8,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::INT16: {
-                auto arr = descdata.get_array<int16_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT16, arr.data());
+                auto arr = descdata.get_array<uint16_t>(i);
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_INT16,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::INT32: {
-                auto arr = descdata.get_array<int32_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT32, arr.data());
+                auto arr = descdata.get_array<uint32_t>(i);
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_INT32,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::INT64: {
-                auto arr = descdata.get_array<int64_t>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_INT64, arr.data());
+                auto arr = descdata.get_array<uint64_t>(i);
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_INT64,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::FLOAT: {
                 auto arr = descdata.get_array<float>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_FLOAT, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_FLOAT,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             case Name::DOUBLE: {
                 auto arr = descdata.get_array<double>(i);
-                newobj = PyArray_SimpleNewFromData(name.rank(), dims,
-                                                   NPY_DOUBLE, arr.data());
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_DOUBLE,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
                 break;
             }
             default: {
@@ -483,7 +574,7 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
                 break;
             }
             }
-            if (PyArray_SetBaseObject((PyArrayObject*)newobj, pyDgram->dgrambytes) < 0) {
+            if (PyArray_SetBaseObject(arrObj, pyDgram->dgrambytes) < 0) {
                 printf("Failed to set BaseObject for numpy array.\n");
             }
             // PyArray_SetBaseObject steals a reference to the dgrambytes
@@ -491,7 +582,8 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
             Py_INCREF(pyDgram->dgrambytes);
 
             // make the raw data arrays read-only
-            PyArray_CLEARFLAGS((PyArrayObject*)newobj, NPY_ARRAY_WRITEABLE);
+            PyArray_CLEARFLAGS(arrObj, NPY_ARRAY_WRITEABLE);
+            newobj = (PyObject*)arrObj;
         }
         if (newobj) {
             snprintf(keyName,sizeof(keyName),"%s%s%s%s%s",
@@ -1030,3 +1122,4 @@ PyMODINIT_FUNC initdgram(void) {
     PyModule_AddObject(m, "Dgram", (PyObject *)&dgram_DgramType);
 }
 #endif
+

@@ -515,7 +515,7 @@ int EbLfCltLink::post(const void* buf,
 
     if (rc != -FI_EAGAIN)
     {
-      fprintf(stderr, "%s:\n  writedata to ID %d failed: %s\n",
+      fprintf(stderr, "%s:\n  writedata() to ID %d failed: %s\n",
               __PRETTY_FUNCTION__, _id, _ep->error());
       break;
     }
@@ -526,6 +526,8 @@ int EbLfCltLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
+      fprintf(stderr, "%s:\n  writedata() to ID %d timed out (%lu ms): %s\n",
+              __PRETTY_FUNCTION__, _id, tmo.count(), _ep->error());
       break;
     }
   }
@@ -564,6 +566,8 @@ int EbLfLink::post(const void* buf,
     if (t1 - t0 > tmo)
     {
       ++_timedOut;
+      fprintf(stderr, "%s:\n  injectdata() to ID %d timed out (%lu ms): %s\n",
+              __PRETTY_FUNCTION__, _id, tmo.count(), _ep->error());
       break;
     }
   }

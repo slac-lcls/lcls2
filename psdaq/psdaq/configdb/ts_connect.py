@@ -74,7 +74,7 @@ class ts_connector:
         try:
             link_ids = self.ctxt.get(pv_names)
         except TimeoutError:
-            print('*** TimeoutError for {:}'.format(pv))
+            print(f'*** TimeoutError for prefix {pv} full list {pv_names}')
             return
 
         pv_names = []

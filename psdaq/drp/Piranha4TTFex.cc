@@ -18,7 +18,7 @@ using psalg::NDArray;
 using logging = psalg::SysLog;
 
 enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _ROICUT,
-            _NOBEAM, _NOREF, _NOFITS, _NCUTS };
+            _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
 static const char* cuts[] = {"NCalls",
                              "NoLaser",
                              "FrameSize",
@@ -26,6 +26,7 @@ static const char* cuts[] = {"NCalls",
                              "NoBeam",
                              "NoRef",
                              "NoFits",
+                             "FWHMCut",
                              NULL };
 
 //static ndarray<double,1> load_reference(unsigned key, unsigned sz);
@@ -121,8 +122,8 @@ void Piranha4TTFex::configure(XtcData::ConfigIter& configo,
       GET_VECTOR(fir_weights);
       GET_VECTOR(calib_poly);
 #undef GET_VECTOR
-  }          
-   
+  }
+
   m_beam_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.incl.eventcode") );
   m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination:destEnum") );
   m_beam_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.excl.eventcode") );
@@ -214,22 +215,22 @@ void Piranha4TTFex::unconfigure()
   }
 }
 
-void Piranha4TTFex::reset()
-{
-  m_flt_position  = 0;
-  m_flt_position_ps = 0;
-  m_flt_fwhm      = 0;
-  m_amplitude     = 0;
-  m_ref_amplitude = 0;
-  m_nxt_amplitude = -1;
-}
-
-Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
-                                               std::vector<double>& sigd,
-                                               std::vector<double>& refout)
+std::pair<std::vector<double>, Piranha4TTFex::TTResult>
+Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
+                       std::vector<double>& sigd,
+                       std::vector<double>& refout)
 {
   m_cut[_NCALLS]++;
 
+  /* Vector is in order:
+   * [0]: filtered_position
+   * [1]: filtered_pos_ps
+   * [2]: amplitude
+   * [3]: next_amplitude
+   * [4]: ref_amplitude
+   * [5]: filtered_fwhm
+  */
+  std::vector<double> fex_vec(6);
   //  EventInfo is in subframe 3
   const EventInfo& info = *reinterpret_cast<const EventInfo*>(subframes[3].data());
 
@@ -244,7 +245,9 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
       printf("-->NOLASER\n");
 #endif
-      return NOLASER;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -NOLASER;
+      return std::make_pair(fex_vec, NOLASER);
   }
 
   unsigned shape[MaxRank];
@@ -264,7 +267,9 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
       printf("-->INVALID1\n");
 #endif
-      return INVALID;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
   }
 
   m_prescale_image_counter++;
@@ -307,7 +312,8 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
       printf("-->INVALID2\n");
 #endif
-      return INVALID;
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
   }
 
   if (nobeam) {
@@ -329,7 +335,9 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
       printf("-->NOBEAM\n");
 #endif
-      return NOBEAM;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -NOBEAM;
+      return std::make_pair(fex_vec, NOBEAM);
   }
 
   _monitor_raw_sig( sigd );
@@ -350,7 +358,9 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
       printf("-->NOREF\n");
 #endif
-      return INVALID;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
   }
 
   //
@@ -404,18 +414,32 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
       for(unsigned i=m_calib_poly.size(); i!=0; )
         xfltc = xfltc*xflt + m_calib_poly[--i];
 
-      m_amplitude        = pFit0[0];
-      m_flt_position     = xflt;
-      m_flt_position_ps  = xfltc;
-      m_flt_fwhm         = pFit0[2];
-      m_ref_amplitude    = m_ref_avg[ix];
+      /* Vector is in order:
+       * [0]: filtered_position
+       * [1]: filtered_pos_ps
+       * [2]: amplitude
+       * [3]: next_amplitude
+       * [4]: ref_amplitude
+       * [5]: filtered_fwhm
+       */
+      fex_vec[0] = xflt;
+      fex_vec[1] = xfltc;
+      fex_vec[2] = pFit0[0];
+      //fex_vec[3] = -1; // Filled below if relevant.
+      fex_vec[4] = m_ref_avg[ix];
+      fex_vec[5] = pFit0[2];
 
       if (nfits>1) {
         std::vector<double> pFit1 =
           parab_fit(qwf.data(),*(++peaks.begin()),qwf.size(),0.8);
         if (pFit1[2]>0)
-          m_nxt_amplitude = pFit1[0];
+          fex_vec[3] = pFit1[0];
       }
+    } else {
+      m_cut[_FWHMCUT]++;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
     }
   }
   else {
@@ -423,13 +447,15 @@ Piranha4TTFex::TTResult Piranha4TTFex::analyze(std::vector< XtcData::Array<uint8
 #ifdef DBUG
     printf("-->NOFITS\n");
 #endif
-    return INVALID;
+    // By convention return -ERROR/STATUS in the amplitude index of vector
+    fex_vec[2] = -INVALID;
+    return std::make_pair(fex_vec, INVALID);
   }
 
 #ifdef DBUG
     printf("-->VALID\n");
 #endif
-  return VALID;
+  return std::make_pair(fex_vec, VALID);
 }
 
 //

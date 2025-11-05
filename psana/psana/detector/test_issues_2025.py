@@ -314,7 +314,8 @@ def issue_2025_03_06():
     from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d
     from psana import DataSource
     from psana.detector.UtilsGraphics import gr, fleximage
-    from psana.detector.UtilsJungfrau import info_gainbits
+    from psana.detector.UtilsJungfrau import info_gainbits_statistics
+    import psana.detector.UtilsJungfrau as uj
 
     ds = DataSource(exp='ascdaq023',run=37) #, detectors=['jungfrau']) # (600, 4800)
     orun = next(ds.runs())
@@ -349,7 +350,9 @@ def issue_2025_03_06():
        print(info_ndarr(img, '==== evt/sel:%3d/%3d dt=%.3f msec  image' % (nev, evsel, dt_sec), last=10))
        #print('det.raw._tstamp_raw(raw): ', det.raw._tstamp_raw(raw))
 
-       print('     info_gainbits', info_gainbits(raw))
+       print('     gainbits_statistics',  uj.info_gainbits_statistics(raw))
+       print('     gainrange_statistics', uj.info_gainrange_statistics(raw))
+       print('     gainrange_fractions',  uj.info_gainrange_fractions(raw))
 
        if img.ndim==2 and img.shape[0] == 1:
            img = np.stack(1000*tuple(img))
@@ -1673,6 +1676,20 @@ def issue_2025_10_09(subtest='0o7777'):
         else:
             print(nevt,raw.shape)
 
+def issue_2025_10_17():
+    """ Chris archon issue
+        (ps_20241122) [cpo@sdfiana003 lcls2]$ python ~/junk3.py
+        archon raw <error: 'NoneType' object has no attribute 'keys'>
+
+        datinfo -k exp=rix101348225,run=30 -d archon
+    """
+    from psana import DataSource
+    ds = DataSource(exp='rix101348225', run=30)
+    myrun = next(ds.runs())
+    detector = myrun.Detector('archon')
+    for (detname, det_xface_name), det_attr_list in myrun.detinfo.items():
+        if detname == 'archon': print(detname,det_xface_name,det_attr_list)
+
 #===
     
 #===
@@ -1756,6 +1773,7 @@ def selector():
     elif TNAME in ('45',): issue_2025_09_19(args.subtest) # test new server for calibconst
     elif TNAME in ('46',): issue_2025_09_26(args.subtest) # plot test images
     elif TNAME in ('47',): issue_2025_10_09(args.subtest) # Chris & Seshu: 'piranha4_raw_2_1_0' object has no attribute '_path_geo_default'
+    elif TNAME in ('48',): issue_2025_10_17() # Chris archon issue
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

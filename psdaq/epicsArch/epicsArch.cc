@@ -738,6 +738,9 @@ int main(int argc, char* argv[])
             return 1;
         }
 
+        // Set up signal handler
+        initShutdownSignals(para.alias, [](){ exit(0); });
+
         Drp::EpicsArchApp app(para, pvCfgFile);
         app.run();
         return 0;

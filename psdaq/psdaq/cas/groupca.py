@@ -106,7 +106,14 @@ class XpmDeadTime(object):
 def xpmTree(base,xpm):
     result = [xpm]
     pvbase = f'{base}:XPM:{xpm}'
-    xvalues = pvactx.get([f'{pvbase}:FwBuild'],throw=False)
+    retry = True
+    while (retry):
+        try:
+            xvalues = pvactx.get([f'{pvbase}:FwBuild'])
+            retry   = False
+        except:
+            print(f'Failed to get {pvbase}:FwBuild. Retrying.')
+
     nDsLinks = 8 if 'Kcu' in xvalues[0] else 14
     xnames = [f'{pvbase}:RemoteLinkId{i}' for i in range(nDsLinks)]
     xvalues = pvactx.get(xnames,throw=False)

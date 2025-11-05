@@ -207,13 +207,35 @@ void EpixQuad::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, s
         transitionXtc().extent = sizeof(Xtc);
     }
 #endif
+    
+    // FIXME: New firmware shows 4 subframe
+    // Expect 3 DMA lanes (0: timing/meta, 1: unused, 2: image)
+	const unsigned expected_subframes = 4;
 
-    if (subframes[2].num_elem() < 4*asicRows*elemRowSize) {
-      logging::error("Missing data: subframe[2] size %d\n", subframes[2].num_elem());
-      xtc.damage.increase(XtcData::Damage::MissingData);
-      return;
-    }
+	if (subframes.size() != expected_subframes) {
+		logging::error("Missing data: subframe count %zu [expected %u]",
+					   subframes.size(), expected_subframes);
+		xtc.damage.increase(XtcData::Damage::MissingData);
+		return;
+	}
 
+	// Lane 0 must not be empty
+	if (subframes[0].num_elem() == 0) {
+		logging::error("Missing data: subframe[0] (timing/meta) has zero size");
+		xtc.damage.increase(XtcData::Damage::MissingData);
+		return;
+	}
+
+	// Lane 1 is intentionally unused (may be empty)
+
+	// Check for truncated or missing image data
+	if (subframes[2].num_elem() < 4*asicRows*elemRowSize) {
+		logging::error("Missing data: subframe[2] size %d\n",
+					   subframes[2].num_elem());
+		xtc.damage.increase(XtcData::Damage::MissingData);
+		return;
+	}
+ 
     unsigned seg=0;
     for(unsigned q=0; q<4; q++) {
         CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[seg]);

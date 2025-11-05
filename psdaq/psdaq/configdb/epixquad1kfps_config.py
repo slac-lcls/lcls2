@@ -30,6 +30,51 @@ segids = None
 seglist = [0,1,2,3,4]
 
 DEBUG_PIXEL_MASK_SAVED=False
+DEBUG_ADC_TRAIN_WRITE=False
+
+def get_trigger_buffers():
+    """
+    Returns the Run/DAQ trigger buffer indices for the current PGP lane.
+
+    Firmware mapping:
+        TriggerEventBuffer[lane]     → DAQ trigger (XPM, beam-synced, ~100 Hz)
+        TriggerEventBuffer[lane + 4] → Run trigger (EVR event-code 6, 1080 Hz)
+
+    Returns
+    -------
+    run_buf : int
+        Index of the Run trigger buffer.
+    daq_buf : int
+        Index of the DAQ trigger buffer.
+    """
+    global lane
+    return lane + 4, lane  # (run_buf, daq_buf)
+
+def calc_daq_trigger_delay(base, rawStart_ns, group):
+    """
+    Compute DAQ TriggerEventBuffer trigger delay based on partitionDelay.
+    """
+    pbase = base['pci']
+    clk_period = base['clk_period']
+    msg_period = base['msg_period']
+    partitionDelay = getattr(
+        pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,
+        f'PartitionDelay[{group}]'
+    ).get()
+    triggerDelay = int(rawStart_ns / clk_period - partitionDelay * msg_period + 9)
+    if triggerDelay < 0:
+        logging.warning(f"DAQ triggerDelay computed negative ({triggerDelay}), clamping to 0")
+        triggerDelay = 0
+    return triggerDelay
+
+
+def calc_run_trigger_delay(base, rawStart_ns):
+    """
+    Compute Run TriggerEventBuffer trigger delay based on EVR delay line.
+    """
+    clk_period = base['clk_period']
+    triggerDelay = int(rawStart_ns / clk_period)
+    return triggerDelay
 
 def mode(a):
     uniqueValues = np.unique(a).tolist()
@@ -146,8 +191,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         appLane = pbase.find(typ=shared.AppLane)
         for devPtr in appLane:
             devPtr.XpmPauseThresh.set(0x20)
-            #MONA changed this on Aug 27 25 to test the 1kHz epix10ka
-            devPtr.EventBuilder.Timeout.set(int(156.25e6/1020))
+            devPtr.EventBuilder.Timeout.set(int(156.25e6/1080))
 
         #  Disable flow control on the PGP lane at the PCIe end
 #        getattr(pbase.DevPcie.Hsio,f'PgpMon[{lane}]').Ctrl.FlowControlDisable.set(1)
@@ -195,7 +239,35 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     time.sleep(2)
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0)
 
-    epixquad_internal_trigger(base)
+    #
+    # Configure Run/DAQ trigger buffers (new dual-buffer scheme)
+    #
+    run_buf, daq_buf = get_trigger_buffers()
+    trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+
+    logging.info(f"Configuring Run/DAQ triggers for lane {lane}: run_buf={run_buf}, daq_buf={daq_buf}")
+
+    # --- Run trigger: EVR event code 6 (~1080 Hz)
+    
+    trigman.TriggerEventBuffer[run_buf].TriggerSource.set(1)  # EVR
+    trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].EnableReg.set(1)
+    trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].RateType.set(2)  # EventCode mode/ControlWord
+    trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].RateSel.set(6)   # EventCode 6 = 1080 Hz
+    trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].DestType.set(2)  # All
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].EnableTrig.set(1)
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Source.set(run_buf)
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Polarity.set(1)  # Rising
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Width.set(1) 
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+
+    # --- DAQ trigger: XPM, partition-based (~100 Hz)
+    trigman.TriggerEventBuffer[daq_buf].TriggerSource.set(0)  # XPM
+    # Partition (readout group) will be configured later in epixquad_config()
+    # Delay tuned by user.start_ns via user_to_expert()
+    logging.info("Run/DAQ trigger buffers configured")
+
+    # We stay in expternal trigger mode througout 
+    epixquad_external_trigger(base)
     return base
 
 #
@@ -247,28 +319,51 @@ def user_to_expert(base, cfg, full=False):
 
     d = {}
     hasUser = 'user' in cfg
-    if (hasUser and 'start_ns' in cfg['user']):
-        partitionDelay = getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
-        rawStart       = cfg['user']['start_ns']
-        triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-        logging.debug('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-        if triggerDelay < 0:
-            logging.error('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-            raise ValueError('triggerDelay computes to < 0')
+    if hasUser and 'start_ns' in cfg['user']:
+        rawStart = cfg['user']['start_ns']
+        run_buf, daq_buf = get_trigger_buffers()
+        
+        # --- DAQ trigger delay (XPM)
+        daq_triggerDelay = calc_daq_trigger_delay(base, rawStart, group)
+        #d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{daq_buf}].TriggerDelay'] = daq_triggerDelay
 
-        d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
+        # --- Run trigger delay (EVR event-code)
+        run_delay = calc_run_trigger_delay(base, rawStart)
+        #d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[{run_buf}].Delay'] = run_delay
 
-    # MONA: Use gate_ns (user-requested acquisition window in nanoseconds) to compute AsicAcqWidth.
-    # NOTE: This will overwrite whatever value is stored in the configDB.
-    # The conversion assumes a timing clock period defined by ASIC_SYSCLK_NS (e.g. 6.4 ns for ePix-Quad).
-    if (hasUser and 'gate_ns' in cfg['user']):
-        ASIC_SYSCLK_NS = 6.4   # nanoseconds per sysclk tick for this camera
-        triggerWidth = int(cfg['user']['gate_ns'] / ASIC_SYSCLK_NS)
-        if triggerWidth < 1:
-            logging.error('triggerWidth {} ({} ns)'.format(triggerWidth,cfg['user']['gate_ns']))
-            raise ValueError('triggerWidth computes to < 1')
+    # Previously, gate_ns (user-requested acquisition window in nanoseconds)
+    # was used to compute AsicAcqWidth. This option has been removed.
+    # The default acquisition window is fixed to 100 ms (100_000_000 ns).
+    # The corresponding AsicAcqWidth value should be (100_000 / 6.4) ≈ 15625,
+    # where 6.4 ns is the sysclk period for ePixQuad 1kfps.
 
-        d[f'expert.EpixQuad.AcqCore.AsicAcqWidth']=triggerWidth
+    ASIC_SYSCLK_NS = 6.4  # nanoseconds per sysclk tick for this camera
+    expected_trigger_width = int(100_000 / ASIC_SYSCLK_NS)  # ~15625 ticks
+
+    # Warn if the deprecated user field still exists
+    if hasUser and 'gate_ns' in cfg['user']:
+        logging.warning(
+            "User parameter 'gate_ns' has been removed. "
+            "The acquisition window is fixed to 100 ms. "
+            "Ignoring user-specified value (%s ns).",
+            cfg['user']['gate_ns']
+        )
+
+    # Read AsicAcqWidth directly from firmware
+    try:
+        cbase = base['cam']
+        current_val = cbase.AcqCore.AsicAcqWidth.get()
+        logging.info(
+            "Firmware AsicAcqWidth = %d (expected %d for 100 ms window, sysclk = %.1f ns)",
+            current_val, expected_trigger_width, ASIC_SYSCLK_NS
+        )
+    except Exception as e:
+        logging.warning(
+            "Could not read AsicAcqWidth from firmware: %s. "
+            "Expected ≈ %d for 100 ms window (sysclk = %.1f ns).",
+            e, expected_trigger_width, ASIC_SYSCLK_NS
+        )
+
 
     if full:
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
@@ -292,7 +387,7 @@ def user_to_expert(base, cfg, full=False):
         d['user.pixel_map'] = a
         pixel_map_changed = True
 
-    update_config_entry(cfg,ocfg,d)
+    update_config_entry(cfg, ocfg, d)
 
     return pixel_map_changed
 
@@ -301,8 +396,8 @@ def user_to_expert(base, cfg, full=False):
 #
 def config_expert(base, cfg, writePixelMap=True):
 
-    #  Disable internal triggers during configuration
-    epixquad_external_trigger(base)
+    # Turn off the trigger
+    epixquad_disable_runtrigger(base)
 
     # overwrite the low-level configuration parameters with calculations from the user configuration
     pbase = base['pci']
@@ -426,72 +521,69 @@ def config_expert(base, cfg, writePixelMap=True):
         retry(saci.IsEn.set,False)
         retry(saci.enable.set,False)
 
-    #  Enable triggers to continue monitoring
-    epixquad_internal_trigger(base)
+    # Turn back on Run Trigger
+    epixquad_enable_runtrigger(base)
+
 
     logging.debug('config_expert complete')
 
+
 def reset_counters(base):
-    # Reset the timing counters
     base['pci'].DevPcie.Hsio.TimingRx.TimingFrameRx.countReset()
 
-    # Reset the trigger counters
-#    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[0].countReset()
-    getattr(base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]').countReset()
+    _, daq_buf = get_trigger_buffers()
+    base['pci'].DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[daq_buf].countReset()
 
-    # Reset the Epix counters
     base['cam'].RdoutStreamMonitoring.countReset()
 
-#
-#  Modified version of DevRoot.StartRun touching only our lane
-#
+
 def startRun(pbase):
+    """
+    Start DAQ acquisition for the detector's application lane.
+
+    Arms the EventBuilder and enables only the DAQ trigger buffer
+    (lane*2 + 1). The Run trigger (lane*2) remains active.
+    """
     logging.info('StartRun() executed')
 
-    # Get devices
-    eventBuilder = [getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder]
-    logging.info(f'startRun eventBuilder: {eventBuilder}')
+    run_buf, daq_buf = get_trigger_buffers()
+    trig_mgr = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+    eventBuilder = [getattr(pbase.DevPcie.Application, f'AppLane[{lane}]').EventBuilder]
 
-    trigger      = [getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]')]
-    logging.info(f'startRun trigger: {trigger}')
-
-    # Reset all counters
     pbase.CountReset()
 
-    # Arm for data/trigger stream
     for devPtr in eventBuilder:
         devPtr.Blowoff.set(False)
         devPtr.SoftRst()
 
-    # Turn on the triggering
-    for devPtr in trigger:
-        devPtr.MasterEnable.set(True)
+    trig_mgr.TriggerEventBuffer[daq_buf].MasterEnable.set(True)
+    logging.info(f"Enabled DAQ Trigger buffer {daq_buf} (Run buffer {run_buf} remains active)")
 
-    # Update the run state status variable
     pbase.RunState.set(True)
 
-#
-#  Modified version of DevRoot.StopRun touching only our lane
-#
+
 def stopRun(pbase):
-    logging.info ('StopRun() executed')
+    """
+    Stop DAQ acquisition for the detector's application lane.
 
-    # Get devices
-    eventBuilder = [getattr(pbase.DevPcie.Application,f'AppLane[{lane}]').EventBuilder]
-    logging.info(f'stopRun eventBuilder: {eventBuilder}')
+    Disables only the DAQ trigger buffer (lane*2 + 1) while leaving
+    the Run trigger (lane*2) active to keep the detector clocked.
+    """
+    logging.info('StopRun() executed')
 
-    trigger      = [getattr(pbase.DevPcie.Hsio.TimingRx.TriggerEventManager,f'TriggerEventBuffer[{lane}]')]
-    logging.info(f'stopRun trigger: {trigger}')
+    run_buf, daq_buf = get_trigger_buffers()
+    trig_mgr = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+    eventBuilder = [getattr(pbase.DevPcie.Application, f'AppLane[{lane}]').EventBuilder]
 
-    # Turn off the triggering
-    for devPtr in trigger:
-        devPtr.MasterEnable.set(False)
+    try:
+        trig_mgr.TriggerEventBuffer[daq_buf].MasterEnable.set(False)
+        logging.info(f"Disabled DAQ Trigger buffer {daq_buf} (Run buffer {run_buf} remains active)")
+    except Exception as e:
+        logging.warning(f"Failed to disable DAQ Trigger buffer {daq_buf}: {e}")
 
-    # Flush the downstream data/trigger pipelines
     for devPtr in eventBuilder:
         devPtr.Blowoff.set(True)
 
-    # Update the run state status variable
     pbase.RunState.set(False)
 
 
@@ -520,6 +612,31 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg)
 
     pbase = base['pci']
+    
+    run_buf, daq_buf = get_trigger_buffers()
+
+    #  Force write Run/DAQ Trigger Delay here until configdb is fixed
+    hasUser = 'user' in cfg
+    if hasUser and 'start_ns' in cfg['user']:
+        rawStart = cfg['user']['start_ns']
+        # --- DAQ trigger delay (XPM)
+        daq_triggerDelay = calc_daq_trigger_delay(base, rawStart, group)
+        print(f"DAQ set TriggerEventBuffer[{daq_buf}].TriggerDelay = {daq_triggerDelay}")
+        pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[daq_buf].TriggerDelay.set(daq_triggerDelay)
+
+        # --- Run trigger delay (EVR event-code)
+        run_delay = calc_run_trigger_delay(base, rawStart)
+        print(f"Run set EvrV2TriggerReg[{run_buf}].Delay={run_delay}")
+        pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Delay.set(run_delay)
+
+    #
+    # Configure DAQ trigger partition (XPM)
+    #
+    trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+
+    logging.info(f"Setting DAQ trigger buffer {daq_buf} Partition to group {group}")
+    trigman.TriggerEventBuffer[daq_buf].Partition.set(group)
+ 
     #pbase.StartRun()
     startRun(pbase)
 
@@ -531,7 +648,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     firmwareVersion = cbase.AxiVersion.FpgaVersion.get()
 
     #  *HOTFIX* From Julian's YML
-    #  We need to set this only for epixquad 1080 because this value is set to 0x2 in the firmware. 
+    #  We need to set this only for epixquad 1080 because this value is set to 0x2 in the firmware.
     #  /cds/home/j/jumdz/epix-quad/software/yml/ued/epixQuad_ASICs_allAsics_UED_1080Hz_settings.yml
     #  RdoutCore.AdcPipelineDelay is set in the configdb (value=61, or 0xaaaa003d)
     cbase.AcqCore.AsicRoClkT.set(int(0xaaaa0003))
@@ -692,12 +809,27 @@ def epixquad_update(update):
 
     return result
 
+def epixquad_enable_runtrigger(base):
+    pbase = base['pci'] 
+    run_buf, daq_buf = get_trigger_buffers()
+    trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+    print(f'[DEBUG-RUNTRIG] Enable RunTrigger')
+
+
+def epixquad_disable_runtrigger(base):
+    pbase = base['pci'] 
+    run_buf, daq_buf = get_trigger_buffers()
+    trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(0)  
+    print(f'[DEBUG-RUNTRIG] Disable RunTrigger')
+
 #
 #  Check that ADC startup has completed successfully
 #
 def _checkADCs():
 
-    epixquad_external_trigger(base)
+    epixquad_disable_runtrigger(base)
 
     cbase = base['cam']
     tmo = 0
@@ -717,7 +849,7 @@ def _checkADCs():
             break
     logging.debug(f'Adc Test Done after {tmo} cycles')
 
-    epixquad_internal_trigger(base)
+    epixquad_enable_runtrigger(base)
 
     return 0
 
@@ -747,11 +879,10 @@ def epixquad_internal_trigger(base):
     cbase.SystemRegs.AutoTrigEn.set(1)
 
 def epixquad_enable(base):
-    epixquad_external_trigger(base)
+    pass
 
 def epixquad_disable(base):
-    time.sleep(0.005)  # Need to make sure readout of last event is complete
-    epixquad_internal_trigger(base)
+    pass
 
 
 # 1kfps wrappers -> reuse epixquad_* implementations

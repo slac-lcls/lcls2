@@ -1282,7 +1282,8 @@ void Fmc134Cpld::adc_cal_load(unsigned adc, const std::string& str) {
 
 int32_t Fmc134Cpld::default_adc_init(AdcCalibMode cmode,
                                      std::string& calib_adc0,
-                                     std::string& calib_adc1)
+                                     std::string& calib_adc1,
+                                     unsigned input_chan)
 {
     logging::info("*** default_adc_init ***\n");
     uint32_t sampleMode=1;
@@ -1393,9 +1394,11 @@ int32_t Fmc134Cpld::default_adc_init(AdcCalibMode cmode,
 
     // Set JMODE = 2 (or 0 for single channel mode)
     if (sampleMode == 0) {
+        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0060, (input_chan==0 ? 0:0x10));
         spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0201, 0x02);
         if(rc!=UNITAPI_OK) return rc;
     } else if (sampleMode == 1) {
+        spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0060, (input_chan==0 ? 1:2));
         spi_write(i2c_unit, ADC_SELECT_BOTH, 0x0201, 0x00);
         if(rc!=UNITAPI_OK) return rc;
     } else {
@@ -1558,5 +1561,7 @@ void Fmc134Cpld::adc_range(unsigned chip,unsigned fsrng)
 void Fmc134Cpld::adc_input(unsigned chip,unsigned ch)
 {
     DevSel dev = (chip==0) ? ADC0 : ADC1;
-    spi_write(0, dev, 0x60, 1+(ch&1)); // 1=INA, 2=INB
+    //    spi_write(0, dev, 0x60, 1+(ch&1)); // 1=INA, 2=INB
+    unsigned v = 1+(ch&1) + ((ch&1)<<4);
+    spi_write(0, dev, 0x60, v); // 1=INA, 2=INB
 } 

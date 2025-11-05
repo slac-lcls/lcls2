@@ -50,8 +50,9 @@ namespace Pds {
             int32_t default_clocktree_init(unsigned clockmode = CLOCKTREE_CLKSRC_INTERNAL);  // factory default config
             enum AdcCalibMode { NO_CAL, FG_CAL, BG_CAL };
             int32_t default_adc_init      (AdcCalibMode,
-                                           std::string& adc0_alib, 
-                                           std::string& adc1_calib);
+                                           std::string& adc0_calib, 
+                                           std::string& adc1_calib,
+                                           unsigned input_chan=0);
             int32_t config_prbs           (unsigned);
         private:
             int32_t internal_ref_and_lmx_enable(uint32_t i2c_unit, uint32_t clockmode);

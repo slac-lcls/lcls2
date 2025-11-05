@@ -147,8 +147,8 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     for (unsigned gn = 0; gn < NGains; ++gn) {
       chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyHostToDevice));
       chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyHostToDevice));
-      peds_d  += NPixels * sizeof(*peds_d);
-      gains_d += NPixels * sizeof(*gains_d);
+      peds_d  += NPixels;
+      gains_d += NPixels;
     }
   }
 
@@ -157,13 +157,14 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
-                                  const size_t                       calibBufsCnt,
+                                  size_t   const                     calibBufsCnt,
                                   uint16_t const* const __restrict__ in,
-                                  const unsigned&                    index,
-                                  const unsigned                     panel,
-                                  float* const         __restrict__  peds_,
-                                  float* const         __restrict__  gains_)
+                                  unsigned const&                    index,
+                                  unsigned const                     panel,
+                                  float    const* const __restrict__ peds_,
+                                  float    const* const __restrict__ gains_)
 {
+  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * EpixUHRemu::NPixels];
   int stride = gridDim.x * blockDim.x;
   int pixel  = blockIdx.x * blockDim.x + threadIdx.x;

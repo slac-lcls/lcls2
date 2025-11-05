@@ -2,16 +2,16 @@
 
 #include "ReducerAlgo.hh"
 
-#include <lc/lc-compressor-QUANT_ABS_0_f32-BIT_4-RZE_1.hh>
+#include <pfpl/f32_abs_comp_gpu.hh>
 
 namespace Drp {
   namespace Gpu {
 
-class LcReducer : public ReducerAlgo
+class PfplReducer : public ReducerAlgo
 {
 public:
-  LcReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~LcReducer() {}
+  PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
+  virtual ~PfplReducer() {}
 
   bool   hasGraph() const override { return true; }
   size_t payloadSize() const override { return m_compressor.maxSize(); }
@@ -25,7 +25,7 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  LC_framework::LC_Compressor m_compressor;
+  PFPL::PFPL_Compressor m_compressor;
 };
 
   } // Gpu
