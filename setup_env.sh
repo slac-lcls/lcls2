@@ -1,15 +1,7 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
-if [ -d "/sdf/group/lcls/" ]
-then
-    # for s3df
-    source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
-    export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
-    export DIR_PSDM=/sdf/group/lcls/ds/ana/
-    export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    conda activate ps_20241122
-else
+if [ -d "/cds/sw/" ]; then
     # for psana
     source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
@@ -22,6 +14,16 @@ else
         *el9*) conda activate daq_20250402_r9;;
         *)     conda activate daq_20250402;;
     esac
+elif [ -d "/sdf/group/lcls/" ]; then
+    # for s3df
+    source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
+    export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+    export DIR_PSDM=/sdf/group/lcls/ds/ana/
+    export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+    conda activate ps_20241122
+else
+    echo "CONDA area not found"
+    exit 1
 fi
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
