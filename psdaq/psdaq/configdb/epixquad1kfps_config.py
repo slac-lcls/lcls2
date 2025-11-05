@@ -216,6 +216,20 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
+    
+    if DEBUG_ADC_TRAIN_WRITE:
+        print("[DEBUG-ADC] Reading ADC calibration constants from PROM...")
+        cbase.CypressS25Fl.readCmd(0x3000000)
+        adc_data = cbase.CypressS25Fl.getDataReg()
+        print(f"[DEBUG-ADC] ADC calibration data ({len(adc_data)} bytes):", adc_data)
+        ts = time.strftime("%Y%m%d_%H%M%S")
+        outdir = "/tmp"
+        os.makedirs(outdir, exist_ok=True)
+
+        # Save to .npy
+        npy_file = os.path.join(outdir, f"adc_training_{ts}.npy")
+        np.save(npy_file, np.array(adc_data))
+        print(f"[DEBUG-ADC] Saved ADC training data to {npy_file}") 
 
     logging.info('epixquad_unconfig')
     epixquad_unconfig(base)
