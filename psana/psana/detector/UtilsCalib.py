@@ -483,6 +483,7 @@ def add_metadata_kwargs(orun, odet, **kwa):
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = odet.raw._sorted_segment_inds
+    kwa['segment_numbers'] = odet.raw._segment_numbers
     kwa['seggeo_shape'] = None if odet.raw._seg_geo is None else odet.raw._seg_geo.shape()
     #kwa['seggeo_shape'] = odet.raw._seg_geo.shape()
     #print('XXXX dir(odet.raw)',  dir(odet.raw))
