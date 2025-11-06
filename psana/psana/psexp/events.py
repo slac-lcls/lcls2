@@ -13,12 +13,12 @@ class Events:
     This class abstracts the complexity of batching, filtering empty events,
     and respecting termination signals, providing a uniform interface via `__next__()`.
     """
-    def __init__(self, configs, dm, max_retries, use_smds, terimate_flag, get_smd=None, smdr_man=None):
+    def __init__(self, configs, dm, max_retries, use_smds, shared_state, get_smd=None, smdr_man=None):
         self.configs = configs  # Configuration dgrams for event building
         self.dm = dm              # DgramManager for direct reading
         self.max_retries = max_retries  # Max retries for event fetching
         self.use_smds = use_smds  # Flag to indicate SMD usage
-        self.terminate_flag = terimate_flag  # Flag to signal termination
+        self.shared_state = shared_state  # SimpleNamespace with shared state like terminate_flag
         self.get_smd = get_smd       # Callable to retrieve SMD batches (RunParallel)
         self.smdr_man = smdr_man     # Serial batch manager (RunSerial)
         self._evt_man = iter([])     # Current EventManager instance
@@ -39,11 +39,14 @@ class Events:
         """
         if self.smdr_man:
             # RunSerial: iterate over batches, skipping empty ones
+            cn = 0
             while True:
-                if self.terminate_flag:
+                if self.shared_state.terminate_flag.value:
                     raise StopIteration
                 try:
                     dgrams = next(self._evt_man)
+                    print(f"Event {cn} terimate_flag={self.shared_state.terminate_flag.value}", flush=True)
+                    cn += 1
                     if not any(dgrams):
                         continue
                     return dgrams
@@ -88,7 +91,7 @@ class Events:
             # RunSingleFile or RunShmem: read directly from the DgramManager
             while True:
                 # Checks if users ask to exit
-                if self.dsparms.terminate_flag:
+                if self.shared_state.terminate_flag.value:
                     raise StopIteration
 
                 dgrams = next(self.dm)

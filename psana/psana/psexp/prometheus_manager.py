@@ -3,6 +3,7 @@ import os
 import socket
 import time
 from subprocess import Popen
+import threading
 
 from prometheus_client import (CollectorRegistry, Counter, Gauge, Summary,
                                push_to_gateway, start_http_server)
@@ -27,7 +28,6 @@ PROM_PORT_BASE = 9200  # Used by the http exposer; Value should match DAQ's
 
 HTTP_EXPOSER_STARTED = False
 
-import threading
 
 _singleton = None
 _singleton_lock = threading.Lock()
@@ -66,8 +66,10 @@ def stop_pusher():
     if _pusher_event:
         _pusher_event.set()
     if _pusher_thread:
-        try: _pusher_thread.join(timeout=2)
-        except Exception: pass
+        try:
+            _pusher_thread.join(timeout=2)
+        except Exception:
+            pass
     _pusher_event = None
     _pusher_thread = None
 

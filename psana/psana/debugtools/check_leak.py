@@ -64,11 +64,12 @@ def trim():
     try: libc.malloc_trim(0)
     except Exception: pass
 
-EXP = os.environ.get("EXP", "mfxdaq23")      # set to your Jungfrau exp
-RUNS = [int(x) for x in os.environ.get("RUNS","34,35,36").split(",")]
+EXP = os.environ.get("EXP", "mfx100848724")      # set to your Jungfrau exp
+RUNS = [int(x) for x in os.environ.get("RUNS","51").split(",")]
 DET  = os.environ.get("DET","jungfrau")          # Jungfrau alias
 NLOOPS = int(os.environ.get("NLOOPS","20"))
 FORCE_GC = bool(int(os.environ.get("FORCE_GC","1")))
+FORCE_TRIM = bool(int(os.environ.get("FORCE_TRIM","1")))
 SIMULATE_LEAK = bool(int(os.environ.get("SIMULATE_LEAK","0")))  # 1 => keep refs
 
 LEAK_BAG = []  # strong refs (to simulate leaks)
@@ -81,22 +82,23 @@ print(f"Start RSS={base:.1f} MB  exp={EXP} det={DET} runs={RUNS} loops={NLOOPS}"
 
 for i in range(NLOOPS):
     rn = RUNS[i % len(RUNS)]
-    ds = DataSource(exp=EXP, run=rn, detectors=[DET], use_calib_cache=False)
+    ds = DataSource(exp=EXP, run=rn, use_calib_cache=False)
+    #ds = DataSource(files=['/sdf/data/lcls/ds/tmo/tmo101347825/xtc/tmo101347825-r0270-s000-c000.xtc2'])
     run = next(ds.runs())
+    for evt in run.events():
+        break  # get first event only
 
-    det = run.Detector(DET)  # forces calib load for Jungfrau
-    try:
-        evt = next(run.events())
+    #det = run.Detector(DET)  # forces calib load
+    #evt = next(run.events())
+    if DET == "jungfrau":
         img = det.raw.calib(evt)
-    except StopIteration:
-        pass
-    # Touch the constants so they materialize in memory:
-    cc = det.raw._calibconst['pedestals']
-    if cc:
-        arr, meta = cc  # arr should be a numpy array (big)
-        _ = getattr(arr, "nbytes", 0)
-    if SIMULATE_LEAK and cc:
-        LEAK_BAG.append(cc)  # <— this keeps a strong ref per run
+        # Touch the constants so they materialize in memory:
+        cc = det.raw._calibconst['pedestals']
+        if cc:
+            arr, meta = cc  # arr should be a numpy array (big)
+            _ = getattr(arr, "nbytes", 0)
+        if SIMULATE_LEAK and cc:
+            LEAK_BAG.append(cc)  # <— this keeps a strong ref per run
 
     # Clean up Python names (what weakrefs *don’t* handle)
     #del det, run, ds
@@ -107,24 +109,25 @@ for i in range(NLOOPS):
         print("unreachable now parked in gc.garbage:", len(gc.garbage))
 
         # inspect a few objects, e.g. draw backrefs of one
-        print("Top garbage types:", garbage_type_hist(20))
+        #print("Top garbage types:", garbage_type_hist(20))
 
         # Pull a few likely suspects
-        #suspects = list(garbage_by_prefixes(SUSPECT_PREFIXES, limit=5))
-        #print("Picked suspects:", [type(o).__name__ for o in suspects])
+        suspects = list(garbage_by_prefixes(SUSPECT_PREFIXES, limit=5))
+        print("Picked suspects:", [type(o).__name__ for o in suspects])
 
         # Peek at referrers (quick-n-dirty without objgraph)
-        #for i, o in enumerate(suspects):
-        #    refs = [type(r).__name__ for r in gc.get_referrers(o)[:10]]
-        #    print(f"[{i}] {type(o).__name__} referrers sample:", refs)
+        for i, o in enumerate(suspects):
+            refs = [type(r).__name__ for r in gc.get_referrers(o)[:10]]
+            print(f"[{i}] {type(o).__name__} referrers sample:", refs)
         sus = next(garbage_by_prefixes(["Run", "Detector", "SmdReaderManager",
-                                "PrometheusManager", "SmallData"], limit=1), None)
+                                "PrometheusManager", "SmallData", "DataSource", "MPIDataSource", "SerialDataSource"], limit=1), None)
         if sus: print_chain(sus)
 
         # IMPORTANT: free them; otherwise you’re pinning memory
         gc.garbage[:] = []
         gc.set_debug(0)
         gc.collect()
+    if FORCE_TRIM:
         trim()
 
     print(f"Iter {i:02d} run {rn}: RSS Δ={rss()-base:.1f} MB  (bag={len(LEAK_BAG)})", flush=True)

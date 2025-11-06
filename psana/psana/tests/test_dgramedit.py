@@ -124,7 +124,7 @@ def run_dgramedit(output_filename):
 
     # Write out BeginRun using DgramEdit (no modification)
     beginrun_edit = DgramEdit(
-        run.beginruns[0], config_dgramedit=config_edit, bufsize=run.beginruns[0]._size
+        run._evt._dgrams[0], config_dgramedit=config_edit, bufsize=run._evt._dgrams[0]._size
     )
     beginrun_edit.save(xtc2buf)
     ofile.write(xtc2buf[: beginrun_edit.size])

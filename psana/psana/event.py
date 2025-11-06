@@ -2,7 +2,6 @@
 
 import datetime
 
-import numpy as np
 
 from psana.psexp.packet_footer import PacketFooter
 from psana import utils
@@ -30,7 +29,7 @@ class Event:
         self._size = len(dgrams)
         self._complete()
         self._position = 0
-        self._run = run
+        self._run = run  # RunCtx object
         self._proxy_evt = None  # For smalldata-event loop
 
     def __iter__(self):
@@ -201,5 +200,5 @@ class Event:
         intg_dets = []
         for d in self._dgrams:
             if hasattr(d, "_endofbatch"):
-                intg_dets.append(self._run.dsparms.intg_det)
+                intg_dets.append(self._run.intg_det)
         return intg_dets

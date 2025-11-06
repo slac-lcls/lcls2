@@ -1,12 +1,12 @@
 from .event_manager import EventManager
 
 class SmdEvents:
-    def __init__(self, configs, dm, max_retries, use_smds, terimate_flag, get_smd=None, smdr_man=None):
+    def __init__(self, configs, dm, max_retries, use_smds, shared_state, get_smd=None, smdr_man=None):
         self.configs = configs
         self.dm = dm
         self.max_retries = max_retries
         self.use_smds = use_smds
-        self.terimate_flag = terimate_flag
+        self.shared_state = shared_state
         self.get_smd = get_smd
         self.smdr_man = smdr_man
         self._evt_man = iter([])
@@ -22,7 +22,7 @@ class SmdEvents:
         if self.smdr_man:
             # RunSerial: iterate using smdr_man
             while True:
-                if self.terminate_flag:
+                if self.shared_state.terminate_flag.value:
                     raise StopIteration
                 try:
                     dgrams = next(self._evt_man)
