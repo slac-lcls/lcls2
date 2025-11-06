@@ -77,26 +77,37 @@ def save_constants_in_repository(dic_consts, **kwa):
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = dic_ctype_fmt.get(ctype,'%.5f')
         arr2d = nda if nda.ndim == 2 else nda[i,:]
-        ####save_ndarray_in_textfile(nda, fname, filemode, fmt)
-        save_2darray_in_textfile(arr2d, fname, filemode, fmt)
+        save_ndarray_in_textfile(nda, fname, filemode, fmt)
+        #save_2darray_in_textfile(arr2d, fname, filemode, fmt)
         logger.debug(info_ndarr(arr2d, 'array of %s' % ctype))
         logger.info('saved: %s' % fname)
 
 
 def _set_segment_ind_and_id(kwa):
-    """override lists of detector segment_inds and segment_ids for specified segind"""
+    """re-define lists of detector segment_inds and segment_ids for specified detector or segind"""
+    dettype  = kwa.get('dettype', None)
     segind   = kwa.get('segind', None)
-    seg_inds = kwa.get('segment_inds', [])
-    seg_ids  = kwa.get('segment_ids', [])
 
-    if segind is None: return
+    if dettype == 'epixm320':
 
-    assert segind in seg_inds,\
-      'specified segment index "--segind %d" is not available in the list of det.raw._segment_inds(): %s'%\
-      (segind, str(seg_inds))
-    segid = seg_ids[seg_inds.index(segind)]
-    kwa['segment_inds'] = seg_inds[segind,]
-    kwa['segment_ids'] = seg_ids[segid,]
+        d = ups.dict_filter(kwa, list_keys=('segind', 'segment_inds', 'segment_ids', 'longname'))
+        logger.info('INPUT kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
+
+        if segind is None:
+            longname = kwa.get('longname', 'UNDEFINED')
+            panel_id = longname.split('_')[1] # 0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
+            kwa['segment_ids'] = [panel_id,]
+        else:
+            segment_numbers = kwa.get('segment_numbers', []) # [0, 1, 2, 3]
+            assert segind in segment_numbers,\
+                 'specified segment index "--segind %d" is not available in the list of det.raw._segment_numbers: %s'%\
+                 (segind, str(segment_numbers))
+            kwa['segment_inds'] = segment_numbers
+
+        d = ups.dict_filter(kwa, list_keys=('segind', 'segment_inds', 'segment_ids'))
+        logger.info('RE-DEFINED kwargs:%s' % uts.info_dict(d, fmt='  %12s: %s', sep='\n'))
+
+    #sys.exit('TEST EXIT')
 
 
 def _check_gainmode_with_assert(gainmode, lst_gainmodes, dettype):
@@ -134,7 +145,7 @@ def _check_ctype(kwa):
 #    return ctype
 
 
-def _segcons_2d(**kwa):
+def _segcons_from_file(**kwa):
     fname = kwa.get('fname2darr', None)
     assert os.path.exists(fname), 'MISSING file --fname2darr %s' % fname
     arr = np.load(fname)
@@ -142,10 +153,10 @@ def _segcons_2d(**kwa):
     try:
         assert arr.shape == seggeo_shape
     except AssertionError:
-        logger.error('ERROR: calibration constants from file: %s ' % fname \
+        logger.warning('calibration constants from file: %s ' % fname \
             +'have shape: %s ' % str(arr.shape)\
                      +'different from the segment geometry shape: %s ' % str(seggeo_shape))
-        sys.exit(1)
+        #sys.exit(1)
     logger.info(info_ndarr(arr, 'constants from file: %s' % fname, last=6))
     return arr
 
@@ -179,17 +190,17 @@ def save_segment_constants_in_repository(**kwa):
     odet = orun.Detector(kwa.get('detname', None))
 
     kwa_save = uc.add_metadata_kwargs(orun, odet, **kwa)
-    #_set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
+    _set_segment_ind_and_id(kwa_save) # pass kwa_save without **, as mutable
     _check_gainmode(**kwa_save)
     _check_ctype(kwa_save)
     _set_tstamp(kwa_save)
 
     logger.info('kwa_save:%s' % info_dict(kwa_save))
     print(50*'=')
-    arr2d = _segcons_2d(**kwa_save)
+    arr_seg = _segcons_from_file(**kwa_save)
     ctype = kwa_save.get('ctype', None)
 
-    save_constants_in_repository({ctype: arr2d}, **kwa_save)
+    save_constants_in_repository({ctype: arr_seg}, **kwa_save)
 
 
 if __name__ == "__main__":
