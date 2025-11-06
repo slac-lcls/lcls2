@@ -1,7 +1,6 @@
 
 from psana import utils
 from psana.dgrammanager import DgramManager
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunShmem
@@ -15,6 +14,7 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0]
         self.runnum_list_index = 0
+        self.dsparms.set_use_smds([False] * len(self.runnum_list))  # disable SMDs
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
@@ -65,7 +65,19 @@ class ShmemDataSource(DataSourceBase):
             kwargs = {'shmem_supervisor': self.supervisor,
                       'shmem_pub_socket': self._pub_socket if self.supervisor == 1 else None,
                       'shmem_sub_socket': self._sub_socket if self.supervisor == 0 else None}
-            run = RunShmem(self, Event(dgrams=self.beginruns), **kwargs)
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunShmem(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                None,                 # SmdReaderManager (None RunSingleFile & RunShmem)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+                **kwargs              # extra shmem args
+            )
             yield run
 
     def is_mpi(self):

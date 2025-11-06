@@ -4,6 +4,8 @@ import os
 import gc
 import weakref
 from contextlib import contextmanager
+from multiprocessing import Value
+from types import SimpleNamespace
 
 from psana import dgram
 from psana.detector.detector_cache import DetectorCacheManager
@@ -11,7 +13,6 @@ from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
 from psana.utils import WeakDict
-from psana.psexp.prometheus_manager import get_prom_manager
 from psana.pscalib.app.calib_prefetch import calib_utils
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
@@ -97,13 +98,17 @@ class Run(object):
         self.dsparms = dsparms
         self.dm = dm
         self.smdr_man = smdr_man
-        self._run_ctx = RunCtx(expt, runnum, timestamp)
+        self._run_ctx = RunCtx(expt, runnum, timestamp, dsparms.intg_det)
         self._evt = Event(dgrams=begingrun_dgrams, run=self._run_ctx)
         self.configs = None
         self.smd_dm = None
         self.nfiles = 0
         self.scan = False
         self.smd_fds = None
+
+        self.shared_state = SimpleNamespace(
+            terminate_flag=Value('b', False)
+        )
 
         # Calibration constant structures
         # Held by _calib_const, _cc_weak holds weak references to the sub-dicts
@@ -123,6 +128,44 @@ class Run(object):
         """Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.runnum
+
+    def events(self):
+        for dgrams in self._evt_iter:
+            if self._handle_transition(dgrams):
+                # EndRun handling here ends the stream
+                if utils.first_service(dgrams) == TransitionId.EndRun:
+                    return
+                continue  # swallow non-L1 transitions in events() stream
+            # L1Accept: construct Event at the Run level
+            yield Event(dgrams=dgrams, run=self._run_ctx)
+
+    def steps(self):
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            if TransitionId.isEvent(svc):
+                # steps() only yields on BeginStep transitions; ignore L1
+                continue
+            # Update envstore for every transition
+            self._update_envstore_from_dgrams(dgrams)
+
+            if svc == TransitionId.EndRun:
+                return
+            if svc == TransitionId.BeginStep:
+                yield Step(Event(dgrams=dgrams, run=self._run_ctx), self._evt_iter, self._run_ctx)
+
+    def terminate(self):
+        """Sets terminate flag
+
+        The Events iterators of all Run types check this flag
+        to see if they need to stop (raise StopIterator for
+        RunSerial, RunShmem, & RunSinglefile or skip events
+        for RunParallel (see BigDataNode implementation).
+
+        Note that mpi_ds implements this differently by adding
+        Isend prior to setting this flag.
+        """
+        flag = self.shared_state.terminate_flag
+        flag.value = True
 
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constants - set default value to None
@@ -461,14 +504,16 @@ class Run(object):
 
 class RunShmem(Run):
     """Yields list of events from a shared memory client (no event building routine)."""
-
-    def __init__(self, run_evt, **kwargs):
-        super(RunShmem, self).__init__()
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, **kwargs):
+        super(RunShmem, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(ds, self)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
         self.supervisor = kwargs.get('shmem_supervisor', -1)
         self._pub_socket = kwargs.get('shmem_pub_socket', None)
         self._sub_socket = kwargs.get('shmem_sub_socket', None)
@@ -486,35 +531,27 @@ class RunShmem(Run):
             self._create_weak_calibconst()
         self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
-    def events(self):
-
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun:
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
-
 
 class RunDrp(Run):
     """Yields list of events from drp python (no event building routine)."""
-
-    def __init__(self, ds, run_evt, **kwargs):
-        super(RunDrp, self).__init__(ds)
-        self._evt = run_evt
-        self._ds = ds
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, **kwargs):
+        super(RunDrp, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(self._ds, self)
-        self._edtbl_config = False
+
+        # DgramEdit for editing events
+        self.config_dgramedit = DgramEdit(configs[-1], bufsize=dm.transition_bufsize)
+        self.curr_dgramedit = self.config_dgramedit
+        self._ed_detectors = []
+        self._ed_detectors_handles = {}
+        self._edtbl_config = True  # allow editing configuration before event iteration
+        self._primed = False  # run priming not yet done
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
         # For distributing calibconst
         self._is_supervisor = kwargs.get('drp_is_supervisor', False)
         self._is_publisher = kwargs.get('drp_is_publisher', False)
@@ -539,75 +576,117 @@ class RunDrp(Run):
                 self._calib_const = self._ipc_sub_socket.recv()
         self._create_weak_calibconst()
 
-    def events(self):
-        for evt in self._evt_iter:
-            if TransitionId.isEvent(evt.service()):
-                buffer_size = self._ds.dm.pebble_bufsize
-            else:
-                buffer_size = self._ds.dm.transition_bufsize
-
-            self._ds.curr_dgramedit = DgramEdit(
-                evt._dgrams[0],
-                config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size,
+    def add_detector(
+        self, detdef, algdef, datadef, nodeId=None, namesId=None, segment=None
+    ):
+        if self._edtbl_config:
+            return self.curr_dgramedit.Detector(
+                detdef, algdef, datadef, nodeId, namesId, segment
+            )
+        else:
+            raise RuntimeError(
+                "[Python - Worker {self.worker_num}] Cannot edit the configuration "
+                "after starting iteration over events"
             )
 
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+    def add_data(self, data):
+        return self.curr_dgramedit.adddata(data)
+
+    def remove_data(self, det_name, alg):
+        if not self._edtbl_config:
+            return self.curr_dgramedit.removedata(det_name, alg)
+        else:
+            raise RuntimeError(
+                "[Python - Worker {self.worker_num}] Cannot remove data from events "
+                "before starting iteration over events"
+            )
+
+    # --- internal: run priming (CONFIG + BeginRun saved once) ---
+    def _prime_run_once(self):
+        if self._primed:
+            return
+        # Save CONFIG first (allows pre-run edits to be captured)
+        self.curr_dgramedit.save(self.dm.shm_res_mv)
+        # Freeze config-time edits now
+        self._edtbl_config = False
+        # Save BeginRun transition
+        self.curr_dgramedit = DgramEdit(
+            self.beginruns[0],
+            config_dgramedit=self.config_dgramedit,
+            bufsize=self.dm.transition_bufsize,
+        )
+        self.curr_dgramedit.save(self.dm.shm_res_mv)
+        self._primed = True
+
+    def events(self):
+        self._prime_run_once()
+
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            bufsize = self.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.dm.transition_bufsize
+
+            self.curr_dgramedit = DgramEdit(
+                dgrams[0],
+                config_dgramedit=self.config_dgramedit,
+                bufsize=bufsize,
+            )
+
+            # Transitions: not yielded here; save immediately
+            if self._handle_transition(dgrams):
+                self.curr_dgramedit.save(self.dm.shm_res_mv)
+                if svc == TransitionId.EndRun:
                     return
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 continue
+
+            # L1Accept: yield first so user may edit, then save
+            evt = Event(dgrams=dgrams, run=self._run_ctx)
             yield evt
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            self.curr_dgramedit.save(self.dm.shm_res_mv)
 
     def steps(self):
-        for evt in self._evt_iter:
-            if TransitionId.isEvent(evt.service()):
-                buffer_size = self._ds.dm.pebble_bufsize
-            else:
-                buffer_size = self._ds.dm.transition_bufsize
+        self._prime_run_once()
 
-            self._ds.curr_dgramedit = DgramEdit(
-                evt._dgrams[0],
-                config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size,
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            if TransitionId.isEvent(svc):
+                # steps() ignores L1s entirely
+                continue
+
+            self._update_envstore_from_dgrams(dgrams)
+            bufsize = self.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.dm.transition_bufsize
+
+            self.curr_dgramedit = DgramEdit(
+                dgrams[0],
+                config_dgramedit=self.config_dgramedit,
+                bufsize=bufsize,
             )
 
-            if evt.service() == TransitionId.EndRun:
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            if svc == TransitionId.BeginStep:
+                # Yield a Step (user may edit), then save
+                step_evt = Event(dgrams=dgrams, run=self._run_ctx)
+                yield Step(step_evt, self._evt_iter, self._run_ctx, esm=self.esm, run=self)
+                self.curr_dgramedit.save(self.dm.shm_res_mv)
+                continue
 
+            # Other transitions in steps(): save immediately
+            self.curr_dgramedit.save(self.dm.shm_res_mv)
+            if svc == TransitionId.EndRun:
+                return
 
 class RunSingleFile(Run):
     """Yields list of events from a single bigdata file."""
 
-    def __init__(self, ds, run_evt):
-        super(RunSingleFile, self).__init__(ds)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams):
+        super(RunSingleFile, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(ds, self)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
         self._setup_run_calibconst()
-
-    def events(self):
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun:
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
 
 
 class RunSerial(Run):
@@ -621,35 +700,11 @@ class RunSerial(Run):
                                 dm,
                                 self.dsparms.max_retries,
                                 self.dsparms.use_smds,
-                                self.dsparms.terminate_flag,
+                                self.shared_state,
                                 smdr_man=smdr_man)
         self._smd_iter = None
         self._ts_table = None
         self._setup_run_calibconst()
-
-    def events(self):
-        for dgrams in self._evt_iter:
-            if self._handle_transition(dgrams):
-                # EndRun handling here ends the stream
-                if utils.first_service(dgrams) == TransitionId.EndRun:
-                    return
-                continue  # swallow non-L1 transitions in events() stream
-            # L1Accept: construct Event at the Run level
-            yield Event(dgrams=dgrams, run=self._run_ctx)
-
-    def steps(self):
-        for dgrams in self._evt_iter:
-            svc = utils.first_service(dgrams)
-            if TransitionId.isEvent(svc):
-                # steps() only yields on BeginStep transitions; ignore L1
-                continue
-            # Update envstore for every transition
-            self._update_envstore_from_dgrams(dgrams)
-
-            if svc == TransitionId.EndRun:
-                return
-            if svc == TransitionId.BeginStep:
-                yield Step(Event(dgrams=dgrams, run=self._run_ctx), self._evt_iter)
 
     @contextmanager
     def build_table(self):
@@ -664,7 +719,7 @@ class RunSerial(Run):
                                        self.dm,
                                        self.dsparms.max_retries,
                                        self.dsparms.use_smds,
-                                       self.dsparms.terminate_flag,
+                                       self.shared_state,
                                        smdr_man=self.smdr_man)
 
         self._ts_table = {}
@@ -707,19 +762,6 @@ class RunSerial(Run):
         return Event(dgrams=dgrams, run=self._run_ctx)
 
 
-class RunLegion(Run):
-    def __init__(self, ds, run_evt):
-        self.dsparms = ds.dsparms
-        self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
-        RunHelper(self)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.smdr_man = ds.smdr_man
-        self.configs = ds._configs
-        super()._setup_envstore()
-        self._setup_run_calibconst()
-
-
 class RunSmallData(Run):
     """Yields list of smalldata events
 
@@ -753,6 +795,7 @@ class RunSmallData(Run):
                     yield Step(
                         Event(dgrams=dgrams, run=self._run_ctx),
                         self._evt_iter,
+                        self._run_ctx,
                         proxy_events=self.proxy_events,
                     )
 

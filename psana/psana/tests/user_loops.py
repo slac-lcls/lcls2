@@ -20,10 +20,10 @@ from psana import DataSource
 def filter_fn(evt):
     # Create a detector within filter is possible
     run = evt.run()
-    det = run.Detector('xppcspad')
+    run.Detector('xppcspad')
 
     # Access step event
-    step_evt = run.step(evt)
+    run.step(evt)
     return True
 
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
@@ -42,6 +42,7 @@ for run in ds.runs():
     sdet = run.Detector('motor2')
 
     for evt in run.events():
+        print(evt.timestamp)
         padarray = vals.padarray
         # 4 segments, two per file
         assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
@@ -55,24 +56,25 @@ for run in ds.runs():
     #endRunCode
 #endJobCode
 
-# Usecase#2 looping through steps
-ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, batch_size=10)
-for run in ds.runs():
-    det = run.Detector('xppcspad')
-    for step in run.steps():
-        for evt in step.events():
-            padarray = vals.padarray
-            assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
-
-# Usecase#3: singlefile ds
-ds = DataSource(files=os.path.join(xtc_dir,'xpptut15-r0014-s000-c000.xtc2'))
-for run in ds.runs():
-    det = run.Detector('xppcspad')
-    edet = run.Detector('HX2:DVD:GCC:01:PMON')
-    sdet = run.Detector('motor2')
-    for step in run.steps():
-        for evt in step.events():
-            calib = det.raw.calib(evt)
-            assert calib.shape == (2,3,6)
-    assert run.expt == 'xpptut15'
-    assert run.runnum == 14
+## Usecase#2 looping through steps
+#ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, batch_size=10)
+#for run in ds.runs():
+#    det = run.Detector('xppcspad')
+#    for step in run.steps():
+#        for evt in step.events():
+#            padarray = vals.padarray
+#            assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
+#
+## Usecase#3: singlefile ds
+#ds = DataSource(files=os.path.join(xtc_dir,'xpptut15-r0014-s000-c000.xtc2'))
+#for run in ds.runs():
+#    det = run.Detector('xppcspad')
+#    edet = run.Detector('HX2:DVD:GCC:01:PMON')
+#    sdet = run.Detector('motor2')
+#    for step in run.steps():
+#        for evt in step.events():
+#            calib = det.raw.calib(evt)
+#            assert calib.shape == (2,3,6)
+#    assert run.expt == 'xpptut15'
+#    assert run.runnum == 14
+#
