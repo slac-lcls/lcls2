@@ -215,15 +215,12 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
 
 
 
-
 def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
     """the same as calib_jungfrau_local, but
        - add switch for panel processing in python or C++
     """
     nda_raw = kwa.get('nda_raw', None)
-    #size_blk = kwa.get('size_blk', 512*1024)
-    #size_blk = kwa.get('size_blk', 1*1024)
-    size_blk = kwa.get('size_blk', 128)
+    size_blk = kwa.get('size_blk', 512*1024) # single panel size
 
     arr = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
 
@@ -265,10 +262,6 @@ def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
         print(uj.info_gainrange_statistics(arr))
         print(uj.info_gainrange_fractions(arr))
 
-    #nsegs = arr.shape[0]
-
-    #print('XXX inds:', inds)
-    #print('XXX _sorted..., _segment_numbers:', det._sorted_segment_inds , det._segment_numbers)
     if CALIBMET in (CALIB_LOCAL_V2, CALIB_CPP_V0):
       shseg = arr.shape[-2:] # (512, 1024)
       # loop over segments here in python
@@ -297,67 +290,13 @@ def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
     elif CALIBMET in (CALIB_CPP_V1,):
         # full processing in C++
         #print('XXXXX COMENT OUT calib_jungfrau_v1, in test %s' % dic_calibmet[CALIBMET])
-        print('XXXXX PASS FROM PARSER size_blk, in test %d' % size_blk)
+        #print('XXXXX PASS FROM PARSER size_blk, in test %d' % size_blk)
+        #print(info_ndarr(arr,   '    arr',   first=1000, last=1008))
+        #print(info_ndarr(ccons, '    ccons', first=1000, last=1008))
+        #print(info_ndarr(outa,  '    outa',  first=1000, last=1008))
+
         ud.calib_jungfrau_v1(arr, ccons, size_blk, outa)
     return outa
-
-
-
-
-
-
-
-
-
-
-
-
-
-def calib_epix10ka_any_local_v3(det_raw, evt, **kwa):
-    """ v3: add time points, get rid of common mode correction
-    """
-    import psana.detector.UtilsEpix10ka as ue
-
-    t0 = time()
-    nda_raw = kwa.get('nda_raw', None)
-    raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
-    if ue.cond_msg(raw is None, msg='raw is None'): return None
-
-    t1 = time()
-    gmaps = ue.gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
-    if ue.cond_msg(gmaps is None, msg='gmaps is None'): return None
-
-    t2 = time()
-    store = det_raw._store_ = ue.Storage(det_raw, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
-    store.counter += 1
-    if store.counter < 1: ue.print_gmaps_info(gmaps)
-
-    t3 = time()
-    factor = ue.event_constants_for_gmaps(gmaps, store.gfac, default=1)  # 3d gain factors
-    pedest = ue.event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
-
-    t4 = time()
-    arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32)
-
-    #t5 = time()
-    if pedest is not None: arrf -= pedest
-
-    logger.debug(info_ndarr(arrf, 'arrf:'))
-    if ue.cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
-
-    #t6 = time()
-    #if store.cmpars is not None:
-    #    print('IT DOES CM')
-    #    ue.common_mode_epix_multigain_apply(arrf, gmaps, store)
-
-    #t7 = time()
-    mask = store.mask
-    res = arrf * factor if mask is None else arrf * factor * mask # gain correction
-
-    t5 = t6 = t7 = t8 = time()
-    #t8 = time()
-    return res, (t0, t1, t2, t3, t4, t5, t6, t7, t8)
-
 
 
 
@@ -377,6 +316,7 @@ def test_event_loop(calibmet, **kwargs):
     events       = kwargs.get('events', 100)
     plot_img     = kwargs.get('plot_img', False)
     fname_prefix = kwargs.get('fname_prefix', 'summary')
+    cversion     = kwargs.get('cversion', 1)
     kwargs.setdefault('logmet_init', logger.info)
 
     arrts = np.zeros(events, dtype=float) if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0) else\
@@ -448,14 +388,14 @@ def test_event_loop(calibmet, **kwargs):
           s += ' ' + dic_calibmet[calibmet]
           t0_sec = time()
 
-          if calibmet == CALIB_STD:
+          if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1):
+            calib = calib_jungfrau_compare(det.raw, evt, cversion=cversion, **kwargs)
+
+          elif calibmet == CALIB_STD:
             calib = det.raw.calib(evt, **kwargs)   # calib_std(det, evt, cmpars=None)
 
           elif calibmet == CALIB_STD_LOCAL:
             calib = calib_jungfrau_local(det.raw, evt, **kwargs) # cmpars=cmpars)
-
-          elif calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1):
-            calib = calib_jungfrau_compare(det.raw, evt, cversion=1, **kwargs)
 
           dt_sec_calib = time()-t0_sec
 
@@ -506,6 +446,7 @@ def argument_parser():
     d_loglevel = 'INFO' # 'DEBUG'
     d_plot_img = 0
     d_cmpars   = None
+    d_size_blk = 1024 # 512*1024
 
     h_tname    = '(str) test name, usually numeric, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
@@ -514,6 +455,7 @@ def argument_parser():
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
     h_plot_img = 'image bitword to plot images, default = %d' % d_plot_img
     h_cmpars   = '(str) list of common mode parameters, i.g. (7,7,200,10), default = %s' % d_cmpars
+    h_size_blk = '(int) block size (number of pixels) to split entire array for processing, default = %d' % d_size_blk
 
     parser = ArgumentParser(description='%s tests of jungfrau calib berformance with mpi' % SCRNAME, usage=usage())
     parser.add_argument('-t', '--tname',    default=d_tname,    type=str, help=h_tname)
@@ -523,6 +465,7 @@ def argument_parser():
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
     parser.add_argument('-p', '--plot_img', default=d_plot_img, type=int, help=h_plot_img)
     parser.add_argument('-c', '--cmpars',   default=d_cmpars,   type=str, help=h_cmpars)
+    parser.add_argument('-s', '--size_blk', default=d_size_blk, type=int, help=h_size_blk)
     return parser
 
 def usage():
