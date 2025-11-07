@@ -12,7 +12,7 @@ add_executable(hpsBldServer hpsBldServer.cc)
 
 target_include_directories(hpsBldServer PUBLIC
     ${PYTHON_INCLUDE_DIRS}
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -31,7 +31,7 @@ target_link_libraries(hpsBldServer
 add_executable(hpsBldClient hpsBldClient.cc)
 
 target_include_directories(hpsBldClient PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -51,7 +51,7 @@ target_link_libraries(hpsBldClient
 add_executable(hpsBldCopy hpsBldCopy.cc)
 
 target_include_directories(hpsBldCopy PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -70,7 +70,7 @@ target_link_libraries(hpsBldCopy
 add_executable(lclsBldServer lclsBldServer.cc)
 
 target_include_directories(lclsBldServer PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -87,7 +87,7 @@ target_link_libraries(lclsBldServer
 add_executable(tprtrig tprtrig.cc)
 
 target_include_directories(tprtrig PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -106,7 +106,7 @@ target_link_libraries(tprtrig
 add_executable(tprioc tprca.cc)
 
 target_include_directories(tprioc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -127,7 +127,7 @@ target_link_libraries(tprioc
 add_executable(tprsh tprsh.cc)
 
 target_include_directories(tprsh PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -147,7 +147,7 @@ target_link_libraries(tprsh
 add_executable(tprutil tprutil.cc)
 
 target_include_directories(tprutil PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -166,7 +166,7 @@ target_link_libraries(tprutil
 add_executable(xcasttest xcasttest.cc)
 
 target_include_directories(xcasttest PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -185,7 +185,7 @@ target_link_libraries(xcasttest
 add_executable(pgpca pgpca.cc)
 
 target_include_directories(pgpca PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${Readline_INCLUDE_DIR}
 )
@@ -206,7 +206,7 @@ add_executable(pvcam pvcam.cc)
 
 target_include_directories(pvcam PUBLIC
     pvcam
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     ${Readline_INCLUDE_DIR}
 )
 
@@ -228,7 +228,7 @@ target_link_libraries(pvcam
 add_executable(bldpayload bldpayload.cc)
 
 target_include_directories(bldpayload PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $ENV{CONDA_PREFIX}/include
 )
 
@@ -251,7 +251,7 @@ add_executable(sim_udpencoder sim_udpencoder.cc)
 
 target_include_directories(sim_udpencoder PUBLIC
     sim_udpencoder
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     ${ZeroMQ_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
     ${RapidJSON_INCLUDE_DIRS}
@@ -285,7 +285,7 @@ target_link_libraries(json2xtc
 )
 
 target_include_directories(json2xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${RapidJSON_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
