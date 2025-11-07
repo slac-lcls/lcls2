@@ -252,6 +252,7 @@ add_executable(sim_udpencoder sim_udpencoder.cc)
 target_include_directories(sim_udpencoder PUBLIC
     sim_udpencoder
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../psalg>
     ${ZeroMQ_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
     ${RapidJSON_INCLUDE_DIRS}
