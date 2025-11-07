@@ -200,7 +200,7 @@ add_executable(pgpread_epixM320mon
     pgpread_epixM320mon.cc
 )
 target_include_directories(pgpread_epixM320mon PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/..>
 )
 target_link_libraries(pgpread_epixM320mon
     Threads::Threads
