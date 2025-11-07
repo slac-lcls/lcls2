@@ -15,7 +15,7 @@ add_library(drpbase
 )
 
 target_include_directories(drpbase PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 
 target_link_libraries(drpbase
@@ -141,7 +141,7 @@ add_executable(configdb_obj_2xtc
 )
 
 target_include_directories(configdb_obj_2xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${RapidJSON_INCLUDE_DIRS}
@@ -157,7 +157,7 @@ add_executable(pgpread
     pgpread.cc
 )
 target_include_directories(pgpread PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(pgpread
     mmhw
@@ -171,7 +171,7 @@ add_executable(pgpread_timetool
     pgpread_timetool.cc
 )
 target_include_directories(pgpread_timetool PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
 )
@@ -187,7 +187,7 @@ add_executable(pgpread_jungfrau
     pgpread_jungfrau.cc
 )
 target_include_directories(pgpread_jungfrau PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(pgpread_jungfrau
     mmhw
@@ -200,7 +200,7 @@ add_executable(pgpread_epixM320mon
     pgpread_epixM320mon.cc
 )
 target_include_directories(pgpread_epixM320mon PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(pgpread_epixM320mon
     Threads::Threads
@@ -224,7 +224,7 @@ add_executable(drp_validate
     validate.cc
 )
 target_include_directories(drp_validate PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(drp_validate
     Threads::Threads
@@ -235,7 +235,7 @@ add_executable(opaltt_test
 )
 
 target_include_directories(opaltt_test PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 
 target_link_libraries(opaltt_test
@@ -256,7 +256,7 @@ add_executable(drp_groupsync
     groupsync.cc
 )
 target_include_directories(drp_groupsync PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(drp_groupsync
     Threads::Threads
@@ -272,7 +272,7 @@ add_executable(jungfrauTest
 )
 
 target_include_directories(jungfrauTest PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 
 target_link_libraries(jungfrauTest
@@ -284,7 +284,7 @@ add_executable(jungfrauSim
 )
 
 target_include_directories(jungfrauSim PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 target_link_libraries(jungfrauSim
     xtc
