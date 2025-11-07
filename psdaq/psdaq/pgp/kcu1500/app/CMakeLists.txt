@@ -34,7 +34,7 @@ target_include_directories(staticKcu PUBLIC
 )
 
 target_link_libraries(staticKcu
-    xtcdata::staticXtc
+    staticXtc
 )
 
 
