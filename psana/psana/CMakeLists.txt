@@ -17,7 +17,6 @@ target_include_directories(psana PUBLIC
 target_link_libraries(psana PUBLIC psalg)
 target_link_libraries(psana PUBLIC xtc)
 
-message(STATUS "HEREEEEE is: ${CMAKE_INSTALL_PREFIX}")
 add_custom_command(TARGET psana
     POST_BUILD
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/psana"

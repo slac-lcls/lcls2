@@ -39,7 +39,7 @@ add_library(hsd SHARED
 )
 
 target_include_directories(hsd PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${Readline_INCLUDE_DIR}
@@ -47,7 +47,7 @@ target_include_directories(hsd PUBLIC
 
 target_link_libraries(hsd
     ${PYTHON_LIBRARIES}
-    xtcdata::xtc
+    xtc
     service
     mmhw
     ${Readline_LIBRARY}
@@ -127,14 +127,14 @@ target_link_libraries(hsd_sim
 add_executable(hsdRead hsdRead.cc ../../../psalg/psalg/digitizer/src/Stream.cc)
 
 target_include_directories(hsdRead PUBLIC
-     $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
      $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(hsdRead
    hsd
    mmhw
-   xtcdata::xtc
+   xtc
    epicstools
    Threads::Threads
    rt

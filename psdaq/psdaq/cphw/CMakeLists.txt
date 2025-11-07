@@ -34,11 +34,11 @@ add_library(cphwr SHARED
 )
 
 target_include_directories(cphw PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 
 target_include_directories(cphwr PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
 )
 
 #find_package(Boost 1.65 REQUIRED PATHS $ENV{CONDA_PREFIX})

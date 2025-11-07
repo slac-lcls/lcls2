@@ -27,7 +27,7 @@ if(CMAKE_CUDA_COMPILER)
         GpuAsyncLib.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(drpbase_gpu
@@ -43,7 +43,7 @@ if(CMAKE_CUDA_COMPILER)
         FileWriter.cc
     )
     target_include_directories(drp_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
@@ -51,7 +51,7 @@ if(CMAKE_CUDA_COMPILER)
         drpbase_gpu
         trigger
         mmhw
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         #cudadevrt
         CUDA::cudart
@@ -70,13 +70,13 @@ if(CMAKE_CUDA_COMPILER)
         ../drp/AreaDetector.cc  # @todo: Better solution than '../drp/'?
     )
     target_include_directories(AreaDetector_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(AreaDetector_gpu
         drpbase_gpu
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -90,13 +90,13 @@ if(CMAKE_CUDA_COMPILER)
         ../drp/AreaDetector.cc  # @todo: Better solution than '../drp/'?
     )
     target_include_directories(EpixUHRemu_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(EpixUHRemu_gpu
         drpbase_gpu
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -116,12 +116,12 @@ if(CMAKE_CUDA_COMPILER)
         NoOpReducer.cu
     )
     target_include_directories(NoOpReducer PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(NoOpReducer
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -141,14 +141,14 @@ if(CMAKE_CUDA_COMPILER)
         LcReducer.cu
     )
     target_include_directories(LcReducer PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
         /cds/home/c/claus/git/LC-framework/install/include
     )
     target_link_libraries(LcReducer
         lc-compressor
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -164,13 +164,13 @@ if(CMAKE_CUDA_COMPILER)
         CuSzReducer.cu
     )
     target_include_directories(CuSzReducer PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
     target_link_libraries(CuSzReducer
         CUSZ::cusz
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -186,14 +186,14 @@ if(CMAKE_CUDA_COMPILER)
         CuSZpReducer.cu
     )
     target_include_directories(CuSZpReducer PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
         /cds/home/c/claus/git/cuSZp/install/include  # @todo: fix this abs path
     )
     target_link_libraries(CuSZpReducer
         cuSZp::cuSZp_shared
-        xtcdata::xtc
+        xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
@@ -208,7 +208,7 @@ if(CMAKE_CUDA_COMPILER)
         GpuAsyncLib.cc
     )
     target_include_directories(pgpread_gpu PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
         ${CMAKE_INSTALL_PREFIX}/include
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )

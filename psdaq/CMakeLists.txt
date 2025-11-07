@@ -20,8 +20,6 @@ add_compile_options(-Wall)
 add_compile_options(-Wno-uninitialized)
 add_compile_options(-fno-omit-frame-pointer)
 
-find_package(xtcdata REQUIRED)
-find_package(psalg REQUIRED)
 find_package(libfabric REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(prometheus-cpp REQUIRED)
