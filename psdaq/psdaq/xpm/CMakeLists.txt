@@ -14,14 +14,14 @@ add_library(xpm SHARED
 )
 
 target_include_directories(xpm PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
     $<INSTALL_INTERFACE:include>
 )
 
 target_link_libraries(xpm
     epicstools
     ${YAML_CPP_LIB}
-    xtcdata::xtc
+    xtc
 )
 
 #
