@@ -16,7 +16,7 @@ add_library(pgpdriver SHARED
 
 target_include_directories(pgpdriver PUBLIC
     ../../../drp
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../../..>
     $<INSTALL_INTERFACE:include>
 )
 
