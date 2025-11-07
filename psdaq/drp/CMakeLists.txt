@@ -15,14 +15,14 @@ add_library(drpbase
 )
 
 target_include_directories(drpbase PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 
 target_link_libraries(drpbase
     contributor
     exporter
     collection
-    xtcdata::xtc
+    xtc
     epicstools
     Threads::Threads
     nlohmann_json::nlohmann_json
@@ -59,9 +59,9 @@ add_executable(drp
 )
 
 target_link_libraries(drp
-    psalg::digitizer
-    psalg::detector
-    xtcdata::xtc
+    digitizer
+    detector
+    xtc
     drpbase
     trigger
     mmhw
@@ -141,7 +141,7 @@ add_executable(configdb_obj_2xtc
 )
 
 target_include_directories(configdb_obj_2xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${RapidJSON_INCLUDE_DIRS}
@@ -149,7 +149,7 @@ target_include_directories(configdb_obj_2xtc PUBLIC
 
 target_link_libraries(configdb_obj_2xtc
     service
-    xtcdata::xtc
+    xtc
     ${PYTHON_LIBRARIES}
 )
 
@@ -157,12 +157,12 @@ add_executable(pgpread
     pgpread.cc
 )
 target_include_directories(pgpread PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(pgpread
     mmhw
-    psalg::utils
-    xtcdata::xtc
+    utils
+    xtc
     Threads::Threads
 )
 
@@ -171,13 +171,13 @@ add_executable(pgpread_timetool
     pgpread_timetool.cc
 )
 target_include_directories(pgpread_timetool PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
 )
 target_link_libraries(pgpread_timetool
     service
-    xtcdata::xtc
+    xtc
     ${PYTHON_LIBRARIES}
     Threads::Threads
     rt
@@ -187,12 +187,12 @@ add_executable(pgpread_jungfrau
     pgpread_jungfrau.cc
 )
 target_include_directories(pgpread_jungfrau PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(pgpread_jungfrau
     mmhw
-    psalg::utils
-    xtcdata::xtc
+    utils
+    xtc
     Threads::Threads
 )
 
@@ -200,7 +200,7 @@ add_executable(pgpread_epixM320mon
     pgpread_epixM320mon.cc
 )
 target_include_directories(pgpread_epixM320mon PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(pgpread_epixM320mon
     Threads::Threads
@@ -215,7 +215,7 @@ target_include_directories(AxiBatcherParserTest PUBLIC
     ${PYTHON_INCLUDE_DIRS}
 )
 target_link_libraries(AxiBatcherParserTest
-    xtcdata::xtc
+    xtc
     drpbase
     ${PYTHON_LIBRARIES}
 )
@@ -224,7 +224,7 @@ add_executable(drp_validate
     validate.cc
 )
 target_include_directories(drp_validate PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(drp_validate
     Threads::Threads
@@ -235,12 +235,12 @@ add_executable(opaltt_test
 )
 
 target_include_directories(opaltt_test PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 
 target_link_libraries(opaltt_test
-    xtcdata::xtc
-    psalg::calib
+    xtc
+    calib
 )
 
 add_executable(fileWriteTest
@@ -256,7 +256,7 @@ add_executable(drp_groupsync
     groupsync.cc
 )
 target_include_directories(drp_groupsync PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(drp_groupsync
     Threads::Threads
@@ -272,7 +272,7 @@ add_executable(jungfrauTest
 )
 
 target_include_directories(jungfrauTest PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 
 target_link_libraries(jungfrauTest
@@ -284,10 +284,10 @@ add_executable(jungfrauSim
 )
 
 target_include_directories(jungfrauSim PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 target_link_libraries(jungfrauSim
-    xtcdata::xtc
+    xtc
 )
 
 

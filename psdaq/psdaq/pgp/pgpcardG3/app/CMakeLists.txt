@@ -11,7 +11,7 @@ target_include_directories(xStatus PUBLIC
 )
 
 target_link_libraries(xStatus
-   psalg::utils
+   utils
 )
 
 add_executable(xLoopTest xLoopTest.cpp)
