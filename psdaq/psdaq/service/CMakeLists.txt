@@ -19,7 +19,7 @@ add_library(service SHARED
 )
 
 target_include_directories(service PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
     ${RapidJSON_INCLUDE_DIRS}
@@ -47,7 +47,7 @@ target_link_libraries(collection
 )
 
 target_include_directories(collection PUBLIC
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
      $<INSTALL_INTERFACE:include>
      ${ZeroMQ_INCLUDE_DIRS}
 )
@@ -57,7 +57,7 @@ add_library(exporter SHARED
 )
 
 target_include_directories(exporter PUBLIC
-     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
+     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
      $<INSTALL_INTERFACE:include>
 )
 
