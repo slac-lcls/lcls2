@@ -1,6 +1,7 @@
 # import detectors
 
 import datetime
+import numpy as np
 
 
 from psana.psexp.packet_footer import PacketFooter
@@ -24,13 +25,13 @@ class Event:
     Event holds list of dgrams
     """
 
-    def __init__(self, dgrams, run=None):
+    def __init__(self, dgrams, run=None, proxy_evt=None):
         self._dgrams = dgrams
         self._size = len(dgrams)
         self._complete()
         self._position = 0
         self._run = run  # RunCtx object
-        self._proxy_evt = None  # For smalldata-event loop
+        self._proxy_evt = proxy_evt # For smalldata-event loop
 
     def __iter__(self):
         return self

@@ -23,7 +23,7 @@ def smd_callback(run):
         yield evt
 
 def test_standard():
-    # Usecase 1a : two iterators with filter function
+    # Usecase 1a : two iterators
     ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, batch_size=1)
 
     sendbuf = np.zeros(1, dtype='i')
@@ -34,34 +34,13 @@ def test_standard():
     for run in ds.runs():
         det = run.Detector('xppcspad')
         edet = run.Detector('HX2:DVD:GCC:01:PMON')
-        infodet = run.Detector('epicsinfo')
+        run.Detector('epicsinfo')
         for evt in run.events():
             sendbuf += 1
             padarray = vals.padarray
             assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
             assert evt._size == 2 # check that two dgrams are in there
             assert edet(evt) is None or edet(evt) == 41.0
-
-    comm.Gather(sendbuf, recvbuf, root=0)
-    if rank == 0:
-        assert np.sum(recvbuf) == 10 # need this to make sure that events loop is active
-
-def test_no_filter():
-    # Usecase 1b : two iterators without filter function
-    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir)
-
-    sendbuf = np.zeros(1, dtype='i')
-    recvbuf = None
-    if rank == 0:
-        recvbuf = np.empty([size, 1], dtype='i')
-
-    for run in ds.runs():
-        det = run.Detector('xppcspad')
-        for evt in run.events():
-            sendbuf += 1
-            padarray = vals.padarray
-            assert(np.array_equal(det.raw.calib(evt),np.stack((padarray,padarray,padarray,padarray))))
-            assert evt._size == 2 # check that two dgrams are in there
 
     comm.Gather(sendbuf, recvbuf, root=0)
     if rank == 0:
@@ -103,7 +82,7 @@ def test_select_detectors():
         recvbuf = np.empty([size, 1], dtype='i')
 
     for run in ds.runs():
-        det = run.Detector('xppcspad')
+        run.Detector('xppcspad')
         for evt in run.events():
             sendbuf += 1
             assert evt._size == 1 # only s02 has xppcspad and no epicsinfo
@@ -122,7 +101,7 @@ def test_replace_with_smd():
         recvbuf = np.empty([size, 1], dtype='i')
 
     for run in ds.runs():
-        det = run.Detector('xppcspad')
+        run.Detector('xppcspad')
         for evt in run.events():
             sendbuf += 1
 
@@ -140,7 +119,7 @@ def test_callback(batch_size):
 
     for run in ds.runs():
         det = run.Detector('xppcspad')
-        edet = run.Detector('HX2:DVD:GCC:01:PMON')
+        run.Detector('HX2:DVD:GCC:01:PMON')
         for step in run.steps():
             for evt in step.events():
                 sendbuf += 1
@@ -157,8 +136,8 @@ def test_multi_seg_epics():
     ds = DataSource(exp="xpptut15", run=14, dir=xtc_dir)
     run = next(ds.runs())
 
-    hsd = run.Detector('hsd')
-    andor = run.Detector('andor')
+    run.Detector('hsd')
+    run.Detector('andor')
     # Epics variables from segment 0 (stream 0)
     epicsvar1 = run.Detector('epicsvar1')
     epicsvar2 = run.Detector('epicsvar2')
@@ -177,7 +156,6 @@ def test_multi_seg_epics():
 
 if __name__ == "__main__":
     test_standard()
-    test_no_filter()
     test_step()
     test_select_detectors()
     test_replace_with_smd()

@@ -33,7 +33,7 @@ class BatchIterator(object):
                                    filter_timestamps=dsparms.timestamps,
                                    intg_stream_id=dsparms.intg_stream_id,
                                    batch_size=dsparms.batch_size)
-            self.run_smd = RunSmallData(self.eb)
+            self.run_smd = RunSmallData(self.eb, configs, dsparms)
 
     def __iter__(self):
         return self

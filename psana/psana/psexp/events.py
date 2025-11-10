@@ -45,7 +45,6 @@ class Events:
                     raise StopIteration
                 try:
                     dgrams = next(self._evt_man)
-                    print(f"Event {cn} terimate_flag={self.shared_state.terminate_flag.value}", flush=True)
                     cn += 1
                     if not any(dgrams):
                         continue

@@ -17,7 +17,7 @@ class EventBuilderManager(object):
                                filter_timestamps=dsparms.timestamps,
                                intg_stream_id=dsparms.intg_stream_id,
                                batch_size=dsparms.batch_size)
-        self.run_smd = RunSmallData(self.eb)  # only used by smalldata callback
+        self.run_smd = RunSmallData(self.eb, configs, dsparms)  # only used by smalldata callback
 
     def batches(self):
         while True:
