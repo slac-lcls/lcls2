@@ -771,8 +771,10 @@ class RunSmallData(Run):
     event generator available to user in smalldata callback.
     """
 
-    def __init__(self, eb):
+    def __init__(self, eb, configs, dsparms):
         self.eb = eb
+        self.dsparms = dsparms
+        self._run_ctx = None  # No RunCtx for smalldata
 
         # Converts EventBuilder generator to an iterator for steps() call. This is
         # done so that we can pass it to Step (not sure why). Note that for
@@ -784,10 +786,13 @@ class RunSmallData(Run):
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
 
+        self.esm = EnvStoreManager(configs)
+
     def steps(self):
         for (dgrams, proxy_evt)  in self._evt_iter:
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
+                self._update_envstore_from_dgrams(dgrams)
                 self.proxy_events.append(proxy_evt)
                 if svc == TransitionId.EndRun:
                     return
@@ -797,14 +802,16 @@ class RunSmallData(Run):
                         self._evt_iter,
                         self._run_ctx,
                         proxy_events=self.proxy_events,
+                        esm=self.esm,
                     )
 
     def events(self):
         for (dgrams, proxy_evt) in self.eb.events():
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
+                self._update_envstore_from_dgrams(dgrams)
                 self.proxy_events.append(proxy_evt)
                 if svc == TransitionId.EndRun:
                     return
                 continue
-            yield Event(dgrams=dgrams, run=self._run_ctx)
+            yield Event(dgrams=dgrams, run=self._run_ctx, proxy_evt=proxy_evt)

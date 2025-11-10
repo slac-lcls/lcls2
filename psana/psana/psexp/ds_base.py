@@ -225,7 +225,7 @@ class DataSourceBase(abc.ABC):
         }
         for k in kwargs:
             if k not in known_keys:
-                self.logger.debug(f"Unrecognized kwarg={k}")
+                self.logger.warning(f"Unrecognized kwarg={k}")
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array

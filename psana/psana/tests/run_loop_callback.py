@@ -1,6 +1,5 @@
 # TODO:
 # - Keep timestamp callback
-# - Eliminate destination and filter_fn
 # - Adding EpicStore and ScanStore
 from psana import DataSource
 import os
