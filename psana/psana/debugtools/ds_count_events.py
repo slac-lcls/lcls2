@@ -21,15 +21,16 @@ Other options:
     --detectors q_atmopal rix_fim0
     --max_events 10000
     --log_level INFO
+    --dir /sdf/data/lcls/ds/rix/rix100818424/xtc
 """
 
 import argparse
-from psana import DataSource
-import numpy as np
-from mpi4py import MPI
-import time
 import os
+import time
+import numpy as np
 import psutil
+from mpi4py import MPI
+from psana import DataSource
 
 
 def print_memory_usage(rank, i_evt, interval=10):
@@ -46,6 +47,7 @@ def parse_args():
     parser.add_argument('-e', '--exp', help='Experiment name, e.g. rix100818424')
     parser.add_argument('-r', '--run', type=int, help='Run number, e.g. 52')
     parser.add_argument('--xtc_files', nargs='+', help='Explicit list of XTC2 files to process')
+    parser.add_argument('--dir', help='Path to directory containing XTC2 files')
     parser.add_argument('-d', '--detectors', nargs='*', default=[], help='List of detector names')
     parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
@@ -78,12 +80,19 @@ def create_datasource(args, rank):
     else:
         if args.exp is None or args.run is None:
             raise ValueError("Either --xtc_files or both --exp and --run must be provided.")
-        if args.live:
-            dir_path = f"/sdf/data/lcls/drpsrcf/ffb/tmo/{args.exp}/xtc"
+
+        # Determine xtc directory path
+        if args.dir:
+            dir_path = args.dir
+        elif args.live:
+            # Construct default FFB path for live mode
+            dir_path = f"/sdf/data/lcls/drpsrcf/ffb/{args.exp[:3]}/{args.exp}/xtc"
         else:
             dir_path = None
+
         if rank == 0:
             print(f"Using experiment={args.exp}, run={args.run}, dir={dir_path}")
+
         ds = DataSource(
             exp=args.exp,
             run=args.run,
@@ -105,6 +114,7 @@ def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
+
     comm.Barrier()
     start = MPI.Wtime()
     t0 = time.time()

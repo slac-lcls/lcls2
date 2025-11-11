@@ -12,7 +12,7 @@ class DrpDataSource(DataSourceBase):
         super(DrpDataSource, self).__init__(**kwargs)
         self.tag = self.drp
         self.runnum_list = [0]
-        self.dsparms.set_use_smds([False] * len(self.runnum_list))  # disable SMDs
+        self.dsparms.update_smd_state([None], [False] * len(self.runnum_list))  # disable SMDs
         self.runnum_list_index = 0
 
         self.det_segment = kwargs["drp"].det_segment

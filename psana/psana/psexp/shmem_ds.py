@@ -14,7 +14,7 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0]
         self.runnum_list_index = 0
-        self.dsparms.set_use_smds([False] * len(self.runnum_list))  # disable SMDs
+        self.dsparms.update_smd_state([None], [False] * len(self.runnum_list))  # disable SMDs
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
