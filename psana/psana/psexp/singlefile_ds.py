@@ -10,7 +10,7 @@ class SingleFileDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
-        self.dsparms.set_use_smds([False] * len(self.runnum_list))  # disable SMDs unsupported in single file mode
+        self.dsparms.update_smd_state([None], [False] * len(self.runnum_list))  # disable SMDs unsupported in single file mode
         self.runnum_list_index = 0
         self._setup_run()
         super()._start_prometheus_client()
