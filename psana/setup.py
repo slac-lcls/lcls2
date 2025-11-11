@@ -97,21 +97,23 @@ ENTRY_POINTS = {}
 this_file = os.path.abspath(__file__)
 repo_root = os.path.abspath(os.path.join(this_file, "../.."))
 if xtcdatadir_env:
-    xtc_headers =  os.path.join(xtcdatadir, 'include')
-    xtc_lib_path = os.path.join(xtcdatadir, 'lib')
+    xtc_headers = os.path.join(repo_root, "xtcdata")
+    xtc_lib_path = os.path.join(xtcdatadir)
 else:
     xtc_headers = os.path.join(repo_root, "xtcdata")
-    xtc_lib_path = os.path.join(repo_root, "build", "xtcdata", "xtcdata", "xtc")
+    xtc_lib_path = os.path.join(repo_root, "xtcdata", "xtc")
 
 if psalgdir_env:
-    psalg_headers =  os.path.join(psalgdir, 'include')
-    psalg_lib_path =  os.path.join(psalgdir, 'lib')
+    psalg_headers =  os.path.join(repo_root, "psalg")
+    psalg_lib_path =  glob.glob(os.path.join(psalgdir, '*/'))
 else:
     psalg_headers =  os.path.join(repo_root, "psalg")
     psalg_lib_path = glob.glob(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "../build/psalg/psalg/*"))
 )
-    
+
+print(f"DEBUGGING: {psalg_lib_path} {xtc_lib_path}") 
+
 psana_headers = os.path.join(repo_root, "psana", "psana")
 
 psana_compile = extra_cxx_compile_args.copy()

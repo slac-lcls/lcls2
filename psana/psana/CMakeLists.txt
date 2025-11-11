@@ -19,10 +19,12 @@ target_link_libraries(psana PUBLIC xtc)
 
 add_custom_command(TARGET psana
     POST_BUILD
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/psana"
-    COMMAND echo "BUILDING EXTENSIONS"
-    COMMAND python setup.py build_ext -f --inplace
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
     COMMAND echo "PIP INSTALLING PSANA"
-    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
+    COMMAND ${CMAKE_COMMAND} -E env
+        INSTDIR=${CMAKE_INSTALL_PREFIX}
+        PSALGDIR=${CMAKE_BINARY_DIR}/psalg/psalg
+        XTCDATADIR=${CMAKE_BINARY_DIR}/xtcdata/xtcdata/xtc
+        pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
 )
 
