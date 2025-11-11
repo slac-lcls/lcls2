@@ -173,12 +173,11 @@ install(TARGETS psalg
     RUNTIME DESTINATION bin
 )
 
-message(STATUS "CMAKE_SOURCE_DIR is: ${CMAKE_SOURCE_DIR}")
 add_custom_command(TARGET psalg
     POST_BUILD
-    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/psalg"
-    COMMAND echo "SETTING PSALG ENTRY POINTS"
-    COMMAND python setup.py build_ext -f --inplace
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
     COMMAND echo "PIP INSTALLING PSALG"
-    COMMAND pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
+    COMMAND ${CMAKE_COMMAND} -E env
+        INSTDIR=${CMAKE_INSTALL_PREFIX}
+        pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
 )
