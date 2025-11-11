@@ -6,6 +6,10 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
 
+#ifndef NVTX_DISABLE                    // Defined, or not, in drpGpu/MemPool.hh
+#include <cuda_profiler_api.h>
+#endif
+
 #define PY_RELEASE_GIL    PyEval_SaveThread()
 #define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
 #define PY_RELEASE_GIL_GUARD    }
@@ -13,6 +17,9 @@
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+
+static const char* const MAG_ON  = "\033[0;35m";
+static const char* const COL_OFF = "\033[0m";
 
 
 // _dehex - convert a hex std::string to an array of chars
@@ -438,9 +445,17 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
+#ifndef NVTX_DISABLE
+        //logging::info("%sEnabling GPU Profiler data collection%s", MAG_ON, COL_OFF);
+        //cudaProfilerStart();
+#endif
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
+#ifndef NVTX_DISABLE
+        //cudaProfilerStop();
+        //logging::info("%sDisabled GPU Profiler data collection%s", MAG_ON, COL_OFF);
+#endif
         unsigned error = m_det->disable(xtc, bufEnd, phase1Info);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::disable()";

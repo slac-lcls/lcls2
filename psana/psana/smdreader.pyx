@@ -6,6 +6,7 @@ from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
 from parallelreader cimport Buffer, ParallelReader
+from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FAILED, is_map_failed
 
 import os
 import time
@@ -136,15 +137,30 @@ cdef class SmdReader:
         # Sets event frequency that fake EndStep/BeginStep pair is inserted.
         self.fakestep_flag = int(os.environ.get('PS_FAKESTEP_FLAG', 0))
 
+    cdef void _init_send_buffers(self):
+        cdef Py_ssize_t i
+        cdef void* p
+        for i in range(self.n_eb_nodes):
+            p = mmap(NULL, self.sendbufsize, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+            if is_map_failed(p):
+                raise MemoryError("SmdReader: mmap(send_buf) failed")
+            self.send_bufs[i].chunk = <char*>p
+            # initialize metadata if you track it (optional)
+            self.send_bufs[i].ready_offset   = 0
+            self.send_bufs[i].n_ready_events = 0
+            self.send_bufs[i].seen_offset    = 0
+            self.send_bufs[i].n_seen_events  = 0
+            self.send_bufs[i].timestamp      = 0
+            self.send_bufs[i].err_code       = 0
+
     def __dealloc__(self):
         cdef Py_ssize_t i
         for i in range(self.n_eb_nodes):
-            free(self.send_bufs[i].chunk)
-
-    cdef void _init_send_buffers(self):
-        cdef Py_ssize_t i
-        for i in range(self.n_eb_nodes):
-            self.send_bufs[i].chunk      = <char *>malloc(self.sendbufsize)
+            if self.send_bufs[i].chunk != NULL:
+                munmap(<void*>self.send_bufs[i].chunk, self.sendbufsize)
+        if self.send_bufs != NULL:
+            free(self.send_bufs)
 
     def set_configs(self, configs):
         # SmdReaderManager calls view (with batch_size=1)  at the beginning
@@ -152,7 +168,7 @@ cdef class SmdReader:
         # creating any fake dgrams using DgramEdit.
         self.configs = configs
 
-    def force_read(self, smd_inprogress_converted):
+    def force_read(self):
         """
         Force a full read across all streams.
 

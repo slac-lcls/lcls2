@@ -26,7 +26,7 @@ import psana.pyalgos.generic.Graphics as gr
 
 def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.01, frachi=0.99):
     """ returns tuple of intensity limits (amin, amax) evaluated from arr or passed directly."""
-    #print('XXX arr_median_limits arr: %s\namin:%s amax:%s nneg:%s npos:%s fraclo:%.3f frachi:%.3f'%\
+    #print('arr_median_limits arr: %s\namin:%s amax:%s nneg:%s npos:%s fraclo:%.3f frachi:%.3f'%\
     #(str(arr), str(amin), str(amax), str(nneg), str(npos), fraclo, frachi))
 
     if not(None in (amin, amax)): return amin, amax
@@ -165,7 +165,7 @@ class fleximage(flexbase):
         """use kwa: arr=arr, nneg=1, npos=3 OR arr, fraclo=0.05, frachi=0.95"""
         arr = kwa.get('arr', img)
         amin, amax = self._intensity_limits(arr, **kwa)
-        logger.debug('XXX fleximage.update amin: %.3f amax: %.3f' % (amin, amax))
+        logger.debug('fleximage.update amin: %.3f amax: %.3f' % (amin, amax))
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
         #gr.show(mode=1)

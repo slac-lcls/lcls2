@@ -26,6 +26,10 @@ class NullDataSource(DataSourceBase):
         self.smalldata_obj = SmallData(**self.smalldata_kwargs)
         if self.smalldata_obj.get_rank() == 0:
             self.setup_psplot_live()
+        super()._start_prometheus_client(mpi_rank=self.smalldata_obj.get_world_rank())
+
+    def __del__(self):
+        super()._end_prometheus_client()
 
     def runs(self):
         yield NullRun()

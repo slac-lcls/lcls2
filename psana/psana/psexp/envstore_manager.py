@@ -17,7 +17,7 @@ class EnvStoreManager(object):
     val = det.cfgscan.user.black_level(evt)
     """
 
-    def __init__(self, configs, run=None):
+    def __init__(self, configs):
         self.configs = configs
         envstore_names = ["epics", "scan"]
         # This was defined outside init. This caused self.store in previously

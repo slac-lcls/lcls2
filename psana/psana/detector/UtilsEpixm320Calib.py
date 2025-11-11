@@ -24,7 +24,7 @@ Created on 2024-04-09 by Mikhail Dubrovin
 
 import sys
 import psana
-from psana.detector.Utils import info_dict
+from psana.detector.Utils import info_dict, selected_record
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.UtilsCalib import * # logging
 import psana.detector.UtilsCalib as uc
@@ -35,14 +35,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-
-
-def selected_record(i, events=1000000):
-    return i<5\
-       or (i<50 and not i%10)\
-       or not i%100\
-       or i>events-5
-
+CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
+CTYPES_ALL = CTYPES_DARK + ('status_extra', 'pixel_gain', 'pixel_offset')
+KEY_CTYPE = {'p' : 'pedestals',
+             'r' : 'pixel_rms',
+             's' : 'pixel_status',
+             'x' : 'pixel_max',
+             'n' : 'pixel_min',
+             'e' : 'status_extra',
+             'o' : 'pixel_offset',
+             'g' : 'pixel_gain'}
 
 def pedestals_calibration(parser):
 
@@ -191,7 +193,7 @@ def pedestals_calibration(parser):
                                      (ievt, orun.runnum, istep, count_none))
       if True:
           dpo.summary()
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+          ctypes = CTYPES_DARK #('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
           arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
           arr_max, arr_min = dpo.constants_max_min()
           consts = arr_av1, arr_rms, arr_sta, arr_max, arr_min
@@ -238,7 +240,7 @@ def pedestals_calibration(parser):
              +'\n  created  for gain modes: %s' % str(gainmodes)\
              +'\n  expected for gain modes: %s' % str(odet.raw._gain_modes))
 
-  ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
+  ctypes = CTYPES_DARK #('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
   gmodes = odet.raw._gain_modes #  or gainmodes
   kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
   kwa_depl['exp'] = expname
@@ -340,7 +342,7 @@ def save_constants_in_repository(dic_consts, **kwa):
 
     #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
-    print('XXX uniqueid', uniqueid)
+    logger.info('uniqueid: %s' % uniqueid)
     segid = uniqueid.split('_')[1]
 
     logger.info('\nsave segment constants for gain mode:%s in repo for segment id: %s' % (gainmode, segid))
@@ -348,11 +350,12 @@ def save_constants_in_repository(dic_consts, **kwa):
     for ctype, nda in dic_consts.items():
 
         dir_ct = repoman.makedir_ctype(segid, ctype)
+
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
-        print(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
+        logger.info(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
 
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         ###save_2darray_in_textfile(nda, fname, filemode, fmt)
@@ -385,6 +388,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     segind   = kwa.get('segind', 0)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_gain   = kwa.get('fmt_gain', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
     fmt_max    = kwa.get('fmt_max', '%i')
@@ -395,7 +399,9 @@ def deploy_constants(ctypes, gainmodes, **kwa):
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
-                 'status_extra': fmt_status}
+                 'status_extra': fmt_status,
+                 'pixel_offset': fmt_peds,
+                 'pixel_gain'  : fmt_gain,}
 
 #    if repoman is None:
 #       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
@@ -403,6 +409,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     repoman = set_repoman_and_logger(kwa)
     #dircons = repoman.makedir_constants(dname='constants')
 
+    logger.info('uniqueid: %s' % uniqueid)
     #segid = uniqueid.split('_',1)[-1]
     segid = uniqueid.split('_')[1]
     logger.info('\n\n\ndeploy_constants'\
@@ -441,7 +448,10 @@ def deploy_constants(ctypes, gainmodes, **kwa):
           logger.info(info_ndarr(data, 'constants loaded from file', last=10))
         except AssertionError as err:
           logger.warning(err)
-          data = np.zeros(shape_as_daq, np.uint16)
+          data = np.ones(shape_as_daq, dtype=np.float32) if ctype in ('pixel_gain', 'pixel_rms') else\
+                 np.zeros(shape_as_daq, dtype=np.float32) if ctype in ('pedestals', 'pixel_offset') else\
+                 np.ones(shape_as_daq, dtype=np.uint16) * 1000 if ctype in ('pixel_max',) else\
+                 np.zeros(shape_as_daq, dtype=np.uint16)
           logger.info(info_ndarr(data, 'substitute array with', last=10))
         dic_nda[gm] = data
 
@@ -467,23 +477,82 @@ def deploy_constants(ctypes, gainmodes, **kwa):
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
+def deploy_constants_script(parser):
+
+    args = parser.parse_args()
+    kwa = vars(args)
+
+    repoman = init_repoman_and_logger(parser=parser, **kwa)
+
+    str_dskwargs = kwa.get('dskwargs', None)
+    dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
+    detname = kwa.get('det', None)
+    expname = dskwargs.get('exp', None)
+    runnum  = dskwargs.get('run', None)
+
+    shortname = None
+    kwa_depl = None
+    odet = None
+
+    logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
+    ds = psana.DataSource(**dskwargs)
+    orun = next(ds.runs())
+
+    if expname is None: expname = orun.expt
+    if runnum is None: runnum = orun.runnum
+
+    logger.info('\n==== runnum: %d exp: %s' % (runnum, expname))
+    logger.info(up.info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
+
+    odet = orun.Detector(detname)
+    dettype = odet.raw._dettype
+    repoman.set_dettype(dettype)
+
+    logger.info('created %s detector object' % detname)
+    logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+
+    try:
+      step_docstring = orun.Detector('step_docstring')
+    except:
+      step_docstring = None
+
+    runtstamp = orun.timestamp       # 4193682596073796843 relative to 1990-01-01
+    trun_sec = up.seconds(runtstamp) # 1607569818.532117 sec
+    ts_run, ts_now = tstamps_run_and_now(int(trun_sec))
+
+    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    #kwa_depl['gainmode'] = gainmode
+    kwa_depl['repoman'] = repoman
+
+    longname = kwa_depl['longname'] # odet.raw._uniqueid
+    if shortname is None:
+      shortname = detector_name_short(longname)
+    print('detector long  name: %s' % longname)
+    print('detector short name: %s' % shortname)
+    kwa_depl['shortname'] = shortname
+
+    select  = kwa.get('select', 'psr')
+    print('select', select)
+
+    ctypes = CTYPES_ALL #('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 'pixel_gain', 'pixel_offset')
+    ctypes_sel = [KEY_CTYPE[k] for k in select if k in KEY_CTYPE.keys()]
+
+    print('CTYPES_ALL', CTYPES_ALL)
+    print('ctypes_sel', ctypes_sel)
+
+    gainmodes = odet.raw._gain_modes
+    kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+    kwa_depl['exp'] = expname
+    kwa_depl['det'] = detname
+    kwa_depl['run_orig'] = runnum
+
+    logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
+#    sys.exit('TEST EXIT')
+
+    deploy_constants(ctypes_sel, gainmodes, **kwa_depl)
+
+
 if __name__ == "__main__":
-    """
-    """
-
-    sys.stdout.write(80*'_', '\n')
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.INFO)
-
-    kwa = {\
-        'dskwargs': 'exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/',\
-        'det'     : 'tst_epixm',\
-        'dirrepo' : 'work',\
-        'nrecs1'  : 100,\
-        'nrecs'   : 200,\
-    }
-
-    pedestals_calibration(**kwa)
-    sys.exit('End of %s' % sys.argv[0])
-
+    sys.exit('see commands epixm320_dark_proc and epixm320_deploy_constants')
 
 # EOF

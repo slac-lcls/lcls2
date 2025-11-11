@@ -1,8 +1,6 @@
-import time
 
 from psana import utils
 from psana.dgrammanager import DgramManager
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunShmem
@@ -16,8 +14,9 @@ class ShmemDataSource(DataSourceBase):
         self.tag = self.shmem
         self.runnum_list = [0]
         self.runnum_list_index = 0
+        self.dsparms.update_smd_state([None], [False] * len(self.runnum_list))  # disable SMDs
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         # Setup socket for calibration constant broadcast if supervisor
         # is set (1=I am supervisor, 0=I am not supervisor).
@@ -46,38 +45,39 @@ class ShmemDataSource(DataSourceBase):
         return True
 
     def _setup_beginruns(self):
-        for evt in self.dm:
-            if evt.service() == TransitionId.BeginRun:
-                self.beginruns = evt._dgrams
+        for dgrams in self.dm:
+            if utils.first_service(dgrams) == TransitionId.BeginRun:
+                self.beginruns = dgrams
                 return True
         return False
-
-    def _setup_run_calibconst(self):
-        st = time.monotonic()
-        if self.supervisor:
-            super()._setup_run_calibconst()
-            if self.supervisor == 1:
-                self._pub_socket.send(self._calib_const)
-        else:
-            self._clear_calibconst()
-            self._calib_const = self._sub_socket.recv()
-            self._create_weak_calibconst()
-        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from the current file
-            self._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
     def runs(self):
         while self._start_run():
-            run = RunShmem(self, Event(dgrams=self.beginruns))
+            kwargs = {'shmem_supervisor': self.supervisor,
+                      'shmem_pub_socket': self._pub_socket if self.supervisor == 1 else None,
+                      'shmem_sub_socket': self._sub_socket if self.supervisor == 0 else None}
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunShmem(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                None,                 # SmdReaderManager (None RunSingleFile & RunShmem)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+                **kwargs              # extra shmem args
+            )
             yield run
 
     def is_mpi(self):

@@ -2,7 +2,6 @@ import sys, os
 import time
 import getopt
 import mmap
-import pprint
 import threading
 from collections import deque
 
@@ -12,10 +11,9 @@ try:
 except:
     pass
 from psana import dgram
-from psana.event import Event
 from psana.detector import detectors
 from psana.psexp.event_manager import TransitionId
-from psana.dgramedit import DgramEdit
+from psana import utils
 import numpy as np
 
 
@@ -60,7 +58,6 @@ class DgramManager(object):
         configs=[],
         fds=[],
         tag=None,
-        run=None,
         max_retries=0,
         config_consumers=[],
     ):
@@ -86,7 +83,6 @@ class DgramManager(object):
         }
         self.configs = []
         self._timestamps = []  # built when iterating
-        self._run = run
         self.found_endrun = True
 
         # We check for EndRun when we hit the end of RunSingleFile and RunShmem.
@@ -513,10 +509,11 @@ class DgramManager(object):
         """only support sequential read - no event building"""
         if self.buffered_beginruns:
             self.found_endrun = False
-            evt = Event(self.buffered_beginruns, run=self._run)
-            self._timestamps += [evt.timestamp]
+            dgrams = self.buffered_beginruns
+            ts = utils.first_timestamp(dgrams)
+            self._timestamps.append(ts)
             self.buffered_beginruns = []
-            return evt
+            return dgrams
 
         if self.shmem_cli:
             with self._shmem_lock:
@@ -588,9 +585,9 @@ class DgramManager(object):
             self.set_configs(dgrams)
             return self.__next__()
 
-        evt = Event(dgrams, run=self.get_run())
-        self._timestamps += [evt.timestamp]
-        return evt
+        ts = utils.first_timestamp(dgrams)
+        self._timestamps.append(ts)
+        return dgrams
 
     def jumps(self, dgram_i, offset, size):
         if offset == 0 and size == 0:
@@ -617,19 +614,12 @@ class DgramManager(object):
             self.jumps(dgram_i, offset, size)
             for dgram_i, (offset, size) in enumerate(zip(offsets, sizes))
         ]
-        evt = Event(dgrams, run=self._run)
-        return evt
+        return dgrams
 
     def get_timestamps(self):
         return np.asarray(
             self._timestamps, dtype=np.uint64
         )  # return numpy array for easy search later
-
-    def set_run(self, run):
-        self._run = run
-
-    def get_run(self):
-        return self._run
 
 
 def parse_command_line():
@@ -647,7 +637,7 @@ def parse_command_line():
 
 def getMemUsage():
     pid = os.getpid()
-    ppid = os.getppid()
+    os.getppid()
     cmd = "/usr/bin/ps -q %d --no-headers -eo size" % pid
     p = os.popen(cmd)
     size = int(p.read())

@@ -10,11 +10,105 @@
 #include <net/if.h>
 #include <sys/resource.h>
 #include <ctime>
+#include <csignal>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
 
 using json = nlohmann::json;
+
+static std::string      lAlias;
+static struct sigaction lSigAction;
+static void (*lShutdownAction)();
+
+
+// https://stackoverflow.com/questions/17965/how-to-generate-a-core-dump-in-linux-on-a-segmentation-fault
+static void cleanup()
+{
+  sigemptyset(&lSigAction.sa_mask);
+}
+
+static void dumpStack(const std::string& filePath)
+{
+  /* Got this routine from http://www.whitefang.com/unix/faq_toc.html
+  ** Section 6.5. Modified to redirect to file to prevent clutter
+  */
+  std::string gdb("gdb -q -n -ex bt -ex detach -ex quit -p " +
+                  std::to_string(getpid()) + " > " + filePath);
+
+  system(gdb.c_str());
+}
+
+static std::string mkFilePath(const std::string& ext)
+{
+  time_t rawTime;
+  struct tm* timeInfo;
+  char buffer[32];
+  char hostname[HOST_NAME_MAX];
+  gethostname(hostname, HOST_NAME_MAX);
+
+  std::time(&rawTime);
+  timeInfo = std::localtime(&rawTime);
+  std::strftime(buffer, sizeof(buffer), "~/%Y/%m/%d_%H:%M:%S", timeInfo);
+  std::string filePath(buffer);
+  return filePath + "_" + std::string(hostname) + ":" + lAlias + "." + ext;
+}
+
+static void sigHandler(int sig)
+{
+  logging::debug("sigHandler received signal %d\n", sig);
+  if (sig == SIGSEGV || sig == SIGBUS)
+  {
+    std::string filePath(mkFilePath("dump"));
+    dumpStack(filePath);
+    logging::critical("FATAL: %s Fault - logged StackTrace to %s",
+                      (sig == SIGSEGV) ? "Segmentation" : "Bus",
+                      filePath.c_str());
+  }
+  if (sig == SIGINT || sig == SIGQUIT || sig == SIGTERM)
+  {
+    static unsigned callCount{0};
+    if (callCount++ == 0)
+    {
+      logging::warning("Shutting down on %s signal",
+                       (sig == SIGINT) ? "INT" : ((sig == SIGQUIT) ? "QUIT" : "TERM"));
+
+      lShutdownAction();
+      return;                           // Allow graceful shutdown
+    }
+    logging::critical("Aborting on 2nd signal");
+  }
+  exit(EXIT_FAILURE);
+}
+
+void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
+{
+  lAlias          = alias;
+  lShutdownAction = shutdownAction;
+
+  atexit(cleanup);
+
+  lSigAction.sa_handler = sigHandler;
+  //lSigAction.sa_flags   = SA_RESTART;  // Causes infinite resignal loop
+  sigemptyset(&lSigAction.sa_mask);
+  lSigAction.sa_flags = 0;
+  sigaction(SIGINT, &lSigAction, (struct sigaction *)NULL);
+
+  sigaddset(&lSigAction.sa_mask, SIGSEGV);
+  sigaction(SIGSEGV, &lSigAction, (struct sigaction *)NULL);
+
+  sigaddset(&lSigAction.sa_mask, SIGBUS);
+  sigaction(SIGBUS, &lSigAction, (struct sigaction *)NULL);
+
+  sigaddset(&lSigAction.sa_mask, SIGINT);
+  sigaction(SIGINT,  &lSigAction, (struct sigaction *)NULL);
+
+  sigaddset(&lSigAction.sa_mask, SIGQUIT);
+  sigaction(SIGQUIT, &lSigAction, (struct sigaction *)NULL);
+
+  sigaddset(&lSigAction.sa_mask, SIGTERM);
+  sigaction(SIGTERM, &lSigAction, (struct sigaction *)NULL);
+}
 
 json createMsg(const std::string& key, const std::string& msg_id, size_t sender_id, json& body)
 {

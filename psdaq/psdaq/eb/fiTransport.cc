@@ -140,6 +140,7 @@ FiTransport::FiTransport(uint16_t         srcPort,
                          enum fi_ep_type  epType,
                          uint64_t         caps,
                          uint64_t         mode,
+                         uint64_t         mr_mode,
                          char*            domain,
                          char*            provider) :
   _hints(NULL),
@@ -185,6 +186,7 @@ FiTransport::FiTransport(uint16_t         srcPort,
   _hints->ep_attr->type          = epType;
   _hints->caps                   = caps;
   _hints->mode                   = mode;
+  _hints->domain_attr->mr_mode   = mr_mode;
   _hints->domain_attr->name      = domain;
   _hints->fabric_attr->prov_name = provider;
 }
@@ -1099,7 +1101,8 @@ int FiTransport::_alloc_msgs(void* buf, size_t size)
 
   _remote_cq_data = _init_cq_data(_fi);
 
-  if (_fi->mode & FI_LOCAL_MR)
+  // Obsolete: if (_fi->mode & FI_LOCAL_MR)
+  if (_fi->domain_attr->mr_mode & FI_MR_LOCAL)
   {
     FT_DEBUG("MR starting at %p, of size %zd with key %04x\n",
              buf, size, _MR_KEY);

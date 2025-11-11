@@ -4,7 +4,6 @@ import numpy as np
 
 from psana import utils
 from psana.dgrammanager import DgramManager
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSerial
@@ -28,7 +27,7 @@ class SerialDataSource(DataSourceBase):
         self._setup_run()
         super()._start_prometheus_client()
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def __del__(self):
         super()._close_opened_smd_files()
@@ -75,17 +74,26 @@ class SerialDataSource(DataSourceBase):
     def _start_run(self):
         found_next_run = False
         if self._setup_beginruns():  # try to get next run from current files
-            super()._setup_run_calibconst()
             found_next_run = True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                super()._setup_run_calibconst()
                 found_next_run = True
         return found_next_run
 
     def runs(self):
         while self._start_run():
-            run = RunSerial(self, Event(dgrams=self.beginruns))
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunSerial(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                self.smdr_man,        # SmdReaderManager (may be None for non-SMD modes)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+            )
             yield run
 
     def is_mpi(self):

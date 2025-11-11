@@ -55,28 +55,7 @@ using ms_t     = std::chrono::milliseconds;
 using us_t     = std::chrono::microseconds;
 using ns_t     = std::chrono::nanoseconds;
 
-static struct sigaction      lIntAction;
 static volatile sig_atomic_t lRunning = 1;
-
-void sigHandler( int signal )
-{
-  static unsigned callCount(0);
-
-  if (callCount == 0)
-  {
-    logging::info("Shutting down");
-
-    lRunning = 0;
-  }
-
-  if (callCount++)
-  {
-    logging::critical("Aborting on 2nd ^C");
-
-    sigaction(signal, &lIntAction, NULL);
-    raise(signal);
-  }
-}
 
 
 namespace Pds {
@@ -1211,13 +1190,8 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  struct sigaction sigAction;
-
-  sigAction.sa_handler = sigHandler;
-  sigAction.sa_flags   = SA_RESTART;
-  sigemptyset(&sigAction.sa_mask);
-  if (sigaction(SIGINT, &sigAction, &lIntAction) > 0)
-    logging::warning("Failed to set up ^C handler");
+  // Set up signal handler
+  initShutdownSignals(prms.alias, [](){ lRunning = 0; });
 
   try
   {

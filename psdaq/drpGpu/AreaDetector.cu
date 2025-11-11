@@ -12,6 +12,9 @@ using namespace Pds;
 using namespace Drp::Gpu;
 using json = nlohmann::json;
 
+struct ad_domain{ static constexpr char const* name{"AreaDetector"}; };
+using ad_scoped_range = nvtx3::scoped_range_in<ad_domain>;
+
 
 namespace Drp {
   class PGPEvent;
@@ -120,9 +123,9 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
                                   const unsigned                     panel,
                                   const unsigned                     nPixels)
 {
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
-  int stride = blockDim.x * gridDim.x;
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
+  int stride = gridDim.x * blockDim.x;
+  int pixel  = blockDim.x * blockIdx.x + threadIdx.x;
 
   for (int i = pixel; i < nPixels; i += stride) {
     out[i] = float(in[i]);
@@ -135,17 +138,20 @@ void AreaDetector::recordGraph(cudaStream_t&         stream,
                                const unsigned        panel,
                                uint16_t const* const rawBuffer)
 {
+  ad_scoped_range r{/*"AreaDetector::recordGraph"*/}; // Expose function name via NVTX
+
   auto nPanels = m_dets.size();
 
   // Check that panel is within range
   assert (panel < nPanels);
 
-  int threads = 1024;
-  int blocks  = (m_nPixels + threads-1) / threads; // @todo: Limit this?
+  unsigned   chunks{128};               // Number of pixels handled per thread
+  unsigned   tpb   {256};               // Threads per block
+  unsigned   bpg   {(m_nPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
   auto       pool         = m_pool->getAs<MemPoolGpu>();
   auto const calibBuffers = pool->calibBuffers_d();
   auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, m_nPixels);
+  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, m_nPixels);
 }
 
 // The class factory

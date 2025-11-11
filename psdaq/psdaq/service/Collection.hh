@@ -91,3 +91,5 @@ nlohmann::json createAsyncErrMsg(const std::string& alias, const std::string& er
 nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg);
 
 bool checkResourceLimits();
+
+void initShutdownSignals(const std::string& alias, void (*shutdownAction)());

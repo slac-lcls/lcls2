@@ -35,13 +35,29 @@ ctypedef si.uint8_t    mask_t;
 ctypedef cnp.uint16_t  rawd_t;
 ctypedef cnp.float32_t peds_t;
 ctypedef cnp.float32_t gain_t;
+ctypedef cnp.float32_t cc_t;
 ctypedef cnp.float32_t out_t;
+
+#cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+#  cdef struct ccst:
+#    peds_t pedestal
+#    gain_t gain
+
 
 cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     cnp.double_t calib_std(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask,
                            const size_t& size, const rawd_t databits, out_t *out) except +
-#    cnp.double_t calib_std(rawd_t *raw, peds_t *peds, gain_t *gain, mask_t *mask,
-#                           const size_t& size, const rawd_t databits, out_t *out) except +
+
+
+cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+    cnp.double_t calib_jungfrau_v0(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask,
+                           const size_t& size, out_t *out) except +
+
+
+cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+    cnp.double_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc,
+                           const size_t& size, const size_t& size_blk, out_t *out) except +
+
 
 def cy_calib_std(cnp.ndarray[rawd_t, ndim=1] raw,
                  cnp.ndarray[peds_t, ndim=1] peds,
@@ -51,6 +67,25 @@ def cy_calib_std(cnp.ndarray[rawd_t, ndim=1] raw,
 		 rawd_t databits,
 		 cnp.ndarray[out_t, ndim=1] out):
     return calib_std(&raw[0], &peds[0], &gain[0], &mask[0], size, databits, &out[0]) # returns double time, us
+
+
+def cy_calib_jungfrau_v0(cnp.ndarray[rawd_t, ndim=1] raw,
+                 cnp.ndarray[peds_t, ndim=1] peds,
+		 cnp.ndarray[gain_t, ndim=1] gain,
+		 cnp.ndarray[mask_t, ndim=1] mask,
+		 size_t size,
+		 cnp.ndarray[out_t, ndim=1] out):
+    return calib_jungfrau_v0(&raw[0], &peds[0], &gain[0], &mask[0], size, &out[0]) # returns double time, us
+
+
+def cy_calib_jungfrau_v1(cnp.ndarray[rawd_t, ndim=1] raw,
+                 cnp.ndarray[peds_t, ndim=1] cc,
+		 size_t size,
+		 size_t size_blk,
+		 cnp.ndarray[out_t, ndim=1] out):
+    return calib_jungfrau_v1(&raw[0], &cc[0], size, size_blk, &out[0]) # returns double time, us
+
+
 #    print('raw.dtype =', str(raw.dtype))
 
 # EOF

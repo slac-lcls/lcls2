@@ -1,6 +1,7 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
 from parallelreader cimport Buffer
+from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FAILED, is_map_failed
 
 import os
 
@@ -13,6 +14,10 @@ cimport cython
 from dgramlite cimport Dgram, Xtc
 
 from psana.psexp import TransitionId
+
+# Linux only
+cdef extern from "malloc.h":
+    int malloc_trim(size_t)
 
 
 cdef class ParallelReader:
@@ -52,6 +57,7 @@ cdef class ParallelReader:
     cdef void _init_buffers(self, Buffer* bufs):
         cdef Py_ssize_t i
         cdef Buffer* buf
+        cdef void* p
         for i in range(self.nfiles):
             buf                 = &(bufs[i])
             buf.got             = 0
@@ -62,7 +68,12 @@ cdef class ParallelReader:
             buf.timestamp       = 0
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
-            buf.chunk      = <char *>malloc(self.chunksize)
+            # mmap the chunk
+            p = mmap(NULL, self.chunksize, PROT_READ | PROT_WRITE,
+                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+            if p == <void*>-1:  # MAP_FAILED
+                raise MemoryError("mmap failed")
+            buf.chunk = <char*>p
             buf.ts_arr     = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
             buf.st_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
@@ -75,12 +86,17 @@ cdef class ParallelReader:
         if bufs:
             for i in range(self.nfiles):
                 buf = &(bufs[i])
-                free(buf.chunk)
+                if buf.chunk != NULL:
+                    munmap(<void*>buf.chunk, self.chunksize)
                 free(buf.ts_arr)
                 free(buf.sv_arr)
                 free(buf.st_offset_arr)
                 free(buf.en_offset_arr)
             free(bufs)
+            try:
+                malloc_trim(0)
+            except:
+                 pass
 
     @cython.boundscheck(False)
     cdef void force_read(self):

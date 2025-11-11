@@ -11,8 +11,16 @@
 
 #include <cuda_runtime.h>
 #include <cuda/atomic>
+#include <nvtx3/nvtx3.hpp>
 
 #include "drp/drp.hh"
+
+// NVTX provides the ability to annotate code and structures for the purpose of
+// making traces in the Nsight Systems profiler more easily identifiable.  It
+// nominally adds very little overhead but the documentation warns against
+// instrumenting code that takes less than 1 us to run.  The NVTX_DISABLE macro
+// can be defined to remove the NVTX calls from the codebase.
+//#define NVTX_DISABLE
 
 // If the HOST_REARMS_DMA  macro is defined, the GPU DRP can be run without
 // privileges.  The CPU rearms the DMA buffers for writing as early as possible,

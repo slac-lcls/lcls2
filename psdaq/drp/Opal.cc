@@ -18,6 +18,8 @@
 #include <fcntl.h>
 #include <stdint.h>
 
+#include <algorithm>
+
 using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -113,6 +115,7 @@ namespace Drp {
         double                *m_vec;
         pvd::shared_vector<const double> m_ttvec;
         const char            *m_ttpv;
+        Pds::Semaphore        m_ttpv_sem;
     };
 
     class OpalTTSim {
@@ -357,7 +360,8 @@ OpalTT::OpalTT(Opal& d, Parameters* para) :
     m_background_empty(true),
     m_fex             (para),
     m_vec             (new double[6]),
-    m_ttvec           (m_vec,0,6) 
+    m_ttvec           (m_vec,0,6),
+    m_ttpv_sem        (Pds::Semaphore::FULL)
 {
     m_ttpv = MLOOKUP(m_para->kwargs,"ttpv",0);
     if (m_ttpv) {
@@ -413,7 +417,7 @@ unsigned OpalTT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Confi
 
     // set up the names for L1Accept data
     { m_fexNamesId = NamesId(m_det.nodeId, EventNamesIndex+1);
-        Alg alg("ttfex", 2, 1, 0);
+        Alg alg("ttfex", 2, 1, 1);
         Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                                   m_para->detName.c_str(), alg,
                                                   m_para->detType.c_str(), m_para->serNo.c_str(), m_fexNamesId, m_para->detSegment);
@@ -455,10 +459,16 @@ unsigned OpalTT::configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Confi
 
 bool OpalTT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >& subframes)
 {
-    m_fex.reset();
-
     std::vector<double> sig, ref;
-    OpalTTFex::TTResult result = m_fex.analyze(subframes,sig,ref);
+    /* Vector `vec` is std::vector<double> and in order:
+     * [0]: filtered_position
+     * [1]: filtered_pos_ps
+     * [2]: amplitude
+     * [3]: next_amplitude
+     * [4]: ref_amplitude
+     * [5]: filtered_fwhm
+     */
+    auto [vec, result] = m_fex.analyze(subframes,sig,ref);
 
     if (result == OpalTTFex::INVALID) {
         xtc.damage.increase(Damage::UserDefined);
@@ -466,23 +476,27 @@ bool OpalTT::event(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcData::
     else if (result == OpalTTFex::VALID) {
         if (m_ttpv) {
             //  Live feedback
-            m_vec[0] = m_fex.filtered_position();
-            m_vec[1] = m_fex.filtered_pos_ps();
-            m_vec[2] = m_fex.amplitude();
-            m_vec[3] = m_fex.next_amplitude();
-            m_vec[4] = m_fex.ref_amplitude();
-            m_vec[5] = m_fex.filtered_fwhm();
+            m_ttpv_sem.take();
+            std::copy(vec.begin(), vec.end(), m_vec);
             m_fex_pv.put(m_request).set<const double>("value",m_ttvec).exec();
+            m_ttpv_sem.give();
         }
         //  Insert the results
         CreateData cd(xtc, bufEnd, m_det.namesLookup(), m_fexNamesId);
-        cd.set_value(FexDef::ampl      , m_fex.amplitude());
-        cd.set_value(FexDef::fltpos    , m_fex.filtered_position());
-        cd.set_value(FexDef::fltpos_ps , m_fex.filtered_pos_ps());
-        cd.set_value(FexDef::fltposfwhm, m_fex.filtered_fwhm());
-        cd.set_value(FexDef::nxtampl   , m_fex.next_amplitude());
-        cd.set_value(FexDef::refampl   , m_fex.ref_amplitude());
-
+        /* Vector is in order:
+         * [0]: filtered_position
+         * [1]: filtered_pos_ps
+         * [2]: amplitude
+         * [3]: next_amplitude
+         * [4]: ref_amplitude
+         * [5]: filtered_fwhm
+         */
+        cd.set_value(FexDef::ampl      , vec[2]);
+        cd.set_value(FexDef::fltpos    , vec[0]);
+        cd.set_value(FexDef::fltpos_ps , vec[1]);
+        cd.set_value(FexDef::fltposfwhm, vec[5]);
+        cd.set_value(FexDef::nxtampl   , vec[3]);
+        cd.set_value(FexDef::refampl   , vec[4]);
 #define copy_projection(atype, src, index) {                            \
             unsigned shape[1];                                          \
             shape[0] = src.size();                                      \

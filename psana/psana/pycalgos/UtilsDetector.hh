@@ -27,13 +27,19 @@ typedef uint16_t rawd_t;
 typedef float    peds_t;
 typedef float    gain_t;
 typedef float    out_t;
+typedef float    cc_t; 
 typedef uint8_t  mask_t;
 
-  time_t calib_std(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
-  //time_t calib_std_v2(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
-  //time_t calib_std_v3(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
-  //time_t calib_std_v2(rawd_t *raw, peds_t *peds, gain_t *gain, mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
-  //time_t calib_std(rawd_t *raw, peds_t *peds, gain_t *gain, mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
+  struct ccstruct{
+    peds_t pedestal;
+    gain_t gain;
+  };
+
+  void  calib_jungrfau_blk_v1(const rawd_t *raw, const cc_t *cc, const size_t& size_blk, out_t *out);
+
+  time_t calib_std        (const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, const rawd_t databits, out_t *out);
+  time_t calib_jungfrau_v0(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, out_t *out);
+  time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
 
 }; // namespace utilsdetector
 

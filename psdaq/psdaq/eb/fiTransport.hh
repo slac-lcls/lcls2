@@ -53,6 +53,7 @@ namespace Pds {
                   enum fi_ep_type epType,
                   uint64_t        caps,
                   uint64_t        mode,
+                  uint64_t        mr_mode,
                   char*           domain,
                   char*           provider);
       ~FiTransport();

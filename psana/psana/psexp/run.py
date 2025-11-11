@@ -1,14 +1,19 @@
 import inspect
 import time
 import os
+import gc
 from contextlib import contextmanager
+from multiprocessing import Value
+from types import SimpleNamespace
 
 from psana import dgram
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
 from psana.event import Event
-from psana.utils import Logger, WeakDict
+from psana.pscalib.app.calib_prefetch import calib_utils
+import psana.pscalib.calib.MDBWebUtils as wu
+from psana import utils
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -16,6 +21,7 @@ from .events import Events
 from .smd_events import SmdEvents
 from .step import Step
 from .tools import RunHelper
+from .run_ctx import RunCtx
 
 
 def _is_hidden_attr(obj, name):
@@ -85,42 +91,84 @@ class StepEvent(object):
 
 
 class Run(object):
-    def __init__(self, ds):
-        self.ds = ds
-        self.expt, self.runnum, self.timestamp = ds._get_runinfo()
-        self.dsparms = ds.dsparms
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams):
+        self.expt, self.runnum, self.timestamp = (expt, runnum, timestamp)
+        self.dsparms = dsparms
+        self.dm = dm
+        self.smdr_man = smdr_man
+        self._run_ctx = RunCtx(expt, runnum, timestamp, dsparms.intg_det)
+        self._evt = Event(dgrams=begingrun_dgrams, run=self._run_ctx)
         self.configs = None
         self.smd_dm = None
         self.nfiles = 0
         self.scan = False
         self.smd_fds = None
 
-        self.logger = getattr(ds, "logger", None)
-        if self.logger is None:
-            self.logger = Logger(name="Run")
+        self.shared_state = SimpleNamespace(
+            terminate_flag=Value('b', False)
+        )
 
-        if hasattr(ds, "dm"):
-            ds.dm.set_run(self)
-        if hasattr(ds, "smdr_man"):
-            ds.smdr_man.set_run(self)
+        # Calibration constant structures
+        self._calib_const = None
+        """Holds calibration constants for all detectors."""
+        self.dsparms.calibconst = {}
+
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
+
+        self.build_detinfo_dict()
 
         RunHelper(self)
-
-    @property
-    def dm(self):
-        return self.ds.dm
 
     def run(self):
         """Returns integer representaion of run no.
         default: (when no run is given) is set to -1"""
         return self.runnum
 
+    def events(self):
+        for dgrams in self._evt_iter:
+            if self._handle_transition(dgrams):
+                # EndRun handling here ends the stream
+                if utils.first_service(dgrams) == TransitionId.EndRun:
+                    return
+                continue  # swallow non-L1 transitions in events() stream
+            # L1Accept: construct Event at the Run level
+            yield Event(dgrams=dgrams, run=self._run_ctx)
+
+    def steps(self):
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            if TransitionId.isEvent(svc):
+                # steps() only yields on BeginStep transitions; ignore L1
+                continue
+            # Update envstore for every transition
+            self._update_envstore_from_dgrams(dgrams)
+
+            if svc == TransitionId.EndRun:
+                return
+            if svc == TransitionId.BeginStep:
+                yield Step(Event(dgrams=dgrams, run=self._run_ctx), self._evt_iter, self._run_ctx)
+
+    def terminate(self):
+        """Sets terminate flag
+
+        The Events iterators of all Run types check this flag
+        to see if they need to stop (raise StopIterator for
+        RunSerial, RunShmem, & RunSinglefile or skip events
+        for RunParallel (see BigDataNode implementation).
+
+        Note that mpi_ds implements this differently by adding
+        Isend prior to setting this flag.
+        """
+        flag = self.shared_state.terminate_flag
+        flag.value = True
+
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constants - set default value to None
-        if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
-            self.dsparms.calibconst = {det_name: WeakDict({})}
-        elif det_name not in self.dsparms.calibconst:
-            self.dsparms.calibconst[det_name] = WeakDict({})
+        if self._calib_const is None:
+            self._calib_const = {}
+        if det_name not in self._calib_const:
+            self._calib_const[det_name] = {}
+        self.dsparms.calibconst = self._calib_const
 
     def _get_valid_env_var_name(self, det_name):
         # Check against detector names
@@ -132,6 +180,96 @@ class Run(object):
             return self.esm.stores["epics"].epics_inv_mapper[det_name]
 
         return None
+
+    def _clear_calibconst(self):
+        """Explicitly clear calibration constants and force garbage collection.
+
+        Helps to prevent leakage of calibration constants between runs.
+        """
+        if self._calib_const is not None:
+            self._calib_const = None
+            self.dsparms.calibconst = {}
+            gc.collect()
+        self._calib_const = {}
+        self.dsparms.calibconst = self._calib_const
+
+    def _setup_run_calibconst(self):
+        """
+        Initialize the `dsparms.calibconst` dictionary with calibration constants.
+
+        If `use_calib_cache` is enabled, attempts to load calibration constants from
+        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
+        fetches calibration constants directly from the database for each detector.
+
+        This function supports skipping selected detectors via `skip_calib_load`.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        expt, runnum = self.expt, self.runnum
+        self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
+
+        self._clear_calibconst()
+
+        if self.dsparms.use_calib_cache:
+            self.logger.debug("using calibration constant from shared memory, if exists")
+            calib_const, existing_info, max_retry = (None, None, 0)
+            latest_info = self.get_filtered_detinfo()
+
+            while not calib_const and max_retry < self.dsparms.fetch_calib_cache_max_retries:
+                try:
+                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
+                except Exception as e:
+                    self.logger.warning(f"failed to retrieve calib_const: {e}")
+                    loaded_data = None
+
+                if loaded_data is not None:
+                    self._calib_const = loaded_data.get("calib_const") or {}
+                    existing_info = loaded_data.get("det_info")
+
+                if self._calib_const:
+                    if existing_info is None:
+                        self.logger.warning("calib_const loaded but existing_info is missing")
+                    elif not latest_info.items() <= existing_info.items():
+                        self.logger.warning("det_info in pickle file is incomplete for this run")
+                        self.logger.warning(f"{existing_info=}")
+                        self.logger.warning(f"{latest_info=}")
+                        self._calib_const = {}
+                    else:
+                        self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
+                        break
+
+                max_retry += 1
+                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.dsparms.fetch_calib_cache_max_retries})")
+                time.sleep(1)
+        else:
+            if self._calib_const is None:
+                self._calib_const = {}
+            for det_name, configinfo in self.dsparms.configinfo_dict.items():
+                if expt:
+                    if expt == "xpptut15":
+                        det_uniqueid = "cspad_detnum1234"
+                    else:
+                        det_uniqueid = configinfo.uniqueid
+                    if hasattr(self.dsparms, "skip_calib_load") and (det_name in self.dsparms.skip_calib_load or self.dsparms.skip_calib_load=="all"):
+                        self._calib_const[det_name] = {}
+                        continue
+                    st = time.monotonic()
+                    calib_const = wu.calib_constants_all_types(
+                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dsparms.dbsuffix
+                    )
+                    en = time.monotonic()
+                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    self._calib_const[det_name] = calib_const or {}
+                else:
+                    self.logger.info(
+                        "Warning: cannot access calibration constant (exp is None)"
+                    )
+                    self._calib_const[det_name] = {}
+        self.dsparms.calibconst = self._calib_const
 
     def Detector(self, name, accept_missing=False, **kwargs):
 
@@ -182,8 +320,8 @@ class Run(object):
                 setattr(det, drp_class_name, iface)
 
                 # Optionally load cached _calibc_ attributes
-                if getattr(self.ds, "use_calib_cache", False) and det_name in getattr(self.ds, "cached_detectors", []):
-                    max_retries = getattr(self.ds, "fetch_calib_cache_max_retries", 3)
+                if getattr(self.dsparms, "use_calib_cache", False) and det_name in getattr(self.dsparms, "cached_detectors", []):
+                    max_retries = getattr(self.dsparms, "fetch_calib_cache_max_retries", 3)
                     for attempt in range(max_retries):
                         try:
                             if DetectorCacheManager.load(det_name, iface, logger=self.logger):
@@ -245,27 +383,57 @@ class Run(object):
     def detnames(self):
         return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
-    @property
-    def detinfo(self):
+    def get_filtered_detinfo(self):
         """
-        Returns a mapping of detector interface attributes, guarding against
-        infinite recursion during attribute enumeration.
+        Returns detector info filtered by detector names present in detinfo.
+
+        Returns:
+            dict[str, str]: A dictionary mapping detector names to unique IDs,
+                            filtered to only include detectors present in self.detinfo.
+        """
+        return {
+            k: v.uniqueid
+            for k, v in self.dsparms.configinfo_dict.items()
+            if k in {dk[0] for dk in self.detinfo.keys()}
+        }
+
+    def build_detinfo_dict(self):
+        """
+        Creates a dictionary of detector interfaces and their enumerated attributes,
+        using minimal instantiation with config=None, calib=None, env=None.
+
+        Returns:
+            dict[tuple[str, str], Any]: Mapping of (detname, xface_name) -> attribute summary
         """
         info = {}
-        for (detname, det_xface_name), _ in self.dsparms.det_classes["normal"].items():
+        for (detname, xface_name), drp_class in self.dsparms.det_classes["normal"].items():
             try:
-                xface_obj = getattr(self.Detector(detname), det_xface_name)
-                info[(detname, det_xface_name)] = _enumerate_attrs(xface_obj)
+                # Minimal instantiation with None inputs to avoid side effects
+                config = self.dsparms.configinfo_dict.get(detname, None)
+                calib, env_store, var_name = None, None, None
+                iface = drp_class(
+                    detname,
+                    xface_name,
+                    config,
+                    calib,
+                    env_store,
+                    var_name,
+                )
+
+                info[(detname, xface_name)] = _enumerate_attrs(iface)
+
             except RecursionError:
                 msg = (
-                f"<error: RecursionError while walking {detname}.{det_xface_name}> "
-                f"(Consider reviewing custom attributes for missing '_' prefix)"
-            )
-                info[(detname, det_xface_name)] = msg
+                    f"<error: RecursionError while walking {detname}.{xface_name}> "
+                    f"(Consider reviewing custom attributes for missing '_' prefix)"
+                )
                 self.logger.warning(msg)
+                info[(detname, xface_name)] = msg
+
             except Exception as e:
-                info[(detname, det_xface_name)] = f"<error: {e}>"
-        return info
+                info[(detname, xface_name)] = f"<error: {e}>"
+                self.logger.debug(f"[detinfo-lite] Skipped {detname}.{xface_name}: {e}", exc_info=True)
+        self.detinfo = info
 
     @property
     def epicsinfo(self):
@@ -288,179 +456,281 @@ class Run(object):
 
     def step(self, evt):
         step_dgrams = self.esm.stores["scan"].get_step_dgrams_of_event(evt)
-        return Event(dgrams=step_dgrams, run=self)
+        return Event(dgrams=step_dgrams, run=self._run_ctx)
 
     def _setup_envstore(self):
         assert hasattr(self, "configs")
         assert hasattr(self, "_evt")  # BeginRun
-        self.esm = EnvStoreManager(self.configs, run=self)
+        self.esm = EnvStoreManager(self.configs)
         # Special case for BeginRun - normally EnvStore gets updated
         # by EventManager but we get BeginRun w/o EventManager
         # so we need to update the EnvStore here.
         self.esm.update_by_event(self._evt)
 
+    def _update_envstore_from_dgrams(self, dgrams):
+        """
+        Update EnvStore with a transition carried by `dgrams`.
+        Wraps the list in a transient Event to reuse existing EnvStoreManager API.
+        """
+        # EnvStoreManager currently expects an Event; keep that API.
+        evt = Event(dgrams=dgrams, run=self._run_ctx)
+        self.esm.update_by_event(evt)
+
+    def _handle_transition(self, dgrams):
+        """Common transition handling for non-L1Accept dgrams."""
+        svc = utils.first_service(dgrams)
+        if TransitionId.isEvent(svc):
+            return False  # caller should treat it as an L1 event
+        # Update env on every non-L1 transition (BeginRun/EndRun/BeginStep/EndStep/etc.)
+        self._update_envstore_from_dgrams(dgrams)
+        return True
+
 
 class RunShmem(Run):
     """Yields list of events from a shared memory client (no event building routine)."""
-
-    def __init__(self, ds, run_evt):
-        super(RunShmem, self).__init__(ds)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, **kwargs):
+        super(RunShmem, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(ds, self)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
+        self.supervisor = kwargs.get('shmem_supervisor', -1)
+        self._pub_socket = kwargs.get('shmem_pub_socket', None)
+        self._sub_socket = kwargs.get('shmem_sub_socket', None)
+        self._setup_run_calibconst()
 
-    def events(self):
-
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun:
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
+    def _setup_run_calibconst(self):
+        st = time.monotonic()
+        if self.supervisor:
+            super()._setup_run_calibconst()
+            if self.supervisor == 1:
+                self._pub_socket.send(self._calib_const)
+        else:
+            self._clear_calibconst()
+            self._calib_const = self._sub_socket.recv()
+            self.dsparms.calibconst = self._calib_const
+        self.logger.debug(f"Exit _setup_run_calibconst total time: {time.monotonic()-st:.4f}s.")
 
 
 class RunDrp(Run):
     """Yields list of events from drp python (no event building routine)."""
-
-    def __init__(self, ds, run_evt):
-        super(RunDrp, self).__init__(ds)
-        self._evt = run_evt
-        self._ds = ds
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, **kwargs):
+        super(RunDrp, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(self._ds, self)
+
+        # DgramEdit for editing events
+        self.config_dgramedit = DgramEdit(configs[-1], bufsize=dm.transition_bufsize)
+        self.curr_dgramedit = self.config_dgramedit
+        self._ed_detectors = []
+        self._ed_detectors_handles = {}
+        self._edtbl_config = True  # allow editing configuration before event iteration
+        self._primed = False  # run priming not yet done
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
+        # For distributing calibconst
+        self._is_supervisor = kwargs.get('drp_is_supervisor', False)
+        self._is_publisher = kwargs.get('drp_is_publisher', False)
+        self._tcp_pub_socket = kwargs.get('drp_tcp_pub_socket', None)
+        self._ipc_pub_socket = kwargs.get('drp_ipc_pub_socket', None)
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if self._is_supervisor:
+            if self._is_publisher:
+                super()._setup_run_calibconst()
+                self._tcp_pub_socket.send(self.dsparms.calibconst)
+                # This is for drp_python
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+                self.dsparms.calibconst = self._calib_const
+        else:
+            if self._is_publisher:
+                self._calib_const = self._tcp_sub_socket.recv()
+                self.dsparms.calibconst = self._calib_const
+                self._ipc_pub_socket.send(self.dsparms.calibconst)
+            else:
+                self._calib_const = self._ipc_sub_socket.recv()
+                self.dsparms.calibconst = self._calib_const
+
+    def add_detector(
+        self, detdef, algdef, datadef, nodeId=None, namesId=None, segment=None
+    ):
+        if self._edtbl_config:
+            return self.curr_dgramedit.Detector(
+                detdef, algdef, datadef, nodeId, namesId, segment
+            )
+        else:
+            raise RuntimeError(
+                "[Python - Worker {self.worker_num}] Cannot edit the configuration "
+                "after starting iteration over events"
+            )
+
+    def add_data(self, data):
+        return self.curr_dgramedit.adddata(data)
+
+    def remove_data(self, det_name, alg):
+        if not self._edtbl_config:
+            return self.curr_dgramedit.removedata(det_name, alg)
+        else:
+            raise RuntimeError(
+                "[Python - Worker {self.worker_num}] Cannot remove data from events "
+                "before starting iteration over events"
+            )
+
+    # --- internal: run priming (CONFIG + BeginRun saved once) ---
+    def _prime_run_once(self):
+        if self._primed:
+            return
+        # Save CONFIG first (allows pre-run edits to be captured)
+        self.curr_dgramedit.save(self.dm.shm_res_mv)
+        # Freeze config-time edits now
         self._edtbl_config = False
+        # Save BeginRun transition
+        self.curr_dgramedit = DgramEdit(
+            self.beginruns[0],
+            config_dgramedit=self.config_dgramedit,
+            bufsize=self.dm.transition_bufsize,
+        )
+        self.curr_dgramedit.save(self.dm.shm_res_mv)
+        self._primed = True
 
     def events(self):
-        for evt in self._evt_iter:
-            if TransitionId.isEvent(evt.service()):
-                buffer_size = self._ds.dm.pebble_bufsize
-            else:
-                buffer_size = self._ds.dm.transition_bufsize
+        self._prime_run_once()
 
-            self._ds.curr_dgramedit = DgramEdit(
-                evt._dgrams[0],
-                config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size,
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            bufsize = self.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.dm.transition_bufsize
+
+            self.curr_dgramedit = DgramEdit(
+                dgrams[0],
+                config_dgramedit=self.config_dgramedit,
+                bufsize=bufsize,
             )
 
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            # Transitions: not yielded here; save immediately
+            if self._handle_transition(dgrams):
+                self.curr_dgramedit.save(self.dm.shm_res_mv)
+                if svc == TransitionId.EndRun:
                     return
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
                 continue
+
+            # L1Accept: yield first so user may edit, then save
+            evt = Event(dgrams=dgrams, run=self._run_ctx)
             yield evt
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            self.curr_dgramedit.save(self.dm.shm_res_mv)
 
     def steps(self):
-        for evt in self._evt_iter:
-            if TransitionId.isEvent(evt.service()):
-                buffer_size = self._ds.dm.pebble_bufsize
-            else:
-                buffer_size = self._ds.dm.transition_bufsize
+        self._prime_run_once()
 
-            self._ds.curr_dgramedit = DgramEdit(
-                evt._dgrams[0],
-                config_dgramedit=self._ds.config_dgramedit,
-                bufsize=buffer_size,
+        for dgrams in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            if TransitionId.isEvent(svc):
+                # steps() ignores L1s entirely
+                continue
+
+            self._update_envstore_from_dgrams(dgrams)
+            bufsize = self.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.dm.transition_bufsize
+
+            self.curr_dgramedit = DgramEdit(
+                dgrams[0],
+                config_dgramedit=self.config_dgramedit,
+                bufsize=bufsize,
             )
 
-            if evt.service() == TransitionId.EndRun:
-                self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
-            self._ds.curr_dgramedit.save(self._ds.dm.shm_res_mv)
+            if svc == TransitionId.BeginStep:
+                # Yield a Step (user may edit), then save
+                step_evt = Event(dgrams=dgrams, run=self._run_ctx)
+                yield Step(step_evt, self._evt_iter, self._run_ctx, esm=self.esm, run=self)
+                self.curr_dgramedit.save(self.dm.shm_res_mv)
+                continue
 
+            # Other transitions in steps(): save immediately
+            self.curr_dgramedit.save(self.dm.shm_res_mv)
+            if svc == TransitionId.EndRun:
+                return
 
 class RunSingleFile(Run):
     """Yields list of events from a single bigdata file."""
 
-    def __init__(self, ds, run_evt):
-        super(RunSingleFile, self).__init__(ds)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams):
+        super(RunSingleFile, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(ds, self)
-
-    def events(self):
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun:
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
+        self._setup_run_calibconst()
 
 
 class RunSerial(Run):
     """Yields list of events from multiple smd/bigdata files using single core."""
 
-    def __init__(self, ds, run_evt):
-        super(RunSerial, self).__init__(ds)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams):
+        super(RunSerial, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
         super()._setup_envstore()
-        self._evt_iter = Events(ds, self, smdr_man=ds.smdr_man)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
         self._smd_iter = None
         self._ts_table = None
-
-    def events(self):
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                if evt.service() == TransitionId.EndRun:
-                    return
-                continue
-            yield evt
-
-    def steps(self):
-        for evt in self._evt_iter:
-            if evt.service() == TransitionId.EndRun:
-                return
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, self._evt_iter)
+        self._setup_run_calibconst()
 
     @contextmanager
     def build_table(self):
         """
-        Context manager for building timestamp-offset table in RunSerial.
-        Useful in both serial and MPI modes to isolate this setup step.
-        Returns True if table was successfully built.
+        Build timestamp→(fd offset, size) table by scanning SMD.
+        Updates EnvStore for any non-L1 transitions encountered during the scan.
+        Yields True if any L1 timestamps were captured.
         """
         if self._smd_iter is None:
-            self._smd_iter = SmdEvents(self.ds, self, smdr_man=self.ds.smdr_man)
+            # Now yields dgram lists
+            self._smd_iter = SmdEvents(self.configs,
+                                       self.dm,
+                                       self.dsparms.max_retries,
+                                       self.dsparms.use_smds,
+                                       self.shared_state,
+                                       smdr_man=self.smdr_man)
 
         self._ts_table = {}
-        for evt in self._smd_iter:
-            if evt.service() != TransitionId.L1Accept:
-                continue
+        try:
+            for dgrams in self._smd_iter:
+                svc = utils.first_service(dgrams)
+                if svc != TransitionId.L1Accept:
+                    # Keep EnvStore in sync for transitions observed during the scan
+                    self._handle_transition(dgrams)
+                    if svc == TransitionId.EndRun:
+                        break
+                    continue
 
-            ts = evt.timestamp
-            self._ts_table[ts] = {
-                i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
-                for i, d in enumerate(evt._dgrams)
-                if d is not None and hasattr(d, 'smdinfo')
-            }
-        yield bool(self._ts_table)
+                ts = utils.first_timestamp(dgrams)
+                self._ts_table[ts] = {
+                    i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
+                    for i, d in enumerate(dgrams)
+                    if d is not None and hasattr(d, 'smdinfo')
+                }
+            yield bool(self._ts_table)
+        finally:
+            # Optional: if this iterator is one-shot, drop the reference
+            # to avoid keeping large buffers alive
+            # self._smd_iter = None
+            pass
 
     def event(self, ts):
         if self._ts_table is None:
@@ -472,22 +742,10 @@ class RunSerial(Run):
 
         dgrams = [None] * len(self.configs)
         for i, (offset, size) in offsets.items():
-            buf = os.pread(self.ds.dm.fds[i], size, offset)
-            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
+            buf = os.pread(self.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.dm.configs[i], view=buf)
 
-        return Event(dgrams=dgrams, run=self)
-
-
-class RunLegion(Run):
-    def __init__(self, ds, run_evt):
-        self.dsparms = ds.dsparms
-        self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
-        RunHelper(self)
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.smdr_man = ds.smdr_man
-        self.configs = ds._configs
-        super()._setup_envstore()
+        return Event(dgrams=dgrams, run=self._run_ctx)
 
 
 class RunSmallData(Run):
@@ -499,23 +757,13 @@ class RunSmallData(Run):
     event generator available to user in smalldata callback.
     """
 
-    def __init__(self, bd_run, eb):
-        self._evt = bd_run._evt
-        configs = [dgram.Dgram(view=cfg) for cfg in bd_run.configs]
-        self.expt, self.runnum, self.timestamp, self.dsparms = (
-            bd_run.expt,
-            bd_run.runnum,
-            bd_run.timestamp,
-            bd_run.dsparms,
-        )
+    def __init__(self, eb, configs, dsparms):
         self.eb = eb
-
-        # Setup EnvStore - this is also done differently from other Run types.
-        # since RunSmallData doesn't user EventManager (updates EnvStore), it'll
-        # need to take care of updating transition events in the step and
-        # event generators.
-        self.esm = EnvStoreManager(configs, run=self)
-        self.esm.update_by_event(self._evt)
+        self.dsparms = dsparms
+        if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
+            self.dsparms.calibconst = {}
+        self._calib_const = self.dsparms.calibconst
+        self._run_ctx = None  # No RunCtx for smalldata
 
         # Converts EventBuilder generator to an iterator for steps() call. This is
         # done so that we can pass it to Step (not sure why). Note that for
@@ -527,27 +775,32 @@ class RunSmallData(Run):
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
 
+        self.esm = EnvStoreManager(configs)
+
     def steps(self):
-        for evt in self._evt_iter:
-            if not TransitionId.isEvent(evt.service()):
-                self.esm.update_by_event(evt)
-                self.proxy_events.append(evt._proxy_evt)
-                if evt.service() == TransitionId.EndRun:
+        for (dgrams, proxy_evt)  in self._evt_iter:
+            svc = utils.first_service(dgrams)
+            if not TransitionId.isEvent(svc):
+                self._update_envstore_from_dgrams(dgrams)
+                self.proxy_events.append(proxy_evt)
+                if svc == TransitionId.EndRun:
                     return
-                if evt.service() == TransitionId.BeginStep:
+                if svc == TransitionId.BeginStep:
                     yield Step(
-                        evt,
+                        Event(dgrams=dgrams, run=self._run_ctx),
                         self._evt_iter,
+                        self._run_ctx,
                         proxy_events=self.proxy_events,
                         esm=self.esm,
                     )
 
     def events(self):
-        for evt in self.eb.events():
-            if not TransitionId.isEvent(evt.service()):
-                self.esm.update_by_event(evt)
-                self.proxy_events.append(evt._proxy_evt)
-                if evt.service() == TransitionId.EndRun:
+        for (dgrams, proxy_evt) in self.eb.events():
+            svc = utils.first_service(dgrams)
+            if not TransitionId.isEvent(svc):
+                self._update_envstore_from_dgrams(dgrams)
+                self.proxy_events.append(proxy_evt)
+                if svc == TransitionId.EndRun:
                     return
                 continue
-            yield evt
+            yield Event(dgrams=dgrams, run=self._run_ctx, proxy_evt=proxy_evt)
