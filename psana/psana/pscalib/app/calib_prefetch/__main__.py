@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser(description="Calibration Prefetcher")
     parser.add_argument('-e', '--expcode', default=None, help='Experiment code')
     parser.add_argument('--xtc-dir', default=None, help='Optional path to XTC directory')
+    parser.add_argument('-r', '--run', type=int, default=51, help='Run number to use when reading XTC data')
     parser.add_argument('--output-dir', default='/dev/shm', help='Output directory')
     parser.add_argument('--log-level', default='INFO', help='Logging level (DEBUG, INFO, WARNING, ERROR)')
     parser.add_argument('--timestamp', action='store_true', help='Include timestamp in log messages')
@@ -48,6 +49,7 @@ def main():
 
     calib_source = CalibSource(
         expcode=args.expcode,
+        run=args.run,
         xtc_dir=args.xtc_dir,
         output_dir=args.output_dir,
         shmem=args.shmem,

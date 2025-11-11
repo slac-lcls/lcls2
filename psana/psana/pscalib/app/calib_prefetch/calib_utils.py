@@ -12,8 +12,9 @@ RESET = '\033[0m'
 CALIB_PICKLE_FILENAME = 'calibconst.pkl'
 
 class CalibSource:
-    def __init__(self, expcode, xtc_dir, output_dir, shmem, detectors, check_before_update, log):
+    def __init__(self, expcode, run, xtc_dir, output_dir, shmem, detectors, check_before_update, log):
         self.expcode = expcode
+        self.run = run
         self.xtc_dir = xtc_dir
         self.output_dir = output_dir
         self.shmem = shmem
@@ -43,8 +44,8 @@ class CalibSource:
                 ds = DataSource(shmem=self.shmem, skip_calib_load='all', dir=self.xtc_dir)
                 self.log.debug(f"Running in shmem mode using id={self.shmem}")
             else:
-                ds = DataSource(exp=self.expcode, run=51, dir=self.xtc_dir, skip_calib_load='all')
-                self.log.debug(f"Running in normal mode using expcode={self.expcode}")
+                ds = DataSource(exp=self.expcode, run=self.run, dir=self.xtc_dir, skip_calib_load='all')
+                self.log.debug(f"Running in normal mode using expcode={self.expcode}, run={self.run}")
         except Exception as e:
             self.log.error(f"Failed to create DataSource: {e}")
             raise
