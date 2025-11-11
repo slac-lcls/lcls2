@@ -1,15 +1,16 @@
 from psana.dgrammanager import DgramManager
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSingleFile
 from pathlib import Path
+from psana import utils
 
 
 class SingleFileDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
+        self.dsparms.set_use_smds([False] * len(self.runnum_list))  # disable SMDs unsupported in single file mode
         self.runnum_list_index = 0
         self._setup_run()
         super()._start_prometheus_client()
@@ -59,9 +60,9 @@ class SingleFileDataSource(DataSourceBase):
         return True
 
     def _setup_beginruns(self):
-        for evt in self.dm:
-            if evt.service() == TransitionId.BeginRun:
-                self.beginruns = evt._dgrams
+        for dgrams in self.dm:
+            if utils.first_service(dgrams) == TransitionId.BeginRun:
+                self.beginruns = dgrams
                 return True
         return False
 
@@ -76,7 +77,18 @@ class SingleFileDataSource(DataSourceBase):
 
     def runs(self):
         while self._start_run():
-            run = RunSingleFile(self, Event(dgrams=self.beginruns))
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunSingleFile(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                None,                 # SmdReaderManager (may be None for non-SMD modes)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+            )
             yield run
 
     def is_mpi(self):

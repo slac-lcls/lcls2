@@ -4,7 +4,6 @@ import time
 import numpy as np
 
 from psana import dgram, utils
-from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
@@ -33,8 +32,10 @@ class EventManager(object):
     def __init__(
         self,
         view,
-        ds,
-        run,
+        configs,
+        dm,
+        max_retries,
+        use_smds,
         smd=False,
     ):
         if view:
@@ -43,22 +44,18 @@ class EventManager(object):
         else:
             self.n_events = 0
 
-        self.ds = ds
-        self.run = run
-        self.smd_configs = self.run.configs
-        self.dm = self.ds.dm
-        self.esm = self.run.esm
-        self.n_smd_files = len(self.smd_configs)
-        self.filter_fn = self.ds.dsparms.filter
-        self.read_gauge = get_prom_manager().get_metric("psana_bd_read")
-        self.max_retries = self.ds.dsparms.max_retries
-        self.use_smds = self.ds.dsparms.use_smds
         self.smd_view = view
+        self.smd_configs = configs
+        self.dm = dm
+        self.n_smd_files = len(self.smd_configs)
+        self.read_gauge = get_prom_manager().get_metric("psana_bd_read")
+        self.max_retries = max_retries
+        self.use_smds = use_smds
         self.i_evt = 0
         self.exit_id = ExitId.NoError
         self.smd_mode = smd
 
-        self.logger = utils.get_logger(level=self.ds.dsparms.log_level, logfile=self.ds.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}
@@ -82,17 +79,12 @@ class EventManager(object):
         if self.i_evt == self.n_events:
             raise StopIteration
 
-        evt = self._get_next_evt()
+        dgrams = self._get_next_dgrams()
 
-        if evt is None:
+        if dgrams is None:
             raise StopIteration
 
-        # Update EnvStore - this is the earliest we know if this event is a Transition
-        # make sure we update the envstore now rather than later.
-        if not self.isEvent(evt.service()):
-            self.esm.update_by_event(evt)
-
-        return evt
+        return dgrams
 
     def isEvent(self, service):
         """EventManager event is considered as:
@@ -349,7 +341,7 @@ class EventManager(object):
             self.dm.fds[i_smd], read_size, begin_chunk_offset
         )
 
-    def _get_next_evt(self):
+    def _get_next_dgrams(self):
         """Generate bd evt for different cases:
         1) No bigdata or Transition Event
             create dgrams from smd_view
@@ -414,5 +406,4 @@ class EventManager(object):
                     setattr(dgrams[i_smd], "_endofbatch", True)
 
         self.i_evt += 1
-        evt = Event(dgrams=dgrams, run=self.run)
-        return evt
+        return dgrams

@@ -15,7 +15,7 @@ class BatchIterator(object):
     SmdReaderManager returns this object when a chunk is read.
     """
 
-    def __init__(self, views, configs, run, dsparms):
+    def __init__(self, views, configs, dsparms):
         self.dsparms = dsparms
 
         # Requires all views
@@ -28,8 +28,12 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
-            self.eb = EventBuilder(views, configs, dsparms=dsparms, run=run)
-            self.run_smd = RunSmallData(run, self.eb)
+            self.eb = EventBuilder(views,
+                                   configs,
+                                   filter_timestamps=dsparms.timestamps,
+                                   intg_stream_id=dsparms.intg_stream_id,
+                                   batch_size=dsparms.batch_size)
+            self.run_smd = RunSmallData(self.eb, configs, dsparms)
 
     def __iter__(self):
         return self
@@ -74,7 +78,7 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
-        self.logger = utils.get_logger(level=self.dsparms.log_level, logfile=self.dsparms.log_file, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         assert self.n_files > 0
 
@@ -90,10 +94,49 @@ class SmdReaderManager(object):
 
         self.smdr = SmdReader(smd_fds, self.chunksize, dsparms=dsparms)
         self.got_events = -1
-        self._run = None
 
         # Collecting Smd0 performance using prometheus
         self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
+
+    def check_transfer_complete(self):
+        """
+        Returns True only after we've seen .xtc2.inprogress files finish
+        transferring (renamed to their final .xtc2 filenames).
+
+        This is used in live-mode (normal filesystem, not ffb) to detect when
+        the DAQ or rsync file transfers have completed — so psana can stop
+        retrying for more data. If there were no .inprogress files to begin
+        with (e.g. FFB writes directly to .xtc2), this returns False so we keep
+        retrying until EndRun is seen.
+
+        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh
+        to mimic a live run for testing this feature.
+
+        Returns
+        -------
+        bool
+            True once at least one .xtc2.inprogress file has been observed and
+            every such file now has a finalized .xtc2 present.
+        """
+        self.logger.debug("Checking for completed .inprogress file transfers...")
+        smd_files = getattr(self.dsparms, "smd_files", [])
+        if not smd_files:
+            return True  # Nothing to monitor
+
+        monitor_transfers = False
+        for smd_file in smd_files:
+            if not smd_file.endswith(".xtc2.inprogress"):
+                continue
+
+            monitor_transfers = True
+            xtc2_file = os.path.splitext(smd_file)[0]
+            if not os.path.isfile(xtc2_file):
+                return False  # Still waiting for at least one file to finalize
+
+        if not monitor_transfers:
+            return False  # No .inprogress files -> keep retrying (FFB/live write)
+
+        return True
 
     def force_read(self):
         """
@@ -104,16 +147,22 @@ class SmdReaderManager(object):
         regardless of how much data is already present.
         """
         st = time.monotonic()
-        self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+        self.smdr.force_read()
         en = time.monotonic()
         read_rate = self.smdr.got / (1e6 * (en - st))
         self.logger.debug(
-            f"READRATE SMD0 (0-) {read_rate:.2f} MB/s ({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)"
+            "READRATE SMD0 (0-) "
+            f"{read_rate:.2f} MB/s "
+            f"({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)"
         )
         self.read_gauge.set(read_rate)
 
         if self.smdr.chunk_overflown > 0:
-            msg = f"SmdReader found dgram ({self.smdr.chunk_overflown} MB) larger than chunksize ({self.chunksize/1e6} MB)"
+            msg = (
+                "SmdReader found dgram "
+                f"({self.smdr.chunk_overflown} MB) larger than chunksize "
+                f"({self.chunksize/1e6} MB)"
+            )
             raise ValueError(msg)
         return True
 
@@ -149,10 +198,15 @@ class SmdReaderManager(object):
             # Determine if we have a single event
             success = self.smdr.build_batch_view(batch_size=1, ignore_transition=False)
             if success:
-                bytearray_bufs = [bytearray(self.smdr.show(i)) for i in range(self.n_files)]
+                bytearray_bufs = [
+                    bytearray(self.smdr.show(i)) for i in range(self.n_files)
+                ]
 
                 if self.configs is None:
-                    dgrams = [dgram.Dgram(view=ba_buf, offset=0) for ba_buf in bytearray_bufs]
+                    dgrams = [
+                        dgram.Dgram(view=ba_buf, offset=0)
+                        for ba_buf in bytearray_bufs
+                    ]
                     self.configs = dgrams
                     self.smdr.set_configs(self.configs)
                 else:
@@ -165,20 +219,35 @@ class SmdReaderManager(object):
 
             # Check if no more data will ever arrive
             if self.smdr.found_endrun():
-                self.logger.debug("EndRun found — giving up on fetching Configure/BeginRun.")
+                self.logger.debug(
+                    "EndRun found — giving up on fetching Configure/BeginRun."
+                )
                 return None
 
             # No data to yield, try to get more data
             self.force_read()
+
+            # Stop waiting if file transfers are done
+            if self.check_transfer_complete():
+                self.logger.debug(
+                    "All .inprogress files finalized — stopping "
+                    "Configure/BeginRun retries."
+                )
+                return None
+
             # Didn't get complete streams yet
             if retries == max_retries:
                 self.logger.info(
-                    f"WARNING: Unable to fetch complete Configure/BeginRun dgrams after {retries} retries."
+                    "WARNING: Unable to fetch complete Configure/BeginRun dgrams "
+                    f"after {retries} retries."
                 )
                 return None
 
             if retries > -1:
-                self.logger.debug(f"Waiting for Configure/BeginRun... retry {retries+1}/{max_retries}")
+                self.logger.debug(
+                    "Waiting for Configure/BeginRun... "
+                    f"retry {retries+1}/{max_retries}"
+                )
                 time.sleep(1)
             retries += 1
 
@@ -212,19 +281,32 @@ class SmdReaderManager(object):
             if success or self.smdr.found_endrun():
                 break
 
-            self.smdr.force_read(self.dsparms.smd_inprogress_converted)
+            self.smdr.force_read()
+
+            # Stop waiting if all transfers complete
+            if self.check_transfer_complete():
+                self.logger.debug(
+                    "All .inprogress files finalized — stopping batch read retries."
+                )
+                break
 
             if retries == max_retries:
                 return None
 
             if retries > -1:
-                self.logger.debug(f"Waiting for data... retry {retries+1}/{max_retries}")
+                self.logger.debug(
+                    f"Waiting for data... retry {retries+1}/{max_retries}"
+                )
                 time.sleep(1)
             retries += 1
 
         if not success and not self.smdr.found_endrun():
             log_func = self.logger.error if is_integrating else self.logger.info
-            log_func(f"Unable to build {'integrating' if is_integrating else 'normal'} batch after {retries} retries.")
+            log_func(
+                "Unable to build "
+                f"{'integrating' if is_integrating else 'normal'} batch "
+                f"after {retries} retries."
+            )
 
         return success
 
@@ -258,7 +340,9 @@ class SmdReaderManager(object):
                 self.dsparms.max_events
                 and self.processed_events >= self.dsparms.max_events
             ):
-                self.logger.debug(f"Exit - max_events={self.dsparms.max_events} reached")
+                self.logger.debug(
+                    f"Exit - max_events={self.dsparms.max_events} reached"
+                )
                 is_done = True
 
             if self.got_events:
@@ -278,8 +362,10 @@ class SmdReaderManager(object):
         if not success:
             raise StopIteration
 
-        mmrv_bufs = [self.smdr.show(i) for i in range(self.n_files)]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self._run, self.dsparms)
+        mmrv_bufs = [
+            self.smdr.show(i) for i in range(self.n_files)
+        ]
+        batch_iter = BatchIterator(mmrv_bufs, self.configs, self.dsparms)
         self.got_events = self.smdr.view_size
         return batch_iter
 
@@ -290,9 +376,3 @@ class SmdReaderManager(object):
     @property
     def max_ts(self):
         return self.smdr.max_ts
-
-    def set_run(self, run):
-        self._run = run
-
-    def get_run(self):
-        return self._run
