@@ -6,7 +6,7 @@ import os
 import re
 import socket
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -53,6 +53,8 @@ class DsParms:
     skip_calib_load: list
     dbsuffix: str
     smd_callback: int = 0
+    smd_files: list[str] = field(default_factory=list)
+    use_smds: list[bool] = field(default_factory=list)
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -62,7 +64,8 @@ class DsParms:
         self.det_info_table = det_info_table
         self.det_stream_id_table = det_stream_id_table
 
-    def set_use_smds(self, use_smds):
+    def update_smd_state(self, smd_files, use_smds):
+        self.smd_files = smd_files
         self.use_smds = use_smds
 
     @property
@@ -220,7 +223,7 @@ class DataSourceBase(abc.ABC):
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
-            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
+            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
             "log_level", "log_file", 'auto_tune'
         }
         for k in kwargs:
@@ -240,7 +243,8 @@ class DataSourceBase(abc.ABC):
             formatted_timestamps = timestamps
         else:
             self.logger.info(
-                f"Warning: No timestamp filtering, unrecognized format of the input filter timestamp ({type(timestamps)}). Allowed formats are .npy file or numpy.ndarray)."
+                "Warning: No timestamp filtering. Unrecognized input type "
+                f"({type(timestamps)}). Allowed formats are .npy or numpy.ndarray."
             )
         return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
 
@@ -456,8 +460,7 @@ class DataSourceBase(abc.ABC):
         _log_file_list(self.logger, "smd_files", self.smd_files)
         _log_file_list(self.logger, "xtc_files", self.xtc_files)
 
-        # Set default flag for replacing smalldata with bigda files.
-        self.dsparms.set_use_smds([False] * self.n_files)
+        self.dsparms.update_smd_state(self.smd_files, [False] * self.n_files)
 
     def _setup_runnum_list(self):
         """
@@ -612,7 +615,9 @@ class DataSourceBase(abc.ABC):
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
                                 self.logger.info(
-                                    f"Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded."
+                                    "Warning: Stream-%s has detectors in the excluded set; "
+                                    "excluding entire stream.",
+                                    i,
                                 )
 
                     if flag_keep:
@@ -652,7 +657,7 @@ class DataSourceBase(abc.ABC):
                 os.close(smd_fd)
             self.logger.debug(f"close tmp smd fds:{smd_fds}")
 
-        self.dsparms.set_use_smds(use_smds)
+        self.dsparms.update_smd_state(self.smd_files, use_smds)
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)
