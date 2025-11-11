@@ -4,7 +4,6 @@ import time
 
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.pscalib.calib.MDBWebUtils import calib_constants_all_types
-from psana.utils import make_weak_refable
 
 GREEN = '\033[92m'
 CYAN = '\033[96m'
@@ -66,9 +65,8 @@ class CalibSource:
             run._clear_calibconst()
             loaded_data = try_load_data_from_file(self.log, self.output_dir)
             # Attach the retrieved calibconst to be used in Detector caching
-            run._calib_const = make_weak_refable(loaded_data.get('calib_const'))
-            # Setup weak references - this populates ds.dsparms.calibconst
-            run._create_weak_calibconst()
+            run._calib_const = loaded_data.get('calib_const') or {}
+            run.dsparms.calibconst = run._calib_const
             self.on_run_begin(run)
 
 def update_calib(latest_run, latest_info, log, output_dir, check_before_update=False):

@@ -1,10 +1,13 @@
 # leak_probe_single.py
-import os, time
-import psutil
-from psana import DataSource
+import ctypes
 import gc
+import os
+import time
 import weakref
 from collections import Counter
+
+import psutil
+from psana import DataSource
 
 SUSPECT_PREFIXES = [
     # core psana object graphs
@@ -15,7 +18,7 @@ SUSPECT_PREFIXES = [
     "SmdReader", "SmdReaderManager", "DgramManager",
     "PrometheusManager", "ClientSocket", "Kafka",
     # calibration / geometry
-    "Calib", "WeakDict", "WeakList", "SegGeometry", "Geometry",
+    "Calib", "SegGeometry", "Geometry",
     # specific dets you used
     "Jungfrau", "Archon",
     # common Python bits that often hold refs
@@ -49,20 +52,27 @@ def garbage_type_hist(n=30):
             pass
     return c.most_common(n)
 
-def print_chain(o, depth=0, seen=set()):
-    if depth > 4 or id(o) in seen: return
+def print_chain(o, depth=0, seen=None):
+    if seen is None:
+        seen = set()
+    if depth > 4 or id(o) in seen:
+        return
     seen.add(id(o))
     print("  " * depth + f"{type(o).__name__}")
     for r in gc.get_referrers(o):
         # skip frames/modules to cut noise
-        if any(t in str(type(r)) for t in ("frame", "module")): continue
-        print_chain(r, depth+1, seen)
+        if any(t in str(type(r)) for t in ("frame", "module")):
+            continue
+        print_chain(r, depth + 1, seen)
 
-import ctypes
 libc = ctypes.CDLL("libc.so.6")
+
+
 def trim():
-    try: libc.malloc_trim(0)
-    except Exception: pass
+    try:
+        libc.malloc_trim(0)
+    except Exception:
+        pass
 
 EXP = os.environ.get("EXP", "mfx100848724")      # set to your Jungfrau exp
 RUNS = [int(x) for x in os.environ.get("RUNS","51").split(",")]
@@ -85,12 +95,13 @@ for i in range(NLOOPS):
     ds = DataSource(exp=EXP, run=rn, use_calib_cache=False)
     #ds = DataSource(files=['/sdf/data/lcls/ds/tmo/tmo101347825/xtc/tmo101347825-r0270-s000-c000.xtc2'])
     run = next(ds.runs())
-    for evt in run.events():
-        break  # get first event only
+    evt = next(run.events())
 
-    #det = run.Detector(DET)  # forces calib load
-    #evt = next(run.events())
-    if DET == "jungfrau":
+    det = None
+    if DET:
+        det = run.Detector(DET)
+
+    if DET == "jungfrau" and det is not None:
         img = det.raw.calib(evt)
         # Touch the constants so they materialize in memory:
         cc = det.raw._calibconst['pedestals']
@@ -116,12 +127,27 @@ for i in range(NLOOPS):
         print("Picked suspects:", [type(o).__name__ for o in suspects])
 
         # Peek at referrers (quick-n-dirty without objgraph)
-        for i, o in enumerate(suspects):
-            refs = [type(r).__name__ for r in gc.get_referrers(o)[:10]]
-            print(f"[{i}] {type(o).__name__} referrers sample:", refs)
-        sus = next(garbage_by_prefixes(["Run", "Detector", "SmdReaderManager",
-                                "PrometheusManager", "SmallData", "DataSource", "MPIDataSource", "SerialDataSource"], limit=1), None)
-        if sus: print_chain(sus)
+        for idx, suspect in enumerate(suspects):
+            refs = [type(r).__name__ for r in gc.get_referrers(suspect)[:10]]
+            print(f"[{idx}] {type(suspect).__name__} referrers sample:", refs)
+        leak_suspect = next(
+            garbage_by_prefixes(
+                [
+                    "Run",
+                    "Detector",
+                    "SmdReaderManager",
+                    "PrometheusManager",
+                    "SmallData",
+                    "DataSource",
+                    "MPIDataSource",
+                    "SerialDataSource",
+                ],
+                limit=1,
+            ),
+            None,
+        )
+        if leak_suspect:
+            print_chain(leak_suspect)
 
         # IMPORTANT: free them; otherwise you’re pinning memory
         gc.garbage[:] = []

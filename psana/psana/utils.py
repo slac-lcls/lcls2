@@ -210,29 +210,3 @@ def first_env(dgrams):
             # If this dgram can't provide env(), skip it.
             continue
     raise RuntimeError("No valid dgram with env() found")
-
-class WeakList(list):
-    """Wrapper to make a list weak referenceable."""
-    ...
-class WeakDict(dict):
-    """Wrapper to make a dict weak referenceable."""
-    ...
-
-def make_weak_refable(d):
-    """Return a weak-referenceable wrapper of a dictionary.
-
-    Used, e.g., for calibration constants.
-    """
-    new_d = WeakDict({})
-    if d is None:
-        return new_d
-    for key in d:
-        if isinstance(d[key], dict):
-            new_d[key] = make_weak_refable(WeakDict(d[key]))
-        elif isinstance(d[key], tuple):
-            new_d[key] = WeakList(list(d[key]))
-        elif d[key] is None:
-            new_d[key] = WeakDict({})
-        else:
-            new_d[key] = d[key]
-    return new_d

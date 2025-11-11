@@ -61,13 +61,7 @@ class RunParallel(Run):
         self._calib_const = self.comms.psana_comm.bcast(
             self._calib_const, root=0
         )
-
-        # workaround for archon crash on rank0 from Gabriel
-        #if nodetype != "smd0":
-        #    # smd0 already did this in _setup_run_calibconst
-        #    self._create_weak_calibconst()
-        self._create_weak_calibconst()
-
+        self.dsparms.calibconst = self._calib_const
 
     def events(self):
         evt_iter = self.start()
