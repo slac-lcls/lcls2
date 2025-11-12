@@ -84,7 +84,7 @@ function cmake_build() {
     cd build
 
     # Run CMake configuration with the remaining arguments
-    cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" .. -DDAQ=$no_daq
+    cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" .. -DNO_DAQ=$no_daq
 
     # Check the make_install flag
     if [ "$make_install" -eq 1 ]; then
