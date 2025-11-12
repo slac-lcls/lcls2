@@ -13,7 +13,7 @@ add_subdirectory(xtcdata)
 add_subdirectory(psalg)
 add_subdirectory(psana)
 
-if(DAQ)
+if(NOT NO_DAQ)
     message(STATUS "DAQ INCLUDED")
     add_subdirectory(psdaq)
 endif()
