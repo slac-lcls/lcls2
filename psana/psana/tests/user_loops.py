@@ -1,35 +1,12 @@
-# NOTE:
-# To test on 'real' bigdata:
-# xtc_dir = "/reg/d/psdm/xpp/xpptut15/scratch/mona/test"
-# >bsub -n 64 -q psfehq -o log.txt mpirun python user_loops.py
-
-#import logging
-#logger = logging.getLogger('psana.psexp.node')
-#logger.setLevel(logging.DEBUG)
-#ch = logging.StreamHandler()
-#ch.setLevel(logging.DEBUG)
-#formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-#ch.setFormatter(formatter)
-#logger.addHandler(ch)
-
 import os
 import vals
 import numpy as np
 from psana import DataSource
 
-def filter_fn(evt):
-    # Create a detector within filter is possible
-    run = evt.run()
-    det = run.Detector('xppcspad')
-
-    # Access step event
-    step_evt = run.step(evt)
-    return True
-
 xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
 
 # Usecase 1a : two iterators with filter function
-ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=filter_fn)
+ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir)
 #beginJobCode
 for run in ds.runs():
     #beginRunCode

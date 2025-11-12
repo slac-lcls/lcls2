@@ -264,7 +264,7 @@ elif tname == '7':
     detname='epixquad'
 
     ds = DataSource(files=fname)
-    print('\nXXX dir(ds):', dir(ds)) #[...,'_abc_impl', '_close_opened_smd_files', '_configs', '_end_prometheus_client', '_get_runinfo', '_set_configinfo', '_setup_beginruns', '_setup_det_class_table', '_setup_run', '_setup_run_calibconst', '_setup_run_files', '_setup_runnum_list', '_start_prometheus_client', '_start_run', 'batch_size', 'destination', 'detectors', 'dir', 'dm', 'dsparms', 'exp', 'files', 'filter', 'live', 'max_events', 'monitor', 'prom_man', 'runnum', 'runnum_list', 'runnum_list_index', 'runs', 'shmem', 'smalldata', 'smalldata_kwargs']
+    print('\nXXX dir(ds):', dir(ds)) #[...,'_abc_impl', '_close_opened_smd_files', '_configs', '_end_prometheus_client', '_get_runinfo', '_set_configinfo', '_setup_beginruns', '_setup_det_class_table', '_setup_run', '_setup_run_calibconst', '_setup_run_files', '_setup_runnum_list', '_start_prometheus_client', '_start_run', 'batch_size', 'detectors', 'dir', 'dm', 'dsparms', 'exp', 'files', 'filter', 'live', 'max_events', 'monitor', 'prom_man', 'runnum', 'runnum_list', 'runnum_list_index', 'runs', 'shmem', 'smalldata', 'smalldata_kwargs']
     print('XXX ds.runnum: ', ds.runnum) # None
     print('XXX ds.exp   : ', ds.exp)    # None
     print('XXX ds.runs(): ', ds.runs()) #

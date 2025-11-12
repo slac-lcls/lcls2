@@ -16,6 +16,7 @@
 import numpy as np
 cimport numpy as cnp
 cimport libc.stdint as si
+from libc.stdlib cimport free, malloc
 from libcpp.string cimport string
 from libcpp.vector cimport vector
 from libcpp cimport bool
@@ -49,12 +50,12 @@ cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
 
 def test_nda_fused(dtypes2d nda):
     print('nda.dtype =', str(nda.dtype))
-    ctest_nda(&nda[0,0], nda.shape[0], nda.shape[1])
+    cdef int* shape = <int*>nda.shape
+    ctest_nda(&nda[0,0], shape[0], shape[1])
 
 
 cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
-    #void ctest_nda_v2[T](T*, CSHAPE_T*, int&) except +
-    void ctest_nda_v2[T](T*, int*, int&) except +
+    void ctest_nda_v2[T](T*, long*, int&) except +
 
 def print_cnparr(dtypes2d nda):
     print 'nda.dtype   :', str(nda.dtype)
@@ -64,7 +65,14 @@ def print_cnparr(dtypes2d nda):
 
 def test_nda_fused_v2(dtypes2d nda):
     print_cnparr(nda)
-    ctest_nda_v2(&nda[0,0], nda.shape, nda.ndim)
+    cdef int ndim = nda.ndim
+    cdef size_t n_bytes = <size_t>ndim*sizeof(long)
+    print('Using', n_bytes, 'bytes for', ndim, 'dimensions')
+    cdef long* shape = <long*>malloc(n_bytes)
+    for i in range(ndim):
+        shape[i] = nda.shape[i]
+    ctest_nda_v2(&nda[0,0], shape, ndim)
+    free(shape)
     print 'XXXXXXX test_nda_fused_v2 nda:\n', nda
 
     #nda.shape[0] = 5
@@ -247,3 +255,4 @@ def wfpkfinder_cfd(wf, dtypesv baseline, dtypesv threshold, fraction, deadtime, 
     return npeaks
 
 # EOF
+

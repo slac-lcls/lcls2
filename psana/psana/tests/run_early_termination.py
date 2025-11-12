@@ -13,11 +13,11 @@ import os
 
 def run_terminate(ds):
     for run in ds.runs():
-        det = run.Detector('xppcspad')
+        run.Detector('xppcspad')
         cn_events = 0
         for i_evt, evt in enumerate(run.events()):
             if i_evt == 4:
-                ds.terminate()
+                run.terminate()
             cn_events +=1
 
         if rank == 2 or size == 1:

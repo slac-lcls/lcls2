@@ -17,8 +17,8 @@ using namespace XtcData;
 using psalg::NDArray;
 using logging = psalg::SysLog;
 
-enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT, 
-            _NOBEAM, _NOREF, _NOFITS, _NCUTS };
+enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT,
+            _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
 static const char* cuts[] = {"NCalls",
                              "NoLaser",
                              "FrameSize",
@@ -26,6 +26,7 @@ static const char* cuts[] = {"NCalls",
                              "NoBeam",
                              "NoRef",
                              "NoFits",
+                             "FWHMCut",
                              NULL };
 
 //static ndarray<double,1> load_reference(unsigned key, unsigned sz);
@@ -203,7 +204,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
           printf("m_" #a " = %u\n", m_##a);                             \
   }
   //  GET_ENUM(subtractAndNormalize,boolEnum);
-  
+
   m_sb_avg.resize(0);
 //  m_ref_avg.resize(0); // reset reference
 
@@ -214,7 +215,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   m_prescale_projections_counter = 0;
 
 }
-      
+
 void OpalTTFex::unconfigure()
 {
   if (m_cut.size() && m_cut[_NCALLS]>0) {
@@ -227,22 +228,22 @@ void OpalTTFex::unconfigure()
   }
 }
 
-void OpalTTFex::reset() 
-{
-  m_flt_position  = 0;
-  m_flt_position_ps = 0;
-  m_flt_fwhm      = 0;
-  m_amplitude     = 0;
-  m_ref_amplitude = 0;
-  m_nxt_amplitude = -1;
-}
-
-OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
-                                       std::vector<double>& sigd,
-                                       std::vector<double>& refout)
+std::pair<std::vector<double>, OpalTTFex::TTResult>
+OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
+                   std::vector<double>& sigd,
+                   std::vector<double>& refout)
 {
   m_cut[_NCALLS]++;
 
+  /* Vector is in order:
+   * [0]: filtered_position
+   * [1]: filtered_pos_ps
+   * [2]: amplitude
+   * [3]: next_amplitude
+   * [4]: ref_amplitude
+   * [5]: filtered_fwhm
+   */
+  std::vector<double> fex_vec(6);
   //  EventInfo is in subframe 3
   const EventInfo& info = *reinterpret_cast<const EventInfo*>(subframes[3].data());
 
@@ -261,12 +262,14 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   bool nobeam   = !beam;
   bool nolaser  = !laser;
 
-  if (nolaser) { 
-      m_cut[_NOLASER]++; 
+  if (nolaser) {
+      m_cut[_NOLASER]++;
 #ifdef DBUG
       printf("-->NOLASER\n");
 #endif
-      return NOLASER; 
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -NOLASER;
+      return std::make_pair(fex_vec, NOLASER);
   }
 
   unsigned shape[2];
@@ -284,12 +287,14 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   }
 #endif
 
-  if (!f.size()) { 
-      m_cut[_FRAMESIZE]++; 
+  if (!f.size()) {
+      m_cut[_FRAMESIZE]++;
 #ifdef DBUG
       printf("-->INVALID1\n");
 #endif
-      return INVALID; 
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
   }
 
   m_prescale_image_counter++;
@@ -399,12 +404,14 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
       if (sigd[i]>m_project_minvalue)
           lcut=false;
 
-  if (lcut) { 
-      m_cut[_PROJCUT]++; 
+  if (lcut) {
+      m_cut[_PROJCUT]++;
 #ifdef DBUG
       printf("-->INVALID2\n");
 #endif
-      return INVALID; 
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
 }
 
   if (nobeam) {
@@ -427,7 +434,9 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
 #ifdef DBUG
       printf("-->NOBEAM\n");
 #endif
-      return NOBEAM;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -NOBEAM;
+      return std::make_pair(fex_vec, NOBEAM);
   }
   else if (m_use_ref_roi) {
       _monitor_ref_sig( refd );
@@ -454,7 +463,9 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
 #ifdef DBUG
       printf("-->NOREF\n");
 #endif
-      return INVALID;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
   }
 
   //
@@ -474,7 +485,7 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
   }
   refout = m_ref_avg;
   m_ref_avg_sem.give();
-      
+
   _monitor_sub_sig( sigd );
 
   //
@@ -508,18 +519,32 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
       for(unsigned i=m_calib_poly.size(); i!=0; )
         xfltc = xfltc*xflt + m_calib_poly[--i];
 
-      m_amplitude        = pFit0[0];
-      m_flt_position     = xflt;
-      m_flt_position_ps  = xfltc;
-      m_flt_fwhm         = pFit0[2];
-      m_ref_amplitude    = m_ref_avg[ix];
+      /* Vector is in order:
+       * [0]: filtered_position
+       * [1]: filtered_pos_ps
+       * [2]: amplitude
+       * [3]: next_amplitude
+       * [4]: ref_amplitude
+       * [5]: filtered_fwhm
+       */
+      fex_vec[0] = xflt;
+      fex_vec[1] = xfltc;
+      fex_vec[2] = pFit0[0];
+      //fex_vec[3] = -1; // Filled below if relevant.
+      fex_vec[4] = m_ref_avg[ix];
+      fex_vec[5] = pFit0[2];
 
       if (nfits>1) {
         std::vector<double> pFit1 =
           parab_fit(qwf.data(),*(++peaks.begin()),qwf.size(),0.8);
         if (pFit1[2]>0)
-          m_nxt_amplitude = pFit1[0];
+          fex_vec[3] = pFit1[0];
       }
+    } else {
+      m_cut[_FWHMCUT]++;
+      // By convention return -ERROR/STATUS in the amplitude index of vector
+      fex_vec[2] = -INVALID;
+      return std::make_pair(fex_vec, INVALID);
     }
   }
   else {
@@ -527,13 +552,15 @@ OpalTTFex::TTResult OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& s
 #ifdef DBUG
     printf("-->NOFITS\n");
 #endif
-    return INVALID;
+    // By convention return -ERROR/STATUS in the amplitude index of vector
+    fex_vec[2] = -INVALID;
+    return std::make_pair(fex_vec, INVALID);
   }
 
 #ifdef DBUG
     printf("-->VALID\n");
 #endif
-  return VALID;
+    return std::make_pair(fex_vec, VALID);
 }
 
 //

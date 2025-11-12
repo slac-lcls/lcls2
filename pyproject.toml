@@ -1,0 +1,6 @@
+[tool.cython-lint]
+max-line-length = 160
+ignore = ['E221', 'E222', 'E266']
+
+[tool.ruff]
+line-length = 160

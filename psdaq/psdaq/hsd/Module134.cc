@@ -175,6 +175,7 @@ void Module134::_jesd_init(unsigned mode)
 void Module134::setup_jesd(bool lAbortOnErr,
                            std::string& adc0,
                            std::string& adc1,
+                           unsigned     inputCh,
                            bool lInternalTiming)
 {
   i2c_lock(I2cSwitch::PrimaryFmc);
@@ -190,7 +191,7 @@ void Module134::setup_jesd(bool lAbortOnErr,
     usleep(1000);
   }
 
-  while (cpld->default_adc_init(Fmc134Cpld::FG_CAL,adc0,adc1)) {
+  while (cpld->default_adc_init(Fmc134Cpld::FG_CAL,adc0,adc1,inputCh)) {
     if (lAbortOnErr)
       abort();
     usleep(1000);

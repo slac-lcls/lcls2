@@ -10,7 +10,7 @@ Usage::
     ts = timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S')
     kwa = datasource_arguments(args) # re-define kwargs for DataSource,  args as a namespace
     kwa = datasource_kwargs(**kwa) # re-define kwargs for DataSource
-
+    s = info_datasource(ds)
     s = info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:\n ', sep='\n ')
     s = info_run(run, cmt='run info:', sep='\n    ', verb=0o377)
     s = info_detector(det, cmt='detector info:', sep='\n    ')
@@ -126,7 +126,7 @@ def datasource_kwargs(**kwargs):
     fname   = kwargs.get('fname', None)
     exp     = kwargs.get('exp', None)
     runs    = kwargs.get('runs', None)
-    events  = kwargs.get('events', 0)
+    kwargs.get('events', 0)
     #detname = kwargs.get('det', None)
     #if detname is None: detname = kwa.get('detname', None)
 
@@ -136,6 +136,42 @@ def datasource_kwargs(**kwargs):
           {'exp':exp,'run':[int(v) for v in runs.split(',')]}
     #if detname is not None: kwa['detectors'] = [detname,]
     return kwa
+
+
+def dict_datasource(ds):
+    """ds = DataSource(**uec.data_source_kwargs(**kwargs))"""
+    return {\
+      'n_files': ds.n_files,\
+      'xtc_files': ds.xtc_files,\
+      'xtc_ext' : ds.xtc_ext if hasattr(ds,'xtc_ext') else 'N/A',\
+      'smd_files': ds.smd_files,\
+      'shmem': ds.shmem,\
+      'smalldata_kwargs': ds.smalldata_kwargs,\
+      'timestamps': ds.timestamps,\
+      'live': ds.live,\
+      'runnum_list': ds.runnum_list,\
+      'detectors': ds.detectors,\
+#      'unique_user_rank': ds.unique_user_rank,\
+#      'is_mpi': ds.is_mpi,\
+    }
+
+
+def info_datasource(ds):
+    """ds = DataSource(**uec.data_source_kwargs(**kwargs))"""
+    xtc_path = getattr(ds, 'xtc_path', None)
+    s = '\n  ds.xtc_path: %s' % str(xtc_path)
+    if xtc_path is not None:
+      s += '\n  ds.n_files: %s ' % str(ds.n_files)\
+         + '\n  ds.xtc_files:\n  %s' % ('\n  '.join(ds.xtc_files))\
+         + '\n  ds.xtc_ext: %s' % (str(ds.xtc_ext) if hasattr(ds,'xtc_ext') else 'N/A')\
+         + '\n  ds.smd_files:\n  %s' % ('\n  '.join(ds.smd_files))
+    s += '\n  ds.shmem: %s' % str(ds.shmem)\
+       + '\n  ds.smalldata_kwargs: %s' % str(ds.smalldata_kwargs)\
+       + '\n  ds.timestamps: %s' % str(ds.timestamps)\
+       + '\n  ds.unique_user_rank: %s' % str(ds.unique_user_rank())\
+       + '\n  ds.is_mpi: %s' % str(ds.is_mpi())\
+       + '\n  ds.live: %s' % str(ds.live)
+    return s
 
 
 def info_run_dsparms_det_classes_v1(run, cmt='run.dsparms.det_classes:', sep='\n '):
@@ -170,7 +206,7 @@ def dict_run(orun):
 
 
 def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
-    t_sec = seconds(run.timestamp)
+    seconds(run.timestamp)
     ts_run = timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S')
     #ts_run = str_tstamp(fmt='%Y-%m-%dT%H:%M:%S', time_sec=t_sec)
     return cmt\
@@ -180,25 +216,6 @@ def info_run(run, cmt='run info:', sep='\n    ', verb=0o377):
       + '%srun.timestamp : %s -> %s' % (sep, run.timestamp, ts_run)\
       +('%srun.id        : %s' % (sep, run.id) if verb & 1 else '')\
       +('%s%s' % (sep, info_run_dsparms_det_classes(run, cmt='run.dsparms.det_classes:', sep=sep+'   ')) if verb & 2 else '')
-
-
-def dict_datasource(ds):
-    #ds = DataSource(**uec.data_source_kwargs(**kwargs))
-    return {\
-      'n_files': ds.n_files,\
-      'xtc_files': ds.xtc_files,\
-      'xtc_ext' : ds.xtc_ext if hasattr(ds,'xtc_ext') else 'N/A',\
-      'smd_files': ds.smd_files,\
-      'shmem': ds.shmem,\
-      'smalldata_kwargs': ds.smalldata_kwargs,\
-      'timestamps': ds.timestamps,\
-      'live': ds.live,\
-      'destination': ds.destination,\
-      'runnum_list': ds.runnum_list,\
-      'detectors': ds.detectors,\
-#      'unique_user_rank': ds.unique_user_rank,\
-#      'is_mpi': ds.is_mpi,\
-    }
 
 
 def info_detnames(run, cmt='command: '):
@@ -248,14 +265,15 @@ def info_detector(det, cmt='detector info:', sep='\n    '):
     calibconst = det.raw._calibconst
     longname = det.raw._uniqueid
     shortname = uc.detector_name_short(longname)
+    keys = ', '.join(calibconst.keys() if calibconst is not None else [])
     return cmt\
         +  'det.raw._det_name   : %s' % (det.raw._det_name)\
         +'%sdet.raw._dettype    : %s' % (sep, det.raw._dettype)\
         +'%s_segment_numbers    : %s' % (sep, str(getattr(det.raw, '_segment_numbers', None)))\
-        +'%sdet methods vbisible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
-        +'%sdet.raw     vbisible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
+        +'%sdet methods visible: %s' % (sep, ' '.join([v for v in dir(det) if v[0]!='_']))\
+        +'%sdet.raw     visible: %s' % (sep, ' '.join([v for v in dir(det.raw) if v[0]!='_']))\
         +'%s%s' % (sep, info_uniqueid(det, cmt='det.raw._uniqueid.split("_"):%s     '%sep, sep=sep+'     '))\
-        +'%sdet.raw._calibconst.keys(): %s' % (sep, ', '.join(calibconst.keys() if calibconst is not None else []))\
+        +'%sdet.raw._calibconst.keys(): %s' % (sep, keys)\
         +'%sshortname: %s' % (sep, shortname)
         #+'%s_sorted_segment_inds: %s' % (sep, str(det.raw._sorted_segment_inds))\
         #+'%sdet.raw._uniqueid   : %s' % (sep, det.raw._uniqueid)\
@@ -300,13 +318,12 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
 
 
 def get_config_info_for_dataset_detname(**kwargs):
-    import sys
     import logging
     logger = logging.getLogger(__name__)
     from psana import DataSource
     detname = kwargs.get('detector', None)  # backward compatability for some scripts
     detname = kwargs.get('detname', detname)
-    idx     = kwargs.get('idx', None)
+    kwargs.get('idx', None)
     dskwargs = data_source_kwargs(**kwargs)
     try:
         ds = DataSource(**dskwargs)

@@ -35,11 +35,12 @@ time, str_tstamp, get_login, get_hostname, get_cwd, save_textfile, load_textfile
 
 #log_rec_at_start = gu.log_rec_on_start
 
-def selected_record(nrec):
-    return nrec<5\
-       or (nrec<50 and not nrec%10)\
-       or (nrec<500 and not nrec%100)\
-       or (not nrec%1000)
+def selected_record(i, events=1000000):
+    return i<5\
+       or (i<50 and not i%10)\
+       or (i<200 and not i%20)\
+       or not i%100\
+       or i>events-5
 
 
 def inverse_dict(d):

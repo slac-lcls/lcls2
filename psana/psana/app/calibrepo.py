@@ -25,9 +25,15 @@ USAGE = DESCRIPTION\
       + '\nExamples:'\
       + '\nTests:'\
       + '\n  datinfo -k exp=ascdaq023,run=37,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-      + '\n  python UtilsCalibRepo.py # makes test_2darr.npy'\
+      + '\n\n  make file with constants'\
+      + '\n  make_or_print_npyarray -s 512,1024 -m 10 -r 1 -t np.float64 -f test-jf-2d.npy  # random 2-d array for jungfrau'\
+      + '\n  make_or_print_npyarray -s 192,384 -m 10 -r 1 -t np.float64 -f gains2d  # random 2-d array for epixm320'\
+      + '\n  make_or_print_npyarray -s 4,192,384 -m 158.796 -r 0 -t np.float64 -f gains3d  # constant 3-d array array for epixm320'\
+      + '\n'\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -c pedestals -G g0 -I 1 -F test_2darr.npy -o ./work' % SCRNAME\
-      + '\n  %s -k exp=mfx101332224,run=15 -d jungfrau -c pixel_gain -G g2 -F fake_g2.npy -I 0 -o work1' % SCRNAME\
+      + '\n  %s -k exp=mfx101332224,run=15 -d jungfrau -c pixel_gain -G g2 -F fake_g2.npy -I 0 -o ./work' % SCRNAME\
+      + '\n  %s -k exp=ascdaq123,run=347 -d epixm -c pixel_gain -F gains3d.npy -G SL -o ./work # US IT FOR epixm DO NOT USE -I' % SCRNAME\
+      + '\n  %s -k exp=ascdaq123,run=347 -d epixm -c pixel_gain -F gains2d.npy -G SL -o ./work -I 3 # WORKS FOR epixm, BUT IS NOT USED FOR DEPLOYMENT' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -38,14 +44,14 @@ def argument_parser():
     d_detname = None # 'jungfrau'
     d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-06-27'
+    d_version = 'V2025-11-06'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'
     d_dirmode = 0o2775
     d_filemode= 0o664
-    d_group   = 'ps-users'
     d_fname2darr = 'test_2darr.npy' # None
+    #d_group   = 'ps-users'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\

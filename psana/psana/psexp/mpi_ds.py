@@ -17,6 +17,7 @@ from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode
 from psana.smalldata import SmallData
+from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -31,46 +32,64 @@ nodetype = None
 
 class RunParallel(Run):
     """Yields list of events from multiple smd/bigdata files using > 3 cores."""
+    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, comms=None):
+        super(RunParallel, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
+        self.configs = configs
+        self.comms = comms
 
-    def __init__(self, ds, run_evt):
-        super(RunParallel, self).__init__(ds)
-        self.ds = ds
-        self.comms = ds.comms
-        self._evt = run_evt
-        self.beginruns = run_evt._dgrams
-        self.configs = ds._configs
-
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         super()._setup_envstore()
 
         if nodetype == "smd0":
-            self.smd0 = Smd0(ds)
+            self.smd0 = Smd0(comms, smdr_man, configs)
         elif nodetype == "eb":
-            self.eb_node = EventBuilderNode(ds)
+            self.eb_node = EventBuilderNode(comms, configs, dsparms)
         elif nodetype == "bd":
-            self.bd_node = BigDataNode(ds, self)
-            self.ana_t_gauge = self.dsparms.prom_man.get_metric("psana_bd_ana_rate")
+            self.bd_node = BigDataNode(comms, configs, dm, dsparms, self.shared_state)
+            self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
+
+        self._setup_run_calibconst()
+
+    def _setup_run_calibconst(self):
+        if nodetype == "smd0":
+            super()._setup_run_calibconst()
+        else:
+            # _setup_run_calibconst runs this
+            self._clear_calibconst()
+
+        self._calib_const = self.comms.psana_comm.bcast(
+            self._calib_const, root=0
+        )
+        self.dsparms.calibconst = self._calib_const
 
     def events(self):
         evt_iter = self.start()
         st = time.time()
-        for i, evt in enumerate(evt_iter):
-            if not TransitionId.isEvent(evt.service()):
-                continue
-            yield evt
+        for i, dgrams in enumerate(evt_iter):
+            if self._handle_transition(dgrams):
+                continue  # swallow non-L1 transitions in events() stream
+            # L1Accept: construct Event at the Run level
+            yield Event(dgrams=dgrams, run=self._run_ctx)
             if i % 1000 == 0:
                 en = time.time()
-                ana_rate = 1 / (en - st)
-                self.logger.debug(f"ANARATE {ana_rate:.2f} kHz")
+                ana_rate = 1000 / (en - st)
+                self.logger.debug(f"ANARATE {ana_rate:.2f} Hz")
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 
     def steps(self):
         evt_iter = self.start()
-        for evt in evt_iter:
-            if evt.service() == TransitionId.BeginStep:
-                yield Step(evt, evt_iter)
+        for dgrams in evt_iter:
+            svc = utils.first_service(dgrams)
+            if TransitionId.isEvent(svc):
+                # steps() only yields on BeginStep transitions; ignore L1
+                continue
+            # Update envstore for every transition
+            self._update_envstore_from_dgrams(dgrams)
+
+            if svc == TransitionId.BeginStep:
+                yield Step(Event(dgrams=dgrams, run=self._run_ctx), evt_iter, self._run_ctx)
 
     def start(self):
         """Request data for this run"""
@@ -100,7 +119,7 @@ class RunParallel(Run):
         elif nodetype == "eb":
             self.eb_node.start_broadcast()
         elif nodetype == "bd":
-            self.bd_node.start_smdonly()
+            self._ts_table = self.bd_node.start_smdonly()
             success = bool(self._ts_table)
         yield success
 
@@ -111,10 +130,15 @@ class RunParallel(Run):
 
         dgrams = [None] * len(self.configs)
         for i, (offset, size) in offsets.items():
-            buf = os.pread(self.ds.dm.fds[i], size, offset)
-            dgrams[i] = dgram.Dgram(config=self.ds.dm.configs[i], view=buf)
+            buf = os.pread(self.dm.fds[i], size, offset)
+            dgrams[i] = dgram.Dgram(config=self.dm.configs[i], view=buf)
 
         return Event(dgrams=dgrams, run=self)
+
+    def terminate(self):
+        self.comms.terminate()
+        super().terminate()
+
 
 def safe_mpi_abort(msg):
     print(msg)
@@ -157,11 +181,6 @@ class MPIDataSource(DataSourceBase):
                   \n\tPS_EB_NODES:     {nsmds}"""
             safe_mpi_abort(msg)
 
-        # can only have 1 EventBuilder when running with destination
-        if self.destination and nsmds > 1:
-            msg = "ERROR Too many EventBuilder cores with destination callback"
-            safe_mpi_abort(msg)
-
         # Load timestamp files on EventBuilder Node
         if "mpi_ts" in kwargs and nodetype == "eb":
             self.dsparms.timestamps = self.get_filter_timestamps(self.timestamps)
@@ -182,11 +201,7 @@ class MPIDataSource(DataSourceBase):
     def __del__(self):
         if nodetype == "smd0":
             super()._close_opened_smd_files()
-        self._end_prometheus_client(mpi_rank=self.comms.psana_comm.Get_rank())
-
-    def terminate(self):
-        self.comms.terminate()
-        super().terminate()
+        self._end_prometheus_client()
 
     def _get_configs(self):
         """Creates and broadcasts configs
@@ -205,6 +220,7 @@ class MPIDataSource(DataSourceBase):
                 [memoryview(config).shape[0] for config in configs], dtype="i"
             )
         else:
+            self.smdr_man = None  # Only smd0 uses SmdReaderManager
             configs = None
             nbytes = np.empty(len(self.smd_files), dtype="i")
 
@@ -286,35 +302,28 @@ class MPIDataSource(DataSourceBase):
                 return True
         # end while True
 
-    def _setup_run_calibconst(self):
-        if nodetype == "smd0":
-            super()._setup_run_calibconst()
-        else:
-            # _setup_run_calibconst runs this
-            self._clear_calibconst()
-
-        self._calib_const = self.comms.psana_comm.bcast(
-            self._calib_const, root=0
-        )
-
-        # workaround for archon crash on rank0 from Gabriel
-        #if nodetype != "smd0":
-        #    # smd0 already did this in _setup_run_calibconst
-        #    self._create_weak_calibconst()
-        self._create_weak_calibconst()
-
     def _start_run(self):
         if self._setup_beginruns():  # try to get next run from current files
-            self._setup_run_calibconst()
             return True
         elif self._setup_run():  # try to get next run from next files
             if self._setup_beginruns():
-                self._setup_run_calibconst()
                 return True
 
     def runs(self):
         while self._start_run():
-            run = RunParallel(self, Event(dgrams=self.beginruns))
+            # Pull (expt, runnum, ts) from the BeginRun dgrams
+            expt, runnum, ts = self._get_runinfo()
+            run = RunParallel(
+                expt,                 # experiment string
+                runnum,               # run number (int)
+                ts,                   # begin-run timestamp
+                self.dsparms,         # shared parameters / config tables
+                self.dm,              # DgramManager
+                self.smdr_man,        # SmdReaderManager (may be None for non-SMD modes)
+                self._configs,        # configs for this run
+                self.beginruns,       # beginrun dgrams
+                comms=self.comms,     # MPI communications
+            )
             yield run
 
     def is_mpi(self):

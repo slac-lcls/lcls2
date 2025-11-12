@@ -9,8 +9,9 @@
 
 #include "psalg/calib/NDArray.hh"
 
-#include <vector>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace Drp {
 class Parameters;
@@ -20,12 +21,11 @@ public:
     ~OpalTTFex();
  public:
     void configure  (XtcData::ConfigIter&,unsigned,unsigned);
-    void reset      ();
     void unconfigure();
     enum TTResult { VALID, NOBEAM, NOLASER, INVALID };
-    TTResult analyze    (std::vector< XtcData::Array<uint8_t> >& subframes,
-                         std::vector<double>& sigout,
-                         std::vector<double>& refout);
+    std::pair<std::vector<double>, TTResult> analyze    (std::vector< XtcData::Array<uint8_t> >& subframes,
+                                                         std::vector<double>& sigout,
+                                                         std::vector<double>& refout);
  public:
     bool   write_image          () const { return m_prescale_image; }
     bool   write_projections    () const { return m_prescale_projections; }
@@ -34,13 +34,6 @@ public:
     bool   write_evt_image      ();
     bool   write_evt_projections();
  public:
-    bool   damaged          () const { return !(m_flt_fwhm>0); }
-    double filtered_position() const { return m_flt_position; }
-    double filtered_pos_ps  () const { return m_flt_position_ps; }
-    double filtered_fwhm    () const { return m_flt_fwhm; }
-    double amplitude        () const { return m_amplitude; }
-    double next_amplitude   () const { return m_nxt_amplitude; }
-    double ref_amplitude    () const { return m_ref_amplitude; }
     std::vector<double>& sig_projection() { return m_sig_avg; }
     std::vector<double>& ref_projection() { return m_ref_avg; }
  public:
@@ -89,13 +82,6 @@ private:
     Pds::Semaphore m_sb_avg_sem;
     std::vector<double> m_sb_avg;  // averaged sideband region
     unsigned m_pedestal; // from Opal camera configuration
-
-    double m_flt_position;
-    double m_flt_position_ps;
-    double m_flt_fwhm;
-    double m_amplitude;
-    double m_nxt_amplitude;
-    double m_ref_amplitude;
 
     std::vector<unsigned> m_cut;
   };

@@ -198,9 +198,10 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._fexStatus = {}
         self._fexPeaks = []
+        self._pychansegs = None
         self._hsdsegments = self._segments(evt)
-        if self._hsdsegments is None: return # no segments at all
         self._evt = evt
+        if self._hsdsegments is None: return # no segments at all
         #seglist = [] # not used at the moment
 
         # Keep segment-pychan data for slow padding routine when asked

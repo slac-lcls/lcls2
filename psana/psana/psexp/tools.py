@@ -1,7 +1,7 @@
 import os
 import weakref
 
-# mode can be 'mpi' or 'legion' or 'none' for non parallel
+# mode can be 'mpi' or 'none' for non parallel
 mode = os.environ.get("PS_PARALLEL", "mpi")
 MODE = "PARALLEL"
 if mode == "mpi":

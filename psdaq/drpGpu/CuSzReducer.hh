@@ -2,9 +2,9 @@
 
 #include "ReducerAlgo.hh"
 
-#include "cusz/api_v2.h"
-#include "cusz/cusz.h"
-#include "cusz/cusz/type.h"
+#include <cusz/api_v2.h>
+#include <cusz/cusz.h>
+#include <cusz/cusz/type.h>
 
 namespace Drp {
   namespace Gpu {

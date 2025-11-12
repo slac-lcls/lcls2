@@ -12,6 +12,7 @@ def get_output_header(job_name, platform, nodelist, daq_cmd):
         "CONDA_PREFIX",
         "CONFIGDB_AUTH",
         "TESTRELDIR",
+        "SUBMODULEDIR",
         "RDMAV_FORK_SAFE",
         "RDMAV_HUGEPAGES_SAFE",
         "OPENBLAS_NUM_THREADS",

@@ -1,6 +1,5 @@
 import numpy as np
-import os 
-import IPython
+import os
 import pytest
 
 from psana import DataSource
@@ -49,7 +48,7 @@ def run_timetool():
         #validating that we're getting the correct number of pixels
         if(parsed_frame_object.prescaled_frame is not None):
             assert len(parsed_frame_object.prescaled_frame) == 2048
-            
+
             firmware_edges.append(parsed_frame_object.edge_position)
             #IPython.embed()
             software_edges.append(np.argmax(np.convolve(parsed_frame_object.prescaled_frame,my_kernel)))

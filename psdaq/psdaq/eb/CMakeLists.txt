@@ -63,18 +63,18 @@ target_link_libraries(eventBuilder
   prometheus-cpp::push
 )
 
-add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
-
-add_executable(ft_publish         ft_publish.cc)
-add_executable(ft_sub             ft_sub.cc)
-add_executable(ft_push            ft_push.cc)
-add_executable(ft_request         ft_request.cc)
-add_executable(ft_server          ft_server.cc)
-add_executable(ft_client          ft_client.cc)
-add_executable(ft_writemsg_client ft_writemsg_client.cc)
-add_executable(ft_writemsg_server ft_writemsg_server.cc)
-
-add_executable(eblf_pingpong    eblf_pingpong.cc)
+#add_executable(ft_pingpong ft_pingpong.cc fiTransport.cc)
+#
+#add_executable(ft_publish         ft_publish.cc)
+#add_executable(ft_sub             ft_sub.cc)
+#add_executable(ft_push            ft_push.cc)
+#add_executable(ft_request         ft_request.cc)
+#add_executable(ft_server          ft_server.cc)
+#add_executable(ft_client          ft_client.cc)
+#add_executable(ft_writemsg_client ft_writemsg_client.cc)
+#add_executable(ft_writemsg_server ft_writemsg_server.cc)
+#
+#add_executable(eblf_pingpong    eblf_pingpong.cc)
 
 add_executable(tstEbLfLink      tstEbLfLink.cc)
 
@@ -103,48 +103,48 @@ target_include_directories(teb PUBLIC
 #  $ENV{CONDA_PREFIX}/include
 #)
 
-target_link_libraries(ft_pingpong
-  utilities
-)
-
-target_link_libraries(ft_publish
-  utilities
-  Threads::Threads
-)
-
-target_link_libraries(ft_sub
-  utilities
-)
-
-target_link_libraries(ft_push
-  utilities
-)
-
-target_link_libraries(ft_request
-  utilities
-)
-
-target_link_libraries(ft_client
-  utilities
-)
-
-target_link_libraries(ft_server
-  utilities
-)
-
-target_link_libraries(ft_writemsg_client
-  utilities
-)
-
-target_link_libraries(ft_writemsg_server
-  utilities
-)
-
-target_link_libraries(eblf_pingpong
-  utilities
-  collection
-  epicstools
-)
+#target_link_libraries(ft_pingpong
+#  utilities
+#)
+#
+#target_link_libraries(ft_publish
+#  utilities
+#  Threads::Threads
+#)
+#
+#target_link_libraries(ft_sub
+#  utilities
+#)
+#
+#target_link_libraries(ft_push
+#  utilities
+#)
+#
+#target_link_libraries(ft_request
+#  utilities
+#)
+#
+#target_link_libraries(ft_client
+#  utilities
+#)
+#
+#target_link_libraries(ft_server
+#  utilities
+#)
+#
+#target_link_libraries(ft_writemsg_client
+#  utilities
+#)
+#
+#target_link_libraries(ft_writemsg_server
+#  utilities
+#)
+#
+#target_link_libraries(eblf_pingpong
+#  utilities
+#  collection
+#  epicstools
+#)
 
 target_link_libraries(tstEbLfLink
   utilities

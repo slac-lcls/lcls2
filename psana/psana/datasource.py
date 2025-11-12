@@ -31,7 +31,6 @@ from psana.psexp.serial_ds import SerialDataSource
 from psana.psexp.singlefile_ds import SingleFileDataSource
 from psana.psexp.shmem_ds import ShmemDataSource
 from psana.psexp.drp_ds import DrpDataSource
-from psana.psexp.legion_ds import LegionDataSource
 from psana.psexp.null_ds import NullDataSource
 
 
@@ -107,15 +106,12 @@ def DataSource(*args, **kwargs):
                 else:
                     return NullDataSource(*args, **kwargs)
 
-        elif mode == "legion":
-            return LegionDataSource(*args, **kwargs)
-
         elif mode == "none":
             return SerialDataSource(*args, **kwargs)
 
         else:
             raise InvalidDataSource(
-                "Incorrect mode. DataSource mode only supports either mpi, legion, or none (non parallel mode)."
+                "Incorrect mode. DataSource mode only supports either mpi or none (non parallel mode)."
             )
 
     # ==== from XTC file(s) ====

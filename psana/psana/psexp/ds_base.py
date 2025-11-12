@@ -1,29 +1,25 @@
 import abc
-import gc
 import glob
 import json
 import logging
 import os
 import re
 import socket
-import threading
 import time
-import weakref
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
 import requests
 from kafka import KafkaProducer
 
-import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
-from psana.pscalib.app.calib_prefetch import calib_utils
-from psana.psexp.prometheus_manager import PrometheusManager
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
+from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_manager
+
 
 if mode == "mpi":
     pass
@@ -46,19 +42,19 @@ def _log_file_list(logger, title, files):
 class DsParms:
     batch_size: int
     max_events: int
-    filter: int
-    destination: int
-    prom_man: int
     max_retries: int
     live: bool
-    smd_inprogress_converted: int
     timestamps: np.ndarray
     intg_det: str
     intg_delta_t: int
-    log_level: str
-    log_file: str
+    use_calib_cache: bool
+    cached_detectors: list
+    fetch_calib_cache_max_retries: int
+    skip_calib_load: list
+    dbsuffix: str
     smd_callback: int = 0
-    terminate_flag: bool = False
+    smd_files: list[str] = field(default_factory=list)
+    use_smds: list[bool] = field(default_factory=list)
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -68,7 +64,8 @@ class DsParms:
         self.det_info_table = det_info_table
         self.det_stream_id_table = det_stream_id_table
 
-    def set_use_smds(self, use_smds):
+    def update_smd_state(self, smd_files, use_smds):
+        self.smd_files = smd_files
         self.use_smds = use_smds
 
     @property
@@ -99,8 +96,6 @@ class DataSourceBase(abc.ABC):
         Shared memory identifier (for live mode).
     drp : str
         DRP-specific parameters (not currently used).
-    filter : callable
-        A function that takes an event and returns True/False.
     batch_size : int
         Number of events per batch sent to bigdata core (default: 1000).
     max_events : int
@@ -111,8 +106,6 @@ class DataSourceBase(abc.ABC):
         Detectors to explicitly exclude.
     det_name : str
         Deprecated (use 'detectors').
-    destination : callable or int
-        Callback that returns destination rank (used in event builder).
     live : bool
         Enable live data mode (default: False).
     smalldata_kwargs : dict
@@ -148,6 +141,10 @@ class DataSourceBase(abc.ABC):
         Used internally to avoid repeated file I/O in MPI contexts.
     log_level : int
         Python logging level (e.g., logging.DEBUG, logging.INFO). Default is logging.INFO.
+    log_file : str
+        Log file path. If None, logs to stdout (default: None).
+    auto_tune : bool
+        Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
     """
 
     def __init__(self, **kwargs):
@@ -156,9 +153,12 @@ class DataSourceBase(abc.ABC):
         log_file = kwargs.get("log_file", None)
         if isinstance(log_level, str):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
+        utils.configure_logging(level=log_level,
+                        logfile=log_file,
+                        timestamp=False)
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         # Default values
-        self.filter = kwargs.get("filter", 0)
         self.batch_size = kwargs.get("batch_size", 1000)
         self.max_events = kwargs.get("max_events", 0)
         self.detectors = kwargs.get("detectors", [])
@@ -169,7 +169,6 @@ class DataSourceBase(abc.ABC):
         self.dir = kwargs.get("dir", None)
         self.files = kwargs.get("files", None)
         self.shmem = kwargs.get("shmem", None)
-        self.destination = kwargs.get("destination", 0)
         self.monitor = kwargs.get("monitor", False)
         self.small_xtc = kwargs.get("small_xtc", [])
         self.timestamps = kwargs.get("timestamps", np.empty(0, dtype=np.uint64))
@@ -186,24 +185,12 @@ class DataSourceBase(abc.ABC):
         self.cached_detectors = kwargs.get("cached_detectors", [])
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
-
-        # Calibration constant structures
-        # Held by _calib_const, _cc_weak holds weak references to the sub-dicts
-        # dsparms.calibconst holds a weak reference to _cc_weak
-        self._calib_const = None
-        """Holds calibration constants for all detectors."""
-        self._cc_weak = utils.WeakDict({})
-        """Holds weakrefs to each detectors constants. Passed via weakref in dsparms."""
+        self.auto_tune = kwargs.get("auto_tune", False)
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
         if not self.live:
             os.environ["PS_R_MAX_RETRIES"] = "0"
-
-        # Reset batch_size if a custom destination is set
-        if self.destination != 0:
-            self.logger.debug("Custom destination set. Resetting batch_size to 1.")
-            self.batch_size = 1
 
         # Load timestamps unless MPI context handles it
         if not kwargs.get("mpi_ts", False):
@@ -212,42 +199,36 @@ class DataSourceBase(abc.ABC):
         # Final sanity check
         assert self.batch_size > 0, "batch_size must be greater than 0"
 
-        # Create Prometheus manager
-        self.prom_man = PrometheusManager(job=self.prom_jobid)
-
         # Package up DataSource parameters
         self.dsparms = DsParms(
             self.batch_size,
             self.max_events,
-            self.filter,
-            self.destination,
-            self.prom_man,
             self.max_retries,
             self.live,
-            self.smd_inprogress_converted,
             self.timestamps,
             self.intg_det,
             self.intg_delta_t,
-            log_level,
-            log_file,
+            self.use_calib_cache,
+            self.cached_detectors,
+            self.fetch_calib_cache_max_retries,
+            self.skip_calib_load,
+            self.dbsuffix,
             smd_callback=self.smd_callback,
         )
 
-        self.logger = utils.get_logger(dsparms=self.dsparms, name=utils.get_class_name(self))
-
         # Warn about unrecognized kwargs
         known_keys = {
-            "exp", "run", "dir", "files", "shmem", "drp", "filter", "batch_size",
-            "max_events", "detectors", "xdetectors", "det_name", "destination",
+            "exp", "run", "dir", "files", "shmem", "drp", "batch_size",
+            "max_events", "detectors", "xdetectors", "det_name",
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
-            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts", "mode",
-            "log_level", "log_file"
+            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
+            "log_level", "log_file", 'auto_tune'
         }
         for k in kwargs:
             if k not in known_keys:
-                self.logger.debug(f"Unrecognized kwarg={k}")
+                self.logger.warning(f"Unrecognized kwarg={k}")
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
@@ -262,7 +243,8 @@ class DataSourceBase(abc.ABC):
             formatted_timestamps = timestamps
         else:
             self.logger.info(
-                f"Warning: No timestamp filtering, unrecognized format of the input filter timestamp ({type(timestamps)}). Allowed formats are .npy file or numpy.ndarray)."
+                "Warning: No timestamp filtering. Unrecognized input type "
+                f"({type(timestamps)}). Allowed formats are .npy or numpy.ndarray."
             )
         return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
 
@@ -301,30 +283,6 @@ class DataSourceBase(abc.ABC):
                 info["msgtype"] = MonitorMsgType.PSPLOT
                 sub.send(info)
 
-    def smd_inprogress_converted(self):
-        """Returns a list of True/False if smd.xtc2.inprogress has been
-        converted to smd.xtc2.
-
-        Only applies to smalldata files. Bigdata gets read-in at offsets
-        and thus doesn't care about the end of file checking.
-
-        For each xtc file, returns True ONLY IF using .inprogress files and .xtc2 files
-        are found on disk. We return False in the case where .inprogress
-        files are not used because this callback is used to check if we
-        should wait for more data on the xtc files. The read-retry will not
-        happen if this callback returns True and there's 0 byte read out.
-
-        See https://github.com/monarin/psana-nersc/blob/master/psana2/write_then_move.sh
-        to mimic a live run for testing this feature.
-        """
-        found_flags = [False] * self.n_files
-
-        for i_file, smd_file in enumerate(self.smd_files):
-            if smd_file.find(".xtc2.inprogress") >= 0:
-                if os.path.isfile(os.path.splitext(smd_file)[0]):
-                    found_flags[i_file] = True
-        return found_flags
-
     @abc.abstractmethod
     def runs(self):
         return
@@ -332,19 +290,6 @@ class DataSourceBase(abc.ABC):
     @abc.abstractmethod
     def is_mpi(self):
         return
-
-    def terminate(self):
-        """Sets terminate flag
-
-        The Events iterators of all Run types check this flag
-        to see if they need to stop (raise StopIterator for
-        RunSerial, RunShmem, & RunSinglefile or skip events
-        for RunParallel (see BigDataNode implementation).
-
-        Note that mpi_ds implements this differently by adding
-        Isend prior to setting this flag.
-        """
-        self.dsparms.terminate_flag = True
 
     def unique_user_rank(self):
         """Only applicable to MPIDataSource
@@ -515,8 +460,7 @@ class DataSourceBase(abc.ABC):
         _log_file_list(self.logger, "smd_files", self.smd_files)
         _log_file_list(self.logger, "xtc_files", self.xtc_files)
 
-        # Set default flag for replacing smalldata with bigda files.
-        self.dsparms.set_use_smds([False] * self.n_files)
+        self.dsparms.update_smd_state(self.smd_files, [False] * self.n_files)
 
     def _setup_runnum_list(self):
         """
@@ -568,37 +512,33 @@ class DataSourceBase(abc.ABC):
         return self.smalldata_obj
 
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
+        """Start Prometheus either via push gateway (default) or HTTP exposer.
+        With the singleton, this is safe to call multiple times."""
         if not self.monitor:
-            self.logger.debug("RUN W/O PROMETHEUS CLENT")
-        elif prom_cfg_dir is None:  # Use push gateway
-            self.prom_man.rank = mpi_rank
-            self.logger.debug(
-                f"START PROMETHEUS CLIENT (JOB:{self.prom_man.job} RANK:{self.prom_man.rank})"
-            )
-            self.e = threading.Event()
-            self.t = threading.Thread(
-                name="PrometheusThread%s" % (mpi_rank),
-                target=self.prom_man.push_metrics,
-                args=(self.e,),
-                daemon=True,
-            )
-            self.t.start()
-        else:  # Use http exposer
-            self.logger.debug(
-                "START PROMETHEUS CLIENT (PROM_CFG_DIR: %s)" % (prom_cfg_dir)
-            )
-            self.e = None
-            self.prom_man.create_exposer(prom_cfg_dir)
-
-    def _end_prometheus_client(self, mpi_rank=0):
-        if not self.monitor:
+            self.logger.debug("RUN W/O PROMETHEUS CLIENT")
             return
 
-        if self.e is not None:  # Push gateway case only
+        if prom_cfg_dir is None:  # Push-gateway mode
+            pm = ensure_pusher(rank=mpi_rank)   # starts pusher once per process
             self.logger.debug(
-                "END PROMETHEUS CLIENT (JOB:%s)" % (self.prom_man.job)
+                f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
             )
-            self.e.set()
+        else:  # HTTP exposer mode (DAQ-style scrape)
+            pm = get_prom_manager()
+            self.logger.debug(
+                f"START PROMETHEUS HTTP EXPOSER (PROM_CFG_DIR:{prom_cfg_dir})"
+            )
+            pm.create_exposer(prom_cfg_dir)      # safe: only starts once per process
+
+    def _end_prometheus_client(self):
+        """Stop the push-gateway pusher if running. Exposer stays up (matches previous behavior)."""
+        if not self.monitor:
+            return
+        try:
+            stop_pusher()  # no-op if nothing running
+            self.logger.debug("END PROMETHEUS CLIENT (pusher stopped)")
+        except Exception as ex:
+            self.logger.debug(f"END PROMETHEUS CLIENT: stop_pusher() raised {ex!r}")
 
     @property
     def _configs(self):
@@ -675,7 +615,9 @@ class DataSourceBase(abc.ABC):
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
                                 self.logger.info(
-                                    f"Warning: Stream-{i} has one or more detectors matched with the excluded set. All detectors in this stream will be excluded."
+                                    "Warning: Stream-%s has detectors in the excluded set; "
+                                    "excluding entire stream.",
+                                    i,
                                 )
 
                     if flag_keep:
@@ -715,104 +657,7 @@ class DataSourceBase(abc.ABC):
                 os.close(smd_fd)
             self.logger.debug(f"close tmp smd fds:{smd_fds}")
 
-        self.dsparms.set_use_smds(use_smds)
-
-    def _clear_calibconst(self):
-        """Explicitly clear calibration constants and force garbage collection.
-
-        Helps to prevent leakage of calibration constants between runs.
-        """
-        if self._calib_const is not None:
-            self._calib_const = None
-            gc.collect()
-            self._calib_const = utils.WeakDict({})
-            self._cc_weak = utils.WeakDict({})
-
-    def _create_weak_calibconst(self):
-        """Setup weak references to calibration constants.
-
-        Pass along only weak references to large calibration data structures
-        since references are held in many places downstream making garbage
-        collection unreliable if any one object leaks/has circular references.
-        """
-        if self._calib_const is not None:
-            for key in self._calib_const:
-                self._cc_weak[key] = weakref.WeakValueDictionary(self._calib_const[key])
-        # Only use dsparms.calibconst to pass to runs, detectors etc.
-        self.dsparms.calibconst = weakref.proxy(self._cc_weak)
-
-    def _setup_run_calibconst(self):
-        """
-        Initialize the `dsparms.calibconst` dictionary with calibration constants.
-
-        If `use_calib_cache` is enabled, attempts to load calibration constants from
-        shared memory (e.g., `/dev/shm`) using `ensure_valid_calibconst`. Otherwise,
-        fetches calibration constants directly from the database for each detector.
-
-        This function supports skipping selected detectors via `skip_calib_load`.
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        runinfo = self._get_runinfo()
-        if not runinfo:
-            return
-        expt, runnum, _ = runinfo
-        self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
-
-        self._clear_calibconst()
-
-        if self.use_calib_cache:
-            self.logger.debug("using calibration constant from shared memory, if exists")
-            calib_const, existing_info, max_retry = (None, None, 0)
-            latest_info = {k: v.uniqueid for k, v in self.dsparms.configinfo_dict.items()}
-            while not calib_const and max_retry < self.fetch_calib_cache_max_retries and existing_info != latest_info:
-                try:
-                    loaded_data = calib_utils.try_load_data_from_file(self.logger)
-                except Exception as e:
-                    self.logger.warning(f"failed to retrieve calib_const: {e}")
-                if loaded_data is not None:
-                    self._calib_const = utils.make_weak_refable(loaded_data.get("calib_const"))
-                    existing_info = loaded_data.get("det_info")
-                if existing_info != latest_info:
-                    self._calib_const = utils.WeakDict({})
-                    self.logger.warning("det_info in pickle file does not matched with the latest run")
-                    self.logger.warning(f"{existing_info=}")
-                    self.logger.warning(f"{latest_info=}")
-                elif self._calib_const:
-                    self.logger.debug(f"received calib_const for {','.join(self._calib_const.keys())}")
-                    break
-                max_retry += 1
-                self.logger.debug(f"try to read calib_const from shared memory (retry: {max_retry}/{self.fetch_calib_cache_max_retries})")
-                time.sleep(1)
-        else:
-            if self._calib_const is None:
-                self._calib_const = utils.WeakDict({})
-            for det_name, configinfo in self.dsparms.configinfo_dict.items():
-                if expt:
-                    if expt == "xpptut15":
-                        det_uniqueid = "cspad_detnum1234"
-                    else:
-                        det_uniqueid = configinfo.uniqueid
-                    if hasattr(self, "skip_calib_load") and (det_name in self.skip_calib_load or self.skip_calib_load=="all"):
-                        self._calib_const[det_name] = utils.WeakDict({})
-                        continue
-                    st = time.monotonic()
-                    calib_const = wu.calib_constants_all_types(
-                        det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dbsuffix
-                    )
-                    en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
-                    self._calib_const[det_name] = utils.make_weak_refable(calib_const)
-                else:
-                    self.logger.info(
-                        "Warning: cannot access calibration constant (exp is None)"
-                    )
-                    self._calib_const[det_name] = utils.WeakDict({})
-        self._create_weak_calibconst()
+        self.dsparms.update_smd_state(self.smd_files, use_smds)
 
     def _get_runinfo(self):
         expt, runnum, timestamp = (None, None, None)

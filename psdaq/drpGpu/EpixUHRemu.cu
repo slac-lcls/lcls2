@@ -12,6 +12,10 @@ using namespace Pds;
 using namespace Drp::Gpu;
 using json = nlohmann::json;
 
+struct uhr_domain{ static constexpr char const* name{"EpixUHRemu"}; };
+using uhr_scoped_range = nvtx3::scoped_range_in<uhr_domain>;
+
+
 namespace Drp {
   class PGPEvent;
   namespace Gpu {
@@ -143,8 +147,8 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     for (unsigned gn = 0; gn < NGains; ++gn) {
       chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyHostToDevice));
       chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyHostToDevice));
-      peds_d  += NPixels * sizeof(*peds_d);
-      gains_d += NPixels * sizeof(*gains_d);
+      peds_d  += NPixels;
+      gains_d += NPixels;
     }
   }
 
@@ -153,22 +157,23 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
-                                  const size_t                       calibBufsCnt,
+                                  size_t   const                     calibBufsCnt,
                                   uint16_t const* const __restrict__ in,
-                                  const unsigned&                    index,
-                                  const unsigned                     panel,
-                                  float* const         __restrict__  peds_,
-                                  float* const         __restrict__  gains_)
+                                  unsigned const&                    index,
+                                  unsigned const                     panel,
+                                  float    const* const __restrict__ peds_,
+                                  float    const* const __restrict__ gains_)
 {
-  int pixel = blockIdx.x * blockDim.x + threadIdx.x;
+  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * EpixUHRemu::NPixels];
+  int stride = gridDim.x * blockDim.x;
+  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
 
-  const auto gainMask = (1 << EpixUHRemu::GainOffset) - 1;
-  for (int i = pixel; i < EpixUHRemu::NPixels; i += blockDim.x * gridDim.x) {
-    const auto gain     = (in[i] >> EpixUHRemu::GainOffset) & ((1 << EpixUHRemu::GainBits) - 1);
-    const auto peds     = &peds_ [gain * EpixUHRemu::NPixels];
-    const auto gains    = &gains_[gain * EpixUHRemu::NPixels];
-    const auto data     = in[i] & gainMask;
+  for (int i = pixel; i < EpixUHRemu::NPixels; i += stride) {
+    const auto gain  = (in[i] >> EpixUHRemu::GainOffset) & ((1 << EpixUHRemu::GainBits) - 1);
+    const auto peds  = &peds_ [gain * EpixUHRemu::NPixels];
+    const auto gains = &gains_[gain * EpixUHRemu::NPixels];
+    const auto data  = in[i] & ((1 << EpixUHRemu::GainOffset) - 1);
     out[i] = (float(data) - peds[i]) * gains[i];
   }
 }
@@ -179,19 +184,22 @@ void EpixUHRemu::recordGraph(cudaStream_t&         stream,
                              const unsigned        panel,
                              uint16_t const* const rawBuffer)
 {
+  uhr_scoped_range r{/*"EpixUHRemu::recordGraph"*/}; // Expose function name via NVTX
+
   auto nPanels = m_dets.size();
 
   // Check that panel is within range
   assert (panel < nPanels);
 
-  int threads = 1024;
-  int blocks  = (NPixels + threads-1) / threads; // @todo: Limit this?
+  unsigned   chunks{128};               // Number of pixels handled per thread
+  unsigned   tpb   {256};               // Threads per block
+  unsigned   bpg   {(NPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
   auto       pool         = m_pool->getAs<MemPoolGpu>();
   const auto peds         = m_peds_d[panel];
   const auto gains        = m_gains_d[panel];
   auto const calibBuffers = pool->calibBuffers_d();
-  auto const calibBufsCnt = pool->calibBufsSize();
-  _calibrate<<<blocks, threads, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, peds, gains);
+  auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
+  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, peds, gains);
 }
 
 // The class factory

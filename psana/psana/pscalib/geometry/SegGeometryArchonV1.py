@@ -108,16 +108,19 @@ class SegGeometryArchonV1(SegGeometry):
         det = kwa.get('detector', None)
         assert det is not None
         shape = kwa.get('shape', None)
-        if shape is None:
-            assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
-            peds = det._calibconst['pedestals'][0]
-            shape = peds.shape
-        logger.debug('__init__(): segment shape=%s' % str(shape))
-        sp._rows = shape[0]
-        sp.make_pixel_coord_arrs()
-        sp.pix_area_arr = None
-        sp.x_pix_arr_pix = None
-        sp.x_pix_arr_um_offset = None
+        # needed for "lightweight" detector-interface instantiation without calibration
+        # constants to determine detector-interface attributes for ami in run.py (detinfo)
+        if det._calibconst is not None:
+            if shape is None:
+                assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
+                peds = det._calibconst['pedestals'][0]
+                shape = peds.shape
+                logger.debug('__init__(): segment shape=%s' % str(shape))
+            sp._rows = shape[0]
+            sp.make_pixel_coord_arrs()
+            sp.pix_area_arr = None
+            sp.x_pix_arr_pix = None
+            sp.x_pix_arr_um_offset = None
 
     def make_pixel_coord_arrs(sp, dtype=np.float64):
         """Makes [<nrows>,4800] maps of x, y, and z pixel coordinates with origin in the center"""

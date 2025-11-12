@@ -57,9 +57,6 @@ class Test:
         loop_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_loops.py')
         subprocess.check_call(['python',loop_based], env=env)
 
-        callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
-        subprocess.check_call(['python',callback_based], env=env)
-
         loop_based_exhausted = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ds.py')
         subprocess.check_call(['python',loop_based_exhausted], env=env)
 
@@ -86,61 +83,6 @@ class Test:
         for flag in ['-r','-e','-s','-i']:
             subprocess.check_call(['detnames',flag,xtc_file])
         subprocess.check_call(['detnames',xtc_file])
-
-    #@pytest.mark.legion
-    #@pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
-    #def test_legion(self, tmp_path):
-    #    setup_input_files(tmp_path)
-
-    #    # Legion script mode.
-    #    env = dict(list(os.environ.items()) + [
-    #        ('PS_PARALLEL', 'legion'),
-    #        ('TEST_XTC_DIR', str(tmp_path)),
-    #    ])
-    #    callback_based = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'user_callbacks.py')
-    #    subprocess.check_call(['legion_python', callback_based, '-ll:py', '1'], env=env)
-
-    #    # Legion module mode.
-    #    python_path = os.environ.get('PYTHONPATH', '').split(':')
-    #    python_path.append(os.path.dirname(os.path.realpath(__file__)))
-    #    env.update({
-    #        'PYTHONPATH': ':'.join(python_path),
-    #    })
-    #    subprocess.check_call(['legion_python', 'user_callbacks', '-ll:py', '1'], env=env)
-
-    #def test_run_pickle(self, tmp_path):
-    #    # Test that run is pickleable
-    #    setup_input_files(tmp_path)
-
-    #    import run_pickle
-    #    run_pickle.test_run_pickle(tmp_path)
-
-    #@pytest.mark.legion
-    #@pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
-    #def test_legion_pickle(self, tmp_path):
-    #    # Again, in Legion
-    #    setup_input_files(tmp_path)
-
-    #    python_path = os.environ.get('PYTHONPATH', '').split(':')
-    #    python_path.append(os.path.dirname(os.path.realpath(__file__)))
-    #    env = dict(list(os.environ.items()) + [
-    #        ('PYTHONPATH', ':'.join(python_path)),
-    #        ('PS_PARALLEL', 'legion'),
-    #        ('TEST_XTC_DIR', str(tmp_path)),
-    #    ])
-    #    subprocess.check_call(['legion_python', 'run_pickle', '-ll:py', '1'], env=env)
-
-    #@pytest.mark.legion
-    #@pytest.mark.skipif(sys.platform == 'darwin', reason="psana with legion not supported on mac")
-    #def test_legion_no_mpi(self, tmp_path):
-    #    python_path = os.environ.get('PYTHONPATH', '').split(':')
-    #    python_path.insert(0, os.path.join(os.path.dirname(os.path.realpath(__file__)), 'fake_mpi4py'))
-    #    python_path.append(os.path.dirname(os.path.realpath(__file__)))
-    #    env = dict(list(os.environ.items()) + [
-    #        ('PYTHONPATH', ':'.join(python_path)),
-    #        ('PS_PARALLEL', 'legion'),
-    #    ])
-    #    subprocess.check_call(['legion_python', 'run_no_mpi', '-ll:py', '1'], env=env)
 
     def test_det(self, xtc_file):
         det(xtc_file)

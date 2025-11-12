@@ -100,6 +100,7 @@ def do_main():
     print('\ndirs for scripts in %s    %s' % (dirs_scripts, s))
     print('\ninstrument directories:%s' % info_xtc2dirs())
     print('\ncalib constants repository:\n  /sdf/group/lcls/ds/ana/detector/calib2/constants\n')
+    print('\noptical alignment using metrology:\n  /sdf/group/lcls/ds/ana/detector/alignment/\n')
 
 if __name__ == "__main__":
     do_main()

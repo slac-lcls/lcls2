@@ -10,6 +10,7 @@ from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 from psana.psexp import TransitionId
+from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -126,7 +127,7 @@ class Communicators(object):
         """Tells Smd0 to terminate the loop.
 
         Smd0 is waiting (non-blocking) on the world comm for a signal (just
-        world rank no. (so we know who requests the terimiation).
+        world rank no. (so we know who requests the termination).
         """
         self.comm.Isend(np.array([self.world_rank], dtype="i"), dest=0)
 
@@ -244,17 +245,18 @@ class Smd0(object):
     sends all smds within that timestamp.
     """
 
-    def __init__(self, ds):
-        self.comms = ds.comms
-        self.smdr_man = ds.smdr_man
-        self.configs = ds._configs
+    def __init__(self, comms, smdr_man, configs):
+        self.comms = comms
+        self.smdr_man = smdr_man
+        self.configs = configs
         self.step_hist = StepHistory(self.comms.smd_size, len(self.configs))
 
         # Collecting Smd0 performance using prometheus
-        self.wait_gauge = ds.dsparms.prom_man.get_metric("psana_smd0_wait")
-        self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_smd0_rate")
+        pm = get_prom_manager()
+        self.wait_gauge = pm.get_metric("psana_smd0_wait")
+        self.rate_gauge = pm.get_metric("psana_smd0_rate")
 
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
@@ -379,17 +381,17 @@ class EventBuilderNode(object):
     offsets and dgramsizes into a numpy array. Sends
     this np array to bd_nodes that are registered to it."""
 
-    def __init__(self, ds):
-        self.comms = ds.comms
-        self.configs = ds._configs
-        self.dsparms = ds.dsparms
-        self.dm = ds.dm
+    def __init__(self, comms, configs, dsparms):
+        self.comms = comms
+        self.configs = configs
+        self.dsparms = dsparms
         self.step_hist = StepHistory(self.comms.bd_size, len(self.configs))
-        self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_eb_rate")
-        self.wait_smd0_gauge = ds.dsparms.prom_man.get_metric("psana_eb_wait_smd0")
-        self.wait_bd_gauge = ds.dsparms.prom_man.get_metric("psana_eb_wait_bd")
+        pm = get_prom_manager()
+        self.rate_gauge = pm.get_metric("psana_eb_rate")
+        self.wait_smd0_gauge = pm.get_metric("psana_eb_wait_smd0")
+        self.wait_bd_gauge = pm.get_metric("psana_eb_wait_bd")
         self.requests = []
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def _init_requests(self):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
@@ -474,7 +476,7 @@ class EventBuilderNode(object):
                 break
 
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+                smd_chunk, self.configs, self.dsparms,
             )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
@@ -663,7 +665,7 @@ class EventBuilderNode(object):
                 break
 
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, self.dm.get_run()
+                smd_chunk, self.configs, self.dsparms
             )
 
             for smd_batch_dict, _ in eb_man.batches():
@@ -679,13 +681,16 @@ class EventBuilderNode(object):
 
 
 class BigDataNode(object):
-    def __init__(self, ds, run):
-        self.ds = ds
-        self.run = run
-        self.comms = ds.comms
-        self.wait_gauge = ds.dsparms.prom_man.get_metric("psana_bd_wait")
-        self.rate_gauge = ds.dsparms.prom_man.get_metric("psana_bd_rate")
-        self.logger = utils.get_logger(dsparms=ds.dsparms, name=utils.get_class_name(self))
+    def __init__(self, comms, configs, dm, dsparms, shared_state):
+        self.comms = comms
+        self.configs = configs
+        self.dm = dm
+        self.dsparms = dsparms
+        self.shared_state = shared_state
+        pm = get_prom_manager()
+        self.wait_gauge = pm.get_metric("psana_bd_wait")
+        self.rate_gauge = pm.get_metric("psana_bd_rate")
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def start(self):
         def get_smd():
@@ -716,22 +721,27 @@ class BigDataNode(object):
             self.wait_gauge.set(en_req - st_req)
             return chunk
 
-        events = Events(self.ds, self.run, get_smd=get_smd)
+        dgrams_iter = Events(self.configs,
+                        self.dm,
+                        self.dsparms.max_retries,
+                        self.dsparms.use_smds,
+                        self.shared_state,
+                        get_smd=get_smd)
 
         t0 = time.monotonic()
-        for i_evt, evt in enumerate(events):
-            if self.ds.dsparms.terminate_flag:
+        for i_evt, dgrams in enumerate(dgrams_iter):
+            # throw away events if termination flag is set
+            if self.shared_state.terminate_flag.value:
                 continue
 
-            if self.ds.monitor:
-                if i_evt % 1000 == 0:
-                    t1 = time.monotonic()
-                    rate = 1 / (t1 - t0)
-                    self.logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
-                    self.rate_gauge.set(rate)
-                    t0 = time.monotonic()
+            if i_evt % 1000 == 0:
+                t1 = time.monotonic()
+                rate = 1 / (t1 - t0)
+                self.logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
+                self.rate_gauge.set(rate)
+                t0 = time.monotonic()
 
-            yield evt
+            yield dgrams
 
     def start_smdonly(self):
         bd_comm = self.comms.bd_comm
@@ -743,8 +753,13 @@ class BigDataNode(object):
 
         t0 = time.monotonic()
 
-        events = SmdEvents(self.ds, self.run, get_smd=get_smd)
-        self.run._ts_table = {}
+        events = SmdEvents(self.configs,
+                           self.dm,
+                           self.dsparms.max_retries,
+                           self.dsparms.use_smds,
+                           self.shared_state,
+                           get_smd=get_smd)
+        ts_table = {}
 
         cn_events = 0
         cn_pass = 0
@@ -754,7 +769,7 @@ class BigDataNode(object):
                 continue
 
             ts = evt.timestamp
-            self.run._ts_table[ts] = {
+            ts_table[ts] = {
                 i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
                 for i, d in enumerate(evt._dgrams)
                 if d is not None and hasattr(d, 'smdinfo')
@@ -762,3 +777,4 @@ class BigDataNode(object):
             cn_pass += 1
 
         self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
+        return ts_table
