@@ -11,7 +11,7 @@ fi
 
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
-force_clean=1
+force_clean=0
 build_ext_list=""
 PSANA_PATH=`pwd`/psana
 
@@ -25,7 +25,7 @@ while getopts "c:p:b:fd" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
-    d) no_daq=1
+    d) no_daq=0
     ;;
     p) pyInstallStyle="$OPTARG"
     ;;
@@ -84,7 +84,7 @@ function cmake_build() {
     cd build
 
     # Run CMake configuration with the remaining arguments
-    cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" .. -DDAQ=$no_daq
 
     # Check the make_install flag
     if [ "$make_install" -eq 1 ]; then
