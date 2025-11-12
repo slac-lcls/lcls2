@@ -7,14 +7,16 @@ on:
 jobs:
   build-lcls-ii:
     runs-on: ubuntu-latest
+    env:
+      LCLS_CALIB_HTTP: "https://pswww.slac.stanford.edu/calib_ws/"
     defaults:
-     run:
-       # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
-       # so these shells need to be explicitly declared.
-       # This makes the shell a login shell, which typically
-       # sources said files. This is needed for conda.
-       # Refer: https://github.com/marketplace/actions/setup-miniconda
-       shell: bash -el {0}  
+      run:
+        # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
+        # so these shells need to be explicitly declared.
+        # This makes the shell a login shell, which typically
+        # sources said files. This is needed for conda.
+        # Refer: https://github.com/marketplace/actions/setup-miniconda
+        shell: bash -el {0}  
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@v4
@@ -28,15 +30,13 @@ jobs:
           environment-file: .daq_20250402.txt
 
       - name: Build
-        run:
-          ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+        run: ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
-      - name: Set Env Variables
+      - name: Run Tests
         run: |
           cd psana
           export PYTHONPATH=$PYTHONPATH:$(pwd)
           cd ..
-
           export PATH=$(pwd)/install/bin:${PATH}
           pytest psana/psana/tests/test_HBins.py \
                  psana/psana/tests/test_Time.py \
@@ -55,4 +55,3 @@ jobs:
                  psana/psana/tests/test_timetool.py \
                  psana/psana/tests/test_ts.py \
                  psana/psana/tests/test_xtc.py
-
