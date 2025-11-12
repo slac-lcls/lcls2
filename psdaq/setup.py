@@ -87,19 +87,22 @@ PACKAGE_DATA = {}
 SCRIPTS = []
 ENTRY_POINTS = {}
 
+this_file = os.path.abspath(__file__)
+repo_root = os.path.abspath(os.path.join(this_file, "../.."))
+
 if xtcdatadir_env:
     xtc_headers =  os.path.join(xtcdatadir, 'include')
     xtc_lib_path = os.path.join(xtcdatadir, 'lib')
 else:
-    xtc_headers =  os.path.join(instdir, 'include')
-    xtc_lib_path = os.path.join(instdir, 'lib')
+    xtc_headers = os.path.join(repo_root, "xtcdata")
+    xtc_lib_path = os.path.join(repo_root, "build", "xtcdata", "xtcdata", "xtc")
 
 if psdaqdir_env:
     psdaq_headers =  os.path.join(psdaqdir, 'include')
     psdaq_lib_path = os.path.join(psdaqdir, 'lib')
 else:
-    psdaq_headers =  os.path.join(instdir, 'include')
-    psdaq_lib_path = os.path.join(instdir, 'lib')
+    psdaq_headers =  os.path.join(repo_root, 'psdaq')
+    psdaq_lib_path = os.path.join(repo_root, "build", "psdaq", "psdaq")
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
