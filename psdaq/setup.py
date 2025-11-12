@@ -102,7 +102,7 @@ if psdaqdir_env:
     psdaq_lib_path = os.path.join(psdaqdir, 'lib')
 else:
     psdaq_headers =  os.path.join(repo_root, 'psdaq')
-    psdaq_lib_path = os.path.join(repo_root, "build", "psdaq")
+    psdaq_lib_path = os.path.join(repo_root, "build", "psdaq", "psdaq")
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
