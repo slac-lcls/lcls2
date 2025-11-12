@@ -91,7 +91,7 @@ def get_class_name(obj):
     except AttributeError:
         return str(type(obj))
 
-def get_logger(level="INFO", logfile=None, name=None, timestamp=False):
+def get_logger(level=None, logfile=None, name=None, timestamp=False):
     """
     Backward-compatible entry point that returns your Logger wrapper.
     If configure_logging(...) was called, defaults come from there.
