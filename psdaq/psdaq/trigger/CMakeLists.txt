@@ -168,3 +168,14 @@ install(TARGETS
   tmoTeb_gpu
 )
 endif()
+
+add_custom_command(TARGET trigger
+    POST_BUILD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+    COMMAND echo "PIP INSTALLING PSDAQ"
+    COMMAND ${CMAKE_COMMAND} -E env
+        INSTDIR=${CMAKE_INSTALL_PREFIX}
+        PSALGDIR=${CMAKE_BINARY_DIR}/psalg/psalg
+        XTCDATADIR=${CMAKE_BINARY_DIR}/xtcdata/xtcdata/xtc
+        pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
+)
