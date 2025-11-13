@@ -68,6 +68,7 @@ cdef class ParallelReader:
             buf.timestamp       = 0
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
+            buf.has_l1          = 0
             # mmap the chunk
             p = mmap(NULL, self.chunksize, PROT_READ | PROT_WRITE,
                     MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
@@ -153,6 +154,7 @@ cdef class ParallelReader:
             step_buf.seen_offset    = 0
             step_buf.n_seen_events  = 0
             buf.err_code            = 0
+            buf.has_l1              = 0
 
             # Walk through and no. of events, offsets, timestamps, and services
             # for both L1 and transition buffers.
@@ -177,6 +179,10 @@ cdef class ParallelReader:
                         buf.sv_arr[buf.n_ready_events] = (d.env>>24)&0xf
                         buf.st_offset_arr[buf.n_ready_events] = buf.ready_offset
                         buf.en_offset_arr[buf.n_ready_events] = buf.ready_offset + sizeof(Dgram) + payload
+
+                        if buf.sv_arr[buf.n_ready_events] == self.L1Accept or \
+                                buf.sv_arr[buf.n_ready_events] == self.L1Accept_EndOfBatch:
+                            buf.has_l1 = 1
 
                         # check if this a non L1
                         if buf.sv_arr[buf.n_ready_events] != self.L1Accept and \

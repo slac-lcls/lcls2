@@ -32,6 +32,12 @@ from dgramlite cimport Dgram
 
 cdef uint64_t INVALID_TS = 0xFFFFFFFFFFFFFFFF
 
+cdef inline bint _is_event(unsigned service, uint8_t l1accept, uint8_t l1accept_eob):
+    """
+    Fast path for checking whether a service code represents an L1 event.
+    """
+    return service == l1accept or service == l1accept_eob
+
 
 cdef class SmdReader:
     cdef ParallelReader prl_reader
@@ -194,14 +200,8 @@ cdef class SmdReader:
 
         self.prl_reader.force_read()
 
-        # Track which streams currently have any L1Accept data buffered.
         for i in range(self.prl_reader.nfiles):
-            self._stream_has_l1[i] = 0
-            buf = &(self.prl_reader.bufs[i])
-            for j in range(buf.n_ready_events):
-                if TransitionId.isEvent(buf.sv_arr[j]):
-                    self._stream_has_l1[i] = 1
-                    break
+            self._stream_has_l1[i] = 1 if self.prl_reader.bufs[i].has_l1 else 0
 
         # Reset winning buffer when we read-in more data
         self.winner = -1
@@ -309,8 +309,10 @@ cdef class SmdReader:
         cdef int n_events=0
         # Index of the first and last event in the viewing window
         cdef int i_bob=0, i_eob=0
+        cdef unsigned* winner_sv_arr = NULL
 
         if limit_ts != INVALID_TS:
+            winner_sv_arr = self.prl_reader.bufs[self.winner].sv_arr
             i_bob = self.prl_reader.bufs[self.winner].n_seen_events - 1
             i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
             debug_print(f"    Apply batch cut-off is_transition={is_transition} max_events={max_events} "
@@ -320,7 +322,7 @@ cdef class SmdReader:
                 if max_events == 0:
                     for i in range(i_bob+1, i_eob + 1):
                         n_events += 1
-                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                        if _is_event(winner_sv_arr[i], self.L1Accept, self.L1Accept_EndOfBatch):
                             n_L1Accepts +=1
                         if n_events == batch_size:
                             debug_print(f"    i={i} Configure/BeginRun n_events={n_events} batch_size={batch_size}")
@@ -328,7 +330,7 @@ cdef class SmdReader:
                 else:
                     for i in range(i_bob+1, i_eob + 1):
                         n_events += 1
-                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                        if _is_event(winner_sv_arr[i], self.L1Accept, self.L1Accept_EndOfBatch):
                             n_L1Accepts +=1
                         if n_events == batch_size:
                             break
@@ -338,7 +340,7 @@ cdef class SmdReader:
                 if max_events == 0:
                     for i in range(i_bob+1, i_eob + 1):
                         n_events += 1
-                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                        if _is_event(winner_sv_arr[i], self.L1Accept, self.L1Accept_EndOfBatch):
                             n_L1Accepts +=1
                         if n_L1Accepts == batch_size:
                             debug_print(f"    i={i} Data n_L1={n_L1Accepts} n_events={n_events} batch_size={batch_size}")
@@ -346,7 +348,7 @@ cdef class SmdReader:
                 else:
                     for i in range(i_bob+1, i_eob + 1):
                         n_events += 1
-                        if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+                        if _is_event(winner_sv_arr[i], self.L1Accept, self.L1Accept_EndOfBatch):
                             n_L1Accepts +=1
                         if n_L1Accepts == batch_size:
                             break
@@ -386,6 +388,7 @@ cdef class SmdReader:
 
         # Index of the first and last event in the viewing window
         cdef int i_bob=0, i_eob=0, i_complete=0
+        cdef unsigned* winner_sv_arr = NULL
 
         cdef int n_L1Accepts=0
         cdef int n_transitions=0
@@ -398,11 +401,12 @@ cdef class SmdReader:
         i_eob = self.prl_reader.bufs[self.winner].n_ready_events - 1
         i_complete = i_bob
         limit_ts_complete = self.prl_reader.bufs[self.winner].ts_arr[i_complete]
+        winner_sv_arr = self.prl_reader.bufs[self.winner].sv_arr
 
         debug_print(f"Enter find_intg_limit_ts i_bob={i_bob} limit_ts_complete={limit_ts_complete}")
         cdef uint64_t ts_sec=0, ts_nsec=0, ts_sum=0
         for i in range(i_bob+1, i_eob + 1):
-            if TransitionId.isEvent(self.prl_reader.bufs[self.winner].sv_arr[i]):
+            if _is_event(winner_sv_arr[i], self.L1Accept, self.L1Accept_EndOfBatch):
                 # For correct math operation, we need to convert timestamp to seconds
                 # and nanoseconds first, do the operation, and convert the result
                 # back to the timestamp format.

@@ -34,6 +34,7 @@ cdef struct Buffer:
     uint64_t cp_offset                  # when force reread is set, cp_offset is the seen_offset
                                         # otherwise it's ready_offset (not using local var due to nogil)
     int err_code                        # for debugging
+    bint     has_l1                     # indicates whether this buffer currently holds any L1Accept dgrams
 
 cdef class ParallelReader:
     cdef int[:]     file_descriptors
