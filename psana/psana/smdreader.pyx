@@ -56,6 +56,7 @@ cdef class SmdReader:
     cdef array.array _i_st_step_blocks_firstbatch
     cdef array.array _cn_batch_bufs
     cdef array.array _cn_batch_stepbufs
+    cdef array.array _stream_has_l1
     cdef unsigned    winner_last_sv             # ¬ transition id and ts of the last dgram in winner's chunk
     cdef uint64_t    winner_last_ts             # }
     cdef uint64_t    _next_fake_ts              # incremented from winner_last_ts (shared by all streams)
@@ -109,6 +110,7 @@ cdef class SmdReader:
         self._i_st_step_blocks_firstbatch = array.array('L', [0]*fds.size)
         self._cn_batch_bufs = array.array('L', [0]*fds.size)
         self._cn_batch_stepbufs = array.array('L', [0]*fds.size)
+        self._stream_has_l1   = array.array('b', [0]*fds.size)
         self._fakebuf_maxsize   = 0x1000
         self._fakebuf           = bytearray(self._fakebuf_maxsize)
         self._fakebuf_size      = 0
@@ -192,54 +194,115 @@ cdef class SmdReader:
 
         self.prl_reader.force_read()
 
+        # Track which streams currently have any L1Accept data buffered.
+        for i in range(self.prl_reader.nfiles):
+            self._stream_has_l1[i] = 0
+            buf = &(self.prl_reader.bufs[i])
+            for j in range(buf.n_ready_events):
+                if TransitionId.isEvent(buf.sv_arr[j]):
+                    self._stream_has_l1[i] = 1
+                    break
+
         # Reset winning buffer when we read-in more data
         self.winner = -1
 
     def find_limit_ts(self, batch_size, max_events, ignore_transition):
-        """ Find the winning stream and the limit_ts.
-        This limit_ts is used to find the offset of all the chunks yielded back
-        as a memoryview.
+        """
+        Determine which stream defines the next viewing window and return its limit timestamp.
 
-        batch_size and max_events only count L1Accept when ignore_transition is set.
-
-        We also set the attributes that keep records of L1Accept and all events per call
-        and all events that have been processed from the begining.
+        Implementation notes (post-live-mode fix):
+        - When `ignore_transition` is False (Configure/BeginRun phase) we simply pick the
+          stream whose latest ready dgram has the smallest timestamp.
+        - When `ignore_transition` is True (normal data batches) we tier the choice:
+            * Tier 1: streams with at least `batch_size` pending L1Accepts. The lowest
+              timestamp among these wins to keep the batch as small as possible.
+            * Tier 2: streams that have some L1Accepts buffered but fewer than
+              `batch_size`. They can form a partial batch if no tier-1 stream exists.
+            * Fallback: transition-only streams (no pending L1) are only used if neither
+              tier 1 nor tier 2 is available.
+        The winner's timestamp becomes `limit_ts`, and later logic verifies that every
+        other stream has data up to at least this timestamp before finalizing the batch.
+        batch_size/max_events counters continue to apply only to L1Accept transitions
+        whenever `ignore_transition` is True.
         """
         debug_print("find_limit_ts called")
 
         cdef int i=0
+        cdef int j=0
         is_transition = not ignore_transition
 
-        # The winning stream is the one with smallest timestamp and the end of its chunk.
-        # We only need to do this once at a new read.
         cdef uint64_t limit_ts=INVALID_TS
         cdef uint64_t buf_ts=0
-        if self.winner == -1:
-            debug_print("    Find winner:")
-            for i in range(self.prl_reader.nfiles):
-                if self.prl_reader.bufs[i].n_ready_events == 0:
+        cdef uint64_t fallback_ts=INVALID_TS
+        cdef uint64_t tier2_ts=INVALID_TS
+        cdef int fallback_winner=-1
+        cdef int tier2_winner=-1
+        cdef uint64_t tier1_ts=INVALID_TS
+        cdef int tier1_winner=-1
+        cdef int pending_L1=0
+        cdef Buffer* buf
+        cdef Buffer* step_buf
+        cdef bint require_events = not is_transition
+        winner_label = "none"
+        # Always recompute the winner so slow streams don't permanently pin limit_ts
+        self.winner = -1
+        debug_print("    Find winner:")
+        for i in range(self.prl_reader.nfiles):
+            buf = &(self.prl_reader.bufs[i])
+            if buf.n_ready_events == 0:
+                continue
+            step_buf = &(self.prl_reader.step_bufs[i])
+            pending_L1 = (buf.n_ready_events - buf.n_seen_events) - \
+                         (step_buf.n_ready_events - step_buf.n_seen_events)
+            buf_ts = buf.ts_arr[buf.n_ready_events-1]
+
+            if require_events:
+                if pending_L1 <= 0:
+                    # Remember the best transition-only stream in case no L1 streams exist
+                    if fallback_ts == INVALID_TS or buf_ts < fallback_ts or \
+                            (buf_ts == fallback_ts and fallback_winner > -1 and \
+                             buf.n_ready_events > self.prl_reader.bufs[fallback_winner].n_ready_events):
+                        fallback_winner = i
+                        fallback_ts = buf_ts
                     continue
-                buf_ts = self.prl_reader.bufs[i].ts_arr[self.prl_reader.bufs[i].n_ready_events-1]
-                if limit_ts == INVALID_TS:
-                    self.winner = i
-                    limit_ts = buf_ts
-                else:
-                    if buf_ts == limit_ts:
-                        if self.winner > -1:
-                            if self.prl_reader.bufs[i].n_ready_events > \
-                                    self.prl_reader.bufs[self.winner].n_ready_events:
-                                self.winner = i
-                    elif buf_ts < limit_ts:
-                        self.winner = i
-                        limit_ts = buf_ts
-                debug_print(f"    file[{i}]: n_ready_events={self.prl_reader.bufs[i].n_ready_events} "
-                            f"buf_ts={buf_ts} limit_ts={limit_ts} --> winner={self.winner}")
+                elif pending_L1 < batch_size:
+                    # Secondary choice: has L1 but not enough to satisfy batch_size
+                    if tier2_ts == INVALID_TS or buf_ts < tier2_ts or \
+                            (buf_ts == tier2_ts and tier2_winner > -1 and \
+                             buf.n_ready_events > self.prl_reader.bufs[tier2_winner].n_ready_events):
+                        tier2_winner = i
+                        tier2_ts = buf_ts
+                    debug_print(f"    file[{i}]: pending_L1={pending_L1} (<batch) buf_ts={buf_ts} -- tier2 candidate stream {tier2_winner}")
+                    continue
+
+            if tier1_ts == INVALID_TS or buf_ts < tier1_ts or \
+                    (buf_ts == tier1_ts and tier1_winner > -1 and \
+                     buf.n_ready_events > self.prl_reader.bufs[tier1_winner].n_ready_events):
+                tier1_winner = i
+                tier1_ts = buf_ts
+            debug_print(f"    file[{i}]: pending_L1={pending_L1} buf_ts={buf_ts} tier1_ts={tier1_ts} --> tier1 candidate {tier1_winner}")
+
+        if tier1_winner > -1:
+            self.winner = tier1_winner
+            limit_ts = tier1_ts
+            winner_label = "tier1"
         else:
-            if self.prl_reader.bufs[self.winner].n_ready_events > 0:
-                limit_ts = self.prl_reader.bufs[self.winner].ts_arr[self.prl_reader.bufs[self.winner].n_ready_events-1]
-                debug_print(f"    Known winner: {self.winner} "
-                            f"n_ready_events={self.prl_reader.bufs[self.winner].n_ready_events} "
-                            f"limit_ts={limit_ts}")
+            if tier2_winner > -1:
+                self.winner = tier2_winner
+                limit_ts = tier2_ts
+                winner_label = "tier2"
+                debug_print(f"    Using tier2 winner (partial batch): {self.winner} limit_ts={limit_ts}")
+            elif fallback_winner > -1:
+                self.winner = fallback_winner
+                limit_ts = fallback_ts
+                winner_label = "transitions"
+                debug_print(f"    Fallback winner (transitions only): {self.winner} limit_ts={limit_ts}")
+
+        if self.winner > -1:
+            if is_transition:
+                debug_print(f"    Transition winner stream {self.winner} latest_ts={limit_ts}")
+            else:
+                debug_print(f"    Winner selected ({winner_label}) stream {self.winner} limit_ts={limit_ts}")
 
         # Apply batch_size and max_events
         cdef int n_L1Accepts=0
