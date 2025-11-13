@@ -118,10 +118,16 @@ class SmdReaderManager(object):
             True once at least one .xtc2.inprogress file has been observed and
             every such file now has a finalized .xtc2 present.
         """
-        self.logger.debug("Checking for completed .inprogress file transfers...")
+        self.logger.debug("Checking live transfer status...")
+
+        # Only relevant for live-mode runs. Offline replays must keep reading
+        # until EndRun or max_events is reached.
+        if not getattr(self.dsparms, "live", False):
+            return False
+
         smd_files = getattr(self.dsparms, "smd_files", [])
         if not smd_files:
-            return True  # Nothing to monitor
+            return False  # Nothing to monitor yet
 
         monitor_transfers = False
         for smd_file in smd_files:
@@ -227,11 +233,10 @@ class SmdReaderManager(object):
             # No data to yield, try to get more data
             self.force_read()
 
-            # Stop waiting if file transfers are done
-            if self.check_transfer_complete():
+            # Stop waiting if file transfers are done (live mode only)
+            if getattr(self.dsparms, "live", False) and self.check_transfer_complete():
                 self.logger.debug(
-                    "All .inprogress files finalized — stopping "
-                    "Configure/BeginRun retries."
+                    "Live transfer complete — stopping Configure/BeginRun retries."
                 )
                 return None
 
@@ -283,10 +288,10 @@ class SmdReaderManager(object):
 
             self.smdr.force_read()
 
-            # Stop waiting if all transfers complete
-            if self.check_transfer_complete():
+            # Stop waiting if all transfers complete (live mode only)
+            if getattr(self.dsparms, "live", False) and self.check_transfer_complete():
                 self.logger.debug(
-                    "All .inprogress files finalized — stopping batch read retries."
+                    "Live transfer complete — stopping batch read retries."
                 )
                 break
 
