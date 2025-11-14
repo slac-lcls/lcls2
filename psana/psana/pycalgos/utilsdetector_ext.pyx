@@ -59,6 +59,11 @@ cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
                            const size_t& size, const size_t& size_blk, out_t *out) except +
 
 
+cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+    cnp.double_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc,
+                           const size_t& size, const size_t& size_blk, out_t *out) except +
+
+
 def cy_calib_std(cnp.ndarray[rawd_t, ndim=1] raw,
                  cnp.ndarray[peds_t, ndim=1] peds,
 		 cnp.ndarray[gain_t, ndim=1] gain,
@@ -84,6 +89,14 @@ def cy_calib_jungfrau_v1(cnp.ndarray[rawd_t, ndim=1] raw,
 		 size_t size_blk,
 		 cnp.ndarray[out_t, ndim=1] out):
     return calib_jungfrau_v1(&raw[0], &cc[0], size, size_blk, &out[0]) # returns double time, us
+
+
+def cy_calib_jungfrau_v2(cnp.ndarray[rawd_t, ndim=1] raw,
+                 cnp.ndarray[peds_t, ndim=1] cc,
+		 size_t size,
+		 size_t size_blk,
+		 cnp.ndarray[out_t, ndim=1] out):
+    return calib_jungfrau_v2(&raw[0], &cc[0], size, size_blk, &out[0]) # returns double time, us
 
 
 #    print('raw.dtype =', str(raw.dtype))

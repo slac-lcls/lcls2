@@ -119,19 +119,25 @@ time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, 
   return duration_us(time_now() - t0).count();
 }
 
-//time_t calib_jungfrau_v2(const rawd_t *raw, const ccstruct *cc, const size_t& size, const size_t& size_blk, out_t *out)
-//{
-//  // assuming that
-//  // * size = size_blk * number_of_blocks
-//  // * constants are defined as cc[<number-of-pixels>][4], where 4 stands for for ALL 4 combinations of gain bits.
-//  time_point_t t0 = time_now();
-//  size ipx0; // the 0-th pixel index of the block in data and other arrays
-//  for (size_t iblk=0; ib<size/size_blk; ++ib) {
-//    ipx0 = iblk*size_blk;
-//    calib_jungrfau_blk_v2(&raw[ipx0], &cc[ipx0*4], size_blk, &out[ipx0]);
-//  }
-//  return duration_us(time_now() - t0).count();
-//}
+
+time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
+{
+  // assuming that
+  // * constants are defined as cc[<number-of-pixels>][8],
+  //   where 8 stands for for ALL 4 combinations of gain bits for peds then gain.
+  //   cc.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4)
+  // * raw and out have letgth of size, where
+  // size_blk is not used
+
+  time_point_t t0 = time_now();
+  size_t igap = 4*size;
+  size_t icc;
+  for (size_t i=0; i<size; ++i) {
+    icc = i + size*(raw[i] >> BSH); // index of calibration constants of V2
+    out[i] = ((raw[i] & MDA) - cc[icc]) * cc[icc+igap];
+  }
+  return duration_us(time_now() - t0).count();
+}
 
 }; // namespace utilsdetector
 

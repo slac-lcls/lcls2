@@ -18,9 +18,6 @@ cd LCLS/con-lcls2/lcls2
 For time comparison:
   ../lcls2/psana/psana/pycalgos/test_cpo
 
-
-
-
 mpirun -n 1  python ./lcls2/psana/psana/detector/testman/test-scaling-mpi-jungfrau.py -t2
 mpirun -n 80 python ./lcls2/psana/psana/detector/testman/test-scaling-mpi-jungfrau.py -t2
 mpirun -n 6  python ./lcls2/psana/psana/detector/testman/test-scaling-mpi-jungfrau.py -t2 -n400
@@ -67,12 +64,14 @@ CALIB_STD_LOCAL = 1
 CALIB_LOCAL_V2  = 2
 CALIB_CPP_V0    = 3
 CALIB_CPP_V1    = 4
+CALIB_CPP_V2    = 5
 
 dic_calibmet = {CALIB_STD:       'CALIB_STD',\
                 CALIB_STD_LOCAL: 'CALIB_STD_LOCAL',\
                 CALIB_LOCAL_V2:  'CALIB_LOCAL_V2',\
                 CALIB_CPP_V0:    'CALIB_CPP_V0',\
-                CALIB_CPP_V1:    'CALIB_CPP_V1'}
+                CALIB_CPP_V1:    'CALIB_CPP_V1',\
+                CALIB_CPP_V2:    'CALIB_CPP_V2'}
 
 def calib_jungfrau_local(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
     """
@@ -168,9 +167,6 @@ def calib_jungfrau_local(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
     return outa
 
 
-
-
-
 def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
     """ example for 8-panel detector
     arr:  shape:(1, 512, 1024) size:524288 dtype:uint16 [2906 2945 2813 2861 3093...]
@@ -211,7 +207,6 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
     #arrf -= pedoff
     #arrf *= factor
     return arrf if mask is None else arrf * mask
-
 
 
 
@@ -286,16 +281,20 @@ def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
             + info_ndarr(out1,  '\n  out1 '))
         if CALIBMET == CALIB_LOCAL_V2: outa[iraw,:] = out1[0,:]
 
-
-    elif CALIBMET in (CALIB_CPP_V1,):
-        # full processing in C++
+    elif CALIBMET == CALIB_CPP_V1:
+        # full processing in C++ reshaped constants (<NPIXELS>,8)
         #print('XXXXX COMENT OUT calib_jungfrau_v1, in test %s' % dic_calibmet[CALIBMET])
         #print('XXXXX PASS FROM PARSER size_blk, in test %d' % size_blk)
         #print(info_ndarr(arr,   '    arr',   first=1000, last=1008))
         #print(info_ndarr(ccons, '    ccons', first=1000, last=1008))
         #print(info_ndarr(outa,  '    outa',  first=1000, last=1008))
-
         ud.calib_jungfrau_v1(arr, ccons, size_blk, outa)
+
+    elif CALIBMET == CALIB_CPP_V2:
+        # full processing in C++ reshaped constants (8,<NPIXELS>)
+        #logger.info(info_ndarr(ccons, 'XXX CHANGE TO v2    ccons', first=1000, last=1008))
+        ud.calib_jungfrau_v2(arr, ccons, size_blk, outa)
+
     return outa
 
 
@@ -316,10 +315,10 @@ def test_event_loop(calibmet, **kwargs):
     events       = kwargs.get('events', 100)
     plot_img     = kwargs.get('plot_img', False)
     fname_prefix = kwargs.get('fname_prefix', 'summary')
-    cversion     = kwargs.get('cversion', 1)
+    #cversion     = kwargs.get('cversion', 1)
     kwargs.setdefault('logmet_init', logger.info)
 
-    arrts = np.zeros(events, dtype=float) if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0) else\
+    arrts = np.zeros(events, dtype=float) if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2) else\
             np.zeros(events, dtype=float) if calibmet in (CALIB_STD, CALIB_STD_LOCAL) else\
             np.zeros(events, dtype=float)
 
@@ -341,7 +340,6 @@ def test_event_loop(calibmet, **kwargs):
     print(s_rsc)
     # ^^^^^ for MPI
 
-    #ds = DataSource(exp='uedcom103',run=95, max_events=events if size==1 else 10000) #events*size) # dark run
     dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
     dskwargs['max_events'] = events
     dskwargs['batch_size'] = 1
@@ -352,7 +350,6 @@ def test_event_loop(calibmet, **kwargs):
     break_loop = False
     runnum, expt = None, None
     for nrun,orun in enumerate(ds.runs()):
-      #det = orun.Detector('epixquad')
       det = orun.Detector(detname)
       runnum, expt = orun.runnum, orun.expt
       #if size==1 and break_loop:
@@ -366,6 +363,7 @@ def test_event_loop(calibmet, **kwargs):
       #      print('break step for %s' % s_rsc)
       #      break
       #  for nevt,evt in enumerate(step.events()):
+
       for nevt,evt in enumerate(orun.events()):
 
           if nevt<2:
@@ -388,8 +386,8 @@ def test_event_loop(calibmet, **kwargs):
           s += ' ' + dic_calibmet[calibmet]
           t0_sec = time()
 
-          if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1):
-            calib = calib_jungfrau_compare(det.raw, evt, cversion=cversion, **kwargs)
+          if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2):
+            calib = calib_jungfrau_compare(det.raw, evt, **kwargs)
 
           elif calibmet == CALIB_STD:
             calib = det.raw.calib(evt, **kwargs)   # calib_std(det, evt, cmpars=None)
@@ -419,13 +417,16 @@ def test_event_loop(calibmet, **kwargs):
             gr.show(mode='DO NOT HOLD')
 
     #if rank == rank_test:
-    if True:
-            if calibmet in (CALIB_STD, CALIB_STD_LOCAL, CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1):
-                dt = 1000*arrts[1:]
-                print(info_ndarr(dt, name='%s times(msec):' % s_rsc, first=0, last=100, vfmt='%0.3f'))
-                dt_sel = dt[dt>0]
-                med_dt = np.median(dt_sel) if dt_sel.size > 0 else 0
-                print('*** %s evts: %d median time for calib %0.1f msec or %0.3f Hz' % (s_rsc, dt_sel.size, med_dt, (1000./med_dt if med_dt>0 else 0)))
+    if calibmet in (CALIB_STD, CALIB_STD_LOCAL, CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2):
+        dt = 1000*arrts[1:]
+        print(info_ndarr(dt, name='%s times(msec):' % s_rsc, first=0, last=100, vfmt='%0.3f'))
+        dt_sel = dt[dt>0]
+        med_dt = np.median(dt_sel) if dt_sel.size > 0 else 0
+        s = '*** %s evts: %4d median time for calib %5.1f msec or %7.3f Hz' % (s_rsc, dt_sel.size, med_dt, (1000./med_dt if med_dt>0 else 0))
+        print(s)
+        with open('summary.txt', 'a') as f:
+          f.write('\n'+s)
+          #f.close()
 
 
     if plot_img: gr.show()
@@ -447,6 +448,7 @@ def argument_parser():
     d_plot_img = 0
     d_cmpars   = None
     d_size_blk = 1024 # 512*1024
+#    d_cversion = 1
 
     h_tname    = '(str) test name, usually numeric, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
@@ -456,6 +458,7 @@ def argument_parser():
     h_plot_img = 'image bitword to plot images, default = %d' % d_plot_img
     h_cmpars   = '(str) list of common mode parameters, i.g. (7,7,200,10), default = %s' % d_cmpars
     h_size_blk = '(int) block size (number of pixels) to split entire array for processing, default = %d' % d_size_blk
+#    h_cversion = '(int) array ordering version for calibration constants, default = %d' % d_cversion
 
     parser = ArgumentParser(description='%s tests of jungfrau calib berformance with mpi' % SCRNAME, usage=usage())
     parser.add_argument('-t', '--tname',    default=d_tname,    type=str, help=h_tname)
@@ -466,6 +469,7 @@ def argument_parser():
     parser.add_argument('-p', '--plot_img', default=d_plot_img, type=int, help=h_plot_img)
     parser.add_argument('-c', '--cmpars',   default=d_cmpars,   type=str, help=h_cmpars)
     parser.add_argument('-s', '--size_blk', default=d_size_blk, type=int, help=h_size_blk)
+#    parser.add_argument('-C', '--cversion', default=d_cversion, type=int, help=h_cversion)
     return parser
 
 def usage():
@@ -500,7 +504,8 @@ def selector():
     elif tname ==  '1': test_event_loop(CALIB_STD_LOCAL, **kwargs)
     elif tname ==  '2': test_event_loop(CALIB_LOCAL_V2, **kwargs) # version for comparison in python
     elif tname ==  '3': test_event_loop(CALIB_CPP_V0, **kwargs)   # version for comparison in C++
-    elif tname ==  '4': test_event_loop(CALIB_CPP_V1, **kwargs)   # version for comparison in C++ reshaped constants
+    elif tname ==  '4': test_event_loop(CALIB_CPP_V1, cversion=1, **kwargs)   # version for comparison in C++ reshaped constants (<NPIXELS>,8)
+    elif tname ==  '5': test_event_loop(CALIB_CPP_V2, cversion=2, **kwargs)   # version for comparison in C++ reshaped constants (8,<NPIXELS>)
 
     else:
         print(usage())
