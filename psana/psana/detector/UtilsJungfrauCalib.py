@@ -71,7 +71,7 @@ class DarkProcJungfrau(uc.DarkProc):
     def __init__(self, **kwa):
         kwa.setdefault('datbits', M14)
         uc.DarkProc.__init__(self, **kwa)
-        self.modes = ['Normal-00', 'Med-01', 'Low-11', 'UNKNOWN-10']
+        self.modes = ['g0-00', 'g1-01', 'g2-11', 'BAD-10']
 
 
     def init_proc(self):
@@ -90,20 +90,21 @@ class DarkProcJungfrau(uc.DarkProc):
         gmname = self.gmname
 
         t0_sec = time()
-        gbits = raw>>14 # 00/01/11 - gain bits for mode 0,1,2
-        fg0, fg1, fg2 = gbits==0, gbits==1, gbits==3
-        bad = (np.logical_not(fg0),\
-               np.logical_not(fg1),\
-               np.logical_not(fg2))[igm]
+        gbits = raw>>14 # 00/01/11/01 - gain bits for mode 0,1,2,bad
+        fg0, fg1, fg2, fgx = gbits==0, gbits==1, gbits==3, gbits==2
+        #bad = (np.logical_not(fg0),\
+        #       np.logical_not(fg1),\
+        #       np.logical_not(fg2))[igm]
+        #print(info_ndarr(fgx, '  XXXX fgx', first=0, last=5))
 
         if irec%evgap==0:
            dt_sec = time()-t0_sec
-           fgx = gbits==2
+           #fgx = gbits==2
            sums = [fg0.sum(), fg1.sum(), fg2.sum(), fgx.sum()]
            logger.debug('Rec: %4d found pixels %s gain definition time: %.6f sec igm=%d:%s'%\
                     (irec,' '.join(['%s:%d' % (self.modes[i], sums[i]) for i in range(4)]), dt_sec, igm, gmname))
 
-        np.logical_or(self.bad_switch, bad, self.bad_switch)
+        np.logical_or(self.bad_switch, fgx, self.bad_switch)
 
 
     def summary(self):
@@ -500,6 +501,7 @@ def merge_jf_panel_gain_ranges(dir_ctype, panel_id, ctype, tstamp, shape, ofname
     nda = np.stack(tuple(lstnda))
     logger.debug('merge_panel_gain_ranges - merged with shape %s' % str(nda.shape))
 
+    #logger.info(info_ndarr(nda, 'nda before reshaping %s'%ctype))
     nda.shape = (3, 1,) + shape # (3, 1, 512, 1024)
     logger.debug(info_ndarr(nda, 'merged %s'%ctype))
     uc.save_ndarray_in_textfile(nda, ofname, fac_mode, fmt, umask=0o0, group=group)
