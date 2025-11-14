@@ -227,7 +227,7 @@ ctypedef fused dtypes1d :
 # 1. parameter vector[T] MUST go after T* pkvals, othervise type T is undefined...
 # 2. can't define parameters double baseline and threshold as T ... event for fused type dtypesv
 
-cdef extern from "peakFinder/WFAlgos.hh" namespace "psalg":
+cdef extern from "peakFinder/include/WFAlgos.hh" namespace "psalg":
     index_t find_edges[T](
         index_t npkmax,
         T* pkvals,

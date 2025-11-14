@@ -9,6 +9,10 @@
 source setup_env.sh
 ./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
 
+# If you already have a local version built and want to rebuild without building the entire package,
+# then add the -r flag.
+./build_all.sh -r -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+
 ```
 
 To run the psana automated tests run "pytest psana/psana/tests/" in your git root directory.

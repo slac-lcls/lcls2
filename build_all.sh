@@ -12,9 +12,8 @@ fi
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
-force_clean=0
+force_clean=1
 no_ana=0
-no_shmem=0
 build_ext_list=""
 
 if [ -d "/cds/sw/" ]; then
@@ -23,7 +22,7 @@ elif [ -d "/sdf/group/lcls/" ]; then
     no_daq=1
 fi
 
-while getopts "c:p:s:b:fdam" opt; do
+while getopts "c:p:s:b:fdar" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
@@ -31,15 +30,13 @@ while getopts "c:p:s:b:fdam" opt; do
     ;;
     a) no_ana=1
     ;;
-    m) no_shmem=1
-    ;;
     p) pyInstallStyle="$OPTARG"
     ;;
     s) psana_setup_args="$OPTARG"
     ;;
     b) build_ext_list="$OPTARG"
     ;;
-    f) force_clean=1                       # Force clean is required building between rhel6&7
+    f) force_clean=0                       # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -68,15 +65,38 @@ if [ $force_clean == 1 ]; then
     if [ -d psalg/build ]; then
         rm -rf psalg/build
     fi
+    if [ -d psana/build ]; then
+        rm -rf psana/build
+    fi
 fi
 
 function cmake_build() {
+    # Change directory to the specified project directory
     cd $1
-    shift
+
+    # Capture the install flag
+    make_install=$2
+
+    # Create and navigate to the build directory
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
-    make -j 4 install
+
+    # Run CMake configuration with the remaining arguments
+    if [ $1 == "psana" ]
+    then
+    	cmake -DPIP_OPTIONS="$pipOptions" -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    else
+    	cmake -DCMAKE_INSTALL_PREFIX="$INSTDIR" -DCMAKE_PREFIX_PATH="$CONDA_PREFIX" -DCMAKE_BUILD_TYPE="$cmake_option" ..
+    fi
+
+    # Check the make_install flag
+    if [ "$make_install" -eq 1 ]; then
+        make -j 4 install
+    else
+        make -j 4
+    fi
+
+    # Return to the original directory
     cd ../..
 }
 
@@ -89,20 +109,25 @@ else
     pipOptions=""
 fi
 
-cmake_build xtcdata
+###############
+# Build xtcdata
+###############
+cmake_build xtcdata 1
 
-if [ $no_shmem == 0 ]; then
-    cmake_build psalg
-else
-    cmake_build psalg -DBUILD_SHMEM=OFF
-fi
+###############
+# Build psalg
+###############
+cmake_build psalg 1
 cd psalg
 pip install --no-deps --prefix=$INSTDIR $pipOptions .
 cd ..
 
-if [ $no_daq == 0 ]; then
+###############
+# Build psdaq
+###############
+# if [ $no_daq == 0 ]; then
     # to build psdaq with setuptools
-    cmake_build psdaq
+    cmake_build psdaq 1
     cd psdaq
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
@@ -112,18 +137,13 @@ if [ $no_daq == 0 ]; then
     fi
     pip install --no-deps --prefix=$INSTDIR $pipOptions .
     cd ..
-fi
+# fi
 
+###############
+# Build psana
+###############
 if [ $no_ana == 0 ]; then
-    # to build psana with setuptools
-    cd psana
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
+    cmake_build psana 0
 fi
 # The removal of site.py in setup 49.0.0 breaks "develop" installations
 # which are outside the normal system directories: /usr, /usr/local,

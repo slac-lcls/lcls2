@@ -10,7 +10,7 @@
 //#include <vector>
 
 #include "psalg/calib/NDArray.hh"
-#include "psana/peakFinder/WFAlgos.hh"
+#include "psana/peakFinder/include/WFAlgos.hh"
 
 using namespace psalg;
 
