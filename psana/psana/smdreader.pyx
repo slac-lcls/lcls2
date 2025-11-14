@@ -806,13 +806,20 @@ cdef class SmdReader:
         cdef char* out_ptr=NULL
         if block_sizes[i_buf] > 0:
             if step_buf:
-                total_size = <Py_ssize_t>block_sizes[i_buf]
+                st_idx = <Py_ssize_t>i_st_blocks[i_buf]
+                en_idx = <Py_ssize_t>i_en_blocks[i_buf]
+                total_size = 0
+                sz = 0
+                for idx in range(st_idx, en_idx + 1):
+                    sz = buf.en_offset_arr[idx] - buf.st_offset_arr[idx]
+                    if sz > 0:
+                        total_size += sz
+                if total_size == 0:
+                    return memoryview(bytearray())
+
                 outbuf = bytearray(total_size)
                 out_ptr = PyByteArray_AS_STRING(outbuf)
                 out_offset = 0
-                st_idx = <Py_ssize_t>i_st_blocks[i_buf]
-                en_idx = <Py_ssize_t>i_en_blocks[i_buf]
-                sz = 0
                 for idx in range(st_idx, en_idx + 1):
                     sz = buf.en_offset_arr[idx] - buf.st_offset_arr[idx]
                     if sz <= 0:
@@ -821,6 +828,7 @@ cdef class SmdReader:
                            data_buf.chunk + buf.st_offset_arr[idx],
                            sz)
                     out_offset += sz
+                block_sizes[i_buf] = total_size
                 view = memoryview(outbuf)
             else:
                 view = <char [:block_sizes[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_blocks[i_buf]])
