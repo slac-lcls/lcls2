@@ -165,8 +165,8 @@ class DetCache():
                       ndau.info_ndarr(self.outa, 'outa'),\
                       'loop over banks %s' % self.loop_banks))
 
-        if self.cversion == 1:
-            self.add_ccons_v1()
+        if self.cversion > 0:
+            self.add_ccons()
 
         self.isset = True
 
@@ -178,23 +178,29 @@ class DetCache():
             self.gmask[i,:] = self.gfac[i,:] * self.mask
 
 
-    def add_ccons_v1(self):
-        """make combined calibration constants of V1, where
-           ** ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4),
+    def add_ccons(self):
+        """make combined calibration constants
+           ** of V1, ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4),
+           ** of V2, (2, 4, npix),
            ** peds = peds + offset, gain = gain * mask
         """
         self.add_gain_mask()
         po = self.poff
         gm = self.gmask
-        self._logmet_init('XXXXX DetCache.add_ccons_v1 combine cached constants:\n  %s\n  %s' % (\
+        self._logmet_init('XXXXX DetCache.add_ccons combine cached constants for cversion: %d:\n  %s\n  %s' % (\
+                      self.cversion,\
                       ndau.info_ndarr(self.poff, 'poff'),\
                       ndau.info_ndarr(self.gmask, 'gmask')))
         arr0 = np.zeros(self.outa.size)
         self.ccons = np.vstack((po[0,:].ravel(), po[1,:].ravel(), arr0, po[2,:].ravel(),\
                                 gm[0,:].ravel(), gm[1,:].ravel(), arr0, gm[2,:].ravel()),\
-                                dtype=np.float32).T  # .astype(np.float32)
+                                dtype=np.float32)  # .astype(np.float32)
+        if self.cversion == 1:
+            self.ccons = self.ccons.T
 
-        print(ndau.info_ndarr(self.ccons, 'XXX ccons', last=8, vfmt='%0.3f'))
+        logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=8, vfmt='%0.3f'))
+
+#        sys.exit('TEST EXIT')
 
 
 def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
