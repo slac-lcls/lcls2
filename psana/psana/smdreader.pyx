@@ -22,6 +22,7 @@ from psana.psexp import TransitionId
 
 from cpython.buffer cimport (PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE,
                              PyBuffer_Release, PyObject_GetBuffer)
+from cpython.bytearray cimport PyByteArray_AS_STRING
 
 from psana.dgramedit import DgramEdit
 
@@ -519,6 +520,7 @@ cdef class SmdReader:
         cdef int i=0
         cdef uint64_t limit_ts
         cdef uint64_t last_ts  # for debug
+        cdef uint64_t j=0
 
         # Locate the viewing window and update seen_offset for each buffer
         cdef Buffer* buf
@@ -643,11 +645,12 @@ cdef class SmdReader:
                 #            f"block_size={block_sizes[i]} seen_offset={buf.seen_offset} "
                 #            f"n_seen_events={buf.n_seen_events}")
 
-                # Handle step buffers the same way
+            # end for i in ...
+
+            # Handle step buffers serially outside the parallel region
+            for i in range(self.prl_reader.nfiles):
                 buf = &(self.prl_reader.step_bufs[i])
 
-                # Find boundary using limit_ts (omit check for exact match here because it's unlikely
-                # for transition buffers.
                 i_en_step_blocks[i] = i_st_step_nextblocks[i]
                 if i_en_step_blocks[i] <  buf.n_ready_events \
                         and buf.ts_arr[i_en_step_blocks[i]] <= limit_ts:
@@ -656,7 +659,11 @@ cdef class SmdReader:
                         i_en_step_blocks[i] += 1
 
                     i_st_step_blocks[i] = i_st_step_nextblocks[i]
-                    step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_nextblocks[i]]
+                    step_block_sizes[i] = 0
+                    j = i_st_step_blocks[i]
+                    while j <= i_en_step_blocks[i]:
+                        step_block_sizes[i] += buf.en_offset_arr[j] - buf.st_offset_arr[j]
+                        j += 1
                     if cn_batch_stepbufs[i] == 0:
                         i_st_step_blocks_firstbatch[i] = i_st_step_blocks[i]
 
@@ -665,14 +672,6 @@ cdef class SmdReader:
                     i_st_step_nextblocks[i]  = i_en_step_blocks[i] + 1
                     if step_block_sizes[i] > 0:
                         cn_batch_stepbufs[i] += 1
-
-                # FOR DEBUGGING - Calling print with gil can slow down performance.
-                #with gil:
-                #    debug_print(f"    step[{i}]: st={i_st_step_blocks[i]} en={i_en_step_blocks[i]} "
-                #            f"block_size={step_block_sizes[i]} seen_offset={buf.seen_offset} "
-                #            f"n_seen_events={buf.n_seen_events}")
-
-            # end for i in ...
 
             # Mark EndOfBatch for integrating detector run
             if intg_stream_id > -1:
@@ -689,7 +688,11 @@ cdef class SmdReader:
             if cn_batch_stepbufs[i] > 1:
                 buf = &(self.prl_reader.step_bufs[i])
                 i_st_step_blocks[i] = i_st_step_blocks_firstbatch[i]
-                step_block_sizes[i] = buf.en_offset_arr[i_en_step_blocks[i]] - buf.st_offset_arr[i_st_step_blocks[i]]
+                step_block_sizes[i] = 0
+                j = i_st_step_blocks[i]
+                while j <= i_en_step_blocks[i]:
+                    step_block_sizes[i] += buf.en_offset_arr[j] - buf.st_offset_arr[j]
+                    j += 1
 
         # First check: Did we actually gather any usable data?
         cdef bint all_empty = True
@@ -777,20 +780,50 @@ cdef class SmdReader:
         """
 
         cdef Buffer* buf
+        cdef Buffer* data_buf
         cdef uint64_t[:] block_sizes
         cdef uint64_t[:] i_st_blocks
+        cdef uint64_t[:] i_en_blocks
         if step_buf:
             buf = &(self.prl_reader.step_bufs[i_buf])
             block_sizes = self.step_block_sizes
             i_st_blocks = self.i_st_step_blocks
+            i_en_blocks = self.i_en_step_blocks
+            data_buf = &(self.prl_reader.bufs[i_buf])
         else:
             buf = &(self.prl_reader.bufs[i_buf])
             block_sizes = self.block_sizes
             i_st_blocks = self.i_st_blocks
+            i_en_blocks = self.i_en_blocks
+            data_buf = buf
 
         cdef char[:] view
+        cdef Py_ssize_t total_size=0
+        cdef Py_ssize_t out_offset=0
+        cdef Py_ssize_t st_idx=0
+        cdef Py_ssize_t en_idx=0
+        cdef Py_ssize_t sz=0
+        cdef char* out_ptr=NULL
         if block_sizes[i_buf] > 0:
-            view = <char [:block_sizes[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_blocks[i_buf]])
+            if step_buf:
+                total_size = <Py_ssize_t>block_sizes[i_buf]
+                outbuf = bytearray(total_size)
+                out_ptr = PyByteArray_AS_STRING(outbuf)
+                out_offset = 0
+                st_idx = <Py_ssize_t>i_st_blocks[i_buf]
+                en_idx = <Py_ssize_t>i_en_blocks[i_buf]
+                sz = 0
+                for idx in range(st_idx, en_idx + 1):
+                    sz = buf.en_offset_arr[idx] - buf.st_offset_arr[idx]
+                    if sz <= 0:
+                        continue
+                    memcpy(out_ptr + out_offset,
+                           data_buf.chunk + buf.st_offset_arr[idx],
+                           sz)
+                    out_offset += sz
+                view = memoryview(outbuf)
+            else:
+                view = <char [:block_sizes[i_buf]]> (buf.chunk + buf.st_offset_arr[i_st_blocks[i_buf]])
             # Check if there's any data in fake buffer
             fakebuf = self.get_fake_buffer()
             if self._fakebuf_size > 0:

@@ -84,7 +84,7 @@ class SmdReaderManager(object):
 
         # Sets no. of events Smd0 sends to each EventBuilder core. This gets
         # overridden by max_events set by DataSource if max_events is smaller.
-        self.smd0_n_events = int(os.environ.get("PS_SMD_N_EVENTS", 1000))
+        self.smd0_n_events = int(os.environ.get("PS_SMD_N_EVENTS", 20000))
         if self.dsparms.max_events:
             if self.dsparms.max_events < self.smd0_n_events:
                 self.smd0_n_events = self.dsparms.max_events

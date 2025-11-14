@@ -45,7 +45,18 @@ cdef class ParallelReader:
         self.got                = 0
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
-        self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
+        cdef int env_threads = int(os.environ.get('PS_SMD0_NUM_THREADS', '0'))
+        cdef Py_ssize_t detected_threads
+        if env_threads <= 0:
+            cpu_count = os.cpu_count()
+            if cpu_count is None or cpu_count <= 0:
+                detected_threads = 1
+            else:
+                detected_threads = cpu_count
+            self.num_threads = detected_threads if detected_threads < self.nfiles else self.nfiles
+        else:
+            self.num_threads = env_threads if env_threads < self.nfiles else self.nfiles
+        debug_print(f"ParallelReader threads: {self.num_threads} (env={env_threads})")
         self.gots               = array.array('l', [0]*self.nfiles)
         self._init_buffers(self.bufs)
         self._init_buffers(self.step_bufs)
@@ -187,10 +198,9 @@ cdef class ParallelReader:
                         # check if this a non L1
                         if buf.sv_arr[buf.n_ready_events] != self.L1Accept and \
                                 buf.sv_arr[buf.n_ready_events] != self.L1Accept_EndOfBatch:
-                            memcpy(step_buf.chunk + step_buf.ready_offset, d, sizeof(Dgram) + payload)
                             step_buf.ts_arr[step_buf.n_ready_events] = buf.ts_arr[buf.n_ready_events]
-                            step_buf.st_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset
-                            step_buf.en_offset_arr[step_buf.n_ready_events] = step_buf.ready_offset + sizeof(Dgram) + payload
+                            step_buf.st_offset_arr[step_buf.n_ready_events] = buf.st_offset_arr[buf.n_ready_events]
+                            step_buf.en_offset_arr[step_buf.n_ready_events] = buf.en_offset_arr[buf.n_ready_events]
                             step_buf.sv_arr[step_buf.n_ready_events] = buf.sv_arr[buf.n_ready_events]
                             step_buf.n_ready_events += 1
                             step_buf.ready_offset += sizeof(Dgram) + payload
