@@ -56,6 +56,6 @@ cdef class ParallelReader:
     cdef int        max_retries
     cdef PyObject*  dsparms
 
-    cdef void _init_buffers(self, Buffer* bufs)
+    cdef void _init_buffers(self, Buffer* bufs, bint allocate_chunk)
     cdef void _free_buffers(self, Buffer* bufs)
     cdef void force_read(self)

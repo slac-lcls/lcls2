@@ -58,14 +58,14 @@ cdef class ParallelReader:
             self.num_threads = env_threads if env_threads < self.nfiles else self.nfiles
         debug_print(f"ParallelReader threads: {self.num_threads} (env={env_threads})")
         self.gots               = array.array('l', [0]*self.nfiles)
-        self._init_buffers(self.bufs)
-        self._init_buffers(self.step_bufs)
+        self._init_buffers(self.bufs, True)
+        self._init_buffers(self.step_bufs, False)
 
     def __dealloc__(self):
         self._free_buffers(self.bufs)
         self._free_buffers(self.step_bufs)
 
-    cdef void _init_buffers(self, Buffer* bufs):
+    cdef void _init_buffers(self, Buffer* bufs, bint allocate_chunk):
         cdef Py_ssize_t i
         cdef Buffer* buf
         cdef void* p
@@ -80,12 +80,14 @@ cdef class ParallelReader:
             buf.found_endrun    = 0
             buf.endrun_ts       = 0
             buf.has_l1          = 0
-            # mmap the chunk
-            p = mmap(NULL, self.chunksize, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
-            if p == <void*>-1:  # MAP_FAILED
-                raise MemoryError("mmap failed")
-            buf.chunk = <char*>p
+            if allocate_chunk:
+                p = mmap(NULL, self.chunksize, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+                if p == <void*>-1:  # MAP_FAILED
+                    raise MemoryError("mmap failed")
+                buf.chunk = <char*>p
+            else:
+                buf.chunk = NULL
             buf.ts_arr     = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
             buf.sv_arr     = <unsigned *>malloc(sizeof(unsigned) * self.max_events)
             buf.st_offset_arr = <uint64_t *>malloc(sizeof(uint64_t) * self.max_events)
