@@ -21,17 +21,16 @@ import copy # deepcopy
 rogue.Version.minVersion('6.1.0')
 
 base = None
-pv = None
 
 chan = None
 group = None
-origcfg = None
-
-segids = None
-seglist = [0,1]
+orig_cfg = None
+seg_ids = None
+SEGLIST = [0,1]
 asics = None
 
 DET_SIZE = (4, 168, 192)  # 4 ASICs of 168x192 pixels each
+gain_map=np.zeros(DET_SIZE)
 
 #  Timing delay scans can be limited by this
 EVENT_BUILDER_TIMEOUT = 0 #4*int(1.0e-3*156.25e6)
@@ -43,6 +42,31 @@ GAIN_PATH = '/tmp/ePixUHR_GTReadout_default_'
 #path were to store pll files used for calibration
 PLL_PATH = '/tmp/'
 
+PLL_LABELS = [None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
+TIMING_OUT_EN_LIST=[
+    'asicR0', 
+    'asicACQ', 
+    'asicSRO', 
+    'asicInj', 
+    'asicGlbRstN', 
+    'timingRunTrigger', 
+    'timingDaqTrigger', 
+    'acqStart', 
+    'dataSend', 
+    '_0', 
+    '_1'
+    ]
+
+GAIN_CSV_LIST = [
+    '_0_default', 
+    '_1_injection_truck', 
+    '_2_injection_corners_FHG', 
+    '_3_injection_corners_AHGLG1', 
+    '_4_extra_config', 
+    '_5_extra_config', 
+    '_6_truck2', 
+    '_7_on_the_fly', 
+    ]
 ALG_VERSION = [3,2,0]
 
 
@@ -60,7 +84,7 @@ def _dict_compare(d1,d2,path):
             print(f'key[{k}] not in d2')
 
 # Sanitize the json for json2xtc by removing offensive characters
-def sanitize_config(src):
+def sanitize_config(src: dict) -> dict:
     dst = {}
     for k, v in src.items():
         if isinstance(v, dict):
@@ -69,7 +93,7 @@ def sanitize_config(src):
     return dst
 
 #Initialization of ASICs, this happens after getting configdb data because we need to know which ASIC to init
-def panel_ASIC_init(det_root, asics):
+def panel_ASIC_init(det_root: dict, asics: list):
     
     for asic in asics:				
 
@@ -84,7 +108,7 @@ def panel_ASIC_init(det_root, asics):
 
                             
 #Initialization of the detector; this is meant to put the detector in a pre defined working state.
-def panel_init(det_root):
+def panel_init(det_root: dict):
         write_to_detector(det_root.App.WaveformControl.enable,              True)			  	
         write_to_detector(det_root.App.WaveformControl.GlblRstPolarity,     True)
         write_to_detector(det_root.App.WaveformControl.AsicSroEn,           True)			  			  	
@@ -137,19 +161,10 @@ def panel_init(det_root):
 #
 #  Initialize the rogue accessor
 #
-def epixUHR_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M",verbosity=0):
+def epixUHR_init(arg, dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186M",verbosity=0) -> dict:
     global base
-    global pv
-    
-    global gainMapSelection
-    global gainValSelection
-    
-    #used to store gain configuration
-    gainMapSelection=np.zeros(DET_SIZE)
-    gainValSelection=np.zeros(4)
     
     logging.getLogger().setLevel(logging.WARNING)
-#    logging.getLogger().setLevel(logging.INFO)
     logging.info('epixUHR_init')
     
     base = {}
@@ -240,7 +255,7 @@ def epixUHR_init_feb(slane=None,schan=None):
 #
 #  Set the local timing ID and fetch the remote timing ID
 #
-def epixUHR_connectionInfo(base, alloc_json_str):
+def epixUHR_connectionInfo(base, alloc_json_str) -> dict:
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -255,77 +270,70 @@ def epixUHR_connectionInfo(base, alloc_json_str):
 
     epixUHRid = '-'
 
-    d = {}
-    d['paddr'] = rxId
-    d['serno'] = epixUHRid
+    new_cfg = {}
+    new_cfg['paddr'] = rxId
+    new_cfg['serno'] = epixUHRid
 
-    return d
+    return new_cfg
 
 #
 #  Translate the 'user' components of the cfg dictionary into 'expert' settings
-#  The cfg dictionary may be partial (scanning), so the origcfg dictionary is
+#  The cfg dictionary may be partial (scanning), so the orig_cfg dictionary is
 #  reference for the full set.
 #
-def user_to_expert(base, cfg, fullConfig=False):
-    global origcfg
+def user_to_expert(base, cfg, fullConfig=False) -> bool:
+    global orig_cfg
     global group
     global lane
 
     det_root = base['cam']
     
-    d = {}
-    hasUser = 'user' in cfg
+    new_cfg = {}
+    has_user = 'user' in cfg
     
-    #there are scripts that do not have user
-    if (hasUser and 'start_ns' in cfg['user']):
-        #rtp = origcfg['user']['run_trigger_group'] # run trigger partition
+    #there are scripts that new_cfgo not have user
+    if (has_user and 'start_ns' in cfg['user']):
+        #rtp = orig_cfg['user']['run_trigger_group'] # run trigger partition
         
         #for i,p in enumerate([rtp,group]):
-        partitionDelay = getattr(det_root.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
-        rawStart       = cfg['user']['start_ns']
+        partition_delay = getattr(det_root.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
+        raw_start       = cfg['user']['start_ns']
 
-        #
-        #  The EPIX DAQ trigger source is the DAQ readout group
-        #  The EPIX DAQ trigger delay is user.start_ns - L0Delay (readout group)
-        #
-        triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
-        logging.warning(f'partitionDelay[{group}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
-        if triggerDelay < 0:
-            logging.error(f'partitionDelay[{group}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
-            logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
-            raise ValueError('triggerDelay computes to < 0')
+        trigger_delay   = int(raw_start/base['clk_period'] - partition_delay*base['msg_period'])
+        logging.warning(f'partition_delay[{group}] {partition_delay}  raw_start {raw_start}  trigger_delay {trigger_delay}')
+        if trigger_delay < 0:
+            logging.error(f'partition_delay[{group}] {partition_delay}  raw_start {raw_start}  trigger_delay {trigger_delay}')
+            logging.error('Raise start_ns >= {:}'.format(partition_delay*base['msg_period']*base['clk_period']))
+            raise ValueError('trigger_delay computes to < 0')
 
-        d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
+        new_cfg[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay'] = trigger_delay
         
-        triggerDelay=int(rawStart/base["clk_period"]) - DELTA_DELAY
+        trigger_delay=int(raw_start/base["clk_period"]) - DELTA_DELAY
         
-        if triggerDelay < 0:
-            logging.error(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
-            logging.error('Raise start_ns >= {:}'.format(partitionDelay*base['msg_period']*base['clk_period']))
-            raise ValueError('triggerDelay computes to < 0')
+        if trigger_delay < 0:
+            logging.error(f'partition_delay[{group+1}] {partition_delay}  raw_start {raw_start}  trigger_delay {trigger_delay}')
+            logging.error('Raise start_ns >= {:}'.format(partition_delay*base['msg_period']*base['clk_period']))
+            raise ValueError('trigger_delay computes to < 0')
 
-        d[f'expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'] = triggerDelay
-        logging.warning(f'partitionDelay[{group+1}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
+        new_cfg[f'expert.App.TimingRx.TriggerEventManager.EvrV2CoreTriggers.EvrV2TriggerReg[0].Delay'] = trigger_delay
+        logging.warning(f'partition_delay[{group+1}] {partition_delay}  raw_start {raw_start}  trigger_delay {trigger_delay}')
 
         if fullConfig:
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']= group+1    # Run trigger
-            d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']= group  # DAQ trigger
+            new_cfg[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[0].Partition']= group+1    # Run trigger
+            new_cfg[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].Partition']= group  # DAQ trigger
     
-    calibRegsChanged = False
-    if hasUser and 'Gain'  in cfg['user']:
-        calibRegsChanged = True
+    calib_regs_changed = True if has_user and 'Gain'  in cfg['user'] else False
 
-    update_config_entry(cfg,origcfg,d)
+    update_config_entry(cfg,orig_cfg,new_cfg)
 
-    return calibRegsChanged
+    return calib_regs_changed
 
 #
 #  Apply the cfg dictionary settings
 #
-def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
+def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
     global asics  # Need to maintain this across configuration updates
-    global gainMapSelection
-    global gainValSelection
+    global gain_map
 
     #  Disable internal triggers during configuration
     epixUHR_external_trigger(base)
@@ -355,20 +363,20 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
     pll = det_root.Core.Si5345Pll
     
     tmpfiles = []
-    if not secondPass:
+    if not second_pass:
         #Load Pll config values
-        Pll_sel=[None, '_temp250', '_2_3_7', '_0_5_7', '_2_3_9', '_0_5_7_v2']
+        
         if pll.enable.get() == False:
             pll.enable.set(True)
         
         clk = cfg['user']['PllRegistersSel'] 
         
-        freq = Pll_sel[clk]
+        freq = PLL_LABELS[clk]
         logging.info(f"Loading PLL file: {freq}")
         
-        pllCfg = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
+        db_Pll = np.reshape(cfg['expert']['Pll'][freq], (-1,2))
         fn = PLL_PATH+'PllConfig'+'.csv'
-        np.savetxt(fn, pllCfg, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
+        np.savetxt(fn, db_Pll, fmt='0x%04X,0x%02X', delimiter=',', newline='\n', header='Address,Data', comments='')
         
         tmpfiles.append(fn)
         setattr(det_root,"filenamePLL", fn)
@@ -397,7 +405,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             eb.Timeout.set(EVENT_BUILDER_TIMEOUT)
             eb.Blowoff.set(True)
     
-    if app is not None and not secondPass:
+    if app is not None and not second_pass:
         # Work hard to use the underlying rogue interface
         # Config data was initialized from the distribution's yaml files by epixhr_config_from_yaml.py
         # Translate config data to yaml files
@@ -431,13 +439,13 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
         write_to_detector(det_root.App.GTReadoutBoardCtrl.timingOutEn2,         app['GTReadoutBoardCtrl']['timingOutEn2']==1)
         
         # Enables the use of the oscilloscope
-        timingOutEnum=['asicR0', 'asicACQ', 'asicSRO', 'asicInj', 'asicGlbRstN', 'timingRunTrigger', 'timingDaqTrigger', 'acqStart', 'dataSend', '_0', '_1']
+        
         timingOutMux0_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux0'])
         timingOutMux1_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux1'])
         timingOutMux3_Sel=int(app['GTReadoutBoardCtrl']['TimingOutMux3'])
-        logging.info(f'Setting timingOutMux0 to {timingOutEnum[timingOutMux0_Sel]}')
-        logging.info(f'Setting timingOutMux1 to {timingOutEnum[timingOutMux1_Sel]}')
-        logging.info(f'Setting timingOutMux3 to {timingOutEnum[timingOutMux3_Sel]}')
+        logging.info(f'Setting timingOutMux0 to {TIMING_OUT_EN_LIST[timingOutMux0_Sel]}')
+        logging.info(f'Setting timingOutMux1 to {TIMING_OUT_EN_LIST[timingOutMux1_Sel]}')
+        logging.info(f'Setting timingOutMux3 to {TIMING_OUT_EN_LIST[timingOutMux3_Sel]}')
         
         write_to_detector(det_root.App.GTReadoutBoardCtrl.timingOutMux0, timingOutMux0_Sel)
         write_to_detector(det_root.App.GTReadoutBoardCtrl.timingOutMux1, timingOutMux1_Sel)
@@ -454,15 +462,10 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                
         write_to_detector(det_root.App.ADS1217.enable, cfg['user']['App']['ADS1217']['enable']==1)	
         write_to_detector(det_root.App.ADS1217.adcStartEnManual, cfg['user']['App']['ADS1217']['adcStartEnManual']	)        
-                    
-        csvCfg = 0
+                  
     
     if writeCalibRegs:
-        gainValue = 0
-        pixelBitMapDic = ['_0_default', '_1_injection_truck', '_2_injection_corners_FHG', '_3_injection_corners_AHGLG1', '_4_extra_config', '_5_extra_config', '_6_truck2', '_7_on_the_fly', ]
-        
-        gainMapSelection=np.zeros(DET_SIZE)
-        gainValSelection=np.zeros(4)
+        gain_map = np.zeros(DET_SIZE)
         
         #Need to turn PixNumModeEn true to modify Gain
         for asic in asics: 
@@ -483,35 +486,34 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
             if ( cfg['user']['Gain']['UsePixelMap']):
                 #same MAP for each
                 logging.info("Use Pixel MAP")
-                PixMapSel = int(cfg['user']['Gain']['PixelBitMapSel'])
                 
-                PixMapSelected= pixelBitMapDic[PixMapSel]
+                gain_map_name = GAIN_CSV_LIST[int(cfg['user']['Gain']['PixelBitMapSel'])]
                 
-                if ('on_the_fly' not in PixMapSelected):
+                if ('on_the_fly' not in gain_map_name):
                     fn = PLL_PATH+'csvConfig'+'.csv'
-                    csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (DET_SIZE[1], DET_SIZE[2]))
-                    np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='', fmt='%d')
+                    db_gain_map = np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2]))
+                    np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='', fmt='%d')
                     tmpfiles.append(fn)
                     
                 else:
                     fn = PLL_PATH+'onthefly.csv'    
-                    csvCfg = np.loadtxt(PLL_PATH+'onthefly.csv', dtype='uint16', delimiter=',')
+                    db_gain_map = np.loadtxt(PLL_PATH+'onthefly.csv', dtype='uint16', delimiter=',')
                 for asic in asics: 
                     print(f"ASIC{asic}")
                     eval(f"det_root.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{asic}('{fn}')")
                                         
-                    logging.info(f"{PixMapSelected} CSV File Loaded")
-                    gainMapSelection[asic-1,:,:]=csvCfg
+                    logging.info(f"{gain_map_name} CSV File Loaded")
+                    gain_map[asic-1,:,:]=db_gain_map
 
             else:
                 #same value for all
                 logging.info("Use single value for all ASICS")
-                gainValue=str(cfg['user']['Gain']['SetGainValue'])
+                gain_value = str(cfg['user']['Gain']['SetGainValue'])
                 
                 for asic in asics: 
                     print(f"ASIC{asic}")
-                    gainValSelection[asic-1]=gainValue
-                    getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gainValue)
+                    gain_map[asic-1,:, :] = np.full((DET_SIZE[1],DET_SIZE[2]), gain_value)
+                    getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gain_value)
         else:
             logging.info("Set single Gain per ASIC")
             if ( cfg['user']['Gain']['UsePixelMap']):
@@ -519,28 +521,28 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 logging.info("Use a Pixel MAP per each ASIC")
                 for asic in asics:
                     print(f"ASIC{asic}")
-                    PixMapSel = cfg['user']['App'][f'Asic{asic}']['PixelBitMapSel']    
-                    PixMapSelected= pixelBitMapDic[PixMapSel]
-                    print(PixMapSelected)
-                    if ('on_the_fly' not in PixMapSelected):
-                        csvCfg = np.reshape(cfg['expert']['pixelBitMaps'][PixMapSelected], (DET_SIZE[1], DET_SIZE[2]))
+                    
+                    gain_map_name = GAIN_CSV_LIST[cfg['user']['App'][f'Asic{asic}']['PixelBitMapSel']]
+                    print(gain_map_name)
+                    if ('on_the_fly' not in gain_map_name):
+                        db_gain_map = np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2]))
                         fn = PLL_PATH+f'csvConfigAsic{asic}'+'.csv'
-                        np.savetxt(fn, csvCfg, delimiter=',', newline='\n', comments='')
+                        np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='')
                         tmpfiles.append(fn)
                     else:
                         fn = PLL_PATH+'onthefly.csv'
-                        csvCfg = np.loadtxt(f'{PLL_PATH}onthefly.csv', dtype='uint16', delimiter=',')
-                    gainMapSelection[i-1,:,:]=csvCfg
+                        db_gain_map = np.loadtxt(f'{PLL_PATH}onthefly.csv', dtype='uint16', delimiter=',')
+                    gain_map[i-1,:,:] = db_gain_map
                     eval(f"det_root.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{asic}('{fn}')")
                     
             else:
                 #a value per each
                 logging.info("Use a value per ASIC")
                 for asic in asics: 
-                    gainValue=str(cfg['user']['App'][f'Asic{i}']['SetGainValue'])
+                    gain_value=str(cfg['user']['App'][f'Asic{i}']['SetGainValue'])
                     print(f"ASIC{asic}")
-                    gainValSelection[asic-1]=gainValue
-                    getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gainValue)
+                    gain_map[asic-1, :, :] = np.gull((DET_SIZE[1],DET_SIZE[2]), gain_value)
+                    getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gain_value)
         
         # deactivate gain modification            
         for asic in asics: write_to_detector(getattr(det_root.App,f"Asic{i}").PixNumModeEn, False)
@@ -575,7 +577,7 @@ def config_expert(base, cfg, writeCalibRegs=True, secondPass=False):
                 
     logging.info('config_expert complete')
     
-def reset_counters(base):
+def reset_counters(base: dict):
     # Reset the timing counters
     base['cam'].App.TimingRx.TimingFrameRx.countReset()
 
@@ -585,19 +587,18 @@ def reset_counters(base):
 #
 #  Called on Configure
 #
-def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
-    global origcfg
+def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
+    global orig_cfg
     global group
-    global segids
-    global gainMapSelection
-    global gainValSelection
+    global seg_ids
+    global gain_map
     group = rog
 
     #
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
-    origcfg = cfg
+    orig_cfg = cfg
     
     
     #  Translate user settings to the expert fields
@@ -631,16 +632,16 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     det_root = base['cam']
     firmwareVersion = det_root.Core.AxiVersion.FpgaVersion.get()
 
-    origcfg = cfg
+    orig_cfg = cfg
 
     topname = cfg['detName:RO'].split('_')
 
-    segcfg = {}
-    segids = {}
+    seg_cfg = {}
+    seg_ids = {}
 
     #  Rename the complete config detector
-    segcfg[0] = cfg.copy()
-    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    seg_cfg[0] = cfg.copy()
+    seg_cfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
     #for seg in range(1):
         #  Construct the ID
@@ -657,7 +658,7 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                     digitalId,
                                     pwrCommId)
 
-    segids[0] = id
+    seg_ids[0] = id
     top = cdict()
     top.setAlg('config', ALG_VERSION)
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
@@ -665,19 +666,19 @@ def epixUHR_config(base,connect_str,cfgtype,detname,detsegm,rog):
     top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
     top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')        
     
-    segcfg[1] = top.typed_json()
+    seg_cfg[1] = top.typed_json()
     
     result = []
-    for i in seglist:
-        logging.debug('json seg {}  detname {}'.format(i, segcfg[i]['detName:RO']))
-        result.append( json.dumps(sanitize_config(segcfg[i])) )
+    for i in SEGLIST:
+        logging.debug('json seg {}  detname {}'.format(i, seg_cfg[i]['detName:RO']))
+        result.append( json.dumps(sanitize_config(seg_cfg[i])) )
     
     base['cfg']    = copy.deepcopy(cfg)
     base['result'] = copy.deepcopy(result)
     logging.info("created gain values in XTC file")
     return result
 
-def epixUHR_unconfig(base):
+def epixUHR_unconfig(base) -> dict:
     logging.info('epixUHR_unconfig')
     _stop(base)
     return base
@@ -686,46 +687,43 @@ def epixUHR_unconfig(base):
 #  Build the set of all configuration parameters that will change
 #  in response to the scan parameters
 #
-def epixUHR_scan_keys(update):
+def epixUHR_scan_keys(update) -> list:
     logging.debug('epixUHR_scan_keys')
-    global origcfg
+    global orig_cfg
     global base
-    global segids
-    global gainValSelection
-    global gainMapSelection
+    global seg_ids
     
     cfg = {}
-    copy_reconfig_keys(cfg,origcfg,json.loads(update))
+    copy_reconfig_keys(cfg,orig_cfg,json.loads(update))
     # Apply to expert
-    calibRegsChanged = user_to_expert(base,cfg,fullConfig=False)
+    calib_regs_changed = user_to_expert(base,cfg,fullConfig=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,origcfg,key)
-        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
+        copy_config_entry(cfg,orig_cfg,key)
+        copy_config_entry(cfg[':types:'],orig_cfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
-    segcfg = {}
+    seg_cfg = {}
 
     #  Rename the complete config detector
-    segcfg[0] = cfg.copy()
-    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    seg_cfg[0] = cfg.copy()
+    seg_cfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
     
     
-    if calibRegsChanged:
+    if calib_regs_changed:
 
         for seg in range(1):
-            id = segids[seg]
+            id = seg_ids[seg]
             top = cdict()
             top.setAlg('config', ALG_VERSION)
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
-            top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
-            top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
-            segcfg[seg+1] = top.typed_json()
+            top.set(f'gainMap' , gain_map.tolist(), 'UINT8')  # only the rows which have readable pixels
+            seg_cfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(len(segcfg)):
-        result.append( json.dumps(sanitize_config(segcfg[i])) )
+    for i in range(len(seg_cfg)):
+        result.append( json.dumps(sanitize_config(seg_cfg[i])) )
 
     base['scan_keys'] = copy.deepcopy(result)
     if not check_json_keys(result, base['result']): # @todo: Too strict?
@@ -736,13 +734,11 @@ def epixUHR_scan_keys(update):
 #
 #  Return the set of configuration updates for a scan step
 #
-def epixUHR_update(update):
+def epixUHR_update(update) -> list:
     logging.debug('epixUHR_update')
-    global origcfg
+    global orig_cfg
     global base
-    global gainMapSelection
-    global gainValSelection
-    
+    global gain_map
     #  Queue full configuration next Configure transition
     base['cfg'] = None
 
@@ -753,13 +749,13 @@ def epixUHR_update(update):
     # extract updates
     cfg = {}
     
-    update_config_entry(cfg,origcfg,json.loads(update))
+    update_config_entry(cfg,orig_cfg,json.loads(update))
     #  Apply to expert
     
     writeCalibRegs = user_to_expert(base,cfg,fullConfig=False)
     logging.info(f'Partial config writeCalibRegs {writeCalibRegs}')
     
-    config_expert(base, cfg, writeCalibRegs, secondPass=True)
+    config_expert(base, cfg, writeCalibRegs, second_pass=True)
     _start(base)
 
     #  Enable triggers to continue monitoring
@@ -767,42 +763,35 @@ def epixUHR_update(update):
 
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
-        copy_config_entry(cfg,origcfg,key)
-        copy_config_entry(cfg[':types:'],origcfg[':types:'],key)
+        copy_config_entry(cfg,orig_cfg,key)
+        copy_config_entry(cfg[':types:'],orig_cfg[':types:'],key)
 
     topname = cfg['detName:RO'].split('_')
 
-    segcfg = {}
+    seg_cfg = {}
 
     #  Rename the complete config detector
-    segcfg[0] = cfg.copy()
-    segcfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
+    seg_cfg[0] = cfg.copy()
+    seg_cfg[0]['detName:RO'] = '_'.join(topname[:-1])+'hw_'+topname[-1]
 
     if writeCalibRegs:
         for seg in range(1):
-            id = segids[seg]
+            id = seg_ids[seg]
             top = cdict()
             top.setAlg('config', ALG_VERSION)
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
-            top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
-            top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')
+            top.set(f'gainMap' , gain_map.tolist(), 'UINT8')  # only the rows which have readable pixels
 
-            segcfg[seg+1] = top.typed_json()
+            seg_cfg[seg+1] = top.typed_json()
 
     result = []
-    for i in range(len(segcfg)):
-        result.append( json.dumps(sanitize_config(segcfg[i])) )
+    for i in range(len(seg_cfg)):
+        result.append( json.dumps(sanitize_config(seg_cfg[i])) )
 
     logging.info('update complete')
 
     return result
-
-def _resetSequenceCount():
-    det_root = base['cam']
-    write_to_detector(det_root.App.RegisterControlDualClock.ResetCounters, 1)
-    time.sleep(1.e6)
-    write_to_detector(det_root.App.RegisterControlDualClock.ResetCounters, 0)
 
 def epixUHR_external_trigger(base):
     #  Switch to external triggering
@@ -855,9 +844,9 @@ def _start(base):
     det_root.App.SetTimingTrigger()
     
             # Get devices
-    eventBuilder = det_root.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
+    event_builder = det_root.App.find(typ=batcher.AxiStreamBatcherEventBuilder)
     
-    for devPtr in eventBuilder:
+    for devPtr in event_builder:
         devPtr.Blowoff.set(False)
     
         devPtr.SoftRst()
