@@ -304,7 +304,7 @@ def issue_2025_02_27():
     print('odet.raw._calibconst.keys()', odet.raw._calibconst.keys())
 
 
-def issue_2025_03_06():
+def issue_2025_03_06(subtest=1):
     """jungfrau
        datinfo -k exp=ascdaq023,run=37 -d jungfrau
        jungfrau_dark_proc -k exp=ascdaq023,run=37 -d jungfrau
@@ -317,13 +317,19 @@ def issue_2025_03_06():
     from psana.detector.UtilsJungfrau import info_gainbits_statistics
     import psana.detector.UtilsJungfrau as uj
 
-    ds = DataSource(exp='ascdaq023',run=37) #, detectors=['jungfrau']) # (600, 4800)
-    orun = next(ds.runs())
-    det = orun.Detector('jungfrau', gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
-
     flimg = None
-    events = 10
+    events = 5
     evsel = 0
+    detname = 'jungfrau'
+    dskwargs = {'exp':'ascdaq023',   'run':37} if subtest == '1' else\
+               {'exp':'mfx100852324','run':42} if subtest == '2' else\
+               {'exp':'mfx100852324','run':51}
+    dskwargs['detectors'] = [detname,]
+    dskwargs['max_events'] = events
+    print('dskwargs: %s\n', str(dskwargs))
+    ds = DataSource(**dskwargs)
+    orun = next(ds.runs())
+    det = orun.Detector(detname, gainfact=1) # , cmpars=(1,0,0)) #(1,0,0))
 
     for nev, evt in enumerate(orun.events()):
        #print(info_ndarr(det.raw.raw(evt), '%3d: det.raw.raw(evt)' % nev))
@@ -1515,6 +1521,7 @@ def issue_2025_09_16(subtest='0o7777'):
             {'exp':'mfx100848724', 'run':51,  'detectors':['jungfrau',]}  if isubset & 32 else\
             {'exp':'ascdaq18',     'run':407, 'detectors':['epixhr',]}    if isubset & 64 else\
             {'exp':'mfx100848724', 'run':51,  'detectors':['epix100_0',]} if isubset & 128 else\
+            {'exp':'mfx100852324', 'run':51,  'detectors':['jungfrau',]}  if isubset & 256 else\
             {}
     ds = DataSource(**dskwa)
 
@@ -1530,11 +1537,11 @@ def issue_2025_09_16(subtest='0o7777'):
         for nevt,evt in enumerate(myrun.events()):
             if nevt>events-1: break
             raw   = det.raw.raw(evt)
-            calib = det.raw.calib(evt)
+            calib = det.raw.calib(evt) # , status=False)
             t0_sec = time()
-            mask = det.raw._mask() # raw
-            #img = det.raw.image(evt, nda=calib) # raw/calib
-            img = det.raw.image(evt, nda=mask) # mask
+            #mask = det.raw._mask() # raw
+            img = det.raw.image(evt, nda=calib) # raw/calib
+            #img = det.raw.image(evt, nda=mask) # mask
             dt_sec = (time() - t0_sec)*1000
             #print('evt:', nevt)
             arrdt[nevt] = dt_sec
@@ -1732,7 +1739,7 @@ def selector():
     elif TNAME in  ('4',): issue_2025_02_21() # access to jungfrau panel configuration object
     elif TNAME in  ('5',): issue_2025_02_25() # test saving BIG 32-segment (3,16,512,1024) float32 jungfrau calib constants in DB
     elif TNAME in  ('6',): issue_2025_02_27() # det_dark_proc -d archon -k exp=rixx1017523,run=393 -D -o work issue
-    elif TNAME in  ('7',): issue_2025_03_06() # jungfrau
+    elif TNAME in  ('7',): issue_2025_03_06(args.subtest) # jungfrau
     elif TNAME in  ('8',): issue_2025_03_18() # Silke - direct access to calibration constants
     elif TNAME in  ('9',): issue_2025_03_19() # Silke - picking up wrong constants from Feb 12
     elif TNAME in ('10',): issue_2025_03_27() # me - direct access to calibration constants for jungfrau16M
