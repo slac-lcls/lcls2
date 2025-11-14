@@ -23,11 +23,17 @@ static const unsigned NumCols    { 168 };
 static const unsigned NPixels    { NumAsics*NumRows*NumCols };
 static const unsigned GainOffset {  14 };
 static const unsigned GainBits   {   2 };
-static const unsigned NGains     {   3 };
+static const unsigned NGains     {   4 };
 
 static const unsigned NEvents    { 16 }; // Default number of events to process
 
-struct PedGain
+struct PedGain1
+{
+  float ped[NGains];
+  float gain[NGains];
+};
+
+struct PedGain2
 {
   float ped;
   float gain;
@@ -37,9 +43,9 @@ using vecf32_t = std::vector<float>;
 using vecu16_t = std::vector<uint16_t>;
 
 
-static void check(const char* const           name,
+static void check(char const* const           name,
                   std::vector<vecf32_t>       out,
-                  const std::vector<vecf32_t> reference,
+                  std::vector<vecf32_t> const reference,
                   std::vector<uint64_t>       calibTimes,
                   float                       kernelTime=0.f)
 {
@@ -60,11 +66,10 @@ static void check(const char* const           name,
     tTot += double(calibTimes[i]);
   }
 
-  printf("%s calibration times in us:\n", name);
+  printf("%12s:", name);
   for (unsigned i = 0; i < nEvents; ++i) {
     printf("  %lu", calibTimes[i]);
   }
-  printf("\n");
   if (kernelTime == 0.f) {
     printf("  avg: %f us\n", tTot / nEvents);
   } else {
@@ -76,41 +81,53 @@ static void check(const char* const           name,
   }
 }
 
-static void calibrate(vecf32_t&                out,
-                      const vecu16_t&          raw,
-                      const std::vector<float> pedestals[],
-                      const std::vector<float> gains[])
+static void calibrate(float          out[],
+                      uint16_t const raw[],
+                      float const    pedestals[],
+                      float const    gains[],
+                      unsigned       nPixels)
 {
-  for (unsigned i = 0; i < raw.size(); ++i) {
+  for (unsigned i = 0; i < nPixels; ++i) {
     unsigned gainMode = (raw[i] >> GainOffset) & ((1 << GainBits) - 1);
-    float    datum    = float(raw[i] & ((1 << GainOffset) - 1));
-    out[i] = (datum - pedestals[gainMode][i]) * gains[gainMode][i];
+    float    datum    = raw[i] & ((1 << GainOffset) - 1);
+    auto     idx      = gainMode * nPixels + i;
+    out[i] = (datum - pedestals[idx]) * gains[idx];
   }
 }
 
 static void basicCalib(std::vector<vecf32_t>       out,
-                       const std::vector<vecu16_t> raw,
-                       const std::vector<vecf32_t> pedestals,
-                       const std::vector<vecf32_t> gains,
+                       std::vector<vecu16_t> const raw,
+                       std::vector<vecf32_t> const pedestals,
+                       std::vector<vecf32_t> const gains,
                        std::vector<uint64_t>       calibTimes,
-                       const std::vector<vecf32_t> reference)
+                       std::vector<vecf32_t> const reference)
 {
   // Clear previous results to avoid confusion
   for (auto& o: out) {
     memset(o.data(), 0, o.size() * sizeof(o[0]));
   }
 
+  auto nPixels = raw[0].size();
+  std::vector<float> ps(gains.size() * nPixels);
+  std::vector<float> gs(gains.size() * nPixels);
+  for (unsigned i = 0; i < gains.size(); ++i) {
+    for (unsigned j = 0; j < nPixels; ++j) {
+      ps[i * nPixels + j] = pedestals[i][j];
+      gs[i * nPixels + j] = gains[i][j];
+    }
+  }
+
   // Wait for memmory to stabilize from previous work before performing the test
   asm volatile("mfence" ::: "memory");
 
   // Warm-up
-  calibrate(out[0], raw[0], pedestals.data(), gains.data());
+  calibrate(out[0].data(), raw[0].data(), ps.data(), gs.data(), nPixels);
 
   // Run and time the calibration test for each event
   for (unsigned i = 0; i < raw.size(); ++i) {
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     // Dereferencing a vector of vectors is expensive, so pass an arrays of vectors
-    calibrate(out[i], raw[i], pedestals.data(), gains.data());
+    calibrate(out[i].data(), raw[i].data(), ps.data(), gs.data(), nPixels);
     auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
   }
@@ -119,36 +136,42 @@ static void basicCalib(std::vector<vecf32_t>       out,
   check("Basic", out, reference, calibTimes);
 }
 
-static void calibrate2(vecf32_t&                  out,
-                       const vecu16_t&            raw,
-                       const std::vector<PedGain> pg[])
+static void calibrate1(float          out[],
+                       uint16_t const raw[],
+                       PedGain1 const pg[],
+                       unsigned const nPixels)
 {
-  for (unsigned i = 0; i < raw.size(); ++i) {
+  for (unsigned i = 0; i < nPixels; ++i) {
     unsigned gainMode = (raw[i] >> GainOffset) & ((1 << GainBits) - 1);
     unsigned datum    = raw[i] & ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - pg[gainMode][i].ped) * pg[gainMode][i].gain;
+    out[i] = (datum - pg[i].ped[gainMode]) * pg[i].gain[gainMode];
   }
 }
 
-static void cacheCalib(std::vector<vecf32_t>       out,
-                       const std::vector<vecu16_t> raw,
-                       const std::vector<vecf32_t> pedestals,
-                       const std::vector<vecf32_t> gains,
-                       std::vector<uint64_t>       calibTimes,
-                       const std::vector<vecf32_t> reference)
+static void cacheCalib1(std::vector<vecf32_t>       out,
+                        std::vector<vecu16_t> const raw,
+                        std::vector<vecf32_t> const pedestals,
+                        std::vector<vecf32_t> const gains,
+                        std::vector<uint64_t>       calibTimes,
+                        std::vector<vecf32_t> const reference)
 {
   // Clear previous results to avoid confusion
   for (auto& o: out) {
     memset(o.data(), 0, o.size() * sizeof(o[0]));
   }
 
+  if (gains.size() != NGains) {
+    printf("Recompile with NGains set to %zu to run the cacheCalib1 test\n",
+           gains.size());
+    return;
+  }
+
   // Rearrange calibration constants in a cache friendly way
-  std::vector<PedGain> pg[gains.size()];
-  for (unsigned i = 0; i < gains.size(); ++i) {
-    pg[i].resize(raw[0].size());
-    for (unsigned j = 0; j < raw[0].size(); ++j) {
-      pg[i][j].ped  = pedestals[i][j];
-      pg[i][j].gain = gains[i][j];
+  std::vector<PedGain1> pg(raw[0].size());
+  for (unsigned i = 0; i < pg.size(); ++i) {
+    for (unsigned j = 0; j < gains.size(); ++j) {
+      pg[i].ped[j]  = pedestals[j][i];
+      pg[i].gain[j] = gains[j][i];
     }
   }
 
@@ -156,12 +179,65 @@ static void cacheCalib(std::vector<vecf32_t>       out,
   asm volatile("mfence" ::: "memory");
 
   // Warm-up
-  calibrate2(out[0], raw[0], pg);
+  calibrate1(out[0].data(), raw[0].data(), pg.data(), pg.size());
 
   // Run and time the calibration test for each event
   for (unsigned i = 0; i < raw.size(); ++i) {
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-    calibrate2(out[i], raw[i], pg);
+    calibrate1(out[i].data(), raw[i].data(), pg.data(), pg.size());
+    auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+    calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
+  }
+
+  // Check and print some results
+  check("Cache_NGains", out, reference, calibTimes);
+}
+
+static void calibrate2(float          out[],
+                       uint16_t const raw[],
+                       PedGain2 const pedGain[],
+                       unsigned const nPixels)
+{
+  for (unsigned i = 0; i < nPixels; ++i) {
+    unsigned gainMode = (raw[i] >> GainOffset) & ((1 << GainBits) - 1);
+    unsigned datum    = raw[i] & ((1 << GainOffset) - 1);
+    auto&    pg       = pedGain[gainMode * nPixels + i];
+    out[i] = (datum - pg.ped) * pg.gain;
+  }
+}
+
+static void cacheCalib2(std::vector<vecf32_t>       out,
+                        std::vector<vecu16_t> const raw,
+                        std::vector<vecf32_t> const pedestals,
+                        std::vector<vecf32_t> const gains,
+                        std::vector<uint64_t>       calibTimes,
+                        std::vector<vecf32_t> const reference)
+{
+  // Clear previous results to avoid confusion
+  for (auto& o: out) {
+    memset(o.data(), 0, o.size() * sizeof(o[0]));
+  }
+
+  // Rearrange calibration constants in a cache friendly way
+  auto nPixels = raw[0].size();
+  std::vector<PedGain2> pg(gains.size() * nPixels);
+  for (unsigned i = 0; i < gains.size(); ++i) {
+    for (unsigned j = 0; j < nPixels; ++j) {
+      pg[i * nPixels + j].ped  = pedestals[i][j];
+      pg[i * nPixels + j].gain = gains[i][j];
+    }
+  }
+
+  // Wait for memmory to stabilize from previous work before performing the test
+  asm volatile("mfence" ::: "memory");
+
+  // Warm-up
+  calibrate2(out[0].data(), raw[0].data(), pg.data(), nPixels);
+
+  // Run and time the calibration test for each event
+  for (unsigned i = 0; i < raw.size(); ++i) {
+    auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
+    calibrate2(out[i].data(), raw[i].data(), pg.data(), nPixels);
     auto t1{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     calibTimes[i] = std::chrono::duration_cast<us_t>(t1 - t0).count();
   }
@@ -170,22 +246,23 @@ static void cacheCalib(std::vector<vecf32_t>       out,
   check("Cache", out, reference, calibTimes);
 }
 
-static void calibrate3(float*                      out,
-                       const uint16_t*             raw,
-                       const std::vector<PedGain>* pg,
-                       unsigned                    segSize)
+static void calibrate3(float*          out,
+                       uint16_t const* raw,
+                       PedGain2 const* pedGain,
+                       unsigned        segSize)
 {
   for (unsigned i = 0; i < segSize; ++i) {
     unsigned gainMode = (raw[i] >> GainOffset) & ((1 << GainBits) - 1);
     unsigned datum    = raw[i] & ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - pg[gainMode][i].ped) * pg[gainMode][i].gain;
+    auto&    pg       = pedGain[gainMode * segSize + i];
+    out[i] = (datum - pg.ped) * pg.gain;
   }
 }
 
 static void worker(unsigned                     id,
                    std::vector<vecf32_t>&       out,
-                   const std::vector<vecu16_t>& raw,
-                   const std::vector<PedGain>*  pg,
+                   std::vector<vecu16_t> const& raw,
+                   std::vector<PedGain2> const& pg,
                    unsigned                     segSize,
                    SPSCQueue<unsigned>&         inQueue,
                    SPSCQueue<unsigned>&         outQueue)
@@ -197,7 +274,7 @@ static void worker(unsigned                     id,
 
     calibrate3(&out[index][offset],
                &raw[index][offset],
-               pg,
+               pg.data(),
                segSize);
 
     outQueue.push(index);
@@ -205,11 +282,11 @@ static void worker(unsigned                     id,
 }
 
 static void threadCalib(std::vector<vecf32_t>       out,
-                        const std::vector<vecu16_t> raw,
-                        const std::vector<vecf32_t> pedestals,
-                        const std::vector<vecf32_t> gains,
+                        std::vector<vecu16_t> const raw,
+                        std::vector<vecf32_t> const pedestals,
+                        std::vector<vecf32_t> const gains,
                         std::vector<uint64_t>       calibTimes,
-                        const std::vector<vecf32_t> reference,
+                        std::vector<vecf32_t> const reference,
                         unsigned                    nThreads)
 {
   // Clear previous results to avoid confusion
@@ -218,22 +295,23 @@ static void threadCalib(std::vector<vecf32_t>       out,
   }
 
   // Determine event portion each thread is to handle
-  auto segSize = raw[0].size() / nThreads; // Need to require this to divide evenly
-  if (segSize * nThreads != raw[0].size()) {
+  auto nPixels = raw[0].size();
+  auto segSize = nPixels / nThreads; // Need to require this to divide evenly
+  if (segSize * nThreads != nPixels) {
     printf("Error: Number of threads (%u) must divide evenly into event size (%zu)\n",
-           nThreads, raw[0].size());
+           nThreads, nPixels);
     return;
   }
 
   // Rearrange calibration constants for each thread in a cache friendly way
-  std::vector<PedGain> pg[nThreads][gains.size()];
+  std::vector<PedGain2> pg[nThreads];
   for (unsigned i = 0; i < nThreads; ++i) {
     auto offset = i * segSize;
+    pg[i].resize(gains.size() * segSize);
     for (unsigned j = 0; j < gains.size(); ++j) {
-      pg[i][j].resize(segSize);
       for (unsigned k = 0; k < segSize; ++k) {
-        pg[i][j][k].ped  = pedestals[j][offset + k];
-        pg[i][j][k].gain = gains[j][offset + k];
+        pg[i][j * segSize + k].ped  = pedestals[j][offset + k];
+        pg[i][j * segSize + k].gain = gains[j][offset + k];
       }
     }
   }
@@ -250,7 +328,7 @@ static void threadCalib(std::vector<vecf32_t>       out,
     threads.emplace_back(worker, i,
                          std::ref(out),
                          std::ref(raw),
-                         &pg[i][0],
+                         std::ref(pg[i]),
                          segSize,
                          std::ref(inQueues[i]),
                          std::ref(outQueues[i]));
@@ -321,16 +399,16 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
     const auto peds  = &peds_ [gain * nPixels];
     const auto gains = &gains_[gain * nPixels];
     const auto data  = in[i] & ((1 << GainOffset) - 1);
-    out[i] = (float(data) - peds[i]) * gains[i];
+    out[i] = (data - peds[i]) * gains[i];
   }
 }
 
 static void basicCalibGpu(std::vector<vecf32_t>       out,
-                          const std::vector<vecu16_t> raw,
-                          const std::vector<vecf32_t> pedestals,
-                          const std::vector<vecf32_t> gains,
+                          std::vector<vecu16_t> const raw,
+                          std::vector<vecf32_t> const pedestals,
+                          std::vector<vecf32_t> const gains,
                           std::vector<uint64_t>       calibTimes,
-                          const std::vector<vecf32_t> reference,
+                          std::vector<vecf32_t> const reference,
                           unsigned                    nThreads,
                           unsigned                    nBlocks)
 {
@@ -441,7 +519,7 @@ static __global__ void _calibrate2(float*   const        __restrict__ calibBuffe
                                    uint16_t const* const __restrict__ rawBuffers,
                                    unsigned const&                    index,
                                    unsigned const                     panel,
-                                   PedGain  const* const __restrict__ pedGains,
+                                   PedGain2 const* const __restrict__ pedGains,
                                    unsigned const                     nPixels)
 {
   // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
@@ -455,21 +533,21 @@ static __global__ void _calibrate2(float*   const        __restrict__ calibBuffe
     const auto  gain  = (datum >> GainOffset) & ((1 << GainBits) - 1);
     const auto& pg    = pedGains[gain * nPixels + i];
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - pg.ped) * pg.gain;
+    out[i] = (datum - pg.ped) * pg.gain;
   }
 }
 
 static void cacheCalibGpu(std::vector<vecf32_t>       out,
-                          const std::vector<vecu16_t> raw,
-                          const std::vector<vecf32_t> pedestals,
-                          const std::vector<vecf32_t> gains,
+                          std::vector<vecu16_t> const raw,
+                          std::vector<vecf32_t> const pedestals,
+                          std::vector<vecf32_t> const gains,
                           std::vector<uint64_t>       calibTimes,
-                          const std::vector<vecf32_t> reference,
+                          std::vector<vecf32_t> const reference,
                           unsigned                    nThreads,
                           unsigned                    nBlocks)
 {
   // Rearrange calibration constants in a cache friendly way
-  std::vector<PedGain> pg[gains.size()];
+  std::vector<PedGain2> pg[gains.size()];
   for (unsigned i = 0; i < gains.size(); ++i) {
     pg[i].resize(raw[0].size());
     for (unsigned j = 0; j < raw[0].size(); ++j) {
@@ -496,7 +574,7 @@ static void cacheCalibGpu(std::vector<vecf32_t>       out,
 
   // Put pedestals and gains for each gain range on the GPU
   auto nGains  = gains.size();
-  PedGain* pg_d;
+  PedGain2* pg_d;
   chkError(cudaMalloc(&pg_d, nGains * nPixels * sizeof(*pg_d)));
   auto pedGains_d = pg_d;
   for (unsigned gn = 0; gn < nGains; ++gn) {
@@ -609,16 +687,16 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - sPeds[pgIdx]) * sGains[pgIdx];
+    out[i] = (datum - sPeds[pgIdx]) * sGains[pgIdx];
   }
 }
 
 static void shmemCalibGpu(std::vector<vecf32_t>       out,
-                          const std::vector<vecu16_t> raw,
-                          const std::vector<vecf32_t> pedestals,
-                          const std::vector<vecf32_t> gains,
+                          std::vector<vecu16_t> const raw,
+                          std::vector<vecf32_t> const pedestals,
+                          std::vector<vecf32_t> const gains,
                           std::vector<uint64_t>       calibTimes,
-                          const std::vector<vecf32_t> reference,
+                          std::vector<vecf32_t> const reference,
                           unsigned                    nThreads,
                           unsigned                    nBlocks)
 {
@@ -728,7 +806,7 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
                                    uint16_t const* const __restrict__ rawBuffers,
                                    unsigned const&                    index,
                                    unsigned const                     panel,
-                                   PedGain  const* const __restrict__ pedGains,
+                                   PedGain2 const* const __restrict__ pedGains,
                                    unsigned const                     nPixels)
 {
   // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
@@ -739,7 +817,7 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
 
   extern __shared__ uint8_t smem[];
   //auto sIn       = (uint16_t*)smem;                      // uint16_t sIn[TPB];
-  auto sPedGains = (PedGain*)smem; //&sIn[blockDim.x];           // PedGain  sPedGains[1 << GainBits][TPB];
+  auto sPedGains = (PedGain2*)smem; //&sIn[blockDim.x];           // PedGain2  sPedGains[1 << GainBits][TPB];
 
   cg::thread_block cta = cg::this_thread_block();
   for (int i = pixel; i < nPixels; i += stride) {
@@ -755,21 +833,21 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (float(datum) - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
+    out[i] = (datum - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
   }
 }
 
 static void shmemPgCalibGpu(std::vector<vecf32_t>       out,
-                            const std::vector<vecu16_t> raw,
-                            const std::vector<vecf32_t> pedestals,
-                            const std::vector<vecf32_t> gains,
+                            std::vector<vecu16_t> const raw,
+                            std::vector<vecf32_t> const pedestals,
+                            std::vector<vecf32_t> const gains,
                             std::vector<uint64_t>       calibTimes,
-                            const std::vector<vecf32_t> reference,
+                            std::vector<vecf32_t> const reference,
                             unsigned                    nThreads,
                             unsigned                    nBlocks)
 {
   // Rearrange calibration constants in a cache friendly way
-  std::vector<PedGain> pg[gains.size()];
+  std::vector<PedGain2> pg[gains.size()];
   for (unsigned i = 0; i < gains.size(); ++i) {
     pg[i].resize(raw[0].size());
     for (unsigned j = 0; j < raw[0].size(); ++j) {
@@ -796,7 +874,7 @@ static void shmemPgCalibGpu(std::vector<vecf32_t>       out,
 
   // Put pedestals and gains for each gain range on the GPU
   auto nGains  = gains.size();
-  PedGain* pg_d;
+  PedGain2* pg_d;
   chkError(cudaMalloc(&pg_d, nGains * nPixels * sizeof(*pg_d)));
   auto pedGains_d = pg_d;
   for (unsigned gn = 0; gn < nGains; ++gn) {
@@ -948,20 +1026,33 @@ int main(int argc, char **argv)
 
     for (unsigned j = 0; j < raw[i].size(); ++j) {
       auto datum = uint16_t((float(rand()) / float(RAND_MAX)) * (1 << GainOffset));
-      auto range = uint16_t((float(rand()) / float(RAND_MAX)) * nGains);
-      while (range == nGains) {
-        printf("*** Bad range value %u; retrying\n", range);
-        range = uint16_t((float(rand()) / float(RAND_MAX)) * nGains);
+      auto range = (float(rand()) / float(RAND_MAX));
+      unsigned mode;
+      if      (range <= (5.0/6.0))  mode = 0;
+      else if (range <= 1.0)   mode = 1;
+      //else if (range <= 0.75)  mode = 2;
+      //else if (range <= 1.0)   mode = 3;
+      else {
+        printf("*** Bad range value %f\n", range);
+        mode = 3;
       }
-      raw[i][j] = (range << GainOffset) | datum;
-      ++nGainEvts[range];
+      raw[i][j] = (mode << GainOffset) | datum;
+      ++nGainEvts[mode];
     }
   }
   printf("Number of pixels generated for each of %zu gain ranges:\n", nGainEvts.size());
+  uint64_t total = 0;
   for (unsigned i = 0; i < nGainEvts.size(); ++i) {
-    printf("  %lu", nGainEvts[i]);
+    printf("  %9lu", nGainEvts[i]);
+    total += nGainEvts[i];
   }
-  printf("\n\n");
+  printf("  total %lu\n", total);
+  double sum = 0.0;
+  for (unsigned i = 0; i < nGainEvts.size(); ++i) {
+    printf("  %9f", double(nGainEvts[i]) / double(total));
+    sum += double(nGainEvts[i]) / double(total);
+  }
+  printf("  total %f\n\n", sum);
 
   // Generate calibrated events for reference
   std::vector<vecf32_t> calib(nEvents);
@@ -979,7 +1070,8 @@ int main(int argc, char **argv)
   // Do the trial calibrations
   std::vector<uint64_t> calibTimes(nEvents, 0);
   basicCalib(calib, raw, pedestals, gains, calibTimes, reference);
-  cacheCalib(calib, raw, pedestals, gains, calibTimes, reference);
+  cacheCalib1(calib, raw, pedestals, gains, calibTimes, reference);
+  cacheCalib2(calib, raw, pedestals, gains, calibTimes, reference);
   threadCalib(calib, raw, pedestals, gains, calibTimes, reference, nThreads);
   basicCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
   cacheCalibGpu(calib, raw, pedestals, gains, calibTimes, reference, nGpuThreads, nBlocks);
