@@ -2,6 +2,7 @@ from cpython cimport array
 from cpython.buffer cimport (PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE,
                              PyBuffer_Release, PyObject_GetBuffer)
 from cpython.pycapsule cimport PyCapsule_GetPointer, PyCapsule_New
+from libc.stddef cimport size_t
 from libc.stdlib cimport free, malloc
 
 from psana.dgramedit cimport *
@@ -143,14 +144,6 @@ cdef class PyXtc():
         return PyDamage(pycap_damage)
 
 cdef class PyDgram():
-    cdef Dgram* cptr
-
-    # Limit identifier for the dgram to identify the end of the buffer.
-    # For reading dgram from a file, this is size() of XtcFileIterator.
-    # For createTransition, this is BUFSIZE in XtcUpdateIter.
-    cdef const void* bufEnd
-    cdef uint64_t bufSize
-    cdef PyDgram config_pydgram
 
     def __init__(self, pycap_dgram, bufsize, config_pydgram=None):
         self.cptr = <Dgram*>PyCapsule_GetPointer(pycap_dgram, "dgram")
@@ -160,6 +153,11 @@ cdef class PyDgram():
         # This is done so that when we export PyDgram as dgram.Dgram,
         # we can use the config from its own class.
         self.config_pydgram = config_pydgram
+
+    cpdef void reset_from_ptr(self, size_t addr, uint64_t bufsize):
+        self.cptr = <Dgram*>addr
+        self.bufSize = bufsize
+        self.bufEnd = <char*>self.cptr + bufsize
 
     @property
     def pyxtc(self):

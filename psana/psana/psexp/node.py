@@ -470,6 +470,8 @@ class EventBuilderNode(object):
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
 
+        bypass_bd = bool(int(os.environ.get("PS_EB_BYPASS_BD", "0")))
+
         while True:
             smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
@@ -490,6 +492,8 @@ class EventBuilderNode(object):
 
             t0 = time.monotonic()
             for smd_batch_dict, step_batch_dict in eb_man.batches():
+                if bypass_bd:
+                    continue
                 # If single item and dest_rank=0, send to any bigdata nodes.
                 if 0 in smd_batch_dict.keys():
                     smd_batch, _ = smd_batch_dict[0]

@@ -28,11 +28,13 @@ class BatchIterator(object):
         if empty_view:
             self.eb = None
         else:
+            use_proxy_events = bool(dsparms.smd_callback or getattr(dsparms, "intg_det", ""))
             self.eb = EventBuilder(views,
                                    configs,
                                    filter_timestamps=dsparms.timestamps,
                                    intg_stream_id=dsparms.intg_stream_id,
-                                   batch_size=dsparms.batch_size)
+                                   batch_size=dsparms.batch_size,
+                                   use_proxy_events=use_proxy_events)
             self.run_smd = RunSmallData(self.eb, configs, dsparms)
 
     def __iter__(self):

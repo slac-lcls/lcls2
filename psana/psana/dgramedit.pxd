@@ -1,4 +1,5 @@
 cimport numpy as cnp
+from libc.stddef cimport size_t
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t
 
 cnp.import_array()  # needed
@@ -81,6 +82,8 @@ cdef extern from 'xtcdata/xtc/XtcFileIterator.hh' namespace "XtcData":
         uint64_t size()
 
 
+
+
 cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
 
     cdef cppclass XtcUpdateIter:
@@ -122,3 +125,9 @@ cdef extern from 'xtcdata/xtc/XtcUpdateIter.hh' namespace "XtcData":
         void add(char* name, unsigned dtype, int rank)
         int getDtype(char* name)
         int getRank(char* name)
+cdef class PyDgram:
+    cdef Dgram* cptr
+    cdef const void* bufEnd
+    cdef uint64_t bufSize
+    cdef PyDgram config_pydgram
+    cpdef void reset_from_ptr(self, size_t addr, uint64_t bufsize)
