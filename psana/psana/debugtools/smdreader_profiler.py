@@ -89,6 +89,14 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="Exact file counts to run. Overrides --max-files/--count-mode when provided.",
     )
     parser.add_argument(
+        "--single-count",
+        type=_positive_int,
+        help=(
+            "Profile only this number of smd files. When set, overrides --counts, "
+            "--max-files, and --count-mode."
+        ),
+    )
+    parser.add_argument(
         "--max-files",
         type=_positive_int,
         default=32,
@@ -197,7 +205,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"No files matched glob: {args.files_glob}", file=sys.stderr)
         return 1
 
-    counts = _derive_counts(args.max_files, args.count_mode, args.counts)
+    if args.single_count:
+        counts = [args.single_count]
+    else:
+        counts = _derive_counts(args.max_files, args.count_mode, args.counts)
     if max(counts) > len(globbed_files):
         print(
             f"Requested {max(counts)} files but only {len(globbed_files)} exist for glob {args.files_glob}.",
