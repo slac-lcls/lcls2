@@ -45,18 +45,9 @@ cdef class ParallelReader:
         self.got                = 0
         self.chunk_overflown    = 0                         # set to dgram size if it's too big
         self.max_events         = int(self.chunksize / 70)  # guess no. of smd events in one chunk
-        cdef int env_threads = int(os.environ.get('PS_SMD0_NUM_THREADS', '0'))
-        cdef Py_ssize_t detected_threads
-        if env_threads <= 0:
-            cpu_count = os.cpu_count()
-            if cpu_count is None or cpu_count <= 0:
-                detected_threads = 1
-            else:
-                detected_threads = cpu_count
-            self.num_threads = detected_threads if detected_threads < self.nfiles else self.nfiles
-        else:
-            self.num_threads = env_threads if env_threads < self.nfiles else self.nfiles
-        debug_print(f"ParallelReader threads: {self.num_threads} (env={env_threads})")
+        # TODO: allow SmdReader to set separate I/O and CPU thread counts instead of
+        # relying on this single magic default.
+        self.num_threads        = int(os.environ.get('PS_SMD0_NUM_THREADS', '16'))
         self.gots               = array.array('l', [0]*self.nfiles)
         self._init_buffers(self.bufs, True)
         self._init_buffers(self.step_bufs, False)
