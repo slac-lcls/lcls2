@@ -1229,10 +1229,6 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 
 std::string DrpBase::connect(const json& msg, size_t id)
 {
-    // If triggers had been left running, they will have been stopped during Allocate
-    // Flush anything that accumulated
-    pgpFlush();
-
     // Save a copy of the json so we can use it to connect to the config database on configure
     m_connectMsg = msg;
     m_collectionId = id;

@@ -424,11 +424,6 @@ PGPDrp::~PGPDrp()
   printf("*** PGPDrp::dtor: 2\n");
 }
 
-void PGPDrp::pgpFlush()
-{
-  printf("*** PGPDrp::pgpFlush: TBD\n");
-}
-
 std::string PGPDrp::configure(const json& msg)
 {
   std::string errorMsg = DrpBase::configure(msg);
@@ -709,7 +704,7 @@ void PGPDrp::_collector()
     }
   }
 
-  // Flush the buffers
+  // Flush the PGP Reader buffers
   // @todo: dmaFlush();
   pool.flushPebble();
 

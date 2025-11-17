@@ -236,7 +236,6 @@ public:
     const std::string& supervisorIpPort() const {return m_supervisorIpPort;}
     MemPool& pool;
 private:
-    virtual void pgpFlush() = 0;
     int setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     int setupTriggerPrimitives(const nlohmann::json& body);
     int parseConnectionParams(const nlohmann::json& body, size_t id);

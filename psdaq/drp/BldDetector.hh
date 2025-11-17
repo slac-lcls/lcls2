@@ -169,8 +169,6 @@ public:
     virtual ~BldDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-protected:
-    void pgpFlush() override { m_pgp.flush(); }
 private:
     Pgp                                  m_pgp;
     std::thread                          m_workerThread;

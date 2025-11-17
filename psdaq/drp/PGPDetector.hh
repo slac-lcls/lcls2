@@ -46,8 +46,6 @@ public:
     void resetEventCounter();
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-protected:
-    void pgpFlush() override { m_pgp.flush(); }
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
 private:

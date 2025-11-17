@@ -765,6 +765,10 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
         perror("prctl");
     }
 
+    // If triggers had been left running, they will have been stopped during Allocate
+    // Flush anything that accumulated
+    flush();
+
     // Reset counters to avoid 'jumping' errors on reconfigures
     m_pool.resetCounters();
     resetEventCounter();
@@ -962,7 +966,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
         }
     }
 
-    // Flush the DMA buffers
+    // Flush the PGP Reader buffers
     flush();
 
     logging::info("Worker thread finished");

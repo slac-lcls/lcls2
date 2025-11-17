@@ -271,6 +271,10 @@ void EaDrp::_worker()
 
     m_terminate.store(false, std::memory_order_release);
 
+    // If triggers had been left running, they will have been stopped during Allocate
+    // Flush anything that accumulated
+    m_pgp.flush();
+
     // Reset counters to avoid 'jumping' errors reconfigures
     pool.resetCounters();
     m_pgp.resetEventCounter();
@@ -327,7 +331,7 @@ void EaDrp::_worker()
         }
     }
 
-    // Flush the DMA buffers
+    // Flush the PGP Reader buffers
     m_pgp.flush();
 
     if (exposer())  exporter.reset();

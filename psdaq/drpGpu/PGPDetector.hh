@@ -82,8 +82,6 @@ public:
   void reducerReceive(unsigned wkr, size_t& sz) { m_reducer->receive(wkr, sz); }
   void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz) { m_reducer->event(xtc, be, sz); }
   void freeBufs(unsigned idx)                   { m_collector->freeDma(idx); } // @todo: Bad name
-protected:
-  void pgpFlush() override;
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
   void _collector();

@@ -532,6 +532,10 @@ void PGPDrp::reader()
         perror("prctl");
     }
 
+    // If triggers had been left running, they will have been stopped during Allocate
+    // Flush anything that accumulated
+    m_pgp.flush();
+
     // Reset counters to avoid 'jumping' errors on reconfigures
     pool.resetCounters();
     m_pgp.resetEventCounter();
@@ -661,7 +665,7 @@ void PGPDrp::reader()
         }
     }
 
-    // Flush the buffers
+    // Flush the PGP Reader buffers
     m_pgp.flush();
 
     if (exposer()) {
