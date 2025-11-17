@@ -123,9 +123,9 @@ public:
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram);
     unsigned allocateDma();
-    unsigned allocate();
     void freeDma(unsigned count, uint32_t* indices);
-    void freePebble();
+    unsigned allocate();
+    void freePebble(unsigned);
     void flushPebble();
     int64_t dmaInUse() const { return m_dmaAllocs.load(std::memory_order_relaxed) -
                                       m_dmaFrees.load(std::memory_order_relaxed); }

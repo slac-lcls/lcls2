@@ -93,7 +93,7 @@ void Pebble::create(unsigned nL1Buffers, size_t l1BufSize, unsigned nTrBuffers, 
     m_buffer      = nullptr;
     int    ret    = posix_memalign((void**)&m_buffer, pgSz, m_size);
     if (ret) {
-        logging::critical("Failed to create pebble of size %zu for %u transitions of %zu B and %u L1Accepts of %zu B: %s\n",
+        logging::critical("Failed to create pebble of size %zu for %u transitions of %zu B and %u L1Accepts of %zu B: %s",
                           m_size, nTrBuffers, trBufSize, nL1Buffers, l1BufSize, strerror(ret));
         throw "Pebble creation failed";
     }
@@ -192,6 +192,7 @@ void MemPool::freeDma(unsigned count, uint32_t* indices)
     m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
 }
 
+/** Pebble buffers must be freed in the same order in which they were allocated */
 unsigned MemPool::allocate()
 {
     auto allocs = m_allocs.fetch_add(1, std::memory_order_acq_rel);
@@ -210,11 +211,22 @@ unsigned MemPool::allocate()
     return allocs & (m_nbuffers - 1);
 }
 
-void MemPool::freePebble()
+/** Pebble buffers must be freed in the same order in which they were allocaed */
+void MemPool::freePebble(unsigned index)
 {
     auto frees  = m_frees.fetch_add(1, std::memory_order_acq_rel);
     asm volatile("mfence" ::: "memory");
     auto allocs = m_allocs.load(std::memory_order_acquire);
+
+    // Sanity check of freeing order
+    if (index != (frees & (m_nbuffers - 1))) [[unlikely]] {
+        static unsigned errCnt = 0;
+        if (errCnt++ < 5) {
+            logging::error("Next pebble index to free (%u) is not the one expected (%u)",
+                           index, frees & (m_nbuffers - 1));
+        }
+        //exit(EXIT_FAILURE);
+    }
 
     // Release when all pebble buffers were in use but now one is free
     if (allocs - frees == m_nbuffers) {
@@ -249,7 +261,7 @@ void MemPool::freePebble()
 void MemPool::flushPebble()
 {
     while (inUse()) {
-        freePebble();
+        freePebble(m_frees.load(std::memory_order_acquire) & (m_nbuffers - 1));
     }
 }
 
@@ -454,6 +466,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
 
     pool.resetCounters();
+    memset(m_lastData, 0, 24);
 }
 
 PgpReader::~PgpReader()
@@ -541,6 +554,12 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
+    if (((1 << lane) & m_para.laneMask) == 0) [[unlikely]] {
+        logging::error("Lane %u is not in laneMask 0x%02", lane, m_para.laneMask);
+    }
+    if (event->mask & (1 << lane)) [[unlikely]] {
+        logging::error("Lane %u is already set in event mask 0x%02x", lane, event->mask);
+    }
     event->mask |= (1 << lane);
 
     m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
@@ -560,12 +579,17 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
     TransitionId::Value transitionId = timingHeader->service();
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
+    auto pid = reinterpret_cast<const uint64_t*>(data)[0]; // PulseId
+    auto ts  = reinterpret_cast<const uint64_t*>(data)[1]; // Timestamp
+    auto env = reinterpret_cast<const uint32_t*>(data)[4]; // env
+    if (pid == 0ul || ts == 0ul || env == 0ul) [[unlikely]] {
+        logging::critical("PGPReader received invalid data:");
+        logging::critical("PGPReader  lane %u.%u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
+                          lane, dest[current] & 0xff, size, pid, ts, env, flag, err);
+        abort();
+    }
     logging::debug("PGPReader  lane %u.%u  size %u  hdr %016lx.%016lx.%08x  flag 0x%x  err 0x%x",
-                   lane, dest[current] & 0xff, size,
-                   reinterpret_cast<const uint64_t*>(data)[0], // PulseId
-                   reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
-                   reinterpret_cast<const uint32_t*>(data)[4], // env
-                   flag, err);
+                       lane, dest[current] & 0xff, size, pid, ts, env, flag, err);
 
     if (event->mask == m_para.laneMask) {
         if (transitionId == TransitionId::BeginRun) {
@@ -573,7 +597,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
         }
         if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
             if (m_lastTid != TransitionId::Unconfigure) {
-                if ((m_nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
+                if ((m_nPgpJumps < 5) || m_para.verbose) { // Limit prints at rate
                     auto evtCntDiff = evtCounter - m_lastComplete;
                     logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s",
                                    RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF);
@@ -582,8 +606,25 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                     logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
                                    m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
                 }
+                // For multi-lane detectors, discard events with flakey lanes
+                if (__builtin_popcount(m_para.laneMask) > 1) {
+                    auto pgpIdx = (m_lastComplete + 1) & (m_pool.nDmaBuffers() - 1);
+                    while (pgpIdx != pgpIndex) {
+                        auto evt = &m_pool.pgpEvents[pgpIdx];
+                        if (evt->mask != m_para.laneMask) {
+                            if ((m_nPgpJumps < 5) || m_para.verbose) { // Limit prints at rate
+                                logging::error("Discarding incomplete event at evtCounter %u: lanes 0x%02x",
+                                               pgpIdx, evt->mask);
+                            }
+                            handleBrokenEvent(*evt);
+                            freeDma(evt);
+                        }
+                        pgpIdx = (pgpIdx + 1) & (m_pool.nDmaBuffers() - 1);
+                    }
+                }
+                ++m_nPgpJumps;
                 // Try to handle out-of-sequence events
-            } else if (transitionId != TransitionId::Configure) {
+            } else if (transitionId != TransitionId::Configure) { // m_lastTid == Unconfigure
                 freeDma(event);         // Leaves event mask = 0
                 return nullptr;         // Drain everything before Configure
             }
@@ -600,7 +641,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                            timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                            timingHeader->pulseId(), m_para.partition, timingHeader->env);
             handleBrokenEvent(*event);
-            freeDma(event);                 // Leaves event mask = 0
+            freeDma(event);             // Leaves event mask = 0
             ++m_nNoComRoG;
             return nullptr;
         }
@@ -614,7 +655,7 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId(), missingRogs, timingHeader->env);
                 handleBrokenEvent(*event);
-                freeDma(event);             // Leaves event mask = 0
+                freeDma(event);         // Leaves event mask = 0
                 ++m_nMissingRoGs;
                 return nullptr;
             }
@@ -635,28 +676,31 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
             }
         }
 
-        // Allocate a pebble buffer once the event is built
-        event->pebbleIndex = m_pool.allocate(); // This can block
-
         // Allocate a transition datagram from the pool.  Since a
         // SPSCQueue is used (not an SPMC queue), this can be done here,
         // but not in the workers or there will be concurrency issues.
+        Pds::EbDgram* trDgram = nullptr;
         if (transitionId != TransitionId::L1Accept) {
-            uint32_t evtIndex = event->pebbleIndex;
-            m_pool.transitionDgrams[evtIndex] = m_pool.allocateTr();
-            if (!m_pool.transitionDgrams[evtIndex]) [[unlikely]] {
+            trDgram = m_pool.allocateTr();
+            if (!trDgram) [[unlikely]] {
                 freeDma(event);         // Leaves event mask = 0
-                m_pool.freePebble();    // Avoid leaking pebbles on errors
                 ++m_nNoTrDgrams;
                 return nullptr;         // Can happen during shutdown
             }
         }
-    }
-    else {
-        return nullptr;                 // Event is still incomplete
+
+        // Allocate a pebble buffer once the event is built
+        event->pebbleIndex = m_pool.allocate(); // This can block
+
+        if (transitionId != TransitionId::L1Accept) {
+            // Store the empty transition dgram allocated above in the pebble
+            m_pool.transitionDgrams[event->pebbleIndex] = trDgram;
+        }
+
+        return timingHeader;
     }
 
-    return timingHeader;
+    return nullptr;                     // Event is still incomplete
 }
 
 std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {
@@ -675,7 +719,8 @@ void PgpReader::freeDma(PGPEvent* event)
 
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
-    for (int i=0; i<PGP_MAX_LANES; i++) {
+    unsigned laneMask = m_para.laneMask;
+    for (unsigned i = 0; laneMask; laneMask &= ~(1 << i++)) {
         if (event->mask &  (1 << i)) {
             event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
             m_dmaIndices[m_count++] = event->buffers[i].index;
@@ -957,13 +1002,14 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 
     if (error) {
         logging::critical("idx     %8u, pid     %014lx, tid     %s, env     %08x", index, pulseId, TransitionId::name(transitionId), dgram->env);
-        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, TransitionId::name(m_lastTid));
+        logging::critical("lastIdx %8u, lastPid %014lx, lastTid %s, lastEnv %08x", m_lastIndex, m_lastPid, TransitionId::name(m_lastTid), m_lastEnv);
         abort();
     }
 
     m_lastIndex = index;
     m_lastPid = pulseId;
     m_lastTid = transitionId;
+    m_lastEnv = dgram->env;
 
     // Transfer Result damage to the datagram
     dgram->xtc.damage.increase(result.xtc.damage.value());
@@ -1042,7 +1088,7 @@ static bool _pvGetVecElem(const std::shared_ptr<PV> pv, unsigned element, double
 {
     if (!pv || !pv->ready()) {
         if (pv) {
-            logging::critical("PV %s didn't connect\n", pv->name().c_str());
+            logging::critical("PV %s didn't connect", pv->name().c_str());
             abort();
         }
         return false;
@@ -1114,7 +1160,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
             snprintf(envBuff,sizeof(envBuff), "%s %s", p, a);
         else
             snprintf(envBuff, sizeof(envBuff), "%s", a);
-        logging::info("Setting env %s\n", envBuff);
+        logging::info("Setting env %s", envBuff);
         if (setenv("EPICS_PVA_ADDR_LIST",envBuff,1))
             perror("setenv pva_addr");
     }
@@ -1590,7 +1636,7 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     // reach the higher buffer numbers.  Can't use an index based on the largest
     // non-common RoG DRP because it would overrun the common RoG DRPs' region.
     if ((maxBuffers > m_numTebBuffers) && bufErr) {
-        logging::error("Pebble buffer count (%u) must be <= the common RoG's (%u)\n",
+        logging::error("Pebble buffer count (%u) must be <= the common RoG's (%u)",
                        pool.nbuffers(), m_numTebBuffers);
         rc = 1;
     }

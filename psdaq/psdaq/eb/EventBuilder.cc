@@ -528,9 +528,12 @@ void EventBuilder::process(const EbDgram*    buffer,
     imm++;
     if ((ctrb > end) || (i == _maxEntries - 1))
     {
-      fprintf(stderr, "%s:\n  Error: EOL not seen before buffer end, last pid %014lx, env %08x, src %u\n"
-              "  buffer %p, end %p, ctrb %p, entry size, %zu, immData %08x, imm %08x, i %u\n",
-              __PRETTY_FUNCTION__, pid, env, src, buffer, end, ctrb, size, immData, imm, i);
+      static unsigned errCnt = 0;
+      if (errCnt++ < 5) {
+        fprintf(stderr, "%s:\n  Error: EOL not seen before buffer end, last pid %014lx, env %08x, src %u\n"
+                "  buffer %p, end %p, ctrb %p, entry size, %zu, immData %08x, imm %08x, i %u\n",
+                __PRETTY_FUNCTION__, pid, env, src, buffer, end, ctrb, size, immData, imm, i);
+      }
     }
   }
 

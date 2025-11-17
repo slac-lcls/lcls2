@@ -379,7 +379,7 @@ void TebReceiver::_recorder()
     }
 
     // Free the pebble datagram buffer
-    m_pool.freePebble();
+    m_pool.freePebble(index);
     //printf("*** TebRcvr::recorder: 8, freePebble\n");
 
     //// Free the reduce buffer
@@ -627,6 +627,20 @@ void PGPDrp::_collector()
         logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
       lastPid = pid;
 
+      // Allocate transition datagrams before allocating the pebble buffer
+      // since pebble buffers can't be freed out of order if this fails
+      TransitionId::Value transitionId = timingHeader->service();
+      EbDgram* trDgram;
+      if (transitionId != TransitionId::L1Accept) {
+        // Allocate a transition datagram from the pool
+        trDgram = pool.allocateTr();
+        if (!trDgram) [[unlikely]] {
+          m_collector->freeDma(event);  // Leaves event mask = 0
+          ++m_nNoTrDgrams;
+          continue;                     // Can happen during shutdown
+        }
+      }
+
       // Allocate a pebble buffer
       auto pebbleIndex = pool.allocate(); // This can block
       event->pebbleIndex = pebbleIndex;
@@ -640,7 +654,6 @@ void PGPDrp::_collector()
       auto l3InpBuf = tebContributor().fetch(pebbleIndex);
       auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
 
-      TransitionId::Value transitionId = dgram->service();
       if (transitionId == TransitionId::L1Accept) {
         // @todo: Can event() here help with prescaled raw/calibrated data?
         //m_det.event(dgram, bufEnd);
@@ -651,19 +664,12 @@ void PGPDrp::_collector()
           auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
           memcpy(buf, &timingHeader[1], tpSz); // @todo: cudaMemcpy() needed?
         }
-      } else {
+      } else {  // Transition
         logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
                        TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
 
-        // Allocate a transition datagram from the pool
-        EbDgram* trDgram = pool.allocateTr();
-        if (!trDgram) {
-          m_collector->freeDma(event);  // Leaves event mask = 0
-          pool.freePebble();            // Avoid leaking pebbles on errors
-          ++m_nNoTrDgrams;
-          continue;                     // Can happen during shutdown
-        }
+        // Store the empty transition dgram allocated above in the pebble
         pool.transitionDgrams[pebbleIndex] = trDgram;
 
         // Initialize the transition dgram's header

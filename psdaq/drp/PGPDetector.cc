@@ -162,7 +162,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
 
     while (true) {
 
-        if (!inputQueue.pop(batch)) {
+        if (!inputQueue.pop(batch)) [[unlikely]] {
             break;
         }
 
@@ -181,6 +181,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
             const TimingHeader* timingHeader = det.getTimingHeader(dmaIndex);
 
             unsigned pebbleIndex = event->pebbleIndex;
+
             Src src = det.nodeId;
             TransitionId::Value transitionId = timingHeader->service();
 
@@ -294,6 +295,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
             // Even on error, continue so that teardown can complete
         }
     }
+
+    logging::info("Worker %u is exiting", threadNum);
 }
 
 // ---
@@ -430,9 +433,6 @@ unsigned PGPDrp::unconfigure()
         m_workerOutputQueues[i].shutdown();
     }
 
-    // Flush the DMA buffers
-    m_pgp.flush();
-
     if (m_pgpThread.joinable()) {
         m_pgpThread.join();
         logging::info("PGPReader thread finished");
@@ -545,7 +545,7 @@ void PGPDrp::reader()
     }
 
     while (true) {
-         if (m_terminate.load(std::memory_order_relaxed)) {
+         if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]] {
             break;
         }
         int32_t ret = m_pgp.read();
@@ -673,7 +673,7 @@ void PGPDrp::reader()
 
 void PGPDrp::collector()
 {
-    logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+    logging::info("Collector is starting with process ID %lu", syscall(SYS_gettid));
     if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
         perror("prctl");
     }
@@ -683,6 +683,9 @@ void PGPDrp::collector()
     const unsigned bufferMask = pool.nDmaBuffers() - 1;
     bool rc = m_workerOutputQueues[worker % m_para.nworkers].pop(batch);
     while (rc) {
+         if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]] {
+            break;
+        }
         for (unsigned i=0; i<batch.size; i++) {
             unsigned index = (batch.start + i) & bufferMask;
             PGPEvent* event = &pool.pgpEvents[index];

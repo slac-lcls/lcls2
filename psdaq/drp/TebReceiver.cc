@@ -130,5 +130,5 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     }
 
     // Free the pebble datagram buffer
-    m_pool.freePebble();
+    m_pool.freePebble(index);
 }

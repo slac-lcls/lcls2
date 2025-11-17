@@ -226,6 +226,8 @@ void TebContributor::_flush()
 }
 
 // NB: timeout() must not be called concurrently with process()
+//     This is arranged for by having both timeout() and process()
+//     called from the same thread (Collector)
 bool TebContributor::timeout()
 {
   auto now = Pds::fast_monotonic_clock::now();
@@ -237,6 +239,8 @@ bool TebContributor::timeout()
 }
 
 // NB: process() must not be called concurrently with timeout()
+//     This is arranged for by having both timeout() and process()
+//     called from the same thread (Collector)
 void TebContributor::process(const EbDgram* dgram)
 {
   if (dgram->pulseId() - _latPid > 13000000/14) { // 1 Hz
@@ -301,10 +305,14 @@ void TebContributor::process(const EbDgram* dgram)
 
     // Keep non-selected TEBs synchronized by forwarding transitions to them.  In
     // particular, the Disable transition flushes out whatever Results batch they
-    // currently have in-progress.
-    if (!dgram->isEvent())           // Also capture the most recent SlowUpdate
+    // currently have in-progress.  If no non-selected TEBs exist, this is a noop.
+    if (!dgram->isEvent())    // Also capture the most recent SlowUpdate
     {
-      if (contractor)  _post(dgram); // Post, if contributor is providing trigger input
+      if (contractor)
+      {
+        // This dgram is also in a batch, so EOL must NOT be additionally set
+        _post(dgram);         // Post, if contributor is providing trigger input
+      }
     }
   }
   else                        // Common RoG didn't trigger: bypass the TEB(s)
@@ -355,11 +363,11 @@ void TebContributor::_post(const Batch& batch)
       logging::error("%s:\n  Bad batch entry count: %u vs %lu", __PRETTY_FUNCTION__, batch.entries, _entries);
       print = true;
     }
-    if (UNLIKELY(extent != _batch.entries * _prms.maxInputSize))
+    if (UNLIKELY(extent != batch.entries * _prms.maxInputSize))
     {
       logging::error("%s:\n  Batch extent does not match entry count: %zu vs %u * %zu = %zu",
                      __PRETTY_FUNCTION__, extent,
-                     _batch.entries, _prms.maxInputSize, _batch.entries * _prms.maxInputSize);
+                     batch.entries, _prms.maxInputSize, batch.entries * _prms.maxInputSize);
       print = true;
     }
     if (UNLIKELY((batch.start < _batMan.batchRegion()) ||

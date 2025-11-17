@@ -477,6 +477,7 @@ void CollectionApp::run()
         };
         if (zmq_poll(items, 2, -1) == -1) {
             if (errno == EINTR)  break;
+            else logging::error("zmq_poll error: %u: %m\n", errno);
         }
 
         // received zeromq message from the collection

@@ -126,6 +126,7 @@ private:
     uint32_t m_lastIndex;
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
+    uint32_t m_lastEnv;
     uint64_t m_offset;
     uint64_t m_chunkOffset;
     bool m_chunkPending;
