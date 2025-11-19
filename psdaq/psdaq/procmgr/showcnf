@@ -1,0 +1,159 @@
+#!/bin/env python
+
+#
+# showcnf - show daq configuration files
+#
+# usage: showcnf [option]... cnf [cnf...]
+# 
+# options:
+#   -h, --help     show this help message and exit
+#   --drp          output list of DRPs
+#   -v, --verbose  more output
+#
+# author:
+#   Chris Ford <caf@slac.stanford.edu>
+#
+
+import sys
+import os
+import argparse
+import traceback
+from re import match, search
+
+usage = "usage: %prog [OPTION]... FILE [FILE...]"
+
+required_keys = ['id', 'cmd']
+optional_keys = ['host', 'flags', 'port', 'rtprio', 'env', 'evr', 'conda']
+known_keys = required_keys + optional_keys
+
+valid_flags = ['X', 'x', 's', 'k', 'u', 'p']
+
+errorCount = 0
+
+#
+# report_error -
+#
+def report_error(msg):
+  global errorCount
+  errorCount += 1
+  print('Error:', msg, file=sys.stderr)
+  return
+
+#
+# entry_lint -
+#
+def entry_lint(dict):
+  rv = None
+  if type(dict) != type({}):
+    report_error('variable \'procmgr_config\' is not of form [{key:value, ...}, ...]')
+  elif not dict:
+    report_error('element of procmgr_config is empty')
+  else:
+    # check the elements within the procmgr_config entry
+    for key, value in list(dict.items()):
+      if not key in known_keys:
+        report_error('procmgr_config entry includes invalid key \'%s\' (not in %s)' %
+                     (str(key), repr(known_keys)))
+      elif key == 'id':
+        rv = value
+        if ':' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \':\')' % str(value))
+        if '|' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'|\')' % str(value))
+        if '\\' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'\\\')' % str(value))
+        if '/' in value:
+          report_error('procmgr_config entry includes invalid id \'%s\' (includes \'/\')' % str(value))
+        if len(value) == 0:
+          report_error('procmgr_config entry includes invalid id (0 chars)')
+        if len(value) > 30:
+          report_error('procmgr_config entry includes invalid id \'%s\' (over 30 chars)' % str(value))
+      if type(value) != type(''):
+        report_error('procmgr_config entry includes invalid value \'%s\' (not a string)' % str(value))
+      elif key == 'flags':
+        for buf in value:
+          if not buf in valid_flags:
+            report_error('procmgr_config entry includes invalid flag \'%s\' (not in %s)' %
+                         (buf, repr(valid_flags)))
+      elif key == 'evr':
+        if not match('^(\d)\,(\d)(\d)?$', value):
+          report_error("procmgr_config entry includes invalid evr \'%s\' (does not match '<digit>,<digit>[<digit>]')" % str(value))
+      elif key == 'cmd':
+        if search('/usr/bin/chrt', value):
+          report_error("procmgr_config entry includes invalid cmd \'%s\' (use rtprio keyword instead of /usr/bin/chrt)" % str(value))
+        if search('/bin/env', value):
+          report_error("procmgr_config entry includes invalid cmd \'%s\' (use env keyword instead of /bin/env)" % str(value))
+  return rv
+
+valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument("--drp", dest="drp", action="store_true",
+                  default=False, help="list DRPs")
+
+parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
+                  default=False, help="more output")
+parser.add_argument("cnf", default=None, help="daq configuration file", nargs='+')
+
+args = parser.parse_args()
+
+while len(args.cnf) > 0:
+    configfile = args.cnf.pop()
+
+    if os.path.isfile(configfile) != 1:
+      parser.error("file not found: " + configfile)
+
+    #
+    # The following global variables are passed in when executing the config file:
+    #  - procmgr_config = None
+    #  - procmgr_macro = empty dictionary
+    #  - instrument = None
+    #  - id, cmd, flags, port, host, rtprio, env, evr, conda = keyword strings
+    #  - CONDA_PREFIX = $CONDA_PREFIX
+    #  - CONFIGDIR = empty string
+    #
+    config = {'procmgr_config': None, 'instrument': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
+              'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', 'CONFIGDIR': '',
+              'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': dict()}
+    try:
+      exec(compile(open(configfile).read(), configfile, 'exec'), {}, config)
+    except:
+      if args.verbose:
+        report_error(traceback.format_exc())
+      else:
+        report_error(sys.exc_info()[1])
+
+      if config['procmgr_config'] == None:
+        report_error('variable \'procmgr_config\' not defined')
+      elif type(config['procmgr_config']) != type([]):
+        report_error('variable \'procmgr_config\' is not of form [{key:value, ...}, ...]')
+      elif not config['procmgr_config']:
+        report_error('\'procmgr_config\' is empty')
+      else:
+        # check the elements within procmgr_config
+        entry_id_list = []    # start with empty list, look for duplicate IDs
+        for dd in config['procmgr_config']:
+          entry_id = entry_lint(dd)
+          if type(dd) == type({}):
+            for req in required_keys:
+              if req not in dd:
+                report_error('required key \''+req+'\' missing from procmgr_config entry')
+          if entry_id in entry_id_list:
+            report_error('id \'%s\' reused' % str(entry_id))
+          else:
+            entry_id_list.append(entry_id)
+
+      if config['instrument']:
+          config['instrument'] = config['instrument'].upper()
+          if (config['instrument'] not in valid_instruments):
+              report_error('instrument \'%s\' not recognized' % config['instrument'])
+
+    if args.verbose and config['procmgr_config']:
+      print('-- instrument ---------------------------------------')
+      print(config['instrument'])
+      print('-- procmgr_config -----------------------------------')
+      print(config['procmgr_config'])
+      print('-----------------------------------------------------')
+
+sys.exit(errorCount > 0)
