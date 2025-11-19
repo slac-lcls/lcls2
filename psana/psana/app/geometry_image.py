@@ -38,7 +38,9 @@ def argument_parser():
     d_frachi   = 0.98
     d_rmin     = 0
     d_rmax     = None
-    d_show     = 'image'
+    d_show     = 'i'
+    d_slice    = None
+    d_radpsize = 150
 
     parser = argparse.ArgumentParser(usage=usage, description='Plots image from numpy array shaped as raw in DAQ using specified geometry file')
     parser.add_argument('-t', '--tname',     type=str,   default=d_tname,     help='test name: 1,2,3,..., default: %s'%d_tname)
@@ -60,7 +62,9 @@ def argument_parser():
     parser.add_argument('--frachi',          type=float, default=d_frachi,    help='fraction of pixel intensities below amin, default: %s'%d_frachi)
     parser.add_argument('--rmin',            type=float, default=d_rmin,      help='minimal radius of circles [um] on image, default: %s'%d_rmin)
     parser.add_argument('--rmax',            type=float, default=d_rmax,      help='maximal radius of circles [um] on image, default: %s'%d_rmax)
-    parser.add_argument('-S', '--show',      type=str,   default=d_show,      help='show select: image/x/y, default: %s'%d_show)
+    parser.add_argument('-S', '--show',      type=str,   default=d_show,      help='show select: i/x/y/p for image/x/y/polar projections, default: %s'%d_show)
+    parser.add_argument('-L', '--slice',     type=str,   default=d_slice,     help='image slice to show, ex. 0:,0:, default: %s'%d_slice)
+    parser.add_argument('-r', '--radpsize',  type=int,   default=d_radpsize,  help='radial image size in number of pixels relative point (0,0)um, default: %d'%d_radpsize)
 
     args = parser.parse_args()
     print('Arguments: %s\n' % str(args))
@@ -127,6 +131,7 @@ def geometry_image():
     rmin      = args.rmin
     rmax      = args.rmax
     show      = args.show.lower()
+    radpsize  = args.radpsize
 
     segname, segind, dx, dy = None, 0, 0, 0
 
@@ -148,19 +153,17 @@ def geometry_image():
     X, Y, Z = geo.get_pixel_coords(cframe=cframe) if zplane is None else\
               geo.get_pixel_xy_at_z(zplane=zplane) + (None,)
 
+    ir0, ic0 = geo.point_coord_indexes(p_um=(0,0), cframe=cframe)
+    logger.info('point (0,0)um indices:(%d, %d)' % (ir0, ic0))
+
     logger.info('GeometryAccess time = %.6f sec' % (time()-t0_sec))
-    xmin = X.min()
-    xmax = X.max()
-    ymin = Y.min()
-    ymax = Y.max()
-    logger.info('Image xmin=%.1f xmax=%.1f ymin=%.1f ymax=%.1f'% (xmin, xmax, ymin, ymax))
 
-    logger.info(info_ndarr(X, 'X'))
-    logger.info(info_ndarr(Y, 'Y'))
-    logger.info(info_ndarr(Z, 'Z'))
+    logger.info(info_ndarr(X, 'X', last=5, vfmt='%0.1f'))
+    logger.info(info_ndarr(Y, 'Y', last=5, vfmt='%0.1f'))
+    logger.info(info_ndarr(Z, 'Z', last=5, vfmt='%0.1f'))
 
-    nda = X if show=='x' else\
-          Y if show=='y' else\
+    nda = X if 'x' in show else\
+          Y if 'y' in show else\
           np.load(fname_nda) if '.npy' in fname_nda else\
           np.loadtxt(fname_nda) #if show=='image'
 
@@ -169,7 +172,7 @@ def geometry_image():
 
     logger.info(info_ndarr(rows, 'rows'))
     logger.info(info_ndarr(cols, 'cols'))
-    logger.info(info_ndarr(nda, 'nda'))
+    logger.info(info_ndarr(nda,  'nda', vfmt='%0.1f'))
 
     shape = shape_as_3d(rows.shape)
     if nda.size == 2162688: shape = (16,352,384) # epix10ka2m
@@ -178,7 +181,7 @@ def geometry_image():
 
     rows.shape = shape
     cols.shape = shape
-    nda.shape = shape
+    nda.shape  = shape
 
     #ave, rms = nda.mean(), nda.std()
     vmin, vmax = nda.min(), nda.max()
@@ -209,18 +212,49 @@ def geometry_image():
     img = img_from_pixel_arrays(rows,cols,W=nda)
     logger.info(info_ndarr(img, 'img'))
 
-    kwa1 = {'figsize':(imgwidth,imgheight),\
-            'extent':(ymin,ymax, xmax,xmin), 'interpolation':'nearest', 'aspect':'equal', 'origin':'upper', 'cmap':'inferno', 'vmin':amin, 'vmax':amax}
-    fig, axim, axcb, imsh, cbar = fig_img_cbar(img, **kwa1)
+    shimg = img.shape
+    sl = (ir0-radpsize, ir0+radpsize, ic0-radpsize, ic0+radpsize) # slice limits
+    slp = max(sl[0], 0), min(sl[1], shimg[0]), max(sl[2], 0), min(sl[3], shimg[1]) # slice oversize protection
 
-    x0,y0 = xy0 = (0,0)
+    if True:
+      pixsize = geo.get_pixel_scale_size()
+      logger.info('pixsize: %.0f' % pixsize)
+      logger.info('ir0: %d, ic0: %d' % (ir0, ic0))
+      logger.info('slp: %s' % str(slp))
+      ymin = (slp[0]-ir0) * pixsize
+      ymax = (slp[1]-ir0) * pixsize
+      xmin = (slp[2]-ic0) * pixsize
+      xmax = (slp[3]-ic0) * pixsize
+
+    else: # OLD
+      xmin = X.min()
+      xmax = X.max()
+      ymin = Y.min()
+      ymax = Y.max()
+
+    logger.info('Image xmin=%.1f xmax=%.1f ymin=%.1f ymax=%.1f'% (xmin, xmax, ymin, ymax))
+
+    if sl != slp:
+        logger.warning('protected image central slice: %s differs from center+-: %s IMAGE IS OUT OF SCALE' % (str(slp), str(sl)))
+
+    sl = args.slice if args.slice is not None else\
+         '%d:%d,%d:%d' % slp
+    _slice = eval('np.s_[%s]' % sl)
+
+    x0,y0 = xy0 = (0,0) # um
+    logger.info('image center: %.1f, %.1f' % xy0)
+
+    kwa1 = {'figsize':(imgwidth,imgheight),\
+            'extent':(ymin,ymax, xmax,xmin), 'interpolation':'nearest', 'aspect':'equal', 'origin':'upper', 'cmap':'inferno',\
+            'vmin':amin, 'vmax':amax, 'figsize':(12,11)}
+    #'extent':(left, right, bottom, top) in matplotlib.pyplot.imshow
+
+    _img = img[_slice]
+    fig, axim, axcb, imsh, cbar = fig_img_cbar(_img, **kwa1)
+    gr.add_title_labels_to_axes(axim, title='image', xlabel='geo y, $\mu$m', ylabel='geo x, $\mu$m')#, fslab=14, fstit=20, color='k')
 
     rmax = rmax if rmax is not None else\
            1.4*max(abs(xmax-x0), abs(x0-xmin), abs(ymax-y0), abs(y0-ymin))
-
-    print('image xmin xmax:', xmin, xmax)
-    print('image ymin ymax:', ymin, ymax)
-    print('image center   :', xy0)
 
     drawCenter(axim, xy0, s=(xmax-xmin)/40, linewidth=1, color='w')
 
@@ -230,7 +264,7 @@ def geometry_image():
     gr.show(mode='go')
 
 
-    if True:
+    if 'p' in show:
        #from pyimgalgos.HPolar import HPolar
        from psana.pyalgos.generic.HPolar import HPolar
 
@@ -260,8 +294,8 @@ def geometry_image():
        fig2, axim2, axcb2, imsh2, cbar2 = fig_img_proj_cbar(img2, **kwa2)
 
     gr.show(mode=None)
-    gr.save_fig(fig,  fname=prefix + '-img-' + suffix + '.png', verb=True)
-    gr.save_fig(fig2, fname=prefix + '-rphi-' + suffix + '.png', verb=True)
+    if 'i' in show: gr.save_fig(fig,  fname=prefix + '-img-' + suffix + '.png', verb=True)
+    if 'p' in show: gr.save_fig(fig2, fname=prefix + '-rphi-' + suffix + '.png', verb=True)
 
 
 def fig_img_cbar(img, **kwa):
