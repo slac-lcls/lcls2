@@ -187,6 +187,7 @@ if 'PSANA' in BUILD_LIST :
             'optical_metrology_check      = psana.pscalib.app.optical_metrology_check:do_main',
             'optical_metrology_epix10ka2m = psana.pscalib.app.optical_metrology_epix10ka2m:do_main',
             'make_or_print_npyarray = psana.app.make_or_print_numpy_array:do_main',
+            'det_calib_ave_and_max = psana.app.det_calib_ave_and_max:__main__',
         ]
     }
 
