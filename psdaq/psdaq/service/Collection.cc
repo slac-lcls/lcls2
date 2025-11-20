@@ -204,7 +204,7 @@ std::string _getNicIp(const struct ifaddrs* ifaddr,
         }
     }
     if (!host[0]) {
-        logging::critical("NIC '%s' not found", ifaceName.c_str());
+        logging::critical("Interface address for NIC '%s' not found", ifaceName.c_str());
         abort();
     }
     return std::string(host);
