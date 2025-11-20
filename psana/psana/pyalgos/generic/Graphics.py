@@ -100,6 +100,7 @@ def figure(**kwa):
     kwa_f = dict_subset(kwa, ('num', 'figsize', 'dpi', 'facecolor', 'edgecolor', 'frameon', 'FigureClass', 'clear',\
                'linewidth', 'subplotpars', 'tight_layout'))  #, 'constrained_layout'))
     fig = plt.figure(**kwa_f)
+    fig.tight_layout()
     title = kwa.get('title', 'Image')
     move  = kwa.get('move', None)
     if title: fig.canvas.manager.set_window_title(title) #, **kwa)
@@ -201,7 +202,7 @@ def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=1
 def show(mode=None):
     if mode is None: plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
     else           : plt.ion()  # do not hold control
-    plt.pause(0.001) # hack to make it work... othervise show() does not work...
+    #plt.pause(0.001) # hack to make it work... othervise show() does not work...
     plt.show()
 
 
