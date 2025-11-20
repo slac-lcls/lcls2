@@ -7,7 +7,6 @@
 # 
 # options:
 #   -h, --help     show this help message and exit
-#   --drp          output list of DRPs
 #   -v, --verbose  more output
 #
 # author:
@@ -19,6 +18,7 @@ import os
 import argparse
 import traceback
 from re import match, search
+from shlex import split
 
 usage = "usage: %prog [OPTION]... FILE [FILE...]"
 
@@ -89,9 +89,6 @@ valid_instruments = ['AMO','SXR','XPP','XCS','CXI','MEC','MFX','DET']
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("--drp", dest="drp", action="store_true",
-                  default=False, help="list DRPs")
-
 parser.add_argument("-v", "--verbose", action="store_true", dest="verbose",
                   default=False, help="more output")
 parser.add_argument("cnf", default=None, help="daq configuration file", nargs='+')
@@ -116,6 +113,7 @@ while len(args.cnf) > 0:
     config = {'procmgr_config': None, 'instrument': None, 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
               'id':'id', 'cmd':'cmd', 'flags':'flags', 'port':'port', 'host':'host', 'CONFIGDIR': '',
               'rtprio':'rtprio', 'env':'env', 'evr':'evr', 'conda':'conda', 'procmgr_macro': dict()}
+    config['platform'] = None
     try:
       exec(compile(open(configfile).read(), configfile, 'exec'), {}, config)
     except:
@@ -131,29 +129,41 @@ while len(args.cnf) > 0:
       elif not config['procmgr_config']:
         report_error('\'procmgr_config\' is empty')
       else:
-        # check the elements within procmgr_config
-        entry_id_list = []    # start with empty list, look for duplicate IDs
-        for dd in config['procmgr_config']:
-          entry_id = entry_lint(dd)
-          if type(dd) == type({}):
-            for req in required_keys:
-              if req not in dd:
-                report_error('required key \''+req+'\' missing from procmgr_config entry')
-          if entry_id in entry_id_list:
-            report_error('id \'%s\' reused' % str(entry_id))
-          else:
-            entry_id_list.append(entry_id)
-
-      if config['instrument']:
-          config['instrument'] = config['instrument'].upper()
-          if (config['instrument'] not in valid_instruments):
-              report_error('instrument \'%s\' not recognized' % config['instrument'])
+        parser = argparse.ArgumentParser()
 
     if args.verbose and config['procmgr_config']:
-      print('-- instrument ---------------------------------------')
-      print(config['instrument'])
-      print('-- procmgr_config -----------------------------------')
+      print(f'-- {configfile} procmgr_config ------------------')
       print(config['procmgr_config'])
       print('-----------------------------------------------------')
+
+    for dd in config['procmgr_config']:
+      if args.verbose:
+        print(f'*** dd["cmd"] = {dd["cmd"]} ***')     # XXX
+
+      parser2 = argparse.ArgumentParser()
+      parser2.add_argument("-D", nargs=1, type=str)
+      # only need -D: use parse_known_args() instead of parse_args()
+      args2, unrecognized2 = parser2.parse_known_args(split(dd['cmd']))
+
+      if args.verbose:
+        print(f"*** args2 = {args2} ***")
+
+      try:
+        showhost = dd["host"]
+      except:
+        showhost = "none"
+
+      try:
+        showhutch = config["hutch"]
+      except:
+        showhutch = "none"
+
+      try:
+        showstation = config["station"]
+      except:
+        showstation = 0
+
+      if args2.D is not None:
+        print(f'  {showhost}  {showhutch}:{showstation} {dd["id"]}  {args2.D[0]}')
 
 sys.exit(errorCount > 0)
