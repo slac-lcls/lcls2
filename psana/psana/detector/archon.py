@@ -26,6 +26,7 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         self._seg_geo = sgs.Create(segname='ARCHON:V1', detector=self)
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
         self._geo = self._det_geo()
+        self._shape = None
 
     def _common_mode_v0(self, frame):
         # courtesy of Phil Hartz
@@ -71,7 +72,9 @@ class archon_raw_1_0_0(AreaDetectorRaw):
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
         if segs is None: return None
-        return segs[0].value
+        r = segs[0].value
+        if self._shape is None: self._shape = r.shape
+        return r
 
     def calib(self, evt) -> Array2d:
         raw = self.raw(evt)
