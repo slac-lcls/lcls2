@@ -76,8 +76,8 @@ def save_constants_in_repository(dic_consts, **kwa):
         fprefix = fname_prefix(shortname, segnum, tsshort, expname, runnum, dir_ct)
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = dic_ctype_fmt.get(ctype,'%.5f')
-        arr2d = nda if nda.ndim == 2 else nda[i,:]
-        save_ndarray_in_textfile(nda, fname, filemode, fmt)
+        arr2d = nda if nda.ndim == 2 else nda[i,:]          # ??????????
+        save_ndarray_in_textfile(nda, fname, filemode, fmt) # ??????????
         #save_2darray_in_textfile(arr2d, fname, filemode, fmt)
         logger.debug(info_ndarr(arr2d, 'array of %s' % ctype))
         logger.info('saved: %s' % fname)
