@@ -14,7 +14,7 @@ subnet = {'TMO':'daq-tmo-hsd-01',
 def main():
     parser = argparse.ArgumentParser(description='Make input selection for all HSDs in the hutch')
     parser.add_argument('-H', type=str, required=True, help='TMO,RIX,...', metavar='HUTCH')
-    parser.add_argument('-I', type=int, required=True, help='Input selection (0=A0_2, 1=A1_3)', metavar='INPUT')
+    parser.add_argument('-I', type=int, required=False, help='Input selection (0=A0_2, 1=A1_3). Omit to see current setting', metavar='INPUT', default=None)
     parser.add_argument('-t', '--test',    action='store_true', help='test only.  No changes')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
 
@@ -25,7 +25,7 @@ def main():
     if not args.H.upper() in subnet:
         raise ValueError('Hutch selection unknown')
 
-    if not args.I in (0,1):
+    if not (args.I is None or args.I in (0,1)):
         raise ValueError('Input selection not 0 or 1')
 
     #
@@ -59,12 +59,17 @@ def main():
         for pv in pvs:
             #  Filter on an exact match
             if re.fullmatch(f'{pvPrefix}:1_[0-9,A-Z]*:[A,B]:RESET',pv):
+                chn = pv.rsplit(':',1)[0]
                 rst = ctxt.get(pv)
-                rst['jesdsetup'] = args.I
-                logging.debug(f'Put {rst}')
-                logging.warning(f'Setting {pv} input to {args.I}')
-                if not args.test:
-                    ctxt.put(pv,rst,wait=False)
+                input = rst['jesdsetup']
+                if args.I is None:
+                    logging.warning(f'Found {chn} input at {input}')
+                else:
+                    rst['jesdsetup'] = args.I
+                    logging.debug(f'Put {rst}')
+                    logging.warning(f'Setting {pv} input from {input} to {args.I}')
+                    if not args.test:
+                        ctxt.put(pv,rst,wait=False)
 
 if __name__ == '__main__':
     main()

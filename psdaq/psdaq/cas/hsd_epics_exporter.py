@@ -8,6 +8,7 @@ import logging
 import itertools
 import socket
 from p4p.client.thread import Context
+from p4p.nt.scalar import ntint
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily, REGISTRY
 
@@ -25,10 +26,12 @@ class CustomCollector():
         #  PVs to monitor
         self._monpgp  = []
         self._monjesd = []
+        self._monoor  = []
         self._channels = bases[hutch]
         for i in self._channels:
             self._monpgp .append(f'{i}:MONPGP')
             self._monjesd.append(f'{i}:MONJESD')
+            self._monoor .append(f'{i}:FEXOOR')
 
     def collect(self):
 
@@ -40,11 +43,19 @@ class CustomCollector():
             return r
 
         def monjesd_bitfield(pv,field):
-            # array elements are ordered as 14 values for lane 0, 14 values for lane 1, ...
+            # array elements are ordered as 14 values for lane 0, 15 values for lane 1, ...
             # the 14 values are [GTResetDone, RxDataValid, RxDataNAlign, SyncStatus, RxBufferOF, RxBufferUF, CommaPos, ModuleEn, SysRefDet, CommaDet, DispErr, DecErr, BuffLatency, CdrStatus]
             r = 0
             for i in range(8):
-                r |= pv.stat[i*14+field]<<i
+                r |= pv.stat[i*15+field]<<i
+            return r
+
+        def monjesd_counter(pv,field):
+            # array elements are ordered as 14 values for lane 0, 15 values for lane 1, ...
+            # the 14 values are [GTResetDone, RxDataValid, RxDataNAlign, SyncStatus, RxBufferOF, RxBufferUF, CommaPos, ModuleEn, SysRefDet, CommaDet, DispErr, DecErr, BuffLatency, CdrStatus]
+            r = 0
+            for i in range(8):
+                r += pv.stat[i*15+field]
             return r
 
         #  Use this generator to fetch the PVs and parse the structure to compute bitmasks
@@ -70,8 +81,22 @@ class CustomCollector():
                 for v in values:
                     fields.append( monjesd_bitfield(v,2) )  # RxDataNAlign
                 yield ('RxDataNAlign', fields)
+                counts = []
+                for v in values:
+                    counts.append( monjesd_counter(v,14) )  # StatusCnt
+                yield ('RxStatusCnt', counts)
             except TimeoutError:
-                logging.debug('collect %s: TimeoutError' % self._monpgp)
+                logging.debug('collect %s: TimeoutError' % self._monjesd)
+
+            try:
+                values = self.ctx.get(self._monoor)
+                fields = []
+                for v in values:
+                    # strangely, ctx.get return unwrapped values first time, then wrapped values
+                    fields.append(v.value if hasattr(v,'value') else v)
+                yield ('fexoor', fields)
+            except TimeoutError:
+                logging.debug('collect %s: TimeoutError' % self._monoor)
 
         for name, fields in get_metrics():
             g = GaugeMetricFamily(name, documentation='', labels=['instrument','channel','id'])
