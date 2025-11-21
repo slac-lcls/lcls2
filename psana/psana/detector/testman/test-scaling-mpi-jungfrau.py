@@ -506,6 +506,7 @@ def selector():
     elif tname ==  '3': test_event_loop(CALIB_CPP_V0, **kwargs)   # version for comparison in C++
     elif tname ==  '4': test_event_loop(CALIB_CPP_V1, cversion=1, **kwargs)   # version for comparison in C++ reshaped constants (<NPIXELS>,8)
     elif tname ==  '5': test_event_loop(CALIB_CPP_V2, cversion=2, **kwargs)   # version for comparison in C++ reshaped constants (8,<NPIXELS>)
+    elif tname ==  '6': test_event_loop(CALIB_CPP_V2, cversion=3, **kwargs)   # version for comparison in C++ reshaped constants (4,<NPIXELS>,2)
 
     else:
         print(usage())
