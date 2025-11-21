@@ -182,6 +182,7 @@ class DetCache():
         """make combined calibration constants
            ** of V1, ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4),
            ** of V2, (2, 4, npix),
+           ** of V3, (4, npix, 2),
            ** peds = peds + offset, gain = gain * mask
         """
         self.add_gain_mask()
@@ -192,15 +193,28 @@ class DetCache():
                       ndau.info_ndarr(self.poff, 'poff'),\
                       ndau.info_ndarr(self.gmask, 'gmask')))
         arr0 = np.zeros(self.outa.size)
-        self.ccons = np.vstack((po[0,:].ravel(), po[1,:].ravel(), arr0, po[2,:].ravel(),\
-                                gm[0,:].ravel(), gm[1,:].ravel(), arr0, gm[2,:].ravel()),\
-                                dtype=np.float32)  # .astype(np.float32)
-        if self.cversion == 1:
-            self.ccons = self.ccons.T
 
-        logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=8, vfmt='%0.3f'))
+        if self.cversion in (1,2):
+            self.ccons = np.vstack((po[0,:].ravel(), po[1,:].ravel(), arr0, po[2,:].ravel(),\
+                                    gm[0,:].ravel(), gm[1,:].ravel(), arr0, gm[2,:].ravel()),\
+                                    dtype=np.float32)  # .astype(np.float32)
+            if self.cversion == 1:
+                self.ccons = self.ccons.T
 
-#        sys.exit('TEST EXIT')
+        elif self.cversion == 3:
+            # test: lcls2/psana/psana/detector]$ testman/test-scaling-mpi-jungfrau.py -t6
+            npix = po[0,:].size
+            print('npix:', npix)
+            self.ccons = np.vstack((
+                            np.vstack((po[0,:].ravel(), gm[0,:].ravel())).T,
+                            np.vstack((po[1,:].ravel(), gm[1,:].ravel())).T,
+                            np.vstack((arr0, arr0)).T,
+                            np.vstack((po[2,:].ravel(), gm[2,:].ravel())).T),
+                            dtype=np.float32)
+            self.ccons.shape = (4, npix, 2)
+        logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
+
+        #sys.exit('TEST EXIT')
 
 
 def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
