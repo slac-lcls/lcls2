@@ -105,22 +105,46 @@ class SegGeometryArchonV1(SegGeometry):
         #sp._asic0indices = ((0, 0), (0, sp._colsq*1), (0, sp._colsq*2), (0, sp._colsq*3))
 
         SegGeometry.__init__(sp, **kwa)
-        det = kwa.get('detector', None)
-        assert det is not None
-        shape = kwa.get('shape', None)
+        sp.det = kwa.get('detector', None)
+        assert sp.det is not None
         # needed for "lightweight" detector-interface instantiation without calibration
         # constants to determine detector-interface attributes for ami in run.py (detinfo)
-        if det._calibconst is not None:
-            if shape is None:
-                assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
-                peds = det._calibconst['pedestals'][0]
-                shape = peds.shape
-                logger.debug('__init__(): segment shape=%s' % str(shape))
+        sp._shape = None
+        sp.x_pix_arr_um = None
+        sp.pix_area_arr = None
+        sp.x_pix_arr_pix = None
+        sp.x_pix_arr_um_offset = None
+        sp.define_shape_make_pixel_coord_arrs()
+
+    def shape(sp):
+        sp.define_shape_make_pixel_coord_arrs()
+        return sp._shape
+
+    def define_shape_make_pixel_coord_arrs(sp):
+        if sp._shape: return # is not None
+
+        det = sp.det
+        shape = sp.kwa.get('shape', None)
+        dshape = getattr(det, '_shape', None)
+        if shape: # is not None
+            pass
+
+        elif dshape: # is not None
+            shape = dshape
+
+        elif det._calibconst: # is not None:
+            #print('XXXXX SegGeometryArchonV1 det._calibconst:', det._calibconst)
+            assert 'pedestals' in det._calibconst.keys(), 'unavailable constants in DB'
+            peds = det._calibconst['pedestals'][0]
+            shape = peds.shape
+            logger.debug('__init__(): segment shape=%s' % str(sp.shape))
+
+        if shape is not None:
+            sp._shape = shape
             sp._rows = shape[0]
             sp.make_pixel_coord_arrs()
-            sp.pix_area_arr = None
-            sp.x_pix_arr_pix = None
-            sp.x_pix_arr_um_offset = None
+
+        logger.info('use shape: %s' % str(shape))
 
     def make_pixel_coord_arrs(sp, dtype=np.float64):
         """Makes [<nrows>,4800] maps of x, y, and z pixel coordinates with origin in the center"""
@@ -147,6 +171,7 @@ class SegGeometryArchonV1(SegGeometry):
 
     def mask_fake(sp, dtype=np.uint8, **kwa):
         """returns mask of shape=(<nrows>,4800), with fake pixels of all banks set to 0"""
+        sp.define_shape_make_pixel_coord_arrs()
         fake1bank = np.zeros((sp._rows, sp._colsf), dtype=dtype)
         mask = np.ones(sp.x_pix_arr_um.shape, dtype=dtype)
         sr, st = sp._colsr, sp._colst # = 264, 300
@@ -155,16 +180,20 @@ class SegGeometryArchonV1(SegGeometry):
         return mask
 
     def get_seg_xy_maps_um(sp):
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_pix_arr_um, sp.y_pix_arr_um
 
     def get_xyz_min_um(sp):
+        sp.define_shape_make_pixel_coord_arrs()
         return [sp.pixel_coord_min(a) for a in sp.AXIS]
 
     def get_xyz_max_um(sp):
+        sp.define_shape_make_pixel_coord_arrs()
         return [sp.pixel_coord_max(a) for a in sp.AXIS]
 
     def get_seg_xy_maps_um_with_offset(sp):
         """returns x and y pixel array coordinates in um"""
+        sp.define_shape_make_pixel_coord_arrs()
         if  sp.x_pix_arr_um_offset is None:
             x_min_um, y_min_um, z_min_um = sp.get_xyz_min_um()
             sp.x_pix_arr_um_offset = sp.x_pix_arr_um - x_min_um
@@ -173,6 +202,7 @@ class SegGeometryArchonV1(SegGeometry):
 
     def get_seg_xy_maps_pix_with_offset(sp):
         """returns ix and iy pixel array indices with offset minimum to 0"""
+        sp.define_shape_make_pixel_coord_arrs()
         x, y = sp.get_seg_xy_maps_um_with_offset()
         notnan = ~np.isnan(x)
         ix = -np.ones(x.shape, dtype=np.int32)
@@ -188,27 +218,33 @@ class SegGeometryArchonV1(SegGeometry):
     def print_seg_info(sp, **kwa):
         """ Prints segment info for selected bits"""
         from psana.detector.NDArrUtils import info_ndarr
+        sp.define_shape_make_pixel_coord_arrs()
         print(info_ndarr(sp.x_arr_um, 'x_arr_um:'))
         print(info_ndarr(sp.y_arr_um, 'y_arr_um:'))
 
     def size(sp):
         """ Returns segment size - total number of pixels in segment"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_pix_arr_um.size
 
     def rows(sp):
         """ Returns number of rows in segment"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.shape()[0]
 
     def cols(sp):
         """ Returns number of cols in segment"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.shape()[1]
 
     def shape(sp):
         """ Returns shape of the segment [rows, cols]"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_pix_arr_um.shape
 
     def pixel_scale_size(sp):
         """ Returns pixel size in um for indexing"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp._pixsc # for cols 10um,  for rows 20um...
 
     def pixel_area_array(sp):
@@ -223,17 +259,20 @@ class SegGeometryArchonV1(SegGeometry):
                sp.z_pix_size_um
 
     def get_seg_xyz_maps_um(sp):
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_pix_arr_um,\
                sp.y_pix_arr_um,\
                sp.z_pix_arr_um
 
     def get_xyz_min_um(sp):
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_arr_um[0],\
                sp.y_arr_um[-1],\
                sp.z_pix_arr_um[0,0]
 
     def get_xyz_max_um(sp, axis=None):
         """ Returns maximal value in the array of segment pixel coordinates in um for AXIS"""
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.x_arr_um[-1-sp._colsf],\
                sp.y_arr_um[0],\
                sp.z_pix_arr_um[0,0]
@@ -241,10 +280,12 @@ class SegGeometryArchonV1(SegGeometry):
     def pixel_mask_array(sp, **kwa):
         """ Returns array of masked pixels which content depends on control bitword mbits"""
         #sp.print_warning('pixel_mask_array(mask_bits)')
+        sp.define_shape_make_pixel_coord_arrs()
         return sp.mask_fake(**kwa)
 
     def return_switch(sp, meth, axis=None):
         """ Returns three x,y,z arrays if axis=None, or single array for specified axis"""
+        sp.define_shape_make_pixel_coord_arrs()
         assert axis in sp.AXIS + (None,)
         return meth() if axis is None else\
                meth()[sp.DIC_AXIS[axis]]
@@ -266,6 +307,7 @@ class SegGeometryArchonV1(SegGeometry):
         return sp.return_switch(sp.get_xyz_max_um, axis)
 
     def pixel_ones_array(sp, dtype=DTYPE_MASK):
+        sp.define_shape_make_pixel_coord_arrs()
         return np.ones((sp._rows, sp._cols), dtype=dtype)
 
 
