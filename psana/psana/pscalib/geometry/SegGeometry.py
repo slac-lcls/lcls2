@@ -73,7 +73,7 @@ class SegGeometry:
     wmsg = 'WARNING! %s - interface method from the base class \nneeds to be re-implemented in the derived class'
 
     def __init__(self, **kwa):
-        pass
+        self.kwa = kwa
 
     def print_warning(self, s):
         logger.warning(self.wmsg % s)
