@@ -1465,13 +1465,13 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     const std::string triggerConfig = body["trigger_config"];
 
     // In the following, _0 is added in prints to show the default segment number
-    logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
-                  configAlias.c_str(), triggerConfig.c_str());
+    logging::info("Fetching trigger info from ConfigDb %s/%s/%s_0",
+                  m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
 
     if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
     {
-        logging::error("Document '%s_0' not found in ConfigDb/%s",
-                       triggerConfig.c_str(), configAlias.c_str());
+        logging::error("Document '%s_0' not found in ConfigDb %s/%s",
+                       triggerConfig.c_str(), m_para.instrument.c_str(), configAlias.c_str());
         return -1;
     }
     bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
@@ -1482,8 +1482,8 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
     if (!(buildAll || buildDets.find(m_para.detName))) {
         logging::info("This DRP is not contributing trigger input data: "
-                      "buildAll is False and '%s' was not found in ConfigDb/%s/%s_0",
-                      m_para.detName.c_str(), configAlias.c_str(), triggerConfig.c_str());
+                      "buildAll is False and '%s' was not found in ConfigDb %s/%s/%s_0",
+                      m_para.detName.c_str(), m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
         m_tPrms.contractor = 0;    // This DRP won't provide trigger input data
         m_triggerPrimitive = nullptr;
         m_tPrms.maxInputSize = sizeof(Pds::EbDgram); // Revisit: 0 is bad
@@ -1507,17 +1507,17 @@ int DrpBase::setupTriggerPrimitives(const json& body)
 
     //  Look for the detector-specific producer first
     std::string symbol("create_producer");
-    symbol +=  "_" + m_para.detName;
-    m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
+    std::string symbol2(symbol + "_" + m_para.detName);
+    m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol2);
     if (m_triggerPrimitive) {
-        logging::info("Created detector-specific TriggerPrimitive [%s]", symbol.c_str());
+        logging::info("Created detector-specific TriggerPrimitive [%s]", symbol2.c_str());
     }
     else {
         // Now try the generic producer
-        symbol = std::string("create_producer");
         m_triggerPrimitive = m_trigPrimFactory.create(soname, symbol);
         if (!m_triggerPrimitive) {
-            logging::error("Failed to create TriggerPrimitive; try '-v'");
+            logging::error("Failed to create TriggerPrimitive from '%s' with '%s' or '%s'; try '-v'",
+                           soname.c_str(), symbol.c_str(), symbol2.c_str());
             return -1;
         }
         logging::info("Created generic TriggerPrimitive [%s]", symbol.c_str());
@@ -1540,6 +1540,14 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     m_tPrms.id = body["drp"][stringId]["drp_id"];
     m_mPrms.id = m_tPrms.id;
     m_nodeId = body["drp"][stringId]["drp_id"];
+
+    // Require a consistent Instrument name from  command line and connect_info
+    std::string instrument = body["control"]["0"]["control_info"]["instrument"];
+    if (instrument != m_para.instrument) {
+        logging::error("Instrument name mismatch: connect_info '%s' vs '%s' from -P",
+                       m_para.instrument.c_str(), instrument.c_str());
+        return -1;
+    }
 
     // Connect to an XPM PV to give Prometheus access to our deadtime
     std::string pv_base = body["control"]["0"]["control_info"]["pv_base"];

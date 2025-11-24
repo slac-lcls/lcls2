@@ -1025,13 +1025,13 @@ int TebApp::_configure(const json& msg)
   const std::string triggerConfig(msg["body"]["trigger_config"]);
 
   // In the following, _0 is added in prints to show the default segment number
-  logging::info("Fetching trigger info from ConfigDb/%s/%s_0",
-                configAlias.c_str(), triggerConfig.c_str());
+  logging::info("Fetching trigger info from ConfigDb %s/%s/%s_0",
+                _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
 
   if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
   {
-    logging::error("Document '%s_0' not found in ConfigDb/%s",
-                   triggerConfig.c_str(), configAlias.c_str());
+    logging::error("Document '%s_0' not found in ConfigDb %s/%s",
+                   triggerConfig.c_str(), _prms.instrument.c_str(), configAlias.c_str());
     return -1;
   }
 
@@ -1047,7 +1047,8 @@ int TebApp::_configure(const json& msg)
   Trigger* trigger = _factory.create(soname, symbol);
   if (!trigger)
   {
-    logging::error("Failed to create Trigger; try '-v'");
+    logging::error("Failed to create Trigger from '%s' with '%s'; try '-v'",
+                   soname.c_str(), symbol.c_str());
     return -1;
   }
 
@@ -1163,6 +1164,14 @@ int TebApp::_parseConnectionParams(const json& body)
   {
     logging::error("Missing required DRP specs");
     rc = 1;
+  }
+
+  // Require a consistent Instrument name from  command line and connect_info
+  std::string instrument = body["control"]["0"]["control_info"]["instrument"];
+  if (instrument != _prms.instrument) {
+    logging::error("Instrument name mismatch: connect_info '%s' vs '%s' from -P",
+                   _prms.instrument.c_str(), instrument.c_str());
+    return -1;
   }
 
   _prms.contributors = 0;
