@@ -13,9 +13,6 @@
 #include <cstdint>
 #include <string>
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 using namespace XtcData;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
@@ -190,6 +187,18 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   uint64_t     pid    = ddg->pulseId();
   unsigned     dst    = ImmData::src(destination);
   uint32_t     idx    = ImmData::idx(destination);
+  if (dst >= _links.size()) [[unlikely]]
+  {
+    logging::critical("Ignoring invalid MEB destination %u (>= %zu)", dst, _links.size());
+    abort();
+  }
+  if (idx >= _prms.maxEvents[dst]) [[unlikely]]
+  {
+    logging::critical("Ignoring out-of-bounds buffer index %u (>= %u) for MEB %u",
+                      idx, _prms.maxEvents[dst], dst);
+    abort();
+  }
+
   size_t       sz     = sizeof(*ddg) + ddg->xtc.sizeofPayload();
   size_t       offset = idx * _maxEvSize;
   EbLfCltLink* link   = _links[dst];
@@ -197,14 +206,14 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   void*        buffer = (char*)(_region[dst]) + offset;
   memcpy(buffer, ddg, sz);  // Copy the datagram into the intermediate buffer
 
-  if (UNLIKELY(sz > _maxEvSize))
+  if (sz > _maxEvSize) [[unlikely]]
   {
     logging::critical("L1Accept of size %zd is too big for target buffer of size %zd",
                       sz, _maxEvSize);
     abort();
   }
 
-  if (UNLIKELY(ddg->xtc.src.value() != _id))
+  if (ddg->xtc.src.value() != _id) [[unlikely]]
   {
     logging::critical("L1Accept src %u does not match DRP's ID %u: PID %014lx, sz, %zd, dest %08x, data %08x, ofs %08zx",
                       ddg->xtc.src.value(), _id, pid, sz, destination, data, offset);
@@ -212,21 +221,21 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   }
 
   bool print = false;
-  if (UNLIKELY((buffer < _region[dst]) || ((char*)buffer + sz > (char*)_region[dst] + _bufRegSize[dst])))
+  if ((buffer < _region[dst]) || ((char*)buffer + sz > (char*)_region[dst] + _bufRegSize[dst])) [[unlikely]]
   {
-    logging::error("%s:\n  L1 dgram %p:%p falls outside of region limits %p:%p\n",
-                   __PRETTY_FUNCTION__, buffer, (char*)buffer + sz, _region[dst], (char*)_region[dst] + _bufRegSize[dst]);
+    logging::critical("%s:\n  L1 dgram %p:%p falls outside of region limits %p:%p",
+                      __PRETTY_FUNCTION__, buffer, (char*)buffer + sz, _region[dst], (char*)_region[dst] + _bufRegSize[dst]);
     print = true;
   }
 
-  if (UNLIKELY(pid <= _previousPid))
+  if (pid <= _previousPid) [[unlikely]]
   {
-    logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
-                   __PRETTY_FUNCTION__, pid, _previousPid, ddg->time.seconds(), ddg->time.nanoseconds());
+    logging::critical("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
+                      __PRETTY_FUNCTION__, pid, _previousPid, ddg->time.seconds(), ddg->time.nanoseconds());
     print = true;
   }
 
-  if (UNLIKELY(print || (_verbose >= VL_BATCH)))
+  if (print || (_verbose >= VL_BATCH)) [[unlikely]]
   {
     unsigned ctl    = ddg->control();
     uint32_t env    = ddg->env;
@@ -234,6 +243,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     fprintf(stderr, "MebCtrb posts %9lu    monEvt [%8u]  @ "
             "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
             _eventCount, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data);
+    if (print)  abort();
   }
   else
   {
@@ -256,14 +266,14 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   }
 
   int rc = link->post(buffer, sz, offset, data);
-  if (rc < 0)
+  if (rc < 0) [[unlikely]]
   {
     uint64_t pid    = ddg->pulseId();
     unsigned ctl    = ddg->control();
     uint32_t env    = ddg->env;
     void*    rmtAdx = (void*)link->rmtAdx(offset);
     logging::critical("%s:\n  Failed to post monEvt [%8u]  @ "
-                      "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d\n",
+                      "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x, rc %d",
                       __PRETTY_FUNCTION__, idx, ddg, ctl, pid, env, sz, link->id(), rmtAdx, data, rc);
     abort();
   }
@@ -284,35 +294,41 @@ static int _getTrBufIdx(EbLfLink* lnk, MebContributor::listU32_t& lst, uint32_t&
     int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
     if (rc)  break;
     if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
-        (ImmData::src(imm) != lnk->id()))
+        (ImmData::src(imm) != lnk->id()) ||
+        (ImmData::idx(imm) >= MEB_TR_BUFFERS)) [[unlikely]]
       logging::error("%s: 1\n  "
-                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     "Bad flg %u (!= %u), src %u (!= %u) or idx %u (>= %u) in immediate data: %08lx",
                      __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
-                     ImmData::src(imm), lnk->id(), imm);
-    lst.push_back(ImmData::idx(imm));
+                     ImmData::src(imm), lnk->id(), ImmData::idx(imm), MEB_TR_BUFFERS, imm);
+    else
+      lst.push_back(ImmData::idx(imm));
   }
 
-  // If the list is still empty, wait for one
-  if (lst.empty())
+  if (!lst.empty())
   {
-    uint64_t imm;
-    unsigned tmo = 5000;
-    int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
-    if (rc)  return rc;
-    idx = ImmData::idx(imm);
-    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
-        (ImmData::src(imm) != lnk->id()))
-      logging::error("%s: 1\n  "
-                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
-                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
-                     ImmData::src(imm), lnk->id(), imm);
+    // Return the index at the head of the list
+    idx = lst.front();
+    lst.pop_front();
+
     return 0;
   }
 
-  // Return the index at the head of the list
-  idx = lst.front();
-  lst.pop_front();
-
+  // If the list is still empty, wait for one
+  uint64_t imm;
+  unsigned tmo = 5000;
+  int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
+  if (rc)  return rc;
+  idx = ImmData::idx(imm);
+  if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+      (ImmData::src(imm) != lnk->id()) ||
+      (ImmData::idx(imm) >= MEB_TR_BUFFERS)) [[unlikely]]
+  {
+    logging::error("%s: 2\n  "
+                   "Bad flg %u (!= %u), src %u (!= %u) or idx %u (>= %u) in immediate data: %08lx",
+                   __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                   ImmData::src(imm), lnk->id(), ImmData::idx(imm), MEB_TR_BUFFERS, imm);
+    return -1;
+  }
   return 0;
 }
 
@@ -341,7 +357,7 @@ int MebContributor::post(const EbDgram* dgram)
     abort();
   }
 
-  if (UNLIKELY(pid <= _previousPid))
+  if (pid <= _previousPid) [[unlikely]]
   {
     logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
                    __PRETTY_FUNCTION__, pid, _previousPid, dgram->time.seconds(), dgram->time.nanoseconds());
@@ -354,10 +370,10 @@ int MebContributor::post(const EbDgram* dgram)
     unsigned src = link->id();
     uint32_t idx;
     int rc = _getTrBufIdx(link, _trBuffers[src], idx);
-    if (rc)
+    if (rc) [[unlikely]]
     {
       auto ts  = dgram->time;
-      logging::critical("%s:\n  No transition buffer index received from MEB ID %u "
+      logging::critical("%s:\n  Error receiving transition buffer index from MEB ID %u "
                         "needed for %s (%014lx, %9u.%09u): rc %d",
                         __PRETTY_FUNCTION__, src, TransitionId::name(svc), pid, ts.seconds(), ts.nanoseconds(), rc);
       abort();
@@ -368,14 +384,14 @@ int MebContributor::post(const EbDgram* dgram)
     void*    buffer = (char*)(_region[src]) + offset;
     memcpy(buffer, dgram, sz); // Copy the datagram into the intermediate buffer
 
-    if (UNLIKELY((buffer < (char*)_region[src] + _bufRegSize[src]) || ((char*)buffer + sz > (char*)_region[src] + _regSize[src])))
+    if ((buffer < (char*)_region[src] + _bufRegSize[src]) || ((char*)buffer + sz > (char*)_region[src] + _regSize[src])) [[unlikely]]
     {
-      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p\n",
+      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p",
                      __PRETTY_FUNCTION__, buffer, (char*)buffer + sz, (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
       print = true;
     }
 
-    if (UNLIKELY(print || (_verbose >= VL_BATCH)))
+    if (print || (_verbose >= VL_BATCH)) [[unlikely]]
     {
       fprintf(stderr, "MebCtrb rcvd transition buffer           [%2u] @ "
               "%16p, ofs %016zx = %08zx + %2u * %08zx,     src %2u\n",
@@ -387,7 +403,7 @@ int MebContributor::post(const EbDgram* dgram)
       fprintf(stderr, "MebCtrb posts %9lu %15s       @ "
               "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, MEB %2u @ %16p, data %08x\n",
               _trCount, TransitionId::name(svc), dgram, ctl, pid, env, sz, src, rmtAdx, data);
-      print = false;                    // Print only once per call
+      if (print)  abort();
     }
     else
     {
@@ -410,7 +426,7 @@ int MebContributor::post(const EbDgram* dgram)
     }
 
     rc = link->post(buffer, sz, offset, data); // Not a batch; Continue on error
-    if (rc)
+    if (rc) [[unlikely]]
     {
       logging::error("%s:\n  Failed to post buffer number to MEB ID %u: rc %d, data %08x",
                      __PRETTY_FUNCTION__, src, rc, data);

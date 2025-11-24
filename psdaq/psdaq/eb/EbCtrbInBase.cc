@@ -28,10 +28,6 @@
 #include <sys/types.h>
 #include <sys/prctl.h>
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
-
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
@@ -335,16 +331,22 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
       _matchUp(ctrb, nullptr);         // Try to sweep out any deferred Results
       rc = 0;
     }
-    else if (rc != -FI_ENOTCONN)
+    else if (rc != -FI_ENOTCONN) [[unlikely]]
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, fi_strerror(-rc));
     return rc;
   }
 
-  unsigned flg = ImmData::flg(data);
   unsigned src = ImmData::src(data);
-  unsigned idx = ImmData::idx(data);
+  if (src >= _links.size()) [[unlikely]]
+  {
+    logging::critical("Invalid TEB ID %u (>= %zu) in immediate data %08lx",
+                      src, _links.size(), data);
+    abort();
+  }
   auto     lnk = _links[src];
+  unsigned flg = ImmData::flg(data);
+  unsigned idx = ImmData::idx(data);
   auto     ofs = idx * _maxResultSize;
   auto     bdg = static_cast<const ResultDgram*>(lnk->lclAdx(ofs)); // (char*)_region + ofs;
 
@@ -353,32 +355,34 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
                                                          : (char*)_region + _regSize;
 
   auto print = false;
-  if (src != bdg->xtc.src.value())
+  if (src != bdg->xtc.src.value()) [[unlikely]]
   {
-    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, bdg->xtc.src.value());
+    logging::critical("%s:\n  Link src (%d) != dgram src (%d)",
+                      __PRETTY_FUNCTION__, src, bdg->xtc.src.value());
     print = true;
   }
-  if (flg != ImmData::NoResponse_Buffer)
+  if (flg != ImmData::NoResponse_Buffer) [[unlikely]]
   {
-    logging::error("%s:\n  Wrong flags %u in immediate data: "
-                   "dgram %p, idx %8u, pid %014lx, svc %u, env %08x, src %2u, imm %08x",
-                   __PRETTY_FUNCTION__, flg,
-                   bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
+    logging::critical("%s:\n  Wrong flags %u in immediate data: "
+                      "dgram %p, idx %8u, pid %014lx, svc %u, env %08x, src %2u, imm %08x",
+                      __PRETTY_FUNCTION__, flg,
+                      bdg, idx, bdg->pulseId(), bdg->service(), bdg->env, src, data);
     print = true;
   }
-  if (idx > _numBuffers)
+  if (idx >= _numBuffers) [[unlikely]]
   {
-    logging::error("%s:\n  Buffer index is out of range 0:%u: %u\n", __PRETTY_FUNCTION__, _numBuffers, idx);
+    logging::critical("%s:\n  Buffer index is out of range 0:%u: %u",
+                      __PRETTY_FUNCTION__, _numBuffers, idx);
     print = true;
   }
-  if ((bdg < _region) || (end > ((char*)_region + _regSize)))
+  if ((bdg < _region) || (end > ((char*)_region + _regSize))) [[unlikely]]
   {
-    logging::error("%s:\n  Dgram %p:%p falls outside of region %p:%p\n",
-                   __PRETTY_FUNCTION__, bdg, end, _region, (char*)_region + _regSize);
+    logging::critical("%s:\n  Dgram %p:%p falls outside of region %p:%p",
+                      __PRETTY_FUNCTION__, bdg, end, _region, (char*)_region + _regSize);
     print = true;
   }
 
-  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
+  if (print || (_prms.verbose >= VL_BATCH)) [[unlikely]]
   {
     auto     pid     = bdg->pulseId();
     unsigned ctl     = bdg->control();
@@ -388,6 +392,7 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
             "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, empty %c, cnt %u, data %08lx\n",
             _batchCount, idx, bdg, ctl, pid, env, src, pending.is_empty() ? 'Y' : 'N',
             pending.guess_size(), data);
+    if (print)  abort();
   }
 
   _matchUp(ctrb, bdg);
@@ -416,7 +421,7 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     if (!inputs && !pending.peek(inputs)) // If there are no left-over Inputs, and
       break;                              // no new Inputs batch, nothing to do
 
-    if (UNLIKELY(!(inputs->readoutGroups() & (1 << _prms.partition))))
+    if (!(inputs->readoutGroups() & (1 << _prms.partition))) [[unlikely]]
     {                                     // Common RoG didn't trigger
       _deliverBypass(ctrb, inputs);       // Handle bypass event
       continue;
@@ -480,7 +485,7 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
   for (auto it = _deferred.begin(); it != _deferred.end(); ++it)
   {
     const auto& batch = *it;
-    if (results->pulseId() == batch->pulseId())
+    if (results->pulseId() == batch->pulseId()) [[unlikely]]
     {
       logging::critical("%s:\n  Deferred already contains Results %014lx, %s, src %u vs %u",
                         __PRETTY_FUNCTION__, results->pulseId(), TransitionId::name(results->service()),
@@ -536,7 +541,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   while (rPid <= iPid)
   {
     uint64_t rPidPrv = 0;
-    if (UNLIKELY(!(rPid > rPidPrv)))
+    if (!(rPid > rPidPrv)) [[unlikely]]
     {
       logging::critical("%s:\n  rPid %014lx <= rPidPrv %014lx",
                         __PRETTY_FUNCTION__, rPid, rPidPrv);
@@ -556,7 +561,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     // contribution that was subsequently fixed up by the TEB.  In both cases
     // there is validly no Input corresponding to the Result.
 
-    if (UNLIKELY(_prms.verbose >= VL_EVENT))
+    if (_prms.verbose >= VL_EVENT) [[unlikely]]
     {
       auto env    = result->env;
       auto src    = result->xtc.src.value();
@@ -571,7 +576,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
     if (rPid == iPid)
     {
       static uint64_t iPidPrv = 0;
-      if (UNLIKELY(!(iPid > iPidPrv)))
+      if (!(iPid > iPidPrv)) [[unlikely]]
       {
         logging::critical("%s:\n  iPid %014lx <= iPidPrv %014lx",
                           __PRETTY_FUNCTION__, iPid, iPidPrv);
@@ -606,7 +611,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
 
       if (result->readoutGroups() & _prms.readoutGroup) // Is a match expected?
       {
-        if (!(result->readoutGroups() & _prms.contractor)) // Are we Receiver-only?
+        if (!(result->readoutGroups() & _prms.contractor)) [[unlikely]] // Are we Receiver-only?
         {
           // In this case, the Result could have appeared before the Input was
           // prepared, so the Result should be deferred and timed out
@@ -640,7 +645,7 @@ void EbCtrbInBase::_deliver(TebContributor&     ctrb,
   // as can happen when multiple TEBs present Results out of order
   //logging::error("%s:\n  No Result found for Input %014lx",
   //               __PRETTY_FUNCTION__, iPid);
-  if (_missing != missing)
+  if (_missing != missing) [[unlikely]]
   {
     logging::error("%s:\n  No Inputs found for %d Results",
                    __PRETTY_FUNCTION__, _missing - missing);

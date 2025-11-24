@@ -26,9 +26,6 @@
 #include <thread>
 #include <chrono>                       // Revisit: Temporary?
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Fabrics;
@@ -291,28 +288,35 @@ int EbAppBase::process()
       // This is called when contributions have ceased flowing
       EventBuilder::expired();          // Time out incomplete events
     }
-    else if (rc != -FI_ENOTCONN)
+    else if (rc != -FI_ENOTCONN) [[unlikely]]
       logging::error("%s:\n  pend() error %d (%s)",
                      __PRETTY_FUNCTION__, rc, strerror(-rc));
     return rc;
   }
 
-  unsigned       flg = ImmData::flg(data);
   unsigned       src = ImmData::src(data);
-  unsigned       idx = ImmData::idx(data);
+  if (src >= _links.size()) [[unlikely]]
+  {
+    logging::critical("Invalid DRP ID %u (>= %zu) in immediate data %08lx",
+                      src, _links.size(), data);
+    abort();
+  }
   EbLfSvrLink*   lnk = _links[src];
-  size_t         ofs = (ImmData::buf(flg) == ImmData::Buffer)
-                     ? (                   idx * _maxBufSize[src]) // In batch/buffer region
-                     : (_bufRegSize[src] + idx * _maxTrSize[src]); // Tr region for non-selected EB is after batch/buffer region
-  const EbDgram* idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));    // Or, (char*)(_region[src]) + ofs;
-  auto           sz  = sizeof(*idg) + idg->xtc.sizeofPayload();
+  unsigned       flg = ImmData::flg(data);
+  unsigned       idx = ImmData::idx(data);
+  size_t         ofs;
   void*          end;
+  const EbDgram* idg;
   if (ImmData::buf(flg) == ImmData::Buffer)
   {
+    ofs = idx * _maxBufSize[src];                   // In batch/buffer region
+    idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));  // Or, (char*)(_region[src]) + ofs;
     // idg is first dgram in batch; set end to end of region if idg is within 1 batch size of it
     end = idx < _prms.numBuffers[src] - _maxEntries ? (char*)idg + _maxEntries * _maxBufSize[src]
                                                     : (char*)_region[src] + _bufRegSize[src];
-  } else {
+  } else {                                          // Transition region
+    ofs = _bufRegSize[src] + idx * _maxTrSize[src]; // Tr region for non-selected EB is after batch/buffer region
+    idg = static_cast<EbDgram*>(lnk->lclAdx(ofs));  // Or, (char*)(_region[src]) + ofs;
     end = (char*)idg + _maxTrSize[src];
   }
 
@@ -326,65 +330,67 @@ int EbAppBase::process()
   if (ImmData::rsp(flg) == ImmData::NoResponse)  idg->setEOL();
 
   auto print = false;
-  if (src != idg->xtc.src.value())
+  if (src != idg->xtc.src.value()) [[unlikely]]
   {
-    logging::error("%s:\n  Link src (%d) != dgram src (%d)", __PRETTY_FUNCTION__, src, idg->xtc.src.value());
+    logging::critical("%s:\n  Link src (%d) != dgram src (%d)",
+                      __PRETTY_FUNCTION__, src, idg->xtc.src.value());
     print = true;
   }
+  auto sz = sizeof(*idg) + idg->xtc.sizeofPayload();
   if (ImmData::buf(flg) == ImmData::Buffer)
   {
-    if (idx > _prms.numBuffers[src])
+    if (idx >= _prms.numBuffers[src]) [[unlikely]]
     {
-      logging::error("%s:\n  Buffer index for src %d is out of range 0:%u: %u\n",
-                     __PRETTY_FUNCTION__, src, _prms.numBuffers[src], idx);
+      logging::critical("%s:\n  Buffer index from DRP %d is out of range 0:%u: %u",
+                        __PRETTY_FUNCTION__, src, _prms.numBuffers[src], idx);
       print = true;
     }
-    if ((idg < _region[src]) || (end > ((char*)_region[src] + _bufRegSize[src])))
+    if ((idg < _region[src]) || (end > ((char*)_region[src] + _bufRegSize[src]))) [[unlikely]]
     {
-      logging::error("%s:\n  Buffer %p:%p falls outside of region limits %p:%p\n",
-                     __PRETTY_FUNCTION__, idg, end, _region[src], (char*)_region[src] + _bufRegSize[src]);
+      logging::critical("%s:\n  Buffer %p:%p falls outside of region limits %p:%p",
+                        __PRETTY_FUNCTION__, idg, end, _region[src], (char*)_region[src] + _bufRegSize[src]);
       print = true;
     }
-    if (sz > _maxBufSize[src])
+    if (sz > _maxBufSize[src]) [[unlikely]]
     {
-      logging::error("%s:\n  Buffer's dgram %p, size %u overruns buffer of size %zu\n",
-                     __PRETTY_FUNCTION__, idg, sz, _maxBufSize[src]);
+      logging::critical("%s:\n  Buffer's dgram %p, size %u overruns buffer of size %zu",
+                        __PRETTY_FUNCTION__, idg, sz, _maxBufSize[src]);
       print = true;
     }
   }
   else
   {
-    if (idx > _maxTrBuffers)
+    if (idx >= _maxTrBuffers) [[unlikely]]
     {
-      logging::error("%s:\n  Tr buffer index for src %d is out of range 0:%u: %u\n",
-                     __PRETTY_FUNCTION__, src, _maxTrBuffers, idx);
+      logging::critical("%s:\n  Transition buffer index from DRP %d is out of range 0:%u: %u",
+                        __PRETTY_FUNCTION__, src, _maxTrBuffers, idx);
       print = true;
     }
-    if ((idg < (void*)((char*)_region[src] + _bufRegSize[src])) || (end > ((char*)_region[src] + _regSize[src])))
+    if ((idg < (void*)((char*)_region[src] + _bufRegSize[src])) || (end > ((char*)_region[src] + _regSize[src]))) [[unlikely]]
     {
-      logging::error("%s:\n  Tr dgram %p:%p falls outside of region limits %p:%p\n",
-                     __PRETTY_FUNCTION__, idg, end,
-                     (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
+      logging::critical("%s:\n  Transition dgram %p:%p falls outside of region limits %p:%p",
+                        __PRETTY_FUNCTION__, idg, end,
+                        (char*)_region[src] + _bufRegSize[src], (char*)_region[src] + _regSize[src]);
       print = true;
     }
-    if (sz > _maxTrSize[src])
+    if (sz > _maxTrSize[src]) [[unlikely]]
     {
-      logging::error("%s:\n  Tr dgram %p, size %u overruns buffer of size %zu\n",
-                     __PRETTY_FUNCTION__, idg, sz, _maxTrSize[src]);
+      logging::critical("%s:\n  Transition dgram %p, size %u overruns buffer of size %zu",
+                        __PRETTY_FUNCTION__, idg, sz, _maxTrSize[src]);
       print = true;
     }
   }
-  if (idg->pulseId() <= _lastPid[src])
+  if (idg->pulseId() <= _lastPid[src]) [[unlikely]]
   {
-    logging::error("%s:\n  Pulse ID for src %u did not advance: %014lx <= %014lx, ts %u.%09u",
-                   __PRETTY_FUNCTION__, src, idg->pulseId(), _lastPid[src], idg->time.seconds(), idg->time.nanoseconds());
+    logging::critical("%s:\n  Pulse ID from DRP %u did not advance: %014lx <= %014lx, ts %u.%09u",
+                      __PRETTY_FUNCTION__, src, idg->pulseId(), _lastPid[src], idg->time.seconds(), idg->time.nanoseconds());
     print = true;
   }
   _lastPid[src] = idg->pulseId();
 
   if (_ctrbSrc)  _ctrbSrc->observe(double(src)); // Revisit: For testing
 
-  if (UNLIKELY(print || (_verbose >= VL_BATCH)))
+  if (print || (_verbose >= VL_BATCH)) [[unlikely]]
   {
     unsigned    env = idg->env;
     uint64_t    pid = idg->pulseId();
@@ -393,6 +399,7 @@ int EbAppBase::process()
     fprintf(stderr, "EbAp rcvd %9lu %15s[%8u]   @ "
             "%16p, ctl %02x, pid %014lx, env %08x,            src %2u, data %08lx, lnk[%2u] %p, ID %2u\n",
             _bufferCnt, svc, idx, idg, ctl, pid, env, idg->xtc.src.value(), data, src, lnk, lnk->id());
+    if (print)  abort();
   }
 
   auto svc = idg->service();
@@ -427,21 +434,33 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
   for (auto pdg = begin; pdg < end; ++pdg)
   {
     auto     idg = *pdg;
-    unsigned src = idg->xtc.src.value();
-    auto     lnk = _links[src];
+    unsigned dst = idg->xtc.src.value();
+    if (dst >= _links.size()) [[unlikely]]
+    {
+      logging::critical("%s:\n  Invalid DRP ID %u (>= %zu)",
+                        __PRETTY_FUNCTION__, dst, _links.size());
+      abort();
+    }
+    auto     lnk = _links[dst];
     size_t   ofs = lnk->lclOfs(idg);
-    unsigned idx = (ofs - _bufRegSize[src]) / _maxTrSize[src];
+    unsigned idx = (ofs - _bufRegSize[dst]) / _maxTrSize[dst];
     uint64_t imm = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
-    if (UNLIKELY(_verbose >= VL_EVENT))
-      fprintf(stderr, "EbAp posts transition buffer index %u to src %2u, %08lx\n",
-              idx, src, imm);
+    if (idx >= _maxTrBuffers) [[unlikely]]
+    {
+      logging::critical("%s:\n  Transition buffer index for DRP %d is out of range 0:%u: %u",
+                        __PRETTY_FUNCTION__, dst, _maxTrBuffers, idx);
+      abort();
+    }
+    if (_verbose >= VL_EVENT) [[unlikely]]
+      fprintf(stderr, "EbAp posts transition buffer index %u to DRP %2u, %08lx\n",
+              idx, dst, imm);
 
     int rc = lnk->post(imm);
-    if (rc)
+    if (rc) [[unlikely]]
     {
-      logging::error("%s:\n  Failed to post transition buffer index %u to DRP ID %u: rc %d, imm %08lx",
-                     __PRETTY_FUNCTION__, idx, src, rc, imm);
+      logging::error("%s:\n  Failed to post transition buffer index %u to DRP %u: rc %d, imm %08lx",
+                     __PRETTY_FUNCTION__, idx, dst, rc, imm);
     }
   }
 }

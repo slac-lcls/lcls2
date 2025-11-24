@@ -41,9 +41,6 @@
 
 #include "rapidjson/document.h"
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -408,10 +405,22 @@ int Teb::configure(Trigger* trigger,
 
 void Teb::_queueMrqBuffers()
 {
+  ssize_t rc;
   uint64_t immData;
-  while (_mrqTransport.poll(&immData) > 0)
+  while ( (rc = _mrqTransport.poll(&immData)) > 0)
   {
-    _monBufLists[ImmData::src(immData)].push(unsigned(immData));
+    auto src = ImmData::src(immData);
+    if (src >= _prms.numMebEvBufs.size()) [[unlikely]] {
+      logging::error("Received message from unidentified MEB src %u (immData = %08lx, rc = %zd)",
+                     src, immData, rc);
+      break;
+    }
+    if (ImmData::idx(immData) > _prms.numMebEvBufs[src]) [[unlikely]] {
+      logging::error("Ignoring out-of-bounds buffer index %08x, max %08x from MEB %u (immData = %08lx, rc = %zd)",
+                     ImmData::idx(immData), _prms.numMebEvBufs[src], src, immData, rc);
+      break;
+    }
+    _monBufLists[src].push(unsigned(immData));
   }
 }
 
@@ -525,7 +534,7 @@ void Teb::process(EbEvent* event)
   // Accumulate output datagrams (result) from the event builder into a batch
   // datagram.  When the batch completes, post it to the contributors.
 
-  if (UNLIKELY(_prms.verbose >= VL_DETAILED))
+  if (_prms.verbose >= VL_DETAILED) [[unlikely]]
   {
     fprintf(stderr, "Teb::process event dump:\n");
     event->dump(1, _trCount + _eventCount);
@@ -542,7 +551,7 @@ void Teb::process(EbEvent* event)
 
   unsigned imm = event->immData();
   uint64_t pid = dgram->pulseId();
-  if (UNLIKELY(!(pid > _pidPrv)))
+  if (!(pid > _pidPrv)) [[unlikely]]
   {
     event->damage(Damage::OutOfOrder);
 
@@ -610,7 +619,7 @@ void Teb::process(EbEvent* event)
     // Avoid sending Results to contributors that failed to supply Input
     uint64_t dsts = _receivers(dgram->readoutGroups()) & ~event->remaining();
 
-    if (UNLIKELY(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
+    if (_prms.verbose >= VL_EVENT) [[unlikely]] // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(rdg->service());
       uint64_t    pid = rdg->pulseId();
@@ -650,7 +659,7 @@ void Teb::process(EbEvent* event)
       }
     }
 
-    if (UNLIKELY(_prms.verbose >= VL_EVENT)) // || rdg->monitor()))
+    if (_prms.verbose >= VL_EVENT) [[unlikely]] // || rdg->monitor()))
     {
       const char* svc = TransitionId::name(dgram->service());
       unsigned    idx = ImmData::idx(imm);
@@ -714,7 +723,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
   bool                expired = _batMan.expired(       dgram->pulseId(),
                                                 _batch.start->pulseId());
 
-  if (LIKELY(!expired && !flush))       // Most frequent case when batching
+  if (!expired && !flush) [[likely]]    // Most frequent case when batching
   {
     _batch.end   = dgram;               // Append dgram to batch
     _batch.dsts |= dsts;
@@ -756,15 +765,15 @@ void Teb::_post(const Batch& batch)
   batch.end->setEOL();                  // Terminate the batch
 
   bool print = false;
-  if (UNLIKELY(extent > _prms.maxEntries * maxResultSize))
+  if (extent > _prms.maxEntries * maxResultSize) [[unlikely]]
   {
     logging::error("%s:\n  Batch extent exceeds maximum: %zu vs %u * %zu = %zu",
                    __PRETTY_FUNCTION__, extent,
                    _prms.maxEntries, maxResultSize, _prms.maxEntries * maxResultSize);
     print = true;
   }
-  if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
-               ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+  if ((batch.start < _batMan.batchRegion()) ||
+      ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())) [[unlikely]]
   {
     logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
                    __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
@@ -772,7 +781,7 @@ void Teb::_post(const Batch& batch)
     print = true;
   }
 
-  if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
+  if (print || (_prms.verbose >= VL_BATCH)) [[unlikely]]
   {
     uint64_t pid = batch.start->pulseId();
     fprintf(stderr, "TEB posts          %9lu result  [%8u] @ "
@@ -791,7 +800,7 @@ void Teb::_post(const Batch& batch)
 
     destns &= ~(1ull << dst);
 
-    if (UNLIKELY(_prms.verbose >= VL_BATCH))
+    if (_prms.verbose >= VL_BATCH) [[unlikely]]
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       fprintf(stderr, "                                      to DRP %2u @ %16p\n",

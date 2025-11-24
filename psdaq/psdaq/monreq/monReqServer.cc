@@ -30,9 +30,6 @@
 #include <mutex>
 #include <sys/prctl.h>
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -178,7 +175,7 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
-      if (UNLIKELY(_prms.verbose >= VL_EVENT))
+      if (_prms.verbose >= VL_EVENT) [[unlikely]]
         fprintf(stderr, "_copyDatagram:   dg %p, ts %u.%09u to %p\n",
                 dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
 
@@ -200,7 +197,7 @@ namespace Pds {
         size_t   oSz  = sizeof(*odg) + odg->xtc.sizeofPayload();
         uint32_t iExt = idg->xtc.extent;
         // Truncation goes unnoticed, so crash instead to get it fixed
-        if (oSz + iExt > bSz)
+        if (oSz + iExt > bSz) [[unlikely]]
         {
           logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu",
                             bSz, oSz, iExt);
@@ -216,21 +213,23 @@ namespace Pds {
     {
       unsigned idx = dg->xtc.src.value();
 
-      if (UNLIKELY(_prms.verbose >= VL_EVENT))
+      if (_prms.verbose >= VL_EVENT) [[unlikely]]
         fprintf(stderr, "_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
                 dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
 
-      if (idx >= _bufFreeList.size())
+      if (idx >= _bufFreeList.size()) [[unlikely]]
       {
-        logging::warning("deleteDatagram: Out of bounds index %08x, max %08x",
-                         idx, _bufFreeList.size() - 1);
+        logging::error("deleteDatagram: Ignoring out-of-bounds buffer index %u (>= %u)",
+                       idx, _bufFreeList.size() - 1);
+        Pool::free((void*)dg);
+        return;
       }
 
       for (unsigned i = 0; i < _bufFreeList.count(); ++i)
       {
-        if (idx == _bufFreeList.peek(i))
+        if (idx == _bufFreeList.peek(i)) [[unlikely]]
         {
-          logging::error("Index is already on list at %u: idx %u, dg %p, ts %u.%09u, svc %s",
+          logging::error("Buffer index is already on list at %u: idx %u, dg %p, ts %u.%09u, svc %s",
                          i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
           //Pool::free((void*)dg);
           return;
@@ -241,7 +240,7 @@ namespace Pds {
       _appPrcMetric.start(idx);
       _bufPrcMetric.accumulate(idx);
 
-      if (_bufFreeList.push(idx))
+      if (_bufFreeList.push(idx)) [[unlikely]]
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
         for (unsigned i = 0; i < _bufFreeList.size(); ++i)
@@ -259,12 +258,19 @@ namespace Pds {
       //printf("_requestDatagram\n");
 
       unsigned idx;
-      if (_bufFreeList.pop(idx))
+      if (_bufFreeList.pop(idx)) [[unlikely]]
       {
         logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
         return;
       }
       //printf("_requestDatagram: pop idx %u, cnt = %zu\n", data, _bufFreeList.count());
+
+      if (idx >= _bufFreeList.size()) [[unlikely]]
+      {
+        logging::error("requestDatagram: Ignoring out-of-bounds buffer index %u (>= %u)",
+                       idx, _bufFreeList.size() - 1);
+        return;
+      }
 
       auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
@@ -278,7 +284,7 @@ namespace Pds {
         _monTrgMetric.start(idx);
         _appPrcMetric.accumulate(idx);
       }
-      else
+      else [[unlikely]]
       {
         logging::error("%s:\n  Unable to post request to TEB %u: rc %d, idx %u (%08x)",
                        __PRETTY_FUNCTION__, iTeb, rc, idx, data);
@@ -294,7 +300,7 @@ namespace Pds {
         }
       }
 
-      if (UNLIKELY(_prms.verbose >= VL_EVENT))
+      if (_prms.verbose >= VL_EVENT) [[unlikely]]
         fprintf(stderr, "_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
                 iTeb, data, rc);
     }
@@ -582,7 +588,7 @@ void Meb::process(EbEvent* event)
   }
 
   uint64_t pid = dgram->pulseId();
-  if (UNLIKELY(!(pid > _pidPrv)))
+  if (!(pid > _pidPrv)) [[unlikely]]
   {
     event->damage(Damage::OutOfOrder);
 

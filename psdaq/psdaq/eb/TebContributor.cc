@@ -24,9 +24,6 @@
 
 #include <unistd.h>
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
@@ -250,7 +247,7 @@ void TebContributor::process(const EbDgram* dgram)
   auto rogs       = dgram->readoutGroups();
   bool contractor = rogs & _prms.contractor; // T if providing TEB input
 
-  if (LIKELY(rogs & (1 << _prms.partition))) // Common RoG triggered
+  if (rogs & (1 << _prms.partition)) [[likely]] // Common RoG triggered
   {
     // On wrapping, post the batch at the end of the region, if any
     if (dgram == _batMan.batchRegion())  _flush();
@@ -261,9 +258,9 @@ void TebContributor::process(const EbDgram* dgram)
     bool expired = _batch.start && (_batMan.expired(       dgram->pulseId(),
                                                     _batch.start->pulseId()));
 
-    if (LIKELY(!expired && !doFlush))   // Most frequent case when batching
+    if (!expired && !doFlush) [[likely]]     // Most frequent case when batching
     {
-      if (LIKELY(_batch.start))         // Append dgram to batch
+      if (_batch.start) [[likely]]           // Append dgram to batch
       {
         _batch.end         = dgram;
         _batch.contractor |= contractor;
@@ -286,7 +283,7 @@ void TebContributor::process(const EbDgram* dgram)
 
       if (doFlush)                      // Post the batch + transition
       {
-        if (LIKELY(_batch.start))       // Append dgram to batch
+        if (_batch.start) [[likely]]    // Append dgram to batch
         {
           if (!expired)                 // Don't redo when expired
           {
@@ -349,36 +346,47 @@ void TebContributor::_post(const Batch& batch)
   {
     uint64_t     pid    = batch.start->pulseId();
     unsigned     dst    = (pid / _prms.maxEntries) % _numEbs;
+    if (dst >= _links.size()) [[unlikely]]
+    {
+      logging::error("Ignoring invalid TEB destination %u (>= %zu)", dst, _links.size());
+      return;
+    }
     EbLfCltLink* link   = _links[dst];
     size_t       offset = link->lclOfs(batch.start);
     uint32_t     idx    = offset / _prms.maxInputSize;
+    if (offset >= _batMan.batchRegionSize()) [[unlikely]]
+    {
+      logging::error("Ignoring out-of-bounds buffer index %u (>= %u) for TEB %u",
+                     idx, _batMan.batchRegionSize() / _prms.maxInputSize, dst);
+      return;
+    }
     size_t       extent = (reinterpret_cast<const char*>(batch.end) -
                            reinterpret_cast<const char*>(batch.start)) + _prms.maxInputSize;
     uint32_t     data   = ImmData::value(ImmData::Response_Buffer, _id, idx);
     _entries = extent / _prms.maxInputSize;
 
     bool         print  = false;
-    if (UNLIKELY(batch.entries != _entries))
+    if (batch.entries != _entries) [[unlikely]]
     {
       logging::error("%s:\n  Bad batch entry count: %u vs %lu", __PRETTY_FUNCTION__, batch.entries, _entries);
       print = true;
     }
-    if (UNLIKELY(extent != batch.entries * _prms.maxInputSize))
+    if (extent != batch.entries * _prms.maxInputSize) [[unlikely]]
     {
       logging::error("%s:\n  Batch extent does not match entry count: %zu vs %u * %zu = %zu",
                      __PRETTY_FUNCTION__, extent,
                      batch.entries, _prms.maxInputSize, batch.entries * _prms.maxInputSize);
       print = true;
     }
-    if (UNLIKELY((batch.start < _batMan.batchRegion()) ||
-                 ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())))
+    if ((batch.start < _batMan.batchRegion()) ||
+        ((char*)(batch.start) + extent > (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize())) [[unlikely]]
     {
       logging::error("%s:\n  Batch %p:%p falls outide of region limits %p:%p",
                      __PRETTY_FUNCTION__, batch.start, (char*)(batch.start) + extent,
                      _batMan.batchRegion(), (char*)(_batMan.batchRegion()) + _batMan.batchRegionSize());
       print = true;
     }
-    if (UNLIKELY(pid <= _previousPid))
+    if (pid <= _previousPid) [[unlikely]]
     {
       logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
                      __PRETTY_FUNCTION__, pid, _previousPid, batch.start->time.seconds(), batch.start->time.nanoseconds());
@@ -386,7 +394,7 @@ void TebContributor::_post(const Batch& batch)
     }
     _previousPid = pid;
 
-    if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
+    if (print || (_prms.verbose >= VL_BATCH)) [[unlikely]]
     {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       fprintf(stderr, "CtrbOut posts %9lu    batch[%8u]    @ "
@@ -422,7 +430,7 @@ void TebContributor::_post(const Batch& batch)
       uint32_t env    = batch.start->env;
       void*    rmtAdx = (void*)link->rmtAdx(offset);
       logging::critical("%s:\n  Failed to post batch  [%8u]  @ "
-                        "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x, rc %d\n",
+                        "%16p, ctl %02x, pid %014lx, env %08x, sz %6zd, TEB %2u @ %16p, data %08x, rc %d",
                         __PRETTY_FUNCTION__, idx, batch.start, ctl, pid, env, extent, dst, rmtAdx, data, rc);
       abort();
     }
@@ -442,35 +450,41 @@ static int _getTrBufIdx(EbLfLink* lnk, TebContributor::listU32_t& lst, uint32_t&
     int rc = lnk->poll(&imm);           // Attempt to get a free buffer index
     if (rc)  break;
     if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
-        (ImmData::src(imm) != lnk->id()))
+        (ImmData::src(imm) != lnk->id()) ||
+        (ImmData::idx(imm) >= TEB_TR_BUFFERS)) [[unlikely]]
       logging::error("%s: 1\n  "
-                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
+                     "Bad flg %u (!= %u), src %u (!= %u) or idx %u (>= %u) in immediate data: %08lx",
                      __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
-                     ImmData::src(imm), lnk->id(), imm);
-    lst.push_back(ImmData::idx(imm));
+                     ImmData::src(imm), lnk->id(), ImmData::idx(imm), TEB_TR_BUFFERS, imm);
+    else
+      lst.push_back(ImmData::idx(imm));
   }
 
-  // If the list is still empty, wait for one
-  if (lst.empty())
+  if (!lst.empty())
   {
-    uint64_t imm;
-    unsigned tmo = 5000;
-    int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
-    if (rc)  return rc;
-    idx = ImmData::idx(imm);
-    if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
-        (ImmData::src(imm) != lnk->id()))
-      logging::error("%s: 2\n  "
-                     "Flags %u != %u and/or source %u != %u in immediate data: %08lx\n",
-                     __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
-                     ImmData::src(imm), lnk->id(), imm);
+    // Return the index at the head of the list
+    idx = lst.front();
+    lst.pop_front();
+
     return 0;
   }
 
-  // Return the index at the head of the list
-  idx = lst.front();
-  lst.pop_front();
-
+  // If the list is still empty, wait for one
+  uint64_t imm;
+  unsigned tmo = 5000;
+  int rc = lnk->poll(&imm, tmo);      // Wait for a free buffer index
+  if (rc)  return rc;
+  idx = ImmData::idx(imm);
+  if ((ImmData::flg(imm) != ImmData::NoResponse_Transition) ||
+      (ImmData::src(imm) != lnk->id()) ||
+      (ImmData::idx(imm) >= MEB_TR_BUFFERS)) [[unlikely]]
+  {
+    logging::error("%s: 2\n  "
+                   "Bad flg %u (!= %u), src %u (!= %u) or idx %u (>= %u) in immediate data: %08lx",
+                   __PRETTY_FUNCTION__, ImmData::flg(imm), ImmData::NoResponse_Transition,
+                   ImmData::src(imm), lnk->id(), ImmData::idx(imm), TEB_TR_BUFFERS, imm);
+    return -1;
+  }
   return 0;
 }
 
@@ -495,7 +509,7 @@ void TebContributor::_post(const EbDgram* dgram)
                       TransitionId::name(svc), dgram->xtc.sizeofPayload());
     abort();
   }
-  if (UNLIKELY(pid <= _previousPid))
+  if (pid <= _previousPid) [[unlikely]]
   {
     logging::error("%s:\n  Pulse ID did not advance: %014lx <= %014lx, ts %u.%09u",
                    __PRETTY_FUNCTION__, pid, _previousPid, dgram->time.seconds(), dgram->time.nanoseconds());
@@ -510,7 +524,7 @@ void TebContributor::_post(const EbDgram* dgram)
     {
       uint32_t idx;
       int rc = _getTrBufIdx(link, _trBuffers[src], idx);
-      if (rc)
+      if (rc) [[unlikely]]
       {
         auto svc = dgram->service();
         auto ts  = dgram->time;
@@ -523,7 +537,7 @@ void TebContributor::_post(const EbDgram* dgram)
       unsigned offset = _batMan.batchRegionSize() + idx * sizeof(*dgram);
       uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
 
-      if (UNLIKELY(print || (_prms.verbose >= VL_BATCH)))
+      if (print || (_prms.verbose >= VL_BATCH)) [[unlikely]]
       {
         unsigned    env    = dgram->env;
         unsigned    ctl    = dgram->control();

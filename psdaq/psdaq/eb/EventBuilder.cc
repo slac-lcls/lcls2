@@ -8,9 +8,6 @@
 #include <stdlib.h>
 #include <new>
 
-#define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
-#define LIKELY(expr)    __builtin_expect(!!(expr), 1)
-
 using namespace XtcData;
 using namespace Pds;
 using namespace Pds::Eb;
@@ -173,7 +170,7 @@ void EventBuilder::_flushBefore(EbEpoch* entry)
 EbEpoch* EventBuilder::_epoch(uint64_t key, EbEpoch* after)
 {
   void* buffer = _epochFreelist->alloc(sizeof(EbEpoch));
-  if (LIKELY(buffer))
+  if (buffer) [[likely]]
   {
     EbEpoch*  epoch = ::new(buffer) EbEpoch(key, after);
 
@@ -228,7 +225,7 @@ EbEvent* EventBuilder::_event(EbEpoch*            epoch,
                               const time_point_t& t0)
 {
   void* buffer = _eventFreelist->alloc(sizeof(EbEvent));
-  if (LIKELY(buffer))
+  if (buffer) [[likely]]
   {
     EbEvent* event = ::new(buffer) EbEvent(contract(ctrb),
                                            after,
@@ -512,7 +509,7 @@ void EventBuilder::process(const EbDgram*    buffer,
     uint64_t  pid = ctrb->pulseId();
     unsigned  env = ctrb->env;
     unsigned  src = ctrb->xtc.src.value();
-    if (UNLIKELY(_verbose >= VL_EVENT))
+    if (_verbose >= VL_EVENT) [[unlikely]]
     {
       unsigned  ctl = ctrb->control();
       uint32_t* pld = reinterpret_cast<uint32_t*>(ctrb->xtc.payload());
