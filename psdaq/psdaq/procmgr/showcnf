@@ -95,6 +95,8 @@ parser.add_argument("cnf", default=None, help="daq configuration file", nargs='+
 
 args = parser.parse_args()
 
+sortme = []
+
 while len(args.cnf) > 0:
     configfile = args.cnf.pop()
 
@@ -136,18 +138,13 @@ while len(args.cnf) > 0:
       print(config['procmgr_config'])
       print('-----------------------------------------------------')
 
+    # create an unsorted list
     for dd in config['procmgr_config']:
-      if args.verbose:
-        print(f'*** dd["cmd"] = {dd["cmd"]} ***')     # XXX
-
       parser2 = argparse.ArgumentParser()
       parser2.add_argument("-D", nargs=1, type=str)
-      parser2.add_argument("-l", nargs=1, type=str)
+      parser2.add_argument("-l", nargs=1, type=str)     # lane mask
       # use parse_known_args() instead of parse_args()
       args2, unrecognized2 = parser2.parse_known_args(split(dd['cmd']))
-
-      if args.verbose:
-        print(f"*** args2 = {args2} ***")
 
       try:
         showhost = dd["host"]
@@ -164,7 +161,18 @@ while len(args.cnf) > 0:
       except:
         showstation = 0
 
+      lanemask = 0
       if args2.D is not None and args2.l is not None:
-        print(f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16} {args2.D[0]:16} {args2.l[0]}')
+        try:
+          lanemask = int(args2.l[0], 16)
+        except:
+          report_error('lanemask error')
+        else:
+          xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16} {args2.D[0]:16} 0x{lanemask:02x}'
+          sortme.append(xx)
+
+# sort then print
+for yy in sorted(sortme):
+  print(yy)
 
 sys.exit(errorCount > 0)
