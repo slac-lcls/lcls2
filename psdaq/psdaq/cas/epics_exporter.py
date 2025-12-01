@@ -126,17 +126,19 @@ def main():
                 raise ValueError(f'Error parsing -D {args.D}.  Too few comma-separated ({len(q)}) entries in a triplet.')
         
     group = GroupCollector()
-    for entry in d:
+    for i,entry in enumerate(d):
         print(f'Forming CustomCollector with {entry}')
         c = CustomCollector(args.E, entry[0], entry[1])
 
         pv = entry[2]
         if args.G:
             for name in args.G.split(','):
+                logging.info(f'registerGlobalPV {pv}:{name}')
                 c.registerGlobalPV(name, pv + ':' + name)
 
-        if args.N is not None:
+        if (args.N is not None) and (i==0):
             for name in args.N:
+                logging.info(f'registerPV {pv}:PART:%d:{name}')
                 c.registerPV(name, pv + ':PART:%d:' + name)
 
         group.add(c)
