@@ -21,6 +21,7 @@ using namespace std;
 
 namespace utilsdetector {
 
+
 //typedef long unsigned int size_t;
 typedef double   time_t;
 typedef uint16_t rawd_t;
@@ -30,10 +31,17 @@ typedef float    out_t;
 typedef float    cc_t;
 typedef uint8_t  mask_t;
 
+#define NGRINDS 4
+#define NPIXELS 16777216
+#define NCTYPES 2
+
   struct ccstruct{
     peds_t pedestal;
     gain_t gain;
   };
+
+  static ccstruct CCSV3 [NGRINDS][NPIXELS];
+  void fill_CCSV3(const cc_t *cc);
 
   void  calib_jungrfau_blk_v1(const rawd_t *raw, const cc_t *cc, const size_t& size_blk, out_t *out);
 
@@ -41,6 +49,28 @@ typedef uint8_t  mask_t;
   time_t calib_jungfrau_v0(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, out_t *out);
   time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
   time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
+  time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
+  time_t calib_jungfrau_v3_struct(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
+  //time_t calib_jungfrau_v3_inds(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
+
+  class CalibConsSingleton{
+  public:
+    static CalibConsSingleton* instance();
+    void print();
+
+  private:
+    CalibConsSingleton();                 // !!!!! Private so that it can not be called from outside
+    virtual ~CalibConsSingleton(){};
+
+    static CalibConsSingleton* m_pInstance; // !!!!! Singleton instance
+
+    // Copy constructor and assignment are disabled by default
+    CalibConsSingleton(const CalibConsSingleton&);
+    CalibConsSingleton& operator = (const CalibConsSingleton&);
+  };
+
+
+
 
 }; // namespace utilsdetector
 
