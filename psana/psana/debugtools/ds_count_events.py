@@ -120,6 +120,14 @@ def main():
     t0 = time.time()
 
     ds = create_datasource(args, rank)
+
+    smd = None
+    ps_srv_nodes = int(os.environ.get('PS_SRV_NODES', '0'))
+    if ps_srv_nodes > 0:
+        smd = ds.smalldata(batch_size=args.batch_size)
+        if rank == 0:
+            print(f"[DEBUG] Exercising smalldata path with PS_SRV_NODES={ps_srv_nodes}")
+
     run = next(ds.runs())
 
     det = run.Detector(args.debug_detector) if args.debug_detector else None
@@ -130,18 +138,30 @@ def main():
     ti0 = time.time()
     interval = 1000
 
+    det_accessed = False
     for i_evt, evt in enumerate(run.events()):
         if det and args.debug_detector.lower() == 'epix10ka':
             _ = det.raw.raw(evt)
         elif det and args.debug_detector.lower() == 'jungfrau':
             _ = det.raw.image(evt)
+        elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
+            _ = det.raw.peaks(evt)  
+            _ = det.raw.waveforms(evt) 
+            _ = det.raw.padded(evt) 
+            det_accessed = True
+
+        if smd:
+            smd.event(evt, mydata=42.0)
 
         if i_evt % interval == 0 and i_evt > 0:
             rate = interval / (time.time() - ti0)
-            print(f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz")
+            print(f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz {det_accessed=}")
             ti0 = time.time()
 
         local_count += 1
+
+    if smd:
+        smd.done()
 
     sendbuf = np.array([local_count], dtype="i")
     recvbuf = np.empty([size, 1], dtype="i") if rank == 0 else None
