@@ -49,12 +49,27 @@ def calib_jungfrau_v1(raw, cc, size_blk, out):
 def calib_jungfrau_v2(raw, cc, size_blk, out):
     """See v1, shape of cc is .T
        cc.shape = (<2-for-peds-and-gains>, <4-gain-ranges>, <number-of-pixels-in detector>) = (2, 4, npix)
+       size_blk - IS NOT USED
     """
     #t0_sec = time()
-    assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
+    #assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
     dt_us_cpp = udext.cy_calib_jungfrau_v2(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
     out.shape = raw.shape
     return out #, dt_us_cpp, time()-t0_sec
+
+def calib_jungfrau_v3(raw, cc, size_blk, out):
+    """v3 different shape for constants
+       cc.shape = (<4-gain-ranges>, <number-of-pixels-in detector>, <2-for-peds-and-gains>) = (4, npix,2 )
+       size_blk - IS NOT USED
+    """
+    #t0_sec = time()
+    #assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
+    dt_us_cpp = udext.cy_calib_jungfrau_v3(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    out.shape = raw.shape
+    return out #, dt_us_cpp, time()-t0_sec
+
+
+
 
 if __name__ == "__main__" :
     print("""self-test for calib_std""")
