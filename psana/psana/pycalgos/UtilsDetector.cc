@@ -1,5 +1,6 @@
 
 #include "pycalgos/UtilsDetector.hh"
+#include <iostream> // std::cout
 #include <chrono> // time
 
 #define time_point_t std::chrono::steady_clock::time_point
@@ -102,7 +103,7 @@ void calib_jungrfau_blk_v1(const rawd_t *raw, const cc_t *cc, const size_t& size
 
 time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
 {
-  // assuming that
+  // V1 - assuming that
   // * constants are defined as cc[<number-of-pixels>][8],
   //   where 8 stands for for ALL 4 combinations of gain bits for peds then gain.
   //   cc.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4)
@@ -122,12 +123,12 @@ time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, 
 
 time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
 {
-  // assuming that
-  // * constants are defined as cc[<number-of-pixels>][8],
-  //   where 8 stands for for ALL 4 combinations of gain bits for peds then gain.
-  //   cc.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4)
+  // V2 - assuming that
+  // * constants are defined as cc[8][<number-of-pixels>],
+  //   where 8 stands for ALL 4 combinations of gain bits for peds then gain.
+  //   cc.shape = (<2-for-peds-and-gains>, <4-gain-ranges>, <number-of-pixels-in detector>) = (2, 4, npix)
   // * raw and out have letgth of size, where
-  // size_blk is not used
+  // size_blk IS NOT USED
 
   time_point_t t0 = time_now();
   size_t igap = 4*size;
@@ -138,6 +139,93 @@ time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, 
   }
   return duration_us(time_now() - t0).count();
 }
+
+
+time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
+{
+  // V3 - assuming that
+  // * constants are defined as cc[4][<number-of-pixels>][2] - Rick's shape,
+  //   where 4 stands for combinations of gain bits, 00,01,10,11, and 2 for peds-offset then gain*mask.
+  //   cc.shape = (<4-gain-ranges>, <number-of-pixels-in detector>, <2-for-peds-and-gains>) = (4, npix, 2)
+  // * raw and out have letgth of size, where
+  // size_blk IS NOT USED
+
+  time_point_t t0 = time_now();
+  //size_t icc;
+  uint32_t icc;
+  uint32_t size32b = size;
+  uint16_t rawt;
+  for (uint32_t i=0; i<size32b; ++i) {
+    rawt = raw[i];
+    icc = 2*(i + size*((rawt >> BSH) & 0x3)); // index of calibration constants of V3
+    //std::cout << "  peds-offset:" << cc[icc] << " gain:" << cc[icc+1] << std::endl;
+    out[i] = ((rawt & MDA) - cc[icc]) * cc[icc+1];
+  }
+  return duration_us(time_now() - t0).count();
+}
+
+
+time_t calib_jungfrau_v3_struct(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
+{
+  // V3 - use struct,  assuming that
+  // * constants are defined as cc[4][<number-of-pixels>][2] - Rick's shape,
+  //   where 4 stands for combinations of gain bits, 00,01,10,11, and 2 for peds-offset then gain*mask.
+  //   cc.shape = (<4-gain-ranges>, <number-of-pixels-in detector>, <2-for-peds-and-gains>) = (4, npix, 2)
+  // * raw and out have letgth of size, where
+  // size_blk IS NOT USED
+
+  // Ric?s code structure proposal:
+  // > pg[4][N]
+  // > for i in range(N):
+  // >  gain=data[i]>>14 & 0x3 # valid gain is 0,1,3.  gain 2 should have pg.gain 0
+  // >  datum = data[i] & 0x3fff
+  // >  result = (datam-pg[gain][i].pedestal)*pg[gain][i].gain
+
+  time_point_t t0 = time_now();
+  fill_CCSV3(cc);
+  ccstruct *pcc;
+  for (size_t i=0; i<size; ++i) {
+    pcc = &CCSV3[raw[i] >> BSH][i];
+    out[i] = ((raw[i] & MDA) - pcc->pedestal) * pcc->gain;
+  }
+  return duration_us(time_now() - t0).count();
+}
+
+
+void fill_CCSV3(const cc_t *cc)
+{ // fills  ccstruct CCSV3[4][16777216];
+  static int counter = -1; counter++;
+  //std::cout << "  counter:" << counter << std::endl;
+  if (counter>0) return;
+  std::cout << "fill_CCSV3 at 1st entrance only" << std::endl;
+  size_t icc;
+  for (int n=0; n<NGRINDS; n++) {
+    std::cout << "gain bits combination: " << n << std::endl;
+    for (int i=0; i<NPIXELS; i++) {
+      icc = 2*(i + NPIXELS*n);
+      CCSV3[n][i].pedestal = cc[icc];
+      CCSV3[n][i].gain     = cc[icc+1];
+      if (i<5) {
+	std::cout << "pixel: " << i << " pedestal: " <<  CCSV3[n][i].pedestal << " gain: " << CCSV3[n][i].gain << std::endl;
+      }
+    }
+  }
+  std::cout << "fill_CCSV3 initialization of CCSV3 is completed" << std::endl;
+}
+
+
+CalibConsSingleton* CalibConsSingleton::m_pInstance = NULL; // !!!!!! make global pointer !!!!!
+CalibConsSingleton::CalibConsSingleton()
+{
+  std::cout << "!!!!!!!! Single instance for singleton class CalibConsSingleton is created \n";
+}
+CalibConsSingleton* CalibConsSingleton::instance()
+{
+  if(!m_pInstance) m_pInstance = new CalibConsSingleton();
+  return m_pInstance;
+}
+void CalibConsSingleton::print() {std::cout << "CalibConsSingleton::print()\n";}
+
 
 }; // namespace utilsdetector
 
