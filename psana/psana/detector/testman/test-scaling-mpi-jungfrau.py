@@ -65,13 +65,15 @@ CALIB_LOCAL_V2  = 2
 CALIB_CPP_V0    = 3
 CALIB_CPP_V1    = 4
 CALIB_CPP_V2    = 5
+CALIB_CPP_V3    = 6
 
 dic_calibmet = {CALIB_STD:       'CALIB_STD',\
                 CALIB_STD_LOCAL: 'CALIB_STD_LOCAL',\
                 CALIB_LOCAL_V2:  'CALIB_LOCAL_V2',\
                 CALIB_CPP_V0:    'CALIB_CPP_V0',\
                 CALIB_CPP_V1:    'CALIB_CPP_V1',\
-                CALIB_CPP_V2:    'CALIB_CPP_V2'}
+                CALIB_CPP_V2:    'CALIB_CPP_V2',\
+                CALIB_CPP_V3:    'CALIB_CPP_V3'}
 
 def calib_jungfrau_local(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
     """
@@ -295,6 +297,11 @@ def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
         #logger.info(info_ndarr(ccons, 'XXX CHANGE TO v2    ccons', first=1000, last=1008))
         ud.calib_jungfrau_v2(arr, ccons, size_blk, outa)
 
+    elif CALIBMET == CALIB_CPP_V3:
+        # full processing in C++ reshaped constants (8,<NPIXELS>)
+        #logger.info(info_ndarr(ccons, 'XXX CHANGE TO v2    ccons', first=1000, last=1008))
+        ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)
+
     return outa
 
 
@@ -318,7 +325,7 @@ def test_event_loop(calibmet, **kwargs):
     #cversion     = kwargs.get('cversion', 1)
     kwargs.setdefault('logmet_init', logger.info)
 
-    arrts = np.zeros(events, dtype=float) if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2) else\
+    arrts = np.zeros(events, dtype=float) if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2, CALIB_CPP_V3) else\
             np.zeros(events, dtype=float) if calibmet in (CALIB_STD, CALIB_STD_LOCAL) else\
             np.zeros(events, dtype=float)
 
@@ -386,7 +393,7 @@ def test_event_loop(calibmet, **kwargs):
           s += ' ' + dic_calibmet[calibmet]
           t0_sec = time()
 
-          if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2):
+          if calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2, CALIB_CPP_V3):
             calib = calib_jungfrau_compare(det.raw, evt, **kwargs)
 
           elif calibmet == CALIB_STD:
@@ -417,7 +424,7 @@ def test_event_loop(calibmet, **kwargs):
             gr.show(mode='DO NOT HOLD')
 
     #if rank == rank_test:
-    if calibmet in (CALIB_STD, CALIB_STD_LOCAL, CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2):
+    if True: #calibmet in (CALIB_STD, CALIB_STD_LOCAL, CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2, CALIB_CPP_V3):
         dt = 1000*arrts[1:]
         print(info_ndarr(dt, name='%s times(msec):' % s_rsc, first=0, last=100, vfmt='%0.3f'))
         dt_sel = dt[dt>0]
@@ -500,13 +507,13 @@ def selector():
     tname = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
     tnum = int(tname)
 
-    if   tname ==  '0': test_event_loop(CALIB_STD, **kwargs)
-    elif tname ==  '1': test_event_loop(CALIB_STD_LOCAL, **kwargs)
-    elif tname ==  '2': test_event_loop(CALIB_LOCAL_V2, **kwargs) # version for comparison in python
-    elif tname ==  '3': test_event_loop(CALIB_CPP_V0, **kwargs)   # version for comparison in C++
+    if   tname ==  '0': test_event_loop(CALIB_STD,       **kwargs)            # det.raw.calib - current
+    elif tname ==  '1': test_event_loop(CALIB_STD_LOCAL, **kwargs)            # the same as det.raw.calib but in this module
+    elif tname ==  '2': test_event_loop(CALIB_LOCAL_V2,  **kwargs)            # version for comparison in python
+    elif tname ==  '3': test_event_loop(CALIB_CPP_V0,    **kwargs)            # version for comparison in C++
     elif tname ==  '4': test_event_loop(CALIB_CPP_V1, cversion=1, **kwargs)   # version for comparison in C++ reshaped constants (<NPIXELS>,8)
     elif tname ==  '5': test_event_loop(CALIB_CPP_V2, cversion=2, **kwargs)   # version for comparison in C++ reshaped constants (8,<NPIXELS>)
-    elif tname ==  '6': test_event_loop(CALIB_CPP_V2, cversion=3, **kwargs)   # version for comparison in C++ reshaped constants (4,<NPIXELS>,2)
+    elif tname ==  '6': test_event_loop(CALIB_CPP_V3, cversion=3, **kwargs)   # version for comparison in C++ reshaped constants (4,<NPIXELS>,2)
 
     else:
         print(usage())
