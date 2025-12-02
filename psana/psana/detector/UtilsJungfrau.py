@@ -188,10 +188,10 @@ class DetCache():
         self.add_gain_mask()
         po = self.poff
         gm = self.gmask
-        self._logmet_init('XXXXX DetCache.add_ccons combine cached constants for cversion: %d:\n  %s\n  %s' % (\
+        self._logmet_init('DetCache.add_ccons combine cached constants for cversion %d:\n  %s\n  %s' % (\
                       self.cversion,\
-                      ndau.info_ndarr(self.poff, 'poff'),\
-                      ndau.info_ndarr(self.gmask, 'gmask')))
+                      ndau.info_ndarr(self.poff, 'poff', vfmt='%0.1f'),\
+                      ndau.info_ndarr(self.gmask, 'gmask', vfmt='%0.4f')))
         arr0 = np.zeros(self.outa.size)
 
         if self.cversion in (1,2):
@@ -212,9 +212,31 @@ class DetCache():
                             np.vstack((po[2,:].ravel(), gm[2,:].ravel())).T),
                             dtype=np.float32)
             self.ccons.shape = (4, npix, 2)
-        logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
+
+            self.check_cversion3_validity()
+        #logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
 
         #sys.exit('TEST EXIT')
+
+
+    def check_cversion3_validity(self):
+        po = self.poff
+        gm = self.gmask
+        cc = self.ccons
+
+        logger.info(ndau.info_ndarr(cc, 'ccons      ', last=10, vfmt='%0.3f'))       # shape:(4, 16777216, 2)
+        logger.info(ndau.info_ndarr(po, 'peds-offset', last=10, vfmt='%0.3f')) # shape:(3, 32, 512, 1024)
+        logger.info(ndau.info_ndarr(gm, 'gain * mask', last=10, vfmt='%0.4f')) # shape:(3, 32, 512, 1024)
+
+        assert np.array_equal(cc[0,:,0], po[0,:].ravel())
+        assert np.array_equal(cc[1,:,0], po[1,:].ravel())
+        assert np.array_equal(cc[3,:,0], po[2,:].ravel())
+
+        assert np.array_equal(cc[0,:,1], gm[0,:].ravel())
+        assert np.array_equal(cc[1,:,1], gm[1,:].ravel())
+        assert np.array_equal(cc[3,:,1], gm[2,:].ravel())
+
+        logger.info('passed check_cversion3_validity')
 
 
 def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
