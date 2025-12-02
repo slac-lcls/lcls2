@@ -149,7 +149,7 @@ while len(args.cnf) > 0:
       try:
         showhost = dd["host"]
       except:
-        showhost = "none"
+        showhost = ""
 
       try:
         showhutch = config["hutch"]
@@ -168,7 +168,13 @@ while len(args.cnf) > 0:
         except:
           report_error('lanemask error')
         else:
-          xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16} {args2.D[0]:16} 0x{lanemask:02x}'
+          showtype = args2.D[0]
+          if len(showtype) > 16:
+            showtype = showtype[0:13] + '...'
+          xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16} {showtype:16} 0x{lanemask:02x}'
+          sortme.append(xx)
+      elif dd["cmd"].startswith("ami") or  dd["cmd"].startswith("control"):
+          xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16}'
           sortme.append(xx)
 
 # sort then print
