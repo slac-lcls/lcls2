@@ -141,7 +141,8 @@ time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, 
 }
 
 
-time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
+//time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out)
+time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const sizeb_t& size, const sizeb_t& size_blk, out_t *out)
 {
   // V3 - assuming that
   // * constants are defined as cc[4][<number-of-pixels>][2] - Rick's shape,
@@ -153,11 +154,11 @@ time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, 
   time_point_t t0 = time_now();
   //size_t icc;
   uint32_t icc;
-  uint32_t size32b = size;
   uint16_t rawt;
-  for (uint32_t i=0; i<size32b; ++i) {
+  for (sizeb_t i=0; i<size; ++i) {
     rawt = raw[i];
-    icc = 2*(i + size*((rawt >> BSH) & 0x3)); // index of calibration constants of V3
+    icc = 2*(i + size*(rawt >> BSH)); // index of calibration constants of V3
+    //icc = 2*(i + size*((rawt >> BSH) & 0x3)); // index of calibration constants of V3
     //std::cout << "  peds-offset:" << cc[icc] << " gain:" << cc[icc+1] << std::endl;
     out[i] = ((rawt & MDA) - cc[icc]) * cc[icc+1];
   }

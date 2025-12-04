@@ -30,6 +30,7 @@ typedef float    gain_t;
 typedef float    out_t;
 typedef float    cc_t;
 typedef uint8_t  mask_t;
+typedef uint32_t sizeb_t;
 
 #define NGRINDS 4
 #define NPIXELS 16777216
@@ -49,9 +50,8 @@ typedef uint8_t  mask_t;
   time_t calib_jungfrau_v0(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask, const size_t& size, out_t *out);
   time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
   time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
-  time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
+  time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const sizeb_t& npix, const sizeb_t& size_blk, out_t *out);
   time_t calib_jungfrau_v3_struct(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
-  //time_t calib_jungfrau_v3_inds(const rawd_t *raw, const cc_t *cc, const size_t& size, const size_t& size_blk, out_t *out);
 
   class CalibConsSingleton{
   public:
