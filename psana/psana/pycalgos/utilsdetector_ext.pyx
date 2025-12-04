@@ -31,6 +31,7 @@ cimport libc.stdint as si
 #ctypedef si.uint32_t  size_t
 #ctypedef unsigned     size_t;
 
+ctypedef cnp.uint32_t  sizeb_t;
 ctypedef si.uint8_t    mask_t;
 ctypedef cnp.uint16_t  rawd_t;
 ctypedef cnp.float32_t peds_t;
@@ -66,7 +67,7 @@ cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
 
 cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     cnp.double_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc,
-                           const size_t& size, const size_t& size_blk, out_t *out) except +
+                           const sizeb_t& size, const sizeb_t& size_blk, out_t *out) except +
 
 
 def cy_calib_std(cnp.ndarray[rawd_t, ndim=1] raw,
@@ -89,7 +90,7 @@ def cy_calib_jungfrau_v0(cnp.ndarray[rawd_t, ndim=1] raw,
 
 
 def cy_calib_jungfrau_v1(cnp.ndarray[rawd_t, ndim=1] raw,
-                 cnp.ndarray[peds_t, ndim=1] cc,
+                 cnp.ndarray[cc_t, ndim=1] cc,
 		 size_t size,
 		 size_t size_blk,
 		 cnp.ndarray[out_t, ndim=1] out):
@@ -97,7 +98,7 @@ def cy_calib_jungfrau_v1(cnp.ndarray[rawd_t, ndim=1] raw,
 
 
 def cy_calib_jungfrau_v2(cnp.ndarray[rawd_t, ndim=1] raw,
-                 cnp.ndarray[peds_t, ndim=1] cc,
+                 cnp.ndarray[cc_t, ndim=1] cc,
 		 size_t size,
 		 size_t size_blk,
 		 cnp.ndarray[out_t, ndim=1] out):
@@ -105,9 +106,9 @@ def cy_calib_jungfrau_v2(cnp.ndarray[rawd_t, ndim=1] raw,
 
 
 def cy_calib_jungfrau_v3(cnp.ndarray[rawd_t, ndim=1] raw,
-                 cnp.ndarray[peds_t, ndim=1] cc,
-		 size_t size,
-		 size_t size_blk,
+                 cnp.ndarray[cc_t, ndim=1] cc,
+		 sizeb_t size,
+		 sizeb_t size_blk,
 		 cnp.ndarray[out_t, ndim=1] out):
     return calib_jungfrau_v3(&raw[0], &cc[0], size, size_blk, &out[0]) # returns double time, us
 
