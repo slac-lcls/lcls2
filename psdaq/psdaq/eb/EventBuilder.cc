@@ -523,7 +523,7 @@ void EventBuilder::process(const EbDgram*    buffer,
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
     imm++;
-    if ((ctrb > end) || (i == _maxEntries - 1))
+    if ((ctrb >= end) || (i == _maxEntries - 1))
     {
       static unsigned errCnt = 0;
       if (errCnt++ < 5) {
