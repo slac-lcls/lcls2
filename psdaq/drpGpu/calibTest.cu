@@ -1008,11 +1008,15 @@ int main(int argc, char **argv)
     }
   }
 
+  // Determine the processing resources to use.  Slightly better times seem to
+  // be achieved when nPixels/stride is an integer.  Adjusting nBlocks for this
+  // might lead to a partially used SM.  Aim for maximum occupancy.
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
   const auto tpMP{prop.maxThreadsPerMultiProcessor};
-  printf("GPU threads per SM: %u, total threads: %u, SMs %.1f, pixels per thread: %u\n",
-         tpMP, nBlocks * nGpuThreads, float(nBlocks * nGpuThreads) / tpMP, nPixels / (nBlocks * nGpuThreads));
+  const auto stride{nBlocks * nGpuThreads};
+  printf("GPU threads per SM: %d, total threads: %u, SMs %.1f, pixels per thread: %.1f\n",
+         tpMP, stride, float(stride) / tpMP, float(nPixels) / stride);
 
   const auto nSMs{(nBlocks * nGpuThreads + tpMP-1) / tpMP};
   const auto shSize{nGpuThreads * (/*sizeof(uint16_t) +*/ (1 << GainBits) * (sizeof(pedestals[0][0]) + sizeof(gains[0][0])))};
