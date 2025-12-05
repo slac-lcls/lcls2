@@ -95,7 +95,7 @@ parser.add_argument("cnf", default=None, help="daq configuration file", nargs='+
 
 args = parser.parse_args()
 
-sortme = []
+inuse_list = []
 
 while len(args.cnf) > 0:
     configfile = args.cnf.pop()
@@ -138,7 +138,6 @@ while len(args.cnf) > 0:
       print(config['procmgr_config'])
       print('-----------------------------------------------------')
 
-    # create an unsorted list
     for dd in config['procmgr_config']:
       parser2 = argparse.ArgumentParser()
       parser2.add_argument("-D", nargs=1, type=str)
@@ -156,6 +155,9 @@ while len(args.cnf) > 0:
       except:
         showhutch = "none"
 
+      if (showhutch == "bad"):
+        continue
+
       try:
         showstation = config["station"]
       except:
@@ -172,13 +174,13 @@ while len(args.cnf) > 0:
           if len(showtype) > 16:
             showtype = showtype[0:13] + '...'
           xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16} {showtype:16} 0x{lanemask:02x}'
-          sortme.append(xx)
-      elif dd["cmd"].startswith("ami") or  dd["cmd"].startswith("control"):
+          inuse_list.append(xx)
+      else:
           xx =  f'{showhost:18} {showhutch}:{showstation} {dd["id"]:16}'
-          sortme.append(xx)
+          inuse_list.append(xx)
 
 # sort then print
-for yy in sorted(sortme):
+for yy in sorted(inuse_list):
   print(yy)
 
 sys.exit(errorCount > 0)
