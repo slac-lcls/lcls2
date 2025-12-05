@@ -644,6 +644,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Set up signal handler
+    initShutdownSignals(para.alias, [](){ exit(0); });
+
     para.batchSize = 1; // Max # of DMA buffers queued for freeing - Must be a power of 2
     para.maxTrSize = 256 * 1024;
     try {
