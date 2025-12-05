@@ -10,11 +10,11 @@
 namespace Drp {
   namespace Gpu {
 
-    enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
-    enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
-           EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
-           FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
-           ReducerNamesIndex };         // index for xtc NamesId
+enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
+enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
+       EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
+       FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
+       ReducerNamesIndex };         // index for xtc NamesId
 
 class Detector : public Drp::Detector
 {
@@ -50,6 +50,16 @@ public:
     return reinterpret_cast<Pds::TimingHeader*>(&dsc[DmaDscWords]);
   }
 
+  //// Device methods can't be virtual due to the vtable not containing device pointers
+  //__device__ void calibrate(float*    const calib,
+  //                          uint16_t* const raw,
+  //                          unsigned  const count,
+  //                          unsigned  const nPanels,
+  //                          unsigned  const rangeOffset,
+  //                          unsigned  const rangeBits) const;
+  virtual unsigned rangeOffset() const = 0;
+  virtual unsigned rangeBits()   const = 0;
+
   virtual void recordGraph(cudaStream_t&         stream,
                            const unsigned&       index_d,
                            const unsigned        panel,
@@ -77,6 +87,9 @@ protected:
 protected:
   std::vector<Parameters>     m_params;
   std::vector<Drp::Detector*> m_dets;
+public: // @todo: fix this
+  float**                     m_pedArr_d;  // [nPanels][NRanges * NPixels]
+  float**                     m_gainArr_d; // [nPanels][NRanges * NPixels]
 };
 
   } // Gpu

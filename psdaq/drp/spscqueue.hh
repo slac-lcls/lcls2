@@ -65,7 +65,7 @@ public:
             m_condition.wait(lock, [this] {
                 return !is_empty() || m_terminate.load(std::memory_order_acquire);
             });
-            if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
+            if (m_terminate.load(std::memory_order_acquire)) { // && is_empty()) {
                 return false;
             }
         }

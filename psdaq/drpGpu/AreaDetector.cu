@@ -115,6 +115,20 @@ void AreaDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t c
   // @todo: Deal with prescaled raw or calibrated data for each panel here?
 }
 
+//__device__ void AreaDetector::calibrate(float*    const calib,
+//                                        uint16_t* const raw,
+//                                        unsigned  const count,
+//                                        unsigned  const nFpgas) const
+//{
+//  auto const tid    = blockDim.x * blockIdx.x + threadIdx.x;
+//  auto const stride = gridDim.x * blockDim.x;
+//  auto const fpga   = tid / (stride / nFpgas);  // Split the FPGA handling evenly across the allocated threads
+//
+//  for (auto i = tid; i < count; i += stride) {
+//    calib[fpga * nFpgas + i] = float(raw[i]);
+//  }
+//}
+
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
                                   const size_t                       calibBufsCnt,

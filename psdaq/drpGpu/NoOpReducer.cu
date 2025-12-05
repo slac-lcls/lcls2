@@ -66,8 +66,8 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
                               uint8_t    * const dataBuffers,
                               const size_t       dataBufsCnt)
 {
-  int threads = 1024;
-  int blocks  = (calibBufsCnt + threads-1) / threads; // @todo: Limit this?
+  int threads = 32; //1024;
+  int blocks  = 20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
   _noOpReduce<<<blocks, threads, 0, stream>>>(index,
                                               calibBuffers,
                                               calibBufsCnt,

@@ -90,7 +90,7 @@ private:
   Detector&                  m_det;
   std::atomic<bool>          m_terminate;
   cuda::atomic<uint8_t>*     m_terminate_d;
-  std::vector<Reader>        m_readers;        // One reader per panel
+  std::shared_ptr<Reader>    m_reader;
   std::unique_ptr<Collector> m_collector;
   std::unique_ptr<Reducer>   m_reducer;
   std::thread                m_collectorThread;

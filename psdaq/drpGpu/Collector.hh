@@ -57,7 +57,7 @@ struct CollectorMetrics
 class Collector
 {
 public:
-  Collector(const Parameters&, MemPoolGpu&, std::vector<Reader>&, Pds::Trg::TriggerPrimitive*,
+  Collector(const Parameters&, MemPoolGpu&, const std::shared_ptr<Reader>&, Pds::Trg::TriggerPrimitive*,
             const std::atomic<bool>& terminate, const cuda::atomic<uint8_t>& terminate_d);
   ~Collector(); // = default;
   void start();
@@ -78,8 +78,7 @@ private:
   const cuda::atomic<uint8_t>& m_terminate_d;
   cudaStream_t                 m_stream;
   cudaGraphExec_t              m_graphExec;
-  std::vector<RingIndexDtoD*>  m_readerQueues_h; // A host vector of [nPanels]
-  RingIndexDtoD*               m_readerQueues_d; // A device pointer to [nPanels]
+  Ptr<RingIndexDtoD>&          m_readerQueue;
   Ptr<RingIndexDtoH>           m_collectorQueue;
   unsigned*                    m_head;
   unsigned*                    m_tail;

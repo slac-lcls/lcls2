@@ -53,32 +53,16 @@ public:
     chkError(cudaFreeHost(m_tail_h));
   }
 
-  __device__ unsigned prepare(unsigned instance)         // Return next index in monotonic fashion
+  __device__ unsigned prepare()                          // Return next index in monotonic fashion
   {
-    //printf("###   DtoD rb::prepare 1, instance %d\n", instance);
-    //printf("###   DtoD rb::prepare 1, cursor %d\n", m_cursor->load());
-    //printf("###   DtoD rb::prepare 1, dmaMsk %08x\n", m_dmaBufMask);
-    auto idx = m_cursor->load(cuda::memory_order_acquire);
-    while ((idx & m_dmaBufMask) != instance) {           // Await this stream's turn
-      //printf("###   DtoD rb::prepare 1.%d idx %d\n", instance, idx);
-      if (m_terminate_d.load(cuda::memory_order_acquire))
-        break;
-      //__nanosleep(5000);                                 // Suspend the thread
-      idx = m_cursor->load(cuda::memory_order_acquire);  // Refresh idx
-    }
-    //printf("###   DtoD rb::prepare 2.%d, idx %d, dmaMsk %08x\n", instance, idx, m_dmaBufMask);
+    auto idx  = m_head_d->load(cuda::memory_order_acquire);
     auto next = (idx+1)&(m_capacity-1);
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
-    //printf("###   DtoD rb::prepare 3.%d, nxt %d, tail %d\n", instance, next, tail);
     while (next == tail) {                               // Wait for tail to advance while full
       if (m_terminate_d.load(cuda::memory_order_acquire))
         break;
-      //__nanosleep(5000);                                 // Suspend the thread
       tail = m_tail_d->load(cuda::memory_order_acquire); // Refresh tail
     }
-    //printf("###   DtoD rb::prepare 4.%d, tail %d\n", instance, m_tail_d->load());
-    m_cursor->store(next, cuda::memory_order_release);   // Let next stream go
-    //printf("###   DtoD rb::prepare 5.%d, cursor %d, tail %d, head %d, ret %d\n", instance, m_cursor->load(), tail, m_head_d->load(), idx);
     return idx;                                          // Caller now fills buffer[idx]
   }
 

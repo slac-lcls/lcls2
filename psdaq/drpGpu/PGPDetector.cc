@@ -441,15 +441,13 @@ std::string PGPDrp::configure(const json& msg)
   //printf("*** PGPDrp: trgPrm->size %zu\n", trgPrimitive->size());
   auto tpSz = trgPrimitive ? trgPrimitive->size() : 0;
 
-  // Set up a Reader per PGP card (panel) to receive DMAed data and calibrate it
-  for (unsigned i = 0; i < memPool.panels().size(); ++i) {
-    m_readers.emplace_back(i, m_para, memPool, m_det, tpSz, *m_terminate_d);
-  }
+  // Set up a Reader to receive DMAed data and calibrate it
+  m_reader = std::make_shared<Reader>(m_para, memPool, m_det, tpSz, *m_terminate_d);
 
   // Create the event building collector, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_collector = std::make_unique<Collector>(m_para, memPool, m_readers, trgPrimitive, m_terminate, *m_terminate_d);
+  m_collector = std::make_unique<Collector>(m_para, memPool, m_reader, trgPrimitive, m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
@@ -494,7 +492,7 @@ unsigned PGPDrp::unconfigure()
   printf("*** PGPDrp::unconfigure 5\n");
   m_collector.reset();
   printf("*** PGPDrp::unconfigure 6\n");
-  m_readers.clear();
+  m_reader.reset();
   printf("*** PGPDrp::unconfigure 7\n");
 
   return 0;
@@ -582,10 +580,8 @@ void PGPDrp::_collector()
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
 
-  // Start the PGP readers on the GPU
-  for (auto& reader : m_readers) {
-    reader.start();
-  }
+  // Start the PGP reader on the GPU
+  m_reader->start();
 
   // Start the Collector on the GPU
   m_collector->start();
@@ -618,6 +614,7 @@ void PGPDrp::_collector()
         continue;                       // Skip broken event
 
       auto pid = timingHeader->pulseId();
+      //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
       if (pid <= lastPid)
         logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
       lastPid = pid;
@@ -652,12 +649,14 @@ void PGPDrp::_collector()
       if (transitionId == TransitionId::L1Accept) {
         // @todo: Can event() here help with prescaled raw/calibrated data?
         //m_det.event(dgram, bufEnd);
+        //const auto p = (uint32_t*)&timingHeader[1];
+        //printf("*** P: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
         if (trgPrimitive) { // else this DRP doesn't provide TEB input
           // Copy the TEB input data from the GPU into the TEB input datagram
           auto tpSz = trgPrimitive->size();
           const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
           auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
-          memcpy(buf, &timingHeader[1], tpSz); // @todo: cudaMemcpy() needed?
+          memcpy(buf, &timingHeader[1], tpSz);
         }
       } else {  // Transition
         logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
@@ -688,7 +687,7 @@ void PGPDrp::_collector()
       }
 
       // Post level-3 input datagram to the TEB
-      //printf("*** Collector: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
+      //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
       tebContributor().process(pebbleIndex);
 
       // Time out batches for the TEB
@@ -704,7 +703,7 @@ void PGPDrp::_collector()
     }
   }
 
-  // Flush the PGP Reader buffers
+  // Flush the Reader buffers
   // @todo: dmaFlush();
   pool.flushPebble();
 

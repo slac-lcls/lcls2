@@ -16,6 +16,8 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
                               const unsigned&                     index,
                               const size_t                        nPanels)
 {
+  //printf("*** T: idx %u\n", index);
+
   // Analyze calibBuffers for all panels to determine TEB input data for the trigger
   //float* __restrict__ calibBuf = &calibBuffers[index * calibBufsCnt]; // nPanels * nElements of data follow
 
@@ -23,12 +25,15 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
   const uint32_t write_  { 0xdeadbeef };
   const uint32_t monitor_{ 0x12345678 };
 
+  // @todo: Maybe out should point directly to where the trigger input data should go?
   constexpr unsigned     tebInpOs = (sizeof(DmaDsc) + sizeof(TimingHeader)) / sizeof(**out);
   uint32_t* __restrict__ tebInp   = &out[0][index * outBufsCnt + tebInpOs];   // Only panel 0 receives the summary
   // @todo: Need a __host__ ctor for TmoTebData?
   //new(tebInp) TmoTebData(write_, monitor_);        // Must be no larger than size()
   tebInp[0] = write_;
   tebInp[1] = monitor_;
+
+  //printf("*** T: Done with idx %u\n", index);
 }
 
 // This method presumes that it is being called while the stream is in capture mode
