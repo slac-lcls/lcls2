@@ -73,7 +73,3 @@ fi
 
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
-
-# For GPU builds, until a better solution is found
-export CUSZ_DIR=/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ
-export cuSZp_DIR=/cds/home/c/claus/git/cuSZp/install/cmake
