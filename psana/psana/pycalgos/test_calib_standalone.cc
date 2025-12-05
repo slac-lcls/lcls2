@@ -6,6 +6,7 @@
 // cd .../lcls2/psana/psana/pycalgos/
 // ./test_make_data_for_standalone.py 1 #  make binary file with calib constants
 // ./test_make_data_for_standalone.py 2 #  make binary file with raw data
+// ./test_make_data_for_standalone.py   #  make BOTH calib constants and raw data files
 // ./test_calib_standalone
 // mpirun -n 2 ./test_calib_standalone
 
@@ -111,6 +112,7 @@ void check_file_is_available(const std::string& filename) {
     return;
   }
   cout << "NOT AVAILABLE FILE: " << filename << endl;
+  cout << "Before running this test try command:\n  ./test_make_data_for_standalone.py\nto make calib constants and data in tmp files" << endl;
   exit(EXIT_FAILURE);
 }
 

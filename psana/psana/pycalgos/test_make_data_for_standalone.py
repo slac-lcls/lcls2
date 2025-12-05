@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 """
-   ./test_make_data_for_standalone.py 0      # test
+   ./test_make_data_for_standalone.py 0      # test raw in event loop
    ./test_make_data_for_standalone.py 1      # save calib constants in tmp file
    ./test_make_data_for_standalone.py 2      # save raw data for  100 events in tmp file
    ./test_make_data_for_standalone.py 2 6500 # save raw data for 6500 events in tmp file
+   ./test_make_data_for_standalone.py        # save both calib constants and data in tmp file
+2025-12-05 - created
 """
 import sys
 from psana.detector.NDArrUtils import info_ndarr
@@ -11,7 +13,12 @@ from psana.detector.NDArrUtils import info_ndarr
 def ds_run_det(exp='mfx100848724', runnum=51, detname='jungfrau'):
     """2025-12-01 created by Chris to generate data file for standalone test of calib"""
     from psana import DataSource
-    ds = DataSource(exp=exp, run=runnum)
+    print('ds_run_det for exp: %s runnum: %d detname: %s' % (exp, runnum, detname))
+    try:
+      ds = DataSource(exp=exp, run=runnum)
+    except:
+      print('DataSource IS NOT AVAILABLE')
+      sys.exit()
     run = next(ds.runs())
     det = run.Detector(detname)
     return ds, run, det
@@ -19,6 +26,7 @@ def ds_run_det(exp='mfx100848724', runnum=51, detname='jungfrau'):
 
 def raw_in_event_loop(events=10):
     """2025-12-02 prints raw in the event loop"""
+    print('\ntest raw_in_event_loop\n')
     ds, run, det = ds_run_det()
     for nevt,evt in enumerate(run.events()):
         raw = det.raw.raw(evt)
@@ -28,7 +36,7 @@ def raw_in_event_loop(events=10):
 
 def make_data(events=100, fname='/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo/cpojunk.dat'):
     """2025-12-01 created by Chris to generate data file for standalone test of calib"""
-    print('in make_data')
+    print('\nin make_data\n')
     from psana.detector.Utils import selected_record
     ds, run, det = ds_run_det()
     outfile = open(fname,'w')
@@ -56,7 +64,7 @@ def tmp_filename(fname=None, suffix='_calib_constants.dat'):
 
 def make_calibcons(cversion=3, fname='calibcons_v3.dat'):
     """2025-12-01 savea calib constants for calib of version cversion 1/2/3"""
-    print('in make_calibcons cversion:%d' % cversion)
+    print('\nin make_calibcons cversion:%d\n' % cversion)
 
     import psana.detector.UtilsJungfrau as uj
     import logging
@@ -78,11 +86,14 @@ def make_calibcons(cversion=3, fname='calibcons_v3.dat'):
 
 
 if __name__ == "__main__":
-    tname = sys.argv[1] if len(sys.argv)>1 else '1'
+    tname = sys.argv[1] if len(sys.argv)>1 else '3'
     events = int(sys.argv[2]) if len(sys.argv)>2 else 100
     if   tname == '0': raw_in_event_loop(events=10)
     elif tname == '1': make_calibcons(cversion=3, fname=tmp_filename(fname='calibcons_v3.dat'))
     elif tname == '2': make_data(events=events,   fname=tmp_filename(fname='raw_data_mfx100848724_r051_e%06d.dat' % events))
+    elif tname == '3': # make both calibconstants and data
+        make_calibcons(cversion=3, fname=tmp_filename(fname='calibcons_v3.dat'))
+        make_data(events=events,   fname=tmp_filename(fname='raw_data_mfx100848724_r051_e%06d.dat' % events))
     else: exit('\nTEST "%s" IS NOT IMPLEMENTED' % tname)
 
 # EOF
