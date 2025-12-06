@@ -296,7 +296,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
   while (false); //(!done);
 
   // Relaunch the graph
-  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  if (tid == 0)  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
 #endif // PERSISTENT_KERNEL
 }
 
