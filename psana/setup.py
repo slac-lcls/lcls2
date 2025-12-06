@@ -191,6 +191,14 @@ if 'PSANA' in BUILD_LIST :
         ]
     }
 
+    ext = Extension("psana.detector._jungfrau_calib",
+                    sources=["psana/detector/_jungfrau_calib.pyx"],
+                    include_dirs=[np.get_include()],
+                    extra_compile_args=extra_c_compile_args,
+                    extra_link_args=extra_link_args,
+    )
+    CYTHON_EXTS.append(ext)
+
 
 if 'SHMEM' in BUILD_LIST and sys.platform != 'darwin':
     ext = Extension('shmem',

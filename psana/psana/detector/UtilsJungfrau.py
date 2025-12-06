@@ -34,6 +34,11 @@ import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as up
 import psana.detector.UtilsCommonMode as ucm
 
+try:
+    from psana.detector import _jungfrau_calib
+except ImportError:
+    _jungfrau_calib = None
+
 info_ndarr = ndau.info_ndarr
 
 BW1 =  0o40000 # 16384 or 1<<14 (15-th bit starting from 1)
@@ -92,6 +97,10 @@ class DetCache():
         self.gmask = None # gfac * mask
         self.ccons = None # combined calibration constants, content controlled by cversion
         self.loop_banks = True
+        self.poff_cpp = None
+        self.gfac_cpp = None
+        self.mask_cpp = None
+        self._cpp_ready = False
         self._logmet_init = kwa.get('logmet_init', logger.debug)
         self.cversion = kwa.get('cversion', 0) # numerated version of cached constants
         self.add_calibcons(det, evt)
@@ -110,12 +119,14 @@ class DetCache():
 
         self.detname = det._det_name
         self.inds    = det._sorted_segment_inds # det._segment_numbers
+        self.npanels = len(self.inds) if self.inds is not None else 0
         self.calibc  = det._calibconst
         logmet_init = self._logmet_init
 
         logmet_init('%s add_calibcons for _det_name: %s %s' % (30*'_', self.detname, 30*'_'))
+        raw_data = det.raw(evt)
         logmet_init('\n  _sorted_segment_inds: %s' % str(self.inds)\
-                   + ndau.info_ndarr(det.raw(evt), '\n  raw(evt)')
+                   + ndau.info_ndarr(raw_data, '\n  raw(evt)')
                     )
         if is_true(self.calibc is None, 'det._calibconst is None > CALIB CONSTANTS ARE NOT AVAILABLE FOR %s' % self.detname,\
                    logger_method=logger.warning): return
@@ -145,7 +156,10 @@ class DetCache():
                                                   logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
-        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32)
+        if raw_data is not None:
+            self.outa = np.zeros_like(raw_data, dtype=np.float32)
+        else:
+            self.outa = np.zeros(peds.shape[-3:], dtype=np.float32)
 
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
@@ -173,9 +187,55 @@ class DetCache():
 
     def add_gain_mask(self):
         """adds product of gain factor and mask: self.gmask = gfac*mask"""
+        if self.mask is None:
+            self.gmask = np.copy(self.gfac)
+            return
         self.gmask = np.empty_like(self.gfac)
         for i in range(3):
             self.gmask[i,:] = self.gfac[i,:] * self.mask
+
+    def _panel_stack_axis1(self, arr):
+        """Return array reordered to match raw panel order along axis 1."""
+        if arr is None or not self.inds:
+            return arr
+        slices = []
+        axis_len = arr.shape[1]
+        for seg in self.inds:
+            iseg = int(seg)
+            if iseg >= axis_len:
+                iseg = 0
+            slices.append(arr[:, iseg, ...])
+        return np.stack(slices, axis=1)
+
+    def _panel_stack_axis0(self, arr):
+        """Return array reordered to match raw panel order along axis 0."""
+        if arr is None or not self.inds:
+            return arr
+        slices = []
+        axis_len = arr.shape[0]
+        for seg in self.inds:
+            iseg = int(seg)
+            if iseg >= axis_len:
+                iseg = 0
+            slices.append(arr[iseg, ...])
+        return np.stack(slices, axis=0)
+
+    def prepare_cpp_constants(self):
+        """Prepare contiguously ordered arrays for the compiled calibrator."""
+        if self._cpp_ready or self.poff is None or self.gfac is None:
+            return
+        po = self._panel_stack_axis1(self.poff)
+        gf = self._panel_stack_axis1(self.gfac)
+        if po is None or gf is None:
+            return
+        self.poff_cpp = np.ascontiguousarray(po.astype(np.float32, copy=False))
+        self.gfac_cpp = np.ascontiguousarray(gf.astype(np.float32, copy=False))
+        mask_sel = self._panel_stack_axis0(self.mask)
+        if mask_sel is not None:
+            self.mask_cpp = np.ascontiguousarray(mask_sel.astype(np.float32, copy=False))
+        else:
+            self.mask_cpp = None
+        self._cpp_ready = True
 
 
     def add_ccons(self):
@@ -186,8 +246,8 @@ class DetCache():
            ** peds = peds + offset, gain = gain * mask
         """
         self.add_gain_mask()
-        po = self.poff
-        gm = self.gmask
+        po = self._panel_stack_axis1(self.poff)
+        gm = self._panel_stack_axis1(self.gmask)
         self._logmet_init('DetCache.add_ccons combine cached constants for cversion %d:\n  %s\n  %s' % (\
                       self.cversion,\
                       ndau.info_ndarr(self.poff, 'poff', vfmt='%0.1f'),\
@@ -262,9 +322,21 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
       - nda_raw - if not None, substitutes evt.raw()
       - mbits - DEPRECATED parameter of the det.mask_comb(...)
       - mask - user defined mask passed as optional parameter
+      - use_cpp_calib - when True (default False) applies a cython-based fast path
+        that performs pedestal subtraction and gain application. The compiled
+        implementation currently skips common-mode corrections, so it is only
+        active when ``cmpars``/``cmps`` is ``None``.
     """
 
+    kwa = dict(kwa)
     logger.debug('calib_jungfrau **kwa: %s' % str(kwa))
+
+    use_cpp_requested = kwa.get('use_cpp_calib', False)
+    use_cpp = use_cpp_requested
+    if use_cpp_requested and _jungfrau_calib is None:
+        logger.warning('use_cpp_calib requested but _jungfrau_calib module is unavailable; falling back to python implementation')
+        use_cpp = False
+    kwa['use_cpp_calib'] = use_cpp
 
     nda_raw = kwa.get('nda_raw', None)
 
@@ -301,6 +373,26 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
                    +'\n    inds: segment indices: %s' % str(inds)\
                    +'\n    common mode parameters: %s' % str(cmps)\
                    +'\n    loop over segments: %s' % odc.loop_banks)
+
+    cpp_enabled = use_cpp and cmps is None and _jungfrau_calib is not None
+    if use_cpp and cmps is not None:
+        logger.debug('Common-mode parameters detected; disabling compiled Jungfrau calibration')
+
+    if cpp_enabled:
+        odc.prepare_cpp_constants()
+        if odc.poff_cpp is None or odc.gfac_cpp is None:
+            logger.debug('Compiled Jungfrau calibration not ready (missing constants); falling back to python implementation')
+            cpp_enabled = False
+        else:
+            if odc.outa is None or odc.outa.shape != arr.shape:
+                odc.outa = np.zeros_like(arr, dtype=np.float32)
+            arr_c = np.ascontiguousarray(arr)
+            _jungfrau_calib.calibrate_panels(arr_c,
+                                             odc.poff_cpp,
+                                             odc.gfac_cpp,
+                                             odc.mask_cpp,
+                                             odc.outa)
+            return odc.outa
 
     #nsegs = arr.shape[0]
     shseg = arr.shape[-2:] # (512, 1024)
