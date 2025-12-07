@@ -14,6 +14,7 @@ from psana.event import Event
 from psana.pscalib.app.calib_prefetch import calib_utils
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
+from psana.psexp.calib_xtc import load_calib_xtc
 
 from . import TransitionId
 from .envstore_manager import EnvStoreManager
@@ -110,6 +111,7 @@ class Run(object):
 
         # Calibration constant structures
         self._calib_const = None
+        self._calib_xtc_buffer = None
         """Holds calibration constants for all detectors."""
         self.dsparms.calibconst = {}
 
@@ -197,6 +199,7 @@ class Run(object):
             gc.collect()
         self._calib_const = {}
         self.dsparms.calibconst = self._calib_const
+        self._calib_xtc_buffer = None
 
     def _setup_run_calibconst(self):
         """
@@ -218,6 +221,29 @@ class Run(object):
         self.logger.debug(f"_setup_run_calibconst called {expt=} {runnum=}")
 
         self._clear_calibconst()
+
+        xtc_path = os.environ.get("PSANA_CALIB_XTC_PATH", "/dev/shm/calib.xtc2")
+        should_try_xtc = (
+            self.dsparms.use_calib_cache
+            and xtc_path
+            and os.path.exists(xtc_path)
+            and self.__class__.__name__ != "RunSerial"
+        )
+        if should_try_xtc:
+            try:
+                xtc_calib, xtc_buffer = load_calib_xtc(xtc_path)
+            except Exception as exc:
+                self.logger.warning(f"Failed to read calibration xtc {xtc_path}: {exc}")
+            else:
+                if xtc_calib:
+                    self._calib_const = xtc_calib
+                    self._calib_xtc_buffer = xtc_buffer
+                    self.dsparms.calibconst = self._calib_const
+                    self.logger.info(
+                        f"Loaded calibration constants from xtc2 cache ({xtc_path})"
+                    )
+                    return
+                self.logger.warning(f"Calibration xtc file {xtc_path} contained no entries")
 
         if self.dsparms.use_calib_cache:
             self.logger.debug("using calibration constant from shared memory, if exists")
