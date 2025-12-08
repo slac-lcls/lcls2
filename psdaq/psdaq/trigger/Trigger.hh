@@ -6,8 +6,6 @@
 #include "psdaq/eb/ResultDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
 
-#include "rapidjson/document.h"
-
 #include <nlohmann/json.hpp>
 #include <cstdint>
 #include <string>
@@ -24,7 +22,7 @@ namespace Pds {
                                   unsigned meb,
                                   size_t   nBufs) const { return 0; }
       virtual int      configure(const nlohmann::json&      connectMsg,
-                                 const rapidjson::Document& top,
+                                 const nlohmann::json&      configureMsg,
                                  const Pds::Eb::EbParams&   prms) = 0;
       virtual int      initialize(const std::vector<size_t>& inputsRegSizes,
                                   size_t                     resultsRegSize) { return 0; };

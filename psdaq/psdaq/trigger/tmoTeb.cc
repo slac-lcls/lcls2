@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <stdio.h>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 
@@ -17,7 +16,7 @@ namespace Pds {
     {
     public:
       int  configure(const json&              connectMsg,
-                     const Document&          top,
+                     const json&              configureMsg,
                      const Pds::Eb::EbParams& prms) override;
       void event(const Pds::EbDgram* const* start,
                  const Pds::EbDgram**       end,
@@ -31,13 +30,14 @@ namespace Pds {
 
 
 int Pds::Trg::TmoTeb::configure(const json& connectMsg,
-                                const Document& top,
+                                const json& configureMsg,
                                 const Pds::Eb::EbParams& prms)
 {
   int rc = 0;
+  const json& top{configureMsg["trigger_body"]};
 
 # define _FETCH(key, item)                                              \
-  if (top.HasMember(key))  item = top[key].GetUint();                   \
+  if (top.find(key) != top.end())  item = top[key];                     \
   else { fprintf(stderr, "%s:\n  Key '%s' not found\n",                 \
                  __PRETTY_FUNCTION__, key);  rc = -1; }
 

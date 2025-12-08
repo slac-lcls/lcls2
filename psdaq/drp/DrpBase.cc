@@ -1458,28 +1458,17 @@ void DrpBase::disconnect()
 
 int DrpBase::setupTriggerPrimitives(const json& body)
 {
-    using namespace rapidjson;
-
-    Document top;
     const std::string configAlias   = body["config_alias"];
     const std::string triggerConfig = body["trigger_config"];
+    const json&       top           = body["trigger_body"];
 
-    // In the following, _0 is added in prints to show the default segment number
-    logging::info("Fetching trigger info from ConfigDb %s/%s/%s_0",
-                  m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
-
-    if (Pds::Trg::fetchDocument(m_connectMsg.dump(), configAlias, triggerConfig, top))
-    {
-        logging::error("Document '%s_0' not found in ConfigDb %s/%s",
-                       triggerConfig.c_str(), m_para.instrument.c_str(), configAlias.c_str());
-        return -1;
-    }
-    bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
+    bool buildAll = (top.find("buildAll") != top.end()) && (top["buildAll"] == 1);
 
     std::string buildDets("---");
-    if (top.HasMember("buildDets"))
-        buildDets = top["buildDets"].GetString();
+    if (top.find("buildDets") != top.end())
+        buildDets = top["buildDets"];
 
+    // In the following, _0 is added in prints to show the required segment number
     if (!(buildAll || buildDets.find(m_para.detName))) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb %s/%s/%s_0",
@@ -1491,11 +1480,12 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.contractor = m_tPrms.readoutGroup;
 
-    if (!top.HasMember("soname")) {
-        logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+    if (top.find("soname") == top.end()) {
+        logging::error("Key 'soname' was not found in configDb %s/%s/%s_0",
+                       m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
         return -1;
     }
-    std::string soname(top["soname"].GetString());
+    std::string soname{top["soname"]};
     if (m_det.gpuDetector()) {
         auto found = soname.rfind('.');
         if (found == std::string::npos) {
@@ -1524,10 +1514,14 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
-    if (m_triggerPrimitive->configure(top, m_connectMsg, m_collectionId)) {
+    if (m_triggerPrimitive->configure(body, m_connectMsg, m_collectionId)) {
         logging::error("TriggerPrimitive::configure() failed");
         return -1;
     }
+
+    logging::info("Trigger configured from configDb %s/%s/%s_0 using %s",
+                  m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str(),
+                  soname.c_str());
 
     return 0;
 }

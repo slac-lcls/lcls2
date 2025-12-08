@@ -22,6 +22,7 @@ from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
                                   back_pub_port, front_rep_port, back_pull_port, fast_rep_port, \
                                   xpm_pull_port
+from psdaq.configdb.get_config import get_config_with_params
 
 report_keys = ['error', 'warning', 'fileReport']
 
@@ -2257,9 +2258,20 @@ class CollectionManager():
         if self.seqpv_name:
             logging.debug(f'condition_configure(): seqpv {self.seqpv_name} {self.seqpv_val} {seqpv_done}')
 
+        # Fetch and broadcast the trigger configDb object to all DAQ elements
+        try:
+            [db_url, db_name] = self.cfg_dbase.rsplit('/', 1)
+            trigger_body = get_config_with_params(db_url, self.instrument, db_name, self.config_alias, self.trigger_config+'_0')
+        except Exception as ex:
+            self.report_error(f'Error fetching configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0: %s' % ex)
+            return False
+        logging.debug(f'condition_configure(): Loaded configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
+
         # phase 1
         ok = self.condition_common('configure', 60000,
-                                   body={'config_alias': self.config_alias, 'trigger_config': self.trigger_config})
+                                   body={'config_alias': self.config_alias,
+                                         'trigger_config': self.trigger_config,
+                                         'trigger_body': trigger_body})
         if not ok:
             logging.error('condition_configure(): configure phase1 failed')
             return False

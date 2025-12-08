@@ -19,7 +19,6 @@
 #include <sys/msg.h>
 #include <sys/wait.h>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
 using ms_t = std::chrono::milliseconds;
@@ -37,7 +36,7 @@ namespace Pds {
                           unsigned meb,
                           size_t   nBufs) const;
       int  configure(const json&              connectMsg,
-                     const Document&          top,
+                     const json&              configureMsg,
                      const Pds::Eb::EbParams& prms) override;
       int  initialize(const std::vector<size_t>& inputsRegSize,
                       size_t                     resultsRegSize) override;
@@ -140,25 +139,26 @@ unsigned Pds::Trg::TebPyTrig::rogReserve(unsigned rog,
 }
 
 int Pds::Trg::TebPyTrig::configure(const json&              connectMsg,
-                                   const Document&          top,
+                                   const json&              configureMsg,
                                    const Pds::Eb::EbParams& prms)
 {
   int rc = 0;
+  const json& top{configureMsg["trigger_body"]};
 
   _connectMsg = connectMsg.dump();
 
-# define _FETCH(key, item, type)                                        \
-  if (top.HasMember(key))  item = top[key].type();                      \
+# define _FETCH(key, item)                                              \
+  if (top.find(key) != top.end())  item = top[key];                     \
   else { fprintf(stderr, "%s:\n  Key '%s' not found\n",                 \
                  __PRETTY_FUNCTION__, key);  rc = -1; }
 
-  _FETCH("pythonScript", _pythonScript, GetString);
+  _FETCH("pythonScript", _pythonScript);
 
   for (unsigned rog = 0; rog < Pds::Eb::NUM_READOUT_GROUPS; ++rog)
   {
     char key[40];
     snprintf(key, sizeof(key), "rogRsrvdBuf[%u]", rog);
-    _FETCH(key, _rogRsrvdBuf[rog], GetInt);
+    _FETCH(key, _rogRsrvdBuf[rog]);
   }
 
 # undef _FETCH

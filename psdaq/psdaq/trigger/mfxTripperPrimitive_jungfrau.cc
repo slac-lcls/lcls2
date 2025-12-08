@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <iostream>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 
@@ -21,9 +20,9 @@ namespace Pds {
     class MfxTripperPrimitive_jungfrau : public TriggerPrimitive
     {
     public:
-        int    configure(const Document& top,
-                         const json&     connectMsg,
-                         size_t          collectionId) override;
+        int    configure(const json& configureMsg,
+                         const json& connectMsg,
+                         size_t      collectionId) override;
         void   event(const Drp::MemPool& pool,
                      uint32_t            idx,
                      const XtcData::Xtc& ctrb,
@@ -37,9 +36,9 @@ namespace Pds {
 
 using namespace Pds::Trg;
 
-int Pds::Trg::MfxTripperPrimitive_jungfrau::configure(const Document& top,
-                                                      const json&     connectMsg,
-                                                      size_t          collectionId)
+int Pds::Trg::MfxTripperPrimitive_jungfrau::configure(const json& configureMsg,
+                                                      const json& connectMsg,
+                                                      size_t      collectionId)
 {
     return 0;
 }

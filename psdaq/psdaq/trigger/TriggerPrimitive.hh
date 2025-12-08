@@ -4,8 +4,6 @@
 #include "psdaq/service/Dl.hh"
 #include <nlohmann/json.hpp>
 
-#include "rapidjson/document.h"
-
 #ifdef __NVCC__
 #include <cuda_runtime.h>               // For cudaStream_t
 #else
@@ -33,9 +31,9 @@ namespace Pds {
     public:
       virtual ~TriggerPrimitive() {}
     public:
-      virtual int    configure(const rapidjson::Document& top,
-                               const nlohmann::json&      connectMsg,
-                               size_t                     collectionId) = 0;
+      virtual int    configure(const nlohmann::json& configureMsg,
+                               const nlohmann::json& connectMsg,
+                               size_t                collectionId) = 0;
       virtual void   event(const Drp::MemPool& pool,
                            uint32_t            index,
                            const XtcData::Xtc& contribution,
