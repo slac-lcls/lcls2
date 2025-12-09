@@ -4,7 +4,6 @@
 
 #include <cstdint>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 
@@ -14,7 +13,7 @@ namespace Pds {
     class CalibPrimitive : public TriggerPrimitive
     {
     public:
-      int    configure(const Document& top,
+      int    configure(const json&     configureMsg,
                        const json&     connectMsg,
                        size_t          collectionId) override;
       void   event(const Drp::MemPool& pool,
@@ -30,9 +29,9 @@ namespace Pds {
 
 using namespace Pds::Trg;
 
-int Pds::Trg::CalibPrimitive::configure(const Document& top,
-                                        const json&     connectMsg,
-                                        size_t          collectionId)
+int Pds::Trg::CalibPrimitive::configure(const json& configureMsg,
+                                        const json& connectMsg,
+                                        size_t      collectionId)
 {
   return 0;
 }

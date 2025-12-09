@@ -8,9 +8,9 @@ namespace Pds {
     class TmoTebPrimitive : public TriggerPrimitive
     {
     public:
-      int    configure(const rapidjson::Document& top,
-                       const nlohmann::json&      connectMsg,
-                       size_t                     collectionId) override;
+      int    configure(const nlohmann::json& configureMsg,
+                       const nlohmann::json& connectMsg,
+                       size_t                collectionId) override;
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,

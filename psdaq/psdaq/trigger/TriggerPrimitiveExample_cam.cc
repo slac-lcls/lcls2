@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <stdio.h>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 
@@ -18,9 +17,9 @@ namespace Pds {
     class TriggerPrimitiveExample_cam : public TriggerPrimitive
     {
     public:
-      int    configure(const Document& top,
-                       const json&     connectMsg,
-                       size_t          collectionId) override;
+      int    configure(const json& configureMsg,
+                       const json& connectMsg,
+                       size_t      collectionId) override;
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
@@ -38,16 +37,17 @@ namespace Pds {
 
 using namespace Pds::Trg;
 
-int Pds::Trg::TriggerPrimitiveExample_cam::configure(const Document& top,
-                                                     const json&     connectMsg,
-                                                     size_t          collectionId)
+int Pds::Trg::TriggerPrimitiveExample_cam::configure(const json& configureMsg,
+                                                     const json& connectMsg,
+                                                     size_t      collectionId)
 {
   int rc = 0;
+  const json& top{configureMsg["trigger_body"]};
 
   _counter = 0;
 
 # define _FETCH(key, item)                                              \
-  if (top.HasMember(key))  item = top[key].GetUint();                   \
+  if (top.find(key) != top.end())  item = top[key];                     \
   else { fprintf(stderr, "%s:\n  Key '%s' not found\n",                 \
                  __PRETTY_FUNCTION__, key);  rc = -1; }
 

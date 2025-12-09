@@ -1,10 +1,14 @@
 
 // 2025-12-01 created by Chris to access data from file in standalone test of calib
-// compile Rick's example: g++ -O3 -I . -o calibTest2 /sdf/home/c/claus/git/lcls2/psdaq/drpGpu/calibTest2.cc -lpthread
+// compile Rick's example: /sdf/home/c/claus/git/lcls2/psdaq/drpGpu/calibTest2.cc
 // compile this test: g++ -O3 -I . -o test_calib_standalone test_calib_standalone.cc -lpthread
 
-// .../lcls2/psana/psana/pycalgos/test_make_data_for_standalone.py 0 # make binary file with calib data
-// .../lcls2/psana/psana/pycalgos/test_make_data_for_standalone.py 1 # make binary file with calib constants
+// cd .../lcls2/psana/psana/pycalgos/
+// ./test_make_data_for_standalone.py 1 #  make binary file with calib constants
+// ./test_make_data_for_standalone.py 2 #  make binary file with raw data
+// ./test_make_data_for_standalone.py   #  make BOTH calib constants and raw data files
+// ./test_calib_standalone
+// mpirun -n 2 ./test_calib_standalone
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,9 +20,11 @@
 #include <iomanip>
 #include <cstddef>  // for size_t
 #include <stdint.h> // for uint8_t, uint16_t etc.
-
+//#include <string>
 #include <iostream> // std::cout
 #include <chrono> // time
+#include <sched.h> // sched_getcpu
+#include <fstream> // for ifstream
 
 #define time_point_t std::chrono::steady_clock::time_point
 #define time_now std::chrono::steady_clock::now
@@ -66,6 +72,18 @@ void print_sizesof() {
 }
 
 
+std::string login_name() {
+    #include <unistd.h> // For getlogin()
+    char* name = getlogin();
+    if (name != nullptr) {
+        std::cout << "Current login name: " << name << std::endl;
+    } else {
+        std::cerr << "Could not retrieve login name." << std::endl;
+    }
+    return std::string(name);
+}
+
+
 time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const sizeb_t& size, const sizeb_t& size_blk, out_t *out)
 {
   // V3 - assuming that
@@ -87,8 +105,34 @@ time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc, const sizeb_t& size,
   return duration_us(time_now() - t0).count();
 }
 
+void check_file_is_available(const std::string& filename) {
+  std::ifstream f(filename);
+  if(f.good()) {
+    cout << "use file: " << filename << endl;
+    return;
+  }
+  cout << "NOT AVAILABLE FILE: " << filename << endl;
+  cout << "Before running this test try command:\n  ./test_make_data_for_standalone.py\nto make calib constants and data in tmp files" << endl;
+  exit(EXIT_FAILURE);
+}
 
 void test_calib() {
+
+  std::string name = login_name();
+  const std::string& dir_tmp("/lscratch/" + name + "/tmp/");
+  const std::string& fname_cc(dir_tmp + "calibcons_v3.dat");
+  const std::string& fname_data(dir_tmp + "raw_data_mfx100848724_r051_e000100.dat");
+  //const std::string& fname_data("/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo/cpojunk.dat");
+
+  check_file_is_available(fname_cc);
+  check_file_is_available(fname_data);
+  //return;
+
+  int icpu = sched_getcpu();
+  std::stringstream sscpu; sscpu << "cpu-" << std::setfill('0') << std::setw(3) << std::right << icpu;
+  std::string scpu = sscpu.str();
+
+  cout << scpu << endl;
 
   unsigned events = 100;
 
@@ -101,14 +145,14 @@ void test_calib() {
   print_sizesof();
 
   cc_t* ccons = (cc_t*)malloc(sizecc*sizeof(cc_t));
-  FILE *fcc = fopen("/lscratch/dubrovin/tmp/calibcons_v3.dat","rb");
+  FILE *fcc = fopen(fname_cc.c_str(),"rb");
   lena = fread(ccons, sizeof(float), sizecc, fcc);
   printf("expected size calib cons (4*npix*2): %d\n", sizecc);
   printf("length: %d ccons[0:3]: %f %f %f %f\n", lena, ccons[0], ccons[1], ccons[2], ccons[3]);
 
   out_t* out = (out_t*)malloc(npix*sizeof(out_t));
   rawd_t* raw = (rawd_t*)malloc(npix*sizeof(rawd_t));
-  FILE *fdat = fopen("/sdf/data/lcls/ds/xpp/xpptut15/scratch/cpo/cpojunk.dat","rb");
+  FILE *fdat = fopen(fname_data.c_str(),"rb");
 
   time_dt sum_dt = 0;
   unsigned nevt = 0;
@@ -116,18 +160,25 @@ void test_calib() {
     nevt++;
     lena = fread(raw, sizeof(rawd_t), npix, fdat);
     dt_us = calib_jungfrau_v3(raw, ccons, npix, size_blk, out);
-    cout << "  evt: " << setw(3) << right << nevt << "  dt,us: " << fixed << setw(8) << setprecision(0) << dt_us << fixed << setprecision(1);
-    cout << "  raw: "; for (int i=0; i<5; i++){cout << setw(6) << right << raw[i] << ' ';}
-    cout << "  out: "; for (int i=0; i<5; i++){cout << setw(8) << right << out[i] << ' ';}; cout << '\n';
+    cout << scpu
+         << "  evt: " << setw(3) << right << nevt << "  dt,us: " << fixed << setw(8) << setprecision(0) << dt_us
+	 << fixed << setprecision(1)
+    	 << "  raw: "; for (int i=0; i<5; i++){cout << setw(6) << right << raw[i] << ' ';}
+    cout << "  out: "; for (int i=0; i<5; i++){cout << setw(8) << right << out[i] << ' ';}
+    cout << '\n';
     sum_dt += dt_us;
-    //printf("\n  evt: %04d dt,us: %8.0f", nevt, dt_us);
-    //printf("\n  raw: %5d %5d %5d %5d %5d %5d", raw[0], raw[1], raw[2], out[3], raw[4], raw[5]);
-    //printf("\n  out: %7.1f %7.1f %7.1f %7.1f %7.1f\n", out[0], out[1], out[2], out[3], out[4]);
   } while (lena>0 and nevt<events);
 
   time_dt dt_ave = sum_dt/(double)nevt;
   time_dt fr_Hz = (double)1e6/dt_ave;
-  cout << "***  <dt>,us: " << dt_ave << "  f,Hz:" << fr_Hz <<'\n';
+
+  stringstream ssres; ssres << "*** " << scpu << " events:" << nevt << "  <dt>,us: " << dt_ave << "  f,Hz: " << fr_Hz <<'\n';
+  string sres = ssres.str();
+  cout << sres;
+  FILE *file = fopen("summary.txt","a");
+  size_t reclen = fwrite(sres.c_str(), sizeof(char), sres.length(), file);
+  fclose(file);
+  cout << "see results in summary.txt" << endl;
 }
 
 

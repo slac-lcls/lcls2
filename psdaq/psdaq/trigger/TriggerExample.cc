@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <stdio.h>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 
@@ -19,14 +18,14 @@ namespace Pds {
     {
     public:
       int  configure(const json&              connectMsg,
-                     const Document&          top,
+                     const json&              configureMsg,
                      const Pds::Eb::EbParams& prms) override;
       void event(const Pds::EbDgram* const* start,
                  const Pds::EbDgram**       end,
                  Pds::Eb::ResultDgram&      result) override;
     private:
-      void  _mapIdToDet(const json&     connectMsg,
-                        const Document& top);
+      void  _mapIdToDet(const json& connectMsg,
+                        const json& configureMsg);
     private:
       unsigned _id2Det[Pds::Eb::MAX_DRPS];
     private:
@@ -39,8 +38,8 @@ namespace Pds {
 };
 
 
-void Pds::Trg::TriggerExample::_mapIdToDet(const json&     connectMsg,
-                                           const Document& top)
+void Pds::Trg::TriggerExample::_mapIdToDet(const json& connectMsg,
+                                           const json& configureMsg)
 {
   const json& body = connectMsg["body"];
 
@@ -52,23 +51,25 @@ void Pds::Trg::TriggerExample::_mapIdToDet(const json&     connectMsg,
     std::string detName    = alias.substr(0, found);
     //unsigned    detSegment = std::stoi(alias.substr(found+1, alias.size()));
 
-    if (top.HasMember(detName.c_str()))
-      _id2Det[drpId] = top[detName.c_str()].GetUint();
+    const json& top{configureMsg["trigger_body"]};
+    if (top.find(detName.c_str()) != top.end())
+      _id2Det[drpId] = top[detName.c_str()];
     else
       _id2Det[drpId] = -1;
   }
 }
 
 int Pds::Trg::TriggerExample::configure(const json&              connectMsg,
-                                        const Document&          top,
+                                        const json&              configureMsg,
                                         const Pds::Eb::EbParams& prms)
 {
-  int      rc = 0;
+  int               rc = 0;
+  const json& top{configureMsg["trigger_body"]};
 
-  _mapIdToDet(connectMsg, top);
+  _mapIdToDet(connectMsg, configureMsg);
 
 # define _FETCH(key, item)                                              \
-  if (top.HasMember(key))  item = top[key].GetUint();                   \
+  if (top.find(key) != top.end())  item = top[key];                     \
   else { fprintf(stderr, "%s:\n  Key '%s' not found\n",                 \
                  __PRETTY_FUNCTION__, key);  rc = -1; }
 

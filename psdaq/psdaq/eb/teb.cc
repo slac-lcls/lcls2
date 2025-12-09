@@ -880,9 +880,10 @@ private:
        _error(const json& msg, const std::string& errorMsg);
   int  _configure(const json& msg);
   void _unconfigure();
+  int  _setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale);
+  void _buildContract(const json& top);
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, Trigger* trigger) const;
-  void _buildContract(const Document& top);
 private:
   EbParams&                            _prms;
   const bool                           _ebPortEph;
@@ -991,16 +992,16 @@ void TebApp::handleConnect(const json& msg)
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
 }
 
-void TebApp::_buildContract(const Document& top)
+void TebApp::_buildContract(const json& top)
 {
   const json& body = _connectMsg["body"];
 
-  bool buildAll = top.HasMember("buildAll") && top["buildAll"].GetInt()==1;
+  bool buildAll = (top.find("buildAll") != top.end()) && (top["buildAll"] == 1);
   _prms.contractors.fill(0);
 
   std::string buildDets("---");
-  if (top.HasMember("buildDets"))
-    buildDets = top["buildDets"].GetString();
+  if (top.find("buildDets") != top.end())
+    buildDets = top["buildDets"];
 
   for (auto it : body["drp"].items())
   {
@@ -1017,34 +1018,24 @@ void TebApp::_buildContract(const Document& top)
   }
 }
 
-int TebApp::_configure(const json& msg)
+int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale)
 {
   int               rc = 0;
-  Document          top;
-  const std::string configAlias(msg["body"]["config_alias"]);
-  const std::string triggerConfig(msg["body"]["trigger_config"]);
-
-  // In the following, _0 is added in prints to show the default segment number
-  logging::info("Fetching trigger info from ConfigDb %s/%s/%s_0",
-                _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
-
-  if (Pds::Trg::fetchDocument(_connectMsg.dump(), configAlias, triggerConfig, top))
-  {
-    logging::error("Document '%s_0' not found in ConfigDb %s/%s",
-                   triggerConfig.c_str(), _prms.instrument.c_str(), configAlias.c_str());
-    return -1;
-  }
+  const std::string configAlias  {body["config_alias"]};
+  const std::string triggerConfig{body["trigger_config"]};
+  const json&       top          {body["trigger_body"]};
 
   if (!triggerConfig.empty())  _buildContract(top);
 
-  if (!top.HasMember("soname")) {
-    logging::error("Key 'soname' not found in Document %s", triggerConfig.c_str());
+  if (top.find("soname") == top.end()) {
+    logging::error("Key 'soname' was not found in configDb %s/%s/%s_0",
+                   _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
     return -1;
   }
-  std::string soname(top["soname"].GetString());
+  std::string soname{top["soname"]};
 
-  const std::string symbol("create_consumer");
-  Trigger* trigger = _factory.create(soname, symbol);
+  const std::string symbol{"create_consumer"};
+  trigger = _factory.create(soname, symbol);
   if (!trigger)
   {
     logging::error("Failed to create Trigger from '%s' with '%s'; try '-v'",
@@ -1052,23 +1043,40 @@ int TebApp::_configure(const json& msg)
     return -1;
   }
 
-  if (trigger->configure(_connectMsg, top, _prms))
+  if (trigger->configure(_connectMsg, body, _prms))
   {
     logging::error("Trigger::configure() failed");
     return -1;
   }
 
 # define _FETCH(key, item)                                              \
-  if (top.HasMember(key))  item = top[key].GetUint();                   \
-  else { logging::error("Key '%s' not found in Document %s",            \
-                        key, triggerConfig.c_str());                    \
+  if (top.find(key) != top.end())  item = top[key];                     \
+  else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
+                        key, _prms.instrument.c_str(),                  \
+                        configAlias.c_str(), triggerConfig.c_str());    \
          rc = -1; }
 
-  unsigned prescale;  _FETCH("prescale", prescale);
+  _FETCH("prescale", prescale);
 
 # undef _FETCH
 
-  rc = _teb->configure(trigger, prescale);
+  logging::info("Trigger configured from configDb %s/%s/%s_0 using %s",
+                _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str(),
+                soname.c_str());
+
+  return rc;
+}
+
+int TebApp::_configure(const json& msg)
+{
+  Trigger* trigger {nullptr};
+  unsigned prescale{0};
+  if (_setupTrigger(msg["body"], trigger, prescale)) {
+    logging::error("Failed to set up Trigger)");
+    return -1;
+  }
+
+  int rc = _teb->configure(trigger, prescale);
   if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);

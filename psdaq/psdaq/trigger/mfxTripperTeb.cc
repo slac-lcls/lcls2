@@ -10,7 +10,6 @@
 #include <iostream>
 #include <cstring>
 
-using namespace rapidjson;
 using json = nlohmann::json;
 
 /**
@@ -25,7 +24,7 @@ namespace Pds {
     {
     public:
         int  configure(const json&              connectMsg,
-                       const Document&          top,
+                       const json&              configureMsg,
                        const Pds::Eb::EbParams& prms) override;
         void event(const Pds::EbDgram* const* start,
                    const Pds::EbDgram**       end,
@@ -51,12 +50,13 @@ namespace Pds {
 
 
 int Pds::Trg::MfxTripperTrigger::configure(const json&              connectMsg,
-                                           const Document&          top,
+                                           const json&              configureMsg,
                                            const Pds::Eb::EbParams& prms)
 {
     int rc = 0;
-    if (top.HasMember("tripBasePV")) {
-        m_tripperPV = top["tripBasePV"].GetString();
+    const json& top{configureMsg["trigger_body"]};
+    if (top.find("tripBasePV") != top.end()) {
+        m_tripperPV = top["tripBasePV"];
         std::cout << "Using tripper base PV: " << m_tripperPV << std::endl;
     } else {
         std::cout << "Configuration requires tripBasePV to work! Check configdb!" << std::endl;
