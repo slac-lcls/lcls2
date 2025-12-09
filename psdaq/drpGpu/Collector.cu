@@ -26,12 +26,12 @@ struct col_domain{ static constexpr char const* name{"Collector"}; };
 using col_scoped_range = nvtx3::scoped_range_in<col_domain>;
 
 
-Collector::Collector(const Parameters&              para,
-                     MemPoolGpu&                    pool,
-                     const std::shared_ptr<Reader>& reader,
-                     Trg::TriggerPrimitive*         triggerPrimitive,
-                     const std::atomic<bool>&       terminate,
-                     const cuda::atomic<uint8_t>&   terminate_d) :
+Collector::Collector(const Parameters&                  para,
+                     MemPoolGpu&                        pool,
+                     const std::shared_ptr<Reader>&     reader,
+                     Trg::TriggerPrimitive*             triggerPrimitive,
+                     const std::atomic<bool>&           terminate,
+                     const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool            (pool),
   m_triggerPrimitive(triggerPrimitive),
   m_terminate       (terminate),
@@ -115,10 +115,10 @@ int Collector::_setupGraph()
 
 // This kernel collects and event builds contributions from the DMA streams
 static __global__
-void _collector(unsigned*       __restrict__ head,
-                unsigned*       __restrict__ tail,
-                RingIndexDtoD&               readerQueue,
-                const cuda::atomic<uint8_t>& terminate)
+void _collector(unsigned*             __restrict__ head,
+                unsigned*             __restrict__ tail,
+                RingIndexDtoD&                     readerQueue,
+                const cuda::std::atomic<unsigned>& terminate)
 {
   int panel = blockIdx.x * blockDim.x + threadIdx.x;
   //printf("*** C: panel %u, tail %u, head %u\n", panel, *tail, *head);
@@ -133,7 +133,7 @@ void _collector(unsigned*       __restrict__ head,
     // Get one intermediate buffer index per FPGA
     unsigned hdN;
     while ((hdN = readerQueue.consume()) == *head) { // This can block
-      if (terminate.load(cuda::memory_order_acquire))  return;
+      if (terminate.load(cuda::std::memory_order_acquire))  return;
     }
     //printf("*** C: panel %u, hdN %u\n", panel, hdN);
     if (panel == 0)  hd0 = hdN;
@@ -152,11 +152,11 @@ void _collector(unsigned*       __restrict__ head,
 
 // This will re-launch the current graph
 static __global__
-void _graphLoop(unsigned*                    idx,
-                RingIndexDtoH&               collectorQueue,
-                const cuda::atomic<uint8_t>& terminate)
+void _graphLoop(unsigned*                          idx,
+                RingIndexDtoH&                     collectorQueue,
+                const cuda::std::atomic<unsigned>& terminate)
 {
-  if (terminate.load(cuda::memory_order_acquire))  return;
+  if (terminate.load(cuda::std::memory_order_acquire))  return;
 
   // Push index to host
   *idx = collectorQueue.produce(*idx);

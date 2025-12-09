@@ -24,11 +24,11 @@ using rdr_scoped_range = nvtx3::scoped_range_in<rdr_domain>;
 //using barrier = cuda::barrier<cuda::thread_scope_block>;
 namespace cg = cooperative_groups;
 
-Reader::Reader(const Parameters&            para,
-               MemPoolGpu&                  pool,
-               Detector&                    det,
-               size_t                       trgPrimitiveSize,
-               const cuda::atomic<uint8_t>& terminate_d) :
+Reader::Reader(const Parameters&                  para,
+               MemPoolGpu&                        pool,
+               Detector&                          det,
+               size_t                             trgPrimitiveSize,
+               const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
   m_terminate_d(terminate_d),
   m_para       (para)
@@ -190,7 +190,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
                 Gpu::Detector const&                   detector,
                 unsigned      const                    rangeOffset,
                 unsigned      const                    rangeBits,
-                cuda::atomic<uint8_t> const&           terminate)
+                cuda::std::atomic<unsigned> const&     terminate)
 {
   cg::thread_block cta = cg::this_thread_block();
 
@@ -223,7 +223,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
 #endif // PERSISTENT_KERNEL
   {
     if (threadIdx.x == 0) {
-      done = terminate.load(cuda::memory_order_acquire);
+      done = terminate.load(cuda::std::memory_order_acquire);
       //if (tid == 0)  printf("*** R: done %u\n", done);
       if (done)  return; //continue;
 
@@ -293,7 +293,6 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
   while (!done);
   //if (tid == 0)  printf("*** R: returning\n");
 #else // Relaunched graph
-  while (false); //(!done);
 
   // Relaunch the graph
   if (tid == 0)  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);

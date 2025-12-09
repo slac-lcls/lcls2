@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <cuda/std/atomic>
 #include <nlohmann/json.hpp>
 #include "drp/DrpBase.hh"
 #include "drp/spscqueue.hh"
@@ -86,17 +87,17 @@ private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
   void _collector();
 private:
-  const Parameters&          m_para;
-  Detector&                  m_det;
-  std::atomic<bool>          m_terminate;
-  cuda::atomic<uint8_t>*     m_terminate_d;
-  std::shared_ptr<Reader>    m_reader;
-  std::unique_ptr<Collector> m_collector;
-  std::unique_ptr<Reducer>   m_reducer;
-  std::thread                m_collectorThread;
-  uint64_t                   m_nNoTrDgrams;
-  ReaderMetrics              m_wkrMetrics;
-  CollectorMetrics           m_colMetrics;
+  const Parameters&            m_para;
+  Detector&                    m_det;
+  std::atomic<bool>            m_terminate;
+  cuda::std::atomic<unsigned>* m_terminate_d;
+  std::shared_ptr<Reader>      m_reader;
+  std::unique_ptr<Collector>   m_collector;
+  std::unique_ptr<Reducer>     m_reducer;
+  std::thread                  m_collectorThread;
+  uint64_t                     m_nNoTrDgrams;
+  ReaderMetrics                m_wkrMetrics;
+  CollectorMetrics             m_colMetrics;
 };
 
   } // Gpu

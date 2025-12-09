@@ -475,7 +475,7 @@ unsigned PGPDrp::unconfigure()
 
   // @todo: Right place for this?
   m_terminate.store(true, std::memory_order_release);
-  chkError(cudaMemset(m_terminate_d, 1, sizeof(true))); // Write only one byte
+  chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   printf("*** PGPDrp::unconfigure 2\n");
 
   // Tear down the TebReceiver

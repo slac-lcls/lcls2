@@ -5,6 +5,7 @@
 
 #include <cuda_runtime.h>
 #include <cuda/atomic>
+#include <cuda/std/atomic>
 
 #ifndef __NVCC__
 #define __nanosleep(x) {}
@@ -16,9 +17,9 @@ namespace Drp {
 class RingIndexDtoD
 {
 public:
-  __host__ RingIndexDtoD(const unsigned               capacity,
-                         const unsigned               dmaCount,
-                         const cuda::atomic<uint8_t>& terminate_d) :
+  __host__ RingIndexDtoD(const unsigned                     capacity,
+                         const unsigned                     dmaCount,
+                         const cuda::std::atomic<unsigned>& terminate_d) :
     m_capacity   (capacity),        // Range of the buffer index [0, capacity-1]
     m_dmaBufMask (dmaCount-1),
     m_terminate_d(terminate_d)
@@ -59,7 +60,7 @@ public:
     auto next = (idx+1)&(m_capacity-1);
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
     while (next == tail) {                               // Wait for tail to advance while full
-      if (m_terminate_d.load(cuda::memory_order_acquire))
+      if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
       tail = m_tail_d->load(cuda::memory_order_acquire); // Refresh tail
     }
@@ -73,7 +74,7 @@ public:
     //printf("###   DtoD rb::produce 1.%d, idx %d, head %d\n", instance, idx, head);
     // Make sure head is published in event order so make other streams wait if they get here first
     while (idx != head) {                                // Out-of-turn streams wait here
-      if (m_terminate_d.load(cuda::memory_order_acquire))
+      if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
       //__nanosleep(5000);                                 // Suspend the thread
       head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
@@ -93,7 +94,7 @@ public:
     //printf("###   DtoD rb::consume 2, tail %d, head %d\n", tail, head);
     while (tail == head) {                               // Wait for head to advance while empty
       //printf("###   DtoD rb::consume idx %d\n", head);
-      if (m_terminate_d.load(cuda::memory_order_acquire))
+      if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
       //__nanosleep(5000);                                 // Suspend the thread
       head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
@@ -144,9 +145,9 @@ private:
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_head_d; // Must stay coherent across streams
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_h; // Must stay coherent across streams
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_d; // Must stay coherent across streams
-  const unsigned               m_capacity;
-  const unsigned               m_dmaBufMask;
-  const cuda::atomic<uint8_t>& m_terminate_d;
+  const unsigned                                     m_capacity;
+  const unsigned                                     m_dmaBufMask;
+  const cuda::std::atomic<uint32_t>&                 m_terminate_d;
 };
 
   }

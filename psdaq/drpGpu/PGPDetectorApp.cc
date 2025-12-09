@@ -446,15 +446,15 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
 #ifndef NVTX_DISABLE
-        //logging::info("%sEnabling GPU Profiler data collection%s", MAG_ON, COL_OFF);
-        //cudaProfilerStart();
+        logging::info("%sEnabling GPU Profiler data collection%s", MAG_ON, COL_OFF);
+        cudaProfilerStart();
 #endif
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
 #ifndef NVTX_DISABLE
-        //cudaProfilerStop();
-        //logging::info("%sDisabled GPU Profiler data collection%s", MAG_ON, COL_OFF);
+        cudaProfilerStop();
+        logging::info("%sDisabled GPU Profiler data collection%s", MAG_ON, COL_OFF);
 #endif
         unsigned error = m_det->disable(xtc, bufEnd, phase1Info);
         if (error) {

@@ -9,7 +9,7 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
-#include <cuda/atomic>
+#include <cuda/std/atomic>
 
 #include "drp/drp.hh"
 #include "MemPool.hh"                   // For Ptr
@@ -35,7 +35,7 @@ class Reader
 {
 public:
   Reader(const Parameters&, MemPoolGpu&, Detector&,
-         size_t trgPrimitiveSize, const cuda::atomic<uint8_t>& terminate_d);
+         size_t trgPrimitiveSize, const cuda::std::atomic<unsigned>& terminate_d);
   ~Reader();
   void start();
 public:
@@ -46,16 +46,16 @@ private:
   cudaGraph_t _recordGraph(CUdeviceptr dmaBuffer, CUdeviceptr hwWriteStart);
   void        _reader(Detector&, ReaderMetrics&);
 private:
-  MemPoolGpu&                  m_pool;
-  Ptr<Detector>                m_det;
-  const cuda::atomic<uint8_t>& m_terminate_d;
-  cudaStream_t                 m_stream;
-  cudaGraphExec_t              m_graphExec;
-  Ptr<RingIndexDtoD>           m_readerQueue;
-  unsigned*                    m_head;
-  CUdeviceptr*                 m_dmaBuffers;    // [nFpgas * dmaCount][maxDmaSize]
-  CUdeviceptr*                 m_hwWriteStarts; // [nFpgas]
-  const Parameters&            m_para;
+  MemPoolGpu&                        m_pool;
+  Ptr<Detector>                      m_det;
+  const cuda::std::atomic<unsigned>& m_terminate_d;
+  cudaStream_t                       m_stream;
+  cudaGraphExec_t                    m_graphExec;
+  Ptr<RingIndexDtoD>                 m_readerQueue;
+  unsigned*                          m_head;
+  CUdeviceptr*                       m_dmaBuffers;    // [nFpgas * dmaCount][maxDmaSize]
+  CUdeviceptr*                       m_hwWriteStarts; // [nFpgas]
+  const Parameters&                  m_para;
 };
 
   } // Gpu

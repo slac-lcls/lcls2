@@ -22,11 +22,11 @@ struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
 
 
-Reducer::Reducer(const Parameters&            para,
-                 MemPoolGpu&                  pool,
-                 Detector&                    det,
-                 const std::atomic<bool>&     terminate,
-                 const cuda::atomic<uint8_t>& terminate_d) :
+Reducer::Reducer(const Parameters&                  para,
+                 MemPoolGpu&                        pool,
+                 Detector&                          det,
+                 const std::atomic<bool>&           terminate,
+                 const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
   m_terminate  (terminate),
   m_terminate_d(terminate_d),
@@ -80,11 +80,11 @@ Reducer::Reducer(const Parameters&            para,
   m_pool.createReduceBuffers(payloadSize, headerSize);
 
   // Prepare the CUDA graphs
-  if (true) { //m_algos[0]->hasGraph()) {         // Same value for all instances
-    m_graphExecs.resize(m_streams.size());
+  if (m_algos[0]->hasGraph()) {         // Same value for all instances
+    m_graphExecs.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (_setupGraph(i)) {
-        logging::critical("Failed to set up Reducer graph");
+        logging::critical("Failed to set up Reducer graph[%u]", i);
         abort();
       }
     }
@@ -246,27 +246,27 @@ int Reducer::_setupGraph(unsigned instance)
 /** This kernel receives a message from TebReceiver that indicates which
  * calibBuffer is ready for reducing.
  */
-static __global__ void _receive(unsigned* const __restrict__ head,
-                                unsigned* const __restrict__ tail,
-                                const cuda::atomic<uint8_t>& terminate)
+static __global__ void _receive(unsigned* const       __restrict__ head,
+                                unsigned* const       __restrict__ tail,
+                                const cuda::std::atomic<unsigned>& terminate)
 {
   //printf("### _receive 1 done %d, tail %u, head %u\n", terminate.load(), *tail, *head);
 
   // Wait for the head to advance with respect to the tail
   auto t = *tail;
   while (*head == t) {
-    if (terminate.load(cuda::memory_order_acquire))  break;
+    if (terminate.load(cuda::std::memory_order_acquire))  break;
   }
   //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, terminate.load());
 }
 
 /** This will re-launch the current graph */
-static __global__ void _graphLoop(unsigned* const __restrict__ head,
-                                  unsigned* const __restrict__ tail,
-                                  const cuda::atomic<uint8_t>& terminate)
+static __global__ void _graphLoop(unsigned* const       __restrict__ head,
+                                  unsigned* const       __restrict__ tail,
+                                  const cuda::std::atomic<unsigned>& terminate)
 {
-  //printf("### Reducer graphLoop: 1, done %d, idx %u\n", terminate.load(), *index);
-  if (terminate.load(cuda::memory_order_acquire))  return;
+  //printf("### Reducer graphLoop: 1, done %d, idx %u\n", terminate.load(), *head);
+  if (terminate.load(cuda::std::memory_order_acquire))  return;
 
   //printf("### Reducer graphLoop: 2 t %u, h %u\n", *tail, *head);
 

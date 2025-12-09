@@ -7,6 +7,7 @@
 
 #include <cuda_runtime.h>
 #include <cuda/atomic>
+#include <cuda/std/atomic>
 
 #ifndef __NVCC__
 #define __nanosleep(x) {}
@@ -18,9 +19,9 @@ namespace Drp {
 class RingIndexDtoH
 {
 public:
-  __host__ RingIndexDtoH(unsigned                     capacity,
-                         const std::atomic<bool>&     terminate,
-                         const cuda::atomic<uint8_t>& terminate_d) :
+  __host__ RingIndexDtoH(unsigned                           capacity,
+                         const std::atomic<bool>&           terminate,
+                         const cuda::std::atomic<unsigned>& terminate_d) :
     m_capacity   (capacity),            // Range of the buffer index [0, capacity-1]
     m_terminate  (terminate),
     m_terminate_d(terminate_d)
@@ -76,7 +77,7 @@ public:
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
     //printf("###   DtoH rb::produce 2, nxt %d, tail %d\n", next, tail);
     while (next == tail) {                               // Wait for tail to advance while full
-      if (m_terminate_d.load(cuda::memory_order_acquire))
+      if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
       //__nanosleep(5000);                                 // Suspend the thread
       tail = m_tail_d->load(cuda::memory_order_acquire); // Refresh tail
@@ -146,9 +147,9 @@ private:
   cuda::atomic<unsigned, cuda::thread_scope_system>* m_tail_h; // Must stay coherent across device and host
   cuda::atomic<unsigned, cuda::thread_scope_system>* m_head_d; // Must stay coherent across device and host
   cuda::atomic<unsigned, cuda::thread_scope_system>* m_tail_d; // Must stay coherent across device and host
-  const unsigned               m_capacity;
-  const std::atomic<bool>&     m_terminate;
-  const cuda::atomic<uint8_t>& m_terminate_d;
+  const unsigned                                     m_capacity;
+  const std::atomic<bool>&                           m_terminate;
+  const cuda::std::atomic<unsigned>&                 m_terminate_d;
 };
 
   } // Gpu
