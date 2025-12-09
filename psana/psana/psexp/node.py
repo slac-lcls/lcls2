@@ -48,6 +48,9 @@ class Communicators(object):
     world_rank = 0
     world_size = 1
     world_group = None
+    psana_comm = None
+    psana_rank = -1
+    psana_size = 0
     smd_comm = None
     smd_rank = 0
     smd_size = 0
@@ -65,6 +68,13 @@ class Communicators(object):
     march_shm_comm = None
     march_shm_rank = 0
     march_shm_size = 0
+    node_comm = None
+    node_rank = -1
+    node_size = 0
+    node_leader_comm = None
+    node_leader_rank = -1
+    node_leader_size = 0
+    _is_node_leader = False
 
     def __init__(self):
         self.logger = utils.get_logger(name="Communicators")
@@ -93,6 +103,13 @@ class Communicators(object):
             range(self.world_size - PS_SRV_NODES, self.world_size)
         )
         self.psana_comm = self.comm.Create(self.psana_group)
+        if self.psana_comm != MPI.COMM_NULL:
+            self.psana_rank = self.psana_comm.Get_rank()
+            self.psana_size = self.psana_comm.Get_size()
+
+        self.node_comm = None
+        self.node_leader_comm = None
+        self._setup_node_comms()
 
         self.marching_enabled = marching_enabled()
         self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
@@ -167,6 +184,32 @@ class Communicators(object):
         self._report_role()
         self._report_smd_members()
 
+    def _setup_node_comms(self):
+        """Split psana ranks into per-node and node-leader communicators."""
+        if self.psana_comm == MPI.COMM_NULL:
+            return
+
+        hostname = MPI.Get_processor_name()
+        hostnames = self.psana_comm.allgather(hostname)
+        color_map = {}
+        colors = []
+        for idx, host in enumerate(hostnames):
+            if host not in color_map:
+                color_map[host] = len(color_map)
+            colors.append(color_map[host])
+
+        node_color = colors[self.psana_rank]
+        self.node_comm = self.psana_comm.Split(node_color, self.psana_rank)
+        self.node_rank = self.node_comm.Get_rank()
+        self.node_size = self.node_comm.Get_size()
+        self._is_node_leader = self.node_rank == 0
+
+        leader_color = 0 if self._is_node_leader else MPI.UNDEFINED
+        self.node_leader_comm = self.psana_comm.Split(leader_color, self.psana_rank)
+        if self.node_leader_comm != MPI.COMM_NULL:
+            self.node_leader_rank = self.node_leader_comm.Get_rank()
+            self.node_leader_size = self.node_leader_comm.Get_size()
+
     def bd_group(self):
         return self._bd_only_group
 
@@ -175,6 +218,15 @@ class Communicators(object):
 
     def node_type(self):
         return self._nodetype
+
+    def is_node_leader(self):
+        return self._is_node_leader
+
+    def get_node_comm(self):
+        return self.node_comm
+
+    def get_node_leader_comm(self):
+        return self.node_leader_comm
 
     def terminate(self):
         """Tells Smd0 to terminate the loop.

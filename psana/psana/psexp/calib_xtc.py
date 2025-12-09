@@ -212,7 +212,7 @@ def _extract_alg_fields(alg_obj) -> Dict[str, Any]:
     return values
 
 
-def load_calib_xtc(path: str = "/dev/shm/calib.xtc2") -> Tuple[Dict[str, Dict[str, Any]], bytearray]:
+def load_calib_xtc(path: str = "/dev/shm/calib.xtc2") -> Tuple[Dict[str, Dict[str, Any]], Any]:
     """
     Load calibration constants from an xtc2 file produced by CalibXtcConverter.
 
@@ -221,9 +221,19 @@ def load_calib_xtc(path: str = "/dev/shm/calib.xtc2") -> Tuple[Dict[str, Dict[st
         backing buffer keeping NumPy views alive.
     """
     blob = bytearray(Path(path).read_bytes())
-    mem = memoryview(blob)
-    config = dgram.Dgram(view=mem, offset=0)
-    payload = dgram.Dgram(config=config, view=mem, offset=config._size)
+    return load_calib_xtc_from_buffer(blob)
+
+
+def load_calib_xtc_from_buffer(buffer: Any) -> Tuple[Dict[str, Dict[str, Any]], Any]:
+    """
+    Interpret an in-memory xtc2 buffer and return calibration constants plus the owner object.
+
+    Args:
+        buffer: bytes-like object containing Configure+L1Accept dgrams
+    """
+    mv, owner = _as_memoryview(buffer)
+    config = dgram.Dgram(view=mv, offset=0)
+    payload = dgram.Dgram(config=config, view=mv, offset=config._size)
 
     calib_const: Dict[str, Dict[str, Any]] = {}
     det_names = [name for name in dir(config.software) if not name.startswith("_")]
@@ -245,4 +255,22 @@ def load_calib_xtc(path: str = "/dev/shm/calib.xtc2") -> Tuple[Dict[str, Dict[st
         if det_values:
             calib_const[det_name] = det_values
 
-    return calib_const, blob
+    return calib_const, owner
+
+
+def _as_memoryview(buffer: Any) -> Tuple[memoryview, Any]:
+    """Return a byte-format memoryview and the object keeping the data alive."""
+    if isinstance(buffer, memoryview):
+        mv = buffer
+        if mv.format != "B":
+            mv = mv.cast("B")
+        return mv, buffer
+    try:
+        mv = memoryview(buffer)
+    except TypeError:
+        tmp = bytearray(buffer)
+        mv = memoryview(tmp)
+        return mv, tmp
+    if mv.format != "B":
+        mv = mv.cast("B")
+    return mv, buffer

@@ -11,6 +11,7 @@ from psana.psexp.calib_xtc import (
     CalibXtcConverter,
     load_calib_pickle,
     load_calib_xtc,
+    load_calib_xtc_from_buffer,
     write_xtc_file,
 )
 
@@ -104,3 +105,14 @@ def test_calib_pickle_roundtrip(tmp_path):
     else:
         loaded_array = loaded_entry
     np.testing.assert_allclose(loaded_array, pedestals)
+
+    converted_buf, backing_buf = load_calib_xtc_from_buffer(memoryview(disk_bytes))
+    assert target_det in converted_buf
+    buffer_entry = converted_buf[target_det]["pedestals"]
+    if ped_meta:
+        buf_array, buf_meta = buffer_entry
+        assert buf_meta == ped_meta
+    else:
+        buf_array = buffer_entry
+    np.testing.assert_allclose(buf_array, pedestals)
+    assert backing_buf is not None

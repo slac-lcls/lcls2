@@ -20,12 +20,14 @@ from psana.psexp.node import (
     Smd0,
 )
 from psana.psexp.run import Run
+from psana.psexp.calib_xtc import load_calib_xtc_from_buffer
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode, get_smd_n_events
 from psana.psexp.marching_shmem import MarchingSharedMemory
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
+from psana.psexp.calib_xtc import CalibXtcConverter
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -80,14 +82,96 @@ class RunParallel(Run):
     def _setup_run_calibconst(self):
         if nodetype == "smd0":
             super()._setup_run_calibconst()
+            self.build_xtc_buffer(self.get_filtered_detinfo())
+            if not getattr(self, "_calib_xtc_buffer", None):
+                raise RuntimeError("Failed to build calibration xtc buffer on smd0")
         else:
-            # _setup_run_calibconst runs this
             self._clear_calibconst()
 
-        self._calib_const = self.comms.psana_comm.bcast(
-            self._calib_const, root=0
-        )
+        self._distribute_calib_xtc()
+
+    def build_xtc_buffer(self, det_info):
+        if not self._calib_const:
+            self._calib_xtc_buffer = None
+            return
+        det_info = det_info or {}
+        try:
+            converter = CalibXtcConverter(det_info)
+            config_bytes, data_bytes = converter.convert_to_bytes(self._calib_const)
+            blob = bytearray(len(config_bytes) + len(data_bytes))
+            blob[: len(config_bytes)] = config_bytes
+            blob[len(config_bytes) :] = data_bytes
+            self._calib_xtc_buffer = blob
+            self.logger.debug(
+                "Built calibration xtc buffer from pickle (%d bytes)",
+                len(self._calib_xtc_buffer),
+            )
+        except Exception as exc:
+            self.logger.warning(f"Failed to build calibration xtc buffer: {exc}")
+
+    def _distribute_calib_xtc(self):
+        node_comm = self.comms.get_node_comm()
+        leader_comm = self.comms.get_node_leader_comm()
+        if node_comm is None:
+            raise RuntimeError("Node communicator unavailable for shared calibration distribution")
+
+        is_leader = self.comms.is_node_leader()
+        leader_buffer = None
+        total_bytes = None
+
+        if leader_comm != MPI.COMM_NULL:
+            size_arr = np.array([0], dtype=np.int64) if is_leader else np.empty(1, dtype=np.int64)
+            if is_leader and nodetype == "smd0":
+                leader_buffer = np.frombuffer(self._calib_xtc_buffer, dtype=np.uint8)
+                size_arr[0] = leader_buffer.size
+
+            leader_comm.Bcast(size_arr, root=0)
+            total_bytes = int(size_arr[0])
+
+        total_bytes = node_comm.bcast(total_bytes, root=0)
+        if total_bytes <= 0:
+            if self.logger:
+                self.logger.warning("RunParallel: shared xtc broadcast reported zero bytes; clearing calibration")
+            self._calib_const = {}
+            self.dsparms.calibconst = self._calib_const
+            return
+
+        if leader_comm != MPI.COMM_NULL and is_leader:
+            if nodetype != "smd0":
+                leader_buffer = np.empty(total_bytes, dtype=np.uint8)
+            elif leader_buffer.size != total_bytes:
+                leader_buffer = leader_buffer[:total_bytes]
+            leader_comm.Bcast(leader_buffer, root=0)
+            if self.logger:
+                self.logger.debug(
+                    f"RunParallel: node leader rank {self.comms.psana_comm.Get_rank()} received {total_bytes} bytes from smd0"
+                )
+
+        win = MPI.Win.Allocate_shared(total_bytes if is_leader else 0, 1, comm=node_comm)
+        buf, _ = win.Shared_query(0)
+        shared_array = np.ndarray(buffer=buf, dtype=np.uint8, shape=(total_bytes,))
+        if is_leader:
+            if leader_buffer is None:
+                raise RuntimeError("Leader buffer missing during shared memory population")
+            shared_array[:] = leader_buffer
+            if self.logger:
+                self.logger.debug(
+                    f"RunParallel: node leader rank {self.comms.psana_comm.Get_rank()} populated shared memory ({total_bytes} bytes)"
+                )
+        node_comm.Barrier()
+
+        shared_view = memoryview(shared_array)
+        calib_const, owner = load_calib_xtc_from_buffer(shared_view)
+        self._calib_const = calib_const
+        self._calib_xtc_buffer = owner
+        self._calib_xtc_shared = shared_array
+        self._calib_xtc_win = win
         self.dsparms.calibconst = self._calib_const
+        if self.logger:
+            path = "shared memory leader" if is_leader else "shared memory follower"
+            self.logger.debug(
+                f"RunParallel: rank {self.comms.psana_comm.Get_rank()} loaded calibration via {path}"
+            )
 
     def _init_marching_shared_buffers(self):
         if not (
