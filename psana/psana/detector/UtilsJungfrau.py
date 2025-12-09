@@ -329,6 +329,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     """
 
     kwa = dict(kwa)
+    _t0_calib = time()
     logger.debug('calib_jungfrau **kwa: %s' % str(kwa))
 
     use_cpp_requested = kwa.get('use_cpp_calib', False)
@@ -343,7 +344,9 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
     arr = det.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
 
     if is_true(arr is None, 'det.raw(evt) and nda_raw are None, return None',\
-               logger_method = logger.warning): return None
+               logger_method = logger.warning):
+        print(f"[{det._det_name}] calib_jungfrau time (no data): {time() - _t0_calib:.6f} s")
+        return None
 
     odc = det._odc # cache.detcache_for_detname(det._det_name)
     first_entry = odc is None
@@ -352,7 +355,9 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
         det._odc = odc = DetCache(det, evt, **kwa) # cache.add_detcache(det, evt, **kwa)
         #logger.info(det._info_calibconst()) # is called in AreaDetector
 
-    if odc.poff is None: return arr
+    if odc.poff is None:
+        print(f"[{det._det_name}] calib_jungfrau time (no pedestals): {time() - _t0_calib:.6f} s")
+        return arr
 
     if kwa != odc.kwa:
         logger.warning('IGNORED ATTEMPT to call det.calib/image with different **kwargs (due to caching)'\
@@ -392,6 +397,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
                                              odc.gfac_cpp,
                                              odc.mask_cpp,
                                              odc.outa)
+            print(f"[{det._det_name}] calib_jungfrau time (cpp path): {time() - _t0_calib:.6f} s")
             return odc.outa
 
     #nsegs = arr.shape[0]
@@ -421,6 +427,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
             + info_ndarr(out1,  '\n  out1 '))
         outa[iraw,:] = out1[0,:]
     logger.debug(info_ndarr(outa, '     outa '))
+    print(f"[{det._det_name}] calib_jungfrau time (python path): {time() - _t0_calib:.6f} s")
     return outa
 
 
