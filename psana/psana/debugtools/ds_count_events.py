@@ -53,6 +53,7 @@ def parse_args():
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
     parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
     parser.add_argument('--log_level', default='INFO', help='Log level (default: INFO)')
+    parser.add_argument('--log_file', default=None, help='Log file path')
     parser.add_argument('--debug_detector', default=None, help='Detector name for debug prints')
     parser.add_argument('--use_calib_cache', action='store_true', help='Use cached calibration constants')
     parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode')
@@ -72,6 +73,7 @@ def create_datasource(args, rank):
             max_events=args.max_events,
             batch_size=args.batch_size,
             log_level=args.log_level,
+            log_file=args.log_file,
             detectors=args.detectors,
             use_calib_cache=args.use_calib_cache,
             cached_detectors=args.cached_detectors,
@@ -99,6 +101,7 @@ def create_datasource(args, rank):
             max_events=args.max_events,
             batch_size=args.batch_size,
             log_level=args.log_level,
+            log_file=args.log_file,
             detectors=args.detectors,
             use_calib_cache=args.use_calib_cache,
             cached_detectors=args.cached_detectors,

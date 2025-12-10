@@ -9,8 +9,9 @@ from psana.psexp.events import Events
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
-from psana.psexp import TransitionId
+from psana.psexp.transitionid import TransitionId
 from psana.psexp.prometheus_manager import get_prom_manager
+from . import bd_plan
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -392,6 +393,9 @@ class EventBuilderNode(object):
         self.wait_bd_gauge = pm.get_metric("psana_eb_wait_bd")
         self.requests = []
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._send_bd_plan = bool(int(os.environ.get("PS_EB_SEND_BD_PLAN", "0")))
+        self._bd_chunksize = int(os.environ.get("PS_BD_CHUNKSIZE", 0x1000000))
+        self._plan_counter = 0
 
     def _init_requests(self):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
@@ -406,7 +410,7 @@ class EventBuilderNode(object):
         return batch
 
     def _send_to_dest(
-        self, dest_rank, smd_batch_dict, step_batch_dict, eb_man, batches
+        self, dest_rank, smd_batch_dict, step_batch_dict, eb_man, batches, plan_context=None
     ):
         bd_comm = self.comms.bd_comm
         smd_batch, _ = smd_batch_dict[dest_rank]
@@ -414,6 +418,65 @@ class EventBuilderNode(object):
         batches[dest_rank] = repack_for_bd(
             smd_batch, missing_step_views, self.configs, client=dest_rank
         )
+        if self._send_bd_plan:
+            plan_payload = None
+            if plan_context is not None:
+                if "meta" not in plan_context:
+                    plan, _ = bd_plan.compute_bd_plan(
+                        batches[dest_rank],
+                        self.configs,
+                        self.dsparms.use_smds,
+                        self._bd_chunksize,
+                    )
+                    if plan:
+                        plan_id = self._plan_counter = self._plan_counter + 1
+                        destinations = plan_context["destinations"]
+                        slices = bd_plan.partition_plan(plan["chunks"], len(destinations))
+                        plan_context["meta"] = {
+                            "version": plan["version"],
+                            "n_events": plan["n_events"],
+                            "n_smd_files": plan["n_smd_files"],
+                            "plan_id": plan_id,
+                            "total_slices": len(destinations),
+                        }
+                        plan_context["slices"] = {
+                            dest: {"chunks": slices[idx], "index": idx}
+                            for idx, dest in enumerate(destinations)
+                        }
+                if "slices" in plan_context and dest_rank in plan_context["slices"]:
+                    slice_info = plan_context["slices"][dest_rank]
+                    meta = plan_context["meta"]
+                    plan_payload = {
+                        "version": meta["version"],
+                        "n_events": meta["n_events"],
+                        "n_smd_files": meta["n_smd_files"],
+                        "plan_id": meta["plan_id"],
+                        "slice_rank": slice_info["index"],
+                        "total_slices": meta["total_slices"],
+                        "chunks": slice_info["chunks"],
+                    }
+            else:
+                plan, _ = bd_plan.compute_bd_plan(
+                    batches[dest_rank],
+                    self.configs,
+                    self.dsparms.use_smds,
+                    self._bd_chunksize,
+                )
+                if plan:
+                    self._plan_counter += 1
+                    plan_payload = {
+                        "version": plan["version"],
+                        "n_events": plan["n_events"],
+                        "n_smd_files": plan["n_smd_files"],
+                        "plan_id": self._plan_counter,
+                        "slice_rank": 0,
+                        "total_slices": 1,
+                        "chunks": plan["chunks"],
+                    }
+            if plan_payload:
+                batches[dest_rank] = bd_plan.wrap_plan_with_batch(
+                    bd_plan.encode_plan(plan_payload), batches[dest_rank]
+                )
         self.requests[dest_rank - 1] = bd_comm.Isend(batches[dest_rank], dest=dest_rank)
         del smd_batch_dict[dest_rank]  # done sending
 
@@ -545,6 +608,11 @@ class EventBuilderNode(object):
                         )
                         break
 
+                    plan_context = (
+                        {"destinations": sorted(smd_batch_dict.keys())}
+                        if self._send_bd_plan
+                        else None
+                    )
                     while smd_batch_dict:
                         if waiting_bds:  # Check first if there are bd nodes waiting
                             copied_waiting_bds = waiting_bds[:]
@@ -556,6 +624,7 @@ class EventBuilderNode(object):
                                         step_batch_dict,
                                         eb_man,
                                         batches,
+                                        plan_context=plan_context,
                                     )
                                     waiting_bds.remove(dest_rank)
 
@@ -569,6 +638,7 @@ class EventBuilderNode(object):
                                     step_batch_dict,
                                     eb_man,
                                     batches,
+                                    plan_context=plan_context,
                                 )
                             else:
                                 waiting_bds.append(dest_rank)

@@ -1,4 +1,5 @@
 from .event_manager import EventManager
+from . import bd_plan
 
 
 class Events:
@@ -79,12 +80,15 @@ class Events:
                     if smd_batch == bytearray():
                         raise StopIteration
 
+                    plan_meta, payload_view = bd_plan.extract_plan(smd_batch)
+                    smd_view = payload_view if plan_meta else smd_batch
                     self._evt_man = EventManager(
-                        smd_batch,
+                        smd_view,
                         self.configs,
                         self.dm,
                         self.max_retries,
                         self.use_smds,
+                        bd_plan=plan_meta,
                     )
         else:
             # RunSingleFile or RunShmem: read directly from the DgramManager

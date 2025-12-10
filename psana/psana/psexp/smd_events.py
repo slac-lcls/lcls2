@@ -1,4 +1,5 @@
 from .event_manager import EventManager
+from . import bd_plan
 
 class SmdEvents:
     def __init__(self, configs, dm, max_retries, use_smds, shared_state, get_smd=None, smdr_man=None):
@@ -58,12 +59,15 @@ class SmdEvents:
                     if smd_batch == bytearray():
                         raise StopIteration
 
+                    plan_meta, payload_view = bd_plan.extract_plan(smd_batch)
+                    smd_view = payload_view if plan_meta else smd_batch
                     self._evt_man = EventManager(
-                        smd_batch,
+                        smd_view,
                         self.configs,
                         self.dm,
                         self.max_retries,
                         self.use_smds,
+                        bd_plan=plan_meta,
                         smd=True,
                     )
         else:
