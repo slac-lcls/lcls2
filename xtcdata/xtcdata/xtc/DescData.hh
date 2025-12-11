@@ -1,12 +1,12 @@
 #ifndef DESCDATA__H
 #define DESCDATA__H
 
-#include "xtcdata/xtc/Array.hh"
-#include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/NamesLookup.hh"
-#include "xtcdata/xtc/NameIndex.hh"
+#include "Array.hh"
+#include "ShapesData.hh"
+#include "Xtc.hh"
+#include "VarDef.hh"
+#include "NamesLookup.hh"
+#include "NameIndex.hh"
 
 #include <string>
 #include <type_traits>

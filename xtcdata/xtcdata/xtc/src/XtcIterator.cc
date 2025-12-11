@@ -18,8 +18,8 @@
  ** --
  */
 
-#include "xtcdata/xtc/XtcIterator.hh"
-#include "xtcdata/xtc/Xtc.hh"
+#include "XtcIterator.hh"
+#include "Xtc.hh"
 
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), 0)
 

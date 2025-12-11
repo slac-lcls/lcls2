@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-#include "psalg/calib/NDArray.hh"
+#include "NDArray.hh"
 
 //-------------------
 

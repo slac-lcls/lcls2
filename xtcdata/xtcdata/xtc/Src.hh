@@ -3,7 +3,7 @@
 
 #include <limits>
 #include <stdint.h>
-#include "xtcdata/xtc/Level.hh"
+#include "Level.hh"
 
 namespace XtcData
 {

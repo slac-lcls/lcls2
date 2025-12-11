@@ -6,7 +6,7 @@
  *
  * Usage::
  *
- * #include "psalg/calib/CalibParsDBStore.hh"
+ * #include "CalibParsDBStore.hh"
  *
  * Query q("some-string defining DB, derector, collection, constants type, run or timestamp is here");
  *
@@ -20,8 +20,8 @@
  * std::string&              s          = o->get_string(q);
  */
  
-#include "psalg/calib/CalibParsDBTypes.hh"
-#include "psalg/calib/CalibParsDB.hh"
+#include "CalibParsDBTypes.hh"
+#include "CalibParsDB.hh"
 
 namespace calib {
 

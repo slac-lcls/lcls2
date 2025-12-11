@@ -1,6 +1,6 @@
 // The following is needed to get PRIu16 and friends defined in c++ files
 #define __STDC_FORMAT_MACROS
-#include "psalg/digitizer/Stream.hh"
+#include "Stream.hh"
 
 #include <stdio.h>
 #include <ctype.h>

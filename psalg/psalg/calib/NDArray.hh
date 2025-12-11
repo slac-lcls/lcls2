@@ -7,7 +7,7 @@
 
 /** Usage
  *
- *  #include "psalg/calib/NDArray.hh"
+ *  #include "NDArray.hh"
  *
  *  typedef psalg::types::shape_t shape_t; // uint32_t
  *  typedef psalg::types::size_t  size_t;  // uint32_t
@@ -47,9 +47,9 @@
 #include <assert.h>
 #include <algorithm>    // std::sort, reverse, replace
 #include <iostream> //ostream
-#include "xtcdata/xtc/Array.hh" // Array
-#include "psalg/calib/Types.hh"
-#include "psalg/utils/Logger.hh" // for MSG
+#include "Array.hh" // Array
+#include "Types.hh"
+#include "Logger.hh" // for MSG
 #include <typeinfo> // typeid
 #include <cstring>  // memcpy
 #include <type_traits> //std::remove_const, is_const

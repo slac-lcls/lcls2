@@ -8,7 +8,7 @@
 
 /** Usage
  *
- * #include "psalg/detector/DetectorStore.hh"
+ * #include "DetectorStore.hh"
  *
  * Detector* det = getDetector("Cspad."); // however methods of AreaDetector will not be accessible...
  * AreaDetector* area_det = dynamic_cast<AreaDetector*>(getDetector("Epix100a"));
@@ -20,7 +20,7 @@
  * std::cout << "AreaDetector obj: " << *area_det << '\n';
  */
 
-#include "psalg/detector/Detector.hh"
+#include "Detector.hh"
 
 namespace detector {
 

@@ -1,4 +1,4 @@
-#include "xtcdata/xtc/TransitionId.hh"
+#include "TransitionId.hh"
 
 using namespace XtcData;
 

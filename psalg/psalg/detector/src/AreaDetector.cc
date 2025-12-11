@@ -2,8 +2,8 @@
 #include <stdio.h>  // for  sprintf, printf( "%lf\n", accum );
 #include <iostream> // for cout, puts etc.
 
-#include "psalg/detector/AreaDetector.hh"
-#include "psalg/utils/Logger.hh" // for MSG
+#include "AreaDetector.hh"
+#include "Logger.hh" // for MSG
 
 using namespace std;
 using namespace psalg;

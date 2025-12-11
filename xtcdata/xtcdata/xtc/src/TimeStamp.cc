@@ -1,4 +1,4 @@
-#include "xtcdata/xtc/TimeStamp.hh"
+#include "TimeStamp.hh"
 #include <math.h>
 
 XtcData::TimeStamp::TimeStamp(double sec)

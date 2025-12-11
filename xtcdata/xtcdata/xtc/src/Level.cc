@@ -1,4 +1,4 @@
-#include "xtcdata/xtc/Level.hh"
+#include "Level.hh"
 
 using namespace XtcData;
 

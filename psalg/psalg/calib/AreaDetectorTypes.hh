@@ -3,14 +3,14 @@
 
 /** Usage
  *
- * #include "psalg/calib/AreaDetectorTypes.hh"
+ * #include "AreaDetectorTypes.hh"
  */
 
-#include "psalg/calib/CalibParsTypes.hh"
+#include "CalibParsTypes.hh"
 #include <string>
 #include <map>
 
-//#include "psalg/utils/Logger.hh" // MSG, LOGGER
+//#include "Logger.hh" // MSG, LOGGER
 
 using namespace calib;
 

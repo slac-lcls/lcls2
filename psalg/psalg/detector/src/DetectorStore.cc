@@ -1,11 +1,11 @@
 //-------------------
 
-#include "psalg/detector/DetectorStore.hh" // DETTYPE, AREA_DETECTOR, WF_DETECTOR,...
+#include "DetectorStore.hh" // DETTYPE, AREA_DETECTOR, WF_DETECTOR,...
 
-#include "psalg/detector/AreaDetectorStore.hh"
-//#include "psalg/detector/WFDetectorStore.hh"
-//#include "psalg/detector/BldDetectorStore.hh"
-//#include "psalg/detector/...DetectorStore.hh"
+#include "AreaDetectorStore.hh"
+//#include "WFDetectorStore.hh"
+//#include "BldDetectorStore.hh"
+//#include "...DetectorStore.hh"
 
 //-------------------
 

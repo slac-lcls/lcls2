@@ -1,8 +1,8 @@
 #ifndef XtcData_NamesLookup_hh
 #define XtcData_NamesLookup_hh
 
-#include "xtcdata/xtc/NameIndex.hh"
-#include "xtcdata/xtc/NamesId.hh"
+#include "NameIndex.hh"
+#include "NamesId.hh"
 
 #include <unordered_map>
 

@@ -1,6 +1,6 @@
 //-------------------
 
-#include "psalg/detector/Detector.hh"
+#include "Detector.hh"
 
 //-------------------
 

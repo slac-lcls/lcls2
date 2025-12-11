@@ -1,4 +1,4 @@
-#include "psalg/calib/CalibParsEpix100a.hh"
+#include "CalibParsEpix100a.hh"
 
 //using namespace std;
 using namespace psalg; // for NDArray

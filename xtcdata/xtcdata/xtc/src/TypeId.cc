@@ -1,4 +1,4 @@
-#include "xtcdata/xtc/TypeId.hh"
+#include "TypeId.hh"
 
 #include <stdlib.h>
 #include <string.h>

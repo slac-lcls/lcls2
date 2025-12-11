@@ -55,10 +55,10 @@
 #include <stdio.h>
 #include <cinttypes>
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "Dgram.hh"
 #include "Stream.hh"
-#include "psalg/alloc/Allocator.hh"
-#include "psalg/alloc/AllocArray.hh"
+#include "Allocator.hh"
+#include "AllocArray.hh"
 
 namespace Pds {
   namespace HSD {
