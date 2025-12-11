@@ -2,11 +2,11 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#include "xtcdata/xtc/XtcFileIterator.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/XtcUpdateIter.hh"
-#include "xtcdata/xtc/TransitionId.hh"
-#include "xtcdata/xtc/ShapesData.hh"
+#include "XtcFileIterator.hh"
+#include "Dgram.hh"
+#include "XtcUpdateIter.hh"
+#include "TransitionId.hh"
+#include "ShapesData.hh"
 
 using namespace XtcData;
 

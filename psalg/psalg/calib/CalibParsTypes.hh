@@ -3,7 +3,7 @@
 
 /** Usage
  *
- * #include "psalg/calib/CalibParsTypes.hh"
+ * #include "CalibParsTypes.hh"
  */
 
 #include <string>

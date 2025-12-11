@@ -2,13 +2,13 @@
 #define PSALG_CALIBPARS_H
 //-------------------
 
-#include "psalg/calib/NDArray.hh"
-#include "psalg/calib/CalibParsTypes.hh"
-#include "psalg/calib/CalibParsDBTypes.hh"
-#include "psalg/calib/CalibParsDB.hh"
-#include "psalg/calib/Query.hh"
+#include "NDArray.hh"
+#include "CalibParsTypes.hh"
+#include "CalibParsDBTypes.hh"
+#include "CalibParsDB.hh"
+#include "Query.hh"
 
-#include "psalg/geometry/GeometryAccess.hh"
+#include "GeometryAccess.hh"
 //#include "psalg/geometry/GeometryObject.hh"
 
 //using namespace std;

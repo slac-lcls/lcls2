@@ -4,15 +4,15 @@
 
 /** Usage
  *
- * #include "psalg/detector/AreaDetectorStore.hh"
+ * #include "AreaDetectorStore.hh"
  *
  * AreaDetector* det = getAreaDetector("Cspad.");
  * NDArray<pedestals_t> peds = det->raw();
  * NDArray<pedestals_t> peds = det->pedestals();
  */
 
-#include "psalg/detector/AreaDetector.hh"
-#include "xtcdata/xtc/ConfigIter.hh"
+#include "AreaDetector.hh"
+#include "ConfigIter.hh"
 
 namespace detector {
 

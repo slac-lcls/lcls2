@@ -6,10 +6,10 @@
  *
  */
 
-#include "xtcdata/xtc/NamesIter.hh"
+#include "NamesIter.hh"
 #include <unordered_map>
-//#include "xtcdata/xtc/DescData.hh"
-//#include "xtcdata/xtc/NamesLookup.hh"
+//#include "DescData.hh"
+//#include "NamesLookup.hh"
 
 namespace XtcData{
 

@@ -1,7 +1,7 @@
 //-----------------------------
 
-#include "psalg/calib/AreaDetectorTypes.hh"
-#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
+#include "AreaDetectorTypes.hh"
+#include "Logger.hh" // for MSG, MSGSTREAM
 #include <iostream> //ostream, cout
 
 //using namespace detector;

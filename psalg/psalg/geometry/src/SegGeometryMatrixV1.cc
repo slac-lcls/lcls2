@@ -4,8 +4,8 @@
 #include <sstream>     // stringstream
 #include <iostream>    // cout
 
-#include "psalg/utils/Logger.hh" // MSG, LOGGER
-#include "psalg/geometry/SegGeometryMatrixV1.hh"
+#include "Logger.hh" // MSG, LOGGER
+#include "SegGeometryMatrixV1.hh"
 
 using namespace std;
 

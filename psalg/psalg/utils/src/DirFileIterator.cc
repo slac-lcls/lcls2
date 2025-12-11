@@ -1,7 +1,7 @@
 
 //#include <iostream> // cout, puts etc.
-#include "psalg/utils/Logger.hh" // MSG
-#include "psalg/utils/DirFileIterator.hh"
+#include "Logger.hh" // MSG
+#include "DirFileIterator.hh"
 
 //#include <experimental/filesystem>
 //typedef std::experimental::filesystem::path fspath;

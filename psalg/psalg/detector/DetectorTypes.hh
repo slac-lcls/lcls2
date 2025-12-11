@@ -4,7 +4,7 @@
 //-------------------
 
 /** Usage
- * #include "psalg/detector/DetectorTypes.hh"
+ * #include "DetectorTypes.hh"
  */
 
 #include <string>

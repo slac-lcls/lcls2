@@ -3,7 +3,7 @@
 //-----------------------------
 
 #include <stdint.h>  // uint8_t, uint32_t, etc.
-#include "psalg/detector/AreaDetector.hh"
+#include "AreaDetector.hh"
 
 //using namespace std;
 using namespace psalg;

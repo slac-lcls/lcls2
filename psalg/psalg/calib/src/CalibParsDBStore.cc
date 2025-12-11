@@ -1,10 +1,10 @@
 //-------------------
 
-//#include "psalg/calib/CalibParsDB.hh"
-#include "psalg/calib/CalibParsDBStore.hh"
-#include "psalg/calib/CalibParsDBWeb.hh"
-//#include "psalg/calib/CalibParsDBCalib.hh"
-//#include "psalg/calib/CalibParsDBHDF5.hh"
+//#include "CalibParsDB.hh"
+#include "CalibParsDBStore.hh"
+#include "CalibParsDBWeb.hh"
+//#include "CalibParsDBCalib.hh"
+//#include "CalibParsDBHDF5.hh"
 
 //-------------------
 
