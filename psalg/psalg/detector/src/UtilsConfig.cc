@@ -5,8 +5,8 @@
 #include <stdio.h>  // for  sprintf, printf( "%lf\n", accum );
 #include <iomanip>  // for setw, hex, setprecision, right
 
-#include "psalg/detector/UtilsConfig.hh"
-#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
+#include "UtilsConfig.hh"
+#include "Logger.hh" // for MSG, MSGSTREAM
 
 using namespace std; 
 using namespace XtcData;

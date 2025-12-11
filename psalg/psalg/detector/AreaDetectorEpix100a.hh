@@ -2,7 +2,7 @@
 #define PSALG_AREADETECTOREPIX100A_H
 //-----------------------------
 
-#include "psalg/detector/AreaDetector.hh"
+#include "AreaDetector.hh"
 
 //using namespace std;
 using namespace psalg;

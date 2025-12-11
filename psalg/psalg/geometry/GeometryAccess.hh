@@ -9,9 +9,9 @@
 #include <sstream>  // stringstream
 #include <stdint.h>  // uint8_t, uint16_t, uint32_t, etc.
 
-#include "psalg/geometry/GeometryObject.hh"
+#include "GeometryObject.hh"
 
-#include "psalg/calib/NDArray.hh"
+#include "NDArray.hh"
 
 //------------------
 

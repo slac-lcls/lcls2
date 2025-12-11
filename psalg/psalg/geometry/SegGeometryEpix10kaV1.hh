@@ -3,7 +3,7 @@
 
 //-------------------
 
-#include "psalg/geometry/SegGeometry.hh"
+#include "SegGeometry.hh"
 
 namespace geometry {
 

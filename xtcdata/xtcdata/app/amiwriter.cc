@@ -1,7 +1,7 @@
-#include "xtcdata/xtc/DescData.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/NamesLookup.hh"
+#include "DescData.hh"
+#include "Dgram.hh"
+#include "VarDef.hh"
+#include "NamesLookup.hh"
 
 #include <stdio.h>
 #include <stdlib.h>

@@ -3,14 +3,14 @@
 //-----------------------------
 
 #include <string>
-//#include "psalg/calib/NDArray.hh" // NDArray
-//#include "psalg/detector/Types.hh"
+//#include "NDArray.hh" // NDArray
+//#include "Types.hh"
 
-#include "psalg/calib/ArrayIO.hh" // ArrayIO
+#include "ArrayIO.hh" // ArrayIO
 
-#include "psalg/utils/DirFileIterator.hh"
-//#include "psalg/detector/AreaDetectorStore.hh"
-#include "psalg/detector/DetectorStore.hh"
+#include "DirFileIterator.hh"
+//#include "AreaDetectorStore.hh"
+#include "DetectorStore.hh"
 
 //using namespace std;
 //using namespace psalg;

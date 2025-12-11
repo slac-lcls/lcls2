@@ -6,7 +6,7 @@
 //---------------------------------------------------
 /** Usage example
  *
- *  #include "psalg/calib/ArrayIO.hh"
+ *  #include "ArrayIO.hh"
  * ArrayIO<float> aio("/reg/neh/home/dubrovin/LCLS/con-detector/work/nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1-e000030.txt");
  *
  * NDArray<float>& arr = aio.ndarray();
@@ -18,9 +18,9 @@
 #include <stdint.h>  // uint8_t, uint32_t, etc.
 #include <cstring>   // memcpy
 
-#include "psalg/calib/Types.hh" // shape_t, size_t
-#include "psalg/calib/NDArray.hh" // NDArray
-#include "psalg/utils/Logger.hh" // for MSG
+#include "Types.hh" // shape_t, size_t
+#include "NDArray.hh" // NDArray
+#include "Logger.hh" // for MSG
 
 using namespace std;
 using namespace psalg;

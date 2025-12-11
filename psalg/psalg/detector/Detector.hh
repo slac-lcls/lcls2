@@ -5,8 +5,8 @@
 
 #include <string>
 #include <iostream> //ostream, cout
-#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
-#include "psalg/detector/DetectorTypes.hh"
+#include "Logger.hh" // for MSG, MSGSTREAM
+#include "DetectorTypes.hh"
 
 //using namespace std;
 

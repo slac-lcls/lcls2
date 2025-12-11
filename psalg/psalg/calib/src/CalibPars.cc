@@ -1,9 +1,9 @@
 //-------------------
 
-#include "psalg/calib/CalibPars.hh"
-#include "psalg/utils/Logger.hh" // for MSG
+#include "CalibPars.hh"
+#include "Logger.hh" // for MSG
 
-#include "psalg/calib/CalibParsDBStore.hh"
+#include "CalibParsDBStore.hh"
 #include <iostream> // to_string C++11, ostream, stoi
 //using namespace std;
 using namespace psalg; // for NDArray

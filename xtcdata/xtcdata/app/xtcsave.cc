@@ -5,7 +5,7 @@
 #include <string>
 #include <unistd.h>
 
-#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "XtcFileIterator.hh"
 
 using namespace XtcData;
 

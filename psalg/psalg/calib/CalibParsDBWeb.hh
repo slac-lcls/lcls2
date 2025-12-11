@@ -2,8 +2,8 @@
 #define PSALG_CALIBPARSDBWEB_H
 //-----------------------------
 
-#include "psalg/calib/CalibParsDB.hh" // #include "psalg/calib/Query.hh"
-#include "psalg/calib/MDBWebUtils.hh"
+#include "CalibParsDB.hh" // #include "Query.hh"
+#include "MDBWebUtils.hh"
 
 using namespace psalg; // for NDArray
 

@@ -6,12 +6,12 @@
 #include <iostream>
 #include <stdio.h>
 
-#include "xtcdata/xtc/Xtc.hh"
-#include "xtcdata/xtc/Array.hh"
-#include "xtcdata/xtc/TypeId.hh"
-#include "xtcdata/xtc/VarDef.hh"
-#include "xtcdata/xtc/Dgram.hh"
-#include "xtcdata/xtc/NamesId.hh"
+#include "Xtc.hh"
+#include "Array.hh"
+#include "TypeId.hh"
+#include "VarDef.hh"
+#include "Dgram.hh"
+#include "NamesId.hh"
 
 namespace XtcData {
 

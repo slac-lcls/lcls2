@@ -1,5 +1,5 @@
 
-#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "XtcFileIterator.hh"
 #include <new>
 #include <stdio.h>
 #include <unistd.h>

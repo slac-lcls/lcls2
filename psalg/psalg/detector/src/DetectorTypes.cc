@@ -1,7 +1,7 @@
 //-----------------------------
 
-#include "psalg/detector/DetectorTypes.hh"
-#include "psalg/utils/Logger.hh" // for MSG, MSGSTREAM
+#include "DetectorTypes.hh"
+#include "Logger.hh" // for MSG, MSGSTREAM
 #include <iostream> //ostream, cout
 
 //using namespace detector;

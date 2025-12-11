@@ -3,9 +3,9 @@
 
 //-------------------
 
-#include "psalg/calib/CalibParsDBTypes.hh"
-#include "psalg/calib/NDArray.hh"
-#include "psalg/calib/Query.hh"
+#include "CalibParsDBTypes.hh"
+#include "NDArray.hh"
+#include "Query.hh"
 #include <rapidjson/document.h>
 
 using namespace psalg;

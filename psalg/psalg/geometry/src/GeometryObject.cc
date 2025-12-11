@@ -1,6 +1,6 @@
 //-------------------
 
-#include "psalg/geometry/GeometryObject.hh"
+#include "GeometryObject.hh"
 
 #include <iostream> // for cout
 #include <sstream>  // for stringstream
@@ -13,8 +13,8 @@
 //#include <algorithm>    // std::transform
 //#include <functional>   // std::plus, minus
 
-#include "psalg/utils/Logger.hh" // MSG, LOGGER
-#include "psalg/geometry/UtilsCSPAD.hh"
+#include "Logger.hh" // MSG, LOGGER
+#include "UtilsCSPAD.hh"
 
 using namespace std;
 

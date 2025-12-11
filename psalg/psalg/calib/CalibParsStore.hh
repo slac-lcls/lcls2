@@ -4,7 +4,7 @@
 
 /** Usage
  *
- * #include "psalg/calib/CalibParsStore.hh"
+ * #include "CalibParsStore.hh"
  * query_t query = 123;
  * CalibPars* cp = getCalibPars("Epix100a");
  * NDArray<pedestals_t>& peds = cp->pedestals(query);
@@ -12,7 +12,7 @@
  * geometry_t& strgeo = cp->geometry();
  */
 
-#include "psalg/calib/CalibPars.hh"
+#include "CalibPars.hh"
 
 namespace calib {
 

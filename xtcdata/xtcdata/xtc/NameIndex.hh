@@ -1,7 +1,7 @@
 #ifndef XtcData_NameIndex_hh
 #define XtcData_NameIndex_hh
 
-#include "xtcdata/xtc/ShapesData.hh"
+#include "ShapesData.hh"
 
 #include <map>
 
