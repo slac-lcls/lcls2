@@ -4,18 +4,18 @@
 //-------------------
 
 /** Usage
- * #include "UtilsConfig.hh"
+ * #include "psalg/detector/UtilsConfig.hh"
  */
 
 //#include <string>
 //#include <map>
 
-//#include "NDArray.hh" // NDArray
-//#include "AreaDetectorTypes.hh"
+//#include "psalg/calib/NDArray.hh" // NDArray
+//#include "psalg/calib/AreaDetectorTypes.hh"
 
-#include "ConfigIter.hh"
+#include "xtcdata/xtc/ConfigIter.hh"
 
-//#include "Dgram.hh"
+//#include "xtcdata/xtc/Dgram.hh"
 //typedef XtcData::ConfigIter ConfigIter;
 
 //-------------------

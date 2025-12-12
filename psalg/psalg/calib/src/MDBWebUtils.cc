@@ -8,8 +8,8 @@
 #include <curl/curl.h>
 #include <curl/easy.h>
 
-#include "Logger.hh" // MSG, LOGGER
-#include "MDBWebUtils.hh"
+#include "psalg/utils/Logger.hh" // MSG, LOGGER
+#include "psalg/calib/MDBWebUtils.hh"
 
 // psdaq/pydaq/README.JSON
 // psdaq/drp/drp_eval.cc

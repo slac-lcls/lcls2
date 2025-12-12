@@ -24,18 +24,18 @@
 #include <iomanip>  // std::setw
 
 #include <dirent.h> // opendir, readdir, closedir, dirent, DIR
-#include "Utils.hh" // files_in_dir, dir_content
-//#include Logger.hh" // MSG
-#include "DescData.hh" // Array
-#include "ArrayIO.hh" // ArrayIO
-#include "NDArray.hh" // NDArray
-#include "DirFileIterator.hh"
-#include "AreaDetectorStore.hh" // getAreaDetector 
-#include "DetectorStore.hh" // getDetector 
-//#include "AreaDetectorTypes.hh"
-//#include "DetectorTypes.hh"
-//#include "Detector.hh"
-#include "DataSourceSimulator.hh"
+#include "psalg/utils/Utils.hh" // files_in_dir, dir_content
+//#include "psalg/utils/Logger.hh" // MSG
+#include "xtcdata/xtc/DescData.hh" // Array
+#include "psalg/calib/ArrayIO.hh" // ArrayIO
+#include "psalg/calib/NDArray.hh" // NDArray
+#include "psalg/utils/DirFileIterator.hh"
+#include "psalg/detector/AreaDetectorStore.hh" // getAreaDetector 
+#include "psalg/detector/DetectorStore.hh" // getDetector 
+//#include "psalg/detector/AreaDetectorTypes.hh"
+//#include "psalg/detector/DetectorTypes.hh"
+//#include "psalg/detector/Detector.hh"
+#include "psalg/detector/DataSourceSimulator.hh"
 
 using namespace std;
 using namespace psalg;

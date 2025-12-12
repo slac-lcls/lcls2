@@ -4,8 +4,8 @@
 #include <iomanip>    // for setw, hex, setprecision, right
 #include <sstream>    // for stringstream
 
-#include "AreaDetectorJungfrau.hh"
-#include "Logger.hh" // for MSG
+#include "psalg/detector/AreaDetectorJungfrau.hh"
+#include "psalg/utils/Logger.hh" // for MSG
 
 using namespace std;
 using namespace psalg;

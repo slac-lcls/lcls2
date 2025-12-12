@@ -1,9 +1,9 @@
-#include "Smd.hh"
+#include "xtcdata/xtc/Smd.hh"
 
-#include "DescData.hh"
-#include "TypeId.hh"
-#include "VarDef.hh"
-#include "XtcIterator.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
 
 #include <iostream>
 #include <stdlib.h>

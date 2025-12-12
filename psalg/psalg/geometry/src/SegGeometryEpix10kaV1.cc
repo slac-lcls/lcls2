@@ -3,7 +3,7 @@
 //#include <math.h>      // sin, cos
 #include <iostream>    // cout
 
-#include "SegGeometryEpix10kaV1.hh"
+#include "psalg/geometry/SegGeometryEpix10kaV1.hh"
 
 using namespace std;
 

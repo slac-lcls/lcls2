@@ -5,12 +5,12 @@
 
 #include <string>
 
-#include "SegGeometryCspad2x1V1.hh"
-#include "SegGeometryEpix100V1.hh"
-#include "SegGeometryEpix10kaV1.hh"
-#include "SegGeometryMatrixV1.hh"
+#include "psalg/geometry/SegGeometryCspad2x1V1.hh"
+#include "psalg/geometry/SegGeometryEpix100V1.hh"
+#include "psalg/geometry/SegGeometryEpix10kaV1.hh"
+#include "psalg/geometry/SegGeometryMatrixV1.hh"
 
-#include "Logger.hh" // MSG, LOGGER
+#include "psalg/utils/Logger.hh" // MSG, LOGGER
 
 //-------------------
 
@@ -35,8 +35,8 @@ namespace geometry {
  * 
  *  @li  Includes
  *  @code
- *  // #include "SegGeometry.hh" // already included under SegGeometryStore.h
- *  #include "SegGeometryStore.hh"
+ *  // #include "psalg/geometry/SegGeometry.hh" // already included under SegGeometryStore.h
+ *  #include "psalg/geometry/SegGeometryStore.hh"
  *  typedef geometry::SegGeometry SG;
  *  @endcode
  *

@@ -14,50 +14,29 @@ psalg_sources = files(
     'calib/src/ArrayIO.cc',
 )
 
-psalg_include = include_directories(
-    'calib',
-    'utils', 
-    '../../xtcdata/xtcdata/xtc'
-)
-
 psalg_shlib = shared_library(
     'psalg',
     psalg_sources,
-    include_directories: psalg_include,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [utils_shlib, calib_shlib, geometry_shlib, digitizer_shlib, detector_shlib],
     dependencies: [rt_dep]
 )
 
-datareader_include = include_directories(
-    'calib',
-    'utils',
-    'detector',
-    'geometry',
-    '../../xtcdata/xtcdata/xtc'
-)
-
 executable(
     'datareader',
     'app/datareader.cc',
-    include_directories: datareader_include,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, detector_shlib, psalg_shlib, utils_shlib, calib_shlib],
 )
 
-hsd_valid_include = include_directories(
-    'alloc',
-    'digitizer',
-    'utils',
-    '../../xtcdata/xtcdata/xtc'
-)
-
 executable(
     'hsd_valid',
     'tests/hsd_valid.cc',
-    include_directories: hsd_valid_include,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, psalg_shlib, digitizer_shlib]

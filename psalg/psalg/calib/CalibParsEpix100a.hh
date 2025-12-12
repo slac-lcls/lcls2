@@ -2,7 +2,7 @@
 #define PSALG_CALIBPARSEPIX100A_H
 //-----------------------------
 
-#include "CalibPars.hh"
+#include "psalg/calib/CalibPars.hh"
 
 //using namespace std;
 //using namespace calib;

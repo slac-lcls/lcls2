@@ -1,13 +1,13 @@
 //-------------------
 
-#include "AreaDetectorStore.hh"
+#include "psalg/detector/AreaDetectorStore.hh"
 
-#include "AreaDetectorEpix100a.hh"
-#include "AreaDetectorJungfrau.hh"
-//#include "AreaDetectorCspad.hh"
-//#include "AreaDetectorCspad2x2.hh"
-//#include "AreaDetectorPnccd.hh"
-//#include "AreaDetector....hh"
+#include "psalg/detector/AreaDetectorEpix100a.hh"
+#include "psalg/detector/AreaDetectorJungfrau.hh"
+//#include "psalg/detector/AreaDetectorCspad.hh"
+//#include "psalg/detector/AreaDetectorCspad2x2.hh"
+//#include "psalg/detector/AreaDetectorPnccd.hh"
+//#include "psalg/detector/AreaDetector....hh"
 
 //-------------------
 

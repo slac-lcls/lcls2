@@ -1,5 +1,5 @@
 
-#include "CalibParsTypes.hh"
+#include "psalg/calib/CalibParsTypes.hh"
 
 namespace calib {
 

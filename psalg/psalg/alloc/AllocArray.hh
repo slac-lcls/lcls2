@@ -1,9 +1,9 @@
 #ifndef ALLOCARRAY__H
 #define ALLOCARRAY__H
 
-#include "SysLog.hh"
-#include "Array.hh"
-#include "DescData.hh"
+#include "psalg/utils/SysLog.hh"
+#include "xtcdata/xtc/Array.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "Allocator.hh"
 
 using namespace XtcData; // Array

@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#include "XtcFileIterator.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 
 using namespace XtcData;
 
