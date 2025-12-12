@@ -145,7 +145,8 @@ class DetCache():
                                                   logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
-        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32)
+        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32, order='C').ravel()
+        self.outa = np.ascontiguousarray(self.outa).ravel()
 
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
@@ -201,7 +202,7 @@ class DetCache():
             if self.cversion == 1:
                 self.ccons = self.ccons.T
 
-        elif self.cversion == 3:
+        elif self.cversion in (3,5):
             # test: lcls2/psana/psana/detector]$ testman/test-scaling-mpi-jungfrau.py -t6
             npix = po[0,:].size
             print('npix:', npix)
@@ -212,11 +213,10 @@ class DetCache():
                             np.vstack((po[2,:].ravel(), gm[2,:].ravel())).T),
                             dtype=np.float32)
             self.ccons.shape = (4, npix, 2)
-
             self.check_cversion3_validity()
-        #logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
 
-        #sys.exit('TEST EXIT')
+        #logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
+        self.ccons = np.ascontiguousarray(self.ccons).ravel()
 
 
     def check_cversion3_validity(self):
