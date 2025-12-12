@@ -9,9 +9,9 @@
 #include <string.h>
 #include <new>
 #include <cinttypes>
-#include "xtcdata/xtc/Dgram.hh"
-#include "psalg/digitizer/Hsd.hh"
-#include "psalg/digitizer/Stream.hh"
+#include "Dgram.hh"
+#include "Hsd.hh"
+#include "Stream.hh"
 
 using namespace Pds::HSD;
 

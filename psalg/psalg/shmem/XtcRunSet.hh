@@ -1,9 +1,9 @@
 #ifndef PsAlg_ShMem_XtcRunSet_hh
 #define PsAlg_ShMem_XtcRunSet_hh
 
-#include "xtcdata/xtc/Dgram.hh"
+#include "Dgram.hh"
 
-#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "XtcFileIterator.hh"
 
 using XtcData::Dgram;
 using XtcData::XtcFileIterator;

@@ -6,7 +6,7 @@
 //    clients and track the transitions which are still to be served to latent clients
 //
 
-#include "xtcdata/xtc/TransitionId.hh"
+#include "TransitionId.hh"
 
 #include <list>
 #include <stack>
