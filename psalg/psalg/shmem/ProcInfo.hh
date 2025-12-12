@@ -2,8 +2,8 @@
 #define PsAlg_ShMem_ProcInfo_hh
 
 #include <stdint.h>
-#include "xtcdata/xtc/Src.hh"
-#include "xtcdata/xtc/Level.hh"
+#include "Src.hh"
+#include "Level.hh"
 
 using namespace XtcData;
 
