@@ -64,7 +64,6 @@ subdir('xtcdata')
 subdir('psalg')
 subdir('psana')
 
-
 cuda_compiler = find_program('nvcc', required: false)
 
 if cuda_compiler.found()
