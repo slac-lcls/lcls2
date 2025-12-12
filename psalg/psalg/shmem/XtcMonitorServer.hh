@@ -45,7 +45,7 @@
 
 #include "XtcMonitorMsg.hh"
 
-#include "xtcdata/xtc/TransitionId.hh"
+#include "TransitionId.hh"
 
 #include <thread>
 #include <atomic>
