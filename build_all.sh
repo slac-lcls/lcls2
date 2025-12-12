@@ -11,10 +11,7 @@ fi
 
 cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
-psana_setup_args=""
 force_clean=0
-no_ana=0
-no_shmem=0
 build_ext_list=""
 
 if [ -d "/cds/sw/" ]; then
@@ -23,23 +20,11 @@ elif [ -d "/sdf/group/lcls/" ]; then
     no_daq=1
 fi
 
-while getopts "c:p:s:b:fdam" opt; do
+while getopts "fd" opt; do
   case $opt in
-    c) cmake_option="$OPTARG"
+    d) no_daq=0
     ;;
-    d) no_daq=1
-    ;;
-    a) no_ana=1
-    ;;
-    m) no_shmem=1
-    ;;
-    p) pyInstallStyle="$OPTARG"
-    ;;
-    s) psana_setup_args="$OPTARG"
-    ;;
-    b) build_ext_list="$OPTARG"
-    ;;
-    f) force_clean=1                       # Force clean is required building between rhel6&7
+    f) force_clean=1                  # Force clean is required building between rhel6&7
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -47,38 +32,21 @@ while getopts "c:p:s:b:fdam" opt; do
   esac
 done
 
-pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-
-echo "CMAKE_BUILD_TYPE:" $cmake_option
-echo "Python install option:" $pyInstallStyle
-echo "build_ext_list:" $build_ext_list
-export BUILD_LIST=$build_ext_list
+echo "INSTDIR:" $INSTDIR
 
 if [ $force_clean == 1 ]; then
     echo "force_clean"
     if [ -d "$INSTDIR" ]; then
         rm -rf "$INSTDIR"
     fi
-    if [ -d xtcdata/build ]; then
-        rm -rf xtcdata/build
+    if [ -d build ]; then
+        rm -rf build
     fi
-    if [ -d psdaq/build ]; then
-        rm -rf psdaq/build
-    fi
-    if [ -d psalg/build ]; then
-        rm -rf psalg/build
+    if [ -d builddir ]; then
+        rm -rf builddir
     fi
 fi
 
-function cmake_build() {
-    cd $1
-    shift
-    mkdir -p build
-    cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
-    make -j 4 install
-    cd ../..
-}
 
 # "python setup.py develop" seems to not create this for you
 # (although "install" does)
@@ -149,3 +117,5 @@ site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
 EOF
   fi
 fi
+meson compile -C builddir
+pip install --prefix=$INSTDIR .
