@@ -41,7 +41,7 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    conda activate ps_20241122
+    conda activate xpp_drp_cpu_311_dev
 else
     echo "CONDA area not found"
     exit 1
@@ -104,14 +104,5 @@ export RDMAV_HUGEPAGES_SAFE=1
 # needed by JupyterLab
 export JUPYTERLAB_WORKSPACES_DIR=${HOME}
 
-# cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
-if [ ! -d /usr/share/X11/xkb ]; then
-    export QT_XKB_CONFIG_ROOT=${CONDA_PREFIX}/lib
-fi
-
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
-
-# For GPU builds, until a better solution is found
-export CUSZ_DIR=/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ
-export cuSZp_DIR=/cds/home/c/claus/git/cuSZp/install/cmake
