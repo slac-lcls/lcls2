@@ -1,4 +1,4 @@
-#include "Descriptor.hh"
+#include "xtcdata/xtc/Descriptor.hh"
 
 int main()
 {

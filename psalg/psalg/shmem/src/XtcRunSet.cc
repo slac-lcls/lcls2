@@ -1,8 +1,8 @@
 #include "XtcRunSet.hh"
 
-#include "XtcFileIterator.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 
-#include "XtcMonitorServer.hh"
+#include "psalg/shmem/XtcMonitorServer.hh"
 #include "ProcInfo.hh"
 #include <iostream>
 #include <dirent.h>

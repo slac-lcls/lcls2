@@ -1,4 +1,4 @@
-#include "ShapesData.hh"
+#include "xtcdata/xtc/ShapesData.hh"
 
 namespace XtcData
 {

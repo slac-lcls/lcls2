@@ -7,8 +7,8 @@
 //#include <map>
 #include <iostream> //ostream
 
-#include "CalibParsTypes.hh"
-#include "MDBWebUtils.hh"
+#include "psalg/calib/CalibParsTypes.hh"
+#include "psalg/calib/MDBWebUtils.hh"
 
 //using namespace std;
 using namespace psalg;

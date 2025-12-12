@@ -5,9 +5,9 @@
  * class XtcUpdateIter provides access to all types of xtc
  */
 
-#include "XtcIterator.hh"
-#include "DescData.hh"
-#include "ShapesData.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/ShapesData.hh"
 
 #include <iostream>
 #include <map>

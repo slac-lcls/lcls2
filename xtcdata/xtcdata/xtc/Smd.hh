@@ -1,8 +1,8 @@
 #ifndef XtcData_Smd_hh
 #define XtcData_Smd_hh
 
-#include "Dgram.hh"
-#include "DescData.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/DescData.hh"
 
 namespace XtcData
 {

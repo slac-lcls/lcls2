@@ -1,6 +1,6 @@
 //-----------------------
 
-#include "SegGeometryEpix100V1.hh"
+#include "psalg/geometry/SegGeometryEpix100V1.hh"
 
 //#include <math.h>      // sin, cos
 #include <iostream>    // cout

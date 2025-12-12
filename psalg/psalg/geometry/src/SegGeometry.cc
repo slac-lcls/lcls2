@@ -1,6 +1,6 @@
 //-------------------
 
-#include "SegGeometry.hh"
+#include "psalg/geometry/SegGeometry.hh"
 
 #include <math.h>      // sin, cos
 //#include <iostream>    // cout

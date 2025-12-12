@@ -1,5 +1,5 @@
 #include "TransitionCache.hh"
-#include "Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 using namespace XtcData;
 using namespace psalg::shmem;

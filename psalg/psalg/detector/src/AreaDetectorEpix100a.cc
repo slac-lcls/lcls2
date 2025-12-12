@@ -1,6 +1,6 @@
 
-#include "AreaDetectorEpix100a.hh"
-#include "Logger.hh" // for MSG
+#include "psalg/detector/AreaDetectorEpix100a.hh"
+#include "psalg/utils/Logger.hh" // for MSG
 
 //using namespace std;
 using namespace psalg;

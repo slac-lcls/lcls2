@@ -1,7 +1,7 @@
 #ifndef XtcData_XtcFileIterator_hh
 #define XtcData_XtcFileIterator_hh
 
-#include "Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 #include <stdio.h>
 

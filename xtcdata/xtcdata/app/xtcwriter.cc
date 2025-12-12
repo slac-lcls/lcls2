@@ -1,10 +1,10 @@
-#include "ShapesData.hh"
-#include "DescData.hh"
-#include "Dgram.hh"
-#include "TypeId.hh"
-#include "XtcIterator.hh"
-#include "VarDef.hh"
-#include "NamesLookup.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 #include <vector>
 #include <stdio.h>

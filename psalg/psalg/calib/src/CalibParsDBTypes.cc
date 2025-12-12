@@ -1,6 +1,6 @@
 //-------------------
 
-#include "CalibParsDBTypes.hh"
+#include "psalg/calib/CalibParsDBTypes.hh"
 
 //-------------------
 

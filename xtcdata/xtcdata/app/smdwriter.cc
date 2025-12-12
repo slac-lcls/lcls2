@@ -12,13 +12,13 @@
 
 // additions from xtc writer
 #include <type_traits>
-#include "XtcFileIterator.hh"
-#include "VarDef.hh"
-#include "DescData.hh"
-#include "Dgram.hh"
-#include "TypeId.hh"
-#include "XtcIterator.hh"
-#include "Smd.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/VarDef.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/Smd.hh"
 
 using namespace XtcData;
 using std::string;

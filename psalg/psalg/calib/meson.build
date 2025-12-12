@@ -30,16 +30,10 @@ calib_headers = files(
     'MDBWebUtils.hh'
 )
 
-calib_incdir = include_directories(
-    '../utils',
-    '../geometry',
-    '../../../xtcdata/xtcdata/xtc'
-)
-
 calib_shlib = shared_library(
     'calib',
     calib_sources,
-    include_directories: calib_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [utils_shlib, geometry_shlib, xtc_shlib],

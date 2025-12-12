@@ -6,9 +6,9 @@
  *
  */
 
-#include "XtcIterator.hh"
-#include "DescData.hh"
-#include "NamesLookup.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesLookup.hh"
 
 namespace XtcData{
 

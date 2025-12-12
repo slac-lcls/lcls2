@@ -1,7 +1,7 @@
 #ifndef XtcData_NamesId_hh
 #define XtcData_NamesId_hh
 
-#include "Src.hh"
+#include "xtcdata/xtc/Src.hh"
 #include <stdint.h>
 
 namespace XtcData

@@ -16,7 +16,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include "Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 #include "ShmemClient.hh"
 #include "XtcMonitorMsg.hh"
 

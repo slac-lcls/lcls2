@@ -1,4 +1,4 @@
-#include "NamesIter.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 
 using namespace XtcData;
 

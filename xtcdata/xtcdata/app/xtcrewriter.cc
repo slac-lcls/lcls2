@@ -2,11 +2,11 @@
 //  Copy the L1Accept ShapesData from a set of runs over the ShapesData of a run with steps
 //
 
-#include "ShapesData.hh"
-#include "Dgram.hh"
-#include "TypeId.hh"
-#include "XtcIterator.hh"
-#include "XtcFileIterator.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
 
 #include <vector>
 #include <string>

@@ -2,7 +2,7 @@
 // Adopted to lcls2 on 2018-06-06 by Mikhail Dubrovin
 //---------------------------------------------------
 
-#include "ArrayIO.hh"
+#include "psalg/calib/ArrayIO.hh"
 
 #include <iostream>  // cout, puts
 #include <stdlib.h>  // atoi

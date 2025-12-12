@@ -1,9 +1,9 @@
 
-#include "Query.hh"
-#include "Logger.hh" // for MSG
+#include "psalg/calib/Query.hh"
+#include "psalg/utils/Logger.hh" // for MSG
 #include <iostream> // to_string C++11, ostream
 
-#include "MDBWebUtils.hh"
+#include "psalg/calib/MDBWebUtils.hh"
 
 //using namespace std;
 using namespace psalg; // for NDArray

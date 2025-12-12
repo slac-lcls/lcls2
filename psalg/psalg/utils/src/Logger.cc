@@ -1,7 +1,7 @@
 
 //-------------------
-#include "Logger.hh" // MsgLog, Logger, LOGPRINT, LOGMSG
-#include "MacTimeFix.hh" // 'Fixes' missing clock_gettime
+#include "psalg/utils/Logger.hh" // MsgLog, Logger, LOGPRINT, LOGMSG
+#include "psalg/utils/MacTimeFix.hh" // 'Fixes' missing clock_gettime
 //-------------------
 #include <iostream> // cout
 #include <stdexcept>

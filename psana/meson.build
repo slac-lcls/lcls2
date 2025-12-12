@@ -1,13 +1,13 @@
 numpy_dep = dependency('numpy')
 
-dgram_ext_include = include_directories(
-    '../xtcdata/xtcdata/xtc'
+psana_incdir = include_directories(
+    '.'
 )
 
 py.extension_module(
     'dgram',
     'src/dgram.cc',
-    include_directories: dgram_ext_include,
+    include_directories: [psana_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -22,7 +22,7 @@ container_ext_include = include_directories(
 py.extension_module(
     'container',
     'src/container.cc',
-    include_directories: container_ext_include,
+    include_directories: [psana_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',

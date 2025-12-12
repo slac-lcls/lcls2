@@ -3,7 +3,7 @@
 
 //-------------------
 
-#include "GeometryTypes.hh"
+#include "psalg/geometry/GeometryTypes.hh"
 
 //#include <cstddef>  // for size_t
 //#include <stdint.h>  // uint8_t, uint16_t, uint32_t, etc.

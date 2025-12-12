@@ -1,6 +1,6 @@
 //-------------------
 
-#include "GeometryAccess.hh"
+#include "psalg/geometry/GeometryAccess.hh"
 
 #include <iostream> // cout
 #include <fstream>  // ifstream 

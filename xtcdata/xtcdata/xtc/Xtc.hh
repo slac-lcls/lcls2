@@ -3,7 +3,7 @@
 
 #include "Damage.hh"
 #include "Src.hh"
-#include "TypeId.hh"
+#include "xtcdata/xtc/TypeId.hh"
 
 #include <stddef.h>
 #include <stdint.h>

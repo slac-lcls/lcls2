@@ -1,6 +1,6 @@
 // From https://www.techiedelight.com/trim-string-cpp-remove-leading-trailing-spaces/
 
-#include "trim.hh"
+#include "psalg/utils/trim.hh"
 #include <iostream>
 #include <string>
 #include <algorithm>

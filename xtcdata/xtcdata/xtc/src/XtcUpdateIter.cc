@@ -1,5 +1,5 @@
 
-#include "XtcUpdateIter.hh"
+#include "xtcdata/xtc/XtcUpdateIter.hh"
 #include <sys/time.h>
 
 using namespace XtcData;

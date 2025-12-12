@@ -3,7 +3,7 @@
 
 /** Usage
  *
- * #include "GeometryTypes.hh"
+ * #include "psalg/geometry/GeometryTypes.hh"
  */
 
 //#include <cstddef> // for std::size_t

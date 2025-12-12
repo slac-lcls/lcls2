@@ -5,11 +5,11 @@
 #include <string>
 #include <unistd.h>
 
-#include "XtcFileIterator.hh"
-#include "XtcIterator.hh"
-#include "ShapesData.hh"
-#include "DescData.hh"
-#include "NamesIter.hh"
+#include "xtcdata/xtc/XtcFileIterator.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 
 using namespace XtcData;
 using std::string;

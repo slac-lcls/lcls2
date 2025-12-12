@@ -1,5 +1,5 @@
 
-#include "DataIter.hh"
+#include "xtcdata/xtc/DataIter.hh"
 
 using namespace XtcData;
 

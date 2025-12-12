@@ -5,8 +5,8 @@
 #include <time.h>
 
 #include "ShmemClient.hh"
-#include "Dgram.hh"
-#include "TransitionId.hh"
+#include "xtcdata/xtc/Dgram.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
 using namespace XtcData;
 using namespace psalg::shmem;

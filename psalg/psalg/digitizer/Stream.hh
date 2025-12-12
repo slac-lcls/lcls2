@@ -1,7 +1,7 @@
 #ifndef HSD_STREAMHEADER_HH
 #define HSD_STREAMHEADER_HH
 
-#include "Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 #include <stdint.h>
 #include <stdio.h>
 
