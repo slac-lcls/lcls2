@@ -1,9 +1,9 @@
-#include "ShapesData.hh"
-#include "DescData.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/DescData.hh"
 
-#include "TypeId.hh"
-#include "XtcIterator.hh"
-#include "NamesIter.hh"
+#include "xtcdata/xtc/TypeId.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
+#include "xtcdata/xtc/NamesIter.hh"
 
 #define PY_LIMITED_API 0x03090000
 #include <Python.h>

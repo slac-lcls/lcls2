@@ -1,13 +1,13 @@
 //-------------------
 
-#include "AreaDetectorTypes.hh"
-#include "CalibParsStore.hh"
+#include "psalg/calib/AreaDetectorTypes.hh"
+#include "psalg/calib/CalibParsStore.hh"
 
-#include "CalibParsEpix100a.hh"
-//#include "CalibParsCspad.hh"
-//#include "CalibParsCspad2x2.hh"
-//#include "CalibParsPnccd.hh"
-//#include "CalibPars....hh"
+#include "psalg/calib/CalibParsEpix100a.hh"
+//#include "psalg/calib/CalibParsCspad.hh"
+//#include "psalg/calib/CalibParsCspad2x2.hh"
+//#include "psalg/calib/CalibParsPnccd.hh"
+//#include "psalg/calib/CalibPars....hh"
 
 //-------------------
 

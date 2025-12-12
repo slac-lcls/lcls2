@@ -2,7 +2,7 @@
 
 #include <stdio.h> // sprintf, printf( "%lf\n", accum );
 
-#include "ConfigIter.hh"
+#include "xtcdata/xtc/ConfigIter.hh"
 
 using namespace XtcData;
 

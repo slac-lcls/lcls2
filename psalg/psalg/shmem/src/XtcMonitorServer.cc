@@ -1,7 +1,7 @@
 #include "XtcMonitorServer.hh"
 #include "TransitionCache.hh"
 
-#include "Dgram.hh"
+#include "xtcdata/xtc/Dgram.hh"
 
 #include <unistd.h>
 #include <semaphore.h>

@@ -6,16 +6,16 @@
 #include <string>
 #include <assert.h>
 
-#include "Query.hh"
-#include "CalibParsStore.hh" // CalibPars, getCalibPars
-#include "NDArray.hh" // NDArray
-#include "AreaDetectorTypes.hh" // event_t
+#include "psalg/calib/Query.hh"
+#include "psalg/calib/CalibParsStore.hh" // CalibPars, getCalibPars
+#include "psalg/calib/NDArray.hh" // NDArray
+#include "psalg/calib/AreaDetectorTypes.hh" // event_t
 
-#include "Detector.hh"
-#include "UtilsConfig.hh" // configNames
+#include "psalg/detector/Detector.hh"
+#include "psalg/detector/UtilsConfig.hh" // configNames
 
-#include "DataIter.hh"
-#include "ConfigIter.hh"
+#include "xtcdata/xtc/DataIter.hh"
+#include "xtcdata/xtc/ConfigIter.hh"
 typedef XtcData::ConfigIter ConfigIter;
 
 using namespace std;

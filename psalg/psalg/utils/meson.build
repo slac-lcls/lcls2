@@ -18,6 +18,7 @@ utils_headers = files(
 utils_shlib = shared_library(
     'utils',
     utils_sources,
+    include_directories: psalg_incdir,
     install: true,
     install_rpath: libdir_install_rpath
 )

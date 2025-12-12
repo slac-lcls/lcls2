@@ -3,7 +3,7 @@
 
 //-------------------
 
-#include "SegGeometry.hh"
+#include "psalg/geometry/SegGeometry.hh"
 #include <string>
 #include <map>
 

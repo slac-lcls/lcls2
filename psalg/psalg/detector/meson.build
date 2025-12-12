@@ -25,17 +25,10 @@ detector_headers = files(
     'DataSourceSimulator.hh',
 )
 
-detector_incdir = include_directories(
-    '../utils',
-    '../calib',
-    '../geometry',
-    '../../../xtcdata/xtcdata/xtc'
-)
-
 detector_shlib = shared_library(
     'detector',
     detector_sources,
-    include_directories: detector_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, utils_shlib, calib_shlib, geometry_shlib]

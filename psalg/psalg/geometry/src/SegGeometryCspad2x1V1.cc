@@ -1,6 +1,6 @@
 //-------------------
 
-#include "SegGeometryCspad2x1V1.hh"
+#include "psalg/geometry/SegGeometryCspad2x1V1.hh"
 #include <iostream> // cout
 
 using namespace std;

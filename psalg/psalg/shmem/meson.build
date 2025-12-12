@@ -22,15 +22,10 @@ shmem_headers = files(
     'ProcInfo.hh'
 )
 
-shmem_incdir = include_directories(
-    '../utils',
-    '../../../xtcdata/xtcdata/xtc'
-)
-
 shmemserver_shlib = shared_library(
     'shmemsrv',
     shmemsrv_sources,
-    include_directories: shmem_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
@@ -40,7 +35,7 @@ shmemserver_shlib = shared_library(
 shmemclient_shlib = shared_library(
     'shmemclient',
     shmemclient_sources,
-    include_directories: shmem_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
@@ -51,7 +46,7 @@ executable(
     'shmemClient',
     'src/shmemClientApp.cc',
     install: true,
-    include_directories: shmem_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, shmemclient_shlib]
 )
@@ -61,7 +56,7 @@ executable(
     'shmemWriter',
     'src/shmemWriter.cc',
     install: true,
-    include_directories: shmem_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, shmemclient_shlib]
 )
@@ -72,7 +67,7 @@ executable(
     'shmemServer',
     'src/shmemServer.cc',
     install: true,
-    include_directories: shmem_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, shmemserver_shlib]
 )

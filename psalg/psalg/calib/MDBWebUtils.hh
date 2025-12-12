@@ -29,7 +29,7 @@
 #include <stdint.h> // size_t;
 
 #include <rapidjson/document.h>
-#include "NDArray.hh"
+#include "psalg/calib/NDArray.hh"
 
 namespace psalg {
 

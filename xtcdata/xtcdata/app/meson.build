@@ -1,12 +1,10 @@
-app_incdir = include_directories('../xtc')
-
 executable(
     'xtcreader',
     'xtcreader.cc',
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -15,7 +13,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -24,7 +22,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -33,7 +31,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -42,7 +40,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -51,7 +49,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -60,7 +58,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -69,7 +67,7 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )
 
 executable(
@@ -78,5 +76,5 @@ executable(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
-    include_directories: app_incdir,
+    include_directories: xtcdata_incdir,
 )

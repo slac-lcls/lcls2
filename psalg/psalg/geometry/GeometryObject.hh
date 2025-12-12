@@ -7,8 +7,8 @@
 #include <vector>
 #include <math.h>      // sin, cos
 
-#include "GeometryTypes.hh"
-#include "SegGeometryStore.hh"
+#include "psalg/geometry/GeometryTypes.hh"
+#include "psalg/geometry/SegGeometryStore.hh"
 
 //-------------------
 
@@ -33,7 +33,7 @@ namespace geometry {
  * 
  *  @li  Include
  *  @code
- *  #include "GeometryObject.hh"
+ *  #include "psalg/geometry/GeometryObject.hh"
  *  typedef boost::shared_ptr<GeometryObject> shpGO;
  *  @endcode
  *

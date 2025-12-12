@@ -4,8 +4,8 @@
 // class used by cython to create dgrams with "blocks" of memory,
 // the three block types being Shapes, Data, and ShapesData
 
-#include "ShapesData.hh"
-#include "NamesId.hh"
+#include "xtcdata/xtc/ShapesData.hh"
+#include "xtcdata/xtc/NamesId.hh"
 
 namespace XtcData {
 

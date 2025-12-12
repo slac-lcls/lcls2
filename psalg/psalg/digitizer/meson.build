@@ -8,16 +8,10 @@ digitizer_headers = files(
     'Stream.hh'
 )
  
-digitizer_incdir = include_directories(
-    '../alloc',
-    '../utils',
-    '../../../xtcdata/xtcdata/xtc'
-)
-
 digitizer_shlib = shared_library(
     'digitizer',
     digitizer_sources,
-    include_directories: digitizer_incdir,
+    include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, utils_shlib]
