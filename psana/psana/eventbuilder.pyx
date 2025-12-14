@@ -17,7 +17,7 @@ import numpy as np
 
 from psana import dgram
 from psana.dgramedit import PyDgram
-from psana.psexp import TransitionId
+from psana.psexp import TransitionId, bd_plan
 
 PROFILE_ENV = "PSANA_EB_PROFILE"
 PROFILE_INTERVAL_ENV = "PSANA_EB_PROFILE_INTERVAL"
@@ -631,8 +631,8 @@ cdef class EventBuilder:
             batch_dict, step_dict = self._build_fast_batch(target_batch)
             if self._profile_enabled:
                 self._profile_after_build(perf_counter() - t_total, self.nevents == 0 and self.nsteps == 0)
-            return batch_dict, step_dict
-
+        return batch_dict, step_dict
+        
         # Build loop
         while got < target_batch and self.has_more():
             if self._profile_enabled:
@@ -700,10 +700,101 @@ cdef class EventBuilder:
                 self._profile_after_build(perf_counter() - t_total, self.nevents == 0 and self.nsteps == 0)
             return batch_dict, step_dict
 
+
+cdef class PlanEventBuilder:
+    """
+    Experimental EventBuilder that produces a lightweight plan describing
+    the events contained in the current Smd chunk. It currently wraps the
+    existing EventBuilder implementation while we prototype plan metadata.
+    """
+
+    cdef object _legacy
+    cdef dict _latest_plan
+    cdef int _n_bd_nodes
+    cdef int _bd_chunksize
+    cdef object _use_smds
+    cdef object _configs
+
+    def __init__(self, views, configs, *args, **kwargs):
+        n_bd_nodes = kwargs.pop("n_bd_nodes", 1)
+        use_smds_map = kwargs.pop("use_smds_map", None)
+        self._n_bd_nodes = int(n_bd_nodes) if int(n_bd_nodes) > 0 else 1
+        self._use_smds = use_smds_map
+        self._bd_chunksize = int(os.environ.get("PS_BD_CHUNKSIZE", 0x1000000))
+        self._configs = configs
+        self._legacy = EventBuilder(
+            views,
+            configs,
+            *args,
+            **kwargs,
+        )
+        self._latest_plan = None
+
+    cdef EventBuilder _legacy_view(self):
+        return <EventBuilder> self._legacy
+
+    #
+    # Compatibility helpers -------------------------------------------------
+    #
     @property
     def nevents(self):
-        return self.nevents
+        cdef EventBuilder legacy = self._legacy_view()
+        return legacy.nevents
 
     @property
     def nsteps(self):
-        return self.nsteps
+        cdef EventBuilder legacy = self._legacy_view()
+        return legacy.nsteps
+
+    def has_more(self):
+        cdef EventBuilder legacy = self._legacy_view()
+        return legacy.has_more()
+
+    def build(self, as_proxy_events=False):
+        return (<EventBuilder>self._legacy).build(as_proxy_events=as_proxy_events)
+
+    def gen_bytearray_batch(self, proxy_events, run_serial=False):
+        return (<EventBuilder>self._legacy).gen_bytearray_batch(proxy_events, run_serial=run_serial)
+
+    def events(self):
+        return (<EventBuilder>self._legacy).events()
+
+    def build_proxy_event(self):
+        return (<EventBuilder>self._legacy).build_proxy_event()
+
+    #
+    # Plan-aware path -------------------------------------------------------
+    #
+    def build_with_plan(self, bint run_serial=False):
+        """
+        Build proxy events and bytearray batches while also emitting an
+        experimental plan structure that captures per-event metadata.
+        """
+        batch_dict, step_dict = self._legacy.build(as_proxy_events=False)
+        plan = self._build_plan_from_batches(batch_dict)
+        self._latest_plan = plan
+        return plan, batch_dict, step_dict
+
+    cdef dict _build_plan_from_batches(self, dict batch_dict):
+        if not batch_dict:
+            return {}
+        cdef object first_key = next(iter(batch_dict))
+        cdef tuple payload = batch_dict[first_key]
+        cdef object batch_bytes = payload[0]
+        cdef object use_smds = self._use_smds
+        if use_smds is None:
+            use_smds = [0] * len(self._configs)
+        plan, _ = bd_plan.compute_bd_plan(
+            batch_bytes,
+            self._configs,
+            use_smds,
+            self._bd_chunksize,
+        )
+        if not plan:
+            return {}
+        cdef list chunks = plan.get("chunks", [])
+        cdef int slices = self._n_bd_nodes if self._n_bd_nodes > 0 else 1
+        cdef list partitioned = bd_plan.partition_plan(chunks, slices)
+        plan["slice_chunks"] = partitioned
+        plan["total_slices"] = len(partitioned)
+        return plan

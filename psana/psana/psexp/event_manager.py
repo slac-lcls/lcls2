@@ -10,10 +10,13 @@ from psana.psexp.tools import mode
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp import bd_plan
 
+rank = 0
+size = 1
 if mode == "mpi":
-    pass
-
-
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 class ExitId:
     NoError = 0
     BdReadFail = 1
@@ -56,7 +59,9 @@ class EventManager(object):
         self.i_evt = 0
         self.exit_id = ExitId.NoError
         self.smd_mode = smd
-        self.bd_plan = bd_plan
+        self.bd_plan = bd_plan or {}
+        self.plan_mode = False
+        self.plan_chunk_positions = None
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
@@ -66,10 +71,9 @@ class EventManager(object):
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
         self.BD_CHUNKSIZE = int(os.environ.get("PS_BD_CHUNKSIZE", 0x1000000))
-        self._get_offset_and_size()
         self.plan_chunks_by_file = None
-        if self.bd_plan:
-            self._init_plan_state()
+        self._get_offset_and_size()
+        self.plan_mode = self._init_plan_state()
         if self.dm.n_files > 0:
             self._init_bd_chunks()
             self._preview_bd_plan()
@@ -151,6 +155,7 @@ class EventManager(object):
         request_size = size
         for i_retry in range(self.max_retries + 1):
             new_read = os.pread(fd, size, offset)
+            #print(f'[DEBUG-BDPLAN Rank{rank}] Read fd={fd} size={size} offset={offset} got={len(new_read)} bytes')
             chunk.extend(new_read)
             got = memoryview(new_read).nbytes
             if memoryview(chunk).nbytes == request_size:
@@ -249,23 +254,97 @@ class EventManager(object):
             return os.path.basename(self.dm.xtc_files[i_smd])
         return f"smd-{i_smd}"
 
+    def _plan_chunk_index(self, i_smd):
+        if self.plan_chunk_positions is None:
+            return self.chunk_indices[i_smd]
+        return self.plan_chunk_positions[i_smd]
+
     def _init_plan_state(self):
-        plan = self.bd_plan
-        if not plan:
-            return
-        chunks = plan.get("chunks", [])
-        if not chunks:
-            return
+        """Normalize the BD plan (if any) and decide whether plan-mode can run."""
+        self.plan_chunks_by_file = None
+        self.plan_chunk_positions = None
+
+        plan = self.bd_plan or {}
+        chunks = list(plan.get("chunks") or [])
+        if not chunks or self.n_smd_files == 0:
+            return False
+
         per_file = [[] for _ in range(self.n_smd_files)]
         for entry in chunks:
             idx = entry.get("file_index")
-            if idx is None or idx >= self.n_smd_files:
+            if idx is None:
                 continue
-            per_file[idx].append(entry)
-        # sort by chunk_index to keep stable order
+            try:
+                file_idx = int(idx)
+            except (TypeError, ValueError):
+                continue
+            if file_idx < 0 or file_idx >= self.n_smd_files:
+                continue
+
+            start_evt = int(entry.get("start_evt", 0) or 0)
+            end_evt = int(entry.get("end_evt", start_evt) or start_evt)
+            if end_evt < start_evt:
+                end_evt = start_evt
+            n_offsets = entry.get("n_offsets")
+            if n_offsets is None:
+                n_offsets = end_evt - start_evt
+            try:
+                n_offsets = int(n_offsets)
+            except (TypeError, ValueError):
+                n_offsets = end_evt - start_evt
+
+            normalized = {
+                "file_index": file_idx,
+                "chunk_index": int(entry.get("chunk_index", len(per_file[file_idx])) or 0),
+                "start_evt": start_evt,
+                "end_evt": end_evt,
+                "n_offsets": max(0, n_offsets),
+                "start_offset": int(entry.get("start_offset", 0) or 0),
+                "total_bytes": int(entry.get("total_bytes", 0) or 0),
+            }
+            if "file_name" in entry:
+                normalized["file_name"] = entry["file_name"]
+
+            per_file[file_idx].append(normalized)
+
         for lst in per_file:
-            lst.sort(key=lambda e: e.get("chunk_index", 0))
+            lst.sort(key=lambda e: (e.get("chunk_index", 0), e.get("start_evt", 0)))
+
+        if not any(per_file):
+            return False
+
         self.plan_chunks_by_file = per_file
+
+        enable_plan_mode = True
+        if self.smd_mode:
+            enable_plan_mode = False
+        elif self.use_smds is not None:
+            use_smds_arr = np.asarray(self.use_smds, dtype=bool)
+            if use_smds_arr.any():
+                enable_plan_mode = False
+
+        if enable_plan_mode:
+            for lst in per_file:
+                for entry in lst:
+                    if entry.get("n_offsets", 0) > 1:
+                        self.logger.debug(
+                            "BD plan chunk for %s spans %d offsets; "
+                            "plan-mode reader currently supports single-offset chunks only. "
+                            "Falling back to legacy chunking.",
+                            self._bd_filename(entry["file_index"]),
+                            entry.get("n_offsets"),
+                        )
+                        enable_plan_mode = False
+                        break
+                if not enable_plan_mode:
+                    break
+
+        if enable_plan_mode:
+            self.plan_chunk_positions = np.zeros(self.n_smd_files, dtype=np.int64)
+        else:
+            self.plan_chunk_positions = None
+
+        return enable_plan_mode
 
     def _fill_bd_chunk(self, i_smd):
         """
@@ -289,7 +368,10 @@ class EventManager(object):
         entry = None
         if self.plan_chunks_by_file:
             file_chunks = self.plan_chunks_by_file[i_smd]
-            idx = self.chunk_indices[i_smd]
+            if self.plan_mode and self.plan_chunk_positions is not None:
+                idx = self._plan_chunk_index(i_smd)
+            else:
+                idx = self.chunk_indices[i_smd]
             if idx < len(file_chunks):
                 entry = file_chunks[idx]
 
@@ -354,11 +436,29 @@ class EventManager(object):
                     > memoryview(self.bd_bufs[i_smd]).nbytes
                 ):
                     # Guard: Only fill chunk if cutoff exists
-                    if self.chunk_indices[i_smd] >= len(self.cutoff_indices[i_smd]):
-                        return None
+                    if (
+                        self.plan_mode
+                        and self.plan_chunks_by_file
+                        and self.plan_chunk_positions is not None
+                    ):
+                        if self.plan_chunk_positions[i_smd] >= len(
+                            self.plan_chunks_by_file[i_smd]
+                        ):
+                            return None
                     else:
-                        self._fill_bd_chunk(i_smd)
-                        self.chunk_indices[i_smd] += 1
+                        if self.chunk_indices[i_smd] >= len(
+                            self.cutoff_indices[i_smd]
+                        ):
+                            return None
+
+                    self._fill_bd_chunk(i_smd)
+                    if (
+                        self.plan_mode
+                        and self.plan_chunks_by_file
+                        and self.plan_chunk_positions is not None
+                    ):
+                        self.plan_chunk_positions[i_smd] += 1
+                    self.chunk_indices[i_smd] += 1
 
                 # This is the offset of bd buffer! and not what stored in smd dgram,
                 # which in contrast points to the location of disk.

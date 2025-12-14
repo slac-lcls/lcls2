@@ -1,4 +1,12 @@
 import os
+import json
+
+DEBUG_BDPLAN = bool(int(os.environ.get("PS_DEBUG_BDPLAN", "0")))
+
+
+def _bdplan_print(msg):
+    if DEBUG_BDPLAN:
+        print(msg)
 
 import numpy as np
 
@@ -410,7 +418,13 @@ class EventBuilderNode(object):
         return batch
 
     def _send_to_dest(
-        self, dest_rank, smd_batch_dict, step_batch_dict, eb_man, batches, plan_context=None
+        self,
+        dest_rank,
+        smd_batch_dict,
+        step_batch_dict,
+        eb_man,
+        batches,
+        plan_payload=None,
     ):
         bd_comm = self.comms.bd_comm
         smd_batch, _ = smd_batch_dict[dest_rank]
@@ -418,66 +432,20 @@ class EventBuilderNode(object):
         batches[dest_rank] = repack_for_bd(
             smd_batch, missing_step_views, self.configs, client=dest_rank
         )
-        if self._send_bd_plan:
-            plan_payload = None
-            if plan_context is not None:
-                if "meta" not in plan_context:
-                    plan, _ = bd_plan.compute_bd_plan(
-                        batches[dest_rank],
-                        self.configs,
-                        self.dsparms.use_smds,
-                        self._bd_chunksize,
-                    )
-                    if plan:
-                        plan_id = self._plan_counter = self._plan_counter + 1
-                        destinations = plan_context["destinations"]
-                        slices = bd_plan.partition_plan(plan["chunks"], len(destinations))
-                        plan_context["meta"] = {
-                            "version": plan["version"],
-                            "n_events": plan["n_events"],
-                            "n_smd_files": plan["n_smd_files"],
-                            "plan_id": plan_id,
-                            "total_slices": len(destinations),
-                        }
-                        plan_context["slices"] = {
-                            dest: {"chunks": slices[idx], "index": idx}
-                            for idx, dest in enumerate(destinations)
-                        }
-                if "slices" in plan_context and dest_rank in plan_context["slices"]:
-                    slice_info = plan_context["slices"][dest_rank]
-                    meta = plan_context["meta"]
-                    plan_payload = {
-                        "version": meta["version"],
-                        "n_events": meta["n_events"],
-                        "n_smd_files": meta["n_smd_files"],
-                        "plan_id": meta["plan_id"],
-                        "slice_rank": slice_info["index"],
-                        "total_slices": meta["total_slices"],
-                        "chunks": slice_info["chunks"],
-                    }
-            else:
-                plan, _ = bd_plan.compute_bd_plan(
-                    batches[dest_rank],
-                    self.configs,
-                    self.dsparms.use_smds,
-                    self._bd_chunksize,
-                )
-                if plan:
-                    self._plan_counter += 1
-                    plan_payload = {
-                        "version": plan["version"],
-                        "n_events": plan["n_events"],
-                        "n_smd_files": plan["n_smd_files"],
-                        "plan_id": self._plan_counter,
-                        "slice_rank": 0,
-                        "total_slices": 1,
-                        "chunks": plan["chunks"],
-                    }
-            if plan_payload:
-                batches[dest_rank] = bd_plan.wrap_plan_with_batch(
-                    bd_plan.encode_plan(plan_payload), batches[dest_rank]
-                )
+        if self._send_bd_plan and plan_payload:
+            _bdplan_print(f"[DEBUG-BDPLAN] Preparing to send BD plan to dest_rank {dest_rank}")
+            _bdplan_print(
+                f"[DEBUG-BDPLAN] Sending plan slice to dest_rank {dest_rank}: "
+                f"{self._format_plan(plan_payload)}"
+            )
+            batches[dest_rank] = bd_plan.wrap_plan_with_batch(
+                bd_plan.encode_plan(plan_payload), batches[dest_rank]
+            )
+            _bdplan_print(
+                f"[DEBUG-BDPLAN] Wrapped plan with batch for dest_rank {dest_rank}"
+            )
         self.requests[dest_rank - 1] = bd_comm.Isend(batches[dest_rank], dest=dest_rank)
+        _bdplan_print(f"[DEBUG-BDPLAN] Sent batch to dest_rank {dest_rank}")
         del smd_batch_dict[dest_rank]  # done sending
 
         step_batch, _ = step_batch_dict[dest_rank]
@@ -487,6 +455,71 @@ class EventBuilderNode(object):
                 step_pf.split_packets(), dest_rank, as_event=True
             )
         del step_batch_dict[dest_rank]  # done adding
+
+    def _format_plan(self, obj):
+        def _convert(value):
+            if isinstance(value, dict):
+                return {self._convert_plan_key(k): _convert(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_convert(v) for v in value]
+            if isinstance(value, np.integer):
+                return int(value)
+            return value
+
+        return json.dumps(_convert(obj), indent=2)
+
+    def _convert_plan_key(self, key):
+        if isinstance(key, (str, int, float, bool)) or key is None:
+            return key
+        if isinstance(key, np.integer):
+            return int(key)
+        return str(key)
+
+    def _prepare_plan_payloads(self, plan, destinations):
+        if not self._send_bd_plan or not plan:
+            return {}
+        dests = sorted(int(d) for d in destinations)
+        if not dests:
+            return {}
+        chunks = plan.get("chunks", [])
+        if not chunks:
+            return {}
+        pre_slices = plan.get("slice_chunks")
+        if pre_slices and len(pre_slices) >= len(dests):
+            slices = pre_slices[: len(dests)]
+            total_slices = plan.get("total_slices", len(pre_slices))
+        else:
+            slices = bd_plan.partition_plan(chunks, len(dests))
+            total_slices = len(dests)
+        plan_id = plan.get("plan_id")
+        if plan_id is None:
+            self._plan_counter += 1
+            plan_id = self._plan_counter
+        else:
+            self._plan_counter = max(self._plan_counter, plan_id)
+        payloads = {}
+        meta = {
+            "version": plan.get("version", 1),
+            "n_events": plan.get("n_events", 0),
+            "n_smd_files": plan.get("n_smd_files", 0),
+            "plan_id": plan_id,
+            "total_slices": total_slices,
+        }
+        for idx, dest in enumerate(dests):
+            payloads[dest] = {
+                "version": meta["version"],
+                "n_events": meta["n_events"],
+                "n_smd_files": meta["n_smd_files"],
+                "plan_id": meta["plan_id"],
+                "slice_rank": idx,
+                "total_slices": meta["total_slices"],
+                "chunks": slices[idx],
+            }
+            _bdplan_print(
+                f"[DEBUG-BDPLAN] Created plan slice for dest_rank {dest}: "
+                f"{self._format_plan(payloads[dest])}"
+            )
+        return payloads
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
@@ -535,13 +568,14 @@ class EventBuilderNode(object):
 
         bypass_bd = bool(int(os.environ.get("PS_EB_BYPASS_BD", "0")))
 
+        n_chunks = 0
         while True:
             smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
                 break
-
+            n_chunks += 1
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms,
+                smd_chunk, self.configs, self.dsparms, n_bd_nodes=n_bd_nodes,
             )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
@@ -557,11 +591,9 @@ class EventBuilderNode(object):
             for smd_batch_dict, step_batch_dict in eb_man.batches():
                 if bypass_bd:
                     continue
+                latest_plan = getattr(eb_man, "latest_plan", None)
                 # If single item and dest_rank=0, send to any bigdata nodes.
                 if 0 in smd_batch_dict.keys():
-                    smd_batch, _ = smd_batch_dict[0]
-                    step_batch, _ = step_batch_dict[0]
-
                     self.logger.debug(
                         f"TIMELINE 9. EB{self.comms.world_rank}REQBD {time.monotonic()}",
                     )
@@ -576,26 +608,30 @@ class EventBuilderNode(object):
                             f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMREQ {time.monotonic()}",
                         )
 
-                    missing_step_views = self.step_hist.get_buffer(rankreq[0])
-                    batches[rankreq[0]] = repack_for_bd(
-                        smd_batch, missing_step_views, self.configs, client=rankreq[0]
+                    dest_rank = rankreq[0]
+                    # Promote the implicit destination (0) to the actual BD rank
+                    smd_batch_dict[dest_rank] = smd_batch_dict.pop(0)
+                    step_batch_dict[dest_rank] = step_batch_dict.pop(0)
+                    plan_payload_map = (
+                        self._prepare_plan_payloads(latest_plan, [dest_rank])
+                        if self._send_bd_plan
+                        else {}
                     )
 
                     self.logger.debug(
-                        f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
+                        f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{dest_rank+1} {time.monotonic()}",
                     )
-                    self.requests[rankreq[0] - 1] = bd_comm.Isend(
-                        batches[rankreq[0]], dest=rankreq[0]
+                    self._send_to_dest(
+                        dest_rank,
+                        smd_batch_dict,
+                        step_batch_dict,
+                        eb_man,
+                        batches,
+                        plan_payload=plan_payload_map.get(dest_rank),
                     )
                     self.logger.debug(
-                        f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
+                        f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{dest_rank+1} {time.monotonic()}",
                     )
-
-                    if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
-                        step_pf = PacketFooter(view=step_batch)
-                        self.step_hist.extend_buffers(
-                            step_pf.split_packets(), rankreq[0], as_event=True
-                        )
 
                 # With > 1 dest_rank, start looping until all dest_rank batches
                 # have been sent.
@@ -608,10 +644,10 @@ class EventBuilderNode(object):
                         )
                         break
 
-                    plan_context = (
-                        {"destinations": sorted(smd_batch_dict.keys())}
+                    plan_payload_map = (
+                        self._prepare_plan_payloads(latest_plan, list(smd_batch_dict.keys()))
                         if self._send_bd_plan
-                        else None
+                        else {}
                     )
                     while smd_batch_dict:
                         if waiting_bds:  # Check first if there are bd nodes waiting
@@ -624,7 +660,7 @@ class EventBuilderNode(object):
                                         step_batch_dict,
                                         eb_man,
                                         batches,
-                                        plan_context=plan_context,
+                                        plan_payload=plan_payload_map.get(dest_rank),
                                     )
                                     waiting_bds.remove(dest_rank)
 
@@ -638,7 +674,7 @@ class EventBuilderNode(object):
                                     step_batch_dict,
                                     eb_man,
                                     batches,
-                                    plan_context=plan_context,
+                                    plan_payload=plan_payload_map.get(dest_rank),
                                 )
                             else:
                                 waiting_bds.append(dest_rank)
