@@ -89,7 +89,12 @@ class RunParallel(Run):
             self._update_envstore_from_dgrams(dgrams)
 
             if svc == TransitionId.BeginStep:
-                yield Step(Event(dgrams=dgrams, run=self._run_ctx), evt_iter, self._run_ctx)
+                yield Step(
+                    Event(dgrams=dgrams, run=self._run_ctx),
+                    evt_iter,
+                    self._run_ctx,
+                    esm=self.esm,
+                )
 
     def start(self):
         """Request data for this run"""
