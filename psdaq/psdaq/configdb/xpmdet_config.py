@@ -56,7 +56,9 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     except:
         raise RuntimeError(f'Unable to proc file for {dev}')
 
-    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType=boardType)
+#   Too soon
+#    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType=boardType)
+    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
     root.__enter__()
 
 ##  Moved to connectionInfo so supervisor can execute it only once
@@ -66,8 +68,8 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
 #    time.sleep(0.1)
 #    root.PcieControl.DevPcie.TDetTiming.TimingFrameRx.ClearRxCounters()
 
-    args['root'] = root.PcieControl.DevPcie
-    args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+    args['root'] = root.PcieControl.DevKcu1500
+    args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
 
     return root
 
