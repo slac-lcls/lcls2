@@ -413,9 +413,9 @@ class AreaDetectorRaw(AreaDetector):
            Should be overridden for more complicated cases.
         """
         logger_method = kwa.get('logger_method', logger.debug)
-        logger_method('AreaDetectorRaw.calib')
-        logger_method('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
-                      +'\n  If needed more, it needs to be re-implemented for this detector type.')
+        #logger_method('AreaDetectorRaw.calib')
+        logger_method('%s.calib(evt) is implemented for generic case of area detector as (raw - peds) * gfac * mask' % self.__class__.__name__\
+                     +'\n  If needed more, it should to be re-implemented for specific detector type.')
         raw = self.raw(evt)
         if is_none(raw, 'det.raw.raw(evt) is None', logger_method): return None
 
@@ -427,7 +427,7 @@ class AreaDetectorRaw(AreaDetector):
         if is_none(gfac, 'det.raw._gain_factor() is None, return raw - peds', logger_method): return arr
         if gfac != 1: arr *= gfac
 
-        #logger_method('AAAAAAAA2 call det._mask(**self.kwa) from AreaDetectorRaw.calib')
+        #logger_method('XXX call det._mask(**self.kwa) from AreaDetectorRaw.calib')
         mask = self._mask(**kwa)
         if is_none(mask, 'det.raw._mask() is None - return (raw - peds)*gfac', logger_method): return arr
         return arr*mask
