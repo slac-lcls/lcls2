@@ -164,7 +164,7 @@ def wave8_connectionInfo(base, alloc_json_str):
 
     # Retrieve the XPM connection information from EPICS
     # to verify a direct connection (not through a fanout)
-    confirm_xpm_rxid( txId, values, alloc_json_str)
+#    confirm_xpm_rxid( txId, values, alloc_json_str)
 
     d = {}
     d['paddr'] = values
