@@ -390,7 +390,7 @@ void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
         }
         // The driver allocates the DMA pool, so we have no control over what comes after it
         // Unclear how to recognize overruns, so commenting this out for now
-        //if ((idx == m_nbuffers-1) && (word[1] != 0xabababab)) [[unlikely]] {
+        //if ((idx == m_dmaCount-1) && (word[1] != 0xabababab)) [[unlikely]] {
         //    if (!(m_dmaOverrun & 0x02)) {
         //        const auto th = (const Pds::TimingHeader*)buffer;
         //        logging::error("(%014lx, %u.%09u, %s) DMA buffer[%zu] pool overrun: %08x %08x vs %08x",
@@ -497,7 +497,8 @@ int32_t PgpReader::read()
 
 void PgpReader::flush()
 {
-    unsigned cnt = m_count;
+    // DMA buffers must be freeable from multiple threads
+    std::lock_guard<std::mutex> lock(m_lock);
 
     // Return DMA buffers queued for freeing
     if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
@@ -507,7 +508,6 @@ void PgpReader::flush()
     int32_t ret;
     while ( (ret = read()) ) {
         dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
-        cnt += ret;
     }
 
     // Free any in-use pebble buffers
@@ -723,11 +723,17 @@ void PgpReader::freeDma(PGPEvent* event)
     for (unsigned i = 0; laneMask; laneMask &= ~(1 << i++)) {
         if (event->mask &  (1 << i)) {
             event->mask ^= (1 << i);    // Zero out mask before dmaRetIndexes()
-            m_dmaIndices[m_count++] = event->buffers[i].index;
-            if (m_count == m_dmaIndices.size()) {
-                // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
-                m_pool.freeDma(m_count, m_dmaIndices.data());
-                m_count = 0;
+            auto idx = event->buffers[i].index;
+            if (idx < m_pool.dmaCount()) [[likely]] {
+                m_dmaIndices[m_count++] = idx;
+                if (m_count == m_dmaIndices.size()) {
+                    // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
+                    m_pool.freeDma(m_count, m_dmaIndices.data());
+                    m_count = 0;
+                }
+            } else {
+                logging::error("DMA buffer index %u is out of range [0:%u]\n",
+                               idx, m_pool.dmaCount() - 1);
             }
         }
     }
