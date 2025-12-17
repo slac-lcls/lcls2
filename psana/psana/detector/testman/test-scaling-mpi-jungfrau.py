@@ -303,7 +303,7 @@ def calib_jungfrau_compare(det_raw, evt, **kwa): # cmpars=(7,3,200,10),
         ud.calib_jungfrau_v2(arr, ccons, size_blk, outa)
 
     elif CALIBMET == CALIB_CPP_V3:
-        # full processing in C++ reshaped constants (8,<NPIXELS>)
+        # full processing in C++ reshaped constants (4, <NPIXELS>, 2)
         #logger.info(info_ndarr(ccons, 'XXX CHANGE TO v2    ccons', first=1000, last=1008))
         ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)
 
@@ -404,16 +404,16 @@ def test_event_loop(calibmet, **kwargs):
           s += ' ' + dic_calibmet[calibmet]
           t0_sec = time()
 
-          if calibmet in (CALIB_CPP_V4, CALIB_CPP_V5):
+          if calibmet == CALIB_STD:
+            calib = det.raw.calib(evt, **kwargs)   # calib_std(det, evt, cmpars=None)
+
+          elif calibmet in (CALIB_CPP_V4, CALIB_CPP_V5):
             dt_us_cpp, dt_sec_cy = calib_jungfrau_compare(det.raw, evt, **kwargs)
             calib = raw
             s += ' dt cpp: %.3f msec, cython: %.3f msec' % (dt_us_cpp*0.001, dt_sec_cy*1000)
 
           elif calibmet in (CALIB_LOCAL_V2, CALIB_CPP_V0, CALIB_CPP_V1, CALIB_CPP_V2, CALIB_CPP_V3):
             calib = calib_jungfrau_compare(det.raw, evt, **kwargs)
-
-          elif calibmet == CALIB_STD:
-            calib = det.raw.calib(evt, **kwargs)   # calib_std(det, evt, cmpars=None)
 
           elif calibmet == CALIB_STD_LOCAL:
             calib = calib_jungfrau_local(det.raw, evt, **kwargs) # cmpars=cmpars)
@@ -523,7 +523,7 @@ def selector():
     tname = args.tname  # sys.argv[1] if len(sys.argv)>1 else '0'
     tnum = int(tname)
 
-    if   tname ==  '0': test_event_loop(CALIB_STD,       **kwargs)            # det.raw.calib - current
+    if   tname ==  '0': test_event_loop(CALIB_STD, cversion=0, **kwargs)      # det.raw.calib - current
     elif tname ==  '1': test_event_loop(CALIB_STD_LOCAL, **kwargs)            # the same as det.raw.calib but in this module
     elif tname ==  '2': test_event_loop(CALIB_LOCAL_V2,  **kwargs)            # version for comparison in python
     elif tname ==  '3': test_event_loop(CALIB_CPP_V0,    **kwargs)            # version for comparison in C++
@@ -532,6 +532,11 @@ def selector():
     elif tname ==  '6': test_event_loop(CALIB_CPP_V3, cversion=3, **kwargs)   # version for comparison in C++ reshaped constants (4,<NPIXELS>,2)
     elif tname ==  '7': test_event_loop(CALIB_CPP_V4, cversion=3, **kwargs)   # version for empty call to cython-C++ WITHOUT PARAMETERS
     elif tname ==  '8': test_event_loop(CALIB_CPP_V5, cversion=3, **kwargs)   # version for empty call to cython-C++ WITH PARAMETERS
+    elif tname == '10': test_event_loop(CALIB_STD, cversion=0, **kwargs)      # det.raw.calib - python original
+    elif tname == '11': test_event_loop(CALIB_STD, cversion=1, **kwargs)      # C++ constants (<NPIXELS>,8)
+    elif tname == '12': test_event_loop(CALIB_STD, cversion=2, **kwargs)      # C++ constants (8,<NPIXELS>)
+    elif tname == '13': test_event_loop(CALIB_STD, cversion=3, **kwargs)      # C++ constants (4,<NPIXELS>,2)
+    elif tname == '14': test_event_loop(CALIB_STD,             **kwargs)      # C++ constants (4,<NPIXELS>,2) DEFAULT
 
     else:
         print(usage())
