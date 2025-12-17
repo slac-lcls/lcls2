@@ -57,6 +57,7 @@ def parse_args():
     parser.add_argument('--use_calib_cache', action='store_true', help='Use cached calibration constants')
     parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode')
     parser.add_argument('--live', action='store_true', help='Enable live mode')
+    parser.add_argument('--log_file', help='Path to log file for DataSource (optional)')
     return parser.parse_args()
 
 
@@ -76,6 +77,7 @@ def create_datasource(args, rank):
             use_calib_cache=args.use_calib_cache,
             cached_detectors=args.cached_detectors,
             monitor=args.monitor,
+            log_file=args.log_file,
         )
     else:
         if args.exp is None or args.run is None:
@@ -105,6 +107,7 @@ def create_datasource(args, rank):
             monitor=args.monitor,
             live=args.live,
             dir=dir_path,
+            log_file=args.log_file,
         )
     return ds
 
@@ -123,6 +126,7 @@ def main():
 
     smd = None
     ps_srv_nodes = int(os.environ.get('PS_SRV_NODES', '0'))
+    n_ebnodes = int(os.environ.get('PS_EB_NODES', '1'))
     if ps_srv_nodes > 0:
         smd = ds.smalldata(batch_size=args.batch_size)
         if rank == 0:
@@ -135,15 +139,18 @@ def main():
         print(f"Debugging detector: {args.debug_detector}")
 
     local_count = 0
-    ti0 = time.time()
+    event_loop_start = time.time()
+    ti0 = event_loop_start
     interval = 1000
 
     det_accessed = False
     for i_evt, evt in enumerate(run.events()):
         if det and args.debug_detector.lower() == 'epix10ka':
             _ = det.raw.raw(evt)
+            det_accessed = True
         elif det and args.debug_detector.lower() == 'jungfrau':
-            _ = det.raw.image(evt)
+            _ = det.raw.raw(evt)
+            det_accessed = True
         elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
             _ = det.raw.peaks(evt)  
             _ = det.raw.waveforms(evt) 
@@ -154,28 +161,51 @@ def main():
             smd.event(evt, mydata=42.0)
 
         if i_evt % interval == 0 and i_evt > 0:
-            rate = interval / (time.time() - ti0)
-            print(f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz {det_accessed=}")
-            ti0 = time.time()
+            now = time.time()
+            interval_time = now - ti0
+            rate = interval / interval_time if interval_time > 0 else 0.0
+            print(
+                f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
+                f"Interval={interval_time:.2f}s {det_accessed=}"
+            )
+            ti0 = now
 
         local_count += 1
 
     if smd:
         smd.done()
 
+    event_loop_end = time.time()
+    loop_elapsed = max(event_loop_end - event_loop_start, 1e-12)
+    load_time = event_loop_start - t0
+
     sendbuf = np.array([local_count], dtype="i")
     recvbuf = np.empty([size, 1], dtype="i") if rank == 0 else None
     comm.Gather(sendbuf, recvbuf, root=0)
+    loop_elapsed_max = comm.reduce(loop_elapsed, op=MPI.MAX, root=0)
+    load_time_max = comm.reduce(load_time, op=MPI.MAX, root=0)
     end = MPI.Wtime()
 
     if rank == 0:
         total = np.sum(recvbuf)
-        n_ebnodes = int(os.environ.get('PS_EB_NODES', '1'))
         n_bdnodes = size - n_ebnodes - 1
-        print(f"[{args.log_level}] {n_ebnodes=} {n_bdnodes=} Total events: {total} Rate={total/(end-start):.1f} Hz")
+        elapsed = end - start
+        loop_elapsed_print = loop_elapsed_max if loop_elapsed_max else elapsed
+        total_rate = total / loop_elapsed_print if loop_elapsed_print > 0 else 0.0
+        print(
+            f"[{args.log_level}] {n_ebnodes=} {n_bdnodes=} "
+            f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "
+            f"Total events: {total} Rate={total_rate:.1f} Hz"
+        )
     else:
-        rate = local_count / (time.time() - t0)
-        print(f"[{args.log_level}] Rank {rank} processed {local_count} events Rate={rate:.1f} Hz")
+        first_bd_rank = n_ebnodes + 1
+        last_bd_rank = size - ps_srv_nodes
+        if first_bd_rank <= rank < last_bd_rank:
+            rate = local_count / loop_elapsed if loop_elapsed > 0 else 0.0
+            print(
+                f"[{args.log_level}] Rank {rank} processed {local_count} events "
+                f"Rate={rate:.1f} Hz Load time={load_time:.2f}s Loop time={loop_elapsed:.2f}s"
+            )
 
 
 if __name__ == '__main__':
