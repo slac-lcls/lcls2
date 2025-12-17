@@ -57,9 +57,15 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
 
     def calib(self, evt, **kwa) -> Array2d:
+        """ use kwa['cversion'] = 0,1,2,3 to switch between python, and C++ 1,2,3
+            DEFAULT cversion = 3 is set in UtilsJungfrau.py class DetCache
+            To use old good python calib method with common mode evaluation set:
+            cversion=3 and cmpars=(7,3,200,10)
+        """
         #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
         if self.raw(evt) is None: return None
-        return uj.calib_jungfrau(self, evt, **kwa)
+        return uj.calib_jungfrau_versions(self, evt, **kwa)
+        #return uj.calib_jungfrau(self, evt, **kwa) # !!! cversion=0
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
     def __init__(self, *args, **kwa):
