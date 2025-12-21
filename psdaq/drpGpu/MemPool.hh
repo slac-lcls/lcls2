@@ -10,7 +10,6 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
-#include <cuda/atomic>
 #include <nvtx3/nvtx3.hpp>
 
 #include "drp/drp.hh"
