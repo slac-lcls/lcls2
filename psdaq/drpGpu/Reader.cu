@@ -238,7 +238,15 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
 
         const volatile uint32_t* __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
         //if (tid == 0)  printf("*** R: Wait for DMA from FPGA %lu, buf %u: mem %p\n", fpga, dmaBufIdx, mem);
-        while (*mem == 0);                      // Wait for DMA completion @todo: abort by writing this location
+        unsigned ns = 8;
+        while (*mem == 0) {                     // Wait for DMA completion @todo: abort by writing this location
+          __nanosleep(ns);
+          if (ns < 256) {
+            ns *= 2;
+          }
+          done = terminate.load(cuda::std::memory_order_acquire);
+          if (done)  return;
+        }
         //if (tid == 0)  printf("*** R: Got DMA: sz %u\n", *mem);
         auto next = (dmaBufIdx + 1) % dmaCount; // Prepare for next DMA buffer
         *(uint32_t*)(dmaBufs[next] + 4) = 0;    // Clear the handshake space of the next DMA buffer
@@ -342,7 +350,7 @@ cudaGraph_t Reader::_recordGraph(CUdeviceptr dmaBuffer, CUdeviceptr hwWriteStart
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
   unsigned nThreads{32}; // @todo: Should come from para.nGpuThreads or a kwarg?
-  unsigned nBlocks{nSMs * tpMP / nThreads}; // {189};
+  unsigned nBlocks{189}; //{nSMs * tpMP / nThreads}; // {189};
   unsigned stride{nBlocks * nThreads};
 
   logging::info("GPU threads per SM: %d, total threads: %u, SMs %.1f, elements per thread: %.1f\n",

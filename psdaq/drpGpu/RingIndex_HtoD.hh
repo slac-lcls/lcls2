@@ -3,15 +3,12 @@
 
 #include "psalg/utils/SysLog.hh"
 
+#include <time.h>
 #include <atomic>
 
 #include <cuda_runtime.h>
 #include <cuda/atomic>
 #include <cuda/std/atomic>
-
-#ifndef __NVCC__
-#define __nanosleep(x) {}
-#endif
 
 namespace Drp {
   namespace Gpu {
@@ -56,7 +53,12 @@ public:
     auto next = (idx+1)&(m_capacity-1);
     auto tail = m_tail_h->load(cuda::memory_order_acquire);
     //printf("***   HtoD rb::produce 2, nxt %d, tail %d\n", next, tail);
+    unsigned ns = 8;
     while (next == tail) {                               // Wait for tail to advance while full
+      _nsSleep(ns);
+      if (ns < 256) {
+        ns *= 2;
+      }
       if (m_terminate.load(std::memory_order_acquire))
         break;
       tail = m_tail_h->load(cuda::memory_order_acquire); // Refresh tail
@@ -73,11 +75,15 @@ public:
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
     auto head = m_head_d->load(cuda::memory_order_acquire);
     //printf("###   HtoD rb::consume 2, tail %d, head %d\n", tail, head);
+    unsigned ns = 8;
     while (tail == head) {                               // Wait for head to advance while empty
       //printf("###   HtoD rb::consume idx %d\n", head);
+      __nanosleep(ns);
+      if (ns < 256) {
+        ns *= 2;
+      }
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      //__nanosleep(5000);                                 // Suspend the thread
       head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
     }
     //printf("###   HtoD rb::consume 3, idx %d\n", head);
@@ -103,6 +109,13 @@ public:
   {
     *m_head_h = 0;
     *m_tail_h = 0;
+  }
+
+private:
+  __host__ int _nsSleep(unsigned ns)
+  {
+    struct timespec ts{0, ns};
+    return nanosleep(&ts, nullptr);
   }
 
 private:

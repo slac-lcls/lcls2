@@ -1,5 +1,5 @@
-#ifndef RINGINDEX_DTOD_H
-#define RINGINDEX_DTOD_H
+#ifndef RINGINDEX_DTOD_HH
+#define RINGINDEX_DTOD_HH
 
 #include "psalg/utils/SysLog.hh"
 
@@ -59,7 +59,12 @@ public:
     auto idx  = m_head_d->load(cuda::memory_order_acquire);
     auto next = (idx+1)&(m_capacity-1);
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
+    unsigned ns = 8;
     while (next == tail) {                               // Wait for tail to advance while full
+      __nanosleep(ns);
+      if (ns < 256) {
+        ns *= 2;
+      }
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
       tail = m_tail_d->load(cuda::memory_order_acquire); // Refresh tail
@@ -73,10 +78,14 @@ public:
     auto head = m_head_d->load(cuda::memory_order_acquire);
     //printf("###   DtoD rb::produce 1.%d, idx %d, head %d\n", instance, idx, head);
     // Make sure head is published in event order so make other streams wait if they get here first
+    unsigned ns = 8;
     while (idx != head) {                                // Out-of-turn streams wait here
+      __nanosleep(ns);
+      if (ns < 256) {
+        ns *= 2;
+      }
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      //__nanosleep(5000);                                 // Suspend the thread
       head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
     }
     //printf("###   DtoD rb::produce 2.%d, idx %d\n", instance, idx);
@@ -92,11 +101,15 @@ public:
     auto tail = m_tail_d->load(cuda::memory_order_acquire);
     auto head = m_head_d->load(cuda::memory_order_acquire);
     //printf("###   DtoD rb::consume 2, tail %d, head %d\n", tail, head);
+    unsigned ns = 8;
     while (tail == head) {                               // Wait for head to advance while empty
       //printf("###   DtoD rb::consume idx %d\n", head);
+      __nanosleep(ns);
+      if (ns < 256) {
+        ns *= 2;
+      }
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      //__nanosleep(5000);                                 // Suspend the thread
       head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
     }
     //printf("###   DtoD rb::consume 3, idx %d\n", head);
@@ -147,7 +160,7 @@ private:
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_d; // Must stay coherent across streams
   const unsigned                                     m_capacity;
   const unsigned                                     m_dmaBufMask;
-  const cuda::std::atomic<uint32_t>&                 m_terminate_d;
+  const cuda::std::atomic<unsigned>&                 m_terminate_d;
 };
 
   }
