@@ -257,7 +257,7 @@ struct GPUTimer
     cudaEventDestroy(end);
   }
   void start() { cudaEventRecord(beg, 0); }
-  double stop() {
+  float stop() {
     cudaEventRecord(end, 0);
     cudaEventSynchronize(end);
     float ms;
