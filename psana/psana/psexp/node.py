@@ -11,6 +11,8 @@ from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
 from psana.psexp import TransitionId
 from psana.psexp.prometheus_manager import get_prom_manager
+from psana.marchingeventbuilder import MarchingEventBuilder
+from psana.psexp.marching_eventmanager import MarchingEventManager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -57,12 +59,19 @@ class Communicators(object):
     color = 0
     _nodetype = None
     bd_comm = None
+    march_shm_comm = None
+    march_shm_rank = 0
+    march_shm_size = 0
+    march_shm_comm = None
+    march_shm_rank = 0
+    march_shm_size = 0
 
     def __init__(self):
         self.comm = MPI.COMM_WORLD
         self.world_rank = self.comm.Get_rank()
         self.world_size = self.comm.Get_size()
         self.world_group = self.comm.Get_group()
+        self.march_shm_comm = MPI.COMM_NULL
 
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
         PS_EB_NODES = int(os.environ.get("PS_EB_NODES", 1))
@@ -94,6 +103,11 @@ class Communicators(object):
             self.smd_rank = self.smd_comm.Get_rank()
             self.smd_size = self.smd_comm.Get_size()
 
+        env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
+        self.marching_enabled = env_march in ("1", "true", "yes", "on")
+        self.march_shared_mem = None
+        self.march_params = {}
+
         if self.bd_main_comm != MPI.COMM_NULL:
             self.bd_main_rank = self.bd_main_comm.Get_rank()
             self.bd_main_size = self.bd_main_comm.Get_size()
@@ -108,6 +122,15 @@ class Communicators(object):
                 self._nodetype = "eb"
             else:
                 self._nodetype = "bd"
+
+            if self.marching_enabled:
+                info = MPI.INFO_NULL
+                self.march_shm_comm = self.bd_comm.Split_type(
+                    MPI.COMM_TYPE_SHARED, self.bd_rank, info
+                )
+                if self.march_shm_comm != MPI.COMM_NULL:
+                    self.march_shm_rank = self.march_shm_comm.Get_rank()
+                    self.march_shm_size = self.march_shm_comm.Get_size()
 
         if self.world_rank == 0:
             self._nodetype = "smd0"
@@ -683,6 +706,50 @@ class EventBuilderNode(object):
         bd_comm.bcast(np.array([], dtype='B'), root=0)
 
 
+class MarchingEventBuilderNode(object):
+    """Feeds marching shared-memory buffers instead of sending MPI batches."""
+
+    def __init__(self, comms, configs, dsparms):
+        self.comms = comms
+        self.configs = configs
+        self.dsparms = dsparms
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self.shared_mem = getattr(self.comms, "march_shared_mem", None)
+        if self.shared_mem is None:
+            raise RuntimeError("Marching shared memory is not initialized")
+        params = getattr(self.comms, "march_params", {})
+        self.builder = MarchingEventBuilder(
+            configs,
+            dsparms,
+            self.shared_mem,
+            n_slots=params.get("n_slots", 2),
+            max_events_per_chunk=params.get("max_events", dsparms.batch_size),
+            max_chunk_bytes=params.get("max_chunk_bytes", 1 << 24),
+            name_prefix=params.get("prefix", "march"),
+        )
+
+    def _request_data(self):
+        smd_comm = self.comms.smd_comm
+        smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
+        info = MPI.Status()
+        smd_comm.Probe(source=0, status=info)
+        count = info.Get_elements(MPI.BYTE)
+        smd_chunk = bytearray(count)
+        req = smd_comm.Irecv(smd_chunk, source=0)
+        req.Wait()
+        return smd_chunk
+
+    def start(self):
+        chunk_id = 0
+        while True:
+            smd_chunk = self._request_data()
+            if not smd_chunk:
+                break
+            self.builder.ingest_chunk(smd_chunk, chunk_id)
+            chunk_id += 1
+        self.builder.finalize()
+
+
 
 class BigDataNode(object):
     def __init__(self, comms, configs, dm, dsparms, shared_state):
@@ -782,3 +849,47 @@ class BigDataNode(object):
 
         self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
         return ts_table
+
+
+class MarchingBigDataNode(object):
+    """Consumes marching shared-memory slots and yields events."""
+
+    def __init__(self, comms, configs, dm, dsparms, shared_state):
+        self.comms = comms
+        self.configs = configs
+        self.dm = dm
+        self.dsparms = dsparms
+        self.shared_state = shared_state
+        self.shared_mem = getattr(self.comms, "march_shared_mem", None)
+        if self.shared_mem is None:
+            raise RuntimeError("Marching shared memory is not initialized")
+        pm = get_prom_manager()
+        self.wait_gauge = pm.get_metric("psana_bd_wait")
+        self.rate_gauge = pm.get_metric("psana_bd_rate")
+        self.logger = utils.get_logger(name=utils.get_class_name(self))
+
+    def start(self):
+        params = getattr(self.comms, "march_params", {})
+        n_consumers = max(self.comms.march_shm_size - 1, 1)
+        evt_mgr = MarchingEventManager(
+            self.configs,
+            self.dm,
+            self.shared_mem,
+            n_consumers=n_consumers,
+            shared_state=self.shared_state,
+            name_prefix=params.get("prefix", "march"),
+            use_smds=self.dsparms.use_smds,
+        )
+        t0 = time.monotonic()
+        for i_evt, dgrams in enumerate(evt_mgr):
+            if self.shared_state.terminate_flag.value:
+                continue
+            if i_evt and i_evt % 1000 == 0:
+                t1 = time.monotonic()
+                rate = 1000 / (t1 - t0)
+                self.logger.debug(
+                    f"RATE MARCH BD ({self.comms.world_rank}) {rate:.3f} Hz"
+                )
+                self.rate_gauge.set(rate)
+                t0 = time.monotonic()
+            yield dgrams

@@ -55,6 +55,7 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
+    marching_read: bool = False
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -186,6 +187,8 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
+        env_marching = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
+        self.marching_read = env_marching in ("1", "true", "yes", "on")
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -214,6 +217,7 @@ class DataSourceBase(abc.ABC):
             self.skip_calib_load,
             self.dbsuffix,
             smd_callback=self.smd_callback,
+            marching_read=self.marching_read,
         )
 
         # Warn about unrecognized kwargs
