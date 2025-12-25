@@ -33,7 +33,7 @@ static void dumpStack(const std::string& filePath)
   /* Got this routine from http://www.whitefang.com/unix/faq_toc.html
   ** Section 6.5. Modified to redirect to file to prevent clutter
   */
-  std::string gdb("gdb -q -n -ex bt -ex detach -ex quit -p " +
+  std::string gdb("gdb -q -n -ex \"thread apply all bt\" -ex detach -ex quit -p " +
                   std::to_string(getpid()) + " > " + filePath);
 
   system(gdb.c_str());
