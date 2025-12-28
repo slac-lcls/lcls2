@@ -31,6 +31,10 @@ import numpy as np
 import psutil
 from mpi4py import MPI
 from psana import DataSource
+try:
+    from psana.psexp import parallel_pread as _parallel_pread
+except ImportError:
+    _parallel_pread = None
 
 
 def print_memory_usage(rank, i_evt, interval=10):
@@ -132,6 +136,9 @@ def main():
         if rank == 0:
             print(f"[DEBUG] Exercising smalldata path with PS_SRV_NODES={ps_srv_nodes}")
 
+    if _parallel_pread is not None:
+        _parallel_pread.reset_parallel_pread_stats()
+
     run = next(ds.runs())
 
     det = run.Detector(args.debug_detector) if args.debug_detector else None
@@ -141,6 +148,9 @@ def main():
     local_count = 0
     event_loop_start = time.time()
     ti0 = event_loop_start
+    last_pread_seconds = 0.0
+    last_pread_bytes = 0
+    last_pread_calls = 0
     interval = 1000
 
     det_accessed = False
@@ -164,9 +174,24 @@ def main():
             now = time.time()
             interval_time = now - ti0
             rate = interval / interval_time if interval_time > 0 else 0.0
+            if _parallel_pread is not None:
+                pread_sec, pread_bytes, pread_calls = _parallel_pread.parallel_pread_stats()
+                delta_bytes = pread_bytes - last_pread_bytes
+                delta_sec = pread_sec - last_pread_seconds
+                delta_calls = pread_calls - last_pread_calls
+                io_rate = (delta_bytes / delta_sec) if delta_sec > 1e-12 else 0.0
+                io_msg = (
+                    f" IO={io_rate / (1024 * 1024):.2f} MiB/s "
+                    f"bytes={delta_bytes / (1024 * 1024):.2f} MiB calls={delta_calls}"
+                )
+                last_pread_seconds = pread_sec
+                last_pread_bytes = pread_bytes
+                last_pread_calls = pread_calls
+            else:
+                io_msg = ""
             print(
                 f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
-                f"Interval={interval_time:.2f}s {det_accessed=}"
+                f"Interval={interval_time:.2f}s {det_accessed=} {io_msg}"
             )
             ti0 = now
 
@@ -178,6 +203,10 @@ def main():
     event_loop_end = time.time()
     loop_elapsed = max(event_loop_end - event_loop_start, 1e-12)
     load_time = event_loop_start - t0
+    if _parallel_pread is not None:
+        pread_sec, pread_bytes, pread_calls = _parallel_pread.parallel_pread_stats()
+    else:
+        pread_sec = pread_bytes = pread_calls = 0.0
 
     sendbuf = np.array([local_count], dtype="i")
     recvbuf = np.empty([size, 1], dtype="i") if rank == 0 else None
@@ -185,6 +214,10 @@ def main():
     loop_elapsed_max = comm.reduce(loop_elapsed, op=MPI.MAX, root=0)
     load_time_max = comm.reduce(load_time, op=MPI.MAX, root=0)
     end = MPI.Wtime()
+
+    total_pread_bytes = comm.reduce(pread_bytes, op=MPI.SUM, root=0)
+    total_pread_sec = comm.reduce(pread_sec, op=MPI.SUM, root=0)
+    total_pread_calls = comm.reduce(pread_calls, op=MPI.SUM, root=0)
 
     if rank == 0:
         total = np.sum(recvbuf)
@@ -197,6 +230,13 @@ def main():
             f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "
             f"Total events: {total} Rate={total_rate:.1f} Hz"
         )
+        if total_pread_bytes > 0 and total_pread_sec > 0:
+            agg_io_rate = (total_pread_bytes / (1024 * 1024)) / total_pread_sec
+            print(
+                f"[{args.log_level}] TOTAL_IO bytes={total_pread_bytes / (1024 * 1024):.2f} MiB "
+                f"time={total_pread_sec:.2f}s rate={agg_io_rate:.2f} MiB/s "
+                f"calls={int(total_pread_calls)}"
+            )
     else:
         first_bd_rank = n_ebnodes + 1
         last_bd_rank = size - ps_srv_nodes
@@ -206,6 +246,12 @@ def main():
                 f"[{args.log_level}] Rank {rank} processed {local_count} events "
                 f"Rate={rate:.1f} Hz Load time={load_time:.2f}s Loop time={loop_elapsed:.2f}s"
             )
+            if pread_calls > 0 and pread_sec > 0:
+                io_rate = (pread_bytes / (1024 * 1024)) / pread_sec
+                print(
+                    f"[{args.log_level}] Rank {rank} IO bytes={pread_bytes / (1024 * 1024):.2f} MiB "
+                    f"time={pread_sec:.2f}s rate={io_rate:.2f} MiB/s calls={int(pread_calls)}"
+                )
 
 
 if __name__ == '__main__':

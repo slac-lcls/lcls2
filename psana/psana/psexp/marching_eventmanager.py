@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -68,6 +68,7 @@ class MarchingEventManager:
         name_prefix: str = "march",
         poll_interval: float = 5e-4,
         use_smds=None,
+        events_per_grant: int = 1,
     ):
         if mode != "mpi":
             raise RuntimeError("MarchingEventManager requires MPI mode")
@@ -89,8 +90,11 @@ class MarchingEventManager:
             use_smds = [False] * self.n_streams
         self._use_smds = np.asarray(use_smds, dtype=bool)
         self._bd_indices = [i for i in range(self.n_streams) if not self._use_smds[i]]
-        self._bd_fds = np.asarray(self.dm.fds, dtype=np.intc)
-        self._bd_fds = self._bd_fds[self._bd_indices] if self._bd_indices else np.empty(0, dtype=np.intc)
+        if self._bd_indices:
+            self._bd_fds = np.zeros(len(self._bd_indices), dtype=np.intc)
+            self._refresh_bd_fds()
+        else:
+            self._bd_fds = np.empty(0, dtype=np.intc)
 
         self._preader = None
         self._preader_caps = None
@@ -104,14 +108,27 @@ class MarchingEventManager:
         self._fetch_buf32 = np.zeros(1, dtype=np.int32)
 
         self._chunk_view = None
-        self._pending_transitions: List[list] = []
+        self._pending_transitions: List[Tuple[int, list]] = []
         self._active_slot: Optional[int] = None
         self._slot_event_count = 0
         self._last_chunk_id = -1
         self._chunk_filenames = {}
+        self._l1_progress = 0
+        self._stream_last_offsets = np.zeros(self.n_streams, dtype=np.int64)
+        self._pending_chunk_switches: Dict[int, Tuple[int, str]] = {}
 
         self._logger = utils.get_logger(name=utils.get_class_name(self))
         self._rank = MPI.COMM_WORLD.Get_rank() if MPI else 0
+        self._grant_size = max(1, int(events_per_grant))
+        self._grant_remaining = 0
+        self._grant_cursor = 0
+        self._grant_request = np.array([self._grant_size], dtype=np.int64)
+        self._grant_start = 0
+        self._grant_span = 0
+        self._grant_views = None
+        self._grant_rel_offsets = None
+        self._grant_sizes_arr = None
+        self._grant_prints = 0
 
     def _debug(self, msg: str) -> None:
         if DEBUG_PRINT:
@@ -126,9 +143,6 @@ class MarchingEventManager:
             if self.shared_state and getattr(self.shared_state.terminate_flag, "value", 0):
                 raise StopIteration
 
-            if self._pending_transitions:
-                return self._pending_transitions.pop(0)
-
             if self._active_slot is None:
                 slot = self._await_ready_slot()
                 if slot is None:
@@ -136,38 +150,38 @@ class MarchingEventManager:
                 self._prepare_slot(slot)
                 continue
 
-            evt_idx = self._fetch_next_event_index(self._active_slot)
-            self._debug(f"[DEBUG-marchbd] _next__ evt_idx={evt_idx}")
-            if evt_idx >= self._slot_event_count:
+            transition_evt = self._maybe_emit_transition()
+            if transition_evt is not None:
+                return transition_evt
+
+            evt_idx = self._next_event_index()
+            if evt_idx is None:
+                self._l1_progress = self._slot_event_count
+                transition_evt = self._maybe_emit_transition()
+                if transition_evt is not None:
+                    return transition_evt
                 self._finish_slot_if_needed(self._active_slot)
                 self._active_slot = None
                 self._chunk_view = None
                 continue
 
+            # Updating grant start may unlock transitions; emit them before L1
+            transition_evt = self._maybe_emit_transition()
+            if transition_evt is not None:
+                # Put the event index back so it can be reissued later
+                self._grant_cursor -= 1
+                self._grant_remaining += 1
+                return transition_evt
+
             if not self._is_l1_event(self._active_slot, evt_idx):
                 # Skip transitions and let the transition replay path handle them.
-                self._debug("[DEBUG-marchbd] _next__ skipping non-L1 event")
                 continue
 
             dgrams = self._build_l1_event(self._active_slot, evt_idx)
-            if DEBUG_PRINT:
-                ts_values = [dg.timestamp() for dg in dgrams if dg is not None]
-                unique_ts = sorted(set(ts_values))
-                if len(unique_ts) > 1:
-                    self._debug(
-                        f"[DEBUG-marchbd] _next__ multiple timestamps idx={evt_idx} ts={unique_ts}"
-                    )
             if not any(dgrams):
                 # Missing event; continue marching.
-                self._debug("[DEBUG-marchbd] _next__ skipping missing event")
                 continue
-            if DEBUG_PRINT:
-                slot = self._active_slot
-                chunk_id = int(self.slot_chunk_ids[slot])
-                ts = next((dg.timestamp() for dg in dgrams if dg is not None), None)
-                self._debug(
-                    f"[DEBUG-marchbd] rank={self._rank} slot={slot} chunk={chunk_id} evt_idx={evt_idx} ts={ts}"
-                )
+            self._l1_progress = max(self._l1_progress, evt_idx + 1)
             return dgrams
 
     # ------------------------------------------------------------------
@@ -232,7 +246,13 @@ class MarchingEventManager:
             self._chunk_view = memoryview(buffer)
 
         self._pending_transitions = self._collect_transition_events(slot)
+        self._l1_progress = 0
         self._ensure_preader_capacity(slot)
+        self._grant_remaining = 0
+        self._grant_cursor = 0
+        self._grant_start = 0
+        self._grant_span = 0
+        self._grant_views = None
 
     def _finish_slot_if_needed(self, slot: int):
         """Increment the 'consumers done' counter and free slot if last consumer."""
@@ -255,28 +275,168 @@ class MarchingEventManager:
             self.slot_next_event[slot] = 0
             self.slot_consumers_done[slot] = 0
             self.smd_chunk_sizes[slot] = 0
+            self._pending_transitions = []
+            self._l1_progress = 0
+
+    def _next_event_index(self) -> Optional[int]:
+        if self._active_slot is None:
+            return None
+        if self._grant_remaining <= 0:
+            if not self._reserve_grant(self._active_slot):
+                return None
+        evt_idx = self._grant_cursor
+        self._grant_cursor += 1
+        self._grant_remaining -= 1
+        return evt_idx
+
+    def _reserve_grant(self, slot: int) -> bool:
+        if self._slot_event_count <= 0:
+            return False
+        request = min(self._grant_size, self._slot_event_count)
+        start = self._fetch_next_event_index(slot, request)
+        self._l1_progress = max(self._l1_progress, start)
+        if start >= self._slot_event_count:
+            self._grant_remaining = 0
+            return False
+        end = min(start + request, self._slot_event_count)
+        self._grant_cursor = start
+        self._grant_remaining = end - start
+        self._grant_start = start
+        self._grant_span = self._grant_remaining
+        self._prepare_grant_views(slot, start, end)
+        return self._grant_remaining > 0
+
+    def _prepare_grant_views(self, slot: int, start: int, end: int):
+        if not self._bd_indices or self._preader is None:
+            self._grant_views = None
+            self._grant_rel_offsets = None
+            self._grant_sizes_arr = None
+            return
+        span = end - start
+        if span <= 0:
+            self._grant_views = None
+            self._grant_rel_offsets = None
+            self._grant_sizes_arr = None
+            return
+        rel_offsets = np.full((span, len(self._bd_indices)), -1, dtype=np.int64)
+        rel_sizes = np.zeros((span, len(self._bd_indices)), dtype=np.int64)
+        if self._preader is None or self._preader_caps is None:
+            self._ensure_preader_capacity(slot)
+        chunk_offsets = np.zeros(len(self._bd_indices), dtype=np.int64)
+        chunk_sizes = np.zeros(len(self._bd_indices), dtype=np.intp)
+        chunk_bytes = np.zeros(len(self._bd_indices), dtype=np.float64)
+        for local_idx, stream_idx in enumerate(self._bd_indices):
+            stream_offsets = self.bd_offsets[slot, start:end, stream_idx].astype(np.int64, copy=False)
+            stream_sizes = self.bd_sizes[slot, start:end, stream_idx].astype(np.int64, copy=False)
+            valid = stream_sizes > 0
+            if not np.any(valid):
+                chunk_offsets[local_idx] = 0
+                chunk_sizes[local_idx] = 0
+                chunk_bytes[local_idx] = 0.0
+                continue
+            first_idx = int(np.argmax(valid))
+            last_idx = int(len(valid) - 1 - np.argmax(valid[::-1]))
+            first_offset = int(stream_offsets[first_idx])
+            self._ensure_chunk_ready(stream_idx, first_offset)
+            last_offset = int(stream_offsets[last_idx])
+            last_size = int(stream_sizes[last_idx])
+            chunk_offsets[local_idx] = first_offset
+            chunk_sizes[local_idx] = max(1, (last_offset + last_size) - first_offset)
+            chunk_bytes[local_idx] = chunk_sizes[local_idx] / (1024 * 1024)
+            rel = stream_offsets - first_offset
+            rel_offsets[:, local_idx] = np.where(valid, rel, -1)
+            rel_sizes[:, local_idx] = stream_sizes
+        if not np.any(chunk_sizes):
+            self._grant_views = None
+            self._grant_rel_offsets = rel_offsets
+            self._grant_sizes_arr = rel_sizes
+            return
+        chunk_list = [int(sz) for sz in chunk_sizes]
+        if self._preader_caps is None or len(self._preader_caps) != len(chunk_list):
+            self._preader_caps = [max(1, sz) for sz in chunk_list]
+            self._preader = ParallelPreader(len(self._bd_indices), self._preader_caps)
+        else:
+            new_caps = []
+            need_resize = False
+            for cap, required in zip(self._preader_caps, chunk_list):
+                if required > cap:
+                    need_resize = True
+                    cap = required
+                new_caps.append(max(1, cap))
+            if need_resize:
+                self._preader_caps = new_caps
+                self._preader = ParallelPreader(len(self._bd_indices), self._preader_caps)
+        try:
+            views = self._preader.read(self._bd_fds, chunk_offsets, chunk_sizes)
+        except Exception as e:
+            print( 
+                "Marching grant pread failed: slot=%d start=%d end=%d offsets=%s sizes=%s error=%s",
+                slot,
+                start,
+                end,
+                chunk_offsets,
+                chunk_sizes,
+                str(e),
+            )
+            raise
+        self._grant_views = views
+        self._grant_rel_offsets = rel_offsets
+        self._grant_sizes_arr = rel_sizes
+        if DEBUG_PRINT and start < end and self._grant_prints < 3 and self._rank==2:
+            grant_id = self._grant_prints + 1
+            chunk_id = int(self.slot_chunk_ids[slot])
+            stream_msgs = []
+            for local_idx, stream_idx in enumerate(self._bd_indices):
+                fname = os.path.basename(self.dm.xtc_files[stream_idx])
+                stream_msgs.append(f"{fname}:{chunk_bytes[local_idx]:.2f} MiB")
+            msg = (
+                f"[marching grant] rank={self._rank} chunk={chunk_id} grant={grant_id} "
+                f"events[{start},{end}) bytes per stream: {', '.join(stream_msgs)}"
+            )
+            self._debug(msg)
+            self._grant_prints += 1
 
     # ------------------------------------------------------------------
     # Transition replay
     # ------------------------------------------------------------------
-    def _collect_transition_events(self, slot: int) -> List[list]:
+    def _maybe_emit_transition(self) -> Optional[list]:
+        if not self._pending_transitions:
+            return None
+        evt_idx, dgrams = self._pending_transitions[0]
+        if evt_idx > self._l1_progress:
+            return None
+        self._pending_transitions.pop(0)
+        return dgrams
+
+    def _collect_transition_events(self, slot: int) -> List[Tuple[int, list]]:
         """Extract transition dgrams from the shared chunk."""
         if self._chunk_view is None:
             return []
 
-        transitions = []
+        transitions: List[Tuple[int, list]] = []
         for evt_idx in range(self._slot_event_count):
             if self._is_l1_event(slot, evt_idx):
                 continue
             dgrams = self._build_smd_event(slot, evt_idx)
             if any(dgrams):
                 self._apply_chunk_updates(dgrams)
-                transitions.append(dgrams)
+                transitions.append((evt_idx, dgrams))
         if DEBUG_PRINT:
             self._debug(
-                f"[DEBUG-marchbd] _collect_transition_events slot={slot} transitions={len(transitions)}"
+                f"[march transition] rank={self._rank} slot={slot} transitions={len(transitions)}"
             )
         return transitions
+
+    def _ensure_chunk_ready(self, stream_idx: int, next_offset: int) -> None:
+        """Apply pending chunk switch when offsets wrap around to a new file."""
+        pending = self._pending_chunk_switches.get(stream_idx)
+        if pending is None:
+            return
+        if next_offset >= self._stream_last_offsets[stream_idx]:
+            return
+        new_chunk_id, filename = pending
+        self._open_new_bd_file(stream_idx, new_chunk_id, filename)
+        self._pending_chunk_switches.pop(stream_idx, None)
 
     def _build_smd_event(self, slot: int, evt_idx: int) -> List[Optional[dgram.Dgram]]:
         dgrams = [None] * self.n_streams
@@ -310,7 +470,12 @@ class MarchingEventManager:
             if current_id is not None and new_chunk_id <= current_id:
                 continue
             self._chunk_filenames[(i, new_chunk_id)] = filename
-            self._open_new_bd_file(i, new_chunk_id, filename)
+            if DEBUG_PRINT:
+                self._debug(
+                    f"[marching chunkinfo] rank={self._rank} stream={i} chunk_id={new_chunk_id} "
+                    f"filename={filename}"
+                )
+            self._pending_chunk_switches[i] = (new_chunk_id, filename)
 
     def _open_new_bd_file(self, stream_idx: int, new_chunk_id: int, filename: Optional[str] = None):
         """Switch the fd for a stream when chunkinfo indicates a new file."""
@@ -325,6 +490,15 @@ class MarchingEventManager:
         self.dm.fds[stream_idx] = fd
         self.dm.xtc_files[stream_idx] = full_path
         self.dm.set_chunk_id(stream_idx, new_chunk_id)
+        self._refresh_bd_fds()
+        self._stream_last_offsets[stream_idx] = 0
+
+    def _refresh_bd_fds(self):
+        """Update cached big-data FD array to reflect current chunk assignments."""
+        if not self._bd_indices:
+            return
+        for local_idx, stream_idx in enumerate(self._bd_indices):
+            self._bd_fds[local_idx] = int(self.dm.fds[stream_idx])
 
     # ------------------------------------------------------------------
     # L1 processing
@@ -344,10 +518,38 @@ class MarchingEventManager:
                     )
 
         if self._bd_indices:
+            rel_idx = evt_idx - self._grant_start
+            if (
+                self._grant_views is not None
+                and 0 <= rel_idx < self._grant_span
+                and self._grant_rel_offsets is not None
+            ):
+                for local_idx, stream_idx in enumerate(self._bd_indices):
+                    rel_off = self._grant_rel_offsets[rel_idx, local_idx]
+                    size = self._grant_sizes_arr[rel_idx, local_idx]
+                    if rel_off < 0 or size <= 0:
+                        continue
+                    view = self._grant_views[local_idx]
+                    if size > 0 and view is not None:
+                        sub_view = view[rel_off : rel_off + size]
+                        dgrams[stream_idx] = dgram.Dgram(
+                            config=self.dm.configs[stream_idx],
+                            view=sub_view,
+                        )
+                        base_off = int(self.bd_offsets[slot, evt_idx, stream_idx])
+                        self._stream_last_offsets[stream_idx] = max(
+                            self._stream_last_offsets[stream_idx], base_off + size
+                        )
+                return dgrams
+
             offsets = self.bd_offsets[slot, evt_idx, self._bd_indices]
             sizes = self.bd_sizes[slot, evt_idx, self._bd_indices]
             self._pread_offsets[:] = offsets
             self._pread_sizes[:] = sizes
+            for local_idx, stream_idx in enumerate(self._bd_indices):
+                off = int(offsets[local_idx])
+                if self._pread_sizes[local_idx] > 0:
+                    self._ensure_chunk_ready(stream_idx, off)
             if self._preader is None:
                 self._ensure_preader_capacity(slot)
             views = self._preader.read(self._bd_fds, self._pread_offsets, self._pread_sizes)
@@ -357,6 +559,11 @@ class MarchingEventManager:
                 dgrams[stream_idx] = dgram.Dgram(
                     config=self.dm.configs[stream_idx],
                     view=views[local_idx],
+                )
+                base_off = int(self.bd_offsets[slot, evt_idx, stream_idx])
+                size = int(self._pread_sizes[local_idx])
+                self._stream_last_offsets[stream_idx] = max(
+                    self._stream_last_offsets[stream_idx], base_off + size
                 )
 
         return dgrams
@@ -409,11 +616,13 @@ class MarchingEventManager:
                 return True
         return False
 
-    def _fetch_next_event_index(self, slot: int) -> int:
+    def _fetch_next_event_index(self, slot: int, count: int = 1) -> int:
         win = self._next_evt_handle.window
+        request = max(1, int(count))
+        self._grant_request[0] = request
         win.Lock(0)
         win.Fetch_and_op(
-            self._one64,
+            self._grant_request,
             self._fetch_buf64,
             target_rank=0,
             target_disp=slot,

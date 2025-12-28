@@ -16,6 +16,7 @@ from libc.stdint cimport uint64_t
 from psana.dgramlite cimport Dgram, Xtc
 
 import numpy as np
+import time
 
 from dataclasses import dataclass
 from typing import Sequence
@@ -255,13 +256,22 @@ cdef class MarchingEventBuilder:
         self.smd_chunk_sizes[slot] = 0
 
     cdef int _acquire_slot(self):
-        for attempt in range(self.n_slots):
-            idx = (self._next_slot_hint + attempt) % self.n_slots
-            if self.slot_states[idx] == self.STATE_EMPTY:
-                self.slot_states[idx] = self.STATE_FILLING
-                self._next_slot_hint = (idx + 1) % self.n_slots
-                return idx
-        raise RuntimeError("No available marching slots; BD nodes may be stalled")
+        cdef Py_ssize_t idx
+        cdef int wait_iters = 0
+        while True:
+            for attempt in range(self.n_slots):
+                idx = (self._next_slot_hint + attempt) % self.n_slots
+                if self.slot_states[idx] == self.STATE_EMPTY:
+                    self.slot_states[idx] = self.STATE_FILLING
+                    self._next_slot_hint = (idx + 1) % self.n_slots
+                    return idx
+            wait_iters += 1
+            if wait_iters % 1000 == 0:
+                self.logger.warning(
+                    "MarchingEventBuilder waiting for free slot; BD ranks may be stalled (n_slots=%d)",
+                    self.n_slots,
+                )
+            time.sleep(0.001)
 
     cdef object _parse_chunk(self, object chunk_view):
         chunk_pf = PacketFooter(view=chunk_view)
@@ -290,7 +300,7 @@ cdef class MarchingEventBuilder:
                 break
             if event_idx >= slot_capacity:
                 raise ValueError(
-                    f"Chunk exceeds configured max_events ({self.max_events}); increase PS_MARCH_MAX_EVENTS."
+                    f"Chunk exceeds configured event_idx={event_idx} max_events/slot_capacity={slot_capacity}; increase PS_MARCH_MAX_EVENTS."
                 )
 
             for stream_idx in range(n_streams):

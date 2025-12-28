@@ -41,6 +41,7 @@ def _create_default_dsparms() -> DsParms:
         skip_calib_load=[],
         dbsuffix="",
         marching_read=False,
+        march_events_per_grant=1,
     )
 
 
