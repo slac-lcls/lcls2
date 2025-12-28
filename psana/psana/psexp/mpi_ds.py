@@ -134,7 +134,10 @@ class RunParallel(Run):
         default_max_events = int(os.environ.get("PS_SMD_N_EVENTS", "20000"))
         env_max_events = os.environ.get("PS_MARCH_MAX_EVENTS")
         if env_max_events is not None:
-            max_events = min(int(env_max_events), default_max_events)
+            try:
+                max_events = int(env_max_events)
+            except ValueError:
+                max_events = default_max_events
         else:
             max_events = default_max_events
         max_events = max(max_events, 1)

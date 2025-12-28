@@ -869,6 +869,14 @@ class MarchingBigDataNode(object):
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def start(self):
+        use_prange_env = os.environ.get("PS_PREAD_USE_PRANGE", "1").lower()
+        if use_prange_env in ("0", "false", "off"):
+            bd_rank = getattr(self.comms, "bd_rank", None)
+            if bd_rank == 1 and os.environ.get("PS_PREAD_PRANGE_WARNED", "0") != "1":
+                self.logger.warning(
+                    "PS_PREAD_USE_PRANGE disabled; marching pread calls will run serialized"
+                )
+                os.environ["PS_PREAD_PRANGE_WARNED"] = "1"
         params = getattr(self.comms, "march_params", {})
         n_consumers = max(self.comms.march_shm_size - 1, 1)
         evt_mgr = MarchingEventManager(
@@ -879,6 +887,7 @@ class MarchingBigDataNode(object):
             shared_state=self.shared_state,
             name_prefix=params.get("prefix", "march"),
             use_smds=self.dsparms.use_smds,
+            events_per_grant=getattr(self.dsparms, "march_events_per_grant", 1),
         )
         t0 = time.monotonic()
         for i_evt, dgrams in enumerate(evt_mgr):

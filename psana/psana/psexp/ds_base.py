@@ -56,6 +56,7 @@ class DsParms:
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
     marching_read: bool = False
+    march_events_per_grant: int = 1
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -189,6 +190,13 @@ class DataSourceBase(abc.ABC):
         self.auto_tune = kwargs.get("auto_tune", False)
         env_marching = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
         self.marching_read = env_marching in ("1", "true", "yes", "on")
+        env_grant = os.environ.get("PS_MARCH_EVENTS_PER_GRANT", "1")
+        try:
+            self.march_events_per_grant = max(1, int(env_grant))
+        except ValueError:
+            self.march_events_per_grant = 1
+        if self.marching_read:
+            self._configure_marching_eb_nodes()
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -218,6 +226,7 @@ class DataSourceBase(abc.ABC):
             self.dbsuffix,
             smd_callback=self.smd_callback,
             marching_read=self.marching_read,
+            march_events_per_grant=self.march_events_per_grant,
         )
 
         # Warn about unrecognized kwargs
@@ -233,6 +242,55 @@ class DataSourceBase(abc.ABC):
         for k in kwargs:
             if k not in known_keys:
                 self.logger.warning(f"Unrecognized kwarg={k}")
+
+    def _configure_marching_eb_nodes(self):
+        node_count = self._detect_node_count()
+        if node_count <= 0:
+            return
+        desired = str(node_count)
+        current = os.environ.get("PS_EB_NODES", "1")
+        if current != desired:
+            os.environ["PS_EB_NODES"] = desired
+            prev = current if current is not None else "unset"
+            self.logger.warning(
+                "Marching read requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
+                prev,
+                desired,
+            )
+
+    def _detect_node_count(self):
+        env_vars = (
+            "PS_NUM_NODES",
+            "PS_NODES",
+            "SLURM_STEP_NUM_NODES",
+            "SLURM_JOB_NUM_NODES",
+            "SLURM_NNODES",
+        )
+        for var in env_vars:
+            raw = os.environ.get(var)
+            if not raw:
+                continue
+            try:
+                count = int(raw)
+            except ValueError:
+                continue
+            if count > 0:
+                return count
+
+        if mode == "mpi":
+            try:
+                from mpi4py import MPI
+
+                comm = MPI.COMM_WORLD
+                hostname = socket.gethostname()
+                hosts = comm.allgather(hostname)
+                unique_hosts = len(set(hosts))
+                if unique_hosts:
+                    return unique_hosts
+            except Exception:
+                pass
+
+        return 1
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
