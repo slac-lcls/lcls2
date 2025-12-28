@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <float.h>
 
-#include "peakfinder8.hh"
+#include "include/peakfinder8.hh"
 
 
 void allocatePeakList(tPeakList *peak, long NpeaksMax)
