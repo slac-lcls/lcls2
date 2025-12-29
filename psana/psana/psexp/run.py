@@ -146,7 +146,12 @@ class Run(object):
             if svc == TransitionId.EndRun:
                 return
             if svc == TransitionId.BeginStep:
-                yield Step(Event(dgrams=dgrams, run=self._run_ctx), self._evt_iter, self._run_ctx)
+                yield Step(
+                    Event(dgrams=dgrams, run=self._run_ctx),
+                    self._evt_iter,
+                    self._run_ctx,
+                    esm=self.esm,
+                )
 
     def terminate(self):
         """Sets terminate flag

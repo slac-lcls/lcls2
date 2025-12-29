@@ -94,7 +94,9 @@ def str_formatted(nda, first=0, last=5, vfmt='%0.6f', spa=' '):
     return '[%s%s' % (s.lstrip('\n'),suffix)
 
 
-def info_ndarr(nda, name='', first=0, last=5, vfmt=None, spa=' '):
+def info_ndarr(nda, name='', first=0, last=5, vfmt=None, spa=' ', sfmt=None): #' mean:%.3f median:%.3f min:%.3f max:%.3f'):
+    """ optional: sfmt=' mean:%.3f median:%.3f min:%.3f max:%.3f'
+    """
     _name = '%s '%name if name!='' else name
     s = ''
     gap = '\n' if (last-first)>10 else ' '
@@ -107,7 +109,9 @@ def info_ndarr(nda, name='', first=0, last=5, vfmt=None, spa=' '):
         a = '' if last == 0 else\
             str_formatted(nda, first=first, last=last, vfmt=vfmt, spa=spa)
         #    '%s%s' % (str(nda.ravel()[first:last]).rstrip(']'), '...]' if nda.size>last else ']')
-        s = '%sshape:%s size:%d dtype:%s%s%s' % (_name, str(nda.shape), nda.size, nda.dtype, gap, a)
+        sstat = '' if sfmt is None else sfmt % (np.mean(nda), np.median(nda), nda.min(), nda.max())
+        s = '%sshape:%s size:%d%s dtype:%s%s%s' %\
+            (_name, str(nda.shape), nda.size, sstat, nda.dtype, gap, a)
     return s
 
 

@@ -9,8 +9,9 @@ Usage::
   import psana.pycalgos.utilsdetector as ud
   out  = np.empty(sh, dtype=np.float32)
   ud.calib_std(raw, peds, gain, mask, out)
-
 """
+from psana.detector.NDArrUtils import info_ndarr
+
 import utilsdetector_ext as udext # !!! NAME utilsdetector_ext is defined in lcls2/psana/setup.py
 from time import time
 
@@ -42,7 +43,7 @@ def calib_jungfrau_v1(raw, cc, size_blk, out):
     """
     #t0_sec = time()
     assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
-    dt_us_cpp = udext.cy_calib_jungfrau_v1(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    dt_us_cpp = udext.cy_calib_jungfrau_v1(raw.ravel(), cc, raw.size, size_blk, out.ravel())
     out.shape = raw.shape
     return out #, dt_us_cpp, time()-t0_sec
 
@@ -53,7 +54,7 @@ def calib_jungfrau_v2(raw, cc, size_blk, out):
     """
     #t0_sec = time()
     #assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
-    dt_us_cpp = udext.cy_calib_jungfrau_v2(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    dt_us_cpp = udext.cy_calib_jungfrau_v2(raw.ravel(), cc, raw.size, size_blk, out.ravel())
     out.shape = raw.shape
     return out #, dt_us_cpp, time()-t0_sec
 
@@ -64,9 +65,33 @@ def calib_jungfrau_v3(raw, cc, size_blk, out):
     """
     #t0_sec = time()
     #assert raw.size % size_blk == 0, 'array size of raw data %d should be split for any number of equal blocks, current size_blk: %d' % (raw.size, size_blk)
-    dt_us_cpp = udext.cy_calib_jungfrau_v3(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    dt_us_cpp = udext.cy_calib_jungfrau_v3(raw.ravel(), cc, raw.size, size_blk, out.ravel())
     out.shape = raw.shape
     return out #, dt_us_cpp, time()-t0_sec
+
+def calib_jungfrau_v4_empty():
+    """v4 empty test WITHOUT parameters for cython-c++ overhead"""
+    t0_sec = time()
+    dt_us_cpp = udext.cy_calib_jungfrau_v4_empty()
+    return dt_us_cpp, time()-t0_sec
+
+def calib_jungfrau_v5_empty(raw, cc, size_blk, out):
+    """v5 empty test WITH parameters for cython-c++ overhead"""
+    t0_sec = time()
+    #print(info_ndarr(raw, '  raw :'))
+    #print(info_ndarr(cc,  '  cc  :'))
+    #print(info_ndarr(out, '  out :'))
+    #t0_sec_ravel = time()
+    #_raw = raw.ravel()
+    #_cc = cc.ravel()
+    #_out = out.ravel()
+    #print('dt_sec_ravel', time()-t0_sec_ravel)
+    #dt_us_cpp = udext.cy_calib_jungfrau_v5_empty(_raw, _cc, raw.size, size_blk, _out)
+    #dt_us_cpp = udext.cy_calib_jungfrau_v5_empty(raw.ravel(), cc.ravel(), raw.size, size_blk, out.ravel())
+    dt_us_cpp = udext.cy_calib_jungfrau_v5_empty(raw.ravel(), cc, raw.size, size_blk, out.ravel())
+    out.shape = raw.shape
+    return dt_us_cpp, time()-t0_sec
+
 
 
 

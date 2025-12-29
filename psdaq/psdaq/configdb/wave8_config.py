@@ -82,6 +82,14 @@ def epics_get(d):
                 out[key] = pvname
     return out
 
+def confirm_xpm_rxid( txId, xpmId, json_str):
+    json_msg = json.loads(json_str)
+    xpm_base = json_msg['body']['control']['0']['control_info']['pv_base']
+    xpm_pv = f'{xpm_base}:XPM:{(xpmId>>16)&0xff}:RemoteLinkId{xpmId&0xf}'
+    xvalues = int(ctxt_get(xpm_pv))
+    if xvalues != txId:
+        logging.warning(f'Found 0x{xvalues:x} from {xpm_pv}.  Expected 0x{txId:x}') 
+
 def config_timing(epics_prefix, timebase='186M'):
     # cpo found on 01/30/23 that when we toggle between LCLS1/LCLS2 timing
     # using ModeSel that we generate junk into the KCU giving these errors:
@@ -153,6 +161,10 @@ def wave8_connectionInfo(base, alloc_json_str):
             break
         print('{:} is zero, retry'.format(epics_prefix+':Top:TriggerEventManager:XpmMessageAligner:RxId'))
         time.sleep(0.1)
+
+    # Retrieve the XPM connection information from EPICS
+    # to verify a direct connection (not through a fanout)
+#    confirm_xpm_rxid( txId, values, alloc_json_str)
 
     d = {}
     d['paddr'] = values

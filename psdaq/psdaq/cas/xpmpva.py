@@ -27,11 +27,10 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
 
-def isATCA(pvbase):
-    print(f'** isATCA {pvbase}')
-    pv = Pv(pvbase+':FwBuild')
-    v = pv.get()
-    return 'Kcu' not in v
+def isATCA(v):
+    result = ('Kcu1500' not in v) and ('C1100' not in v)
+    print(f'isATCA({v}) = {result}')
+    return result
 
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
@@ -63,7 +62,9 @@ class PvPAddr(QtWidgets.QWidget):
                 port  = int(qs[6:8],16)
 
                 pvbase = ':'.join(self.pv.pvname.split(':')[:-2])+f':{shelf}'
-                if isATCA(pvbase):
+                pv = Pv(pvbase+':FwBuild')
+                v = pv.get()
+                if isATCA(v):
                     s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
                 else:
                     s = 'XPM:%d:QSFP%d-%d'%(shelf,port/4,port%4)
@@ -579,11 +580,10 @@ class Ui_MainWindow(object):
 
         for title in titles:
             pvbase = title+':'
-
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
 
-            if 'Kcu' in v:
+            if not isATCA(v):
                 amcTitle = 'QSFP'
                 nDsLinks = (4,4) # if 'Gen' in v else (3,4)
                 ATCAWidget = False
@@ -661,7 +661,7 @@ class Ui_MainWindow(object):
             if nopatt==False:
                 tw.addTab(PatternTab(pvbase),"Pattern")
 
-            if 'Kcu' not in v:
+            if isATCA(v):
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
             else:
                 tw.addTab(PvTableDisplay(pvbase+'QSFPSTATUS',[f'QSFP{int(j/4)}-{(j%4)}' for j in range(8)]),'QSFPs')

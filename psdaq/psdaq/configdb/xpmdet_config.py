@@ -44,15 +44,29 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
+    #  Discover boardType from firmware image name
+    try:
+        with open(dev.replace('/dev','/proc'),'r') as file:
+            for line in file.readlines():
+                if 'Build String' in line:
+                    if 'C1100' in line:
+                        boardType = 'VariumC1100'
+                    else:
+                        boardType = 'Kcu1500'
+    except:
+        raise RuntimeError(f'Unable to proc file for {dev}')
+
+#   Too soon
+#    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType=boardType)
     root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
     root.__enter__()
 
 ##  Moved to connectionInfo so supervisor can execute it only once
 #    logging.info('Reset timing data path')
-#    dumpTiming(root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx)
-#    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.C_RxReset()
+#    dumpTiming(root.PcieControl.DevPcie.TDetTiming.TimingFrameRx)
+#    root.PcieControl.DevPcie.TDetTiming.TimingFrameRx.C_RxReset()
 #    time.sleep(0.1)
-#    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
+#    root.PcieControl.DevPcie.TDetTiming.TimingFrameRx.ClearRxCounters()
 
     args['root'] = root.PcieControl.DevKcu1500
     args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
@@ -91,7 +105,10 @@ def xpmdet_connectionInfo(alloc_json_str):
                 rate = root.TDetTiming.refClockRate()
 
                 if (rate < clockrange[0] or rate > clockrange[1]):
-                    root.I2CBus.programSi570(119. if args["timebase"]=="119M" else 1300/7.)
+                    try:
+                        root.I2CBus.programSi570(119. if args["timebase"]=="119M" else 1300/7.)
+                    except:
+                        logging.error('Si570 programming failed.  Likely not a KCU1500.  Continuing.')
                     tim.RxPllReset.set(1)
                     tim.RxPllReset.set(0)
                     time.sleep(0.0001)
@@ -119,13 +136,12 @@ def xpmdet_connectionInfo(alloc_json_str):
         
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
             logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
+            root.TDetTiming.ConfigLclsTimingV2()
             tim = root.TDetTiming.TimingFrameRx
-            tim.RxPllReset.set(1)
-            tim.RxPllReset.set(0)
-            time.sleep(0.0001)
+            #tim.RxPllReset.set(1)
+            #tim.RxPllReset.set(0)
+            #time.sleep(0.0001)
             dumpTiming(tim)
-            tim.C_RxReset()
-            time.sleep(1.0)
             tim.ClearRxCounters()
 
             rxId = xma.RxId.get()

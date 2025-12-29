@@ -33,6 +33,7 @@ import psana.detector.NDArrUtils as ndau
 import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as up
 import psana.detector.UtilsCommonMode as ucm
+import psana.pycalgos.utilsdetector as ud
 
 info_ndarr = ndau.info_ndarr
 
@@ -43,6 +44,21 @@ MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask
 BSH = 14
 
 MAX_DETNAME_SIZE = 20
+
+# CALIBMET options
+CALIB_PYT_V0    = 0
+CALIB_CPP_V1    = 1
+CALIB_CPP_V2    = 2
+CALIB_CPP_V3    = 3
+CALIB_CPP_V4    = 4
+CALIB_CPP_V5    = 5
+
+dic_calibmet = {CALIB_PYT_V0:    'CALIB_PYT_V0',\
+                CALIB_CPP_V1:    'CALIB_CPP_V1',\
+                CALIB_CPP_V2:    'CALIB_CPP_V2',\
+                CALIB_CPP_V3:    'CALIB_CPP_V3',\
+                CALIB_CPP_V4:    'CALIB_CPP_V4',\
+                CALIB_CPP_V5:    'CALIB_CPP_V5'}
 
 #import psana.detector.Utils as ut
 #is_true = ut.is_true
@@ -57,26 +73,6 @@ def jungfrau_segments_tot(segnum_max):
            2 if segnum_max<2 else\
            8 if segnum_max<8 else\
            32
-
-#class Cache():
-#    """Wrapper around dict {detname:DetCache} for per-detector cache of calibration constants."""
-#    def __init__(self):
-#        self.calibcons = {}
-#
-#    def add_detcache(self, det, evt, **kwa):
-#        detname = det._det_name # i.e.: jungfrau
-#        assert isinstance(detname, str)
-#        logger.debug('add_detcache for detector name: %s' % detname)
-#        o = self.calibcons[detname] = DetCache(det, evt, **kwa)
-#        return o
-#
-#    def detcache_for_detname(self, detname):
-#        return self.calibcons.get(detname, None)
-#
-#    def detcache_for_detobject(self, det):
-#        return self.detcache_for_detname(det._det_name)
-#
-#cache = Cache() # singleton
 
 class DetCache():
     """Cash of calibration constants for jungfrau."""
@@ -93,7 +89,7 @@ class DetCache():
         self.ccons = None # combined calibration constants, content controlled by cversion
         self.loop_banks = True
         self._logmet_init = kwa.get('logmet_init', logger.debug)
-        self.cversion = kwa.get('cversion', 0) # numerated version of cached constants
+        self.cversion = kwa.get('cversion', 3) # numerated version of cached constants
         self.add_calibcons(det, evt)
 
     def kwargs_are_the_same(self, **kwa):
@@ -145,7 +141,8 @@ class DetCache():
                                                   logger_method = logger.warning) else\
                     ndau.divide_protected(np.ones_like(peds), gain)
 
-        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32)
+        self.outa = np.zeros(peds.shape[-3:], dtype=np.float32, order='C').ravel()
+        self.outa = np.ascontiguousarray(self.outa).ravel()
 
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
@@ -179,11 +176,11 @@ class DetCache():
 
 
     def add_ccons(self):
-        """make combined calibration constants
-           ** of V1, ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>) = (npix, 2, 4),
+        """make combined calibration constants for self.cversion = 1/2/3
+           ** of V1, (npix, 2, 4), ccons.shape = (<number-of-pixels-in detector>, <2-for-peds-and-gains>, <4-gain-ranges>)
            ** of V2, (2, 4, npix),
            ** of V3, (4, npix, 2),
-           ** peds = peds + offset, gain = gain * mask
+           ** po = peds + offset, gm = gain * mask
         """
         self.add_gain_mask()
         po = self.poff
@@ -201,7 +198,7 @@ class DetCache():
             if self.cversion == 1:
                 self.ccons = self.ccons.T
 
-        elif self.cversion == 3:
+        elif self.cversion > 2:
             # test: lcls2/psana/psana/detector]$ testman/test-scaling-mpi-jungfrau.py -t6
             npix = po[0,:].size
             print('npix:', npix)
@@ -212,11 +209,10 @@ class DetCache():
                             np.vstack((po[2,:].ravel(), gm[2,:].ravel())).T),
                             dtype=np.float32)
             self.ccons.shape = (4, npix, 2)
-
             self.check_cversion3_validity()
-        #logger.info(ndau.info_ndarr(self.ccons, 'XXX ccons', last=100, vfmt='%0.3f'))
 
-        #sys.exit('TEST EXIT')
+        logger.debug(ndau.info_ndarr(self.ccons, 'DetCache.add_ccons ccons:', last=100, vfmt='%0.3f'))
+        self.ccons = np.ascontiguousarray(self.ccons).ravel()
 
 
     def check_cversion3_validity(self):
@@ -322,6 +318,7 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
         if gfac1 is not None: gfac1.shape = (3,1,) + shseg
         if poff1 is not None: poff1.shape = (3,1,) + shseg
         out1 = calib_jungfrau_single_panel(arr1, gfac1, poff1, mask1, cmps)
+        #out1 = calib_jungfrau_single_panel_v0(arr1, gfac1, poff1, mask1, cmps)
 
         logger.debug('segment index %d arrays:' % i\
             + info_ndarr(arr1,  '\n  arr1 ')\
@@ -333,14 +330,8 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
 
 
 def gainbits_statistics(arr):
-    #gb00 = arr & BW3 == 0                                   # 00
-    #gb01 = np.logical_and(arr & BW1 == BW1, arr & BW2 == 0) # 01
-    #gb10 = np.logical_and(arr & BW2 == BW2, arr & BW1 == 0) # 10
-    #gb11 = arr & BW3 == BW3                                 # 11
-
     gbits = np.array(arr>>14, dtype=np.uint8)
     gb00, gb01, gb10, gb11 = gbits==0, gbits==1, gbits==2, gbits==3
-
     arr1 = np.ones_like(arr, dtype=np.uint32)
     arr_sta_gb00 = np.select((gb00,), (arr1,), 0)
     arr_sta_gb01 = np.select((gb01,), (arr1,), 0)
@@ -359,14 +350,8 @@ def info_gainbits_statistics(arr, fmt='gainbits statistics 00:%05d  01:%05d  10:
 
 
 def gainrange_statistics(arr):
-    #gr0 = arr <  BW1              # 00
-    #gr1 =(arr >= BW1) & (arr<BW2) # 01
-    #gr2 = arr >= BW3              # 11
-    #bad =(arr >= BW2) & (arr<BW3) # 10 - badly frozen pixel
-
     gbits = np.array(arr>>14, dtype=np.uint8)
     gr0, gr1, gr2, bad = gbits==0, gbits==1, gbits==3, gbits==2
-
     arr1 = np.ones_like(arr, dtype=np.uint32)
     arr_sta_gr0 = np.select((gr0,), (arr1,), 0)
     arr_sta_gr1 = np.select((gr1,), (arr1,), 0)
@@ -391,23 +376,68 @@ def info_gainrange_fractions(arr, fmt='gainrange fractions 0:%0.4f  1:%0.4f  2:%
     return fmt % gainrange_fractions(arr)
 
 
-def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
-    """ example for 8-panel detector
-    arr:  shape:(1, 512, 1024) size:524288 dtype:uint16 [2906 2945 2813 2861 3093...]
-    poff: shape:(3, 1, 512, 1024) size:1572864 dtype:float32 [2922.283 2938.098 2827.207 2855.296 3080.415...]
-    gfac: shape:(3, 1, 512, 1024) size:1572864 dtype:float32 [0.02490437 0.02543429 0.02541406 0.02539831 0.02544083...]
-    mask: shape:(1, 512, 1024) size:524288 dtype:uint8 [1 1 1 1 1...]
-    cmps: shape:(16,) size:16 dtype:float64 [  7.   1. 100.   0.   0....]
-    """
+#def calib_jungfrau_single_panel_v0(arr, gfac, poff, mask, cmps):
+#    """ example for 8-panel detector
+#    arr:  shape:(1, 512, 1024) size:524288 dtype:uint16 [2906 2945 2813 2861 3093...]
+#    poff: shape:(3, 1, 512, 1024) size:1572864 dtype:float32 [2922.283 2938.098 2827.207 2855.296 3080.415...]
+#    gfac: shape:(3, 1, 512, 1024) size:1572864 dtype:float32 [0.02490437 0.02543429 0.02541406 0.02539831 0.02544083...]
+#    mask: shape:(1, 512, 1024) size:524288 dtype:uint8 [1 1 1 1 1...]
+#    cmps: shape:(16,) size:16 dtype:float64 [  7.   1. 100.   0.   0....]
+#    """
+#    # Define bool arrays of ranges
+#    #t0_sec = time()
+#    gr0 = arr <  BW1              # 490 us
+#    gr1 =(arr >= BW1) & (arr<BW2) # 714 us
+#    gr2 = arr >= BW3              # 400 us
+#    #print('XXX V0 make gain bit arrays time = %.6f sec' % (time()-t0_sec)) # 190 us
+#    factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=0) # 2msec
+#    pedoff = np.select((gr0, gr1, gr2), (poff[0,:], poff[1,:], poff[2,:]), default=0)
+#
+#    # Subtract offset-corrected pedestals
+#    arrf = np.array(arr & MSK, dtype=np.float32)
+#    arrf -= pedoff
+#
+#    if cmps is not None:
+#      mode, cormax = int(cmps[1]), cmps[2]
+#      npixmin = cmps[3] if len(cmps)>3 else 10
+#      if mode>0:
+#        #arr1 = store.arr1
+#        #grhg = np.select((gr0,  gr1), (arr1, arr1), default=0)
+#        logger.debug(info_ndarr(gr0, 'gain group0'))
+#        logger.debug(info_ndarr(mask, 'mask'))
+#        t0_sec_cm = time()
+#        gmask = np.bitwise_and(gr0, mask) if mask is not None else gr0
+#        #sh = (nsegs, 512, 1024)
+#        hrows = 256 #512/2
+#        s = 0 # SINGLE SEGMENT ONLY, deprecated: for s in range(arrf.shape[0]):
+#        if True:
+#          if mode & 4: # in banks: (512/2,1024/16) = (256,64) pixels # 100 ms
+#            ucm.common_mode_2d_hsplit_nbanks(arrf[s,:hrows,:], mask=gmask[s,:hrows,:], nbanks=16, cormax=cormax, npix_min=npixmin)
+#            ucm.common_mode_2d_hsplit_nbanks(arrf[s,hrows:,:], mask=gmask[s,hrows:,:], nbanks=16, cormax=cormax, npix_min=npixmin)
+#
+#          if mode & 1: # in rows per bank: 1024/16 = 64 pixels # 275 ms
+#            ucm.common_mode_rows_hsplit_nbanks(arrf[s,], mask=gmask[s,], nbanks=16, cormax=cormax, npix_min=npixmin)
+#
+#          if mode & 2: # in cols per bank: 512/2 = 256 pixels  # 290 ms
+#            ucm.common_mode_cols(arrf[s,:hrows,:], mask=gmask[s,:hrows,:], cormax=cormax, npix_min=npixmin)
+#            ucm.common_mode_cols(arrf[s,hrows:,:], mask=gmask[s,hrows:,:], cormax=cormax, npix_min=npixmin)
+#
+#        logger.debug('TIME: common-mode correction time = %.6f sec' % (time()-t0_sec_cm))
+#
+#    arrf *= factor
+#    return arrf if mask is None else arrf * mask
 
+
+def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
+    """ The same as calib_jungfrau_single_panel_v0,
+        CHANGED: defenition of gr0, gr1, gr2, bad
+    """
     # Define bool arrays of ranges
-    gr0 = arr <  BW1              # 490 us
-    gr1 =(arr >= BW1) & (arr<BW2) # 714 us
-    gr2 = arr >= BW3              # 400 us
-    #gbits = np.array(arr>>BSH, dtype=np.uint8)
-    #gr0, gr1, gr2, bad = gbits==0, gbits==1, gbits==3, gbits==2
-    #factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=0) # 2msec
-    factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=1) # 2msec
+    #t0_sec = time()
+    gbits = np.array(arr>>14, dtype=np.uint8) # 00/01/11 - gain bits for mode 0,1,2
+    gr0, gr1, gr2 = gbits==0, gbits==1, gbits==3
+    #print('XXX V1 make gain bit arrays time = %.6f sec' % (time()-t0_sec)) # 180 us
+    factor = np.select((gr0, gr1, gr2), (gfac[0,:], gfac[1,:], gfac[2,:]), default=0) # 2msec
     pedoff = np.select((gr0, gr1, gr2), (poff[0,:], poff[1,:], poff[2,:]), default=0)
 
     # Subtract offset-corrected pedestals
@@ -443,5 +473,76 @@ def calib_jungfrau_single_panel(arr, gfac, poff, mask, cmps):
 
     arrf *= factor
     return arrf if mask is None else arrf * mask
+
+
+
+
+def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cversion = kwa.get('cversion', 0)
+    """
+       - switch for calib versions C++
+    """
+    nda_raw = kwa.get('nda_raw', None)
+    size_blk = kwa.get('size_blk', 512*1024) # single panel size
+
+    arr = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
+
+    if is_true(arr is None, 'det_raw.raw(evt) and nda_raw are None, return None',\
+               logger_method = logger.warning): return None
+
+    odc = det_raw._odc # cache.detcache_for_detname(det_raw._det_name)
+    first_entry = odc is None
+
+    if first_entry:
+        #kwa.setdefault('cversion', 3)
+        det_raw._odc = odc = DetCache(det_raw, evt, **kwa) # cache.add_detcache(det_raw, evt, **kwa)
+        logger.info('calib_jungfrau **kwa: %s' % str(kwa))
+        logger.info(det_raw._info_calibconst()) # is called in AreaDetector
+
+    if odc.poff is None: return arr
+
+    if kwa != odc.kwa:
+        logger.warning('IGNORED ATTEMPT to call det_raw.calib/image with different **kwargs (due to caching)'\
+                       + '\n  **kwargs at first entry: %s' % str(odc.kwa)\
+                       + '\n  **kwargs at this entry: %s' % str(kwa)\
+                       + '\n  MUST BE FIXED - please consider to use the same **kwargs during the run in all calls to det.calib/image.')
+    # 4d pedestals + offset shape:(3, 1, 512, 1024) dtype:float32
+
+    ccons, poff, gfac, mask, cmps, inds, outa, cversion =\
+        odc.ccons, odc.poff, odc.gfac, odc.mask, odc.cmps, odc.inds, odc.outa, odc.cversion
+
+    if first_entry:
+        logger.info('\n  ====================== det.name: %s calibmet: %s' % (det_raw._det_name, dic_calibmet[cversion])\
+                   +info_ndarr(arr,  '\n  calib_jungfrau first entry:\n    arr ')\
+                   +info_ndarr(poff, '\n    peds+off')\
+                   +info_ndarr(gfac, '\n    gfac')\
+                   +info_ndarr(mask, '\n    mask')\
+                   +info_ndarr(outa, '\n    outa')\
+                   +info_ndarr(ccons, '\n   ccons (peds+off, gain*mask)', last=8, vfmt='%0.3f')\
+                   +'\n    inds: segment indices: %s' % str(inds)\
+                   +'\n    common mode parameters: %s' % str(cmps)\
+                   +'\n    loop over segments: %s' % odc.loop_banks)
+        print(info_gainbits_statistics(arr))
+        print(info_gainrange_statistics(arr))
+        print(info_gainrange_fractions(arr))
+
+    if cversion == CALIB_CPP_V3:   # ccons.shape = (4, <NPIXELS>, 2)
+        ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)
+
+    elif cversion == CALIB_CPP_V1: # ccons.shape = (<NPIXELS>,8)
+        ud.calib_jungfrau_v1(arr, ccons, size_blk, outa)
+
+    elif cversion == CALIB_CPP_V2: # ccons.shape = (8,<NPIXELS>)
+        ud.calib_jungfrau_v2(arr, ccons, size_blk, outa)
+
+    elif cversion == CALIB_PYT_V0:
+        return calib_jungfrau(det_raw, evt, **kwa)
+
+    elif cversion == CALIB_CPP_V4: # constants shape = IS NOT USED
+        return ud.calib_jungfrau_v4_empty()
+
+    elif cversion == CALIB_CPP_V5: # constants shape = IS NOT USED
+        return ud.calib_jungfrau_v5_empty(arr, ccons, size_blk, outa)
+
+    return outa
 
 #EOF
