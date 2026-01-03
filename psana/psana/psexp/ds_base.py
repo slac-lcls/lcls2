@@ -195,8 +195,6 @@ class DataSourceBase(abc.ABC):
             self.march_events_per_grant = max(1, int(env_grant))
         except ValueError:
             self.march_events_per_grant = 1
-        if self.marching_read:
-            self._configure_marching_eb_nodes()
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -243,54 +241,6 @@ class DataSourceBase(abc.ABC):
             if k not in known_keys:
                 self.logger.warning(f"Unrecognized kwarg={k}")
 
-    def _configure_marching_eb_nodes(self):
-        node_count = self._detect_node_count()
-        if node_count <= 0:
-            return
-        desired = str(node_count)
-        current = os.environ.get("PS_EB_NODES", "1")
-        if current != desired:
-            os.environ["PS_EB_NODES"] = desired
-            prev = current if current is not None else "unset"
-            self.logger.warning(
-                "Marching read requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
-                prev,
-                desired,
-            )
-
-    def _detect_node_count(self):
-        env_vars = (
-            "PS_NUM_NODES",
-            "PS_NODES",
-            "SLURM_STEP_NUM_NODES",
-            "SLURM_JOB_NUM_NODES",
-            "SLURM_NNODES",
-        )
-        for var in env_vars:
-            raw = os.environ.get(var)
-            if not raw:
-                continue
-            try:
-                count = int(raw)
-            except ValueError:
-                continue
-            if count > 0:
-                return count
-
-        if mode == "mpi":
-            try:
-                from mpi4py import MPI
-
-                comm = MPI.COMM_WORLD
-                hostname = socket.gethostname()
-                hosts = comm.allgather(hostname)
-                unique_hosts = len(set(hosts))
-                if unique_hosts:
-                    return unique_hosts
-            except Exception:
-                pass
-
-        return 1
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
