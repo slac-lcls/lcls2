@@ -308,7 +308,7 @@ cdef class MarchingEventBuilder:
                     return idx
             wait_iters += 1
             if wait_iters % 1000 == 0:
-                self.logger.warning(
+                self.logger.debug(
                     "MarchingEventBuilder waiting for free slot; BD ranks may be stalled (n_slots=%d)",
                     self.n_slots,
                 )
