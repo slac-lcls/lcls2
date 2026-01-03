@@ -231,7 +231,13 @@ class MarchingEventManager:
 
             if self.shared_state and getattr(self.shared_state.terminate_flag, "value", 0):
                 return None
-            if int(self.shutdown_flag[0]) == 1 and not np.any(self.slot_states == MarchingEventBuilder.STATE_READY):
+            if int(self.shutdown_flag[0]) == 1 and not np.any(
+                self.slot_states == MarchingEventBuilder.STATE_READY
+            ):
+                self._logger.debug(
+                    "[marchbd] rank %d observed shutdown flag; all slots drained",
+                    self._rank,
+                )
                 return None
             time.sleep(self.poll_interval)
 
@@ -269,6 +275,12 @@ class MarchingEventManager:
         previous = int(self._fetch_buf32[0])
         if previous >= self.n_consumers - 1:
             # Last consumer releases the slot.
+            self._logger.debug(
+                "[marchbd] rank %d drained chunk_id=%d slot=%d",
+                self._rank,
+                int(self.slot_chunk_ids[slot]),
+                slot,
+            )
             self.slot_states[slot] = MarchingEventBuilder.STATE_EMPTY
             self.slot_events[slot] = 0
             self.slot_chunk_ids[slot] = -1
@@ -382,7 +394,7 @@ class MarchingEventManager:
         self._grant_views = views
         self._grant_rel_offsets = rel_offsets
         self._grant_sizes_arr = rel_sizes
-        if DEBUG_PRINT and start < end and self._grant_prints < 3 and self._rank==2:
+        if DEBUG_PRINT and start < end and self._grant_prints < 3:
             grant_id = self._grant_prints + 1
             chunk_id = int(self.slot_chunk_ids[slot])
             stream_msgs = []

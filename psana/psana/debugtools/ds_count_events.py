@@ -242,16 +242,17 @@ def main():
         last_bd_rank = size - ps_srv_nodes
         if first_bd_rank <= rank < last_bd_rank:
             rate = local_count / loop_elapsed if loop_elapsed > 0 else 0.0
-            print(
+            msg = (
                 f"[{args.log_level}] Rank {rank} processed {local_count} events "
                 f"Rate={rate:.1f} Hz Load time={load_time:.2f}s Loop time={loop_elapsed:.2f}s"
             )
             if pread_calls > 0 and pread_sec > 0:
                 io_rate = (pread_bytes / (1024 * 1024)) / pread_sec
-                print(
-                    f"[{args.log_level}] Rank {rank} IO bytes={pread_bytes / (1024 * 1024):.2f} MiB "
+                msg += (
+                    f" | IO bytes={pread_bytes / (1024 * 1024):.2f} MiB "
                     f"time={pread_sec:.2f}s rate={io_rate:.2f} MiB/s calls={int(pread_calls)}"
                 )
+            print(msg)
 
 
 if __name__ == '__main__':

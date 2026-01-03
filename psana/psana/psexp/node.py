@@ -67,15 +67,18 @@ class Communicators(object):
     march_shm_size = 0
 
     def __init__(self):
+        self.logger = utils.get_logger(name="Communicators")
         self.comm = MPI.COMM_WORLD
         self.world_rank = self.comm.Get_rank()
         self.world_size = self.comm.Get_size()
         self.world_group = self.comm.Get_group()
+        self.hostname = MPI.Get_processor_name()
         self.march_shm_comm = MPI.COMM_NULL
 
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
         PS_EB_NODES = int(os.environ.get("PS_EB_NODES", 1))
         self.n_smd_nodes = PS_EB_NODES
+        psana_world_size = self.world_size - PS_SRV_NODES
 
         if (self.world_size - PS_SRV_NODES) < 3:
             raise Exception(
@@ -91,20 +94,17 @@ class Communicators(object):
         )
         self.psana_comm = self.comm.Create(self.psana_group)
 
-        self.smd_group = self.psana_group.Incl(range(PS_EB_NODES + 1))
-        self.bd_main_group = self.psana_group.Excl([0])
-        self._bd_only_group = MPI.Group.Difference(self.bd_main_group, self.smd_group)
-        self._srv_group = MPI.Group.Difference(self.world_group, self.psana_group)
-
-        self.smd_comm = self.comm.Create(self.smd_group)
-        self.bd_main_comm = self.comm.Create(self.bd_main_group)
-
-        if self.smd_comm != MPI.COMM_NULL:
-            self.smd_rank = self.smd_comm.Get_rank()
-            self.smd_size = self.smd_comm.Get_size()
-
         env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
         self.marching_enabled = env_march in ("1", "true", "yes", "on")
+
+        self.bd_main_group = self.psana_group.Excl([0])
+        self._bd_only_group = None
+        self._srv_group = MPI.Group.Difference(self.world_group, self.psana_group)
+
+        self.smd_group = None
+        self.smd_comm = MPI.COMM_NULL
+        self.bd_main_comm = self.comm.Create(self.bd_main_group)
+
         self.march_shared_mem = None
         self.march_params = {}
 
@@ -112,30 +112,43 @@ class Communicators(object):
             self.bd_main_rank = self.bd_main_comm.Get_rank()
             self.bd_main_size = self.bd_main_comm.Get_size()
 
-            # Split bigdata main comm to PS_EB_NODES groups
-            color = self.bd_main_rank % PS_EB_NODES
-            self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
-            self.bd_rank = self.bd_comm.Get_rank()
-            self.bd_size = self.bd_comm.Get_size()
-
-            if self.bd_rank == 0:
-                self._nodetype = "eb"
-            else:
-                self._nodetype = "bd"
-
             if self.marching_enabled:
                 info = MPI.INFO_NULL
-                self.march_shm_comm = self.bd_comm.Split_type(
-                    MPI.COMM_TYPE_SHARED, self.bd_rank, info
+                self.march_shm_comm = self.bd_main_comm.Split_type(
+                    MPI.COMM_TYPE_SHARED, self.bd_main_rank, info
                 )
                 if self.march_shm_comm != MPI.COMM_NULL:
                     self.march_shm_rank = self.march_shm_comm.Get_rank()
                     self.march_shm_size = self.march_shm_comm.Get_size()
+                    self.bd_comm = self.march_shm_comm
+                    self.bd_rank = self.march_shm_rank
+                    self.bd_size = self.march_shm_size
+                    if self.bd_rank == 0:
+                        self._nodetype = "eb"
+                    else:
+                        self._nodetype = "bd"
+            else:
+                color = self.bd_main_rank % PS_EB_NODES
+                self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
+                self.bd_rank = self.bd_comm.Get_rank()
+                self.bd_size = self.bd_comm.Get_size()
+
+                if self.bd_rank == 0:
+                    self._nodetype = "eb"
+                else:
+                    self._nodetype = "bd"
 
         if self.world_rank == 0:
             self._nodetype = "smd0"
         elif self.world_rank >= self.psana_group.Get_size():
             self._nodetype = "srv"
+
+        # Ensure every rank has finalized its node role before building
+        # the SMD communicator, since _init_smd_comm gathers the EB list.
+        self.comm.Barrier()
+        self._init_smd_comm(PS_EB_NODES, psana_world_size)
+        self._report_role()
+        self._report_smd_members()
 
     def bd_group(self):
         return self._bd_only_group
@@ -153,6 +166,71 @@ class Communicators(object):
         world rank no. (so we know who requests the termination).
         """
         self.comm.Isend(np.array([self.world_rank], dtype="i"), dest=0)
+
+    def _report_role(self):
+        role = self._nodetype or "unknown"
+        role_upper = role.upper()
+        if role == "eb":
+            detail = f"bd_main_rank={getattr(self, 'bd_main_rank', -1)}"
+        elif role == "bd":
+            detail = f"bd_rank={getattr(self, 'bd_rank', -1)}"
+        else:
+            detail = ""
+        if detail:
+            message = f"[MPI-role] rank={self.world_rank} host={self.hostname} role={role_upper} {detail}"
+        else:
+            message = f"[MPI-role] rank={self.world_rank} host={self.hostname} role={role_upper}"
+        self.logger.debug(message)
+
+    def _report_smd_members(self):
+        if self.smd_comm is None or self.smd_comm == MPI.COMM_NULL:
+            return
+        members = []
+        if self.smd_comm != MPI.COMM_NULL:
+            members = self.smd_comm.allgather((self.world_rank, self.hostname))
+        total = self.smd_comm.Get_size() if self.smd_comm != MPI.COMM_NULL else 0
+        if self.world_rank == 0:
+            pretty = ", ".join(f"{rank}@{host}" for rank, host in members)
+            self.logger.info(
+                "[MPI-role] smd_comm size=%d members=[%s]", total, pretty
+            )
+
+    def _init_smd_comm(self, ps_eb_nodes, psana_world_size):
+        if ps_eb_nodes < 1:
+            ps_eb_nodes = 1
+        if self.marching_enabled:
+            eb_candidate = self.world_rank if self._nodetype == "eb" else -1
+            gathered = self.comm.allgather(eb_candidate)
+            if self.world_rank == 0:
+                eb_worlds = sorted({r for r in gathered if r >= 0})
+                if not eb_worlds:
+                    raise RuntimeError(
+                        "Marching mode requires at least one EB node but none were detected"
+                    )
+                smd_worlds = [0] + eb_worlds
+            else:
+                smd_worlds = None
+            smd_worlds = self.comm.bcast(smd_worlds, root=0)
+        else:
+            count = min(ps_eb_nodes + 1, self.psana_group.Get_size())
+            smd_worlds = list(range(count))
+
+        translated = MPI.Group.Translate_ranks(
+            self.world_group, smd_worlds, self.psana_group
+        )
+        smd_indices = [idx for idx in translated if idx != MPI.UNDEFINED]
+        if not smd_indices:
+            smd_indices = [0]
+
+        self.smd_group = self.psana_group.Incl(smd_indices)
+
+        color = 0 if self.world_rank in smd_worlds else MPI.UNDEFINED
+        self.smd_comm = self.comm.Split(color, self.world_rank)
+
+        if self.smd_comm != MPI.COMM_NULL:
+            self.smd_rank = self.smd_comm.Get_rank()
+            self.smd_size = self.smd_comm.Get_size()
+        self._bd_only_group = MPI.Group.Difference(self.bd_main_group, self.smd_group)
 
 
 class StepHistory(object):
@@ -380,7 +458,7 @@ class Smd0(object):
                 waiting_ebs.append(rankreq[0])
         wait_for(requests)
 
-        # kill waiting bd nodes
+        # kill waiting eb nodes
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
         for dest_rank in waiting_ebs:
             requests[dest_rank - 1] = self.comms.smd_comm.Isend(
@@ -744,6 +822,8 @@ class MarchingEventBuilderNode(object):
         while True:
             smd_chunk = self._request_data()
             if not smd_chunk:
+                # Publish sentinel chunk so BD ranks observe end-of-stream.
+                self.builder.publish_shutdown_slot(chunk_id)
                 break
             self.builder.ingest_chunk(smd_chunk, chunk_id)
             chunk_id += 1

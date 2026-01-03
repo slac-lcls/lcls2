@@ -1,5 +1,4 @@
 # cython: language_level=3, boundscheck=False
-DEF DEBUG_PRINT = 0
 from cpython cimport array
 import array
 
@@ -25,6 +24,12 @@ from psana import dgram, utils
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.marching_shmem import MarchingSharedMemory
+from psana.psexp.tools import mode
+
+if mode == "mpi":
+    from mpi4py import MPI
+else:
+    MPI = None
 
 
 @dataclass
@@ -91,6 +96,7 @@ cdef class MarchingEventBuilder:
         object shutdown_flag
         object _dbg_l1_counts
         object _dbg_trans_counts
+        int _rank
 
     def __init__(
         self,
@@ -111,6 +117,13 @@ cdef class MarchingEventBuilder:
         self.max_chunk_bytes = max_chunk_bytes
         self.n_streams = len(self.configs)
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        if MPI is not None:
+            try:
+                self._rank = MPI.COMM_WORLD.Get_rank()
+            except Exception:
+                self._rank = 0
+        else:
+            self._rank = 0
         self.prefix = name_prefix
         self.chunkinfo = {}
         self._next_slot_hint = 0
@@ -136,12 +149,6 @@ cdef class MarchingEventBuilder:
         self._event_services = array.array("i", [0] * self.n_streams)
         self._event_cutoffs = array.array("b", [0] * self.n_streams)
         self._event_timestamp = 0
-        if DEBUG_PRINT:
-            self._dbg_l1_counts = [0] * self.n_streams
-            self._dbg_trans_counts = [0] * self.n_streams
-        else:
-            self._dbg_l1_counts = None
-            self._dbg_trans_counts = None
 
     def _allocate_shared_buffers(self) -> None:
         slot_shape = (self.n_slots, self.max_events, self.n_streams)
@@ -209,7 +216,23 @@ cdef class MarchingEventBuilder:
         Returns the slot index that transitioned to STATE_READY.
         """
         slot = self._acquire_slot()
-        parsed = self._parse_chunk(view)
+        chunk_view = memoryview(view)
+        chunk_bytes = chunk_view.nbytes
+        self.logger.debug(
+            "[marchEB rank=%s] ingest chunk chunk_id=%s slot=%s bytes=%s",
+            self._rank,
+            chunk_id,
+            slot,
+            chunk_bytes,
+        )
+        parsed = self._parse_chunk(chunk_view)
+        self.logger.debug(
+            "[marchEB rank=%s] parsed chunk chunk_id=%s slot=%s events=%s",
+            self._rank,
+            chunk_id,
+            slot,
+            parsed.n_events,
+        )
         if parsed.n_events > self.max_events:
             self.slot_states[slot] = self.STATE_EMPTY
             raise ValueError(
@@ -224,8 +247,6 @@ cdef class MarchingEventBuilder:
         self.cutoff_flags[slot, : parsed.n_events, :] = parsed.cutoff_flags[: parsed.n_events]
         self.new_chunk_ids[slot, : parsed.n_events, :] = parsed.new_chunk_ids[: parsed.n_events]
 
-        chunk_view = memoryview(view)
-        chunk_bytes = chunk_view.nbytes
         if chunk_bytes > self.max_chunk_bytes:
             self.slot_states[slot] = self.STATE_EMPTY
             raise ValueError(
@@ -255,6 +276,26 @@ cdef class MarchingEventBuilder:
         self.slot_consumers_done[slot] = 0
         self.smd_chunk_sizes[slot] = 0
 
+    cpdef void publish_shutdown_slot(self, long chunk_id):
+        """
+        Publish a zero-event slot so BD consumers observe end-of-stream.
+        This mirrors the legacy empty-bytearray handshake.
+        """
+        slot = self._acquire_slot()
+        self.smd_chunk_sizes[slot] = 0
+        self.slot_events[slot] = 0
+        self.slot_chunk_ids[slot] = chunk_id
+        self.slot_next_event[slot] = 0
+        self.slot_consumers_done[slot] = 0
+        self.bd_offsets[slot, :, :] = 0
+        self.bd_sizes[slot, :, :] = 0
+        self.smd_offsets[slot, :, :] = 0
+        self.smd_sizes[slot, :, :] = 0
+        self.services[slot, :, :] = 0
+        self.cutoff_flags[slot, :, :] = 0
+        self.new_chunk_ids[slot, :, :] = 0
+        self.slot_states[slot] = self.STATE_READY
+
     cdef int _acquire_slot(self):
         cdef Py_ssize_t idx
         cdef int wait_iters = 0
@@ -279,7 +320,6 @@ cdef class MarchingEventBuilder:
             raise ValueError(
                 f"SMD chunk reported {chunk_pf.n_packets} streams but builder expects {self.n_streams}"
             )
-        if DEBUG_PRINT: print(f'[DEBUG-marcheb] n_packets={chunk_pf.n_packets}')
         stream_views = chunk_pf.split_packets()
         self._prepare_views(stream_views)
 
@@ -322,25 +362,6 @@ cdef class MarchingEventBuilder:
                     view=chunk_view,
                     offset=int(global_offset),
                 )
-                if DEBUG_PRINT:
-                    service = self._event_services[stream_idx]
-                    ts = self._event_timestamp
-                    if (
-                        service == TransitionId.L1Accept
-                        and self._dbg_l1_counts[stream_idx] < 3
-                    ):
-                        print(
-                            f"[DEBUG-march] stream={stream_idx} L1 offset={global_offset} size={self._event_sizes[stream_idx]} ts={ts}"
-                        )
-                        self._dbg_l1_counts[stream_idx] += 1
-                    elif (
-                        not TransitionId.isEvent(service)
-                        and self._dbg_trans_counts[stream_idx] < 3
-                    ):
-                        print(
-                            f"[DEBUG-march] stream={stream_idx} transition={TransitionId.name(service)} offset={global_offset} size={self._event_sizes[stream_idx]} ts={ts}"
-                        )
-                        self._dbg_trans_counts[stream_idx] += 1
                 if (
                     self._is_event(self._event_services[stream_idx])
                     and not bool(self.use_smds[stream_idx])
