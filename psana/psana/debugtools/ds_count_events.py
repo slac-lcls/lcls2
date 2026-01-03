@@ -62,6 +62,8 @@ def parse_args():
     parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode')
     parser.add_argument('--live', action='store_true', help='Enable live mode')
     parser.add_argument('--log_file', help='Path to log file for DataSource (optional)')
+    parser.add_argument('--show_rank_stats', action='store_true',
+                        help='Print per-rank statistics (default: only rank 0 summary)')
     return parser.parse_args()
 
 
@@ -154,18 +156,38 @@ def main():
     interval = 1000
 
     det_accessed = False
+    det_call_seconds = 0.0
+    det_call_count = 0
+    det_seg_seconds = 0.0
+    det_stack_seconds = 0.0
     for i_evt, evt in enumerate(run.events()):
+        if det:
+            evt._det_raw_timing = {'segments': 0.0, 'stack': 0.0}
         if det and args.debug_detector.lower() == 'epix10ka':
+            det_t0 = time.perf_counter()
             _ = det.raw.raw(evt)
+            det_call_seconds += time.perf_counter() - det_t0
+            det_call_count += 1
             det_accessed = True
         elif det and args.debug_detector.lower() == 'jungfrau':
+            det_t0 = time.perf_counter()
             _ = det.raw.raw(evt)
+            det_call_seconds += time.perf_counter() - det_t0
+            det_call_count += 1
             det_accessed = True
         elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
+            det_t0 = time.perf_counter()
             _ = det.raw.peaks(evt)  
             _ = det.raw.waveforms(evt) 
             _ = det.raw.padded(evt) 
+            det_call_seconds += time.perf_counter() - det_t0
+            det_call_count += 3
             det_accessed = True
+
+        if det and hasattr(evt, '_det_raw_timing'):
+            det_seg_seconds += evt._det_raw_timing.get('segments', 0.0)
+            det_stack_seconds += evt._det_raw_timing.get('stack', 0.0)
+            delattr(evt, '_det_raw_timing')
 
         if smd:
             smd.event(evt, mydata=42.0)
@@ -216,8 +238,12 @@ def main():
     end = MPI.Wtime()
 
     total_pread_bytes = comm.reduce(pread_bytes, op=MPI.SUM, root=0)
-    total_pread_sec = comm.reduce(pread_sec, op=MPI.SUM, root=0)
     total_pread_calls = comm.reduce(pread_calls, op=MPI.SUM, root=0)
+    max_pread_sec = comm.reduce(pread_sec, op=MPI.MAX, root=0)
+    det_calls_total = comm.reduce(det_call_count, op=MPI.SUM, root=0)
+    det_time_max = comm.reduce(det_call_seconds, op=MPI.MAX, root=0)
+    det_seg_max = comm.reduce(det_seg_seconds, op=MPI.MAX, root=0)
+    det_stack_max = comm.reduce(det_stack_seconds, op=MPI.MAX, root=0)
 
     if rank == 0:
         total = np.sum(recvbuf)
@@ -230,14 +256,22 @@ def main():
             f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "
             f"Total events: {total} Rate={total_rate:.1f} Hz"
         )
-        if total_pread_bytes > 0 and total_pread_sec > 0:
-            agg_io_rate = (total_pread_bytes / (1024 * 1024)) / total_pread_sec
+        if total_pread_bytes > 0 and max_pread_sec > 0:
+            agg_io_rate = (total_pread_bytes / (1024 * 1024)) / max_pread_sec
             print(
                 f"[{args.log_level}] TOTAL_IO bytes={total_pread_bytes / (1024 * 1024):.2f} MiB "
-                f"time={total_pread_sec:.2f}s rate={agg_io_rate:.2f} MiB/s "
+                f"time={max_pread_sec:.2f}s rate={agg_io_rate:.2f} MiB/s "
                 f"calls={int(total_pread_calls)}"
             )
-    else:
+        if det_calls_total > 0 and det_time_max > 0:
+            det_rate = det_calls_total / det_time_max
+            seg_msg = f" segments={det_seg_max:.2f}s" if det_seg_max > 0 else ""
+            stack_msg = f" stack={det_stack_max:.2f}s" if det_stack_max > 0 else ""
+            print(
+                f"[{args.log_level}] TOTAL_DET calls={int(det_calls_total)} "
+                f"time={det_time_max:.2f}s rate={det_rate:.2f} calls/s{seg_msg}{stack_msg}"
+            )
+    elif args.show_rank_stats:
         first_bd_rank = n_ebnodes + 1
         last_bd_rank = size - ps_srv_nodes
         if first_bd_rank <= rank < last_bd_rank:
@@ -251,6 +285,15 @@ def main():
                 msg += (
                     f" | IO bytes={pread_bytes / (1024 * 1024):.2f} MiB "
                     f"time={pread_sec:.2f}s rate={io_rate:.2f} MiB/s calls={int(pread_calls)}"
+                )
+            if det_call_count > 0 and det_call_seconds > 0:
+                det_rate = det_call_count / det_call_seconds
+                seg_msg = f" segments={det_seg_seconds:.2f}s" if det_seg_seconds > 0 else ""
+                stack_msg = f" stack={det_stack_seconds:.2f}s" if det_stack_seconds > 0 else ""
+                msg += (
+                    f" | DET calls={int(det_call_count)} "
+                    f"time={det_call_seconds:.2f}s rate={det_rate:.2f} calls/s"
+                    f"{seg_msg}{stack_msg}"
                 )
             print(msg)
 
