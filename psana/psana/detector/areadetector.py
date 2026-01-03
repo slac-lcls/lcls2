@@ -62,6 +62,7 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
+import time
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
@@ -359,6 +360,9 @@ class AreaDetectorRaw(AreaDetector):
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetectorRaw.__init__') #  self.__class__.__name__
         AreaDetector.__init__(self, *args, **kwargs)
+        self._raw_buf = None
+        self._raw_shape = None
+        self._raw_dtype = None
 
 
     def raw(self, evt) -> Array3d:
@@ -378,12 +382,30 @@ class AreaDetectorRaw(AreaDetector):
 
         #print('XXX AreaDetectorRaw.raw')
         if evt is None: return None
+        stack_timing = getattr(evt, '_det_raw_timing', None)
+        t0 = time.perf_counter() if stack_timing is not None else None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
+        if stack_timing is not None and t0 is not None:
+            stack_timing['segments'] += time.perf_counter() - t0
         if is_none(segs, 'self._segments(evt) is None'): return None
         if len(segs) == 1:
             ind = self._segment_numbers[0]
             return segs[ind].raw
-        return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
+
+        first_seg = segs[self._segment_numbers[0]].raw
+        dtype = first_seg.dtype
+        shape = (len(self._segment_numbers),) + first_seg.shape
+        if self._raw_buf is None or self._raw_shape != shape or self._raw_dtype != dtype:
+            self._raw_buf = np.empty(shape, dtype=dtype)
+            self._raw_shape = shape
+            self._raw_dtype = dtype
+
+        t1 = time.perf_counter() if stack_timing is not None else None
+        for idx, seg_id in enumerate(self._segment_numbers):
+            np.copyto(self._raw_buf[idx], segs[seg_id].raw, casting='no')
+        if stack_timing is not None and t1 is not None:
+            stack_timing['stack'] += time.perf_counter() - t1
+        return reshape_to_3d(self._raw_buf)
 
 
     def calib(self, evt, **kwa) -> Array3d:
