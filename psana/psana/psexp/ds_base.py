@@ -526,15 +526,16 @@ class DataSourceBase(abc.ABC):
     def _start_prometheus_client(self, mpi_rank=0, prom_cfg_dir=None):
         """Start Prometheus either via push gateway (default) or HTTP exposer.
         With the singleton, this is safe to call multiple times."""
-        if not self.monitor:
+        if not self.monitor and mpi_rank == 0:
             self.logger.debug("RUN W/O PROMETHEUS CLIENT")
             return
 
         if prom_cfg_dir is None:  # Push-gateway mode
             pm = ensure_pusher(rank=mpi_rank)   # starts pusher once per process
-            self.logger.debug(
-                f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
-            )
+            if mpi_rank == 0:
+                self.logger.debug(
+                    f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
+                )
         else:  # HTTP exposer mode (DAQ-style scrape)
             pm = get_prom_manager()
             self.logger.debug(
