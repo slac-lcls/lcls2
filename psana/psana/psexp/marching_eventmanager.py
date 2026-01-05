@@ -69,6 +69,7 @@ class MarchingEventManager:
         poll_interval: float = 5e-4,
         use_smds=None,
         events_per_grant: int = 1,
+        consumer_index: int = 0,
     ):
         if mode != "mpi":
             raise RuntimeError("MarchingEventManager requires MPI mode")
@@ -129,6 +130,10 @@ class MarchingEventManager:
         self._grant_rel_offsets = None
         self._grant_sizes_arr = None
         self._grant_prints = 0
+        self.consumer_index = int(consumer_index)
+        if self.consumer_index < 0 or self.consumer_index >= self.n_consumers:
+            self.consumer_index = max(0, min(self.n_consumers - 1, self.consumer_index))
+        self._slot_local_events = 0
 
     def _debug(self, msg: str) -> None:
         if DEBUG_PRINT:
@@ -182,6 +187,7 @@ class MarchingEventManager:
                 # Missing event; continue marching.
                 continue
             self._l1_progress = max(self._l1_progress, evt_idx + 1)
+            self._slot_local_events += 1
             return dgrams
 
     # ------------------------------------------------------------------
@@ -204,6 +210,14 @@ class MarchingEventManager:
         self.smd_chunk_sizes = arr.get_array(f"{pfx}_chunk_sizes")
         self.smd_chunk_buffer = arr.get_array(f"{pfx}_chunk_bytes")
         self.shutdown_flag = arr.get_array(f"{pfx}_shutdown")
+        try:
+            self.slot_reader_counts = arr.get_array(f"{pfx}_slot_reader_counts")
+        except KeyError:
+            self.slot_reader_counts = None
+        try:
+            self.slot_start_times = arr.get_array(f"{pfx}_slot_start_times")
+        except KeyError:
+            self.slot_start_times = None
 
         self._next_evt_handle = arr.get_handle(f"{pfx}_slot_next_evt")
         self._consumers_handle = arr.get_handle(f"{pfx}_slot_consumers_done")
@@ -234,10 +248,6 @@ class MarchingEventManager:
             if int(self.shutdown_flag[0]) == 1 and not np.any(
                 self.slot_states == MarchingEventBuilder.STATE_READY
             ):
-                self._logger.debug(
-                    "[marchbd] rank %d observed shutdown flag; all slots drained",
-                    self._rank,
-                )
                 return None
             time.sleep(self.poll_interval)
 
@@ -259,9 +269,20 @@ class MarchingEventManager:
         self._grant_start = 0
         self._grant_span = 0
         self._grant_views = None
+        self._slot_local_events = 0
+        if self.slot_reader_counts is not None and self.consumer_index < self.slot_reader_counts.shape[1]:
+            self.slot_reader_counts[slot, self.consumer_index] = 0
+        if self.slot_start_times is not None and self.slot_start_times[slot] == 0:
+            self.slot_start_times[slot] = time.monotonic()
 
     def _finish_slot_if_needed(self, slot: int):
         """Increment the 'consumers done' counter and free slot if last consumer."""
+        if (
+            self.slot_reader_counts is not None
+            and self.consumer_index < self.slot_reader_counts.shape[1]
+        ):
+            self.slot_reader_counts[slot, self.consumer_index] = self._slot_local_events
+        self._slot_local_events = 0
         win = self._consumers_handle.window
         win.Lock(0)
         win.Fetch_and_op(
@@ -275,11 +296,43 @@ class MarchingEventManager:
         previous = int(self._fetch_buf32[0])
         if previous >= self.n_consumers - 1:
             # Last consumer releases the slot.
+            start_time = 0.0
+            if self.slot_start_times is not None:
+                start_time = float(self.slot_start_times[slot])
+                self.slot_start_times[slot] = 0.0
+            counts_summary = None
+            if self.slot_reader_counts is not None:
+                reader_cols = min(
+                    self.slot_reader_counts.shape[1], max(self.n_consumers, 1)
+                )
+                counts_summary = np.array(
+                    self.slot_reader_counts[slot, :reader_cols], copy=True
+                )
+                self.slot_reader_counts[slot, :reader_cols] = 0
+            elapsed = time.monotonic() - start_time if start_time > 0 else 0.0
+            total_events = int(self._slot_event_count)
+            if counts_summary is not None and counts_summary.size:
+                total_events = int(counts_summary.sum())
+                readers = counts_summary.size
+                min_ev = int(counts_summary.min())
+                max_ev = int(counts_summary.max())
+                avg_ev = total_events / readers if readers else 0.0
+            else:
+                readers = self.n_consumers
+                min_ev = total_events // readers if readers else total_events
+                max_ev = min_ev
+                avg_ev = float(total_events) / readers if readers else float(total_events)
             self._logger.debug(
-                "[marchbd] rank %d drained chunk_id=%d slot=%d",
-                self._rank,
+                "[marchbd] chunk_id=%d slot=%d readers=%d events=%d "
+                "(avg=%.1f min=%d max=%d) duration=%.2fs",
                 int(self.slot_chunk_ids[slot]),
                 slot,
+                readers,
+                total_events,
+                avg_ev,
+                min_ev,
+                max_ev,
+                elapsed,
             )
             self.slot_states[slot] = MarchingEventBuilder.STATE_EMPTY
             self.slot_events[slot] = 0
@@ -289,6 +342,7 @@ class MarchingEventManager:
             self.smd_chunk_sizes[slot] = 0
             self._pending_transitions = []
             self._l1_progress = 0
+            self._slot_event_count = 0
 
     def _next_event_index(self) -> Optional[int]:
         if self._active_slot is None:

@@ -218,21 +218,7 @@ cdef class MarchingEventBuilder:
         slot = self._acquire_slot()
         chunk_view = memoryview(view)
         chunk_bytes = chunk_view.nbytes
-        self.logger.debug(
-            "[marchEB rank=%s] ingest chunk chunk_id=%s slot=%s bytes=%s",
-            self._rank,
-            chunk_id,
-            slot,
-            chunk_bytes,
-        )
         parsed = self._parse_chunk(chunk_view)
-        self.logger.debug(
-            "[marchEB rank=%s] parsed chunk chunk_id=%s slot=%s events=%s",
-            self._rank,
-            chunk_id,
-            slot,
-            parsed.n_events,
-        )
         if parsed.n_events > self.max_events:
             self.slot_states[slot] = self.STATE_EMPTY
             raise ValueError(
@@ -307,7 +293,7 @@ cdef class MarchingEventBuilder:
                     self._next_slot_hint = (idx + 1) % self.n_slots
                     return idx
             wait_iters += 1
-            if wait_iters % 1000 == 0:
+            if wait_iters % 10000 == 0:
                 self.logger.debug(
                     "MarchingEventBuilder waiting for free slot; BD ranks may be stalled (n_slots=%d)",
                     self.n_slots,
@@ -340,7 +326,8 @@ cdef class MarchingEventBuilder:
                 break
             if event_idx >= slot_capacity:
                 raise ValueError(
-                    f"Chunk exceeds configured event_idx={event_idx} max_events/slot_capacity={slot_capacity}; increase PS_MARCH_MAX_EVENTS."
+                    f"Chunk exceeds configured event_idx={event_idx} max_events/slot_capacity={slot_capacity}; "
+                    f"increase PS_MARCH_EVENTS_SCALE (default 1.2)"
                 )
 
             for stream_idx in range(n_streams):

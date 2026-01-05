@@ -383,11 +383,22 @@ class Smd0(object):
         # Need this for async MPI to prevent overwriting send buffer
         repack_smds = {}
 
+        eb_request_queue = []
+
+        def _await_request():
+            self._request_rank(rankreq)
+            eb_request_queue.append(int(rankreq[0]))
+
+        for _ in range(max(1, self.comms.n_smd_nodes)):
+            _await_request()
+
         # Indentify viewing windows. SmdReaderManager has starting index and block size
         # that it needs to share later when data are packaged for sending to EventBuilders.
         for i_chunk in self.smdr_man.chunks():
             st = time.monotonic()
-            self._request_rank(rankreq)
+            while not eb_request_queue:
+                _await_request()
+            rankreq[0] = eb_request_queue.pop(0)
 
             # Check missing steps for the current client
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
@@ -414,6 +425,9 @@ class Smd0(object):
                 repack_smds[rankreq[0]], dest=rankreq[0]
             )
 
+            # Queue up the next request from an EB to keep assignments rotating
+            _await_request()
+
             self.logger.debug(f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}")
 
             en = time.monotonic()
@@ -435,14 +449,19 @@ class Smd0(object):
                 self.logger.debug("MESSAGE SMD0-ENDRUN")
                 break
 
+        waiting_ebs.extend(eb_request_queue)
+
         # end for (smd_chunk, step_chunk)
         wait_for(requests)
 
         # check if there are missing steps to be sent
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
-        for i in range(self.comms.n_smd_nodes):
-            req = self.comms.smd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
-            req.Wait()
+        remaining = self.comms.n_smd_nodes
+        while remaining > 0:
+            if eb_request_queue:
+                rankreq[0] = eb_request_queue.pop(0)
+            else:
+                self._request_rank(rankreq)
             missing_step_views = self.step_hist.get_buffer(rankreq[0], smd0=True)
             repack_smds[rankreq[0]] = self.smdr_man.smdr.repack_parallel(
                 missing_step_views,
@@ -456,6 +475,7 @@ class Smd0(object):
                 )
             else:
                 waiting_ebs.append(rankreq[0])
+            remaining -= 1
         wait_for(requests)
 
         # kill waiting eb nodes
@@ -959,6 +979,9 @@ class MarchingBigDataNode(object):
                 os.environ["PS_PREAD_PRANGE_WARNED"] = "1"
         params = getattr(self.comms, "march_params", {})
         n_consumers = max(self.comms.march_shm_size - 1, 1)
+        consumer_index = getattr(self.comms, "march_shm_rank", 0) - 1
+        if consumer_index < 0:
+            consumer_index = 0
         evt_mgr = MarchingEventManager(
             self.configs,
             self.dm,
@@ -968,6 +991,7 @@ class MarchingBigDataNode(object):
             name_prefix=params.get("prefix", "march"),
             use_smds=self.dsparms.use_smds,
             events_per_grant=getattr(self.dsparms, "march_events_per_grant", 1),
+            consumer_index=consumer_index,
         )
         t0 = time.monotonic()
         for i_evt, dgrams in enumerate(evt_mgr):

@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import math
 
 import numpy as np
 from contextlib import contextmanager
@@ -120,6 +121,20 @@ class RunParallel(Run):
             np.uint8,
         )
         self._alloc_marching_array(shared_mem, f"{params['prefix']}_shutdown", (1,), np.int32)
+        n_consumers = max(getattr(self.comms, "march_shm_size", 1) - 1, 1)
+        self._alloc_marching_array(
+            shared_mem,
+            f"{params['prefix']}_slot_reader_counts",
+            (params["n_slots"], n_consumers),
+            np.int32,
+        )
+        self._alloc_marching_array(
+            shared_mem,
+            f"{params['prefix']}_slot_start_times",
+            (params["n_slots"],),
+            np.float64,
+        )
+        params["n_consumers"] = n_consumers
         self.comms.march_shared_mem = shared_mem
         self.comms.march_params = params
 
@@ -129,20 +144,46 @@ class RunParallel(Run):
 
     def _marching_params(self):
         prefix = os.environ.get("PS_MARCH_PREFIX", "march")
-        n_slots = int(os.environ.get("PS_MARCH_SLOTS", "2"))
-        n_slots = max(n_slots, 1)
-        default_max_events = int(os.environ.get("PS_SMD_N_EVENTS", "20000"))
-        env_max_events = os.environ.get("PS_MARCH_MAX_EVENTS")
-        if env_max_events is not None:
-            try:
-                max_events = int(env_max_events)
-            except ValueError:
-                max_events = default_max_events
+        env_slots = os.environ.get("PS_MARCH_SLOTS")
+        march_nodes = getattr(self.comms, "n_smd_nodes", 1)
+        if march_nodes <= 0:
+            march_nodes = 1
+        if env_slots is None:
+            requested_slots = march_nodes
         else:
-            max_events = default_max_events
-        max_events = max(max_events, 1)
+            try:
+                requested_slots = int(env_slots)
+            except ValueError:
+                self.logger.warning(
+                    "Invalid PS_MARCH_SLOTS=%r; defaulting to %d", env_slots, march_nodes
+                )
+                requested_slots = march_nodes
+        requested_slots = max(requested_slots, 1)
+        n_slots = min(requested_slots, march_nodes)
+        if env_slots is not None and n_slots < requested_slots:
+            self.logger.warning(
+                "PS_MARCH_SLOTS=%d exceeds available marching EB nodes (%d); using %d slots instead",
+                requested_slots,
+                march_nodes,
+                n_slots,
+            )
+        smd_n_events = int(os.environ.get("PS_SMD_N_EVENTS", "20000"))
+        try:
+            events_scale = float(os.environ.get("PS_MARCH_EVENTS_SCALE", "1.2"))
+        except ValueError:
+            events_scale = 1.2
+        if events_scale <= 1.0: 
+            events_scale = 1.2
+        max_events = max(int(math.ceil(smd_n_events * events_scale)), 1)
         max_chunk_bytes = int(os.environ.get("PS_MARCH_MAX_CHUNK_MB", "32"))
         max_chunk_bytes = max_chunk_bytes * 1024 * 1024
+        if nodetype == "eb":
+            self.logger.debug(
+                "Marching EB params: n_slots=%d max_events=%d max_chunk_bytes=%d",
+                n_slots,
+                max_events,
+                max_chunk_bytes,
+            )
         return {
             "prefix": prefix,
             "n_slots": n_slots,
