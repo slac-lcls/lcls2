@@ -16,7 +16,7 @@ from kafka import KafkaProducer
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana.psexp.tools import MODE, mode
+from psana.psexp.tools import MODE, mode, marching_enabled
 from psana.psexp.zmq_utils import ClientSocket
 from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_manager
 
@@ -188,8 +188,7 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
-        env_marching = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
-        self.marching_read = env_marching in ("1", "true", "yes", "on")
+        self.marching_read = marching_enabled()
         env_grant = os.environ.get("PS_MARCH_EVENTS_PER_GRANT", "1")
         try:
             self.march_events_per_grant = max(1, int(env_grant))

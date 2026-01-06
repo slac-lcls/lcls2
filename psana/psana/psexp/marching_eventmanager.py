@@ -26,6 +26,7 @@ from psana.psexp.marching_shmem import MarchingSharedMemory
 from psana.psexp.parallel_pread import ParallelPreader
 
 DEBUG_PRINT = False
+DEBUG_ATOMIC_FETCH = False
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -130,6 +131,7 @@ class MarchingEventManager:
         self._grant_rel_offsets = None
         self._grant_sizes_arr = None
         self._grant_prints = 0
+        self._slot_fetch_timings: Dict[int, List[float]] = {}
         self.consumer_index = int(consumer_index)
         if self.consumer_index < 0 or self.consumer_index >= self.n_consumers:
             self.consumer_index = max(0, min(self.n_consumers - 1, self.consumer_index))
@@ -274,6 +276,10 @@ class MarchingEventManager:
             self.slot_reader_counts[slot, self.consumer_index] = 0
         if self.slot_start_times is not None and self.slot_start_times[slot] == 0:
             self.slot_start_times[slot] = time.monotonic()
+        if DEBUG_ATOMIC_FETCH:
+            self._slot_fetch_timings[slot] = []
+        else:
+            self._slot_fetch_timings.pop(slot, None)
 
     def _finish_slot_if_needed(self, slot: int):
         """Increment the 'consumers done' counter and free slot if last consumer."""
@@ -283,6 +289,9 @@ class MarchingEventManager:
         ):
             self.slot_reader_counts[slot, self.consumer_index] = self._slot_local_events
         self._slot_local_events = 0
+        fetch_timings = None
+        if DEBUG_ATOMIC_FETCH:
+            fetch_timings = self._slot_fetch_timings.pop(slot, None)
         win = self._consumers_handle.window
         win.Lock(0)
         win.Fetch_and_op(
@@ -322,9 +331,22 @@ class MarchingEventManager:
                 min_ev = total_events // readers if readers else total_events
                 max_ev = min_ev
                 avg_ev = float(total_events) / readers if readers else float(total_events)
+            fetch_stats = ""
+            if DEBUG_ATOMIC_FETCH and fetch_timings:
+                arr = np.asarray(fetch_timings, dtype=np.float64)
+                arr_us = arr * 1e6
+                count = arr_us.size
+                avg_us = float(arr_us.mean())
+                min_us = float(arr_us.min())
+                max_us = float(arr_us.max())
+                std_us = float(arr_us.std(ddof=0))
+                fetch_stats = (
+                    " fetch_us(count=%d avg=%.1f min=%.1f max=%.1f std=%.1f)"
+                    % (count, avg_us, min_us, max_us, std_us)
+                )
             self._logger.debug(
                 "[marchbd] chunk_id=%d slot=%d readers=%d events=%d "
-                "(avg=%.1f min=%d max=%d) duration=%.2fs",
+                "(avg=%.1f min=%d max=%d) duration=%.2fs%s",
                 int(self.slot_chunk_ids[slot]),
                 slot,
                 readers,
@@ -333,6 +355,7 @@ class MarchingEventManager:
                 min_ev,
                 max_ev,
                 elapsed,
+                fetch_stats,
             )
             self.slot_states[slot] = MarchingEventBuilder.STATE_EMPTY
             self.slot_events[slot] = 0
@@ -686,6 +709,7 @@ class MarchingEventManager:
         win = self._next_evt_handle.window
         request = max(1, int(count))
         self._grant_request[0] = request
+        start = time.perf_counter() if DEBUG_ATOMIC_FETCH else None
         win.Lock(0)
         win.Fetch_and_op(
             self._grant_request,
@@ -695,4 +719,9 @@ class MarchingEventManager:
             op=MPI.SUM,
         )
         win.Unlock(0)
+        if DEBUG_ATOMIC_FETCH and start is not None:
+            elapsed = time.perf_counter() - start
+            timings = self._slot_fetch_timings.get(slot)
+            if timings is not None:
+                timings.append(elapsed)
         return int(self._fetch_buf64[0])

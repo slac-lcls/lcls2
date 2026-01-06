@@ -2,7 +2,7 @@ import os
 import sys
 import gc
 import socket
-from psana.psexp.tools import mode
+from psana.psexp.tools import mode, marching_enabled
 import logging
 logger = logging.getLogger(__name__)
 
@@ -60,8 +60,7 @@ def _detect_node_count():
 
 
 def _ensure_marching_eb_nodes():
-    env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
-    if env_march not in ("1", "true", "yes", "on"):
+    if not marching_enabled():
         return
     node_count = _detect_node_count()
     if node_count <= 0:

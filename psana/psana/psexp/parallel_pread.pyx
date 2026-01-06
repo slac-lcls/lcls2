@@ -103,7 +103,7 @@ cdef class ParallelPreader:
 
         cdef Py_ssize_t i
         cdef double t0 = perf_counter()
-        if os.environ.get("PS_PREAD_USE_PRANGE", "1") not in ("0", "false", "False"):
+        if os.environ.get("PS_PREAD_USE_PRANGE", "0") not in ("0", "false", "False"):
             with nogil:
                 for i in prange(n, schedule='static'):
                     errcodes[i] = 0
