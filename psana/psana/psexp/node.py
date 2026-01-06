@@ -8,7 +8,7 @@ from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
-from psana.psexp.tools import mode
+from psana.psexp.tools import mode, marching_enabled
 from psana.psexp import TransitionId
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.marchingeventbuilder import MarchingEventBuilder
@@ -94,8 +94,7 @@ class Communicators(object):
         )
         self.psana_comm = self.comm.Create(self.psana_group)
 
-        env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
-        self.marching_enabled = env_march in ("1", "true", "yes", "on")
+        self.marching_enabled = marching_enabled()
 
         self.bd_main_group = self.psana_group.Excl([0])
         self._bd_only_group = None
@@ -969,12 +968,12 @@ class MarchingBigDataNode(object):
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
     def start(self):
-        use_prange_env = os.environ.get("PS_PREAD_USE_PRANGE", "1").lower()
-        if use_prange_env in ("0", "false", "off"):
+        use_prange_env = os.environ.get("PS_PREAD_USE_PRANGE", "0").lower()
+        if use_prange_env not in ("0", "false", "off"):
             bd_rank = getattr(self.comms, "bd_rank", None)
             if bd_rank == 1 and os.environ.get("PS_PREAD_PRANGE_WARNED", "0") != "1":
                 self.logger.warning(
-                    "PS_PREAD_USE_PRANGE disabled; marching pread calls will run serialized"
+                    "PS_PREAD_USE_PRANGE enabled; ensure filesystem can handle concurrent pread"
                 )
                 os.environ["PS_PREAD_PRANGE_WARNED"] = "1"
         params = getattr(self.comms, "march_params", {})

@@ -5,6 +5,7 @@ from psana import dgram, utils
 from psana.eventbuilder import EventBuilder
 from psana.smdreader import SmdReader
 from psana.psexp.prometheus_manager import get_prom_manager
+from psana.psexp.tools import get_smd_n_events
 
 from .run import RunSmallData
 
@@ -86,7 +87,7 @@ class SmdReaderManager(object):
 
         # Sets no. of events Smd0 sends to each EventBuilder core. This gets
         # overridden by max_events set by DataSource if max_events is smaller.
-        self.smd0_n_events = int(os.environ.get("PS_SMD_N_EVENTS", 20000))
+        self.smd0_n_events = get_smd_n_events()
         if self.dsparms.max_events:
             if self.dsparms.max_events < self.smd0_n_events:
                 self.smd0_n_events = self.dsparms.max_events

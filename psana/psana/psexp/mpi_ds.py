@@ -22,7 +22,7 @@ from psana.psexp.node import (
 from psana.psexp.run import Run
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
-from psana.psexp.tools import mode
+from psana.psexp.tools import mode, get_smd_n_events
 from psana.psexp.marching_shmem import MarchingSharedMemory
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
@@ -167,7 +167,7 @@ class RunParallel(Run):
                 march_nodes,
                 n_slots,
             )
-        smd_n_events = int(os.environ.get("PS_SMD_N_EVENTS", "20000"))
+        smd_n_events = get_smd_n_events()
         try:
             events_scale = float(os.environ.get("PS_MARCH_EVENTS_SCALE", "1.2"))
         except ValueError:
