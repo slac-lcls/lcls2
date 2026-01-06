@@ -1084,15 +1084,31 @@ public:
     PV(const char* pvName) : PVBase(pvName), m_ready(getComplete(5)) {} // seconds
     virtual ~PV() {}
 public:
-    void updated() {}
-    bool ready()   { return m_ready; }
+    void updated()
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        getVectorAs<double>(m_vector);
+    }
+    bool ready()
+    {
+        return m_ready;
+    }
+    double value(unsigned element)
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+        return m_vector[element];
+    }
 private:
-    bool m_ready;
+    std::mutex                       m_mutex;
+    pvd::shared_vector<const double> m_vector;
+    bool                             m_ready;
 };
 
 static bool _pvGetVecElem(const std::shared_ptr<PV> pv, unsigned element, double& value)
 {
-    if (!pv || !pv->ready()) {
+    if (!pv || !pv->ready() || !pv->connected()) {
         if (pv) {
             logging::critical("PV %s didn't connect", pv->name().c_str());
             abort();
@@ -1100,7 +1116,7 @@ static bool _pvGetVecElem(const std::shared_ptr<PV> pv, unsigned element, double
         return false;
     }
 
-    value = pv->getVectorElemAt<double>(element);
+    value = pv->value(element);
 
     return true;
 }
