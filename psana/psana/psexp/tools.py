@@ -12,8 +12,13 @@ if mode == "mpi":
 
 
 def get_smd_n_events():
-    """Return PS_SMD_N_EVENTS as int; default depends on marching mode."""
-    default_value = "5000" if marching_enabled() else "20000"
+    """Return PS_SMD_N_EVENTS as int; default depends on marching/local EB mode."""
+    local_eb = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower()
+    default_value = (
+        "5000"
+        if marching_enabled() or local_eb in ("1", "true", "yes", "on")
+        else "20000"
+    )
     value = os.environ.get("PS_SMD_N_EVENTS", default_value)
     try:
         return int(value)

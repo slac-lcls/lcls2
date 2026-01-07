@@ -443,10 +443,6 @@ class Smd0(object):
             requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                 repack_smds[rankreq[0]], dest=rankreq[0]
             )
-            print(
-                f"SMD0 sent chunk {i_chunk} of size {len(repack_smds[rankreq[0]])} to EB{rankreq[0]}",
-                flush=True,
-            )
 
             # Queue up the next request from an EB to keep assignments rotating
             if not eb_request_queue:
@@ -577,7 +573,6 @@ class EventBuilderNode(object):
             f"TIMELINE 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}",
         )
         smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
-        print(f'EB{self.comms.world_rank} sent request to SMD0', flush=True)
         self.logger.debug(
             f"TIMELINE 6. EB{self.comms.world_rank}DONESENDREQ {time.monotonic()}",
         )
@@ -587,7 +582,6 @@ class EventBuilderNode(object):
         smd_chunk = bytearray(count)
         req = smd_comm.Irecv(smd_chunk, source=0)
         req.Wait()
-        print(f'EB{self.comms.world_rank} received chunk of size {len(smd_chunk)} from SMD0', flush=True)
         en = time.monotonic()
         self.logger.debug(
             f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}"
