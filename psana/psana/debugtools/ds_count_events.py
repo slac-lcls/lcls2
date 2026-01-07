@@ -59,16 +59,35 @@ def parse_args():
     parser.add_argument('--log_level', default='INFO', help='Log level (default: INFO)')
     parser.add_argument('--debug_detector', default=None, help='Detector name for debug prints')
     parser.add_argument('--use_calib_cache', action='store_true', help='Use cached calibration constants')
+    parser.add_argument('--skip_calib_load', nargs='+', default=None,
+                        help="Detectors to skip calibration loading, or 'all'")
     parser.add_argument('--monitor', action='store_true', help='Enable monitoring mode')
     parser.add_argument('--live', action='store_true', help='Enable live mode')
     parser.add_argument('--log_file', help='Path to log file for DataSource (optional)')
     parser.add_argument('--show_rank_stats', action='store_true',
                         help='Print per-rank statistics (default: only rank 0 summary)')
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.skip_calib_load is not None:
+        if any(det.lower() == "all" for det in args.skip_calib_load):
+            args.skip_calib_load = "all"
+    return args
 
 
 def create_datasource(args, rank):
     """Construct DataSource depending on whether xtc_files are provided."""
+    common_kwargs = dict(
+        max_events=args.max_events,
+        batch_size=args.batch_size,
+        log_level=args.log_level,
+        detectors=args.detectors,
+        use_calib_cache=args.use_calib_cache,
+        cached_detectors=args.cached_detectors,
+        monitor=args.monitor,
+        log_file=args.log_file,
+    )
+    if args.skip_calib_load is not None:
+        common_kwargs["skip_calib_load"] = args.skip_calib_load
+
     if args.xtc_files:
         if rank == 0:
             print(f"Using explicit XTC2 files ({len(args.xtc_files)}):")
@@ -76,14 +95,7 @@ def create_datasource(args, rank):
                 print(f"  {f}")
         ds = DataSource(
             files=args.xtc_files,
-            max_events=args.max_events,
-            batch_size=args.batch_size,
-            log_level=args.log_level,
-            detectors=args.detectors,
-            use_calib_cache=args.use_calib_cache,
-            cached_detectors=args.cached_detectors,
-            monitor=args.monitor,
-            log_file=args.log_file,
+            **common_kwargs,
         )
     else:
         if args.exp is None or args.run is None:
@@ -104,16 +116,9 @@ def create_datasource(args, rank):
         ds = DataSource(
             exp=args.exp,
             run=args.run,
-            max_events=args.max_events,
-            batch_size=args.batch_size,
-            log_level=args.log_level,
-            detectors=args.detectors,
-            use_calib_cache=args.use_calib_cache,
-            cached_detectors=args.cached_detectors,
-            monitor=args.monitor,
+            **common_kwargs,
             live=args.live,
             dir=dir_path,
-            log_file=args.log_file,
         )
     return ds
 
