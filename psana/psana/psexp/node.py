@@ -95,6 +95,12 @@ class Communicators(object):
         self.psana_comm = self.comm.Create(self.psana_group)
 
         self.marching_enabled = marching_enabled()
+        self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
 
         self.bd_main_group = self.psana_group.Excl([0])
         self._bd_only_group = None
@@ -127,8 +133,18 @@ class Communicators(object):
                     else:
                         self._nodetype = "bd"
             else:
-                color = self.bd_main_rank % PS_EB_NODES
-                self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
+                if self.colocate_non_marching:
+                    info = MPI.INFO_NULL
+                    node_comm = self.bd_main_comm.Split_type(
+                        MPI.COMM_TYPE_SHARED, self.bd_main_rank, info
+                    )
+                    self.bd_comm = node_comm
+                else:
+                    color = self.bd_main_rank % PS_EB_NODES
+                    self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
+
+                if self.bd_comm == MPI.COMM_NULL:
+                    raise RuntimeError("Failed to create bd_comm")
                 self.bd_rank = self.bd_comm.Get_rank()
                 self.bd_size = self.bd_comm.Get_size()
 
@@ -197,14 +213,18 @@ class Communicators(object):
     def _init_smd_comm(self, ps_eb_nodes, psana_world_size):
         if ps_eb_nodes < 1:
             ps_eb_nodes = 1
-        if self.marching_enabled:
+        if self.marching_enabled or self.colocate_non_marching:
             eb_candidate = self.world_rank if self._nodetype == "eb" else -1
             gathered = self.comm.allgather(eb_candidate)
             if self.world_rank == 0:
                 eb_worlds = sorted({r for r in gathered if r >= 0})
                 if not eb_worlds:
+                    if self.marching_enabled:
+                        raise RuntimeError(
+                            "Marching mode requires at least one EB node but none were detected"
+                        )
                     raise RuntimeError(
-                        "Marching mode requires at least one EB node but none were detected"
+                        "PS_EB_NODE_LOCAL requires at least one EB node but none were detected"
                     )
                 smd_worlds = [0] + eb_worlds
             else:
@@ -423,9 +443,14 @@ class Smd0(object):
             requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                 repack_smds[rankreq[0]], dest=rankreq[0]
             )
+            print(
+                f"SMD0 sent chunk {i_chunk} of size {len(repack_smds[rankreq[0]])} to EB{rankreq[0]}",
+                flush=True,
+            )
 
             # Queue up the next request from an EB to keep assignments rotating
-            _await_request()
+            if not eb_request_queue:
+                _await_request()
 
             self.logger.debug(f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}")
 
@@ -479,18 +504,9 @@ class Smd0(object):
 
         # kill waiting eb nodes
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
-        for dest_rank in waiting_ebs:
+        for dest_rank in range(1, self.comms.smd_size):
             requests[dest_rank - 1] = self.comms.smd_comm.Isend(
                 bytearray(), dest=dest_rank
-            )
-        wait_for(requests)
-
-        requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
-        for i in range(self.comms.n_smd_nodes - len(waiting_ebs)):
-            req = self.comms.smd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
-            req.Wait()
-            requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
-                bytearray(), dest=rankreq[0]
             )
         wait_for(requests)
 
@@ -561,6 +577,7 @@ class EventBuilderNode(object):
             f"TIMELINE 5. EB{self.comms.world_rank}SENDREQTOSMD0 {time.monotonic()}",
         )
         smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
+        print(f'EB{self.comms.world_rank} sent request to SMD0', flush=True)
         self.logger.debug(
             f"TIMELINE 6. EB{self.comms.world_rank}DONESENDREQ {time.monotonic()}",
         )
@@ -570,6 +587,7 @@ class EventBuilderNode(object):
         smd_chunk = bytearray(count)
         req = smd_comm.Irecv(smd_chunk, source=0)
         req.Wait()
+        print(f'EB{self.comms.world_rank} received chunk of size {len(smd_chunk)} from SMD0', flush=True)
         en = time.monotonic()
         self.logger.debug(
             f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}"
