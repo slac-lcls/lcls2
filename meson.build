@@ -2,6 +2,7 @@
 project(
     'lcls',
     'cpp',
+    'cython',
     version: '4.3.0',
     default_options: ['cpp_std=c++20']
 )
