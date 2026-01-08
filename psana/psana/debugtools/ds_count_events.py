@@ -158,7 +158,7 @@ def main():
     last_pread_seconds = 0.0
     last_pread_bytes = 0
     last_pread_calls = 0
-    interval = 1000
+    interval = 10000
 
     det_accessed = False
     det_call_seconds = 0.0

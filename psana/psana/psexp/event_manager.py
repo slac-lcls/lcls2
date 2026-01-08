@@ -56,6 +56,8 @@ class EventManager(object):
         self.smd_mode = smd
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._bd_read_bytes = 0
+        self._bd_read_time = 0.0
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}
@@ -293,12 +295,16 @@ class EventManager(object):
         en = time.monotonic()
         sum_read_nbytes = memoryview(chunk).nbytes  # for prometheus counter
         if sum_read_nbytes > 0:
-            rate = (sum_read_nbytes / 1e6) / (en - st)
-            self.logger.debug(
-                f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)"
-            )
-            self.read_gauge.set(rate)
+            elapsed = en - st
+            if elapsed > 0:
+                rate = (sum_read_nbytes / 1e6) / elapsed
+                self.read_gauge.set(rate)
+                self._bd_read_bytes += sum_read_nbytes
+                self._bd_read_time += elapsed
         return chunk
+
+    def get_bd_read_stats(self):
+        return int(self._bd_read_bytes), float(self._bd_read_time)
 
     def _init_bd_chunks(self):
         self.bd_bufs = [bytearray() for i in range(self.n_smd_files)]

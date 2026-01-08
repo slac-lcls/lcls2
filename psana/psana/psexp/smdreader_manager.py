@@ -100,6 +100,8 @@ class SmdReaderManager(object):
 
         # Collecting Smd0 performance using prometheus
         self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
+        self._read_bytes = []
+        self._read_times = []
 
     def check_transfer_complete(self):
         """
@@ -158,13 +160,13 @@ class SmdReaderManager(object):
         st = time.monotonic()
         self.smdr.force_read()
         en = time.monotonic()
-        read_rate = self.smdr.got / (1e6 * (en - st))
-        self.logger.debug(
-            "READRATE SMD0 (0-) "
-            f"{read_rate:.2f} MB/s "
-            f"({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)"
-        )
-        self.read_gauge.set(read_rate)
+        elapsed = en - st
+        bytes_read = self.smdr.got
+        if bytes_read > 0 and elapsed > 0:
+            read_rate = bytes_read / (1e6 * elapsed)
+            self._read_bytes.append(bytes_read)
+            self._read_times.append(elapsed)
+            self.read_gauge.set(read_rate)
 
         if self.smdr.chunk_overflown > 0:
             msg = (
@@ -174,6 +176,13 @@ class SmdReaderManager(object):
             )
             raise ValueError(msg)
         return True
+
+    def pop_read_stats(self):
+        bytes_list = self._read_bytes
+        times_list = self._read_times
+        self._read_bytes = []
+        self._read_times = []
+        return bytes_list, times_list
 
     @property
     def processed_events(self):
@@ -289,7 +298,7 @@ class SmdReaderManager(object):
             if success or self.smdr.found_endrun():
                 break
 
-            self.smdr.force_read()
+            self.force_read()
 
             # Stop waiting if all transfers complete (live mode only)
             if getattr(self.dsparms, "live", False) and self.check_transfer_complete():
