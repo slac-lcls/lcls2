@@ -410,8 +410,8 @@ def jungfrau_dark_proc(parser):
 
 
 def save_results(dpo, orun, odet, **kwa):
-    logger.debug('save_results')
-
+    logger.info('begin save_results')
+    t0_sec = time()
     if dpo is None: return
     dpo.summary()
     dpo.show_plot_results()
@@ -432,6 +432,7 @@ def save_results(dpo, orun, odet, **kwa):
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
     save_constants_in_repository(dic_consts, **kwa_depl)
     del(dpo)
+    logger.info('save_results time %.3f sec' % (time()-t0_sec))
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
