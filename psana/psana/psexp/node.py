@@ -377,6 +377,7 @@ class Smd0(object):
         self.rate_gauge = pm.get_metric("psana_smd0_rate")
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._eb_wait_s = []
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
@@ -386,8 +387,55 @@ class Smd0(object):
         req.Wait()
         en_req = time.monotonic()
         self.logger.debug(f"TIMELINE 2. SMD0GOTEB{rankreq[0]} {en_req}")
-        self.logger.debug(f"WAITTIME SMD0-EB (0-{rankreq[0]}) {en_req-st_req:.5f}")
+        self._eb_wait_s.append(en_req - st_req)
         self.wait_gauge.set(en_req - st_req)
+
+    def _reset_smd0_chunk_stats(self):
+        self._eb_wait_s = []
+
+    def _log_smd0_chunk_stats(self, chunk_id, read_stats, chunk_rate_khz):
+        bytes_list, times_list = read_stats
+        wait = np.asarray(self._eb_wait_s, dtype=np.float64)
+        read_bytes = np.asarray(bytes_list, dtype=np.float64)
+        read_times = np.asarray(times_list, dtype=np.float64)
+        read_mb = read_bytes / 1e6 if read_bytes.size else np.asarray([], dtype=np.float64)
+        rate_mask = read_times > 0
+        read_rates = read_mb[rate_mask] / read_times[rate_mask] if rate_mask.any() else None
+        total_read_mb = float(read_mb.sum()) if read_mb.size else 0.0
+        total_read_time = float(read_times.sum()) if read_times.size else 0.0
+        total_read_rate = (
+            total_read_mb / total_read_time if total_read_time > 0 else 0.0
+        )
+        wait_avg = float(wait.mean()) if wait.size else 0.0
+        wait_min = float(wait.min()) if wait.size else 0.0
+        wait_max = float(wait.max()) if wait.size else 0.0
+        if read_rates is not None:
+            rate_avg = float(read_rates.mean())
+            rate_min = float(read_rates.min())
+            rate_max = float(read_rates.max())
+        else:
+            rate_avg = rate_min = rate_max = 0.0
+        self.logger.debug(
+            "SMD0 chunk stats chunk=%d\n"
+            "  eb_wait_s avg=%.5f min=%.5f max=%.5f count=%d\n"
+            "  smd_read_mb avg=%.2f min=%.2f max=%.2f total=%.2f\n"
+            "  smd_read_rate_mb_s avg=%.2f min=%.2f max=%.2f total=%.2f\n"
+            "  smd0_rate_khz=%.5f",
+            chunk_id,
+            wait_avg,
+            wait_min,
+            wait_max,
+            wait.size,
+            float(read_mb.mean()) if read_mb.size else 0.0,
+            float(read_mb.min()) if read_mb.size else 0.0,
+            float(read_mb.max()) if read_mb.size else 0.0,
+            total_read_mb,
+            rate_avg,
+            rate_min,
+            rate_max,
+            total_read_rate,
+            chunk_rate_khz,
+        )
 
     def start(self):
         # Rank 0 waits on World comm for terminating signal
@@ -396,7 +444,6 @@ class Smd0(object):
 
         # Setup a non-pickled recv array and prepare bucket for storing send reqs.
         rankreq = np.empty(1, dtype="i")
-        waiting_ebs = []
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
 
         # Need this for async MPI to prevent overwriting send buffer
@@ -408,15 +455,24 @@ class Smd0(object):
             self._request_rank(rankreq)
             eb_request_queue.append(int(rankreq[0]))
 
+        def _drain_requests():
+            smd_comm = self.comms.smd_comm
+            while smd_comm.Iprobe(source=MPI.ANY_SOURCE):
+                self._request_rank(rankreq)
+                eb_request_queue.append(int(rankreq[0]))
+
         for _ in range(max(1, self.comms.n_smd_nodes)):
             _await_request()
 
         # Indentify viewing windows. SmdReaderManager has starting index and block size
         # that it needs to share later when data are packaged for sending to EventBuilders.
         for i_chunk in self.smdr_man.chunks():
+            self._reset_smd0_chunk_stats()
             st = time.monotonic()
+            _drain_requests()
             while not eb_request_queue:
                 _await_request()
+                _drain_requests()
             rankreq[0] = eb_request_queue.pop(0)
 
             # Check missing steps for the current client
@@ -445,16 +501,17 @@ class Smd0(object):
             )
 
             # Queue up the next request from an EB to keep assignments rotating
+            _drain_requests()
             if not eb_request_queue:
                 _await_request()
 
             self.logger.debug(f"TIMELINE 4. SMD0DONEWITHEB{rankreq[0]} {time.monotonic()}")
 
             en = time.monotonic()
-            self.logger.debug(
-                f"RATE SMD0-EB (0-{rankreq[0]}) {(self.smdr_man.got_events/(en-st))*1e-3} kHz"
-            )
-            self.rate_gauge.set((self.smdr_man.got_events / (en - st)) * 1e-3)
+            chunk_rate_khz = (self.smdr_man.got_events / (en - st)) * 1e-3
+            self.rate_gauge.set(chunk_rate_khz)
+            read_stats = self.smdr_man.pop_read_stats()
+            self._log_smd0_chunk_stats(i_chunk, read_stats, chunk_rate_khz)
 
             # Check for terminating signal
             t_req_test = t_req.Test()
@@ -469,7 +526,7 @@ class Smd0(object):
                 self.logger.debug("MESSAGE SMD0-ENDRUN")
                 break
 
-        waiting_ebs.extend(eb_request_queue)
+        _drain_requests()
 
         # end for (smd_chunk, step_chunk)
         wait_for(requests)
@@ -478,6 +535,7 @@ class Smd0(object):
         requests = [MPI.REQUEST_NULL for i in range(self.comms.smd_size - 1)]
         remaining = self.comms.n_smd_nodes
         while remaining > 0:
+            _drain_requests()
             if eb_request_queue:
                 rankreq[0] = eb_request_queue.pop(0)
             else:
@@ -493,8 +551,6 @@ class Smd0(object):
                 requests[rankreq[0] - 1] = self.comms.smd_comm.Isend(
                     repack_smds[rankreq[0]], dest=rankreq[0]
                 )
-            else:
-                waiting_ebs.append(rankreq[0])
             remaining -= 1
         wait_for(requests)
 
@@ -524,6 +580,12 @@ class EventBuilderNode(object):
         self.wait_bd_gauge = pm.get_metric("psana_eb_wait_bd")
         self.requests = []
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._bd_chunk_stats = None
+        self._bd_pending_chunk_id = None
+        self._smd_wait_s = []
+        self._smd_chunk_bytes = []
+        self._bd_wait_s = []
+        self._bd_rate_hz = []
 
     def _init_requests(self):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
@@ -562,10 +624,161 @@ class EventBuilderNode(object):
         req = self.comms.bd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()
         en_req = time.monotonic()
-        self.logger.debug(
-            f"WAITTIME EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {en_req-st_req:.5f}"
-        )
+        self._update_bd_read_stats(rankreq)
+        self._bd_wait_s.append(en_req - st_req)
         self.wait_bd_gauge.set(en_req - st_req)
+
+    def _update_bd_read_stats(self, rankreq):
+        if self._bd_chunk_stats is None or self._bd_pending_chunk_id is None:
+            return
+        if self._bd_pending_chunk_id < 0:
+            return
+        bd_rank = int(rankreq[0])
+        if bd_rank <= 0:
+            return
+        idx = bd_rank - 1
+        if idx >= self._bd_chunk_stats["bytes"].size:
+            return
+        self._bd_chunk_stats["bytes"][idx] += int(rankreq[1])
+        self._bd_chunk_stats["time_ns"][idx] += int(rankreq[2])
+        self._bd_chunk_stats["wait_ns"][idx] += int(rankreq[3])
+        self._bd_chunk_stats["proc_rate_hz"][idx] = float(rankreq[4]) / 1e6
+
+    def _prepare_bd_read_stats(self, pending_chunk_id, n_bd_nodes):
+        if pending_chunk_id < 0 or n_bd_nodes <= 0:
+            self._bd_pending_chunk_id = pending_chunk_id
+            self._bd_chunk_stats = None
+            return
+        self._bd_pending_chunk_id = pending_chunk_id
+        self._bd_chunk_stats = {
+            "bytes": np.zeros(n_bd_nodes, dtype=np.int64),
+            "time_ns": np.zeros(n_bd_nodes, dtype=np.int64),
+            "wait_ns": np.zeros(n_bd_nodes, dtype=np.int64),
+            "proc_rate_hz": np.zeros(n_bd_nodes, dtype=np.float64),
+        }
+
+    def _log_bd_read_stats(self, chunk_id):
+        if self._bd_chunk_stats is None or chunk_id < 0:
+            return
+        bytes_arr = self._bd_chunk_stats["bytes"]
+        time_arr = self._bd_chunk_stats["time_ns"]
+        wait_arr = self._bd_chunk_stats["wait_ns"]
+        proc_rate_arr = self._bd_chunk_stats["proc_rate_hz"]
+        if bytes_arr.size == 0:
+            return
+        zero_mask = bytes_arr == 0
+        zero_chunks = int(zero_mask.sum())
+        if zero_mask.all():
+            self.logger.debug(
+                "EB bd read stats chunk(prev)=%d bds=%d zero_chunks=%d",
+                chunk_id,
+                bytes_arr.size,
+                zero_chunks,
+            )
+            return
+        bytes_mb = bytes_arr[~zero_mask] / 1e6
+        time_s = time_arr[~zero_mask] / 1e9
+        wait_s = wait_arr[~zero_mask] / 1e9
+        proc_rate = proc_rate_arr[~zero_mask]
+        total_bytes = float(bytes_arr[~zero_mask].sum())
+        max_time = float(time_s.max()) if time_s.size else 0.0
+        rate_mask = time_s > 0
+        rate_mb_s = bytes_mb[rate_mask] / time_s[rate_mask] if rate_mask.any() else None
+        total_rate = (total_bytes / 1e6) / max_time if max_time > 0 else 0.0
+        if rate_mb_s is not None:
+            rate_avg = float(rate_mb_s.mean())
+            rate_min = float(rate_mb_s.min())
+            rate_max = float(rate_mb_s.max())
+        else:
+            rate_avg = rate_min = rate_max = 0.0
+        proc_mask = proc_rate > 0
+        if proc_mask.any():
+            proc_avg = float(proc_rate[proc_mask].mean())
+            proc_min = float(proc_rate[proc_mask].min())
+            proc_max = float(proc_rate[proc_mask].max())
+        else:
+            proc_avg = proc_min = proc_max = 0.0
+        self.logger.debug(
+            "EB bd read stats chunk(prev)=%d bds=%d zero_chunks=%d\n"
+            "  bytes_per_pread_mb avg=%.2f min=%.2f max=%.2f\n"
+            "  time_s    avg=%.3f min=%.3f max=%.3f\n"
+            "  wait_s    avg=%.3f min=%.3f max=%.3f\n"
+            "  proc_rate_hz avg=%.2f min=%.2f max=%.2f\n"
+            "  rate_mb_s avg=%.2f min=%.2f max=%.2f\n"
+            "  total_rate=%.2f MB/s",
+            chunk_id,
+            bytes_arr.size,
+            zero_chunks,
+            float(bytes_mb.mean()),
+            float(bytes_mb.min()),
+            float(bytes_mb.max()),
+            float(time_s.mean()),
+            float(time_s.min()),
+            float(time_s.max()),
+            float(wait_s.mean()),
+            float(wait_s.min()),
+            float(wait_s.max()),
+            proc_avg,
+            proc_min,
+            proc_max,
+            rate_avg,
+            rate_min,
+            rate_max,
+            total_rate,
+        )
+
+    def _reset_eb_chunk_stats(self):
+        self._smd_wait_s = []
+        self._smd_chunk_bytes = []
+        self._bd_wait_s = []
+        self._bd_rate_hz = []
+
+    def _log_eb_chunk_stats(self, chunk_id):
+        if chunk_id < 0:
+            return
+        wait = np.asarray(self._smd_wait_s, dtype=np.float64)
+        sizes = np.asarray(self._smd_chunk_bytes, dtype=np.float64) / 1e6
+        bd_wait = np.asarray(self._bd_wait_s, dtype=np.float64)
+        bd_rate = np.asarray(self._bd_rate_hz, dtype=np.float64)
+        if not (wait.size or bd_wait.size or bd_rate.size):
+            return
+        wait_avg = float(wait.mean()) if wait.size else 0.0
+        wait_min = float(wait.min()) if wait.size else 0.0
+        wait_max = float(wait.max()) if wait.size else 0.0
+        size_avg = float(sizes.mean()) if sizes.size else 0.0
+        size_min = float(sizes.min()) if sizes.size else 0.0
+        size_max = float(sizes.max()) if sizes.size else 0.0
+        bd_wait_avg = float(bd_wait.mean()) if bd_wait.size else 0.0
+        bd_wait_min = float(bd_wait.min()) if bd_wait.size else 0.0
+        bd_wait_max = float(bd_wait.max()) if bd_wait.size else 0.0
+        bd_rate_avg = float(bd_rate.mean()) if bd_rate.size else 0.0
+        bd_rate_min = float(bd_rate.min()) if bd_rate.size else 0.0
+        bd_rate_max = float(bd_rate.max()) if bd_rate.size else 0.0
+        bd_rate_med = float(np.median(bd_rate)) if bd_rate.size else 0.0
+        self.logger.debug(
+            "EB chunk stats chunk=%d\n"
+            "  smd_wait_s avg=%.5f min=%.5f max=%.5f count=%d\n"
+            "  smd_size_mb avg=%.2f min=%.2f max=%.2f\n"
+            "  bd_wait_s  avg=%.5f min=%.5f max=%.5f count=%d\n"
+            "  bd_rate_hz avg=%.2f med=%.2f min=%.2f max=%.2f count=%d",
+            chunk_id,
+            wait_avg,
+            wait_min,
+            wait_max,
+            wait.size,
+            size_avg,
+            size_min,
+            size_max,
+            bd_wait_avg,
+            bd_wait_min,
+            bd_wait_max,
+            bd_wait.size,
+            bd_rate_avg,
+            bd_rate_med,
+            bd_rate_min,
+            bd_rate_max,
+            bd_rate.size,
+        )
 
     def _request_data(self, smd_comm):
         st = time.monotonic()
@@ -586,18 +799,18 @@ class EventBuilderNode(object):
         self.logger.debug(
             f"TIMELINE 7. EB{self.comms.world_rank}RECVDATA {time.monotonic()}"
         )
-        self.logger.debug(
-            f"WAITTIME EB-SMD0 ({self.comms.smd_rank}-0) {en-st:.5f} ({count/1e3:.5f}KB)"
-        )
+        self._smd_wait_s.append(en - st)
+        self._smd_chunk_bytes.append(count)
         self.wait_smd0_gauge.set(en - st)
         return smd_chunk
 
     def start(self):
-        rankreq = np.empty(1, dtype="i")
+        rankreq = np.empty(5, dtype=np.int64)
         smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
         waiting_bds = []
+        chunk_id = 0
 
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
@@ -605,10 +818,13 @@ class EventBuilderNode(object):
         bypass_bd = bool(int(os.environ.get("PS_EB_BYPASS_BD", "0")))
 
         while True:
+            self._reset_eb_chunk_stats()
             smd_chunk = self._request_data(smd_comm)
             if not smd_chunk:
                 break
 
+            if not bypass_bd:
+                self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
             eb_man = EventBuilderManager(
                 smd_chunk, self.configs, self.dsparms,
             )
@@ -709,18 +925,24 @@ class EventBuilderNode(object):
                 # end else -> if 0 in smd_batch_dict.keys()
 
                 t1 = time.monotonic()
-                self.logger.debug(
-                    f"RATE EB-BD ({self.comms.smd_rank}-{rankreq[0]}) {(eb_man.eb.nevents/(t1-t0))*1e-3:.5f} kHz"
-                )
-                self.rate_gauge.set((eb_man.eb.nevents / (t1 - t0)) * 1e-3)
+                rate_hz = eb_man.eb.nevents / (t1 - t0)
+                self._bd_rate_hz.append(rate_hz)
+                # Prometheus expects kHz even though logs remain in Hz.
+                self.rate_gauge.set(rate_hz * 1e-3)
                 t0 = time.monotonic()
 
             # end for smd_batch_dict in ...
             self.logger.debug(
                 f"TIMELINE 12.1 EB{self.comms.world_rank}DONEALLBATCHES {time.monotonic()}",
             )
+            self._log_eb_chunk_stats(chunk_id)
+            if not bypass_bd:
+                self._log_bd_read_stats(self._bd_pending_chunk_id)
+            chunk_id += 1
 
         # end While True
+        if not bypass_bd:
+            self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
         wait_for(self.requests)
 
         batches = {}
@@ -780,7 +1002,6 @@ class EventBuilderNode(object):
         self._init_requests()
         for dest_rank in waiting_bds:
             self.requests[dest_rank - 1] = bd_comm.Isend(bytearray(), dest=dest_rank)
-            self.logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
 
         # - kill all other nodes
@@ -788,8 +1009,9 @@ class EventBuilderNode(object):
         for i in range(n_bd_nodes - len(waiting_bds)):
             self._request_rank(rankreq)
             self.requests[rankreq[0] - 1] = bd_comm.Isend(bytearray(), dest=rankreq[0])
-            self.logger.debug(f"MESSAGE EB-BD ({self.comms.smd_rank}-{dest_rank}) KILL")
         wait_for(self.requests)
+        if not bypass_bd:
+            self._log_bd_read_stats(self._bd_pending_chunk_id)
 
     def start_broadcast(self):
         smd_comm = self.comms.smd_comm
@@ -873,16 +1095,46 @@ class BigDataNode(object):
         self.wait_gauge = pm.get_metric("psana_bd_wait")
         self.rate_gauge = pm.get_metric("psana_bd_rate")
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._last_bd_read_bytes = 0
+        self._last_bd_read_time_ns = 0
+        self._last_bd_wait_time_ns = 0
+        self._last_bd_rate_hz_scaled = 0
 
     def start(self):
+        def on_batch_end(payload):
+            (read_bytes, read_time), event_count, elapsed = payload
+            self._last_bd_read_bytes = int(read_bytes)
+            self._last_bd_read_time_ns = int(read_time * 1e9)
+            if elapsed > 0 and event_count > 0:
+                rate_hz = event_count / elapsed
+                self._last_bd_rate_hz_scaled = int(rate_hz * 1e6)
+                # Prometheus expects kHz even though logs remain in Hz.
+                self.rate_gauge.set(rate_hz * 1e-3)
+            else:
+                self._last_bd_rate_hz_scaled = 0
+
         def get_smd():
             bd_comm = self.comms.bd_comm
             bd_rank = self.comms.bd_rank
             self.logger.debug(
                 f"TIMELINE 13. BD{self.comms.world_rank}SENDREQTOEB {time.monotonic()}",
             )
-            req = bd_comm.Isend(np.array([bd_rank], dtype="i"), dest=0)
+            req_payload = np.array(
+                [
+                    bd_rank,
+                    self._last_bd_read_bytes,
+                    self._last_bd_read_time_ns,
+                    self._last_bd_wait_time_ns,
+                    self._last_bd_rate_hz_scaled,
+                ],
+                dtype=np.int64,
+            )
+            req = bd_comm.Isend(req_payload, dest=0)
             req.Wait()
+            self._last_bd_read_bytes = 0
+            self._last_bd_read_time_ns = 0
+            self._last_bd_wait_time_ns = 0
+            self._last_bd_rate_hz_scaled = 0
             self.logger.debug(
                 f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
             )
@@ -897,10 +1149,9 @@ class BigDataNode(object):
                 f"TIMELINE 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}",
             )
             en_req = time.monotonic()
-            self.logger.debug(
-                f"WAITTIME BD-EB ({bd_rank}-{self.comms.smd_rank}) {en_req-st_req:.5f}"
-            )
-            self.wait_gauge.set(en_req - st_req)
+            wait_time = en_req - st_req
+            self._last_bd_wait_time_ns = int(wait_time * 1e9)
+            self.wait_gauge.set(wait_time)
             return chunk
 
         dgrams_iter = Events(self.configs,
@@ -908,20 +1159,12 @@ class BigDataNode(object):
                         self.dsparms.max_retries,
                         self.dsparms.use_smds,
                         self.shared_state,
-                        get_smd=get_smd)
-
-        t0 = time.monotonic()
+                        get_smd=get_smd,
+                        on_batch_end=on_batch_end)
         for i_evt, dgrams in enumerate(dgrams_iter):
             # throw away events if termination flag is set
             if self.shared_state.terminate_flag.value:
                 continue
-
-            if i_evt % 1000 == 0:
-                t1 = time.monotonic()
-                rate = 1 / (t1 - t0)
-                self.logger.debug(f"RATE BD ({self.comms.bd_rank}-) {rate:.5f} kHz")
-                self.rate_gauge.set(rate)
-                t0 = time.monotonic()
 
             yield dgrams
 
@@ -1014,6 +1257,7 @@ class MarchingBigDataNode(object):
                 self.logger.debug(
                     f"RATE MARCH BD ({self.comms.world_rank}) {rate:.3f} Hz"
                 )
-                self.rate_gauge.set(rate)
+                # Prometheus expects kHz even though logs remain in Hz.
+                self.rate_gauge.set(rate * 1e-3)
                 t0 = time.monotonic()
             yield dgrams
