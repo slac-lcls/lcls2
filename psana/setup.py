@@ -340,6 +340,22 @@ if 'DGRAM' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
+    ext = Extension("psana.psexp.parallel_pread",
+                    sources=["psana/psexp/parallel_pread.pyx"],
+                    include_dirs=["psana"],
+                    extra_compile_args=extra_c_compile_args + openmp_compile_args,
+                    extra_link_args=extra_link_args + openmp_link_args,
+    )
+    CYTHON_EXTS.append(ext)
+
+    ext = Extension("psana.marchingeventbuilder",
+                    sources=["psana/marchingeventbuilder.pyx"],
+                    include_dirs=["psana"],
+                    extra_compile_args=extra_c_compile_args,
+                    extra_link_args=extra_link_args,
+    )
+    CYTHON_EXTS.append(ext)
+
     ext = Extension("psana.parallelreader",
                     sources=["psana/parallelreader.pyx"],
                     include_dirs=["psana"],
