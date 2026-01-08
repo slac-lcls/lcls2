@@ -28,7 +28,7 @@ from psana.dgramedit import DgramEdit
 
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 from cpython.object cimport PyObject
-from dgramlite cimport Dgram
+from psana.dgramlite cimport Dgram
 
 
 cdef uint64_t INVALID_TS = 0xFFFFFFFFFFFFFFFF
