@@ -5,7 +5,7 @@ from cpython cimport array
 from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
-from parallelreader cimport Buffer, ParallelReader
+from psana.parallelreader cimport Buffer, ParallelReader
 from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FAILED, is_map_failed
 
 import os
@@ -28,7 +28,7 @@ from psana.dgramedit import DgramEdit
 
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 from cpython.object cimport PyObject
-from dgramlite cimport Dgram
+from psana.dgramlite cimport Dgram
 
 
 cdef uint64_t INVALID_TS = 0xFFFFFFFFFFFFFFFF
