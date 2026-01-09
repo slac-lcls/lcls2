@@ -3,6 +3,7 @@ import sys
 import gc
 import socket
 from psana.psexp.tools import mode, marching_enabled
+from psana import utils
 import logging
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,37 @@ def _ensure_local_eb_nodes():
         )
 
 
+def _force_mfx_overrides(exp, kwargs):
+    if not exp:
+        return
+    exp_name = str(exp).lower()
+    if not exp_name.startswith("mfx"):
+        return
+    prev_eb_local = os.environ.get("PS_EB_NODE_LOCAL")
+    prev_smd = os.environ.get("PS_SMD_N_EVENTS")
+    prev_monitor = kwargs.get("monitor")
+    prev_log_level = kwargs.get("log_level")
+    os.environ["PS_EB_NODE_LOCAL"] = "1"
+    os.environ["PS_SMD_N_EVENTS"] = "5000"
+    kwargs["monitor"] = True
+    kwargs["log_level"] = "DEBUG"
+    should_log = True
+    if mode == "mpi":
+        try:
+            should_log = MPI.COMM_WORLD.Get_rank() == 0
+        except Exception:
+            should_log = True
+    if should_log:
+        logger = utils.get_logger(name="DataSource")
+        logger.info(
+            "MFX overrides: PS_EB_NODE_LOCAL=1 (was %s), PS_SMD_N_EVENTS=5000 (was %s), monitor=True (was %s), log_level=DEBUG (was %s)",
+            prev_eb_local if prev_eb_local is not None else "unset",
+            prev_smd if prev_smd is not None else "unset",
+            prev_monitor if prev_monitor is not None else "unset",
+            prev_log_level if prev_log_level is not None else "unset",
+        )
+
+
 class InvalidDataSource(Exception):
     pass
 
@@ -170,6 +202,8 @@ def DataSource(*args, **kwargs):
 
     # ==== from experiment directory ====
     elif "exp" in kwargs:  # experiment string - assumed multiple files
+
+        _force_mfx_overrides(kwargs.get("exp"), kwargs)
 
         if mode == "mpi":
             if world_size == 1:
