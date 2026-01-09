@@ -19,9 +19,8 @@ def get_smd_n_events():
         if marching_enabled() or local_eb in ("1", "true", "yes", "on")
         else "20000"
     )
-    value = os.environ.get("PS_SMD_N_EVENTS", default_value)
     try:
-        return int(value)
+        return int(os.environ.get("PS_SMD_N_EVENTS", default_value))
     except ValueError:
         return int(default_value)
 

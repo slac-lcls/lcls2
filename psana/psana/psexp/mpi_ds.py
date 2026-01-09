@@ -201,8 +201,13 @@ class RunParallel(Run):
             yield Event(dgrams=dgrams, run=self._run_ctx)
             if i % 1000 == 0:
                 en = time.time()
-                ana_rate = 1000 / (en - st)
-                self.logger.debug(f"ANARATE {ana_rate:.2f} Hz")
+                interval = en - st
+                ana_rate = 1000 / interval if interval > 0 else 0.0
+                self.logger.debug(
+                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=1000",
+                    ana_rate,
+                    interval,
+                )
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 
