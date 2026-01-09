@@ -268,6 +268,19 @@ def main():
             f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "
             f"Total events: {total} Rate={total_rate:.1f} Hz"
         )
+        if n_bdnodes > 0:
+            first_bd_rank = n_ebnodes + 1
+            last_bd_rank = size - ps_srv_nodes
+            bd_counts = recvbuf[first_bd_rank:last_bd_rank, 0]
+            if bd_counts.size:
+                bd_avg = float(np.mean(bd_counts))
+                bd_min = int(np.min(bd_counts))
+                bd_max = int(np.max(bd_counts))
+                bd_med = float(np.median(bd_counts))
+                print(
+                    f"[{args.log_level}] BD_EVENTS avg={bd_avg:.1f} "
+                    f"min={bd_min} max={bd_max} med={bd_med:.1f}"
+                )
         if total_pread_bytes > 0 and max_pread_sec > 0:
             agg_io_rate = (total_pread_bytes / (1024 * 1024)) / max_pread_sec
             print(

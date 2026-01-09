@@ -549,7 +549,6 @@ class DataSourceBase(abc.ABC):
             return
         try:
             stop_pusher()  # no-op if nothing running
-            self.logger.debug("END PROMETHEUS CLIENT (pusher stopped)")
         except Exception as ex:
             self.logger.debug(f"END PROMETHEUS CLIENT: stop_pusher() raised {ex!r}")
 
