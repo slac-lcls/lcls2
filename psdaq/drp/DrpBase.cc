@@ -128,7 +128,9 @@ MemPool::MemPool(const Parameters& para) :
     m_frees(0),
     m_dmaOverrun(0),
     m_l1Overrun(0),
-    m_trOverrun(0)
+    m_trOverrun(0),
+    m_nDmaReadErr(0),
+    m_nDmaRetErr(0)
 {
 }
 
@@ -185,11 +187,27 @@ unsigned MemPool::allocateDma()
     return allocs;
 }
 
-void MemPool::freeDma(unsigned count, uint32_t* indices)
+ssize_t MemPool::readDma(uint32_t count, int32_t* ret, uint32_t* index, uint32_t* flags, uint32_t* errors, uint32_t* dest)
 {
-    _freeDma(count, indices);
+    auto rc = dmaReadBulkIndex(fd(), count, ret, index, flags, errors, dest);
+    if (rc < 0) [[unlikely]] {
+        if (m_nDmaReadErr++ == 0)  logging::error("dmaReadBulkIndex error %d: %m", rc);
+        else                       logging::debug("dmaReadBulkIndex error %d: %m", rc);
+    }
+    return rc;
+}
 
-    m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
+ssize_t MemPool::freeDma(unsigned count, uint32_t* indices)
+{
+    auto rc = _freeDma(count, indices);
+    if (rc < 0) [[unlikely]] {
+        if (m_nDmaRetErr++ == 0)  logging::error("dmaRetIndexes error %d: %m", rc);
+        else                      logging::debug("dmaRetIndexes error %d: %m", rc);
+    }
+
+    if (!rc)  m_dmaFrees.fetch_add(count, std::memory_order_acq_rel);
+
+    return rc;
 }
 
 /** Pebble buffers must be freed in the same order in which they were allocated */
@@ -327,11 +345,17 @@ void MemPool::resetCounters()
     m_dmaOverrun = 0;
     m_l1Overrun = 0;
     m_trOverrun = 0;
+
+    m_nDmaReadErr = 0;
+    m_nDmaRetErr = 0;
 }
 
 void MemPool::shutdown()
 {
     m_transitionBuffers.shutdown();
+
+    if (m_nDmaReadErr)  logging::warning("dmaReadBulkIndex failed %u times", m_nDmaReadErr);
+    if (m_nDmaRetErr)   logging::warning("dmaRetIndexes failed %u times", m_nDmaRetErr);
 }
 
 MemPoolCpu::MemPoolCpu(const Parameters& para) :
@@ -372,7 +396,7 @@ MemPoolCpu::~MemPoolCpu()
     close(m_fd);
 }
 
-void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
+ssize_t MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
 {
     // Check that the sentinel value at the end of the buffer is still there
     for (unsigned i = 0; i < count; ++i) {
@@ -401,7 +425,7 @@ void MemPoolCpu::_freeDma(unsigned count, uint32_t* indices)
         //}
     }
 
-    dmaRetIndexes(m_fd, count, indices);
+    return dmaRetIndexes(m_fd, count, indices);
 }
 
 int MemPoolCpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
@@ -433,6 +457,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_para        (para),
     m_pool        (pool),
     m_tmo         {100},                // ms
+    m_us          {1},                  // Must not be 0
     dmaRet        (maxRetCnt),
     dmaIndex      (maxRetCnt),
     dest          (maxRetCnt),
@@ -440,7 +465,8 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
     m_lastTid     (TransitionId::Unconfigure),
-    m_dmaIndices  (dmaFreeCnt),
+    m_dmaIndices  (maxRetCnt),
+    m_dmaRetCnt   (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
@@ -483,13 +509,17 @@ int32_t PgpReader::read()
         }
     }                                // Else polling mode
 
-    auto rc = dmaReadBulkIndex(m_pool.fd(), dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
+    auto rc = m_pool.readDma(dmaRet.size(), dmaRet.data(), dmaIndex.data(), dmaFlags.data(), dmaErrors.data(), dest.data());
     if (rc > 0) {
         auto t1 { Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) };
 
         auto dt = std::chrono::duration_cast<ms_t>(t1 - m_t0).count();
-        m_tmo = dt/rc < 1 ? 0 : 10;  // Polling if rate > 1 kHz else interrupt mode
+        m_tmo = dt/rc < 1 ? 0 : 1;   // Polling if rate > 1 kHz else interrupt mode
+        if (!m_tmo)  m_us = 1;
         m_t0  = t1;
+    } else {                         // Exponential back-off
+        usleep(m_us);
+        if (m_us < 1024)  m_us <<= 1;
     }
 
     return rc;
@@ -501,12 +531,13 @@ void PgpReader::flush()
     std::lock_guard<std::mutex> lock(m_lock);
 
     // Return DMA buffers queued for freeing
-    if (m_count)  m_pool.freeDma(m_count, m_dmaIndices.data());
-    m_count = 0;
+    if (m_count && !m_pool.freeDma(m_count, m_dmaIndices.data())) {
+        m_count = 0;
+    }
 
     // Also return DMA buffers queued for reading, without adjusting counters
     int32_t ret;
-    while ( (ret = read()) ) {
+    while ( (ret = read()) > 0 ) {
         dmaRetIndexes(m_pool.fd(), ret, dmaIndex.data());
     }
 
@@ -717,6 +748,14 @@ void PgpReader::freeDma(PGPEvent* event)
     // DMA buffers must be freeable from multiple threads
     std::lock_guard<std::mutex> lock(m_lock);
 
+    // If the previous attempt failed, try again
+    if (m_count == m_dmaIndices.size()) [[unlikely]] {
+        if (m_pool.freeDma(m_count, m_dmaIndices.data())) {
+            return;                     // Failed again
+        }
+        m_count = 0;                    // Success: reset
+    }
+
     // Return buffers and reset event.  Careful with order here!
     // index could be reused as soon as dmaRetIndexes() completes
     unsigned laneMask = m_para.laneMask;
@@ -726,10 +765,11 @@ void PgpReader::freeDma(PGPEvent* event)
             auto idx = event->buffers[i].index;
             if (idx < m_pool.dmaCount()) [[likely]] {
                 m_dmaIndices[m_count++] = idx;
-                if (m_count == m_dmaIndices.size()) {
+                if (m_count >= m_dmaRetCnt) {
                     // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
-                    m_pool.freeDma(m_count, m_dmaIndices.data());
-                    m_count = 0;
+                    if (!m_pool.freeDma(m_count, m_dmaIndices.data())) {
+                        m_count = 0;    // Reset only on success
+                    }
                 }
             } else {
                 logging::error("DMA buffer index %u is out of range [0:%u]\n",

@@ -177,6 +177,7 @@ protected:
     pollfd m_pfd;
     Pds::fast_monotonic_clock::time_point m_t0;
     int m_tmo;
+    unsigned m_us;
     std::vector<int32_t> dmaRet;
     std::vector<uint32_t> dmaIndex;
     std::vector<uint32_t> dest;
@@ -186,6 +187,7 @@ protected:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     std::vector<uint32_t> m_dmaIndices;
+    unsigned m_dmaRetCnt;
     unsigned m_count;
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;
