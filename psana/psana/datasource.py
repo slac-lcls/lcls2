@@ -125,13 +125,13 @@ def _force_mfx_overrides(exp, kwargs):
     exp_name = str(exp).lower()
     if not exp_name.startswith("mfx"):
         return
-    prev_eb_local = os.environ.get("PS_EB_NODE_LOCAL")
-    prev_smd = os.environ.get("PS_SMD_N_EVENTS")
-    prev_monitor = kwargs.get("monitor")
+    prev_smd_n_events = os.environ.get("PS_SMD_N_EVENTS")
+    prev_eb_nodes = os.environ.get("PS_EB_NODES")
     prev_log_level = kwargs.get("log_level")
-    os.environ["PS_EB_NODE_LOCAL"] = "1"
+    node_count = _detect_node_count()
+    if node_count > 0:
+        os.environ["PS_EB_NODES"] = str(node_count)
     os.environ["PS_SMD_N_EVENTS"] = "5000"
-    kwargs["monitor"] = True
     kwargs["log_level"] = "DEBUG"
     should_log = True
     if mode == "mpi":
@@ -142,10 +142,10 @@ def _force_mfx_overrides(exp, kwargs):
     if should_log:
         logger = utils.get_logger(name="DataSource")
         logger.info(
-            "MFX overrides: PS_EB_NODE_LOCAL=1 (was %s), PS_SMD_N_EVENTS=5000 (was %s), monitor=True (was %s), log_level=DEBUG (was %s)",
-            prev_eb_local if prev_eb_local is not None else "unset",
-            prev_smd if prev_smd is not None else "unset",
-            prev_monitor if prev_monitor is not None else "unset",
+            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=5000 (was %s), log_level=DEBUG (was %s)",
+            os.environ.get("PS_EB_NODES", "1"),
+            prev_eb_nodes if prev_eb_nodes is not None else "unset",
+            prev_smd_n_events if prev_smd_n_events is not None else "unset",
             prev_log_level if prev_log_level is not None else "unset",
         )
 
