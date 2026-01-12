@@ -62,9 +62,14 @@ static PyObject* _check(PyObject* obj) {
 
 Digitizer::Digitizer(Parameters* para, MemPool* pool) :
     Detector    (para, pool),
-    m_epics_name(para->kwargs["hsd_epics_prefix"])
+    m_epics_name(para->kwargs["hsd_epics_prefix"]),
+    m_strm_limit(1000000),
+    m_strm_limit_sem(Pds::Semaphore::FULL)
 {
     printf("*** found epics name %s\n",m_epics_name.c_str());
+
+    if (para->kwargs.find("strm_limit")!=para->kwargs.end()) 
+        m_strm_limit = std::stoul(const_cast<Parameters&>(*para).kwargs["strm_limit"]);
 
     //
     //  Initialize python calls
@@ -225,13 +230,10 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
     for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             data_size = event->buffers[i].size - sizeof(Pds::TimingHeader);
-            if (data_size >= 1000000) {
-              logging::info("Invalid lane %d DMA size %u (0x%x).  Skipping event.",
+            if (data_size >= m_strm_limit) {
+              logging::warning("Invalid lane %d DMA size %u (0x%x).  Skipping event.",
                             i, data_size, data_size);
-              const uint32_t* p = reinterpret_cast<const uint32_t*>(timing_header);
-              for(unsigned i=0; i<8; i++)
-                printf(" %08x",p[i]);
-              printf("\n");
+              //              _dump(timing_header,data_size);
               dgram.xtc.damage.increase(Damage::UserDefined);
               continue;
             }
@@ -255,11 +257,16 @@ void Digitizer::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
                     break;
                 }
                 const Pds::HSD::StreamHeader& stream = *reinterpret_cast<const Pds::HSD::StreamHeader*>(p);
-                if (stream.overflow() ||
-                    stream.unlocked()) {
+                if (stream.overflow()) {
+                    logging::critical("Header error: overflow %c  unlocked %c",
+                                      stream.overflow()?'T':'F',
+                                      stream.unlocked()?'T':'F');
+                    abort();
+                }
+                else if (stream.unlocked()) {
                     logging::debug("Header error: overflow %c  unlocked %c",
-                                   stream.overflow()?'T':'F',
-                                   stream.unlocked()?'T':'F');
+                                     stream.overflow()?'T':'F',
+                                     stream.unlocked()?'T':'F');
                     dgram.xtc.damage.increase(Damage::UserDefined);
                     break;
                 }
@@ -305,6 +312,20 @@ unsigned Digitizer::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
 {
     NamesId namesId(nodeId,UpdateNamesIndex);
     return m_configScanner->step(stepInfo,xtc,bufEnd,namesId,m_namesLookup);
+}
+
+void Digitizer::_dump(const void* hdr, unsigned data_size)
+{
+    m_strm_limit_sem.take();
+    printf("== data_size = %u ==\n",data_size);
+    const uint32_t* p = reinterpret_cast<const uint32_t*>(hdr);
+    for(unsigned k=0; k<data_size/4; k++) {
+        if ((k%8)==0)
+            printf("\n[%08x]",k);
+        printf(" %08x",p[k]);
+    }
+    printf("\n");
+    m_strm_limit_sem.give();
 }
 
 }
