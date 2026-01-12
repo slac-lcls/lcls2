@@ -7,7 +7,6 @@ from psana import dgram, utils
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
-from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     pass
@@ -48,7 +47,6 @@ class EventManager(object):
         self.smd_configs = configs
         self.dm = dm
         self.n_smd_files = len(self.smd_configs)
-        self.read_gauge = get_prom_manager().get_metric("psana_bd_read")
         self.max_retries = max_retries
         self.use_smds = use_smds
         self.i_evt = 0
@@ -297,8 +295,6 @@ class EventManager(object):
         if sum_read_nbytes > 0:
             elapsed = en - st
             if elapsed > 0:
-                rate = (sum_read_nbytes / 1e6) / elapsed
-                self.read_gauge.set(rate)
                 self._bd_read_bytes += sum_read_nbytes
                 self._bd_read_time += elapsed
         return chunk

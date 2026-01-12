@@ -12,8 +12,12 @@ from psana.psexp.calib_xtc import (
     load_calib_pickle,
     load_calib_xtc,
     load_calib_xtc_from_buffer,
-    write_xtc_file,
 )
+
+try:
+    import zstandard as zstd
+except ImportError:
+    zstd = None
 
 
 CALIB_PICKLE = Path(os.environ.get("PSANA_CALIB_PICKLE", "/dev/shm/calibconst.pkl"))
@@ -30,6 +34,25 @@ def _unwrap_entry(entry):
         if len(entry) > 1 and isinstance(entry[1], dict):
             meta = entry[1]
     return value, meta
+
+
+def _env_flag(name, default="0"):
+    value = os.environ.get(name, default).strip().lower()
+    return value in ("1", "true", "yes", "on")
+
+
+def _size_mib(size_bytes):
+    return size_bytes / (1024 * 1024)
+
+
+def _get_zstd_level():
+    level_raw = os.environ.get("PSANA_CALIB_COMPRESS_LEVEL", "").strip()
+    if not level_raw:
+        return 3
+    try:
+        return int(level_raw)
+    except ValueError:
+        return 3
 
 
 @pytest.mark.skipif(not CALIB_PICKLE.exists(), reason="calibration pickle not present")
@@ -49,8 +72,10 @@ def test_calib_pickle_roundtrip(tmp_path):
     converter = CalibXtcConverter()
     out_path = tmp_path / "calib.xtc2"
     convert_start = time.perf_counter()
-    config_bytes, data_bytes = converter.convert_to_bytes(calib_dict)
-    write_xtc_file(str(out_path), config_bytes, data_bytes)
+    buffer_view, config_size, data_size = converter.convert_to_buffer(calib_dict)
+    with open(out_path, "wb") as fd:
+        fd.write(buffer_view[:config_size])
+        fd.write(buffer_view[config_size : config_size + data_size])
     convert_duration = time.perf_counter() - convert_start
     print(f"Converted calib pickle to xtc2 in {convert_duration:.3f} s")
 
@@ -74,9 +99,34 @@ def test_calib_pickle_roundtrip(tmp_path):
         pytest.skip("no detector with pedestals found in calibration pickle")
 
     disk_bytes = out_path.read_bytes()
-    cfg_len = len(config_bytes)
+    if _env_flag("PSANA_CALIB_COMPRESS"):
+        if zstd is None:
+            pytest.skip("zstandard module not available for compression test")
+        original_size = len(disk_bytes)
+        level = _get_zstd_level()
+        compress_start = time.perf_counter()
+        compressor = zstd.ZstdCompressor(level=level)
+        compressed = compressor.compress(disk_bytes)
+        compress_time = time.perf_counter() - compress_start
+        compressed_size = len(compressed)
+        print(
+            "Compressed calib.xtc2 %.2f MiB -> %.2f MiB in %.3f s (zstd level %d)"
+            % (_size_mib(original_size), _size_mib(compressed_size), compress_time, level)
+        )
+
+        decompress_start = time.perf_counter()
+        decompressor = zstd.ZstdDecompressor()
+        decompressed = decompressor.decompress(compressed)
+        decompress_time = time.perf_counter() - decompress_start
+        print(
+            "Decompressed calib.xtc2 %.2f MiB -> %.2f MiB in %.3f s"
+            % (_size_mib(compressed_size), _size_mib(len(decompressed)), decompress_time)
+        )
+        assert decompressed == disk_bytes
+        disk_bytes = decompressed
+    cfg_len = config_size
     config_view = memoryview(disk_bytes)[:cfg_len]
-    data_view = memoryview(disk_bytes)[cfg_len : cfg_len + len(data_bytes)]
+    data_view = memoryview(disk_bytes)[cfg_len : cfg_len + data_size]
 
     config_dgram = dgram.Dgram(view=config_view, offset=0)
     calib_dgram = dgram.Dgram(config=config_dgram, view=data_view, offset=0)

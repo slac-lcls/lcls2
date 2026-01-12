@@ -96,15 +96,24 @@ class RunParallel(Run):
             return
         det_info = det_info or {}
         try:
+            t0 = time.perf_counter()
+            t_init_start = time.perf_counter()
             converter = CalibXtcConverter(det_info)
-            config_bytes, data_bytes = converter.convert_to_bytes(self._calib_const)
-            blob = bytearray(len(config_bytes) + len(data_bytes))
-            blob[: len(config_bytes)] = config_bytes
-            blob[len(config_bytes) :] = data_bytes
-            self._calib_xtc_buffer = blob
+            t_init_end = time.perf_counter()
+            t_conv_start = time.perf_counter()
+            buffer_view, config_size, data_size = converter.convert_to_buffer(self._calib_const)
+            blob = buffer_view
+            total_size = config_size + data_size
+            t_conv_end = time.perf_counter()
+            t_blob_alloc_start = t_blob_alloc_end = t_conv_end
+            t_blob_copy_start = t_blob_copy_end = t_conv_end
+            self._calib_xtc_buffer = buffer_view
+            elapsed = time.perf_counter() - t0
+            size_gib = total_size / (1024 ** 3)
             self.logger.debug(
-                "Built calibration xtc buffer from pickle (%d bytes)",
-                len(self._calib_xtc_buffer),
+                "Built calibration xtc buffer from pickle size=%.3f GiB time=%.3fs",
+                size_gib,
+                elapsed,
             )
         except Exception as exc:
             self.logger.warning(f"Failed to build calibration xtc buffer: {exc}")
@@ -118,6 +127,10 @@ class RunParallel(Run):
         is_leader = self.comms.is_node_leader()
         leader_buffer = None
         total_bytes = None
+        recv_start = None
+        recv_end = None
+        populate_start = None
+        populate_end = None
 
         if leader_comm != MPI.COMM_NULL:
             size_arr = np.array([0], dtype=np.int64) if is_leader else np.empty(1, dtype=np.int64)
@@ -141,11 +154,9 @@ class RunParallel(Run):
                 leader_buffer = np.empty(total_bytes, dtype=np.uint8)
             elif leader_buffer.size != total_bytes:
                 leader_buffer = leader_buffer[:total_bytes]
+            recv_start = time.perf_counter()
             leader_comm.Bcast(leader_buffer, root=0)
-            if self.logger:
-                self.logger.debug(
-                    f"RunParallel: node leader rank {self.comms.psana_comm.Get_rank()} received {total_bytes} bytes from smd0"
-                )
+            recv_end = time.perf_counter()
 
         win = MPI.Win.Allocate_shared(total_bytes if is_leader else 0, 1, comm=node_comm)
         buf, _ = win.Shared_query(0)
@@ -153,12 +164,25 @@ class RunParallel(Run):
         if is_leader:
             if leader_buffer is None:
                 raise RuntimeError("Leader buffer missing during shared memory population")
+            populate_start = time.perf_counter()
             shared_array[:] = leader_buffer
-            if self.logger:
-                self.logger.debug(
-                    f"RunParallel: node leader rank {self.comms.psana_comm.Get_rank()} populated shared memory ({total_bytes} bytes)"
-                )
+            populate_end = time.perf_counter()
         node_comm.Barrier()
+
+        if self.logger and is_leader and recv_start is not None and populate_end is not None:
+            recv_time = (recv_end - recv_start) if recv_end is not None else 0.0
+            populate_time = populate_end - populate_start
+            total_time = populate_end - recv_start
+            size_gib = total_bytes / (1024 ** 3)
+            self.logger.debug(
+                "RunParallel: node leader rank %d shared calib size=%.3f GiB "
+                "recv=%.3fs populate=%.3fs total=%.3fs",
+                self.comms.psana_comm.Get_rank(),
+                size_gib,
+                recv_time,
+                populate_time,
+                total_time,
+            )
 
         shared_view = memoryview(shared_array)
         calib_const, owner = load_calib_xtc_from_buffer(shared_view)
@@ -167,11 +191,6 @@ class RunParallel(Run):
         self._calib_xtc_shared = shared_array
         self._calib_xtc_win = win
         self.dsparms.calibconst = self._calib_const
-        if self.logger:
-            path = "shared memory leader" if is_leader else "shared memory follower"
-            self.logger.debug(
-                f"RunParallel: rank {self.comms.psana_comm.Get_rank()} loaded calibration via {path}"
-            )
 
     def _init_marching_shared_buffers(self):
         if not (
@@ -256,7 +275,7 @@ class RunParallel(Run):
             events_scale = float(os.environ.get("PS_MARCH_EVENTS_SCALE", "1.2"))
         except ValueError:
             events_scale = 1.2
-        if events_scale <= 1.0: 
+        if events_scale <= 1.0:
             events_scale = 1.2
         max_events = max(int(math.ceil(smd_n_events * events_scale)), 1)
         max_chunk_bytes = int(os.environ.get("PS_MARCH_MAX_CHUNK_MB", "32"))

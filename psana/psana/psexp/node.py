@@ -634,6 +634,8 @@ class EventBuilderNode(object):
         self.rate_gauge = pm.get_metric("psana_eb_rate")
         self.wait_smd0_gauge = pm.get_metric("psana_eb_wait_smd0")
         self.wait_bd_gauge = pm.get_metric("psana_eb_wait_bd")
+        self.bd_read_gauge = pm.get_metric("psana_bd_read")
+        self.bd_rate_gauge = pm.get_metric("psana_bd_rate")
         self.requests = []
         self.logger = utils.get_logger(name=utils.get_class_name(self))
         self._bd_chunk_stats = None
@@ -698,7 +700,8 @@ class EventBuilderNode(object):
         self._bd_chunk_stats["bytes"][idx] += int(rankreq[1])
         self._bd_chunk_stats["time_ns"][idx] += int(rankreq[2])
         self._bd_chunk_stats["wait_ns"][idx] += int(rankreq[3])
-        self._bd_chunk_stats["proc_rate_hz"][idx] = float(rankreq[4]) / 1e6
+        self._bd_chunk_stats["proc_events"][idx] += int(rankreq[4])
+        self._bd_chunk_stats["proc_time_ns"][idx] += int(rankreq[5])
 
     def _prepare_bd_read_stats(self, pending_chunk_id, n_bd_nodes):
         if pending_chunk_id < 0 or n_bd_nodes <= 0:
@@ -710,7 +713,8 @@ class EventBuilderNode(object):
             "bytes": np.zeros(n_bd_nodes, dtype=np.int64),
             "time_ns": np.zeros(n_bd_nodes, dtype=np.int64),
             "wait_ns": np.zeros(n_bd_nodes, dtype=np.int64),
-            "proc_rate_hz": np.zeros(n_bd_nodes, dtype=np.float64),
+            "proc_events": np.zeros(n_bd_nodes, dtype=np.int64),
+            "proc_time_ns": np.zeros(n_bd_nodes, dtype=np.int64),
         }
 
     def _format_bd_read_stats(self, chunk_id):
@@ -719,17 +723,19 @@ class EventBuilderNode(object):
         bytes_arr = self._bd_chunk_stats["bytes"]
         time_arr = self._bd_chunk_stats["time_ns"]
         wait_arr = self._bd_chunk_stats["wait_ns"]
-        proc_rate_arr = self._bd_chunk_stats["proc_rate_hz"]
+        proc_events_arr = self._bd_chunk_stats["proc_events"]
+        proc_time_arr = self._bd_chunk_stats["proc_time_ns"]
         if bytes_arr.size == 0:
             return None
         zero_mask = bytes_arr == 0
         zero_chunks = int(zero_mask.sum())
         if zero_mask.all():
-            return 
+            return
         bytes_mb = bytes_arr[~zero_mask] / 1e6
         time_s = time_arr[~zero_mask] / 1e9
         wait_s = wait_arr[~zero_mask] / 1e9
-        proc_rate = proc_rate_arr[~zero_mask]
+        proc_events = proc_events_arr[~zero_mask]
+        proc_time_s = proc_time_arr[~zero_mask] / 1e9
         total_bytes = float(bytes_arr[~zero_mask].sum())
         max_time = float(time_s.max()) if time_s.size else 0.0
         rate_mask = time_s > 0
@@ -739,21 +745,27 @@ class EventBuilderNode(object):
             rate_avg = float(rate_mb_s.mean())
             rate_min = float(rate_mb_s.min())
             rate_max = float(rate_mb_s.max())
+            if total_rate > 0:
+                self.bd_read_gauge.set(total_rate)
         else:
             rate_avg = rate_min = rate_max = 0.0
-        proc_mask = proc_rate > 0
+        proc_mask = proc_time_s > 0
+        proc_total = 0.0
         if proc_mask.any():
-            proc_avg = float(proc_rate[proc_mask].mean())
-            proc_min = float(proc_rate[proc_mask].min())
-            proc_max = float(proc_rate[proc_mask].max())
+            proc_rate = proc_events[proc_mask] / proc_time_s[proc_mask]
+            proc_avg = float(proc_rate.mean())
+            proc_min = float(proc_rate.min())
+            proc_max = float(proc_rate.max())
+            proc_total = float(proc_rate.sum())
+            if proc_total > 0:
+                self.bd_rate_gauge.set(proc_total)
         else:
             proc_avg = proc_min = proc_max = 0.0
         return (
             "EB bd read stats chunk(prev)=%d bds=%d zero_chunks=%d\n"
             "  bytes_per_pread_mb avg=%.2f min=%.2f max=%.2f\n"
-            "  time_s    avg=%.3f min=%.3f max=%.3f\n"
             "  wait_s    avg=%.3f min=%.3f max=%.3f\n"
-            "  proc_rate_hz avg=%.2f min=%.2f max=%.2f\n"
+            "  proc_rate_hz avg=%.2f min=%.2f max=%.2f total=%.2f\n"
             "  rate_mb_s avg=%.2f min=%.2f max=%.2f\n"
             "  total_rate=%.2f MB/s"
             % (
@@ -763,15 +775,13 @@ class EventBuilderNode(object):
                 float(bytes_mb.mean()),
                 float(bytes_mb.min()),
                 float(bytes_mb.max()),
-                float(time_s.mean()),
-                float(time_s.min()),
-                float(time_s.max()),
                 float(wait_s.mean()),
                 float(wait_s.min()),
                 float(wait_s.max()),
                 proc_avg,
                 proc_min,
                 proc_max,
+                proc_total,
                 rate_avg,
                 rate_min,
                 rate_max,
@@ -870,7 +880,7 @@ class EventBuilderNode(object):
         return smd_chunk
 
     def start(self):
-        rankreq = np.empty(5, dtype=np.int64)
+        rankreq = np.empty(6, dtype=np.int64)
         smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
@@ -1158,24 +1168,22 @@ class BigDataNode(object):
         self.shared_state = shared_state
         pm = get_prom_manager()
         self.wait_gauge = pm.get_metric("psana_bd_wait")
-        self.rate_gauge = pm.get_metric("psana_bd_rate")
         self.logger = utils.get_logger(name=utils.get_class_name(self))
         self._last_bd_read_bytes = 0
         self._last_bd_read_time_ns = 0
         self._last_bd_wait_time_ns = 0
-        self._last_bd_rate_hz_scaled = 0
+        self._last_bd_proc_events = 0
+        self._last_bd_proc_time_ns = 0
 
     def start(self):
         def on_batch_end(payload):
             (read_bytes, read_time), event_count, elapsed = payload
             self._last_bd_read_bytes = int(read_bytes)
             self._last_bd_read_time_ns = int(read_time * 1e9)
+            self._last_bd_proc_events = int(event_count)
+            self._last_bd_proc_time_ns = int(elapsed * 1e9)
             if elapsed > 0 and event_count > 0:
-                rate_hz = event_count / elapsed
-                self._last_bd_rate_hz_scaled = int(rate_hz * 1e6)
-                self.rate_gauge.set(rate_hz)
-            else:
-                self._last_bd_rate_hz_scaled = 0
+                pass
 
         def get_smd():
             bd_comm = self.comms.bd_comm
@@ -1189,7 +1197,8 @@ class BigDataNode(object):
                     self._last_bd_read_bytes,
                     self._last_bd_read_time_ns,
                     self._last_bd_wait_time_ns,
-                    self._last_bd_rate_hz_scaled,
+                    self._last_bd_proc_events,
+                    self._last_bd_proc_time_ns,
                 ],
                 dtype=np.int64,
             )
@@ -1198,7 +1207,8 @@ class BigDataNode(object):
             self._last_bd_read_bytes = 0
             self._last_bd_read_time_ns = 0
             self._last_bd_wait_time_ns = 0
-            self._last_bd_rate_hz_scaled = 0
+            self._last_bd_proc_events = 0
+            self._last_bd_proc_time_ns = 0
             self.logger.debug(
                 f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
             )
