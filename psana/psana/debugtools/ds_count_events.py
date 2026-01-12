@@ -158,7 +158,7 @@ def main():
     last_pread_seconds = 0.0
     last_pread_bytes = 0
     last_pread_calls = 0
-    interval = 10000
+    interval = 1000
 
     det_accessed = False
     det_call_seconds = 0.0
@@ -182,9 +182,9 @@ def main():
             det_accessed = True
         elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
             det_t0 = time.perf_counter()
-            _ = det.raw.peaks(evt)  
-            _ = det.raw.waveforms(evt) 
-            _ = det.raw.padded(evt) 
+            _ = det.raw.peaks(evt)
+            _ = det.raw.waveforms(evt)
+            _ = det.raw.padded(evt)
             det_call_seconds += time.perf_counter() - det_t0
             det_call_count += 3
             det_accessed = True
@@ -216,9 +216,11 @@ def main():
                 last_pread_calls = pread_calls
             else:
                 io_msg = ""
+            process = psutil.Process(os.getpid())
+            rss_gb = process.memory_info().rss / (1024 ** 3)
             print(
                 f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
-                f"Interval={interval_time:.2f}s {det_accessed=} {io_msg}"
+                f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {io_msg}"
             )
             ti0 = now
 
@@ -277,9 +279,10 @@ def main():
                 bd_min = int(np.min(bd_counts))
                 bd_max = int(np.max(bd_counts))
                 bd_med = float(np.median(bd_counts))
+                bd_zero = int(np.sum(bd_counts == 0))
                 print(
                     f"[{args.log_level}] BD_EVENTS avg={bd_avg:.1f} "
-                    f"min={bd_min} max={bd_max} med={bd_med:.1f}"
+                    f"min={bd_min} max={bd_max} med={bd_med:.1f} zero={bd_zero}"
                 )
         if total_pread_bytes > 0 and max_pread_sec > 0:
             agg_io_rate = (total_pread_bytes / (1024 * 1024)) / max_pread_sec

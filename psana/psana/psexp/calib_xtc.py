@@ -1,13 +1,17 @@
 import json
+import logging
 import numbers
+import time
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
 from psana import dgram
+from psana import utils
 from psana.dgramedit import AlgDef, DetectorDef, DgramEdit
 from psana.psexp import TransitionId
+
 
 
 def load_calib_pickle(path: str = "/dev/shm/calibconst.pkl") -> Optional[dict]:
@@ -46,6 +50,8 @@ class CalibXtcConverter:
     def __init__(self, det_info: Optional[Dict[str, str]] = None):
         self.det_info = det_info or {}
         self.alg = AlgDef("calib", 0, 0, 0)
+        self.logger = utils.get_logger(name="calib_xtc")
+
 
     def _extract_value(self, raw_entry: Any) -> Tuple[Any, Optional[dict]]:
         """
@@ -121,17 +127,23 @@ class CalibXtcConverter:
                 total += 16  # scalars
         return total
 
-    def convert_to_bytes(
+    def convert_to_buffer(
         self, calib_const: Dict[str, Dict[str, Any]]
-    ) -> Tuple[bytes, bytes]:
+    ) -> Tuple[memoryview, int, int]:
         """
-        Convert calibration constants into a (Configure, L1Accept) byte pair.
+        Convert calibration constants into a single buffer holding Configure+L1Accept.
+        Returns (buffer_view, config_size, data_size).
         """
+        debug = True
+        if debug:
+            t_start = time.perf_counter()
+            t_build_start = t_start
         det_handles = {}
         det_field_values = {}
 
         # First pass: define Names and compute buffer sizes.
         total_bytes = 0
+        field_count = 0
         config_edit = DgramEdit(
             transition_id=TransitionId.Configure, bufsize=64 * 1024 * 1024
         )
@@ -149,33 +161,64 @@ class CalibXtcConverter:
             det_handles[det_name] = det_obj
             det_field_values[det_name] = field_values
             total_bytes += self._estimate_data_size(field_values)
+            field_count += len(field_values)
 
         if not det_handles:
             raise ValueError("No calibration entries to convert.")
 
-        config_buf = bytearray(8 * 1024 * 1024)
-        config_edit.save(config_buf)
-        config_bytes = bytes(config_buf[: config_edit.size])
-
+        if debug:
+            t_build_end = time.perf_counter()
+            t_blob_alloc_start = time.perf_counter()
+        config_bufsize = 8 * 1024 * 1024
         data_bufsize = max(total_bytes + 1024 * 1024, 16 * 1024 * 1024)
+        blob = bytearray(config_bufsize + int(data_bufsize))
+        if debug:
+            t_blob_alloc_end = time.perf_counter()
+        view = memoryview(blob)
+        config_view = view[:config_bufsize]
+
+        if debug:
+            t_cfg_save_start = time.perf_counter()
+        config_edit.save(config_view)
+        if debug:
+            t_cfg_save_end = time.perf_counter()
+        config_size = config_edit.size
+        data_view = view[config_size : config_size + data_bufsize]
+
+        if debug:
+            t_data_edit_start = time.perf_counter()
         data_edit = DgramEdit(
             config_dgramedit=config_edit,
             transition_id=TransitionId.L1Accept,
             ts=0,
             bufsize=int(data_bufsize),
         )
-        data_buf = bytearray(int(data_bufsize))
+        if debug:
+            t_data_edit_end = time.perf_counter()
 
+        if debug:
+            t_add_start = time.perf_counter()
         for det_name, det_obj in det_handles.items():
             alg_container = getattr(det_obj, self.alg.name)
             field_values = det_field_values[det_name]
             for field, value in field_values.items():
                 setattr(alg_container, field, value)
             data_edit.adddata(alg_container)
+        if debug:
+            t_add_end = time.perf_counter()
 
-        data_edit.save(data_buf)
-        data_bytes = bytes(data_buf[: data_edit.size])
-        return config_bytes, data_bytes
+        if debug:
+            t_data_save_start = time.perf_counter()
+        data_edit.save(data_view)
+        if debug:
+            t_data_save_end = time.perf_counter()
+        data_size = data_edit.size
+
+        if debug:
+            t_end = time.perf_counter()
+
+        used_size = config_size + data_size
+        return view[:used_size], config_size, data_size
 
 
 def _extract_alg_fields(alg_obj) -> Dict[str, Any]:
