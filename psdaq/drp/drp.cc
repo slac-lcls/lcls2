@@ -135,8 +135,10 @@ int main(int argc, char* argv[])
         }
         if (para.detType == "tt")
             if (kwargs.first == "ttreffile")         continue;  // OpalTTFex
-        if (para.detType == "hsd")
+        if (para.detType == "hsd") {
             if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
+            if (kwargs.first == "strm_limit")        continue;  // Digitizer
+        }
         if (para.detType == "wave8")
             if (kwargs.first == "epics_prefix")      continue;  // Wave8
         if (para.detType == "epixhremu") {

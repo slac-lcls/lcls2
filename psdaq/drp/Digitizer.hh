@@ -3,6 +3,7 @@
 #include <vector>
 #include "drp.hh"
 #include "Detector.hh"
+#include "psdaq/service/Semaphore.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "psalg/alloc/Allocator.hh"
@@ -27,12 +28,15 @@ namespace Drp {
 
     private:
         unsigned _addJson(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId& configNamesId, const std::string& config_alias);
+        void _dump(const void*, unsigned);
     private:
         enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex};
         unsigned             m_readoutGroup;
         XtcData::NamesId     m_evtNamesId;
         std::string          m_connect_json;
         std::string          m_epics_name;
+        unsigned             m_strm_limit;
+        Pds::Semaphore       m_strm_limit_sem;
         Heap                 m_allocator;
         PyObject*            m_module;        // python module
         PythonConfigScanner* m_configScanner;
