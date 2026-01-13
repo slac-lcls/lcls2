@@ -201,7 +201,7 @@ class DetCache():
         elif self.cversion > 2:
             # test: lcls2/psana/psana/detector]$ testman/test-scaling-mpi-jungfrau.py -t6
             npix = po[0,:].size
-            print('npix:', npix)
+            #print('npix:', npix)
             self.ccons = np.vstack((
                             np.vstack((po[0,:].ravel(), gm[0,:].ravel())).T,
                             np.vstack((po[1,:].ravel(), gm[1,:].ravel())).T,
@@ -521,9 +521,9 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
                    +'\n    inds: segment indices: %s' % str(inds)\
                    +'\n    common mode parameters: %s' % str(cmps)\
                    +'\n    loop over segments: %s' % odc.loop_banks)
-        print(info_gainbits_statistics(arr))
-        print(info_gainrange_statistics(arr))
-        print(info_gainrange_fractions(arr))
+        logger.debug(info_gainbits_statistics(arr))
+        logger.debug(info_gainrange_statistics(arr))
+        logger.debug(info_gainrange_fractions(arr))
 
     if cversion == CALIB_CPP_V3:   # ccons.shape = (4, <NPIXELS>, 2)
         ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)
