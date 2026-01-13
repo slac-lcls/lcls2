@@ -88,7 +88,7 @@ class SeqUser:
 
         #  Get the assigned sequence num
         idx = self.idxseq0.get()
-        if idx < 2:
+        if idx < 2 or idx > 63:
             print( 'Error: subsequence index  invalid (%u)' % idx)
             raise RuntimeError("Sequence failed")
 
@@ -116,7 +116,9 @@ class SeqUser:
         self.start .put(2 if not refresh else 4,wait=tmo)
 
     #  Move from one set to the next without stopping
-    def execute(self, title, instrset, descset=None, sync=False, refresh=False):
+    def execute(self, title, instrset, descset=None, sync=False, refresh=False, clean=False):
+        if clean:
+            self.clean(0)
         self.load (title,instrset,descset)
         if sync:
             self.sync(refresh)  # schedule the reset
@@ -130,6 +132,7 @@ def main():
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
     parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
+    parser.add_argument("--clean", action='store_true', help="clear the sequences before loading")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
@@ -165,7 +168,7 @@ def main():
                 print(i)
 
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
+        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'],clean=args.clean)
         del seq
 
         engineMask |= (1<<engine)

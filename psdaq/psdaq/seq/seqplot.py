@@ -104,7 +104,7 @@ class PatternWaveform(object):
             c = (0,511*(1.0-x),511*(x-0.5))
         return c
 
-    def add(self, title, xdata, ydata):
+    def add(self, title, xdata, ydata, use_seconds=False):
         #  Plotting lots of consecutive buckets with scatter points is
         #  time consuming.  Replace consecutive points with a line.
         def plot(q, x, y):
@@ -150,6 +150,9 @@ class PatternWaveform(object):
         plot(q0,buckets,dests)
         q0.setRange(yRange=[ymin-0.5,ymax+0.5])
 
+        if use_seconds:
+            q0.getAxis('bottom').setScale(1./FixedFidRate)
+
         if self.q0 is None:
             self.q0 = q0
         else:
@@ -161,6 +164,7 @@ def main():
     parser = argparse.ArgumentParser(description='simple sequence plotting gui')
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--time", required=False, type=float, nargs='+', default=[0.,1.], help="simulated time (sec)")
+    parser.add_argument("--use_seconds", action='store_true', help="plot time in seconds")
     args = parser.parse_args()
     if len(args.time)==1:
         args.time.insert(0,0.)
@@ -186,7 +190,7 @@ def main():
         seq.execute(config['title'],config['instrset'],config['descset'])
 
         ydata = np.array(seq.ydata)+int(engine)*4+256
-        plot.add(fname, seq.xdata, ydata)
+        plot.add(fname, seq.xdata, ydata, args.use_seconds)
 
     MainWindow = QtWidgets.QMainWindow()
     centralWidget = QtWidgets.QWidget(MainWindow)
