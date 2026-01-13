@@ -180,8 +180,8 @@ class DarkProc():
     def __init__(self, **kwa):
 
         self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
-        self.nrecs  = kwa.get('nrecs',1000)
-        self.nrecs1 = kwa.get('nrecs1',100)
+        self.nrecs  = kwa.get('nrecs', 1000)
+        self.nrecs1 = kwa.get('nrecs1',  50)
         self.plotim = kwa.get('plotim', 0o1)
         self.savebw = kwa.get('savebw', 0xffff)
         self.fraclm = kwa.get('fraclm', 0.1)
