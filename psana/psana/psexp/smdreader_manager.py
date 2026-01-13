@@ -5,6 +5,7 @@ from psana import dgram, utils
 from psana.eventbuilder import EventBuilder
 from psana.smdreader import SmdReader
 from psana.psexp.prometheus_manager import get_prom_manager
+from psana.psexp.tools import get_smd_n_events
 
 from .run import RunSmallData
 
@@ -86,7 +87,7 @@ class SmdReaderManager(object):
 
         # Sets no. of events Smd0 sends to each EventBuilder core. This gets
         # overridden by max_events set by DataSource if max_events is smaller.
-        self.smd0_n_events = int(os.environ.get("PS_SMD_N_EVENTS", 20000))
+        self.smd0_n_events = get_smd_n_events()
         if self.dsparms.max_events:
             if self.dsparms.max_events < self.smd0_n_events:
                 self.smd0_n_events = self.dsparms.max_events
@@ -99,6 +100,8 @@ class SmdReaderManager(object):
 
         # Collecting Smd0 performance using prometheus
         self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
+        self._read_bytes = []
+        self._read_times = []
 
     def check_transfer_complete(self):
         """
@@ -157,13 +160,13 @@ class SmdReaderManager(object):
         st = time.monotonic()
         self.smdr.force_read()
         en = time.monotonic()
-        read_rate = self.smdr.got / (1e6 * (en - st))
-        self.logger.debug(
-            "READRATE SMD0 (0-) "
-            f"{read_rate:.2f} MB/s "
-            f"({self.smdr.got/1e6:.2f}MB/ {en-st:.2f}s.)"
-        )
-        self.read_gauge.set(read_rate)
+        elapsed = en - st
+        bytes_read = self.smdr.got
+        if bytes_read > 0 and elapsed > 0:
+            read_rate = bytes_read / (1e6 * elapsed)
+            self._read_bytes.append(bytes_read)
+            self._read_times.append(elapsed)
+            self.read_gauge.set(read_rate)
 
         if self.smdr.chunk_overflown > 0:
             msg = (
@@ -173,6 +176,13 @@ class SmdReaderManager(object):
             )
             raise ValueError(msg)
         return True
+
+    def pop_read_stats(self):
+        bytes_list = self._read_bytes
+        times_list = self._read_times
+        self._read_bytes = []
+        self._read_times = []
+        return bytes_list, times_list
 
     @property
     def processed_events(self):
@@ -288,7 +298,7 @@ class SmdReaderManager(object):
             if success or self.smdr.found_endrun():
                 break
 
-            self.smdr.force_read()
+            self.force_read()
 
             # Stop waiting if all transfers complete (live mode only)
             if getattr(self.dsparms, "live", False) and self.check_transfer_complete():

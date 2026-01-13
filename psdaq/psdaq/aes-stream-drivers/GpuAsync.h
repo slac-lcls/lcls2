@@ -31,6 +31,7 @@
 #define GPU_Add_Nvidia_Memory 0x8002   // Command to add NVIDIA GPU memory
 #define GPU_Rem_Nvidia_Memory 0x8003   // Command to remove NVIDIA GPU memory
 #define GPU_Set_Write_Enable  0x8004   // Set Write Enable Flag
+#define GPU_Is_Gpu_Async_Supp 0x8005   // Check if GPU Async is supported by firmware
 
 /**
  * struct GpuNvidiaData - Represents NVIDIA GPU memory data.
@@ -60,7 +61,8 @@ struct GpuNvidiaData {
  * for the region to be accessed as specified by the write flag.
  *
  * Return: On success, returns the result of the ioctl call. On failure,
- * returns a negative error code.
+ * returns a negative error code. Returns -ENOTSUPP if the firmware does not
+ * support GPUDirect.
  **/
 static inline ssize_t gpuAddNvidiaMemory(int32_t fd, uint32_t write, uint64_t address, uint32_t size) {
    struct GpuNvidiaData dat;
@@ -80,7 +82,8 @@ static inline ssize_t gpuAddNvidiaMemory(int32_t fd, uint32_t write, uint64_t ad
  * ceasing its accessibility.
  *
  * Return: On success, returns the result of the ioctl call. On failure,
- * returns a negative error code.
+ * returns a negative error code. Returns -ENOTSUPP if the firmware does not
+ * support GPUDirect.
  **/
 static inline ssize_t gpuRemNvidiaMemory(int32_t fd) {
    return(ioctl(fd, GPU_Rem_Nvidia_Memory, 0));
@@ -94,10 +97,22 @@ static inline ssize_t gpuRemNvidiaMemory(int32_t fd) {
  * This function enables a DMA buffer for DMA operations.
  *
  * Return: 0 on success, negative error code on failure.
+ * Returns -ENOTSUPP if the firmware does not support GPUDirect.
  */
 static inline ssize_t gpuSetWriteEn(int32_t fd, uint32_t idx) {
    uint32_t lidx = idx;
    return(ioctl(fd, GPU_Set_Write_Enable, &lidx));
+}
+
+/**
+ * gpuIsGpuAsyncSupported - Check if the firmware supports GPU Async
+ * @fd: File descriptor for the device
+ *
+ * Return: 1 if the firmware supports GPU Async, 0 if it doesn't.
+ * Returns -EINVAL if the driver was compiled without GPUAsync support
+ */
+static inline bool gpuIsGpuAsyncSupported(int32_t fd) {
+   return ioctl(fd, GPU_Is_Gpu_Async_Supp);
 }
 
 #endif  // !DMA_IN_KERNEL

@@ -123,7 +123,13 @@ public:
     Pds::EbDgram* allocateTr();
     void freeTr(Pds::EbDgram* dgram);
     unsigned allocateDma();
-    void freeDma(unsigned count, uint32_t* indices);
+    ssize_t readDma(uint32_t count,
+                    int32_t* ret,
+                    uint32_t* index,
+                    uint32_t* flags,
+                    uint32_t* errors,
+                    uint32_t* dest);
+    ssize_t freeDma(unsigned count, uint32_t* indices);
     unsigned allocate();
     void freePebble(unsigned);
     void flushPebble();
@@ -138,7 +144,7 @@ public:
 protected:
     void _initialize(const Parameters&);
 private:
-    virtual void _freeDma(unsigned count, uint32_t* indices) = 0;
+    virtual ssize_t _freeDma(unsigned count, uint32_t* indices) = 0;
 protected:
     unsigned m_nDmaBuffers;             // Rounded up dmaCount
     unsigned m_nbuffers;
@@ -154,6 +160,9 @@ protected:
     uint8_t m_dmaOverrun;
     uint8_t m_l1Overrun;
     uint8_t m_trOverrun;
+    uint8_t m_pad;
+    unsigned m_nDmaReadErr;
+    unsigned m_nDmaRetErr;
 };
 
 class MemPoolCpu : public MemPool
@@ -164,7 +173,7 @@ public:
     virtual int fd(unsigned unit=0) const override {return m_fd;}
     virtual int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:
-    virtual void _freeDma(unsigned count, uint32_t* indices) override;
+    virtual ssize_t _freeDma(unsigned count, uint32_t* indices) override;
 private:
     int m_fd;
     bool m_setMaskBytesDone;

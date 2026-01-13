@@ -11,6 +11,22 @@ if mode == "mpi":
         MODE = "SERIAL"
 
 
+def get_smd_n_events():
+    """Return PS_SMD_N_EVENTS as int; default is 20000."""
+    default_value = "20000"
+    raw_value = os.environ.get("PS_SMD_N_EVENTS", default_value)
+    try:
+        return int(raw_value)
+    except ValueError:
+        return int(default_value)
+
+
+def marching_enabled():
+    """Return True if PS_MARCHING_READ is set to a truthy value."""
+    env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
+    return env_march in ("1", "true", "yes", "on")
+
+
 class RunHelper(object):
 
     # Every Run is assigned an ID. This permits Run to be
