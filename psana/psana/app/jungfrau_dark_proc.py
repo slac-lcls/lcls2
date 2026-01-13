@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 import sys
-from psana.detector.UtilsJungfrauCalib import jungfrau_dark_proc, M14
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
-#M14 = 0o37777 # 14-bits, 2 bits for gain mode switch
+#M14 = 0o37777 # 14-bits of data, 2 bits for gain mode switch
+M14 = 0x3fff # 16383, 14-bit mask
 
 USAGE = 'Usage:'\
       + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
@@ -60,6 +60,7 @@ def argument_parser():
     d_evcode  = None
     d_segind  = None
     d_igmode  = None
+    d_mpi     = False
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -99,6 +100,7 @@ def argument_parser():
                 'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
+    h_mpi     = 'use with MPI, default = %s' % d_mpi
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -129,11 +131,12 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
-    parser.add_argument('-D', '--deploy',  action='store_true',  help=h_deploy)
+    parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
     parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
+    parser.add_argument('-M', '--mpi',     action='store_true',              help=h_mpi)
     return parser
 
 
@@ -146,9 +149,15 @@ def do_main():
 
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
+
+    print('use code for MPI: %s' % args.mpi)
 
     t0_sec = time()
+    if args.mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+    else:        from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+
     jungfrau_dark_proc(parser)
     logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
     sys.exit(0)
