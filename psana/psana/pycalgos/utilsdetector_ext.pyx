@@ -46,36 +46,36 @@ ctypedef cnp.double_t  time_t;
 #    gain_t gain
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_std(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask,
                            const sizeb_t& size, const rawd_t databits, out_t *out) except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v0(const rawd_t *raw, const peds_t *peds, const gain_t *gain, const mask_t *mask,
                              const sizeb_t& size, out_t *out) except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v1(const rawd_t *raw, const cc_t *cc,
                              const sizeb_t& size, const sizeb_t& size_blk, out_t *out) except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v2(const rawd_t *raw, const cc_t *cc,
                              const sizeb_t& size, const sizeb_t& size_blk, out_t *out) except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v3(const rawd_t *raw, const cc_t *cc,
                              const sizeb_t& size, const sizeb_t& size_blk, out_t *out) except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v4_empty() except +
 
 
-cdef extern from "pycalgos/UtilsDetector.hh" namespace "utilsdetector":
+cdef extern from "psana/pycalgos/UtilsDetector.hh" namespace "utilsdetector":
     time_t calib_jungfrau_v5_empty(const rawd_t *raw, const cc_t *cc,
                                    const sizeb_t& size, const sizeb_t& size_blk, out_t *out) except +
 
