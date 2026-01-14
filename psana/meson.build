@@ -7,7 +7,10 @@ psana_incdir = include_directories(
 py.extension_module(
     'dgram',
     'src/dgram.cc',
-    include_directories: [psana_incdir, xtcdata_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -22,7 +25,10 @@ container_ext_include = include_directories(
 py.extension_module(
     'container',
     'src/container.cc',
-    include_directories: [psana_incdir, xtcdata_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -33,7 +39,11 @@ py.extension_module(
 py.extension_module(
     'shmem',
     'psana/shmem/shmem.pyx',
-    include_directories: [psana_incdir, xtcdata_incdir, psalg_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir,
+        psalg_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -47,7 +57,11 @@ py.extension_module(
     'psana/peakFinder/peakFinder.pyx',
     'psana/peakFinder/src/PeakFinderAlgos.cc',
     'psana/peakFinder/src/LocalExtrema.cc',
-    include_directories: [psana_incdir, xtcdata_incdir, psalg_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir,
+        psalg_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -61,7 +75,11 @@ py.extension_module(
     'psana/peakFinder/psalg_ext.pyx',
     'psana/peakFinder/src/PeakFinderAlgosLCLS1.cc',
     'psana/peakFinder/src/LocalExtrema.cc',
-    include_directories: [psana_incdir, xtcdata_incdir, psalg_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir,
+        psalg_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -75,7 +93,11 @@ py.extension_module(
     'psana/peakFinder/peakfinder8.pyx',
     'psana/peakFinder/peakfinder8.cc',
     'psana/peakFinder/src/LocalExtrema.cc',
-    include_directories: [psana_incdir, xtcdata_incdir, psalg_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir,
+        psalg_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -101,7 +123,10 @@ py.extension_module(
 py.extension_module(
     'dgramCreate',
     'psana/peakFinder/dgramCreate.pyx',
-    include_directories: [psana_incdir, xtcdata_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -125,7 +150,10 @@ py.extension_module(
 py.extension_module(
     'psana.smdreader',
     'psana/smdreader.pyx',
-    include_directories: [psana_incdir, xtcdata_incdir],
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
@@ -158,40 +186,92 @@ py.extension_module(
     override_options : ['cython_language=cpp'],
 )
 
- ext = Extension("psana.dgramedit",
-                    sources=["psana/dgramedit.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    #library_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+py.extension_module(
+    'psana.dgramedit',
+    'psana/dgramedit.pyx',
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [numpy_dep],
+    override_options : ['cython_language=cpp'],
+ )
 
-    ext = Extension("quadanode",
-                    sources=["psana/quadanode.pyx"],
-                    include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    library_dirs = [os.path.join(instdir, 'lib')],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+py.extension_module(
+    'psana.quadanode',
+    'psana/quadanode.pyx',
+    include_directories: [psana_incdir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [],
+    override_options : ['cython_language=cpp'],
+ )
 
-    ext = Extension("psana.dgramlite",
-                    sources=["psana/dgramlite.pyx"],
-                    libraries = ['xtc'],
-                    #include_dirs=["psana",np.get_include(), os.path.join(instdir, 'include')],
-                    #iibrary_dirs = [os.path.join(instdir, 'lib')],
-                    include_dirs = ["psana", np.get_include(), os.path.join(instdir, 'include'), xtc_headers ],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path],
-                    language="c++",
-                    extra_compile_args = extra_cxx_compile_args,
-                    extra_link_args = extra_link_args_rpath,
-    )
-    CYTHON_EXTS.append(ext)
+py.extension_module(
+    'psana.dgramlite',
+    'psana/dgramlite.pyx',
+    include_directories: [
+        psana_incdir,
+        xtcdata_incdir
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [],
+    override_options : ['cython_language=cpp'],
+ )
 
-#BUILD_LIST = ('PSANA','SHMEM','PEAKFINDER','HEXANODE','DGRAM','HSD','CFD','NDARRAY', 'PYCALGOS')# ,'XTCAV')
+py.extension_module(
+    'psana.hsd',
+    'psana/hsd/hsd.pyx',
+    include_directories: [
+        psana_incdir,
+        psalg_incdir,
+        xtcdata_incdir
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [numpy_dep],
+    override_options : ['cython_language=cpp'],
+ )
+
+py.extension_module(
+    'psana.ndarray',
+    sources: ['psana/pycalgos/NDArray_ext.pyx',
+              'psana/peakFinder/src/WFAlgos.cc'
+            ],
+    include_directories: [
+        psana_incdir,
+        psalg_incdir,
+        xtcdata_incdir
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [numpy_dep],
+    override_options : ['cython_language=cpp'],
+ )
+
+py.extension_module(
+    'psana.utilsdetector_ext',
+    sources: ['psana/pycalgos/utilsdetector_ext.pyx',
+              'psana/pycalgos/UtilsDetector.cc'
+            ],
+    include_directories: [psana_incdir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    subdir: 'psana',
+    link_with: [],
+    dependencies: [numpy_dep],
+    override_options : ['cython_language=cpp'],
+ )

@@ -23,6 +23,11 @@ utils_shlib = shared_library(
     install_rpath: libdir_install_rpath
 )
 
+psalg_utils_dep = declare_dependency(
+    link_with: utils_shlib,
+    include_directories: psalg_incdir
+)
+
 install_headers(
     utils_headers,
     install_dir: 'include/psalg/utils'

@@ -1,5 +1,5 @@
 from libc.stdint cimport uint32_t
-cimport psdaq.trigger.EbDgram as dgram
+cimport psdaq.trigger.EbDgramw as dgram
 
 cdef extern from 'psdaq/eb/ResultDgram.hh' namespace "Pds::Eb":
     cdef cppclass ResultDgram:

@@ -33,7 +33,7 @@ shmemserver_shlib = shared_library(
 )
 
 shmemclient_shlib = shared_library(
-    'shmemclient',
+    'shmemcli',
     shmemclient_sources,
     include_directories: [psalg_incdir, xtcdata_incdir],
     install: true,
@@ -50,7 +50,6 @@ executable(
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, shmemclient_shlib]
 )
-    
 
 executable(
     'shmemWriter',
@@ -61,8 +60,6 @@ executable(
     link_with: [xtc_shlib, shmemclient_shlib]
 )
 
-
-
 executable(
     'shmemServer',
     'src/shmemServer.cc',
@@ -71,7 +68,6 @@ executable(
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, shmemserver_shlib]
 )
-
 
 install_headers(
     shmem_headers,

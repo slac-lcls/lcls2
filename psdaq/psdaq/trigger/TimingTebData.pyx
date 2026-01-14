@@ -1,6 +1,6 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from libc.stdint cimport uint32_t, uint8_t
-cimport psdaq.trigger.TimingTebData as ttt
+cimport psdaq.trigger.TimingTebDataw as ttt
 
 cdef class TimingTebData():
     cdef Py_buffer buf

@@ -1,4 +1,4 @@
-#include "psdaq/service/SemLock.hh"
+#include "SemLock.hh"
 
 Pds::SemLock::SemLock() : _sem(Semaphore::EMPTY)
 {

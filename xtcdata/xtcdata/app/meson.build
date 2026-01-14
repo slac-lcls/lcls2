@@ -38,7 +38,7 @@ executable(
     'amiwriter',
     'amiwriter.cc',
     install: true,
-    install_rpath: libdir_install_rpath,
+    install_dir: bindir_install_rpath,
     link_with: xtc_shlib,
     include_directories: xtcdata_incdir,
 )

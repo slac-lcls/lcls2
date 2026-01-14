@@ -1,4 +1,4 @@
-#include "psdaq/service/SysClk.hh"
+#include "SysClk.hh"
 
 using namespace Pds;
 
