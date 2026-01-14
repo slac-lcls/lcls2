@@ -704,6 +704,7 @@ class PVCtrls(object):
             for s in self._seq:
                 if (1<<s._eng._id)&valm:
                     s._eng.resetDone()
+                    pvUpdate(s._pv_Running,1)
 
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
@@ -737,13 +738,12 @@ class PVCtrls(object):
                 while mask!=0:
                     if mask&1:
                         addr = next(siter)[0]
-                        logging.info('addr[{}] {:x}'.format(i,addr))
-                        if i<1:
-                            pvUpdate(self._pv_seqDone,1)
+                        if self._seq:
+                            self._seq[i].checkPoint(addr)
                     i += 1
                     mask = mask>>1
             elif src==1: # step end message
-                group = next(siter)[0]
+                group = next(siter)[0]&0xff
                 self._group._groups[group].stepDone(True)
             elif src==2: # stats message
                 if self._handle:
@@ -804,7 +804,12 @@ class PVCtrls(object):
                             #if ((end==nL0) and done==0):
                             #  Somehow nL0 can exceed the end point
                             if ((end<=nL0) and done==0):
+<<<<<<< HEAD
                                 logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}')
+=======
+                                endr = getattr(self._xpm.XpmApp,f'stepEnd{i}').get()
+                                logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}[{endr}]')
+>>>>>>> d42147c17 (Path timer, 40-bit step counter, and checkpoint reception to pyxpm.  Add clean and title options to seqprogram.)
                                 g.stepDone(True)
 
     def zrcv(self):
