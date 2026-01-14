@@ -128,6 +128,7 @@ class SeqUser:
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
+    parser.add_argument('--title', type=str, default='TITLE', required=False, help="title for the sequence; defaults to TITLE")
     parser.add_argument('--pv', type=str, required=True, help="sequence engine pv; e.g. DAQ:NEH:XPM:0")
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
@@ -147,7 +148,7 @@ def main():
         engine = int(sengine)
         print(f'** engine {engine} fname {fname} **')
 
-        config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
+        config = {'title':args.title, 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
         seq = 'from psdaq.seq.seq import *\n'
         seq += open(fname).read()
         exec(compile(seq, fname, 'exec'), {}, config)

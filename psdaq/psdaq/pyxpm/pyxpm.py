@@ -22,7 +22,8 @@ from psdaq.pyxpm.pvhandler import *
 import psdaq.pyxpm.autosave as autosave
 
 ##MIN_FW_VERSION = 0x030c0100
-MIN_FW_VERSION = 0
+#MIN_FW_VERSION = 0
+MIN_FW_VERSION = 0x030d0400
 
 class NoLock(object):
     def __init__(self):

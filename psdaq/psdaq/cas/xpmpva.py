@@ -565,6 +565,41 @@ class PatternTab(QtWidgets.QWidget):
             for i,qv in enumerate(q):
                 self.coinc[i].setText(str(qv))
 
+def PathTimer(pvbase,parent):
+
+    pathbox = QtWidgets.QWidget()
+    pathlo = QtWidgets.QVBoxLayout()
+    pathgrid = QtWidgets.QGridLayout()
+
+    textWidgets = []
+    for j in range(NGroups):
+        ptextWidgets = []
+        for i in range(32):
+            ptextWidgets.append( PvIntArrayW() )
+        textWidgets.append(ptextWidgets)
+
+    parent.ptPvId = []
+    pathgrid.addWidget( QtWidgets.QLabel('Group'), 0, 0, 1, 2 )
+    for j in range(NGroups):
+        pathgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
+        print(f'Creating PathTimer update {pvbase}PART:{j}:PATH_TIME:Update')
+        pathgrid.addWidget( PvPushButtonVal(f'{pvbase}PART:{j}:PATH_TIME:Update', 'Upd', 1), 1, j+3 )
+    for i in range(14):
+        parent.ptPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
+                                        pathgrid, i+2, 0) )
+        for j in range(NGroups):
+            pathgrid.addWidget( textWidgets[j][i], i+2, j+3 )
+
+    parent.pathlnk = []
+    for j in range(NGroups):
+        ppvbase = f'{pvbase}PART:{j}:PATH_TIME:Array'
+        parent.pathlnk.append( PvIntArray( ppvbase, textWidgets[j] ) )
+
+    pathlo.addLayout(pathgrid)
+    pathlo.addStretch()
+    pathbox.setLayout(pathlo)
+    return pathbox
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles, nopatt):
         global ATCAWidget
@@ -665,6 +700,8 @@ class Ui_MainWindow(object):
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
             else:
                 tw.addTab(PvTableDisplay(pvbase+'QSFPSTATUS',[f'QSFP{int(j/4)}-{(j%4)}' for j in range(8)]),'QSFPs')
+
+            tw.addTab(PathTimer(pvbase,self),"PathTimer")
 
             stack.addWidget(tw)
 

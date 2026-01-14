@@ -832,9 +832,9 @@ class XpmApp(pr.Device):
             self.add(pr.RemoteVariable(    
                 name         = "stepEnd%i"%i,
                 description  = "Step end event",
-                offset       =  0x214+8*i,
-                bitSize      =  32,
-                bitOffset    =  0x00,
+                offset       =  0x210+8*i,
+                bitSize      =  40,
+                bitOffset    =  24,
                 base         = pr.UInt,
                 mode         = "RW",
                 verify       = False,
