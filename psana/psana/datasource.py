@@ -128,11 +128,13 @@ def _force_mfx_overrides(exp, kwargs):
     prev_smd_n_events = os.environ.get("PS_SMD_N_EVENTS")
     prev_eb_nodes = os.environ.get("PS_EB_NODES")
     prev_log_level = kwargs.get("log_level")
+    prev_batch_size = kwargs.get("batch_size")
     node_count = _detect_node_count()
     if node_count > 0:
         os.environ["PS_EB_NODES"] = str(node_count)
     os.environ["PS_SMD_N_EVENTS"] = "5000"
     kwargs["log_level"] = "DEBUG"
+    kwargs["batch_size"] = 1
     should_log = True
     if mode == "mpi":
         try:
@@ -142,11 +144,13 @@ def _force_mfx_overrides(exp, kwargs):
     if should_log:
         logger = utils.get_logger(name="DataSource")
         logger.info(
-            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=5000 (was %s), log_level=DEBUG (was %s)",
+            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=5000 (was %s), "
+            "log_level=DEBUG (was %s), batch_size=1 (was %s)",
             os.environ.get("PS_EB_NODES", "1"),
             prev_eb_nodes if prev_eb_nodes is not None else "unset",
             prev_smd_n_events if prev_smd_n_events is not None else "unset",
             prev_log_level if prev_log_level is not None else "unset",
+            prev_batch_size if prev_batch_size is not None else "unset",
         )
 
 

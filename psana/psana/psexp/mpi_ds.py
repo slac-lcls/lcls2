@@ -83,8 +83,14 @@ class RunParallel(Run):
         if nodetype == "smd0":
             super()._setup_run_calibconst()
             self.build_xtc_buffer(self.get_filtered_detinfo())
-            if not getattr(self, "_calib_xtc_buffer", None):
-                raise RuntimeError("Failed to build calibration xtc buffer on smd0")
+            if getattr(self, "_calib_xtc_buffer", None) is None:
+                has_entries = bool(self._calib_const)
+                has_nonempty = any(self._calib_const.values()) if has_entries else False
+                if has_nonempty:
+                    raise RuntimeError("Failed to build calibration xtc buffer on smd0")
+                if self.logger:
+                    self.logger.info("calibconst empty on smd0; skipping shared calibration buffer")
+                self._calib_xtc_buffer = b""
         else:
             self._clear_calibconst()
 
@@ -143,8 +149,6 @@ class RunParallel(Run):
 
         total_bytes = node_comm.bcast(total_bytes, root=0)
         if total_bytes <= 0:
-            if self.logger:
-                self.logger.warning("RunParallel: shared xtc broadcast reported zero bytes; clearing calibration")
             self._calib_const = {}
             self.dsparms.calibconst = self._calib_const
             return
@@ -175,7 +179,7 @@ class RunParallel(Run):
             total_time = populate_end - recv_start
             size_gib = total_bytes / (1024 ** 3)
             self.logger.debug(
-                "RunParallel: node leader rank %d shared calib size=%.3f GiB "
+                "node leader rank %d shared calib size=%.3f GiB "
                 "recv=%.3fs populate=%.3fs total=%.3fs",
                 self.comms.psana_comm.Get_rank(),
                 size_gib,
