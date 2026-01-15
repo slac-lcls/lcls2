@@ -400,6 +400,9 @@ class SbatchManager:
         else:
             sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
+        if "flags" in details and details["flags"].find("g") > -1:  # @todo: Is a flag appropriate?
+            sb_script += f"#SBATCH --gres=gpu:1 --gpus=1" + "\n"
+
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         self.sb_script = sb_script
         if self.verbose:
