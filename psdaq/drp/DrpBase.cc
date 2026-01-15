@@ -34,7 +34,6 @@ static void local_mkdir (const char * path);
 static json createFileReportMsg(std::string path, std::string absolute_path,
                                 timespec create_time, timespec modify_time,
                                 unsigned run_num, std::string hostname);
-static json createPulseIdMsg(uint64_t pulseId);
 static json createChunkRequestMsg();
 
 static const unsigned EvtCtrMask = 0xffffff;
@@ -521,7 +520,6 @@ int32_t PgpReader::read()
         usleep(m_us);
         if (m_us < 1024)  m_us <<= 1;
     }
-
     return rc;
 }
 
@@ -1069,7 +1067,6 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
         }
     }
 
-    // pass everything except L1 accepts and slow updates to control level
     if ((transitionId != TransitionId::L1Accept)) {
         if (transitionId != TransitionId::SlowUpdate) {
             if (transitionId == TransitionId::Configure) {
@@ -1081,9 +1078,6 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
             }
             if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
-            // send pulseId to inproc so it gets forwarded to the collection
-            json msg = createPulseIdMsg(pulseId);
-            m_inprocSend.send(msg.dump());
 
             logging::info("TebRcvr    saw %s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
@@ -1793,7 +1787,7 @@ static json createFileReportMsg(std::string path, std::string absolute_path,
     return msg;
 }
 
-static json createPulseIdMsg(uint64_t pulseId)
+json Drp::createPulseIdMsg(uint64_t pulseId)
 {
     json msg, body;
     msg["key"] = "pulseId";

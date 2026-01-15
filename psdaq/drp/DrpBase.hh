@@ -84,6 +84,7 @@ public:
 
 class PgpReader;
 class DrpBase;
+nlohmann::json createPulseIdMsg(uint64_t pulseId);
 
 class TebReceiverBase : public Pds::Eb::EbCtrbInBase
 {
@@ -122,7 +123,9 @@ protected:
 private:
     unsigned m_tsId;
     bool m_writing;
+protected:
     ZmqSocket& m_inprocSend;
+private:
     uint32_t m_lastIndex;
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
