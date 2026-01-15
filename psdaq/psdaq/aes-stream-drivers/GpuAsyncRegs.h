@@ -85,6 +85,7 @@ GPU_ASYNC_DEF_REG(DynamicRouteDests1, 0x2C, 24, 0xFF000000);
 GPU_ASYNC_DEF_REG(Version, 0x30, 0, 0xFF);
 
 GPU_ASYNC_DEF_REG(AxiWriteTimeoutCnt, 0x34, 0, 0xFFFFFFFF);
+GPU_ASYNC_DEF_REG(AxisDemuxSelect,    0x38, 0, 0xFFFFFFFF); /* @todo: Temporary until aes_stream_drivers is updated */
 
 // The following register defintiions are firmware specific. GpuAsyncCore can have up to 16 buffers, but defaults to 4.
 // You must check the MaxBuffers register for the true value
