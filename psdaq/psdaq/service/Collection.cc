@@ -11,6 +11,7 @@
 #include <sys/resource.h>
 #include <ctime>
 #include <csignal>
+#include <sys/stat.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
@@ -39,19 +40,23 @@ static void dumpStack(const std::string& filePath)
   system(gdb.c_str());
 }
 
-static std::string mkFilePath(const std::string& ext)
+static std::string mkFilePath(const std::string& filename)
 {
   time_t rawTime;
-  struct tm* timeInfo;
-  char buffer[32];
+  std::time(&rawTime);
+  auto timeInfo = std::localtime(&rawTime);
+  char buffer[128];
+  std::strftime(buffer, sizeof(buffer), "~/%Y/%m", timeInfo);
+  struct stat sb;
+  if (!stat(buffer, &sb) && S_ISDIR(sb.st_mode)) {
+      std::strftime(buffer, sizeof(buffer), "~/%Y/%m/%d_%H:%M:%S", timeInfo);
+  } else {
+      std::strftime(buffer, sizeof(buffer), "./%Y_%m_%d_%H:%M:%S", timeInfo);
+  }
   char hostname[HOST_NAME_MAX];
   gethostname(hostname, HOST_NAME_MAX);
-
-  std::time(&rawTime);
-  timeInfo = std::localtime(&rawTime);
-  std::strftime(buffer, sizeof(buffer), "~/%Y/%m/%d_%H:%M:%S", timeInfo);
   std::string filePath(buffer);
-  return filePath + "_" + std::string(hostname) + ":" + lAlias + "." + ext;
+  return filePath + "_" + std::string(hostname) + ":" + filename;
 }
 
 static void sigHandler(int sig)
@@ -59,7 +64,7 @@ static void sigHandler(int sig)
   logging::debug("sigHandler received signal %d\n", sig);
   if (sig == SIGSEGV || sig == SIGBUS)
   {
-    std::string filePath(mkFilePath("dump"));
+    std::string filePath(mkFilePath(lAlias + ".dump"));
     dumpStack(filePath);
     logging::critical("FATAL: %s Fault - logged StackTrace to %s",
                       (sig == SIGSEGV) ? "Segmentation" : "Bus",
