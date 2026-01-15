@@ -260,7 +260,7 @@ class Communicators(object):
         total = self.smd_comm.Get_size() if self.smd_comm != MPI.COMM_NULL else 0
         if self.world_rank == 0:
             pretty = ", ".join(f"{rank}@{host}" for rank, host in members)
-            self.logger.info(
+            self.logger.debug(
                 "[MPI-role] smd_comm size=%d members=[%s]", total, pretty
             )
 
