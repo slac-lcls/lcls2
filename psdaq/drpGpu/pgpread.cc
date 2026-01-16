@@ -230,7 +230,7 @@ int run_host_test_guts(GpuTestState_t& state, int instance)
 
         // Write to the DMA start register in the FPGA
         if (state.verbose)  logInfo("%d Trigger write\n", instance);
-        //chkFatal(cuStreamWriteValue32(stream, state.hwWriteStart + 4 * instance, 0x01, 0));
+        //chkFatal(cuStreamWriteValue32(stream, state.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance), 0x01, 0));
         cuStreamSynchronize(stream);
         auto rc = gpuSetWriteEn(state.fd, instance);
         if (rc < 0) {

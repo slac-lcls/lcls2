@@ -43,7 +43,7 @@ public:
   Ptr<RingIndexDtoD>& queue() { return m_readerQueue; }
 private:
   int         _setupGraph();
-  cudaGraph_t _recordGraph(CUdeviceptr dmaBuffer, CUdeviceptr hwWriteStart);
+  cudaGraph_t _recordGraph();
   void        _reader(Detector&, ReaderMetrics&);
 private:
   MemPoolGpu&                        m_pool;
@@ -54,7 +54,7 @@ private:
   Ptr<RingIndexDtoD>                 m_readerQueue;
   unsigned*                          m_head;
   CUdeviceptr*                       m_dmaBuffers;    // [nFpgas * dmaCount][maxDmaSize]
-  CUdeviceptr*                       m_hwWriteStarts; // [nFpgas]
+  CUdeviceptr*                       m_swFpgaRegs;    // [nFpgas]
   const Parameters&                  m_para;
 };
 

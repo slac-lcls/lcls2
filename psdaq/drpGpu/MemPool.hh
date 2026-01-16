@@ -50,7 +50,6 @@ struct DetPanel
   DataDev        datadev;
   GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
   GpuDmaBuffer_t swFpgaRegs;
-  CUdeviceptr    hwWriteStart;
   DetPanel(std::string& device) : datadev(device.c_str()) {}
 };
 

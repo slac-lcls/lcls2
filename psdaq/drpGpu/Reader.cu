@@ -61,15 +61,15 @@ Reader::Reader(const Parameters&                  para,
   auto nFpgas{m_pool.panels().size()};
   auto dmaCount{m_pool.dmaCount()};
   chkError(cudaMalloc(&m_dmaBuffers, nFpgas * dmaCount * sizeof(*m_dmaBuffers)));
-  chkError(cudaMalloc(&m_hwWriteStarts, nFpgas * sizeof(*m_hwWriteStarts)));
+  chkError(cudaMalloc(&m_swFpgaRegs, nFpgas * sizeof(*m_swFpgaRegs)));
   for (unsigned i = 0; i < nFpgas; ++i) {
     const auto& fpga = m_pool.panels()[i];
     for (unsigned j = 0; j < dmaCount; ++j) {
       printf("*** Reader: fpga %u, dmaBufIdx %u, hwWrtPtr %p, hwWrtStart %p\n",
-             i, j, (void*)(fpga.dmaBuffers[j].dptr), (void*)(fpga.hwWriteStart));
+             i, j, (void*)(fpga.dmaBuffers[j].dptr), (void*)(fpga.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(j)));
       chkError(cudaMemcpy(&m_dmaBuffers[i * dmaCount + j], &fpga.dmaBuffers[j].dptr, sizeof(*m_dmaBuffers), cudaMemcpyHostToDevice));
     }
-    chkError(cudaMemcpy(&m_hwWriteStarts[i], &fpga.hwWriteStart, sizeof(*m_hwWriteStarts), cudaMemcpyHostToDevice));
+    chkError(cudaMemcpy(&m_swFpgaRegs[i], &fpga.swFpgaRegs.dptr, sizeof(*m_swFpgaRegs), cudaMemcpyHostToDevice));
   }
 
   // Prepare buffers visible to the host for receiving headers
@@ -106,16 +106,12 @@ Reader::~Reader()
 
 int Reader::_setupGraph()
 {
-  cudaGraph_t      graph;
   cudaGraphExec_t& graphExec = m_graphExec;
   cudaStream_t     stream    = m_stream;
 
   // Generate the graph
   logging::debug("Recording Reader graph");
-  auto panel = 0;
-  auto instance = 0;
-  const auto& fpga = m_pool.panels()[panel];
-  graph = _recordGraph(fpga.dmaBuffers[instance].dptr, fpga.hwWriteStart);
+  auto graph = _recordGraph();
   if (graph == 0) {
     return -1;
   }
@@ -177,7 +173,7 @@ void _calibrate(Gpu::Detector const& detector,
 }
 
 static __global__
-void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas]
+void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas]
                 size_t       const                     nFpgas,
                 CUdeviceptr* const        __restrict__ dmaBuffers,    // [nFpgas * dmaCount][maxDmaSize]
                 size_t       const                     dmaCount,
@@ -213,9 +209,9 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
   if (threadIdx.x == 0) {
     if (blockIdx.x < nFpgas) {
       //printf("### Reader: dmaBufs[%u] %p, sz %p, hwWrtStart[%lu] %p\n",
-      //       dmaBufferIdx, (void*)(dmaBufs[dmaBufferIdx]), (void*)(dmaBufs[dmaBufferIdx]+4), fpga, (void*)(hwWriteStarts[fpga]+4*dmaBufferIdx));
+      //       dmaBufferIdx, (void*)(dmaBufs[dmaBufferIdx]), (void*)(dmaBufs[dmaBufferIdx]+4), fpga, (void*)(swFpgaRegs[fpga]+GPU_ASYNC_WR_ENABLE(dmaBufferIdx)));
       *(uint32_t*)(dmaBufs[dmaBufferIdx] + 4) = 0; // Clear the handshake space of the first DMA buffer
-      *(uint8_t*)(hwWriteStarts[fpga] + 4*dmaBufferIdx) = 1; // Enable the DMA on this dataDev
+      *(uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(dmaBufferIdx)) = 1; // Enable the DMA on this dataDev
     }
   }
 
@@ -248,7 +244,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
         if (tid == 0)  printf("### Reader: Got DMA: sz %u, TH[0] %016lx\n", *mem, *((uint64_t*)(&mem[8-1])));
         auto next = (dmaBufIdx + 1) % dmaCount; // Prepare for next DMA buffer
         *(uint32_t*)(dmaBufs[next] + 4) = 0;    // Clear the handshake space of the next DMA buffer
-        *(uint8_t*)(hwWriteStarts[fpga] + 4*next) = 1;  // Enable the DMA on this dataDev
+        *(uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(next)) = 1;  // Enable the DMA on this dataDev
         if (blockIdx.x == 0)                    // Update global memory  @todo: check for race
           dmaBufferIdx = next;                  // only once (same value for all blocks)
         //if (tid == 0)  printf("### Reader: next %lu\n", next);
@@ -320,7 +316,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ hwWriteStarts, // [nFpgas
  * instructions to execute.  We can even tell the GPU to launch new graphs on
  * its own, if we wanted to cut host involvement out entirely.
  ******************************************************************************/
-cudaGraph_t Reader::_recordGraph(CUdeviceptr dmaBuffer, CUdeviceptr hwWriteStart)
+cudaGraph_t Reader::_recordGraph()
 {
   rdr_scoped_range r{/*"Reader::_recordGraph"*/}; // Expose function name via NVTX
 
@@ -359,7 +355,7 @@ cudaGraph_t Reader::_recordGraph(CUdeviceptr dmaBuffer, CUdeviceptr hwWriteStart
     return 0;
   }
 
-  _handleDMA<<<nBlocks, nThreads, 0, m_stream>>>(m_hwWriteStarts,
+  _handleDMA<<<nBlocks, nThreads, 0, m_stream>>>(m_swFpgaRegs,
                                                  nFpgas,
                                                  m_dmaBuffers,
                                                  m_pool.dmaCount(),
@@ -421,8 +417,8 @@ void Reader::start()
 
 #ifndef HOST_REARMS_DMA
     // Write to the DMA start register in the FPGA to trigger the write
-    chkError(cuMemsetD8Async(panel.hwWriteStart + 4 * instance, 1, 1, m_stream));
-    printf("*** instance %u, hwWriteStart %p\n", instance, (void*)(panel.hwWriteStart + 4*instance));
+    chkError(cuMemsetD8Async(panel.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance), 1, 1, m_stream));
+    printf("*** instance %u, hwWriteStart %p\n", instance, (void*)(panel.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance)));
 #endif // HOST_REARMS_DMA
   }
 #endif // PERSISTENT_KERNEL

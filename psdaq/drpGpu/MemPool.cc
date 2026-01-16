@@ -141,9 +141,6 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
       abort();
     }
 
-    // Compute 'write start' register location using the device pointer to GpuAsyncCore
-    panel.hwWriteStart = panel.swFpgaRegs.dptr + 0x300;
-
     logging::debug("Mapped FPGA registers");
 
     // @todo: For now we complain if the number of DMA buffers in f/w doesn't match MAX_BUFFERS.
