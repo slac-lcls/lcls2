@@ -31,15 +31,8 @@ namespace Drp {
 
 class Detector;
 class MemPoolGpu;
-class RingIndexDtoD;
-class RingIndexDtoH;
-class RingIndexHtoD;
 
-struct ResultItems
-{
-  unsigned                    index;
-  const Pds::Eb::ResultDgram* result;
-};
+using ResultTuple = std::tuple<unsigned, const Pds::Eb::ResultDgram*>;
 
 class TebReceiver: public Drp::TebReceiverBase
 {
@@ -64,7 +57,7 @@ private:
   std::unique_ptr<FileWriterAsync> m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
   unsigned                         m_worker;      // For cycling through reducers
-  SPSCQueue<ResultItems>           m_recordQueue;
+  SPSCQueue<ResultTuple>           m_recordQueue;
   std::shared_ptr<Collector>       m_collector;
   std::thread                      m_recorderThread;
   const Parameters&                m_para;
@@ -78,11 +71,15 @@ public:
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
   void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
-                                                { m_reducer->configure(xtc, bufEnd); }
-  void reducerStart(unsigned wkr, unsigned idx) { m_reducer->start(wkr, idx); }
-  void reducerReceive(unsigned wkr, size_t& sz) { m_reducer->receive(wkr, sz); }
-  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz) { m_reducer->event(xtc, be, sz); }
-  void freeBufs(unsigned idx)                   { m_collector->freeDma(idx); } // @todo: Bad name
+    { m_reducer->configure(xtc, bufEnd); }
+  void reducerStart(unsigned wkr, unsigned& index)
+    { m_reducer->start(wkr, index); }
+  bool reducerReceive(unsigned wkr, ReducerTuple& items)
+    { return m_reducer->receive(wkr, items); }
+  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
+    { m_reducer->event(xtc, be, sz); }
+  void freeBufs(unsigned idx)           // @todo: Bad name
+    { m_collector->freeDma(idx); }
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
   void _collector();

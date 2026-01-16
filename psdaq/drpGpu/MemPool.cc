@@ -110,7 +110,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     logging::info("PGP device '%s' opened", device.c_str());
 
     // Clear out any left-overs from last time
-    int res = gpuRemNvidiaMemory(panel.gpu.fd());
+    int res = gpuRemNvidiaMemory(panel.datadev.fd());
     if (res < 0)  logging::error("Error in gpuRemNvidiaMemory");
     logging::debug("Done with gpuRemNvidiaMemory() cleanup");
 
@@ -121,7 +121,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     // Allocate DMA buffers on the GPU
     // This handles allocating buffers on the device and registering them with the driver.
     for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSize(), 1) != 0) {
+      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.datadev.fd(), 0, dmaSize(), 1) != 0) {
         logging::critical("Failed to allocate DMA buffers of size %zu for %s at number %zd",
                           dmaSize(), device.c_str(), i);
         abort();
@@ -135,7 +135,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
     // Map the GpuAsyncCore FPGA registers
     // This causes 'operation not permitted' if the process doesn't have sufficient privileges
-    if (gpuMapHostFpgaMem(&panel.swFpgaRegs, panel.gpu.fd(), GPU_OFFSET, 0x100000) < 0) {
+    if (gpuMapHostFpgaMem(&panel.swFpgaRegs, panel.datadev.fd(), GPU_OFFSET, 0x100000) < 0) {
       logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
       logging::info("Consider rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
       abort();
@@ -202,7 +202,7 @@ MemPoolGpu::~MemPoolGpu()
 
     // Release the memory held by the driver
     ssize_t rc;
-    if ((rc = gpuRemNvidiaMemory(panel.gpu.fd())) < 0)
+    if ((rc = gpuRemNvidiaMemory(panel.datadev.fd())) < 0)
       logging::error("gpuRemNvidiaMemory failed: %zd: %M", rc);
   }
   printf("*** MemPoolGpu dtor 2\n");
@@ -224,7 +224,7 @@ MemPoolGpu::~MemPoolGpu()
 
 int MemPoolGpu::fd(unsigned unit) const
 {
-  if (unit < m_panels.size())  return m_panels[unit].gpu.fd();
+  if (unit < m_panels.size())  return m_panels[unit].datadev.fd();
 
   logging::critical("MemPoolGpu::fd(): unit %u is out of range [0:%zu]",
                     unit, m_panels.size()-1);
@@ -248,7 +248,7 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
       }
     }
     for (const auto& panel : m_panels) {
-      if (dmaSetMaskBytes(panel.gpu.fd(), mask)) {
+      if (dmaSetMaskBytes(panel.datadev.fd(), mask)) {
         retval = 1; // error
       } else {
         ++m_setMaskBytesDone;

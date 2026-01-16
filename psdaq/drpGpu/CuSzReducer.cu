@@ -81,7 +81,6 @@ void CuSzReducer::reduce(cudaGraphExec_t, cudaStream_t stream, unsigned index, s
   size_t compressed_len{0};
   if (!m_m)  m_m = psz_create_resource_manager(F4, calibBufsCnt, 1, 1, stream);
 
-  // @todo: This isn't right since it is evaluated at record time instead of event time
   psz_compress_float(
       m_m, {m_predictor, DEFAULT_HISTOGRAM, Huffman, NULL_CODEC, m_mode, m_eb, DEFAULT_RADIUS},
       calibBuffer, &m_header, &d_internal_compressed, &compressed_len);

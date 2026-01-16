@@ -47,11 +47,11 @@ struct DmaDsc
 
 struct DetPanel
 {
-  DataGPU        gpu;
+  DataDev        datadev;
   GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
   GpuDmaBuffer_t swFpgaRegs;
   CUdeviceptr    hwWriteStart;
-  DetPanel(std::string& device) : gpu(device.c_str()) {}
+  DetPanel(std::string& device) : datadev(device.c_str()) {}
 };
 
 // @todo: Move to a common header file or use std::pair/std::tuple
@@ -72,7 +72,7 @@ public:   // Virtuals
   int fd(unsigned unit=0) const override;
   int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:  // Virtuals
-  void _freeDma(unsigned count, uint32_t* indices) override { /* Nothing to do */ }
+  ssize_t _freeDma(unsigned count, uint32_t* indices) override { return 0; /* Nothing to do */ }
 public:
   const CudaContext& context() const { return m_context; }
   const std::vector<DetPanel>& panels() const { return m_panels; }

@@ -12,7 +12,7 @@ public:
   NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~NoOpReducer() {}
 
-  bool   hasGraph() const override { return true; }
+  bool   hasGraph() const override; // { return true; }
   size_t payloadSize() const override { return m_pool.calibBufsSize(); }
   void   recordGraph(cudaStream_t       stream,
                      const unsigned&    index,

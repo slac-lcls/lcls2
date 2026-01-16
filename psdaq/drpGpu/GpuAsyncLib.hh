@@ -54,13 +54,13 @@ bool checkError(cudaError status, const char* func, const char* file, int line, 
 //--------------------------------------------------------------------------------//
 
 /**
- * Wraps a data_gpu device so it can be automatically freed
+ * Wraps a data_dev device so it can be automatically freed
  */
-class DataGPU
+class DataDev
 {
 public:
-    DataGPU(const char* path);
-    ~DataGPU()
+    DataDev(const char* path);
+    ~DataDev()
     {
         close(fd_);
     }
@@ -195,7 +195,7 @@ struct GpuBufferState_t
 /**
  * Allocates and inits buffer pairs on the GPU for RDMA operation.
  * \param b Buffer state to init
- * \param fd The file descriptor of the DataGPU device to allocate for
+ * \param fd The file descriptor of the DataDev device to allocate for
  * \param bufSize The size of the buffers to allocate
  * \return 0 for success, -1 on error
  */
@@ -232,15 +232,16 @@ deviceFunc inline AxiWrDesc64_t UnpackAxiWriteDescriptor(const void* data)
  * \param fd The file descriptor of the PGP PCIe device
  * \param mode The enumerated value of the destination
  */
-enum DmaTgt_t { TGT_CPU=0x0000ffff, TGT_GPU=0xffff0000, TGT_ERR=-1u };
-DmaTgt_t dmaTgtGet(const DataGPU&);
-void dmaTgtSet(const DataGPU&, DmaTgt_t);
+//enum DmaTgt_t { TGT_CPU=0x0000ffff, TGT_GPU=0xffff0000, TGT_ERR=-1u };
+enum DmaTgt_t { TGT_CPU=0x0, TGT_GPU=0x1, TGT_ERR=-1u };
+DmaTgt_t dmaTgtGet(const DataDev&);
+void dmaTgtSet(const DataDev&, DmaTgt_t);
 
 /**
  * Function to reset the DMA buffer round-robin index.
  * \param fd The file descriptor of the PGP PCIe device
  */
-void dmaIdxReset(const DataGPU&);
+void dmaIdxReset(const DataDev&);
 
 /**
  * Class for timing various things
