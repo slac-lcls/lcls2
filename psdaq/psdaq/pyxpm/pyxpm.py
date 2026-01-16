@@ -113,7 +113,6 @@ def main():
 #    imageName = 'xpmGen'
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
-
     if isGen or isXTPG:
         xpm.TPGMini.setup(False)
 
