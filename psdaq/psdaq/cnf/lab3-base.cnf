@@ -28,8 +28,10 @@ prom_dir = '/cds/group/psdm/psdatmgr/etc/config/prom' # Prometheus
 #        'u'         -> uniqueid: use 'id' as detector alias (supported by acq, cam, camedt, evr, and simcam)
 
 procmgr_config = [
- { host: 'daq-tst-dev01',  id:'pyxpm-1' , port:'29451', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 -G '+pyxpm_opts%1},
- { host: 'daq-tst-dev02',  id:'pyxpm-2' , port:'29452', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 '+pyxpm_optsdb%2},
+# { host: 'daq-tst-dev01',  id:'pyxpm-1' , port:'29451', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 -G '+pyxpm_opts%1},
+# { host: 'daq-tst-dev02',  id:'pyxpm-2' , port:'29452', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 '+pyxpm_optsdb%2},
+# Ric commented out the above 2 lines 01/14/26 since Matt moved the timing generator to dev02 (dev01 is sick)
+ { host: 'daq-tst-dev02',  id:'pyxpm-2' , port:'29452', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_0 -G '+pyxpm_optsdb%2},
 #{ host: 'daq-tst-dev06',  id:'pyxpm-10' , port:'29453', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_1 -G '+pyxpm_optsdb%10},
 #{ host: 'daq-tst-dev06',  id:'pyxpm-11' , port:'29454', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_2 -G '+pyxpm_optsdb%11},
 #{ host: 'daq-tst-dev06',  id:'pyxpm-12' , port:'29455', flags:'s', env:epics_env, cmd:'pykcuxpm --dev /dev/datadev_3 -G '+pyxpm_optsdb%12},
@@ -39,7 +41,8 @@ procmgr_config = [
 # { host: 'daq-tst-dev03',  id:'pvcam', port:'29466', flags:'s', env:epics_env, cmd:'pvcam -p DAQ:LAB2:PVCAM -e 40'},
 
 ## EPICS PV exporter
- {                   id:'pvrtmon-1',  port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -I xpm-1 -P DAQ:LAB2:XPM:1 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
+# Ric commented out the following line 01/14/26 since Matt moved the timing generator to dev02 (dev01 is sick)
+#{                   id:'pvrtmon-1',  port:'29467', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -I xpm-1 -P DAQ:LAB2:XPM:1 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
  {                   id:'pvrtmon-2',  port:'29468', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch} -M {prom_dir} -I xpm-2 -P DAQ:LAB2:XPM:2 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
 #{                   id:'pvrtmon-3',  port:'29468', flags:'s', env:epics_env, cmd:f'epics_exporter -H {hutch}-3 -M {prom_dir} -I xpm-3 -P DAQ:LAB2:XPM:3 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac'},
   ]

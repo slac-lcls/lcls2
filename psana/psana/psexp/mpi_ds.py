@@ -83,12 +83,19 @@ class RunParallel(Run):
         if nodetype == "smd0":
             super()._setup_run_calibconst()
             self.build_xtc_buffer(self.get_filtered_detinfo())
-            if not getattr(self, "_calib_xtc_buffer", None):
-                raise RuntimeError("Failed to build calibration xtc buffer on smd0")
+            if getattr(self, "_calib_xtc_buffer", None) is None:
+                has_entries = bool(self._calib_const)
+                has_nonempty = any(self._calib_const.values()) if has_entries else False
+                if has_nonempty:
+                    raise RuntimeError("Failed to build calibration xtc buffer on smd0")
+                if self.logger:
+                    self.logger.info("calibconst empty on smd0; skipping shared calibration buffer")
+                self._calib_xtc_buffer = b""
         else:
             self._clear_calibconst()
 
         self._distribute_calib_xtc()
+        self._setup_jungfrau_shared_calib()
 
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
@@ -143,8 +150,6 @@ class RunParallel(Run):
 
         total_bytes = node_comm.bcast(total_bytes, root=0)
         if total_bytes <= 0:
-            if self.logger:
-                self.logger.warning("RunParallel: shared xtc broadcast reported zero bytes; clearing calibration")
             self._calib_const = {}
             self.dsparms.calibconst = self._calib_const
             return
@@ -175,7 +180,7 @@ class RunParallel(Run):
             total_time = populate_end - recv_start
             size_gib = total_bytes / (1024 ** 3)
             self.logger.debug(
-                "RunParallel: node leader rank %d shared calib size=%.3f GiB "
+                "node leader rank %d shared calib size=%.3f GiB "
                 "recv=%.3fs populate=%.3fs total=%.3fs",
                 self.comms.psana_comm.Get_rank(),
                 size_gib,
@@ -191,6 +196,76 @@ class RunParallel(Run):
         self._calib_xtc_shared = shared_array
         self._calib_xtc_win = win
         self.dsparms.calibconst = self._calib_const
+
+    def _setup_jungfrau_shared_calib(self):
+        flag = os.environ.get("PS_JF_SHARE_DERIVED", "1").strip().lower()
+        if flag not in ("1", "true", "yes", "on"):
+            return
+        if mode != "mpi" or self.comms is None:
+            return
+        node_comm = self.comms.get_node_comm()
+        if node_comm in (None, MPI.COMM_NULL):
+            return
+
+        if getattr(self, "_jungfrau_shared_mem", None) is None:
+            self._jungfrau_shared_mem = MarchingSharedMemory(shm_comm=node_comm)
+        shared_mem = self._jungfrau_shared_mem
+
+        try:
+            import psana.detector.UtilsJungfrau as uj
+        except Exception:
+            self.logger.debug("Failed to import UtilsJungfrau for shared calib setup", exc_info=True)
+            return
+
+        det_classes = self.dsparms.det_classes.get("normal", {})
+        for (det_name, drp_class_name), drp_class in det_classes.items():
+            if drp_class_name != "raw":
+                continue
+            mod_name = getattr(drp_class, "__module__", "")
+            class_name = getattr(drp_class, "__name__", "").lower()
+            if "jungfrau" not in mod_name and "jungfrau" not in class_name:
+                continue
+            configinfo = self.dsparms.configinfo_dict.get(det_name)
+            if configinfo is None:
+                continue
+            calibconst = self.dsparms.calibconst.get(det_name)
+            if not calibconst:
+                continue
+            env_store = self.esm.stores.get(det_name) if hasattr(self, "esm") else None
+
+            try:
+                t_build_start = time.perf_counter()
+                iface = drp_class(
+                    det_name,
+                    drp_class_name,
+                    configinfo,
+                    calibconst,
+                    env_store,
+                    None,
+                )
+                shared = uj.build_shared_jungfrau_calib(
+                    iface,
+                    shared_mem,
+                    runnum=self.runnum,
+                )
+                t_build_end = time.perf_counter()
+            except Exception as exc:
+                self.logger.debug(
+                    "Failed to build shared Jungfrau calib for %s: %s",
+                    det_name,
+                    exc,
+                    exc_info=True,
+                )
+                shared = None
+
+            if shared:
+                setattr(iface, "_jf_shared", shared)
+                if shared_mem.is_leader:
+                    self.logger.debug(
+                        "Jungfrau shared calib ready det=%s total=%.3fs",
+                        det_name,
+                        t_build_end - t_build_start,
+                    )
 
     def _init_marching_shared_buffers(self):
         if not (

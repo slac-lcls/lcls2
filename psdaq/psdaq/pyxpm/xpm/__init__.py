@@ -15,3 +15,4 @@ from ._XpmApp import *
 from ._XpmPhase import *
 from ._XpmSequenceEngine import *
 from ._XpmGth import *
+from ._XpmPathTimer import *

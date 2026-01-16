@@ -37,13 +37,6 @@ except ImportError:
     _parallel_pread = None
 
 
-def print_memory_usage(rank, i_evt, interval=10):
-    if i_evt % interval == 0:
-        process = psutil.Process(os.getpid())
-        rss_gb = process.memory_info().rss / (1024 ** 3)
-        print(f"[Rank {rank}] Event {i_evt}: RSS Memory = {rss_gb:.2f} GB")
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Count total number of events from an experiment/run or explicit XTC2 files."
@@ -56,8 +49,11 @@ def parse_args():
     parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
     parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
+    parser.add_argument('--print_interval', type=int, default=1000,
+                        help='Interval (events) for per-rank progress prints (default: 1000)')
     parser.add_argument('--log_level', default='INFO', help='Log level (default: INFO)')
     parser.add_argument('--debug_detector', default=None, help='Detector name for debug prints')
+    parser.add_argument('--calib', action='store_true', help='Use calib data for jungfrau debug detector')
     parser.add_argument('--use_calib_cache', action='store_true', help='Use cached calibration constants')
     parser.add_argument('--skip_calib_load', nargs='+', default=None,
                         help="Detectors to skip calibration loading, or 'all'")
@@ -150,7 +146,7 @@ def main():
 
     det = run.Detector(args.debug_detector) if args.debug_detector else None
     if rank == 0 and det:
-        print(f"Debugging detector: {args.debug_detector}")
+        print(f"[INFO] Debugging detector: {args.debug_detector}")
 
     local_count = 0
     event_loop_start = time.time()
@@ -158,7 +154,7 @@ def main():
     last_pread_seconds = 0.0
     last_pread_bytes = 0
     last_pread_calls = 0
-    interval = 1000
+    interval = max(1, args.print_interval)
 
     det_accessed = False
     det_call_seconds = 0.0
@@ -176,7 +172,10 @@ def main():
             det_accessed = True
         elif det and args.debug_detector.lower() == 'jungfrau':
             det_t0 = time.perf_counter()
-            _ = det.raw.raw(evt)
+            if args.calib:
+                _ = det.raw.calib(evt)
+            else:
+                _ = det.raw.raw(evt)
             det_call_seconds += time.perf_counter() - det_t0
             det_call_count += 1
             det_accessed = True

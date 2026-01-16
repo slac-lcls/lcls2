@@ -26,9 +26,10 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
+import re
 
 import numpy as np
-from time import time
+from time import time, perf_counter
 import psana.detector.NDArrUtils as ndau
 import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as up
@@ -66,6 +67,180 @@ dic_calibmet = {CALIB_PYT_V0:    'CALIB_PYT_V0',\
 def is_true(cond, msg, logger_method=logger.debug):
     if cond: logger_method(msg)
     return cond
+
+def _jf_shared_prefix(det_name, runnum, cversion):
+    safe = re.sub(r"[^0-9A-Za-z_]", "_", det_name)
+    if runnum is None:
+        return f"jf_{safe}_v{cversion}"
+    return f"jf_{safe}_r{runnum}_v{cversion}"
+
+def _get_shared_jf(det, peds_shape, cversion):
+    shared = getattr(det, "_jf_shared", None)
+    if not shared:
+        return None
+    if shared.get("cversion") != cversion:
+        return None
+    if shared.get("shape") != peds_shape:
+        return None
+    return shared
+
+def build_shared_jungfrau_calib(det, shared_mem, runnum=None, cversion=CALIB_CPP_V3):
+    """Allocate and populate shared Jungfrau calibration arrays on the node leader."""
+    if shared_mem is None or det is None:
+        return None
+    if cversion != CALIB_CPP_V3:
+        return None
+
+    calibc = getattr(det, "_calibconst", None)
+    if not calibc:
+        return None
+    peds_entry = calibc.get("pedestals")
+    if not peds_entry:
+        return None
+    peds, _meta = peds_entry
+    if peds is None:
+        return None
+
+    prefix = _jf_shared_prefix(det._det_name, runnum, cversion)
+    gfac_name = f"{prefix}_gfac"
+    poff_name = f"{prefix}_poff"
+    gmask_name = f"{prefix}_gmask"
+    ccons_name = f"{prefix}_ccons"
+
+    t_total_start = perf_counter()
+    if (
+        shared_mem.has_array(gfac_name)
+        and shared_mem.has_array(poff_name)
+        and shared_mem.has_array(gmask_name)
+        and shared_mem.has_array(ccons_name)
+    ):
+        t_reuse_start = perf_counter()
+        gfac = shared_mem.get_array(gfac_name)
+        poff = shared_mem.get_array(poff_name)
+        gmask = shared_mem.get_array(gmask_name)
+        ccons = shared_mem.get_array(ccons_name)
+        t_reuse_end = perf_counter()
+        t_barrier_start = perf_counter()
+        shared_mem.barrier()
+        t_barrier_end = perf_counter()
+        if shared_mem.is_leader:
+            logger.debug(
+                "Jungfrau shared calib reuse det=%s lookup=%.3fs barrier=%.3fs total=%.3fs"
+                % (
+                    det._det_name,
+                    t_reuse_end - t_reuse_start,
+                    t_barrier_end - t_barrier_start,
+                    t_barrier_end - t_total_start,
+                )
+            )
+        return {
+            "gfac": gfac,
+            "poff": poff,
+            "gmask": gmask,
+            "ccons": ccons.ravel(),
+            "cversion": cversion,
+            "shape": peds.shape,
+        }
+
+    t_alloc_start = perf_counter()
+    dtype = peds.dtype
+    gfac = shared_mem.allocate_array(gfac_name, peds.shape, dtype, zero_init=False)
+    poff = shared_mem.allocate_array(poff_name, peds.shape, dtype, zero_init=False)
+    gmask = shared_mem.allocate_array(gmask_name, peds.shape, dtype, zero_init=False)
+
+    npix = int(np.prod(peds.shape[-3:]))
+    ccons = shared_mem.allocate_array(ccons_name, (4, npix, 2), np.float32, zero_init=False)
+    t_alloc_end = perf_counter()
+
+    ok = True
+    t_gfac = t_poff = t_mask = t_gmask = t_ccons = 0.0
+    if shared_mem.is_leader:
+        try:
+            t_pop_start = perf_counter()
+            gain_entry = calibc.get("pixel_gain")
+            offs_entry = calibc.get("pixel_offset")
+            gain = gain_entry[0] if gain_entry else None
+            offs = offs_entry[0] if offs_entry else None
+
+            t_gfac_start = perf_counter()
+            if gain is None:
+                gfac.fill(1.0)
+            else:
+                gfac[:] = ndau.divide_protected(np.ones_like(peds), gain)
+            t_gfac = perf_counter() - t_gfac_start
+
+            t_poff_start = perf_counter()
+            if offs is None:
+                np.copyto(poff, peds)
+            else:
+                np.add(peds, offs, out=poff)
+            t_poff = perf_counter() - t_poff_start
+
+            t_mask_start = perf_counter()
+            mask = det._mask()
+            if mask is None:
+                mask = 1
+            t_mask = perf_counter() - t_mask_start
+
+            t_gmask_start = perf_counter()
+            for i in range(3):
+                np.multiply(gfac[i], mask, out=gmask[i], casting="unsafe")
+            t_gmask = perf_counter() - t_gmask_start
+
+            t_ccons_start = perf_counter()
+            ccons_view = ccons
+            ccons_view[0, :, 0] = poff[0].ravel()
+            ccons_view[0, :, 1] = gmask[0].ravel()
+            ccons_view[1, :, 0] = poff[1].ravel()
+            ccons_view[1, :, 1] = gmask[1].ravel()
+            ccons_view[2, :, 0].fill(0)
+            ccons_view[2, :, 1].fill(0)
+            ccons_view[3, :, 0] = poff[2].ravel()
+            ccons_view[3, :, 1] = gmask[2].ravel()
+            t_ccons = perf_counter() - t_ccons_start
+            t_pop_end = perf_counter()
+            t_populate = t_pop_end - t_pop_start
+        except Exception as exc:
+            ok = False
+            print("Failed to populate shared Jungfrau calibration constants: %s" % exc)
+
+    t_bcast_start = perf_counter()
+    shm_comm = getattr(shared_mem, "shm_comm", None)
+    if shm_comm is not None:
+        ok = shm_comm.bcast(ok, root=0)
+    t_bcast_end = perf_counter()
+    t_barrier_start = perf_counter()
+    shared_mem.barrier()
+    t_barrier_end = perf_counter()
+    if not ok:
+        return None
+    if shared_mem.is_leader:
+        logger.debug(
+            "Jungfrau shared calib build det=%s alloc=%.3fs populate=%.3fs gfac=%.3fs poff=%.3fs "
+            "mask=%.3fs gmask=%.3fs ccons=%.3fs bcast=%.3fs barrier=%.3fs total=%.3fs"
+            % (
+                det._det_name,
+                t_alloc_end - t_alloc_start,
+                t_populate if ok else 0.0,
+                t_gfac,
+                t_poff,
+                t_mask,
+                t_gmask,
+                t_ccons,
+                t_bcast_end - t_bcast_start,
+                t_barrier_end - t_barrier_start,
+                t_barrier_end - t_total_start,
+            )
+        )
+
+    return {
+        "gfac": gfac,
+        "poff": poff,
+        "gmask": gmask,
+        "ccons": ccons.ravel(),
+        "cversion": cversion,
+        "shape": peds.shape,
+    }
 
 def jungfrau_segments_tot(segnum_max):
     """Returns total number of segments in the detector 1,2,8,32 depending on segnum_max."""
@@ -137,24 +312,46 @@ class DetCache():
         gain, meta_gain = self._calibcons_for_ctype('pixel_gain')
         offs, meta_offs = self._calibcons_for_ctype('pixel_offset')
 
-        self.gfac = np.ones_like(peds) if is_true(gain is None, 'pixel_gain constants missing, use default ones',\
-                                                  logger_method = logger.warning) else\
-                    ndau.divide_protected(np.ones_like(peds), gain)
+        t_start = perf_counter()
+        t_shared_lookup_start = perf_counter()
+        shared = _get_shared_jf(det, peds.shape, self.cversion)
+        t_shared_lookup = perf_counter() - t_shared_lookup_start
+        t_gfac = 0.0
+        t_poff = 0.0
+        t_ccons = 0.0
+        if shared:
+            t_assign_start = perf_counter()
+            self.gfac = shared.get("gfac")
+            self.poff = shared.get("poff")
+            self.gmask = shared.get("gmask")
+            self.ccons = shared.get("ccons")
+            t_assign = perf_counter() - t_assign_start
+        else:
+            t_gfac_start = perf_counter()
+            self.gfac = np.ones_like(peds) if is_true(gain is None, 'pixel_gain constants missing, use default ones',\
+                                                      logger_method = logger.warning) else\
+                        ndau.divide_protected(np.ones_like(peds), gain)
+            t_gfac = perf_counter() - t_gfac_start
 
         self.outa = np.zeros(peds.shape[-3:], dtype=np.float32, order='C').ravel()
         self.outa = np.ascontiguousarray(self.outa).ravel()
 
         logmet_init(ndau.info_ndarr(self.gfac, 'gain factors'))
 
-        self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
-                                    logger_method = logger.debug) else\
-                    peds + offs
+        if not shared:
+            t_poff_start = perf_counter()
+            self.poff = peds if is_true(offs is None, 'pixel_offset constants missing, use default zeros',\
+                                        logger_method = logger.debug) else\
+                        peds + offs
+            t_poff = perf_counter() - t_poff_start
 
         self.cmps = self.kwa.get('cmpars', None)
         self.loop_banks = self.kwa.get('loop_banks', True)
 
         logger.debug('before call det._mask(**self.kwa) from UtilsJungfrau DetCache.add_calibcons self.kwa: %s' % str(self.kwa))
+        t_mask_start = perf_counter()
         self.mask = det._mask(**self.kwa)
+        t_mask = perf_counter() - t_mask_start
         logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
@@ -162,8 +359,32 @@ class DetCache():
                       ndau.info_ndarr(self.outa, 'outa'),\
                       'loop over banks %s' % self.loop_banks))
 
-        if self.cversion > 0:
+        if self.cversion > 0 and not shared:
+            t_ccons_start = perf_counter()
             self.add_ccons()
+            t_ccons = perf_counter() - t_ccons_start
+
+        total_time = perf_counter() - t_start
+        if shared:
+            logger.debug(
+                "DetCache.add_calibcons shared det=%s lookup=%.3fs assign=%.3fs mask=%.3fs total=%.3fs",
+                self.detname,
+                t_shared_lookup,
+                t_assign,
+                t_mask,
+                total_time,
+            )
+        else:
+            logger.debug(
+                "DetCache.add_calibcons local det=%s lookup=%.3fs gfac=%.3fs poff=%.3fs mask=%.3fs ccons=%.3fs total=%.3fs",
+                self.detname,
+                t_shared_lookup,
+                t_gfac,
+                t_poff,
+                t_mask,
+                t_ccons,
+                total_time,
+            )
 
         self.isset = True
 
@@ -201,7 +422,7 @@ class DetCache():
         elif self.cversion > 2:
             # test: lcls2/psana/psana/detector]$ testman/test-scaling-mpi-jungfrau.py -t6
             npix = po[0,:].size
-            print('npix:', npix)
+            #print('npix:', npix)
             self.ccons = np.vstack((
                             np.vstack((po[0,:].ravel(), gm[0,:].ravel())).T,
                             np.vstack((po[1,:].ravel(), gm[1,:].ravel())).T,
@@ -521,9 +742,9 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
                    +'\n    inds: segment indices: %s' % str(inds)\
                    +'\n    common mode parameters: %s' % str(cmps)\
                    +'\n    loop over segments: %s' % odc.loop_banks)
-        print(info_gainbits_statistics(arr))
-        print(info_gainrange_statistics(arr))
-        print(info_gainrange_fractions(arr))
+        logger.debug(info_gainbits_statistics(arr))
+        logger.debug(info_gainrange_statistics(arr))
+        logger.debug(info_gainrange_fractions(arr))
 
     if cversion == CALIB_CPP_V3:   # ccons.shape = (4, <NPIXELS>, 2)
         ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)

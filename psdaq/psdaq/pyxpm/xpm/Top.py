@@ -238,6 +238,13 @@ class Top(pr.Device):
                 offset  = 0x80060000+i*0x1000,
             ))
 
+        for i in range(8):
+            self.add(xpm.XpmPathTimer(
+                memBase = self.srp,
+                name    = f'XpmPathTimer_{i}',
+                offset  = 0x80070000+i*0x1000,
+            ))
+
 #        self.add(xpm.CuPhase(
 #            memBase = self.srp,
 #            name = 'CuPhase',
