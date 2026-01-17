@@ -75,6 +75,13 @@ class CGWMainPartition(QGroupBox):
         self.w_select = None
         self.set_buts_enabled()
 
+        # this line is a useful debugging tool when doing automated
+        # testing: it automatically "clicks" the partition-select
+        # button which normally needs to be clicked
+        # manually. -cpo 01/16/26
+        #print('*** hack: autoclick the partition select button')
+        #self.but_select.click()
+
 #--------------------
 
     def set_tool_tips(self):
@@ -135,8 +142,8 @@ class CGWMainPartition(QGroupBox):
         # the desired detectors, and then add this line back in to be able
         # go from UNALLOCATED to the desired state without requiring any
         # manual clicking. -cpo 01/16/26
-        #print('*** automation: click apply for partition select')
-        #self.w_select.but_apply.click()
+        print('*** automation: click apply for partition select')
+        self.w_select.but_apply.click()
         resp=self.w_select.show()
 
         # MOVED TO QWPopupTableCheck
