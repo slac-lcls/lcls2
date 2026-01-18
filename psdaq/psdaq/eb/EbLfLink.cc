@@ -5,6 +5,7 @@
 #include "psdaq/service/fast_monotonic_clock.hh"
 
 #include <chrono>
+#include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -233,11 +234,16 @@ int EbLfSvrLink::_synchronizeBegin()
 {
   int rc;
 
+  time_t rawTime{time(NULL)};           // Current time
+  fprintf(stderr, "%s:  Id %d, start @ %s", __PRETTY_FUNCTION__, _id, ctime(&rawTime));
+
   // Send a synchronization message to _one_ client
   uint64_t imm = _BegSync;              // Use a different value from Clients
   if ( (rc = EbLfLink::post(imm)) )  return rc;
 
+
   // Drain any stale transmissions that are stuck in the pipe
+  auto t0{std::chrono::steady_clock::now()};
   while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
   {
     if (imm == _EndSync)  break;        // Break on synchronization message
@@ -246,9 +252,15 @@ int EbLfSvrLink::_synchronizeBegin()
       fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
               __PRETTY_FUNCTION__, _id, imm, _EndSync);
   }
+  auto t1{std::chrono::steady_clock::now()};
 
   if (rc == -FI_EAGAIN)
-    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s:  Timed out (%lu ms), id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, std::chrono::duration_cast<ms_t>(t1-t0).count(),
+            _id, imm, _EndSync);
+
+  rawTime = time(NULL);                 // Current time
+  fprintf(stderr, "%s:  Id %d, end   @ %s", __PRETTY_FUNCTION__, _id, ctime(&rawTime));
 
   return rc;
 }
@@ -372,10 +384,14 @@ int EbLfCltLink::_synchronizeBegin()
 {
   int rc;
 
+  time_t rawTime{time(NULL)};           // Current time
+  fprintf(stderr, "%s:  Id %d, start @ %s", __PRETTY_FUNCTION__, _id, ctime(&rawTime));
+
   // NB: Clients can't send anything to a server before receiving the
   //     synchronization message or the Server will get confused
   // Drain any stale transmissions that are stuck in the pipe
   uint64_t imm;
+  auto t0{std::chrono::steady_clock::now()};
   while ((rc = EbLfLink::poll(&imm, 60000)) == 0)
   {
     if (imm == _BegSync)  break;        // Break on synchronization message
@@ -384,9 +400,12 @@ int EbLfCltLink::_synchronizeBegin()
       fprintf(stderr, "%s:  Got junk from id %d: imm %08lx != %08x\n",
               __PRETTY_FUNCTION__, _id, imm, _BegSync);
   }
+  auto t1{std::chrono::steady_clock::now()};
 
   if (rc == -FI_EAGAIN)
-    fprintf(stderr, "\n%s:  Timed out\n\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s:  Timed out (%lu ms), id %d: imm %08lx != %08x\n",
+            __PRETTY_FUNCTION__, std::chrono::duration_cast<ms_t>(t1-t0).count(),
+            _id, imm, _BegSync);
 
   if (rc == 0)
   {
@@ -394,6 +413,10 @@ int EbLfCltLink::_synchronizeBegin()
     imm = _EndSync;                       // Use a different value from Servers
     if ( (rc = EbLfLink::post(imm)) )  return rc;
   }
+
+  rawTime = time(NULL);                 // Current time
+  fprintf(stderr, "%s:  Id %d, end   @ %s", __PRETTY_FUNCTION__, _id, ctime(&rawTime));
+
   return rc;
 }
 
