@@ -1,5 +1,5 @@
 """
-Utilities for managing MPI shared-memory buffers used by marching read mode.
+Utilities for managing MPI shared-memory buffers for psana.
 
 The helper is responsible for carving out shared arrays that can be accessed by
 all ranks running on the same physical node. It hides the MPI window plumbing
@@ -33,12 +33,12 @@ class SharedArrayHandle:
     window: Any  # MPI.Win once mpi4py is available
 
 
-class MarchingSharedMemory:
+class MPISharedMemory:
     """
     Helper that creates and tracks MPI shared-memory windows per compute node.
 
     Typical usage:
-        helper = MarchingSharedMemory()
+        helper = MPISharedMemory()
         offsets = helper.allocate_array("offsets", (n_slots, n_streams, chunk_events, 2))
         state = helper.allocate_array("state", (n_slots,), np.int32)
         ...

@@ -22,7 +22,7 @@ from psana import dgram, utils
 from psana.psexp import TransitionId
 from psana.psexp.tools import mode
 from psana.marchingeventbuilder import MarchingEventBuilder
-from psana.psexp.marching_shmem import MarchingSharedMemory
+from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.psexp.parallel_pread import ParallelPreader
 
 DEBUG_PRINT = False
@@ -44,7 +44,7 @@ class MarchingEventManager:
         Configuration dgrams for per-stream reconstruction.
     dm : DgramManager
         Provides open big-data file descriptors and tracking of current chunk ids.
-    shared_mem : MarchingSharedMemory
+    shared_mem : MPISharedMemory
         Shared-memory allocator used by the matching MarchingEventBuilder instance.
     n_consumers : int
         Number of Bd ranks attached to this shared-memory domain.
@@ -62,7 +62,7 @@ class MarchingEventManager:
         self,
         configs,
         dm,
-        shared_mem: MarchingSharedMemory,
+        shared_mem: MPISharedMemory,
         *,
         n_consumers: int,
         shared_state=None,
@@ -458,7 +458,7 @@ class MarchingEventManager:
         try:
             views = self._preader.read(self._bd_fds, chunk_offsets, chunk_sizes)
         except Exception as e:
-            print( 
+            print(
                 "Marching grant pread failed: slot=%d start=%d end=%d offsets=%s sizes=%s error=%s",
                 slot,
                 start,

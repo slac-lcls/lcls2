@@ -24,7 +24,7 @@ from psana.psexp.calib_xtc import load_calib_xtc_from_buffer
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode, get_smd_n_events
-from psana.psexp.marching_shmem import MarchingSharedMemory
+from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.calib_xtc import CalibXtcConverter
@@ -104,16 +104,9 @@ class RunParallel(Run):
         det_info = det_info or {}
         try:
             t0 = time.perf_counter()
-            t_init_start = time.perf_counter()
             converter = CalibXtcConverter(det_info)
-            t_init_end = time.perf_counter()
-            t_conv_start = time.perf_counter()
             buffer_view, config_size, data_size = converter.convert_to_buffer(self._calib_const)
-            blob = buffer_view
             total_size = config_size + data_size
-            t_conv_end = time.perf_counter()
-            t_blob_alloc_start = t_blob_alloc_end = t_conv_end
-            t_blob_copy_start = t_blob_copy_end = t_conv_end
             self._calib_xtc_buffer = buffer_view
             elapsed = time.perf_counter() - t0
             size_gib = total_size / (1024 ** 3)
@@ -208,7 +201,7 @@ class RunParallel(Run):
             return
 
         if getattr(self, "_jungfrau_shared_mem", None) is None:
-            self._jungfrau_shared_mem = MarchingSharedMemory(shm_comm=node_comm)
+            self._jungfrau_shared_mem = MPISharedMemory(shm_comm=node_comm)
         shared_mem = self._jungfrau_shared_mem
 
         try:
@@ -276,7 +269,7 @@ class RunParallel(Run):
             return
         if getattr(self.comms, "march_shared_mem", None) is not None:
             return
-        shared_mem = MarchingSharedMemory(shm_comm=self.comms.march_shm_comm)
+        shared_mem = MPISharedMemory(shm_comm=self.comms.march_shm_comm)
         params = self._marching_params()
         slot_shape = (params["n_slots"], params["max_events"], len(self.configs))
         self._alloc_marching_array(shared_mem, f"{params['prefix']}_bd_offsets", slot_shape, np.int64)
@@ -372,19 +365,26 @@ class RunParallel(Run):
     def events(self):
         evt_iter = self.start()
         st = time.time()
+        try:
+            ana_interval = int(os.environ.get("PS_BD_ANA_INTERVAL", "1000"))
+        except ValueError:
+            ana_interval = 1000
+        if ana_interval <= 0:
+            ana_interval = 1000
         for i, dgrams in enumerate(evt_iter):
             if self._handle_transition(dgrams):
                 continue  # swallow non-L1 transitions in events() stream
             # L1Accept: construct Event at the Run level
             yield Event(dgrams=dgrams, run=self._run_ctx)
-            if i % 1000 == 0:
+            if i % ana_interval == 0:
                 en = time.time()
                 interval = en - st
-                ana_rate = 1000 / interval if interval > 0 else 0.0
+                ana_rate = ana_interval / interval if interval > 0 else 0.0
                 self.logger.debug(
-                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=1000",
+                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=%d",
                     ana_rate,
                     interval,
+                    ana_interval,
                 )
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()

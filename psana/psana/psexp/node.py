@@ -435,7 +435,7 @@ class Smd0(object):
 
     def _request_rank(self, rankreq):
         st_req = time.monotonic()
-        self.logger.debug(f"TIMELINE 1. SMD0GOTCHUNK {st_req}")
+        self.logger.debug(f"TIMELINE 1. SMD0REQ4EB {st_req}")
 
         req = self.comms.smd_comm.Irecv(rankreq, source=MPI.ANY_SOURCE)
         req.Wait()

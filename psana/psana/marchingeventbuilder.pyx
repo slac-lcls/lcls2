@@ -23,7 +23,7 @@ from typing import Sequence
 from psana import dgram, utils
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
-from psana.psexp.marching_shmem import MarchingSharedMemory
+from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.psexp.tools import mode
 
 if mode == "mpi":
@@ -102,7 +102,7 @@ cdef class MarchingEventBuilder:
         self,
         configs: Sequence,
         dsparms,
-        shared_mem: MarchingSharedMemory,
+        shared_mem: MPISharedMemory,
         *,
         n_slots: int,
         max_events_per_chunk: int,
