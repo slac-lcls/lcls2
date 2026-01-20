@@ -123,6 +123,15 @@ class SharedGeoCache:
         )
         return array, True
 
+    def get_if_present(self, key: SharedGeoKey, name: str) -> Optional[np.ndarray]:
+        """Return a shared array if it exists, otherwise None."""
+        if not self.enabled:
+            return None
+        full_name = f"{self._prefix(key)}_{name}"
+        if not self.shared_mem.has_array(full_name):
+            return None
+        return self.shared_mem.get_array(full_name)
+
     def barrier(self) -> None:
         if self.enabled and hasattr(self.shared_mem, "barrier"):
             self.shared_mem.barrier()

@@ -62,6 +62,8 @@ def parse_args():
     parser.add_argument('--log_file', help='Path to log file for DataSource (optional)')
     parser.add_argument('--show_rank_stats', action='store_true',
                         help='Print per-rank statistics (default: only rank 0 summary)')
+    parser.add_argument('--test_pixel_coords', action='store_true',
+                        help='Call det.raw._pixel_coords() once and report timing')
     args = parser.parse_args()
     if args.skip_calib_load is not None:
         if any(det.lower() == "all" for det in args.skip_calib_load):
@@ -147,6 +149,17 @@ def main():
     det = run.Detector(args.debug_detector) if args.debug_detector else None
     if rank == 0 and det:
         print(f"[INFO] Debugging detector: {args.debug_detector}")
+    if det and args.test_pixel_coords:
+        det_t0 = time.perf_counter()
+        coords = det.raw._pixel_coords()
+        det_dt = time.perf_counter() - det_t0
+        shape_msg = "None"
+        if coords is not None:
+            try:
+                shape_msg = ", ".join(str(a.shape) for a in coords)
+            except Exception:
+                shape_msg = "unavailable"
+        print(f"[Rank {rank}] det.raw._pixel_coords() time={det_dt:.6f}s shapes={shape_msg}")
 
     local_count = 0
     event_loop_start = time.time()
