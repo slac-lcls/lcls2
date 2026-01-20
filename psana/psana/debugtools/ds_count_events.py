@@ -159,7 +159,8 @@ def main():
                 shape_msg = ", ".join(str(a.shape) for a in coords)
             except Exception:
                 shape_msg = "unavailable"
-        print(f"[Rank {rank}] det.raw._pixel_coords() time={det_dt:.6f}s shapes={shape_msg}")
+        if rank == 0:
+            print(f"[Rank {rank}] det.raw._pixel_coords() time={det_dt:.6f}s shapes={shape_msg}")
 
     local_count = 0
     event_loop_start = time.time()

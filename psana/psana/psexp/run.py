@@ -361,6 +361,10 @@ class Run(object):
                 if shared_cache is not None:
                     setattr(iface, "_shared_geo_cache", shared_cache)
 
+                shared_calibc_cache = getattr(self, "_shared_calibc_cache", None)
+                if shared_calibc_cache is not None:
+                    setattr(iface, "_shared_calibc_cache", shared_calibc_cache)
+
                 # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
                 setattr(det, "calibconst", self.dsparms.calibconst[det_name])
