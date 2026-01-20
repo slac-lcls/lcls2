@@ -154,11 +154,6 @@ def img_from_pixel_arrays(rows, cols, weight=None, dtype=np.float32, vbase=0, rc
 
 def img_multipixel_max(img, weight, dict_pix_to_img_idx):
     imgrav = img.ravel() # ravel() does not copy like ravel()
-    if isinstance(dict_pix_to_img_idx, (tuple, list)) and len(dict_pix_to_img_idx) == 2:
-        pix_idx, img_idx = dict_pix_to_img_idx
-        if pix_idx.size:
-            np.maximum.at(imgrav, img_idx, weight.ravel()[pix_idx])
-        return
     for ia,i in dict_pix_to_img_idx.items(): imgrav[i] = max(imgrav[i], weight.ravel()[ia])
 
     if logger.getEffectiveLevel()<=logging.DEBUG: #logger.level
@@ -173,19 +168,6 @@ def img_multipixel_max(img, weight, dict_pix_to_img_idx):
 
 def img_multipixel_mean(img, weight, dict_pix_to_img_idx, dict_imgidx_numentries):
     imgrav = img.ravel()
-    if (
-        isinstance(dict_pix_to_img_idx, (tuple, list))
-        and len(dict_pix_to_img_idx) == 2
-        and isinstance(dict_imgidx_numentries, (tuple, list))
-        and len(dict_imgidx_numentries) == 2
-    ):
-        pix_idx, img_idx = dict_pix_to_img_idx
-        imgidx, nentries = dict_imgidx_numentries
-        if imgidx.size:
-            imgrav[imgidx] = 0
-            np.add.at(imgrav, img_idx, weight.ravel()[pix_idx])
-            imgrav[imgidx] /= nentries
-        return
     imgidx = list(dict_imgidx_numentries.keys())
     imgrav[imgidx] = 0                                               # initialization
     for ia,i in dict_pix_to_img_idx.items(): imgrav[i] += weight.ravel()[ia] # accumulation

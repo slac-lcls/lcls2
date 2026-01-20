@@ -236,172 +236,16 @@ class CalibConstants:
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
         logger.debug('CalibConstants.cached_pixel_coord_indexes')
 
-        mapmode = kwa.get('mapmode',2)
-        fillholes = kwa.get('fillholes',True)
-
-        # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
-        if segnums is None:
-            segnums = self.segment_numbers_total()
-
-        odet = self._kwa.get('odet', None) if hasattr(self, "_kwa") else None
-        cache = getattr(odet, "_shared_geo_cache", None) if odet is not None else None
-        if cache is not None and getattr(cache, "enabled", False) and mapmode < 4:
-            det_name = getattr(odet, "_det_name", "unknown")
-            drp_class = getattr(odet, "_drp_class_name", "raw")
-            geotxt, _meta = self.geotxt_and_meta()
-            geom_id = cache.build_geom_id(
-                geotxt,
-                segnums,
-                {
-                    "pix_scale_size_um": kwa.get("pix_scale_size_um", None),
-                    "xy0_off_pix": kwa.get("xy0_off_pix", None),
-                    "do_tilt": kwa.get("do_tilt", True),
-                    "cframe": kwa.get("cframe", 0),
-                    "mapmode": mapmode,
-                    "fillholes": fillholes,
-                },
-            )
-            key = cache.make_key(det_name, drp_class, geom_id)
-
-            shm_comm = getattr(cache.shared_mem, "shm_comm", None)
-            is_leader = getattr(cache.shared_mem, "is_leader", False)
-            required = (
-                "pix_rows",
-                "pix_cols",
-                "rc_tot_max",
-                "img_entries",
-                "dmulti_pix_idx",
-                "dmulti_img_idx",
-                "dmulti_imgidx",
-                "dmulti_imgnentries",
-                "img_pix_ascend_ind",
-                "img_holes",
-                "hole_rows",
-                "hole_cols",
-                "hole_inds1d",
-            )
-            has_all = False
-            if is_leader:
-                prefix = cache._prefix(key)
-                has_all = all(
-                    cache.shared_mem.has_array(f"{prefix}_{name}") for name in required
-                )
-            if shm_comm is not None:
-                has_all = shm_comm.bcast(has_all, root=0)
-            if has_all:
-                rows = cache.get_if_present(key, "pix_rows")
-                cols = cache.get_if_present(key, "pix_cols")
-                img_entries = cache.get_if_present(key, "img_entries")
-                dmulti_pix_idx = cache.get_if_present(key, "dmulti_pix_idx")
-                dmulti_img_idx = cache.get_if_present(key, "dmulti_img_idx")
-                dmulti_imgidx = cache.get_if_present(key, "dmulti_imgidx")
-                dmulti_imgnentries = cache.get_if_present(key, "dmulti_imgnentries")
-                img_pix_ascend_ind = cache.get_if_present(key, "img_pix_ascend_ind")
-                img_holes = cache.get_if_present(key, "img_holes")
-                hole_rows = cache.get_if_present(key, "hole_rows")
-                hole_cols = cache.get_if_present(key, "hole_cols")
-                hole_inds1d = cache.get_if_present(key, "hole_inds1d")
-                rc_tot_max = cache.get_if_present(key, "rc_tot_max")
-
-                self._pix_rc = (rows, cols)
-                self._rc_tot_max = rc_tot_max if rc_tot_max is not None else [np.max(rows), np.max(cols)]
-                self.img_entries = img_entries
-                self.dmulti_pix_to_img_idx = (dmulti_pix_idx, dmulti_img_idx)
-                self.dmulti_imgidx_numentries = (dmulti_imgidx, dmulti_imgnentries)
-                self.img_pix_ascend_ind = img_pix_ascend_ind
-                self.img_holes = img_holes
-                self.hole_rows = hole_rows
-                self.hole_cols = hole_cols
-                self.hole_inds1d = hole_inds1d
-                return
-
-            specs = None
-            payload = None
-            if is_leader:
-                resp = self.pixel_coord_indexes(**kwa)
-                if resp is None:
-                    return None
-
-                logger.debug(info_ndarr(resp, 'detector total rows, cols: '))
-                self._rc_tot_max = [np.max(np.ravel(a)) for a in resp]
-                logger.debug('_rc_tot_max: %s' % str(self._rc_tot_max))
-
-                logmet_init = self._logmet_init
-                logmet_init(info_ndarr(segnums, 'preserve pixel indices for segments '))
-                logmet_init(info_ndarr(resp, 'self.pixel_coord_indexes '))
-
-                rows, cols = [reshape_to_3d(a)[segnums,:,:] for a in resp]
-
-                s = 'evaluate_pixel_coord_indexes:'
-                for i,a in enumerate((rows, cols)): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
-                logmet_init(s)
-
-                img_entries, multinds, nentries = statistics_of_pixel_arrays(rows, cols)
-
-                pix_idx = np.fromiter(multinds.keys(), dtype=np.int64, count=len(multinds)) if multinds else np.empty((0,), dtype=np.int64)
-                img_idx = np.fromiter(multinds.values(), dtype=np.int64, count=len(multinds)) if multinds else np.empty((0,), dtype=np.int64)
-                imgidx = np.fromiter(nentries.keys(), dtype=np.int64, count=len(nentries)) if nentries else np.empty((0,), dtype=np.int64)
-                imgnentries = np.fromiter(nentries.values(), dtype=np.int64, count=len(nentries)) if nentries else np.empty((0,), dtype=np.int64)
-
-                if fillholes:
-                    img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d =\
-                       statistics_of_holes(rows, cols, **kwa)
-                else:
-                    img_pix_ascend_ind = np.empty((0,), dtype=np.int32)
-                    img_holes = np.empty((0,), dtype=bool)
-                    hole_rows = np.empty((0,), dtype=np.int64)
-                    hole_cols = np.empty((0,), dtype=np.int64)
-                    hole_inds1d = np.empty((0,), dtype=np.int64)
-
-                rc_tot_max = np.asarray(self._rc_tot_max, dtype=np.int64)
-
-                payload = {
-                    "pix_rows": rows,
-                    "pix_cols": cols,
-                    "rc_tot_max": rc_tot_max,
-                    "img_entries": img_entries,
-                    "dmulti_pix_idx": pix_idx,
-                    "dmulti_img_idx": img_idx,
-                    "dmulti_imgidx": imgidx,
-                    "dmulti_imgnentries": imgnentries,
-                    "img_pix_ascend_ind": img_pix_ascend_ind,
-                    "img_holes": img_holes,
-                    "hole_rows": hole_rows,
-                    "hole_cols": hole_cols,
-                    "hole_inds1d": hole_inds1d,
-                }
-                specs = {k: (v.shape, str(v.dtype)) for k, v in payload.items()}
-
-            if shm_comm is not None:
-                specs = shm_comm.bcast(specs, root=0)
-            if specs is not None:
-                arrays = {}
-                for name, (shape, dtype_str) in specs.items():
-                    arrays[name], _ = cache.get_or_allocate(key, name, shape, np.dtype(dtype_str), zero_init=False)
-                if is_leader and payload is not None:
-                    for name, arr in arrays.items():
-                        np.copyto(arr, payload[name])
-                if shm_comm is not None:
-                    shm_comm.Barrier()
-
-                self._pix_rc = (arrays["pix_rows"], arrays["pix_cols"])
-                self._rc_tot_max = arrays["rc_tot_max"]
-                self.img_entries = arrays["img_entries"]
-                self.dmulti_pix_to_img_idx = (arrays["dmulti_pix_idx"], arrays["dmulti_img_idx"])
-                self.dmulti_imgidx_numentries = (arrays["dmulti_imgidx"], arrays["dmulti_imgnentries"])
-                self.img_pix_ascend_ind = arrays["img_pix_ascend_ind"]
-                self.img_holes = arrays["img_holes"]
-                self.hole_rows = arrays["hole_rows"]
-                self.hole_cols = arrays["hole_cols"]
-                self.hole_inds1d = arrays["hole_inds1d"]
-                return
-
         resp = self.pixel_coord_indexes(**kwa)
         if resp is None: return None
 
         logger.debug(info_ndarr(resp, 'detector total rows, cols: '))
         self._rc_tot_max = [np.max(np.ravel(a)) for a in resp]
         logger.debug('_rc_tot_max: %s' % str(self._rc_tot_max))
+
+        # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
+        if segnums is None:
+            segnums = self.segment_numbers_total()
 
         logmet_init = self._logmet_init
         logmet_init(info_ndarr(segnums, 'preserve pixel indices for segments '))
@@ -413,6 +257,9 @@ class CalibConstants:
         s = 'evaluate_pixel_coord_indexes:'
         for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logmet_init(s)
+
+        mapmode = kwa.get('mapmode',2)
+        fillholes = kwa.get('fillholes',True)
 
         if mapmode <4:
           self.img_entries, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries=\
