@@ -133,9 +133,6 @@ def generate_engine(engine):
 
     #  Startup
     loop(instr, motion_codes, motion_step, args.start_steps-1) 
-    #  Add pulse picker trigger to last motion_step before exposure
-    instr.append(f'instrset.append( ControlRequest({motion_codes_last}) )')
-    instr.append(f'instrset.append( {motion_step} )')
 
     #  Loop over windows - could use a Branch.conditional for this, but it's not large, and conditional counters are scarce (4).
     for line in range(args.lines_of_windows):
@@ -150,6 +147,10 @@ def generate_engine(engine):
             instr.append(f'rows_anchor = len(instrset)')   #  Start a loop over rows
 
             def one_row(forward=True):
+                #  Add pulse picker trigger to last motion_step before starting exposure
+                instr.append(f'instrset.append( ControlRequest({motion_codes_last}) )')
+                instr.append(f'instrset.append( {motion_step} )')
+
                 for wl in range(args.windows_per_line):
                     w = line*args.windows_per_line + (wl if forward else args.windows_per_line-wl-1)
                     expo_codes      = [0,2]   if engine==0 else (w&0xf) if engine==1 else (w>>4)&0xf
@@ -170,9 +171,6 @@ def generate_engine(engine):
 
                 #  Steps between rows
                 loop(instr, motion_codes, motion_step, args.steps_btw_rows-1, 4-nlevels)
-                #  Add pulse picker trigger to last motion_step before starting exposure
-                instr.append(f'instrset.append( ControlRequest({motion_codes_last}) )')
-                instr.append(f'instrset.append( {motion_step} )')
 
             one_row(True)
             one_row(False)
@@ -195,9 +193,6 @@ def generate_engine(engine):
         if line < args.lines_of_windows-1:
             #  Move to the next line of windows
             loop(instr, motion_codes, motion_step, args.steps_btw_lines-1) 
-            #  Add pulse picker trigger to last motion_step before exposure
-            instr.append(f'instrset.append( ControlRequest({motion_codes_last}) )')
-            instr.append(f'instrset.append( {motion_step} )')
 
     #  Stopping
     loop(instr, motion_codes, motion_step, args.stop_steps)
