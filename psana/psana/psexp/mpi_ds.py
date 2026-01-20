@@ -320,8 +320,6 @@ class RunParallel(Run):
             if hasattr(shared_mem, "barrier"):
                 shared_mem.barrier()
 
-        if hasattr(shared_mem, "barrier"):
-            shared_mem.barrier()
         t_setup_end = time.perf_counter()
         print(
             f"[DEBUG] Rank {rank} shared geo setup total={t_setup_end - t_setup_start:.6f}s"
