@@ -1262,15 +1262,41 @@ class BigDataNode(object):
 
         cn_events = 0
         cn_pass = 0
-        for evt in events:
+        def _extract_dgrams_service_ts(item):
+            if isinstance(item, (list, tuple)):
+                dgrams = item
+                svc = utils.first_service(dgrams)
+                ts = utils.first_timestamp(dgrams)
+                return dgrams, svc, ts
+
+            dgrams = getattr(item, "_dgrams", None)
+            if dgrams is None:
+                raise TypeError("SmdEvents yielded unsupported type")
+
+            svc_fn = getattr(item, "service", None)
+            svc = svc_fn() if callable(svc_fn) else utils.first_service(dgrams)
+
+            ts_attr = getattr(item, "timestamp", None)
+            ts = ts_attr() if callable(ts_attr) else ts_attr
+            if ts is None:
+                ts = utils.first_timestamp(dgrams)
+
+            return dgrams, svc, ts
+
+        for item in events:
             cn_events += 1
-            if evt.service() != TransitionId.L1Accept:
+            try:
+                dgrams, svc, ts = _extract_dgrams_service_ts(item)
+            except Exception as exc:
+                self.logger.debug(f"Skipping smd entry during table build: {exc}")
                 continue
 
-            ts = evt.timestamp
+            if svc != TransitionId.L1Accept:
+                continue
+
             ts_table[ts] = {
                 i: (d.smdinfo[0].offsetAlg.intOffset, d.smdinfo[0].offsetAlg.intDgramSize)
-                for i, d in enumerate(evt._dgrams)
+                for i, d in enumerate(dgrams)
                 if d is not None and hasattr(d, 'smdinfo')
             }
             cn_pass += 1
