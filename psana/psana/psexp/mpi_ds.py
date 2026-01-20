@@ -212,21 +212,7 @@ class RunParallel(Run):
             self.logger.debug("Failed to import UtilsJungfrau for shared calib setup", exc_info=True)
             return
 
-        det_classes = self.dsparms.det_classes.get("normal", {})
-        for (det_name, drp_class_name), drp_class in det_classes.items():
-            if drp_class_name != "raw":
-                continue
-            mod_name = getattr(drp_class, "__module__", "")
-            class_name = getattr(drp_class, "__name__", "").lower()
-            if "jungfrau" not in mod_name and "jungfrau" not in class_name:
-                continue
-            configinfo = self.dsparms.configinfo_dict.get(det_name)
-            if configinfo is None:
-                continue
-            calibconst = self.dsparms.calibconst.get(det_name)
-            if not calibconst:
-                continue
-            env_store = self.esm.stores.get(det_name) if hasattr(self, "esm") else None
+        for det_name, drp_class_name, drp_class, configinfo, calibconst in self._iter_jungfrau_raw():
 
             try:
                 t_build_start = time.perf_counter()
@@ -235,7 +221,7 @@ class RunParallel(Run):
                     drp_class_name,
                     configinfo,
                     calibconst,
-                    env_store,
+                    None,
                     None,
                 )
                 shared = uj.build_shared_jungfrau_calib(
@@ -280,41 +266,7 @@ class RunParallel(Run):
         rank = self.comms.psana_comm.Get_rank() if self.comms is not None else -1
         t_setup_start = time.perf_counter()
 
-        try:
-            from psana.detector.areadetector import AreaDetector
-        except Exception:
-            self.logger.debug("Failed to import AreaDetector for shared geometry cache", exc_info=True)
-            return
-
-        det_classes = self.dsparms.det_classes.get("normal", {})
-        targets = []
-        for (det_name, drp_class_name), drp_class in det_classes.items():
-            if drp_class_name != "raw":
-                continue
-            mod_name = getattr(drp_class, "__module__", "")
-            class_name = getattr(drp_class, "__name__", "").lower()
-            if "jungfrau" not in mod_name and "jungfrau" not in class_name:
-                continue
-            try:
-                is_area = issubclass(drp_class, AreaDetector)
-            except Exception:
-                is_area = False
-            if not is_area:
-                continue
-            targets.append((det_name, drp_class_name, drp_class))
-        targets.sort(key=lambda item: (item[0], item[1]))
-
-        if hasattr(shared_mem, "barrier"):
-            shared_mem.barrier()
-
-        for det_name, drp_class_name, drp_class in targets:
-            configinfo = self.dsparms.configinfo_dict.get(det_name)
-            if configinfo is None:
-                continue
-            calibconst = self.dsparms.calibconst.get(det_name)
-            if calibconst is None:
-                continue
-            env_store = self.esm.stores.get(det_name) if hasattr(self, "esm") else None
+        for det_name, drp_class_name, drp_class, configinfo, calibconst in self._iter_jungfrau_raw(area_only=True):
 
             try:
                 iface = drp_class(
@@ -322,7 +274,7 @@ class RunParallel(Run):
                     drp_class_name,
                     configinfo,
                     calibconst,
-                    env_store,
+                    None,
                     None,
                 )
             except Exception as exc:
@@ -374,6 +326,34 @@ class RunParallel(Run):
         print(
             f"[DEBUG] Rank {rank} shared geo setup total={t_setup_end - t_setup_start:.6f}s"
         )
+
+    def _iter_jungfrau_raw(self, area_only=False):
+        det_classes = self.dsparms.det_classes.get("normal", {})
+        targets = []
+        for (det_name, drp_class_name), drp_class in det_classes.items():
+            if drp_class_name != "raw":
+                continue
+            mod_name = getattr(drp_class, "__module__", "")
+            class_name = getattr(drp_class, "__name__", "").lower()
+            if "jungfrau" not in mod_name and "jungfrau" not in class_name:
+                continue
+            if area_only:
+                try:
+                    from psana.detector.areadetector import AreaDetector
+                    is_area = issubclass(drp_class, AreaDetector)
+                except Exception:
+                    is_area = False
+                if not is_area:
+                    continue
+            configinfo = self.dsparms.configinfo_dict.get(det_name)
+            if configinfo is None:
+                continue
+            calibconst = self.dsparms.calibconst.get(det_name)
+            if calibconst is None:
+                continue
+            targets.append((det_name, drp_class_name, drp_class, configinfo, calibconst))
+        targets.sort(key=lambda item: (item[0], item[1]))
+        return targets
 
     def _init_marching_shared_buffers(self):
         if not (
