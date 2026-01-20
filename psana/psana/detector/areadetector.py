@@ -100,6 +100,10 @@ class AreaDetector(DetectorImpl):
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             kwa.setdefault('logmet_init', self._logmet_init)
             self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
+            shared_cache = getattr(self, "_shared_calibc_cache", None)
+            if shared_cache is not None:
+                self._calibc_._shared_calibc_cache = shared_cache
+                self._calibc_._drp_class_name = getattr(self, "_drp_class_name", "raw")
             self._apply_calibc_preload_cache()
             self._logmet_init('AreaDetector._calibconstants - makes CalibConstants\n%s'%\
                               self._calibc_.info_calibconst())
@@ -210,7 +214,6 @@ class AreaDetector(DetectorImpl):
             local_ix = local_iy = None
             shape_dtype = None
             if is_leader:
-                t0_idx = time.perf_counter()
                 local_ix, local_iy = geo.get_pixel_coord_indexes(\
                     pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
                     xy0_off_pix       = kwa.get('xy0_off_pix',None),\
@@ -218,7 +221,6 @@ class AreaDetector(DetectorImpl):
                     cframe            = kwa.get('cframe',0))
                 local_ix = self._arr_for_daq_segments(local_ix, **kwa)
                 local_iy = self._arr_for_daq_segments(local_iy, **kwa)
-                print(f"det.raw._pixel_coord_indexes compute (leader) {time.perf_counter() - t0_idx:.6f}s")
                 shape_dtype = (
                     local_ix.shape,
                     str(local_ix.dtype),
@@ -228,13 +230,11 @@ class AreaDetector(DetectorImpl):
             if shm_comm is not None:
                 shape_dtype = shm_comm.bcast(shape_dtype, root=0)
             if shape_dtype is None:
-                t0_idx = time.perf_counter()
                 ix,iy = geo.get_pixel_coord_indexes(\
                     pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
                     xy0_off_pix       = kwa.get('xy0_off_pix',None),\
                     do_tilt           = kwa.get('do_tilt',True),\
                     cframe            = kwa.get('cframe',0))
-                print(f"det.raw._pixel_coord_indexes compute (fallback) {time.perf_counter() - t0_idx:.6f}s")
                 return self._arr_for_daq_segments(ix, **kwa),\
                        self._arr_for_daq_segments(iy, **kwa)
 
@@ -248,13 +248,11 @@ class AreaDetector(DetectorImpl):
                 shm_comm.Barrier()
             return arr_ix, arr_iy
 
-        t0_idx = time.perf_counter()
         ix,iy = geo.get_pixel_coord_indexes(\
             pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
             xy0_off_pix       = kwa.get('xy0_off_pix',None),\
             do_tilt           = kwa.get('do_tilt',True),\
             cframe            = kwa.get('cframe',0))
-        print(f"det.raw._pixel_coord_indexes compute (no-shared) {time.perf_counter() - t0_idx:.6f}s")
         return self._arr_for_daq_segments(ix, **kwa),\
                self._arr_for_daq_segments(iy, **kwa)
 
@@ -299,14 +297,12 @@ class AreaDetector(DetectorImpl):
             local_x = local_y = local_z = None
             shape_dtype = None
             if is_leader:
-                t0_coords = time.perf_counter()
                 local_x, local_y, local_z = geo.get_pixel_coords(\
                     do_tilt = kwa.get('do_tilt',True),\
                     cframe = kwa.get('cframe',0))
                 local_x = self._arr_for_daq_segments(local_x, **kwa)
                 local_y = self._arr_for_daq_segments(local_y, **kwa)
                 local_z = self._arr_for_daq_segments(local_z, **kwa)
-                print(f"det.raw._pixel_coords compute (leader) {time.perf_counter() - t0_coords:.6f}s")
                 shape_dtype = (
                     local_x.shape,
                     str(local_x.dtype),
@@ -318,11 +314,9 @@ class AreaDetector(DetectorImpl):
             if shm_comm is not None:
                 shape_dtype = shm_comm.bcast(shape_dtype, root=0)
             if shape_dtype is None:
-                t0_coords = time.perf_counter()
                 x,y,z = geo.get_pixel_coords(\
                     do_tilt = kwa.get('do_tilt',True),\
                     cframe = kwa.get('cframe',0))
-                print(f"det.raw._pixel_coords compute (fallback) {time.perf_counter() - t0_coords:.6f}s")
                 return self._arr_for_daq_segments(x, **kwa),\
                        self._arr_for_daq_segments(y, **kwa),\
                        self._arr_for_daq_segments(z, **kwa)
@@ -339,11 +333,9 @@ class AreaDetector(DetectorImpl):
                 shm_comm.Barrier()
             return arr_x, arr_y, arr_z
 
-        t0_coords = time.perf_counter()
         x,y,z = geo.get_pixel_coords(\
             do_tilt = kwa.get('do_tilt',True),\
             cframe = kwa.get('cframe',0))
-        print(f"det.raw._pixel_coords compute (no-shared) {time.perf_counter() - t0_coords:.6f}s")
         return self._arr_for_daq_segments(x, **kwa),\
                self._arr_for_daq_segments(y, **kwa),\
                self._arr_for_daq_segments(z, **kwa)

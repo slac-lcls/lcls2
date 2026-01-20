@@ -26,6 +26,7 @@ from psana.psexp.step import Step
 from psana.psexp.tools import mode, get_smd_n_events
 from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.detector.shared_geo_cache import SharedGeoCache
+from psana.detector.shared_calibc_cache import SharedCalibcCache
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.calib_xtc import CalibXtcConverter
@@ -263,6 +264,8 @@ class RunParallel(Run):
         shared_mem = self._geo_shared_mem
         cache = SharedGeoCache(shared_mem=shared_mem, logger=self.logger)
         self._shared_geo_cache = cache
+        calibc_cache = SharedCalibcCache(shared_mem=shared_mem, logger=self.logger)
+        self._shared_calibc_cache = calibc_cache
         rank = self.comms.psana_comm.Get_rank() if self.comms is not None else -1
         t_setup_start = time.perf_counter()
 
@@ -287,6 +290,7 @@ class RunParallel(Run):
                 continue
 
             setattr(iface, "_shared_geo_cache", cache)
+            setattr(iface, "_shared_calibc_cache", calibc_cache)
             try:
                 t0 = time.perf_counter()
                 iface._pixel_coords()
@@ -294,18 +298,39 @@ class RunParallel(Run):
                 t0 = time.perf_counter()
                 iface._pixel_coord_indexes()
                 t_indexes = time.perf_counter() - t0
+                t_cached = 0.0
+                cache_payload = None
                 if shared_mem.is_leader:
                     cc = iface._calibconstants()
                     if cc is not None:
                         t0 = time.perf_counter()
-                        cc.cached_pixel_coord_indexes(segnums=iface._segment_numbers)
-                        t_cached = time.perf_counter() - t0
-                    else:
-                        t_cached = 0.0
-                else:
-                    t_cached = 0.0
-                print(
-                    f"[DEBUG] Rank {rank} shared geo det={det_name} "
+                        cache_payload = cc.seed_cached_pixel_coord_indexes_shared(
+                            segnums=iface._segment_numbers
+                        )
+                        if cache_payload is not None:
+                            t_cached = time.perf_counter() - t0
+                meta_specs = None
+                if cache_payload is not None:
+                    meta_specs = (cache_payload["meta"], cache_payload["specs"])
+                shm_comm = getattr(shared_mem, "shm_comm", None)
+                if shm_comm is not None:
+                    meta_specs = shm_comm.bcast(meta_specs, root=0)
+                if meta_specs is not None:
+                    meta, specs = meta_specs
+                    if meta is not None and specs is not None:
+                        key = calibc_cache.make_key(*meta)
+                        shared_arrays = {}
+                        for name, (shape, dtype_str) in specs.items():
+                            arr, _ = calibc_cache.get_or_allocate(
+                                key, name, shape, np.dtype(dtype_str)
+                            )
+                            shared_arrays[name] = arr
+                        if shared_mem.is_leader and cache_payload is not None:
+                            for name, arr in cache_payload["arrays"].items():
+                                shared_arrays[name][:] = arr
+                        calibc_cache.barrier()
+                self.logger.debug(
+                    f"shared geo det={det_name} "
                     f"pixel_coords={t_coords:.6f}s "
                     f"pixel_indexes={t_indexes:.6f}s "
                     f"cached_indexes={t_cached:.6f}s"
@@ -321,8 +346,8 @@ class RunParallel(Run):
                 shared_mem.barrier()
 
         t_setup_end = time.perf_counter()
-        print(
-            f"[DEBUG] Rank {rank} shared geo setup total={t_setup_end - t_setup_start:.6f}s"
+        self.logger.debug(
+            f"shared geo setup total={t_setup_end - t_setup_start:.6f}s"
         )
 
     def _iter_jungfrau_raw(self, area_only=False):
