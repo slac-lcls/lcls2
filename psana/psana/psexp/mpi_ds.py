@@ -25,6 +25,7 @@ from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
 from psana.psexp.tools import mode, get_smd_n_events
 from psana.psexp.mpi_shmem import MPISharedMemory
+from psana.detector.shared_geo_cache import SharedGeoCache
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.calib_xtc import CalibXtcConverter
@@ -96,6 +97,7 @@ class RunParallel(Run):
 
         self._distribute_calib_xtc()
         self._setup_jungfrau_shared_calib()
+        self._setup_jungfrau_shared_geometry_cache()
 
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
@@ -259,6 +261,119 @@ class RunParallel(Run):
                         det_name,
                         t_build_end - t_build_start,
                     )
+
+    def _setup_jungfrau_shared_geometry_cache(self):
+        flag = os.environ.get("PS_GEO_SHARE", "0").strip().lower()
+        if flag not in ("1", "true", "yes", "on"):
+            return
+        if mode != "mpi" or self.comms is None:
+            return
+        node_comm = self.comms.get_node_comm()
+        if node_comm in (None, MPI.COMM_NULL):
+            return
+
+        if getattr(self, "_geo_shared_mem", None) is None:
+            self._geo_shared_mem = MPISharedMemory(shm_comm=node_comm)
+        shared_mem = self._geo_shared_mem
+        cache = SharedGeoCache(shared_mem=shared_mem, logger=self.logger)
+        self._shared_geo_cache = cache
+        rank = self.comms.psana_comm.Get_rank() if self.comms is not None else -1
+        t_setup_start = time.perf_counter()
+
+        try:
+            from psana.detector.areadetector import AreaDetector
+        except Exception:
+            self.logger.debug("Failed to import AreaDetector for shared geometry cache", exc_info=True)
+            return
+
+        det_classes = self.dsparms.det_classes.get("normal", {})
+        targets = []
+        for (det_name, drp_class_name), drp_class in det_classes.items():
+            if drp_class_name != "raw":
+                continue
+            mod_name = getattr(drp_class, "__module__", "")
+            class_name = getattr(drp_class, "__name__", "").lower()
+            if "jungfrau" not in mod_name and "jungfrau" not in class_name:
+                continue
+            try:
+                is_area = issubclass(drp_class, AreaDetector)
+            except Exception:
+                is_area = False
+            if not is_area:
+                continue
+            targets.append((det_name, drp_class_name, drp_class))
+        targets.sort(key=lambda item: (item[0], item[1]))
+
+        if hasattr(shared_mem, "barrier"):
+            shared_mem.barrier()
+
+        for det_name, drp_class_name, drp_class in targets:
+            configinfo = self.dsparms.configinfo_dict.get(det_name)
+            if configinfo is None:
+                continue
+            calibconst = self.dsparms.calibconst.get(det_name)
+            if calibconst is None:
+                continue
+            env_store = self.esm.stores.get(det_name) if hasattr(self, "esm") else None
+
+            try:
+                iface = drp_class(
+                    det_name,
+                    drp_class_name,
+                    configinfo,
+                    calibconst,
+                    env_store,
+                    None,
+                )
+            except Exception as exc:
+                self.logger.debug(
+                    "Failed to init area detector for shared geometry %s: %s",
+                    det_name,
+                    exc,
+                    exc_info=True,
+                )
+                continue
+
+            setattr(iface, "_shared_geo_cache", cache)
+            try:
+                t0 = time.perf_counter()
+                iface._pixel_coords()
+                t_coords = time.perf_counter() - t0
+                t0 = time.perf_counter()
+                iface._pixel_coord_indexes()
+                t_indexes = time.perf_counter() - t0
+                if shared_mem.is_leader:
+                    cc = iface._calibconstants()
+                    if cc is not None:
+                        t0 = time.perf_counter()
+                        cc.cached_pixel_coord_indexes(segnums=iface._segment_numbers)
+                        t_cached = time.perf_counter() - t0
+                    else:
+                        t_cached = 0.0
+                else:
+                    t_cached = 0.0
+                print(
+                    f"[DEBUG] Rank {rank} shared geo det={det_name} "
+                    f"pixel_coords={t_coords:.6f}s "
+                    f"pixel_indexes={t_indexes:.6f}s "
+                    f"cached_indexes={t_cached:.6f}s"
+                )
+            except Exception as exc:
+                self.logger.debug(
+                    "Failed to seed shared geometry for %s: %s",
+                    det_name,
+                    exc,
+                    exc_info=True,
+                )
+            if hasattr(shared_mem, "barrier"):
+                shared_mem.barrier()
+
+        if hasattr(shared_mem, "barrier"):
+            shared_mem.barrier()
+        t_setup_end = time.perf_counter()
+        print(
+            f"[DEBUG] Rank {rank} shared geo setup total={t_setup_end - t_setup_start:.6f}s"
+        )
 
     def _init_marching_shared_buffers(self):
         if not (

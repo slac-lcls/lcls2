@@ -99,10 +99,14 @@ class AreaDetector(DetectorImpl):
             cc = {} if self._calibconst is None else self._calibconst # defined in DetectorImpl # dict  of {ctype:(data, metadata)}
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             kwa.setdefault('logmet_init', self._logmet_init)
+            kwa.setdefault('odet', self)
             self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
             self._apply_calibc_preload_cache()
             self._logmet_init('AreaDetector._calibconstants - makes CalibConstants\n%s'%\
                               self._calibc_.info_calibconst())
+        else:
+            if getattr(self._calibc_, "_kwa", None) is not None and "odet" not in self._calibc_._kwa:
+                self._calibc_._kwa["odet"] = self
         return self._calibc_
 
 
@@ -170,32 +174,186 @@ class AreaDetector(DetectorImpl):
 
 
     def _pixel_coord_indexes(self, **kwa):
-        logger.debug('_pixel_coord_indexes')
         geo = self._det_geo()
         if geo is None: return None
+        cache = getattr(self, "_shared_geo_cache", None)
+        if cache is not None and getattr(cache, "enabled", False):
+            geotxt = None
+            calibconst = getattr(self, "_calibconst", None)
+            if isinstance(calibconst, dict):
+                geotxt_entry = calibconst.get("geometry")
+                if geotxt_entry:
+                    geotxt = geotxt_entry[0]
+            if geotxt is None and self._path_geo_default is not None:
+                try:
+                    geotxt = self._det_geotxt_default()
+                except Exception:
+                    geotxt = None
+            segnums = None if kwa.get("all_segs", False) else self._segment_numbers
+            geom_id = cache.build_geom_id(
+                geotxt,
+                segnums,
+                {
+                    "pix_scale_size_um": kwa.get("pix_scale_size_um", None),
+                    "xy0_off_pix": kwa.get("xy0_off_pix", None),
+                    "do_tilt": kwa.get("do_tilt", True),
+                    "cframe": kwa.get("cframe", 0),
+                    "all_segs": kwa.get("all_segs", False),
+                },
+            )
+            det_name = getattr(self, "_det_name", "unknown")
+            drp_class = getattr(self, "_drp_class_name", "raw")
+            key = cache.make_key(det_name, drp_class, geom_id)
+            cached_ix = cache.get_if_present(key, "pix_rows")
+            cached_iy = cache.get_if_present(key, "pix_cols")
+            if cached_ix is not None and cached_iy is not None:
+                return cached_ix, cached_iy
+
+            shm_comm = getattr(cache.shared_mem, "shm_comm", None)
+            is_leader = getattr(cache.shared_mem, "is_leader", False)
+            local_ix = local_iy = None
+            shape_dtype = None
+            if is_leader:
+                t0_idx = time.perf_counter()
+                local_ix, local_iy = geo.get_pixel_coord_indexes(\
+                    pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
+                    xy0_off_pix       = kwa.get('xy0_off_pix',None),\
+                    do_tilt           = kwa.get('do_tilt',True),\
+                    cframe            = kwa.get('cframe',0))
+                local_ix = self._arr_for_daq_segments(local_ix, **kwa)
+                local_iy = self._arr_for_daq_segments(local_iy, **kwa)
+                print(f"det.raw._pixel_coord_indexes compute (leader) {time.perf_counter() - t0_idx:.6f}s")
+                shape_dtype = (
+                    local_ix.shape,
+                    str(local_ix.dtype),
+                    local_iy.shape,
+                    str(local_iy.dtype),
+                )
+            if shm_comm is not None:
+                shape_dtype = shm_comm.bcast(shape_dtype, root=0)
+            if shape_dtype is None:
+                t0_idx = time.perf_counter()
+                ix,iy = geo.get_pixel_coord_indexes(\
+                    pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
+                    xy0_off_pix       = kwa.get('xy0_off_pix',None),\
+                    do_tilt           = kwa.get('do_tilt',True),\
+                    cframe            = kwa.get('cframe',0))
+                print(f"det.raw._pixel_coord_indexes compute (fallback) {time.perf_counter() - t0_idx:.6f}s")
+                return self._arr_for_daq_segments(ix, **kwa),\
+                       self._arr_for_daq_segments(iy, **kwa)
+
+            (sx, dx, sy, dy) = shape_dtype
+            arr_ix, _ = cache.get_or_allocate(key, "pix_rows", sx, np.dtype(dx), zero_init=False)
+            arr_iy, _ = cache.get_or_allocate(key, "pix_cols", sy, np.dtype(dy), zero_init=False)
+            if is_leader and local_ix is not None:
+                np.copyto(arr_ix, local_ix)
+                np.copyto(arr_iy, local_iy)
+            if shm_comm is not None:
+                shm_comm.Barrier()
+            return arr_ix, arr_iy
+
+        t0_idx = time.perf_counter()
         ix,iy = geo.get_pixel_coord_indexes(\
             pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
             xy0_off_pix       = kwa.get('xy0_off_pix',None),\
             do_tilt           = kwa.get('do_tilt',True),\
             cframe            = kwa.get('cframe',0))
+        print(f"det.raw._pixel_coord_indexes compute (no-shared) {time.perf_counter() - t0_idx:.6f}s")
         return self._arr_for_daq_segments(ix, **kwa),\
                self._arr_for_daq_segments(iy, **kwa)
 
 
     def _pixel_coords(self, **kwa):
-        logger.debug('_pixel_coords')
         geo = self._det_geo()
         if geo is None: return None
+        cache = getattr(self, "_shared_geo_cache", None)
+        if cache is not None and getattr(cache, "enabled", False):
+            geotxt = None
+            calibconst = getattr(self, "_calibconst", None)
+            if isinstance(calibconst, dict):
+                geotxt_entry = calibconst.get("geometry")
+                if geotxt_entry:
+                    geotxt = geotxt_entry[0]
+            if geotxt is None and self._path_geo_default is not None:
+                try:
+                    geotxt = self._det_geotxt_default()
+                except Exception:
+                    geotxt = None
+            segnums = None if kwa.get("all_segs", False) else self._segment_numbers
+            geom_id = cache.build_geom_id(
+                geotxt,
+                segnums,
+                {
+                    "do_tilt": kwa.get("do_tilt", True),
+                    "cframe": kwa.get("cframe", 0),
+                    "all_segs": kwa.get("all_segs", False),
+                },
+            )
+            det_name = getattr(self, "_det_name", "unknown")
+            drp_class = getattr(self, "_drp_class_name", "raw")
+            key = cache.make_key(det_name, drp_class, geom_id)
+            cached_x = cache.get_if_present(key, "pix_x")
+            cached_y = cache.get_if_present(key, "pix_y")
+            cached_z = cache.get_if_present(key, "pix_z")
+            if cached_x is not None and cached_y is not None and cached_z is not None:
+                return cached_x, cached_y, cached_z
+
+            shm_comm = getattr(cache.shared_mem, "shm_comm", None)
+            is_leader = getattr(cache.shared_mem, "is_leader", False)
+            local_x = local_y = local_z = None
+            shape_dtype = None
+            if is_leader:
+                t0_coords = time.perf_counter()
+                local_x, local_y, local_z = geo.get_pixel_coords(\
+                    do_tilt = kwa.get('do_tilt',True),\
+                    cframe = kwa.get('cframe',0))
+                local_x = self._arr_for_daq_segments(local_x, **kwa)
+                local_y = self._arr_for_daq_segments(local_y, **kwa)
+                local_z = self._arr_for_daq_segments(local_z, **kwa)
+                print(f"det.raw._pixel_coords compute (leader) {time.perf_counter() - t0_coords:.6f}s")
+                shape_dtype = (
+                    local_x.shape,
+                    str(local_x.dtype),
+                    local_y.shape,
+                    str(local_y.dtype),
+                    local_z.shape,
+                    str(local_z.dtype),
+                )
+            if shm_comm is not None:
+                shape_dtype = shm_comm.bcast(shape_dtype, root=0)
+            if shape_dtype is None:
+                t0_coords = time.perf_counter()
+                x,y,z = geo.get_pixel_coords(\
+                    do_tilt = kwa.get('do_tilt',True),\
+                    cframe = kwa.get('cframe',0))
+                print(f"det.raw._pixel_coords compute (fallback) {time.perf_counter() - t0_coords:.6f}s")
+                return self._arr_for_daq_segments(x, **kwa),\
+                       self._arr_for_daq_segments(y, **kwa),\
+                       self._arr_for_daq_segments(z, **kwa)
+
+            (sx, dx, sy, dy, sz, dz) = shape_dtype
+            arr_x, _ = cache.get_or_allocate(key, "pix_x", sx, np.dtype(dx), zero_init=False)
+            arr_y, _ = cache.get_or_allocate(key, "pix_y", sy, np.dtype(dy), zero_init=False)
+            arr_z, _ = cache.get_or_allocate(key, "pix_z", sz, np.dtype(dz), zero_init=False)
+            if is_leader and local_x is not None:
+                np.copyto(arr_x, local_x)
+                np.copyto(arr_y, local_y)
+                np.copyto(arr_z, local_z)
+            if shm_comm is not None:
+                shm_comm.Barrier()
+            return arr_x, arr_y, arr_z
+
+        t0_coords = time.perf_counter()
         x,y,z = geo.get_pixel_coords(\
             do_tilt = kwa.get('do_tilt',True),\
             cframe = kwa.get('cframe',0))
+        print(f"det.raw._pixel_coords compute (no-shared) {time.perf_counter() - t0_coords:.6f}s")
         return self._arr_for_daq_segments(x, **kwa),\
                self._arr_for_daq_segments(y, **kwa),\
                self._arr_for_daq_segments(z, **kwa)
 
 
     def _pixel_xy_at_z(self, **kwa):
-        logger.debug('_pixel_xy_at_z')
         geo = self._det_geo()
         if geo is None: return None
         x,y = geo.get_pixel_xy_at_z(\
