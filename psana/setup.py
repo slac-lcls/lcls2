@@ -418,7 +418,7 @@ if 'HSD' in BUILD_LIST :
                     extra_compile_args=extra_cxx_compile_args,
                     include_dirs=[np.get_include(),
                                   "../install/include",
-                                  os.path.join(instdir, 'include')],
+                                  os.path.join(instdir, 'include'), psalg_headers, xtc_headers],
                     library_dirs = [os.path.join(instdir, 'lib')],
                     extra_link_args = extra_link_args_rpath,
     )
@@ -431,7 +431,7 @@ if 'NDARRAY' in BUILD_LIST :
                              "psana/peakFinder/src/WFAlgos.cc"],\
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
-                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include')],
+                    include_dirs=["psana",os.path.join(sys.prefix,'include'),np.get_include(),os.path.join(instdir,'include'), psalg_headers, xtc_headers],
                     library_dirs = [os.path.join(instdir, 'lib')],
                     libraries=[],
                     extra_link_args = extra_link_args,
