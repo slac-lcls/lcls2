@@ -11,7 +11,7 @@ cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 psana_setup_args=""
 force_clean=0
-no_daq=1
+no_daq=0
 no_ana=0
 no_shmem=0
 build_ext_list=""
@@ -20,7 +20,7 @@ while getopts "c:p:s:b:fdam" opt; do
   case $opt in
     c) cmake_option="$OPTARG"
     ;;
-    d) no_daq=1
+    d) no_daq=0
     ;;
     a) no_ana=1
     ;;
@@ -68,7 +68,7 @@ function cmake_build() {
     shift
     mkdir -p build
     cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH -DCMAKE_BUILD_TYPE=$cmake_option $@  ..
+    cmake -DNO_DAQ=$no_daq -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH -DCMAKE_BUILD_TYPE=$cmake_option $@  ..
     make -j 4 install
     cd ../..
 }

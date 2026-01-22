@@ -9,13 +9,13 @@ add_library(trigger SHARED
 )
 
 target_include_directories(trigger PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(trigger
-  xtcdata::xtc
+  xtc
   service
   ${PYTHON_LIBRARIES}
   Threads::Threads
@@ -31,13 +31,13 @@ add_library(mfxTripperTeb SHARED
 )
 
 target_include_directories(mfxTripperTeb PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(mfxTripperTeb
-  xtcdata::xtc
+  xtc
   trigger
   nlohmann_json::nlohmann_json
   epics::ca
@@ -51,13 +51,13 @@ add_library(tmoTrigger SHARED
 )
 
 target_include_directories(tmoTrigger PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(tmoTrigger
-  xtcdata::xtc
+  xtc
   trigger
   nlohmann_json::nlohmann_json
 )
@@ -71,13 +71,13 @@ add_library(tmoTeb SHARED
 )
 
 target_include_directories(tmoTeb PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(tmoTeb
-  xtcdata::xtc
+  xtc
   trigger
 )
 
@@ -97,13 +97,13 @@ if(CMAKE_CUDA_COMPILER)
   )
 
   target_include_directories(tmoTeb_gpu PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
     $<INSTALL_INTERFACE:include>
     ${PYTHON_INCLUDE_DIRS}
   )
 
   target_link_libraries(tmoTeb_gpu
-    xtcdata::xtc
+    xtc
     trigger
     CUDA::cudart
     CUDA::cuda_driver
@@ -119,13 +119,13 @@ add_library(tstTebPy SHARED
 )
 
 target_include_directories(tstTebPy PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(tstTebPy
-  xtcdata::xtc
+  xtc
   trigger
 )
 
@@ -137,13 +137,13 @@ add_library(calibTrigger SHARED
 )
 
 target_include_directories(calibTrigger PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
 )
 
 target_link_libraries(calibTrigger
-  xtcdata::xtc
+  xtc
   trigger
 )
 
@@ -168,3 +168,14 @@ install(TARGETS
   tmoTeb_gpu
 )
 endif()
+
+add_custom_command(TARGET trigger
+    POST_BUILD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/../.."
+    COMMAND echo "PIP INSTALLING PSDAQ"
+    COMMAND ${CMAKE_COMMAND} -E env
+        INSTDIR=${CMAKE_INSTALL_PREFIX}
+        PSALGDIR=${CMAKE_BINARY_DIR}/psalg/psalg
+        XTCDATADIR=${CMAKE_BINARY_DIR}/xtcdata/xtcdata/xtc
+        pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
+)

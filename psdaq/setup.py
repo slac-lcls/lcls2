@@ -87,19 +87,37 @@ PACKAGE_DATA = {}
 SCRIPTS = []
 ENTRY_POINTS = {}
 
+this_file = os.path.abspath(__file__)
+repo_root = os.path.abspath(os.path.join(this_file, "../.."))
+
 if xtcdatadir_env:
     xtc_headers =  os.path.join(xtcdatadir, 'include')
     xtc_lib_path = os.path.join(xtcdatadir, 'lib')
 else:
-    xtc_headers =  os.path.join(instdir, 'include')
-    xtc_lib_path = os.path.join(instdir, 'lib')
+    xtc_headers = os.path.join(repo_root, "xtcdata")
+    xtc_lib_path = os.path.join(repo_root, "build", "xtcdata", "xtcdata", "xtc")
 
 if psdaqdir_env:
-    psdaq_headers =  os.path.join(psdaqdir, 'include')
-    psdaq_lib_path = os.path.join(psdaqdir, 'lib')
+    psdaq_headers = os.path.join(psdaqdir, 'include')
+    psdaq_lib_dirs = [os.path.join(psdaqdir, 'lib')]
 else:
-    psdaq_headers =  os.path.join(instdir, 'include')
-    psdaq_lib_path = os.path.join(instdir, 'lib')
+    psdaq_headers = os.path.join(repo_root, 'psdaq')
+    psdaq_lib_dirs = [
+        os.path.join(repo_root, "build", "psdaq", "psdaq"),           
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "aes-stream-drivers"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "app"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "bld"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "eb"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "epicstools"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "hsd"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "mmhw"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "monreq"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "pgp"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "service"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "tpr"),
+        os.path.join(repo_root, "build", "psdaq", "psdaq", "trigger"),
+    ]
+
 
 if 'PSDAQ' in BUILD_LIST :
     PACKAGES = find_packages()
@@ -191,7 +209,7 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
                     sources=["psdaq/trigger/EbDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
                     include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path]+psdaq_lib_dirs,
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -202,7 +220,7 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
                     sources=["psdaq/trigger/ResultDgram.pyx"],
                     libraries = ['xtc','service','trigger'],
                     include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path]+psdaq_lib_dirs,
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -213,7 +231,7 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
                     sources=["psdaq/trigger/TmoTebData.pyx"],
                     libraries = ['xtc','service','trigger'],
                     include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path]+psdaq_lib_dirs,
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,
@@ -224,7 +242,7 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
                     sources=["psdaq/trigger/TimingTebData.pyx"],
                     libraries = ['xtc','service','trigger'],
                     include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
-                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path]+psdaq_lib_dirs,
                     language="c++",
                     extra_compile_args = extra_cxx_compile_args,
                     extra_link_args = extra_link_args_rpath,

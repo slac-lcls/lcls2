@@ -1,10 +1,6 @@
 cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 project(xtcdata)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
@@ -48,3 +44,5 @@ install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/xtcdataConfig.cmake
     DESTINATION lib/cmake/xtcdata
 )
+
+

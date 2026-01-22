@@ -13,14 +13,14 @@ add_library(utilities SHARED
 )
 
 target_include_directories(utilities PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
   ${PYTHON_INCLUDE_DIRS}
   Threads::Threads
 )
 
 target_link_libraries(utilities
-  xtcdata::xtc
+  xtc
   service
   libfabric::fabric
   ${PYTHON_LIBRARIES}
@@ -35,7 +35,7 @@ add_library(contributor SHARED
 )
 
 target_include_directories(contributor PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 
@@ -54,7 +54,7 @@ add_library(eventBuilder SHARED
 )
 
 target_include_directories(eventBuilder PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 
@@ -90,7 +90,7 @@ add_executable(teb
 
 target_include_directories(teb PUBLIC
   $<INSTALL_INTERFACE:include>
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   ${PYTHON_INCLUDE_DIRS}
 )
 
@@ -99,7 +99,7 @@ target_include_directories(teb PUBLIC
 
 #target_include_directories(ibMon PUBLIC
 #  $<INSTALL_INTERFACE:include>
-#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 #  $ENV{CONDA_PREFIX}/include
 #)
 
@@ -176,7 +176,7 @@ target_link_libraries(teb
   Threads::Threads
   rt
   dl
-  xtcdata::xtc
+  xtc
   ${PYTHON_LIBRARIES}
 )
 
@@ -200,7 +200,7 @@ install(TARGETS
 #add_executable(tstIndexPool    tstIndexPool.cc IndexPool.cc)
 #
 #target_include_directories(tstIndexPool PUBLIC
-#  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 #  $<INSTALL_INTERFACE:include>
 #)
 #
@@ -210,7 +210,7 @@ install(TARGETS
 add_executable(tstClocks    tstClocks.cc)
 
 target_include_directories(tstClocks PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
   $<INSTALL_INTERFACE:include>
 )
 
@@ -264,7 +264,7 @@ target_link_libraries(tstClocks
 #target_compile_options(teb  PRIVATE -pg)
 #
 #target_link_libraries(ctrb
-#  xtcdata::xtc
+#  xtc
 #  service
 #  collection
 #  fabric
@@ -275,7 +275,7 @@ target_link_libraries(tstClocks
 #)
 #
 #target_link_libraries(teb
-#  xtcdata::xtc
+#  xtc
 #  service
 #  collection
 #  fabric

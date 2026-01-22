@@ -1,3 +1,6 @@
+message(STATUS "xtc/CMAKE_CURRENT_SOURCE_DIR = ${CMAKE_CURRENT_SOURCE_DIR}")
+message(STATUS "xtc/CMAKE_SOURCE_DIR         = ${CMAKE_SOURCE_DIR}")
+
 add_library(xtc SHARED
     src/TransitionId.cc
     src/XtcIterator.cc
@@ -14,7 +17,7 @@ add_library(xtc SHARED
 )
 
 target_include_directories(xtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>   # one level up
     $<INSTALL_INTERFACE:include>
 )
 
@@ -35,9 +38,10 @@ add_library(staticXtc STATIC
 )
 
 target_include_directories(staticXtc PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>   # one level up
     $<INSTALL_INTERFACE:include>
 )
+
 
 install(FILES
     Level.hh
@@ -72,3 +76,8 @@ install(TARGETS xtc staticXtc
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
 )
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        DESTINATION include/xtcdata/xtc
+        FILES_MATCHING PATTERN "*.hh")
+

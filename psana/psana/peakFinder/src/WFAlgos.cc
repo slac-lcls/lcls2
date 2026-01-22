@@ -1,6 +1,6 @@
 
 #include <iostream> // cout
-#include "../WFAlgos.hh"
+#include "../include/WFAlgos.hh"
 //#include "psana/peakFinder/WFAlgos.hh"
 
 //#include <list>

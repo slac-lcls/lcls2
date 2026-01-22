@@ -1,20 +1,10 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
-
 project(psalg)
-
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-add_compile_options(-Wall)
-add_compile_options(-Wno-uninitialized)
-add_compile_options(-fno-omit-frame-pointer)
 
 set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-find_package(xtcdata REQUIRED)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 find_package(RapidJSON REQUIRED)
 find_package(CURL REQUIRED)
 find_package(OpenMP REQUIRED)
@@ -44,3 +34,5 @@ install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/psalgConfig.cmake
     DESTINATION lib/cmake/psalg
 )
+
+

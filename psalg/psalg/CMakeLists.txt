@@ -11,11 +11,10 @@ endif()
 
 add_library(psalg SHARED
     calib/src/ArrayIO.cc
-###   utils/src/Logger.cc
 )
 
 target_include_directories(psalg PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -45,6 +44,9 @@ else()
     )
 endif()
 
+target_link_libraries(psalg xtc)
+
+
 # datareader - test of data reader from non-xtc files
 add_executable(datareader
     app/datareader.cc
@@ -52,17 +54,17 @@ add_executable(datareader
 target_link_libraries(datareader
     detector
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 add_executable(hsd_valid tests/hsd_valid.cc)
 target_include_directories(hsd_valid PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../..>
 )
 
 target_link_libraries(hsd_valid
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Needed for valgrind
@@ -74,7 +76,7 @@ add_executable(test_array
 )
 target_link_libraries(test_array
     psalg
-    xtcdata::xtc
+    xtc
 )
 add_test(NAME test_array COMMAND ${CMAKE_BINARY_DIR}/psalg/test_array
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -85,7 +87,7 @@ add_executable(test_hsd
 )
 target_link_libraries(test_hsd
     psalg
-    xtcdata::xtc
+    xtc
 )
 add_test(NAME test_hsd COMMAND ${CMAKE_BINARY_DIR}/psalg/test_hsd
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -96,7 +98,7 @@ add_executable(test_logger
 )
 target_link_libraries(test_logger
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Test CalibPars
@@ -105,7 +107,7 @@ add_executable(test_CalibPars
 )
 target_link_libraries(test_CalibPars
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Test SegGeometry
@@ -114,7 +116,7 @@ add_executable(test_SegGeometry
 )
 target_link_libraries(test_SegGeometry
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Test GeometryAccess
@@ -124,7 +126,7 @@ add_executable(test_GeometryAccess
 target_compile_options(test_GeometryAccess PRIVATE ${OpenMP_CXX_FLAGS})
 target_link_libraries(test_GeometryAccess PRIVATE ${OpenMP_CXX_FLAGS}
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Test AreaDetector
@@ -133,7 +135,7 @@ add_executable(test_AreaDetector
 )
 target_link_libraries(test_AreaDetector
     psalg
-    xtcdata::xtc
+    xtc
 )
 
 # Test curl
@@ -142,7 +144,7 @@ add_executable(test_MDBWebUtils
 )
 target_link_libraries(test_MDBWebUtils
     psalg
-    xtcdata::xtc
+    xtc
     CURL::libcurl
 )
 
@@ -160,7 +162,7 @@ add_executable(test_xtc_data
 )
 target_link_libraries(test_xtc_data
     psalg
-    xtcdata::xtc
+    xtc
 )
 add_test(NAME test_xtc_data COMMAND ${CMAKE_BINARY_DIR}/psalg/test_xtc_data
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
@@ -169,4 +171,13 @@ install(TARGETS psalg
     ARCHIVE DESTINATION lib
     LIBRARY DESTINATION lib
     RUNTIME DESTINATION bin
+)
+
+add_custom_command(TARGET psalg
+    POST_BUILD
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/.."
+    COMMAND echo "PIP INSTALLING PSALG"
+    COMMAND ${CMAKE_COMMAND} -E env
+        INSTDIR=${CMAKE_INSTALL_PREFIX}
+        pip install --no-deps --prefix=${CMAKE_INSTALL_PREFIX} ${PIP_OPTIONS} .
 )
