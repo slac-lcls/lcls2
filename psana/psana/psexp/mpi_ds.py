@@ -250,7 +250,7 @@ class RunParallel(Run):
                     )
 
     def _setup_jungfrau_shared_geometry_cache(self):
-        flag = os.environ.get("PS_GEO_SHARE", "0").strip().lower()
+        flag = os.environ.get("PS_GEO_SHARE", "1").strip().lower()
         if flag not in ("1", "true", "yes", "on"):
             return
         if mode != "mpi" or self.comms is None:
