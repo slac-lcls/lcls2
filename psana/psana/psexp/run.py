@@ -357,6 +357,14 @@ class Run(object):
                     else:
                         self.logger.error(f"Failed to load cache for {det_name}.{drp_class_name} after {max_retries} attempts")
 
+                shared_cache = getattr(self, "_shared_geo_cache", None)
+                if shared_cache is not None:
+                    setattr(iface, "_shared_geo_cache", shared_cache)
+
+                shared_calibc_cache = getattr(self, "_shared_calibc_cache", None)
+                if shared_calibc_cache is not None:
+                    setattr(iface, "_shared_calibc_cache", shared_calibc_cache)
+
                 # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
                 setattr(det, "calibconst", self.dsparms.calibconst[det_name])
