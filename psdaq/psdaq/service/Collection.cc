@@ -49,7 +49,7 @@ static std::string mkFilePath(const std::string& filename)
   auto sz = snprintf(buffer, sizeof(buffer), "%s", getenv("HOME"));
   std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m", &timeInfo);
   struct stat sb;
-  if (stat(buffer, &sb) || !S_ISDIR(sb.st_mode)) {
+  if (!stat(buffer, &sb) && S_ISDIR(sb.st_mode)) {
     std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m/%d_%H:%M:%S", &timeInfo);
   } else {
     std::strftime( buffer,     sizeof(buffer),   "./%Y_%m_%d_%H:%M:%S", &timeInfo);
