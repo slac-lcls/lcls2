@@ -7,7 +7,7 @@ if [ -d "/cds/sw/" ]; then
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_09152025
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_01152026
 
     osrel=`uname -r`
     case $osrel in
