@@ -143,9 +143,9 @@ def epix100_connectionInfo(base, alloc_json_str):
         rxId = (
             pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         )
-        logging.debug("RxId {:x}".format(rxId))
+        print("RxId {:x}".format(rxId))
         txId = timTxId("epix100")
-        logging.debug("TxId {:x}".format(txId))
+        print("TxId {:x}".format(txId))
         pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
     else:
         print("*** cpohack rxid")
@@ -164,7 +164,8 @@ def epix100_connectionInfo(base, alloc_json_str):
         from p4p.nt.scalar import ntint
         xpm: int = (rxId >> 16) & 0xFF
         port: int = (rxId >> 0) & 0xFF
-        # Full IP can be gotten with: 10.0.{:}.{:}'.format((rxId>>12)&0xf,100+((rxId>>8)&0xf))
+          
+      # Full IP can be gotten with: 10.0.{:}.{:}'.format((rxId>>12)&0xf,100+((rxId>>8)&0xf))
         # We'll	map the	crate ids to various PV	prefixes
         crate_id_map: Dict[int,str] = {
             0: "DAQ:ASC:XPM",
@@ -176,6 +177,8 @@ def epix100_connectionInfo(base, alloc_json_str):
        	    6: "DAQ:FEH:XPM", #	FEH Mezz
             7: "DAQ:FEH:XPM", #	MFX
        	    8: "DAQ:FEH:XPM", #	XPP
+            9: "DAQ:FEH:XPM", #XPP  
+            15:"DAQ:FEH:XPM", #XPP EPX
        	}
         crate_id: int =	(rxId >> 12) & 0xF
         linkrx_pv: str = f"{crate_id_map[crate_id]}:{xpm}:LinkRxReady{port}"
