@@ -22,10 +22,12 @@ namespace Pds {
       enum { v_prescale = 0, k_prescale = 1 };
       enum { v_persist  = 1, k_persist  = 1 };
       enum { v_monitor  = 2, k_monitor  = MAX_MRQS };
+      enum { v_auxdata  = 8, k_auxdata  = 24 };
 
       enum { m_prescale = ((1 << k_prescale) - 1), s_prescale = (m_prescale << v_prescale) };
       enum { m_persist  = ((1 << k_persist)  - 1), s_persist  = (m_persist  << v_persist)  };
       enum { m_monitor  = ((1 << k_monitor)  - 1), s_monitor  = (m_monitor  << v_monitor)  };
+      enum { m_auxdata  = ((1 << k_auxdata)  - 1), s_auxdata  = (m_auxdata  << v_auxdata)  };
 
     public:
       ResultDgram(const Pds::EbDgram& dgram, unsigned id) :
@@ -43,9 +45,12 @@ namespace Pds {
                                                    (value << v_persist));  }
       void     monitor (uint32_t value) { _data = ((_data & ~s_monitor)  |
                                                    ((value << v_monitor) & s_monitor)); }
+      void     auxdata (uint32_t value) { _data = ((_data & ~s_auxdata)  |
+                                                   ((value << v_auxdata) & s_auxdata)); }
       bool     prescale() const { return  _data & s_prescale;              }
       bool     persist () const { return  _data & s_persist;               }
       uint32_t monitor () const { return (_data & s_monitor) >> v_monitor; }
+      uint32_t auxdata () const { return (_data & s_auxdata) >> v_auxdata; }
       uint32_t data()     const { return  _data; }
       void     monBufNo(uint32_t monBufNo_) { _monBufNo = monBufNo_; }
       uint32_t monBufNo() const { return _monBufNo; }

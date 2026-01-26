@@ -30,6 +30,7 @@ target_link_libraries(drpbase
 
 add_executable(drp
     AreaDetector.cc
+    CubeTebReceiver.cc
     Digitizer.cc
     EpixHR2x2.cc
     EpixHRemu.cc

@@ -9,6 +9,7 @@ import argparse
 from struct import unpack
 import EbDgram     as edg
 import ResultDgram as rdg
+import CubeResultDgram as qdg
 
 
 class ArgsParser(argparse.ArgumentParser):
@@ -157,13 +158,28 @@ class TriggerDataSource(object):
     def result(self, persist, monitor):
 
         result = rdg.ResultDgram(self._shm_res_mmap, persist, monitor)
-
         self._mq_res.send(b"g")
 
         #print(
         #    f"[Python] Sent message 'g'"
         #)
 
+    def cubeResult(self, persist, monitor, bin_index, worker, bin_record):
+#
+#  Can't seem to make Cython use the CubeResultDgram/ResultDgram inheritance.
+#
+#        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
+#                                     bin_index, worker, bin_record)
+#
+#        logging.warning(f'cubeResult bin {bin_index} wrk {worker}  data {result.data()}')
+
+        result = rdg.ResultDgram(self._shm_res_mmap, persist, monitor)
+        aux =  ((bin_index&0x3ff)<<0) | ((worker&0x3f)<<10) | ((bin_record&1)<<16) 
+        result.auxdata(aux)
+
+#        logging.warning(f'cubeResult bin {bin_index} wrk {worker} aux {aux:x} data {result.data():x}')
+
+        self._mq_res.send(b"g")
 
 # Revisit: Move this into a .pyx?
 class Event(object):

@@ -15,7 +15,7 @@ int main(int argc, char* argv[])
     int c;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:Q:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -59,6 +59,9 @@ int main(int argc, char* argv[])
                 break;
             case 'W':
                 para.nworkers = std::stoi(optarg);
+                break;
+            case 'Q':
+                para.nCubeWorkers = std::stoi(optarg);
                 break;
             case 'v':
                 ++para.verbose;

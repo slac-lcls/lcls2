@@ -8,3 +8,6 @@ cdef extern from 'psdaq/eb/ResultDgram.hh' namespace "Pds::Eb":
         int      persist()
         void     monitor(uint32_t value)
         uint32_t monitor()
+        void     auxdata(uint32_t value)
+        uint32_t auxdata()
+        uint32_t data()

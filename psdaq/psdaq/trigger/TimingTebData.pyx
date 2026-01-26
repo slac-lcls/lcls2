@@ -24,7 +24,6 @@ cdef class TimingTebData():
     def has_eventcode(self,code):
         return (self.cptr.eventcodes[code>>5]>>(code&0x1f))&1
 
-    @property
     def eventcodes(self):
         rval = list()
         for i in range(9):
@@ -33,3 +32,14 @@ cdef class TimingTebData():
                 if e & (1<<j):
                    rval.append(i*32+j)
         return rval
+
+    def eventcodes_to_int(self, low, high):
+        ilo = low>>5
+        ihi = high>>5
+        rval = self.cptr.eventcodes[ilo] >> (low - 32*ilo)
+        for i in range(ilo+1,ihi+1):
+            e = self.cptr.eventcodes[i]
+            rval |= e << (32*i - low)
+        rval &= (1<<(high-low+1))-1
+        return rval
+

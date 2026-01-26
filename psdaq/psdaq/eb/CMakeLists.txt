@@ -182,6 +182,7 @@ target_link_libraries(teb
 
 install(FILES
   eb.hh
+  CubeResultDgram.hh
   ResultDgram.hh
   DESTINATION include/psdaq/eb
 )
