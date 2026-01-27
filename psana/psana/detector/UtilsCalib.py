@@ -25,10 +25,12 @@ import psana.detector.utils_psana as up
 from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
-from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix
+from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
+CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
+CTYPES_DEPL = CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
 
 def dic_ctype_fmt(**kwargs):
     return {'pedestals'   : kwargs.get('fmt_peds',   '%.3f'),
@@ -71,7 +73,7 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
 
 
 def merge_panels(lst):
-    """ stack of 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)"""
+    """stacks 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)"""
     npanels = len(lst)   # 16 or 4 or 1
     shape = lst[0].shape # (7, 1, 352, 384)
     ngmods = shape[0]    # 7
@@ -147,8 +149,8 @@ def proc_block(block, **kwa):
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
       + '\n    event spectrum spread median(abs(raw-med))      %.3f ADU - spectral peak width estimator' % med_abs_dev
 
-    gate_lo    = arr1_u16 * int_lo
-    gate_hi    = arr1_u16 * int_hi
+    gate_lo = arr1_u16 * int_lo
+    gate_hi = arr1_u16 * int_hi
 
     gate_lo = np.maximum(np.floor(arr_qlo), gate_lo).astype(dtype=block.dtype)
     gate_hi = np.minimum(np.ceil(arr_qhi),  gate_hi).astype(dtype=block.dtype)
@@ -194,11 +196,16 @@ class DarkProc():
         self.rmsnlo = kwa.get('rmsnlo', 6.0)     # rms ditribution number-of-sigmas low
         self.rmsnhi = kwa.get('rmsnhi', 6.0)     # rms ditribution number-of-sigmas high
 
-        self.status = 0 # 0/1/2 stage
+        self.status = 0 # 0/1/2 stage done
         self.kwa    = kwa
+        self.odet   = None
+        self.orun   = None
         self.block  = None
         self.irec   = -1
         self.t0_sec_init = time()
+        self.t0_sec_init_proc = time()
+        self.arr_med = None
+        self.abs_dev = None
 
 
     def accumulate_block(self, raw):
@@ -218,8 +225,7 @@ class DarkProc():
 
 
     def init_proc(self):
-
-        shape_raw = self.arr_med.shape
+        shape_raw = self.gate_lo.shape
         dtype_raw = self.gate_lo.dtype
 
         logger.info('stage 2 - initialization for raw shape %s and dtype %s' % (str(shape_raw), str(dtype_raw)))
@@ -380,16 +386,26 @@ class DarkProc():
         if self.block is None :
            self.block=np.zeros((self.nrecs1,)+tuple(raw.shape), dtype=raw.dtype)
            logger.info(info_ndarr(self.block,'created empty data block'))
+           if self.nrecs1 == 0:
+               logger.info('initialize accumulation of data for nrecs1 == 0')
+               load_block_results(self, self.orun, self.odet, **self.kwa)
+               self.init_proc()
 
         self.irec +=1
-        if self.irec < self.nrecs1:
+
+        if self.nrecs1>0 and self.irec < self.nrecs1-1:
             self.accumulate_block(raw)
 
-        elif self.irec > self.nrecs1:
+        elif self.irec > self.nrecs1-1:
             self.add_event(raw, self.irec)
 
         else:
             self.proc_block()
+            if self.nrecs == self.nrecs1:
+                logger.info('record %d event loop is terminated due to nrecs==nrecs1, --nrecs=%d --nrecs1=%d'%\
+                            (self.irec, self.nrecs, self.nrecs1))
+                self.status = 1
+                return self.status # forced exit after 1-st stage
             self.init_proc()
             self.add_block()
             #sys.stdout.write('stage 1 - event block processing is completed\n')
@@ -430,6 +446,11 @@ class DarkProc():
         if plotim & 512: plot_image(self.abs_dev,    tit=titpref + 'abs_dev after 1st stage processing of %d frames' % self.nrecs1)
         if plotim &1024: plot_image(self.arr_av1 - self.arr_med, tit=titpref + 'ave - dev')
 
+    def getattr_by_name(self, aname='gate_lo', default=None):
+        return getattr(self, aname, default)
+
+    def results_block(self):
+        return self.gate_lo, self.gate_hi, self.arr_med, self.abs_dev
 
     def constants_av1_rms_sta(self):
         return self.arr_av1, self.arr_rms, self.arr_sta
@@ -580,6 +601,100 @@ def deploy_constants(dic_consts, **kwa):
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
+def prefix_block_results(dpo, orun, odet, **kwa):
+    repoman = kwa.get('repoman', None) # set_repoman_and_logger(kwa)
+    dettype = odet.raw._dettype
+    repoman.set_dettype(odet.raw._dettype)
+    kwa_met = add_metadata_kwargs(orun, odet, **kwa)
+    dirname = repoman.makedir_block_results()
+    shortname = kwa_met.get('shortname', None)
+    gainmode = kwa_met.get('gainmode', None)
+    prefix = fname_prefix_block_results(dirname, shortname, orun.expt, orun.runnum, gainmode)
+    logger.debug('prefix: %s' % prefix)
+    return prefix
+
+
+def fnames_block_results(prefix, sufs=('gate_lo', 'gate_hi'), fmt='%s-%s.npy'):
+    return [fmt % (prefix, s) for s in sufs]
+
+
+def save_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
+    """saves block processing results in the directory retreived from repoman"""
+    s = 'save_block_results'
+    prefix = prefix_block_results(dpo, orun, odet, **kwa)
+    fnames = fnames_block_results(prefix, sufs=anames)
+    ndarrs = [getattr(dpo, name, None) for name in anames]
+    for f,n,a in (zip(fnames, anames, ndarrs)):
+      np.save(f, a)
+      s += info_ndarr(a, '\n  %s' % n, first=100, last=105)\
+        + '\n          saved in %s' % f
+    logger.info(s)
+
+
+def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
+    """loads results saved by save_block_results"""
+    s = 'load_block_results'
+    prefix = prefix_block_results(dpo, orun, odet, **kwa)
+    fnames = fnames_block_results(prefix, sufs=anames)
+    for f,n in (zip(fnames, anames)):
+      if not os.path.exists(f):
+          s += '\nFILE IS NOT AVAILABLE: %s' % f
+          logger.warning(s)
+          sys.exit(s)
+      a = np.load(f)
+      setattr(dpo, n, a)
+      s += info_ndarr(a, '\n  %s' % n, first=100, last=105)\
+        + '\n          from %s' % f
+    logger.info(s)
+
+
+def save_results_in_db(dpo, orun, odet, **kwa):
+    dpo.summary()
+    ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
+    arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
+    arr_max, arr_min = dpo.constants_max_min()
+    consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
+
+    logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
+                info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
+                info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
+                info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
+                info_ndarr(arr_max, 'arr_max', first=0, last=5),\
+                info_ndarr(arr_min, 'arr_min', first=0, last=5)))
+    dic_consts = dict(zip(ctypes, consts))
+    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    deploy_constants(dic_consts, **kwa_depl)
+    del(dpo)
+    dpo=None
+
+
+def save_results_in_repository(dpo, orun, odet, **kwa):
+    from psana.detector.UtilsCalibRepo import save_constants_in_repository
+    logger.info('begin save_results')
+    t0_sec = time()
+    if dpo is None: return
+    dpo.summary()
+    dpo.show_plot_results()
+
+    ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
+    arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
+    arr_max, arr_min = dpo.constants_max_min()
+    consts = arr_av1, arr_rms, arr_max, arr_min, arr_sta
+    logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
+                info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
+                info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
+                info_ndarr(arr_max, 'arr_max', first=0, last=5),\
+                info_ndarr(arr_min, 'arr_min', first=0, last=5),\
+                info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
+    dic_consts = dict(zip(ctypes, consts))
+
+    kwa.setdefault('max_detname_size', cc.MAX_DETNAME_SIZE)
+    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    save_constants_in_repository(dic_consts, **kwa_depl)
+    del(dpo)
+    logger.info('save_results time %.3f sec' % (time()-t0_sec))
+
+
 
 def pedestals_calibration(parser):
 
@@ -589,6 +704,7 @@ def pedestals_calibration(parser):
   kwa = vars(args)
 
   repoman = init_repoman_and_logger(parser=parser, **kwa)
+  kwa['repoman'] = repoman
 
   str_dskwargs = kwa.get('dskwargs', None)
   detname = kwa.get('det', None)
@@ -616,7 +732,7 @@ def pedestals_calibration(parser):
   nsteptot = 0
   break_loop = False
   dettype = None
-
+  status = 0
   expname = dskwargs.get('exp', None)
   runnum  = dskwargs.get('run', None)
 
@@ -665,6 +781,8 @@ def pedestals_calibration(parser):
          dpo.runnum = orun.runnum
          dpo.exp = expname
          dpo.ts_run, dpo.ts_now = ts_run, ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FORMAT)
+         dpo.odet = odet
+         dpo.orun = orun
 
       for ievt,evt in enumerate(step.events()):
         #print('Event %04d' % ievt, end='\r')
@@ -703,7 +821,10 @@ def pedestals_calibration(parser):
             logger.info(ss)
 
         status = dpo.event(raw,ievt)
-        if status == 2:
+        if status == 1 and args.nrecs == args.nrecs1:
+            break_loop = True
+            break
+        elif status == 2:
             logger.info('requested statistics --nrecs=%d is collected - terminate loops' % nrecs)
             break_loop = True
             break
@@ -711,27 +832,11 @@ def pedestals_calibration(parser):
 
       if ievt < events: logger.info('==== Ev:%04d end of events in run %d step %d'%\
                                      (ievt, orun.runnum, istep))
-      if True:
-          dpo.summary()
-          ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
-          #ctypes = ('pedestals', 'pixel_rms', 'pixel_status') # 'status_extra'
-          arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
-          arr_max, arr_min = dpo.constants_max_min()
-          consts = (arr_av1, arr_rms, arr_sta, arr_max, arr_min)
-          #consts = (arr_av1, arr_rms, arr_sta)
-
-          logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
-                      info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
-                      info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                      info_ndarr(arr_sta, 'arr_sta', first=0, last=5),\
-                      info_ndarr(arr_max, 'arr_max', first=0, last=5),\
-                      info_ndarr(arr_min, 'arr_min', first=0, last=5)))
-          dic_consts = dict(zip(ctypes, consts))
-          kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
-          kwa_depl['repoman'] = repoman
-          deploy_constants(dic_consts, **kwa_depl)
-          del(dpo)
-          dpo=None
+      if args.nrecs == args.nrecs1 and status==1:
+          save_block_results(dpo, orun, odet, **kwa)
+      else:
+          save_results_in_db(dpo, orun, odet, **kwa)
+      dpo=None
 
       if break_loop:
         logger.info('terminate_steps')
@@ -743,6 +848,7 @@ def pedestals_calibration(parser):
 
   logger.debug('run/step/event loop is completed')
   repoman.logfile_save()
+
 
 
 if __name__ == "__main__":
