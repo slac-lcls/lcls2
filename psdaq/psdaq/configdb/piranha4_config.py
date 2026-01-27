@@ -255,9 +255,13 @@ def piranha4_connectionInfo(cl, alloc_json_str):
 
     uart._rx._await()           # Wait for camera to be sitting at a prompt
 
-    uart._rx._clear()
-    uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
-    uart._rx._await()
+    # since we have been unable to reproduce the intermittent await crash with
+    # automated testing comment out SEM.set('0') and put in this sleep
+    # as a guess for what the issue might be.  - cpo 01/26/26
+    time.sleep(0.1)
+    #uart._rx._clear()
+    #uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
+    #uart._rx._await()
     uart._rx._clear()
     uart.GCP()
     uart._rx._await()
