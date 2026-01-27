@@ -6,6 +6,12 @@
 Usage::
     from psana.detector.UtilsJungfrauCalib import *
 
+phase 1 ONLY: USE --nrecs == --nrecs1, e.g.:
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 50 --nrecs1 50
+
+phase 2 ONLY: USE --nrecs1 0, e.g.:
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0
+
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
@@ -31,22 +37,18 @@ import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
 from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile # import divide_protected
 import psana.detector.Utils as uts # info_dict
 import psana.pscalib.calib.CalibConstants as cc
-from psana.detector.UtilsCalibRepo import save_constants_in_repository
+#from psana.detector.UtilsCalibRepo import save_constants_in_repository
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs, add_data_and_doc_to_detdb_extended
 
 SCRNAME = os.path.basename(sys.argv[0])
 MAX_DETNAME_SIZE = 20
 NUMBER_OF_GAIN_MODES = 3
 
-CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
-CTYPES_DEPL = CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
+CTYPES_DARK = uc.CTYPES_DARK #('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
+CTYPES_DEPL = uc.CTYPES_DEPL #CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
 
 dic_calib_char_to_name = cc.dic_calib_char_to_name # {'p':'pedestals', 'r':'pixel_rms', 's':'pixel_status',...}
 # "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,
-
-#DIC_GAIN_MODE = {'DYNAMIC':         0,
-#                 'FORCE_SWITCH_G1': 1,
-#                 'FORCE_SWITCH_G2': 2}
 
 DIC_GAIN_MODE = {'g0': 0,
                  'g1': 1,
@@ -76,7 +78,8 @@ class DarkProcJungfrau(uc.DarkProc):
 
     def init_proc(self):
         uc.DarkProc.init_proc(self)
-        shape_raw = self.arr_med.shape
+#        shape_raw = self.arr_med.shape
+        shape_raw = self.gate_lo.shape
         self.bad_switch = np.zeros(shape_raw, dtype=np.uint8)
 
 
@@ -156,7 +159,9 @@ def get_jungfrau_gain_mode_object(odet):
 
 def open_DataSource(**kwargs):
     #ds = psana.DataSource(exp='mfxdaq23', run=7, dir='/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc')
+    #kwargs['max_events'] = kwargs.get('nrecs', None)
     dskwargs = ups.data_source_kwargs(**kwargs)
+    dskwargs['max_events'] = kwargs.get('nrecs', None)
     logger.info('DataSource dskwargs: %s' % (dskwargs))
     try: ds = psana.DataSource(**dskwargs)
     except Exception as err:
@@ -218,6 +223,7 @@ def jungfrau_dark_proc(parser):
     dettype = None
     step_docstring = None
     terminate_runs = False
+    status = 0
 
     for irun, orun in enumerate(ds.runs()):
         logger.info('\n%s Run %d %s' % (20*'=', orun.runnum, 20*'='))
@@ -266,18 +272,12 @@ def jungfrau_dark_proc(parser):
                     terminate_runs = True
                     break
 
-            ############################### TBD
-
             igm = igmode if igmode is not None else\
                   metadic['gainMode'] if step_docstring is not None\
                   else istep
-            #gmo = get_jungfrau_gain_mode_object(odet)
-            #igm = DIC_GAIN_MODE[gmo.name]
-            #igm = igmode if igmode is not None else istep
             gmname = DIC_IND_TO_GAIN_MODE.get(igm, None)
             kwargs['gainmode'] = gmname
             logger.info('gain mode: %s igm: %d' % (gmname, igm))
-            ###############################
 
             if dpo is None:
                kwargs['dettype'] = dettype
@@ -288,6 +288,8 @@ def jungfrau_dark_proc(parser):
                dpo.detid = uniqueid
                dpo.gmindex = igm
                dpo.gmname = gmname
+               dpo.odet = odet
+               dpo.orun = orun
 
                igm0 = igm
 
@@ -354,7 +356,11 @@ def jungfrau_dark_proc(parser):
                 if dpo is not None:
                     #print(info_ndarr(raw,'XXX raw'))
                     status = dpo.event(raw,ievt)
-                    if status == 2:
+                    if status == 1:
+                        terminate_runs = True
+                        terminate_steps = True
+                        break # evt loop
+                    elif status == 2:
                         logger.info('requested statistics --nrecs=%d is collected - terminate loops' % args.nrecs)
                         #if ecm:
                         #    terminate_runs = True
@@ -368,13 +374,15 @@ def jungfrau_dark_proc(parser):
                  (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel)
             logger.info(ss)
 
-
             #if ecm:
             #    logger.info('continue to accumulate statistics, due to --evcode=%s' % evcode)
             #else:
             #    logger.info('reset statistics for next step')
 
-            save_results(dpo, orun, odet, **kwargs)
+            if args.nrecs == args.nrecs1 and status==1:
+                uc.save_block_results(dpo, orun, odet, **kwargs)
+            else:
+                uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
             if terminate_steps:
@@ -391,7 +399,7 @@ def jungfrau_dark_proc(parser):
         #    break
 
         if dpo is not None:
-            save_results(dpo, orun, odet, **kwargs)
+            uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
         if terminate_runs:
@@ -403,32 +411,6 @@ def jungfrau_dark_proc(parser):
     logger.info('number of runs processed %d' % (irun+1))
     logger.info('%s\ntotal consumed time = %.3f sec.' % (40*'_', time()-t0_sec))
     repoman.logfile_save()
-
-
-def save_results(dpo, orun, odet, **kwa):
-    logger.info('begin save_results')
-    t0_sec = time()
-    if dpo is None: return
-    dpo.summary()
-    dpo.show_plot_results()
-
-    ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
-    arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
-    arr_max, arr_min = dpo.constants_max_min()
-    consts = arr_av1, arr_rms, arr_max, arr_min, arr_sta
-    logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
-                info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
-                info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                info_ndarr(arr_max, 'arr_max', first=0, last=5),\
-                info_ndarr(arr_min, 'arr_min', first=0, last=5),\
-                info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
-    dic_consts = dict(zip(ctypes, consts))
-
-    kwa.setdefault('max_detname_size', MAX_DETNAME_SIZE)
-    kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
-    save_constants_in_repository(dic_consts, **kwa_depl)
-    del(dpo)
-    logger.info('save_results time %.3f sec' % (time()-t0_sec))
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
