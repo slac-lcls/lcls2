@@ -142,8 +142,8 @@ class CGWMainPartition(QGroupBox):
         # the desired detectors, and then add this line back in to be able
         # go from UNALLOCATED to the desired state without requiring any
         # manual clicking. -cpo 01/16/26
-        print('*** automation: click apply for partition select')
-        self.w_select.but_apply.click()
+        #print('*** automation: click apply for partition select')
+        #self.w_select.but_apply.click()
         resp=self.w_select.show()
 
         # MOVED TO QWPopupTableCheck
