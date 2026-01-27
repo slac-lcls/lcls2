@@ -34,6 +34,10 @@ SimDetector::SimDetector(Parameters* para, MemPoolGpu* pool, unsigned len) :
   if (para->kwargs.find("sim_l1_delay") != para->kwargs.end()) {
     m_l1Delay = std::stoul(para->kwargs["sim_l1_delay"]);
   }
+  if (para->kwargs.find("sim_su_rate") != para->kwargs.end()) {
+    auto rate = std::stof(para->kwargs["sim_su_rate"]);
+    m_suPeriod = ms_t{rate ? unsigned(1000./rate) : 0};
+  }
 }
 
 SimDetector::~SimDetector()
