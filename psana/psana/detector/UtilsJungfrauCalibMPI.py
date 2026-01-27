@@ -14,6 +14,7 @@ jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0
 
 phase 2 with MPI:
 
+
 mpirun -n 4 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0
 
 This software was developed for the SIT project.
@@ -77,7 +78,6 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
             DarkProcJungfrau.summary(self)
 
 
-
 def jungfrau_dark_proc(parser):
     """jungfrau dark data processing for single (of 3) gain mode.
     """
@@ -107,6 +107,7 @@ def jungfrau_dark_proc(parser):
     s = 'DIC_GAIN_MODE {<name> : <number>}'
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
     logger.info(s)
+
 
     kwargs[batch_size] = 2 # this batch_size parameter may need to be tweaked
     ds, dskwargs = open_DataSource(**kwargs)
