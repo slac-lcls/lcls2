@@ -53,14 +53,13 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-06-07'
+    d_version = 'V2026-01-23'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
     d_evcode  = None
     d_segind  = None
     d_igmode  = None
-    d_mpi     = False
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -100,14 +99,12 @@ def argument_parser():
                 'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
-    h_mpi     = 'use with MPI, default = %s' % d_mpi
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
-    #parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
@@ -136,8 +133,17 @@ def argument_parser():
     parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
     parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
-    parser.add_argument('-M', '--mpi',     action='store_true',              help=h_mpi)
     return parser
+
+
+def is_using_mpi():
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+    use_mpi = size > 1
+    if rank==0: print('mpirun:%s rank:%d number of cpus: %d' % (use_mpi, rank, size))
+    return use_mpi
 
 
 def do_main():
@@ -152,11 +158,11 @@ def do_main():
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
-    print('use code for MPI: %s' % args.mpi)
+    use_mpi = is_using_mpi()
 
     t0_sec = time()
-    if args.mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
-    else:        from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
 
     jungfrau_dark_proc(parser)
     logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
