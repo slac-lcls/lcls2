@@ -67,6 +67,7 @@ target_link_libraries(tmoTrigger
 
 add_library(tmoTeb SHARED
   tmoTebPrimitive.cc
+  tmoTebPrimitive_cpu.cc
   tmoTeb.cc
 )
 

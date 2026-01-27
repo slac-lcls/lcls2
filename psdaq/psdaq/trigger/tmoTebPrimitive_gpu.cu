@@ -16,7 +16,7 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
                               const unsigned&                     index,
                               const size_t                        nPanels)
 {
-  //printf("*** T: idx %u\n", index);
+  //printf("### TmoTebPrimitive::event: idx %u\n", index);
 
   // Analyze calibBuffers for all panels to determine TEB input data for the trigger
   //float* __restrict__ calibBuf = &calibBuffers[index * calibBufsCnt]; // nPanels * nElements of data follow
@@ -33,7 +33,7 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
   tebInp[0] = write_;
   tebInp[1] = monitor_;
 
-  //printf("*** T: Done with idx %u\n", index);
+  //printf("### TmoTebPrimitive::event: Done with idx %u\n", index);
 }
 
 // This method presumes that it is being called while the stream is in capture mode
@@ -45,7 +45,7 @@ void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&          stream,
                                       const unsigned&        index,
                                       const unsigned         nPanels)
 {
-  printf("*** TTP:event 1\n");
+  printf("*** TmoTebPrimitive::event 1\n");
   _event<<<1, 1, 0, stream>>>(calibBuffers, calibBufsCnt, out, outBufsCnt, index, nPanels);
-  printf("*** TTP:event 2\n");
+  printf("*** TmoTebPrimitive::event 2\n");
 }

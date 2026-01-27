@@ -4,16 +4,11 @@
 #include "psdaq/service/Dl.hh"
 #include <nlohmann/json.hpp>
 
-#ifdef __NVCC__
-#include <cuda_runtime.h>               // For cudaStream_t
-#else
-struct CUstream_st;
-typedef struct CUstream_st* cudaStream_t;
-#endif
-
 #include <cstdint>
 #include <string>
-#include <cassert>
+
+struct CUstream_st;
+typedef struct CUstream_st* cudaStream_t;
 
 namespace XtcData {
   class Xtc;
@@ -39,15 +34,13 @@ namespace Pds {
                            const XtcData::Xtc& contribution,
                            XtcData::Xtc&       xtc,
                            const void*         bufEnd) = 0;
-      // This method can't be left pure virtual for non-GPU use so it is
-      // defaulted to an empty block that is never called by non-GPU code
       virtual void   event(cudaStream_t&          stream,
                            float     const* const calibBuffers,
                            const size_t           calibBufsCnt,
                            uint32_t* const* const out,
                            const size_t           outBufsCnt,
                            const unsigned&        index,
-                           const unsigned         nPanels) { assert(false); } // = 0;
+                           const unsigned         nPanels) = 0;
       virtual size_t size() const = 0;
     };
   }
