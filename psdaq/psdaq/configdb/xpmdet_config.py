@@ -72,7 +72,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
         
     else:
        # print("Board Detected KCU1500")
-        root = l2si_drp.DrpTDetRoot(pollEn=False,device=dev)
+        root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
         root.__enter__()
         logging.info("Board Detected KCU1500")
 
