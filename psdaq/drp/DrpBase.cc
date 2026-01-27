@@ -1224,6 +1224,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
 
 void DrpBase::shutdown()
 {
+    logging::debug("DrpBase::shutdown");
     // If connect() ran but the system didn't get into the Connected state,
     // there won't be a Disconnect transition, so disconnect() here
     disconnect();                       // Does no harm if already done
@@ -1235,6 +1236,8 @@ void DrpBase::shutdown()
 
 json DrpBase::connectionInfo(const std::string& ip)
 {
+    logging::debug("DrpBase::connectionInfo(%s)", ip.c_str());
+
     m_tPrms.ifAddr = ip;
     m_tPrms.port.clear();               // Use an ephemeral port
 
@@ -1277,14 +1280,18 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
                   [&](){return pool.trInUse();});
     exporter->constant("drp_trbufs_in_use_max", labels, pool.pebble.nTrBuffers());
 
-    exporter->addFloat("drp_deadtime", labels,
-                       [&](double& value){return _pvGetVecElem(m_deadtimePv, m_xpmPort, value);});
+    if (m_deadtimePv) {
+      exporter->addFloat("drp_deadtime", labels,
+                         [&](double& value){return _pvGetVecElem(m_deadtimePv, m_xpmPort, value);});
+    }
 
     return 0;
 }
 
 std::string DrpBase::connect(const json& msg, size_t id)
 {
+    logging::debug("DrpBase::connect");
+
     // Save a copy of the json so we can use it to connect to the config database on configure
     m_connectMsg = msg;
     m_collectionId = id;
@@ -1603,12 +1610,14 @@ int DrpBase::parseConnectionParams(const json& body, size_t id)
     std::string pv_base = body["control"]["0"]["control_info"]["pv_base"];
     unsigned    xpm_id  = body["drp"][stringId]["connect_info"]["xpm_id"];
     unsigned    rog     = body["drp"][stringId]["det_info"]["readout"];
-    std::string pv(pv_base  +
-                   ":XPM:"  + std::to_string(xpm_id) +
-                   ":PART:" + std::to_string(rog) +
-                   ":DeadFLnk");
-    m_deadtimePv = std::make_shared<PV>(pv.c_str());
-    m_xpmPort    = body["drp"][stringId]["connect_info"]["xpm_port"];
+    if (pv_base != "*simulator*") {
+      std::string pv(pv_base  +
+                     ":XPM:"  + std::to_string(xpm_id) +
+                     ":PART:" + std::to_string(rog) +
+                     ":DeadFLnk");
+      m_deadtimePv = std::make_shared<PV>(pv.c_str());
+      m_xpmPort    = body["drp"][stringId]["connect_info"]["xpm_port"];
+    }
 
     uint64_t builders = 0;
     m_tPrms.addrs.clear();

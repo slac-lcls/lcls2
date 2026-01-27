@@ -3,6 +3,7 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <cuda_runtime.h>
 #include <cuda/std/atomic>
 #include <nlohmann/json.hpp>
 #include "drp/DrpBase.hh"

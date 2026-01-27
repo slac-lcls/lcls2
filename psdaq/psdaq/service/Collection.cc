@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iomanip>
 #include <unistd.h>
+#include <stdlib.h>
 #include <limits.h>
 #include <ifaddrs.h>
 #include <linux/if_packet.h>
@@ -42,20 +43,19 @@ static void dumpStack(const std::string& filePath)
 
 static std::string mkFilePath(const std::string& filename)
 {
-  time_t rawTime;
-  std::time(&rawTime);
-  auto timeInfo = std::localtime(&rawTime);
+  time_t rawTime;      std::time(&rawTime);
+  std::tm timeInfo{};  localtime_r(&rawTime, &timeInfo);
   char buffer[128];
-  std::strftime(buffer, sizeof(buffer), "~/%Y/%m", timeInfo);
+  auto sz = snprintf(buffer, sizeof(buffer), "%s", getenv("HOME"));
+  std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m", &timeInfo);
   struct stat sb;
   if (!stat(buffer, &sb) && S_ISDIR(sb.st_mode)) {
-      std::strftime(buffer, sizeof(buffer), "~/%Y/%m/%d_%H:%M:%S", timeInfo);
+    std::strftime(&buffer[sz], sizeof(buffer)-sz, "/%Y/%m/%d_%H:%M:%S", &timeInfo);
   } else {
-      std::strftime(buffer, sizeof(buffer), "./%Y_%m_%d_%H:%M:%S", timeInfo);
+    std::strftime( buffer,     sizeof(buffer),   "./%Y_%m_%d_%H:%M:%S", &timeInfo);
   }
-  char hostname[HOST_NAME_MAX];
-  gethostname(hostname, HOST_NAME_MAX);
   std::string filePath(buffer);
+  char hostname[HOST_NAME_MAX];  gethostname(hostname, sizeof(hostname));
   return filePath + "_" + std::string(hostname) + ":" + filename;
 }
 

@@ -105,6 +105,27 @@ if(CMAKE_CUDA_COMPILER)
     set_target_properties(EpixUHRemu_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRemu_gpu PUBLIC -O3)
 
+    add_library(EpixUHRsim_gpu SHARED
+        Detector.cc
+        SimDetector.cc
+        EpixUHRsim.cu
+        ../drp/AreaDetector.cc  # @todo: Better solution than '../drp/'?
+    )
+    target_include_directories(EpixUHRsim_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(EpixUHRsim_gpu
+        drpbase_gpu
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    set_target_properties(EpixUHRsim_gpu PROPERTIES CUDA_ARCHITECTURES "86")
+    #target_compile_options(EpixUHRsim_gpu PUBLIC -O3)
+
 #--- Reducer libraries
 
     # Add the following to your environment instead of appending to the hardcoded CMAKE_PREFIX_PATH:
@@ -272,6 +293,7 @@ if(CMAKE_CUDA_COMPILER)
         drp_gpu
         AreaDetector_gpu
         EpixUHRemu_gpu
+        EpixUHRsim_gpu
         NoOpReducer
         #LcReducer_old
         LcReducer

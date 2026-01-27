@@ -230,10 +230,10 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
         // Allocate the index of the next set of intermediate buffers to be used
         //if (tid == 0)  printf("### Reader: get pblBufIdx\n");
         pblBufIdx = readerQueue.allocate();     // This blocks when no buffers available
-        if (tid == 0)  printf("### Reader: pblBufIdx %u\n", pblBufIdx);
+        //if (tid == 0)  printf("### Reader: pblBufIdx %u\n", pblBufIdx);
 
         const volatile uint32_t* __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
-        if (tid == 0)  printf("### Reader: Wait for DMA from FPGA %lu, buf %u: mem %p\n", fpga, dmaBufIdx, mem);
+        //if (tid == 0)  printf("### Reader: Wait for DMA[%u] from FPGA %lu: mem %p\n", dmaBufIdx, fpga, mem);
         unsigned ns = 8;
         while (*mem == 0) {                     // Wait for DMA completion @todo: abort by writing this location
           done = terminate.load(cuda::std::memory_order_acquire);
@@ -241,7 +241,7 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
           __nanosleep(ns);
           if (ns < 256)  ns *= 2;
         }
-        if (tid == 0)  printf("### Reader: Got DMA: sz %u, TH[0] %016lx\n", *mem, *((uint64_t*)(&mem[8-1])));
+        //if (tid == 0)  printf("### Reader: Got DMA[%u]: sz %u, TH[0] %016lx\n", dmaBufIdx, *mem, *((uint64_t*)(&mem[8-1])));
         auto next = (dmaBufIdx + 1) % dmaCount; // Prepare for next DMA buffer
         *(uint32_t*)(dmaBufs[next] + 4) = 0;    // Clear the handshake space of the next DMA buffer
         *(uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(next)) = 1;  // Enable the DMA on this dataDev
@@ -260,18 +260,18 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
     //if (tid == 0)  printf("### Reader: dmaIdx %u, in %p\n", dmaBufIdx, in);
     //if (tid == 0)  printf("### Reader: fpga %lu, outBufs %p\n", fpga, outBufs);
     auto const __restrict__ hdr = outBufs[fpga] + pblBufIdx * outBufsCnt;
-    if (tid == 0)  printf("### Reader: ob %p, pblIdx %u, outBufsCnt %lu, hdr %p\n", outBufs[fpga], pblBufIdx, outBufsCnt, hdr);
+    //if (tid == 0)  printf("### Reader: ob %p, pblIdx %u, outBufsCnt %lu, hdr %p\n", outBufs[fpga], pblBufIdx, outBufsCnt, hdr);
     constexpr auto nHdrWords = (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(*in);
     auto const i    = tid % nHdrWords;
     auto const tid0 = fpga * (stride / nFpgas);
-    if (tid == 0)  printf("### Reader: nHdrWords %lu, i %lu, tid0 %lu\n", nHdrWords, i, tid0);
+    //if (tid == 0)  printf("### Reader: nHdrWords %lu, i %lu, tid0 %lu\n", nHdrWords, i, tid0);
     if (tid >= tid0 && tid < tid0 + nHdrWords) {
       hdr[i] = in[i];
       //printf("### Reader: hdr[%lu] %08x\n", i, in[i]);
     }
 
     // Calibrate
-    if (tid == 0)  printf("### Reader: in[1] %u, th sz %lu\n", in[1], sizeof(TimingHeader));
+    //if (tid == 0)  printf("### Reader: in[1] %u, th sz %lu\n", in[1], sizeof(TimingHeader));
     if (in[1] > sizeof(TimingHeader)) {
       auto const __restrict__ raw = (uint16_t*)&in[nHdrWords];
       //if (tid == 0)  printf("### Reader: raw %p\n", raw);
@@ -287,9 +287,9 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
       //if (tid == 0)  printf("### Reader: calib done\n");
     }
 
-    if (tid == 0)  printf("### Reader: posting %u\n", pblBufIdx);
+    //if (tid == 0)  printf("### Reader: posting %u\n", pblBufIdx);
     if (tid == 0)  readerQueue.post(pblBufIdx);
-    if (tid == 0)  printf("### Reader: posted  %u\n", pblBufIdx);
+    //if (tid == 0)  printf("### Reader: posted  %u\n", pblBufIdx);
   }
 #ifdef PERSISTENT_KERNEL
   while (!done);
@@ -385,11 +385,13 @@ void Reader::start()
   chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
   for (const auto& fpga : m_pool.panels()) {
-    // Ensure that timing messages are DMAed to the GPU
-    dmaTgtSet(fpga.datadev, DmaTgt_t::TGT_GPU);
+    if (fpga.name != "/dev/null") {     // Else, Simulator mode
+      // Ensure that timing messages are DMAed to the GPU
+      dmaTgtSet(fpga.datadev, DmaTgt_t::TGT_GPU);
 
-    // Ensure that the DMA round-robin index starts with buffer 0
-    dmaIdxReset(fpga.datadev);
+      // Ensure that the DMA round-robin index starts with buffer 0
+      dmaIdxReset(fpga.datadev);
+    }
 
 #ifdef HOST_REARMS_DMA
     // Write to the DMA start register in the FPGA

@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
 #ifndef NVTX_DISABLE                    // Defined, or not, in drpGpu/MemPool.hh
 #include <cuda_profiler_api.h>
@@ -17,6 +18,7 @@
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using namespace XtcData;
 
 static const char* const MAG_ON  = "\033[0;35m";
 static const char* const COL_OFF = "\033[0m";
@@ -187,6 +189,7 @@ void PGPDetectorApp::initialize()
     auto& f = m_factory;   // Factory must remain in scope to avoid .so closing
     f.register_type("fakecam",   "libAreaDetector_gpu.so");
     f.register_type("epixuhremu", "libEpixUHRemu_gpu.so");
+    f.register_type("epixuhrsim", "libEpixUHRsim_gpu.so");
     //f.register_type("epixuhr",   "libEpixUHR_gpu.so");
 
     m_det = f.create(m_para.detType, m_para, m_pool);
@@ -204,6 +207,8 @@ void PGPDetectorApp::initialize()
 
 PGPDetectorApp::~PGPDetectorApp()
 {
+    logging::debug("PGPDetectorApp::dtor");
+
     // Try to take things down gracefully when an exception takes us off the
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
@@ -222,6 +227,8 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::_disconnect()
 {
+    logging::debug("PGPDetectorApp::_disconnect");
+
     m_drp->disconnect();
     if (m_det)
         m_det->shutdown();
@@ -229,6 +236,8 @@ void PGPDetectorApp::_disconnect()
 
 void PGPDetectorApp::_unconfigure()
 {
+    logging::debug("PGPDetectorApp::_unconfigure");
+
     m_drp->pool.shutdown();              // Release Tr buffer pool
     m_drp->unconfigure();
 
@@ -240,6 +249,8 @@ void PGPDetectorApp::_unconfigure()
 
 void PGPDetectorApp::handleConnect(const json& msg)
 {
+    logging::debug("PGPDetectorApp::handleConnect");
+
     json body = json({});
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
@@ -281,6 +292,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
     std::string key = msg["header"]["key"];
+    TransitionId::Value tid;
     logging::debug("handlePhase1 for %s in Gpu::PGPDetectorApp (m_det->scanEnabled() is %s)",
                    key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
 
@@ -309,6 +321,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     }
 
     if (key == "configure") {
+        tid = TransitionId::Configure;
         if (m_unconfigure) {
             _unconfigure();
         }
@@ -363,10 +376,12 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "unconfigure") {
+        tid = TransitionId::Unconfigure;
         // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginstep") {
+        tid = TransitionId::BeginStep;
         // see if we find some step information in phase 1 that needs to be
         // to be attached to the xtc
         if (has_shapes_data_block_hex && m_det->scanEnabled()) {
@@ -410,7 +425,11 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             logging::error("%s", errorMsg.c_str());
         }
     }
+    else if (key == "endstep") {
+        tid = TransitionId::EndStep;
+    }
     else if (key == "beginrun") {
+        tid = TransitionId::BeginRun;
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
@@ -422,6 +441,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "endrun") {
+        tid = TransitionId::EndRun;
         std::string errorMsg = m_drp->endrun(phase1Info);
         if (!errorMsg.empty()) {
             body["err_info"] = errorMsg;
@@ -429,6 +449,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "enable") {
+        tid = TransitionId::Enable;
         bool chunkRequest;
         ChunkInfo chunkInfo;
         std::string errorMsg = m_drp->enable(phase1Info, chunkRequest, chunkInfo);
@@ -452,6 +473,7 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
+        tid = TransitionId::Disable;
 #ifndef NVTX_DISABLE
         cudaProfilerStop();
         logging::info("%sDisabled GPU Profiler data collection%s", MAG_ON, COL_OFF);
@@ -471,10 +493,19 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     reply(answer);
 
     logging::debug("handlePhase1 complete");
+
+    // Trigger phase 2 if we're in simulator mode
+    if (m_para.device == "/dev/null") { // Simulator mode
+      sleep(1); // Let Phase 1 actions become established before initiating Phase 2
+      auto det = m_det->gpuDetector();
+      if (det)  det->issuePhase2(tid);
+    }
 }
 
 void PGPDetectorApp::handleReset(const json& msg)
 {
+    logging::debug("PGPDetectorApp::handleReset");
+
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
     unsubscribePartition();    // ZMQ_UNSUBSCRIBE
@@ -494,6 +525,8 @@ void PGPDetectorApp::handleDealloc(const json& msg)
 
 json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 {
+    logging::debug("PGPDetectorApp::connectionInfo");
+
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
                    : getNicIp(m_para.kwargs["forceEnet"] == "yes");
@@ -502,10 +535,14 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
+  printf("*** PGPDetectorApp::connectionInfo 1\n");
     json info = m_det->connectionInfo(msg);
+  printf("*** PGPDetectorApp::connectionInfo 1a\n");
     body["connect_info"].update(info);
+  printf("*** PGPDetectorApp::connectionInfo 2\n");
     json bufInfo = m_drp->connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
+  printf("*** PGPDetectorApp::connectionInfo 3\n");
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
@@ -514,6 +551,8 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 
 void PGPDetectorApp::connectionShutdown()
 {
+    logging::debug("PGPDetectorApp::connectionShutdown");
+
     if (m_det) {
         m_det->connectionShutdown();
     }
@@ -639,6 +678,8 @@ int main(int argc, char* argv[])
         if (kwargs.first == "dmaSize")        continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
+        if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
+        if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

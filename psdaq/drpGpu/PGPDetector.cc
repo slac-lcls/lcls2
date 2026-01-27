@@ -148,6 +148,9 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
   }
 
+  //printf("*** TebRcvr::complete: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
+  //       result.pulseId(), result.service(), result.prescale(), result.persist(), result.monitor());
+
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
 
@@ -523,7 +526,7 @@ unsigned PGPDrp::unconfigure()
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   printf("*** PGPDrp::unconfigure 2\n");
 
-  m_reducer->shutdown();
+  if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   printf("*** PGPDrp::unconfigure 3\n");
 
@@ -695,7 +698,7 @@ void PGPDrp::_collector()
         // @todo: Can event() here help with prescaled raw/calibrated data?
         //m_det.event(dgram, bufEnd);
         //const auto p = (uint32_t*)&timingHeader[1];
-        //printf("*** P: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
+        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
         if (trgPrimitive) { // else this DRP doesn't provide TEB input
           // Copy the TEB input data from the GPU into the TEB input datagram
           auto tpSz = trgPrimitive->size();

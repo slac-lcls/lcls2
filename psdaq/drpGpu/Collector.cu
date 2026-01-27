@@ -135,7 +135,7 @@ void _collector(unsigned*             __restrict__ head,
     while ((hdN = readerQueue.pend()) == *head) {
       if (terminate.load(cuda::std::memory_order_acquire))  return;
     }
-    printf("### Collector: panel %u, hdN %u\n", panel, hdN);
+    //printf("### Collector: panel %u, hdN %u\n", panel, hdN);
     if (panel == 0)  hd0 = hdN;
 
     // @todo: grp.sync();
@@ -159,9 +159,9 @@ void _graphLoop(unsigned*                          idx,
   if (terminate.load(cuda::std::memory_order_acquire))  return;
 
   // Push index to host
-  printf("### Collector: post idx %u\n", *idx);
+  //printf("### Collector: post idx %u\n", *idx);
   *idx = collectorQueue.post(*idx);
-  printf("### Collector: posted, new idx %u\n", *idx);
+  //printf("### Collector: posted, new idx %u\n", *idx);
 
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
 }
@@ -339,23 +339,23 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
   unsigned head = m_collectorQueue.h->pend();
   unsigned tail = m_last;
-  if (tail != head)  printf("Collector::receive: tail %u, head %u\n", tail, head);
+  //if (tail != head)  printf("*** Collector::receive: tail %u, head %u\n", tail, head);
   while (tail != head) {
-    printf("*** Collector::receive: tail %u\n", tail);
+    //printf("*** Collector::receive: tail %u\n", tail);
     col_scoped_range loop_range{/*"Collector::receive", */nvtx3::payload{tail}};
     const auto dmaDsc       = (DmaDsc*)(&hostWrtBufs[tail * hostWrtBufsCnt]);
     const auto timingHeader = (TimingHeader*)&dmaDsc[1];
 
     // Wait for pulse ID to become non-zero
     uint64_t pid = timingHeader->pulseId();
-    printf("*** 1 pid %014lx\n", pid);
+    //printf("*** 1 pid %014lx\n", pid);
     while (pid <= lastPid) {
       col_scoped_range loop_range2{/*"Collector::receive wait"*/};
       if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  break;
       pid = timingHeader->pulseId();
     }
     if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  break;
-    printf("*** 2 pid %014lx\n", pid);
+    //printf("*** 2 pid %014lx\n", pid);
 
     nvtx3::mark("Collector received", nvtx3::payload{tail});
 #if defined(USE_TRACEBUFFER)

@@ -26,6 +26,7 @@ from psdaq.configdb.get_config import get_config_with_params
 
 report_keys = ['error', 'warning', 'fileReport']
 
+
 def set2csv(seg_set):
     seg_csv = ""
     seg_list = list(seg_set)
@@ -55,6 +56,8 @@ class PvInfo:
 class RunParams:
     """Run Parameters"""
     def __init__(self, path, collection, platform, pva):
+        logging.debug(f"RunParams init({path}, {collection}, {platform}, {pva}")
+
         self.path = path
         self.collection = collection
         self.platform = platform
@@ -699,13 +702,14 @@ class DaqXPM():
 
 class CollectionManager():
     def __init__(self, args):
+        self.simulator = args.sim   # Prevent XPM or DB access when True
         self.platform = args.p
         self.alias = args.u
         self.config_alias = args.C  # e.g. BEAM/NOBEAM
-        self.cfg_dbase = args.d
+        self.cfg_dbase = args.d if not self.simulator else None
         self.trigger_config = args.t
-        self.xpm_master = args.x
-        self.pv_base = args.B
+        self.xpm_master = args.x if not self.simulator else 0
+        self.pv_base = args.B if not self.simulator else "*simulator*"
         self.use_common = args.c
         self.context = zmq.Context(1)
         self.back_pull = self.context.socket(zmq.PULL)
@@ -718,7 +722,7 @@ class CollectionManager():
         self.front_rep.bind('tcp://*:%d' % front_rep_port(args.p))
         self.fast_rep.bind('tcp://*:%d' % fast_rep_port(args.p))
         self.front_pub.bind('tcp://*:%d' % front_pub_port(args.p))
-        self.slow_update_rate = args.S
+        self.slow_update_rate = args.S if not self.simulator else 0
         self.fast_reply_rate = 100           # Hz
         self.slow_update_enabled = False    # setter: self.set_slow_update_enabled()
         self.threads_exit = Event()
@@ -735,11 +739,11 @@ class CollectionManager():
         self.step_done = Event()
 
         # instantiate DaqPVA object
-        self.pva = DaqPVA(report_error=self.report_error)
+        self.pva = DaqPVA(report_error=self.report_error) if not self.simulator else None
 
         # instanciate DaqXPM object
         self.xpm = DaqXPM(platform=self.platform, xpm_master=self.xpm_master, pv_base=self.pv_base, pva=self.pva,
-                          zctxt=self.context, xpm_host=args.X, report_error=self.report_error)
+                          zctxt=self.context, xpm_host=args.X, report_error=self.report_error) if not self.simulator else None
 
         # instantiate RunParams object
         self.runParams = RunParams(args.V, self, self.platform, self.pva)
@@ -779,7 +783,7 @@ class CollectionManager():
         self.fast_poller.register(self.fast_rep, zmq.POLLIN)
 
         # initialize EPICS context
-        self.ctxt = Context('pva')
+        self.ctxt = Context('pva') if not self.simulator else None
 
         self.groups = 0     # groups bitmask
         self.cmstate = {}
@@ -1302,23 +1306,23 @@ class CollectionManager():
         logging.debug('condition_alloc(): groups = 0x%02x' % self.groups)
 
         # set Disable PV
-        if not self.xpm.group_run(self.groups,False):
+        if not self.simulator and not self.xpm.group_run(self.groups,False):
             logging.error('condition_alloc(): group_run(False) failed')
             return False
 
         # if you don't want steps, set StepGroups = 0 for each group in partition
-        if not self.xpm.step_groups_clear(self.groups):
+        if not self.simulator and not self.xpm.step_groups_clear(self.groups):
             logging.error('condition_alloc(): step_groups_clear() failed')
             return False
 
         # create group-dependent PVs
-        if not self.xpm.allocate(self.groups):
+        if not self.simulator and not self.xpm.allocate(self.groups):
             logging.debug('condition_alloc() returning False')
             return False
 
         # Configure common group
         if self.use_common:
-            if not self.xpm.setup_common(self.platform,self.groups):
+            if not self.simulator and not self.xpm.setup_common(self.platform,self.groups):
                 self.report_error(f'condition_alloc() failed in setup_common')
 
         # give number to teb nodes for the event builder
@@ -1396,7 +1400,7 @@ class CollectionManager():
 
         if dealloc_ok:
             # clear L0Groups PVs
-            if not self.xpm.deallocate(self.groups):
+            if not self.simulator and not self.xpm.deallocate(self.groups):
                 self.report_error(f'condition_dealloc() failed putting 0 to PV {pv}')
                 dealloc_ok = False
 
@@ -1466,7 +1470,8 @@ class CollectionManager():
             return False
 
         # Advertise recording status
-        self.xpm.recording(self.groups,self.recording)
+        if not self.simulator:
+            self.xpm.recording(self.groups,self.recording)
 
         # phase 1
         ok = self.condition_common('beginrun', 6000)
@@ -1476,14 +1481,15 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.xpm.clear_readout(self.groups)
+        if not self.simulator:
+            self.xpm.clear_readout(self.groups)
 
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginRun'])
-        self.readoutCumulative = [0 for i in range(8)]
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginRun'])
+            self.readoutCumulative = [0 for i in range(8)]
 
-        ok = self.get_phase2_replies('beginrun')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('beginrun')
+            if not ok:
+                return False
 
         self.slowupdateArmed = self.slow_update_rate != 0
 
@@ -1504,12 +1510,13 @@ class CollectionManager():
             return False
 
         # phase 2
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndRun'])
-        self.xpm.recording(self.groups, False)
+        if not self.simulator:
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndRun'])
+            self.xpm.recording(self.groups, False)
 
-        ok = self.get_phase2_replies('endrun')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('endrun')
+            if not ok:
+                return False
 
         self.lastTransition = 'endrun'
 
@@ -1528,11 +1535,12 @@ class CollectionManager():
             return False
 
         # phase 2
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginStep'])
+        if not self.simulator:
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginStep'])
 
-        ok = self.get_phase2_replies('beginstep')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('beginstep')
+            if not ok:
+                return False
 
         self.lastTransition = 'beginstep'
         return True
@@ -1545,11 +1553,12 @@ class CollectionManager():
             return False
 
         # phase 2
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndStep'])
+        if not self.simulator:
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndStep'])
 
-        ok = self.get_phase2_replies('endstep')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('endstep')
+            if not ok:
+                return False
 
         self.lastTransition = 'endstep'
         return True
@@ -1560,10 +1569,11 @@ class CollectionManager():
         # phase 1 not needed
         # phase 2 no replies needed
         # 0x80 means throw away transition if there is deadtime
-        update_ok = self.xpm.insert_transition(self.groups, (0x80 | ControlDef.transitionId['SlowUpdate']))
+        if not self.simulator:
+            update_ok = self.xpm.insert_transition(self.groups, (0x80 | ControlDef.transitionId['SlowUpdate']))
 
-        if update_ok:
-            self.lastTransition = 'slowupdate'
+            if update_ok:
+                self.lastTransition = 'slowupdate'
 
         return update_ok
 
@@ -1572,14 +1582,15 @@ class CollectionManager():
         connect_ok = True
 
         # set XPM PV
-        if not self.xpm.set_master(self.groups):
-            self.report_err(f'connect: failed to set XPM master')
-            connect_ok = False
-
-        if self.use_common:
-            if not self.xpm.set_common(self.platform):
-                self.report_err(f'connect: failed to set XPM common')
+        if not self.simulator:
+            if not self.xpm.set_master(self.groups):
+                self.report_err(f'connect: failed to set XPM master')
                 connect_ok = False
+
+            if self.use_common:
+                if not self.xpm.set_common(self.platform):
+                    self.report_err(f'connect: failed to set XPM common')
+                    connect_ok = False
 
         if connect_ok:
             logging.info('master XPM is %d' % self.xpm_master)
@@ -2119,38 +2130,41 @@ class CollectionManager():
         logging.debug('get_last_run_number()')
         last_run_number = 0
 
-        # authentication is not required, adjust url accordingly
-        uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+        if not self.simulator:
+            # authentication is not required, adjust url accordingly
+            uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
-        try:
-            resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + \
-                                "lgbk/" + self.experiment_name + "/ws/current_run",
-                                timeout=10)
-        except requests.exceptions.RequestException as ex:
-            logging.error("get_last_run_number(): request exception: %s" % ex)
-        except Exception as ex:
-            logging.error("get_last_run_number(): exception: %s" % ex)
-        else:
-            logging.debug("current_run request response: %s" % resp.text)
-            if resp.status_code == requests.codes.ok:
-                logging.debug("current_run request response headers: %s" % resp.headers)
-                if 'application/json' in resp.headers['Content-Type']:
-                    try:
-                        json_response = resp.json()
-                    except json.decoder.JSONDecodeError:
-                        logging.error("Error: failed to decode JSON")
-                    else:
-                        if json_response is None or json_response.get("value", {}) is None:
-                            logging.debug("get_last_run_number(): JSON response is None")
-                        else:
-                            try:
-                                last_run_number = json_response.get("value", {}).get("num", 0)
-                            except Exception as ex:
-                                logging.error("get_last_run_number(): failed to get num: %s" % ex)
-                else:
-                    logging.error("Error: failed to receive JSON")
+            try:
+                resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + \
+                                    "lgbk/" + self.experiment_name + "/ws/current_run",
+                                    timeout=10)
+            except requests.exceptions.RequestException as ex:
+                logging.error("get_last_run_number(): request exception: %s" % ex)
+            except Exception as ex:
+                logging.error("get_last_run_number(): exception: %s" % ex)
             else:
-                logging.error("Error: status code %d" % resp.status_code)
+                logging.debug("current_run request response: %s" % resp.text)
+                if resp.status_code == requests.codes.ok:
+                    logging.debug("current_run request response headers: %s" % resp.headers)
+                    if 'application/json' in resp.headers['Content-Type']:
+                        try:
+                            json_response = resp.json()
+                        except json.decoder.JSONDecodeError:
+                            logging.error("Error: failed to decode JSON")
+                        else:
+                            if json_response is None or json_response.get("value", {}) is None:
+                                logging.debug("get_last_run_number(): JSON response is None")
+                            else:
+                                try:
+                                    last_run_number = json_response.get("value", {}).get("num", 0)
+                                except Exception as ex:
+                                    logging.error("get_last_run_number(): failed to get num: %s" % ex)
+                    else:
+                        logging.error("Error: failed to receive JSON")
+                else:
+                    logging.error("Error: status code %d" % resp.status_code)
+        else:
+            last_run_number = 1
 
         # last run number, or 0
         return last_run_number
@@ -2160,27 +2174,30 @@ class CollectionManager():
         experiment_name = None
         instrument = self.instrument
 
-        # authentication is not required, adjust url accordingly
-        uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
+        if not self.simulator:
+            # authentication is not required, adjust url accordingly
+            uurl = self.url.replace('ws-auth', 'ws').replace('ws-kerb', 'ws')
 
-        try:
-            resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + "/lgbk/ws/activeexperiment_for_instrument_station",
-                                params={"instrument_name": instrument, "station": self.station}, timeout=10)
-        except requests.exceptions.RequestException as ex:
-            logging.error("get_experiment(): request exception: %s" % ex)
-        else:
-            logging.debug("request response: %s" % resp.text)
-            if resp.status_code == requests.codes.ok:
-                logging.debug("headers: %s" % resp.headers)
-                if 'application/json' in resp.headers['Content-Type']:
-                    try:
-                        experiment_name = resp.json().get("value", {}).get("name", None)
-                    except json.decoder.JSONDecodeError:
-                        logging.error("Error: failed to decode JSON")
-                else:
-                    logging.error("Error: failed to receive JSON")
+            try:
+                resp = requests.get((uurl + "/" if not uurl.endswith("/") else uurl) + "/lgbk/ws/activeexperiment_for_instrument_station",
+                                    params={"instrument_name": instrument, "station": self.station}, timeout=10)
+            except requests.exceptions.RequestException as ex:
+                logging.error("get_experiment(): request exception: %s" % ex)
             else:
-                logging.error("Error: status code %d" % resp.status_code)
+                logging.debug("request response: %s" % resp.text)
+                if resp.status_code == requests.codes.ok:
+                    logging.debug("headers: %s" % resp.headers)
+                    if 'application/json' in resp.headers['Content-Type']:
+                        try:
+                            experiment_name = resp.json().get("value", {}).get("name", None)
+                        except json.decoder.JSONDecodeError:
+                            logging.error("Error: failed to decode JSON")
+                    else:
+                        logging.error("Error: failed to receive JSON")
+                else:
+                    logging.error("Error: status code %d" % resp.status_code)
+        else:
+            experiment_name = instrument + "_1"
 
         # result of request, or None
         return experiment_name
@@ -2259,13 +2276,32 @@ class CollectionManager():
             logging.debug(f'condition_configure(): seqpv {self.seqpv_name} {self.seqpv_val} {seqpv_done}')
 
         # Fetch and broadcast the trigger configDb object to all DAQ elements
-        try:
-            [db_url, db_name] = self.cfg_dbase.rsplit('/', 1)
-            trigger_body = get_config_with_params(db_url, self.instrument, db_name, self.config_alias, self.trigger_config+'_0')
-        except Exception as ex:
-            self.report_error(f'Error fetching configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0: %s' % ex)
-            return False
-        logging.debug(f'condition_configure(): Loaded configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
+        if self.cfg_dbase is not None:
+            try:
+                [db_url, db_name] = self.cfg_dbase.rsplit('/', 1)
+                trigger_body = get_config_with_params(db_url, self.instrument, db_name, self.config_alias, self.trigger_config+'_0')
+            except Exception as ex:
+                self.report_error(f'Error fetching configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0: %s' % ex)
+                return False
+            logging.debug(f'condition_configure(): Loaded configDb {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
+        else:                   # Simulator case
+            # Dummy up the trigger configuration, removing unused fields
+            trigger_body = {"buildAll": 1,
+                            "buildDets": "timing,bld,epics",
+                            "monitorValue": 305419896,
+                            "persistValue": 3735928559,
+                            "prescale": 1,
+                            "pythonScript": "tebMonRouter.py",
+                            "rogRsrvdBuf[0]": 0,
+                            "rogRsrvdBuf[1]": 0,
+                            "rogRsrvdBuf[2]": 0,
+                            "rogRsrvdBuf[3]": 0,
+                            "rogRsrvdBuf[4]": 0,
+                            "rogRsrvdBuf[5]": 0,
+                            "rogRsrvdBuf[6]": 0,
+                            "rogRsrvdBuf[7]": 0,
+                            "soname": "libtmoTeb.so"}
+            logging.debug(f'condition_configure(): Loaded dummy trigger configuration to mimic {self.instrument}/{self.config_alias}/{self.trigger_config}_0')
 
         # phase 1
         ok = self.condition_common('configure', 60000,
@@ -2280,33 +2316,34 @@ class CollectionManager():
 
         # phase 2
         # ...clear readout
-        self.xpm.clear_readout(self.groups)
+        if not self.simulator:
+            self.xpm.clear_readout(self.groups)
 
-        # ...configure
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Configure'])
-        self.xpm.step_groups_clear(self.groups)    # default is no scanning
-
-        start_step_thread = False
-        if (self.readout_count > 0):
-            start_step_thread = True
-            self.xpm.setup_step(self.step_group,self.group_mask,1)
-        elif seqpv_done is not None:
-            self.xpm.setup_seq(seqpv_done)
-            start_step_thread = True
-        else:
+            # ...configure
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['Configure'])
             self.xpm.step_groups_clear(self.groups)    # default is no scanning
 
-        if start_step_thread:
-            self.step_exit.clear()
-            # initialize stepdone thread
-            self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
-            # start step done thread
-            self.step_done_thread.start()
+            start_step_thread = False
+            if (self.readout_count > 0):
+                start_step_thread = True
+                self.xpm.setup_step(self.step_group,self.group_mask,1)
+            elif seqpv_done is not None:
+                self.xpm.setup_seq(seqpv_done)
+                start_step_thread = True
+            else:
+                self.xpm.step_groups_clear(self.groups)    # default is no scanning
+
+            if start_step_thread:
+                self.step_exit.clear()
+                # initialize stepdone thread
+                self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
+                # start step done thread
+                self.step_done_thread.start()
 
 
-        ok = self.get_phase2_replies('configure')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('configure')
+            if not ok:
+                return False
 
         logging.debug('condition_configure() returning %s' % ok)
 
@@ -2324,13 +2361,14 @@ class CollectionManager():
             return False
 
         # phase 2
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Unconfigure'])
+        if not self.simulator:
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['Unconfigure'])
 
-        ok = self.get_phase2_replies('unconfigure')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('unconfigure')
+            if not ok:
+                return False
 
-        self.step_exit.set()
+            self.step_exit.set()
 
         logging.debug('condition_unconfigure() returning %s' % ok)
 
@@ -2368,18 +2406,19 @@ class CollectionManager():
             logging.error('condition_enable(): enable phase1 failed')
             return False
 
-        if (readout_count > 0):
-            # set EPICS PVs.
-            # StepEnd is a cumulative count.
-            self.readoutCumulative[self.step_group] += readout_count
-            self.xpm.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
+        if not self.simulator:
+            if (readout_count > 0):
+                # set EPICS PVs.
+                # StepEnd is a cumulative count.
+                self.readoutCumulative[self.step_group] += readout_count
+                self.xpm.setup_step(self.step_group,self.group_mask,self.readoutCumulative[self.step_group])
 
-        # phase 2
-        self.xpm.insert_transition(self.groups, ControlDef.transitionId['Enable'])
+            # phase 2
+            self.xpm.insert_transition(self.groups, ControlDef.transitionId['Enable'])
 
-        ok = self.get_phase2_replies('enable')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('enable')
+            if not ok:
+                return False
 
         # For the first Enable after a BeginRun, possibly issue a Slow Update
         # after Enable has gone through but before enabling triggers
@@ -2391,13 +2430,14 @@ class CollectionManager():
                 return False
 
         # order matters: set Enable PV after others transition
-        if not self.xpm.group_run(self.groups,True):
-            logging.error('condition_enable(): group_run(True) failed')
-            return False
+        if not self.simulator:
+            if not self.xpm.group_run(self.groups,True):
+                logging.error('condition_enable(): group_run(True) failed')
+                return False
 
-        # optionally enable a sequence
-        if self.seqpv_name:
-            self.pva.pv_put(self.seqpv_name, 1)
+            # optionally enable a sequence
+            if self.seqpv_name:
+                self.pva.pv_put(self.seqpv_name, 1)
 
         self.lastTransition = 'enable'
         return True
@@ -2405,14 +2445,15 @@ class CollectionManager():
 
     def condition_disable(self):
 
-        # optionally enable a sequence
-        if self.seqpv_name:
-            self.pva.pv_put(self.seqpv_name, 0)
+        if not self.simulator:
+            # optionally enable a sequence
+            if self.seqpv_name:
+                self.pva.pv_put(self.seqpv_name, 0)
 
-        # order matters: set Disable PV before others transition
-        if not self.xpm.group_run(self.groups,False):
-            logging.error('condition_disable(): group_run(False) failed')
-            return False
+            # order matters: set Disable PV before others transition
+            if not self.xpm.group_run(self.groups,False):
+                logging.error('condition_disable(): group_run(False) failed')
+                return False
 
         # disable slow updates early in the disable transition
         # but after setting Disable PV has succeeded
@@ -2428,16 +2469,17 @@ class CollectionManager():
                 logging.warning('condition_disable(): slowupdate transitions are disabled')
             return False
 
-        # phase 2
-        # bits 0x180 here mean we queue the transition and keep trying forever
-        # until deadtime goes away.  can result in completely lost transitions
-        # if deadtime is 100%. could then go out later and corrupt a later instance
-        # of the daq? just a guess.  - cpo oct 24, 2024
-        self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
+        if not self.simulator:
+            # phase 2
+            # bits 0x180 here mean we queue the transition and keep trying forever
+            # until deadtime goes away.  can result in completely lost transitions
+            # if deadtime is 100%. could then go out later and corrupt a later instance
+            # of the daq? just a guess.  - cpo oct 24, 2024
+            self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
 
-        ok = self.get_phase2_replies('disable')
-        if not ok:
-            return False
+            ok = self.get_phase2_replies('disable')
+            if not ok:
+                return False
 
         self.lastTransition = 'disable'
         return True
@@ -2446,10 +2488,11 @@ class CollectionManager():
     def condition_reset(self):
         self.phase1Info = {}    # clear phase1Info
 
-        # disable triggers
-        if self.state == 'running':
-            if not self.xpm.group_run(self.groups,False):
-                logging.error('condition_reset(): group_run(False) failed')
+        if not self.simulator:
+            # disable triggers
+            if self.state == 'running':
+                if not self.xpm.group_run(self.groups,False):
+                    logging.error('condition_reset(): group_run(False) failed')
 
         # disable slowupdate timer
         self.set_slow_update_enabled(False)
@@ -2514,16 +2557,17 @@ class CollectionManager():
                     logging.debug(f'StepDone PV={doneFlag} in state {self.state} (set step_done event)')
                     self.step_done.set()
 
-        # start monitoring the StepDone PV
-        sub = self.xpm.monitor_StepDone(callback=callback)
+        if not self.simulator:
+            # start monitoring the StepDone PV
+            sub = self.xpm.monitor_StepDone(callback=callback)
 
-        while not self.step_exit.is_set():
-            if self.step_done.wait(0.5):
-                self.step_done.clear()
-                # stepDone event received
-                logging.debug('stepDone event received')
-                # publish the stepDone event with zmq
-                self.step_pub.send_json(step_msg(1))
+            while not self.step_exit.is_set():
+                if self.step_done.wait(0.5):
+                    self.step_done.clear()
+                    # stepDone event received
+                    logging.debug('stepDone event received')
+                    # publish the stepDone event with zmq
+                    self.step_pub.send_json(step_msg(1))
 
         # stop monitoring the StepDone PV
         sub.close()
@@ -2535,11 +2579,11 @@ def main():
     # Process arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
-    parser.add_argument('-x', metavar='XPM', type=int, required=True, help='master XPM')
+    parser.add_argument('-x', metavar='XPM', type=int, help='master XPM')
     parser.add_argument('-X', metavar='XPMHOST', type=str, default=None, help='XPM host (drp-srcf-mon001')
     parser.add_argument('-P', metavar='INSTRUMENT', required=True, help='instrument_name[:station_number]')
     parser.add_argument('-d', metavar='CFGDATABASE', default='https://pswww.slac.stanford.edu/ws/devconfigdb/ws/configDB', help='configuration database connection')
-    parser.add_argument('-B', metavar='PVBASE', required=True, help='PV base')
+    parser.add_argument('-B', metavar='PVBASE', help='PV base')
     parser.add_argument('-u', metavar='ALIAS', required=True, help='unique ID')
     parser.add_argument('-C', metavar='CONFIG_ALIAS', required=True, help='default configuration type (e.g. ''BEAM'')')
     parser.add_argument('-c', action='store_true', help='use auto common group')
@@ -2558,7 +2602,22 @@ def main():
     parser.add_argument("--url", help="run database URL prefix. Defaults to " + defaultURL, default=defaultURL)
     defaultActiveDetFile = "~/.psdaq/x<XPM>_p<platform>.activedet.json"
     parser.add_argument('-r', metavar='ACTIVEDETFILE', help="active detectors file. Defaults to " + defaultActiveDetFile)
+    parser.add_argument("--sim", action='store_true', help="Enable simulator mode")
     args = parser.parse_args()
+
+    if args.sim:
+        ignored = []
+        if args.x:  ignored.append('-x')
+        if args.B:  ignored.append('-B')
+        if len(ignored):
+            print('control: warning: simulator mode ignored arguments:', *ignored)
+    else:
+        missing = []
+        if args.x is None:  missing.append('-x')
+        if args.B is None:  missing.append('-B')
+        if len(missing):
+            print('control: error: the following arguments are required:', *missing)
+            return
 
     # configure logging handlers
     if args.v:

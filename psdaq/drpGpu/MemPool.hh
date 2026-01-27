@@ -50,7 +50,8 @@ struct DetPanel
   DataDev        datadev;
   GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
   GpuDmaBuffer_t swFpgaRegs;
-  DetPanel(std::string& device) : datadev(device.c_str()) {}
+  std::string    name;
+  DetPanel(std::string& device) : datadev(device.c_str()), name(device) {}
 };
 
 // @todo: Move to a common header file or use std::pair/std::tuple

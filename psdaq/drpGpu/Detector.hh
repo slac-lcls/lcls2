@@ -64,6 +64,8 @@ public:
                            const unsigned&       index_d,
                            const unsigned        panel,
                            uint16_t const* const data) = 0;
+
+  virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
 protected:
   template<typename T>
   void _initialize(Parameters& para, MemPoolGpu& pool) {
@@ -71,12 +73,9 @@ protected:
     // real one for each Detector instance the GPU will service
     // @todo: This seems wasteful - is there a nicer solution?
     unsigned i = 0;
-    std::vector<int> panels;
-    auto pos = para.device.find("_", 0);
-    Pds::getRange(para.device.substr(pos+1, para.device.length()), panels);
-    for (const auto& unit : panels) {
+    for (const auto& panel : pool.panels()) {
       m_params.push_back(para);
-      m_params[i].device = para.device.substr(0, pos+1) + std::to_string(unit);
+      m_params[i].device = panel.name;
 
       // Create a Drp::Detector for each panel/PGP device
       m_dets.push_back(new T(&m_params[i], &pool));
