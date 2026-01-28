@@ -286,7 +286,7 @@ class SbatchManager:
 
         # For x11 forwarding
         env_opt += ",DISPLAY"
-        env_opt += ",XAUTHORITY=$HOME/.Xauthority"
+        env_opt += ",XAUTHORITY"
 
         # Include any exists in setup_env.sh backdoor
         env_opt += ",$DAQMGR_EXPORT"
