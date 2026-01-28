@@ -92,9 +92,9 @@ void TebReceiver::setup()
   size_t maxBufSize = 16 * 1024 * 1024UL;
   // @todo: Commented out until we can figure out why cuFileDriverOpen() fails
   //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
-  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
+  m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
   printf("*** TebRcvr::setup: 2\n");
-  //m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
+  m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
   printf("*** TebRcvr::setup: 3\n");
 
   // Reset the record queue
@@ -186,7 +186,7 @@ void TebReceiver::_recorder()
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
-  // @todo: m_fileWriter->registerStream(m_stream);
+  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
   //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
@@ -215,14 +215,9 @@ void TebReceiver::_recorder()
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       worker = (worker + 1) % m_para.nworkers;
 
-      //if (std::get<0>(rt) != index) { // Sanity check
-      //  logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, std::get<0>(rt));
-      //  abort();
-      //}
-      //dataSize = std::get<1>(rt);
-      if (rt.index != index) { // Sanity check
+      if (rt.index != index) [[unlikely]] { // Sanity check
         logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, rt.index);
-        abort();
+        //abort();
       }
       dataSize = rt.dataSize;
     }
