@@ -57,11 +57,17 @@ else
   OPTIONS="$OPTIONS -Dbuild_daq=false"
 fi
 
-# "python setup.py develop" seems to not create this for you
-# (although "install" does)
-mkdir -p $INSTDIR/lib/python$pyver/site-packages/
-if [ $pyInstallStyle == "develop" ]; then
-    pipOptions="--editable"
+# Have to clear LDFLAGS set by conda if we are compiling the cuda parts too
+if command -v nvcc >/dev/null 2>&1; then
+  export LDFLAGS_OLD="$LDFLAGS"
+  export LDFLAGS=""
+fi
+
+#########
+# Build #
+#########
+if [ ! -d "$BUILDDIR/meson-private" ]; then
+    meson setup "$BUILDDIR" $OPTIONS
 else
     pipOptions=""
 fi
@@ -130,3 +136,7 @@ meson compile -C "$BUILDDIR"
 meson install -C "$BUILDDIR"
 
 pip install --prefix=$INSTDIR .
+
+# Reset LDFLAGS back:
+export LDFLAGS="$LDFLAGS_OLD"
+unset LDFLAGS_OLD

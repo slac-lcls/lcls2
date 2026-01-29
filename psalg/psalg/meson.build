@@ -1,6 +1,7 @@
 cc = meson.get_compiler('cpp')
 rt_dep = cc.find_library('rt', required: false)
 libcurl_dep = dependency('libcurl')
+threads_dep = dependency('threads')
 
 subdir('utils')
 subdir('geometry')

@@ -1,6 +1,4 @@
 
-threads_dep = dependency('threads')
-python_dep = dependency('python3')
 rogue_dep = cc.find_library('rogue-core')
 
 hsd_sources = files(
@@ -42,39 +40,48 @@ hsd_lib = shared_library('hsd',
   include_directories: [hsd_inc_dir],
   dependencies: [
     psalg_utils_dep,
-    threads_dep
+    threads_dep,
+    #tr_dep,
   ],
   link_with: [
     mmhw_lib,
-    service_lib
+    service_lib,
   ],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 mempeek = executable('mempeek',
   'mempeek.cc',
   include_directories: hsd_inc_dir,
   link_with: mmhw_lib,
+  dependencies: [
+    #rt_dep,
+    #dl_dep,
+  ],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 
 hsd_eyescan = executable('hsd_eyescan',
   'hsd_eyescan.cc',
   include_directories: hsd_inc_dir,
-  dependencies: [threads_dep],
+  dependencies: [
+    threads_dep,
+    #rt_dep,
+    #dl_dep,
+  ],
   link_with: mmhw_lib,
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 hsd134PVs_sources = [
   'hsd134PVs.cc',
   'PV134Ctrls.cc',
   'PVCtrlsBase.cc',
-  'PV134Stats.cc'
+  'PV134Stats.cc',
 ]
 
 hsd134PVs = executable('hsd134PVs',
@@ -85,47 +92,47 @@ hsd134PVs = executable('hsd134PVs',
     epics_dep,
     psalg_utils_dep,
     rogue_dep,
-    threads_dep
+    threads_dep,
   ],
   link_with: [
     mmhw_lib,
     hsd_lib,
     epicstools_lib,
     service_lib,
-    app_lib
+    app_lib,
  ],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 hsd126PVs_sources = [
   'hsd126PVs.cc',
   'PV126Ctrls.cc',
   'PVCtrlsBase.cc',
-  'PV126Stats.cc'
+  'PV126Stats.cc',
 ]
 
 hsd126PVs = executable('hsd126PVs',
   hsd126PVs_sources,
   include_directories: [hsd_inc_dir],
   dependencies: [
-    epics_dep
+    epics_dep,
   ],
   link_with: [
     hsd_lib,
     mmhw_lib,
     epicstools_lib,
     service_lib,
-    app_lib
+    app_lib,
   ],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 hsd_sim = executable('hsd_sim',
   'hsd_sim.cc', 
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 hsdRead = executable('hsdRead',
@@ -136,15 +143,15 @@ hsdRead = executable('hsdRead',
   dependencies: [
     epics_dep,
     xtcdata_dep,
-    threads_dep
+    threads_dep,
   ],
   include_directories: [
     hsd_inc_dir,
     include_directories('../../../psalg/')
     ],
   link_with: [
-    epicstools_lib
+    epicstools_lib,
   ],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
