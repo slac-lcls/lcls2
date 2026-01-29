@@ -66,6 +66,7 @@ class RunParams:
         self.fileSet = set()
         self.pvaList = []
         self.caList = []
+        self.simulator = pva is None # True when in simulator mode
 
     def updateFileSet(self, fileSet):
         logging.debug(f"RunParams updateFileSet({fileSet})")
@@ -168,6 +169,9 @@ class RunParams:
 
     def beginrun(self, experiment_name):
         logging.debug(f"RunParams beginrun() experiment_name={experiment_name}")
+        if self.simulator:
+            return              # Nothing to do in simulator mode
+
         inCount = len(self.pvaList) + len(self.caList)
         errorCount = 0
         params = {}
@@ -990,6 +994,9 @@ class CollectionManager():
     # register_file -
     #
     def register_file(self, body):
+        if self.simulator:
+            return              # Nothing to do in simulator mode
+
         if self.experiment_name is None:
             raise ConfigDBError('register_file: experiment_name is None')
             return
@@ -2027,6 +2034,10 @@ class CollectionManager():
         return
 
     def start_run(self, experiment_name):
+        if self.simulator:
+            run_num = 1
+            return run_num      # Always use run # 1 in simulator mode
+
         run_num = 0
         ok = False
         base_url = self.url if not self.url.endswith("/") else self.url[:-1]
@@ -2104,6 +2115,9 @@ class CollectionManager():
         return param_desc_count
 
     def end_run(self, experiment_name):
+        if self.simulator:
+            return              # Nothing to do in simulator mode
+
         run_num = 0
         ok = False
         err_msg = "end_run error"
