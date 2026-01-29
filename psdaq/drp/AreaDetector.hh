@@ -16,8 +16,10 @@ public:
     // Avoid "overloaded virtual function "Drp::Detector::event" is only partially overridden" warning
     using Detector::event;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
+    void cube(XtcData::Dgram& dgram, void* bin) override;
+    unsigned cubeNamesIndex() override { return CubeNamesIndex; }
 private:
-    enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex};
+    enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex, CubeNamesIndex};
 };
 
 }

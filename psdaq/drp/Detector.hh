@@ -44,6 +44,7 @@ public:
     virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
+    virtual void cube(XtcData::Dgram& raw, unsigned binId, void* binXtc, unsigned& entries, const void* bufEnd) {};
     virtual void shutdown() {};
 
     // Scan methods.  Default is to fail.

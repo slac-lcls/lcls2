@@ -1,3 +1,5 @@
+#pragma once
+
 #include "DrpBase.hh"                   // Contains base class for TebReceiver
 
 namespace Pds {
@@ -18,9 +20,8 @@ protected:
     virtual int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                              std::map<std::string, std::string>& labels) override;
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
-private:
     void _writeDgram(XtcData::Dgram*);
-private:
+protected:
     Pds::Eb::MebContributor& m_mon;
     BufferedFileWriterMT     m_fileWriter;
     SmdWriter                m_smdWriter;

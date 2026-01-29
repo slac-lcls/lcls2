@@ -2,6 +2,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
+#include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/utils/SysLog.hh"
 
 using namespace XtcData;
@@ -40,6 +41,56 @@ public:
     }
 };
 
+class CubeDef : public VarDef
+{
+public:
+    enum index
+    {
+        array
+    };
+
+    CubeDef()
+    {
+        Alg cube("cube", 1, 0, 0);
+        NameVec.push_back({"array"  , Name::DOUBLE, 2, cube});
+    }
+};
+
+class MyIterator : public XtcIterator {
+public:
+    MyIterator(NamesId& id) : 
+        m_id(id),
+        m_shapesdata(0) {}
+public:
+    ShapesData* shapesdata() const {
+        return m_shapesdata;
+    }
+
+    int process(Xtc* xtc, const void* bufEnd)
+    {
+        switch(xtc->contains.id()) {
+        case (TypeId::Parent): {
+            iterate(xtc, bufEnd);
+            break;
+        }
+        case (TypeId::ShapesData): {
+            ShapesData& shapesdata = *(ShapesData*)xtc;
+            if (shapesdata.namesId()==m_id) {  // Found it!
+                m_shapesdata = &shapesdata;
+                return 0;
+            }
+            break;
+        }
+        default:
+            break; 
+        }
+        return 1;
+    }
+private:
+    NamesId     m_id;
+    ShapesData* m_shapesdata;
+};
+
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool)
 {
@@ -69,6 +120,15 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
     RawDef myRawDef;
     rawNames.add(xtc, bufEnd, myRawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
+
+    Alg cubeAlg("cube", 2, 0, 0);
+    NamesId cubeNamesId(nodeId,CubeNamesIndex);
+    Names& cubeNames = *new(xtc, bufEnd) Names(bufEnd,
+                                              m_para->detName.c_str(), cubeAlg,
+                                              m_para->detType.c_str(), m_para->serNo.c_str(), cubeNamesId, m_para->detSegment);
+    CubeDef myCubeDef;
+    cubeNames.add(xtc, bufEnd, myCubeDef);
+    m_namesLookup[cubeNamesId] = NameIndex(cubeNames);
 
     return 0;
 }
@@ -132,6 +192,99 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     raw.set_data_length(size);
     unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / 2};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
+}
+
+static void _dumpNames(DescData& data, const char* title)
+{
+    Names& names = data.nameindex().names();
+    logging::debug("Found %d names in %s",names.num(), title);
+    for(unsigned i=0; i<names.num(); i++) {
+        Name& name = names.get(i);
+        logging::debug("\t%d : %s",i,name.name());
+    }
+}
+
+void AreaDetector::cube(XtcData::Dgram& dgram, unsigned binId, void* binXtc, unsigned& entries, const void* bufEnd)
+{
+    logging::debug("AreaDetector::cube dgram (%p) bin (%u) bin_xtc (%p) bin_entries (%u) bufEnd (%p)",
+                   &dgram, binId, binXtc, entries, bufEnd);
+
+    //  Navigate to the raw data
+    //    Can either be direct (knowing the _event method)
+    //    or use an iterator
+    NamesId rawNames = NamesId(nodeId,RawNamesIndex);
+    Name name = RawDef().NameVec[RawDef::array_raw];
+
+    MyIterator iter(rawNames);
+    iter.iterate(&dgram.xtc, dgram.xtc.next());
+    if (!iter.shapesdata()) {
+        logging::error("Unable to find raw data in xtc");
+        return;
+    }
+
+    {
+        ShapesData& sh = *iter.shapesdata();
+        logging::debug("AreaDetector::cube iter.shapesdata: src %04x ctns %04x ext %08x",
+                       sh.src, sh.contains.value(), sh.extent);
+        Xtc& first = *(Xtc*)sh.payload();
+        logging::debug("AreaDetector::cube iter.shapesdata.first: src %04x ctns %04x ext %08x",                   
+                       first.src, first.contains.value(), first.extent);
+        Xtc& secnd = *first.next();
+        logging::debug("AreaDetector::cube iter.shapesdata.secnd: src %04x ctns %04x ext %08x",                   
+                       secnd.src, secnd.contains.value(), secnd.extent);
+    }
+
+    Shape& shape = iter.shapesdata()->shapes().get(RawDef::array_raw);
+    unsigned nelems = shape.size(name)/name.get_element_size(name.type());
+    DescData rawdata(*(iter.shapesdata()), m_namesLookup[rawNames]);
+    Array<uint8_t> rawArrT = rawdata.get_array<uint8_t>(RawDef::array_raw);
+
+    logging::debug("shape [%u, %u, %u, %u, %u]  nelems (%u)", 
+                   shape.shape()[0],
+                   shape.shape()[1],
+                   shape.shape()[2],
+                   shape.shape()[3],
+                   shape.shape()[4], nelems);
+    logging::debug("rawArrT  rank (%u) data (%p) nelems (%u)",
+                   rawArrT.rank(),
+                   rawArrT.data(),
+                   rawArrT.num_elem());
+    
+    // some simple checks
+    _dumpNames(rawdata,"raw");
+
+    NamesId cubeNamesId(nodeId,CubeNamesIndex);
+    if (!entries) {
+        Xtc& xtc = *new ((char*)binXtc, bufEnd) Xtc(TypeId(TypeId::Parent,0),dgram.xtc.src);
+        //  Create the shapes data within the provided xtc
+        CreateData data(xtc, bufEnd, m_namesLookup, cubeNamesId);
+        _dumpNames(data,"cube");
+        Array<double_t> arrayT = data.allocate<double_t>(CubeDef::array, shape.shape());
+        logging::debug("binArrT  rank (%u) data (%p) nelems (%u)",
+                       arrayT.rank(),
+                       arrayT.data(),
+                       arrayT.num_elem());
+        for(unsigned i=0; i<shape.shape()[0]; i++)
+            for(unsigned j=0; j<shape.shape()[1]; j++)
+                arrayT(i,j) = double(rawArrT(i,j));
+    }
+    else {
+        //  Extract the shapes data from the provided xtc
+        //  This only works if the array is the only member in CubeDef;
+        //    i.e. the _offsets vector is not reconstituted.
+        Xtc& xtc = *(Xtc*)(binXtc);
+        DescData data(*(ShapesData*)xtc.payload(), m_namesLookup[cubeNamesId]);
+        _dumpNames(data,"cube");
+        Array<double_t> arrayT = data.get_array<double_t>(CubeDef::array);
+        logging::debug("binArrT  rank (%u) data (%p) nelems (%u)",
+                       arrayT.rank(),
+                       arrayT.data(),
+                       arrayT.num_elem());
+        //  calibrate and sum
+        for(unsigned i=0; i<shape.shape()[0]; i++)
+            for(unsigned j=0; j<shape.shape()[1]; j++)
+                arrayT(i,j) += double(rawArrT(i,j));
+    }
 }
 
 }

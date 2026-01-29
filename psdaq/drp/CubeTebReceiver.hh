@@ -1,64 +1,37 @@
-#include "DrpBase.hh"                   // Contains base class for TebReceiver
+#pragma once
 
-//#define USE_TEB_COLLECTOR
+#include "TebReceiver.hh"                   // Contains base class for TebReceiver
+#include "psdaq/eb/CubeResultDgram.hh"
 
-namespace Pds {
-  namespace Eb {
-    class CubeResultDgram;
-  }
-}
+#define MAX_CUBE_BINS 256
 
 namespace Drp {
 
-#ifdef USE_TEB_COLLECTOR
-class CubeCollector
-{
-public:
-    CubeCollector(const Parameters&);
-public:
-    void queueDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
-private:
-    void _wait_for_complete(const Pds::Eb::CubeResultDgram& result);
-    void _writeDgram(XtcData::Dgram*);
-private:
-    const Parameters&    m_para;
-    MemPool&             m_pool;
-    unsigned             m_current;
-    unsigned             m_last; // index from CubeTebReceiver
-    BufferedFileWriterMT     m_fileWriter;
-    SmdWriter                m_smdWriter;
-    SPSCQueue<void*>         m_workerQueues[];    // queue dgram for summation
-    SPSCQueue<void*>         m_worker_payload[];  // intermediate summation
-    Pds::Semaphore           m_worker_sem[];      // serialize recording, summation
-};
-#endif
-
-class CubeTebReceiver: public TebReceiverBase
+class CubeTebReceiver: public TebReceiver
 {
 public:
     CubeTebReceiver(const Parameters&, DrpBase&);
-#ifdef USE_TEB_COLLECTOR
-    virtual FileWriterBase& fileWriter() override { return m_collector.fileWriter(); }
-    virtual SmdWriterBase& smdWriter() override { return m_collector.smdWriter(); };
-#else
-    virtual FileWriterBase& fileWriter() override { return m_fileWriter; }
-    virtual SmdWriterBase& smdWriter() override { return m_smdWriter; };
-private:
-    void _writeDgram(XtcData::Dgram*);
-#endif
+public:
+    void process();
 protected:
-    virtual int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
-                             std::map<std::string, std::string>& labels) override;
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
-    Pds::Eb::MebContributor& m_mon;
-    const Parameters&        m_para;
-#ifdef USE_TEB_COLLECTOR
-    Drp::CubeCollector       m_collector;
-#else
-    BufferedFileWriterMT     m_fileWriter;
-    SmdWriter                m_smdWriter;
-#endif
+    void            _queueDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
+    XtcData::Dgram* _binDgram  (const Pds::Eb::CubeResultDgram&);
+private:
+    Detector&                         m_det;
+    std::vector<Pds::Eb::CubeResultDgram>  m_result;
+    unsigned                          m_current;
+    unsigned                          m_last; // index from CubeTebReceiver
+    std::vector<char*>                m_bin_data;
+    std::vector< std::vector<unsigned> >    m_bin_entries;
+    char*                             m_buffer;
+    std::vector<std::thread>          m_workerThreads;
+    std::vector<SPSCQueue<unsigned> > m_workerInputQueues;  // events for each worker
+    std::vector<SPSCQueue<unsigned> > m_workerOutputQueues; //
+    std::thread                       m_collectorThread;    // process returns
+    std::vector<Pds::Semaphore>       m_sem;
+    std::atomic<bool>                 m_terminate;
 };
 
 }
