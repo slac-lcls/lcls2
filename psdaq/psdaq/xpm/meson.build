@@ -1,8 +1,7 @@
 
-threads_dep = dependency('threads')
 dl_dep  = meson.get_compiler('cpp').find_library('dl')
-rt_dep  = meson.get_compiler('cpp').find_library('rt')
-yaml_cpp_dep = meson.get_compiler('cpp').find_library('yaml-cpp')
+
+yaml_cpp_dep = cc.find_library('yaml-cpp')
 
 
 xpm_sources = files(
@@ -14,7 +13,7 @@ xpm_sources = files(
     'PVLinkCtrls.cc',
     'user_sequence.cc',
     'XpmSequenceEngine.cc',
-    'Module.cc'
+    'Module.cc',
 )
 
 xpm_lib = shared_library(
@@ -22,7 +21,7 @@ xpm_lib = shared_library(
     xpm_sources,
     dependencies: [
         yaml_cpp_dep,
-        xtcdata_dep
+        xtcdata_dep,
     ],
     include_directories: include_directories('..'),
     link_with: epicstools_lib,
@@ -35,8 +34,11 @@ executable('xpm_simple',
         yaml_cpp_dep,
         dl_dep,
         threads_dep,
-        rt_dep
+        rt_dep,
     ],
-    link_with: [service_lib, cphw_lib],
-    install : true
+    link_with: [
+      service_lib,
+      cphw_lib
+    ],
+    install : true,
 )

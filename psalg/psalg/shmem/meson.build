@@ -1,4 +1,3 @@
-threads_dep = dependency('threads')
 
 shmemsrv_sources = files(
     'src/XtcMonitorServer.cc',
@@ -48,7 +47,8 @@ executable(
     install: true,
     include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
-    link_with: [xtc_shlib, shmemclient_shlib]
+    link_with: [xtc_shlib, shmemclient_shlib],
+    dependencies: [rt_dep],
 )
 
 executable(
@@ -57,7 +57,8 @@ executable(
     install: true,
     include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
-    link_with: [xtc_shlib, shmemclient_shlib]
+    link_with: [xtc_shlib, shmemclient_shlib],
+    dependencies: [rt_dep],
 )
 
 executable(
@@ -66,7 +67,8 @@ executable(
     install: true,
     include_directories: [psalg_incdir, xtcdata_incdir],
     install_rpath: libdir_install_rpath,
-    link_with: [xtc_shlib, shmemserver_shlib]
+    link_with: [xtc_shlib, shmemserver_shlib],
+    dependencies: [rt_dep],
 )
 
 install_headers(

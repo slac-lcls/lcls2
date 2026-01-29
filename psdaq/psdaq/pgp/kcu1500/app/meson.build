@@ -16,14 +16,14 @@ kcu_lib = shared_library('kcu',
   dependencies: xtcdata_dep,
   link_with: mmhw_lib,
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 static_kcu_lib = static_library('staticKcu',
   kcu_sources,
   dependencies: xtcdata_dep,
   include_directories: [kcu_inc_dir],
-  link_with: [xtc_static_lib]
+  link_with: [xtc_static_lib],
 )
 
 kcu_status = executable('kcuStatus',
@@ -31,44 +31,44 @@ kcu_status = executable('kcuStatus',
   include_directories: [kcu_inc_dir],
   link_with: [static_kcu_lib],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 kcu_pgp_status = executable('kcuPgpStatus',
   'xPgpStatus.cpp',
   include_directories: [kcu_inc_dir],
-  link_with: [kcu_lib]
+  link_with: [kcu_lib],
 )
 
 kcu_hist = executable('kcuHist',
   'xHist.cpp',
   include_directories: [kcu_inc_dir],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 kcu_sim = executable('kcuSim',
   'xSim.cpp',
   include_directories: [kcu_inc_dir],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 kcu_sim_valid = executable('kcuSimValid',
   'xSimValid.cpp',
   include_directories: [kcu_inc_dir],
   install_rpath: libdir_install_rpath,
-  install: true
+  install: true,
 )
 
 kcu_loop_test = executable('kcuLoopTest',
   'xLoopTest.cpp',
-  include_directories: [kcu_inc_dir]
+  include_directories: [kcu_inc_dir],
 )
 
 kcu_reg = executable('kcuReg',
   'xReg.cpp',
-  include_directories: [kcu_inc_dir]
+  include_directories: [kcu_inc_dir],
 )
 
 kcu_read = executable('kcuRead',
@@ -80,23 +80,23 @@ kcu_read = executable('kcuRead',
 kcu_read_bulk = executable('kcuReadBulk',
   'xReadBulk.cpp',
   include_directories: [kcu_inc_dir],
-  dependencies: [threads_dep]
+  dependencies: [threads_dep],
 )
 
 kcu_write = executable('kcuWrite',
   'xWrite.cpp',
   include_directories: [kcu_inc_dir],
-  dependencies: [threads_dep]
+  dependencies: [threads_dep],
 )
 
 kcu_dma_status = executable('kcuDmaStatus',
   'xDmaStatus.cpp',
-  include_directories: [kcu_inc_dir]
+  include_directories: [kcu_inc_dir],
 )
 
 kcu_margin = executable('kcuMargin',
   'xMargin.cpp',
   include_directories: [kcu_inc_dir],
   link_with: [kcu_lib],
-  dependencies: [threads_dep]
+  dependencies: [threads_dep],
 )

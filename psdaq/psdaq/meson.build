@@ -2,11 +2,9 @@
 subdir('aes-stream-drivers')
 subdir('service')
 subdir('mmhw')
-
-
-subdir('epicstools')  # fully done
-subdir('bld') # fully done
-subdir('pgp') # I think it is done
+subdir('epicstools')
+subdir('bld')
+subdir('pgp')
 subdir('tpr')
 subdir('app')
 subdir('hsd')

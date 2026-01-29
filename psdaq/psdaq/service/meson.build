@@ -1,19 +1,3 @@
-# Dependencies
-
-threads_dep = dependency('threads')
-python_dep = dependency('python3')
-nlohmann_json_dep = dependency('nlohmann_json', required: false)
-
-#env_include_dir = include_directories(join_paths(get_option('conda_prefix'), 'include'))
-
-cc = meson.get_compiler('cpp')
-zmq_dep = cc.find_library('zmq')
-dl_dep = cc.find_library('dl')
-rt_dep = cc.find_library('rt')
-
-prometheus_core_dep = cc.find_library('prometheus-cpp-core', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
-prometheus_pull_dep = cc.find_library('prometheus-cpp-pull', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
-
 
 service_sources = files(
     'SysClk.cc',
@@ -40,20 +24,19 @@ service_lib = shared_library('service',
         xtcdata_dep,
         dl_dep,
         rt_dep,
-        psalg_utils_dep
+        psalg_utils_dep,
     ],
     include_directories: [
-        #env_include_dir,
-        include_directories('..')
+        include_directories('..'),
     ],
     install_rpath: libdir_install_rpath,
-    install: true
+    install: true,
 )
 
 collection_sources = files(
     'Collection.cc',
     'kwargs.cc',
-    'range.cc'
+    'range.cc',
 )
 
 collection_lib = shared_library('collection',
@@ -61,16 +44,14 @@ collection_lib = shared_library('collection',
     dependencies: [
         psalg_utils_dep,
         zmq_dep,
-        nlohmann_json_dep
+        nlohmann_json_dep,
     ],
     install: true,
-    install_rpath: libdir_install_rpath
+    install_rpath: libdir_install_rpath,
 )
 
-# exporter shared library
-
 exporter_sources = files(
-  'MetricExporter.cc'
+  'MetricExporter.cc',
 )
 
 exporter_lib = shared_library('exporter',
@@ -81,9 +62,10 @@ exporter_lib = shared_library('exporter',
         prometheus_pull_dep
     ],
     include_directories: include_directories('..'),
-    install: true
+    install: true,
 )
 
-install_headers('EbDgram.hh',
-  subdir : 'psdaq/service'
+install_headers(
+  'EbDgram.hh',
+  subdir: 'psdaq/service',
 )
