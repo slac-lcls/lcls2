@@ -1,4 +1,3 @@
-threads_dep = dependency('threads')
 
 cphw_lib = shared_library('cphw',
   ['Reg_rssi.cc', 'AmcPLL.cc', 'AmcTiming.cc', 'AxiVersion.cc',
