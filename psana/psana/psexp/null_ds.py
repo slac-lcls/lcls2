@@ -44,3 +44,6 @@ class NullDataSource(DataSourceBase):
 
     def is_srv(self):
         return True
+
+    def is_bd(self):
+        return False
