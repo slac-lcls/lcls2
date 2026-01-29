@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 import re
+import hashlib
 
 import numpy as np
 from time import time, perf_counter
@@ -35,6 +36,11 @@ import psana.detector.UtilsCalib as uc
 import psana.detector.utils_psana as up
 import psana.detector.UtilsCommonMode as ucm
 import psana.pycalgos.utilsdetector as ud
+
+from mpi4py import MPI
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
+size = comm.Get_size()
 
 info_ndarr = ndau.info_ndarr
 
@@ -73,6 +79,51 @@ def _jf_shared_prefix(det_name, runnum, cversion):
     if runnum is None:
         return f"jf_{safe}_v{cversion}"
     return f"jf_{safe}_r{runnum}_v{cversion}"
+
+_MASK_KWA_KEYS = {
+    "status",
+    "neighbors",
+    "edges",
+    "center",
+    "calib",
+    "umask",
+    "dtype",
+    "status_bits",
+    "stextra_bits",
+    "stci_bits",
+    "gain_range_inds",
+    "rad",
+    "ptrn",
+    "width",
+    "edge_rows",
+    "edge_cols",
+    "wcenter",
+    "center_rows",
+    "center_cols",
+    "force_update",
+}
+
+
+def _jf_mask_kwargs(det):
+    kwa = getattr(det, "_kwargs", None) or {}
+    return {k: kwa[k] for k in _MASK_KWA_KEYS if k in kwa}
+
+
+def _jf_mask_key(mask_kwa):
+    if not mask_kwa:
+        return "default"
+    if "umask" in mask_kwa and mask_kwa.get("umask") is not None:
+        return None
+    items = []
+    for key in sorted(mask_kwa.keys()):
+        val = mask_kwa[key]
+        if isinstance(val, np.ndarray):
+            items.append((key, ("ndarray", val.shape, str(val.dtype))))
+        else:
+            items.append((key, val))
+    payload = repr(items)
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()
+
 
 def _get_shared_jf(det, peds_shape, cversion):
     shared = getattr(det, "_jf_shared", None)
@@ -202,7 +253,7 @@ def build_shared_jungfrau_calib(det, shared_mem, runnum=None, cversion=CALIB_CPP
             t_populate = t_pop_end - t_pop_start
         except Exception as exc:
             ok = False
-            print("Failed to populate shared Jungfrau calibration constants: %s" % exc)
+            logger.error("Failed to populate shared Jungfrau calibration constants: %s" % exc)
 
     t_bcast_start = perf_counter()
     shm_comm = getattr(shared_mem, "shm_comm", None)
@@ -242,6 +293,87 @@ def build_shared_jungfrau_calib(det, shared_mem, runnum=None, cversion=CALIB_CPP
         "shape": peds.shape,
     }
 
+
+def build_shared_jungfrau_mask(det, shared_mem, runnum=None, cversion=CALIB_CPP_V3):
+    """Allocate and populate shared Jungfrau mask array on the node leader."""
+    if shared_mem is None or det is None:
+        return None
+    if cversion != CALIB_CPP_V3:
+        return None
+
+    mask_kwa = _jf_mask_kwargs(det)
+    mask_key = _jf_mask_key(mask_kwa)
+    if mask_key is None:
+        return None
+
+    prefix = _jf_shared_prefix(det._det_name, runnum, cversion)
+    mask_name = f"{prefix}_mask_{mask_key}"
+
+    if shared_mem.has_array(mask_name):
+        mask_arr = shared_mem.get_array(mask_name)
+        if hasattr(shared_mem, "barrier"):
+            shared_mem.barrier()
+        return {
+            "mask": mask_arr,
+            "mask_key": mask_key,
+            "mask_shape": mask_arr.shape,
+        }
+
+    shm_comm = getattr(shared_mem, "shm_comm", None)
+    ok = True
+    shape = None
+    dtype_str = None
+    mask = None
+    t_total_start = perf_counter()
+
+    if shared_mem.is_leader:
+        try:
+            t_mask_start = perf_counter()
+            mask = det._mask(**mask_kwa)
+            t_mask = perf_counter() - t_mask_start
+            if mask is None:
+                ok = False
+            else:
+                shape = mask.shape
+                dtype_str = mask.dtype.str
+        except Exception:
+            ok = False
+            t_mask = 0.0
+    else:
+        t_mask = 0.0
+
+    if shm_comm is not None:
+        ok = shm_comm.bcast(ok, root=0)
+        shape = shm_comm.bcast(shape, root=0)
+        dtype_str = shm_comm.bcast(dtype_str, root=0)
+
+    if not ok or shape is None or dtype_str is None:
+        return None
+
+    mask_arr = shared_mem.allocate_array(
+        mask_name, shape, np.dtype(dtype_str), zero_init=False
+    )
+    if shared_mem.is_leader and mask is not None:
+        np.copyto(mask_arr, mask, casting="unsafe")
+
+    if hasattr(shared_mem, "barrier"):
+        shared_mem.barrier()
+
+    t_total = perf_counter() - t_total_start
+    if shared_mem.is_leader:
+        logger.debug(
+            "Jungfrau shared mask build det=%s mask=%.3fs total=%.3fs",
+            det._det_name,
+            t_mask,
+            t_total,
+        )
+
+    return {
+        "mask": mask_arr,
+        "mask_key": mask_key,
+        "mask_shape": mask_arr.shape,
+    }
+
 def jungfrau_segments_tot(segnum_max):
     """Returns total number of segments in the detector 1,2,8,32 depending on segnum_max."""
     return 1 if segnum_max<1 else\
@@ -278,7 +410,7 @@ class DetCache():
         return nda_and_meta # - 4d shape:(3, <nsegs>, 512, 1024)
 
     def add_calibcons(self, det, evt):
-
+        t0 = MPI.Wtime()
         self.detname = det._det_name
         self.inds    = det._sorted_segment_inds # det._segment_numbers
         self.calibc  = det._calibconst
@@ -350,8 +482,24 @@ class DetCache():
 
         logger.debug('before call det._mask(**self.kwa) from UtilsJungfrau DetCache.add_calibcons self.kwa: %s' % str(self.kwa))
         t_mask_start = perf_counter()
-        self.mask = det._mask(**self.kwa)
+        mask_shared = False
+        mask_key = _jf_mask_key(_jf_mask_kwargs(det))
+        if shared and mask_key is not None:
+            shared_mask = shared.get("mask")
+            if (
+                shared_mask is not None
+                and shared.get("mask_key") == mask_key
+                and shared.get("mask_shape") == shared_mask.shape
+            ):
+                self.mask = shared_mask
+                mask_shared = True
+        if not mask_shared:
+            self.mask = det._mask(**self.kwa)
         t_mask = perf_counter() - t_mask_start
+        if mask_shared:
+            logger.debug("DetCache.add_calibcons mask shared det=%s key=%s", self.detname, mask_key)
+        else:
+            logger.debug("DetCache.add_calibcons mask local det=%s key=%s", self.detname, mask_key)
         logmet_init('cached constants:\n  %s\n  %s\n  %s\n  %s\n  %s' % (\
                       ndau.info_ndarr(self.mask, 'mask'),\
                       ndau.info_ndarr(self.cmps, 'cmps'),\
@@ -387,6 +535,8 @@ class DetCache():
             )
 
         self.isset = True
+        t1 = MPI.Wtime()
+        print(f'[Rank {rank}] Jungfrau DetCache.add_calibcons call time={t1 - t0:.6f}s')
 
 
     def add_gain_mask(self):
@@ -732,19 +882,23 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
         odc.ccons, odc.poff, odc.gfac, odc.mask, odc.cmps, odc.inds, odc.outa, odc.cversion
 
     if first_entry:
-        logger.info('\n  ====================== det.name: %s calibmet: %s' % (det_raw._det_name, dic_calibmet[cversion])\
-                   +info_ndarr(arr,  '\n  calib_jungfrau first entry:\n    arr ')\
-                   +info_ndarr(poff, '\n    peds+off')\
-                   +info_ndarr(gfac, '\n    gfac')\
-                   +info_ndarr(mask, '\n    mask')\
-                   +info_ndarr(outa, '\n    outa')\
-                   +info_ndarr(ccons, '\n   ccons (peds+off, gain*mask)', last=8, vfmt='%0.3f')\
-                   +'\n    inds: segment indices: %s' % str(inds)\
-                   +'\n    common mode parameters: %s' % str(cmps)\
-                   +'\n    loop over segments: %s' % odc.loop_banks)
-        logger.debug(info_gainbits_statistics(arr))
-        logger.debug(info_gainrange_statistics(arr))
-        logger.debug(info_gainrange_fractions(arr))
+        # NOTE: This block is intentionally disabled to avoid expensive full-array
+        # stats/log construction that can add seconds on event 0. Re-enable only
+        # for deep debugging.
+        #         logger.info('\n  ====================== det.name: %s calibmet: %s' % (det_raw._det_name, dic_calibmet[cversion])\
+        #                    +info_ndarr(arr,  '\n  calib_jungfrau first entry:\n    arr ')\
+        #                    +info_ndarr(poff, '\n    peds+off')\
+        #                    +info_ndarr(gfac, '\n    gfac')\
+        #                    +info_ndarr(mask, '\n    mask')\
+        #                    +info_ndarr(outa, '\n    outa')\
+        #                    +info_ndarr(ccons, '\n   ccons (peds+off, gain*mask)', last=8, vfmt='%0.3f')\
+        #                    +'\n    inds: segment indices: %s' % str(inds)\
+        #                    +'\n    common mode parameters: %s' % str(cmps)\
+        #                    +'\n    loop over segments: %s' % odc.loop_banks)
+        #         logger.debug(info_gainbits_statistics(arr))
+        #         logger.debug(info_gainrange_statistics(arr))
+        #         logger.debug(info_gainrange_fractions(arr))
+        pass
 
     if cversion == CALIB_CPP_V3:   # ccons.shape = (4, <NPIXELS>, 2)
         ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)
@@ -763,7 +917,6 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
 
     elif cversion == CALIB_CPP_V5: # constants shape = IS NOT USED
         return ud.calib_jungfrau_v5_empty(arr, ccons, size_blk, outa)
-
     return outa
 
 #EOF

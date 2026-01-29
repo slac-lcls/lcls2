@@ -1,6 +1,11 @@
 import os
 import sys
 import time
+import resource
+try:
+    import psutil
+except Exception:
+    psutil = None
 import math
 
 import numpy as np
@@ -230,6 +235,14 @@ class RunParallel(Run):
                     shared_mem,
                     runnum=self.runnum,
                 )
+                if shared:
+                    mask_shared = uj.build_shared_jungfrau_mask(
+                        iface,
+                        shared_mem,
+                        runnum=self.runnum,
+                    )
+                    if mask_shared:
+                        shared.update(mask_shared)
                 t_build_end = time.perf_counter()
             except Exception as exc:
                 self.logger.debug(
@@ -498,11 +511,20 @@ class RunParallel(Run):
                 en = time.time()
                 interval = en - st
                 ana_rate = ana_interval / interval if interval > 0 else 0.0
+                rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                rss_cur_mb = -1.0
+                if psutil is not None:
+                    try:
+                        rss_cur_mb = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 2)
+                    except Exception:
+                        rss_cur_mb = -1.0
                 self.logger.debug(
-                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=%d",
+                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=%d rss_kb=%d rss_cur_mb=%.2f",
                     ana_rate,
                     interval,
                     ana_interval,
+                    rss_kb,
+                    rss_cur_mb,
                 )
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
