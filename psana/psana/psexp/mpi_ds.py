@@ -103,7 +103,7 @@ class RunParallel(Run):
 
         self._distribute_calib_xtc()
         self._setup_jungfrau_shared_calib()
-        self._setup_jungfrau_shared_geometry_cache()
+        self._setup_jungfrau_shared_caches()
 
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
@@ -262,7 +262,7 @@ class RunParallel(Run):
                         t_build_end - t_build_start,
                     )
 
-    def _setup_jungfrau_shared_geometry_cache(self):
+    def _setup_jungfrau_shared_caches(self):
         flag = os.environ.get("PS_GEO_SHARE", "1").strip().lower()
         if flag not in ("1", "true", "yes", "on"):
             return
@@ -275,8 +275,10 @@ class RunParallel(Run):
         if getattr(self, "_geo_shared_mem", None) is None:
             self._geo_shared_mem = MPISharedMemory(shm_comm=node_comm)
         shared_mem = self._geo_shared_mem
+        # SharedGeoCache: shared memory for geometry/pixel index arrays.
         cache = SharedGeoCache(shared_mem=shared_mem, logger=self.logger)
         self._shared_geo_cache = cache
+        # SharedCalibcCache: shared memory for CalibConstants-derived image mapping arrays.
         calibc_cache = SharedCalibcCache(shared_mem=shared_mem, logger=self.logger)
         self._shared_calibc_cache = calibc_cache
         rank = self.comms.psana_comm.Get_rank() if self.comms is not None else -1
