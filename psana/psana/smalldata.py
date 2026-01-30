@@ -127,7 +127,7 @@ def _smalldata_pss_mb():
 
 def _smalldata_timing_enabled():
     try:
-        return int(os.environ.get("SMD_DEBUG_SMALDATA_TIMING", "0")) != 0
+        return int(os.environ.get("SMD_DEBUG_SMALLDATA_TIMING", "0")) != 0
     except Exception:
         return False
 
