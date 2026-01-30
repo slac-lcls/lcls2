@@ -125,6 +125,15 @@ class DetectorCacheManager:
             if drp_class_name.startswith("_"):
                 continue
             iface = getattr(self.det, drp_class_name, None)
+            if self.det_name == "jungfrau" and hasattr(iface, "image"):
+                if not hasattr(iface, "_calibc_"):
+                    raise RuntimeError(
+                        f"DetectorCacheManager: jungfrau {drp_class_name} missing _calibc_; cannot save cache"
+                    )
+                if iface._calibc_ is None:
+                    raise RuntimeError(
+                        f"DetectorCacheManager: jungfrau {drp_class_name} _calibc_ is None; cannot save cache"
+                    )
             if not hasattr(iface, "_calibc_"):
                 continue
             cc = iface._calibc_

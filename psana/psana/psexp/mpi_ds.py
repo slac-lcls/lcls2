@@ -1,6 +1,11 @@
 import os
 import sys
 import time
+import resource
+try:
+    import psutil
+except Exception:
+    psutil = None
 import math
 
 import numpy as np
@@ -98,7 +103,7 @@ class RunParallel(Run):
 
         self._distribute_calib_xtc()
         self._setup_jungfrau_shared_calib()
-        self._setup_jungfrau_shared_geometry_cache()
+        self._setup_jungfrau_shared_caches()
 
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
@@ -230,6 +235,14 @@ class RunParallel(Run):
                     shared_mem,
                     runnum=self.runnum,
                 )
+                if shared:
+                    mask_shared = uj.build_shared_jungfrau_mask(
+                        iface,
+                        shared_mem,
+                        runnum=self.runnum,
+                    )
+                    if mask_shared:
+                        shared.update(mask_shared)
                 t_build_end = time.perf_counter()
             except Exception as exc:
                 self.logger.debug(
@@ -249,7 +262,7 @@ class RunParallel(Run):
                         t_build_end - t_build_start,
                     )
 
-    def _setup_jungfrau_shared_geometry_cache(self):
+    def _setup_jungfrau_shared_caches(self):
         flag = os.environ.get("PS_GEO_SHARE", "1").strip().lower()
         if flag not in ("1", "true", "yes", "on"):
             return
@@ -262,8 +275,10 @@ class RunParallel(Run):
         if getattr(self, "_geo_shared_mem", None) is None:
             self._geo_shared_mem = MPISharedMemory(shm_comm=node_comm)
         shared_mem = self._geo_shared_mem
+        # SharedGeoCache: shared memory for geometry/pixel index arrays.
         cache = SharedGeoCache(shared_mem=shared_mem, logger=self.logger)
         self._shared_geo_cache = cache
+        # SharedCalibcCache: shared memory for CalibConstants-derived image mapping arrays.
         calibc_cache = SharedCalibcCache(shared_mem=shared_mem, logger=self.logger)
         self._shared_calibc_cache = calibc_cache
         rank = self.comms.psana_comm.Get_rank() if self.comms is not None else -1
@@ -498,11 +513,20 @@ class RunParallel(Run):
                 en = time.time()
                 interval = en - st
                 ana_rate = ana_interval / interval if interval > 0 else 0.0
+                rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                rss_cur_mb = -1.0
+                if psutil is not None:
+                    try:
+                        rss_cur_mb = psutil.Process(os.getpid()).memory_info().rss / (1024 ** 2)
+                    except Exception:
+                        rss_cur_mb = -1.0
                 self.logger.debug(
-                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=%d",
+                    "bd analysis stats rate_hz=%.2f interval_s=%.2f events=%d rss_kb=%d rss_cur_mb=%.2f",
                     ana_rate,
                     interval,
                     ana_interval,
+                    rss_kb,
+                    rss_cur_mb,
                 )
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()

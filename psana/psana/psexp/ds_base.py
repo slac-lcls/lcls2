@@ -318,6 +318,20 @@ class DataSourceBase(abc.ABC):
         else:
             return False
 
+    def is_bd(self):
+        """Only applicable to MPIDataSource
+        For MPIDataSource, returns True for bigdata ranks only.
+        Bigdata ranks are > PS_EB_NODES and < world_size - PS_SRV_NODES."""
+        if not self.is_mpi():
+            return True
+
+        n_eb_ranks = int(os.environ.get("PS_EB_NODES", "1"))
+        n_srv_ranks = int(os.environ.get("PS_SRV_NODES", "0"))
+        my_rank = self.comms.world_rank
+        world_size = self.comms.world_size
+
+        return (my_rank > n_eb_ranks) and (my_rank < (world_size - n_srv_ranks))
+
     def is_srv(self):
         """Only NullDataSource is the srv node."""
         return False

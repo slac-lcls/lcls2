@@ -257,6 +257,13 @@ class CalibConstants:
         return cache, key, (det_name, drp_class, cache_id)
 
     def seed_cached_pixel_coord_indexes_shared(self, segnums=None, **kwa):
+        """
+        Precompute and package CalibConstants image-mapping artifacts for shared memory.
+
+        Returns a payload dict containing a shared-memory cache key (`meta`), array
+        specifications (`specs`), and the computed numpy arrays (`arrays`). The caller
+        is responsible for allocating shared arrays and copying these data into them.
+        """
         mapmode = kwa.get('mapmode', 2)
         fillholes = kwa.get('fillholes', True)
         if mapmode == 4:
