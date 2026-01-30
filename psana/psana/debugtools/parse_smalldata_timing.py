@@ -110,6 +110,12 @@ def main():
             if msg.startswith("args parsed"):
                 record_single(stage_values, "args_parsed", rank, parse_delta(msg), warnings, seen_single)
                 continue
+            if msg.startswith("generic module imports"):
+                record_single(stage_values, "generic_module_imports", rank, parse_delta(msg), warnings, seen_single)
+                continue
+            if msg.startswith("custom module imports"):
+                record_single(stage_values, "custom_module_imports", rank, parse_delta(msg), warnings, seen_single)
+                continue
             if msg.startswith("ds args setup"):
                 record_single(stage_values, "ds_args_setup", rank, parse_delta(msg), warnings, seen_single)
                 continue
@@ -218,6 +224,8 @@ def main():
     print("units seconds")
     keys = [
         "args_parsed",
+        "generic_module_imports",
+        "custom_module_imports",
         "ds_args_setup",
         "ds_init",
         "run_init",
@@ -247,6 +255,28 @@ def main():
     if args.no_det:
         keys = [k for k in keys if not k.startswith("jungfrau_")]
 
+    section_width = max(len("section"), max((len(k) for k in keys), default=0))
+    num_width = 10  # room for numbers with 2 decimals
+    max_rank_width = len("max_rank")
+    if not args.no_label:
+        if args.show_max:
+            header = (
+                f"{'section':<{section_width}} "
+                f"{'max':>{num_width}} "
+                f"{'max_rank':>{max_rank_width}}"
+            )
+        else:
+            header = (
+                f"{'section':<{section_width}} "
+                f"{'avg':>{num_width}} "
+                f"{'min':>{num_width}} "
+                f"{'max':>{num_width}} "
+                f"{'med':>{num_width}} "
+                f"{'std.':>{num_width}} "
+                f"{'max_rank':>{max_rank_width}}"
+            )
+        print(header)
+
     for key in keys:
         entries = stage_values.get(key)
         if entries:
@@ -255,29 +285,55 @@ def main():
             max_rank = next(r for v, r in entries if v == vmax)
             if args.show_max:
                 if args.no_label:
-                    print(f"{vmax:.6f}")
+                    print(f"{vmax:.2f}")
                 else:
-                    print(f"{key} {vmax:.6f} {max_rank}")
+                    print(
+                        f"{key:<{section_width}} "
+                        f"{vmax:>{num_width}.2f} "
+                        f"{max_rank:>{max_rank_width}}"
+                    )
             else:
                 avg = statistics.mean(vals)
                 vmin = min(vals)
                 med = statistics.median(vals)
                 std = statistics.pstdev(vals) if len(vals) > 1 else 0.0
                 if args.no_label:
-                    print(f"{avg:.6f} {vmin:.6f} {vmax:.6f} {med:.6f} {std:.6f}")
+                    print(
+                        f"{avg:.2f} {vmin:.2f} {vmax:.2f} {med:.2f} {std:.2f}"
+                    )
                 else:
-                    print(f"{key} {avg:.6f} {vmin:.6f} {vmax:.6f} {med:.6f} {std:.6f} {max_rank}")
+                    print(
+                        f"{key:<{section_width}} "
+                        f"{avg:>{num_width}.2f} "
+                        f"{vmin:>{num_width}.2f} "
+                        f"{vmax:>{num_width}.2f} "
+                        f"{med:>{num_width}.2f} "
+                        f"{std:>{num_width}.2f} "
+                        f"{max_rank:>{max_rank_width}}"
+                    )
         else:
             if args.show_max:
                 if args.no_label:
                     print("NA")
                 else:
-                    print(f"{key} NA NA")
+                    print(
+                        f"{key:<{section_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{max_rank_width}}"
+                    )
             else:
                 if args.no_label:
                     print("NA NA NA NA NA")
                 else:
-                    print(f"{key} NA NA NA NA NA NA")
+                    print(
+                        f"{key:<{section_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{num_width}} "
+                        f"{'NA':>{max_rank_width}}"
+                    )
 
     counts = {r: len(evts) for r, evts in event_numbers_by_rank.items()}
     if not counts:
@@ -288,21 +344,51 @@ def main():
         vmax = max(vals)
         max_rank = next(r for r, v in counts.items() if v == vmax)
         print("units events")
+        if not args.no_label:
+            if args.show_max:
+                header = (
+                    f"{'section':<{section_width}} "
+                    f"{'max':>{num_width}} "
+                    f"{'max_rank':>{max_rank_width}}"
+                )
+            else:
+                header = (
+                    f"{'section':<{section_width}} "
+                    f"{'avg':>{num_width}} "
+                    f"{'min':>{num_width}} "
+                    f"{'max':>{num_width}} "
+                    f"{'med':>{num_width}} "
+                    f"{'std.':>{num_width}} "
+                    f"{'max_rank':>{max_rank_width}}"
+                )
+            print(header)
         if args.show_max:
             if args.no_label:
-                print(f"{float(vmax):.6f}")
+                print(f"{float(vmax):.2f}")
             else:
-                print(f"events_per_rank {float(vmax):.6f} {max_rank}")
+                print(
+                    f"{'events_per_rank':<{section_width}} "
+                    f"{float(vmax):>{num_width}.2f} "
+                    f"{max_rank:>{max_rank_width}}"
+                )
         else:
             avg = statistics.mean(vals)
             vmin = min(vals)
             med = statistics.median(vals)
             std = statistics.pstdev(vals) if len(vals) > 1 else 0.0
             if args.no_label:
-                print(f"{avg:.6f} {float(vmin):.6f} {float(vmax):.6f} {med:.6f} {std:.6f}")
+                print(f"{avg:.2f} {float(vmin):.2f} {float(vmax):.2f} {med:.2f} {std:.2f}")
                 print(f"{sum(vals)}")
             else:
-                print(f"events_per_rank {avg:.6f} {float(vmin):.6f} {float(vmax):.6f} {med:.6f} {std:.6f} {max_rank}")
+                print(
+                    f"{'events_per_rank':<{section_width}} "
+                    f"{avg:>{num_width}.2f} "
+                    f"{float(vmin):>{num_width}.2f} "
+                    f"{float(vmax):>{num_width}.2f} "
+                    f"{med:>{num_width}.2f} "
+                    f"{std:>{num_width}.2f} "
+                    f"{max_rank:>{max_rank_width}}"
+                )
                 print(f"total_events {sum(vals)}")
 
     for w in warnings:
