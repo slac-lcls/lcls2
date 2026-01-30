@@ -64,8 +64,19 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         """
         #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
         if self.raw(evt) is None: return None
-        return uj.calib_jungfrau_versions(self, evt, **kwa)
+
+        # The calib_jungfrau_version introduced in b9d213236a92984349490ea925e691949dbd12f2
+        # (known first bad commmit) has been found to have an issue with shape mismatched:
+        #
+        # File "/sdf/home/m/monarin/lcls2/psana/psana/detector/UtilsJungfrau.py", line 546, in add_gain_mask
+        # self.gmask[i,:] = self.gfac[i,:] * self.mask
+        # ValueError: operands could not be broadcast together with shapes (32,512,1024) (6,512,1024)
+        #
+        # Reproducer: create DataSource using files=[] and call det.raw.image(evt)
+        # Current hack to revert to old calib method:
+        #kwa['cversion'] = 0
         #return uj.calib_jungfrau(self, evt, **kwa) # !!! cversion=0
+        return uj.calib_jungfrau_versions(self, evt, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
     def __init__(self, *args, **kwa):
