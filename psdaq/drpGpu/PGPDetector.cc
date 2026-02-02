@@ -41,18 +41,6 @@ TebReceiver::TebReceiver(const Parameters&        para,
   m_recordQueue  (drp.pool.nbuffers()),
   m_para         (para)
 {
-  //printf("*** TebRcvr::ctor: 1\n");
-  //auto& memPool = *m_pool.getAs<MemPoolGpu>();
-  //
-  //// Set up the file writers
-  //// NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
-  //auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
-  //size_t maxBufSize = 16 * 1024 * 1024UL;
-  ////m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
-  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
-  //printf("*** TebRcvr::ctor: 2\n");
-  //m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
-  //printf("*** TebRcvr::ctor: 3\n");
 }
 
 TebReceiver::~TebReceiver()
@@ -90,7 +78,6 @@ void TebReceiver::setup()
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 16 * 1024 * 1024UL;
-  // @todo: Commented out until we can figure out why cuFileDriverOpen() fails
   //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
   m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
   printf("*** TebRcvr::setup: 2\n");
