@@ -59,7 +59,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
         CUDA::cuFile            # cufile is not found, but cuFile is
     )
-    set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(drp_gpu PUBLIC -O3)
     #target_link_options(drp_gpu PUBLIC "-rdc=true")
 
@@ -82,7 +81,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(AreaDetector_gpu PUBLIC -O3)
 
     add_library(EpixUHRemu_gpu SHARED
@@ -102,7 +100,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(EpixUHRemu_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRemu_gpu PUBLIC -O3)
 
     add_library(EpixUHRsim_gpu SHARED
@@ -123,7 +120,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(EpixUHRsim_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRsim_gpu PUBLIC -O3)
 
 #--- Reducer libraries
@@ -148,7 +144,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(NoOpReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(NoOpReducer PUBLIC -O3)
 
 #--- LC
@@ -170,7 +165,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(LcReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(LcReducer PUBLIC -O3)
 
 #--- PFPL
@@ -192,7 +186,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(PfplReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(PfplReducer PUBLIC -O3)
 
 #--- cuSZ
@@ -214,7 +207,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(CuSzReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(CuSzReducer PUBLIC -O3)
 
 #--- cuSZp
@@ -236,7 +228,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(CuSZpReducer PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(CuSZpReducer PUBLIC -O3)
 
 #--- Tools
