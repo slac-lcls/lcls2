@@ -126,6 +126,29 @@ class cspad_cspadRawAlg_1_2_3(DetectorImpl):
 class fakecam_raw_2_0_0(cspad_cspadRawAlg_1_2_3):
     def __init__(self, *args):
         super().__init__(*args)
+class fakecam_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+    def bin(self, evt) -> Array1d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].bin
+    def entries(self, evt) -> Array1d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].entries
+    def value(self, evt) -> Array1d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].value
+    def array(self, evt) -> Array3d:
+        segs = self._segments(evt)
+        if segs is None: return None
+        if segs[0] is None: return None
+        return segs[0].array
 
 # for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):

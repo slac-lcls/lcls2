@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drp.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/EbDgram.hh"
@@ -10,6 +11,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
+static XtcData::NameIndex _noName;
 
 namespace Pds {
   namespace Eb {
@@ -44,7 +46,12 @@ public:
     virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
-    virtual void cube(XtcData::Dgram& raw, unsigned binId, void* binXtc, unsigned& entries, const void* bufEnd) {};
+    // For binning into the cube
+    virtual void     cubeInit(XtcData::ShapesData& rawShapesData, XtcData::Xtc& xtc, const char* bufEnd) {}
+    virtual void     cubeAdd (XtcData::ShapesData& rawShapesData, XtcData::ShapesData& cubeData) {}
+    virtual unsigned cubeNamesIndex() { return 0; }
+    virtual XtcData::VarDef   cubeDef () { return XtcData::VarDef(); }
+    //
     virtual void shutdown() {};
 
     // Scan methods.  Default is to fail.

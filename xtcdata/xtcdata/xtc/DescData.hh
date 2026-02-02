@@ -52,6 +52,14 @@ public:
             }
         }
     }
+    DescData& operator=(const DescData& o) { 
+        _offset     = o._offset;
+        _shapesdata = o._shapesdata;
+        _numentries = o._numentries;
+        _nameindex  = o._nameindex;
+        _numarrays  = o._numarrays;
+        return *this;
+    }
 
     ~DescData() {}
 
@@ -160,6 +168,20 @@ public:
         return val;
     }
 
+    template <class T>
+    T& get_lvalue(unsigned index)
+    {
+        if (index > _numentries) {
+            printf("*** %s:%d: index %d out of range %d\n",__FILE__,__LINE__,index,_numentries);
+            abort();
+        }
+        Data& data = _shapesdata.data();
+        Name& name = _nameindex.names().get(index);
+
+        T& val = *reinterpret_cast<T*>(data.payload() + _offset[index]);
+        return val;
+    }
+
     // void* address(unsigned index) {
     //     Data& data = _shapesdata.data();
     //     return data.payload() + _offset[index];
@@ -173,7 +195,7 @@ public:
 
     NameIndex&  nameindex()  {return _nameindex;}
     ShapesData& shapesdata() {return _shapesdata;}
-
+    void        shapesdata(ShapesData& o) { _shapesdata=o; }
 protected:
     // creating a new ShapesData to be filled in
     DescData(NameIndex& nameindex, Xtc& parent, const void* bufEnd, NamesId& namesId) :

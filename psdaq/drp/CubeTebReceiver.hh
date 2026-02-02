@@ -17,7 +17,9 @@ protected:
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
     void            _queueDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
-    XtcData::Dgram* _binDgram  (const Pds::Eb::CubeResultDgram&);
+    Pds::EbDgram*   _binDgram  (Pds::EbDgram* dg, const Pds::Eb::CubeResultDgram&);
+    void            _monitorDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
+    void            _recordDgram (unsigned index, const Pds::Eb::CubeResultDgram& result);
 private:
     Detector&                         m_det;
     std::vector<Pds::Eb::CubeResultDgram>  m_result;
@@ -25,7 +27,8 @@ private:
     unsigned                          m_last; // index from CubeTebReceiver
     std::vector<char*>                m_bin_data;
     std::vector< std::vector<unsigned> >    m_bin_entries;
-    char*                             m_buffer;
+    XtcData::NamesLookup              m_namesLookup;
+    char*                             m_buffer;             // buffer for recording dgram
     std::vector<std::thread>          m_workerThreads;
     std::vector<SPSCQueue<unsigned> > m_workerInputQueues;  // events for each worker
     std::vector<SPSCQueue<unsigned> > m_workerOutputQueues; //
