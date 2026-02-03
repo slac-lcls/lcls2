@@ -194,25 +194,25 @@ namespace Pds {
           PVPUT(monFexDet); }
 
         { MonFlow v;
-          v.pkoflow = fex._oflow&0xff;
+          v.pkoflow = fex._oflow&0xff;            // cntOflow
           uint32_t flowstatus = fex._flowstatus;
-          v.fmask = (flowstatus>>0)&0x7;
-          v.fcurr = (flowstatus>>4)&0xf;
-          v.frdy  = (flowstatus>>8)&0xf;
-          v.srdy  = (flowstatus>>12)&0x1;
-          v.mrdy  = (flowstatus>>13)&0x7;
-          v.raddr = (flowstatus>>16)&0xffff;
+          v.fmask = (flowstatus>>0)&0x7;          // r.fexb
+          v.fcurr = (flowstatus>>4)&0xf;          // r.fexn<<1 !
+          v.frdy  = (flowstatus>>8)&0xf;          // tValid(i)
+          v.srdy  = (flowstatus>>12)&0x1;         // ?
+          v.mrdy  = (flowstatus>>13)&0x7;         // tRdy/tVal/tRdy
+          v.raddr = (flowstatus>>16)&0xffff;      // rdaddr(r.fexn)
           uint32_t flowidxs = fex._flowidxs;
-          v.npend = (flowidxs>> 0)&0x1f;
-          v.ntrig = (flowidxs>> 5)&0x1f;
-          v.nread = (flowidxs>>10)&0x1f;
-          v.oflow = (flowidxs>>16)&0xff;
+          v.npend = (flowidxs>> 0)&0x1f;          // r.npend
+          v.ntrig = (flowidxs>> 5)&0x1f;          // r.ntrig
+          v.nread = (flowidxs>>10)&0x1f;          // r.nread
+          v.oflow = (flowidxs>>16)&0xffff;        // wraddr(r.fexn)
           uint32_t buildflow = reg.buildStatus;
-          v.bstat = (buildflow>>0)&0xf;
-          v.dumps = (buildflow>>4)&0xf;
-          v.bhdrv = (buildflow>>8)&1;
-          v.bval  = (buildflow>>9)&1;
-          v.brdy  = (buildflow>>10)&1;
+          v.bstat = (buildflow>>0)&0xf;           // build state
+          v.dumps = (buildflow>>4)&0xf;           // build dumps ! (dmaRst)
+          v.bhdrv = (buildflow>>8)&1;             // event header valid
+          v.bval  = (buildflow>>9)&1;             // r.master.tValid
+          v.brdy  = (buildflow>>10)&1;            // dmaslave tReady
           PVPUT(monFlow); }
 
         // JESD Status

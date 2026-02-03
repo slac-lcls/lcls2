@@ -7,7 +7,6 @@ from psana import dgram, utils
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
-from psana.psexp.prometheus_manager import get_prom_manager
 
 if mode == "mpi":
     pass
@@ -48,7 +47,6 @@ class EventManager(object):
         self.smd_configs = configs
         self.dm = dm
         self.n_smd_files = len(self.smd_configs)
-        self.read_gauge = get_prom_manager().get_metric("psana_bd_read")
         self.max_retries = max_retries
         self.use_smds = use_smds
         self.i_evt = 0
@@ -56,6 +54,8 @@ class EventManager(object):
         self.smd_mode = smd
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+        self._bd_read_bytes = 0
+        self._bd_read_time = 0.0
 
         # Store chunkid and chunk filename
         self.chunkinfo = {}
@@ -293,12 +293,14 @@ class EventManager(object):
         en = time.monotonic()
         sum_read_nbytes = memoryview(chunk).nbytes  # for prometheus counter
         if sum_read_nbytes > 0:
-            rate = (sum_read_nbytes / 1e6) / (en - st)
-            self.logger.debug(
-                f"bd reads chunk {sum_read_nbytes/1e6:.5f} MB took {en-st:.2f} s (Rate: {rate:.2f} MB/s)"
-            )
-            self.read_gauge.set(rate)
+            elapsed = en - st
+            if elapsed > 0:
+                self._bd_read_bytes += sum_read_nbytes
+                self._bd_read_time += elapsed
         return chunk
+
+    def get_bd_read_stats(self):
+        return int(self._bd_read_bytes), float(self._bd_read_time)
 
     def _init_bd_chunks(self):
         self.bd_bufs = [bytearray() for i in range(self.n_smd_files)]

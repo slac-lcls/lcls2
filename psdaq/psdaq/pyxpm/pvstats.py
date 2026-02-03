@@ -9,7 +9,7 @@ from p4p.nt import NTTable
 from psdaq.pyxpm.pvhandler import *
 
 lock     = None
-
+provider = None
 fidPeriod   = 1400e-6/1300.
 
 def updatePv(pv,v,timev):
@@ -527,15 +527,43 @@ class PVMmcmPhaseLock(object):
         v.append( mmcm.waveform.get() )
         self.pv   = addPV(name,'ai',v)
 
+class PathTimer(object):
+    def __init__(self, name, xpm, group):
+        self._pathTimer = getattr(xpm,f'XpmPathTimer_{group}')
+        
+        self._pv_latched = addPV(f'{name}:PART:{group}:PATH_TIME:Latched','I')
+        self._pv_array   = addPV(f'{name}:PART:{group}:PATH_TIME:Array','ai',[0]*14)
+
+        def _addPV(label, handler):
+            pv = SharedPV(initial=NTScalar('I').wrap(0), 
+                          handler=handler)
+            provider.add(label,pv)
+            return pv
+
+        self._pv_update  = _addPV(f'{name}:PART:{group}:PATH_TIME:Update', handler=PVHandler(self.update))
+
+        logging.warning(f'Read PathTimer:latched for group {group} : {self._pathTimer.latched.get()}')
+
+    def update(self, pv, val):
+        timev = divmod(float(time.time_ns()), 1.0e9)
+        latch = self._pathTimer.latched.get()
+        pathtm = [0 for i in range(14)]
+        for i in range(14):
+            pathtm[i] = self._pathTimer.chan[i].get()
+        updatePv(self._pv_latched, latch, timev)
+        updatePv(self._pv_array, pathtm, timev)
 
 class PVStats(object):
     def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False,fidRate=13e6/14.):
         setProvider(p)
+        global provider
+        provider = p
         global lock
         lock     = m
         global fidPeriod
         fidPeriod  = fiducialPeriod
 
+        self._name = name
         self._xpm  = xpm
         self._app  = xpm.XpmApp
 
@@ -572,6 +600,8 @@ class PVStats(object):
             self._sfpStat  = SFPStatus   (name+':SFPSTATUS',self._xpm,7*nAMCs)
         else:
             self._sfpStat  = QSFPStatus  (name+':QSFPSTATUS',self._xpm)
+
+        self._pathTimer = [PathTimer(self._name, self._xpm, i) for i in range(8)]
 
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):

@@ -384,6 +384,20 @@ class PvInt(PvEditInt):
     def setPv(self):
         pass
 
+class PvIntArrayW(QtWidgets.QLabel):
+
+    valueSet = QtCore.pyqtSignal('QString',name='valueSet')
+
+    def __init__(self):
+        super(PvIntArrayW, self).__init__('-')
+        self.connect_signal()
+
+    def connect_signal(self):
+        self.valueSet.connect(self.setValue)
+
+    def setValue(self,value):
+        self.setText(value)
+
 class PvIntArray:
 
     def __init__(self, pv, widgets):

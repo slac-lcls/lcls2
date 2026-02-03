@@ -31,7 +31,8 @@ def factor(n):
 
 class Instruction(object):
 
-    maxocc = 0xfff
+    maxocc = 0xfff   # max value of loop counters
+    maxcc  = 4       # number of conditional counters
 
     def __init__(self, args):
         self.args = args
@@ -403,7 +404,7 @@ def validate(filename):
 #        print(f'{i}: {ins}')
 
     #  accumulate the branch statement source and targets
-    d = {cc:[] for cc in range(4)}
+    d = {cc:[] for cc in range(Instruction.maxcc)}
     for line,instr in enumerate(l):
         if instr.args[0]==Branch.opcode and len(instr.args)>2:
             cc   = instr.args[2]
@@ -414,7 +415,7 @@ def validate(filename):
 #        print(f'd[{i}] = {dd}')
 
     #  check none of them overlap for a given conditional counter
-    for cc in range(4):
+    for cc in range(Instruction.maxcc):
         for r in d[cc]:
             addr = r[0]
             for s in d[cc]:
@@ -452,7 +453,7 @@ def preproc(instrset):
     #  Examine bounds of conditional branches to track
     #  conditional counter usage
     #  accumulate the branch statement source and targets
-    d = {cc:[] for cc in range(4)}
+    d = {cc:[] for cc in range(Instruction.maxcc)}
     for line,instr in enumerate(instrset):
         if instr.args[0]==Branch.opcode and len(instr.args)>2:
             cc   = instr.args[2]
@@ -462,11 +463,11 @@ def preproc(instrset):
             else:
                 d[cc].append([addr,line])
 
-    print(f'd {d}')
+#    print(f'd {d}')
 
     #  Find a conditional counter not in use at that line #
     def _findcc(line):
-        for cc in range(4):
+        for cc in range(Instruction.maxcc):
             lAvail = True
             for br in d[cc]:
                 if line >= br[0] and line < br[1]:
@@ -486,7 +487,7 @@ def preproc(instrset):
         elif instr.args[0]==WaitA.opcode:
             reps[line] = WaitA.replace(instr, _findcc(line), line)
 
-    print(f'reps {reps}')
+#    print(f'reps {reps}')
 
     #  Update line number references
     def _target( old ):

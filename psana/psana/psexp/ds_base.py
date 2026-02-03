@@ -16,7 +16,7 @@ from kafka import KafkaProducer
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana.psexp.tools import MODE, mode
+from psana.psexp.tools import MODE, mode, marching_enabled
 from psana.psexp.zmq_utils import ClientSocket
 from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_manager
 
@@ -55,6 +55,8 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
+    marching_read: bool = False
+    march_events_per_grant: int = 1
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -186,6 +188,12 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
+        self.marching_read = marching_enabled()
+        env_grant = os.environ.get("PS_MARCH_EVENTS_PER_GRANT", "1")
+        try:
+            self.march_events_per_grant = max(1, int(env_grant))
+        except ValueError:
+            self.march_events_per_grant = 1
 
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
@@ -214,6 +222,8 @@ class DataSourceBase(abc.ABC):
             self.skip_calib_load,
             self.dbsuffix,
             smd_callback=self.smd_callback,
+            marching_read=self.marching_read,
+            march_events_per_grant=self.march_events_per_grant,
         )
 
         # Warn about unrecognized kwargs
@@ -229,6 +239,7 @@ class DataSourceBase(abc.ABC):
         for k in kwargs:
             if k not in known_keys:
                 self.logger.warning(f"Unrecognized kwarg={k}")
+
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
@@ -306,6 +317,20 @@ class DataSourceBase(abc.ABC):
             return True
         else:
             return False
+
+    def is_bd(self):
+        """Only applicable to MPIDataSource
+        For MPIDataSource, returns True for bigdata ranks only.
+        Bigdata ranks are > PS_EB_NODES and < world_size - PS_SRV_NODES."""
+        if not self.is_mpi():
+            return True
+
+        n_eb_ranks = int(os.environ.get("PS_EB_NODES", "1"))
+        n_srv_ranks = int(os.environ.get("PS_SRV_NODES", "0"))
+        my_rank = self.comms.world_rank
+        world_size = self.comms.world_size
+
+        return (my_rank > n_eb_ranks) and (my_rank < (world_size - n_srv_ranks))
 
     def is_srv(self):
         """Only NullDataSource is the srv node."""
@@ -515,14 +540,16 @@ class DataSourceBase(abc.ABC):
         """Start Prometheus either via push gateway (default) or HTTP exposer.
         With the singleton, this is safe to call multiple times."""
         if not self.monitor:
-            self.logger.debug("RUN W/O PROMETHEUS CLIENT")
+            if mpi_rank == 0:
+                self.logger.debug("RUN W/O PROMETHEUS CLIENT")
             return
 
         if prom_cfg_dir is None:  # Push-gateway mode
             pm = ensure_pusher(rank=mpi_rank)   # starts pusher once per process
-            self.logger.debug(
-                f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
-            )
+            if mpi_rank == 0:
+                self.logger.debug(
+                    f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
+                )
         else:  # HTTP exposer mode (DAQ-style scrape)
             pm = get_prom_manager()
             self.logger.debug(
@@ -536,7 +563,6 @@ class DataSourceBase(abc.ABC):
             return
         try:
             stop_pusher()  # no-op if nothing running
-            self.logger.debug("END PROMETHEUS CLIENT (pusher stopped)")
         except Exception as ex:
             self.logger.debug(f"END PROMETHEUS CLIENT: stop_pusher() raised {ex!r}")
 

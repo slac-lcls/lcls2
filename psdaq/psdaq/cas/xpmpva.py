@@ -27,11 +27,10 @@ toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
 
-def isATCA(pvbase):
-    print(f'** isATCA {pvbase}')
-    pv = Pv(pvbase+':FwBuild')
-    v = pv.get()
-    return 'Kcu' not in v
+def isATCA(v):
+    result = ('Kcu1500' not in v) and ('C1100' not in v)
+    print(f'isATCA({v}) = {result}')
+    return result
 
 class PvPAddr(QtWidgets.QWidget):
     def __init__(self, parent, pvbase, name):
@@ -63,7 +62,9 @@ class PvPAddr(QtWidgets.QWidget):
                 port  = int(qs[6:8],16)
 
                 pvbase = ':'.join(self.pv.pvname.split(':')[:-2])+f':{shelf}'
-                if isATCA(pvbase):
+                pv = Pv(pvbase+':FwBuild')
+                v = pv.get()
+                if isATCA(v):
                     s = 'XPM:%d:AMC%d-%d'%(shelf,port/7,port%7)
                 else:
                     s = 'XPM:%d:QSFP%d-%d'%(shelf,port/4,port%4)
@@ -204,22 +205,46 @@ class PvLinkIdG:
 
 def FrontPanelAMC(pvbase,nDsLinks,start):
         dsbox = QtWidgets.QWidget()
-        dslo = QtWidgets.QVBoxLayout()
-        width=70 if nDsLinks>4 else None
-        PvInput(PvLinkIdV, dslo, pvbase, "RemoteLinkId", nDsLinks, start=start)
-        LblPushButtonX(dslo, pvbase, "TxLinkReset",    nDsLinks, start=start)
-        LblPushButtonX(dslo, pvbase, "RxLinkReset",    nDsLinks, start=start)
-        LblPushButtonX(dslo, pvbase, "RxLinkDump" ,    nDsLinks, start=start)
-        LblGroupMask  (dslo, pvbase, "LinkGroupMask",  nDsLinks, start=start, enable=True)
-        LblCheckBox   (dslo, pvbase, "LinkRxResetDone", nDsLinks, start=start, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkRxReady",    nDsLinks, start=start, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxResetDone", nDsLinks, start=start, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkTxReady",    nDsLinks, start=start, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkIsXpm",      nDsLinks, start=start, enable=False)
-        LblCheckBox   (dslo, pvbase, "LinkLoopback",   nDsLinks, start=start)
-        LblEditIntX   (dslo, pvbase, "LinkRxErr",      nDsLinks, start=start, enable=False)
-        LblEditIntX   (dslo, pvbase, "LinkRxRcv",      nDsLinks, start=start, enable=False)
-        dslo.addStretch()
+        dslo = QtWidgets.QGridLayout()
+        headers = [("RemoteLinkId"   ,PvLinkIdV    ,True),
+                   ("TxLinkReset"    ,PvPushButtonX,True),
+                   ("RxLinkReset"    ,PvPushButtonX,True),
+                   ("RxLinkDump"     ,PvPushButtonX,True),
+                   ("LinkGroupMask"  ,PvGroupMask  ,True),
+                   ("LinkRxResetDone",PvCheckBox   ,False),
+                   ("LinkRxReady"    ,PvCheckBox   ,False),
+                   ("LinkTxResetDone",PvCheckBox   ,False),
+                   ("LinkTxReady"    ,PvCheckBox   ,False),
+                   ("LinkIsXpm"      ,PvCheckBox   ,False),
+                   ("LinkLoopback"   ,PvCheckBox   ,True),
+                   ("LinkRxErr"      ,PvEditIntX   ,False),
+                   ("LinkRxRcv"      ,PvEditIntX   ,False)]
+        for row,h in enumerate(headers):
+            dslo.addWidget(QtWidgets.QLabel(h[0]), row, 0 )
+            for col in range(nDsLinks):
+                w = h[1](f'{pvbase}{h[0]}{col+start}',f'{col+start}')
+                w.setEnabled(h[2])
+                dslo.addWidget(w, row, col+1)
+        dslo.setRowStretch(len(headers),1)
+        dslo.setColumnStretch(nDsLinks+1,1)
+        dsbox.setLayout(dslo)
+        return dsbox
+
+def PLLs(pvbase,ncol):
+        dsbox = QtWidgets.QWidget()
+        dslo = QtWidgets.QGridLayout()
+        headers = [("PLL_LOS"   ,PvCheckBox    ,False),
+                   ("PLL_LOSCNT",PvEditIntX    ,False),
+                   ("PLL_LOL"   ,PvCheckBox    ,False),
+                   ("PLL_LOLCNT",PvEditIntX    ,False)]
+        for row,h in enumerate(headers):
+            dslo.addWidget(QtWidgets.QLabel(h[0]), row, 0 )
+            for col in range(ncol):
+                w = h[1](f'{pvbase}{h[0]}{col}',f'{col}')
+                w.setEnabled(h[2])
+                dslo.addWidget(w, row, col+1)
+        dslo.setRowStretch(len(headers),1)
+        dslo.setColumnStretch(ncol+1,1)
         dsbox.setLayout(dslo)
         return dsbox
 
@@ -564,6 +589,41 @@ class PatternTab(QtWidgets.QWidget):
             for i,qv in enumerate(q):
                 self.coinc[i].setText(str(qv))
 
+def PathTimer(pvbase,parent):
+
+    pathbox = QtWidgets.QWidget()
+    pathlo = QtWidgets.QVBoxLayout()
+    pathgrid = QtWidgets.QGridLayout()
+
+    textWidgets = []
+    for j in range(NGroups):
+        ptextWidgets = []
+        for i in range(32):
+            ptextWidgets.append( PvIntArrayW() )
+        textWidgets.append(ptextWidgets)
+
+    parent.ptPvId = []
+    pathgrid.addWidget( QtWidgets.QLabel('Group'), 0, 0, 1, 2 )
+    for j in range(NGroups):
+        pathgrid.addWidget( QtWidgets.QLabel('%d'%j ), 0, j+3 )
+        print(f'Creating PathTimer update {pvbase}PART:{j}:PATH_TIME:Update')
+        pathgrid.addWidget( PvPushButtonVal(f'{pvbase}PART:{j}:PATH_TIME:Update', 'Upd', 1), 1, j+3 )
+    for i in range(14):
+        parent.ptPvId.append( PvLinkIdG(pvbase+'RemoteLinkId'+'%d'%i,
+                                        pathgrid, i+2, 0) )
+        for j in range(NGroups):
+            pathgrid.addWidget( textWidgets[j][i], i+2, j+3 )
+
+    parent.pathlnk = []
+    for j in range(NGroups):
+        ppvbase = f'{pvbase}PART:{j}:PATH_TIME:Array'
+        parent.pathlnk.append( PvIntArray( ppvbase, textWidgets[j] ) )
+
+    pathlo.addLayout(pathgrid)
+    pathlo.addStretch()
+    pathbox.setLayout(pathlo)
+    return pathbox
+
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow, titles, nopatt):
         global ATCAWidget
@@ -579,11 +639,10 @@ class Ui_MainWindow(object):
 
         for title in titles:
             pvbase = title+':'
-
             pv = Pv(pvbase+'FwBuild')
             v = pv.get()
 
-            if 'Kcu' in v:
+            if not isATCA(v):
                 amcTitle = 'QSFP'
                 nDsLinks = (4,4) # if 'Gen' in v else (3,4)
                 ATCAWidget = False
@@ -625,34 +684,8 @@ class Ui_MainWindow(object):
             tw.addTab(FrontPanelAMC(pvbase,nDsLinks[0],          0),f'{amcTitle}0')
             tw.addTab(FrontPanelAMC(pvbase,nDsLinks[1],nDsLinks[0]),f'{amcTitle}1')
 
-            if 'Kcu' not in v:
-                bpbox  = QtWidgets.QWidget()
-                bplo   = QtWidgets.QVBoxLayout()
-                LblPushButtonX(bplo, pvbase, "TxLinkReset16",    1, 16, 0)
-                LblCheckBox   (bplo, pvbase, "LinkTxReady16",    1, 16, 0, enable=False)
-
-                #LblPushButtonX(bplo, pvbase, "TxLinkReset",    5, 17, 3)
-                LblPushButtonX(bplo, pvbase, "RxLinkReset",    5, 17, 3)
-                #LblCheckBox   (bplo, pvbase, "LinkEnable",     5, 17, 3)
-                LblCheckBox   (bplo, pvbase, "LinkRxReady",    5, 17, 3, enable=False)
-                #LblCheckBox  (bplo, pvbase, "LinkTxReady",    5, 17, 3, enable=False)
-                #LblCheckBox  (bplo, pvbase, "LinkIsXpm",      5, 17, 3, enable=False)
-                #LblCheckBox  (bplo, pvbase, "LinkLoopback",   5, 17, 3)
-                LblEditIntX   (bplo, pvbase, "LinkRxErr",      5, 17, 3, enable=False)
-                LblEditIntX   (bplo, pvbase, "LinkRxRcv",      5, 17, 3, enable=False)
-                bplo.addStretch()
-                bpbox.setLayout(bplo)
-                tw.addTab(bpbox,"Bp")
-
-                pllbox  = QtWidgets.QWidget()
-                pllvbox = QtWidgets.QVBoxLayout()
-                LblCheckBox  (pllvbox, pvbase, "PLL_LOS",        NAmcs, enable=False)
-                LblEditIntX  (pllvbox, pvbase, "PLL_LOSCNT",     NAmcs, enable=False)
-                LblCheckBox  (pllvbox, pvbase, "PLL_LOL",        NAmcs, enable=False)
-                LblEditIntX  (pllvbox, pvbase, "PLL_LOLCNT",     NAmcs, enable=False)
-                pllvbox.addStretch()
-                pllbox.setLayout(pllvbox)
-                tw.addTab(pllbox,"PLLs")
+            if isATCA(v):
+                tw.addTab(PLLs(pvbase,NAmcs),"PLLs")
 
             tw.addTab(DeadTime(pvbase,self),"DeadTime")
 
@@ -661,10 +694,12 @@ class Ui_MainWindow(object):
             if nopatt==False:
                 tw.addTab(PatternTab(pvbase),"Pattern")
 
-            if 'Kcu' not in v:
+            if isATCA(v):
                 tw.addTab(PvTableDisplay(pvbase+'SFPSTATUS',[f'Amc{int(j/7)}-{(j%7)}' for j in range(14)]),'SFPs')
             else:
                 tw.addTab(PvTableDisplay(pvbase+'QSFPSTATUS',[f'QSFP{int(j/4)}-{(j%4)}' for j in range(8)]),'QSFPs')
+
+            tw.addTab(PathTimer(pvbase,self),"PathTimer")
 
             stack.addWidget(tw)
 

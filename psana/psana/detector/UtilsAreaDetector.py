@@ -318,4 +318,3 @@ def img_interpolated(data, interpol_pars, **kwa):
     return interpol_pars # img_default(data)
 
 # EOF
-

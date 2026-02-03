@@ -65,6 +65,10 @@ from collections.abc import MutableMapping
 
 import h5py
 import numpy as np
+try:
+    import psutil
+except Exception:
+    psutil = None
 
 from psana.psexp.tools import mode
 from psana.psexp.prometheus_manager import get_prom_manager
@@ -87,6 +91,46 @@ else:
     MODE = "SERIAL"
 
 # -----------------------------------------------------------------------------
+
+def _smalldata_timing_rank():
+    mpi = globals().get("MPI")
+    if mpi is None:
+        return 0
+    try:
+        return mpi.COMM_WORLD.Get_rank()
+    except Exception:
+        return 0
+
+
+def _smalldata_wtime():
+    mpi = globals().get("MPI")
+    if mpi is not None:
+        try:
+            return mpi.Wtime()
+        except Exception:
+            pass
+    return time.time()
+
+
+def _smalldata_pss_mb():
+    if psutil is None:
+        return 0.0
+    try:
+        proc = psutil.Process(os.getpid())
+        mem_full = proc.memory_full_info()
+        if hasattr(mem_full, "pss"):
+            return mem_full.pss / (1024 ** 2)
+        return proc.memory_info().rss / (1024 ** 2)
+    except Exception:
+        return 0.0
+
+
+def _smalldata_timing_enabled():
+    try:
+        return int(os.environ.get("SMD_DEBUG_SMALLDATA_TIMING", "0")) != 0
+    except Exception:
+        return False
+
 
 MISSING_INT = -99999
 MISSING_FLOAT = np.nan
@@ -589,11 +633,35 @@ class SmallData:  # (client)
         client_group : MPI.Group
             The MPI group to allocate to client processes
         """
+        self._timing_start = None
+        self._timing_rank = _smalldata_timing_rank()
+        init_start = _smalldata_wtime()
+        self._timing_mark("smalldata cls init start", start_time=init_start)
+
         if MODE == "PARALLEL":
             self._server_group = server_group
             self._client_group = client_group
 
             self._comm_partition()
+
+        self._timing_mark("smalldata cls init done", start_time=init_start)
+
+    def _timing_mark(self, label, start_time=None):
+        if start_time is None:
+            start_time = _smalldata_wtime()
+        now = _smalldata_wtime()
+        if self._timing_start is None:
+            self._timing_start = now
+        if not _smalldata_timing_enabled():
+            return
+        since_start = now - self._timing_start
+        delta = now - start_time
+        pss_mb = _smalldata_pss_mb()
+        rank = self._timing_rank if self._timing_rank is not None else _smalldata_timing_rank()
+        print(
+            f"[DEBUG] rank {rank} {label} "
+            f"since_start={since_start:.6f}s delta={delta:.6f}s pss_mb={pss_mb:.2f}"
+        )
 
     def setup_parms(
         self, filename=None, batch_size=1000, cache_size=None, callbacks=[], swmr_mode=False
@@ -761,6 +829,7 @@ class SmallData:  # (client)
         """
         event: int, psana.event.Event
         """
+        start_time = _smalldata_wtime()
 
         if type(event) is int:
             timestamp = event
@@ -822,6 +891,7 @@ class SmallData:  # (client)
                              '' % (self._previous_timestamp, timestamp))
             """
 
+        self._timing_mark("smalldata cls event done", start_time=start_time)
         return
 
     @property
@@ -845,7 +915,10 @@ class SmallData:  # (client)
         return r
 
     def sum(self, value, inplace=False):
-        return self._reduction(value, MPI.SUM, inplace)
+        start_time = _smalldata_wtime()
+        result = self._reduction(value, MPI.SUM, inplace)
+        self._timing_mark("smalldata cls sum done", start_time=start_time)
+        return result
 
     def max(self, value, inplace=False):
         return self._reduction(value, MPI.MAX, inplace)
@@ -945,15 +1018,18 @@ class SmallData:  # (client)
 
         Note: this function should be called in a SmallData.summary: block
         """
+        start_time = _smalldata_wtime()
         if self._full_filename is None:
             print(
                 "Warning: smalldata not saving summary since no h5 filename specified"
             )
+            self._timing_mark("smalldata cls save summary done", start_time=start_time)
             return
 
         # in parallel mode, only client rank 0 writes to file
         if MODE == "PARALLEL":
             if self._client_comm.Get_rank() != 0:
+                self._timing_mark("smalldata cls save summary done", start_time=start_time)
                 return
 
         # >> collect summary data
@@ -978,6 +1054,7 @@ class SmallData:  # (client)
         if MODE == "PARALLEL":
             fh.close()
 
+        self._timing_mark("smalldata cls save summary done", start_time=start_time)
         return
 
     def done(self):
@@ -985,6 +1062,7 @@ class SmallData:  # (client)
         Finish any final communication and join partial files
         (in parallel mode).
         """
+        start_time = _smalldata_wtime()
 
         # >> finish communication
         if self._type == "client":
@@ -1014,6 +1092,7 @@ class SmallData:  # (client)
                     if self._client_comm.Get_rank() == 0:
                         self.join_files()
 
+        self._timing_mark("smalldata cls done", start_time=start_time)
         return
 
     def join_files(self):

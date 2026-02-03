@@ -1,0 +1,70 @@
+import subprocess
+
+path = 'lcls2-xpm/psdaq/psdaq/configdb/hsd_config_store.py'
+
+args = ['--prod','--inst','tmo','--alias','BEAM','--user','tmoopr','--password','pcds','--update',]
+
+names = ('dream_hsd_lmcp_0',
+         'dream_hsd_lu_0',
+         'dream_hsd_lu_1',
+         'dream_hsd_lv_0',
+         'dream_hsd_lv_1',
+         'dream_hsd_lw_0',
+         'dream_hsd_lw_1',
+         'dream_hsd_smcp_0',
+         'dream_hsd_su_0',
+         'dream_hsd_su_1',
+         'dream_hsd_sv_0',
+         'dream_hsd_sv_1',
+         'dream_hsd_sw_0',
+         'dream_hsd_sw_1',
+         'hsd_0',
+         'hsd_1',
+         'hsd_10',
+         'hsd_11',
+         'hsd_12',
+         'hsd_13',
+         'hsd_14',
+         'hsd_15',
+         'hsd_16',
+         'hsd_17',
+         'hsd_18',
+         'hsd_19',
+         'hsd_2',
+         'hsd_3',
+         'hsd_4',
+         'hsd_5',
+         'hsd_6',
+         'hsd_7',
+         'hsd_8',
+         'hsd_9',
+         'hsd_peppex_0',
+         'hsd_peppex_1',
+         'hsd_test_0',
+         'hsdtst_0',
+         'hsdtst_1',
+         'itof_hsd_0',
+         'mbes_hsd_0',
+         'mbes_hsd_1',
+         'mrco_hsd_0',
+         'mrco_hsd_112',
+         'mrco_hsd_135',
+         'mrco_hsd_157',
+         'mrco_hsd_180',
+         'mrco_hsd_202',
+         'mrco_hsd_22',
+         'mrco_hsd_225',
+         'mrco_hsd_247',
+         'mrco_hsd_270',
+         'mrco_hsd_292',
+         'mrco_hsd_315',
+         'mrco_hsd_337',
+         'mrco_hsd_45',
+         'mrco_hsd_67',
+         'mrco_hsd_90',)
+
+for n in names:
+    name, segm = n.rsplit('_',1)
+    targs = ['python',path,*args,'--name',name,'--segm',segm,]
+#    print(f'args: {" ".join(targs)}')
+    subprocess.run(targs)

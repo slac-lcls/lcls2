@@ -13,6 +13,11 @@ import logging
 ocfg = None
 partitionDelay = None
 epics_prefix = None
+rawBuffSize = None
+fexBuffSize = None
+group = None
+
+configVersion = [3,3,0]
 
 barrier_global = Barrier()
 args = {}
@@ -101,9 +106,14 @@ def hsd_connect(msg):
     d['paddr'] = values
     return d
 
-def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
+def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     global partitionDelay
+    global rawBuffSize
+    global fexBuffSize
     global ocfg
+    global group
+
+    group = rog
 
     root = args['root']
 
@@ -135,11 +145,15 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     ctxt = Context('pva')
 
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
+    algVsn = cfg['alg:RO']['version:RO']
 
+    if algVsn != configVersion:
+        raise RuntimeError(f'configdb version {algVsn} does not match software required version {configVersion}')
+    
     # program the group
     expert = cfg['expert']
     expert['readoutGroup'] = group
-    expert['enable'   ] = 0
+    expert['enable'   ] = 1  # Need to enable to get buffer sizes
     apply_config(ctxt,cfg)
 
     # fetch the current configuration for defaults not specified in the configuration
@@ -160,47 +174,26 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
     partitionDelay = monTiming.l0delay
     print('partitionDelay {:}'.format(partitionDelay))
 
-    #
-    #  Validate user raw values
-    #
-    raw            = cfg['user']['raw']
-    raw_start      = int((raw['start_ns']*1300/7000 - partitionDelay*200)*160/200) # in "160MHz"(*13/14) clks
-    # raw_start register is 14 bits
-    if raw_start < 0:
-        print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
-        print('Raise raw_start >= {:}'.format(partitionDelay*200 * 7000/1300))
-        raise ValueError('raw_start is too small by {:} ns'.format(-raw_start/0.16*14./13))
-    if raw_start > 0x3fff:
-        print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.format(partitionDelay,raw['start_ns'],raw_start))
-        print('Lower raw_start < {:}'.format((0x3fff * 160/200 + partitionDelay*200) * 7000/1300))
-        raise ValueError('start_ns is too large by {:} ns'.format((raw_start-0x3fff)/0.16*14./13))
+    # fetch the freesz
+    rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
+    fexBuffSize = ctxt.get(epics_prefix+':MONFEXBUF').freesz
 
-    raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
-    raw_nsamples = raw_gate*40
-    # raw_gate register is 14 bits
-    if raw_gate < 0:
-        raise ValueError('raw_gate computes to < 0')
+    ocfg = cfg
+    user_to_expert(cfg)
 
-    if raw_gate > 4000:
-        raise ValueError('raw_gate computes to > 4000; raw_nsamples > 160000')
+    # overwrite expert fields from user input
+    raw = cfg['user']['raw']
+    fex = cfg['user']['fex']
+    expert = cfg['expert']
+    expert['readoutGroup'] = group
+    expert['enable'   ] = 1
+    expert['raw_prescale'] = raw['prescale']
+    if 'keep' in raw:
+        expert['raw_keep']  = raw['keep']
+    else:
+        expert['raw_keep'] = 0
+        logging.warning('No user.raw.keep entry in config.  Run hsd_config_update.py')
 
-    #
-    #  Validate user fex values
-    #
-    fex            = cfg['user']['fex']
-    fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200) # in "160MHz"(*13/14) clks
-    if fex_start < 0:
-        print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.format(partitionDelay,fex['start_ns'],fex_start))
-        print('Raise fex_start >= {:}'.format(partitionDelay*200 * 7000/1300))
-        raise ValueError('fex_start computes to < 0')
-
-    fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
-    fex_nsamples = fex_gate*40
-    if fex_gate < 0:
-        raise ValueError('fex_gate computes to < 0')
-    # Place no constraint on upper bound.  Assumes sparsification will reduce to < 160000 recorded samples
-
-    # hsd_thr_ilv_native_fine firmware expects xpre,xpost in # of super samples (4 samples)
     fex_xpre       = int((fex['xpre' ]+3)/4)
     fex_xpost      = int((fex['xpost']+3)/4)
     keepRows = ctxt.get(epics_prefix+':KEEPROWS').value
@@ -214,20 +207,6 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
         if not (fex_xpre < keepRows*10):
             raise ValueError(f'xpost {fex_xpre} must be less than {keepRows*40}')
 
-    # overwrite expert fields from user input
-    expert = cfg['expert']
-    expert['readoutGroup'] = group
-    expert['enable'   ] = 1
-    expert['raw_start'] = raw_start
-    expert['raw_gate' ] = raw_gate
-    expert['raw_prescale'] = raw['prescale']
-    if 'keep' in raw:
-        expert['raw_keep']  = raw['keep']
-    else:
-        expert['raw_keep'] = 0
-        logging.warning('No user.raw.keep entry in config.  Run hsd_config_update.py')
-    expert['fex_start'] = fex_start
-    expert['fex_gate' ] = fex_gate
     expert['fex_xpre' ] = fex_xpre
     expert['fex_xpost'] = fex_xpost
     if 'dymin' in fex:
@@ -237,8 +216,6 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,group):
         expert['fex_ymin' ] = fex['ymin']
         expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
-#    expert['fex_corr_baseline'] = fex['corr']['baseline']
-#    expert['fex_corr_accum']    = fex['corr']['accum']
 
     # program the values
     apply_config(ctxt,cfg)
@@ -298,13 +275,18 @@ def hsd_unconfig(prefix):
 
     return None;
 
-def user_to_expert(cfg, full=False):
+def user_to_expert(cfg):
     global group
     global ocfg
 
     d = {}
     hasUser = 'user' in cfg
     if hasUser:
+        raw_start = None
+        raw_gate  = None
+        fex_start = None
+        fex_gate  = None
+
         hasRaw = 'raw' in cfg['user']
         raw = cfg['user']['raw']
         if (hasRaw and 'start_ns' in raw):
@@ -329,15 +311,15 @@ def user_to_expert(cfg, full=False):
             # raw_gate register is 14 bits
             if raw_gate < 0:
                 raise ValueError('raw_gate computes to < 0')
-            if raw_gate > 4000:
-                raise ValueError('raw_gate computes to > 4000; raw_nsamples > 160000')
+            if raw_gate > rawBuffSize:
+                raise ValueError(f'raw_gate ({raw_gate}/{40*raw_gate}sam) computes to > rawBuffSize ({rawBuffSize})')
 
             d['expert.raw_gate'] = raw_gate
 
         hasFex = 'fex' in cfg['user']
         fex = cfg['user']['fex']
         if (hasFex and 'start_ns' in fex):
-            fex_start      = (fex['start_ns']*1300/7000 - partitionDelay*200)*160/200
+            fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200)
 
             if fex_start < 0:
                 print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
@@ -363,6 +345,31 @@ def user_to_expert(cfg, full=False):
 
             d['expert.fex_gate'] = fex_gate
 
+        #  Check the deadtime watermarks
+        full_rtt = cfg['expert']['full_rtt']
+        full_evt = cfg['expert']['full_event']
+        if raw_start and raw_gate:
+            full_size = (160*full_rtt)//200 + raw_start + raw_gate
+            if full_size > rawBuffSize:
+                low_rate_size = (160*full_rtt)//200 + raw_gate
+                logging.warning(f'Raw full threshold ({full_size}) computes to > raw full size ({rawBuffSize}).  Lowering to {low_rate_size}.')
+                full_size = low_rate_size
+            d['expert.full_size_raw'] = full_size
+            evt = int(raw_start/160 + full_rtt/200)
+            if evt > full_evt:
+                logging.warning(f'full_event threshold protects raw buffers up to {full_evt/evt} MHz.  Set full_event > {evt} for MHz running or increase group {group} L0Delay by {evt-full_evt}.')
+
+        if fex_start and fex_gate:
+            full_size = (160*full_rtt)//200 + fex_start + fex_gate
+            if full_size > fexBuffSize:
+                low_rate_size = (160*full_rtt)//200 + fex_gate
+                logging.warning(f'Fex full threshold ({full_size}) computes to > fex full size ({fexBuffSize}).  Lowering to {low_rate_size}.')
+                full_size = low_rate_size
+            d['expert.full_size_fex'] = full_size
+            evt = int(fex_start/160 + full_rtt/200)
+            if evt > full_evt:
+                logging.warning(f'full_event threshold protects fex buffers up to {full_evt/evt} MHz.  Set full_event > {evt} for MHz running or increase group {group} L0Delay by {evt-full_evt}.')
+
     update_config_entry(cfg,ocfg,d)
 
 def apply_config(ctxt,cfg):
@@ -378,9 +385,9 @@ def apply_config(ctxt,cfg):
         ctxt.put(epics_prefix+':ADCCAL',values,wait=True)
     values = ctxt.get(epics_prefix+':CONFIG')
     if 'expert' in cfg:
-        for k,v in cfg['expert'].items():
-            values[k] = v
-    values['input_chan']        = cfg['user']['input_chan']
+        xsec = set(values.keys()) & set(cfg['expert'].keys())
+        for k in xsec:
+            values[k] = cfg['expert'][k]
     values['fex_corr_baseline'] = cfg['user']['fex']['corr']['baseline']
     values['fex_corr_accum'   ] = cfg['user']['fex']['corr']['accum']
     ctxt.put(epics_prefix+':CONFIG',values,wait=True)
@@ -409,7 +416,7 @@ def hsd_scan_keys(update):
     cfg = {}
     copy_reconfig_keys(cfg, ocfg, json.loads(update))
     #  Apply group
-    user_to_expert(cfg,full=False)
+    user_to_expert(cfg)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,ocfg,key)
@@ -422,7 +429,7 @@ def hsd_update(update):
     cfg = {}
     update_config_entry(cfg,ocfg, json.loads(update))
     #  Apply group
-    user_to_expert(cfg,full=False)
+    user_to_expert(cfg)
     #  Apply config
     ctxt = Context('pva')
     apply_config(ctxt,cfg)

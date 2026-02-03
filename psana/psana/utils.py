@@ -120,8 +120,17 @@ class Logger:
 
         rank_str = f" RANK:{myrank}" if myrank is not None else ""
         time_str = "[%(asctime)s] " if timestamp else ""
-        formatter = logging.Formatter(
-            f'{time_str}[PSANA-%(levelname)s{rank_str}] %(name)s %(message)s',
+
+        class EpochNanoFormatter(logging.Formatter):
+            def format(self, record):
+                created_ns = int(record.created * 1_000_000_000)
+                sec = created_ns // 1_000_000_000
+                nsec = created_ns % 1_000_000_000
+                record.ps_time = f"{sec}.{nsec:09d}"
+                return super().format(record)
+
+        formatter = EpochNanoFormatter(
+            f'{time_str}[PSANA-%(levelname)s{rank_str} %(ps_time)s] %(name)s %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
 

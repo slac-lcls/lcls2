@@ -1,7 +1,9 @@
 import os
 import sys
 import gc
-from psana.psexp.tools import mode
+import socket
+from psana.psexp.tools import mode, marching_enabled
+from psana import utils
 import logging
 logger = logging.getLogger(__name__)
 
@@ -21,6 +23,138 @@ if mode == "mpi":
     os.environ["PS_PROMETHEUS_JOBID"] = str(prometheus_jobid)
 else:
     os.environ["PS_PROMETHEUS_JOBID"] = str(os.getpid())
+
+
+def _detect_node_count():
+    if mode == "mpi":
+        try:
+            from mpi4py import MPI
+
+            comm = MPI.COMM_WORLD
+            host = socket.gethostname()
+            hosts = comm.allgather(host)
+            unique_hosts = len(set(hosts))
+            if unique_hosts:
+                return unique_hosts
+        except Exception:
+            pass
+
+    env_vars = (
+        "PS_NUM_NODES",
+        "PS_NODES",
+        "SLURM_STEP_NUM_NODES",
+        "SLURM_JOB_NUM_NODES",
+        "SLURM_NNODES",
+    )
+    for var in env_vars:
+        raw = os.environ.get(var)
+        if not raw:
+            continue
+        try:
+            count = int(raw)
+        except ValueError:
+            continue
+        if count > 0:
+            return count
+
+    return 1
+
+
+def _ensure_marching_eb_nodes():
+    if not marching_enabled():
+        return
+    node_count = _detect_node_count()
+    if node_count <= 0:
+        return
+    desired = str(node_count)
+    current = os.environ.get("PS_EB_NODES", "1")
+    if current == desired:
+        return
+    os.environ["PS_EB_NODES"] = desired
+    should_warn = True
+    if mode == "mpi":
+        try:
+            from mpi4py import MPI
+
+            should_warn = MPI.COMM_WORLD.Get_rank() == 0
+        except Exception:
+            should_warn = True
+    if should_warn:
+        prev = current if current is not None else "unset"
+        logger.warning(
+            "Marching read requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
+            prev,
+            os.environ.get("PS_EB_NODES", "1"),
+        )
+
+
+def _ensure_local_eb_nodes():
+    env_local = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower()
+    if env_local not in ("1", "true", "yes", "on"):
+        return
+    if marching_enabled():
+        return
+    node_count = _detect_node_count()
+    if node_count <= 0:
+        return
+    desired = str(node_count)
+    current = os.environ.get("PS_EB_NODES", "1")
+    if current == desired:
+        return
+    os.environ["PS_EB_NODES"] = desired
+    should_log = True
+    if mode == "mpi":
+        try:
+            from mpi4py import MPI
+
+            should_log = MPI.COMM_WORLD.Get_rank() == 0
+        except Exception:
+            should_log = True
+    if should_log:
+        prev = current if current is not None else "unset"
+        logger.info(
+            "PS_EB_NODE_LOCAL requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
+            prev,
+            os.environ.get("PS_EB_NODES", "1"),
+        )
+
+
+def _force_mfx_overrides(exp, kwargs):
+    if not exp:
+        return
+    exp_name = str(exp).lower()
+    if not exp_name.startswith("mfx"):
+        return
+    prev_smd_n_events = os.environ.get("PS_SMD_N_EVENTS")
+    prev_eb_nodes = os.environ.get("PS_EB_NODES")
+    prev_batch_size = kwargs.get("batch_size")
+    batch_size = prev_batch_size if prev_batch_size is not None else 1000
+    node_count = _detect_node_count()
+    if node_count > 0:
+        os.environ["PS_EB_NODES"] = str(node_count)
+    os.environ["PS_SMD_N_EVENTS"] = "5000"
+    batch_override = batch_size > 10
+    if batch_override:
+        kwargs["batch_size"] = 1
+    should_log = True
+    if mode == "mpi":
+        try:
+            should_log = MPI.COMM_WORLD.Get_rank() == 0
+        except Exception:
+            should_log = True
+    if should_log:
+        logger = utils.get_logger(name="DataSource")
+        msg = (
+            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=5000 (was %s)"
+            % (
+                os.environ.get("PS_EB_NODES", "1"),
+                prev_eb_nodes if prev_eb_nodes is not None else "unset",
+                prev_smd_n_events if prev_smd_n_events is not None else "unset",
+            )
+        )
+        if batch_override:
+            msg += ", batch_size=1 (was %s)" % (prev_batch_size if prev_batch_size is not None else "unset")
+        logger.info(msg)
 
 
 class InvalidDataSource(Exception):
@@ -76,6 +210,8 @@ def DataSource(*args, **kwargs):
     # ==== from experiment directory ====
     elif "exp" in kwargs:  # experiment string - assumed multiple files
 
+        _force_mfx_overrides(kwargs.get("exp"), kwargs)
+
         if mode == "mpi":
             if world_size == 1:
                 try:
@@ -93,6 +229,8 @@ def DataSource(*args, **kwargs):
                 from psana.psexp.node import Communicators
                 from psana.psexp.mpi_ds import MPIDataSource
 
+                _ensure_marching_eb_nodes()
+                _ensure_local_eb_nodes()
                 comms = Communicators()
 
                 smalldata_kwargs = {

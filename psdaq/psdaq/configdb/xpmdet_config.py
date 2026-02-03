@@ -11,6 +11,7 @@ import logging
 
 barrier_global = Barrier()
 args = {}
+#logging.basicConfig(level=logging.INFO)
 
 def supervisor_info(json_msg):
     nworker = 0
@@ -30,6 +31,26 @@ def supervisor_info(json_msg):
                 nworker+=1
     return supervisor,nworker
 
+
+def detect_C1100():
+    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
+    file_datadev='/proc/datadev_0'
+    isC1100 = False
+    try:
+        with open(file_datadev, 'r', encoding='utf-8') as file:
+            for line in file:
+                if 'Build String' in line:
+                    isC1100 = 'C1100' in line
+                    break
+        return isC1100
+
+    except FileNotFoundError:
+        logging.error(f"Error: File '{file_datadev}' not found.")
+        return False
+    except Exception as e:
+        logging.error(f"Error reading file: {e}")
+        return False
+    
 def dumpTiming(tim):
     logging.warning(f'FidCount  : {tim.FidCount.get()}')
     logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
@@ -38,15 +59,26 @@ def dumpTiming(tim):
 
 def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     global args
-
     logging.info('xpmdet_init')
 
     args["timebase"]=timebase
     args["lanemask"]=lanemask
+    
+    if (detect_C1100()):
+       # print("Board Detected C1100")
+        root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False, xvcPort=None)
+        root.__enter__()
+        logging.info("Board Detected C1100")
+        
+    else:
+       # print("Board Detected KCU1500")
+        root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
+        root.__enter__()
+        logging.info("Board Detected KCU1500")
 
-    root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
-    root.__enter__()
-
+    args['root'] = root.PcieControl.DevPcie
+    args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+#    print("init done")
 ##  Moved to connectionInfo so supervisor can execute it only once
 #    logging.info('Reset timing data path')
 #    dumpTiming(root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx)
@@ -54,26 +86,25 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
 #    time.sleep(0.1)
 #    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
 
-    args['root'] = root.PcieControl.DevKcu1500
-    args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
-
+            
     return root
 
 # called on alloc
 def xpmdet_connectionInfo(alloc_json_str):
+   # print("xpmdet_connectionInfo")
     root = args['root']
 
     xma = root.TDetTiming.TriggerEventManager.XpmMessageAligner
+   # time.sleep(1)
+
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json)
+    #print(f"Am I supervisor ? {supervisor} {nworker}")
     barrier_global.init(supervisor,nworker)
 
     if barrier_global.supervisor:
-        
-        logging.info('Reset timing data path')
         tim = root.TDetTiming.TimingFrameRx
         dumpTiming(tim)
-        tim.C_RxReset()
         time.sleep(0.1)
         tim.ClearRxCounters()
 
@@ -105,18 +136,23 @@ def xpmdet_connectionInfo(alloc_json_str):
         txId = timTxId('tdet')
         xma.TxId.set(txId)
 
+        rxId = xma.RxId.get()
+        logging.info('rxId {:x}'.format(rxId))
+
         #  Disable all timing links
         for i in range(8):
             teb = getattr(root.TDetTiming.TriggerEventManager,f'TriggerEventBuffer[{i}]')
             teb.MasterEnable.set(0)
             teb.ResetCounters()
             teb.FifoReset()
-
         xpmdet_unconfig()
+    
+        logging.info('unconfig Initial rxId {:x}'.format(rxId))
 
         rxId = xma.RxId.get()
         logging.info('rxId {:x}'.format(rxId))
-        
+
+  
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
             logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
             tim = root.TDetTiming.TimingFrameRx
@@ -133,7 +169,6 @@ def xpmdet_connectionInfo(alloc_json_str):
                 logging.critical(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Aborting.  Try TxPllReset.");
                 raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
     barrier_global.wait()
-
     rxId = xma.RxId.get()
     logging.info('rxId {:x}'.format(rxId))
 

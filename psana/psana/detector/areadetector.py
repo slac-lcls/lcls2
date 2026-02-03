@@ -62,6 +62,7 @@ logger = logging.getLogger(__name__)
 
 import os
 import sys
+import time
 import numpy as np
 from psana.detector.calibconstants import CalibConstants
 from psana.pscalib.geometry.SegGeometryStore import sgs  # used in epix_base.py and derived
@@ -99,6 +100,10 @@ class AreaDetector(DetectorImpl):
             #logger.debug('AreaDetector._calibconst.keys() / ctypes:', self._calibconst.keys())
             kwa.setdefault('logmet_init', self._logmet_init)
             self._calibc_ = CalibConstants(cc, self._det_name, **kwa)
+            shared_cache = getattr(self, "_shared_calibc_cache", None)
+            if shared_cache is not None:
+                self._calibc_._shared_calibc_cache = shared_cache
+                self._calibc_._drp_class_name = getattr(self, "_drp_class_name", "raw")
             self._apply_calibc_preload_cache()
             self._logmet_init('AreaDetector._calibconstants - makes CalibConstants\n%s'%\
                               self._calibc_.info_calibconst())
@@ -169,9 +174,80 @@ class AreaDetector(DetectorImpl):
 
 
     def _pixel_coord_indexes(self, **kwa):
-        logger.debug('_pixel_coord_indexes')
         geo = self._det_geo()
         if geo is None: return None
+        cache = getattr(self, "_shared_geo_cache", None)
+        if cache is not None and getattr(cache, "enabled", False):
+            geotxt = None
+            calibconst = getattr(self, "_calibconst", None)
+            if isinstance(calibconst, dict):
+                geotxt_entry = calibconst.get("geometry")
+                if geotxt_entry:
+                    geotxt = geotxt_entry[0]
+            if geotxt is None and self._path_geo_default is not None:
+                try:
+                    geotxt = self._det_geotxt_default()
+                except Exception:
+                    geotxt = None
+            segnums = None if kwa.get("all_segs", False) else self._segment_numbers
+            geom_id = cache.build_geom_id(
+                geotxt,
+                segnums,
+                {
+                    "pix_scale_size_um": kwa.get("pix_scale_size_um", None),
+                    "xy0_off_pix": kwa.get("xy0_off_pix", None),
+                    "do_tilt": kwa.get("do_tilt", True),
+                    "cframe": kwa.get("cframe", 0),
+                    "all_segs": kwa.get("all_segs", False),
+                },
+            )
+            det_name = getattr(self, "_det_name", "unknown")
+            drp_class = getattr(self, "_drp_class_name", "raw")
+            key = cache.make_key(det_name, drp_class, geom_id)
+            cached_ix = cache.get_if_present(key, "pix_rows")
+            cached_iy = cache.get_if_present(key, "pix_cols")
+            if cached_ix is not None and cached_iy is not None:
+                return cached_ix, cached_iy
+
+            shm_comm = getattr(cache.shared_mem, "shm_comm", None)
+            is_leader = getattr(cache.shared_mem, "is_leader", False)
+            local_ix = local_iy = None
+            shape_dtype = None
+            if is_leader:
+                local_ix, local_iy = geo.get_pixel_coord_indexes(\
+                    pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
+                    xy0_off_pix       = kwa.get('xy0_off_pix',None),\
+                    do_tilt           = kwa.get('do_tilt',True),\
+                    cframe            = kwa.get('cframe',0))
+                local_ix = self._arr_for_daq_segments(local_ix, **kwa)
+                local_iy = self._arr_for_daq_segments(local_iy, **kwa)
+                shape_dtype = (
+                    local_ix.shape,
+                    str(local_ix.dtype),
+                    local_iy.shape,
+                    str(local_iy.dtype),
+                )
+            if shm_comm is not None:
+                shape_dtype = shm_comm.bcast(shape_dtype, root=0)
+            if shape_dtype is None:
+                ix,iy = geo.get_pixel_coord_indexes(\
+                    pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
+                    xy0_off_pix       = kwa.get('xy0_off_pix',None),\
+                    do_tilt           = kwa.get('do_tilt',True),\
+                    cframe            = kwa.get('cframe',0))
+                return self._arr_for_daq_segments(ix, **kwa),\
+                       self._arr_for_daq_segments(iy, **kwa)
+
+            (sx, dx, sy, dy) = shape_dtype
+            arr_ix, _ = cache.get_or_allocate(key, "pix_rows", sx, np.dtype(dx), zero_init=False)
+            arr_iy, _ = cache.get_or_allocate(key, "pix_cols", sy, np.dtype(dy), zero_init=False)
+            if is_leader and local_ix is not None:
+                np.copyto(arr_ix, local_ix)
+                np.copyto(arr_iy, local_iy)
+            if shm_comm is not None:
+                shm_comm.Barrier()
+            return arr_ix, arr_iy
+
         ix,iy = geo.get_pixel_coord_indexes(\
             pix_scale_size_um = kwa.get('pix_scale_size_um',None),\
             xy0_off_pix       = kwa.get('xy0_off_pix',None),\
@@ -182,9 +258,81 @@ class AreaDetector(DetectorImpl):
 
 
     def _pixel_coords(self, **kwa):
-        logger.debug('_pixel_coords')
         geo = self._det_geo()
         if geo is None: return None
+        cache = getattr(self, "_shared_geo_cache", None)
+        if cache is not None and getattr(cache, "enabled", False):
+            geotxt = None
+            calibconst = getattr(self, "_calibconst", None)
+            if isinstance(calibconst, dict):
+                geotxt_entry = calibconst.get("geometry")
+                if geotxt_entry:
+                    geotxt = geotxt_entry[0]
+            if geotxt is None and self._path_geo_default is not None:
+                try:
+                    geotxt = self._det_geotxt_default()
+                except Exception:
+                    geotxt = None
+            segnums = None if kwa.get("all_segs", False) else self._segment_numbers
+            geom_id = cache.build_geom_id(
+                geotxt,
+                segnums,
+                {
+                    "do_tilt": kwa.get("do_tilt", True),
+                    "cframe": kwa.get("cframe", 0),
+                    "all_segs": kwa.get("all_segs", False),
+                },
+            )
+            det_name = getattr(self, "_det_name", "unknown")
+            drp_class = getattr(self, "_drp_class_name", "raw")
+            key = cache.make_key(det_name, drp_class, geom_id)
+            cached_x = cache.get_if_present(key, "pix_x")
+            cached_y = cache.get_if_present(key, "pix_y")
+            cached_z = cache.get_if_present(key, "pix_z")
+            if cached_x is not None and cached_y is not None and cached_z is not None:
+                return cached_x, cached_y, cached_z
+
+            shm_comm = getattr(cache.shared_mem, "shm_comm", None)
+            is_leader = getattr(cache.shared_mem, "is_leader", False)
+            local_x = local_y = local_z = None
+            shape_dtype = None
+            if is_leader:
+                local_x, local_y, local_z = geo.get_pixel_coords(\
+                    do_tilt = kwa.get('do_tilt',True),\
+                    cframe = kwa.get('cframe',0))
+                local_x = self._arr_for_daq_segments(local_x, **kwa)
+                local_y = self._arr_for_daq_segments(local_y, **kwa)
+                local_z = self._arr_for_daq_segments(local_z, **kwa)
+                shape_dtype = (
+                    local_x.shape,
+                    str(local_x.dtype),
+                    local_y.shape,
+                    str(local_y.dtype),
+                    local_z.shape,
+                    str(local_z.dtype),
+                )
+            if shm_comm is not None:
+                shape_dtype = shm_comm.bcast(shape_dtype, root=0)
+            if shape_dtype is None:
+                x,y,z = geo.get_pixel_coords(\
+                    do_tilt = kwa.get('do_tilt',True),\
+                    cframe = kwa.get('cframe',0))
+                return self._arr_for_daq_segments(x, **kwa),\
+                       self._arr_for_daq_segments(y, **kwa),\
+                       self._arr_for_daq_segments(z, **kwa)
+
+            (sx, dx, sy, dy, sz, dz) = shape_dtype
+            arr_x, _ = cache.get_or_allocate(key, "pix_x", sx, np.dtype(dx), zero_init=False)
+            arr_y, _ = cache.get_or_allocate(key, "pix_y", sy, np.dtype(dy), zero_init=False)
+            arr_z, _ = cache.get_or_allocate(key, "pix_z", sz, np.dtype(dz), zero_init=False)
+            if is_leader and local_x is not None:
+                np.copyto(arr_x, local_x)
+                np.copyto(arr_y, local_y)
+                np.copyto(arr_z, local_z)
+            if shm_comm is not None:
+                shm_comm.Barrier()
+            return arr_x, arr_y, arr_z
+
         x,y,z = geo.get_pixel_coords(\
             do_tilt = kwa.get('do_tilt',True),\
             cframe = kwa.get('cframe',0))
@@ -194,7 +342,6 @@ class AreaDetector(DetectorImpl):
 
 
     def _pixel_xy_at_z(self, **kwa):
-        logger.debug('_pixel_xy_at_z')
         geo = self._det_geo()
         if geo is None: return None
         x,y = geo.get_pixel_xy_at_z(\
@@ -359,6 +506,9 @@ class AreaDetectorRaw(AreaDetector):
     def __init__(self, *args, **kwargs):
         logger.debug('AreaDetectorRaw.__init__') #  self.__class__.__name__
         AreaDetector.__init__(self, *args, **kwargs)
+        self._raw_buf = None
+        self._raw_shape = None
+        self._raw_dtype = None
 
 
     def raw(self, evt) -> Array3d:
@@ -378,12 +528,30 @@ class AreaDetectorRaw(AreaDetector):
 
         #print('XXX AreaDetectorRaw.raw')
         if evt is None: return None
+        stack_timing = getattr(evt, '_det_raw_timing', None)
+        t0 = time.perf_counter() if stack_timing is not None else None
         segs = self._segments(evt)    # dict = {seg_index: seg_obj}
+        if stack_timing is not None and t0 is not None:
+            stack_timing['segments'] += time.perf_counter() - t0
         if is_none(segs, 'self._segments(evt) is None'): return None
         if len(segs) == 1:
             ind = self._segment_numbers[0]
             return segs[ind].raw
-        return reshape_to_3d(np.stack([segs[k].raw for k in self._segment_numbers]))
+
+        first_seg = segs[self._segment_numbers[0]].raw
+        dtype = first_seg.dtype
+        shape = (len(self._segment_numbers),) + first_seg.shape
+        if self._raw_buf is None or self._raw_shape != shape or self._raw_dtype != dtype:
+            self._raw_buf = np.empty(shape, dtype=dtype)
+            self._raw_shape = shape
+            self._raw_dtype = dtype
+
+        t1 = time.perf_counter() if stack_timing is not None else None
+        for idx, seg_id in enumerate(self._segment_numbers):
+            np.copyto(self._raw_buf[idx], segs[seg_id].raw, casting='no')
+        if stack_timing is not None and t1 is not None:
+            stack_timing['stack'] += time.perf_counter() - t1
+        return reshape_to_3d(self._raw_buf)
 
 
     def calib(self, evt, **kwa) -> Array3d:
@@ -391,9 +559,9 @@ class AreaDetectorRaw(AreaDetector):
            Should be overridden for more complicated cases.
         """
         logger_method = kwa.get('logger_method', logger.debug)
-        logger_method('AreaDetectorRaw.calib')
-        logger_method('%s.calib(evt) is implemented for generic case of area detector as raw - pedestals' % self.__class__.__name__\
-                      +'\n  If needed more, it needs to be re-implemented for this detector type.')
+        #logger_method('AreaDetectorRaw.calib')
+        logger_method('%s.calib(evt) is implemented for generic case of area detector as (raw - peds) * gfac * mask' % self.__class__.__name__\
+                     +'\n  If needed more, it should to be re-implemented for specific detector type.')
         raw = self.raw(evt)
         if is_none(raw, 'det.raw.raw(evt) is None', logger_method): return None
 
@@ -405,7 +573,7 @@ class AreaDetectorRaw(AreaDetector):
         if is_none(gfac, 'det.raw._gain_factor() is None, return raw - peds', logger_method): return arr
         if gfac != 1: arr *= gfac
 
-        #logger_method('AAAAAAAA2 call det._mask(**self.kwa) from AreaDetectorRaw.calib')
+        #logger_method('XXX call det._mask(**self.kwa) from AreaDetectorRaw.calib')
         mask = self._mask(**kwa)
         if is_none(mask, 'det.raw._mask() is None - return (raw - peds)*gfac', logger_method): return arr
         return arr*mask

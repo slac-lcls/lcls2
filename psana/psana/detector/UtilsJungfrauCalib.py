@@ -92,14 +92,9 @@ class DarkProcJungfrau(uc.DarkProc):
         t0_sec = time()
         gbits = raw>>14 # 00/01/11/01 - gain bits for mode 0,1,2,bad
         fg0, fg1, fg2, fgx = gbits==0, gbits==1, gbits==3, gbits==2
-        #bad = (np.logical_not(fg0),\
-        #       np.logical_not(fg1),\
-        #       np.logical_not(fg2))[igm]
-        #print(info_ndarr(fgx, '  XXXX fgx', first=0, last=5))
 
         if irec%evgap==0:
            dt_sec = time()-t0_sec
-           #fgx = gbits==2
            sums = [fg0.sum(), fg1.sum(), fg2.sum(), fgx.sum()]
            logger.debug('Rec: %4d found pixels %s gain definition time: %.6f sec igm=%d:%s'%\
                     (irec,' '.join(['%s:%d' % (self.modes[i], sums[i]) for i in range(4)]), dt_sec, igm, gmname))
@@ -143,6 +138,7 @@ def selected_record(i, events):
        or (i<200 and not i%20)\
        or not i%100\
        or i>events-5
+
 
 def print_uniqueid(uniqueid, segind):
     s = 'panel_ids:'
@@ -410,8 +406,8 @@ def jungfrau_dark_proc(parser):
 
 
 def save_results(dpo, orun, odet, **kwa):
-    logger.debug('save_results')
-
+    logger.info('begin save_results')
+    t0_sec = time()
     if dpo is None: return
     dpo.summary()
     dpo.show_plot_results()
@@ -432,6 +428,7 @@ def save_results(dpo, orun, odet, **kwa):
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
     save_constants_in_repository(dic_consts, **kwa_depl)
     del(dpo)
+    logger.info('save_results time %.3f sec' % (time()-t0_sec))
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):

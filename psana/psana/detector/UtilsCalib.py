@@ -102,7 +102,7 @@ def proc_block(block, **kwa):
     frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
     frac05     = 0.5
 
-    logger.debug('in proc_dark_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
+    logger.debug('in proc_block for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
 
     t0_sec = time()
@@ -141,13 +141,11 @@ def proc_block(block, **kwa):
     arr_abs_dev = np.median(np.abs(arr_dev_3d), axis=0)
     med_abs_dev = np.median(arr_abs_dev)
 
-    s = 'proc_block pre-processing time %.3f sec' % (time()-t0_sec)\
-      + '\n    results for median over pixels intensities:'\
+    s = 'data block processing results for median over pixels intensities:'\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - pedestal estimator' % (frac05, med_med)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)\
       + '\n    event spectrum spread median(abs(raw-med))      %.3f ADU - spectral peak width estimator' % med_abs_dev
-    logger.info(s)
 
     gate_lo    = arr1_u16 * int_lo
     gate_hi    = arr1_u16 * int_hi
@@ -162,6 +160,9 @@ def proc_block(block, **kwa):
                 +info_ndarr(arr_abs_dev, '\n    abs_dev[100:105]', first=100, last=105)\
                 +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\
                 +info_ndarr(gate_hi,     '\n    gate_hi[100:105]', first=100, last=105))
+
+    s += '\n    data block of %d events processing time %.3f sec' % (block.shape[0], time()-t0_sec)
+    logger.info(s)
 
     return gate_lo, gate_hi, arr_med, arr_abs_dev
 
@@ -179,8 +180,8 @@ class DarkProc():
     def __init__(self, **kwa):
 
         self.datbits= kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
-        self.nrecs  = kwa.get('nrecs',1000)
-        self.nrecs1 = kwa.get('nrecs1',100)
+        self.nrecs  = kwa.get('nrecs', 1000)
+        self.nrecs1 = kwa.get('nrecs1',  50)
         self.plotim = kwa.get('plotim', 0o1)
         self.savebw = kwa.get('savebw', 0xffff)
         self.fraclm = kwa.get('fraclm', 0.1)
@@ -197,6 +198,7 @@ class DarkProc():
         self.kwa    = kwa
         self.block  = None
         self.irec   = -1
+        self.t0_sec_init = time()
 
 
     def accumulate_block(self, raw):
@@ -204,10 +206,11 @@ class DarkProc():
 
 
     def proc_block(self):
+        logger.info('stage 1 - data block of %d events accumulation time %.3f sec' % (self.irec, time()-self.t0_sec_init))
         t0_sec = time()
         block = self.block if self.irec > self.nrecs1-1 else self.block[:self.irec+1,:]
         self.gate_lo, self.gate_hi, self.arr_med, self.abs_dev = proc_block(block, **self.kwa)
-        logger.info('data block processing total time %.3f sec' % (time()-t0_sec)\
+        logger.info('stage 1 - data block of %d events processing time %.3f sec' % (self.irec, time()-t0_sec)\
               +info_ndarr(self.arr_med, '\n  arr_med[100:105]', first=100, last=105)\
               +info_ndarr(self.abs_dev, '\n  abs_dev[100:105]', first=100, last=105)\
               +info_ndarr(self.gate_lo, '\n  gate_lo[100:105]', first=100, last=105)\
@@ -219,7 +222,7 @@ class DarkProc():
         shape_raw = self.arr_med.shape
         dtype_raw = self.gate_lo.dtype
 
-        logger.info('Stage 2 initialization for raw shape %s and dtype %s' % (str(shape_raw), str(dtype_raw)))
+        logger.info('stage 2 - initialization for raw shape %s and dtype %s' % (str(shape_raw), str(dtype_raw)))
 
         self.arr_sum0   = np.zeros(shape_raw, dtype=np.uint64)
         self.arr_sum1   = np.zeros(shape_raw, dtype=np.float64)
@@ -242,12 +245,14 @@ class DarkProc():
         self.arr_max    = np.zeros(shape_raw, dtype=dtype_raw)
         self.arr_min    = np.ones (shape_raw, dtype=dtype_raw) * self.datbits
 
+        self.t0_sec_init_proc = time()
+
 
     def summary(self):
+        logger.info('stage 2 - data accumulation for %d events time %.3f sec' % (self.irec, time()-self.t0_sec_init_proc))
         t0_sec = time()
 
-        logger.info('summary')
-        logger.info('%s\nraw data found/selected in %d events' % (80*'_', self.irec+1))
+        logger.info('\n%s\nstage 2 - summary - raw data found/selected in %d events' % (80*'_', self.irec+1))
 
         if self.irec>1:
             logger.info('begin data summary stage')
@@ -328,7 +333,7 @@ class DarkProc():
 
         self.block = None
         self.irec = -1
-        logger.info('summary consumes %.3f sec' % (time()-t0_sec))
+        logger.info('summary time %.3f sec' % (time()-t0_sec))
 
 
     def show_plot_results(self):
@@ -357,8 +362,10 @@ class DarkProc():
 
 
     def add_block(self):
-        logger.info(info_ndarr(self.block, 'add to gated average statistics the block of initial data'))
+        logger.info(info_ndarr(self.block, 'stage 2 - add to gated average statistics the block of initial data'))
+        t0_sec = time()
         for i,raw in enumerate(self.block): self.add_event(raw,i)
+        logger.info('stage 2 - add_block of %d events to gated average statistics time %.3f sec' % (self.irec, time()-t0_sec))
 
 
     def event(self, raw, evnum):
@@ -385,7 +392,7 @@ class DarkProc():
             self.proc_block()
             self.init_proc()
             self.add_block()
-            sys.stdout.write('1st stage event block processing is completed\n')
+            #sys.stdout.write('stage 1 - event block processing is completed\n')
             self.add_event(raw, self.irec)
 
         if self.irec > self.nrecs-2:

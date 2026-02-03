@@ -15,13 +15,12 @@ mycdb = cdb.configdb(url, args.inst, create,
 
 top = cdict()
 
-top.setAlg('config', [3,1,0])
+top.setAlg('config', [3,3,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32' )
 
 help_str = "-- user fields --"
-help_str += "\nuser.input_chan   : analog input channel selection"
 help_str += "\nuser.raw.start_ns : nanoseconds from fiducial to sampling start"
 help_str += "\nuser.raw.gate_ns  : nanoseconds from sampling start to end"
 help_str += "\nuser.raw.prescale : event downsampling; record 1-out-of-N"
@@ -38,9 +37,6 @@ help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
 
 top.set("help:RO", help_str, 'CHARSTR')
 
-top.define_enum('inputEnum',{'A0_A2': 0, 'A1_A3': 1})
-
-top.set('user.input_chan'  ,      0, 'inputEnum')
 top.set('user.raw.start_ns',  93000, 'UINT32')
 top.set('user.raw.gate_ns' ,    200, 'UINT32')
 top.set('user.raw.prescale',      1, 'UINT32')
@@ -69,26 +65,25 @@ top.set('user.fex.corr.accum'    ,    12, 'accumEnum')
 
 top.define_enum('dataModeEnum', {'Data': -1, 'Ramp': 0, 'Spike11': 1, 'Spike12': 3, 'Spike16': 5})
 
-top.set('expert.readoutGroup', 0, 'UINT32')
-top.set('expert.enable'      , 0, 'UINT32')
-top.set('expert.raw_start'   , 40, 'UINT32')
-top.set('expert.raw_gate'    , 40, 'UINT32')
-top.set('expert.raw_prescale', 0, 'UINT32')
-top.set('expert.raw_keep'    , 0, 'UINT32')
-top.set('expert.fex_start'   , 40, 'UINT32')
-top.set('expert.fex_gate'    , 40, 'UINT32')
-top.set('expert.fex_xpre'    , 1, 'UINT32')
-top.set('expert.fex_xpost'   , 1, 'UINT32')
-top.set('expert.fex_ymin'    , 2020, 'UINT32')
-top.set('expert.fex_ymax'    , 2060, 'UINT32')
-top.set('expert.fex_prescale', 0, 'UINT32')
-top.set('expert.test_pattern', -1, 'dataModeEnum')
-top.set('expert.full_event'  , 6, 'UINT32')
-top.set('expert.full_size'   , 3072, 'UINT32')
-top.set('expert.fs_range_vpp', 65535, 'UINT32')
-top.set('expert.trig_shift'  , 0, 'UINT32')
-top.set('expert.sync_ph_even', 0, 'UINT32')
-top.set('expert.sync_ph_odd' , 0, 'UINT32')
+top.set('expert.readoutGroup' , 0    , 'UINT32')
+top.set('expert.enable'       , 0    , 'UINT32')
+top.set('expert.raw_start'    , 40   , 'UINT32')
+top.set('expert.raw_gate'     , 40   , 'UINT32')
+top.set('expert.raw_prescale' , 0    , 'UINT32')
+top.set('expert.raw_keep'     , 0    , 'UINT32')
+top.set('expert.fex_start'    , 40   , 'UINT32')
+top.set('expert.fex_gate'     , 40   , 'UINT32')
+top.set('expert.fex_xpre'     , 1    , 'UINT32')
+top.set('expert.fex_xpost'    , 1    , 'UINT32')
+top.set('expert.fex_ymin'     , 2020 , 'UINT32')
+top.set('expert.fex_ymax'     , 2060 , 'UINT32')
+top.set('expert.fex_prescale' , 0    , 'UINT32')
+top.set('expert.test_pattern' , -1   , 'dataModeEnum')
+top.set('expert.full_rtt'     , 300  , 'UINT32')  # DT round trip time @186MHz
+top.set('expert.full_event'   , 6    , 'UINT32')
+top.set('expert.full_size_raw', 3072 , 'UINT32')
+top.set('expert.full_size_fex', 3072 , 'UINT32')
+top.set('expert.fs_range_vpp' , 65535, 'UINT32')
 
 if False:
     top.set('adccal.oadj_a_vina', 0x0800, 'UINT16')

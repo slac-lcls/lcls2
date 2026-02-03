@@ -323,6 +323,10 @@ def user_to_expert(base, cfg, fullConfig=False):
         partitionDelay = getattr(detectorRoot.App.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
 
+        #
+        #  The EPIX DAQ trigger source is the DAQ readout group
+        #  The EPIX DAQ trigger delay is user.start_ns - L0Delay (readout group)
+        #
         triggerDelay   = int(rawStart/base['clk_period'] - partitionDelay*base['msg_period'])
         logging.warning(f'partitionDelay[{group}] {partitionDelay}  rawStart {rawStart}  triggerDelay {triggerDelay}')
         if triggerDelay < 0:
@@ -332,6 +336,10 @@ def user_to_expert(base, cfg, fullConfig=False):
 
         d[f'expert.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].TriggerDelay']=triggerDelay
         
+        #
+        #  The EPIX RUN trigger source is the EvrV2CoreTriggers using an eventcode
+        #  The EPIX RUN trigger delay is user.start_ns minus a fixed value
+        #
         triggerDelay=int(rawStart/base["clk_period"]) - deltadelay
         
         if triggerDelay < 0:

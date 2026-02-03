@@ -146,7 +146,12 @@ class Run(object):
             if svc == TransitionId.EndRun:
                 return
             if svc == TransitionId.BeginStep:
-                yield Step(Event(dgrams=dgrams, run=self._run_ctx), self._evt_iter, self._run_ctx)
+                yield Step(
+                    Event(dgrams=dgrams, run=self._run_ctx),
+                    self._evt_iter,
+                    self._run_ctx,
+                    esm=self.esm,
+                )
 
     def terminate(self):
         """Sets terminate flag
@@ -248,6 +253,10 @@ class Run(object):
         else:
             if self._calib_const is None:
                 self._calib_const = {}
+            total_time = 0.0
+            max_time = 0.0
+            max_det = None
+            fetched = 0
             for det_name, configinfo in self.dsparms.configinfo_dict.items():
                 if expt:
                     if expt == "xpptut15":
@@ -262,14 +271,29 @@ class Run(object):
                         det_uniqueid, exp=expt, run=runnum, dbsuffix=self.dsparms.dbsuffix
                     )
                     en = time.monotonic()
-                    self.logger.debug(f"received calibconst for {det_name} in {en-st:.4f}s.")
+                    det_time = en - st
+                    total_time += det_time
+                    fetched += 1
+                    if det_time > max_time:
+                        max_time = det_time
+                        max_det = det_name
                     self._calib_const[det_name] = calib_const or {}
                 else:
                     self.logger.info(
                         "Warning: cannot access calibration constant (exp is None)"
                     )
                     self._calib_const[det_name] = {}
+            if fetched:
+                max_label = max_det or "unknown"
+                self.logger.debug(
+                    "received calibconst for %d detectors total=%.4fs max=%s(%.4fs)",
+                    fetched,
+                    total_time,
+                    max_label,
+                    max_time,
+                )
         self.dsparms.calibconst = self._calib_const
+
 
     def Detector(self, name, accept_missing=False, **kwargs):
 
@@ -332,6 +356,14 @@ class Run(object):
                         time.sleep(1.0)  # optional delay between retries
                     else:
                         self.logger.error(f"Failed to load cache for {det_name}.{drp_class_name} after {max_retries} attempts")
+
+                shared_cache = getattr(self, "_shared_geo_cache", None)
+                if shared_cache is not None:
+                    setattr(iface, "_shared_geo_cache", shared_cache)
+
+                shared_calibc_cache = getattr(self, "_shared_calibc_cache", None)
+                if shared_calibc_cache is not None:
+                    setattr(iface, "_shared_calibc_cache", shared_calibc_cache)
 
                 # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
