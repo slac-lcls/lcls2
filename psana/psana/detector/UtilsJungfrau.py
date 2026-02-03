@@ -410,7 +410,6 @@ class DetCache():
         return nda_and_meta # - 4d shape:(3, <nsegs>, 512, 1024)
 
     def add_calibcons(self, det, evt):
-        t0 = MPI.Wtime()
         self.detname = det._det_name
         self.inds    = det._sorted_segment_inds # det._segment_numbers
         self.calibc  = det._calibconst
@@ -535,8 +534,6 @@ class DetCache():
             )
 
         self.isset = True
-        t1 = MPI.Wtime()
-        print(f'[Rank {rank}] Jungfrau DetCache.add_calibcons call time={t1 - t0:.6f}s')
 
 
     def add_gain_mask(self):
@@ -855,7 +852,9 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
     nda_raw = kwa.get('nda_raw', None)
     size_blk = kwa.get('size_blk', 512*1024) # single panel size
 
-    arr = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
+    # Avoid extra raw() copy here; calib immediately consumes raw per-event data.
+    # This keeps perf while raw() defaults to copy=True for safety elsewhere.
+    arr = det_raw.raw(evt, copy=False) if nda_raw is None else nda_raw # shape:(<npanels>, 512, 1024) dtype:uint16
 
     if is_true(arr is None, 'det_raw.raw(evt) and nda_raw are None, return None',\
                logger_method = logger.warning): return None
