@@ -1,11 +1,13 @@
 
 project(
     'lcls',
-    ['cpp', 'cuda'],
+    'cpp',
     'cython',
     version: '4.3.0',
     default_options: ['cpp_std=c++20']
 )
+
+cuda_exists = add_languages('cuda', required: false, native: false)
 
 conda_base = get_option('conda_prefix')
 py = import('python').find_installation(pure: false)
