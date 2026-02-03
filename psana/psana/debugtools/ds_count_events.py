@@ -152,10 +152,11 @@ def main():
 
     run = next(ds.runs())
 
-    print(f"[Rank {rank}] rss_gb after next(ds.runs()) { _rss_gb():.3f}")
+    if ds.unique_user_rank():
+        print(f"[Rank {rank}] rss_gb after next(ds.runs()) { _rss_gb():.3f}")
 
     det = run.Detector(args.debug_detector) if args.debug_detector else None
-    if det:
+    if det and ds.unique_user_rank():
         print(f"[Rank {rank}] rss_gb after run.Detector({args.debug_detector}) { _rss_gb():.3f}")
     if rank == 0 and det:
         print(f"[INFO] Debugging detector: {args.debug_detector}")
@@ -203,7 +204,6 @@ def main():
             det_call_seconds += det_t1 - det_t0
             det_call_count += 1
             det_accessed = True
-            print(f'[Rank {rank}] Jungfrau det.raw.calib call time={det_t1 - det_t0:.6f}s rss_gb={_rss_gb():.3f} at event {i_evt}')
         elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
             det_t0 = time.perf_counter()
             _ = det.raw.peaks(evt)
@@ -240,11 +240,12 @@ def main():
                 last_pread_calls = pread_calls
             else:
                 io_msg = ""
-            rss_gb = _rss_gb()
-            print(
-                f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
-                f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {io_msg}"
-            )
+            if ds.unique_user_rank():
+                rss_gb = _rss_gb()
+                print(
+                    f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
+                    f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {args.calib=} {io_msg}"
+                )
             ti0 = now
 
         local_count += 1
