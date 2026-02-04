@@ -852,6 +852,27 @@ class SmallData:  # (client)
     def min(self, value, inplace=False):
         return self._reduction(value, MPI.MIN, inplace)
 
+    def prod(self, value, inplace=False):
+        return self._reduction(value, MPI.PROD, inplace)
+
+    def land(self, value, inplace=False):
+        return self._reduction(value, MPI.LAND, inplace)
+
+    def band(self, value, inplace=False):
+        return self._reduction(value, MPI.BAND, inplace)
+
+    def lor(self, value, inplace=False):
+        return self._reduction(value, MPI.LOR, inplace)
+
+    def bor(self, value, inplace=False):
+        return self._reduction(value, MPI.BOR, inplace)
+
+    def lxor(self, value, inplace=False):
+        return self._reduction(value, MPI.LXOR, inplace)
+
+    def bxor(self, value, inplace=False):
+        return self._reduction(value, MPI.BXOR, inplace)
+
     def _safe_reduction(self, value, op, inplace):
         """
         method that is robust to ranks that have received no data
