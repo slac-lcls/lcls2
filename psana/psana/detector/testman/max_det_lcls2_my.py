@@ -3,7 +3,11 @@
 """copy of /sdf/home/c/cpo/ipsana/max_det_lcls2.py"""
 import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
-CMD = """mpirun -n 5 python %s -e mfx101332224 -r 7 -d epix100 -n 100""" % SCRNAME
+#CMD = """mpirun -n 4 python %s -e mfx101332224 -r 7 -d epix100 -n 100""" % SCRNAME
+
+CMD = """mpirun -n 4 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx100848724 -r 49 -d jungfrau -n 100"""
+
+
 
 from psana import DataSource
 import numpy as np
@@ -42,9 +46,13 @@ args = parser.parse_args()
 
 # this batch_size parameter may need to be tweaked
 ds = DataSource(exp=args.exp, run=args.run, max_events=args.nevt, batch_size=2)
+print('XXX ', s_rsc,' ds:', ds)
 smd = ds.smalldata()
 myrun = next(ds.runs())
+print('XXX myrun', str(myrun), '  runnum:', str(myrun.runnum), s_rsc)
 det = myrun.Detector(args.det)
+print('XXX ds.runnum_list = %s' % str(ds.runnum_list), s_rsc)
+sys.exit('TEST EXIT')
 
 for nevt,evt in enumerate(myrun.events()):
     raw = det.raw.raw(evt)
