@@ -169,6 +169,84 @@ def proc_block(block, **kwa):
     return gate_lo, gate_hi, arr_med, arr_abs_dev
 
 
+def proc_block_short(block, **kwa):
+    """Dark data 1st stage processing to define gate limits.
+       block.shape = (nrecs, <raw-detector-shape>),
+       where <raw-detector-shape> can be per segment (352, 384) or per detector (nsegs, 352, 384)
+       Returns segment/detector shaped arrays of gate_lo, gate_hi, arr_med, arr_abs_dev
+    """
+    datbits    = kwa.get('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
+    exp        = kwa.get('exp', None)
+    detname    = kwa.get('det', None)
+    int_lo     = kwa.get('int_lo', 1)       # lowest  intensity accepted for dark evaluation
+    int_hi     = kwa.get('int_hi', datbits-1) # highest intensity accepted for dark evaluation
+    fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
+    frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
+    frac05     = 0.5
+
+    logger.debug('in proc_block_short for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
+    logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
+
+    t0_sec = time()
+    nrecs1= block.shape[0]
+    shape = block.shape[1:] #(ny, nx)
+
+    arr1_u16 = np.ones(shape, dtype=np.uint16)
+    arr1     = np.ones(shape, dtype=np.uint64)
+
+    t1_sec = time()
+
+    """
+    NOTE:
+    - our data is uint16.
+    - np.median(block, axis=0) or np.quantile(...,method='linear') return result rounded to int
+    - in order to return interpolated float values apply the trick:
+      data_block + random [0,1)-0.5
+    - this would distort data in the range [-0.5,+0.5) ADU, but would allow
+      to get better interpolation for median and quantile values
+    - use nrecs1 (< nrecs) due to memory and time consumption
+    """
+    blockf64 = block if datbits == 0xffff else (block & datbits)
+
+    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='lower')
+    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='higher')
+
+    logger.debug('block array quantile(frac) for qlo, qhi time = %.3f sec' % (time()-t1_sec))
+
+    med_qlo = np.median(arr_qlo)
+    med_qhi = np.median(arr_qhi)
+
+    s = 'data block processing results for median over pixels intensities:'\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
+      + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)
+
+    gate_lo = arr1_u16 * int_lo
+    gate_hi = arr1_u16 * int_hi
+
+    gate_lo = np.maximum(np.floor(arr_qlo), gate_lo).astype(dtype=block.dtype)
+    gate_hi = np.minimum(np.ceil(arr_qhi),  gate_hi).astype(dtype=block.dtype)
+    cond = gate_hi>gate_lo
+    gate_hi[np.logical_not(cond)] +=1
+
+    logger.debug('proc_block_short results'\
+                +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\
+                +info_ndarr(gate_hi,     '\n    gate_hi[100:105]', first=100, last=105))
+
+    s += '\n    data block of %d events processing time %.3f sec' % (block.shape[0], time()-t0_sec)
+    logger.info(s)
+
+    return gate_lo, gate_hi
+
+
+
+
+
+
+
+
+
+
+
 def detector_name_short(detlong, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=True):
   """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
       to short: epixm320_000004
@@ -213,13 +291,23 @@ class DarkProc():
 
 
     def proc_block(self):
-        logger.info('stage 1 - data block of %d events accumulation time %.3f sec' % (self.irec, time()-self.t0_sec_init))
+        logger.info('stage 1 - DATA BLOCK of %d events ACCUMULATION TIME %.3f sec' % (self.irec+1, time()-self.t0_sec_init))
         t0_sec = time()
         block = self.block if self.irec > self.nrecs1-1 else self.block[:self.irec+1,:]
         self.gate_lo, self.gate_hi, self.arr_med, self.abs_dev = proc_block(block, **self.kwa)
-        logger.info('stage 1 - data block of %d events processing time %.3f sec' % (self.irec, time()-t0_sec)\
+        logger.info('stage 1 - DATA BLOCK of %d events PROCESSING TIME %.3f sec' % (self.irec+1, time()-t0_sec)\
               +info_ndarr(self.arr_med, '\n  arr_med[100:105]', first=100, last=105)\
               +info_ndarr(self.abs_dev, '\n  abs_dev[100:105]', first=100, last=105)\
+              +info_ndarr(self.gate_lo, '\n  gate_lo[100:105]', first=100, last=105)\
+              +info_ndarr(self.gate_hi, '\n  gate_hi[100:105]', first=100, last=105))
+
+
+    def proc_block_short(self):
+        logger.info('stage 1 - DATA BLOCK SHORT of %d events ACCUMULATION TIME %.3f sec' % (self.irec+1, time()-self.t0_sec_init))
+        t0_sec = time()
+        block = self.block if self.irec > self.nrecs1-1 else self.block[:self.irec+1,:]
+        self.gate_lo, self.gate_hi = proc_block_short(block, **self.kwa)
+        logger.info('stage 1 - DATA BLOCK of %d events PROCESSING TIME %.3f sec' % (self.irec+1, time()-t0_sec)\
               +info_ndarr(self.gate_lo, '\n  gate_lo[100:105]', first=100, last=105)\
               +info_ndarr(self.gate_hi, '\n  gate_hi[100:105]', first=100, last=105))
 
@@ -228,7 +316,8 @@ class DarkProc():
         shape_raw = self.gate_lo.shape
         dtype_raw = self.gate_lo.dtype
 
-        logger.info('stage 2 - initialization for raw shape %s and dtype %s' % (str(shape_raw), str(dtype_raw)))
+        if self.kwa.get('info_block_results', True):
+            logger.info('stage 2 - initialization for raw shape %s and dtype %s' % (str(shape_raw), str(dtype_raw)))
 
         self.arr_sum0   = np.zeros(shape_raw, dtype=np.uint64)
         self.arr_sum1   = np.zeros(shape_raw, dtype=np.float64)
@@ -254,19 +343,26 @@ class DarkProc():
         self.t0_sec_init_proc = time()
 
 
-    def summary(self):
-        logger.info('stage 2 - data accumulation for %d events time %.3f sec' % (self.irec, time()-self.t0_sec_init_proc))
-        t0_sec = time()
+    def arrs_ave_rms(self):
+        arr_av1 = divide_protected(self.arr_sum1, self.arr_sum0)
+        arr_av2 = divide_protected(self.arr_sum2, self.arr_sum0)
+        arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
+        logger.debug(info_ndarr(arr_rms, 'arr_rms'))
+        logger.debug(info_ndarr(arr_av1, 'arr_av1'))
+        return arr_av1, arr_rms
 
-        logger.info('\n%s\nstage 2 - summary - raw data found/selected in %d events' % (80*'_', self.irec+1))
 
-        if self.irec>1:
-            logger.info('begin data summary stage')
-        else:
-            logger.info('irec=%d there are no arrays to save...' % self.irec)
-            return
+    def arr_status(self):
+        """a few arrays should be defined before this call:
+           self.arr_av1
+           self.arr_rms
+           self.sta_int_hi
+           self.sta_int_lo
+           self.arr1
+        """
+        arr_av1 = self.arr_av1
+        arr_rms = self.arr_rms
 
-        savebw  = self.savebw
         int_hi  = self.int_hi
         int_lo  = self.int_lo
         intnhi  = self.intnhi
@@ -275,27 +371,9 @@ class DarkProc():
         rms_lo  = self.rms_lo
         rmsnhi  = self.rmsnhi
         rmsnlo  = self.rmsnlo
-        plotim  = self.plotim
-        nrecs1  = self.nrecs1
-        irec    = self.irec
-
         fraclm  = self.fraclm
         counter = self.irec
         nevlm = int(fraclm * counter)
-
-        if irec<nrecs1:
-            logger.warning('irec=%d < nrecs1=%d - process block for small number of events' % (irec, nrecs1))
-            self.proc_block()
-            self.init_proc()
-            self.add_block()
-
-        arr_av1 = divide_protected(self.arr_sum1, self.arr_sum0)
-        arr_av2 = divide_protected(self.arr_sum2, self.arr_sum0)
-
-        arr_rms = np.sqrt(arr_av2 - np.square(arr_av1))
-
-        logger.debug(info_ndarr(arr_rms, 'arr_rms'))
-        logger.debug(info_ndarr(arr_av1, 'arr_av1'))
 
         rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
         ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
@@ -327,15 +405,34 @@ class DarkProc():
         arr_sta += arr_sta_ave_hi*16 # too large average
         arr_sta += arr_sta_ave_lo*32 # too small average
 
-        arr_msk  = np.select((arr_sta>0,), (self.arr0,), 1)
+        return arr_sta
 
-        self.arr_av1 = arr_av1
-        self.arr_rms = arr_rms
-        self.arr_sta = arr_sta
-        self.arr_msk = np.select((arr_sta>0,), (self.arr0,), 1)
+
+    def summary(self):
+        logger.info('stage 2 - DATA ACCUMULATION for %d events time %.3f sec' % (self.irec+1, time()-self.t0_sec_init_proc))
+        t0_sec = time()
+
+        logger.info('\n%s\nstage 2 - summary - raw data found/selected in %d events' % (80*'_', self.irec+1))
+
+        if self.irec>1:
+            logger.info('begin data summary stage')
+        else:
+            logger.info('irec=%d there are no arrays to save...' % (self.irec+1))
+            return
+
+        if self.irec<self.nrecs1:
+            logger.warning('irec=%d < nrecs1=%d - process block for small number of events' % (self.irec, self.nrecs1))
+            #self.proc_block()
+            self.proc_block_short()
+            self.init_proc()
+            self.add_block()
+
+        self.arr_av1, self.arr_rms = self.arrs_ave_rms()
+        self.arr_sta = self.arr_status()
+        self.arr_msk = np.select((self.arr_sta>0,), (self.arr0,), 1)
 
         logger.debug(self.info_results())
-        if plotim: self.plot_images(titpref='')
+        if self.plotim: self.plot_images(titpref='')
 
         self.block = None
         self.irec = -1
@@ -343,12 +440,12 @@ class DarkProc():
 
 
     def show_plot_results(self):
-        logger.debug(self.info_results())
+        #logger.debug(self.info_results())
         self.plot_images(titpref='')
 
 
     def add_event(self, raw, irec):
-        logger.debug(info_ndarr(raw, 'add_event %3d raw' % irec))
+        logger.debug(info_ndarr(raw, 'add_event irec: %3d raw' % irec))
         _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
         _raw_f64 = _raw.astype(np.float64)
 
@@ -371,7 +468,7 @@ class DarkProc():
         logger.info(info_ndarr(self.block, 'stage 2 - add to gated average statistics the block of initial data'))
         t0_sec = time()
         for i,raw in enumerate(self.block): self.add_event(raw,i)
-        logger.info('stage 2 - add_block of %d events to gated average statistics time %.3f sec' % (self.irec, time()-t0_sec))
+        logger.info('stage 2 - add_block of %d events to gated average statistics time %.3f sec' % (self.irec+1, time()-t0_sec))
 
 
     def event(self, raw, evnum):
@@ -385,9 +482,11 @@ class DarkProc():
 
         if self.block is None :
            self.block=np.zeros((self.nrecs1,)+tuple(raw.shape), dtype=raw.dtype)
-           logger.info(info_ndarr(self.block,'created empty data block'))
+           if self.kwa.get('info_block_results', True):
+              logger.info(info_ndarr(self.block,'created empty data block'))
            if self.nrecs1 == 0:
-               logger.info('initialize accumulation of data for nrecs1 == 0')
+               if self.kwa.get('info_block_results', True):
+                 logger.info('initialize accumulation of data for nrecs1 == 0')
                load_block_results(self, self.orun, self.odet, **self.kwa)
                self.init_proc()
 
@@ -400,7 +499,8 @@ class DarkProc():
             self.add_event(raw, self.irec)
 
         else:
-            self.proc_block()
+            #self.proc_block()
+            self.proc_block_short()
             if self.nrecs == self.nrecs1:
                 logger.info('record %d event loop is terminated due to nrecs==nrecs1, --nrecs=%d --nrecs1=%d'%\
                             (self.irec, self.nrecs, self.nrecs1))
@@ -620,6 +720,7 @@ def fnames_block_results(prefix, sufs=('gate_lo', 'gate_hi'), fmt='%s-%s.npy'):
 
 def save_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
     """saves block processing results in the directory retreived from repoman"""
+    t0_sec_save_block = time()
     s = 'save_block_results'
     prefix = prefix_block_results(dpo, orun, odet, **kwa)
     fnames = fnames_block_results(prefix, sufs=anames)
@@ -628,12 +729,14 @@ def save_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
       np.save(f, a)
       s += info_ndarr(a, '\n  %s' % n, first=100, last=105)\
         + '\n          saved in %s' % f
+    s += '\nSAVE_BLOCK_RESULTS TIME %.3f sec' % (time()-t0_sec_save_block)
     logger.info(s)
 
 
 def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
     """loads results saved by save_block_results"""
-    s = 'load_block_results'
+    t0_sec_load_block = time()
+    s = 'LOAD_BLOCK_RESULTS'
     prefix = prefix_block_results(dpo, orun, odet, **kwa)
     fnames = fnames_block_results(prefix, sufs=anames)
     for f,n in (zip(fnames, anames)):
@@ -645,7 +748,9 @@ def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
       setattr(dpo, n, a)
       s += info_ndarr(a, '\n  %s' % n, first=100, last=105)\
         + '\n          from %s' % f
-    logger.info(s)
+    if kwa.get('info_block_results', True):
+       s += '\nLOAD_BLOCK_RESULTS TIME %.3f sec' % (time()-t0_sec_load_block)
+       logger.info(s)
 
 
 def save_results_in_db(dpo, orun, odet, **kwa):
@@ -664,16 +769,17 @@ def save_results_in_db(dpo, orun, odet, **kwa):
     dic_consts = dict(zip(ctypes, consts))
     kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
     deploy_constants(dic_consts, **kwa_depl)
-    del(dpo)
-    dpo=None
+    #del(dpo)
+    #dpo=None
 
 
 def save_results_in_repository(dpo, orun, odet, **kwa):
     from psana.detector.UtilsCalibRepo import save_constants_in_repository
-    logger.info('begin save_results')
+    logger.info('begin save_results_in_repository')
     t0_sec = time()
     if dpo is None: return
-    dpo.summary()
+    if kwa.get('call_summary', True):
+        dpo.summary()
     dpo.show_plot_results()
 
     ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
@@ -691,9 +797,8 @@ def save_results_in_repository(dpo, orun, odet, **kwa):
     kwa.setdefault('max_detname_size', cc.MAX_DETNAME_SIZE)
     kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
     save_constants_in_repository(dic_consts, **kwa_depl)
-    del(dpo)
-    logger.info('save_results time %.3f sec' % (time()-t0_sec))
-
+    logger.info('SAVE_RESULTS_in_repository time %.3f sec' % (time()-t0_sec))
+    #del(dpo)
 
 
 def pedestals_calibration(parser):
