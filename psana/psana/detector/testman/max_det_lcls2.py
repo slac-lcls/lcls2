@@ -15,7 +15,7 @@ class Stats:
         self.sumsq+=detarr.astype(np.float64)*detarr.astype(np.float64)
         self.maximum=np.maximum(self.maximum,detarr)
         self.nevent+=1
-            
+
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("-e", "--exp", help="psana experiment (e.g. xppd7114)")
