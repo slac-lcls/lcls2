@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from time import time
+t0_sec_tot = time()
+
 import sys
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
@@ -53,7 +56,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-01-23'
+    d_version = 'V2026-02-02'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
@@ -136,14 +139,14 @@ def argument_parser():
     return parser
 
 
-def is_using_mpi():
-    from mpi4py import MPI
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
-    size = comm.Get_size()
-    use_mpi = size > 1
-    if rank==0: print('mpirun:%s rank:%d number of cpus: %d' % (use_mpi, rank, size))
-    return use_mpi
+#def is_using_mpi():
+#    from mpi4py import MPI
+#    comm = MPI.COMM_WORLD
+#    rank = comm.Get_rank()
+#    size = comm.Get_size()
+#    use_mpi = size > 1
+#    if rank==0: print('mpirun:%s rank:%d number of cpus: %d' % (use_mpi, rank, size))
+#    return use_mpi
 
 
 def do_main():
@@ -158,14 +161,15 @@ def do_main():
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
     assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
-    use_mpi = is_using_mpi()
-
     t0_sec = time()
-    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
-    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+#    use_mpi = is_using_mpi()
+#    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+#    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+
+    from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
 
     jungfrau_dark_proc(parser)
-    logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
+    logger.info('SCRIPT %s time %.3f sec and TOTAL TIME (with imports and parser) %.3f sec' % (SCRNAME, time() - t0_sec, time() - t0_sec_tot))
     sys.exit(0)
 
 
