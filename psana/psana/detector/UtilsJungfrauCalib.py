@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 from time import time
 import os
 import sys
-import psana
+#import psana
+from psana import DataSource
 import numpy as np
 from time import time #, localtime, strftime
 import json
@@ -59,10 +60,8 @@ DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_d
 M14 = 0x3fff # 16383, 14-bit mask
 #FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
 
-
 #print('\n  DIR_ROOT', dr.DIR_ROOT,\
 #      '\n  DIR_REPO', dr.DIR_REPO)
-
 
 dic_ctype_fmt = uc.dic_ctype_fmt
 
@@ -78,7 +77,6 @@ class DarkProcJungfrau(uc.DarkProc):
 
     def init_proc(self):
         uc.DarkProc.init_proc(self)
-#        shape_raw = self.arr_med.shape
         shape_raw = self.gate_lo.shape
         self.bad_switch = np.zeros(shape_raw, dtype=np.uint8)
 
@@ -110,10 +108,10 @@ class DarkProcJungfrau(uc.DarkProc):
         uc.DarkProc.summary(self)
         logger.info('\n  status 64: %8d pixel with bad gain mode switch' % self.bad_switch.sum())
         self.arr_sta += self.bad_switch*64 # add bad gain mode switch to pixel_status
-        self.arr_msk = np.select((self.arr_sta>0,), (self.arr0,), 1) #re-evaluate mask
+        #self.arr_msk = np.select((self.arr_sta>0,), (self.arr0,), 1) #re-evaluate mask
         self.block = None
         self.irec = -1
-        logger.info('summary consumes %.3f sec' % (time()-t0_sec))
+        logger.info('SUMMARY consumes %.3f sec' % (time()-t0_sec))
 
 
     def info_results(self, cmt='DarkProc results'):
@@ -152,32 +150,29 @@ def print_uniqueid(uniqueid, segind):
 
 
 def get_jungfrau_gain_mode_object(odet):
-    """Returns gain mode object, usage: gmo=..., gmo.name, gmo.names.items(), gm.values.items(), etc.
-    """
+    """Returns gain mode object, usage: gmo=..., gmo.name, gmo.names.items(), gm.values.items(), etc."""
     dcfg = odet.raw._config_object()
 
 
 def open_DataSource(**kwargs):
-    #ds = psana.DataSource(exp='mfxdaq23', run=7, dir='/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc')
-    #kwargs['max_events'] = kwargs.get('nrecs', None)
     dskwargs = ups.data_source_kwargs(**kwargs)
     dskwargs['max_events'] = kwargs.get('nrecs', None)
-    logger.info('DataSource dskwargs: %s' % (dskwargs))
-    try: ds = psana.DataSource(**dskwargs)
+    dskwargs['batch_size'] = kwargs.get('batch_size', 2)
+    #logger.info('DataSource dskwargs: %s' % (dskwargs))
+    #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=2)
+    try: ds = DataSource(**dskwargs)
     except Exception as err:
         logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
         sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
-
-    logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     xtc_files = getattr(ds, 'xtc_files', None)
-    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
+    if kwargs.get('info_xtc_files', True):
+      logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
     return ds, dskwargs
 
 
 def jungfrau_dark_proc(parser):
-    """jungfrau dark data processing for single (of 3) gain mode.
-    """
+    """jungfrau dark data processing for single (of 3) gain mode."""
     t0_sec = time()
     tdt = t0_sec
 
@@ -207,6 +202,7 @@ def jungfrau_dark_proc(parser):
     #    ecm = EventCodeManager(evcode, verbos=0)
     #    logger.info('requested event-code list %s' % str(ecm.event_code_list()))
 
+    logger.info('sys.argv: %s' % str(sys.argv))
     s = 'DIC_GAIN_MODE {<name> : <number>}'
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
     logger.info(s)
@@ -236,10 +232,10 @@ def jungfrau_dark_proc(parser):
             dettype = odet.raw._dettype
             repoman.set_dettype(dettype)
             uniqueid = odet.raw._uniqueid
-            logger.info('det.raw._uniqueid.split: %s' % str('\n'.join(uniqueid.split('_'))))
+            logger.debug('det.raw._uniqueid.split: %s' % str('\n'.join(uniqueid.split('_'))))
 
-        logger.info('created %s detector object of type %s' % (detname, dettype))
-        logger.info(ups.info_detector(odet, cmt='detector info:\n      ', sep='\n      '))
+        logger.info('created %s detector object of type %s' % (detname, dettype)\
+                   + ups.info_detector(odet, cmt='detector info:\n      ', sep='\n      '))
 
         try:
           step_docstring = orun.Detector('step_docstring')
