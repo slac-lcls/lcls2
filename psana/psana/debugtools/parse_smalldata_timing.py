@@ -80,6 +80,11 @@ def main():
         help="Only print max value and max rank for each keyword.",
     )
     parser.add_argument(
+        "--show-azav",
+        action="store_true",
+        help="Include azav_* keywords in output.",
+    )
+    parser.add_argument(
         "--no-label",
         action="store_true",
         help="Do not print the label column or the max-rank column.",
@@ -91,6 +96,7 @@ def main():
     warnings = []
     seen_single = set()
     event_numbers_by_rank = {}
+    azav_keys = set()
 
     with open(logfile, "r", errors="replace") as f:
         for line in f:
@@ -206,6 +212,12 @@ def main():
             if msg.startswith("smalldata cls done"):
                 add_value(stage_values, "smalldata_cls_done", parse_since_start(msg), rank)
                 continue
+            if msg.startswith("azav "):
+                if " delta=" in msg:
+                    label = msg.split(" delta=")[0].strip()
+                    add_value(stage_values, label, parse_delta(msg), rank)
+                    azav_keys.add(label)
+                continue
             if "jungfrau getData time" in msg:
                 add_value(stage_values, "jungfrau_getData_time", parse_any_time(msg), rank)
                 continue
@@ -252,6 +264,42 @@ def main():
         "smalldata_cls_done",
         "total",
     ]
+    if args.show_azav and azav_keys:
+        azav_order = [
+            "azav initialized",
+            "azav setFromDet start",
+            "azav setFromDet after mask",
+            "azav setFromDet after mask flatten",
+            "azav setFromDet after x/y flatten",
+            "azav setFromDet after z flatten",
+            "azav setFromDet after z default",
+            "azav setFromDet before _init_shared_cache",
+            "azav after _init_shared_cache",
+            "azav cache_enabled: True, key: True",
+            "azav shared cache hit det=jungfrau",
+            "azav computing binning",
+            "azav computing binning done",
+            "azav storing azav cache for key",
+            "azav bcast meta done",
+            "azav shared cache leader wrote det=jungfrau",
+            "azav shared cache retrieved det=jungfrau",
+            "azav storing azav cache done",
+            "azav setFromFunc",
+            "azav after _setup",
+            "azav doCake np.bincount start",
+            "azav doCake np.bincount done",
+        ]
+        ordered = []
+        for label in azav_order:
+            for key in azav_keys:
+                if key == label or key.startswith(label):
+                    ordered.append(key)
+        remaining = sorted(azav_keys.difference(ordered))
+        azav_list = ordered + remaining
+        # de-dup while preserving order
+        seen = set()
+        azav_list = [k for k in azav_list if not (k in seen or seen.add(k))]
+        keys.extend(azav_list)
     if args.no_det:
         keys = [k for k in keys if not k.startswith("jungfrau_")]
 

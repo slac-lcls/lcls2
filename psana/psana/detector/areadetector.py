@@ -511,7 +511,7 @@ class AreaDetectorRaw(AreaDetector):
         self._raw_dtype = None
 
 
-    def raw(self, evt) -> Array3d:
+    def raw(self, evt, copy=True) -> Array3d:
         """
         Returns dense 3-d numpy array of segment data
         from dict self._segments(evt)
@@ -524,6 +524,8 @@ class AreaDetectorRaw(AreaDetector):
         Returns
         -------
         raw data: np.array, ndim=3, shape: as data
+        copy: bool, default True
+            If True, returns a copy to avoid view aliasing across events.
         """
 
         #print('XXX AreaDetectorRaw.raw')
@@ -551,7 +553,8 @@ class AreaDetectorRaw(AreaDetector):
             np.copyto(self._raw_buf[idx], segs[seg_id].raw, casting='no')
         if stack_timing is not None and t1 is not None:
             stack_timing['stack'] += time.perf_counter() - t1
-        return reshape_to_3d(self._raw_buf)
+        arr = reshape_to_3d(self._raw_buf)
+        return arr.copy() if copy else arr
 
 
     def calib(self, evt, **kwa) -> Array3d:

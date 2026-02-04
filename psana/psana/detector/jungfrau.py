@@ -62,8 +62,9 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
             To use old good python calib method with common mode evaluation set:
             cversion=3 and cmpars=(7,3,200,10)
         """
-        #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
-        if self.raw(evt) is None: return None
+        # Avoid extra raw() copy here; calib immediately consumes raw per-event data.
+        # This keeps perf while raw() defaults to copy=True for safety elsewhere.
+        if self.raw(evt, copy=False) is None: return None
 
         # The calib_jungfrau_version introduced in b9d213236a92984349490ea925e691949dbd12f2
         # (known first bad commmit) has been found to have an issue with shape mismatched:
