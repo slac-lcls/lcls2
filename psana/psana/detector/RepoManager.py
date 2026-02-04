@@ -306,6 +306,7 @@ def init_repoman_and_logger(**kwa):
     group       = kwa.get('group', 'ps-users')
     fmt         = kwa.get('fmt', '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s')
     dirrepo     = kwa.get('dirrepo', 'work')
+    info_parser = kwa.get('info_parser', True)
     #print('XXX logsuffix', logsuffix)
 
     repoman = RepoManager(**kwa)
@@ -319,7 +320,7 @@ def init_repoman_and_logger(**kwa):
     if not (dirrepo in ('work1', './work1')):
         repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
-    if parser is not None:
+    if parser is not None and info_parser:
         logger.info(ut.info_parser_arguments(parser))
 
     return repoman
