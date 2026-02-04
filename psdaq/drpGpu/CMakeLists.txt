@@ -32,6 +32,7 @@ if(CMAKE_CUDA_COMPILER)
     )
     target_link_libraries(drpbase_gpu
         drpbase
+        CCCL::CCCL              # Needed with CUDA 13 to pick up <cuda/atomic>
     )
 
     add_executable(drp_gpu

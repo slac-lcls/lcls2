@@ -162,9 +162,15 @@ install(TARGETS
   tmoTeb
   tstTebPy
   calibTrigger
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 if(CMAKE_CUDA_COMPILER)
 install(TARGETS
   tmoTeb_gpu
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 endif()

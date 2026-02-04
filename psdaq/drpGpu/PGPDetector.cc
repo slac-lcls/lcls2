@@ -460,7 +460,7 @@ std::string PGPDrp::configure(const json& msg)
   static_cast<TebReceiver&>(tebReceiver()).setup();
 
   //// Start the Reducers
-  //m_reducer->startup();
+  m_reducer->startup();
 
   // Launch the Collector thread
   m_collectorThread = std::thread(&PGPDrp::_collector, std::ref(*this));

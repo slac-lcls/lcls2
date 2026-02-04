@@ -102,7 +102,7 @@ cd ..
 
 if [ $no_daq == 0 ]; then
     # to build psdaq with setuptools
-    cmake_build psdaq
+    cmake_build psdaq -DCPM_SOURCE_CACHE=$HOME/.cache/CPM
     cd psdaq
     # force build of the extensions.  do this because in some cases
     # setup.py is unable to detect if an external header file changed
