@@ -154,7 +154,7 @@ def _force_mfx_overrides(exp, kwargs):
         )
         if batch_override:
             msg += ", batch_size=1 (was %s)" % (prev_batch_size if prev_batch_size is not None else "unset")
-        logger.info(msg)
+        logger.debug(msg)
 
 
 class InvalidDataSource(Exception):
