@@ -24,43 +24,28 @@ public:
         Alg fex("fex", 1, 0, 0);
         NameVec.push_back({"array_fex", Name::UINT16, 2, fex});
     }
-};
+} _fexDef;
 
 class RawDef : public VarDef
 {
 public:
     enum index
     {
+        value,
         array_raw
     };
 
     RawDef()
     {
         Alg raw("raw", 1, 0, 0);
+        NameVec.push_back({"value",     Name::UINT32, 0, raw});
         NameVec.push_back({"array_raw", Name::UINT16, 2, raw});
     }
-};
-
-    //  Things we bin
-class CubeDef : public VarDef
-{
-public:
-    enum index
-    {
-        value,
-        array
-    };
-
-    CubeDef()
-    {
-        Alg cube("cube", 1, 0, 0);
-        NameVec.push_back({"value"  , Name::DOUBLE, 0, cube});
-        NameVec.push_back({"array"  , Name::DOUBLE, 2, cube});
-    }
-};
+} _rawDef;
 
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
-    XpmDetector(para, pool)
+    XpmDetector(para, pool),
+    m_constants(NumConstants,(char*)0)
 {
 }
 
@@ -76,8 +61,7 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
     Names& fexNames = *new(xtc, bufEnd) Names(bufEnd,
                                               m_para->detName.c_str(), fexAlg,
                                               m_para->detType.c_str(), m_para->serNo.c_str(), fexNamesId, m_para->detSegment);
-    FexDef myFexDef;
-    fexNames.add(xtc, bufEnd, myFexDef);
+    fexNames.add(xtc, bufEnd, _fexDef);
     m_namesLookup[fexNamesId] = NameIndex(fexNames);
 
     Alg rawAlg("raw", 2, 0, 0);
@@ -85,8 +69,7 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
     Names& rawNames = *new(xtc, bufEnd) Names(bufEnd,
                                               m_para->detName.c_str(), rawAlg,
                                               m_para->detType.c_str(), m_para->serNo.c_str(), rawNamesId, m_para->detSegment);
-    RawDef myRawDef;
-    rawNames.add(xtc, bufEnd, myRawDef);
+    rawNames.add(xtc, bufEnd, _rawDef);
     m_namesLookup[rawNamesId] = NameIndex(rawNames);
 
     return 0;
@@ -95,6 +78,28 @@ unsigned AreaDetector::configure(const std::string& config_alias, Xtc& xtc, cons
 unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const json& runInfo)
 {
     logging::info("AreaDetector beginrun");
+
+    //  Fetch new constants for cube (via Python)
+    //  sim_length is in units of 32-bit words, 
+    //  but image is interpreted as 16-bit words (see RawDef)
+    unsigned constants_length = m_length * sizeof(uint32_t)/sizeof(uint16_t) * std::popcount(m_para->laneMask);
+
+    if (m_constants[Pedestals])
+        delete m_constants[Pedestals];
+    m_constants[Pedestals] = new char[sizeof(double_t)*constants_length];
+
+    if (m_constants[Gains])
+        delete m_constants[Gains];
+    m_constants[Gains] = new char[sizeof(double_t)*constants_length];
+
+    //  Give some interesting shape
+    for(unsigned i=0; i<constants_length; i++) {
+        ((double_t*)m_constants[Pedestals])[i] = 0.5;
+        ((double_t*)m_constants[Gains])    [i] = 1.;
+        //        ((double_t*)m_constants[Pedestals])[i] = 0.5*double(constants_length-i);
+        //        ((double_t*)m_constants[Gains])    [i] = 100.-double(10*i)/double(constants_length);
+    }
+
     return 0;
 }
 
@@ -136,6 +141,8 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     DescribedData raw(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
     unsigned size = 0;
     unsigned nlanes = 0;
+    *(uint32_t*)raw.data() = 9;
+    size += sizeof(uint32_t);
     for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             // size without Event header
@@ -149,88 +156,42 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
          }
      }
     raw.set_data_length(size);
-    unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / 2};
+
+    ((uint32_t*)raw.data())[RawDef::value] = 9;
+    unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / sizeof(uint16_t)};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
 }
 
-static void _dumpNames(DescData& data, const char* title)
+VarDef   AreaDetector::rawDef () 
 {
-    Names& names = data.nameindex().names();
-    logging::debug("Found %d names in %s",names.num(), title);
-    for(unsigned i=0; i<names.num(); i++) {
-        Name& name = names.get(i);
-        logging::debug("\t%d : %s",i,name.name());
+    return _rawDef;
+}
+
+void AreaDetector::addToCube(unsigned rawDefIndex, double_t* dst, DescData& rawData)
+{
+    switch(rawDefIndex) {
+    case RawDef::value:
+        *dst += double(rawData.get_value<uint32_t>(RawDef::value));
+        break;
+    case RawDef::array_raw:
+        {
+            Array<uint16_t> rawArrT = rawData.get_array<uint16_t>(rawDefIndex);
+            Array<double_t> calArrT((char*)dst, rawArrT.shape(), rawArrT.rank());
+            Array<double_t> pedArrT (m_constants[Pedestals], rawArrT.shape(), rawArrT.rank());
+            Array<double_t> gainArrT(m_constants[Gains], rawArrT.shape(), rawArrT.rank());
+            //  Apply the calibration, so shape matters
+            for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
+                for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
+                    calArrT(ix,iy) += gainArrT(ix,iy)*(double( rawArrT(ix,iy) ) - pedArrT(ix,iy));
+            logging::debug("AreaDetector::addToCubeArray  rawArrT %p  [%u %u %u %u] calArr %p [%f %f %f %f]",
+                           rawArrT.data(), rawArrT.data()[0], rawArrT.data()[1], rawArrT.data()[2], rawArrT.data()[3],
+                           calArrT.data(), calArrT.data()[0], calArrT.data()[1], calArrT.data()[2], calArrT.data()[3]);
+            break;
+        }
+    default:
+        // error
+        printf("*** %s:%d: unknown RawDef array %u\n",__FILE__,__LINE__,rawDefIndex);
+        abort();
     }
 }
-
-VarDef   AreaDetector::cubeDef () 
-{
-    return CubeDef();
-}
-
-void AreaDetector::cubeInit(ShapesData& rawShapesData, Xtc& xtc, const char* bufEnd) 
-{
-    Shape& shape = rawShapesData.shapes().get(RawDef::array_raw);
-
-    //    NamesId cubeNamesId(nodeId,CubeNamesIndex);
-    //  Construct the xtc but without the names storage
-    NamesId noNames;
-    const unsigned numArrays = 1; // from CubeDef
-    ShapesData& cube_shapesdata = *new (xtc, bufEnd) ShapesData( noNames );
-    Shapes&         cube_shapes = *new (&cube_shapesdata, bufEnd) Shapes(xtc, bufEnd);
-    new(cube_shapes.alloc(numArrays*sizeof(Shape), cube_shapesdata, xtc, bufEnd)) Shape();
-
-    Data&             cube_data = *new (&cube_shapesdata, bufEnd) Data(xtc, bufEnd);
-
-    *(double_t*)cube_data.alloc(sizeof(double_t), cube_shapesdata, xtc, bufEnd ) = 9;
-
-    NamesId rawNamesId(nodeId,RawNamesIndex);
-    DescData rawdata(rawShapesData, m_namesLookup[rawNamesId]);
-    Array<uint8_t> rawArrT = rawdata.get_array<uint8_t>(RawDef::array_raw);
-
-    Array<double_t> arrayT(cube_data.alloc(rawArrT.num_elem()*sizeof(double_t), cube_shapesdata, xtc, bufEnd), 
-                           rawArrT.shape(), rawArrT.rank());
-    logging::debug("cubeInit binArrT  rank (%u) data (%p) nelems (%u)",
-                   arrayT.rank(),
-                   arrayT.data(),
-                   arrayT.num_elem());
-
-    for(unsigned i=0; i<shape.shape()[0]; i++)
-        for(unsigned j=0; j<shape.shape()[1]; j++)
-            arrayT(i,j) = double(rawArrT(i,j));
-}
-
-void AreaDetector::cubeAdd(ShapesData& rawShapesData, ShapesData& cubeData)
-{
-    logging::debug("AreaDetector::cubeAdd rawShapesData (%p) cubeShapesData (%p)",
-                   &rawShapesData, &cubeData);
-
-    Shape& shape = rawShapesData.shapes().get(RawDef::array_raw);
-    //  This may depend upon only having array_raw (at offset=0)
-    NamesId rawNamesId(nodeId,RawNamesIndex);
-    DescData rawdata(rawShapesData, m_namesLookup[rawNamesId]);
-    Array<uint8_t> rawArrT = rawdata.get_array<uint8_t>(RawDef::array_raw);
-
-    // some simple checks
-    _dumpNames(rawdata ,"raw");
-    //    _dumpNames(cubeData,"cube");
-
-    unsigned offset = 0;
-    ((double_t*)(cubeData.data().payload()))[0] += 9.;
-    offset += sizeof(double_t);
-
-    Array<double_t> arrayT((uint8_t*)cubeData.data().payload()+offset, shape.shape(), 2);
-
-    //  calibrate and sum
-    for(unsigned i=0; i<shape.shape()[0]; i++)
-        for(unsigned j=0; j<shape.shape()[1]; j++)
-            arrayT(i,j) += double(rawArrT(i,j));
-    
-    logging::debug("AreaDetector::cubeAdd scalar %f  first bin %f  last bin %f",
-                   ((double_t*)(cubeData.data().payload()))[0],
-                   arrayT(0,0),
-                   arrayT(shape.shape()[0]-1,
-                          shape.shape()[1]-1));
-}
-
 }

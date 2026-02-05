@@ -26,6 +26,7 @@ private:
     void _init();
 private:
     PyObject*            m_xmodule;        // python module
+protected:
     unsigned             m_length;
 };
 

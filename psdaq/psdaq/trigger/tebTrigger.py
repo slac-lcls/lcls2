@@ -23,10 +23,11 @@ class ArgsParser(argparse.ArgumentParser):
         return self.args
 
 class TriggerDataSource(object):
-    def __init__(self):
+    def __init__(self, cfg_cb=None):
 
         logging.info(f"[Python] Starting")
 
+        self._cfg_cb = cfg_cb
         self._mq_inp = None
         self._mq_res = None
         self._shm_inp = None
@@ -132,6 +133,24 @@ class TriggerDataSource(object):
 
         self._mq_res.send(b"d") # Done
 
+        #  Now, wait for Configure
+        while True:
+            message, priority = self._mq_inp.receive()
+            #print(f"[Python] Received msg '{message}', prio '{priority}'")
+
+            if chr(message[0]) == 'g':
+                if self._cfg_cb:
+                    self._cfg_cb(self)
+                else:
+                    self._mq_res.send(b"g")
+                break
+            elif chr(message[0]) == 's':  # this might be problematic
+                print(f"[Python] Received stop while waiting for Configure")
+                break
+            else:
+                print(f"[Python] Unrecognized message '{chr(message[0])}' received")
+
+
     def __del__(self):
         if self._shm_inp is not None:
             self._shm_inp.unlink()
@@ -164,21 +183,13 @@ class TriggerDataSource(object):
         #    f"[Python] Sent message 'g'"
         #)
 
-    def cubeResult(self, persist, monitor, bin_index, worker, bin_record):
-#
-#  Can't seem to make Cython use the CubeResultDgram/ResultDgram inheritance.
-#
-#        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
-#                                     bin_index, worker, bin_record)
-#
-#        logging.warning(f'cubeResult bin {bin_index} wrk {worker}  data {result.data()}')
+    def cubeResult(self, persist, monitor, bin_index, bin_record, bin_monitor):
+        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
+                                     bin_index, bin_record, bin_monitor)
+        self._mq_res.send(b"g")
 
-        result = rdg.ResultDgram(self._shm_res_mmap, persist, monitor)
-        aux =  ((bin_index&0x3ff)<<0) | ((worker&0x3f)<<10) | ((bin_record&1)<<16) 
-        result.auxdata(aux)
-
-#        logging.warning(f'cubeResult bin {bin_index} wrk {worker} aux {aux:x} data {result.data():x}')
-
+    def cubeConfigure(self, nbins):
+        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, nbins-1, 0, 0)
         self._mq_res.send(b"g")
 
 # Revisit: Move this into a .pyx?

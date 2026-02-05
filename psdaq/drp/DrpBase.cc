@@ -1191,7 +1191,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_mPrms.maxEvSize  = pool.pebble.bufferSize();
+    m_mPrms.maxEvSize  = pool.pebble.bufferSize() * (para.nCubeWorkers>0 ? 10:1);
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;

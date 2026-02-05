@@ -305,7 +305,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,const void* bufEnd,XtcData::ConfigIt
                                                m_para->detName.c_str(), alg,
                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 
-    eventNames.add(xtc, bufEnd, rawDef);
+    eventNames.add(xtc, bufEnd, Drp::rawDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
 
     if (m_tt) { delete m_tt; m_tt = 0; }

@@ -9,42 +9,6 @@ import logging
 args = None
 
 #
-#  A single loop is limited to Instruction.maxocc iterations
-#  Check how many levels of looping are required
-#
-def loop_levels(cycles, level_limit=4):
-    nlevels = 0
-    lcycles = cycles
-    while lcycles:
-        nlevels  += 1
-        lcycles //= (Instruction.maxocc+1)
-    if nlevels==0:  # Nothing to do
-        return
-    if nlevels>level_limit:
-        raise RuntimeError(f'Loop of {cycles} exceeds hardware capability')
-    return nlevels
-
-#
-#  Make a generic loop of event code requests and time steps
-#
-def loop(instr, codes_list, step, cycles, level_limit=4):
-    nlevels = loop_levels(cycles, level_limit)
-    instr.append(f'line = len(instrset)')                             # Set the anchor for the loop
-    instr.append(f'instrset.append( ControlRequest({codes_list}) )')  # Generate the event codes
-    instr.append(f'instrset.append( {step} )')                        # Make the time step
-    if nlevels==1:
-        instr.append(f'instrset.append( Branch.conditional(line, 0, {cycles-1}) )')  # Loop back to the anchor
-    else:
-        niters = 1
-        for cc in range(nlevels-1):
-            instr.append(f'instrset.append( Branch.conditional(line, {cc}, {Instruction.maxocc}) )') # Loop back to the anchor maximum times
-            niters *= (Instruction.maxocc+1)
-
-        #  Handle the remaining cycles
-        rem = cycles - niters
-        loop(instr, codes_list, step, rem)
-
-#
 #  Write the output file and check its validity
 #
 def write_seq(instr, seqcodes, filename):
@@ -69,7 +33,8 @@ def write_seq(instr, seqcodes, filename):
 #
 def generate_engine(engine):
     global_sync = 'FixedRateSync("1H", 1)'
-    motion_step = f'FixedRateSync("910kH",{args.period})'
+#    motion_step = f'FixedRateSync("910kH",{args.period})'
+    motion_step = f'Wait("910kH",{args.period})'
 
     instr = ['instrset = []']
     instr.append(f'instrset.append( {global_sync} )')

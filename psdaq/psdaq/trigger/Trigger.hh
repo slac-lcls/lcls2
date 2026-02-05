@@ -29,6 +29,7 @@ namespace Pds {
       virtual void     event(const Pds::EbDgram* const* start,
                              const Pds::EbDgram**       end,
                              Pds::Eb::ResultDgram&      result) = 0;
+      virtual void     transition(Pds::Eb::ResultDgram& result) {}
       virtual void     shutdown() {};
     public:
       static size_t size() { return sizeof(Pds::Eb::ResultDgram); }

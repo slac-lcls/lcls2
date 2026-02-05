@@ -615,6 +615,10 @@ void Teb::process(EbEvent* event)
       if (rdg->persist())  _writeCount++;
       if (rdg->monitor())  _monitor(rdg);
     }
+    else 
+    {   // Allow trigger to return a non-default result on transitions
+        _trigger->event(event->begin(), event->end(), *rdg); // Consume
+    }
 
     // Avoid sending Results to contributors that failed to supply Input
     uint64_t dsts = _receivers(dgram->readoutGroups()) & ~event->remaining();

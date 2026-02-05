@@ -25,8 +25,9 @@ private:
     std::vector<Pds::Eb::CubeResultDgram>  m_result;
     unsigned                          m_current;
     unsigned                          m_last; // index from CubeTebReceiver
-    std::vector<char*>                m_bin_data;
-    std::vector< std::vector<unsigned> >    m_bin_entries;
+    unsigned                          m_nbins;
+    std::vector<std::atomic<bool> >   m_data_init; // reset flag for the cube
+    std::vector<char*>                m_bin_data;  // one big xtc buffer per worker
     XtcData::NamesLookup              m_namesLookup;
     char*                             m_buffer;             // buffer for recording dgram
     std::vector<std::thread>          m_workerThreads;

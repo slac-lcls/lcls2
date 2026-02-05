@@ -17,6 +17,7 @@ using logging = psalg::SysLog;
 using us_t = std::chrono::microseconds;
 
 #define BUFFER_SIZE(pool) pool.bufferSize()*10  // uint8_t -> double
+//#define BIN_NORM
 
 namespace Drp {
     class CubeDef : public VarDef {
@@ -28,7 +29,7 @@ namespace Drp {
             NameVec.push_back({"bin"    , Name::UINT32, 1, cube});
             NameVec.push_back({"entries", Name::UINT32, 1, cube});
             for(unsigned i=0; i<detNames.size(); i++)
-                NameVec.push_back( { detNames[i].name(), detNames[i].type(), (int)detNames[i].rank()+1, cube} );
+                NameVec.push_back( { detNames[i].name(), Name::DOUBLE, (int)detNames[i].rank()+1, cube} );
         }
     };
 
@@ -97,13 +98,15 @@ namespace Drp {
 
 void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
                 std::vector<CubeResultDgram>& results,
-                std::vector<char*>& bin_data,
-                std::vector<unsigned>& bin_entries,
+                unsigned nbins,
+                std::atomic<bool>& data_init,
+                char* bin_data,
                 Pds::Semaphore sem,
                 SPSCQueue<unsigned>& inputQueue, SPSCQueue<unsigned>& outputQueue,
                 unsigned threadNum)
 {
     unsigned  index;
+    unsigned  next_index = threadNum;
 
     logging::info("CubeWorker %u is starting with process ID %lu", threadNum, syscall(SYS_gettid));
     char nameBuf[16];
@@ -123,13 +126,18 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
         auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)pool.pebble[index]
             : pool.transitionDgrams[index];
 
-        logging::debug("CubeWorker %u %s index (%u)",
-                       threadNum, TransitionId::name(transitionId), index);
+        if (index != next_index) {
+            logging::error("Worker %u index %u != next %u [%u.%09u]", 
+                           threadNum, index, next_index, 
+                           dgram->time.seconds(), dgram->time.nanoseconds());
+            abort();
+        }
+        next_index = (index + para.nCubeWorkers) % pool.nbuffers();
+
         // Event
         if (transitionId == TransitionId::L1Accept && result.persist()) {
 
-            //NamesId rawNames = NamesId(det.nodeId,RawNamesIndex);
-            NamesId rawNames = NamesId(det.nodeId,NamesIndex::BASE);
+            NamesId rawNames = NamesId(det.nodeId,det.rawNamesIndex());
             MyIterator iter(rawNames);
             iter.iterate(&dgram->xtc, dgram->xtc.next());
             if (!iter.shapesdata()) {
@@ -137,23 +145,139 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
                 return;
             }
 
-            unsigned ibin = result.bin();
-            if (bin_entries[ibin]==0) {
-                const char* bufEnd = bin_data[ibin]+BUFFER_SIZE(pool);
-                Xtc& xtc = *new (bin_data[ibin], bufEnd) Xtc(TypeId(TypeId::Parent,0),dgram->xtc.src);
-                det.cubeInit(*iter.shapesdata(), // raw shapes data
-                             xtc,                // cube xtc
-                             bufEnd);
-                bin_entries[ibin]++;
+            unsigned bin = result.binIndex();
+            if (bin >= nbins) {
+                logging::error("Bin index (%u) >= number of bins (%u)", bin, nbins);
+                abort();
             }
-            else {
-                logging::debug("CubeWorker bin (%u) entries (%u)", ibin, bin_entries[ibin]);
-                Xtc& xtc = *(Xtc*)bin_data[ibin];
-                sem.take();  // not bin-specific
-                // add the event into the bin
-                // the bin storage has to contain shape, thus the shapesdata;
-                det.cubeAdd(*iter.shapesdata(), *(ShapesData*)xtc.payload());
-                bin_entries[ibin]++;
+
+            //  Get the raw data (for size)
+            NamesId rawNamesId(det.nodeId,det.rawNamesIndex());
+            ShapesData& rawShapesData = *(iter.shapesdata());
+            DescData rawdata(rawShapesData, det.namesLookup()[rawNamesId]);  // reading
+
+            VarDef rawDef  = det.rawDef();
+            VarDef cubeDef = CubeDef(rawDef.NameVec);
+
+            if (data_init.load(std::memory_order_relaxed)) [[unlikely]] {
+                //  Initialize the whole cube here
+                const char* bufEnd = bin_data+nbins*BUFFER_SIZE(pool);
+                Dgram& dg = *new (bin_data) Dgram( Transition(), Xtc(TypeId(TypeId::Parent,0),dgram->xtc.src) );
+                Xtc& xtc = dg.xtc;
+                
+                logging::info("CubeTebReceiver::cubeInit rawShapesData (%p) xtc (%p) bufEnd (%p) bin (%u) nbins (%u)",
+                              &rawShapesData, &xtc, bufEnd, bin, nbins);
+
+                NamesId namesId(det.nodeId, det.cubeNamesIndex());
+                //  DescribedData creates the Data container first, then the Shapes container
+                DescribedData data(xtc, bufEnd, det.namesLookup(), namesId);
+                //  Fill the data payload first
+                //  bin indices and entries (same for all detectors)
+                unsigned size=0;
+                {
+                    uint32_t* p = (uint32_t*)data.data();
+                    for(unsigned i=0; i<nbins; i++)  // bin indices
+                        p[i] = i;
+                    memset(&p[nbins], 0, nbins*sizeof(uint32_t));  // bin entries
+                    size += 2*nbins*sizeof(uint32_t);
+                    if (threadNum==0)
+                        logging::info("size after bins,entries %u",size);
+                }
+
+                //  Detector-specific payload
+                //  Everything here becomes double
+                for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
+                    unsigned rank = rawDef.NameVec[i].rank();
+                    double_t* dst = (double_t*)((char*)data.data()+size);
+                    if (rank==0) {
+                        memset(dst, 0, nbins*sizeof(double_t));
+                        size += nbins*sizeof(double_t);
+                    }
+                    else {
+                        uint32_t newShape[XtcData::MaxRank];
+                        newShape[0] = nbins;
+                        for(unsigned r=0; r<4; r++)
+                            newShape[r+1] = rawdata.shape(rawDef.NameVec[i])[r];
+                        Shape s(newShape);
+                        unsigned arraySize = s.size(cubeDef.NameVec[i+2]); 
+                        memset(dst, 0, arraySize);
+                        size += arraySize;
+                    }
+                    if (threadNum==0)
+                        logging::info("cube: %s dst %p size %lx",rawDef.NameVec[i].name(),dst, size);
+                }
+                data.set_data_length(size);
+
+                //
+                //  Now set the shapes
+                //  This should work for all Detector subclasses
+                //
+                uint32_t scalar_array[] = {nbins,0,0,0,0};
+                Shape scalar(scalar_array);
+                data.set_array_shape(CubeDef::bin    , scalar.shape());
+                data.set_array_shape(CubeDef::entries, scalar.shape());
+                for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                    unsigned rank = cubeDef.NameVec[i].rank();
+                    Shape s(scalar_array);
+                    if (rank>1) {
+                        uint32_t newShape[XtcData::MaxRank];
+                        newShape[0] = nbins;
+                        for(unsigned r=0; r<4; r++)
+                            newShape[r+1] = rawdata.shape(rawDef.NameVec[i-2])[r];
+                        s = Shape(newShape);
+                    }
+                    data.set_array_shape(i, s.shape());
+                }
+
+                if (threadNum==0) {
+                    //  Debug
+                    logging::info("Initialized cube with bin %u of %u bins.", bin, nbins);
+                    ShapesData& shd = *(ShapesData*)xtc.payload();
+                    logging::info("Shapes at %lx,  Data at %lx",
+                                  (char*)&shd.shapes()-xtc.payload(), 
+                                  (char*)&shd.data  ()-xtc.payload());
+                    for(unsigned i=0; i<cubeDef.NameVec.size(); i++) {
+                        uint32_t* sh = shd.shapes().get(i).shape();
+                        logging::info("Shape[%u] (%s): %u %u %u %u %u",
+                                      i, cubeDef.NameVec[i].name(), sh[0], sh[1], sh[2], sh[3], sh[4]);
+                    } 
+                }
+                data_init = false;
+            }  // data_init
+            //            else {
+            {
+
+                sem.take();
+                Xtc& xtc = ((Dgram*)bin_data)->xtc;
+                logging::debug("CubeTebReceiver::cubeAdd rawShapesData (%p) cubeShapesData (%p) bin (%u) nbins (%u)",
+                               &rawShapesData, &xtc, bin, nbins);
+                
+                NamesId cubeNamesId(det.nodeId,det.cubeNamesIndex());
+                DescData cubedata(*(ShapesData*)xtc.payload(), det.namesLookup()[cubeNamesId]);
+
+                {
+                    uint32_t* p = (uint32_t*)cubedata.shapesdata().data().payload();
+                    p[nbins+bin]++;  // increment bin entries
+                }
+                unsigned size = 2*nbins*sizeof(uint32_t);
+
+                for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
+                    Name& name = rawDef.NameVec[i];
+                    unsigned rank = name.rank();
+                    double* dst;
+                    if (rank==0) {
+                        dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*sizeof(double_t));
+                        size += nbins*sizeof(double_t);
+                        det.addToCube(i, dst, rawdata);
+                    }
+                    else {
+                        Shape s(rawdata.shape(name));
+                        unsigned arraySize = s.size(name)*sizeof(double_t)/Name::get_element_size(name.type());
+                        dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*arraySize);
+                        size += nbins*arraySize;
+                        det.addToCube(i, dst, rawdata);
+                    }
+                }
                 sem.give();
             }
         }
@@ -170,20 +294,18 @@ CubeTebReceiver::CubeTebReceiver(const Parameters& para, DrpBase& drp) :
     m_result     (m_pool.nbuffers(), CubeResultDgram(EbDgram(PulseId(0),Dgram()),0)),
     m_current    (-1),
     m_last       (-1),
-    m_bin_data   (MAX_CUBE_BINS+1),
-    m_bin_entries(para.nCubeWorkers, std::vector<unsigned>(MAX_CUBE_BINS,0)),
+    m_nbins      (0),
+    m_data_init  (para.nCubeWorkers),
+    m_bin_data   (para.nCubeWorkers),
     m_buffer     (new char[BUFFER_SIZE(drp.pool)]),
     m_sem        (para.nCubeWorkers,Pds::Semaphore(Pds::Semaphore::FULL)),
     m_terminate  (false)
 {
-     for(unsigned i=0; i<MAX_CUBE_BINS+1; i++)
-         m_bin_data[i] = new char[BUFFER_SIZE(drp.pool)];
 }
 
 //
 //  Handles result
 //    Queues binning summation to workers, if indicated
-//    Post to monitoring
 //
 void CubeTebReceiver::complete(unsigned index, const ResultDgram& res)
 {
@@ -191,12 +313,9 @@ void CubeTebReceiver::complete(unsigned index, const ResultDgram& res)
     // processing and dispose of the event.  It presumes that the caller has
     // already vetted index and result
     const Pds::Eb::CubeResultDgram& result = reinterpret_cast<const Pds::Eb::CubeResultDgram&>(res);
-    logging::debug("CubeTebReceiver::complete index (%u) result data(%x) persist(%u) monitor(%x) bin(%u) worker(%u) record(%u)", 
-                   index, result.data(), result.persist(), result.monitor(), result.bin(), result.worker(), result.record());
+    logging::debug("CubeTebReceiver::complete index (%u) result data(%x) persist(%u) monitor(%x) bin(%u) binMonitor(%u) binRecord(%u)", 
+                   index, result.data(), result.persist(), result.monitor(), result.binIndex(), result.updateMonitor(), result.updateRecord());
 
-#if 0
-    _monitorDgram(index, result);
-#endif
     _queueDgram(index, result); // copies the result
 }
 
@@ -206,8 +325,17 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
     if (transitionId != TransitionId::L1Accept) {
         auto dgram = m_pool.transitionDgrams[index];
         if (transitionId == TransitionId::Configure) {
+
+            //  Nbins comes from result
+            m_nbins = result.binIndex()+1;
+            unsigned nbins = m_nbins;
+            logging::info("Allocating cube memory for %u bins", nbins);
+            logging::info("CubeTebReceiver workers %u  event_buffer_size %lu  cube_buffer_size %lu",
+                          m_para.nCubeWorkers, BUFFER_SIZE(m_pool), nbins*BUFFER_SIZE(m_pool));
+            for(unsigned i=0; i<m_para.nCubeWorkers; i++)
+                m_bin_data[i] = new char[nbins*BUFFER_SIZE(m_pool)];
+
             //  Startup threads
-            m_collectorThread = std::thread(&CubeTebReceiver::process, std::ref(*this));
             for (unsigned i=0; i<m_para.nCubeWorkers; i++) {
                 m_workerInputQueues .emplace_back(SPSCQueue<unsigned>(m_pool.nbuffers()));
                 m_workerOutputQueues.emplace_back(SPSCQueue<unsigned>(m_pool.nbuffers()));
@@ -218,14 +346,16 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
                                              std::ref(m_det),
                                              std::ref(m_pool),
                                              std::ref(m_result),
-                                             std::ref(m_bin_data),
-                                             std::ref(m_bin_entries[i]),
+                                             nbins,
+                                             std::ref(m_data_init[i]),
+                                             std::ref(m_bin_data[i]),
                                              std::ref(m_sem[i]),
                                              std::ref(m_workerInputQueues[i]),
                                              std::ref(m_workerOutputQueues[i]),
                                              i);
-
             }
+            m_terminate.store(false, std::memory_order_release);
+            m_collectorThread = std::thread(&CubeTebReceiver::process, std::ref(*this));
 
             const char* bufEnd = (char*)dgram + m_para.maxTrSize;
 
@@ -239,10 +369,10 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
                 Names(bufEnd,
                       m_para.detName.c_str(), cubeAlg,
                       m_para.detType.c_str(), m_para.serNo.c_str(), cubeNamesId, m_para.detSegment);
-            std::vector<Name> nameVec(m_det.cubeDef().NameVec);
-            CubeDef myCubeDef(nameVec);
-            cubeNames.add(dgram->xtc, bufEnd, myCubeDef);
-            m_namesLookup[cubeNamesId] = NameIndex(cubeNames);
+            VarDef  rawDef = m_det.rawDef();
+            VarDef cubeDef = CubeDef(rawDef.NameVec);
+            cubeNames.add(dgram->xtc, bufEnd, cubeDef);
+            m_det.namesLookup()[cubeNamesId] = NameIndex(cubeNames);
 
             { DumpIterator dump((char*)&dgram->xtc);
                 dump.iterate(&dgram->xtc, bufEnd); }
@@ -253,6 +383,7 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
                 m_workerInputQueues[i].shutdown();
                 if (m_workerThreads[i].joinable())
                     m_workerThreads[i].join();
+                logging::info("Worker %u joined",i);
             }
             for(unsigned i=0; i<m_para.nCubeWorkers; i++) {
                 m_workerOutputQueues[i].shutdown();
@@ -262,7 +393,15 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
 
             if (m_collectorThread.joinable()) {
                 m_collectorThread.join();
+                logging::info("CollectorThread joined");
             }
+
+            m_workerInputQueues.clear();
+            m_workerThreads.clear();
+            m_workerOutputQueues.clear();
+
+            for(unsigned i=0; i<m_para.nCubeWorkers; i++)
+                delete[] m_bin_data[i];
 
             // MEBs need the Unconfigure
             _monitorDgram(index, result);
@@ -272,86 +411,150 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
             
             // Free the pebble datagram buffer
             m_pool.freePebble(index);
+
+            m_current    = -1;
+            m_last       = -1;
             return;
+        }
+        else if (transitionId == TransitionId::BeginRun) {
+            //  Clear the cube every BeginRun
+            for(unsigned i=0; i<m_para.nCubeWorkers; i++)
+                m_data_init[i].store(true, std::memory_order_release);
         }
     }
     
     m_result[index] = result; // must copy (full xtc not copied!)
-    m_last = index;
     
-    unsigned worker = result.worker();
-    logging::debug("CubeTebReceiver::queueDgram pushed index (%u) to worker (%u)",
-                   index, worker);
-    m_workerInputQueues[worker].push(index);
-}
-
-static void _dumpNames(DescData& data, const char* title)
-{
-    Names& names = data.nameindex().names();
-    logging::debug("Found %d names in %s",names.num(), title);
-    for(unsigned i=0; i<names.num(); i++) {
-        Name& name = names.get(i);
-        logging::debug("\t%d : %s (%s)[%u]",i,name.name(),name.str_type(),name.rank());
+    unsigned worker = ++m_last % m_para.nCubeWorkers;
+    if (index != (m_last % m_pool.nbuffers())) {
+        logging::error("CubeTebReceiver::queueDgram index (%u) != m_last (%u) % nbuffers (%u)", index, m_last, m_pool.nbuffers());
+        abort();
     }
+
+    m_workerInputQueues[worker].push(index);
 }
 
 Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram& result)
 {
-    //  Record one bin
-    unsigned ibin = result.bin();
-    uint32_t scalar_array[] = {1,0,0,0,0};
-    Shape    scalar(scalar_array);
+    //
+    //  Copy one bin into dg
+    //    Requires summing over all workers
+    // 
+
+    unsigned ibin = result.binIndex();
+    unsigned nbins = m_nbins;
+    VarDef rawDef = m_det.rawDef();
+    VarDef cubeDef = CubeDef(rawDef.NameVec);
 
     NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
     //  DescribedData creates the Data container first, then the Shapes container
-    DescribedData data(dg->xtc, m_buffer+BUFFER_SIZE(m_pool), m_namesLookup, namesId);
-    _dumpNames(data, "binDgram");
+    DescribedData data(dg->xtc, m_buffer+BUFFER_SIZE(m_pool), m_det.namesLookup(), namesId);
 
-    //  First two entries come from us
-    ((uint32_t*)data.data())[0] = ibin;
-    ((uint32_t*)data.data())[1] = m_bin_entries[result.worker()][ibin];
-    unsigned size = 2*sizeof(uint32_t);
+    //  Initialize and set shapes from the first worker
+    unsigned iworker = 0;
+    {
+        m_sem[iworker].take();
+        DescData cubedata(*(ShapesData*)(((Dgram*)m_bin_data[iworker])->xtc.payload()), m_det.namesLookup()[namesId]);
+        ((uint32_t*)data.data())[0] = ibin;
+        ((uint32_t*)data.data())[1] = ((uint32_t*)cubedata.shapesdata().data().payload())[nbins+ibin]; // entries
+        unsigned dstSize = 2*sizeof(uint32_t);
+        unsigned srcSize = 2*sizeof(uint32_t)*nbins;
 
-    //  Remainder of entries come from the bin data given by Detector
-    Xtc&        xtc = *(Xtc*)m_bin_data[ibin];
-    ShapesData& shd = *(ShapesData*)xtc.payload();
-    Shapes&      sh = shd.shapes();
-    Data&        da = shd.data();
-    memcpy((uint8_t*)data.data() + size, da.payload(), da.sizeofPayload());
-    size += da.sizeofPayload();
-    data.set_data_length(size);
-
-    //  By DescribedData, we can't set the shapes until all the data is allocated
-    data.set_array_shape(0, scalar.shape());
-    data.set_array_shape(1, scalar.shape());
-    unsigned iarray=0;
-    VarDef  cubeDef = m_det.cubeDef();
-    for(unsigned i=0; i<cubeDef.NameVec.size(); i++) {
-        unsigned rank = cubeDef.NameVec[i].rank();
-        Shape s(scalar);
-        if (rank) {
-            s = Shape(sh.get(iarray++));
-            s.shape()[rank] = 1;
+        //  The rest are double arrays
+        for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+            Shape s(cubedata.shape(cubeDef.NameVec[i]));
+            s.shape()[0] = 1;
+            unsigned binSize = s.size(cubeDef.NameVec[i]);
+            double_t* dst = (double_t*)((char*)data.data()+dstSize);
+            double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+            memcpy(dst, src, binSize);
+            dstSize += binSize;
+            srcSize += binSize*nbins;
         }
-        data.set_array_shape(i+2, s.shape());
+        data.set_data_length(dstSize);
+
+        //  Now set the shapes
+        uint32_t scalar_array[] = {1,0,0,0,0};
+        Shape    scalar(scalar_array);
+        data.set_array_shape(CubeDef::bin    , scalar_array);
+        data.set_array_shape(CubeDef::entries, scalar_array);
+        for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+            Shape s(cubedata.shape(cubeDef.NameVec[i]));
+            s.shape()[0] = 1;
+            data.set_array_shape(i, s.shape());
+        }
+        m_sem[iworker].give();
     }
-    
-    logging::info("binDgram bin (%u) worker (%u) pulseId (%lu/0x%016lx) timeStamp (%lu/0x%016lx) size (%u)",
-                   result.bin(), result.worker(), 
-                   result.pulseId(), result.pulseId(), 
-                   result.time.value(), result.time.value(), 
-                   size);
-    for(unsigned i=0; i<cubeDef.NameVec.size()+2; i++) {
+#if 0
+    {
+        double_t* p = (double*)data.data();
+        uint32_t* u = (uint32_t*)data.data();
+        logging::info("worker[%u]: %u %u %f (%f %f %f %f)", iworker, u[0], u[1], p[1], p[2], p[3], p[4], p[5]);
+    }        
+#endif
+
+    //
+    //  Accumulate from the rest of the workers
+    //
+    while(++iworker < m_para.nCubeWorkers) {
+        m_sem[iworker].take();
+
+        DescData cubedata(*(ShapesData*)(((Dgram*)m_bin_data[iworker])->xtc.payload()), m_det.namesLookup()[namesId]);
+        ((uint32_t*)data.data())[1] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+ibin]; // entries
+        unsigned dstSize = 2*sizeof(uint32_t);
+        unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+
+        //  The rest are double arrays
+        for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+            Shape s(cubedata.shape(cubeDef.NameVec[i]));
+            s.shape()[0] = 1;
+            unsigned binSize = s.size(cubeDef.NameVec[i]);
+            double_t* dst = (double_t*)((char*)data.data()+dstSize);
+            double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+
+            for(unsigned j=0; j<binSize/sizeof(double_t); j++)
+                dst[j] += src[j];
+
+            dstSize += binSize;
+            srcSize += binSize*nbins;
+        }
+        m_sem[iworker].give();
+    }
+#if 0
+    {
+        double_t* p = (double*)data.data();
+        uint32_t* u = (uint32_t*)data.data();
+        logging::info("worker[%u]: %u %u %f (%f %f %f %f)", iworker, u[0], u[1], p[1], p[2], p[3], p[4], p[5]);
+    }        
+
+    logging::info("binDgram bin (%u) pulseId (%lu/0x%016lx) timeStamp (%lu/0x%016lx) size (%u)",
+                  result.binIndex(),
+                  result.pulseId(), result.pulseId(), 
+                  result.time.value(), result.time.value(), 
+                  data.shapesdata().data().sizeofPayload());
+    for(unsigned i=0; i<cubeDef.NameVec.size(); i++) {
         const uint32_t* s = data.shapesdata().shapes().get(i).shape();
         logging::info("shape %u: %u %u %u %u %u",
                       i, s[0], s[1], s[2], s[3], s[4]);
     }
-    { DumpIterator dump((char*)&xtc);
-        dump.iterate(&xtc, m_bin_data[ibin]+BUFFER_SIZE(m_pool)); }
+#endif
+
+#ifdef BIN_NORM
+    {
+        double_t* p = (double*)data.data();
+        uint32_t* u = (uint32_t*)data.data();
+        logging::info("sum data: %u %u %f (%f %f %f %f)", u[0], u[1], p[1], p[2], p[3], p[4], p[5]);
+    }        
+#endif
+
+#if 0
+    { Dgram* bindg = (Dgram*)m_bin_data[0];
+        DumpIterator dump((char*)bindg,
+        dump.iterate(&bindg->xtc, m_bin_data[0]+nbins*BUFFER_SIZE(m_pool)); }
 
     { DumpIterator dump((char*)dg);
         dump.iterate(&dg->xtc, m_buffer+BUFFER_SIZE(m_pool)); }
-
+#endif
     return dg;
 }
 
@@ -373,12 +576,11 @@ void CubeTebReceiver::_monitorDgram(unsigned index, const CubeResultDgram& resul
         // L1Accept
         if (result.isEvent()) {
             if (result.monitor()) {
-                if (result.record()) {
-                    //  Write the intermediate accumulated bin
-                    m_sem[result.worker()].take();
+                if (result.updateMonitor()) {
+                    //  Append the intermediate bin sum to the pebble data
+                    memset(m_buffer, 0, BUFFER_SIZE(m_pool)); // clear it for sure!!
                     memcpy(m_buffer, dgram, sizeof(*dgram)+dgram->xtc.sizeofPayload());
                     m_mon.post(_binDgram((Pds::EbDgram*)m_buffer, result), result.monBufNo());
-                    m_sem[result.worker()].give();
                 }
                 else {
                     m_mon.post(dgram, result.monBufNo());
@@ -402,12 +604,10 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
 
     if (writing()) {                    // Won't ever be true for Configure
         if (result.persist() || result.prescale()) {
-            if (result.record()) {
+            if (result.updateRecord()) {
                 //  Write the intermediate accumulated bin
-                m_sem[result.worker()].take();
                 Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(result, result);  // PulseId, Dgram
                 _writeDgram(_binDgram(dg, result));
-                m_sem[result.worker()].give();
             }
             else
                 //  Do I need to record an empty dgram for the offline event builder?
@@ -418,12 +618,52 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
                 offsetReset(); // reset offset when writing out a new file
                 _writeDgram(reinterpret_cast<Dgram*>(m_configureBuffer.data()));
             }
-            _writeDgram(const_cast<CubeResultDgram*>(&result));
+
+            if (transitionId == TransitionId::EndRun) {
+                //  Write all bins here?
+                //  Sum it all up into worker 0
+                unsigned iworker=0;
+                unsigned nbins = m_nbins;
+                NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
+                VarDef  rawDef = m_det.rawDef();
+                CubeDef cubeDef(rawDef.NameVec);
+                Dgram* dg = (Dgram*)m_bin_data[0];
+                DescData data(*(ShapesData*)(dg->xtc.payload()), m_det.namesLookup()[namesId]);
+                while(++iworker < m_para.nCubeWorkers) {
+                    m_sem[iworker].take();
+                    Dgram* wdg = (Dgram*)m_bin_data[iworker];
+                    DescData cubedata(*(ShapesData*)(wdg->xtc.payload()), m_det.namesLookup()[namesId]);
+
+                    // entries
+                    for(unsigned bin=0; bin<nbins; bin++)
+                        ((uint32_t*)data.shapesdata().data().payload())[nbins+bin] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+bin];
+                    unsigned dstSize = 2*sizeof(uint32_t);
+                    unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+
+                    //  The rest are double arrays
+                    for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                        Shape s(cubedata.shape(cubeDef.NameVec[i]));
+                        unsigned allSize = s.size(cubeDef.NameVec[i]);
+                        double_t* dst = (double_t*)((char*)data    .shapesdata().data().payload()+dstSize);
+                        double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize);
+                        // all bins
+                        for(unsigned j=0; j<allSize/sizeof(double_t); j++)
+                            dst[j] += src[j];
+
+                        dstSize += allSize;
+                        srcSize += allSize;
+                    }
+                    m_sem[iworker].give();
+                }
+                _writeDgram(dg);
+            }
+            else
+                _writeDgram(const_cast<CubeResultDgram*>(&result));
+
             if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
                 logging::info("%s calling reopenFiles()", __PRETTY_FUNCTION__);
                 reopenFiles();
             } else if (transitionId == TransitionId::EndRun) {
-                //  Write all bins here?
                 logging::info("%s calling closeFiles()", __PRETTY_FUNCTION__);
                 closeFiles();
             }
@@ -448,26 +688,27 @@ void CubeTebReceiver::process()
         if (m_current == m_last)
             continue;
 
-        m_current = (m_current + 1) % (m_pool.nbuffers() - 1);
-
-        unsigned index = m_current;
+        unsigned index = ++m_current % m_pool.nbuffers();
         //  Need to make sure the worker is done with this buffer
         const CubeResultDgram& result = m_result[index];
-
-        logging::debug("CubeTebReceiver::process index (%u) result(%x) bin (%u) worker (%u)",
-                       index, result.data(), result.bin(), result.worker());
+        unsigned worker = m_current%m_para.nCubeWorkers;
 
         unsigned windex;
-        bool rc = m_workerOutputQueues[result.worker()].pop(windex);
+        bool rc = m_workerOutputQueues[worker].pop(windex);
         if (rc) {
 
-            logging::debug("CubeTebReceiver::process index %u  windex %u",
-                           index,windex);
+            logging::debug("CubeTebReceiver::process index (%u) result(%x) bin (%u) worker (%u)",
+                           index, result.data(), result.binIndex(), worker);
+
+            if (windex != index) {
+                logging::error("CubeTebReceiver::process index %u  windex %u",
+                               index,windex);
+                abort();
+            }
 
             _recordDgram(index, result);
-#if 1
             _monitorDgram(index, result);
-#endif
+
             // Free the transition datagram buffer
             TransitionId::Value transitionId = result.service();
             auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
@@ -478,6 +719,10 @@ void CubeTebReceiver::process()
             
             // Free the pebble datagram buffer
             m_pool.freePebble(index);
+        }
+        else {
+            logging::info("CubeTebReceiver::process outputQ %u shutdown",worker);
+            break;
         }
     }
     logging::info("CubeTebReceiver::process is exiting");

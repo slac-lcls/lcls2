@@ -4,6 +4,7 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/VarDef.hh"
 #include "psdaq/service/EbDgram.hh"
 
 #include <string>
@@ -47,10 +48,10 @@ public:
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
     // For binning into the cube
-    virtual void     cubeInit(XtcData::ShapesData& rawShapesData, XtcData::Xtc& xtc, const char* bufEnd) {}
-    virtual void     cubeAdd (XtcData::ShapesData& rawShapesData, XtcData::ShapesData& cubeData) {}
+    virtual void     addToCube(unsigned rawDefIndex, double* dst, XtcData::DescData& rawData) {}
+    virtual unsigned rawNamesIndex () { return 0; }
     virtual unsigned cubeNamesIndex() { return 0; }
-    virtual XtcData::VarDef   cubeDef () { return XtcData::VarDef(); }
+    virtual XtcData::VarDef rawDef () { return XtcData::VarDef(); }
     //
     virtual void shutdown() {};
 

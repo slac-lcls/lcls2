@@ -148,7 +148,7 @@ class fakecam_cube_2_0_0(DetectorImpl):
         segs = self._segments(evt)
         if segs is None: return None
         if segs[0] is None: return None
-        return segs[0].array
+        return segs[0].array_raw
 
 # for the pva detector in the teststand
 class pva_pvaAlg_1_2_3(DetectorImpl):
