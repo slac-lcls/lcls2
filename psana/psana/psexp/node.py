@@ -74,6 +74,7 @@ class Communicators(object):
     node_leader_comm = None
     node_leader_rank = -1
     node_leader_size = 0
+    bd_node_comm = None
     _is_node_leader = False
 
     def __init__(self):
@@ -109,6 +110,7 @@ class Communicators(object):
 
         self.node_comm = None
         self.node_leader_comm = None
+        self.bd_node_comm = None
         self._setup_node_comms()
 
         self.marching_enabled = marching_enabled()
@@ -177,6 +179,11 @@ class Communicators(object):
         elif self.world_rank >= self.psana_group.Get_size():
             self._nodetype = "srv"
 
+        # Build a BD-only communicator within each node (after nodetype is known).
+        if self.node_comm not in (None, MPI.COMM_NULL):
+            bd_color = 1 if self._nodetype == "bd" else MPI.UNDEFINED
+            self.bd_node_comm = self.node_comm.Split(bd_color, self.node_rank)
+
         # Ensure every rank has finalized its node role before building
         # the SMD communicator, since _init_smd_comm gathers the EB list.
         self.comm.Barrier()
@@ -227,6 +234,9 @@ class Communicators(object):
 
     def get_node_leader_comm(self):
         return self.node_leader_comm
+
+    def get_bd_node_comm(self):
+        return self.bd_node_comm
 
     def terminate(self):
         """Tells Smd0 to terminate the loop.
