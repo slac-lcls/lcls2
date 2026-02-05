@@ -30,6 +30,9 @@ elif sys.argv[1]=="-i": #xpp ipimb
 elif sys.argv[1]=="-p": #sxr pcav
     print('SXR PCAV:')
     multicast_group = '239.255.25.03'
+elif sys.argv[1]=="-f": #fee spec
+    print('FEE SPEC:')
+    multicast_group = '239.255.24.46'
 
 # Create the socket
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
