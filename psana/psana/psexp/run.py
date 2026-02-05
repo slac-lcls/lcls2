@@ -167,6 +167,10 @@ class Run(object):
         flag = self.shared_state.terminate_flag
         flag.value = True
 
+    def close_shared_memory(self):
+        """Hook for cleaning up shared-memory resources (no-op by default)."""
+        return
+
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constants - set default value to None
         if self._calib_const is None:
