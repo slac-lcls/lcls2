@@ -10,7 +10,7 @@ executable(
 executable(
     'randomaccess',
     'randomaccess.cc',
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
     include_directories: xtcdata_incdir,
@@ -19,7 +19,7 @@ executable(
 executable(
     'jungfrau',
     'jungfrau.cc',
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
     include_directories: xtcdata_incdir,
@@ -46,7 +46,7 @@ executable(
 executable(
     'xtcsave',
     'xtcsave.cc',
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
     include_directories: xtcdata_incdir,
@@ -55,7 +55,7 @@ executable(
 executable(
     'hsdduplicate',
     'hsdduplicate.cc',
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: xtc_shlib,
     include_directories: xtcdata_incdir,
