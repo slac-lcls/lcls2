@@ -49,10 +49,22 @@ nodetype = None
 
 class RunParallel(Run):
     """Yields list of events from multiple smd/bigdata files using > 3 cores."""
-    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams, comms=None):
+    def __init__(
+        self,
+        expt,
+        runnum,
+        timestamp,
+        dsparms,
+        dm,
+        smdr_man,
+        configs,
+        begingrun_dgrams,
+        comms=None,
+    ):
         super(RunParallel, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
         self.configs = configs
         self.comms = comms
+        self._shared_mem_closed = False
 
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
@@ -85,6 +97,43 @@ class RunParallel(Run):
             self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
 
         self._setup_run_calibconst()
+
+    def _close_shared_memory(self):
+        if self._shared_mem_closed:
+            return
+        self._shared_mem_closed = True
+
+        # Release calibration xtc shared window if present.
+        win = getattr(self, "_calib_xtc_win", None)
+        if win is not None:
+            try:
+                win.Free()
+            except Exception:
+                self.logger.debug("Failed to free calib xtc shared window", exc_info=True)
+            self._calib_xtc_win = None
+        self._calib_xtc_shared = None
+        self._calib_xtc_buffer = None
+
+        # Release MPISharedMemory helpers.
+        for attr in ("_jungfrau_shared_mem", "_geo_shared_mem"):
+            helper = getattr(self, attr, None)
+            if helper is not None:
+                try:
+                    helper.close()
+                except Exception:
+                    self.logger.debug("Failed to close shared memory helper %s", attr, exc_info=True)
+                setattr(self, attr, None)
+
+        # Release marching shared buffers stored on the communicator.
+        if self.comms is not None:
+            shared_mem = getattr(self.comms, "march_shared_psana/psana/psexp/mpi_ds.pymem", None)
+            if shared_mem is not None:
+                try:
+                    shared_mem.close()
+                except Exception:
+                    self.logger.debug("Failed to close marching shared memory", exc_info=True)
+                self.comms.march_shared_mem = None
+                self.comms.march_params = {}
 
     def _setup_run_calibconst(self):
         if nodetype == "smd0":
@@ -548,6 +597,15 @@ class RunParallel(Run):
                     self._run_ctx,
                     esm=self.esm,
                 )
+
+    def close_shared_memory(self):
+        self._close_shared_memory()
+
+    def __del__(self):
+        try:
+            self.close_shared_memory()
+        except Exception:
+            pass
 
     def start(self):
         """Request data for this run"""
