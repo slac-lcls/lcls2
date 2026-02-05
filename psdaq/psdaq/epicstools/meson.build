@@ -50,7 +50,7 @@ monExample_exe = executable('monExample',
   dependencies: epics_dep,
   link_with: epicstools_lib,
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )
 
 tstPvMon_exe = executable('tstPvMon',
@@ -62,5 +62,5 @@ tstPvMon_exe = executable('tstPvMon',
   ],
   link_with: epicstools_lib,
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )

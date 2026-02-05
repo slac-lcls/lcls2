@@ -60,7 +60,7 @@ mempeek = executable('mempeek',
     #dl_dep,
   ],
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )
 
 
@@ -74,7 +74,7 @@ hsd_eyescan = executable('hsd_eyescan',
   ],
   link_with: mmhw_lib,
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )
 
 hsd134PVs_sources = [
@@ -132,7 +132,7 @@ hsd126PVs = executable('hsd126PVs',
 hsd_sim = executable('hsd_sim',
   'hsd_sim.cc', 
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )
 
 hsdRead = executable('hsdRead',
@@ -153,5 +153,5 @@ hsdRead = executable('hsdRead',
     epicstools_lib,
   ],
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )

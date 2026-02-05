@@ -21,7 +21,7 @@ mmhw_lib = shared_library('mmhw',
 mmregtest_exe = executable('mmregtest',
   'mmregtest.cc',
   include_directories: include_directories('../..'),
-  install: true,
+  #install: true,
 )
 
 mmxvc_exe = executable('mmxvc',
@@ -35,5 +35,5 @@ mmxvc_exe = executable('mmxvc',
     threads_dep,
     python_dep,
   ],
-  install: true,
+  #install: true,
 )

@@ -29,7 +29,7 @@ executable(
     'datareader',
     'app/datareader.cc',
     include_directories: [psalg_incdir, xtcdata_incdir],
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, detector_shlib, psalg_shlib, utils_shlib, calib_shlib],
 )
@@ -38,7 +38,7 @@ executable(
     'hsd_valid',
     'tests/hsd_valid.cc',
     include_directories: [psalg_incdir, xtcdata_incdir],
-    install: true,
+    #install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, psalg_shlib, digitizer_shlib]
 )

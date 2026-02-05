@@ -72,6 +72,10 @@ executable(
 )
 
 install_headers(
-    shmem_headers,
+  [
+    'ShmemClient.hh',
+    'XtcMonitorServer.hh',
+    'XtcMonitorMsg.hh',
+  ],
     install_dir: 'include/psalg/shmem'
 )
