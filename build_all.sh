@@ -76,6 +76,11 @@ meson compile -C "$BUILDDIR"
 meson install -C "$BUILDDIR"
 
 pip install --prefix=$INSTDIR .
+if [ $no_daq == 0 ]; then
+  cd psdaq
+  pip install --prefix=$INSTDIR .
+  cd ..
+fi
 
 # Reset LDFLAGS back:
 export LDFLAGS="$LDFLAGS_OLD"

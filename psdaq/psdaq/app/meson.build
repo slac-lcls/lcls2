@@ -182,7 +182,7 @@ bldpayload = executable('bldpayload',
   ],
   link_with: epicstools_lib,
   install_rpath: libdir_install_rpath,
-  install: true,
+  #install: true,
 )
 
 sim_udpencoder = executable('sim_udpencoder',

@@ -89,7 +89,7 @@ tstEbLfLink_exe = executable('tstEbLfLink',
     utilities_lib,
     collection_lib,
   ],
-  install: true,
+  #install: true,
 )
 
 teb_exe = executable('teb',
@@ -127,7 +127,7 @@ tstClocks_exe = executable('tstClocks',
   dependencies: [
     #rt_dep,
   ],
-  install: true,
+  #install: true,
 )
 
 install_headers(

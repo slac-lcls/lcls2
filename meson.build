@@ -4,7 +4,7 @@ project(
     'cpp',
     'cython',
     version: '4.3.0',
-    default_options: ['cpp_std=c++20']
+    default_options: ['cpp_std=c++20', 'libdir=lib']
 )
 
 cuda_exists = add_languages('cuda', required: false, native: false)
@@ -14,7 +14,7 @@ py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
-# the gcc type linker args that conda sets.
+# the gcc linker args that conda sets.
 add_project_link_arguments(
   [
     '-Wl,-O2',

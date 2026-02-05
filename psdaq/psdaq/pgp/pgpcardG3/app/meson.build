@@ -4,7 +4,7 @@ xStatus = executable('xStatus',
   dependencies: psalg_utils_dep,
   include_directories: include_directories('.'),
   install_rpath: libdir_install_rpath,
-  install: true
+  #install: true
 )
 
 xLoopTest = executable('xLoopTest',
@@ -12,7 +12,7 @@ xLoopTest = executable('xLoopTest',
   dependencies: threads_dep,
   include_directories: include_directories('.'),
   install_rpath: libdir_install_rpath,
-  install: true
+  #install: true
 )
 
 xRead = executable('xRead',
@@ -20,7 +20,7 @@ xRead = executable('xRead',
   dependencies: threads_dep,
   include_directories: include_directories('.'),
   install_rpath: libdir_install_rpath,
-  install: true
+  #install: true
 )
 
 xMargin = executable('xMargin',
@@ -28,7 +28,7 @@ xMargin = executable('xMargin',
   dependencies: threads_dep,
   include_directories: include_directories('.'),
   install_rpath: libdir_install_rpath,
-  install: true
+  #install: true
 )
 
 xError = executable('xError',
@@ -36,5 +36,5 @@ xError = executable('xError',
   dependencies: threads_dep,
   include_directories: include_directories('.'),
   install_rpath: libdir_install_rpath,
-  install: true
+  #install: true
 )
