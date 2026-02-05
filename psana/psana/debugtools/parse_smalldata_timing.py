@@ -131,13 +131,10 @@ def main():
             if msg.startswith("run init"):
                 record_single(stage_values, "run_init", rank, parse_delta(msg), warnings, seen_single)
                 continue
+            if msg.startswith("smd init"):
+                add_value(stage_values, "smd_init", parse_delta(msg), rank)
+                continue
             # detector setup (delta)
-            if "total setup time since job start" in msg:
-                add_value(stage_values, "det_setup", parse_delta(msg), rank)
-                continue
-            if msg.startswith("define_dets ") and "delta=" in msg:
-                add_value(stage_values, "det_setup", parse_delta(msg), rank)
-                continue
             if msg.startswith("default det setup"):
                 add_value(stage_values, "det_setup", parse_delta(msg), rank)
                 continue
@@ -241,6 +238,7 @@ def main():
         "ds_args_setup",
         "ds_init",
         "run_init",
+        "smd_init",
         "det_setup",
         "first_evt",
         "last_evt",
