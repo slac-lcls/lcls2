@@ -259,7 +259,7 @@ private:
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-h] [-s]\n", progname);
+    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-S <max dgram bytes>] [-h] [-s]\n", progname);
 }
 
 int main(int argc, char* argv[])
@@ -273,9 +273,10 @@ int main(int argc, char* argv[])
     unsigned numWords = 3;
     bool printTimeAsUnsignedLong = false;
     bool doStats = false;
+    unsigned maxSize = 0x4000000;
     Stats stats;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:c:Ts")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:TsS:")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -297,6 +298,9 @@ int main(int argc, char* argv[])
             break;
         case 's':
             doStats = true;
+            break;
+        case 'S':
+            maxSize = strtoul(optarg,NULL,0);
             break;
         case 'T':
             printTimeAsUnsignedLong = true;
@@ -330,21 +334,21 @@ int main(int argc, char* argv[])
         }
 
         // Use config from given config file as default
-        XtcFileIterator cfg_iter(cfg_fd, 0x4000000);
+        XtcFileIterator cfg_iter(cfg_fd, maxSize);
 
         // Only access the first dgram (config)
         dg = cfg_iter.next();
-        const void* bufEnd = ((char*)dg) + 0x4000000;
+        const void* bufEnd = ((char*)dg) + maxSize;
 
         // dbgiter will remember all the configs
         if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
 
     }
 
-    XtcFileIterator iter(fd, 0x4000000);
+    XtcFileIterator iter(fd, maxSize);
     unsigned nevent=0;
     dg = iter.next();
-    const void* bufEnd = ((char*)dg) + 0x4000000;
+    const void* bufEnd = ((char*)dg) + maxSize;
     while (dg) {
         if (nevent>=neventreq) break;
         nevent++;

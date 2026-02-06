@@ -79,13 +79,18 @@ Dgram* Smd::generate(Dgram* dgIn, void* buf, const void* bufEnd, uint64_t offset
     if (dgIn->service() != TransitionId::L1Accept) {
         Dgram *dgOut;
         dgOut = (Dgram*)buf;
-        memcpy(dgOut, dgIn, sizeof(*dgIn));
-        memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
 
-        if (dgIn->service() == TransitionId::Configure) {
-            addNames(dgOut->xtc, bufEnd, namesLookup, namesId);
+        if (dgIn->service() == TransitionId::EndRun) {
+            //  EndRun has the cube results.  Don't want any EndRun payload in smd
+            new (buf) Dgram(*dgIn, dgIn->xtc);
         }
-
+        else {
+            memcpy(dgOut, dgIn, sizeof(*dgIn));
+            memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
+            if (dgIn->service() == TransitionId::Configure) {
+                addNames(dgOut->xtc, bufEnd, namesLookup, namesId);
+            }
+        }
         return dgOut;
 
     } else {
