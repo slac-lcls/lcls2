@@ -277,6 +277,23 @@ if(CMAKE_CUDA_COMPILER)
         Threads::Threads
     )
 
+    add_executable(fileWriteTest_gpu
+        fileWriteTest.cc
+        GpuAsyncLib.cc
+        FileWriter.cc
+    )
+    target_include_directories(fileWriteTest_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+  target_link_libraries(fileWriteTest_gpu
+        CUDA::cudart
+        CUDA::cuda_driver
+        CUDA::cuFile            # cufile is not found, but cuFile is
+        Threads::Threads
+    )
+
 #--- Install
 
     install(TARGETS

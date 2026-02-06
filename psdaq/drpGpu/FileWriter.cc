@@ -38,22 +38,37 @@ FileWriter::FileWriter(size_t bufferSize, bool dio) :
   m_batch_starttime(0, 0),
   m_buffer_d       (nullptr),
   m_fileOffset     (0),
-  m_bufOffset      (0),         // Always write from the beggining of the buffer
+  m_bufferSize     (bufferSize),
   m_fd             (0),
   m_dio            (dio),
-  m_count          (0),
-  m_bufferSize     (bufferSize)
+  m_count          (0)
 {
-  // 12/27/25: compute_sanitize gives CUDA_ERROR_INVALID_VALUE here
+  if (bufferSize & (bufferSize - 1)) {
+    logging::critical("cuFile buffer size must be a power of 2; got %zu\n", bufferSize);
+    exit(EXIT_FAILURE);
+  }
+
   if (chkError(cuFileDriverOpen())) {
     logging::critical("Error opening cuFile driver");
     exit(EXIT_FAILURE);
+  }
+
+  CUfileDrvProps_t devProps;
+  if (chkError(cuFileDriverGetProperties(&devProps))) {
+    logging::error("Cannot read cuFile capabilities.");
+    return;
+  }
+  if (m_bufferSize > devProps.max_device_pinned_mem_size) {
+    logging::warning("cuFile Buffer size is limited to max_device_pinned_mem_size %u; request was %zu",
+                     devProps.max_device_pinned_mem_size, m_bufferSize);
+    m_bufferSize = devProps.max_device_pinned_mem_size;
   }
 
   if (chkError(cudaMalloc(&m_buffer_d, m_bufferSize))) {
     logging::error("Failed to allocate GPU buffer of size %zu", m_bufferSize);
     m_buffer_d = nullptr;
   }
+  logging::debug("FileWriter: cuFile buffer: %p, size %zu\n", m_buffer_d, m_bufferSize);
 }
 
 FileWriter::~FileWriter()
@@ -143,9 +158,9 @@ int FileWriter::open(const std::string& fileName)
   dumpProperties();
 
   // Open the file
-  auto oFlags = O_WRONLY | O_CREAT | O_TRUNC;
+  auto oFlags = O_CREAT | O_WRONLY | O_TRUNC;
   if (m_dio)  oFlags |= O_DIRECT;
-  rc = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IRGRP);
+  rc = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IWUSR | S_IRGRP); // W is required
   if (rc == -1) {
     // %m will be replaced by the string strerror(errno)
     logging::error("Error creating file %s: %m", fileName.c_str());
@@ -172,7 +187,7 @@ int FileWriter::open(const std::string& fileName)
 
   // Register the file descriptor with cuFile
   CUfileDescr_t descr;
-  memset(reinterpret_cast<void *>(&descr), 0, sizeof(CUfileDescr_t));
+  memset(static_cast<void *>(&descr), 0, sizeof(descr));
 
   descr.handle.fd = m_fd;
   descr.type = CU_FILE_HANDLE_TYPE_OPAQUE_FD;
@@ -221,7 +236,6 @@ int FileWriter::close()
 void FileWriter::_reset()
 {
   m_count           = 0;
-  m_bufOffset       = 0;
   m_fileOffset      = 0;
   m_batch_starttime = XtcData::TimeStamp(0,0);
 }
@@ -282,7 +296,9 @@ void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp tim
                       m_bufferSize - m_count, size);
     exit(EXIT_FAILURE);
   }
-  chkError(cudaMemcpyAsync(m_buffer_d + m_count, devPtr, size, cudaMemcpyDeviceToDevice, m_stream));
+  //printf("*** writeEvent: buffer %p + count %zu: %p, devPtr %p, sz %zu\n",
+  //       m_buffer_d, m_count, m_buffer_d + m_count, devPtr, size);
+  chkFatal(cudaMemcpyAsync(m_buffer_d + m_count, devPtr, size, cudaMemcpyDeviceToDevice, m_stream));
   m_count += size;
 }
 
@@ -293,8 +309,7 @@ FileWriterAsync::FileWriterAsync(size_t bufferSize, bool dio) :
   m_counts      {0, 0},
   m_bufOffset   {0, off_t(bufferSize)},
   m_index       (0),
-  m_bytesWritten(0),
-  m_bufferSize  (bufferSize)
+  m_bytesWritten(0)
 {
 }
 
@@ -367,7 +382,8 @@ void FileWriterAsync::writeEvent(const void* devPtr, size_t size, const TimeStam
   // write out data if buffer full or batch is too old
   // can't be 1 second without a more precise age calculation, since
   // the seconds field could have "rolled over" since the last event
-  if ((size > (m_bufferSize - m_counts[m_index])) || age_seconds>2) {
+  auto bufferSize = m_bufferSize / 2;   // For 2 ping pong buffers
+  if ((size > (bufferSize - m_counts[m_index])) || age_seconds>2) {
     // Start a new write
     m_writing += 1;
     _write();
@@ -378,11 +394,14 @@ void FileWriterAsync::writeEvent(const void* devPtr, size_t size, const TimeStam
     m_batch_starttime = timestamp;
   }
 
-  if (size > (m_bufferSize - m_counts[m_index])) {
+  if (size > (bufferSize - m_counts[m_index])) {
     logging::critical("Buffer size %zu is too small for dgram of size %zu",
-                      m_bufferSize - m_counts[m_index], size);
+                      bufferSize - m_counts[m_index], size);
     exit(EXIT_FAILURE);
   }
+  //printf("*** writeEvent: buffer %p + offset[%lu] %zu + counts[%lu] %zu: %p, devPtr %p, sz %zu\n",
+  //       m_buffer_d, m_index, m_bufOffset[m_index], m_index, m_counts[m_index],
+  //       m_buffer_d + m_bufOffset[m_index] + m_counts[m_index], devPtr, size);
   chkError(cudaMemcpyAsync(m_buffer_d + m_bufOffset[m_index] + m_counts[m_index], devPtr, size, cudaMemcpyDeviceToDevice, m_stream));
   m_counts[m_index] += size;
 }

@@ -55,7 +55,8 @@ private:
   Pds::Eb::MebContributor&         m_mon;
   const std::atomic<bool>&         m_terminate;
   cudaStream_t                     m_stream;
-  std::unique_ptr<FileWriterAsync> m_fileWriter;
+  //std::unique_ptr<FileWriterAsync> m_fileWriter;
+  std::unique_ptr<FileWriter>      m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
   unsigned                         m_worker;      // For cycling through reducers
   SPSCQueue<ResultTuple>           m_recordQueue;

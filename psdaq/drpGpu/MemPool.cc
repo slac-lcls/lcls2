@@ -345,7 +345,7 @@ void MemPoolGpu::createCalibBuffers(unsigned nPanels, unsigned nElements)
   auto nBufs = nbuffers();
   auto size  = nPanels * nElements * sizeof(*m_calibBuffers_d);
   chkError(cudaMalloc(&m_calibBuffers_d,    nBufs * size));
-  chkMemory          ( m_calibBuffers_d,    nBufs,  size, "calibBuffer_d");
+  chkMemory          ( m_calibBuffers_d,    nBufs,  size, "calibBuffers_d");
   chkError(cudaMemset( m_calibBuffers_d, 0, nBufs * size));
 
   m_calibBufsSize = size;

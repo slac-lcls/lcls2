@@ -77,9 +77,9 @@ void TebReceiver::setup()
   // Set up the file writers
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
-  size_t maxBufSize = 16 * 1024 * 1024UL;
-  //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
-  m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
+  size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
+  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, true);
+  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, true); // For 2 ping pong buffers
   printf("*** TebRcvr::setup: 2\n");
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
   printf("*** TebRcvr::setup: 3\n");
@@ -135,8 +135,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
   }
 
-  //printf("*** TebRcvr::complete: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
-  //       result.pulseId(), result.service(), result.prescale(), result.persist(), result.monitor());
+  logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
+                 TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
@@ -189,8 +189,8 @@ void TebReceiver::_recorder()
     const auto index  = std::get<0>(items);
     const auto result = std::get<1>(items);
     nvtx3::mark("Recorder", nvtx3::payload{index});
-    //printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
-    //       result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
+    logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
+                   TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
     // If needed, wait for the next GPU Reducer in sequence to complete
     size_t dataSize;
