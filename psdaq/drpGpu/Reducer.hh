@@ -55,9 +55,9 @@ public:
     { return m_algos[0]->hasGraph() ? m_outputQueues2[worker].h->pop(items)
                                     : m_outputQueues[worker].pop(items); }
   void configure(XtcData::Xtc& xtc, const void* bufEnd)
-    { m_algos[0]->configure(xtc, bufEnd); }
+    { if (m_algos.size())  m_algos[0]->configure(xtc, bufEnd); }
   void event(XtcData::Xtc& xtc, const void* bufEnd, size_t dataSize)
-    { m_algos[0]->event(xtc, bufEnd, dataSize); }
+    { if (m_algos.size())  m_algos[0]->event(xtc, bufEnd, dataSize); }
 private:
   bool        _setupAlgos(Detector&);
   int         _setupGraph(unsigned instance);

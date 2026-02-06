@@ -79,7 +79,7 @@ Reducer::Reducer(const Parameters&                  para,
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
   auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
-  auto payloadSize = m_algos[0]->payloadSize(); // Each instance returns the same value
+  auto payloadSize = m_algos.size() ? m_algos[0]->payloadSize() : 0; // Each instance returns the same value
   auto totalSize   = headerSize + payloadSize;
   if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
@@ -89,42 +89,44 @@ Reducer::Reducer(const Parameters&                  para,
   m_pool.createReduceBuffers(payloadSize, headerSize);
 
   // Set up the worker queues to fit all buffers
-  auto nEntries{nxtPwrOf2((m_pool.nbuffers() + m_para.nworkers-1) / m_para.nworkers)};
-  if (m_algos[0]->hasGraph()) {         // Same value for all instances
-    m_inputQueues2.resize(m_para.nworkers);
-    m_outputQueues2.resize(m_para.nworkers);
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      printf("*** Reducer::ctor: 1 wkr %u\n", i);
-      auto& iq = m_inputQueues2[i];
-      iq.h = new RingQueueHtoD<unsigned>(nEntries, m_terminate, m_terminate_d);
-      chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
-      chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
-      printf("*** Reducer::ctor: 2 wkr %u\n", i);
-      auto& oq = m_outputQueues2[i];
-      oq.h = new RingQueueDtoH<ReducerTuple>(nEntries, m_terminate, m_terminate_d);
-      chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
-      chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
-      printf("*** Reducer::ctor: 3 wkr %u\n", i);
-    }
-  } else {
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      m_inputQueues.emplace_back(nEntries);
-      m_outputQueues.emplace_back(nEntries);
+  if (m_para.nworkers) {
+    auto nEntries{nxtPwrOf2((m_pool.nbuffers() + m_para.nworkers-1) / m_para.nworkers)};
+    if (m_algos[0]->hasGraph()) {         // Same value for all instances
+      m_inputQueues2.resize(m_para.nworkers);
+      m_outputQueues2.resize(m_para.nworkers);
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        printf("*** Reducer::ctor: 1 wkr %u\n", i);
+        auto& iq = m_inputQueues2[i];
+        iq.h = new RingQueueHtoD<unsigned>(nEntries, m_terminate, m_terminate_d);
+        chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
+        chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
+        printf("*** Reducer::ctor: 2 wkr %u\n", i);
+        auto& oq = m_outputQueues2[i];
+        oq.h = new RingQueueDtoH<ReducerTuple>(nEntries, m_terminate, m_terminate_d);
+        chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
+        chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
+        printf("*** Reducer::ctor: 3 wkr %u\n", i);
+      }
+    } else {
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        m_inputQueues.emplace_back(nEntries);
+        m_outputQueues.emplace_back(nEntries);
+      }
+
+      // Start the worker threads
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        m_threads.emplace_back(&Reducer::_worker, std::ref(*this), i);
+      }
     }
 
-    // Start the worker threads
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      m_threads.emplace_back(&Reducer::_worker, std::ref(*this), i);
-    }
-  }
-
-  if (m_algos[0]->hasGraph()) {         // Same value for all instances
-    // Prepare the CUDA graphs
-    m_graphExecs.resize(m_para.nworkers);
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      if (_setupGraph(i)) {
-        logging::critical("Failed to set up Reducer graph[%u]", i);
-        abort();
+    if (m_algos[0]->hasGraph()) {         // Same value for all instances
+      // Prepare the CUDA graphs
+      m_graphExecs.resize(m_para.nworkers);
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        if (_setupGraph(i)) {
+          logging::critical("Failed to set up Reducer graph[%u]", i);
+          abort();
+        }
       }
     }
   }
@@ -135,7 +137,7 @@ Reducer::Reducer(const Parameters&                  para,
 Reducer::~Reducer()
 {
   printf("*** Reducer::dtor\n");
-  if (m_algos[0]->hasGraph()) {         // Same value for all instances
+  if (m_algos.size() && m_algos[0]->hasGraph()) { // Same value for all instances
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (m_inputQueues2[i].d)  chkError(cudaFree(m_inputQueues2[i].d));
       if (m_inputQueues2[i].h)  delete m_inputQueues2[i].h;
@@ -201,7 +203,7 @@ Reducer::~Reducer()
 int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                           std::map<std::string, std::string>&   labels)
 {
-  if (m_algos[0]->hasGraph()) {         // Same value for all instances
+  if (m_algos.size() && m_algos[0]->hasGraph()) {         // Same value for all instances
     for (unsigned i = 0; i < m_inputQueues2.size(); ++i) {
       auto wkr = std::to_string(i);
       exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues2[i].h->occupancy(); });
@@ -406,7 +408,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
 void Reducer::startup()
 {
   printf("*** Reducer::startup: 1\n");
-  if (m_algos[0]->hasGraph()) {         // Same value for all instances
+  if (m_algos.size() && m_algos[0]->hasGraph()) {           // Same value for all instances
     chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
     printf("*** Reducer::startup: 2\n");
 
@@ -421,7 +423,7 @@ void Reducer::startup()
 
 void Reducer::shutdown()
 {
-  if (!m_algos[0]->hasGraph()) {         // Same value for all instances
+  if (m_algos.size() && !m_algos[0]->hasGraph()) { // Same value for all instances
     for (auto& outputQueue: m_outputQueues)
       outputQueue.shutdown();
     for (auto& inputQueue: m_inputQueues)
