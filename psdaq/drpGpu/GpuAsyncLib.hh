@@ -39,10 +39,6 @@
 #define hostFunc
 #endif
 
-#if defined(__CUDACC_VER_MAJOR__) && (__CUDACC_VER_MAJOR__ < 12) // Avoid gcc complaints
-#define CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1 CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS
-#endif
-
 //--------------------------------------------------------------------------------//
 // CUDA Prototypes
 #define NOARG ""           // Ensures there is an arg when __VA_ARGS__ is blank

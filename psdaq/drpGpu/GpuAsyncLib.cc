@@ -73,14 +73,6 @@ bool CudaContext::init(int device, bool quiet) {
     chkError(cudaGetDeviceProperties(&deviceProp, device_));
     logging::info("Compute Capability: %d.%d", deviceProp.major, deviceProp.minor);
 
-    // Set required attributes
-    if (!getAttribute(CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1)) {
-        logging::warning("This device does not support CUDA Stream Operations, this code will not run!");
-        logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
-                       "if your GPU is supported.");
-        return false;
-    }
-
     // Report memory totals
     size_t global_mem = 0;
     if (chkError(cuDeviceTotalMem(&global_mem, device_)))
