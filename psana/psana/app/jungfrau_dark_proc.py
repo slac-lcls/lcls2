@@ -159,7 +159,7 @@ def do_main():
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
+#    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
     t0_sec = time()
 #    use_mpi = is_using_mpi()
