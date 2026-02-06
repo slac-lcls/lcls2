@@ -156,7 +156,7 @@ def get_jungfrau_gain_mode_object(odet):
 
 def open_DataSource(**kwargs):
     dskwargs = ups.data_source_kwargs(**kwargs)
-    dskwargs['max_events'] = kwargs.get('nrecs', None)
+    dskwargs['max_events'] = kwargs.get('events', 1000000)
     dskwargs['batch_size'] = kwargs.get('batch_size', 2)
     #logger.info('DataSource dskwargs: %s' % (dskwargs))
     #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=2)
@@ -245,28 +245,31 @@ def jungfrau_dark_proc(parser):
         terminate_steps = False
         nevrun = 0
         nnones = 0
+
         for istep, step in enumerate(orun.steps()):
+            logger.info('==== begin step %d' % istep)
+
+            if stepnum is not None:
+                if istep < stepnum:
+                    logger.info('skip step %d < --stepnum = %d   -> continue step loop' % (istep, stepnum))
+                    continue
+
+                elif istep > stepnum:
+                    logger.info('Break further processing due to step %d -> --stepnum = %d   > break step loop' % (istep, stepnum))
+                    terminate_runs = True
+                    break
+
             nsteptot += 1
 
-            metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
-            logger.info((100*'=') + '\n step_docstring ' +
-                  'is None' if step_docstring is None else\
-                  str(metadic))
-
             if stepmax is not None and nsteptot>stepmax:
-                logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nsteptot, stepmax))
+                logger.info('==== step:%02d loop is terminated --stepnum=%d --stepmax=%d' % (nsteptot, stepnum, stepmax))
                 terminate_runs = True
                 break
 
-            if stepnum is not None:
-                # process calibcycle stepnum ONLY if stepnum is specified
-                if istep < stepnum:
-                    logger.info('Skip step %d < --stepnum = %d' % (istep, stepnum))
-                    continue
-                elif istep > stepnum:
-                    logger.info('Break further processing due to step %d > --stepnum = %d' % (istep, stepnum))
-                    terminate_runs = True
-                    break
+            metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
+            s = '%s step: %d %s\n    step_docstring %s' % (30*'=', istep, 30*'=',\
+                  ('is None' if step_docstring is None else str(metadic)))
+            logger.info(s)
 
             igm = igmode if igmode is not None else\
                   metadic['gainMode'] if step_docstring is not None\
@@ -365,7 +368,8 @@ def jungfrau_dark_proc(parser):
 
                 # End of event-loop
 
-            print()
+            logger.info('end of the event loop for step %d' % istep)
+
             ss = 'run[%d] %d  end of step %d  events total/run/step/selected: %4d/%4d/%4d/%4d'%\
                  (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel)
             logger.info(ss)
