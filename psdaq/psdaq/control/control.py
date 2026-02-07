@@ -368,7 +368,7 @@ def segment_count(det_name, platform_dict, *, only_active=False):
 def timestampStr():
     current = datetime.now(timezone.utc)
     nsec = 1000 * current.microsecond
-    sec = int(current.timestamp()) - POSIX_TIME_AT_EPICS_EPOCH
+    sec = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
     return '%010d-%09d' % (sec, nsec)
 
 def get_readout_group_mask(body):
@@ -1494,9 +1494,9 @@ class CollectionManager():
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginRun'])
             self.readoutCumulative = [0 for i in range(8)]
 
-            ok = self.get_phase2_replies('beginrun')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('beginrun')
+        if not ok:
+            return False
 
         self.slowupdateArmed = self.slow_update_rate != 0
 
@@ -1521,9 +1521,9 @@ class CollectionManager():
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndRun'])
             self.xpm.recording(self.groups, False)
 
-            ok = self.get_phase2_replies('endrun')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('endrun')
+        if not ok:
+            return False
 
         self.lastTransition = 'endrun'
 
@@ -1545,9 +1545,9 @@ class CollectionManager():
         if not self.simulator:
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['BeginStep'])
 
-            ok = self.get_phase2_replies('beginstep')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('beginstep')
+        if not ok:
+            return False
 
         self.lastTransition = 'beginstep'
         return True
@@ -1563,9 +1563,9 @@ class CollectionManager():
         if not self.simulator:
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['EndStep'])
 
-            ok = self.get_phase2_replies('endstep')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('endstep')
+        if not ok:
+            return False
 
         self.lastTransition = 'endstep'
         return True
@@ -2035,7 +2035,8 @@ class CollectionManager():
 
     def start_run(self, experiment_name):
         if self.simulator:
-            run_num = 1
+            current = datetime.now(timezone.utc)
+            run_num = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
             return run_num      # Always use run # 1 in simulator mode
 
         run_num = 0
@@ -2178,7 +2179,9 @@ class CollectionManager():
                 else:
                     logging.error("Error: status code %d" % resp.status_code)
         else:
-            last_run_number = 1
+            current = datetime.now(timezone.utc)
+            sec = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
+            last_run_number = sec
 
         # last run number, or 0
         return last_run_number
@@ -2355,9 +2358,9 @@ class CollectionManager():
                 self.step_done_thread.start()
 
 
-            ok = self.get_phase2_replies('configure')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('configure')
+        if not ok:
+            return False
 
         logging.debug('condition_configure() returning %s' % ok)
 
@@ -2378,9 +2381,9 @@ class CollectionManager():
         if not self.simulator:
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['Unconfigure'])
 
-            ok = self.get_phase2_replies('unconfigure')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('unconfigure')
+        if not ok:
+            return False
 
             self.step_exit.set()
 
@@ -2430,9 +2433,9 @@ class CollectionManager():
             # phase 2
             self.xpm.insert_transition(self.groups, ControlDef.transitionId['Enable'])
 
-            ok = self.get_phase2_replies('enable')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('enable')
+        if not ok:
+            return False
 
         # For the first Enable after a BeginRun, possibly issue a Slow Update
         # after Enable has gone through but before enabling triggers
@@ -2491,9 +2494,9 @@ class CollectionManager():
             # of the daq? just a guess.  - cpo oct 24, 2024
             self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
 
-            ok = self.get_phase2_replies('disable')
-            if not ok:
-                return False
+        ok = self.get_phase2_replies('disable')
+        if not ok:
+            return False
 
         self.lastTransition = 'disable'
         return True
