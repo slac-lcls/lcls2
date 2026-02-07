@@ -496,7 +496,6 @@ void PGPDetectorApp::handlePhase1(const json& msg)
 
     // Trigger phase 2 if we're in simulator mode
     if (m_para.device == "/dev/null") { // Simulator mode
-      sleep(1); // Let Phase 1 actions become established before initiating Phase 2
       auto det = m_det->gpuDetector();
       if (det)  det->issuePhase2(tid);
     }

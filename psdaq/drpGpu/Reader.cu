@@ -243,8 +243,8 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
         }
         //if (tid == 0)  printf("### Reader: Got DMA[%u]: sz %u, TH[0] %016lx\n", dmaBufIdx, *mem, *((uint64_t*)(&mem[8-1])));
         auto next = (dmaBufIdx + 1) % dmaCount; // Prepare for next DMA buffer
-        *(uint32_t*)(dmaBufs[next] + 4) = 0;    // Clear the handshake space of the next DMA buffer
-        *(uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(next)) = 1;  // Enable the DMA on this dataDev
+        *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;                           // Clear the handshake space of the next DMA buffer
+        *(volatile uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(next)) = 1; // Enable the DMA on this dataDev
         if (blockIdx.x == 0)                    // Update global memory  @todo: check for race
           dmaBufferIdx = next;                  // only once (same value for all blocks)
         //if (tid == 0)  printf("### Reader: next %lu\n", next);

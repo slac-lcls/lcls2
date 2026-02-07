@@ -57,8 +57,6 @@ SimDetector::~SimDetector()
 void SimDetector::shutdown()
 {
   logging::debug("SimDetector::shutdown");
-
-  connectionShutdown();
 }
 
 json SimDetector::connectionInfo(const json& msg)
@@ -110,9 +108,8 @@ void SimDetector::connect(const json& connect_json, const std::string& collectio
 
 void SimDetector::issuePhase2(TransitionId::Value tid)
 {
-  logging::debug("SimDetector::issuePhase2");
+  logging::debug("SimDetector::issuePhase2: tid %s", TransitionId::name(tid));
   m_eventQueue.push(tid);
-  logging::debug("SimDetector::issuePhase2 done");
 }
 
 size_t SimDetector::_genTimingHeader(uint8_t* buffer, TransitionId::Value tid)
@@ -173,20 +170,27 @@ void SimDetector::_eventSimulator()
     if (!m_eventQueue.pop(tid))  continue;
     //printf("*** _eventSimulator: Got tid %u (%s)\n", tid, TransitionId::name(tid));
 
+    // Reset the DMA buffer index to be consistent with Reader::_handleDMA()
+    if (tid == TransitionId::Configure) {
+      dmaIdx       = 0;
+      m_evtCounter = 0;
+    } else if (tid == TransitionId::BeginRun) {
+      m_evtCounter = 1;                 // Compensate for the ClearReadout sent before BeginRun
+    }
+
     // Wait for DMA buffer to become ready for writing
     //printf("*** _eventSimulator: Waiting for DMA[%u] (%p) to become ready for writing\n", dmaIdx, swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx));
-    unsigned us = 1;
     while (!*(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx))) {
       if (m_terminate.load(std::memory_order_acquire))  break;
-      usleep(us);
-      if (us < 1024)  us *= 2;
     }
     if (m_terminate.load(std::memory_order_acquire))  break;
     //printf("*** _eventSimulator: DMA[%u] (%p) is ready for writing\n", dmaIdx, swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx));
 
+    *(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)) = 0; // Disable "DMAs" to this buffer
+
     auto dmaBuffer = dmaBuffers[dmaIdx].dptr;
-    uint32_t hndShk;
-    chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDeviceToHost, m_stream));
+    //uint32_t hndShk;
+    //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDeviceToHost, m_stream));
     //chkError(cudaStreamSynchronize(m_stream));
     //printf("*** _eventSimulator: DMA[%u]: wr enable %u, handshake %u\n", dmaIdx,
     //       *(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)), hndShk);
