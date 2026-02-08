@@ -70,19 +70,20 @@ def main():
         help="Exclude this rank from max calculations (can be repeated).",
     )
     parser.add_argument(
-        "--no-det",
-        action="store_true",
-        help="Skip detector-specific keywords (jungfrau_*).",
-    )
-    parser.add_argument(
         "--show-max",
         action="store_true",
         help="Only print max value and max rank for each keyword.",
     )
     parser.add_argument(
-        "--show-azav",
+        "--show-more",
         action="store_true",
-        help="Include azav_* keywords in output.",
+        help=(
+            "Include event, jungfrau, and azav sections in output. "
+            "azav setFromDet is the azimuthalBinning detector-setup phase that "
+            "collects mask/geometry arrays and prepares indices; its time "
+            "contributes to det_setup. azav _setup builds/reuses binning and "
+            "shared-cache metadata; it also contributes to det_setup (not per-event)."
+        ),
     )
     parser.add_argument(
         "--no-label",
@@ -131,9 +132,6 @@ def main():
             if msg.startswith("run init"):
                 record_single(stage_values, "run_init", rank, parse_delta(msg), warnings, seen_single)
                 continue
-            if msg.startswith("smd init"):
-                add_value(stage_values, "smd_init", parse_delta(msg), rank)
-                continue
             # detector setup (delta)
             if msg.startswith("default det setup"):
                 add_value(stage_values, "det_setup", parse_delta(msg), rank)
@@ -172,42 +170,21 @@ def main():
                 continue
 
             # total (all done uses since_start)
-            if msg.startswith("srv node done"):
-                val = parse_delta(msg)
-                if val is not None:
-                    add_value(stage_values, "srv_node_done", val, rank)
-                continue
             if msg.startswith("psana all done"):
                 record_single(stage_values, "total", rank, parse_since_start(msg), warnings, seen_single)
                 continue
 
-            # loop sub-stages (delta)
-            if msg.startswith("smd done save sum"):
-                add_value(stage_values, "smd_done_save_sum", parse_delta(msg), rank)
-                continue
-            if msg.startswith("smd done save cfg"):
-                add_value(stage_values, "smd_done_save_cfg", parse_delta(msg), rank)
-                continue
-            if msg.startswith("smd done all"):
-                add_value(stage_values, "smd_done_all", parse_delta(msg), rank)
-                continue
             if msg.startswith("smalldata cls init start"):
-                add_value(stage_values, "smalldata_cls_init_start", parse_delta(msg), rank)
                 continue
             if msg.startswith("smalldata cls init done"):
-                add_value(stage_values, "smalldata_cls_init_done", parse_delta(msg), rank)
                 continue
             if msg.startswith("smalldata cls event done"):
-                add_value(stage_values, "smalldata_cls_event_done", parse_delta(msg), rank)
                 continue
             if msg.startswith("smalldata cls sum done"):
-                add_value(stage_values, "smalldata_cls_sum_done", parse_delta(msg), rank)
                 continue
             if msg.startswith("smalldata cls save summary done"):
-                add_value(stage_values, "smalldata_cls_save_summary_done", parse_delta(msg), rank)
                 continue
             if msg.startswith("smalldata cls done"):
-                add_value(stage_values, "smalldata_cls_done", parse_since_start(msg), rank)
                 continue
             if msg.startswith("azav "):
                 if " delta=" in msg:
@@ -231,61 +208,36 @@ def main():
                 add_value(stage_values, "jungfrau_processSums_time", parse_any_time(msg), rank)
                 continue
     print("units seconds")
-    keys = [
+    main_keys = [
         "args_parsed",
         "generic_module_imports",
         "custom_module_imports",
         "ds_args_setup",
         "ds_init",
         "run_init",
-        "smd_init",
         "det_setup",
         "first_evt",
         "last_evt",
+        "total",
+    ]
+    event_keys = [
         "evt_default_detdata",
         "evt_user_dets",
         "evt_event_store",
+    ]
+    jungfrau_keys = [
         "jungfrau_getData_time",
         "jungfrau_processFuncs_time",
         "jungfrau_getUserData_time",
         "jungfrau_getUserEnvData_time",
         "jungfrau_processSums_time",
-        "srv_node_done",
-        "smd_done_save_sum",
-        "smd_done_save_cfg",
-        "smd_done_all",
-        "smalldata_cls_init_start",
-        "smalldata_cls_init_done",
-        "smalldata_cls_event_done",
-        "smalldata_cls_sum_done",
-        "smalldata_cls_save_summary_done",
-        "smalldata_cls_done",
-        "total",
     ]
-    if args.show_azav and azav_keys:
+    azav_list = []
+    if args.show_more and azav_keys:
         azav_order = [
-            "azav initialized",
-            "azav setFromDet start",
-            "azav setFromDet after mask",
-            "azav setFromDet after mask flatten",
-            "azav setFromDet after x/y flatten",
-            "azav setFromDet after z flatten",
-            "azav setFromDet after z default",
-            "azav setFromDet before _init_shared_cache",
-            "azav after _init_shared_cache",
-            "azav cache_enabled: True, key: True",
-            "azav shared cache hit det=jungfrau",
-            "azav computing binning",
-            "azav computing binning done",
-            "azav storing azav cache for key",
-            "azav bcast meta done",
-            "azav shared cache leader wrote det=jungfrau",
-            "azav shared cache retrieved det=jungfrau",
-            "azav storing azav cache done",
-            "azav setFromFunc",
-            "azav after _setup",
-            "azav doCake np.bincount start",
-            "azav doCake np.bincount done",
+            "azav setFromDet done",
+            "azav _setup done",
+            "azav doCake done",
         ]
         ordered = []
         for label in azav_order:
@@ -297,94 +249,106 @@ def main():
         # de-dup while preserving order
         seen = set()
         azav_list = [k for k in azav_list if not (k in seen or seen.add(k))]
-        keys.extend(azav_list)
-    if args.no_det:
-        keys = [k for k in keys if not k.startswith("jungfrau_")]
+
+    sections = [("main section", main_keys)]
+    if args.show_more:
+        sections.extend(
+            [
+                ("event section", event_keys),
+                ("jungfrau section", jungfrau_keys),
+            ]
+        )
+        if azav_list:
+            sections.append(("azav section", azav_list))
+
+    keys = []
+    for _, section_keys in sections:
+        keys.extend(section_keys)
 
     section_width = max(len("section"), max((len(k) for k in keys), default=0))
     num_width = 10  # room for numbers with 2 decimals
     max_rank_width = len("max_rank")
-    if not args.no_label:
-        if args.show_max:
-            header = (
-                f"{'section':<{section_width}} "
-                f"{'max':>{num_width}} "
-                f"{'max_rank':>{max_rank_width}}"
-            )
-        else:
-            header = (
-                f"{'section':<{section_width}} "
-                f"{'avg':>{num_width}} "
-                f"{'min':>{num_width}} "
-                f"{'max':>{num_width}} "
-                f"{'med':>{num_width}} "
-                f"{'std.':>{num_width}} "
-                f"{'max_rank':>{max_rank_width}}"
-            )
-        print(header)
-
-    for key in keys:
-        entries = stage_values.get(key)
-        if entries:
-            vals = [v for v, _ in entries]
-            vmax = max(vals)
-            max_rank = next(r for v, r in entries if v == vmax)
+    for section_name, section_keys in sections:
+        if not section_keys:
+            continue
+        if not args.no_label:
+            print(f"\n{section_name}")
             if args.show_max:
-                if args.no_label:
-                    print(f"{vmax:.2f}")
-                else:
-                    print(
-                        f"{key:<{section_width}} "
-                        f"{vmax:>{num_width}.2f} "
-                        f"{max_rank:>{max_rank_width}}"
-                    )
+                header = (
+                    f"{'':<{section_width}} "
+                    f"{'max':>{num_width}} "
+                    f"{'max_rank':>{max_rank_width}}"
+                )
             else:
-                avg = statistics.mean(vals)
-                vmin = min(vals)
-                med = statistics.median(vals)
-                std = statistics.pstdev(vals) if len(vals) > 1 else 0.0
-                if args.no_label:
-                    print(
-                        f"{avg:.2f} {vmin:.2f} {vmax:.2f} {med:.2f} {std:.2f}"
-                    )
+                header = (
+                    f"{'':<{section_width}} "
+                    f"{'avg':>{num_width}} "
+                    f"{'min':>{num_width}} "
+                    f"{'max':>{num_width}} "
+                    f"{'med':>{num_width}} "
+                    f"{'std.':>{num_width}} "
+                    f"{'max_rank':>{max_rank_width}}"
+                )
+            print(header)
+        for key in section_keys:
+            entries = stage_values.get(key)
+            if entries:
+                vals = [v for v, _ in entries]
+                vmax = max(vals)
+                max_rank = next(r for v, r in entries if v == vmax)
+                if args.show_max:
+                    if args.no_label:
+                        print(f"{vmax:.2f}")
+                    else:
+                        print(
+                            f"{key:<{section_width}} "
+                            f"{vmax:>{num_width}.2f} "
+                            f"{max_rank:>{max_rank_width}}"
+                        )
                 else:
-                    print(
-                        f"{key:<{section_width}} "
-                        f"{avg:>{num_width}.2f} "
-                        f"{vmin:>{num_width}.2f} "
-                        f"{vmax:>{num_width}.2f} "
-                        f"{med:>{num_width}.2f} "
-                        f"{std:>{num_width}.2f} "
-                        f"{max_rank:>{max_rank_width}}"
-                    )
-        else:
-            if args.show_max:
-                if args.no_label:
-                    print("NA")
-                else:
-                    print(
-                        f"{key:<{section_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{max_rank_width}}"
-                    )
+                    avg = statistics.mean(vals)
+                    vmin = min(vals)
+                    med = statistics.median(vals)
+                    std = statistics.pstdev(vals) if len(vals) > 1 else 0.0
+                    if args.no_label:
+                        print(
+                            f"{avg:.2f} {vmin:.2f} {vmax:.2f} {med:.2f} {std:.2f}"
+                        )
+                    else:
+                        print(
+                            f"{key:<{section_width}} "
+                            f"{avg:>{num_width}.2f} "
+                            f"{vmin:>{num_width}.2f} "
+                            f"{vmax:>{num_width}.2f} "
+                            f"{med:>{num_width}.2f} "
+                            f"{std:>{num_width}.2f} "
+                            f"{max_rank:>{max_rank_width}}"
+                        )
             else:
-                if args.no_label:
-                    print("NA NA NA NA NA")
+                if args.show_max:
+                    if args.no_label:
+                        print("NA")
+                    else:
+                        print(
+                            f"{key:<{section_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{max_rank_width}}"
+                        )
                 else:
-                    print(
-                        f"{key:<{section_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{num_width}} "
-                        f"{'NA':>{max_rank_width}}"
-                    )
+                    if args.no_label:
+                        print("NA NA NA NA NA")
+                    else:
+                        print(
+                            f"{key:<{section_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{num_width}} "
+                            f"{'NA':>{max_rank_width}}"
+                        )
 
     counts = {r: len(evts) for r, evts in event_numbers_by_rank.items()}
-    if not counts:
-        counts = count_events_from_stage(stage_values, "smalldata_cls_event_done")
-
     if counts:
         vals = list(counts.values())
         vmax = max(vals)
@@ -393,13 +357,13 @@ def main():
         if not args.no_label:
             if args.show_max:
                 header = (
-                    f"{'section':<{section_width}} "
+                    f"{'':<{section_width}} "
                     f"{'max':>{num_width}} "
                     f"{'max_rank':>{max_rank_width}}"
                 )
             else:
                 header = (
-                    f"{'section':<{section_width}} "
+                    f"{'':<{section_width}} "
                     f"{'avg':>{num_width}} "
                     f"{'min':>{num_width}} "
                     f"{'max':>{num_width}} "
