@@ -17,18 +17,12 @@ from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
-from psana.psexp.node import (
-    BigDataNode,
-    EventBuilderNode,
-    MarchingBigDataNode,
-    MarchingEventBuilderNode,
-    Smd0,
-)
+from psana.psexp.node import BigDataNode, EventBuilderNode, Smd0
 from psana.psexp.run import Run
 from psana.psexp.calib_xtc import load_calib_xtc_from_buffer
 from psana.psexp.smdreader_manager import SmdReaderManager
 from psana.psexp.step import Step
-from psana.psexp.tools import mode, get_smd_n_events
+from psana.psexp.tools import mode
 from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.detector.shared_geo_cache import SharedGeoCache
 from psana.detector.shared_calibc_cache import SharedCalibcCache
@@ -70,30 +64,12 @@ class RunParallel(Run):
 
         super()._setup_envstore()
 
-        self._init_marching_shared_buffers()
-
-        marching_enabled = (
-            self.dsparms.marching_read
-            and getattr(self.comms, "marching_enabled", False)
-            and getattr(self.comms, "march_shared_mem", None) is not None
-        )
-
         if nodetype == "smd0":
             self.smd0 = Smd0(comms, smdr_man, configs)
         elif nodetype == "eb":
-            if marching_enabled:
-                self.eb_node = MarchingEventBuilderNode(comms, configs, dsparms)
-            else:
-                self.eb_node = EventBuilderNode(comms, configs, dsparms)
+            self.eb_node = EventBuilderNode(comms, configs, dsparms)
         elif nodetype == "bd":
-            if marching_enabled:
-                self.bd_node = MarchingBigDataNode(
-                    comms, configs, dm, dsparms, self.shared_state
-                )
-            else:
-                self.bd_node = BigDataNode(
-                    comms, configs, dm, dsparms, self.shared_state
-                )
+            self.bd_node = BigDataNode(comms, configs, dm, dsparms, self.shared_state)
             self.ana_t_gauge = get_prom_manager().get_metric("psana_bd_ana_rate")
 
         self._setup_run_calibconst()
@@ -123,17 +99,6 @@ class RunParallel(Run):
                 except Exception:
                     self.logger.debug("Failed to close shared memory helper %s", attr, exc_info=True)
                 setattr(self, attr, None)
-
-        # Release marching shared buffers stored on the communicator.
-        if self.comms is not None:
-            shared_mem = getattr(self.comms, "march_shared_psana/psana/psexp/mpi_ds.pymem", None)
-            if shared_mem is not None:
-                try:
-                    shared_mem.close()
-                except Exception:
-                    self.logger.debug("Failed to close marching shared memory", exc_info=True)
-                self.comms.march_shared_mem = None
-                self.comms.march_params = {}
 
     def _setup_run_calibconst(self):
         if nodetype == "smd0":
@@ -442,108 +407,6 @@ class RunParallel(Run):
         targets.sort(key=lambda item: (item[0], item[1]))
         return targets
 
-    def _init_marching_shared_buffers(self):
-        if not (
-            self.dsparms.marching_read
-            and getattr(self.comms, "marching_enabled", False)
-            and getattr(self.comms, "march_shm_comm", None) not in (None, MPI.COMM_NULL)
-        ):
-            return
-        if getattr(self.comms, "march_shared_mem", None) is not None:
-            return
-        shared_mem = MPISharedMemory(shm_comm=self.comms.march_shm_comm)
-        params = self._marching_params()
-        slot_shape = (params["n_slots"], params["max_events"], len(self.configs))
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_bd_offsets", slot_shape, np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_bd_sizes", slot_shape, np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_smd_offsets", slot_shape, np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_smd_sizes", slot_shape, np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_services", slot_shape, np.int32)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_cutoff_flags", slot_shape, np.int8)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_new_chunk_ids", slot_shape, np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_slot_events", (params["n_slots"],), np.int32)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_slot_chunk_ids", (params["n_slots"],), np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_slot_states", (params["n_slots"],), np.int32)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_slot_next_evt", (params["n_slots"],), np.int64)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_slot_consumers_done", (params["n_slots"],), np.int32)
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_chunk_sizes", (params["n_slots"],), np.int32)
-        self._alloc_marching_array(
-            shared_mem,
-            f"{params['prefix']}_chunk_bytes",
-            (params["n_slots"], params["max_chunk_bytes"]),
-            np.uint8,
-        )
-        self._alloc_marching_array(shared_mem, f"{params['prefix']}_shutdown", (1,), np.int32)
-        n_consumers = max(getattr(self.comms, "march_shm_size", 1) - 1, 1)
-        self._alloc_marching_array(
-            shared_mem,
-            f"{params['prefix']}_slot_reader_counts",
-            (params["n_slots"], n_consumers),
-            np.int32,
-        )
-        self._alloc_marching_array(
-            shared_mem,
-            f"{params['prefix']}_slot_start_times",
-            (params["n_slots"],),
-            np.float64,
-        )
-        params["n_consumers"] = n_consumers
-        self.comms.march_shared_mem = shared_mem
-        self.comms.march_params = params
-
-    def _alloc_marching_array(self, shared_mem, name, shape, dtype):
-        if not shared_mem.has_array(name):
-            shared_mem.allocate_array(name, shape, dtype)
-
-    def _marching_params(self):
-        prefix = os.environ.get("PS_MARCH_PREFIX", "march")
-        env_slots = os.environ.get("PS_MARCH_SLOTS")
-        march_nodes = getattr(self.comms, "n_smd_nodes", 1)
-        if march_nodes <= 0:
-            march_nodes = 1
-        if env_slots is None:
-            requested_slots = march_nodes
-        else:
-            try:
-                requested_slots = int(env_slots)
-            except ValueError:
-                self.logger.warning(
-                    "Invalid PS_MARCH_SLOTS=%r; defaulting to %d", env_slots, march_nodes
-                )
-                requested_slots = march_nodes
-        requested_slots = max(requested_slots, 1)
-        n_slots = min(requested_slots, march_nodes)
-        if env_slots is not None and n_slots < requested_slots:
-            self.logger.warning(
-                "PS_MARCH_SLOTS=%d exceeds available marching EB nodes (%d); using %d slots instead",
-                requested_slots,
-                march_nodes,
-                n_slots,
-            )
-        smd_n_events = get_smd_n_events()
-        try:
-            events_scale = float(os.environ.get("PS_MARCH_EVENTS_SCALE", "1.2"))
-        except ValueError:
-            events_scale = 1.2
-        if events_scale <= 1.0:
-            events_scale = 1.2
-        max_events = max(int(math.ceil(smd_n_events * events_scale)), 1)
-        max_chunk_bytes = int(os.environ.get("PS_MARCH_MAX_CHUNK_MB", "32"))
-        max_chunk_bytes = max_chunk_bytes * 1024 * 1024
-        if nodetype == "eb":
-            self.logger.debug(
-                "Marching EB params: n_slots=%d max_events=%d max_chunk_bytes=%d",
-                n_slots,
-                max_events,
-                max_chunk_bytes,
-            )
-        return {
-            "prefix": prefix,
-            "n_slots": n_slots,
-            "max_events": max_events,
-            "max_chunk_bytes": max_chunk_bytes,
-        }
-
     def events(self):
         evt_iter = self.start()
         st = time.time()
@@ -626,8 +489,6 @@ class RunParallel(Run):
 
         Requires PS_EB_NODES=1 for broadcast mode.
         """
-        if self.dsparms.marching_read:
-            raise RuntimeError("build_table() is not supported in marching mode")
         if os.environ.get("PS_EB_NODES", "1") != "1":
             raise RuntimeError("build_table() currently supports only PS_EB_NODES=1")
 
