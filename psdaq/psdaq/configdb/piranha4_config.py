@@ -43,7 +43,12 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
         self._cur  = []
 
     def _check(self):                 # Check if camera is sitting at a prompt
-        return ''.join(self._cur) == 'USER>'
+#        return ''.join(self._cur) == 'USER>'
+        prompt = ''.join(self._cur)
+        result = (prompt == 'USER>')
+        if not result:
+            logging.warning(f'_check found {prompt}')
+        return result
 
     def _await(self, tmo = 5.0):
         tEnd = time.time() + tmo

@@ -19,7 +19,7 @@ def main():
     parser = argparse.ArgumentParser(description='Sequence for EpixHR DAQ/Run triggering')
     parser.add_argument('--rate', help="Run trigger rate (Hz)", type=float, default=4.9e3)
     parser.add_argument('--tgt' , help="DAQ trigger time (sec)", type=float, default=0.834e-3)
-    parser.add_argument('--daq', help='DAQ trigger at RUN trigger rate/N', type=int, default=None)
+    parser.add_argument('--daq', help='DAQ trigger at RUN trigger rate/N.  Omit to get 120 Hz on beam.', type=int, default=None)
     parser.add_argument('--full', help='DAQ trigger at RUN trigger rate', action='store_true')
     parser.add_argument('--f360', help='DAQ trigger at 360 Hz', action='store_true')
     parser.add_argument('--minAC', help='Minimum 120H interval in 119MHz clocks', default=0x5088c, type=auto_int )
@@ -161,6 +161,7 @@ def main():
         while(tmo<10):
             try:
                 seq.execute(title,instrset,descset)
+                seq.seqcodes({i:descset[i] for i in range(len(descset))})
                 break
             except TimeoutError:
                 tmo += 1
