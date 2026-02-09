@@ -5,7 +5,7 @@ import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 #CMD = """mpirun -n 4 python %s -e mfx101332224 -r 7 -d epix100 -n 100""" % SCRNAME
 
-CMD = """mpirun -n 4 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx100848724 -r 49 -d jungfrau -n 100"""
+CMD = """mpirun -n 5 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx100848724 -r 49 -d jungfrau -n 100"""
 
 
 
@@ -51,8 +51,9 @@ smd = ds.smalldata()
 myrun = next(ds.runs())
 print('XXX myrun', str(myrun), '  runnum:', str(myrun.runnum), s_rsc)
 det = myrun.Detector(args.det)
-print('XXX ds.runnum_list = %s' % str(ds.runnum_list), s_rsc)
-sys.exit('TEST EXIT')
+#print('XXX ds.runnum_list = %s' % str(ds.runnum_list), s_rsc)
+print('TEST EXIT')
+#sys.exit(0)
 
 for nevt,evt in enumerate(myrun.events()):
     raw = det.raw.raw(evt)
