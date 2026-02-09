@@ -33,6 +33,7 @@ class SeqUser:
         self._idx     = 0
         self.lock     = None
         self.eng      = int(prefix.split(':')[-1])
+        self.namespv  = Pv(':'.join(prefix.split(':')[:-2]+['SEQCODENAMES']))
 
     def changed(self,err=None):
         q = self.running.__value__
@@ -127,6 +128,19 @@ class SeqUser:
             self.begin(refresh) # reset now
 #        self.clean(self._idx)
 
+    def seqcodes(self, codes):
+        desc = self.namespv.get()
+        for e in range(4*self.eng,4*self.eng+4):
+            desc[e] = ''
+        for e,d in codes.items():
+            desc[4*self.eng+e] = d
+        print(f'desc {desc}')
+        self.namespv.put(desc)
+
+
+            
+            
+
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument('--title', type=str, default='TITLE', required=False, help="title for the sequence; defaults to TITLE")
@@ -140,9 +154,6 @@ def main():
 
     files = []
     engineMask = 0
-
-    seqcodes_pv = Pv(f'{args.pv}:SEQCODENAMES')
-    desc = seqcodes_pv.get()
 
     for s in args.seq:
         sengine,fname = s.split(':',1)

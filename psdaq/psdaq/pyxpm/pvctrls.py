@@ -804,12 +804,8 @@ class PVCtrls(object):
                             #if ((end==nL0) and done==0):
                             #  Somehow nL0 can exceed the end point
                             if ((end<=nL0) and done==0):
-<<<<<<< HEAD
-                                logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}')
-=======
                                 endr = getattr(self._xpm.XpmApp,f'stepEnd{i}').get()
                                 logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}[{endr}]')
->>>>>>> d42147c17 (Path timer, 40-bit step counter, and checkpoint reception to pyxpm.  Add clean and title options to seqprogram.)
                                 g.stepDone(True)
 
     def zrcv(self):

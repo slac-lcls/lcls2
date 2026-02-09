@@ -19,6 +19,7 @@
   --windows_per_line=2
   --lines_of_windows=2
   -- steps_btw_lines=8
+  -- codes=98 126 6 9
 
 s = start position, S = stop position, [./\]= motion checkpoint, x = exposure
 
@@ -82,9 +83,6 @@ def loop(instr, codes_list, step, cycles, level_limit=4):
 #  Write the output file and check its validity
 #
 def write_seq(instr, seqcodes, filename):
-
-    if (len(instr) > 2000):
-        sys.stderr.write(f'*** Sequence has {len(instr)} instructions.  May be too large to load. ***\n')
 
     with open(filename,"w") as f:
         f.write('# {} instructions\n'.format(len(instr)))
@@ -153,7 +151,7 @@ def generate_engine(engine):
 
                 for wl in range(args.windows_per_line):
                     w = line*args.windows_per_line + (wl if forward else args.windows_per_line-wl-1)
-                    expo_codes      = [0,2]   if engine==0 else (w&0xf) if engine==1 else (w>>4)&0xf
+                    expo_codes      = [0,2]   if engine==0 else (args.codes[w]&0xf) if engine==1 else (args.codes[w]>>4)&0xf
                     expo_codes_last = [0,1,2] if engine==0 else expo_codes
 
 
@@ -185,6 +183,9 @@ def generate_engine(engine):
                     niters *= (Instruction.maxocc+1)
 
                 #  Handle the remaining cycles
+                #  This effectively doubles (or more) the number of instructions when 
+                #    the number of rows exceeds 4095.  It could be 
+                #    reduced using the call/return instruction.
                 rem = args.rows_per_window - niters
                 generate_rows(rem)
                 
@@ -218,13 +219,19 @@ def main():
     parser.add_argument("--steps_btw_lines", default=10, type=int, help='Motion steps between exposures on adjacent windows')
     parser.add_argument("--windows_per_line", default=3, type=int, help='Number of windows in a line')
     parser.add_argument("--lines_of_windows", default=2, type=int, help='Number of lines of windows')
+    parser.add_argument("--codes", nargs='+', default=[i for i in range(1,5)], type=int, help='Event codes by window (left to right, top to bottom)')
     parser.add_argument("--fixed_test", action='store_true', help='Test with fixed rates')
     parser.add_argument("--path", default='.', help='Output file path')
     args = parser.parse_args()
 
+    logging.basicConfig(level=logging.INFO)
+
     #  Enforcement
     if args.rows_per_window%2:
         raise ValueError(f'rows_per_window ({args.rows_per_window}) must be even')
+
+    if len(args.codes) != args.windows_per_line * args.lines_of_windows:
+        raise ValueError(f'length of codes list ({len(args.codes)}) does not match product of windows_per_line ({args.windows_per_line}) and lines_of_windows ({args.lines_of_windows})')
 
     generate_engine(0)
     generate_engine(1)
