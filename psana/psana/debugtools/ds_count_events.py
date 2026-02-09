@@ -284,11 +284,8 @@ def main():
         total_rate = total / loop_elapsed_print if loop_elapsed_print > 0 else 0.0
         def _env(name, default=""):
             return os.environ.get(name, default)
-        march_vars = {k: _env(k, "unset") for k in sorted(os.environ) if k.startswith("PS_MARCH")}
         bd_chunk = _env("PS_BD_CHUNKSIZE", "unset")
-        print(f"[{args.log_level}] Marching env: " +
-              ", ".join(f"{k}={v}" for k, v in march_vars.items()) +
-              f", PS_BD_CHUNKSIZE={bd_chunk}")
+        print(f"[{args.log_level}] PS_BD_CHUNKSIZE={bd_chunk}")
         print(
             f"[{args.log_level}] {n_ebnodes=} {n_bdnodes=} "
             f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "

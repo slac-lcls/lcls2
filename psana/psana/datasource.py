@@ -2,7 +2,7 @@ import os
 import sys
 import gc
 import socket
-from psana.psexp.tools import mode, marching_enabled
+from psana.psexp.tools import mode
 from psana import utils
 import logging
 logger = logging.getLogger(__name__)
@@ -60,39 +60,9 @@ def _detect_node_count():
     return 1
 
 
-def _ensure_marching_eb_nodes():
-    if not marching_enabled():
-        return
-    node_count = _detect_node_count()
-    if node_count <= 0:
-        return
-    desired = str(node_count)
-    current = os.environ.get("PS_EB_NODES", "1")
-    if current == desired:
-        return
-    os.environ["PS_EB_NODES"] = desired
-    should_warn = True
-    if mode == "mpi":
-        try:
-            from mpi4py import MPI
-
-            should_warn = MPI.COMM_WORLD.Get_rank() == 0
-        except Exception:
-            should_warn = True
-    if should_warn:
-        prev = current if current is not None else "unset"
-        logger.warning(
-            "Marching read requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
-            prev,
-            os.environ.get("PS_EB_NODES", "1"),
-        )
-
-
 def _ensure_local_eb_nodes():
     env_local = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower()
     if env_local not in ("1", "true", "yes", "on"):
-        return
-    if marching_enabled():
         return
     node_count = _detect_node_count()
     if node_count <= 0:
@@ -229,7 +199,6 @@ def DataSource(*args, **kwargs):
                 from psana.psexp.node import Communicators
                 from psana.psexp.mpi_ds import MPIDataSource
 
-                _ensure_marching_eb_nodes()
                 _ensure_local_eb_nodes()
                 comms = Communicators()
 

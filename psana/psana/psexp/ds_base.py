@@ -16,7 +16,7 @@ from kafka import KafkaProducer
 from psana import utils
 from psana.app.psplot_live.utils import MonitorMsgType
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana.psexp.tools import MODE, mode, marching_enabled
+from psana.psexp.tools import MODE, mode
 from psana.psexp.zmq_utils import ClientSocket
 from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_manager
 
@@ -55,8 +55,6 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
-    marching_read: bool = False
-    march_events_per_grant: int = 1
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -188,13 +186,6 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
-        self.marching_read = marching_enabled()
-        env_grant = os.environ.get("PS_MARCH_EVENTS_PER_GRANT", "1")
-        try:
-            self.march_events_per_grant = max(1, int(env_grant))
-        except ValueError:
-            self.march_events_per_grant = 1
-
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
         if not self.live:
@@ -222,8 +213,6 @@ class DataSourceBase(abc.ABC):
             self.skip_calib_load,
             self.dbsuffix,
             smd_callback=self.smd_callback,
-            marching_read=self.marching_read,
-            march_events_per_grant=self.march_events_per_grant,
         )
 
         # Warn about unrecognized kwargs

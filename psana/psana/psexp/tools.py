@@ -21,12 +21,6 @@ def get_smd_n_events():
         return int(default_value)
 
 
-def marching_enabled():
-    """Return True if PS_MARCHING_READ is set to a truthy value."""
-    env_march = os.environ.get("PS_MARCHING_READ", "0").strip().lower()
-    return env_march in ("1", "true", "yes", "on")
-
-
 class RunHelper(object):
 
     # Every Run is assigned an ID. This permits Run to be

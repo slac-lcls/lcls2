@@ -348,14 +348,6 @@ if 'DGRAM' in BUILD_LIST :
     )
     CYTHON_EXTS.append(ext)
 
-    ext = Extension("psana.marchingeventbuilder",
-                    sources=["psana/marchingeventbuilder.pyx"],
-                    include_dirs=["psana"],
-                    extra_compile_args=extra_c_compile_args,
-                    extra_link_args=extra_link_args,
-    )
-    CYTHON_EXTS.append(ext)
-
     ext = Extension("psana.parallelreader",
                     sources=["psana/parallelreader.pyx"],
                     include_dirs=["psana"],
