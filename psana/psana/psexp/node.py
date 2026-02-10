@@ -1,4 +1,5 @@
 import os
+from glob import glob
 
 import numpy as np
 
@@ -8,11 +9,9 @@ from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
-from psana.psexp.tools import mode, marching_enabled
+from psana.psexp.tools import mode
 from psana.psexp import TransitionId
 from psana.psexp.prometheus_manager import get_prom_manager
-from psana.marchingeventbuilder import MarchingEventBuilder
-from psana.psexp.marching_eventmanager import MarchingEventManager
 
 if mode == "mpi":
     from mpi4py import MPI
@@ -21,6 +20,54 @@ import time
 
 DAMAGE_USERBITSHIFT = 12
 DAMAGE_VALUEBITMASK = 0x0FFF
+
+
+def _parse_cpulist(cpulist):
+    cpus = []
+    for part in cpulist.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            start, end = part.split('-', 1)
+            cpus.extend(range(int(start), int(end) + 1))
+        else:
+            cpus.append(int(part))
+    return cpus
+
+
+def build_cpu_to_numa():
+    cpu_to_numa = {}
+    node_paths = sorted(glob('/sys/devices/system/node/node*/cpulist'))
+    for path in node_paths:
+        node_str = path.split('node')[-1].split('/')[0]
+        try:
+            node_id = int(node_str)
+        except ValueError:
+            continue
+        try:
+            with open(path, 'r') as f:
+                cpus = _parse_cpulist(f.read().strip())
+        except Exception:
+            continue
+        for cpu in cpus:
+            cpu_to_numa[cpu] = node_id
+    return cpu_to_numa
+
+
+def get_cpu_id():
+    if hasattr(os, "sched_getcpu"):
+        try:
+            return os.sched_getcpu()
+        except Exception:
+            pass
+    # Fallback: parse /proc/self/stat (CPU field is #39, 0-based index 38)
+    try:
+        with open("/proc/self/stat", "r") as f:
+            parts = f.read().split()
+        return int(parts[38])
+    except Exception:
+        return -1
 
 # Setting up group communications
 # Ex. PS_EB_NODES=3 mpirun -n 13
@@ -62,20 +109,17 @@ class Communicators(object):
     color = 0
     _nodetype = None
     bd_comm = None
-    march_shm_comm = None
-    march_shm_rank = 0
-    march_shm_size = 0
-    march_shm_comm = None
-    march_shm_rank = 0
-    march_shm_size = 0
     node_comm = None
     node_rank = -1
     node_size = 0
     node_leader_comm = None
     node_leader_rank = -1
     node_leader_size = 0
-    bd_node_comm = None
     _is_node_leader = False
+    numa_comm = None
+    numa_rank = -1
+    numa_size = 0
+    numa_id = -1
 
     def __init__(self):
         self.logger = utils.get_logger(name="Communicators")
@@ -84,7 +128,6 @@ class Communicators(object):
         self.world_size = self.comm.Get_size()
         self.world_group = self.comm.Get_group()
         self.hostname = MPI.Get_processor_name()
-        self.march_shm_comm = MPI.COMM_NULL
 
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
         PS_EB_NODES = int(os.environ.get("PS_EB_NODES", 1))
@@ -110,10 +153,8 @@ class Communicators(object):
 
         self.node_comm = None
         self.node_leader_comm = None
-        self.bd_node_comm = None
         self._setup_node_comms()
 
-        self.marching_enabled = marching_enabled()
         self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
             "1",
             "true",
@@ -129,60 +170,38 @@ class Communicators(object):
         self.smd_comm = MPI.COMM_NULL
         self.bd_main_comm = self.comm.Create(self.bd_main_group)
 
-        self.march_shared_mem = None
-        self.march_params = {}
-
         if self.bd_main_comm != MPI.COMM_NULL:
             self.bd_main_rank = self.bd_main_comm.Get_rank()
             self.bd_main_size = self.bd_main_comm.Get_size()
 
-            if self.marching_enabled:
+            if self.colocate_non_marching:
                 info = MPI.INFO_NULL
-                self.march_shm_comm = self.bd_main_comm.Split_type(
+                node_comm = self.bd_main_comm.Split_type(
                     MPI.COMM_TYPE_SHARED, self.bd_main_rank, info
                 )
-                if self.march_shm_comm != MPI.COMM_NULL:
-                    self.march_shm_rank = self.march_shm_comm.Get_rank()
-                    self.march_shm_size = self.march_shm_comm.Get_size()
-                    self.bd_comm = self.march_shm_comm
-                    self.bd_rank = self.march_shm_rank
-                    self.bd_size = self.march_shm_size
-                    if self.bd_rank == 0:
-                        self._nodetype = "eb"
-                    else:
-                        self._nodetype = "bd"
-            else:
-                if self.colocate_non_marching:
-                    info = MPI.INFO_NULL
-                    node_comm = self.bd_main_comm.Split_type(
-                        MPI.COMM_TYPE_SHARED, self.bd_main_rank, info
+                if self.bd_main_rank == 0:
+                    self.logger.info(
+                        f'[MPI-role] Non-marching EB/BD colocated mode enabled on host {self.hostname}'
                     )
-                    if self.bd_main_rank == 0:
-                        self.logger.info(f'[MPI-role] Non-marching EB/BD colocated mode enabled on host {self.hostname}')
-                    self.bd_comm = node_comm
-                else:
-                    color = self.bd_main_rank % PS_EB_NODES
-                    self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
+                self.bd_comm = node_comm
+            else:
+                color = self.bd_main_rank % PS_EB_NODES
+                self.bd_comm = self.bd_main_comm.Split(color, self.bd_main_rank)
 
-                if self.bd_comm == MPI.COMM_NULL:
-                    raise RuntimeError("Failed to create bd_comm")
-                self.bd_rank = self.bd_comm.Get_rank()
-                self.bd_size = self.bd_comm.Get_size()
+            if self.bd_comm == MPI.COMM_NULL:
+                raise RuntimeError("Failed to create bd_comm")
+            self.bd_rank = self.bd_comm.Get_rank()
+            self.bd_size = self.bd_comm.Get_size()
 
-                if self.bd_rank == 0:
-                    self._nodetype = "eb"
-                else:
-                    self._nodetype = "bd"
+            if self.bd_rank == 0:
+                self._nodetype = "eb"
+            else:
+                self._nodetype = "bd"
 
         if self.world_rank == 0:
             self._nodetype = "smd0"
         elif self.world_rank >= self.psana_group.Get_size():
             self._nodetype = "srv"
-
-        # Build a BD-only communicator within each node (after nodetype is known).
-        if self.node_comm not in (None, MPI.COMM_NULL):
-            bd_color = 1 if self._nodetype == "bd" else MPI.UNDEFINED
-            self.bd_node_comm = self.node_comm.Split(bd_color, self.node_rank)
 
         # Ensure every rank has finalized its node role before building
         # the SMD communicator, since _init_smd_comm gathers the EB list.
@@ -217,6 +236,21 @@ class Communicators(object):
             self.node_leader_rank = self.node_leader_comm.Get_rank()
             self.node_leader_size = self.node_leader_comm.Get_size()
 
+        # Derive per-NUMA communicator (defaults to node_comm if NUMA id unavailable).
+        self.numa_comm = self.node_comm
+        self.numa_rank = self.node_rank
+        self.numa_size = self.node_size
+        self.numa_id = -1
+        cpu_to_numa = build_cpu_to_numa()
+        cpu_id = get_cpu_id()
+        if cpu_to_numa:
+            self.numa_id = cpu_to_numa.get(cpu_id, -1)
+        if self.numa_id >= 0:
+            self.numa_comm = self.node_comm.Split(self.numa_id, self.node_rank)
+            if self.numa_comm != MPI.COMM_NULL:
+                self.numa_rank = self.numa_comm.Get_rank()
+                self.numa_size = self.numa_comm.Get_size()
+
     def bd_group(self):
         return self._bd_only_group
 
@@ -235,8 +269,23 @@ class Communicators(object):
     def get_node_leader_comm(self):
         return self.node_leader_comm
 
-    def get_bd_node_comm(self):
-        return self.bd_node_comm
+    def get_numa_comm(self):
+        return self.numa_comm
+
+    def get_numa_id(self):
+        return self.numa_id
+
+    def get_numa_rank(self):
+        return self.numa_rank
+
+    def get_numa_size(self):
+        return self.numa_size
+
+    def get_shmem_comm(self):
+        scope = os.environ.get("PS_SHMEM_SCOPE", "NODE").strip().lower()
+        if scope in ("numa", "numa_comm"):
+            return self.numa_comm
+        return self.node_comm
 
     def terminate(self):
         """Tells Smd0 to terminate the loop.
@@ -277,16 +326,12 @@ class Communicators(object):
     def _init_smd_comm(self, ps_eb_nodes, psana_world_size):
         if ps_eb_nodes < 1:
             ps_eb_nodes = 1
-        if self.marching_enabled or self.colocate_non_marching:
+        if self.colocate_non_marching:
             eb_candidate = self.world_rank if self._nodetype == "eb" else -1
             gathered = self.comm.allgather(eb_candidate)
             if self.world_rank == 0:
                 eb_worlds = sorted({r for r in gathered if r >= 0})
                 if not eb_worlds:
-                    if self.marching_enabled:
-                        raise RuntimeError(
-                            "Marching mode requires at least one EB node but none were detected"
-                        )
                     raise RuntimeError(
                         "PS_EB_NODE_LOCAL requires at least one EB node but none were detected"
                     )
@@ -1122,53 +1167,6 @@ class EventBuilderNode(object):
         bd_comm.bcast(np.array([], dtype='B'), root=0)
 
 
-class MarchingEventBuilderNode(object):
-    """Feeds marching shared-memory buffers instead of sending MPI batches."""
-
-    def __init__(self, comms, configs, dsparms):
-        self.comms = comms
-        self.configs = configs
-        self.dsparms = dsparms
-        self.logger = utils.get_logger(name=utils.get_class_name(self))
-        self.shared_mem = getattr(self.comms, "march_shared_mem", None)
-        if self.shared_mem is None:
-            raise RuntimeError("Marching shared memory is not initialized")
-        params = getattr(self.comms, "march_params", {})
-        self.builder = MarchingEventBuilder(
-            configs,
-            dsparms,
-            self.shared_mem,
-            n_slots=params.get("n_slots", 2),
-            max_events_per_chunk=params.get("max_events", dsparms.batch_size),
-            max_chunk_bytes=params.get("max_chunk_bytes", 1 << 24),
-            name_prefix=params.get("prefix", "march"),
-        )
-
-    def _request_data(self):
-        smd_comm = self.comms.smd_comm
-        smd_comm.Isend(np.array([self.comms.smd_rank], dtype="i"), dest=0)
-        info = MPI.Status()
-        smd_comm.Probe(source=0, status=info)
-        count = info.Get_elements(MPI.BYTE)
-        smd_chunk = bytearray(count)
-        req = smd_comm.Irecv(smd_chunk, source=0)
-        req.Wait()
-        return smd_chunk
-
-    def start(self):
-        chunk_id = 0
-        while True:
-            smd_chunk = self._request_data()
-            if not smd_chunk:
-                # Publish sentinel chunk so BD ranks observe end-of-stream.
-                self.builder.publish_shutdown_slot(chunk_id)
-                break
-            self.builder.ingest_chunk(smd_chunk, chunk_id)
-            chunk_id += 1
-        self.builder.finalize()
-
-
-
 class BigDataNode(object):
     def __init__(self, comms, configs, dm, dsparms, shared_state):
         self.comms = comms
@@ -1313,60 +1311,3 @@ class BigDataNode(object):
 
         self.logger.debug(f"build table took {time.monotonic()-t0:.2f}s.")
         return ts_table
-
-
-class MarchingBigDataNode(object):
-    """Consumes marching shared-memory slots and yields events."""
-
-    def __init__(self, comms, configs, dm, dsparms, shared_state):
-        self.comms = comms
-        self.configs = configs
-        self.dm = dm
-        self.dsparms = dsparms
-        self.shared_state = shared_state
-        self.shared_mem = getattr(self.comms, "march_shared_mem", None)
-        if self.shared_mem is None:
-            raise RuntimeError("Marching shared memory is not initialized")
-        pm = get_prom_manager()
-        self.wait_gauge = pm.get_metric("psana_bd_wait")
-        self.rate_gauge = pm.get_metric("psana_bd_rate")
-        self.logger = utils.get_logger(name=utils.get_class_name(self))
-
-    def start(self):
-        use_prange_env = os.environ.get("PS_PREAD_USE_PRANGE", "0").lower()
-        if use_prange_env not in ("0", "false", "off"):
-            bd_rank = getattr(self.comms, "bd_rank", None)
-            if bd_rank == 1 and os.environ.get("PS_PREAD_PRANGE_WARNED", "0") != "1":
-                self.logger.warning(
-                    "PS_PREAD_USE_PRANGE enabled; ensure filesystem can handle concurrent pread"
-                )
-                os.environ["PS_PREAD_PRANGE_WARNED"] = "1"
-        params = getattr(self.comms, "march_params", {})
-        n_consumers = max(self.comms.march_shm_size - 1, 1)
-        consumer_index = getattr(self.comms, "march_shm_rank", 0) - 1
-        if consumer_index < 0:
-            consumer_index = 0
-        evt_mgr = MarchingEventManager(
-            self.configs,
-            self.dm,
-            self.shared_mem,
-            n_consumers=n_consumers,
-            shared_state=self.shared_state,
-            name_prefix=params.get("prefix", "march"),
-            use_smds=self.dsparms.use_smds,
-            events_per_grant=getattr(self.dsparms, "march_events_per_grant", 1),
-            consumer_index=consumer_index,
-        )
-        t0 = time.monotonic()
-        for i_evt, dgrams in enumerate(evt_mgr):
-            if self.shared_state.terminate_flag.value:
-                continue
-            if i_evt and i_evt % 1000 == 0:
-                t1 = time.monotonic()
-                rate = 1000 / (t1 - t0)
-                self.logger.debug(
-                    f"RATE MARCH BD ({self.comms.world_rank}) {rate:.3f} Hz"
-                )
-                self.rate_gauge.set(rate)
-                t0 = time.monotonic()
-            yield dgrams
