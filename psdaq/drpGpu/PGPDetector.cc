@@ -138,6 +138,13 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
                  TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
+  static uint64_t lastPid = 0ull;
+  if (result.pulseId() <= lastPid) {
+    logging::error("TebRcvr::complete: idx %u, wkr %u, tr %u, per %u, mon %u: pulseId (%014lx) did not advance from %014lx\n",
+                   index, m_worker, result.service(), result.persist(), result.monitor(), result.pulseId(), lastPid);
+  }
+  lastPid = result.pulseId();
+
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
 
@@ -181,6 +188,7 @@ void TebReceiver::_recorder()
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
   // Collect completion information from the reducer kernels in time order
+  uint64_t lastPid = 0ull;
   unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
     // Wait for a new Result to appear from the TEB via the complete() method above
@@ -192,6 +200,12 @@ void TebReceiver::_recorder()
     logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
                    TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
+    if (result->pulseId() <= lastPid) {
+      logging::error("TebRcvr::recorder: idx %u, wkr %u, tr %u, per %u, mon %u: pulseId (%014lx) did not advance from %014lx\n",
+                     index, m_worker, result->service(), result->persist(), result->monitor(), result->pulseId(), lastPid);
+    }
+    lastPid = result->pulseId();
+
     // If needed, wait for the next GPU Reducer in sequence to complete
     size_t dataSize;
     if (result->persist() || result->monitor()) {
@@ -200,13 +214,15 @@ void TebReceiver::_recorder()
       if (!drp.reducerReceive(worker, rt)) [[unlikely]] // This blocks until result is ready from GPU
         continue;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
-      worker = (worker + 1) % m_para.nworkers;
 
       if (rt.index != index) [[unlikely]] { // Sanity check
-        logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, rt.index);
+        //logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, rt.index);
+        logging::error("Recorder vs Reducer index mismatch: %4u vs %4u; wkr %u, tr %2u, per %u, mon %u, pulseId %014lx\n",
+                       index, rt.index, m_worker, result->service(), result->persist(), result->monitor(), result->pulseId());
         //abort();
       }
       dataSize = rt.dataSize;
+      worker = (worker + 1) % m_para.nworkers;
     }
 
     //printf("*** TebRcvr::recorder: 1 idx %u, dataSize %zu\n", index, dataSize);
