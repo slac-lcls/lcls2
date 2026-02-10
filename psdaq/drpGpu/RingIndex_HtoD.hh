@@ -1,13 +1,16 @@
-#ifndef RINGINDEX_HTOD_H
-#define RINGINDEX_HTOD_H
-
-#include "psalg/utils/SysLog.hh"
+#ifndef RINGINDEX_HTOD_HH
+#define RINGINDEX_HTOD_HH
 
 #include <time.h>
 #include <atomic>
+#include <cassert>
 
 #include <cuda_runtime.h>
 #include <cuda/std/atomic>
+
+#ifndef __NVCC__
+#define __nanosleep(x) {}
+#endif
 
 namespace Drp {
   namespace Gpu {
@@ -15,23 +18,18 @@ namespace Drp {
 class RingIndexHtoD
 {
 public:
-  __host__ RingIndexHtoD(unsigned                           capacity,
+  __host__ RingIndexHtoD(const unsigned                     capacity,
                          const std::atomic<bool>&           terminate,
                          const cuda::std::atomic<unsigned>& terminate_d) :
     m_head_h      (nullptr),
     m_head_d      (nullptr),
     m_tail_h      (nullptr),
     m_tail_d      (nullptr),
-    m_capacity   (capacity),            // Range of the buffer index [0, capacity-1]
-    m_terminate  (terminate),
-    m_terminate_d(terminate_d)
+    m_capacityMask(capacity-1),    // Range of the buffer index [0, capacity-1]
+    m_terminate   (terminate),
+    m_terminate_d (terminate_d)
   {
-    using logging = psalg::SysLog;
-
-    if (capacity & (capacity - 1)) {
-      logging::critical("RingIndexHtoD capacity must be a power of 2, got %d\n", capacity);
-      abort();
-    }
+    assert(capacity & (capacity - 1));  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head points to the next index to be allocated
@@ -46,68 +44,67 @@ public:
 
   __host__ ~RingIndexHtoD()
   {
-    printf("*** RingQueueHtoD::dtor\n");
     if (m_tail_h)  chkError(cudaFreeHost(m_tail_h));
     if (m_head_h)  chkError(cudaFreeHost(m_head_h));
   }
 
-  __host__ unsigned produce(unsigned idx)                // Move  head forward
+  __host__ unsigned produce(unsigned idx)              // Move  head forward when not full
   {
-    //printf("***   HtoD rb::produce 1, idx %d, head %d\n", idx, m_head_h->load());
-    auto next = (idx+1)&(m_capacity-1);
-    //printf("***   HtoD rb::produce 2, nxt %d, tail %d\n", next, m_tail_h->load());
-    unsigned ns = 8;
-    while (next == m_tail_h->load(cuda::memory_order_acquire)) { // Wait for tail to advance while full
+    using namespace cuda::std;
+    auto next = (idx+1) & m_capacityMask;
+    auto tail = m_tail_h->load(memory_order_acquire);
+    while (next == tail) {                             // Wait for tail to advance while full
       if (m_terminate.load(std::memory_order_acquire))
         break;
+      unsigned ns = 8;
       _nsSleep(ns);
-      if (ns < 256) {
-        ns *= 2;
-      }
+      if (ns < 256)  ns *= 2;
+      tail = m_tail_h->load(memory_order_acquire);
     }
-    //printf("***   HtoD rb::produce 3, tail %d\n", m_tail_h->load());
-    m_head_h->store(next, cuda::memory_order_release);   // Publish new head
-    //printf("***   HtoD rb::produce 4, head %d\n", m_head_h->load());
+    asm volatile("mfence" ::: "memory");               // Avoid reordering of the head store and the tail load
+    m_head_h->store(next, memory_order_release);       // Publish new head
     return next;
   }
 
-  __device__ unsigned consume()                          // Return current head
+  __device__ unsigned consume()                        // Return current head when not empty
   {
-    //printf("###   HtoD rb::consume 1\n");
-    auto tail = m_tail_d->load(cuda::memory_order_acquire);
-    auto head = m_head_d->load(cuda::memory_order_acquire);
-    //printf("###   HtoD rb::consume 2, tail %d, head %d\n", tail, head);
-    unsigned ns = 8;
-    while (tail == head) {                               // Wait for head to advance while empty
-      if (m_terminate_d.load(cuda::std::memory_order_acquire))
+    using namespace cuda::std;
+    auto tail = m_tail_d->load(memory_order_acquire);
+    auto head = m_head_d->load(memory_order_acquire);
+    while (tail == head) {                             // Wait for head to advance while empty
+      if (m_terminate_d.load(memory_order_acquire))
         break;
+      unsigned ns = 8;
       __nanosleep(ns);
-      if (ns < 256) {
-        ns *= 2;
-      }
-      //printf("###   HtoD rb::consume idx %d\n", head);
-      head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
+      if (ns < 256)  ns *= 2;
+      head = m_head_d->load(memory_order_acquire);
     }
-    //printf("###   HtoD rb::consume 3, idx %d\n", head);
-    return head;                                         // Caller now processes buffers up to [head]
+    return head;                                       // Caller now processes buffers up to [head]
   }
 
-  __device__ void release(const unsigned idx)            // Move tail forward
+  __device__ void release(const unsigned idx)          // Move tail forward
   {
-    //printf("###   HtoD rb::release 1, idx %d\n", idx);
-    assert(idx == m_tail_d->load(cuda::memory_order_acquire)); // Require in-order freeing
-    auto next = (idx+1)&(m_capacity-1);
-    //printf("###   HtoD rb::release 2, nxt %d, cap %d\n", next, m_capacity);
-    m_tail_d->store(next, cuda::memory_order_release);   // Publish new tail
-    //printf("###   HtoD rb::release 3, tail %d\n", m_tail_d->load());
+    using namespace cuda::std;
+    auto tail = m_tail_d->load(memory_order_acquire);
+    assert(idx == tail);                               // Require in-order freeing
+    auto next = (idx+1) & m_capacityMask;
+    m_tail_d->store(next, memory_order_release);       // Publish new tail
   }
 
-  size_t size()
+  __host__ unsigned occupancy() const
   {
-    return m_capacity;
+    using namespace cuda::std;
+    auto head = m_head_h->load(memory_order_acquire);
+    auto tail = m_tail_h->load(memory_order_acquire);
+    return (head - tail) & m_capacityMask;
   }
 
-  void reset()
+  size_t size() const
+  {
+    return m_capacityMask + 1;
+  }
+
+  __host__ void reset()
   {
     *m_head_h = 0;
     *m_tail_h = 0;
@@ -125,7 +122,7 @@ private:
   cuda::std::atomic<unsigned>*       m_head_d; // Must stay coherent across device and host
   cuda::std::atomic<unsigned>*       m_tail_h; // Must stay coherent across device and host
   cuda::std::atomic<unsigned>*       m_tail_d; // Must stay coherent across device and host
-  const unsigned                     m_capacity;
+  const unsigned                     m_capacityMask;
   const std::atomic<bool>&           m_terminate;
   const cuda::std::atomic<unsigned>& m_terminate_d;
 };

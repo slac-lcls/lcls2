@@ -1,10 +1,9 @@
 #ifndef RINGQUEUE_HTOD_HH
 #define RINGQUEUE_HTOD_HH
 
-#include "psalg/utils/SysLog.hh"
-
 #include <time.h>
 #include <atomic>
+#include <cassert>
 
 #include <cuda_runtime.h>
 #include <cuda/std/atomic>
@@ -33,36 +32,25 @@ public:
     m_terminate   (terminate),
     m_terminate_d (terminate_d)
   {
-    using logging = psalg::SysLog;
-
-    if (capacity & (capacity - 1)) {
-      logging::critical("RingQueue capacity must be a power of 2, got %d\n", capacity);
-      abort();
-    }
-
-    printf("RingQueueHtoD::ctor\n");
+    assert(capacity & (capacity - 1));  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head points to the next index to be allocated
     chkError(cudaHostAlloc(&m_head_h, sizeof(*m_head_h), cudaHostAllocDefault));
     chkError(cudaHostGetDevicePointer(&m_head_d, m_head_h, 0));
     *m_head_h = 0;
-    printf("RingQueueHtoD::ctor: head h %p, d %p\n", m_head_h, m_head_d);
     // Tail points to the next index after the last freed one
     chkError(cudaHostAlloc(&m_tail_h, sizeof(*m_tail_h), cudaHostAllocDefault));
     chkError(cudaHostGetDevicePointer(&m_tail_d, m_tail_h, 0));
     *m_tail_h = 0;
-    printf("RingQueueHtoD::ctor: tail h %p, d %p\n", m_tail_h, m_tail_d);
 
     // Use pinned memory for the ring buffer for low latency access from both Host and Device
     chkError(cudaHostAlloc(&m_ringBuffer_h, capacity * sizeof(*m_ringBuffer_h), cudaHostAllocDefault));
     chkError(cudaHostGetDevicePointer(&m_ringBuffer_d, m_ringBuffer_h, 0));
-    printf("RingQueueHtoD::ctor: ringBuf h %p, d %p\n", m_ringBuffer_h, m_ringBuffer_d);
   }
 
   __host__ ~RingQueueHtoD()
   {
-    printf("*** RingQueueHtoD::dtor\n");
     if (m_ringBuffer_h)  chkError(cudaFreeHost(m_ringBuffer_h));
     if (m_tail_h)        chkError(cudaFreeHost(m_tail_h));
     if (m_head_h)        chkError(cudaFreeHost(m_head_h));
@@ -70,47 +58,49 @@ public:
 
   __host__ bool push(T value)
   {
-    auto head = m_head_h->load(cuda::std::memory_order_acquire);
-    //printf("*** RingQueueHtoD push 1, head %u, tail %u\n", head, m_tail_d->load());
+    using namespace cuda::std;
+    auto head = m_head_h->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
-    unsigned ns = 8;
-    while (next == m_tail_h->load(cuda::std::memory_order_acquire)) { // Wait for tail to advance while full
-      if (m_terminate.load(std::memory_order_acquire))  return false;
+    auto tail = m_tail_h->load(memory_order_acquire);
+    while (next == tail) {                             // Wait for tail to advance while full
+      if (m_terminate.load(std::memory_order_acquire))
+        return false;
+      unsigned ns = 8;
       _nsSleep(ns);
       if (ns < 256)  ns *= 2;
+      tail = m_tail_h->load(memory_order_acquire);
     }
-    //printf("*** RingQueueHtoD push 2, head %u, tail %u\n", head, m_tail_d->load());
-    // Avoid reordering of the head store and the tail load
-    asm volatile("mfence" ::: "memory");
-    m_head_h->store(next, cuda::std::memory_order_release);           // Publish new head
-    m_ringBuffer_h[head] = value;
-    //printf("*** RingQueueHtoD push 3, head %u, tail %u\n", m_head_d->load(), m_tail_d->load());
+    asm volatile("mfence" ::: "memory");               // Avoid reordering of the head store and the tail load
+    m_ringBuffer_h[head] = value;                      // Store value _before_ signaling it is available
+    m_head_h->store(next, memory_order_release);       // Publish new head
     return true;
   }
 
-  __device__ bool pop(T* value)
+  __device__ bool pop(T& value)
   {
-    //printf("###   RingQueue_HtoD rb::pop 1, tail @ %p\n", m_tail_d);
-    auto tail = m_tail_d->load(cuda::std::memory_order_acquire);
-    //printf("###   RingQueue_HtoD rb::pop 2, tail %d, head %d\n", tail, m_head_d->load());
-    unsigned ns = 8;
-    while (tail == m_head_d->load(cuda::std::memory_order_acquire)) { // Wait for head to advance while empty
-      if (m_terminate_d.load(cuda::std::memory_order_acquire))  return false;
+    using namespace cuda::std;
+    auto tail = m_tail_d->load(memory_order_acquire);
+    auto head = m_head_d->load(memory_order_acquire);
+    while (tail == head) {                             // Wait for head to advance while empty
+      if (m_terminate_d.load(memory_order_acquire))
+        return false;
+      unsigned ns = 8;
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
+      head = m_head_d->load(memory_order_acquire);
     }
+    value = m_ringBuffer_d[tail];                      // Fetch value _before_ signaling it is available
     auto next = (tail+1) & m_capacityMask;
-    //printf("###   RingQueue_HtoD rb::pop 3, next %d\n", next);
-    m_tail_d->store(next, cuda::std::memory_order_release);           // Publish new tail
-    //printf("###   RingQueue_HtoD rb::pop 4, tail %d\n", tail);
-    *value = m_ringBuffer_d[tail];
+    m_tail_d->store(next, memory_order_release);       // Publish new tail
     return true;
   }
 
-  __host__ int occupancy() const
+  __host__ unsigned occupancy() const
   {
-    return (m_head_h->load(cuda::std::memory_order_acquire) -
-            m_tail_h->load(cuda::std::memory_order_acquire)) & m_capacityMask;
+    using namespace cuda::std;
+    auto head = m_head_h->load(memory_order_acquire);
+    auto tail = m_tail_h->load(memory_order_acquire);
+    return (head - tail) & m_capacityMask;
   }
 
   size_t size() const
@@ -136,7 +126,7 @@ private:
   cuda::std::atomic<unsigned>*       m_head_d; // Must stay coherent across device and host
   cuda::std::atomic<unsigned>*       m_tail_h; // Must stay coherent across device and host
   cuda::std::atomic<unsigned>*       m_tail_d; // Must stay coherent across device and host
-  unsigned                           m_capacityMask;
+  const unsigned                     m_capacityMask;
   T*                                 m_ringBuffer_h;
   T*                                 m_ringBuffer_d;
   const std::atomic<bool>&           m_terminate;
