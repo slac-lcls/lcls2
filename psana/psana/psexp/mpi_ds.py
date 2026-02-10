@@ -142,11 +142,15 @@ class RunParallel(Run):
 
     def _distribute_calib_xtc(self):
         node_comm = self.comms.get_node_comm()
+        shmem_comm = self.comms.get_shmem_comm()
         leader_comm = self.comms.get_node_leader_comm()
         if node_comm is None:
             raise RuntimeError("Node communicator unavailable for shared calibration distribution")
+        if shmem_comm is None:
+            raise RuntimeError("Shared-memory communicator unavailable for shared calibration distribution")
 
         is_leader = self.comms.is_node_leader()
+        is_shmem_leader = shmem_comm != MPI.COMM_NULL and shmem_comm.Get_rank() == 0
         leader_buffer = None
         total_bytes = None
         recv_start = None
@@ -178,24 +182,29 @@ class RunParallel(Run):
             leader_comm.Bcast(leader_buffer, root=0)
             recv_end = time.perf_counter()
 
-        win = MPI.Win.Allocate_shared(total_bytes if is_leader else 0, 1, comm=node_comm)
+        if node_comm != MPI.COMM_NULL:
+            if leader_buffer is None:
+                leader_buffer = np.empty(total_bytes, dtype=np.uint8)
+            node_comm.Bcast(leader_buffer, root=0)
+
+        win = MPI.Win.Allocate_shared(total_bytes if is_shmem_leader else 0, 1, comm=shmem_comm)
         buf, _ = win.Shared_query(0)
         shared_array = np.ndarray(buffer=buf, dtype=np.uint8, shape=(total_bytes,))
-        if is_leader:
+        if is_shmem_leader:
             if leader_buffer is None:
                 raise RuntimeError("Leader buffer missing during shared memory population")
             populate_start = time.perf_counter()
             shared_array[:] = leader_buffer
             populate_end = time.perf_counter()
-        node_comm.Barrier()
+        shmem_comm.Barrier()
 
-        if self.logger and is_leader and recv_start is not None and populate_end is not None:
-            recv_time = (recv_end - recv_start) if recv_end is not None else 0.0
+        if self.logger and is_shmem_leader and populate_end is not None:
+            recv_time = (recv_end - recv_start) if recv_start is not None and recv_end is not None else 0.0
             populate_time = populate_end - populate_start
-            total_time = populate_end - recv_start
+            total_time = populate_end - recv_start if recv_start is not None else populate_time
             size_gib = total_bytes / (1024 ** 3)
             self.logger.debug(
-                "node leader rank %d shared calib size=%.3f GiB "
+                "shmem leader rank %d shared calib size=%.3f GiB "
                 "recv=%.3fs populate=%.3fs total=%.3fs",
                 self.comms.psana_comm.Get_rank(),
                 size_gib,
@@ -218,12 +227,12 @@ class RunParallel(Run):
             return
         if mode != "mpi" or self.comms is None:
             return
-        node_comm = self.comms.get_node_comm()
-        if node_comm in (None, MPI.COMM_NULL):
+        shmem_comm = self.comms.get_shmem_comm()
+        if shmem_comm in (None, MPI.COMM_NULL):
             return
 
         if getattr(self, "_jungfrau_shared_mem", None) is None:
-            self._jungfrau_shared_mem = MPISharedMemory(shm_comm=node_comm)
+            self._jungfrau_shared_mem = MPISharedMemory(shm_comm=shmem_comm)
         shared_mem = self._jungfrau_shared_mem
 
         try:
@@ -282,12 +291,12 @@ class RunParallel(Run):
             return
         if mode != "mpi" or self.comms is None:
             return
-        node_comm = self.comms.get_node_comm()
-        if node_comm in (None, MPI.COMM_NULL):
+        shmem_comm = self.comms.get_shmem_comm()
+        if shmem_comm in (None, MPI.COMM_NULL):
             return
 
         if getattr(self, "_geo_shared_mem", None) is None:
-            self._geo_shared_mem = MPISharedMemory(shm_comm=node_comm)
+            self._geo_shared_mem = MPISharedMemory(shm_comm=shmem_comm)
         shared_mem = self._geo_shared_mem
         # SharedGeoCache: shared memory for geometry/pixel index arrays.
         cache = SharedGeoCache(shared_mem=shared_mem, logger=self.logger)
@@ -378,6 +387,14 @@ class RunParallel(Run):
         self.logger.debug(
             f"shared geo setup total={t_setup_end - t_setup_start:.6f}s"
         )
+        if self.logger and shared_mem.is_leader:
+            self.logger.info(
+                "[MPI-role] rank=%d host=%s numa_id=%d numa_size=%d",
+                self.comms.psana_comm.Get_rank() if self.comms is not None else -1,
+                getattr(self.comms, "hostname", "unknown"),
+                getattr(self.comms, "numa_id", -1),
+                getattr(self.comms, "numa_size", -1),
+            )
 
     def _iter_jungfrau_raw(self, area_only=False):
         det_classes = self.dsparms.det_classes.get("normal", {})

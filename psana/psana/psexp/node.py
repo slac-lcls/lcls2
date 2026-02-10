@@ -1,4 +1,5 @@
 import os
+from glob import glob
 
 import numpy as np
 
@@ -19,6 +20,54 @@ import time
 
 DAMAGE_USERBITSHIFT = 12
 DAMAGE_VALUEBITMASK = 0x0FFF
+
+
+def _parse_cpulist(cpulist):
+    cpus = []
+    for part in cpulist.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            start, end = part.split('-', 1)
+            cpus.extend(range(int(start), int(end) + 1))
+        else:
+            cpus.append(int(part))
+    return cpus
+
+
+def build_cpu_to_numa():
+    cpu_to_numa = {}
+    node_paths = sorted(glob('/sys/devices/system/node/node*/cpulist'))
+    for path in node_paths:
+        node_str = path.split('node')[-1].split('/')[0]
+        try:
+            node_id = int(node_str)
+        except ValueError:
+            continue
+        try:
+            with open(path, 'r') as f:
+                cpus = _parse_cpulist(f.read().strip())
+        except Exception:
+            continue
+        for cpu in cpus:
+            cpu_to_numa[cpu] = node_id
+    return cpu_to_numa
+
+
+def get_cpu_id():
+    if hasattr(os, "sched_getcpu"):
+        try:
+            return os.sched_getcpu()
+        except Exception:
+            pass
+    # Fallback: parse /proc/self/stat (CPU field is #39, 0-based index 38)
+    try:
+        with open("/proc/self/stat", "r") as f:
+            parts = f.read().split()
+        return int(parts[38])
+    except Exception:
+        return -1
 
 # Setting up group communications
 # Ex. PS_EB_NODES=3 mpirun -n 13
@@ -67,6 +116,10 @@ class Communicators(object):
     node_leader_rank = -1
     node_leader_size = 0
     _is_node_leader = False
+    numa_comm = None
+    numa_rank = -1
+    numa_size = 0
+    numa_id = -1
 
     def __init__(self):
         self.logger = utils.get_logger(name="Communicators")
@@ -183,6 +236,21 @@ class Communicators(object):
             self.node_leader_rank = self.node_leader_comm.Get_rank()
             self.node_leader_size = self.node_leader_comm.Get_size()
 
+        # Derive per-NUMA communicator (defaults to node_comm if NUMA id unavailable).
+        self.numa_comm = self.node_comm
+        self.numa_rank = self.node_rank
+        self.numa_size = self.node_size
+        self.numa_id = -1
+        cpu_to_numa = build_cpu_to_numa()
+        cpu_id = get_cpu_id()
+        if cpu_to_numa:
+            self.numa_id = cpu_to_numa.get(cpu_id, -1)
+        if self.numa_id >= 0:
+            self.numa_comm = self.node_comm.Split(self.numa_id, self.node_rank)
+            if self.numa_comm != MPI.COMM_NULL:
+                self.numa_rank = self.numa_comm.Get_rank()
+                self.numa_size = self.numa_comm.Get_size()
+
     def bd_group(self):
         return self._bd_only_group
 
@@ -200,6 +268,24 @@ class Communicators(object):
 
     def get_node_leader_comm(self):
         return self.node_leader_comm
+
+    def get_numa_comm(self):
+        return self.numa_comm
+
+    def get_numa_id(self):
+        return self.numa_id
+
+    def get_numa_rank(self):
+        return self.numa_rank
+
+    def get_numa_size(self):
+        return self.numa_size
+
+    def get_shmem_comm(self):
+        scope = os.environ.get("PS_SHMEM_SCOPE", "NODE").strip().lower()
+        if scope in ("numa", "numa_comm"):
+            return self.numa_comm
+        return self.node_comm
 
     def terminate(self):
         """Tells Smd0 to terminate the loop.
