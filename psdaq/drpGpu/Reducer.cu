@@ -301,7 +301,7 @@ int Reducer::_setupGraph(unsigned instance)
 static __global__ void _receive(//unsigned* const       __restrict__ head,
                                 //unsigned* const       __restrict__ tail,
                                 //const cuda::std::atomic<unsigned>& terminate)
-                                unsigned* const       __restrict__ index,
+                                unsigned&                          index,
                                 Gpu::RingQueueHtoD<unsigned>&      inputQueue,
                                 unsigned&                          done)
 {
@@ -372,7 +372,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
   // Handle messages from TebReceiver to process an event
   //_receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_tails_d[instance], m_terminate_d);
   printf("*** Reducer::_recordGraph: instance %d, iq h %p, d %p\n", instance, m_inputQueues2[instance].h, m_inputQueues2[instance].d);
-  _receive<<<1, 1, 0, stream>>>(m_heads_d[instance], *m_inputQueues2[instance].d, *m_done_d);
+  _receive<<<1, 1, 0, stream>>>(*m_heads_d[instance], *m_inputQueues2[instance].d, *m_done_d);
 
   // Perform the reduction algorithm
   m_algos[instance]->recordGraph(stream,
