@@ -35,7 +35,7 @@ public:
   unsigned rangeOffset() const override { return 0; /* Not used */ }
   unsigned rangeBits()   const override { return 0; /* Not used */ }
 
-  void recordGraph(cudaStream_t&         stream,
+  void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
                    const unsigned        panel,
                    uint16_t const* const data) override { /* Not used */ }
@@ -251,7 +251,7 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
 }
 
 // This routine records the graph that calibrates the data
-void EpixUHRsim::recordGraph(cudaStream_t&         stream,
+void EpixUHRsim::recordGraph(cudaStream_t          stream,
                              const unsigned&       index_d,
                              const unsigned        panel,
                              uint16_t const* const rawBuffer)

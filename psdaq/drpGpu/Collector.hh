@@ -68,7 +68,7 @@ public:
   unsigned receive(Detector*, CollectorMetrics&);
 private:
   int         _setupGraph();
-  cudaGraph_t _recordGraph(cudaStream_t&);
+  cudaGraph_t _recordGraph(cudaStream_t);
   unsigned    _checkDmaDsc(unsigned index) const;
   unsigned    _checkTimingHeader(unsigned index) const;
 private:

@@ -147,7 +147,7 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
 }
 
 // This routine records the graph that calibrates the data
-void AreaDetector::recordGraph(cudaStream_t&         stream,
+void AreaDetector::recordGraph(cudaStream_t          stream,
                                const unsigned&       index_d,
                                const unsigned        panel,
                                uint16_t const* const rawBuffer)

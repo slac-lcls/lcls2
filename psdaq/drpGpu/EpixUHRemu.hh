@@ -35,7 +35,7 @@ public:
   unsigned rangeOffset() const override { return RangeOffset; }
   unsigned rangeBits()   const override { return RangeBits; }
 
-  void recordGraph(cudaStream_t&         stream,
+  void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
                    const unsigned        panel,
                    uint16_t const* const data) override;

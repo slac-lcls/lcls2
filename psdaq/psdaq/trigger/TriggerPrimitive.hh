@@ -34,7 +34,7 @@ namespace Pds {
                            const XtcData::Xtc& contribution,
                            XtcData::Xtc&       xtc,
                            const void*         bufEnd) = 0;
-      virtual void   event(cudaStream_t&          stream,
+      virtual void   event(cudaStream_t           stream,
                            float     const* const calibBuffers,
                            const size_t           calibBufsCnt,
                            uint32_t* const* const out,

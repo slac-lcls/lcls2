@@ -166,7 +166,7 @@ void _graphLoop(unsigned*                          idx,
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
 }
 
-cudaGraph_t Collector::_recordGraph(cudaStream_t& stream)
+cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
 {
   col_scoped_range r{/*"Collector::_recordGraph"*/}; // Expose function name via NVTX
 

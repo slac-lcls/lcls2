@@ -60,7 +60,7 @@ public:
   virtual unsigned rangeOffset() const = 0;
   virtual unsigned rangeBits()   const = 0;
 
-  virtual void recordGraph(cudaStream_t&         stream,
+  virtual void recordGraph(cudaStream_t          stream,
                            const unsigned&       index_d,
                            const unsigned        panel,
                            uint16_t const* const data) = 0;

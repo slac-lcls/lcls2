@@ -24,7 +24,7 @@ public:
 //                            unsigned  const nFpgas) const;
   unsigned rangeOffset() const override { return 14; }
   unsigned rangeBits()   const override { return 2; }
-  void recordGraph(cudaStream_t&         stream,
+  void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
                    const unsigned        panel,
                    uint16_t const* const data) override;

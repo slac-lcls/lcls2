@@ -16,7 +16,7 @@ namespace Pds {
                    const XtcData::Xtc& ctrb,
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
-      void   event(cudaStream_t&          stream,
+      void   event(cudaStream_t           stream,
                    float     const* const calibBuffers,
                    const size_t           calibBufsCnt,
                    uint32_t* const* const out,

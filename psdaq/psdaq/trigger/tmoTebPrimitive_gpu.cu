@@ -37,7 +37,7 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
 }
 
 // This method presumes that it is being called while the stream is in capture mode
-void Pds::Trg::TmoTebPrimitive::event(cudaStream_t&          stream,
+void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       float     const* const calibBuffers,
                                       const size_t           calibBufsCnt,
                                       uint32_t* const* const out,
