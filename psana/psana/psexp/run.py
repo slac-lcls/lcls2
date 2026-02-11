@@ -803,8 +803,10 @@ class RunSmallData(Run):
 
         # Converts EventBuilder generator to an iterator for steps() call. This is
         # done so that we can pass it to Step (not sure why). Note that for
-        # events() call, we stil use the generator.
-        self._evt_iter = iter(self.eb.events())
+        # events() call, we still use the generator.
+        # Iterate over all EventBuilder batches so steps() can see transitions
+        # even when batch_size is small.
+        self._evt_iter = self._iter_events()
 
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
@@ -812,6 +814,12 @@ class RunSmallData(Run):
         self.proxy_events = []
 
         self.esm = EnvStoreManager(configs)
+
+    def _iter_events(self):
+        # EventBuilder.events() yields only one batch; loop to exhaust the view.
+        while self.eb.has_more():
+            for item in self.eb.events():
+                yield item
 
     def steps(self):
         for (dgrams, proxy_evt)  in self._evt_iter:
@@ -831,7 +839,7 @@ class RunSmallData(Run):
                     )
 
     def events(self):
-        for (dgrams, proxy_evt) in self.eb.events():
+        for (dgrams, proxy_evt) in self._iter_events():
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
                 self._update_envstore_from_dgrams(dgrams)
