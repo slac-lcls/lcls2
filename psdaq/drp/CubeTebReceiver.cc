@@ -272,20 +272,10 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
 
                 for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
                     Name& name = rawDef.NameVec[i];
-                    unsigned rank = name.rank();
-                    double* dst;
-                    if (rank==0) {
-                        dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*sizeof(double_t));
-                        size += nbins*sizeof(double_t);
-                        det.addToCube(i, dst, rawdata);
-                    }
-                    else {
-                        Shape s(rawdata.shape(name));
-                        unsigned arraySize = s.size(name)*sizeof(double_t)/Name::get_element_size(name.type());
-                        dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*arraySize);
-                        size += nbins*arraySize;
-                        det.addToCube(i, dst, rawdata);
-                    }
+                    unsigned arraySize = sizeof(double_t)*Shape(rawdata.shape(name)).num_elements(name.rank());
+                    double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*arraySize);
+                    size += nbins*arraySize;
+                    det.addToCube(i, dst, rawdata);
                 }
                 sem.give();
             }
@@ -577,25 +567,21 @@ void CubeTebReceiver::_monitorDgram(unsigned index, const CubeResultDgram& resul
 void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result)
 {
     TransitionId::Value transitionId = result.service();
-
-    if (transitionId != TransitionId::Configure) {  // check src
-        Dgram* configDgram = (Dgram*)m_configureBuffer.data();
-        if (configDgram->xtc.src.value() != result.xtc.src.value()) {
-            logging::error("result (%s) src (%x) != config src (%x)",
-                           TransitionId::name(transitionId), result.xtc.src.value(), configDgram->xtc.src.value());
-        }
-    }
+    auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
+        : m_pool.transitionDgrams[index];
 
     if (writing()) {                    // Won't ever be true for Configure
         if (result.persist() || result.prescale()) {
             if (result.updateRecord()) {
                 //  Write the intermediate accumulated bin
-                Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(result, result);  // PulseId, Dgram
+                Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(*dgram, *dgram);  // PulseId, Dgram
                 _writeDgram(_binDgram(dg, result));
             }
-            else
+            else {
                 //  Do I need to record an empty dgram for the offline event builder?
-                _writeDgram(const_cast<CubeResultDgram*>(&result));
+                Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(*dgram, *dgram);  // PulseId, Dgram
+                _writeDgram(dg);
+            }
         }
         else if (transitionId != TransitionId::L1Accept) {
 
@@ -619,7 +605,7 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
                 CubeDef cubeDef(rawDef.NameVec);
                 Dgram* dg = (Dgram*)m_bin_data[0];
                 //  Overwrite the header
-                new(m_bin_data[0]) Transition(result.type(), transitionId, result.time, result.env);
+                new(m_bin_data[0]) Transition(dgram->type(), transitionId, dgram->time, dgram->env);
                 //  Sum the data
                 DescData data(*(ShapesData*)(dg->xtc.payload()), m_det.namesLookup()[namesId]);
 
@@ -652,8 +638,9 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
 
                 _writeDgram(dg);
             }
-            else
-                _writeDgram(const_cast<CubeResultDgram*>(&result));
+            else {
+                _writeDgram(dgram);
+            }
 
             if ((transitionId == TransitionId::Enable) && m_chunkRequest) {
                 logging::info("%s calling reopenFiles()", __PRETTY_FUNCTION__);

@@ -143,14 +143,18 @@ public:
     {
         memcpy(_shape, shape, sizeof(uint32_t) * MaxRank);
     }
-    unsigned size(Name& name) {
-        unsigned size = 1;
-        for (unsigned i = 0; i < name.rank(); i++) {
-            size *= _shape[i];
+    unsigned num_elements(unsigned rank) {
+        unsigned n = 1;
+        for (unsigned i = 0; i < rank; i++) {
+            n *= _shape[i];
         }
-        unsigned totSize = size*Name::get_element_size(name.type());
-        return totSize;
+        return n;
     }
+
+    unsigned size(Name& name) {
+        return num_elements(name.rank())*Name::get_element_size(name.type());
+    }
+
     uint32_t* shape() {return _shape;}
 private:
     uint32_t _shape[MaxRank]; // in an ideal world this would have variable length "rank"

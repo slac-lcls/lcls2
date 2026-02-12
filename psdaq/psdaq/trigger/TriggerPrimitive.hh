@@ -34,6 +34,7 @@ namespace Pds {
       virtual int    configure(const nlohmann::json& configureMsg,
                                const nlohmann::json& connectMsg,
                                size_t                collectionId) = 0;
+      virtual void   configure(const XtcData::Xtc& xtc, const void* bufEnd) {}
       virtual void   event(const Drp::MemPool& pool,
                            uint32_t            index,
                            const XtcData::Xtc& contribution,

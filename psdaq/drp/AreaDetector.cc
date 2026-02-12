@@ -146,7 +146,11 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     for (int i=0; i<PGP_MAX_LANES; i++) {
         if (event->mask & (1 << i)) {
             // size without Event header
-            int dataSize = event->buffers[i].size - 32;
+            // add sw_sim_length kwarg to simulate larger detectors even if the pcie bandwidth
+            //   doesn't support it
+            std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sw_sim_length");
+            int dataSize = (it==m_para->kwargs.end()) ? 
+                event->buffers[i].size - 32 : std::stoul(it->second.data())*sizeof(uint32_t);
             uint32_t dmaIndex = event->buffers[i].index;
             uint8_t* rawdata = ((uint8_t*)m_pool->dmaBuffers[dmaIndex]) + 32;
 
@@ -158,7 +162,8 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     raw.set_data_length(size);
 
     ((uint32_t*)raw.data())[RawDef::value] = 9;
-    unsigned raw_shape[MaxRank] = {nlanes, size / nlanes / sizeof(uint16_t)};
+    size /= (nlanes * sizeof(uint16_t));
+    unsigned raw_shape[MaxRank] = {nlanes, size};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
 }
 

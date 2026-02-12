@@ -120,6 +120,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "drp")               continue;  // PGPDetectorApp
         if (kwargs.first == "pythonScript")      continue;  // PGPDetectorApp
         if (kwargs.first == "sim_length")        continue;  // XpmDetector
+        if (kwargs.first == "sw_sim_length")     continue;  // AreaDetector
         if (kwargs.first == "timebase")          continue;  // XpmDetector
         if (kwargs.first == "xpmpv")             continue;  // BEBDetector
         if (kwargs.first == "feb_lane")          continue;  // BEBDetector

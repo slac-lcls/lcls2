@@ -242,6 +242,17 @@ if 'TRIGGER' in BUILD_LIST and sys.platform != 'darwin':
     )
     CYTHON_EXTS.append(ext)
 
+    ext = Extension('BldTebData',
+                    sources=["psdaq/trigger/BldTebData.pyx"],
+                    libraries = ['xtc','service','trigger'],
+                    include_dirs = [os.path.join(instdir, 'include'), xtc_headers, psdaq_headers],
+                    library_dirs = [os.path.join(instdir, 'lib'), xtc_lib_path, psdaq_lib_path],
+                    language="c++",
+                    extra_compile_args = extra_cxx_compile_args,
+                    extra_link_args = extra_link_args_rpath,
+    )
+    CYTHON_EXTS.append(ext)
+
 
 setup(
     name = 'psdaq',

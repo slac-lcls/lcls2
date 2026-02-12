@@ -5,6 +5,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 add_library(trigger SHARED
+  BldTebData.cc
   utilities.cc
 )
 
@@ -113,6 +114,7 @@ endif()
 #---
 
 add_library(tstTebPy SHARED
+  bldTebPrimitive.cc
   timingTebPrimitive.cc
   tmoTebPrimitive.cc
   tebPyTrigger.cc
@@ -150,6 +152,12 @@ target_link_libraries(calibTrigger
 #---
 
 install(FILES
+  BldTebData.hh
+  GasDetTebData.hh
+  GmdTebData.hh
+  XGmdTebData.hh
+  EBeamTebData.hh
+  PhaseCavityTebData.hh
   TimingTebData.hh
   TmoTebData.hh
   DESTINATION include/psdaq/trigger

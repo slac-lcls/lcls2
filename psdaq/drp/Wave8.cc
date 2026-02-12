@@ -189,4 +189,31 @@ void Wave8::_event(XtcData::Xtc& xtc,
 {
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
+
+void     Wave8::addToCube(unsigned rawDefIndex, double* dst, XtcData::DescData& rawData) 
+{
+    if (rawDefIndex < 8) {
+        Array<uint16_t> rawArrT = rawData.get_array<uint16_t>(rawDefIndex);
+        Array<double_t> calArrT((char*)dst, rawArrT.shape(), rawArrT.rank());
+        //  Apply the calibration, so shape matters (No calibration)
+        for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
+            for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
+                calArrT(ix,iy) += double( rawArrT(ix,iy) );
+        logging::debug("AreaDetector::addToCubeArray  rawArrT %p  [%u %u %u %u] calArr %p [%f %f %f %f]",
+                       rawArrT.data(), rawArrT.data()[0], rawArrT.data()[1], rawArrT.data()[2], rawArrT.data()[3],
+                       calArrT.data(), calArrT.data()[0], calArrT.data()[1], calArrT.data()[2], calArrT.data()[3]);
+    }
+    else {
+        logging::error("Wave8::addToCube rawDefIndex %u", rawDefIndex);
+        abort();
+    }
+}
+
+XtcData::VarDef Wave8::rawDef()
+{
+    VarDef v;
+    for(unsigned i=0; i<8; i++)
+        W8::RawStream::varDef(v,i);
+    return v;
+}
 }
