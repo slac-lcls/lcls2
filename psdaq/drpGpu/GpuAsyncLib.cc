@@ -55,6 +55,7 @@ bool CudaContext::init(int device, bool quiet) {
         logging::error("Invalid GPU device number %d! There are only %d devices available", device, devs);
         return false;
     }
+    _devNo = device;
 
     // Actually get the device...
     CUresult status;

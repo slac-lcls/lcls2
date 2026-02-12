@@ -92,9 +92,12 @@ public:
 
     CUdevice device() const { return device_; }
     CUcontext context() const { return context_; }
+    int deviceNo() const { return _devNo; }
 
     CUcontext context_;
     CUdevice device_;
+private:
+    int _devNo;
 };
 
 /**
