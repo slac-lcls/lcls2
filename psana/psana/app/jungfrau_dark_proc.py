@@ -40,8 +40,8 @@ def argument_parser():
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
-    d_events  = 1000000 # last event number in the step to process
-    d_evstep  = 1000000
+    d_events  = 1000    # max_events in DataSource(max_events=events,...)
+    #d_evstep  = 1000
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
@@ -56,7 +56,7 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-02-02'
+    d_version = 'V2026-02-10'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
     d_plotim  = 0
@@ -79,8 +79,8 @@ def argument_parser():
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
     h_evskip  = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events  = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
-    h_evstep  = 'maximal number of events to process in each step, default = %s' % d_evstep
+    h_events  = 'DataSource(..., max_events=events, ...), default = %s' % str(d_events)
+    #h_evstep  = 'maximal number of events to process in each step, default = %s' % d_evstep
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -115,7 +115,7 @@ def argument_parser():
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
     parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
     parser.add_argument('--events',        default=d_events,     type=int,   help=h_events)
-    parser.add_argument('-e', '--evstep',  default=d_evstep,     type=int,   help=h_evstep)
+    #parser.add_argument('-e', '--evstep',  default=d_evstep,     type=int,   help=h_evstep)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
