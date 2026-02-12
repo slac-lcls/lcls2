@@ -156,7 +156,7 @@ def get_jungfrau_gain_mode_object(odet):
 
 def open_DataSource(**kwargs):
     dskwargs = ups.data_source_kwargs(**kwargs)
-    dskwargs['max_events'] = kwargs.get('events', 1000000)
+    dskwargs['max_events'] = kwargs.get('events', 3000)
     dskwargs['batch_size'] = kwargs.get('batch_size', 2)
     #logger.info('DataSource dskwargs: %s' % (dskwargs))
     #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=2)
@@ -317,12 +317,12 @@ def jungfrau_dark_proc(parser):
                 #    logger.info('break at ievt %d == --evstep=%d' % (ievt, evstep))
                 #    break
 
-                if nevtot>=events:
-                    print()
-                    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
-                    terminate_steps = True
-                    terminate_runs = True
-                    break
+                #if nevtot>=events:
+                #    print()
+                #    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
+                #    terminate_steps = True
+                #    terminate_runs = True
+                #    break
 
                 #if ecm:
                 #  if not ecm.select(evt):
