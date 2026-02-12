@@ -5,9 +5,10 @@ import sys
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 #CMD = """mpirun -n 4 python %s -e mfx101332224 -r 7 -d epix100 -n 100""" % SCRNAME
 
-CMD = """mpirun -n 5 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx100848724 -r 49 -d jungfrau -n 100"""
-
-
+"""
+mpirun -n 5 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx100848724 -r 49 -d jungfrau -n 100
+mpirun -n 5 python lcls2/psana/psana/detector/testman/max_det_lcls2_my.py -e mfx101332224 -r 7 -d epix100 -n 100
+"""
 
 from psana import DataSource
 import numpy as np
@@ -23,6 +24,11 @@ rank = comm.Get_rank()
 size = comm.Get_size()
 cpu_num = psutil.Process().cpu_num()
 s_rsc = 'rank:%03d/%03d cpu:%03d' % (rank, size, cpu_num)
+
+def selected(n):
+    return n<5\
+        or n<50 and n%10 == 0\
+        or n%100 == 0
 
 class Stats:
     def __init__(self,detarr):
@@ -51,13 +57,12 @@ smd = ds.smalldata()
 myrun = next(ds.runs())
 print('XXX myrun', str(myrun), '  runnum:', str(myrun.runnum), s_rsc)
 det = myrun.Detector(args.det)
-#print('XXX ds.runnum_list = %s' % str(ds.runnum_list), s_rsc)
-print('TEST EXIT')
-#sys.exit(0)
+print('begin event loop %s' % s_rsc)
 
 for nevt,evt in enumerate(myrun.events()):
     raw = det.raw.raw(evt)
-    print(info_ndarr(raw, '%s evt:%03d raw:' % (s_rsc, nevt)))#, first=1000, last=1005))
+    if selected(nevt):
+        print(info_ndarr(raw, '%s evt:%03d raw:' % (s_rsc, nevt)))#, first=1000, last=1005))
     if raw is None: continue
     if nevt==0: stats = Stats(raw)
     else: stats.update(raw)
@@ -69,4 +74,8 @@ if smd.summary:
     maximum = smd.max(stats.maximum)
     # this "if" statement picks out the mpi rank on which the sums are stored
     if totevent is not None: print(totevent,info_ndarr(sum,'\nsum  :'),info_ndarr(sumsq,'\nsumsq:', last=4))
+
+print('smd.done() for %s' % s_rsc)
 smd.done()
+
+sys.exit(0)

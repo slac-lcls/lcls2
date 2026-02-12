@@ -2,6 +2,8 @@ from psana import DataSource
 import numpy as np
 import os
 
+CMD = """mpirun -n 5 python lcls2/psana/psana/detector/testman/max_det_lcls2.py -e mfx100848724 -r 49 -d jungfrau -n 100"""
+
 os.environ['PS_SRV_NODES']='1'
 
 class Stats:
