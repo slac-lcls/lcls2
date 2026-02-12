@@ -13,7 +13,7 @@ phase 1 ONLY: USE --nrecs == --nrecs1, e.g.:
 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 50 --nrecs1 50
 
 phase 2 with MPI:
-mpirun -n 4 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0
+mpirun -n 5 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0 --events 100
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -252,12 +252,12 @@ def jungfrau_dark_proc_mpi(parser):
                 or ievt==evskip-1: logger.info(s)
                 continue
 
-            if nevtot>=events:
-                print()
-                logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
-                terminate_steps = True
-                terminate_runs = True
-                break
+            #if nevtot>=events:
+            #    print()
+            #    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
+            #    terminate_steps = True
+            #    terminate_runs = True
+            #    break
 
             raw = odet.raw.raw(evt)
             if raw is None:
@@ -314,11 +314,11 @@ def jungfrau_dark_proc_mpi(parser):
             uc.save_results_in_repository(dpo, orun, dpo.odet, call_summary=False, **kwargs)
 #        dpo=None
 
+    logger.info('SMD.DONE in %s' % s_rsch)
     smd.done()
-    logger.info('smd.done in %s' % s_rsch)
 
     if is_rank_sum:
-        logger.info('%s\n%s total consumed time %.3f sec' % (40*'_', s_rsch, time()-t0_sec))
+        logger.info('SUM %s total consumed time %.3f sec' % (s_rsch, time()-t0_sec))
         repoman.logfile_save()
 
 # EOF
