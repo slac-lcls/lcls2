@@ -382,7 +382,6 @@ cudaGraph_t Reader::_recordGraph()
 void Reader::start()
 {
   logging::info("Reader is starting");
-  chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
   for (const auto& fpga : m_pool.panels()) {
     if (fpga.name != "/dev/null") {     // Else, Simulator mode

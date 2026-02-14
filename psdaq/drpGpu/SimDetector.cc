@@ -144,6 +144,7 @@ void SimDetector::_eventSimulator()
   }
 
   auto& memPool = *m_pool->getAs<MemPoolGpu>();
+  chkError(cudaSetDevice(memPool.context().deviceNo()));
   chkError(cuCtxSetCurrent(memPool.context().context()));
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]

@@ -159,7 +159,9 @@ void TebReceiver::_recorder()
     perror("prctl");
   }
 
+  // Establish context in this thread
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
+  chkError(cudaSetDevice(memPool.context().deviceNo()));
   chkError(cuCtxSetCurrent(memPool.context().context()));
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
@@ -614,6 +616,11 @@ void PGPDrp::_collector()
     if (_setupMetrics(exporter))
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
+
+  // Establish context in this thread
+  auto& memPool = *pool.getAs<MemPoolGpu>();
+  chkError(cudaSetDevice(memPool.context().deviceNo()));
+  chkError(cuCtxSetCurrent(memPool.context().context()));
 
   // Start the PGP reader on the GPU
   m_reader->start();

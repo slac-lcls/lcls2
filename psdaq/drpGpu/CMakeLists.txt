@@ -7,7 +7,6 @@ find_package(Threads REQUIRED)
 if(CMAKE_CUDA_COMPILER)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-    set(CMAKE_CUDA_ARCHITECTURES 86 90)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)

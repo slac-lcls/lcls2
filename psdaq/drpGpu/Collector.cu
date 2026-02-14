@@ -214,7 +214,6 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
 void Collector::start()
 {
   logging::info("Collector starting");
-  chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
 
   resetEventCounter();
 

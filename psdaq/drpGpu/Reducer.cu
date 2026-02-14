@@ -409,7 +409,6 @@ void Reducer::startup()
 {
   printf("*** Reducer::startup: 1\n");
   if (m_algos.size() && m_algos[0]->hasGraph()) {           // Same value for all instances
-    chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
     printf("*** Reducer::startup: 2\n");
 
     // Launch the Reducer graphs
@@ -442,7 +441,8 @@ void Reducer::_worker(unsigned worker)
     perror("prctl");
   }
 
-  chkError(cuCtxSetCurrent(m_pool.context().context())); // Needed, else kernels misbehave
+  // Establish context in this thread
+  chkError(cudaSetDevice(m_pool.context().deviceNo()));
 
   auto algo         = m_algos[worker];
   auto head         = m_heads_h[worker];
