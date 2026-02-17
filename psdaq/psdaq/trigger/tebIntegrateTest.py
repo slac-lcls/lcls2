@@ -14,9 +14,15 @@ logging.warning(f"[Python] tebCubeTest script starting")
 #  bin_record = (cube_event_count+1) % record_factor == 0
 record_eventcode = 256
 #bin_eventcodes = 257..264
-cube_bins = 256
-cube_record_factor = cube_bins*40+1
+#cube_bins = 256
+#cube_record_factor = cube_bins*40+1
+cube_bins = 1
+cube_record_factor = cube_bins*10240+1
 cube_event_count = 0
+
+def cb(ds):
+    logging.warning(f'[Python] Setting nbins {cube_bins}')
+    ds.cubeConfigure(cube_bins)
 
 ds = tebTrigger.CubeTriggerDataSource(cube_bins)
 
@@ -55,6 +61,7 @@ for event in ds.events():
     num_event += 1
 
     persist = False
+    flush   = False
     index   = 0
 
     for ctrb in event:
@@ -95,10 +102,11 @@ for event in ds.events():
             data = TmoTebData(payld)
 
 #    monitor   = (cube_event_count % cube_record_factor)<2
-    recordBin = (cube_event_count % cube_record_factor)==2
+    recordBin = (cube_event_count % cube_record_factor)==0
     monitorBin = recordBin
     monitor = recordBin
+    flush = recordBin
     ds.result(persist, mebs if monitor else 0, index, 
-              recordBin, monitorBin)
+              recordBin, monitorBin, flush)
 
 print(f"[Python] tebCubeTest script exiting; {num_event} events handled")

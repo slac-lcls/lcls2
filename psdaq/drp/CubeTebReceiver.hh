@@ -35,6 +35,7 @@ private:
     std::vector<SPSCQueue<unsigned> > m_workerOutputQueues; //
     std::thread                       m_collectorThread;    // process returns
     std::vector<Pds::Semaphore>       m_sem;
+    Pds::Semaphore                    m_flush_sem;
     std::atomic<bool>                 m_terminate;
 };
 

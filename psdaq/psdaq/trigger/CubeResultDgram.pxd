@@ -15,3 +15,5 @@ cdef extern from 'psdaq/eb/CubeResultDgram.hh' namespace "Pds::Eb":
         int      updateRecord  ()
         void     updateMonitor (int value)
         int      updateMonitor ()
+        void     flush         (int value)
+        int      flush         ()

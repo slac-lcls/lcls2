@@ -17,7 +17,7 @@ private:
                               uint64_t l1count,
                               std::vector< XtcData::Array<uint8_t> >&) override;
     // For binning into the cube
-    virtual void     addToCube(unsigned rawDefIndex, double* dst, XtcData::DescData& rawData) override;
+    virtual void     addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) override;
     virtual unsigned rawNamesIndex () override { return EventNamesIndex+0; }
     virtual unsigned cubeNamesIndex() override { return EventNamesIndex+2; }
     virtual XtcData::VarDef rawDef () override;

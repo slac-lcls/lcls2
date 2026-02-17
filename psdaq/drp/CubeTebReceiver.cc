@@ -108,6 +108,59 @@ namespace Drp {
     };
 };
 
+void subWorkerFunc(Detector&                   det,
+                   std::atomic<ShapesData*>&   rawShapesData,
+                   unsigned                    nbins,
+                   char*                       bin_data,
+                   SPSCQueue<unsigned>&        inputQueue,
+                   Pds::Semaphore&             sem,
+                   unsigned                    group,
+                   unsigned                    subIndex)
+{
+    logging::info("CubeSubWorker %u.%u is starting with process ID %lu", group, subIndex, syscall(SYS_gettid));
+    char nameBuf[16];
+    snprintf(nameBuf, sizeof(nameBuf), "drp/CubeSub%d.%d", group, subIndex);
+    if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
+        perror("prctl");
+    }
+
+    VarDef rawDef  = det.rawDef();
+    VarDef cubeDef = CubeDef(rawDef.NameVec);
+
+    NamesId rawNamesId(det.nodeId,det.rawNamesIndex());
+    NamesId cubeNamesId(det.nodeId,det.cubeNamesIndex());
+
+    //
+    //  Event loop
+    //
+    while (true) {
+        unsigned bin;
+        if (!inputQueue.pop(bin)) [[unlikely]] {
+                break;
+            }
+
+        ShapesData* rsd =  rawShapesData.load(std::memory_order_relaxed);
+        DescData rawdata(*rsd, det.namesLookup()[rawNamesId]);  // reading
+
+        Xtc& xtc = ((Dgram*)bin_data)->xtc;
+        DescData cubedata(*(ShapesData*)xtc.payload(), det.namesLookup()[cubeNamesId]);
+
+        unsigned size = 2*nbins*sizeof(uint32_t);
+
+        for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
+            Name& name = rawDef.NameVec[i];
+            unsigned arraySize = sizeof(double_t)*Shape(rawdata.shape(name)).num_elements(name.rank());
+            double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*arraySize);
+            size += nbins*arraySize;
+            det.addToCube(i, subIndex, dst, rawdata);
+        }
+
+        sem.give();
+    }
+
+    logging::info("CubeSubWorker %u.%u is exiting", group, subIndex);
+}
+
 //
 //  Each worker has independent memory allocated for the cube at Configure
 //
@@ -130,6 +183,33 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
         perror("prctl");
     }
 
+    //
+    //  Launch sub workers here
+    //
+    std::vector<SPSCQueue<unsigned> > subWorkerInputQueues;
+    std::vector<Pds::Semaphore>       subWorkerSem;
+    std::vector<std::thread>          subWorkerThreads;
+    std::atomic<ShapesData*>          rawShapesData;
+
+    for (unsigned i=1; i<det.subIndices(); i++) {
+        subWorkerInputQueues.emplace_back(SPSCQueue<unsigned>(1));
+        subWorkerSem.emplace_back(Pds::Semaphore(Pds::Semaphore::EMPTY));
+    }
+    for (unsigned i=1; i<det.subIndices(); i++) {
+        subWorkerThreads.emplace_back(subWorkerFunc,
+                                      std::ref(det),
+                                      std::ref(rawShapesData),
+                                      nbins,
+                                      std::ref(bin_data),
+                                      std::ref(subWorkerInputQueues[i-1]),
+                                      std::ref(subWorkerSem[i-1]),
+                                      threadNum,
+                                      i);
+    }
+
+    //
+    //  Event loop
+    //
     while (true) {
 
         if (!inputQueue.pop(index)) [[unlikely]] {
@@ -168,8 +248,8 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
 
             //  Get the raw data (for size)
             NamesId rawNamesId(det.nodeId,det.rawNamesIndex());
-            ShapesData& rawShapesData = *(iter.shapesdata());
-            DescData rawdata(rawShapesData, det.namesLookup()[rawNamesId]);  // reading
+            rawShapesData.store(iter.shapesdata(), std::memory_order_release);
+            DescData rawdata(*rawShapesData, det.namesLookup()[rawNamesId]);  // reading
 
             VarDef rawDef  = det.rawDef();
             VarDef cubeDef = CubeDef(rawDef.NameVec);
@@ -182,10 +262,6 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
                 Dgram& dg = *new (bin_data) Dgram( Transition(), Xtc(TypeId(TypeId::Parent,0),dgram->xtc.src) );
                 Xtc& xtc = dg.xtc;
                 
-                if (threadNum==0)
-                    logging::info("CubeTebReceiver::cubeInit rawShapesData (%p) xtc (%p) bufEnd (%p) bin (%u) nbins (%u)",
-                                  &rawShapesData, &xtc, bufEnd, bin, nbins);
-
                 NamesId namesId(det.nodeId, det.cubeNamesIndex());
                 //  DescribedData creates the Data container first, then the Shapes container
                 DescribedData data(xtc, bufEnd, det.namesLookup(), namesId);
@@ -257,7 +333,7 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
                                       i, cubeDef.NameVec[i].name(), sh[0], sh[1], sh[2], sh[3], sh[4]);
                     } 
                 }
-                data_init = false;
+                data_init.store(false, std::memory_order_release);
             }  // data_init
             {
                 sem.take();
@@ -270,18 +346,34 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
                 }
                 unsigned size = 2*nbins*sizeof(uint32_t);
 
+                //  Sub workers help here
+                for(unsigned i=1; i<det.subIndices(); i++)
+                    subWorkerInputQueues[i-1].push(bin);
+
                 for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
                     Name& name = rawDef.NameVec[i];
                     unsigned arraySize = sizeof(double_t)*Shape(rawdata.shape(name)).num_elements(name.rank());
                     double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+bin*arraySize);
                     size += nbins*arraySize;
-                    det.addToCube(i, dst, rawdata);
+                    det.addToCube(i, 0, dst, rawdata);
                 }
+
+                for(unsigned i=1; i<det.subIndices(); i++)
+                    subWorkerSem[i-1].take();
+
                 sem.give();
             }
         }
 
         outputQueue.push(index);
+    }
+
+    //  Shut down sub workers
+    for(unsigned i=1; i<det.subIndices(); i++) {
+        subWorkerInputQueues[i-1].shutdown();
+        if (subWorkerThreads[i-1].joinable())
+            subWorkerThreads[i-1].join();
+        logging::info("SubWorker %u.%u joined",threadNum,i);
     }
 
     logging::info("CubeWorker %u is exiting", threadNum);
@@ -298,6 +390,7 @@ CubeTebReceiver::CubeTebReceiver(const Parameters& para, DrpBase& drp) :
     m_bin_data   (para.nCubeWorkers),
     m_buffer     (new char[BUFFER_SIZE(drp.pool)]),
     m_sem        (para.nCubeWorkers,Pds::Semaphore(Pds::Semaphore::FULL)),
+    m_flush_sem  (Pds::Semaphore::EMPTY),
     m_terminate  (false)
 {
 }
@@ -316,6 +409,9 @@ void CubeTebReceiver::complete(unsigned index, const ResultDgram& res)
                    index, result.data(), result.persist(), result.monitor(), result.binIndex(), result.updateMonitor(), result.updateRecord());
 
     _queueDgram(index, result); // copies the result
+
+    if (result.flush())
+        m_flush_sem.take();
 }
 
 void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram& result)
@@ -452,6 +548,14 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
     //  Initialize and set shapes from the first worker
     unsigned iworker = 0;
     {
+        //  Skip workers with no entries
+        while (m_data_init[iworker].load(std::memory_order_release)) {
+            if (++iworker == m_para.nCubeWorkers) {
+                //  There is no data to gather
+                //  Do we need to do anything to indicate an empty dg?
+                return dg;
+            }
+        }
         m_sem[iworker].take();
         DescData cubedata(*(ShapesData*)(((Dgram*)m_bin_data[iworker])->xtc.payload()), m_det.namesLookup()[namesId]);
         ((uint32_t*)data.data())[0] = ibin;
@@ -489,6 +593,10 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
     //  Accumulate from the rest of the workers
     //
     while(++iworker < m_para.nCubeWorkers) {
+        //  Skip workers with no entries
+        if (m_data_init[iworker].load(std::memory_order_release))
+            continue;
+
         m_sem[iworker].take();
 
         DescData cubedata(*(ShapesData*)(((Dgram*)m_bin_data[iworker])->xtc.payload()), m_det.namesLookup()[namesId]);
@@ -708,6 +816,13 @@ void CubeTebReceiver::process()
             
             // Free the pebble datagram buffer
             m_pool.freePebble(index);
+
+            if (result.flush()) {
+                //  Clear the cube
+                for(unsigned i=0; i<m_para.nCubeWorkers; i++)
+                    m_data_init[i].store(true, std::memory_order_release);
+                m_flush_sem.give();
+            }
         }
         else {
             logging::info("CubeTebReceiver::process outputQ %u shutdown",worker);

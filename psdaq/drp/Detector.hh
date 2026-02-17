@@ -48,7 +48,8 @@ public:
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
     // For binning into the cube
-    virtual void     addToCube(unsigned rawDefIndex, double* dst, XtcData::DescData& rawData) {}
+    virtual void     addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) {}
+    virtual unsigned subIndices    () { return 0; }
     virtual unsigned rawNamesIndex () { return 0; }
     virtual unsigned cubeNamesIndex() { return 0; }
     virtual XtcData::VarDef rawDef () { return XtcData::VarDef(); }

@@ -114,31 +114,51 @@ cdef class BldTebData:
         if self._bufOwner:
             PyBuffer_Release(&self.buf)
 
-    def _datadef(self,name,class_):
-        p = getattr(self,f'{name}p')
-        if p:
-           g = class_()
-           g.cptr = p
+    def gmd(self):
+        if self.gmdp:
+           g = GmdTebData()
+           g.cptr = self.gmdp
            return g
         return None
 
-    def gmd(self):
-        return self._datadef('gmd',GmdTebData)
-
     def xgmd(self):
-        return self._datadef('xgmd',XGmdTebData)
+        if self.xgmdp:
+           g = XGmdTebData()
+           g.cptr = self.xgmdp
+           return g
+        return None
 
     def pcav(self):
-        return self._datadef('pcav',PhaseCavityTebData)
+        if self.pcavp:
+           g = PhaseCavityTebData()
+           g.cptr = self.pcavp
+           return g
+        return None
 
     def pcavs(self):
-        return self._datadef('pcavs',PhaseCavityTebData)
+        if self.pcavsp:
+           g = PhaseCavityTebData()
+           g.cptr = self.pcavsp
+           return g
+        return None
 
     def ebeam(self):
-        return self._datadef('ebeam',EBeamTebData)
+        if self.ebeamp:
+           g = EBeamTebData()
+           g.cptr = self.ebeamp
+           return g
+        return None
 
     def ebeams(self):
-        return self._datadef('ebeams',EBeamTebData)
+        if self.ebeamsp:
+           g = EBeamTebData()
+           g.cptr = self.ebeamsp
+           return g
+        return None
 
     def gasdet(self):
-        return self._datadef('gasdet',GasDetTebData)
+        if self.gasdetp:
+           g = GasDetTebData()
+           g.cptr = self.gasdetp
+           return g
+        return None

@@ -82,7 +82,9 @@ unsigned AreaDetector::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const jso
     //  Fetch new constants for cube (via Python)
     //  sim_length is in units of 32-bit words, 
     //  but image is interpreted as 16-bit words (see RawDef)
-    unsigned constants_length = m_length * sizeof(uint32_t)/sizeof(uint16_t) * std::popcount(m_para->laneMask);
+    std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sw_sim_length");
+    unsigned constants_length = sizeof(uint32_t)/sizeof(uint16_t) * std::popcount(m_para->laneMask)
+        * (it == m_para->kwargs.end() ? m_length : std::stoul(it->second.data()));
 
     if (m_constants[Pedestals])
         delete m_constants[Pedestals];
@@ -137,6 +139,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     }
 
     // raw data
+    std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sw_sim_length");
     NamesId rawNamesId(nodeId,RawNamesIndex);
     DescribedData raw(dgram.xtc, bufEnd, m_namesLookup, rawNamesId);
     unsigned size = 0;
@@ -148,7 +151,6 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
             // size without Event header
             // add sw_sim_length kwarg to simulate larger detectors even if the pcie bandwidth
             //   doesn't support it
-            std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sw_sim_length");
             int dataSize = (it==m_para->kwargs.end()) ? 
                 event->buffers[i].size - 32 : std::stoul(it->second.data())*sizeof(uint32_t);
             uint32_t dmaIndex = event->buffers[i].index;
@@ -162,7 +164,7 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     raw.set_data_length(size);
 
     ((uint32_t*)raw.data())[RawDef::value] = 9;
-    size /= (nlanes * sizeof(uint16_t));
+    size = (size - sizeof(uint32_t)) / (nlanes * sizeof(uint16_t));
     unsigned raw_shape[MaxRank] = {nlanes, size};
     raw.set_array_shape(RawDef::array_raw, raw_shape);
 }
@@ -172,11 +174,12 @@ VarDef   AreaDetector::rawDef ()
     return _rawDef;
 }
 
-void AreaDetector::addToCube(unsigned rawDefIndex, double_t* dst, DescData& rawData)
+void AreaDetector::addToCube(unsigned rawDefIndex, unsigned subIndex, double_t* dst, DescData& rawData)
 {
     switch(rawDefIndex) {
     case RawDef::value:
-        *dst += double(rawData.get_value<uint32_t>(RawDef::value));
+        if (subIndex==0)
+            *dst += double(rawData.get_value<uint32_t>(RawDef::value));
         break;
     case RawDef::array_raw:
         {
@@ -184,13 +187,13 @@ void AreaDetector::addToCube(unsigned rawDefIndex, double_t* dst, DescData& rawD
             Array<double_t> calArrT((char*)dst, rawArrT.shape(), rawArrT.rank());
             Array<double_t> pedArrT (m_constants[Pedestals], rawArrT.shape(), rawArrT.rank());
             Array<double_t> gainArrT(m_constants[Gains], rawArrT.shape(), rawArrT.rank());
+
             //  Apply the calibration, so shape matters
+            //            unsigned ix=subIndex;
             for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
-                for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
-                    calArrT(ix,iy) += gainArrT(ix,iy)*(double( rawArrT(ix,iy) ) - pedArrT(ix,iy));
-            logging::debug("AreaDetector::addToCubeArray  rawArrT %p  [%u %u %u %u] calArr %p [%f %f %f %f]",
-                           rawArrT.data(), rawArrT.data()[0], rawArrT.data()[1], rawArrT.data()[2], rawArrT.data()[3],
-                           calArrT.data(), calArrT.data()[0], calArrT.data()[1], calArrT.data()[2], calArrT.data()[3]);
+            for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
+                calArrT(ix,iy) += gainArrT(ix,iy)*(double( rawArrT(ix,iy) ) - pedArrT(ix,iy));
+
             break;
         }
     default:

@@ -91,12 +91,8 @@ for event in ds.events():
                 mebs = ami_mebs.schedule()
             else:
                 mebs = usr_mebs.schedule()
-                
-        else:
-            payld = ctrb.xtc.payload()
-            data = TmoTebData(payld)
 
-            logging.debug(f'[Python] write {data.write:x}')
+            break
 
     ds.result(persist, mebs)
 

@@ -190,7 +190,7 @@ void Wave8::_event(XtcData::Xtc& xtc,
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
 
-void     Wave8::addToCube(unsigned rawDefIndex, double* dst, XtcData::DescData& rawData) 
+void     Wave8::addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) 
 {
     if (rawDefIndex < 8) {
         Array<uint16_t> rawArrT = rawData.get_array<uint16_t>(rawDefIndex);

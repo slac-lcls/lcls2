@@ -542,7 +542,7 @@ void     Bld::clear(uint64_t ts)
             timestamp = 0;
             ssize_t bytes;
             if (m_simulate) {  // generate a fake payload with timestamp ts
-                bytes = m_payloadSize + 4;
+                bytes = m_payloadSize + m_headerSize;
                 const double NS_PER_PID = 0.98e9/910000;
                 double dtns = ((ts>>32)-(headerTimestamp()>>32))*1.e9 + ((ts&0xffffffff)-(headerTimestamp()&0xffffffff));
                 double dpid = (dtns + 0.5*NS_PER_PID)/NS_PER_PID;

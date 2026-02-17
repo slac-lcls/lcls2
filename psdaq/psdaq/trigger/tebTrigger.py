@@ -140,7 +140,7 @@ class TriggerDataSource(object):
 
             if chr(message[0]) == 'g':
                 if self._cfg_cb:
-                    self._cfg_cb(self)
+                    self._cfg_cb()
                 else:
                     self._mq_res.send(b"g")
                 break
@@ -183,14 +183,24 @@ class TriggerDataSource(object):
         #    f"[Python] Sent message 'g'"
         #)
 
-    def cubeResult(self, persist, monitor, bin_index, bin_record, bin_monitor):
-        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
-                                     bin_index, bin_record, bin_monitor)
+
+class CubeTriggerDataSource(TriggerDataSource):
+
+    def __init__(self, nbins):
+        self.nbins = nbins
+        TriggerDataSource.__init__(self, self.configure)
+
+
+    def configure(self):
+        logging.warning(f'[Python] Setting nbins {self.nbins}')
+        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, self.nbins-1, 0, 0)
         self._mq_res.send(b"g")
 
-    def cubeConfigure(self, nbins):
-        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, nbins-1, 0, 0)
+    def result(self, persist, monitor, bin_index, bin_record, bin_monitor, flush=False):
+        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
+                                     bin_index, bin_record, bin_monitor, flush)
         self._mq_res.send(b"g")
+
 
 # Revisit: Move this into a .pyx?
 class Event(object):

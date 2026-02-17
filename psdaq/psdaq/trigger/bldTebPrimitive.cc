@@ -202,11 +202,11 @@ BldDataIterator::BldDataIterator(Xtc&                  xtc,
     iterate(); 
 
     _tebData = new((void*)dest.next()) BldTebData(_sources);
-    logging::warning("BldDataIterator tebData [%x] at %p",_sources,_tebData);
+    logging::info("BldDataIterator tebData [%x] at %p",_sources,_tebData);
 
     for(const auto& [key, value] : _shapesData) {
         DescData desc(*value,_namesLookup[key]);
-        logging::warning("DescData(%p,namesLookup[%x]) src %u", value, key, _tebFactory[key]->source());
+        logging::info("DescData(%p,namesLookup[%x]) src %u", value, key, _tebFactory[key]->source());
         _tebFactory[key]->create(*_tebData,desc);
     }
 
@@ -223,7 +223,7 @@ int BldDataIterator::process(Xtc* xtc, const void* bufEnd)
     case (TypeId::ShapesData): {
         ShapesData* psd = (ShapesData*)xtc;
         unsigned namesId = psd->namesId();
-        logging::warning("BldDataIterator shapesData[%x] = %p", namesId,psd);
+        logging::info("BldDataIterator shapesData[%x] = %p", namesId,psd);
         _shapesData[namesId] = psd;
         if (_tebFactory.find(namesId)!=_tebFactory.end())
             _sources |= 1ULL<<_tebFactory[namesId]->source();
@@ -239,13 +239,13 @@ int Pds::Trg::BldTebPrimitive::configure(const json& configureMsg,
                                          const json& connectMsg,
                                          size_t      collectionId)
 {
-    logging::warning("BldTebPrimitive::configure json");
+    logging::info("BldTebPrimitive::configure json");
     return 0;
 }
 
 void Pds::Trg::BldTebPrimitive::configure(const Xtc& xtc, const void* bufEnd)
 {
-    logging::warning("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
+    logging::info("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
                      &xtc, xtc.contains.value(), xtc.sizeofPayload(), bufEnd);
 
     DumpIterator dump((char*)&xtc);
@@ -305,7 +305,7 @@ void Pds::Trg::BldTebPrimitive::event(const Drp::MemPool& pool,
                                       Xtc&                xtc,
                                       const void*         bufEnd)
 {
-    logging::warning("BldTebPrimitive::event xtc %p  bufEnd %p", &xtc, bufEnd);
+    logging::info("BldTebPrimitive::event xtc %p  bufEnd %p", &xtc, bufEnd);
     if (!m_sources)
         return;
 
