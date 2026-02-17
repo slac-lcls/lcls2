@@ -725,7 +725,7 @@ class EventBuilderNode(object):
         del smd_batch_dict[dest_rank]  # done sending
 
         step_batch, _ = step_batch_dict[dest_rank]
-        if memoryview(step_batch).nbytes > 0:
+        if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
             step_pf = PacketFooter(view=step_batch)
             self.step_hist.extend_buffers(
                 step_pf.split_packets(), dest_rank, as_event=True
@@ -740,31 +740,6 @@ class EventBuilderNode(object):
         self._update_bd_read_stats(rankreq)
         self._bd_wait_s.append(en_req - st_req)
         self.wait_bd_gauge.set(en_req - st_req)
-
-    def _drain_waiting_bds(self, rankreq, waiting_bds):
-        bd_comm = self.comms.bd_comm
-        while bd_comm.Iprobe(source=MPI.ANY_SOURCE):
-            self._request_rank(rankreq)
-            waiting_bds.append(int(rankreq[0]))
-
-    def _pick_waiting_bd_round_robin(self, waiting_bds, rr_next_bd, n_bd_nodes):
-        if not waiting_bds:
-            return None, rr_next_bd
-
-        candidates = sorted(set(waiting_bds))
-        dest_rank = None
-        for rank in candidates:
-            if rank >= rr_next_bd:
-                dest_rank = rank
-                break
-        if dest_rank is None:
-            dest_rank = candidates[0]
-
-        waiting_bds.remove(dest_rank)
-        rr_next_bd = dest_rank + 1
-        if rr_next_bd > n_bd_nodes:
-            rr_next_bd = 1
-        return dest_rank, rr_next_bd
 
     def _update_bd_read_stats(self, rankreq):
         if self._bd_chunk_stats is None or self._bd_pending_chunk_id is None:
@@ -966,8 +941,6 @@ class EventBuilderNode(object):
         bd_comm = self.comms.bd_comm
         waiting_bds = []
         chunk_id = 0
-        rr_next_bd = 1
-        enforce_strict_rr = self.dsparms.smd_callback != 0 and n_bd_nodes > 1
 
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
@@ -1007,71 +980,36 @@ class EventBuilderNode(object):
                     self.logger.debug(
                         f"TIMELINE 9. EB{self.comms.world_rank}REQBD {time.monotonic()}",
                     )
-                    from_queue = False
-                    if enforce_strict_rr:
-                        target_rank = rr_next_bd
-                        while True:
-                            self._drain_waiting_bds(rankreq, waiting_bds)
-                            if target_rank in waiting_bds:
-                                waiting_bds.remove(target_rank)
-                                dest_rank = target_rank
-                                from_queue = True
-                                break
-                            self._request_rank(rankreq)
-                            requested_rank = int(rankreq[0])
-                            if requested_rank == target_rank:
-                                dest_rank = requested_rank
-                                break
-                            waiting_bds.append(requested_rank)
-
-                        rr_next_bd = target_rank + 1
-                        if rr_next_bd > n_bd_nodes:
-                            rr_next_bd = 1
-                    else:
-                        self._drain_waiting_bds(rankreq, waiting_bds)
-                        had_waiting = bool(waiting_bds)
-                        if not waiting_bds:
-                            self._request_rank(rankreq)
-                            waiting_bds.append(int(rankreq[0]))
-                        dest_rank, rr_next_bd = self._pick_waiting_bd_round_robin(
-                            waiting_bds, rr_next_bd, n_bd_nodes
-                        )
-                        from_queue = had_waiting
-                        if dest_rank is None:
-                            self._request_rank(rankreq)
-                            dest_rank = int(rankreq[0])
-                            rr_next_bd = dest_rank + 1
-                            if rr_next_bd > n_bd_nodes:
-                                rr_next_bd = 1
-
-                    if from_queue:
+                    if waiting_bds:
+                        rankreq[0] = waiting_bds.pop()
                         self.logger.debug(
-                            f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{dest_rank+1}FROMQUEUE {time.monotonic()}",
+                            f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMQUEUE {time.monotonic()}",
                         )
                     else:
+                        self._request_rank(rankreq)
                         self.logger.debug(
-                            f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{dest_rank+1}FROMREQ {time.monotonic()}",
+                            f"TIMELINE 10. EB{self.comms.world_rank}GOTBD{rankreq[0]+1}FROMREQ {time.monotonic()}",
                         )
 
-                    missing_step_views = self.step_hist.get_buffer(dest_rank)
-                    batches[dest_rank] = repack_for_bd(
-                        smd_batch, missing_step_views, self.configs, client=dest_rank
+                    missing_step_views = self.step_hist.get_buffer(rankreq[0])
+                    batches[rankreq[0]] = repack_for_bd(
+                        smd_batch, missing_step_views, self.configs, client=rankreq[0]
                     )
 
                     self.logger.debug(
-                        f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{dest_rank+1} {time.monotonic()}",
+                        f"TIMELINE 11. EB{self.comms.world_rank}SENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
                     )
-                    self.requests[dest_rank - 1] = bd_comm.Isend(
-                        batches[dest_rank], dest=dest_rank
+                    self.requests[rankreq[0] - 1] = bd_comm.Isend(
+                        batches[rankreq[0]], dest=rankreq[0]
                     )
                     self.logger.debug(
-                        f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{dest_rank+1} {time.monotonic()}",
+                        f"TIMELINE 12. EB{self.comms.world_rank}DONESENDDATATOBD{rankreq[0]+1} {time.monotonic()}",
                     )
 
-                    if memoryview(step_batch).nbytes > 0:
+                    if eb_man.eb.nsteps > 0 and memoryview(step_batch).nbytes > 0:
                         step_pf = PacketFooter(view=step_batch)
                         self.step_hist.extend_buffers(
-                            step_pf.split_packets(), dest_rank, as_event=True
+                            step_pf.split_packets(), rankreq[0], as_event=True
                         )
 
                 # With > 1 dest_rank, start looping until all dest_rank batches

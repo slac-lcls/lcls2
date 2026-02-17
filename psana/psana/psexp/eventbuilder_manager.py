@@ -1,7 +1,6 @@
 from psana.eventbuilder import EventBuilder
 from psana.psexp.packet_footer import PacketFooter
 
-from .callback_batch import CallbackBatchBuilder
 from .run import RunSmallData
 
 
@@ -21,13 +20,6 @@ class EventBuilderManager(object):
                                batch_size=dsparms.batch_size,
                                use_proxy_events=use_proxy_events)
         self.run_smd = RunSmallData(self.eb, configs, dsparms)  # only used by smalldata callback
-        self.callback_batch_builder = CallbackBatchBuilder(
-            self.eb,
-            self.run_smd,
-            dsparms.smd_callback,
-            batch_size=dsparms.batch_size,
-            respect_batch_size=True,
-        )
 
     def batches(self):
         while True:
@@ -41,9 +33,21 @@ class EventBuilderManager(object):
                 if self.eb.nevents == 0 and self.eb.nsteps == 0:
                     break
             else:
-                callback_batch = self.callback_batch_builder.next_batch()
-                if callback_batch is None:
+                # Collects list of proxy events to be converted to batches.
+                # Note that we are persistently calling smd_callback until there's nothing
+                # left in all views used by EventBuilder. From this while/for loops, we
+                # either gets transitions from SmdDataSource and/or L1 from the callback.
+                while self.run_smd.proxy_events == [] and self.eb.has_more():
+                    for evt in self.dsparms.smd_callback(self.run_smd):
+                        self.run_smd.proxy_events.append(evt._proxy_evt)
+
+                if not self.run_smd.proxy_events:
                     break
-                batch_dict, step_dict = callback_batch
+
+                # Generate a bytearray representations of all the events in a batch.
+                batch_dict, step_dict = self.eb.gen_bytearray_batch(
+                    self.run_smd.proxy_events
+                )
+                self.run_smd.proxy_events = []
 
             yield batch_dict, step_dict

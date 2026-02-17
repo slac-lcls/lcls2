@@ -7,7 +7,6 @@ from psana.smdreader import SmdReader
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.tools import get_smd_n_events
 
-from .callback_batch import CallbackBatchBuilder
 from .run import RunSmallData
 
 
@@ -38,13 +37,6 @@ class BatchIterator(object):
                                    batch_size=dsparms.batch_size,
                                    use_proxy_events=use_proxy_events)
             self.run_smd = RunSmallData(self.eb, configs, dsparms)
-            self.callback_batch_builder = CallbackBatchBuilder(
-                self.eb,
-                self.run_smd,
-                dsparms.smd_callback,
-                batch_size=dsparms.batch_size,
-                respect_batch_size=True,
-            )
 
     def __iter__(self):
         return self
@@ -65,10 +57,21 @@ class BatchIterator(object):
             if self.eb.nevents == 0:
                 raise StopIteration
         else:
-            callback_batch = self.callback_batch_builder.next_batch(run_serial=True)
-            if callback_batch is None:
+            while self.run_smd.proxy_events == [] and self.eb.has_more():
+                for evt in self.dsparms.smd_callback(self.run_smd):
+                    self.run_smd.proxy_events.append(evt._proxy_evt)
+
+            if not self.run_smd.proxy_events:
                 raise StopIteration
-            batch_dict, step_dict = callback_batch
+
+            # Generate a bytearray representation of all the proxy events.
+            # Note that setting run_serial=True allow EventBuilder to combine
+            # L1Accept and transitions into one batch (key=0). Here, step_dict
+            # is always an empty bytearray.
+            batch_dict, step_dict = self.eb.gen_bytearray_batch(
+                self.run_smd.proxy_events, run_serial=True
+            )
+            self.run_smd.proxy_events = []
 
         return batch_dict, step_dict
 
