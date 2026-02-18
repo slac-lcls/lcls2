@@ -136,7 +136,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'psana.dgramchunk',
+    'dgramchunk',
     'src/dgramchunk.pyx',
     include_directories: [psana_incdir],
     install: true,
@@ -148,7 +148,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'psana.smdreader',
+    'smdreader',
     'psana/smdreader.pyx',
     include_directories: [
         psana_incdir,
@@ -163,7 +163,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'psana.eventbuilder',
+    'eventbuilder',
     'psana/eventbuilder.pyx',
     include_directories: [psana_incdir],
     install: true,
@@ -175,7 +175,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'psana.parallelreader',
+    'parallelreader',
     'psana/parallelreader.pyx',
     include_directories: [psana_incdir],
     install: true,
@@ -187,7 +187,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'psana.dgramedit',
+    'dgramedit',
     'psana/dgramedit.pyx',
     include_directories: [
         psana_incdir,
@@ -197,12 +197,15 @@ py.extension_module(
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
     link_with: [],
-    dependencies: [numpy_dep],
+    dependencies: [
+        numpy_dep,
+        xtcdata_dep,
+    ],
     override_options : ['cython_language=cpp'],
  )
 
 py.extension_module(
-    'psana.quadanode',
+    'quadanode',
     'psana/quadanode.pyx',
     include_directories: [psana_incdir],
     install: true,
@@ -214,7 +217,7 @@ py.extension_module(
  )
 
 py.extension_module(
-    'psana.dgramlite',
+    'dgramlite',
     'psana/dgramlite.pyx',
     include_directories: [
         psana_incdir,
@@ -229,7 +232,7 @@ py.extension_module(
  )
 
 py.extension_module(
-    'psana.hsd',
+    'hsd',
     'psana/hsd/hsd.pyx',
     include_directories: [
         psana_incdir,
@@ -245,7 +248,7 @@ py.extension_module(
  )
 
 py.extension_module(
-    'psana.ndarray',
+    'ndarray',
     sources: ['psana/pycalgos/NDArray_ext.pyx',
               'psana/peakFinder/src/WFAlgos.cc'
             ],
@@ -263,7 +266,7 @@ py.extension_module(
  )
 
 py.extension_module(
-    'psana.utilsdetector_ext',
+    'utilsdetector_ext',
     sources: ['psana/pycalgos/utilsdetector_ext.pyx',
               'psana/pycalgos/UtilsDetector.cc'
             ],
@@ -275,3 +278,10 @@ py.extension_module(
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
  )
+
+py = import('python').find_installation()
+
+install_subdir(
+  'psana',
+  install_dir: py.get_install_dir()
+)
