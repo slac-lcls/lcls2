@@ -42,15 +42,13 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 use_mpi = size > 1
-s_rsch = 'rank:%03d/%03d cpu:%03d' % (rank, size, cpu_num)
+s_rsch = 'rank:%03d/%03d-cpu:%03d' % (rank, size, cpu_num)
 is_rank0 = rank==0
 is_rank_sel = rank==(size-2) # rank==3
 if is_rank0: print('%s sys.argv: %s' % (s_rsch, sys.argv))
 
 #from psana.detector.Utils import get_hostname
 #hostname = get_hostname()
-#s_rsch = 'rank:%03d/%03d cpu:%03d host:%s' % (rank, size, cpu_num, hostname)
-
 
 class DarkProcJungfrauMPI(DarkProcJungfrau):
     """Extends DarkProcJungfrau for MPI"""
@@ -145,18 +143,15 @@ def jungfrau_dark_proc_mpi(parser):
 
     dpo = None
     igm0 = None
-    ievt = -1
-    istep = -1
-    nevtot = 0
+    ievt = None
+    #istep = -1
     nevsel = 0
-    nsteptot = 0
     ss = ''
     uniqueid = None
     dettype = None
     step_docstring = None
     terminate_runs = False
 
-    irun = 0
     #for irun, orun in enumerate(ds.runs()):
     orun = next(ds.runs())
     logger.info('%s %s begin run %s %s' % (s_rsch, 20*'=', str(orun.runnum), 20*'='))
@@ -164,15 +159,20 @@ def jungfrau_dark_proc_mpi(parser):
     terminate_steps = False
     nevrun = 0
     nnones = 0
+    odet = None
+    is_rank_sum = False
+
     for istep, step in enumerate(orun.steps()):
-        nsteptot += 1
+        logger.info('%s ==== begin step %d' % (s_rsch, istep))
 
         timestamp = getattr(orun, 'timestamp', None)
         trun_sec = ups.seconds(timestamp) # 1607569818.532117 sec
         ts_run, ts_now = ups.tstamps_run_and_now(trun_sec) #, fmt=uc.TSTAMP_FORMAT)
 
+        # Detector is in the step/event loop to hide it from all ranks
         #d = ups.dict_filter(kwargs, list_keys=('accept_missing',))
-        odet = orun.Detector(detname, **kwargs)
+        if odet is None:
+           odet = orun.Detector(detname, **kwargs)
 
         if dettype is None:
             dettype = odet.raw._dettype
@@ -181,8 +181,8 @@ def jungfrau_dark_proc_mpi(parser):
             #logger.info('det.raw._uniqueid.split: %s' % str('\n'.join(uniqueid.split('_'))))
 
         if is_rank_sel:
-          logger.info('%s created %s detector object of type %s' % (s_rsch, detname, dettype))
-          logger.info(ups.info_detector(odet, cmt='detector info on %s:\n      ' % s_rsch, sep='\n      '))
+            logger.info('%s created %s detector object of type %s' % (s_rsch, detname, dettype))
+            logger.info(ups.info_detector(odet, cmt='detector info on %s:\n      ' % s_rsch, sep='\n      '))
 
         try:
           step_docstring = orun.Detector('step_docstring')
@@ -195,20 +195,20 @@ def jungfrau_dark_proc_mpi(parser):
               'is None' if step_docstring is None else\
               str(metadic))
 
-        if stepmax is not None and nsteptot>stepmax:
-            logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nsteptot, stepmax))
-            terminate_runs = True
-            break
+#        if stepmax is not None and nsteptot>stepmax:
+#            logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nsteptot, stepmax))
+#            terminate_runs = True
+#            break
 
-        if stepnum is not None:
-            # process calibcycle stepnum ONLY if stepnum is specified
-            if istep < stepnum:
-                logger.info('Skip step %d < --stepnum = %d' % (istep, stepnum))
-                continue
-            elif istep > stepnum:
-                logger.info('Break further processing due to step %d > --stepnum = %d' % (istep, stepnum))
-                terminate_runs = True
-                break
+#        if stepnum is not None:
+#            # process calibcycle stepnum ONLY if stepnum is specified
+#            if istep < stepnum:
+#                logger.info('Skip step %d < --stepnum = %d' % (istep, stepnum))
+#                continue
+#            elif istep > stepnum:
+#                logger.info('Break further processing due to step %d > --stepnum = %d' % (istep, stepnum))
+#                terminate_runs = True
+#                break
 
         igm = igmode if igmode is not None else\
               metadic['gainMode'] if step_docstring is not None\
@@ -243,14 +243,13 @@ def jungfrau_dark_proc_mpi(parser):
         for ievt, evt in enumerate(step.events()):
 
             nevrun += 1
-            nevtot += 1
 
-            if ievt<evskip:
-                s = 'skip event %d < --evskip=%d' % (ievt, evskip)
-                #print(s, end='\r')
-                if (ujc.selected_record(ievt+1, events) and ievt<evskip-1)\
-                or ievt==evskip-1: logger.info(s)
-                continue
+#            if ievt<evskip:
+#                s = 'skip event %d < --evskip=%d' % (ievt, evskip)
+#                #print(s, end='\r')
+#                if (ujc.selected_record(ievt+1, events) and ievt<evskip-1)\
+#                or ievt==evskip-1: logger.info(s)
+#                continue
 
             #if nevtot>=events:
             #    print()
@@ -273,46 +272,46 @@ def jungfrau_dark_proc_mpi(parser):
             dt   = tsec - tdt
             tdt  = tsec
             if ujc.selected_record(ievt+1, events):
-                ss = '%s run[%d] %d  step %d  events total/run/step/selected/none: %4d/%4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
-                     (s_rsch, irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
+                ss = '%s runnum:%d  step:%d  events run/step/selected/none: %4d/%4d/%4d/%4d  time=%7.3f sec dt=%5.3f sec'%\
+                     (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel, nnones, time()-t0_sec, dt)
                 logger.info(ss)
 
             if dpo is not None:
                 status = dpo.event(raw, ievt)
                 if status == 1:
                     logger.error('This option nrecs == nrecs1 should not be used with mpi')
-                    terminate_runs = True
-                    terminate_steps = True
-                    break # evt loop
+#                    terminate_runs = True
+#                    terminate_steps = True
+#                    break # evt loop
                 elif status == 2:
-                    logger.info('requested statistics --nrecs=%d is collected - terminate loops' % args.nrecs)
+                    logger.info('requested statistics --nrecs=%d is collected' % args.nrecs)
                     #if ecm:
                     #    terminate_runs = True
                     #    terminate_steps = True
-                    break # evt loop
+#                    break # evt loop
             # End of event-loop
 
         print()
-        ss = '%s run[%d] %d  end of step %d  events total/run/step/selected: %4d/%4d/%4d/%4d'%\
-             (s_rsch, irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel)
-        #logger.info(ss)
+        ss = '%s runnum:%d  end of step %d events run/step/selected: %4d/%4d/%4d'%\
+             (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel)
+        logger.info(ss)
 
-        if terminate_steps:
-            logger.info('terminate_steps in %s' % s_rsch)
-            break
+        #if False: ####### TEST
+        if smd.summary:
+            dpo.summary()
+            if rank == dpo.rank_sum:
+                is_rank_sum = True
+                logger.info('begin save_results_in_repository in %s' % s_rsch)
+                uc.save_results_in_repository(dpo, orun, dpo.odet, call_summary=False, **kwargs)
+
+        dpo=None
+
+        #logger.info('%s ==== end step %d' % (s_rsch, istep))
+
+#        if terminate_steps:
+#            logger.info('terminate_steps in %s' % s_rsch)
+#            break
         # End of step-loop
-
-    logger.info(ss)
-
-    is_rank_sum = False
-
-    if smd.summary:
-        dpo.summary()
-        if rank == dpo.rank_sum:
-            is_rank_sum = True
-            logger.info('begin save_results_in_repository in %s' % s_rsch)
-            uc.save_results_in_repository(dpo, orun, dpo.odet, call_summary=False, **kwargs)
-#        dpo=None
 
     logger.info('SMD.DONE in %s' % s_rsch)
     smd.done()
