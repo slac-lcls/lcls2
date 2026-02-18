@@ -13,6 +13,15 @@ conda_base = get_option('conda_prefix')
 py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
+#if get_option('build_daq')
+#  add_project_arguments(
+#    '-Wall',
+#    '-Wno-uninitialized',
+#    '-fno-omit-frame-pointer',
+#    language : ['c', 'cpp']
+#  )
+#endif
+
 # Have to set the linker flags manually, as nvcc's linker conflicts with
 # the gcc linker args that conda sets.
 add_project_link_arguments(
