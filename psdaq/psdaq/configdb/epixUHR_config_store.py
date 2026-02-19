@@ -22,7 +22,7 @@ import os
 def epixUHR_cdict():
 
     top = cdict()
-    top.setAlg('config', [3,2,0])
+    top.setAlg('config', [3,2,1])
     top.define_enum('boolEnum', {'False':0, 'True':1})
     top.set("expert.Core.Si5345Pll.enable",						        1   ,	'boolEnum')
     
