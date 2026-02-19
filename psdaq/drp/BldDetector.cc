@@ -662,6 +662,14 @@ class BldDetector : public XpmDetector
 public:
     BldDetector(Parameters& para, MemPoolCpu& pool) : XpmDetector(&para, &pool) { virtChan = 0; }
     void event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override {}
+    void addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, DescData& rawData) {}
+    unsigned rawNamesIndex() { return RawNamesIndex; }
+    unsigned cubeNamesIndex() { return CubeNamesIndex; }
+    VarDef   rawDef() { return m_rawDef; }
+private:
+    enum {RawNamesIndex = NamesIndex::BASE, CubeNamesIndex = RawNamesIndex+16};
+    //    std::vector<VarDef> m_rawDef;
+    VarDef m_rawDef;
 };
 
 

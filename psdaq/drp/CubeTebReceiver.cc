@@ -322,15 +322,15 @@ void workerFunc(const Parameters& para, Detector& det, MemPool& pool,
 
                 //  Printout
                 if (threadNum==0) {
-                    logging::info("Initialized cube with bin %u of %u bins.", bin, nbins);
+                    logging::debug("Initialized cube with bin %u of %u bins.", bin, nbins);
                     ShapesData& shd = *(ShapesData*)xtc.payload();
-                    logging::info("Shapes at %lx,  Data at %lx",
-                                  (char*)&shd.shapes()-xtc.payload(), 
-                                  (char*)&shd.data  ()-xtc.payload());
+                    logging::debug("Shapes at %lx,  Data at %lx",
+                                   (char*)&shd.shapes()-xtc.payload(), 
+                                   (char*)&shd.data  ()-xtc.payload());
                     for(unsigned i=0; i<cubeDef.NameVec.size(); i++) {
                         uint32_t* sh = shd.shapes().get(i).shape();
-                        logging::info("Shape[%u] (%s): %u %u %u %u %u",
-                                      i, cubeDef.NameVec[i].name(), sh[0], sh[1], sh[2], sh[3], sh[4]);
+                        logging::debug("Shape[%u] (%s): %u %u %u %u %u",
+                                       i, cubeDef.NameVec[i].name(), sh[0], sh[1], sh[2], sh[3], sh[4]);
                     } 
                 }
                 data_init.store(false, std::memory_order_release);
@@ -549,7 +549,7 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
     unsigned iworker = 0;
     {
         //  Skip workers with no entries
-        while (m_data_init[iworker].load(std::memory_order_release)) {
+        while (m_data_init[iworker].load(std::memory_order_relaxed)) {
             if (++iworker == m_para.nCubeWorkers) {
                 //  There is no data to gather
                 //  Do we need to do anything to indicate an empty dg?
@@ -594,7 +594,7 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
     //
     while(++iworker < m_para.nCubeWorkers) {
         //  Skip workers with no entries
-        if (m_data_init[iworker].load(std::memory_order_release))
+        if (m_data_init[iworker].load(std::memory_order_relaxed))
             continue;
 
         m_sem[iworker].take();

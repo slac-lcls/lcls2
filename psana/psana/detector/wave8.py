@@ -70,9 +70,9 @@ class wave8_fex_0_0_1(DetectorImpl):
         if len(vals)==0: return None # no data
         return np.array(vals)
 
-class wave8_cube_0_0_1(DetectorImpl):
+class wave8_cube_2_0_0(DetectorImpl):
     def __init__(self, *args):
-        super(wave8_cube_0_0_1, self).__init__(*args)
+        super(wave8_cube_2_0_0, self).__init__(*args)
 
         self._add_fields()
 

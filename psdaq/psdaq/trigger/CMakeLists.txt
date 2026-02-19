@@ -115,6 +115,8 @@ endif()
 
 add_library(tstTebPy SHARED
   bldTebPrimitive.cc
+  hrEncoderTebPrimitive.cc
+  piranha4TebPrimitive.cc
   timingTebPrimitive.cc
   tmoTebPrimitive.cc
   tebPyTrigger.cc
@@ -153,13 +155,15 @@ target_link_libraries(calibTrigger
 
 install(FILES
   BldTebData.hh
+  EBeamTebData.hh
   GasDetTebData.hh
   GmdTebData.hh
-  XGmdTebData.hh
-  EBeamTebData.hh
+  HrEncoderTebData.hh
   PhaseCavityTebData.hh
+  Piranha4TTTebData.hh
   TimingTebData.hh
   TmoTebData.hh
+  XGmdTebData.hh
   DESTINATION include/psdaq/trigger
 )
 

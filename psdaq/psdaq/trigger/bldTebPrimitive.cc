@@ -14,7 +14,6 @@
 #include "xtcdata/xtc/NamesIter.hh"
 #include "xtcdata/xtc/TypeId.hh"
 #include "xtcdata/xtc/ShapesData.hh"
-#include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/Xtc.hh"
 #include "psalg/utils/SysLog.hh"
 
@@ -152,16 +151,6 @@ namespace Pds {
             BldTebData*           _tebData;
         };
 
-        class DumpIterator : public XtcData::XtcIterator {
-        public:
-            DumpIterator(char* root, unsigned indent=0) : 
-                m_root(root), m_indent(indent) {}
-        public:
-            int process(XtcData::Xtc* xtc, const void* bufEnd);
-        private:
-            char*    m_root;
-            unsigned m_indent;
-        };
     };
 
 };
@@ -169,23 +158,6 @@ namespace Pds {
 
 using namespace Pds::Trg;
 using namespace XtcData;
-
-int DumpIterator::process(Xtc* xtc, const void* bufEnd)
-{
-    printf("   [%u] xtc 0x%lx  typeid 0x%x  src 0x%x  extent 0x%x\n",
-           m_indent, (char*)xtc - m_root, xtc->contains.value(), xtc->src.value(), xtc->extent);
-    switch(xtc->contains.id()) {
-    case (TypeId::Parent):
-    case (TypeId::ShapesData): {
-        DumpIterator iter(m_root, m_indent+1);
-        iter.iterate(xtc, bufEnd);
-        break;
-    }
-    default:
-        break; 
-    }
-    return 1;
-}
 
 BldDataIterator::BldDataIterator(Xtc&                  xtc, 
                                  const void*           bufEnd,
@@ -247,9 +219,6 @@ void Pds::Trg::BldTebPrimitive::configure(const Xtc& xtc, const void* bufEnd)
 {
     logging::info("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
                      &xtc, xtc.contains.value(), xtc.sizeofPayload(), bufEnd);
-
-    DumpIterator dump((char*)&xtc);
-    dump.iterate(const_cast<Xtc*>(&xtc), bufEnd);
 
     // Need to cache the name lookup, detName -> namesId
     NamesIter iter;

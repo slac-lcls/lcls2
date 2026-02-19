@@ -197,8 +197,7 @@ void     Wave8::addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, 
         Array<double_t> calArrT((char*)dst, rawArrT.shape(), rawArrT.rank());
         //  Apply the calibration, so shape matters (No calibration)
         for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
-            for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
-                calArrT(ix,iy) += double( rawArrT(ix,iy) );
+            calArrT(ix) += double( rawArrT(ix) );
         logging::debug("AreaDetector::addToCubeArray  rawArrT %p  [%u %u %u %u] calArr %p [%f %f %f %f]",
                        rawArrT.data(), rawArrT.data()[0], rawArrT.data()[1], rawArrT.data()[2], rawArrT.data()[3],
                        calArrT.data(), calArrT.data()[0], calArrT.data()[1], calArrT.data()[2], calArrT.data()[3]);
