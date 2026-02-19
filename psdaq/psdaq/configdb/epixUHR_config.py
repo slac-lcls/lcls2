@@ -67,7 +67,7 @@ GAIN_CSV_LIST = [
     '_6_truck2', 
     '_7_on_the_fly', 
     ]
-ALG_VERSION = [3,2,0]
+ALG_VERSION = [3,2,1]
 
 
 def _dict_compare(d1,d2,path):
@@ -392,7 +392,7 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
         if asic+1 in asics: 
             base['bypass'][asic] = 0
         
-        write_to_detector(getattr(det_root.App, f'BatcherEventBuilder{i+1}').Bypass, base['bypass'][i])
+        write_to_detector(getattr(det_root.App, f'BatcherEventBuilder{asic+1}').Bypass, base['bypass'][asic])
        
     #  Use a timeout in AxiStreamBatcherEventBuilder
     #  Without a timeout, dropped contributions create an off-by-one between contributors
@@ -488,16 +488,11 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                 logging.info("Use Pixel MAP")
                 
                 gain_map_name = GAIN_CSV_LIST[int(cfg['user']['Gain']['PixelBitMapSel'])]
+                fn = PLL_PATH+'csvConfig'+'.csv'
+                db_gain_map = np.uint16(np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2])))
+                np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='', fmt='%d')
+                tmpfiles.append(fn)
                 
-                if ('on_the_fly' not in gain_map_name):
-                    fn = PLL_PATH+'csvConfig'+'.csv'
-                    db_gain_map = np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2]))
-                    np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='', fmt='%d')
-                    tmpfiles.append(fn)
-                    
-                else:
-                    fn = PLL_PATH+'onthefly.csv'    
-                    db_gain_map = np.loadtxt(PLL_PATH+'onthefly.csv', dtype='uint16', delimiter=',')
                 for asic in asics: 
                     print(f"ASIC{asic}")
                     eval(f"det_root.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{asic}('{fn}')")
@@ -512,7 +507,7 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                 
                 for asic in asics: 
                     print(f"ASIC{asic}")
-                    gain_map[asic-1,:, :] = np.full((DET_SIZE[1],DET_SIZE[2]), gain_value)
+                    gain_map[asic-1,:, :] = np.int16(np.full((DET_SIZE[1],DET_SIZE[2]), gain_value))
                     getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gain_value)
         else:
             logging.info("Set single Gain per ASIC")
@@ -523,15 +518,13 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                     print(f"ASIC{asic}")
                     
                     gain_map_name = GAIN_CSV_LIST[cfg['user']['App'][f'Asic{asic}']['PixelBitMapSel']]
-                    print(gain_map_name)
-                    if ('on_the_fly' not in gain_map_name):
-                        db_gain_map = np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2]))
-                        fn = PLL_PATH+f'csvConfigAsic{asic}'+'.csv'
-                        np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='')
-                        tmpfiles.append(fn)
-                    else:
-                        fn = PLL_PATH+'onthefly.csv'
-                        db_gain_map = np.loadtxt(f'{PLL_PATH}onthefly.csv', dtype='uint16', delimiter=',')
+                    print(f"GAIN MAP NAME: {gain_map_name}")
+                    
+                    db_gain_map = np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2]))
+                    fn = PLL_PATH+f'csvConfigAsic{asic}'+'.csv'
+                    np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='')
+                    tmpfiles.append(fn)
+                    
                     gain_map[i-1,:,:] = db_gain_map
                     eval(f"det_root.App.EpixUhrMatrixConfig.progPixelMatrixFromCsvAsic{asic}('{fn}')")
                     
@@ -545,7 +538,7 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                     getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gain_value)
         
         # deactivate gain modification            
-        for asic in asics: write_to_detector(getattr(det_root.App,f"Asic{i}").PixNumModeEn, False)
+        for asic in asics: write_to_detector(getattr(det_root.App,f"Asic{asic}").PixNumModeEn, False)
         
         #Charge Injection definitions
         if(cfg['user']['App']['VINJ_DAC']['enable']==1):
@@ -598,6 +591,8 @@ def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
     #  Retrieve the full configuration from the configDB
     #
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
+    #cfg['expert']['pixelBitMaps']['_7_on_the_fly']=0
+
     orig_cfg = cfg
     
     
@@ -663,8 +658,8 @@ def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
     top.setAlg('config', ALG_VERSION)
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
-    top.set(f'gainCSVAsic' , gainMapSelection.tolist(), 'UINT8')  # only the rows which have readable pixels
-    top.set(f'gainAsic'    , gainValSelection.tolist(), 'UINT8')        
+    #top.set(f'gainCSVAsic' , gain_map.tolist(), 'UINT8')  # only the rows which have readable pixels
+    top.set(f'gainAsic'    , gain_map.tolist(), 'UINT8')        
     
     seg_cfg[1] = top.typed_json()
     
