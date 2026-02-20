@@ -55,7 +55,7 @@ struct PvParameters : public Parameters
 
 static const TimeStamp TimeMax(std::numeric_limits<unsigned>::max(),
                                std::numeric_limits<unsigned>::max());
-static unsigned tsMatchDegree = 2;
+static unsigned tsMatchDegree = 2;      // Exact matching
 
 //
 //  Put all the ugliness of non-global timestamps here
@@ -64,9 +64,11 @@ static int _compare(const TimeStamp& ts1,
                     const TimeStamp& ts2) {
   int result = 0;
 
+  // Ignore timestamp values and always declare they match
   if ((tsMatchDegree == 0) && !(ts2 == TimeMax))
       return result;
 
+  // "Fuzzy" matching
   if (tsMatchDegree == 1) {
     /*
     **  Mask out the fiducial
@@ -82,6 +84,7 @@ static int _compare(const TimeStamp& ts1,
     return result;
   }
 
+  // Exact matching
   if      (ts1 > ts2) result = 1;
   else if (ts2 > ts1) result = -1;
   return result;
@@ -151,11 +154,13 @@ PvMonitor::PvMonitor(const PvParameters&      para,
                      const std::string&       field,
                      unsigned                 id,
                      size_t                   nBuffers,
+                     size_t                   bufferSize,
                      unsigned                 type,
                      size_t                   nelem,
                      size_t                   rank,
                      uint32_t                 firstDim,
-                     const std::atomic<bool>& running) :
+                     const std::atomic<bool>& running,
+                     PvDetector&              pvDetector) :
     Pds_Epics::PvMonitorBase(pvName, provider, request, field),
     m_para                  (para),
     m_state                 (NotReady),
@@ -164,24 +169,25 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     m_nelem                 (nelem),
     m_rank                  (rank),
     m_payloadSize           (0),
+    m_bufferSize            (bufferSize),
     m_firstDimOverride      (firstDim),
     m_alias                 (alias),
     m_running               (running),
     pvQueue                 (nBuffers),
-    bufferFreelist          (pvQueue.size()),
+    l1Queue                 (pvQueue.size()),
+    m_det                   (pvDetector),
     m_notifySocket          {&m_context, ZMQ_PUSH},
     m_nUpdates              (0),
-    m_nMissed               (0),
+    m_nMatch                (0),
+    m_nEmpty                (0),
+    m_nTooOld               (0),
     m_latency               (0)
 {
     // ZMQ socket for reporting errors
     m_notifySocket.connect({"tcp://" + m_para.collectionHost + ":" + std::to_string(CollectionApp::zmq_base_port + m_para.partition)});
 }
 
-int PvMonitor::getParams(std::string&    fieldName,
-                         Name::DataType& xtcType,
-                         int&            rank,
-                         size_t          bufferSize)
+int PvMonitor::getParams(std::string& fieldName, Name::DataType& xtcType, int& rank)
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -213,12 +219,12 @@ int PvMonitor::getParams(std::string&    fieldName,
     }
 
     m_payloadSize = m_nelem * Name::get_element_size(xtcType); // Doesn't include overhead
-    if (m_payloadSize > bufferSize) {
+    if (m_payloadSize > m_bufferSize) {
         auto msg("PV "+name()+" size too big; see log");
         json jmsg = createAsyncErrMsg(m_para.alias, msg);
         m_notifySocket.send(jmsg.dump());
         logging::error("PV %s size (%zu) is too large to fit in buffer of size %zu; "
-                       "increase pebbleBufSize", name().c_str(), m_payloadSize, bufferSize);
+                       "increase pebbleBufSize", name().c_str(), m_payloadSize, m_bufferSize);
         return 1;
     }
 
@@ -228,21 +234,18 @@ int PvMonitor::getParams(std::string&    fieldName,
 void PvMonitor::startup()
 {
     pvQueue.startup();
-    bufferFreelist.startup();
-    size_t bufSize = sizeof(EbDgram) + sizeof(DataDsc) + m_payloadSize;
-    m_buffer.resize(pvQueue.size() * bufSize);
-    for (unsigned i = 0; i < pvQueue.size(); ++i) {
-        bufferFreelist.push(reinterpret_cast<Dgram*>(&m_buffer[i * bufSize]));
-    }
+    l1Queue.startup();
 }
 
 void PvMonitor::shutdown()
 {
     pvQueue.shutdown();
-    bufferFreelist.shutdown();
+    l1Queue.shutdown();
 
     m_nUpdates = 0;
-    m_nMissed  = 0;
+    m_nMatch   = 0;
+    m_nEmpty   = 0;
+    m_nTooOld  = 0;
 }
 
 void PvMonitor::onConnect()
@@ -291,63 +294,141 @@ void PvMonitor::onDisconnect()
 void PvMonitor::updated()
 {
     // Queue updates only when Ready and in Running
-    if (m_state == Ready && m_running.load(std::memory_order_relaxed)) {
-        int64_t seconds;
-        int32_t nanoseconds;
-        getTimestampEpics(seconds, nanoseconds);
-        TimeStamp timestamp(seconds, nanoseconds);
+    if ((m_state != Ready) || !m_running.load(std::memory_order_relaxed))
+        return;
 
-        ++m_nUpdates;
-        m_latency = Eb::latency<us_t>(timestamp); // Grafana plots latency in us
-        logging::debug("%s updated @ %u.%09u, latency %ld ms", name().c_str(), timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000);
+    // Extract the PV timestamp
+    int64_t seconds;
+    int32_t nanoseconds;
+    getTimestampEpics(seconds, nanoseconds);
+    TimeStamp timestamp(seconds, nanoseconds);
 
-        Dgram* dgram;
-        if (bufferFreelist.try_pop(dgram)) { // If a buffer is available...
-            //static uint64_t last_ts = 0;
-            //uint64_t ts = timestamp.to_ns();
-            //int64_t  dT = ts - last_ts;
-            //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
-            //if (dT > 0)  last_ts = ts;
+    ++m_nUpdates;
+    m_latency = Eb::latency<us_t>(timestamp); // Grafana plots latency in us
+    logging::debug("PV updated @        %u.%09u,      latency  %12ld ms  %s",
+                   timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000, name().c_str());
 
-            dgram->time = timestamp;         // Save the PV's timestamp
-            dgram->xtc = {{TypeId::Parent, 0}, {m_id}};
+    while (l1Queue.wait_for_nonempty()) { // Wait for an L1 dgram
+        EbDgram* dgram = l1Queue.front();
 
-            size_t      bufSize = sizeof(DataDsc) + m_payloadSize;
-            const void* bufEnd  = dgram->xtc.payload() + bufSize;
-            DataDsc*    payload = (DataDsc*)dgram->xtc.alloc(bufSize, bufEnd);
-            auto        size    = getData(&payload->data, m_payloadSize, payload->shape);
-            if (size > m_payloadSize) {      // Check actual size vs available size
-                logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
-                               m_payloadSize, size, name().c_str());
-                dgram->xtc.damage.increase(Damage::Truncated);
-            }
+        //static uint64_t last_ts = 0;
+        //uint64_t ts = timestamp.to_ns();
+        //int64_t  dT = ts - last_ts;
+        //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
+        //if (dT > 0)  last_ts = ts;
 
-            if (m_firstDimOverride != 0) {
-                payload->shape[1] = payload->shape[0] / m_firstDimOverride;
-                payload->shape[0] = m_firstDimOverride;
-            }
-            pvQueue.push(dgram);
-        }
-        else {
-            ++m_nMissed;                     // Else count it as missed
-        }
+        m_timeDiff = dgram->time.to_ns() - timestamp.to_ns();
+
+        int result = _compare(dgram->time, timestamp);
+
+        logging::debug("L1:                 %u.%09u %c PV, L1 - PV: %12ld ns, "
+                       "pid %014lx, svc %2d, L1 age %ld ms",
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       result == 0 ? '=' : (result < 0 ? '<' : '>'),
+                       m_timeDiff, dgram->pulseId(), dgram->service(),
+                       Eb::latency<ms_t>(dgram->time));
+
+        if      (result == 0) { _tL1EqPv(dgram, timestamp);  break; } // Both L1 and PV consummed
+        else if (result  < 0) { _tL1LtPv(dgram, timestamp); }         // L1 too old; retry with new L1
+        else                  { _tL1GtPv(dgram, timestamp);  break; } // L1 too young; await PV update
     }
 }
 
-void PvMonitor::timeout(const PgpReader& pgp, ms_t timeout)
+void PvMonitor::_tL1EqPv(EbDgram* l1Dg, const TimeStamp& pvTs)
 {
-    Dgram* pvDg;
-    if (pvQueue.peek(pvDg)) {
-        if (pgp.age(pvDg->time) > timeout) {
-            logging::debug("PV timed out!! "
-                           "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms",
-                           pvDg->time.seconds(),  pvDg->time.nanoseconds(),
-                           pvDg->time.seconds(), (pvDg->time.nanoseconds()>>16)&0xfffe, pvDg->time.nanoseconds()&0x1ffff,
-                           Eb::latency<ms_t>(pvDg->time));
-            pvQueue.try_pop(pvDg);      // Actually consume the element
-            bufferFreelist.push(pvDg);  // Return buffer to freelist
+    {
+        std::unique_lock<std::mutex> lock(m_mutex); // Protect again multiple PVs updating dgram
+
+        const void* bufEnd = (char*)l1Dg + m_bufferSize;
+        NamesId     namesId(m_det.nodeId, PvDetector::RawNamesIndex + m_id);
+        CreateData  cd(l1Dg->xtc, bufEnd, m_det.namesLookup(), namesId);
+        void*       data = cd.get_ptr();    // Fetch a pointer to the next part of contiguous memory
+        Name&       nm = cd.nameindex().names().get(RawDef::field);
+        if (nm.rank() != 0) {               // Handle vectors and arrays, etc.
+            size_t   payloadSize = (char*)bufEnd - (char*)data;
+            uint32_t shape[MaxRank];
+            size_t   size = getData(data, payloadSize, shape); // Write the data into the L1 Xtc
+            if (size > payloadSize) {       // Check actual size vs available size
+                logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
+                               payloadSize, size, name().c_str());
+                l1Dg->xtc.damage.increase(Damage::Truncated);
+            }
+            if (m_firstDimOverride != 0) {
+                shape[1] = shape[0] / m_firstDimOverride;
+                shape[0] = m_firstDimOverride;
+            }
+            cd.set_array_shape(RawDef::field, shape); // Allocate the space after filling it
+        }
+        else {                              // Handle scalars
+            switch (nm.type()) {
+                case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
+                case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
+                case Name::INT32:
+                case Name::ENUMVAL:
+                case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
+                case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
+                case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
+                case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
+                case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
+                case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
+                case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
+                case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
+                default: {
+                    logging::critical("Unsupported scalar type %d for %s", nm.type(), nm.name());
+                    abort();
+                    break;
+                }
+            }
         }
     }
+
+    ++m_nMatch;
+    logging::debug("PV matches L1!!  L1 %u.%09u = PV %u.%09u  %s",
+                   l1Dg->time.seconds(), l1Dg->time.nanoseconds(),
+                   pvTs.seconds(),       pvTs.nanoseconds(),
+                   name().c_str());
+
+    EbDgram* dgram;
+    l1Queue.try_pop(dgram);             // Actually consume the element
+    pvQueue.push(l1Dg);                 // Forward dgram to collector
+}
+
+void PvMonitor::_tL1LtPv(EbDgram* l1Dg, const TimeStamp& pvTs)
+{
+    {
+        std::unique_lock<std::mutex> lock(m_mutex); // Protect again multiple PVs updating dgram
+
+        // Because L1Accpts show up in time order, we know that no older L1 will
+        // show up to possibly match the PV's timestamp.  Thus, when the L1 is
+        // older than the PV (t(PV) > t(L1)), mark it damaged and dismiss it.
+        // Then go await another L1 and reattempt matching.
+        l1Dg->xtc.damage.increase(Damage::MissingData);
+    }
+
+    ++m_nEmpty;
+    logging::debug("PV too young!!   L1 %u.%09u < PV %u.%09u  %s",
+                   l1Dg->time.seconds(), l1Dg->time.nanoseconds(),
+                   pvTs.seconds(),       pvTs.nanoseconds(),
+                   name().c_str());
+
+    EbDgram* dgram;
+    l1Queue.try_pop(dgram);             // Actually consume the element
+    pvQueue.push(l1Dg);                 // Forward dgram to collector
+}
+
+void PvMonitor::_tL1GtPv(EbDgram* l1Dg, const TimeStamp& pvTs)
+{
+    // Because L1Accepts show up in time order, we know that no older L1 will
+    // show up to match the PV's timestamp.  Thus, when the PV is older than
+    // the L1 (t(PV) < t(L1)), the PV can be discarded and the L1 left on the
+    // queue to perhaps be matched with an updated PV.
+    ++m_nTooOld;
+    logging::debug("PV too old!!     L1 %u.%09u > PV %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]  %s",
+                   l1Dg->time.seconds(), l1Dg->time.nanoseconds(),
+                   pvTs.seconds(),       pvTs.nanoseconds(),
+                   l1Dg->time.seconds(), (l1Dg->time.nanoseconds()>>16)&0xfffe, l1Dg->time.nanoseconds()&0x1ffff,
+                   pvTs.seconds(),       (pvTs.nanoseconds()>>16)&0xfffe,       pvTs.nanoseconds()&0x1ffff,
+                   name().c_str());
 }
 
 // ---
@@ -557,8 +638,8 @@ unsigned PvDetector::connect(const json& connectJson, const std::string& collect
                            type, firstDim, nelem, rank, request.c_str());
             auto pvMonitor = std::make_shared<PvMonitor>(*static_cast<PvParameters*>(m_para),
                                                          alias, pvName, provider, request, field,
-                                                         id++, m_pool->nbuffers(), type, nelem, rank, firstDim,
-                                                         m_running);
+                                                         id++, m_pool->nbuffers(), m_pool->pebble.bufferSize(),
+                                                         type, nelem, rank, firstDim, m_running, *this);
             m_pvMonitors.push_back(pvMonitor);
         }
         catch(std::string& error) {
@@ -601,7 +682,7 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
         std::string    fieldName;
         Name::DataType xtcType;
         int            rank;
-        if (pvMonitor->getParams(fieldName, xtcType, rank, m_pool->bufferSize())) {
+        if (pvMonitor->getParams(fieldName, xtcType, rank)) {
             return 1;
         }
 
@@ -693,44 +774,6 @@ void PvDetector::disable()
     m_running = false;
 }
 
-void PvDetector::event_(Dgram& dgram, const void* bufEnd, const Xtc& pvXtc)
-{
-    NamesId namesId(nodeId, RawNamesIndex + pvXtc.src.value());
-    CreateData cd(dgram.xtc, bufEnd, m_namesLookup, namesId);
-    DataDsc* payload = reinterpret_cast<DataDsc*>(pvXtc.payload());
-    void* data = &payload->data;
-    Name& name = cd.nameindex().names().get(RawDef::field);
-    if (name.rank()) {                  // Handle vectors and arrays, etc.
-        uint32_t* shape = payload->shape;
-        size_t size = pvXtc.extent - ((char*)data - (char*)payload); // Exclude shape info
-        void* ptr = cd.get_ptr(); // Fetch a pointer to the next part of contiguous memory
-        cd.set_array_shape(RawDef::field, shape); // Allocate the space before filling it
-        memcpy(ptr, data, size);  // size is the same as the amount of space allocated
-    }
-    else {                              // Handle scalars
-        switch (name.type()) {
-            case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
-            case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
-            case Name::INT32:
-            case Name::ENUMVAL:
-            case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
-            case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
-            case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
-            case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
-            case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
-            case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
-            case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
-            case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
-            default: {
-                logging::critical("Unsupported scalar type %d for %s\n", name.type(), name.name());
-                abort();
-                break;
-            }
-        }
-    }
-    dgram.xtc.damage.increase(pvXtc.damage.value());
-}
-
 // ---
 
 PvDrp::PvDrp(PvParameters& para, MemPoolCpu& pool, PvDetector& det, ZmqContext& context) :
@@ -752,8 +795,9 @@ std::string PvDrp::configure(const json& msg)
         return errorMsg;
     }
 
-    // Start the worker thread
-    m_workerThread = std::thread{&PvDrp::_worker, this};
+    // Start the reader and collector threads
+    m_readerThread = std::thread{&PvDrp::_reader, this};
+    m_collectorThread = std::thread(&PvDrp::_collector, std::ref(*this));
 
     return std::string();
 }
@@ -762,10 +806,16 @@ unsigned PvDrp::unconfigure()
 {
     DrpBase::unconfigure(); // TebContributor must be shut down before the worker
 
-    // Stop the worker thread
     m_terminate.store(true, std::memory_order_release);
-    if (m_workerThread.joinable()) {
-        m_workerThread.join();
+
+    // Stop the reader and collector threads
+    if (m_readerThread.joinable()) {
+        m_readerThread.join();
+        logging::info("PGPReader thread finished");
+    }
+    if (m_collectorThread.joinable()) {
+        m_collectorThread.join();
+        logging::info("Collector thread finished");
     }
 
     return 0;
@@ -773,14 +823,14 @@ unsigned PvDrp::unconfigure()
 
 int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 {
-    std::map<std::string, std::string> labels{{"instrument", m_para.instrument},
-                                              {"partition", std::to_string(m_para.partition)},
-                                              {"detname", m_para.detName},
-                                              {"detseg", std::to_string(m_para.detSegment)},
-                                              {"alias", m_para.alias}};
+    std::map<std::string, std::string> labels{ {"instrument", m_para.instrument},
+                                               {"partition", std::to_string(m_para.partition)},
+                                               {"detname", m_para.detName},
+                                               {"detseg", std::to_string(m_para.detSegment)},
+                                               {"alias", m_para.alias} };
     m_nEvents = 0;
     exporter->add("drp_event_rate", labels, MetricType::Rate,
-                  [&](){return m_nEvents;});
+                  [&](){ return m_nEvents; });
     m_nUpdates = 0;
     exporter->add("drp_update_rate", labels, MetricType::Rate,
                   [&](){ uint64_t nUpdates = 0;
@@ -790,86 +840,82 @@ int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                          return m_nUpdates; });
     m_nMatch = 0;
     exporter->add("drp_match_count", labels, MetricType::Counter,
-                  [&](){return m_nMatch;});
+                  [&](){ uint64_t nMatch = 0;
+                         for (const auto& pvMonitor : m_det.pvMonitors())
+                             nMatch += pvMonitor->nMatch();
+                         m_nMatch = nMatch;
+                         return m_nMatch; });
     m_nEmpty = 0;
     exporter->add("drp_empty_count", labels, MetricType::Counter,
-                  [&](){return m_nEmpty;});
-    m_nMissed = 0;
-    exporter->add("drp_miss_count", labels, MetricType::Counter,
-                  [&](){ uint64_t nMissed = 0;
+                  [&](){ uint64_t nEmpty = 0;
                          for (const auto& pvMonitor : m_det.pvMonitors())
-                             nMissed += pvMonitor->nMissed();
-                         m_nMissed = nMissed;
-                         return m_nMissed; });
+                             nEmpty += pvMonitor->nEmpty();
+                         m_nEmpty = nEmpty;
+                         return m_nEmpty; });
     m_nTooOld = 0;
     exporter->add("drp_tooOld_count", labels, MetricType::Counter,
-                  [&](){return m_nTooOld;});
-    m_nTimedOut = 0;
-    exporter->add("drp_timeout_count", labels, MetricType::Counter,
-                  [&](){return m_nTimedOut;});
-    m_timeDiff = 0;
-    exporter->add("drp_time_diff", labels, MetricType::Gauge,
-                  [&](){return m_timeDiff;});
-
-    exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
-                  [&](){return m_evtQueue.guess_size();});
-    exporter->constant("drp_worker_queue_depth", labels, m_evtQueue.size());
-
-    // Borrow this for awhile
-    exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
-                  [&](){return m_det.pvMonitors()[0]->pvQueue.guess_size();});
-
+                  [&](){ uint64_t nTooOld = 0;
+                         for (const auto& pvMonitor : m_det.pvMonitors())
+                             nTooOld += pvMonitor->nTooOld();
+                         m_nTooOld = nTooOld;
+                         return m_nTooOld; });
     // @todo: Support multiple PVs
+    exporter->add("drp_time_diff", labels, MetricType::Gauge,
+                  [&](){ return m_det.pvMonitors()[0]->timeDiff(); });
+
+    // The "workers" are the PvMonitors
+    exporter->constant("drp_worker_queue_depth", labels, m_evtQueue.size()); // proxy
+    exporter->add("drp_worker_input_queue", labels, MetricType::Gauge,
+                  [&](){ return m_det.pvMonitors()[0]->l1Queue.guess_size(); });
+    exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
+                  [&](){ return m_det.pvMonitors()[0]->pvQueue.guess_size(); });
+
     exporter->add("drp_pv_latency", labels, MetricType::Gauge,
-                  [&](){return m_det.pvMonitors()[0]->latency();});
+                  [&](){ return m_det.pvMonitors()[0]->latency(); });
 
     exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nDmaRet();});
+                  [&](){ return m_pgp.nDmaRet(); });
     exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
-                  [&](){return m_pgp.dmaBytes();});
+                  [&](){ return m_pgp.dmaBytes(); });
     exporter->add("drp_dma_size", labels, MetricType::Gauge,
-                  [&](){return m_pgp.dmaSize();});
+                  [&](){ return m_pgp.dmaSize(); });
     exporter->add("drp_th_latency", labels, MetricType::Gauge,
-                  [&](){return m_pgp.latency();});
+                  [&](){ return m_pgp.latency(); });
     exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nDmaErrors();});
+                  [&](){ return m_pgp.nDmaErrors(); });
     exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nNoComRoG();});
+                  [&](){ return m_pgp.nNoComRoG(); });
     exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nMissingRoGs();});
+                  [&](){ return m_pgp.nMissingRoGs(); });
     exporter->add("drp_num_th_error", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nTmgHdrError();});
+                  [&](){ return m_pgp.nTmgHdrError(); });
     exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nPgpJumps();});
+                  [&](){ return m_pgp.nPgpJumps(); });
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nNoTrDgrams();});
+                  [&](){ return m_pgp.nNoTrDgrams(); });
 
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nPgpInUser();});
+                  [&](){ return m_pgp.nPgpInUser(); });
     exporter->add("drp_num_pgp_in_hw", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nPgpInHw();});
+                  [&](){ return m_pgp.nPgpInHw(); });
     exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nPgpInPreHw();});
+                  [&](){ return m_pgp.nPgpInPreHw(); });
     exporter->add("drp_num_pgp_in_rx", labels, MetricType::Gauge,
-                  [&](){return m_pgp.nPgpInRx();});
+                  [&](){ return m_pgp.nPgpInRx(); });
 
     return 0;
 }
 
-void PvDrp::_worker()
+void PvDrp::_reader()
 {
     m_terminate.store(false, std::memory_order_release);
-
-    // Avoid running off the end of the word
-    uint64_t mask = 1ul << (m_det.pvMonitors().size() - 1);
-    uint64_t contract = mask | (mask - 1ul);
 
     const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()            ?
                     std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
                     1500 };
 
-    logging::info("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
-    if (prctl(PR_SET_NAME, "drp_pva/Worker", 0, 0, 0) == -1) {
+    logging::info("PGPReader thread is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/Reader", 0, 0, 0) == -1) {
         perror("prctl");
     }
 
@@ -884,7 +930,7 @@ void PvDrp::_worker()
     // (Re)initialize the queues
     m_evtQueue.startup();
     for (auto& pvMonitor : m_det.pvMonitors()) {
-      pvMonitor->startup();
+        pvMonitor->startup();
     }
 
     // Set up monitoring
@@ -896,26 +942,26 @@ void PvDrp::_worker()
     }
 
     while (true) {
-        if (m_terminate.load(std::memory_order_relaxed)) {
+        if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]] {
             break;
         }
 
         uint32_t index;
-        if (m_pgp.next(index)) {
+        EbDgram* dgram = m_pgp.next(index);
+        if (dgram) {
             m_nEvents++;
 
-            m_evtQueue.push({contract, index});
+            // Pass all events to the Collector to maintain time order
+            m_evtQueue.push(dgram);
 
-            _matchUp();
+            // Pass L1s to the PV monitors to add PV data
+            if (dgram->service() == TransitionId::L1Accept) {
+                for (auto& pvMonitor : m_det.pvMonitors()) {
+                    pvMonitor->l1Queue.push(dgram);
+                }
+            }
         }
         else {
-            // If there are any PGP datagrams stacked up, try to match them
-            // up with any PV updates that may have arrived
-            _matchUp();
-
-            // Time out older PVs and datagrams
-            _timeout(tmo);
-
             // Time out batches for the TEB
             tebContributor().timeout();
         }
@@ -931,59 +977,46 @@ void PvDrp::_worker()
 
     if (exposer())  exporter.reset();
 
-    logging::info("Worker thread finished");
+    logging::info("PGPReader is exiting");
 }
 
-void PvDrp::_matchUp()
+void PvDrp::_collector()
 {
-    while (true) {
-        if (m_evtQueue.is_empty())  break;
-        Event& evt = m_evtQueue.front();
+    logging::info("Collector is starting with process ID %lu", syscall(SYS_gettid));
+    if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
+        perror("prctl");
+    }
 
-        EbDgram* evtDg = reinterpret_cast<EbDgram*>(pool.pebble[evt.index]);
+    EbDgram* evtDg;
+    while (m_evtQueue.pop(evtDg)) {
+        auto index = pool.pebble.index(evtDg);
         TransitionId::Value service = evtDg->service();
         if (service == TransitionId::L1Accept) {
-            uint64_t remaining = evt.remaining;
-            while (remaining) {
-                unsigned id = __builtin_ffsl(remaining) - 1;
-                remaining &= ~(1ull << id);
-
-                auto& pvMonitor = m_det.pvMonitors()[id];
-
-                Dgram* pvDg;
-                if (!pvMonitor->pvQueue.peek(pvDg))  continue;
-
-                m_timeDiff = evtDg->time.to_ns() - pvDg->time.to_ns();
-
-                int result = _compare(evtDg->time, pvDg->time);
-
-                logging::debug("PGP: %u.%09d %c PV: %u.%09d, PGP - PV: %12ld ns, "
-                               "pid %014lx, svc %2d, PGP age %ld ms",
-                               evtDg->time.seconds(), evtDg->time.nanoseconds(),
-                               result == 0 ? '=' : (result < 0 ? '<' : '>'),
-                               pvDg->time.seconds(), pvDg->time.nanoseconds(),
-                               m_timeDiff, evtDg->pulseId(), evtDg->service(),
-                               Eb::latency<ms_t>(evtDg->time));
-
-                if      (result == 0) { _tEvtEqPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
-                else if (result  < 0) { _tEvtLtPv(pvMonitor, *evtDg, *pvDg);  evt.remaining &= ~(1ull << id); }
-                else                  { _tEvtGtPv(pvMonitor, *evtDg, *pvDg); }
+            bool quit{false};
+            for (auto& pvMonitor: m_det.pvMonitors()) {
+                EbDgram* pvDg;
+                quit = !pvMonitor->pvQueue.pop(pvDg);
+                if (quit) [[unlikely]]  break;
+                if (pvDg != evtDg) [[unlikely]] { // Could be an assert()
+                    logging::critical("Dgram mismatch for %s: got TimeStamp %u.%09u, expected %u.%09u",
+                                      pvMonitor->name().c_str(),
+                                      pvDg->time.seconds(),  pvDg->time.nanoseconds(),
+                                      evtDg->time.seconds(), evtDg->time.nanoseconds());
+                    abort();
+                }
             }
-            if (evt.remaining)  break;  // Break so the timeout routine can run
+            if (quit) [[unlikely]]  break;
         }
         else {
             // Find the transition dgram in the pool
-            EbDgram* trDg = pool.transitionDgrams[evt.index];
+            EbDgram* trDg = pool.transitionDgrams[index];
             if (trDg)                   // nullptr can happen during shutdown
                 _handleTransition(*evtDg, *trDg);
         }
 
-        Event event;
-        m_evtQueue.try_pop(event);      // Actually consume the element
-        assert(event.index == evt.index);
-
-        _sendToTeb(*evtDg, evt.index);
+        _sendToTeb(*evtDg, index);
     }
+    logging::info("Collector is exiting");
 }
 
 void PvDrp::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
@@ -1008,98 +1041,6 @@ void PvDrp::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
         else if (service == TransitionId::Disable) {
             m_det.disable();
         }
-    }
-}
-
-void PvDrp::_tEvtEqPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
-{
-    auto bufEnd = (char*)&evtDg + pool.pebble.bufferSize();
-    m_det.event_(evtDg, bufEnd, pvDg.xtc);
-
-    ++m_nMatch;
-    logging::debug("PV matches PGP!!  "
-                   "TimeStamps: PV %u.%09u == PGP %u.%09u",
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   evtDg.time.seconds(), evtDg.time.nanoseconds());
-
-    Dgram* dgram;
-    pvMonitor->pvQueue.try_pop(dgram);     // Actually consume the element
-    pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
-}
-
-void PvDrp::_tEvtLtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
-{
-    // Because PVs show up in time order, when the most recent PV is younger
-    // than the PGP event (t(PV) > t(PGP)), we know that no older PV will show
-    // up to possibly match the PGP timestamp.  Thus, mark the event damaged and
-    // leave the PV on the queue to perhaps be matched with a newer PGP event.
-    evtDg.xtc.damage.increase(Damage::MissingData);
-
-    ++m_nEmpty;
-    logging::debug("PV too young!!    "
-                   "TimeStamps: PGP %u.%09u < PV %u.%09u",
-                   evtDg.time.seconds(), evtDg.time.nanoseconds(),
-                   pvDg.time.seconds(), pvDg.time.nanoseconds());
-}
-
-void PvDrp::_tEvtGtPv(std::shared_ptr<PvMonitor> pvMonitor, EbDgram& evtDg, const Dgram& pvDg)
-{
-    // Because PGP events show up in time order, when the most recent PV is older
-    // than the PGP event (t(PV) < t(PGP)), we know that no older PGP event will
-    // show up to match the PV's timestamp.  Thus, the PV is discarded and
-    // the PGP event is left on the queue to perhaps be matched with a newer PV.
-    ++m_nTooOld;
-    logging::debug("PV too old!!      "
-                   "TimeStamps: PGP %u.%09u > PV %u.%09u [0x%08x%04x.%05x > 0x%08x%04x.%05x]",
-                   evtDg.time.seconds(), evtDg.time.nanoseconds(),
-                   pvDg.time.seconds(), pvDg.time.nanoseconds(),
-                   evtDg.time.seconds(), (evtDg.time.nanoseconds()>>16)&0xfffe, evtDg.time.nanoseconds()&0x1ffff,
-                   pvDg.time.seconds(), (pvDg.time.nanoseconds()>>16)&0xfffe, pvDg.time.nanoseconds()&0x1ffff);
-
-    Dgram* dgram;
-    pvMonitor->pvQueue.try_pop(dgram);     // Actually consume the element
-    pvMonitor->bufferFreelist.push(dgram); // Return buffer to freelist
-}
-
-void PvDrp::_timeout(ms_t timeout)
-{
-    // Try to clear out as many of the older queue entries as we can in one go
-    while (true) {
-        // Time out older PV updates
-        for (auto& pvMonitor : m_det.pvMonitors()) {
-            pvMonitor->timeout(m_pgp, timeout);
-        }
-
-        // Time out older pending PGP datagrams
-        Event event;
-        if (!m_evtQueue.peek(event))  break;
-
-        EbDgram& dgram = *reinterpret_cast<EbDgram*>(pool.pebble[event.index]);
-        if (m_pgp.age(dgram.time) < timeout)  break;
-
-        logging::debug("Event timed out!! "
-                       "TimeStamp:  %u.%09u [0x%08x%04x.%05x], age %ld ms, svc %u",
-                       dgram.time.seconds(), dgram.time.nanoseconds(),
-                       dgram.time.seconds(), (dgram.time.nanoseconds()>>16)&0xfffe, dgram.time.nanoseconds()&0x1ffff,
-                       Eb::latency<ms_t>(dgram.time), dgram.service());
-
-        if (dgram.service() == TransitionId::L1Accept) {
-            // No PV data so mark event as damaged
-            dgram.xtc.damage.increase(Damage::TimedOut);
-            ++m_nTimedOut;
-        }
-        else {
-            // Find the transition dgram in the pool
-            EbDgram* trDg = pool.transitionDgrams[event.index];
-            if (trDg)                   // nullptr can happen during shutdown
-                _handleTransition(dgram, *trDg);
-        }
-
-        Event evt;
-        m_evtQueue.try_pop(evt);        // Actually consume the element
-        assert(evt.index == event.index);
-
-        _sendToTeb(dgram, event.index);
     }
 }
 
@@ -1383,10 +1324,10 @@ int main(int argc, char* argv[])
                 para.prometheusDir = optarg;
                 break;
             //  Indicate level of timestamp matching (ugh)
-            case '0':
+            case '0':                   // All timestamps match
                 tsMatchDegree = 0;
                 break;
-            case '1':
+            case '1':                   // "Fuzzy" matching
                 fprintf(stderr, "Option -1 is disabled\n");  exit(EXIT_FAILURE);
                 tsMatchDegree = 1;
                 break;
