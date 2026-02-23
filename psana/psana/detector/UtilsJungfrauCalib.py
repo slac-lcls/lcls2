@@ -382,6 +382,7 @@ def jungfrau_dark_proc(parser):
             if args.nrecs == args.nrecs1 and status==1:
                 uc.save_block_results(dpo, orun, odet, **kwargs)
             else:
+                dpo.summary()
                 uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
@@ -399,6 +400,7 @@ def jungfrau_dark_proc(parser):
         #    break
 
         if dpo is not None:
+            dpo.summary()
             uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
