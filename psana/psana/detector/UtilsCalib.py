@@ -754,7 +754,7 @@ def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
 
 
 def save_results_in_db(dpo, orun, odet, **kwa):
-    dpo.summary()
+    #    dpo.summary() moved to the main code
     ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
     arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
     arr_max, arr_min = dpo.constants_max_min()
@@ -778,8 +778,6 @@ def save_results_in_repository(dpo, orun, odet, **kwa):
     logger.info('begin save_results_in_repository')
     t0_sec = time()
     if dpo is None: return
-    if kwa.get('call_summary', True):
-        dpo.summary()
     dpo.show_plot_results()
 
     ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
@@ -940,6 +938,7 @@ def pedestals_calibration(parser):
       if args.nrecs == args.nrecs1 and status==1:
           save_block_results(dpo, orun, odet, **kwa)
       else:
+          dpo.summary()
           save_results_in_db(dpo, orun, odet, **kwa)
       dpo=None
 
