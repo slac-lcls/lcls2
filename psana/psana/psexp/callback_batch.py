@@ -28,8 +28,9 @@ class CallbackBatchBuilder:
         if not self.run_smd.proxy_events:
             return []
 
-        proxy_events = self.run_smd.proxy_events
-        self.run_smd.proxy_events = []
+        # Keep list identity because Step objects hold a reference to this list.
+        proxy_events = list(self.run_smd.proxy_events)
+        self.run_smd.proxy_events.clear()
         return proxy_events
 
     def _collect_proxy_events_bounded(self):
@@ -66,8 +67,9 @@ class CallbackBatchBuilder:
         if not self.run_smd.proxy_events:
             return []
 
-        proxy_events = self.run_smd.proxy_events
-        self.run_smd.proxy_events = []
+        # Keep list identity because Step objects hold a reference to this list.
+        proxy_events = list(self.run_smd.proxy_events)
+        self.run_smd.proxy_events.clear()
         return proxy_events
 
     def next_batch(self, run_serial=False):
