@@ -218,7 +218,7 @@ cmd12="$cmd10 --stepnum 1"
 cmd13="$cmd10 --stepnum 2"
 
 
-#cmdmpi="mpirun --mca osc^ucx -n $nranks"
+#cmdmpi="mpirun --mca osc ^ucx -n $nranks"
 #cmdmpi="mpirun -n $nranks"
 
 #cmdmpi=""
@@ -226,7 +226,7 @@ cmd13="$cmd10 --stepnum 2"
 #    cmdmpi="mpirun -n $nranks"
 #fi
 
-[[ "$nranks" != "1" ]] && cmdmpi="mpirun -n $nranks" || cmdmpi=""
+[[ "$nranks" != "1" ]] && cmdmpi="mpirun --mca osc ^ucx -n $nranks" || cmdmpi=""
 
 #nevts=$(($nrecs * 3))
 #echo "evaluate total number of events as $nevts"
