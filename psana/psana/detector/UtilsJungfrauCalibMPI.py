@@ -32,6 +32,7 @@ DIC_GAIN_MODE, DIC_IND_TO_GAIN_MODE, DarkProcJungfrau, init_repoman_and_logger, 
 logger = logging.getLogger(__name__)
 
 
+os.environ['PS_EB_NODES']='1'
 os.environ['PS_SRV_NODES']='1'
 
 import psutil
@@ -42,13 +43,14 @@ comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
 use_mpi = size > 1
-s_rsch = 'rank:%03d/%03d-cpu:%03d' % (rank, size, cpu_num)
 is_rank0 = rank==0
 is_rank_sel = rank==(size-2) # rank==3
-if is_rank0: print('%s sys.argv: %s' % (s_rsch, sys.argv))
 
-#from psana.detector.Utils import get_hostname
-#hostname = get_hostname()
+from psana.detector.Utils import get_hostname
+hostname = get_hostname()
+
+s_rsch = 'rank:%03d/%03d-cpu:%03d-%s' % (rank, size, cpu_num, hostname)
+if is_rank0: print('%s sys.argv: %s' % (s_rsch, sys.argv))
 
 class DarkProcJungfrauMPI(DarkProcJungfrau):
     """Extends DarkProcJungfrau for MPI"""
@@ -65,7 +67,10 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
         #logger.info(uc.info_ndarr(self.arr_sum0, 'XXX summary begin irec: %d for %s arr_sum0:' % (self.irec, s_rsch), first=0, last=5))
 
         smd = self.smd
-        irec       = smd.sum(self.irec) # returns list???
+        if self.irec  == -1: return
+        irec       = smd.sum(self.irec)
+#        print('XXX summary irec:', irec, ' self.irec:', self.irec)
+
         arr_sum0   = smd.sum(self.arr_sum0)
         arr_sum1   = smd.sum(self.arr_sum1)
         arr_sum2   = smd.sum(self.arr_sum2)
@@ -92,6 +97,42 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
             logger.info('begin evaluation of results in %s on reduction rank' % s_rsch)
 
             DarkProcJungfrau.summary(self)
+
+
+class Storage:
+    def __init__(self):
+        self.isset = False
+
+    def setattr_from_kwargs(self, keys=('nrecs', 'evskip', 'stepnum', 'stepmax'), **kwargs):
+        if self.isset: return
+        self.isset = True
+        self.keys = keys
+        d = ups.dict_filter(kwargs, list_keys=keys)
+        for k in d.keys():
+            setattr(self, k, d[k])
+        print('%s storage parameters %s' % (s_rsch, self.info_pars()))
+
+    def info_pars(self, sep=' ', fmt='%s:%s'):
+        lst_pars = [fmt % (k, str(getattr(self, k, None))) for k in self.keys]
+        return sep + sep.join(lst_pars)
+
+storage = Storage()
+
+
+def filter_callback(run):
+    for istep, step in enumerate(run.steps()):
+        if storage.stepmax is not None and istep > storage.stepmax:
+            continue
+
+        if storage.stepnum is not None and istep != storage.stepnum:
+            continue
+
+        for ievt, evt in enumerate(step.events()):
+            if ievt < storage.evskip:
+                continue
+            if ievt < storage.nrecs:
+                print('= filter_callback yield for step/evt:', istep, ievt)
+                yield evt
 
 
 def jungfrau_dark_proc(parser):
@@ -128,14 +169,19 @@ def jungfrau_dark_proc_mpi(parser):
     filemode = kwargs.get('filemode', 0o664)
     group    = kwargs.get('group', 'ps-users')
 
+    storage.setattr_from_kwargs(**kwargs)
+
+    sys.exit(0)
+
     if is_rank_sel:
       logger.info('%s sys.argv: %s' % (s_rsch, str(sys.argv)))
       s = '%s DIC_GAIN_MODE {<name> : <number>}' % s_rsch
       for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
       logger.info(s)
 
-    kwargs['batch_size'] = 2 # this batch_size parameter may need to be tweaked
+    kwargs['batch_size'] = 1 # this batch_size parameter may need to be tweaked
     kwargs['info_xtc_files'] = is_rank0
+    kwargs['smd_callback'] = filter_callback
     ds, dskwargs = open_DataSource(**kwargs)
     logger.debug('on %s open DataSource as: %s' % (s_rsch, str(ds)))
 
@@ -143,7 +189,7 @@ def jungfrau_dark_proc_mpi(parser):
 
     dpo = None
     igm0 = None
-    ievt = None
+    ievt = 0
     #istep = -1
     nevsel = 0
     ss = ''
@@ -164,6 +210,7 @@ def jungfrau_dark_proc_mpi(parser):
 
     for istep, step in enumerate(orun.steps()):
         logger.info('%s ==== begin step %d' % (s_rsch, istep))
+        t0_sec_step = time()
 
         timestamp = getattr(orun, 'timestamp', None)
         trun_sec = ups.seconds(timestamp) # 1607569818.532117 sec
@@ -291,18 +338,22 @@ def jungfrau_dark_proc_mpi(parser):
 #                    break # evt loop
             # End of event-loop
 
-        print()
-        ss = '%s runnum:%d  end of step %d events run/step/selected: %4d/%4d/%4d'%\
-             (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel)
+        ss = '%s runnum:%d  end of step %d events run/step/selected: %4d/%4d/%4d  step time: %.3f sec'%\
+             (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel, time() - t0_sec_step)
         logger.info(ss)
+#        print(s_rsch, ' runnum:', orun.runnum, '  end of step:', istep, ' events run/step/selected:', nevrun, ievt, nevsel)
 
         #if False: ####### TEST
+
+        print('XXX %s smd.summary:' % s_rsch, smd.summary)
+        
         if smd.summary:
+            #if dpo.irec != -1:
             dpo.summary()
             if rank == dpo.rank_sum:
                 is_rank_sum = True
                 logger.info('begin save_results_in_repository in %s' % s_rsch)
-                uc.save_results_in_repository(dpo, orun, dpo.odet, call_summary=False, **kwargs)
+                uc.save_results_in_repository(dpo, orun, dpo.odet, **kwargs)
 
         dpo=None
 
