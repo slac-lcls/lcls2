@@ -116,6 +116,7 @@ public:
                                     const void* bufEnd,
                                     XtcData::NamesLookup&,
                                     XtcData::NamesId&);
+    XtcData::VarDef&   varDef() { return _varDef; }
 private:
     std::string                    _detName;
     std::string                    _detType;
@@ -145,7 +146,6 @@ private:
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
-    enum {BldNamesIndex = NamesIndex::BASE}; // Revisit: This belongs in BldDetector
     Parameters&                                m_para;
     DrpBase&                                   m_drp;
     Detector*                                  m_det;

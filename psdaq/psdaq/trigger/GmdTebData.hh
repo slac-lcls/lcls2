@@ -5,10 +5,13 @@ namespace Pds {
   namespace Trg {
     struct GmdTebData
     {
-        GmdTebData(const float milliJoulesPerPulse_) {
+        GmdTebData(const float milliJoulesPerPulse_,
+                   const uint64_t severity_) {
             milliJoulesPerPulse = milliJoulesPerPulse_;
+            severity = severity_;
         };
         double milliJoulesPerPulse;
+        uint64_t severity;
     };
   };
 };

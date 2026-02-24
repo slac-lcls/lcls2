@@ -5,6 +5,9 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psalg/utils/SysLog.hh"
 
+//#define DBUG
+//#define USE_SUB_INDEX
+
 using namespace XtcData;
 using json = nlohmann::json;
 using logging = psalg::SysLog;
@@ -169,14 +172,26 @@ void AreaDetector::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* ev
     raw.set_array_shape(RawDef::array_raw, raw_shape);
 }
 
-VarDef   AreaDetector::rawDef () 
+static std::vector<VarDef> _rawDefV(1,_rawDef);
+
+std::vector<VarDef>&  AreaDetector::rawDef () 
 {
-    return _rawDef;
+    return _rawDefV;
 }
 
-void AreaDetector::addToCube(unsigned rawDefIndex, unsigned subIndex, double_t* dst, DescData& rawData)
+unsigned AreaDetector::subIndices    ()  
 {
-    switch(rawDefIndex) {
+#ifdef USE_SUB_INDEX
+    return std::popcount(m_para->laneMask); 
+#else
+    return 0;
+#endif
+}
+
+void AreaDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                             double_t* dst, DescData& rawData)
+{
+    switch(valueIndex) {
     case RawDef::value:
         if (subIndex==0)
             *dst += double(rawData.get_value<uint32_t>(RawDef::value));
@@ -190,15 +205,24 @@ void AreaDetector::addToCube(unsigned rawDefIndex, unsigned subIndex, double_t* 
 
             //  Apply the calibration, so shape matters
             //            unsigned ix=subIndex;
+#ifdef USE_SUB_INDEX
+            unsigned ix = subIndex;
+#else
             for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
+#endif
             for(unsigned iy=0; iy<rawArrT.shape()[1]; iy++)
                 calArrT(ix,iy) += gainArrT(ix,iy)*(double( rawArrT(ix,iy) ) - pedArrT(ix,iy));
 
+#ifdef DBUG
+            logging::info("AreaDetector::addToCube rawArr %u %u %u %u  calArr %f %f %f %f",
+                           rawArrT(0,4), rawArrT(0,5), rawArrT(0,6), rawArrT(0,7),
+                           calArrT(0,4), calArrT(0,5), calArrT(0,6), calArrT(0,7));
+#endif
             break;
         }
     default:
         // error
-        printf("*** %s:%d: unknown RawDef array %u\n",__FILE__,__LINE__,rawDefIndex);
+        printf("*** %s:%d: unknown RawDef array %u\n",__FILE__,__LINE__,valueIndex);
         abort();
     }
 }

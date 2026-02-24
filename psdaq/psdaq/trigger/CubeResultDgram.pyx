@@ -7,13 +7,14 @@ cdef class CubeResultDgram:
     cdef dgram.CubeResultDgram* cptr
     cdef int _bufOwner
 
-    def __cinit__(self, view = None, persist = True, monitor = -1, bin = 0, updateRecord = False, updateMonitor = False, flush = False):
+    def __cinit__(self, view = None, persist = True, record = True, monitor = -1, bin = 0, updateRecord = False, updateMonitor = False, flush = False):
         self._bufOwner = view is not None
         if self._bufOwner:
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
             view_ptr = <char *>self.buf.buf
             self.cptr = <dgram.CubeResultDgram *>(view_ptr)
             self.cptr.persist      (persist)
+            self.cptr.record       (record)
             self.cptr.monitor      (monitor)
             self.cptr.binIndex     (bin)
             self.cptr.updateRecord (updateRecord)
@@ -29,6 +30,9 @@ cdef class CubeResultDgram:
 
     def persist(self):
         return self.cptr.persist()
+
+    def record(self):
+        return self.cptr.record()
 
     def monitor(self):
         return self.cptr.monitor()

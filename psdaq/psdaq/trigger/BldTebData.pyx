@@ -17,6 +17,9 @@ cdef class GmdTebData:
      def milliJoulesPerPulse(self):
          return self.cptr.milliJoulesPerPulse
 
+     def milliJoulesPerPulse_sevr(self):
+         return (self.cptr.severity >> 0) & 0x3
+
 cdef class XGmdTebData:
 
      cdef _XGmdTebData.XGmdTebData* cptr
@@ -29,6 +32,12 @@ cdef class XGmdTebData:
 
      def POSY(self):
          return self.cptr.POSY
+
+     def milliJoulesPerPulse_sevr(self):
+         return (self.cptr.severity >> 0) & 0x3
+
+     def POSY_sevr(self):
+         return (self.cptr.severity >> 2) & 0x3
 
 cdef class PhaseCavityTebData:
 
@@ -48,6 +57,19 @@ cdef class PhaseCavityTebData:
 
      def charge2(self):
          return self.cptr.charge2
+
+     def fitTime1_sevr(self):
+         return (self.cptr.severity >> 0) & 0x3
+
+     def fitTime2_sevr(self):
+         return (self.cptr.severity >> 2) & 0x3
+
+     def charge1_sevr(self):
+         return (self.cptr.severity >> 4) & 0x3
+
+     def charge2_sevr(self):
+         return (self.cptr.severity >> 6) & 0x3
+
 
 cdef class EBeamTebData:
 

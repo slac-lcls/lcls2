@@ -18,12 +18,14 @@ public:
     using Detector::event;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     // For binning into the cube
-    virtual void     addToCube(unsigned rawDefIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) override;
-    //    virtual unsigned subIndices    () override { return std::popcount(m_para->laneMask); }
-    virtual unsigned subIndices    () override { return 0; }
+    virtual void     addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                               double* dst, XtcData::DescData& rawData) override;
+    virtual unsigned subIndices    () override;
     virtual unsigned rawNamesIndex () override { return RawNamesIndex; }
     virtual unsigned cubeNamesIndex() override { return CubeNamesIndex; }
-    virtual XtcData::VarDef rawDef () override;
+    //  uint16_t -> double
+    virtual unsigned cubeBinBytes  () override { return m_pool->bufferSize()*5; }
+    virtual std::vector<XtcData::VarDef>& rawDef () override;
 private:
     enum {RawNamesIndex = NamesIndex::BASE, FexNamesIndex, CubeNamesIndex};
     enum {Pedestals, Gains, NumConstants};

@@ -5,12 +5,14 @@ namespace Pds {
   namespace Trg {
     struct XGmdTebData
     {
-        XGmdTebData(float milliJoulesPerPulse_, float posy_) {
+        XGmdTebData(float milliJoulesPerPulse_, float posy_, uint64_t severity_) {
             milliJoulesPerPulse = milliJoulesPerPulse_;
             POSY = posy_;
+            severity = severity_;
         };
         double milliJoulesPerPulse;
         double POSY;
+        uint64_t severity;
     };
   };
 };

@@ -8,16 +8,19 @@ namespace Pds {
         PhaseCavityTebData(double fitTime1_,
                            double fitTime2_,
                            double charge1_,
-                           double charge2_) {
+                           double charge2_,
+                           uint64_t severity_) {
             fitTime1 = fitTime1_;
             fitTime2 = fitTime2_;
             charge1  = charge1_;
             charge2  = charge2_;
+            severity = severity_;
         };
         double fitTime1;
         double fitTime2;
         double charge1;
         double charge2;
+        uint64_t severity;
     };
   };
 };

@@ -37,45 +37,65 @@ namespace Pds {
 
         class GmdTebDataFactory : public BldTebDataFactory {
         public:
+            GmdTebDataFactory(XtcData::NameIndex& index) :
+                _severity( index.nameMap().find("severity") != index.nameMap().end() ) {}
             BldTebData::BldSource source() override { return BldTebData::gmd_; }
             void create(BldTebData& tdat, XtcData::DescData& desc) override {
                 [[maybe_unused]] GmdTebData& dat = *new(tdat.gmd()) 
-                    GmdTebData( desc.get_value<float_t>("milliJoulesPerPulse") );
+                    GmdTebData( desc.get_value<float_t>("milliJoulesPerPulse"),
+                                _severity ? desc.get_value<uint64_t>("severity") : 0 );
             }
+        private:
+            bool _severity;
         };
 
         class XGmdTebDataFactory : public BldTebDataFactory {
         public:
+            XGmdTebDataFactory(XtcData::NameIndex& index) :
+                _severity( index.nameMap().find("severity") != index.nameMap().end() ) {}
             BldTebData::BldSource source() override { return BldTebData::xgmd_; }
             void create(BldTebData& tdat, XtcData::DescData& desc) override {
                 [[maybe_unused]] XGmdTebData& dat = *new(tdat.xgmd()) 
                     XGmdTebData( desc.get_value<float_t>("milliJoulesPerPulse"),
-                                 desc.get_value<float_t>("POSY") );
+                                 desc.get_value<float_t>("POSY"),
+                                 _severity ? desc.get_value<uint64_t>("severity") : 0 );
             }
+        private:
+            bool _severity;
         };
 
         class PhaseCavityTebDataFactory : public BldTebDataFactory {
         public:
+            PhaseCavityTebDataFactory(XtcData::NameIndex& index) :
+                _severity( index.nameMap().find("severity") != index.nameMap().end() ) {}
             BldTebData::BldSource source() override { return BldTebData::pcav_; }
             void create(BldTebData& tdat, XtcData::DescData& desc) override {
                 [[maybe_unused]] PhaseCavityTebData& dat = *new(tdat.pcav()) 
                     PhaseCavityTebData( desc.get_value<double_t>("fitTime1"),
                                         desc.get_value<double_t>("fitTime2"),
                                         desc.get_value<double_t>("charge1"),
-                                        desc.get_value<double_t>("charge2") );
+                                        desc.get_value<double_t>("charge2"),
+                                        _severity ? desc.get_value<uint64_t>("severity") : 0);
             }
+        private:
+            bool _severity;
         };
 
         class PhaseCavitysTebDataFactory : public BldTebDataFactory {
         public:
+            PhaseCavitysTebDataFactory(XtcData::NameIndex& index) :
+                _severity( index.nameMap().find("severity") != index.nameMap().end() ) {}
             BldTebData::BldSource source() override { return BldTebData::pcavs_; }
             void create(BldTebData& tdat, XtcData::DescData& desc) override {
                 [[maybe_unused]] PhaseCavityTebData& dat = *new(tdat.pcavs()) 
                     PhaseCavityTebData( desc.get_value<double_t>("fitTime1"),
                                         desc.get_value<double_t>("fitTime2"),
                                         desc.get_value<double_t>("charge1"),
-                                        desc.get_value<double_t>("charge2") );
+                                        desc.get_value<double_t>("charge2"),
+                                        _severity ? desc.get_value<uint64_t>("severity") : 0);
             }
+        private:
+            bool _severity;
         };
 
         class GasDetTebDataFactory : public BldTebDataFactory {
@@ -174,11 +194,11 @@ BldDataIterator::BldDataIterator(Xtc&                  xtc,
     iterate(); 
 
     _tebData = new((void*)dest.next()) BldTebData(_sources);
-    logging::info("BldDataIterator tebData [%x] at %p",_sources,_tebData);
+    logging::debug("BldDataIterator tebData [%x] at %p",_sources,_tebData);
 
     for(const auto& [key, value] : _shapesData) {
         DescData desc(*value,_namesLookup[key]);
-        logging::info("DescData(%p,namesLookup[%x]) src %u", value, key, _tebFactory[key]->source());
+        logging::debug("DescData(%p,namesLookup[%x]) src %u", value, key, _tebFactory[key]->source());
         _tebFactory[key]->create(*_tebData,desc);
     }
 
@@ -195,7 +215,7 @@ int BldDataIterator::process(Xtc* xtc, const void* bufEnd)
     case (TypeId::ShapesData): {
         ShapesData* psd = (ShapesData*)xtc;
         unsigned namesId = psd->namesId();
-        logging::info("BldDataIterator shapesData[%x] = %p", namesId,psd);
+        logging::debug("BldDataIterator shapesData[%x] = %p", namesId,psd);
         _shapesData[namesId] = psd;
         if (_tebFactory.find(namesId)!=_tebFactory.end())
             _sources |= 1ULL<<_tebFactory[namesId]->source();
@@ -211,14 +231,14 @@ int Pds::Trg::BldTebPrimitive::configure(const json& configureMsg,
                                          const json& connectMsg,
                                          size_t      collectionId)
 {
-    logging::info("BldTebPrimitive::configure json");
+    logging::debug("BldTebPrimitive::configure json");
     return 0;
 }
 
 void Pds::Trg::BldTebPrimitive::configure(const Xtc& xtc, const void* bufEnd)
 {
-    logging::info("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
-                     &xtc, xtc.contains.value(), xtc.sizeofPayload(), bufEnd);
+    logging::debug("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
+                   &xtc, xtc.contains.value(), xtc.sizeofPayload(), bufEnd);
 
     // Need to cache the name lookup, detName -> namesId
     NamesIter iter;
@@ -228,20 +248,21 @@ void Pds::Trg::BldTebPrimitive::configure(const Xtc& xtc, const void* bufEnd)
     //  Build the mask of data sources
     m_sources = 0;
     for(const auto& [key, value] : m_namesLookup) {  // value is NameIndex
-        Names& names = const_cast<NameIndex&>(value).names();
+        NameIndex& index = const_cast<NameIndex&>(value);
+        Names& names = index.names();
         BldTebData::BldSource src = BldTebData::lookup(names.detName());
         if (src < BldTebData::NSOURCES) {
             m_sources |= (1<<src);
 
             BldTebDataFactory* gen=0;
             if (strcmp(names.detName(),"gmd")==0)
-                gen = new GmdTebDataFactory;
+                gen = new GmdTebDataFactory(index);
             else if (strcmp(names.detName(),"xgmd")==0)
-                gen = new XGmdTebDataFactory;
+                gen = new XGmdTebDataFactory(index);
             else if (strcmp(names.detName(),"pcav")==0)
-                gen = new PhaseCavityTebDataFactory;
+                gen = new PhaseCavityTebDataFactory(index);
             else if (strcmp(names.detName(),"pcavs")==0)
-                gen = new PhaseCavitysTebDataFactory;
+                gen = new PhaseCavitysTebDataFactory(index);
             else if (strcmp(names.detName(),"gasdet")==0)
                 gen = new GasDetTebDataFactory;
             else if (strcmp(names.detName(),"ebeam")==0)
@@ -274,7 +295,7 @@ void Pds::Trg::BldTebPrimitive::event(const Drp::MemPool& pool,
                                       Xtc&                xtc,
                                       const void*         bufEnd)
 {
-    logging::info("BldTebPrimitive::event xtc %p  bufEnd %p", &xtc, bufEnd);
+    logging::debug("BldTebPrimitive::event xtc %p  bufEnd %p", &xtc, bufEnd);
     if (!m_sources)
         return;
 

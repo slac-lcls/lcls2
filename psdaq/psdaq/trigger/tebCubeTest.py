@@ -15,8 +15,9 @@ logging.warning(f"[Python] tebCubeTest script starting")
 #  bin_record = (cube_event_count+1) % record_factor == 0
 record_eventcode = 256
 #bin_eventcodes = 257..264
-cube_bins = 256
-cube_record_factor = cube_bins*40+1
+#cube_bins = 256
+cube_bins = 1
+cube_record_factor = cube_bins*400+1
 cube_event_count = 0
 
 ds = tebTrigger.CubeTriggerDataSource(cube_bins)
@@ -27,6 +28,9 @@ enco   = ds.detector('mono_hrencoder_0',HrEncoderTebData)
 mebs   = ds.mebs()
 
 num_event = 0
+#
+#  Nothing above resets on BeginRun
+#
 
 #
 #  The event loop
@@ -49,17 +53,25 @@ for event in ds.events():
         if gasdet is not None:
             persist = True
             index = int(gasdet.f11ENRC()) % cube_bins
-            cube_event_count += 1
+##            cube_event_count += 1
 
     data = enco.trigger(event)
     if data is not None and (cube_event_count % 10000)==0:
         print(f'encoder pos{data.position()}  errCnt {data.encErrCnt()}  missTrCnt {data.missedTrigCnt()}  latches {data.latches()}')
 
+    #
+    #  Static assignment
+    #
+    persist = True
+    cube_event_count += 1
+    index = cube_event_count % cube_bins
+
 #    monitor   = (cube_event_count % cube_record_factor)<2
-    recordBin = (cube_event_count % cube_record_factor)==2
+    recordEvt = 0
+    recordBin = (cube_event_count % cube_record_factor)==4
     monitorBin = recordBin
     monitor = recordBin
-    ds.result(persist, mebs if monitor else 0, index, 
+    ds.result(persist, recordEvt, mebs if monitor else 0, index, 
               recordBin, monitorBin)
 
 print(f"[Python] tebCubeTest script exiting; {num_event} events handled")

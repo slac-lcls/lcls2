@@ -185,11 +185,20 @@ class TriggerDataSource(object):
         #    f"[Python] Sent message 'g'"
         #)
 
-    def mebs(self):
+    def mebs(self, names=None):
         r = 0
         if 'meb' in self.connect_info['body'].keys():
             for nodes in self.connect_info['body']['meb'].values():
-                r |= 1 << nodes['meb_id']
+                if names is None:
+                    r |= 1 << nodes['meb_id']
+                elif isinstance(names,str):
+                    if names in nodes['proc_info']['alias']:
+                        r |= 1 << nodes['meb_id']
+                elif isinstance(names,list):
+                    for n in names:
+                         if n in nodes['proc_info']['alias']:
+                             r |= 1 << nodes['meb_id']
+                    
         return r
 
     def detector(self, name, tebType):
@@ -214,11 +223,19 @@ class CubeTriggerDataSource(TriggerDataSource):
 
     def configure(self):
         logging.warning(f'[Python] Setting nbins {self.nbins}')
-        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, self.nbins-1, 0, 0)
+        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, 0, self.nbins-1, 0, 0)
         self._mq_res.send(b"g")
 
-    def result(self, persist, monitor, bin_index, bin_record, bin_monitor, flush=False):
-        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, monitor, 
+    """  persist     : put event into the cube
+         record      : record event 
+         monitor     : forward event to monitoring
+         bin_index   : cube bin the event sums into
+         bin_record  : record the cube bin 
+         bin_monitor : forward the cube bin to monitoring
+         flush       : reset the cube after this event is processed
+    """
+    def result(self, persist, record, monitor, bin_index, bin_record, bin_monitor, flush=False):
+        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, record, monitor, 
                                      bin_index, bin_record, bin_monitor, flush)
         self._mq_res.send(b"g")
 

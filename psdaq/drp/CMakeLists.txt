@@ -71,6 +71,7 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
+    CubeTebReceiver.cc
     TebReceiver.cc
 #    BldDetectorSlow.cc
     BldDetector.cc

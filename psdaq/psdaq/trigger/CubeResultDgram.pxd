@@ -9,6 +9,8 @@ cdef extern from 'psdaq/eb/CubeResultDgram.hh' namespace "Pds::Eb":
         void     monitor(uint32_t value)
         uint32_t monitor()
         uint32_t data()
+        void     record(int      value)
+        int      record()
         void     binIndex      (uint32_t value)
         uint32_t binIndex      ()
         void     updateRecord  (int value)
