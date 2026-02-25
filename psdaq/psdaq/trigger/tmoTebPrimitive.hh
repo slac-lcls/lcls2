@@ -1,3 +1,6 @@
+#ifndef Pds_Trg_TmoTebPrimitive_hh
+#define Pds_Trg_TmoTebPrimitive_hh
+
 #include "TriggerPrimitive.hh"
 
 #include "TmoTebData.hh"
@@ -31,3 +34,5 @@ namespace Pds {
     };
   }
 }
+
+#endif
