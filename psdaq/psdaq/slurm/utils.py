@@ -263,12 +263,41 @@ class SbatchManager:
 
         env_opt = "--export="
 
+        env_group = str(details.get("env_group", "daq")).lower()
+        if env_group not in ("daq", "ami"):
+            logger.warning("Unknown env_group '%s' for %s. Falling back to 'daq'.", env_group, job_name)
+            env_group = "daq"
+        env_prefix = env_group.upper()
+
+        selected_testreldir = os.environ.get(f"{env_prefix}_TESTRELDIR", "")
+        if not selected_testreldir:
+            selected_testreldir = os.environ.get("TESTRELDIR", "")
+
+        selected_conda_prefix = os.environ.get(f"{env_prefix}_CONDA_PREFIX", "")
+        if not selected_conda_prefix:
+            selected_conda_prefix = os.environ.get("CONDA_PREFIX", "")
+
+        selected_conda_default_env = os.environ.get(
+            f"{env_prefix}_CONDA_DEFAULT_ENV", ""
+        )
+        if not selected_conda_default_env:
+            selected_conda_default_env = os.environ.get("CONDA_DEFAULT_ENV", "")
+
         # Inherit follows from user's account
         env_opt += "HOME"
         env_opt += ",USER"
-        env_opt += ",TESTRELDIR"
-        env_opt += ",CONDA_PREFIX"
-        env_opt += ",CONDA_DEFAULT_ENV"
+        if selected_testreldir:
+            env_opt += f",TESTRELDIR={selected_testreldir}"
+        else:
+            env_opt += ",TESTRELDIR"
+        if selected_conda_prefix:
+            env_opt += f",CONDA_PREFIX={selected_conda_prefix}"
+        else:
+            env_opt += ",CONDA_PREFIX"
+        if selected_conda_default_env:
+            env_opt += f",CONDA_DEFAULT_ENV={selected_conda_default_env}"
+        else:
+            env_opt += ",CONDA_DEFAULT_ENV"
         env_opt += ",CONDA_EXE"
         env_opt += ",CONFIGDB_AUTH"
         env_opt += ",SUBMODULEDIR"
