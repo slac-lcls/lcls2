@@ -95,7 +95,8 @@ def epixUHR_cdict():
     
     base = 'expert.pixelBitMaps.' 
     for pixelmap in pixelBitMapDic:
-        if ('on_the_fly' not in pixelmap): top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
+        top.set(base+pixelmap, np.loadtxt(f'{pathpix}{pixelmap[1:]}.csv', dtype='uint16', delimiter=','))
+        
     for n in range(1, 5):
         base = f'user.App.Asic{n}.'
         top.set(base+'PixelBitMapSel', 5, 'pixelMapEnum')

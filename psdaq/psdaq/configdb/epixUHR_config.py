@@ -489,6 +489,8 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                 
                 gain_map_name = GAIN_CSV_LIST[int(cfg['user']['Gain']['PixelBitMapSel'])]
                 fn = PLL_PATH+'csvConfig'+'.csv'
+                print(type(cfg['expert']['pixelBitMaps'][gain_map_name]))
+                print(len(cfg['expert']['pixelBitMaps'][gain_map_name]))
                 db_gain_map = np.uint16(np.reshape(cfg['expert']['pixelBitMaps'][gain_map_name], (DET_SIZE[1], DET_SIZE[2])))
                 np.savetxt(fn, db_gain_map, delimiter=',', newline='\n', comments='', fmt='%d')
                 tmpfiles.append(fn)
@@ -534,17 +536,19 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                 for asic in asics: 
                     gain_value=str(cfg['user']['App'][f'Asic{i}']['SetGainValue'])
                     print(f"ASIC{asic}")
-                    gain_map[asic-1, :, :] = np.gull((DET_SIZE[1],DET_SIZE[2]), gain_value)
+                    gain_map[asic-1, :, :] = np.full((DET_SIZE[1],DET_SIZE[2]), gain_value)
                     getattr(det_root.App,f"Asic{asic}").progPixelMatrixConstantValue(gain_value)
         
-        # deactivate gain modification            
+        # deactivate gain modification        
         for asic in asics: write_to_detector(getattr(det_root.App,f"Asic{asic}").PixNumModeEn, False)
         
         #Charge Injection definitions
         if(cfg['user']['App']['VINJ_DAC']['enable']==1):
-            write_to_detector(det_root.App.WaveformControl.InjEn,  True   )
-            write_to_detector(det_root.App.VINJ_DAC.enable,        True   )
-            write_to_detector(det_root.App.VINJ_DAC.dacEn,         True   )
+            print("Set Charge Injection")
+            write_to_detector(det_root.App.WaveformControl.InjEn,       True   )
+            write_to_detector(det_root.App.WaveformControl.AsicInjEn,   True   )
+            write_to_detector(det_root.App.VINJ_DAC.enable,             True   )
+            write_to_detector(det_root.App.VINJ_DAC.dacEn,              True   )
             
             #If ramp is not used, set Gain single Value
             if (not cfg['user']['App']['VINJ_DAC']['rampEn']==1): 
@@ -556,12 +560,14 @@ def config_expert(base, cfg, writeCalibRegs=True, second_pass=False):
                 write_to_detector(det_root.App.VINJ_DAC.dacStopValue,  cfg['user']['App']['VINJ_DAC']['dacStopValue'] )
                 write_to_detector(det_root.App.VINJ_DAC.dacStepValue,  cfg['user']['App']['VINJ_DAC']['dacStepValue'] )    
                 write_to_detector(det_root.App.VINJ_DAC.resetDacRamp, False)
-                write_to_detector(det_root.App.VINJ_DAC.rampEn,        True    )                
+                write_to_detector(det_root.App.VINJ_DAC.rampEn,        True    )       
+                         
         else:            
-            write_to_detector(det_root.App.VINJ_DAC.dacEn,         False       )	
-            write_to_detector(det_root.App.VINJ_DAC.rampEn,        False       )
-            write_to_detector(det_root.App.WaveformControl.InjEn,  False       )
-            write_to_detector(det_root.App.VINJ_DAC.enable,        False       )
+            write_to_detector(det_root.App.VINJ_DAC.dacEn,              False       )	
+            write_to_detector(det_root.App.VINJ_DAC.rampEn,             False       )
+            write_to_detector(det_root.App.WaveformControl.InjEn,       False       )
+            write_to_detector(det_root.App.WaveformControl.AsicInjEn,   False       )
+            write_to_detector(det_root.App.VINJ_DAC.enable,             False       )
         
         
         # Remove the yml files
