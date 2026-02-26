@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from psana import dgram
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
+from psana.detector.envstore import AmbiguousEnvStoreDetector
 from psana.dgramedit import DgramEdit
 from psana.event import Event
 from psana.pscalib.app.calib_prefetch import calib_utils
@@ -383,31 +384,53 @@ class Run(object):
         # Environment values are identified by variable names (e.g. 'XPP:VARS:FLOAT:02').
         # From d.epics[0].raw.HX2:DVD:GCC:01:PMON = 41.0
         # (d.env_name[0].alg.variable),
-        # EnvStoreManager searches all the stores assuming that the variable name is
-        # unique and returns env_name ('epics' or 'scan') and algorithm.
+        # EnvStoreManager searches all stores and supports duplicate names
+        # (e.g. one in epics and one in scan).
         if not flag_found:
-            found = self.esm.env_from_variable(
-                name
-            )  # assumes that variable name is unique
-            if found is not None:
-                env_name, alg = found
-                det_name = env_name
-                var_name = name
-                drp_class_name = alg
-                det_class_table = self.dsparms.det_classes[det_name]
-                drp_class = det_class_table[(det_name, drp_class_name)]
+            found = self.esm.envs_from_variable(name)
+            if found:
+                if len(found) > 1:
+                    detectors_by_env = {}
+                    for env_name, alg in found:
+                        det_name = env_name
+                        var_name = name
+                        drp_class_name = alg
+                        det_class_table = self.dsparms.det_classes[det_name]
+                        drp_class = det_class_table[(det_name, drp_class_name)]
 
-                self._check_empty_calibconst(det_name)
+                        self._check_empty_calibconst(det_name)
 
-                det = drp_class(
-                    det_name,
-                    drp_class_name,
-                    self.dsparms.configinfo_dict[det_name],
-                    self.dsparms.calibconst[det_name],
-                    self.esm.stores[env_name],
-                    var_name,
-                )
-                setattr(det, "_det_name", det_name)
+                        env_det = drp_class(
+                            det_name,
+                            drp_class_name,
+                            self.dsparms.configinfo_dict[det_name],
+                            self.dsparms.calibconst[det_name],
+                            self.esm.stores[env_name],
+                            var_name,
+                        )
+                        setattr(env_det, "_det_name", det_name)
+                        detectors_by_env[env_name] = env_det
+                    det = AmbiguousEnvStoreDetector(name, detectors_by_env)
+                    setattr(det, "_det_name", "envstore")
+                else:
+                    env_name, alg = found[0]
+                    det_name = env_name
+                    var_name = name
+                    drp_class_name = alg
+                    det_class_table = self.dsparms.det_classes[det_name]
+                    drp_class = det_class_table[(det_name, drp_class_name)]
+
+                    self._check_empty_calibconst(det_name)
+
+                    det = drp_class(
+                        det_name,
+                        drp_class_name,
+                        self.dsparms.configinfo_dict[det_name],
+                        self.dsparms.calibconst[det_name],
+                        self.esm.stores[env_name],
+                        var_name,
+                    )
+                    setattr(det, "_det_name", det_name)
 
         return det
 

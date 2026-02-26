@@ -19,13 +19,14 @@ import logging
 test_xtc_dir = os.environ.get('TEST_XTC_DIR', '.')
 xtc_dir = os.path.join(test_xtc_dir, '.tmp_smd0')
 
-def my_filter(evt):
-    return True
+def my_filter(run):
+    for evt in run.events():
+        yield evt
 
 def run_serial_read(n_events, batch_size=1, filter_fn=0):
     exp_xtc_dir = os.path.join(xtc_dir, '.tmp')
     os.environ['PS_SMD_N_EVENTS'] = str(n_events)
-    ds = DataSource(exp='xpptut15', run=14, dir=exp_xtc_dir, batch_size=batch_size, filter=filter_fn)
+    ds = DataSource(exp='xpptut15', run=14, dir=exp_xtc_dir, batch_size=batch_size, smd_callback=filter_fn)
     cn_steps = 0
     cn_events = 0
     result = {'evt_per_step':[0,0,0], 'n_steps': 0, 'n_events':0}

@@ -4,6 +4,51 @@ from psana.psexp.step import Step
 
 class InvalidInputEnvStore(Exception): pass
 
+
+class AmbiguousEnvStoreDetector:
+    """Dispatches duplicated env variable names to the appropriate store.
+
+    For variables that exist in more than one env store (currently scan/epics),
+    this wrapper routes:
+      - Step input to scan (if available)
+      - Event input to epics (if available)
+    """
+
+    def __init__(self, var_name, detectors_by_env):
+        self._var_name = var_name
+        self._detectors_by_env = detectors_by_env
+        for env_name, det in detectors_by_env.items():
+            setattr(self, env_name, det)
+
+        self._event_env = "epics" if "epics" in detectors_by_env else next(
+            iter(detectors_by_env)
+        )
+        self._step_env = "scan" if "scan" in detectors_by_env else self._event_env
+
+    def _select_detector(self, events):
+        if isinstance(events, Step):
+            return self._detectors_by_env[self._step_env]
+        if isinstance(events, Event):
+            return self._detectors_by_env[self._event_env]
+        if isinstance(events, list):
+            if not events:
+                return self._detectors_by_env[self._event_env]
+            if isinstance(events[0], Step):
+                return self._detectors_by_env[self._step_env]
+            if isinstance(events[0], Event):
+                return self._detectors_by_env[self._event_env]
+        err_msg = f"Calling detector only accept Event or Step. Invalid type: {type(events)} given."
+        raise InvalidInputEnvStore(err_msg)
+
+    def __call__(self, events):
+        detector = self._select_detector(events)
+        return detector(events)
+
+    @property
+    def dtype(self):
+        return self._detectors_by_env[self._event_env].dtype
+
+
 class EnvImpl(DetectorImpl):
     def __init__(self, *args):
         super(EnvImpl, self).__init__(*args)

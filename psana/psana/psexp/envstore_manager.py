@@ -70,9 +70,16 @@ class EnvStoreManager(object):
                             )
 
     def env_from_variable(self, variable_name):
-        for env_name, store in self.stores.items():
-            found = store.locate_variable(variable_name)
-            if found is not None:
-                alg, _ = found
-                return env_name, alg
+        found = self.envs_from_variable(variable_name)
+        if found:
+            return found[0]
         return None
+
+    def envs_from_variable(self, variable_name):
+        found = []
+        for env_name, store in self.stores.items():
+            match = store.locate_variable(variable_name)
+            if match is not None:
+                alg, _ = match
+                found.append((env_name, alg))
+        return found
