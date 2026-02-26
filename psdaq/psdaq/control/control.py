@@ -2289,7 +2289,7 @@ class CollectionManager():
         start_step_thread = False
         if (self.readout_count > 0):
             start_step_thread = True
-            self.xpm.setup_step(self.step_group,self.group_mask,1)
+            self.xpm.setup_step(self.step_group,self.group_mask,1000)
         elif seqpv_done is not None:
             self.xpm.setup_seq(seqpv_done)
             start_step_thread = True
