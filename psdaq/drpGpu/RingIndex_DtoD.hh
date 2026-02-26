@@ -51,10 +51,10 @@ public:
     auto head = m_head_d->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
     auto tail = m_tail_d->load(memory_order_acquire);
+    unsigned ns = 8;
     while (next == tail) {                             // Wait for tail to advance while full
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      unsigned ns = 8;
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       tail = m_tail_d->load(memory_order_acquire);
@@ -66,10 +66,10 @@ public:
   {
     using namespace cuda;
     auto head = m_head_d->load(memory_order_acquire);
+    unsigned ns = 8;
     while (idx != head) {                              // Wait for tail to advance while full
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      unsigned ns = 8;
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       head = m_head_d->load(memory_order_acquire);
@@ -83,10 +83,10 @@ public:
     using namespace cuda;
     auto tail = m_tail_d->load(memory_order_acquire);
     auto head = m_head_d->load(memory_order_acquire);
+    unsigned ns = 8;
     while (tail == head) {                             // Wait for head to advance while empty
       if (m_terminate_d.load(cuda::std::memory_order_acquire))
         break;
-      unsigned ns = 8;
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       head = m_head_d->load(memory_order_acquire);
