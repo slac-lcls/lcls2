@@ -665,7 +665,7 @@ def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
     top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=int(topname[-1]), detId=id, doc='No comment')
     
     #top.set(f'gainCSVAsic' , gain_map.tolist(), 'UINT8')  # only the rows which have readable pixels
-    top.set(f'gainAsic'    , gain_map.tolist(), 'UINT8')        
+    top.set(f'gainMap'    , gain_map.tolist(), 'UINT8')        
     
     seg_cfg[1] = top.typed_json()
     
@@ -782,7 +782,7 @@ def epixUHR_update(update) -> list:
             top.setAlg('config', ALG_VERSION)
             top.setInfo(detType='epixuhr', detName='_'.join(topname[:-1]), detSegm=seg+int(topname[-1]), detId=id, doc='No comment')
             
-            top.set(f'gainMap' , gain_map.tolist(), 'UINT8')  # only the rows which have readable pixels
+            top.set(f'gainMap' , gain_map.tolist(), 'UINT8')  
 
             seg_cfg[seg+1] = top.typed_json()
 
