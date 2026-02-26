@@ -15,13 +15,11 @@ TEST_ENV_OVERRIDES = {
     "PS_GEO_SHARE": "0",
 }
 
-# Test-specific xtc2 file for jungfrau detector relative to the test file
-#tmp_file_path = "/sdf/data/lcls/drpsrcf/ffb/users/monarin/jungfrau/mfx101332224-r9999-small.xtc2"
-# The test file above is no longer working (no calibration constants available),
-# so using another jungfrau xtc2 file with available calibration constants.
-# The new file is larger, so the test will go own for a long time...
-# Use pytest -s and when noticed there are several events processed, interrupt the test (Ctrl-C).
-tmp_file_path = "/sdf/data/lcls/ds/mfx/mfx101344525/xtc/mfx101344525-r0125-s009-c000.xtc2"
+# This test is currently failing because of the behavior change in jungfrau.py.
+# The calib() currently returns one panel's calib (instead of whole detector in the old behavior.
+# MFX AMI is working because the shared memory has all the panels. 
+# The test can be fixed when we have a small 1M Jungfrau xtc2 file from XPP which has all the panels.
+tmp_file_path = "/sdf/data/lcls/drpsrcf/ffb/users/monarin/jungfrau/mfx101344525-r0125-s007-c000.first8GiB.xtc2"
 
 
 @pytest.mark.skipif(

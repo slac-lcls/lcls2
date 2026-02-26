@@ -15,6 +15,10 @@ RANK_PATTERNS = (
 )
 
 def match_rank(line):
+    # Some launchers (e.g. LUTE) prefix debug lines with logger metadata
+    # such as "INFO:lute.execution.executor:". Keep only the debug payload.
+    if "[DEBUG" in line and not line.startswith("[DEBUG"):
+        line = line[line.find("[DEBUG") :]
     for pat in RANK_PATTERNS:
         m = pat.match(line)
         if m:
