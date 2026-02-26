@@ -13,7 +13,7 @@ if [ -d "/cds/sw/" ]; then
     export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_01152026
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_02202026
 
     osrel=`uname -r`
     case $osrel in
@@ -61,8 +61,18 @@ if [ -h "$CUDA_ROOT" ]; then
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
 fi
 
-RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
+# In ASC lab the command for zsh does not work, but in XPP it does. 
+# So we need to check which shell we are in to get the correct path to the script
+if [ -n "$BASH_VERSION" ]; then
+    SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+elif [ -n "$ZSH_VERSION" ]; then
+    SCRIPT_SOURCE="${(%):-%x}"
+fi
+
+RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
 export PATH=$RELDIR/install/bin:${PATH}
+echo $RELDIR
+
 pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
 export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
 # for procmgr
