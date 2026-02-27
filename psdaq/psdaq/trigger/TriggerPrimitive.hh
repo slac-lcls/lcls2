@@ -36,11 +36,11 @@ namespace Pds {
                            const void*         bufEnd) = 0;
       virtual void   event(cudaStream_t           stream,
                            float     const* const calibBuffers,
-                           const size_t           calibBufsCnt,
+                           size_t    const        calibBufsCnt,
                            uint32_t* const* const out,
-                           const size_t           outBufsCnt,
-                           const unsigned&        index,
-                           const unsigned         nPanels) = 0;
+                           size_t    const        outBufsCnt,
+                           unsigned  const&       index,
+                           unsigned  const        nPanels) {}
       virtual size_t size() const = 0;
     };
   }

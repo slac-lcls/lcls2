@@ -265,14 +265,14 @@ void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas
     auto const i    = tid % nHdrWords;
     auto const tid0 = fpga * (stride / nFpgas);
     //if (tid == 0)  printf("### Reader: nHdrWords %lu, i %lu, tid0 %lu\n", nHdrWords, i, tid0);
-    if (tid >= tid0 && tid < tid0 + nHdrWords) {
+    if (tid >= tid0 && tid < tid0 + nHdrWords) { // Save the header words in pinned memory
       hdr[i] = in[i];
       //printf("### Reader: hdr[%lu] %08x\n", i, in[i]);
     }
 
     // Calibrate
     //if (tid == 0)  printf("### Reader: in[1] %u, th sz %lu\n", in[1], sizeof(TimingHeader));
-    if (in[1] > sizeof(TimingHeader)) {
+    if (in[1] > sizeof(TimingHeader)) { // Calibrate only when there's a payload
       auto const __restrict__ raw = (uint16_t*)&in[nHdrWords];
       //if (tid == 0)  printf("### Reader: raw %p\n", raw);
       auto const __restrict__ out = calibBuffers + pblBufIdx * calibBufsCnt;

@@ -1,22 +1,18 @@
 #include "tmoTebPrimitive.hh"
 
-#include <stdio.h>
+#include "psalg/utils/SysLog.hh"
 
-#ifdef NDEBUG
-#undef NDEBUG                           // To ensure assert() aborts
-#endif
-#include <cassert>
+using logging = psalg::SysLog;
 
-// This method can't be left pure virtual for non-GPU use so it is
-// defaulted to an empty block that is never called by non-GPU code
+// CPU DRPs should not be trying to set up a GPU
 void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       float     const* const calibBuffers,
-                                      const size_t           calibBufsCnt,
+                                      size_t    const        calibBufsCnt,
                                       uint32_t* const* const out,
-                                      const size_t           outBufsCnt,
-                                      const unsigned&        index,
-                                      const unsigned         nPanels)
+                                      size_t    const        outBufsCnt,
+                                      unsigned  const&       index,
+                                      unsigned  const        nPanels)
 {
-  printf("*** TriggerPrimitive::event\n");
-  assert(false);
+  logging::critical("TriggerPrimitive::setupGpu called by a CPU DRP");
+  abort();
 }

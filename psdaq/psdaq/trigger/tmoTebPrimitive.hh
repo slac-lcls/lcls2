@@ -1,3 +1,6 @@
+#ifndef Pds_Trg_TmoTebPrimitive_hh
+#define Pds_Trg_TmoTebPrimitive_hh
+
 #include "TriggerPrimitive.hh"
 
 #include "TmoTebData.hh"
@@ -18,12 +21,14 @@ namespace Pds {
                    const void*         bufEnd) override;
       void   event(cudaStream_t           stream,
                    float     const* const calibBuffers,
-                   const size_t           calibBufsCnt,
+                   size_t    const        calibBufsCnt,
                    uint32_t* const* const out,
-                   const size_t           outBufsCnt,
-                   const unsigned&        index,
-                   const unsigned         nPanels) override;
+                   size_t    const        outBufsCnt,
+                   unsigned  const&       index,
+                   unsigned  const        nPanels) override;
       size_t size() const override  { return sizeof(TmoTebData); }
     };
   }
 }
+
+#endif

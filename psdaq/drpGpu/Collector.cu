@@ -115,24 +115,24 @@ int Collector::_setupGraph()
 
 // This kernel collects and event builds contributions from the DMA streams
 static __global__
-void _collector(unsigned*             __restrict__ head,
-                unsigned*             __restrict__ tail,
+void _collector(unsigned&                          head,
+                unsigned&                          tail,
                 RingIndexDtoD&                     readerQueue,
                 const cuda::std::atomic<unsigned>& terminate)
 {
   int panel = blockIdx.x * blockDim.x + threadIdx.x;
-  //printf("### Collector: panel %u, tail %u, head %u\n", panel, *tail, *head);
+  //printf("### Collector: panel %u, tail %u, head %u\n", panel, tail, head);
 
   // Refresh the head if the tail has caught up to it
   // It might be desireable to refresh the head on every call, but that could
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
-  if (*tail == *head) {
+  if (tail == head) {
     __shared__ unsigned hd0;
 
     // Get one intermediate buffer index per FPGA
     unsigned hdN;
-    while ((hdN = readerQueue.pend()) == *head) {
+    while ((hdN = readerQueue.pend()) == head) {
       if (terminate.load(cuda::std::memory_order_acquire))  return;
     }
     //printf("### Collector: panel %u, hdN %u\n", panel, hdN);
@@ -146,23 +146,24 @@ void _collector(unsigned*             __restrict__ head,
       while (true);                     // abort(); ???
     }
     // Advance head
-    if (panel == 0)  *head = hdN;
+    if (panel == 0)  head = hdN;
   }
 }
 
 // This will re-launch the current graph
 static __global__
-void _graphLoop(unsigned*                          idx,
+void _graphLoop(unsigned&                          idx,
                 RingIndexDtoH&                     collectorQueue,
                 const cuda::std::atomic<unsigned>& terminate)
 {
   if (terminate.load(cuda::std::memory_order_acquire))  return;
 
-  // Push index to host
-  //printf("### Collector: post idx %u\n", *idx);
-  *idx = collectorQueue.post(*idx);
-  //printf("### Collector: posted, new idx %u\n", *idx);
+  // Push index to host and increment to the next one
+  //printf("### Collector: post idx %u\n", idx);
+  idx = collectorQueue.post(idx);
+  //printf("### Collector: posted, new idx %u\n", idx);
 
+  // This will re-launch the current graph
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
 }
 
@@ -182,13 +183,12 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   }
 
   // Find which pebble buffers are ready for processing
-  _collector<<<1, 1, 0, stream>>>(m_head,
-                                  m_tail,
+  _collector<<<1, 1, 0, stream>>>(*m_head,
+                                  *m_tail,
                                   *m_readerQueue.d,
                                   m_terminate_d);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  // @todo: Deal with transitions
   if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
     m_triggerPrimitive->event(stream,
                               calibBuffers,
@@ -200,7 +200,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   }
 
   // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
-  _graphLoop<<<1, 1, 0, stream>>>(m_tail, *m_collectorQueue.d, m_terminate_d);
+  _graphLoop<<<1, 1, 0, stream>>>(*m_tail, *m_collectorQueue.d, m_terminate_d);
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph),

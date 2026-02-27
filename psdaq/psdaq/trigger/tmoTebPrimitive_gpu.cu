@@ -9,12 +9,13 @@ using namespace Pds;
 using namespace Pds::Trg;
 using namespace Drp::Gpu;
 
+
 static __global__ void _event(float     const* const __restrict__ calibBuffers,
-                              const size_t                        calibBufsCnt,
+                              size_t    const                     calibBufsCnt,
                               uint32_t* const* const __restrict__ out,
-                              const size_t                        outBufsCnt,
-                              const unsigned&                     index,
-                              const size_t                        nPanels)
+                              size_t    const                     outBufsCnt,
+                              unsigned  const&                    index,
+                              size_t    const                     nPanels)
 {
   //printf("### TmoTebPrimitive::event: idx %u\n", index);
 
@@ -25,11 +26,9 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
   const uint32_t write_  { 0xdeadbeef };
   const uint32_t monitor_{ 0x12345678 };
 
-  // @todo: Maybe out should point directly to where the trigger input data should go?
+  // Although this also runs for transitions, it is harmless, but it could be tested for here
   constexpr unsigned     tebInpOs = (sizeof(DmaDsc) + sizeof(TimingHeader)) / sizeof(**out);
   uint32_t* __restrict__ tebInp   = &out[0][index * outBufsCnt + tebInpOs];   // Only panel 0 receives the summary
-  // @todo: Need a __host__ ctor for TmoTebData?
-  //new(tebInp) TmoTebData(write_, monitor_);        // Must be no larger than size()
   tebInp[0] = write_;
   tebInp[1] = monitor_;
 
@@ -39,11 +38,11 @@ static __global__ void _event(float     const* const __restrict__ calibBuffers,
 // This method presumes that it is being called while the stream is in capture mode
 void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       float     const* const calibBuffers,
-                                      const size_t           calibBufsCnt,
+                                      size_t    const        calibBufsCnt,
                                       uint32_t* const* const out,
-                                      const size_t           outBufsCnt,
-                                      const unsigned&        index,
-                                      const unsigned         nPanels)
+                                      size_t    const        outBufsCnt,
+                                      unsigned  const&       index,
+                                      unsigned  const        nPanels)
 {
   printf("*** TmoTebPrimitive::event 1\n");
   _event<<<1, 1, 0, stream>>>(calibBuffers, calibBufsCnt, out, outBufsCnt, index, nPanels);
