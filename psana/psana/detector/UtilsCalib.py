@@ -238,21 +238,35 @@ def proc_block_short(block, **kwa):
     return gate_lo, gate_hi
 
 
-
-
-
-
-
-
-
-
-
 def detector_name_short(detlong, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=True):
   """ converts long name like epixm320_0016908288-0000000000-0000000000-4005754881-2080374808-0177177345-2852126742
       to short: epixm320_000004
   """
   from psana.pscalib.calib.MDBWebUtils import pro_detector_name
   return pro_detector_name(detlong, maxsize=maxsize, add_shortname=add_shortname)
+
+
+class MergerDarkArrays():
+    """merger for dark data arrays"""
+    def __init__(self):
+        self.lst_av1 = []
+        self.lst_rms = []
+        self.lst_sta = []
+        self.lst_max = []
+        self.lst_min = []
+
+    def add_arrs_for_gain_range(self, dpo):
+        self.lst_av1.append(dpo.arr_av1)
+        self.lst_rms.append(dpo.arr_rms)
+        self.lst_sta.append(dpo.arr_sta)
+        self.lst_max.append(dpo.arr_max)
+        self.lst_min.append(dpo.arr_min)
+
+    def merge_list(self, lstnda):
+        return np.stack(tuple(lstnda))
+
+    def info_merged_nda(self, lstnda, cmt='merged pedestals'):
+        return info_ndarr(self.merge_list(lstnda), cmt)
 
 
 class DarkProc():
