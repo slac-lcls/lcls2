@@ -19,6 +19,10 @@ def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
 
 
 def issue_2026_mm_dd():
+    """ISSUE:
+       PROBLEM:
+       FIX:
+    """
     print('template')
 
 
@@ -37,6 +41,52 @@ def issue_2026_02_04():
         print('begin step: %d' % istep)
         if istep == 0:
             continue
+        print('end of step: %d' % istep)
+    print('end of step loop')
+
+
+def issue_2026_02_26():
+    """ISSUE: command
+              jungfrau_dark_proc -k exp=xppc00125,run=6 -d jungfrau1M -o work1 --stepnum 0
+              does not work (work in old release) because of mpi features
+       PROBLEM: dskwargs={...,'smd_callback': None}
+       FIX: remove 'smd_callback': None from dskwargs
+    """
+    if False:
+        import os
+        os.environ['PS_EB_NODES']='1'
+        os.environ['PS_SRV_NODES']='1'
+
+        import psutil
+        cpu_num = psutil.Process().cpu_num()
+
+        from psana.detector.Utils import get_hostname
+        hostname = get_hostname()
+
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        rank = comm.Get_rank()
+        size = comm.Get_size()
+
+        s_rsch = 'rank:%03d/%03d-cpu:%03d-%s' % (rank, size, cpu_num, hostname)
+        print('>>>> %s sys.argv: %s' % (s_rsch, sys.argv))
+
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    #[I] UtilsJungfrauCalib.py L0163 DataSource dskwargs: {'exp': 'xppc00125', 'run': 6, 'max_events': 10000, 'batch_size': 2, 'smd_callback': None}
+    #dskwargs={'exp': 'xppc00125', 'run': 6, 'max_events': 10000, 'batch_size': 2, 'smd_callback': None}
+    dskwargs={'exp': 'xppc00125', 'run': 6, 'max_events': 10000, 'batch_size': 2}
+    ds = DataSource(**dskwargs)
+    #run = next(ds.runs())
+    for irun, run in enumerate(ds.runs()):
+      logger.info('\n%s runnum %d %s' % (20*'=', run.runnum, 20*'='))
+      det = run.Detector('jungfrau1M')
+      for istep, step in enumerate(run.steps()):
+        print('begin step: %d' % istep)
+        for ievt, evt in enumerate(step.events()):
+            if ievt<10:
+                raw = det.raw.raw(evt)
+                print(info_ndarr(raw, 'ev: %03d raw' % ievt))
         print('end of step: %d' % istep)
     print('end of step loop')
 
@@ -77,6 +127,7 @@ def selector():
 
     if   TNAME in ('0',): issue_2026_mm_dd() # template
     elif TNAME in ('1',): issue_2026_02_04()
+    elif TNAME in ('2',): issue_2026_02_26()
     elif TNAME in ('99',): issue_2026_02_04(args.subtest)
     else:
         print(USAGE())
