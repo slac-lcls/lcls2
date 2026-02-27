@@ -13,6 +13,9 @@ SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
+HUTCH_DEFAULT_LOG_SUBDIRS = {
+    "xpp": os.path.join("daq", "logs"),
+}
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +83,15 @@ class SbatchManager:
     ):
         self.sb_script = ""
         now = datetime.now()
+        self.user = os.environ["USER"]
+        self.hutch = self.user[: self.user.find("opr")]
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        if output is None:
-            self.output_path = os.path.join(
-                os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
-            )
-        else:
-            self.output_path = os.path.join( output, now.strftime("%Y"), now.strftime("%m"))
+        output_root = output
+        if output_root is None:
+            output_root = self.get_default_output_root()
+        self.output_path = os.path.join(
+            output_root, now.strftime("%Y"), now.strftime("%m")
+        )
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
@@ -95,9 +100,14 @@ class SbatchManager:
         self.station = station
         self.as_step = as_step
         self.verbose = verbose
-        self.user = os.environ["USER"]
-        self.hutch = self.user[: self.user.find("opr")]
         self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
+
+    def get_default_output_root(self):
+        home_dir = os.environ.get("HOME", "")
+        hutch_log_subdir = HUTCH_DEFAULT_LOG_SUBDIRS.get(self.hutch)
+        if hutch_log_subdir is not None:
+            return os.path.join(home_dir, hutch_log_subdir)
+        return home_dir
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
