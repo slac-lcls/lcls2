@@ -104,13 +104,14 @@ class Storage:
         self.isset = False
 
     def setattr_from_kwargs(self, keys=('nrecs', 'evskip', 'stepnum', 'stepmax'), **kwargs):
+        """Sets self attributes from dict kwargs for tuple of keys"""
         if self.isset: return
         self.isset = True
         self.keys = keys
         d = ups.dict_filter(kwargs, list_keys=keys)
         for k in d.keys():
             setattr(self, k, d[k])
-        print('%s storage parameters %s' % (s_rsch, self.info_pars()))
+        logger.info('%s storage parameters: %s' % (s_rsch, self.info_pars()))
 
     def info_pars(self, sep=' ', fmt='%s:%s'):
         lst_pars = [fmt % (k, str(getattr(self, k, None))) for k in self.keys]
@@ -120,19 +121,20 @@ storage = Storage()
 
 
 def filter_callback(run):
+    """Event filter using small data. Parameters passed via global storage"""
+    logger.info('== filter_callback first call for %s' % s_rsch)
     for istep, step in enumerate(run.steps()):
-        if storage.stepmax is not None and istep > storage.stepmax:
-            continue
-
-        if storage.stepnum is not None and istep != storage.stepnum:
-            continue
-
-        for ievt, evt in enumerate(step.events()):
-            if ievt < storage.evskip:
-                continue
-            if ievt < storage.nrecs:
-                print('= filter_callback yield for step/evt:', istep, ievt)
-                yield evt
+        logger.info('== filter_callback begin step:%d for %s' % (istep, s_rsch))
+        cond1 = True if storage.stepmax is None else istep < storage.stepmax
+        cond2 = True if storage.stepnum is None else istep == storage.stepnum
+        if cond1 and cond2:
+            logger.info('== filter_callback stepnum:%s stepmax:%s evskip:%d nrecs:%d - begin event loop for step:%d for %s)' %\
+                        (str(storage.stepnum), str(storage.stepmax), storage.evskip, storage.nrecs, istep, s_rsch))
+            for ievt, evt in enumerate(step.events()):
+                if  ievt > storage.evskip-1\
+                and ievt < storage.nrecs:
+                    #print('  = filter_callback yield for step:%d evt:%03d' % (istep, ievt))
+                    yield evt
 
 
 def jungfrau_dark_proc(parser):
@@ -164,6 +166,7 @@ def jungfrau_dark_proc_mpi(parser):
     segind  = args.segind
     igmode  = args.igmode
     dirrepo = args.dirrepo
+    deploy  = args.deploy
 
     dirmode  = kwargs.get('dirmode',  0o2775)
     filemode = kwargs.get('filemode', 0o664)
@@ -171,7 +174,7 @@ def jungfrau_dark_proc_mpi(parser):
 
     storage.setattr_from_kwargs(**kwargs)
 
-    sys.exit(0)
+    #sys.exit(0)
 
     if is_rank_sel:
       logger.info('%s sys.argv: %s' % (s_rsch, str(sys.argv)))
@@ -182,12 +185,14 @@ def jungfrau_dark_proc_mpi(parser):
     kwargs['batch_size'] = 1 # this batch_size parameter may need to be tweaked
     kwargs['info_xtc_files'] = is_rank0
     kwargs['smd_callback'] = filter_callback
+    kwargs['max_events'] = kwargs.get('events', 3000)
     ds, dskwargs = open_DataSource(**kwargs)
     logger.debug('on %s open DataSource as: %s' % (s_rsch, str(ds)))
 
     smd = ds.smalldata()
 
     dpo = None
+    merger = None
     igm0 = None
     ievt = 0
     #istep = -1
@@ -346,14 +351,22 @@ def jungfrau_dark_proc_mpi(parser):
         #if False: ####### TEST
 
         print('XXX %s smd.summary:' % s_rsch, smd.summary)
-        
+
         if smd.summary:
             #if dpo.irec != -1:
             dpo.summary()
             if rank == dpo.rank_sum:
                 is_rank_sum = True
-                logger.info('begin save_results_in_repository in %s' % s_rsch)
-                uc.save_results_in_repository(dpo, orun, dpo.odet, **kwargs)
+                if deploy:
+                    if merger is None:
+                        merger = uc.MergerDarkArrays()
+                    merger.add_arrs_for_gain_range(dpo)
+                    if igm ==2:
+                        print('XXXXX TBD save_results_in_DB')
+                        print('XXXXX', merger.info_merged_nda(merger.lst_av1, cmt='merged pedestals'))
+                else:
+                    logger.info('begin save_results_in_repository in %s' % s_rsch)
+                    uc.save_results_in_repository(dpo, orun, dpo.odet, **kwargs)
 
         dpo=None
 
