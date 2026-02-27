@@ -3,9 +3,9 @@
 #include "TebReceiver.hh"                   // Contains base class for TebReceiver
 #include "psdaq/eb/CubeResultDgram.hh"
 
-#define MAX_CUBE_BINS 256
-
 namespace Drp {
+
+class CubeData;
 
 class CubeTebReceiver: public TebReceiver
 {
@@ -27,7 +27,7 @@ private:
     unsigned                          m_last; // index from CubeTebReceiver
     unsigned                          m_nbins;
     std::vector<std::atomic<bool> >   m_data_init; // reset flag for the cube
-    std::vector<char*>                m_bin_data;  // one big xtc buffer per worker
+    std::vector<CubeData*>            m_cubedata;  // one big xtc buffer per worker
     XtcData::NamesLookup              m_namesLookup;
     char*                             m_buffer;             // buffer for recording dgram
     std::vector<std::thread>          m_workerThreads;

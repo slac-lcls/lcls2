@@ -41,12 +41,13 @@ for event in ds.events():
             index = int(gasdet.f11ENRC()) % cube_bins
             cube_event_count += 1
 
+    recordEvt = True
     recordBin = (cube_event_count % cube_record_factor)==0
     monitorBin = recordBin
     monitor = recordBin
     flush = recordBin
 
-    ds.result(persist, mebs if monitor else 0, index, 
+    ds.result(persist, recordEvt, mebs if monitor else 0, index, 
               recordBin, monitorBin, flush)
 
 print(f"[Python] tebIntegrateTest script exiting; {num_event} events handled")

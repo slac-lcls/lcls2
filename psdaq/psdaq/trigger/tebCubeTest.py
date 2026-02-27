@@ -15,9 +15,9 @@ logging.warning(f"[Python] tebCubeTest script starting")
 #  bin_record = (cube_event_count+1) % record_factor == 0
 record_eventcode = 256
 #bin_eventcodes = 257..264
-#cube_bins = 256
-cube_bins = 1
-cube_record_factor = cube_bins*400+1
+cube_bins = 256
+#cube_bins = 1
+cube_record_factor = cube_bins*2+1
 cube_event_count = 0
 
 ds = tebTrigger.CubeTriggerDataSource(cube_bins)
