@@ -40,7 +40,7 @@ def argument_parser():
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
-    d_events  = 1000    # max_events in DataSource(max_events=events,...)
+    d_events  = 3000    # max_events in DataSource(max_events=events,...)
     #d_evstep  = 1000
     d_dirmode = 0o2775
     d_filemode= 0o664
@@ -79,7 +79,7 @@ def argument_parser():
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
     h_evskip  = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events  = 'DataSource(..., max_events=events, ...), default = %s' % str(d_events)
+    h_events  = 'total number of events to read from xtc2 file, DataSource(..., max_events=events, ...), default = %s' % str(d_events)
     #h_evstep  = 'maximal number of events to process in each step, default = %s' % d_evstep
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
