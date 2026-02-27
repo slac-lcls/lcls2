@@ -6,6 +6,8 @@
 Usage::
     from psana.detector.UtilsJungfrauCalib import *
 
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau
+
 phase 1 ONLY: USE --nrecs == --nrecs1, e.g.:
 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 50 --nrecs1 50
 
@@ -25,7 +27,6 @@ logger = logging.getLogger(__name__)
 from time import time
 import os
 import sys
-#import psana
 from psana import DataSource
 import numpy as np
 from time import time #, localtime, strftime
@@ -157,16 +158,22 @@ def get_jungfrau_gain_mode_object(odet):
 def open_DataSource(**kwargs):
     dskwargs = ups.data_source_kwargs(**kwargs)
     dskwargs['max_events'] = kwargs.get('events', 3000)
-    dskwargs['batch_size'] = kwargs.get('batch_size', 2)
-    #logger.info('DataSource dskwargs: %s' % (dskwargs))
-    #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=2)
+    permit_info  = kwargs.get('info_xtc_files', True)
+    batch_size   = kwargs.get('batch_size', None)
+    smd_callback = kwargs.get('smd_callback', None)
+    if batch_size is not None:
+        dskwargs['batch_size'] = batch_size
+    if smd_callback is not None:
+        dskwargs['smd_callback'] = smd_callback
+    logger.info('DataSource dskwargs: %s' % (dskwargs))
+    #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=1)
     try: ds = DataSource(**dskwargs)
     except Exception as err:
         logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
         sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     xtc_files = getattr(ds, 'xtc_files', None)
-    if kwargs.get('info_xtc_files', True):
+    if permit_info:
       logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
     return ds, dskwargs
 
