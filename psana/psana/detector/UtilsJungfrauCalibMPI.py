@@ -9,11 +9,14 @@ Usage::
 phase 0: check data
 datinfo -k exp=mfx100848724,run=49 -d jungfrau
 
+phase 1 and 2 TOGETHER
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 100 --nrecs1 50
+
 phase 1 ONLY: USE --nrecs == --nrecs1, e.g.:
-jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 50 --nrecs1 50
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50
 
 phase 2 with MPI:
-mpirun -n 5 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0 --events 100
+mpirun -n 5 jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 100 --nrecs1 0
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -187,6 +190,8 @@ def jungfrau_dark_proc_mpi(parser):
     kwargs['smd_callback'] = filter_callback
     kwargs['max_events'] = kwargs.get('events', 3000)
     ds, dskwargs = open_DataSource(**kwargs)
+    kwargs['ds'] = ds
+    kwargs['dskwargs'] = dskwargs
     logger.debug('on %s open DataSource as: %s' % (s_rsch, str(ds)))
 
     smd = ds.smalldata()
@@ -205,6 +210,7 @@ def jungfrau_dark_proc_mpi(parser):
 
     #for irun, orun in enumerate(ds.runs()):
     orun = next(ds.runs())
+    kwargs['orun'] = orun
     logger.info('%s %s begin run %s %s' % (s_rsch, 20*'=', str(orun.runnum), 20*'='))
 
     terminate_steps = False
@@ -225,6 +231,7 @@ def jungfrau_dark_proc_mpi(parser):
         #d = ups.dict_filter(kwargs, list_keys=('accept_missing',))
         if odet is None:
            odet = orun.Detector(detname, **kwargs)
+           kwargs['odet'] = odet
 
         if dettype is None:
             dettype = odet.raw._dettype
@@ -357,13 +364,15 @@ def jungfrau_dark_proc_mpi(parser):
             dpo.summary()
             if rank == dpo.rank_sum:
                 is_rank_sum = True
-                if deploy:
+#                if deploy:
+    
+                 if True:
                     if merger is None:
                         merger = uc.MergerDarkArrays()
                     merger.add_arrs_for_gain_range(dpo)
                     if igm ==2:
-                        print('XXXXX TBD save_results_in_DB')
-                        print('XXXXX', merger.info_merged_nda(merger.lst_av1, cmt='merged pedestals'))
+                        print('XXXXX TBD save results in DB')
+                        ujc.jungfrau_deploy_dark_direct(merger, **kwargs)
                 else:
                     logger.info('begin save_results_in_repository in %s' % s_rsch)
                     uc.save_results_in_repository(dpo, orun, dpo.odet, **kwargs)
