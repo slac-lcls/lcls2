@@ -268,6 +268,13 @@ class MergerDarkArrays():
     def info_merged_nda(self, lstnda, cmt='merged pedestals'):
         return info_ndarr(self.merge_list(lstnda), cmt)
 
+    def dict_ctype_constants(self):
+        return {'pedestals':    self.merge_list(self.lst_av1),\
+                'pixel_rms':    self.merge_list(self.lst_rms),\
+                'pixel_status': self.merge_list(self.lst_sta),\
+                'pixel_max':    self.merge_list(self.lst_max),\
+                'pixel_min':    self.merge_list(self.lst_min)}
+
 
 class DarkProc():
     """dark data accumulation and processing"""
@@ -591,44 +598,44 @@ def plot_image(nda, tit=''):
     gr.show()
 
 
-def add_metadata_kwargs(orun, odet, **kwa):
+def add_metadata_kwargs(obrun, obdet, **kwa):
 
-    trun_sec = up.seconds(orun.timestamp) # 1607569818.532117 sec
+    trun_sec = up.seconds(obrun.timestamp) # 1607569818.532117 sec
 
     # check opt "-t" if constants need to be deployed with diffiernt time stamp
     tstamp = kwa.get('tstamp', None)
     tvalid_sec = time_sec_from_stamp(fmt=cc.TSFORMAT_SHORT, time_stamp=str(tstamp))\
                  if tstamp is not None else trun_sec
 
-    v = getattr(odet.raw,'_segment_ids', None) # odet.raw._segment_ids()
+    v = getattr(obdet.raw,'_segment_ids', None) # obdet.raw._segment_ids()
     segment_ids = None if v is None else v()
-    shortname = detector_name_short(odet.raw._uniqueid, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
+    shortname = detector_name_short(obdet.raw._uniqueid, maxsize=kwa.get('max_detname_size', cc.MAX_DETNAME_SIZE))
 
-    kwa['exp']        = orun.expt
-    kwa['experiment'] = orun.expt
+    kwa['exp']        = obrun.expt
+    kwa['experiment'] = obrun.expt
     kwa['detector']   = shortname
-    #kwa['uniqueid']  = odet.raw._uniqueid
-    kwa['longname']   = odet.raw._uniqueid
+    #kwa['uniqueid']  = obdet.raw._uniqueid
+    kwa['longname']   = obdet.raw._uniqueid
     kwa['shortname']  = shortname
-    kwa['detname']    = odet.raw._det_name
-    kwa['dettype']    = odet.raw._dettype
+    kwa['detname']    = obdet.raw._det_name
+    kwa['dettype']    = obdet.raw._dettype
     kwa['time_sec']   = tvalid_sec
     kwa['time_stamp'] = str_tstamp(fmt=cc.TSFORMAT, time_sec=int(tvalid_sec))
     kwa['tsshort']    = str_tstamp(fmt=cc.TSFORMAT_SHORT, time_sec=int(tvalid_sec))
     kwa['tstamp_orig']= str_tstamp(fmt=cc.TSFORMAT, time_sec=int(trun_sec))
     kwa['run_beg']    = run_beg = kwa.get('run_beg', None)
-    kwa['run']        = orun.runnum if run_beg is None else run_beg
+    kwa['run']        = obrun.runnum if run_beg is None else run_beg
     kwa['run_end']    = kwa.get('run_end', 'end')
-    kwa['run_orig']   = orun.runnum
+    kwa['run_orig']   = obrun.runnum
     kwa['version']    = kwa.get('version', 'N/A')
     kwa['comment']    = kwa.get('comment', 'no comment')
     kwa['extpars']    = {'content':'extended parameters dict->json->str',}
     kwa['segment_ids'] = segment_ids
-    kwa['segment_inds'] = odet.raw._sorted_segment_inds
-    kwa['segment_numbers'] = odet.raw._segment_numbers
-    kwa['seggeo_shape'] = None if odet.raw._seg_geo is None else odet.raw._seg_geo.shape()
-    #kwa['seggeo_shape'] = odet.raw._seg_geo.shape()
-    #print('XXXX dir(odet.raw)',  dir(odet.raw))
+    kwa['segment_inds'] = obdet.raw._sorted_segment_inds
+    kwa['segment_numbers'] = obdet.raw._segment_numbers
+    kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
+    #kwa['seggeo_shape'] = obdet.raw._seg_geo.shape()
+    #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 
 
@@ -715,15 +722,15 @@ def deploy_constants(dic_consts, **kwa):
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
-def prefix_block_results(dpo, orun, odet, **kwa):
+def prefix_block_results(dpo, obrun, obdet, **kwa):
     repoman = kwa.get('repoman', None) # set_repoman_and_logger(kwa)
-    dettype = odet.raw._dettype
-    repoman.set_dettype(odet.raw._dettype)
-    kwa_met = add_metadata_kwargs(orun, odet, **kwa)
+    dettype = obdet.raw._dettype
+    repoman.set_dettype(obdet.raw._dettype)
+    kwa_met = add_metadata_kwargs(obrun, obdet, **kwa)
     dirname = repoman.makedir_block_results()
     shortname = kwa_met.get('shortname', None)
     gainmode = kwa_met.get('gainmode', None)
-    prefix = fname_prefix_block_results(dirname, shortname, orun.expt, orun.runnum, gainmode)
+    prefix = fname_prefix_block_results(dirname, shortname, obrun.expt, obrun.runnum, gainmode)
     logger.debug('prefix: %s' % prefix)
     return prefix
 
@@ -732,11 +739,11 @@ def fnames_block_results(prefix, sufs=('gate_lo', 'gate_hi'), fmt='%s-%s.npy'):
     return [fmt % (prefix, s) for s in sufs]
 
 
-def save_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
+def save_block_results(dpo, obrun, obdet, anames=('gate_lo', 'gate_hi'), **kwa):
     """saves block processing results in the directory retreived from repoman"""
     t0_sec_save_block = time()
     s = 'save_block_results'
-    prefix = prefix_block_results(dpo, orun, odet, **kwa)
+    prefix = prefix_block_results(dpo, obrun, obdet, **kwa)
     fnames = fnames_block_results(prefix, sufs=anames)
     ndarrs = [getattr(dpo, name, None) for name in anames]
     for f,n,a in (zip(fnames, anames, ndarrs)):
@@ -747,11 +754,11 @@ def save_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
     logger.info(s)
 
 
-def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
+def load_block_results(dpo, obrun, obdet, anames=('gate_lo', 'gate_hi'), **kwa):
     """loads results saved by save_block_results"""
     t0_sec_load_block = time()
     s = 'LOAD_BLOCK_RESULTS'
-    prefix = prefix_block_results(dpo, orun, odet, **kwa)
+    prefix = prefix_block_results(dpo, obrun, obdet, **kwa)
     fnames = fnames_block_results(prefix, sufs=anames)
     for f,n in (zip(fnames, anames)):
       if not os.path.exists(f):
@@ -767,7 +774,7 @@ def load_block_results(dpo, orun, odet, anames=('gate_lo', 'gate_hi'), **kwa):
        logger.info(s)
 
 
-def save_results_in_db(dpo, orun, odet, **kwa):
+def save_results_in_db(dpo, obrun, obdet, **kwa):
     #    dpo.summary() moved to the main code
     ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min') # 'status_extra'
     arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
@@ -781,13 +788,13 @@ def save_results_in_db(dpo, orun, odet, **kwa):
                 info_ndarr(arr_max, 'arr_max', first=0, last=5),\
                 info_ndarr(arr_min, 'arr_min', first=0, last=5)))
     dic_consts = dict(zip(ctypes, consts))
-    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    kwa_depl = add_metadata_kwargs(obrun, obdet, **kwa)
     deploy_constants(dic_consts, **kwa_depl)
     #del(dpo)
     #dpo=None
 
 
-def save_results_in_repository(dpo, orun, odet, **kwa):
+def save_results_in_repository(dpo, obrun, obdet, **kwa):
     from psana.detector.UtilsCalibRepo import save_constants_in_repository
     logger.info('begin save_results_in_repository')
     t0_sec = time()
@@ -807,7 +814,7 @@ def save_results_in_repository(dpo, orun, odet, **kwa):
     dic_consts = dict(zip(ctypes, consts))
 
     kwa.setdefault('max_detname_size', cc.MAX_DETNAME_SIZE)
-    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    kwa_depl = add_metadata_kwargs(obrun, obdet, **kwa)
     save_constants_in_repository(dic_consts, **kwa_depl)
     logger.info('SAVE_RESULTS_in_repository time %.3f sec' % (time()-t0_sec))
     #del(dpo)
