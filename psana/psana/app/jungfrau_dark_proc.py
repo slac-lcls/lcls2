@@ -56,9 +56,10 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-02-10'
+    d_version = 'V2026-03-03'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_deploy  = False
+    d_save    = False
     d_plotim  = 0
     d_evcode  = None
     d_segind  = None
@@ -96,6 +97,7 @@ def argument_parser():
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_version = 'constants version, default = %s' % str(d_version)
     h_datbits = 'data bits, e.g. 0x7fff is 15-bit mask for epixm320, default = %s' % hex(d_datbits)
+    h_save    = 'save constants in repository, default = %s' % d_save
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
@@ -131,6 +133,7 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
+    parser.add_argument('-S', '--save',    action='store_true',              help=h_save)
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
