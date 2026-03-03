@@ -559,7 +559,7 @@ def jungfrau_deploy_constants(parser):
     shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
     logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
 
-    ctypes = CTYPES_DEPL
+    #ctypes = CTYPES_DEPL
     ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
 
     logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
@@ -667,5 +667,180 @@ def jungfrau_deploy_constants(parser):
           logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
     repoman.logfile_save()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   
+def jungfrau_deploy_dark_direct(merger, **kwargs):
+
+    import psana.detector.UtilsJungfrau as uj
+
+#    args = parser.parse_args() # namespae of parameters
+#    kwargs = vars(args) # dict of parameters
+
+    errskip   = kwargs.get('errskip', True)
+    fac_mode  = kwargs.get('fac_mode', 0o664)
+    group     = kwargs.get('group', 'ps-users')
+    shape_seg = kwargs.get('shape_seg', (512,1024)) # pixel_gain:  shape:(3, 1, 512, 1024)  size:1572864  dtype:float32
+    nsegstot  = kwargs.get('nsegstot', None)
+    deploy    = kwargs.get('deploy', False)
+    detname   = kwargs.get('detname', None)
+    ctdepl    = kwargs.get('ctdepl', 'prsnx')
+    dbsuffix  = kwargs.get('dbsuffix', '')
+    max_detname_size = kwargs.setdefault('max_detname_size', MAX_DETNAME_SIZE)
+
+    DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
+
+    repoman  = kwargs.get('repoman', None)
+    ds       = kwargs.get('ds', None)
+    dskwargs = kwargs.get('dskwargs', None)
+    orun     = kwargs.get('orun', None)
+    odet     = kwargs.get('odet', None)
+
+#    logger.debug('open_DataSource for kwargs:\n%s' % uts.info_dict(kwargs, fmt='  %12s: %s', sep='\n'))
+#    ds, dskwargs = open_DataSource(**kwargs)
+#    logger.info('\n%s Run %d %s' % (20*'=', orun.runnum, 20*'='))
+
+    trun_sec = ups.seconds(orun.timestamp) # 1607569818.532117 sec
+    ts_run, ts_now = ups.tstamps_run_and_now(trun_sec) #, fmt=uc.TSTAMP_FORMAT)
+
+#    odet = orun.Detector(detname, **kwargs)
+
+    dettype = odet.raw._dettype
+    uniqueid = odet.raw._uniqueid
+    seginds = odet.raw._sorted_segment_inds
+    segids = uniqueid.split('_')[1:]
+    logger.debug('det.raw._uniqueid.split:\n%s' % ('\n'.join(uniqueid.split('_')))\
+                +'det.raw._sorted_segment_inds: %s' % str(seginds))
+
+    longname = uniqueid
+    shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
+    logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
+
+    #ctypes = CTYPES_DARK
+    ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
+
+    logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
+
+    #for ctype, fmt in DIC_CTYPE_FMT.items():
+
+    dcc = merger.dict_ctype_constants()
+
+    for ctype in ctypes:
+        fmt = DIC_CTYPE_FMT[ctype]
+        #if ctype == 'status_extra':
+        #    logger.warning('FOR NOW SKIP ctype: status_extra')
+        #    continue
+        octype = ctype
+        logger.info('\n%s deploy constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
+
+        nda = dcc[ctype]
+        logger.info(info_ndarr(nda, cmt='>>>> %s' % ctype))
+
+#        dic_cons = {}
+#        for i,(segind, segid) in enumerate(zip(seginds, segids)):
+#            #logger.info('%s next segment\n  segment constants in repo for raw ind:%02d segment ind:%02d id: %s'%\
+#            #            (20*'-', i, segind, segid))
+#
+#            dirpanel = repoman.dir_panel(segid)
+#            #logger.info('%s\nmerge gain range constants for panel %02d dir: %s' % (110*'_', segind, dirpanel))
+#            check_exists(dirpanel, errskip, 'panel directory does not exist %s' % dirpanel)
+#
+#            dir_ctype = repoman.dir_ctype(segid, ctype) # <repo>/jungfrauemu/00b1ed0000-0000000000-...-0000000000/pedestals/
+#            if not os.path.exists(dir_ctype):
+#                dir_ctype = repoman.makedir_ctype(segid, ctype)
+#
+#            fnprefix = fname_prefix(shortname, segind, ts_run, orun.expt, orun.runnum, dirname=None) # <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007
+#            #logger.debug('prefix: %s' % fnprefix)
+#
+#            fname = fname_merged_gmodes(dir_ctype, fnprefix, ctype) # jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-pedestals.txt # -Normal
+#            logger.debug('fname_merged_gmodes: %s' % fname)
+#            nda = merge_jf_panel_gain_ranges(dir_ctype, segid, ctype, ts_run, shape_seg, fname,\
+#                                             fmt=fmt, fac_mode=fac_mode, errskip=errskip, group='ps-users')
+#
+#            logger.info('-- save array of panel constants "%s" merged for 3 gain ranges shaped as %s in\n%s%s'\
+#                        % (ctype, str(nda.shape), 4*' ', fname))
+#
+##            if octype in dic_consts: dic_consts[octype].append(nda) # append for panel per ctype
+##            else:                    dic_consts[octype] = [nda,]
+#
+#            dic_cons[segind] = nda
+#
+#        logger.debug('\n%s\nmerge all panel constants for ctype %s and deploy them' % (80*'_', ctype))
+#
+#        #nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'rms', 'dark_max') else\
+#        #      np.zeros(shape, dtype=np.float32) # 'pedestals', 'status', 'dark_min'
+#        vtype = cc.dic_calib_name_to_dtype[ctype]
+#        nda_def = np.zeros((3,1,)+shape_seg, dtype=vtype) # np.float32) # (3,1,512,1024)
+#
+#        indmax = max(list(dic_cons.keys()))
+#        nsegs = uj.jungfrau_segments_tot(indmax) if nsegstot is None else nsegstot
+#        #nsegs = indmax+1 if nsegstot is None else nsegstot   # 1,2,8, or 32
+#
+#        lst_cons = [(dic_cons[i] if i in dic_cons.keys() else nda_def) for i in range(nsegs)]
+#        nda = uc.merge_panels(lst_cons)
+
+        dmerge = repoman.makedir_merge()
+        fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
+        logger.debug('fmerge_prefix: %s' % fmerge_prefix)
+        fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
+        logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
+                    + '\n    save in %s\n' % fmerge)
+        save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
+
+        if True:
+          kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
+          kwa_depl['repoman'] = repoman
+          kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+          kwa_depl['run_orig'] = orun.runnum
+          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+          kwa_depl['iofname'] = fmerge
+          kwa_depl['ctype'] = ctype
+          kwa_depl['dtype'] = 'ndarray'
+          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+          kwa_depl['shortname'] = shortname
+          kwa_depl['dbsuffix'] = dbsuffix
+          kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+          kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
+
+          d = ups.dict_filter(kwa_depl, list_keys=('dskwargs', 'dirrepo','dettype', 'tsshort', \
+                'run', 'run_orig', 'run_beg', 'run_end',\
+                'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
+          logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
+
+        if deploy:
+          expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
+
+          if dbsuffix:
+              resp = add_data_and_doc_to_detdb_extended(nda, expname, longname, **kwa_depl)
+          else:
+              # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+              resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
+          if resp:
+              #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
+              if dbsuffix:
+                  fmt = (None, resp[0], None, resp[1])
+                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
+              else:
+                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+          else:
+              logger.error('constants are not deployed')
+              exit()
+        else:
+          logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+#    repoman.logfile_save()
 
 # EOF
