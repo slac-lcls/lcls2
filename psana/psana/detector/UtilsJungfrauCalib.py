@@ -747,7 +747,7 @@ def jungfrau_deploy_dark_direct(merger, **kwargs):
         logger.info('\n%s deploy constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
 
         nda = dcc[ctype]
-        logger.info(info_ndarr(nda, cmt='>>>> %s' % ctype))
+        logger.info(info_ndarr(nda, '>>>> %s' % ctype))
 
 #        dic_cons = {}
 #        for i,(segind, segid) in enumerate(zip(seginds, segids)):
