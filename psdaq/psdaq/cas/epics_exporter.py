@@ -67,7 +67,7 @@ class CustomCollector():
 def createExposer(prometheusDir):
     if prometheusDir == '':
         logging.warning('Unable to update Prometheus configuration: directory not provided')
-        return
+        return None
 
     hostname = socket.gethostname()
     for i in range(MAX_PROM_PORTS):
@@ -82,15 +82,15 @@ def createExposer(prometheusDir):
                         f.write(f'- targets:\n    - {hostname}:{port}\n')
                 except Exception as ex:
                     logging.error(f'Error creating file {fileName}: {ex}')
-                    return False
+                    return None
             else:
                 pass            # File exists; no need to rewrite it
             logging.info(f'Providing run-time monitoring data on port {port}')
-            return True
+            return fileName
         except OSError:
             pass                # Port in use
     logging.error('No available port found for providing run-time monitoring')
-    return False
+    return None
 
 def main():
     parser = argparse.ArgumentParser(prog=sys.argv[0], description='host PVs for XPM')
@@ -124,7 +124,7 @@ def main():
                 d.append(q)
             else:
                 raise ValueError(f'Error parsing -D {args.D}.  Too few comma-separated ({len(q)}) entries in a triplet.')
-        
+
     group = GroupCollector()
     for i,entry in enumerate(d):
         print(f'Forming CustomCollector with {entry}')
@@ -146,9 +146,20 @@ def main():
     REGISTRY.register(group)
     #start_http_server(9200)
     if not args.test:
-        rc = createExposer(args.M)
-        while rc:
+        filename = createExposer(args.M)
+        updateTime = time.time()
+        error = False
+        while filename is not None:
             time.sleep(5)
+            if time.time() - updateTime > 24 * 60 * 60:
+                try:
+                    os.utime(filename)
+                    updateTime = time.time()
+                    error = False
+                except Exception as ex:
+                    if not error:
+                        logging.error(f'Error updating timestamp of {fileName}: {ex}')
+                        error = True
 
 if __name__ == '__main__':
     main()
