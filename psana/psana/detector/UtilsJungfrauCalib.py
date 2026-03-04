@@ -157,7 +157,7 @@ def get_jungfrau_gain_mode_object(odet):
 
 def open_DataSource(**kwargs):
     dskwargs = ups.data_source_kwargs(**kwargs)
-    dskwargs['max_events'] = kwargs.get('events', 3000)
+    #dskwargs['max_events'] = kwargs.get('events', 3000)
     permit_info  = kwargs.get('info_xtc_files', True)
     batch_size   = kwargs.get('batch_size', None)
     smd_callback = kwargs.get('smd_callback', None)
