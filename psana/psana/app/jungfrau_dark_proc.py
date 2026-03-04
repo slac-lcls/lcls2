@@ -172,9 +172,7 @@ def do_main():
     from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
 
     jungfrau_dark_proc(parser)
-    logger.info('SCRIPT %s time %.3f sec and TOTAL TIME (with imports and parser) %.3f sec' % (SCRNAME, time() - t0_sec, time() - t0_sec_tot))
-    sys.exit(0)
-
+    print('SCRIPT %s time %.3f sec and TOTAL TIME (with imports and parser) %.3f sec' % (SCRNAME, time() - t0_sec, time() - t0_sec_tot))
 
 if __name__ == "__main__":
     do_main()
