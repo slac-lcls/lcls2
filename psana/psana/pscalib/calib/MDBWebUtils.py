@@ -407,8 +407,10 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     f = io.BytesIO(mu.encode_data(data))   # io.StringIO(data)
     d = f.read()
     #logger.debug('add_data byte-data:',d)
-    resp = post(url+dbname+'/gridfs/', headers=headers, data=d)
-    logger.info('add_data: to %s/gridfs/ resp: %s' % (dbname, resp.text))
+    urltot = url+dbname+'/gridfs/'
+    resp = post(urltot, headers=headers, data=d)
+    logger.info('add_data to: %s\n  resp: %s\n  add -L DEBUG to see headers...' % (urltot, resp.text))
+    logger.debug('headers: %s' % str(headers))
 
     try:
         id = resp.json().get('_id',None)
