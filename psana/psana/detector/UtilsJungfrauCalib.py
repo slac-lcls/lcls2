@@ -36,7 +36,7 @@ import psana.detector.dir_root as dr
 import psana.detector.UtilsCalib as uc
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge
 import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
-from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile # import divide_protected
+from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile, load_txt # import divide_protected
 import psana.detector.Utils as uts # info_dict
 import psana.pscalib.calib.CalibConstants as cc
 #from psana.detector.UtilsCalibRepo import save_constants_in_repository
@@ -156,6 +156,7 @@ def get_jungfrau_gain_mode_object(odet):
 
 
 def open_DataSource(**kwargs):
+    t0_sec = time()
     dskwargs = ups.data_source_kwargs(**kwargs)
     #dskwargs['max_events'] = kwargs.get('events', 3000)
     permit_info  = kwargs.get('info_xtc_files', True)
@@ -175,6 +176,7 @@ def open_DataSource(**kwargs):
     xtc_files = getattr(ds, 'xtc_files', None)
     if permit_info:
       logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
+    logger.info('OPEN DataSource TIME: %.3f sec' % (time()-t0_sec))
     return ds, dskwargs
 
 
@@ -364,7 +366,8 @@ def jungfrau_dark_proc(parser):
                     status = dpo.event(raw,ievt)
                     if status == 1:
                         terminate_runs = True
-                        terminate_steps = True
+                        if stepnum is not None:
+                            terminate_steps = True
                         break # evt loop
                     elif status == 2:
                         logger.info('requested statistics --nrecs=%d is collected - terminate loops' % args.nrecs)
@@ -669,28 +672,10 @@ def jungfrau_deploy_constants(parser):
     repoman.logfile_save()
 
 
+def jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs):
 
+    t0_sec_depl = time()
 
-
-
-
-
-
-
-
-
-
-
-
-   
-def jungfrau_deploy_dark_direct(merger, **kwargs):
-
-    import psana.detector.UtilsJungfrau as uj
-
-#    args = parser.parse_args() # namespae of parameters
-#    kwargs = vars(args) # dict of parameters
-
-    errskip   = kwargs.get('errskip', True)
     fac_mode  = kwargs.get('fac_mode', 0o664)
     group     = kwargs.get('group', 'ps-users')
     shape_seg = kwargs.get('shape_seg', (512,1024)) # pixel_gain:  shape:(3, 1, 512, 1024)  size:1572864  dtype:float32
@@ -704,19 +689,14 @@ def jungfrau_deploy_dark_direct(merger, **kwargs):
     DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
 
     repoman  = kwargs.get('repoman', None)
-    ds       = kwargs.get('ds', None)
     dskwargs = kwargs.get('dskwargs', None)
-    orun     = kwargs.get('orun', None)
-    odet     = kwargs.get('odet', None)
-
-#    logger.debug('open_DataSource for kwargs:\n%s' % uts.info_dict(kwargs, fmt='  %12s: %s', sep='\n'))
-#    ds, dskwargs = open_DataSource(**kwargs)
-#    logger.info('\n%s Run %d %s' % (20*'=', orun.runnum, 20*'='))
+    #ds       = kwargs.get('ds', None)
+    #orun     = kwargs.get('orun', None)
+    #odet     = kwargs.get('odet', None)
+    #odet = orun.Detector(detname, **kwargs)
 
     trun_sec = ups.seconds(orun.timestamp) # 1607569818.532117 sec
     ts_run, ts_now = ups.tstamps_run_and_now(trun_sec) #, fmt=uc.TSTAMP_FORMAT)
-
-#    odet = orun.Detector(detname, **kwargs)
 
     dettype = odet.raw._dettype
     uniqueid = odet.raw._uniqueid
@@ -729,76 +709,29 @@ def jungfrau_deploy_dark_direct(merger, **kwargs):
     shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
     logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
 
-    #ctypes = CTYPES_DARK
-    ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
+    ctypes = [dic_calib_char_to_name[c] for c in ctdepl] # CTYPES_DARK
 
     logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
-
-    #for ctype, fmt in DIC_CTYPE_FMT.items():
 
     dcc = merger.dict_ctype_constants()
 
     for ctype in ctypes:
         fmt = DIC_CTYPE_FMT[ctype]
-        #if ctype == 'status_extra':
-        #    logger.warning('FOR NOW SKIP ctype: status_extra')
-        #    continue
         octype = ctype
         logger.info('\n%s deploy constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
 
         nda = dcc[ctype]
         logger.info(info_ndarr(nda, '>>>> %s' % ctype))
 
-#        dic_cons = {}
-#        for i,(segind, segid) in enumerate(zip(seginds, segids)):
-#            #logger.info('%s next segment\n  segment constants in repo for raw ind:%02d segment ind:%02d id: %s'%\
-#            #            (20*'-', i, segind, segid))
-#
-#            dirpanel = repoman.dir_panel(segid)
-#            #logger.info('%s\nmerge gain range constants for panel %02d dir: %s' % (110*'_', segind, dirpanel))
-#            check_exists(dirpanel, errskip, 'panel directory does not exist %s' % dirpanel)
-#
-#            dir_ctype = repoman.dir_ctype(segid, ctype) # <repo>/jungfrauemu/00b1ed0000-0000000000-...-0000000000/pedestals/
-#            if not os.path.exists(dir_ctype):
-#                dir_ctype = repoman.makedir_ctype(segid, ctype)
-#
-#            fnprefix = fname_prefix(shortname, segind, ts_run, orun.expt, orun.runnum, dirname=None) # <dirname>/jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007
-#            #logger.debug('prefix: %s' % fnprefix)
-#
-#            fname = fname_merged_gmodes(dir_ctype, fnprefix, ctype) # jungfrauemu_000001-s00-20250203095124-mfxdaq23-r0007-pedestals.txt # -Normal
-#            logger.debug('fname_merged_gmodes: %s' % fname)
-#            nda = merge_jf_panel_gain_ranges(dir_ctype, segid, ctype, ts_run, shape_seg, fname,\
-#                                             fmt=fmt, fac_mode=fac_mode, errskip=errskip, group='ps-users')
-#
-#            logger.info('-- save array of panel constants "%s" merged for 3 gain ranges shaped as %s in\n%s%s'\
-#                        % (ctype, str(nda.shape), 4*' ', fname))
-#
-##            if octype in dic_consts: dic_consts[octype].append(nda) # append for panel per ctype
-##            else:                    dic_consts[octype] = [nda,]
-#
-#            dic_cons[segind] = nda
-#
-#        logger.debug('\n%s\nmerge all panel constants for ctype %s and deploy them' % (80*'_', ctype))
-#
-#        #nda_def = np.ones(shape, dtype=np.float32) if ctype in ('gain', 'rms', 'dark_max') else\
-#        #      np.zeros(shape, dtype=np.float32) # 'pedestals', 'status', 'dark_min'
-#        vtype = cc.dic_calib_name_to_dtype[ctype]
-#        nda_def = np.zeros((3,1,)+shape_seg, dtype=vtype) # np.float32) # (3,1,512,1024)
-#
-#        indmax = max(list(dic_cons.keys()))
-#        nsegs = uj.jungfrau_segments_tot(indmax) if nsegstot is None else nsegstot
-#        #nsegs = indmax+1 if nsegstot is None else nsegstot   # 1,2,8, or 32
-#
-#        lst_cons = [(dic_cons[i] if i in dic_cons.keys() else nda_def) for i in range(nsegs)]
-#        nda = uc.merge_panels(lst_cons)
-
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
         logger.debug('fmerge_prefix: %s' % fmerge_prefix)
         fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
-        logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
-                    + '\n    save in %s\n' % fmerge)
+        t0_sec_save = time()
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
+        nda = load_txt(fmerge)
+        logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
+                    + '\n    saved in %s\n save-formatted-load time: %.3f sec\n ' % (fmerge, time()-t0_sec_save))
 
         if True:
           kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
@@ -829,7 +762,6 @@ def jungfrau_deploy_dark_direct(merger, **kwargs):
               # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
               resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
           if resp:
-              #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
               if dbsuffix:
                   fmt = (None, resp[0], None, resp[1])
                   logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
@@ -837,10 +769,9 @@ def jungfrau_deploy_dark_direct(merger, **kwargs):
                   logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
           else:
               logger.error('constants are not deployed')
-              exit()
         else:
           logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
-#    repoman.logfile_save()
+    logger.info('DIRECT DEPLOYMENT OF CONSTANTS TOTAL TIME: %.3f sec' % (time()-t0_sec_depl))
 
 # EOF
