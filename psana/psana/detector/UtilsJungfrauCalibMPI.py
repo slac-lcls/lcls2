@@ -143,7 +143,6 @@ def filter_callback(run):
 def jungfrau_dark_proc(parser):
     """switching between run with/wo mpi"""
     print('start jungfrau_dark_proc on %s use_mpi: %s' % (s_rsch, use_mpi))
-
     if use_mpi: jungfrau_dark_proc_mpi(parser)
     else:   ujc.jungfrau_dark_proc(parser)
 
@@ -169,6 +168,7 @@ def jungfrau_dark_proc_mpi(parser):
     segind  = args.segind
     igmode  = args.igmode
     dirrepo = args.dirrepo
+    save    = args.save
     deploy  = args.deploy
 
     dirmode  = kwargs.get('dirmode',  0o2775)
@@ -176,8 +176,6 @@ def jungfrau_dark_proc_mpi(parser):
     group    = kwargs.get('group', 'ps-users')
 
     storage.setattr_from_kwargs(**kwargs)
-
-    #sys.exit(0)
 
     if is_rank_sel:
       logger.info('%s sys.argv: %s' % (s_rsch, str(sys.argv)))
@@ -188,9 +186,9 @@ def jungfrau_dark_proc_mpi(parser):
     kwargs['batch_size'] = 1 # this batch_size parameter may need to be tweaked
     kwargs['info_xtc_files'] = is_rank0
     kwargs['smd_callback'] = filter_callback
-    kwargs['max_events'] = kwargs.get('events', 3000)
+    #kwargs['max_events'] = kwargs.get('events', 3000)
     ds, dskwargs = open_DataSource(**kwargs)
-    kwargs['ds'] = ds
+    #### kwargs['ds'] = ds
     kwargs['dskwargs'] = dskwargs
     logger.debug('on %s open DataSource as: %s' % (s_rsch, str(ds)))
 
@@ -200,7 +198,6 @@ def jungfrau_dark_proc_mpi(parser):
     merger = None
     igm0 = None
     ievt = 0
-    #istep = -1
     nevsel = 0
     ss = ''
     uniqueid = None
@@ -210,7 +207,11 @@ def jungfrau_dark_proc_mpi(parser):
 
     #for irun, orun in enumerate(ds.runs()):
     orun = next(ds.runs())
-    kwargs['orun'] = orun
+
+    #### !!!!!!!!!!!!!!!!!!!!
+    #### kwargs['orun'] = orun  #### !!!!!!!!!!!!!!!!!!!!
+    #### !!!!!!!!!!!!!!!!!!!!
+
     logger.info('%s %s begin run %s %s' % (s_rsch, 20*'=', str(orun.runnum), 20*'='))
 
     terminate_steps = False
@@ -231,7 +232,7 @@ def jungfrau_dark_proc_mpi(parser):
         #d = ups.dict_filter(kwargs, list_keys=('accept_missing',))
         if odet is None:
            odet = orun.Detector(detname, **kwargs)
-           kwargs['odet'] = odet
+           #kwargs['odet'] = odet
 
         if dettype is None:
             dettype = odet.raw._dettype
@@ -254,21 +255,6 @@ def jungfrau_dark_proc_mpi(parser):
               'is None' if step_docstring is None else\
               str(metadic))
 
-#        if stepmax is not None and nsteptot>stepmax:
-#            logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nsteptot, stepmax))
-#            terminate_runs = True
-#            break
-
-#        if stepnum is not None:
-#            # process calibcycle stepnum ONLY if stepnum is specified
-#            if istep < stepnum:
-#                logger.info('Skip step %d < --stepnum = %d' % (istep, stepnum))
-#                continue
-#            elif istep > stepnum:
-#                logger.info('Break further processing due to step %d > --stepnum = %d' % (istep, stepnum))
-#                terminate_runs = True
-#                break
-
         igm = igmode if igmode is not None else\
               metadic['gainMode'] if step_docstring is not None\
               else istep
@@ -290,7 +276,6 @@ def jungfrau_dark_proc_mpi(parser):
            dpo.odet = odet
            dpo.orun = orun
            dpo.smd = smd
-
            igm0 = igm
 
         if igm != igm0:
@@ -300,22 +285,7 @@ def jungfrau_dark_proc_mpi(parser):
            logger.info('%s\n== begin step %d gain mode "%s" index %d on %s' % (120*'-', istep, gmname, igm, s_rsch))
 
         for ievt, evt in enumerate(step.events()):
-
             nevrun += 1
-
-#            if ievt<evskip:
-#                s = 'skip event %d < --evskip=%d' % (ievt, evskip)
-#                #print(s, end='\r')
-#                if (ujc.selected_record(ievt+1, events) and ievt<evskip-1)\
-#                or ievt==evskip-1: logger.info(s)
-#                continue
-
-            #if nevtot>=events:
-            #    print()
-            #    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
-            #    terminate_steps = True
-            #    terminate_runs = True
-            #    break
 
             raw = odet.raw.raw(evt)
             if raw is None:
@@ -339,55 +309,37 @@ def jungfrau_dark_proc_mpi(parser):
                 status = dpo.event(raw, ievt)
                 if status == 1:
                     logger.error('This option nrecs == nrecs1 should not be used with mpi')
-#                    terminate_runs = True
-#                    terminate_steps = True
-#                    break # evt loop
                 elif status == 2:
                     logger.info('requested statistics --nrecs=%d is collected' % args.nrecs)
-                    #if ecm:
-                    #    terminate_runs = True
-                    #    terminate_steps = True
-#                    break # evt loop
             # End of event-loop
 
-        ss = '%s runnum:%d  end of step %d events run/step/selected: %4d/%4d/%4d  step time: %.3f sec'%\
+        ss = '%s runnum:%d end of step %d events run/step/selected: %4d/%4d/%4d  step time: %.3f sec'%\
              (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel, time() - t0_sec_step)
         logger.info(ss)
-#        print(s_rsch, ' runnum:', orun.runnum, '  end of step:', istep, ' events run/step/selected:', nevrun, ievt, nevsel)
 
-        #if False: ####### TEST
-
-        print('XXX %s smd.summary:' % s_rsch, smd.summary)
+        logger.info('%s smd.summary: %s' % (s_rsch, str(smd.summary)))
 
         if smd.summary:
-            #if dpo.irec != -1:
             dpo.summary()
             if rank == dpo.rank_sum:
                 is_rank_sum = True
-#                if deploy:
-    
-                 if True:
+                if True:
                     if merger is None:
                         merger = uc.MergerDarkArrays()
                     merger.add_arrs_for_gain_range(dpo)
-                    if igm ==2:
-                        print('XXXXX TBD save results in DB')
-                        ujc.jungfrau_deploy_dark_direct(merger, **kwargs)
-                else:
+                    if igm == 2:
+                        resp = os.system('klist')
+                        logger.info('>>>> save results in DB on %s\n  command klist:\n%s' % (s_rsch, str(resp)))
+                        ujc.jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs)
+                if save:
                     logger.info('begin save_results_in_repository in %s' % s_rsch)
-                    uc.save_results_in_repository(dpo, orun, dpo.odet, **kwargs)
+                    uc.save_results_in_repository(dpo, orun, odet, **kwargs)
 
-        dpo=None
+        #del(dpo)
+        dpo = None
 
-        #logger.info('%s ==== end step %d' % (s_rsch, istep))
-
-#        if terminate_steps:
-#            logger.info('terminate_steps in %s' % s_rsch)
-#            break
-        # End of step-loop
-
-    logger.info('SMD.DONE in %s' % s_rsch)
     smd.done()
+    logger.info('SMD.DONE %s' % s_rsch)
 
     if is_rank_sum:
         logger.info('SUM %s total consumed time %.3f sec' % (s_rsch, time()-t0_sec))
