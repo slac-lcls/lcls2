@@ -78,7 +78,7 @@ import sys
 
 import numpy as np
 
-from psana.pscalib.calib.NDArrIO import save_txt
+from psana.pscalib.calib.NDArrIO import save_txt, load_txt
 
 
 import logging
