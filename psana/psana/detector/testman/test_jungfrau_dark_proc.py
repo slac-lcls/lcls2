@@ -7,9 +7,8 @@ The same as UtilsJungfrauCalib, but uses MPI in the event loop
 
 Usage::
 
-datinfo -k exp=mfx100848724,run=49 -d jungfrau
-
 mpirun -n 5 test_jungfrau_dark_proc.py -k exp=mfx100848724,run=49 -d jungfrau
+mpirun -n 5 test_jungfrau_dark_proc.py -k exp=mfx100848724,run=49 -d jungfrau --fix
 
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
@@ -101,7 +100,7 @@ def jungfrau_dark_proc_mpi(parser):
     orun = next(ds.runs())
 
     #### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    ### kwargs['orun'] = orun #### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if not args.fix: kwargs['orun'] = orun #### !!!!!!!!!!!!!!!!!!!!!!!
     #### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     logger.info('%s %s begin run %s %s' % (s_rsch, 20*'=', str(orun.runnum), 20*'='))
@@ -159,6 +158,7 @@ def argument_parser():
 
     d_dskwargs= 'exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc' # None
     d_detname = 'jungfrau' #  None
+    d_fix     = False
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -166,10 +166,12 @@ def argument_parser():
                 ' or pythonic dict of generic kwargs, e.g.:'\
                 ' \"{\'exp\':\'tmoc00318\', \'run\':[10,11,12], \'dir\':\'/a/b/c/xtc\'}\", default = %s' % d_dskwargs
     h_detname = 'detector name, default = %s' % d_detname
+    h_fix  = 'fix hanging at exit issue, default = %s' % d_fix
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
+    parser.add_argument('--fix', action='store_true', help=h_fix)
     return parser
 
 
