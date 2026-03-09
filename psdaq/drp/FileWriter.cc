@@ -111,6 +111,8 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     // _write(m_fd, data, size);
     // return;
 
+    const char* cdata = (const char*)data;
+
     // triggered only when starting from scratch
     if (m_batch_starttime.value()==0) m_batch_starttime = timestamp;
 
@@ -119,7 +121,12 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
     // write out data if buffer full or batch is too old
     // can't be 1 second without a more precise age calculation, since
     // the seconds field could have "rolled over" since the last event
-    if ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
+    while ((size > (m_buffer.size() - m_count)) || age_seconds>2) {
+        size_t chunk = std::min(m_buffer.size - m_count,size);
+        memcpy(m_buffer.data()+m_count, cdata, chunk);
+        m_count += chunk;
+        cdata   += chunk;
+        size    -= chunk;
         m_writing += 1;
         if (_write(m_fd, m_buffer.data(), m_count) == -1) {
             logging::critical("File writing failed");
@@ -129,13 +136,14 @@ void BufferedFileWriter::writeEvent(const void* data, size_t size, XtcData::Time
         // reset these to prepare for the new batch
         m_count = 0;
         m_batch_starttime = timestamp;
+        age_seconds = 0;
     }
 
     if (size>(m_buffer.size() - m_count)) {
         logging::critical("BFW Buffer size %zu too small for dgram with size %zu", m_buffer.size()-m_count, size);
         abort();
     }
-    memcpy(m_buffer.data()+m_count, data, size); // test if copy is slow
+    memcpy(m_buffer.data()+m_count, cdata, size); // test if copy is slow
     m_count += size;
 }
 
@@ -290,6 +298,8 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
     // _write(m_fd, data, size);
     // return;
 
+    const char* cdata = (const char*)data;
+
     // triggered only when starting from scratch
     if (m_batch_starttime.value()==0) m_batch_starttime = timestamp;
 
@@ -301,9 +311,15 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
     m_freeBlocked += 1;
     m_free.pend();
     m_freeBlocked -= 1;
-    if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
-        Buffer b = m_free.front();
+    //    if ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
+    while ((size > (m_bufferSize - m_free.front().count)) || age_seconds>2) {
+        Buffer& b = m_free.front();
         m_free.pop(b);
+        size_t chunk = std::min(m_bufferSize - b.count,size);
+        memcpy(b.p+b.count, cdata, chunk);
+        b.count += chunk;
+        cdata   += chunk;
+        size    -= chunk;
         m_pend.push(b);
         m_depth = m_free.count();
         // reset these to prepare for the new batch
@@ -311,6 +327,7 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
         m_freeBlocked += 2;
         m_free.pend();
         m_freeBlocked -= 2;
+        age_seconds = 0;
     }
 
     Buffer& b = m_free.front();
@@ -318,7 +335,7 @@ void BufferedFileWriterMT::writeEvent(const void* data, size_t size, XtcData::Ti
         logging::critical("BFWMT Buffer size %zu too small for dgram with size %zu", m_bufferSize-b.count, size);
         abort();
     }
-    memcpy(b.p+b.count, data, size);
+    memcpy(b.p+b.count, cdata, size);
     b.count += size;
 }
 
