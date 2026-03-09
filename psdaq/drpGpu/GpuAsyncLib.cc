@@ -282,7 +282,7 @@ void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem)
 DmaTgt_t dmaTgtGet(const DataDev& datadev)
 {
     // @todo: This line addresses only lane 0
-    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDemuxSelect.offset;
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
     uint32_t regVal;
     auto rc = dmaReadRegister(datadev.fd(), reg, &regVal);
     if (rc) perror("dmaTgtGet: dmaWriteRegister");
@@ -299,7 +299,7 @@ DmaTgt_t dmaTgtGet(const DataDev& datadev)
 void dmaTgtSet(const DataDev& datadev, DmaTgt_t tgt)
 {
     // @todo: This line addresses only lane 0
-    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDemuxSelect.offset;
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
     auto rc = dmaWriteRegister(datadev.fd(), reg, tgt);
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
 }
