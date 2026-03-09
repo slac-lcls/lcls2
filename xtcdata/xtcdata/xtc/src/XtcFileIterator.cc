@@ -27,15 +27,32 @@ Dgram* XtcFileIterator::next()
         printf("Datagram size %zu larger than maximum: %zu\n", payloadSize + sizeof(dg), _maxDgramSize);
         return 0;
     }
-    ssize_t sz = ::read(_fd, dg.xtc.payload(), payloadSize);
-    if (sz != (ssize_t)payloadSize) {
-        if (sz < 0)
+    char* p = dg.xtc.payload();
+    printf("Reading %zu into %p\n", payloadSize, p);
+    if (payloadSize == 0)
+        return &dg;
+
+    ssize_t sz = ::read(_fd, p, payloadSize);
+    while (1) {
+        printf("  Read %zu into %p\n", sz, p);
+        if (sz < 0) {
             printf("XtcFileIterator::next read error '%s' for payload of size %zu", strerror(errno), payloadSize);
-        else
-            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", sz, payloadSize);
+            return 0;
+        }
+        else if (sz > 0) {
+            p += sz;
+            payloadSize -= sz;
+            if (payloadSize ==0)
+                break;
+            sz = ::read(_fd, p, payloadSize);
+        }
+        else {
+            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", p-dg.xtc.payload(), dg.xtc.sizeofPayload());
+            return 0;
+        }
     }
 
-    return sz != (ssize_t)payloadSize ? 0 : &dg;
+    return &dg;
 }
 
 void XtcFileIterator::rewind()
