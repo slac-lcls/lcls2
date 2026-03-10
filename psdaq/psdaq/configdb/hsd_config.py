@@ -50,6 +50,7 @@ def hsd_init(prefix, dev='dev/datadev_0'):
     args['root'] = root.PcieControl.DevPcie
     args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
 
+    
     hsd_unconfig(prefix)
 
 def hsd_connect(msg):
