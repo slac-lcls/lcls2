@@ -795,6 +795,9 @@ std::string PvDrp::configure(const json& msg)
         return errorMsg;
     }
 
+    // Reset the queue
+    m_evtQueue.startup();
+
     // Start the reader and collector threads
     m_readerThread = std::thread{&PvDrp::_reader, this};
     m_collectorThread = std::thread(&PvDrp::_collector, std::ref(*this));
@@ -928,7 +931,6 @@ void PvDrp::_reader()
     m_pgp.resetEventCounter();
 
     // (Re)initialize the queues
-    m_evtQueue.startup();
     for (auto& pvMonitor : m_det.pvMonitors()) {
         pvMonitor->startup();
     }
