@@ -171,6 +171,25 @@ def wave8_connectionInfo(base, alloc_json_str):
     print(f'wave8_connect returning {d}')
     return d
 
+def detect_version():
+    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
+    file_datadev='/proc/datadev_0'
+    isC1100 = False
+    try:
+        with open(file_datadev, 'r', encoding='utf-8') as file:
+            for line in file:
+                if 'Build String' in line:
+                    isC1100 = 'C1100' in line
+                    break
+        return isC1100
+
+    except FileNotFoundError:
+        logging.error(f"Error: File '{file_datadev}' not found.")
+        return False
+    except Exception as e:
+        logging.error(f"Error reading file: {e}")
+        return False
+     
 def user_to_expert(prefix, cfg, full=False):
     global group
     global ocfg
@@ -179,12 +198,18 @@ def user_to_expert(prefix, cfg, full=False):
     d = {}
     try:
         ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
+        if ctrlDelay is None:
+            print("Warning: Failed to retrieve control trigger delay.  Using partition delay as fallback.")
+            ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            delayFlag = False
+        else:
+            delayFlag = True
         partitionDelay = ctxt_get(prefix + 'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]' % group)
 
         clksPerFid = 200 if timebase=='186M' else 238
         nsPerClk   = 7000/1300. if timebase=='186M' else 1000/119.
 
-        if True:
+        if delayFlag:
             #  LCLS2 timing. Let controls set the delay value.
             print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
 
