@@ -2,6 +2,8 @@
 
 set -e
 
+# Change
+
 # choose local directory where packages will be installed
 if [ -z "$TESTRELDIR" ]; then
   export INSTDIR=`pwd`/install
