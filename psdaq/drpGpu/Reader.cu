@@ -308,7 +308,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
     if (tid == 0) {
       //printf("### Reader: posting %u\n", pblBufIdx);
       readerQueue->post(pblBufIdx);
-      printf("### Reader: posted  %u\n", pblBufIdx);
+      //printf("### Reader: posted  %u\n", pblBufIdx);
 
       indicesValid = false;             // syncthreads() happens after DMA on next launch
 

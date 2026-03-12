@@ -68,7 +68,7 @@ static __global__ void _noOpReduce(unsigned const*                    index,
   unsigned const idx{*index}; // Dereference only once
   float const* const __restrict__ calib = &calibBuffers[idx * calibBufsCnt];
   float*       const __restrict__ data  = (float*)(&dataBuffers[idx * dataBufsCnt]);
-  //float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
+  float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
   //if (offset == 0)  printf("### NoOpReduce: calibCnt %lu, dataCnt %lu, stride %u, idx %u, calib %p:%p, data %p:%p\n",
   //                         calibBufsCnt, dataBufsCnt, stride, idx, &calib[0],&calib[calibBufsCnt], &data[0], &data[calibBufsCnt]);
   for (unsigned i = offset; i < calibBufsCnt; i += stride) {
