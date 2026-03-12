@@ -56,13 +56,14 @@ public:
     if (m_head_h)        chkError(cudaFreeHost(m_head_h));
   }
 
-  __host__ bool push(T value)
+  __host__ bool push(const T& value)
   {
     using namespace cuda::std;
     auto head = m_head_h->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
     auto tail = m_tail_h->load(memory_order_acquire);
-    unsigned ns = 8;
+    //bool wait{false};
+    unsigned ns{8};
     while (next == tail) {                             // Wait for tail to advance while full
       if (m_terminate.load(std::memory_order_acquire)) {
         printf("*** RingQueue_HtoD::push: full @ %u, capacity %u\n", tail, m_capacityMask+1);
@@ -71,19 +72,26 @@ public:
       _nsSleep(ns);
       if (ns < 256)  ns *= 2;
       tail = m_tail_h->load(memory_order_acquire);
+      //if (!wait) {
+      //  wait = true;
+      //  printf("*** rqHtoD::push: wait T, next %d, tail %d\n", next, tail);
+      //}
     }
+    //if (wait)
+    //  printf("*** rqHtoD::push: wait F, next %d, tail %d\n", next, tail);
     asm volatile("mfence" ::: "memory");               // Avoid reordering of the head store and the tail load
     m_ringBuffer_h[head] = value;                      // Store value _before_ signaling it is available
     m_head_h->store(next, memory_order_release);       // Publish new head
     return true;
   }
 
-  __device__ bool pop(T& value)
+  __device__ bool pop(T* const __restrict__ value)
   {
     using namespace cuda::std;
     auto tail = m_tail_d->load(memory_order_acquire);
     auto head = m_head_d->load(memory_order_acquire);
-    unsigned ns = 8;
+    //bool wait{false};
+    unsigned ns{8};
     while (tail == head) {                             // Wait for head to advance while empty
       if (m_terminate_d.load(memory_order_acquire)) {
         printf("### RingQueue_HtoD::pop: empty @ %u, capacity %u\n", tail, m_capacityMask+1);
@@ -92,8 +100,14 @@ public:
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       head = m_head_d->load(memory_order_acquire);
+      //if (!wait) {
+      //  wait = true;
+      //  printf("### rqHtoD::pop: wait T, tail %d, head %d\n", tail, head);
+      //}
     }
-    value = m_ringBuffer_d[tail];                      // Fetch value _before_ signaling it is available
+    //if (wait)
+    //  printf("### rqHtoD::pop: wait F, tail %d, head %d\n", tail, head);
+    *value = m_ringBuffer_d[tail];                     // Fetch value _before_ signaling it is available
     auto next = (tail+1) & m_capacityMask;
     m_tail_d->store(next, memory_order_release);       // Publish new tail
     return true;

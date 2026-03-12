@@ -53,14 +53,21 @@ public:
     using namespace cuda::std;
     auto next = (idx+1) & m_capacityMask;
     auto tail = m_tail_d->load(memory_order_acquire);
-    unsigned ns = 8;
+    //bool wait{false};
+    unsigned ns{8};
     while (next == tail) {                             // Wait for tail to advance while full
       if (m_terminate_d.load(memory_order_acquire))
         break;
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       tail = m_tail_d->load(memory_order_acquire);
+      //if (!wait) {
+      //  wait = true;
+      //  printf("### riDtoH::post: wait T, next %d, tail %d\n", next, tail);
+      //}
     }
+    //if (wait)
+    //  printf("### riDtoH::post: wait F, next %d, tail %d\n", next, tail);
     m_head_d->store(next, memory_order_release);       // Publish new head
     return next;
   }
@@ -70,14 +77,21 @@ public:
     using namespace cuda::std;
     auto tail = m_tail_h->load(memory_order_acquire);
     auto head = m_head_h->load(memory_order_acquire);
-    unsigned ns = 8;
+    //bool wait{false};
+    unsigned ns{8};
     while (tail == head) {                             // Wait for head to advance while empty
       if (m_terminate.load(std::memory_order_acquire))
         break;
       _nsSleep(ns);
       if (ns < 256)  ns *= 2;
       head = m_head_h->load(memory_order_acquire);
+      //if (!wait) {
+      //  wait = true;
+      //  printf("*** riDtoH::pend: wait T, tail %d, head %d\n", tail, head);
+      //}
     }
+    //if (wait)
+    //  printf("*** riDtoH::pend: wait F, tail %d, head %d\n", tail, head);
     return head;                                       // Caller now processes buffers up to [head]
   }
 
