@@ -439,6 +439,12 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         else {
             m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
+        unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
+        if (error) {
+          std::string errorMsg = "Phase 1 error in Detector::beginrun()";
+          body["err_info"] = errorMsg;
+          logging::error("%s", errorMsg.c_str());
+        }
     }
     else if (key == "endrun") {
         tid = TransitionId::EndRun;
@@ -667,7 +673,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")      continue;
         if (kwargs.first == "ep_domain")      continue;
         if (kwargs.first == "ep_provider")    continue;
-        if (kwargs.first == "sim_length")     continue;  // XpmDetector
+        if (kwargs.first == "sim_length")     continue;  // XpmDetector, GPU DRP Simulator
         if (kwargs.first == "timebase")       continue;  // XpmDetector
         if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
@@ -679,6 +685,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
+        if (kwargs.first == "sim_l1_verify")  continue;  // GPU DRP Simulator
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
