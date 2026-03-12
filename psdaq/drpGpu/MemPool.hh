@@ -42,7 +42,7 @@ struct DmaDsc
 {
   uint32_t error;
   uint32_t size;
-  uint32_t _rsvd[6];
+  uint32_t _pad[6+8];                   // +8 for 512-bit PCIe frames
 };
 
 struct DetPanel
