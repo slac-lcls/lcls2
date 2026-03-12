@@ -53,7 +53,11 @@ void LcReducer::recordGraph(cudaStream_t       stream,
                            dataBufCnt * sizeof(*dataBuffers));
 }
 
-void LcReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
+void LcReducer::reduce(cudaGraphExec_t graph,
+                       cudaStream_t    stream,
+                       unsigned        index,
+                       size_t*         dataSize,
+                       unsigned*       error)
 {
   chkFatal(cudaGraphLaunch(graph, stream));
 

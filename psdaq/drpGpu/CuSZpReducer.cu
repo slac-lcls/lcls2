@@ -60,7 +60,11 @@ void CuSZpReducer::recordGraph(cudaStream_t       stream,
   //    &calibBuffers[index], &m_header, &dataBuffers[index], &((size_t*)dataBuffers)[-1]);
 }
 
-void CuSZpReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
+void CuSZpReducer::reduce(cudaGraphExec_t graph,
+                          cudaStream_t    stream,
+                          unsigned        index,
+                          size_t*         dataSize,
+                          unsigned*       error)
 {
   cuszp_scoped_range r{/*"CuSZpReducer::reduce"*/}; // Expose function name via NVTX
 

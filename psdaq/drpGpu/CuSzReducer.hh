@@ -23,7 +23,7 @@ public:
                      const size_t       calibBufsCnt,
                      uint8_t    * const dataBuffer,
                      const size_t       dataBufsCnt) override;
-  void     reduce   (cudaGraphExec_t, cudaStream_t, unsigned index, size_t* dataSize) override;
+  void     reduce   (cudaGraphExec_t, cudaStream_t, unsigned index, size_t* dataSize, unsigned* error) override;
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:

@@ -31,7 +31,7 @@ public:
                              const size_t       calibBufsCnt,
                              uint8_t    * const dataBuffers,
                              const size_t       dataBufsCnt) = 0;
-  virtual void     reduce   (cudaGraphExec_t, cudaStream_t, unsigned index, size_t* dataSize) = 0;
+  virtual void     reduce   (cudaGraphExec_t, cudaStream_t, unsigned index, size_t* dataSize, unsigned* errorCnt) = 0;
   virtual unsigned configure(XtcData::Xtc&, const void* bufEnd) = 0;                  // attach descriptions to xtc
   virtual void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) {} // fill xtc data description
 protected:

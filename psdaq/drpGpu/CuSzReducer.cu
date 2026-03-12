@@ -64,7 +64,11 @@ void CuSzReducer::recordGraph(cudaStream_t       stream,
   //    &calibBuffers[index], &m_header, &dataBuffers[index], &((size_t*)dataBuffers)[-1]);
 }
 
-void CuSzReducer::reduce(cudaGraphExec_t, cudaStream_t stream, unsigned index, size_t* dataSize)
+void CuSzReducer::reduce(cudaGraphExec_t,
+                         cudaStream_t    stream,
+                         unsigned        index,
+                         size_t*         dataSize,
+                         unsigned*       error)
 {
   auto calibBuffers = m_pool.calibBuffers_d();
   auto calibBufsSz  = m_pool.calibBufsSize();

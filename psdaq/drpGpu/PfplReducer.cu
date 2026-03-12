@@ -59,7 +59,11 @@ void PfplReducer::recordGraph(cudaStream_t       stream,
                            dataBufCnt * sizeof(*dataBuffers));
 }
 
-void PfplReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
+void PfplReducer::reduce(cudaGraphExec_t graph,
+                         cudaStream_t    stream,
+                         unsigned        index,
+                         size_t*         dataSize,
+                         unsigned*       error)
 {
   pfpl_scoped_range r{/*"PfplpReducer::reduce"*/}; // Expose function name via NVTX
 
