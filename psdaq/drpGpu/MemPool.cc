@@ -50,6 +50,13 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   m_dmaCount = MAX_BUFFERS;             // @todo: Find this out from the f/w
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
+  if (m_dmaCount & (m_dmaCount-1)) {
+    // GPU divides by non-powers-of-2 are expensive
+    logging::critical("The number of DMA buffers must be a power of 2; got %u",
+                      m_dmaCount);
+    abort();
+  }
+
   ////////////////////////////////////////////
   // Setup GPU
   ////////////////////////////////////////////
