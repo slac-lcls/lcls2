@@ -22,8 +22,10 @@ public:
 //                            uint16_t* const raw,
 //                            unsigned  const count,
 //                            unsigned  const nFpgas) const;
-  unsigned rangeOffset() const override { return 14; }
-  unsigned rangeBits()   const override { return 2; }
+  unsigned     rangeOffset() const override { return 14; }
+  unsigned     rangeBits()   const override { return 2; }
+  float const* pedestals_d() const override { return nullptr; }; // @todo: TBD
+  float const* gains_d()     const override { return nullptr; }; // @todo: TBD
   void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
                    const unsigned        panel,

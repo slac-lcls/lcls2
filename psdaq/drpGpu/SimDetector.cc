@@ -1,6 +1,8 @@
 #include "SimDetector.hh"
 #include "drp/XpmInfo.hh"               // For connectionInfo()
 #include "psalg/utils/SysLog.hh"
+
+#include <time.h>
 #include <unistd.h>
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -18,6 +20,12 @@ using namespace Drp;
 using namespace Drp::Gpu;
 
 static const unsigned EvtCtrMask = 0xffffff;
+
+static int _nsSleep(unsigned ns)
+{
+  struct timespec ts{0, ns};
+  return nanosleep(&ts, nullptr);
+}
 
 
 SimDetector::SimDetector(Parameters* para, MemPoolGpu* pool, unsigned len) :
@@ -101,7 +109,7 @@ void SimDetector::connect(const json& connect_json, const std::string& collectio
 
   std::map<std::string,std::string>::iterator it = m_para->kwargs.find("sim_length");
   if (it != m_para->kwargs.end())
-    m_length = stoi(it->second);
+    m_length = stoi(it->second) * sizeof(uint32_t); // Convert to bytes
 
   logging::debug("SimDetector::connect: end");
 }
@@ -133,7 +141,7 @@ size_t SimDetector::_genTimingHeader(uint8_t* buffer, TransitionId::Value tid)
 void SimDetector::_trigger(CUdeviceptr dmaBuffer, uint32_t dmaSize) const
 {
   // Write the dmaSize to the 2nd word of the DMA buffer
-  chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(uint32_t)), &dmaSize, sizeof(dmaSize), cudaMemcpyHostToDevice, m_stream));
+  chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(uint32_t)), &dmaSize, sizeof(dmaSize), cudaMemcpyDefault, m_stream));
 }
 
 void SimDetector::_eventSimulator()
@@ -158,18 +166,18 @@ void SimDetector::_eventSimulator()
   // The lowest priority is to inject more events into the system
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
 
+  bool verify{m_para->kwargs.find("sim_l1_verify") != m_para->kwargs.end()};
   bool running{false};
   auto suTime{fast_monotonic_clock::now()};
   auto swFpgaRegs{memPool.panels()[0].swFpgaRegs.ptr};
   unsigned dmaIdx{0};
   uint32_t dmaCntMsk{memPool.dmaCount() - 1};
-  std::vector<uint8_t> buffer(sizeof(TimingHeader) + m_length * sizeof(uint32_t));
+  std::vector<uint8_t> buffer(sizeof(TimingHeader)); // No default constructor for TimingHeader
   auto dmaBuffers{memPool.panels()[0].dmaBuffers};
   while (!m_terminate.load(std::memory_order_acquire)) {
     // Wait for a new transition to appear from the "control level"
     TransitionId::Value tid;
     if (!m_eventQueue.pop(tid))  continue;
-    //printf("*** _eventSimulator: Got tid %u (%s)\n", tid, TransitionId::name(tid));
 
     // Reset the DMA buffer index to be consistent with Reader::_handleDMA()
     if (tid == TransitionId::Configure) {
@@ -180,28 +188,49 @@ void SimDetector::_eventSimulator()
     }
 
     // Wait for DMA buffer to become ready for writing
-    //printf("*** _eventSimulator: Waiting for DMA[%u] (%p) to become ready for writing\n", dmaIdx, swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx));
-    while (!*(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx))) {
-      if (m_terminate.load(std::memory_order_acquire))  break;
-    }
-    if (m_terminate.load(std::memory_order_acquire))  break;
-    //printf("*** _eventSimulator: DMA[%u] (%p) is ready for writing\n", dmaIdx, swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx));
-
-    *(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)) = 0; // Disable "DMAs" to this buffer
-
-    auto dmaBuffer = dmaBuffers[dmaIdx].dptr;
+    //bool wait{false};
+    //unsigned ns{8};
+    volatile uint8_t* const wrEnReg{swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)};
     //uint32_t hndShk;
-    //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDeviceToHost, m_stream));
+    auto dmaBuffer = dmaBuffers[dmaIdx].dptr;
+    //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDefault, m_stream));
     //chkError(cudaStreamSynchronize(m_stream));
-    //printf("*** _eventSimulator: DMA[%u]: wr enable %u, handshake %u\n", dmaIdx,
-    //       *(volatile uint8_t*)(swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)), hndShk);
-    auto dmaSize = _genTimingHeader(&buffer[0], tid);
-    if (tid == TransitionId::L1Accept) {
-      dmaSize += _genL1Payload(&buffer[dmaSize], buffer.size() - dmaSize);
+    while (*wrEnReg == 0) { // || (hndShk != 0)) {
+      if (m_terminate.load(std::memory_order_acquire))
+        break;
+      //_nsSleep(ns);
+      //if (ns < 256)  ns *= 2;
+      //if (!wait) {
+      //  wait = true;
+      //  printf("*** SimDetector::evtSim: wait T, dmaIdx %u, evtCtr %u, hndShk %u\n", dmaIdx, m_evtCounter, hndShk);
+      //}
+      //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDefault, m_stream));
+      //chkError(cudaStreamSynchronize(m_stream));
     }
-    chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(DmaDsc)), buffer.data(), dmaSize, cudaMemcpyHostToDevice, m_stream));
+    if (m_terminate.load(std::memory_order_acquire))
+      break;
+    //if (wait) {
+    //  wait = false;
+    //  printf("*** SimDetector::evtSim: wait F, dmaIdx %u, evtCtr %u, hndShk %u\n", dmaIdx, m_evtCounter, hndShk);
+    //}
+
+    asm volatile("mfence" ::: "memory");
+    *wrEnReg = 0;                       // Disable "DMAs" to this buffer
+
+    auto evtIdx = m_evtCounter;         // Fetch this before it's incremented in _genTimingHeader
+    auto thSize = _genTimingHeader(buffer.data(), tid);
+    size_t dmaSize{thSize};
+    if (tid == TransitionId::L1Accept) {
+      auto hdrSize{sizeof(DmaDsc) + thSize};
+      uint8_t* data_d;
+      auto dataSize = _genL1Payload(&data_d, evtIdx, 0); // Don't do partial events for now: m_length);
+      if (verify) {  // Avoid overhead by not injecting data if it's not going to be verified
+        chkError(cudaMemcpyAsync((void*)(dmaBuffer + hdrSize), data_d, dataSize, cudaMemcpyDefault, m_stream));
+      }
+      dmaSize += dataSize;
+    }
+    chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(DmaDsc)), buffer.data(), thSize, cudaMemcpyDefault, m_stream));
     _trigger(dmaBuffer, dmaSize);
-    //printf("*** _eventSimulator: DMA[%u] triggered @ %p with %zu\n", dmaIdx, (void*)(dmaBuffer + sizeof(uint32_t)), dmaSize);
     dmaIdx = (dmaIdx + 1) & dmaCntMsk;
 
     if (running) {

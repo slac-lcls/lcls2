@@ -57,8 +57,10 @@ public:
   //                          unsigned  const nPanels,
   //                          unsigned  const rangeOffset,
   //                          unsigned  const rangeBits) const;
-  virtual unsigned rangeOffset() const = 0;
-  virtual unsigned rangeBits()   const = 0;
+  virtual unsigned     rangeOffset() const = 0;
+  virtual unsigned     rangeBits()   const = 0;
+  virtual float const* pedestals_d() const = 0;
+  virtual float const* gains_d()     const = 0;
 
   virtual void recordGraph(cudaStream_t          stream,
                            const unsigned&       index_d,
@@ -66,6 +68,8 @@ public:
                            uint16_t const* const data) = 0;
 
   virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
+  virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
+  virtual unsigned     referenceBufCnt()  const { return 0; }       // Used in simulator mode only
 protected:
   template<typename T>
   void _initialize(Parameters& para, MemPoolGpu& pool) {
@@ -86,9 +90,6 @@ protected:
 protected:
   std::vector<Parameters>     m_params;
   std::vector<Drp::Detector*> m_dets;
-public: // @todo: fix this
-  float**                     m_pedArr_d;  // [nPanels][NRanges * NPixels]
-  float**                     m_gainArr_d; // [nPanels][NRanges * NPixels]
 };
 
   } // Gpu

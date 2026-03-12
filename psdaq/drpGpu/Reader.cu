@@ -9,7 +9,6 @@
 
 #include <thread>
 
-//#include <cuda/barrier>
 #include <cooperative_groups.h>
 
 using logging = psalg::SysLog;
@@ -21,7 +20,6 @@ using namespace Drp::Gpu;
 struct rdr_domain{ static constexpr char const* name{"Reader"}; };
 using rdr_scoped_range = nvtx3::scoped_range_in<rdr_domain>;
 
-//using barrier = cuda::barrier<cuda::thread_scope_block>;
 namespace cg = cooperative_groups;
 
 Reader::Reader(const Parameters&                  para,
@@ -30,13 +28,10 @@ Reader::Reader(const Parameters&                  para,
                size_t                             trgPrimitiveSize,
                const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
+  m_det        (det),
   m_terminate_d(terminate_d),
   m_para       (para)
 {
-  m_det.h = &det;
-  chkError(cudaMalloc(&m_det.d,          sizeof(*m_det.d)));
-  chkError(cudaMemcpy( m_det.d, m_det.h, sizeof(*m_det.d), cudaMemcpyHostToDevice));
-
   // Set up buffer index allocator for DMA to Collector comms
   m_readerQueue.h = new RingIndexDtoD(m_pool.nbuffers(), m_terminate_d);
   chkError(cudaMalloc(&m_readerQueue.d,                  sizeof(*m_readerQueue.d)));
@@ -52,10 +47,6 @@ Reader::Reader(const Parameters&                  para,
   // Allocate a stream at lowest priority so that higher priority can
   // be given to downstream stages that help drain the system
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
-
-  // Keep track of the head index of the Reader stream
-  chkError(cudaMalloc(&m_head,    sizeof(*m_head)));
-  chkError(cudaMemset( m_head, 0, sizeof(*m_head)));
 
   // Gather up DMA buffer pointers into a device-usable array
   auto nFpgas{m_pool.panels().size()};
@@ -94,14 +85,10 @@ Reader::~Reader()
     m_pool.destroyHostBuffers(fpga);
   }
 
-  if (m_head)  chkError(cudaFree(m_head));
-
   chkError(cudaStreamDestroy(m_stream));
 
   if (m_readerQueue.d)  chkError(cudaFree(m_readerQueue.d));
   if (m_readerQueue.h)  delete m_readerQueue.h;
-
-  if (m_det.d)  chkError(cudaFree(m_det.d));
 }
 
 int Reader::_setupGraph()
@@ -138,167 +125,197 @@ int Reader::_setupGraph()
 }
 
 static __device__
-void _calibrate(Gpu::Detector const& detector,
-                float*        const  calib,
-                uint16_t*     const  raw,
-                unsigned      const  count,
-                unsigned      const  nPanels,
-                unsigned      const  rangeOffset,
-                unsigned      const  rangeBits)
+void _calibrate(float*        const        __restrict__ calib,
+                uint16_t      const* const __restrict__ raw,
+                unsigned      const                     nElements,
+                unsigned      const                     rangeOffset,
+                unsigned      const                     rangeBits,
+                float         const* const __restrict__ pedArray,
+                float         const* const __restrict__ gainArray,
+                float         const* const __restrict__ ref)
 {
   auto const tid     = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const stride  = gridDim.x * blockDim.x;
-  //if (tid == 0)  printf("*** Reader: tid %d, stride %d, nPanels %u\n", tid, stride, nPanels);
-  auto const panel   = tid / (stride / nPanels);  // Split the panel handling evenly across the allocated threads
-  //if (tid == 0)  printf("*** Reader: panel %u\n", panel);
-  auto const nPixels = count / nPanels;
+  auto const stride  = blockDim.x * gridDim.x;
+  //if (tid == 0)  printf("*** Reader: tid %d, stride %d\n", tid, stride);
 
-  //if (tid == 0)  printf("*** Reader: m_pedArr_d %p\n", detector.m_pedArr_d);
-  auto const pedArr  = detector.m_pedArr_d[panel];
-  //if (tid == 0)  printf("*** Reader: pedArr %p\n", pedArr);
-  //if (tid == 0)  printf("*** Reader: m_gainArr_d %p\n", detector.m_gainArr_d);
-  auto const gainArr = detector.m_gainArr_d[panel];
-  //if (tid == 0)  printf("*** Reader: gainArr %p\n", gainArr);
+  //if (tid == 0)  printf("*** Reader: pedArray %p\n", pedArray);
+  //if (tid == 0)  printf("*** Reader: gainArray %p\n", gainArray);
   //if (tid == 0)  printf("*** Reader: count %u, stride %d, loops %d\n", count, stride, count / stride);
-  auto const rangeMask{1 << rangeBits - 1};
-  auto const dataMask {1 << rangeOffset - 1};
-  for (auto i = tid; i < count; i += stride) {
-    auto const range = (raw[i] >> rangeOffset) & rangeMask;
-    auto const peds  = &pedArr [range * nPixels];
-    auto const gains = &gainArr[range * nPixels];
-    auto const data  = raw[i] & dataMask;
-    calib[panel * nPixels + i] = (data - peds[i]) * gains[i];
+  auto const rangeMask{(1 << rangeBits) - 1};
+  auto const dataMask {(1 << rangeOffset) - 1};
+  for (auto i = tid; i < nElements; i += stride) {
+    auto const              range = (raw[i] >> rangeOffset) & rangeMask;
+    auto const __restrict__ peds  = &pedArray [range * nElements];
+    auto const __restrict__ gains = &gainArray[range * nElements];
+    auto const              data  = raw[i] & dataMask;
+    calib[i] = (float(data) - peds[i]) * gains[i];
+
+    //if (i < 4) {
+    //  printf("### tid %u, i %u: raw %04x, dat %u, rng %u, ped %f, gn %f, cal %f, ref %p: %f\n", tid, i, raw[i], data, range, peds[i], gains[i], calib[i], ref, ref ? ref[i] : 0.f);
+    //}
+    //if (ref && (calib[i] != ref[i])) {
+    //  printf("### blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n", blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
+    //}
   }
   //if (tid == 0)  printf("*** Reader: calibrate returning\n");
 }
 
+__device__ bool     indicesValid = false;
+__device__ unsigned dmaBufferIdx = 0;
+__device__ unsigned pebbleIdx    = 0;
+__device__ unsigned blockCount1  = 0;
+__shared__ bool     isLastBlockDone1;
+__device__ unsigned blockCount2  = 0;
+__shared__ bool     isLastBlockDone2;
+
 static __global__
-void _handleDMA(CUdeviceptr* const        __restrict__ swFpgaRegs,    // [nFpgas]
-                size_t       const                     nFpgas,
-                CUdeviceptr* const        __restrict__ dmaBuffers,    // [nFpgas * dmaCount][maxDmaSize]
-                size_t       const                     dmaCount,
-                uint32_t*    const* const __restrict__ outBufs,
-                size_t       const                     outBufsCnt,
-                float*       const        __restrict__ calibBuffers,
-                size_t       const                     calibBufsCnt,
-                unsigned&                              dmaBufferIdx,
-                RingIndexDtoD&                         readerQueue,
-                Gpu::Detector const&                   detector,
-                unsigned      const                    rangeOffset,
-                unsigned      const                    rangeBits,
-                cuda::std::atomic<unsigned> const&     terminate)
+void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpgas]
+                CUdeviceptr*  const        __restrict__ dmaBuffers,    // [nFpgas * dmaCount][maxDmaSize]
+                size_t        const                     dmaCount,
+                uint32_t*     const* const __restrict__ outBufs,
+                size_t        const                     outBufsCnt,
+                float*        const        __restrict__ calibBuffers,
+                size_t        const                     calibBufsCnt,
+                RingIndexDtoD*             __restrict__ readerQueue,
+                float         const* const __restrict__ pedArray,
+                float         const* const __restrict__ gainArray,
+                unsigned      const                     rangeOffset,
+                unsigned      const                     rangeBits,
+                float         const* const __restrict__ refBuffers,
+                unsigned      const                     refBufCnt,
+                cuda::std::atomic<unsigned> const&      terminate)
 {
-  cg::thread_block cta = cg::this_thread_block();
+  auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
 
-  __shared__ bool     done;
-  __shared__ unsigned dmaBufIdx;
-  __shared__ unsigned pblBufIdx;
+  auto const __restrict__ dmaBufs = &dmaBuffers[0];
 
-  auto const tid    = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const stride = gridDim.x * blockDim.x;
+  auto dmaBufIdx = dmaBufferIdx;           // All threads load DMA idx into a register from global memory
 
-  // Get a pointer to DMA buffers for each datadev
-  auto const fpga = tid / (stride / nFpgas);  // Split the FPGA handling evenly across the allocated threads
-  //if (tid == 0)  printf("### Reader: blkDim %d, gridDim %d, fpga %lu, dmaCnt %lu\n",
-  //                      blockDim.x, gridDim.x, fpga, dmaCount);
-  auto const __restrict__ dmaBufs = &dmaBuffers[fpga * dmaCount];
-  //if (tid == 0)  printf("### Reader: dmaBufs %p, done %u, calibBufsCnt %lu\n", dmaBufs, done, calibBufsCnt);
+  if (threadIdx.x == 0) {                  // Thread 0 of each block
+    if (blockIdx.x == 0) {
+      // Allocate the index of the next set of intermediate buffers to be used
+      pebbleIdx = readerQueue->allocate(); // This blocks when no buffers available
+      //printf("### Reader: pblIdx %u\n", pebbleIdx);
 
-#ifdef PERSISTENT_KERNEL
-  // Enable the first DMA
-  if (threadIdx.x == 0) {
-    if (blockIdx.x < nFpgas) {
-      //printf("### Reader: dmaBufs[%u] %p, sz %p, hwWrtStart[%lu] %p\n",
-      //       dmaBufferIdx, (void*)(dmaBufs[dmaBufferIdx]), (void*)(dmaBufs[dmaBufferIdx]+4), fpga, (void*)(swFpgaRegs[fpga]+GPU_ASYNC_WR_ENABLE(dmaBufferIdx)));
-      *(uint32_t*)(dmaBufs[dmaBufferIdx] + 4) = 0; // Clear the handshake space of the first DMA buffer
-      *(uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(dmaBufferIdx)) = 1; // Enable the DMA on this dataDev
-    }
-  }
-
-  do
-#endif // PERSISTENT_KERNEL
-  {
-    if (threadIdx.x == 0) {
-      done = terminate.load(cuda::std::memory_order_acquire);
-      //if (tid == 0)  printf("### Reader: done %u\n", done);
-      if (done)  return; //continue;
-
-      dmaBufIdx = dmaBufferIdx;         // Load shmem buf idx from global memory for all blocks
-      //if (tid == 0)  printf("### Reader: dmaBufIdx %u\n", dmaBufIdx);
-
-      if (blockIdx.x < nFpgas) {
-        // Allocate the index of the next set of intermediate buffers to be used
-        //if (tid == 0)  printf("### Reader: get pblBufIdx\n");
-        pblBufIdx = readerQueue.allocate();     // This blocks when no buffers available
-        //if (tid == 0)  printf("### Reader: pblBufIdx %u\n", pblBufIdx);
-
-        const volatile uint32_t* __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
-        //if (tid == 0)  printf("### Reader: Wait for DMA[%u] from FPGA %lu: mem %p\n", dmaBufIdx, fpga, mem);
-        unsigned ns = 8;
-        while (*mem == 0) {                     // Wait for DMA completion @todo: abort by writing this location
-          done = terminate.load(cuda::std::memory_order_acquire);
-          if (done)  return;
-          __nanosleep(ns);
-          if (ns < 256)  ns *= 2;
-        }
-        //if (tid == 0)  printf("### Reader: Got DMA[%u]: sz %u, TH[0] %016lx\n", dmaBufIdx, *mem, *((uint64_t*)(&mem[8-1])));
-        auto next = (dmaBufIdx + 1) % dmaCount; // Prepare for next DMA buffer
-        *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;                           // Clear the handshake space of the next DMA buffer
-        *(volatile uint8_t*)(swFpgaRegs[fpga] + GPU_ASYNC_WR_ENABLE(next)) = 1; // Enable the DMA on this dataDev
-        if (blockIdx.x == 0)                    // Update global memory  @todo: check for race
-          dmaBufferIdx = next;                  // only once (same value for all blocks)
-        //if (tid == 0)  printf("### Reader: next %lu\n", next);
+      const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
+      //bool wait{false};
+      unsigned ns{8};
+      while (*mem == 0) {                  // Wait for DMA completion
+        if (terminate.load(cuda::std::memory_order_acquire))
+          return;
+        __nanosleep(ns);
+        if (ns < 256)  ns *= 2;
+        //if (!wait) {
+        //  wait = true;
+        //  printf("### Reader::handleDMA: wait T, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
+        //}
       }
-
-      // @todo: Event build: Check DMA sizes and PIDs are all the same
-    }
-    cg::sync(cta); // Block all threads until DMA completes and shmem is updated
-
-    // Save the DMA descriptor and TimingHeader in pinned memory
-    //if (tid == 0)  printf("### Reader: dmaIdx %u, dmaBufs %p\n", dmaBufIdx, dmaBufs);
-    auto const __restrict__ in  = (uint32_t*)dmaBufs[dmaBufIdx];
-    //if (tid == 0)  printf("### Reader: dmaIdx %u, in %p\n", dmaBufIdx, in);
-    //if (tid == 0)  printf("### Reader: fpga %lu, outBufs %p\n", fpga, outBufs);
-    auto const __restrict__ hdr = outBufs[fpga] + pblBufIdx * outBufsCnt;
-    //if (tid == 0)  printf("### Reader: ob %p, pblIdx %u, outBufsCnt %lu, hdr %p\n", outBufs[fpga], pblBufIdx, outBufsCnt, hdr);
-    constexpr auto nHdrWords = (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(*in);
-    auto const i    = tid % nHdrWords;
-    auto const tid0 = fpga * (stride / nFpgas);
-    //if (tid == 0)  printf("### Reader: nHdrWords %lu, i %lu, tid0 %lu\n", nHdrWords, i, tid0);
-    if (tid >= tid0 && tid < tid0 + nHdrWords) { // Save the header words in pinned memory
-      hdr[i] = in[i];
-      //printf("### Reader: hdr[%lu] %08x\n", i, in[i]);
+      //if (wait)
+      //  printf("### Reader::handleDMA: wait F, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
+      //printf("### Reader: dma sz %u\n", *mem);
+      auto next = (dmaBufIdx + 1) & (dmaCount - 1);                        // Prepare for the next DMA buffer
+      *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;                        // Clear the handshake space of the next DMA buffer
+      *(volatile uint8_t*)(swFpgaRegs[0] + GPU_ASYNC_WR_ENABLE(next)) = 1; // Enable the DMA on this dataDev
+      dmaBufferIdx = next;                                                 // Update global memory
+      //printf("### Reader: next %lu\n", next);
     }
 
-    // Calibrate
-    //if (tid == 0)  printf("### Reader: in[1] %u, th sz %lu\n", in[1], sizeof(TimingHeader));
-    if (in[1] > sizeof(TimingHeader)) { // Calibrate only when there's a payload
-      auto const __restrict__ raw = (uint16_t*)&in[nHdrWords];
-      //if (tid == 0)  printf("### Reader: raw %p\n", raw);
-      auto const __restrict__ out = calibBuffers + pblBufIdx * calibBufsCnt;
-      //if (tid == 0)  printf("### Reader: out %p\n", out);
-      auto const payloadCnt = (in[1] - sizeof(TimingHeader))/sizeof(*raw);
-      //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu\n", payloadCnt, calibBufsCnt);
-      auto const count = payloadCnt > calibBufsCnt ? calibBufsCnt : payloadCnt; // @todo: Alert to truncation
-      //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu, cnt %lu, nFpgas %lu\n",
-      //                      payloadCnt, calibBufsCnt, count, nFpgas);
-
-      _calibrate(detector, out, raw, count, nFpgas, rangeOffset, rangeBits);
-      //if (tid == 0)  printf("### Reader: calib done\n");
-    }
-
-    //if (tid == 0)  printf("### Reader: posting %u\n", pblBufIdx);
-    if (tid == 0)  readerQueue.post(pblBufIdx);
-    //if (tid == 0)  printf("### Reader: posted  %u\n", pblBufIdx);
+    __threadfence();                                     // Ensure global memory is updated before the following
+    unsigned value = atomicInc(&blockCount1, gridDim.x); // Thread 0 signals that it is done
+    isLastBlockDone1 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last block to be done
   }
-#ifdef PERSISTENT_KERNEL
-  while (!done);
-  //if (tid == 0)  printf("### Reader: returning\n");
-#else // Relaunched graph
+  __syncthreads();   // Synchronize to make sure that each thread (all blocks) reads the correct value of isLastBlockDone
+  if (isLastBlockDone1) {               // Only last block will have set isLastBlockDone true
+    if (threadIdx.x == 0) {             // Thread 0 updates global memory
+      indicesValid = true;              // Thread 0 of last block signals indices in global memory are valid
+      blockCount1 = 0;                  // Reset for next time
+    }
+  }
+  unsigned ns{8};
+  while(!indicesValid) {                // All threads wait for indices to become valid
+    if (terminate.load(cuda::std::memory_order_acquire))
+      return;
+    __nanosleep(ns);
+    if (ns < 256)  ns *= 2;
+  }
+  auto pblBufIdx = pebbleIdx;           // All threads load pebble idx into a register from global memory
 
-  // Relaunch the graph
-  if (tid == 0)  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-#endif // PERSISTENT_KERNEL
+  // Save the DMA descriptor and TimingHeader in pinned memory
+  //if (tid == 0)  printf("### Reader: dmaIdx %3u, dmaBufs %p, pblIdx %4u\n", dmaBufIdx, dmaBufs, pblBufIdx);
+  auto const __restrict__ in  = (uint32_t*)dmaBufs[dmaBufIdx];
+  //if (threadIdx.x == 0)  printf("### Reader: blk %3d, dmaIdx %2u, pblIdx %4u, in %p, in[1] %u, in[9:8] %08x, %08x\n",
+  //                              blockIdx.x, dmaBufIdx, pblBufIdx, in, in[1], in[9], in[8]);
+  //if (tid == 0)  printf("### Reader: outBufs %p\n", fpga, outBufs);
+  auto const __restrict__ hdr = outBufs[0] + pblBufIdx * outBufsCnt;
+  //if (threadIdx.x == 0 && blockIdx.x == 88)  printf("### Reader: blk %3d, ob %p, pblIdx %u, outBufsCnt %lu, hdr %p\n", blockIdx.x, outBufs[0], pblBufIdx, outBufsCnt, hdr);
+  constexpr auto nHdrWords = (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(*in);
+  auto const i = tid % nHdrWords;
+  //if (tid == 0)  printf("### Reader: nHdrWords %lu, i %lu\n", nHdrWords, i);
+  if (tid < nHdrWords) {                   // Save the header words in pinned memory
+    hdr[i] = in[i];
+    //printf("### Reader: hdr[%lu] %08x\n", i, in[i]);
+    //if (i == 9)  printf("### Reader: blk %3d, thr %d, hdr[9] %08x\n", blockIdx.x, threadIdx.x, in[9]);
+  }
+
+  // Calibrate
+  //if (threadIdx.x == 0 && blockIdx.x == 88)  printf("### Reader: blk %3d, in[1] %u, th sz %lu\n", blockIdx.x, in[1], sizeof(TimingHeader));
+  if (in[1] > sizeof(TimingHeader)) { // Calibrate only when there's a payload
+    auto const __restrict__ raw = (uint16_t*)&in[nHdrWords];
+    //if (tid == 0)  printf("### Reader: raw %p\n", raw);
+    auto const __restrict__ out = &calibBuffers[pblBufIdx * calibBufsCnt];
+    //if (tid == 0)  printf("### Reader: out %p\n", out);
+    auto const payloadCnt = (in[1] - sizeof(TimingHeader))/sizeof(*raw);
+    //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu\n", payloadCnt, calibBufsCnt);
+    auto const elementCnt = payloadCnt > calibBufsCnt ? calibBufsCnt : payloadCnt; // @todo: Alert to truncation
+    //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu, cnt %lu\n",
+    //                      payloadCnt, calibBufsCnt, elementCnt);
+    auto const __restrict__ ref = refBuffers ? &refBuffers[(pblBufIdx % refBufCnt) * calibBufsCnt] : (float*)0;
+    //if (tid == 0)  printf("### Reader: idx %u, refBuffers %p, ref %p\n", pblBufIdx%refBufCnt, refBuffers, ref);
+
+    auto const stride  = blockDim.x * gridDim.x;
+    //if (tid == 0)  printf("### calibrate: nElements %lu, stride %u, idx %u, calib %p:%p\n",
+    //                       elementCnt, stride, pblBufIdx, &out[0],&out[elementCnt]);
+
+    _calibrate(out, raw, elementCnt, rangeOffset, rangeBits, pedArray, gainArray, ref);
+
+    if (threadIdx.x == 0) {
+      //if (blockIdx.x == 88)  printf("### Reader: blkIdx %d, pblIdx %u\n", blockIdx.x, pblBufIdx);
+
+      __threadfence();                                     // Ensure global memory is updated before the following
+      unsigned value = atomicInc(&blockCount2, gridDim.x); // Thread 0 signals that it is done
+      isLastBlockDone2 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last  block to be done
+      //printf("### Reader: blkIdx %3d, pblIdx %4u, value %3u, last %d\n", blockIdx.x, pblBufIdx, value, isLastBlockDone2);
+      //if (isLastBlockDone2)  printf("### Reader: lastBlkDone T, blk %3u\n", blockIdx.x);
+      //if (blockIdx.x == 0)  printf("### Reader: pblIdx %4u, gridDim %d, blkIdx %3d, value %3u, last %d\n", pblBufIdx, gridDim.x, blockIdx.x, value, isLastBlockDone2);
+    }
+    __syncthreads();    // Synchronize to make sure that each thread reads the correct value of isLastBlockDone
+    //if (tid == 0)  printf("### Reader: pblIdx %4u\n", pblBufIdx);
+    if (isLastBlockDone2) {
+      //if (tid == 0)  printf("### Reader: lastBlkDone T, blk %3u, pblIdx %4u\n", blockIdx.x, pblBufIdx);
+      if (threadIdx.x == 0) {
+        //printf("### Reader: blk %3d, posting %u\n", blockIdx.x, pblBufIdx);
+        readerQueue->post(pblBufIdx);
+        //printf("### Reader: blk %3d, posted  %u\n", blockIdx.x, pblBufIdx);
+
+        blockCount2 = 0;                // Reset for next time
+        indicesValid = false;           // syncthreads() happens after DMA on next launch
+
+        // Relaunch the graph
+        cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+      }
+    }
+  } else {                              // Transitions
+    if (tid == 0) {
+      //printf("### Reader: posting %u\n", pblBufIdx);
+      readerQueue->post(pblBufIdx);
+      printf("### Reader: posted  %u\n", pblBufIdx);
+
+      indicesValid = false;             // syncthreads() happens after DMA on next launch
+
+      // Relaunch the graph
+      cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+    }
+  }
 }
 
 /******************************************************************************
@@ -321,11 +338,17 @@ cudaGraph_t Reader::_recordGraph()
   rdr_scoped_range r{/*"Reader::_recordGraph"*/}; // Expose function name via NVTX
 
   auto stream               = m_stream;
-  auto nFpgas               = m_pool.panels().size();
+  auto const dmaCount       = m_pool.dmaCount();
   auto const hostWrtBufs_d  = m_pool.hostWrtBufs_d();
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(**hostWrtBufs_d);
   auto const calibBuffers   = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers);
+  auto const rangeOffset    = m_det.rangeOffset();
+  auto const rangeBits      = m_det.rangeBits();
+  auto const refBuffers     = m_det.referenceBuffers();
+  auto const refBufCnt      = m_det.referenceBufCnt();
+  auto const pedArray       = m_det.pedestals_d();
+  auto const gainArray      = m_det.gains_d();
 
   // Determine how many processing resources to reserve for the Reader kernel
   // @todo: The maybe should be done in PgpDetector in conjunction with the other components
@@ -356,18 +379,19 @@ cudaGraph_t Reader::_recordGraph()
   }
 
   _handleDMA<<<nBlocks, nThreads, 0, m_stream>>>(m_swFpgaRegs,
-                                                 nFpgas,
                                                  m_dmaBuffers,
-                                                 m_pool.dmaCount(),
+                                                 dmaCount,
                                                  hostWrtBufs_d,
                                                  hostWrtBufsCnt,
                                                  calibBuffers,
                                                  calibBufsCnt,
-                                                 *m_head, // @todo: Fix name?
-                                                 *m_readerQueue.d,
-                                                 *m_det.d,
-                                                 m_det.h->rangeOffset(),
-                                                 m_det.h->rangeBits(),
+                                                 m_readerQueue.d,
+                                                 pedArray,
+                                                 gainArray,
+                                                 rangeOffset,
+                                                 rangeBits,
+                                                 refBuffers,
+                                                 refBufCnt,
                                                  m_terminate_d);
 
   cudaGraph_t graph;
@@ -404,7 +428,6 @@ void Reader::start()
 #endif // HOST_REARMS_DMA
   }
 
-#ifndef PERSISTENT_KERNEL
   // Enable a DMA for buffer 0 only
   unsigned instance{0};
   for (auto& panel: m_pool.panels()) {
@@ -413,16 +436,17 @@ void Reader::start()
      * Originally was cuStreamWriteValue32, but the stream functions are not
      * supported within graphs. cuMemsetD32Async acts as a good replacement.
      ****************************************************************************/
-    chkError(cuMemsetD32Async(panel.dmaBuffers[instance].dptr + 4, 0, 1, m_stream));
-    printf("*** instance %u, dmaBuffer %p\n", instance, (void*)panel.dmaBuffers[instance].dptr);
+    const auto dmaBufs = panel.dmaBuffers[instance].dptr;
+    chkError(cuMemsetD32Async(dmaBufs + 4, 0, 1, m_stream));
+    printf("*** instance %u, dmaBuffer %p\n", instance, (void*)dmaBufs);
 
 #ifndef HOST_REARMS_DMA
     // Write to the DMA start register in the FPGA to trigger the write
-    chkError(cuMemsetD8Async(panel.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance), 1, 1, m_stream));
-    printf("*** instance %u, hwWriteStart %p\n", instance, (void*)(panel.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance)));
+    const auto wrEnReg = panel.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance);
+    chkError(cuMemsetD8Async(wrEnReg, 1, 1, m_stream));
+    printf("*** instance %u, hwWriteStart %p\n", instance, (void*)wrEnReg);
 #endif // HOST_REARMS_DMA
   }
-#endif // PERSISTENT_KERNEL
 
   // Launch the Reader graph
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));

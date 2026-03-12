@@ -145,6 +145,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   // Running the reducer on transitions is a no-op, so avoid its overhead
   if (result.persist() || result.monitor()) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
+    //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
     static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
     m_worker = (m_worker + 1) % m_para.nworkers;
   }
@@ -199,7 +200,7 @@ void TebReceiver::_recorder()
     if (result->persist() || result->monitor()) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       ReducerTuple rt;
-      if (!drp.reducerReceive(worker, rt)) [[unlikely]] // This blocks until result is ready from GPU
+      if (!drp.reducerReceive(worker, &rt)) [[unlikely]] // This blocks until result is ready from GPU
         continue;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       worker = (worker + 1) % m_para.nworkers;
@@ -411,7 +412,7 @@ void TebReceiver::_recorder()
 
     // Free the pebble datagram buffer
     m_pool.freePebble(index);
-    //printf("*** TebRcvr::recorder: 8, freePebble\n");
+    //printf("*** TebRcvr::recorder: 8, freePebble %d\n", index);
 
     //// Free the reduce buffer
     //m_reducer->release(index);
@@ -671,7 +672,9 @@ void PGPDrp::_collector()
       }
 
       // Allocate a pebble buffer
+      //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
       auto pebbleIndex = pool.allocate(); // This can block
+      //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
       event->pebbleIndex = pebbleIndex;
       Src src{m_det.nodeId};
 

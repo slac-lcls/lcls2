@@ -29,9 +29,9 @@ namespace Drp {
       void connect(const nlohmann::json&, const std::string& collectionId) override;
       void issuePhase2(XtcData::TransitionId::Value) override;
     protected:
-      virtual size_t _genL1Payload(uint8_t* buffer, size_t bufSize) = 0;
+      virtual size_t _genL1Payload(uint8_t** buffer, size_t index, size_t bufSize) = 0;
     private:
-      size_t _genTimingHeader(uint8_t* buffer, XtcData::TransitionId::Value tid);
+      size_t _genTimingHeader(uint8_t* buffer, XtcData::TransitionId::Value);
       void _trigger(CUdeviceptr buffer, uint32_t dmaSize) const;
       void _eventSimulator();
     private:

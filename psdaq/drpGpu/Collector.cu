@@ -115,10 +115,10 @@ int Collector::_setupGraph()
 
 // This kernel collects and event builds contributions from the DMA streams
 static __global__
-void _collector(unsigned&                          head,
-                unsigned&                          tail,
-                RingIndexDtoD&                     readerQueue,
-                const cuda::std::atomic<unsigned>& terminate)
+void _collector(unsigned*      const  __restrict__ head,
+                unsigned*      const  __restrict__ tail,
+                RingIndexDtoD* const  __restrict__ readerQueue,
+                cuda::std::atomic<unsigned> const& terminate)
 {
   int panel = blockIdx.x * blockDim.x + threadIdx.x;
   //printf("### Collector: panel %u, tail %u, head %u\n", panel, tail, head);
@@ -127,12 +127,12 @@ void _collector(unsigned&                          head,
   // It might be desireable to refresh the head on every call, but that could
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
-  if (tail == head) {
+  if (*tail == *head) {
     __shared__ unsigned hd0;
 
     // Get one intermediate buffer index per FPGA
     unsigned hdN;
-    while ((hdN = readerQueue.pend()) == head) {
+    while ((hdN = readerQueue->pend()) == *head) {
       if (terminate.load(cuda::std::memory_order_acquire))  return;
     }
     //printf("### Collector: panel %u, hdN %u\n", panel, hdN);
@@ -146,22 +146,22 @@ void _collector(unsigned&                          head,
       while (true);                     // abort(); ???
     }
     // Advance head
-    if (panel == 0)  head = hdN;
+    if (panel == 0)  *head = hdN;
   }
 }
 
 // This will re-launch the current graph
 static __global__
-void _graphLoop(unsigned&                          idx,
-                RingIndexDtoH&                     collectorQueue,
-                const cuda::std::atomic<unsigned>& terminate)
+void _graphLoop(unsigned*      const  __restrict__ idx,
+                RingIndexDtoH* const  __restrict__ collectorQueue,
+                cuda::std::atomic<unsigned> const& terminate)
 {
   if (terminate.load(cuda::std::memory_order_acquire))  return;
 
   // Push index to host and increment to the next one
-  //printf("### Collector: post idx %u\n", idx);
-  idx = collectorQueue.post(idx);
-  //printf("### Collector: posted, new idx %u\n", idx);
+  //printf("### Collector: post idx %u\n", *idx);
+  *idx = collectorQueue->post(*idx);
+  //printf("### Collector: posted, new idx %u\n", *idx);
 
   // This will re-launch the current graph
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
@@ -183,9 +183,9 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   }
 
   // Find which pebble buffers are ready for processing
-  _collector<<<1, 1, 0, stream>>>(*m_head,
-                                  *m_tail,
-                                  *m_readerQueue.d,
+  _collector<<<1, 1, 0, stream>>>(m_head,
+                                  m_tail,
+                                  m_readerQueue.d,
                                   m_terminate_d);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
@@ -200,7 +200,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   }
 
   // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
-  _graphLoop<<<1, 1, 0, stream>>>(*m_tail, *m_collectorQueue.d, m_terminate_d);
+  _graphLoop<<<1, 1, 0, stream>>>(m_tail, m_collectorQueue.d, m_terminate_d);
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph),
@@ -250,9 +250,8 @@ unsigned Collector::_checkDmaDsc(unsigned index) const
   const auto cnt  = m_pool.hostWrtBufsSize() / sizeof(uint32_t);
   const auto dsc0 = (DmaDsc*)(&m_pool.hostWrtBufsVec_h()[0][index * cnt]);
 
-  logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x",
-                 0, index, dsc0->error, dsc0->size, dsc0->_rsvd[0], dsc0->_rsvd[1], dsc0->_rsvd[2],
-                 dsc0->_rsvd[3], dsc0->_rsvd[4], dsc0->_rsvd[5]);
+  logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x",
+                 0, index, dsc0->error, dsc0->size);
 
   for (unsigned i = 1; i < m_pool.panels().size(); ++i) {
     bool ne = false;
@@ -262,13 +261,11 @@ unsigned Collector::_checkDmaDsc(unsigned index) const
 
     if (ne) {
       if (rc ^ 1) {
-        logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x",
-                       0, index, dsc0->error, dsc0->size, dsc0->_rsvd[0], dsc0->_rsvd[1], dsc0->_rsvd[2],
-                       dsc0->_rsvd[3], dsc0->_rsvd[4], dsc0->_rsvd[5]);
+        logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x",
+                       0, index, dsc0->error, dsc0->size);
       }
-      logging::debug("panel %d: idx %d dma: err %08x,  sz %08x, rsvd %08x %08x %08x %08x %08x %08x",
-                     i, index, dscN->error, dscN->size, dscN->_rsvd[0], dscN->_rsvd[1], dscN->_rsvd[2],
-                     dscN->_rsvd[3], dscN->_rsvd[4], dscN->_rsvd[5]);
+      logging::debug("panel %d: idx %d dma: err %08x,  sz %08x",
+                     i, index, dscN->error, dscN->size);
       rc |= 1;                          // If different, include panel 0 in the list
     }
     rc |= 1 << i;

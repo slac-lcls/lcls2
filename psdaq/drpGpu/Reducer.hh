@@ -51,9 +51,9 @@ public:
   bool start(unsigned worker, unsigned index)
     { if (m_algos[0]->hasGraph()) { return m_inputQueues2[worker].h->push(index);    }
       else                        { m_inputQueues[worker].push(index);  return true; } }
-  bool receive(unsigned worker, ReducerTuple& items)
+  bool receive(unsigned worker, ReducerTuple* items)
     { return m_algos[0]->hasGraph() ? m_outputQueues2[worker].h->pop(items)
-                                    : m_outputQueues[worker].pop(items); }
+                                    : m_outputQueues[worker].pop(*items); }
   void configure(XtcData::Xtc& xtc, const void* bufEnd)
     { if (m_algos.size())  m_algos[0]->configure(xtc, bufEnd); }
   void event(XtcData::Xtc& xtc, const void* bufEnd, size_t dataSize)

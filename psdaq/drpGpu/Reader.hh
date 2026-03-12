@@ -47,7 +47,7 @@ private:
   void        _reader(Detector&, ReaderMetrics&);
 private:
   MemPoolGpu&                        m_pool;
-  Ptr<Detector>                      m_det;
+  Detector&                          m_det;
   const cuda::std::atomic<unsigned>& m_terminate_d;
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;

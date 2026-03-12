@@ -76,7 +76,7 @@ public:
     { m_reducer->configure(xtc, bufEnd); }
   bool reducerStart(unsigned wkr, unsigned& index)
     { return m_reducer->start(wkr, index); }
-  bool reducerReceive(unsigned wkr, ReducerTuple& items)
+  bool reducerReceive(unsigned wkr, ReducerTuple* items)
     { return m_reducer->receive(wkr, items); }
   void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
     { m_reducer->event(xtc, be, sz); }

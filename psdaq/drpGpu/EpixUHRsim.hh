@@ -33,8 +33,10 @@ public:
 //                            uint16_t* const raw,
 //                            unsigned  const count,
 //                            unsigned  const nPanels) const;
-  unsigned rangeOffset() const override { return RangeOffset; }
-  unsigned rangeBits()   const override { return RangeBits; }
+  unsigned     rangeOffset() const override { return RangeOffset; }
+  unsigned     rangeBits()   const override { return RangeBits; }
+  float const* pedestals_d() const override { return m_pedsVec_d[0]; };  // Panel 0 only
+  float const* gains_d()     const override { return m_gainsVec_d[0]; }; // Panel 0 only
 
   void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
@@ -42,11 +44,11 @@ public:
                    uint16_t const* const data) override;
 
   void issuePhase2(XtcData::TransitionId::Value) override;
+  float const* referenceBuffers() const override;
+  unsigned     referenceBufCnt()  const override;
 private:
   std::vector<float*> m_pedsVec_d;  // [nPanels][NRanges * NPixels]
   std::vector<float*> m_gainsVec_d; // [nPanels][NRanges * NPixels]
-//  float** m_pedArr_d;               // [nPanels][NRanges * NPixels]
-//  float** m_gainArr_d;              // [nPanels][NRanges * NPixels]
 };
 
   } // Gpu

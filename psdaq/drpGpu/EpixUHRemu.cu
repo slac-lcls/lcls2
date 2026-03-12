@@ -64,28 +64,18 @@ EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   auto nPanels = pool.panels().size();
   pool.createCalibBuffers(nPanels, NPixels);
 
-  // Create device pedestal and gain arrays of size nPanels
-  chkError(cudaMalloc(&m_pedArr_d,  nPanels * sizeof(*m_pedArr_d)));
-  chkError(cudaMalloc(&m_gainArr_d, nPanels * sizeof(*m_gainArr_d)));
-
   // Allocate space for the calibration constants for each panel
   m_pedsVec_d.resize(nPanels);
   m_gainsVec_d.resize(nPanels);
   for (unsigned i = 0; i < nPanels; ++i) {
     chkError(cudaMalloc(&m_pedsVec_d[i],  NRanges * NPixels * sizeof(*m_pedsVec_d[i])));
     chkError(cudaMalloc(&m_gainsVec_d[i], NRanges * NPixels * sizeof(*m_gainsVec_d[i])));
-
-    // Fill the device arrays with the device pointers
-    chkError(cudaMemcpy(&m_pedArr_d[i],  &m_pedsVec_d[i],  sizeof(m_pedsVec_d[i]),  cudaMemcpyHostToDevice));
-    chkError(cudaMemcpy(&m_gainArr_d[i], &m_gainsVec_d[i], sizeof(m_gainsVec_d[i]), cudaMemcpyHostToDevice));
   }
 }
 
 EpixUHRemu::~EpixUHRemu()
 {
   printf("*** EpixUHRemu dtor 1\n");
-  chkError(cudaFree(m_gainArr_d));
-  chkError(cudaFree(m_pedArr_d));
   auto pool = m_pool->getAs<MemPoolGpu>();
   for (unsigned i = 0; i < pool->panels().size(); ++i) {
     chkError(cudaFree(m_gainsVec_d[i]));
@@ -160,8 +150,8 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     auto peds_d  = m_pedsVec_d[i];
     auto gains_d = m_gainsVec_d[i];
     for (unsigned range = 0; range < NRanges; ++range) {
-      chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyHostToDevice));
-      chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyHostToDevice));
+      chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
+      chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
       peds_d  += NPixels;
       gains_d += NPixels;
     }
