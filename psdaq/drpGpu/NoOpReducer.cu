@@ -54,14 +54,15 @@ NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
 
 // GPU kernel for actually performing the data reduction
 // In this case, the calibrated data is just copied to the output buffer
-static __global__ void _noOpReduce(unsigned const*                    index,
-                                   float    const* const __restrict__ calibBuffers,
-                                   size_t   const                     calibBufsCnt,
-                                   uint8_t       * const __restrict__ dataBuffers,
-                                   size_t   const                     dataBufsCnt,
-                                   float    const* const __restrict__ refBuffers,
-                                   unsigned const                     refBufCnt,
-                                   unsigned*       const __restrict__ error)
+static __global__
+void _noOpReduce(unsigned const*                    index,
+                 float    const* const __restrict__ calibBuffers,
+                 size_t   const                     calibBufsCnt,
+                 uint8_t       * const __restrict__ dataBuffers,
+                 size_t   const                     dataBufsCnt,
+                 float    const* const __restrict__ refBuffers,
+                 unsigned const                     refBufCnt,
+                 unsigned*       const __restrict__ error)
 {
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
@@ -128,8 +129,8 @@ void NoOpReducer::reduce(cudaGraphExec_t graph,
   auto maxSize = m_pool.reduceBufsReserved() + m_pool.reduceBufsSize();
   auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
   auto pSize   = buffer - sizeof(*dataSize);
-  chkError(cudaMemcpyAsync((void*)dataSize, pSize,        sizeof(*dataSize),    cudaMemcpyDefault, stream));
-  chkError(cudaMemcpyAsync((void*)errorCnt, m_errorCnt_d, sizeof(m_errorCnt_d), cudaMemcpyDefault, stream));
+  chkError(cudaMemcpyAsync((void*)dataSize, pSize,        sizeof(*dataSize),     cudaMemcpyDefault, stream));
+  chkError(cudaMemcpyAsync((void*)errorCnt, m_errorCnt_d, sizeof(*m_errorCnt_d), cudaMemcpyDefault, stream));
 }
 #else // hasGraph == false case
 bool NoOpReducer::hasGraph() const { return false; }
