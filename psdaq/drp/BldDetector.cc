@@ -680,6 +680,7 @@ public:
     unsigned rawNamesIndex() { return BldNamesIndex; }
     unsigned cubeNamesIndex() { return BldNamesIndex+16; }
     std::vector<VarDef>& rawDef() { return m_rawDef; }
+    unsigned maxMonBufSize() { return 0x1000; }
 private:
     //    std::vector<VarDef> m_rawDef;
     std::vector<VarDef> m_rawDef;

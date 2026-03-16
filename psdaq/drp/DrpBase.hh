@@ -119,8 +119,8 @@ private:
 protected:
     MemPool& m_pool;
     DrpBase& m_drp;
-private:
     unsigned m_tsId;
+private:
     bool m_writing;
     ZmqSocket& m_inprocSend;
     uint32_t m_lastIndex;

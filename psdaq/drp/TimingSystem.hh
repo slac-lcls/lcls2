@@ -23,9 +23,15 @@ public:
     bool scanEnabled() override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override;
+    // For binning into the cube
+    unsigned rawNamesIndex () override;
+    unsigned cubeNamesIndex() override;
+    unsigned cubeBinBytes  () override;
+    std::vector<XtcData::VarDef>& rawDef() override;
+    unsigned maxMonBufSize () override;
 private:
     void _addJson(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesId& configNamesId, const std::string& config_alias);
-    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex, TriggerNamesIndex};
+    enum {ConfigNamesIndex = NamesIndex::BASE, EventNamesIndex, UpdateNamesIndex, TriggerNamesIndex, CubeNamesIndex};
     XtcData::NamesId     m_evtNamesId;
     std::string          m_connect_json;
     PyObject*            m_module;

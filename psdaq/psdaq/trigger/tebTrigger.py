@@ -10,6 +10,7 @@ from struct import unpack
 import EbDgram     as edg
 import ResultDgram as rdg
 import CubeResultDgram as qdg
+import CubeConfigDgram as cdg
 
 class ArgsParser(argparse.ArgumentParser):
     def __init__(self):
@@ -84,7 +85,7 @@ class TriggerDataSource(object):
                     )
                     sys.exit(1)
 
-                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]} size {shm_msg[2]}")
                 break
 
         self._mq_res.send(b"g")
@@ -108,7 +109,7 @@ class TriggerDataSource(object):
                     self._shm_inp = None
                     sys.exit(1)
 
-                print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Results shared memory key {shm_msg[1]} size {shm_msg[2]}")
                 break
 
         #print(f'max_size: {self._mq_inp.max_size}')
@@ -216,14 +217,16 @@ class TriggerDataSource(object):
 
 class CubeTriggerDataSource(TriggerDataSource):
 
-    def __init__(self, nbins):
-        self.nbins = nbins
+    def __init__(self, config):
+        self.config = config
         TriggerDataSource.__init__(self, self.configure)
 
 
     def configure(self):
-        logging.warning(f'[Python] Setting nbins {self.nbins}')
-        result = qdg.CubeResultDgram(self._shm_res_mmap, 0, 0, 0, self.nbins-1, 0, 0)
+        nbins = self.config['bins']
+        logging.warning(f'[Python] Setting nbins {nbins}')
+        result = cdg.CubeConfigDgram(self._shm_res_mmap, nbins, json.dumps(self.config))
+
         self._mq_res.send(b"g")
 
     """  persist     : put event into the cube

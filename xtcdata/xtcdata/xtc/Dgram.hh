@@ -37,6 +37,7 @@ public:
     TransitionId::Value service() const { return TransitionId::Value(control()&0xf); }
     Type type()                   const { return Type((control()>>4)&0x3); }
     bool isEvent()                const { return service()==TransitionId::L1Accept; }
+    bool isExtended()             const { return ((env>>16)&1) && !isEvent(); }
 };
 
 class Dgram : public Transition {

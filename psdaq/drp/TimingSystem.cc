@@ -216,3 +216,13 @@ void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::E
     XtcData::CreateData data(dgram.xtc, bufEnd, m_namesLookup, namesId);
     data.set_value(TrigInfoDef::TRIGINFO, result.data());
 }
+
+unsigned TimingSystem::rawNamesIndex () { return EventNamesIndex; }
+unsigned TimingSystem::cubeNamesIndex() { return CubeNamesIndex; }
+unsigned TimingSystem::cubeBinBytes  () { return 20; }
+
+static std::vector<VarDef> _rawDefV(1,VarDef());
+
+std::vector<XtcData::VarDef>& TimingSystem::rawDef() { return _rawDefV; }
+
+unsigned TimingSystem::maxMonBufSize() { return m_para->nCubeWorkers==0 ? m_pool->pebble.bufferSize() : 0x40000; }

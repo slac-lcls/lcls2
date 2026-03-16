@@ -17,6 +17,8 @@
 #include "xtcdata/xtc/Smd.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psdaq/eb/CubeResultDgram.hh"
+#include "psdaq/eb/CubeConfigDgram.hh"
+#include "psdaq/service/Json2Xtc.hh"
 
 #include <sys/prctl.h>
 
@@ -250,7 +252,7 @@ CubeTebReceiver::CubeTebReceiver(const Parameters& para, DrpBase& drp) :
     m_last       (-1),
     m_nbins      (0),
     m_data_init  (para.nCubeWorkers),
-    m_buffer     (new char[drp.detector().cubeBinBytes()]),
+    m_buffer     (0),
     m_sem        (para.nCubeWorkers,Pds::Semaphore(Pds::Semaphore::FULL)),
     m_flush_sem  (Pds::Semaphore::EMPTY),
     m_terminate  (false)
@@ -269,6 +271,7 @@ void CubeTebReceiver::complete(unsigned index, const ResultDgram& res)
     const Pds::Eb::CubeResultDgram& result = reinterpret_cast<const Pds::Eb::CubeResultDgram&>(res);
     logging::debug("CubeTebReceiver::complete index (%u) result data(%x) persist(%u) monitor(%x) bin(%u) binMonitor(%u) binRecord(%u)", 
                    index, result.data(), result.persist(), result.monitor(), result.binIndex(), result.updateMonitor(), result.updateRecord());
+    //    result.dump("complete");
 
     _queueDgram(index, result); // copies the result
 
@@ -286,7 +289,7 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
             m_nbins = result.binIndex()+1;
             unsigned nbins = m_nbins;
             for(unsigned i=0; i<m_para.nCubeWorkers; i++)
-                m_cubedata.push_back(new CubeData(m_det, nbins));
+                m_cubedata.push_back(new CubeData(m_det, nbins, m_pool.bufferSize()));
 
             //  Startup threads
             for (unsigned i=0; i<m_para.nCubeWorkers; i++) {
@@ -314,6 +317,21 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
             const char* bufEnd = (char*)dgram + m_para.maxTrSize;
             m_cubedata[0]->addNames(m_para.detSegment, dgram, bufEnd);
 
+            //  Let the timing system record the teb configuration data
+            if (m_drp.nodeId() == m_tsId) {
+                // convert to json to xtc
+                char* json = result.xtc.payload()+sizeof(CubeConfigDgram)-sizeof(EbDgram);
+                //size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
+
+                logging::info("CubeResult Configure extent 0x%x  json %s", 
+                              result.xtc.extent, json);
+
+                auto config_buf = (char*)dgram->xtc.next();
+                auto config_end = (char*)dgram + m_pool.pebble.trBufSize();
+                NamesId configNamesId(m_det.nodeId,m_det.cubeNamesIndex()+1);
+                unsigned len = Pds::translateJson2Xtc(json, config_buf, config_end, configNamesId, "cubeinfo", 0);
+                dgram->xtc.alloc(len, config_end);
+            }
         }
         else if (transitionId == TransitionId::Unconfigure) {
             //  Stop threads
@@ -394,7 +412,7 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
             }
         }
         m_sem[iworker].take();
-        m_cubedata[iworker]->copyBin(ibin, shapesDataV, dg);
+        dg = m_cubedata[iworker]->copyBin(ibin, shapesDataV, dg);
         m_sem[iworker].give();
     }
 
@@ -411,11 +429,15 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
         m_sem[iworker].give();
     }
 
+    //    result.dump("binDgram");
+
     return dg;
 }
 
 void CubeTebReceiver::_monitorDgram(unsigned index, const CubeResultDgram& result)
 {
+    //    result.dump("monitorDgram");
+
     TransitionId::Value transitionId = result.service();
     auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
         : m_pool.transitionDgrams[index];
@@ -433,10 +455,7 @@ void CubeTebReceiver::_monitorDgram(unsigned index, const CubeResultDgram& resul
         if (result.isEvent()) {
             if (result.monitor()) {
                 if (result.updateMonitor()) {
-                    //  Append the intermediate bin sum to the pebble data
-                    memset(m_buffer, 0, m_det.cubeBinBytes()); // clear it for sure!!
-                    memcpy(m_buffer, dgram, sizeof(*dgram)+dgram->xtc.sizeofPayload());
-                    m_mon.post(_binDgram((Pds::EbDgram*)m_buffer, result), result.monBufNo());
+                    m_mon.post(_binDgram(dgram, result), result.monBufNo());
                 }
                 else {
                     m_mon.post(dgram, result.monBufNo());
@@ -450,24 +469,28 @@ void CubeTebReceiver::_monitorDgram(unsigned index, const CubeResultDgram& resul
     }
 }
 
-
 void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result)
 {
     TransitionId::Value transitionId = result.service();
     auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
         : m_pool.transitionDgrams[index];
 
+    // bool keepRaw = (m_drp.nodeId() == m_tsId);  // raw timing is always recorded
+    bool keepRaw = m_para.cubeKeepRaw;
+
     if (writing()) {                    // Won't ever be true for Configure
         if (result.persist() || result.prescale()) {
             if (result.updateRecord()) {
-                //  Write the intermediate accumulated bin
-                Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(*dgram, *dgram);  // PulseId, Dgram
-                _writeDgram(_binDgram(dg, result));
+                if (!keepRaw)           //  Write the intermediate accumulated bin (only)
+                    dgram->xtc.extent = sizeof(Xtc);
+                EbDgram* ebdg = _binDgram(dgram,result);
+                _writeDgram(ebdg);
             }
             else {
                 //  Do I need to record an empty dgram for the offline event builder?
-                Pds::EbDgram* dg = new(m_buffer) Pds::EbDgram(*dgram, *dgram);  // PulseId, Dgram
-                _writeDgram(dg);
+                if (!keepRaw)
+                    dgram->xtc.extent = sizeof(Xtc);
+                _writeDgram(dgram);
             }
         }
         else if (transitionId != TransitionId::L1Accept) {
@@ -493,7 +516,7 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
                 }
                 else {
 
-                    Dgram* dg = m_cubedata[iworker]->dgram(dgram, transitionId);
+                    std::vector<Dgram*> dg = m_cubedata[iworker]->dgram(dgram, transitionId);
 
                     while(++iworker < m_para.nCubeWorkers) {
                         if (m_data_init[iworker].load(std::memory_order_relaxed))
@@ -504,9 +527,13 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
                         m_sem[iworker].give();
                     }
 
-                    //  Until we get this figured out
-                    _writeDgram(dg);
-                    //_writeDgram(dgram);
+                    for(auto& v : dg) {
+                        if (chunkSize() > TebReceiverBase::DefaultChunkThresh) {
+                            advanceChunkId();
+                            reopenFiles();
+                        }
+                        _writeDgram(v);
+                    }
                 }
             }
             else {
@@ -566,8 +593,8 @@ void CubeTebReceiver::process()
                 abort();
             }
 
-            _recordDgram(index, result);
             _monitorDgram(index, result);
+            _recordDgram(index, result);
 
             // Free the transition datagram buffer
             TransitionId::Value transitionId = result.service();

@@ -1,6 +1,7 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from libc.stdint cimport uint32_t
 cimport psdaq.trigger.ResultDgram as dgram
+import EbDgram as edg
 
 cdef class ResultDgram():
     cdef Py_buffer buf
@@ -10,6 +11,10 @@ cdef class ResultDgram():
     def __cinit__(self, view = None, persist = True, monitor = -1):
         self._bufOwner = view is not None
         if self._bufOwner:
+            #  Inheritance is not provided
+            ebdg = edg.EbDgram(view)
+            ebdg.xtc.alloc(8)
+            #
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
             view_ptr = <char *>self.buf.buf
             self.cptr = <dgram.ResultDgram *>(view_ptr)

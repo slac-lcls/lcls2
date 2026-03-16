@@ -1006,6 +1006,9 @@ void TebReceiverBase::resetCounters(bool all = false)
 
 void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 {
+    logging::debug("TebReceiverBase::process result %p  svc 0x%x  extent 0x%x  index %u\n",
+                   &result, result.service(), result.xtc.extent, index);
+
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sTebReceiver: jumping index %u  previous index %u  diff %d%s",
@@ -1191,7 +1194,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_mPrms.maxEvSize  = pool.pebble.bufferSize() * (para.nCubeWorkers>0 ? 10:1);
+    m_mPrms.maxEvSize  = det.maxMonBufSize();
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;

@@ -13,6 +13,7 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
+    char* endptr;
     std::string kwargs_str;
     std::string::size_type ii = 0;
     while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:Q:v")) != EOF) {
@@ -61,7 +62,8 @@ int main(int argc, char* argv[])
                 para.nworkers = std::stoi(optarg);
                 break;
             case 'Q':
-                para.nCubeWorkers = std::stoi(optarg);
+                para.nCubeWorkers = std::strtol(optarg, &endptr, 0);
+                para.cubeKeepRaw  = *endptr=='+';
                 break;
             case 'v':
                 ++para.verbose;

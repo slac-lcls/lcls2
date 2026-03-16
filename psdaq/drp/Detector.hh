@@ -54,6 +54,7 @@ public:
     virtual unsigned cubeNamesIndex() { return 0; }
     virtual unsigned cubeBinBytes  () { return m_pool->bufferSize()*10; }
     virtual std::vector<XtcData::VarDef>& rawDef();
+    virtual unsigned maxMonBufSize () { return (m_para->nCubeWorkers==0 ? 1:10) * m_pool->pebble.bufferSize(); }
     //
     virtual void shutdown() {};
 

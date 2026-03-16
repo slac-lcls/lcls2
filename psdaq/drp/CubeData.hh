@@ -20,7 +20,7 @@ namespace Drp {
 
     class CubeData {
     public:
-        CubeData(Detector& det, unsigned nbins);
+        CubeData(Detector& det, unsigned nbins, unsigned poolBufferSize);
         ~CubeData();
     public:
         //  Initialize the cube from the first event
@@ -38,29 +38,28 @@ namespace Drp {
                      unsigned   subDet,
                      const SDV& rawData);
         //  Copy one bin into a datagram
-        void copyBin(unsigned      bin,
-                     SDV&          rawDataV,
-                     Pds::EbDgram* dg);
+        Pds::EbDgram* copyBin(unsigned      bin,
+                              SDV&          rawDataV,
+                              Pds::EbDgram* dg);
         //  Add the contents of one bin into a datagram
         void addBin (unsigned      bin,
                      const SDV&    rawDataV,
                      Pds::EbDgram* dg);
         //  Get the cube as a datagram for EndRun
-        XtcData::Dgram* dgram(XtcData::Dgram*, XtcData::TransitionId::Value);
-        void            add  (XtcData::Dgram*);
+        std::vector<XtcData::Dgram*> dgram(XtcData::Dgram*, XtcData::TransitionId::Value);
+        void                         add  (std::vector<XtcData::Dgram*>&);
 
-        //  Get the cube as a vector of datagrams for EndRun
-        std::vector<XtcData::Dgram*> dgram(XtcData::Dgram&, 
-                                           unsigned& binsPerDg);
-        void                add  (std::vector<XtcData::Dgram*>&,
-                                  unsigned binsPerDg);
     private:
         Detector&                     m_det;
         unsigned                      m_nbins;
+        unsigned                      m_binsPerBuf;
+        unsigned                      m_bufferSize;
+        unsigned                      m_bufferBinSize;
         std::vector<XtcData::VarDef>  m_rawDefV;
         std::vector<XtcData::VarDef>  m_cubeDefV;
         std::vector<XtcData::NamesId> m_rawNames;
-        char*                         m_bin_data;
+        std::vector<char*>            m_buffer;
+        char*                         m_bufferBin;
     };
 }
 
