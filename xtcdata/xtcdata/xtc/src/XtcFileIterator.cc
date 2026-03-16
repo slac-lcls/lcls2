@@ -32,23 +32,21 @@ Dgram* XtcFileIterator::next()
     if (payloadSize == 0)
         return &dg;
 
-    ssize_t sz = ::read(_fd, p, payloadSize);
     while (1) {
-        printf("  Read %zu into %p\n", sz, p);
+        ssize_t sz = ::read(_fd, p, payloadSize);
         if (sz < 0) {
             printf("XtcFileIterator::next read error '%s' for payload of size %zu", strerror(errno), payloadSize);
             return 0;
         }
-        else if (sz > 0) {
+        else if (sz == 0) {
+            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", p-dg.xtc.payload(), dg.xtc.sizeofPayload());
+            return 0;
+        }
+        else {
             p += sz;
             payloadSize -= sz;
             if (payloadSize ==0)
                 break;
-            sz = ::read(_fd, p, payloadSize);
-        }
-        else {
-            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", p-dg.xtc.payload(), dg.xtc.sizeofPayload());
-            return 0;
         }
     }
 
