@@ -409,7 +409,7 @@ def add_data(dbname, data, url=cc.URL_KRB, krbheaders=cc.KRBHEADERS):
     #logger.debug('add_data byte-data:',d)
     urltot = url+dbname+'/gridfs/'
     resp = post(urltot, headers=headers, data=d)
-    logger.info('add_data to: %s\n  resp: %s\n  add -L DEBUG to see headers...' % (urltot, resp.text))
+    logger.info('add_data to: %s\n    resp: %s' % (urltot, resp.text))
     logger.debug('headers: %s' % str(headers))
 
     try:
