@@ -90,6 +90,26 @@ def issue_2026_02_26():
         print('end of step: %d' % istep)
     print('end of step loop')
 
+
+def issue_2026_03_16():
+    """ISSUE: Hi Mikhail, I looked into the problem Valerio/Chris reported and traced it to the Jungfrau pedestals
+         deployed for mfx100848724, starting from run 49. It looks like the deployed pedestal constants have
+         the wrong dtype: float64 instead of the expected float32. Because of that, det.raw.calib(evt) fails
+         for runs that resolve to this pedestal. I reproduced the failure for mfx100848724, run 51.
+       PROBLEM:
+       FIX:
+    """
+    import psana
+    ds = psana.DataSource(exp="mfx100848724", run=51, dir="/sdf/data/lcls/ds/prj/public01/xtc", max_events=10)
+    run = next(ds.runs())
+    det = run.Detector("jungfrau")
+
+    for evt in run.events():
+        data = det.raw.raw(evt)  # raw data
+        print(f"Extracted raw for {evt}")
+        data = det.raw.calib(evt)  # calibrated data
+        print(f"Extracted calib for {evt}")
+
 #===
     
 #===
@@ -128,6 +148,7 @@ def selector():
     if   TNAME in ('0',): issue_2026_mm_dd() # template
     elif TNAME in ('1',): issue_2026_02_04()
     elif TNAME in ('2',): issue_2026_02_26()
+    elif TNAME in ('3',): issue_2026_03_16()
     elif TNAME in ('99',): issue_2026_02_04(args.subtest)
     else:
         print(USAGE())
