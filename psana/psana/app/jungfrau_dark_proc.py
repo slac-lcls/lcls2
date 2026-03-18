@@ -4,28 +4,30 @@ from time import time
 t0_sec_tot = time()
 
 import sys
+#logger = logging.getLogger(__name__)
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
-logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
 M14 = 0x3fff # 0o37777, 16383, 14-bit of data mask, 2 bits for gain mode switch
 
 USAGE = 'Usage:'\
-      + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
+      + f'\n  {SCRNAME} -k <\"str-of-datasource-kwargs\"> -d <detector>'\
       + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
-      + '\nExamples:'\
       + '\nTests:'\
-      + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-      + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
-      + '\n'\
-      + '\n  %s -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY' % SCRNAME\
-      + '\n  mpirun --mca osc ^ucx -n 5 %s -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY' % SCRNAME\
-      + '\n\n  Try: %s -h' % SCRNAME
+      + '\n  datinfo -k exp=mfx100848724,run=49 -d jungfrau ### TEST DATA'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY'\
+      + f'\n  mpirun --mca osc ^ucx -n 5 {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY WITH MPIRUN'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 50 --wrapper --skipcmd ### RUN WRAPPER'\
+      + f'\nHELP:\n  {SCRNAME} -h'
+#      + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
+#      + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
+#      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
+#      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
+#      + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
+#      + '\n'\
 
 
 def argument_parser():
@@ -65,6 +67,10 @@ def argument_parser():
     d_evcode  = None
     d_segind  = None
     d_igmode  = None
+    d_wrapper = False
+    d_nranks  = 1
+    d_stages  = '7'
+    d_skipcmd = False
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -104,8 +110,12 @@ def argument_parser():
                 'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
+    h_nranks  = 'FOR WRAPPER: if >1 then use mpirun -n {nranks}, default = %s' % d_nranks
+    h_wrapper = 'FOR WRAPPER: directly run wrapper jungfrau_dark_proc_mpi.sh in stead of python script, default = %s' % d_wrapper
+    h_stages  = 'FOR WRAPPER: bitword 1/2/4 for stages 1/2/3 or any bit combination, default = %s' % d_stages
+    h_skipcmd = 'FOR WRAPPER: skip commands, just show for debugging what script is doing, default = %s' % d_skipcmd
 
-    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
+    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc2 data for jungfrau')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
@@ -139,11 +149,16 @@ def argument_parser():
     parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
     parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
+    parser.add_argument('--wrapper',       action='store_true',              help=h_wrapper)
+    parser.add_argument('--nranks',        default=d_nranks,     type=int,   help=h_nranks)
+    parser.add_argument('--stages',        default=d_stages,     type=str,   help=h_stages)
+    parser.add_argument('--skipcmd',       action='store_true',              help=h_skipcmd)
     return parser
 
 
 def do_main():
     from time import time
+    t0_sec = time()
 
     parser = argument_parser()
     args = parser.parse_args()
@@ -154,15 +169,23 @@ def do_main():
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 #    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
-    t0_sec = time()
-
 #    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
 #    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
 
-    from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+    if args.wrapper:
+        import os
+        scr_dir = os.path.dirname(os.path.abspath(__file__))
+        scr_name = f'{scr_dir}/jungfrau_dark_proc_wrapper.sh'
+        cmd = f'{scr_name} -k {args.dskwargs} -d {args.detname} --nrecs {args.nrecs} --nrecs1 {args.nrecs1} --dirrepo {args.dirrepo} --logmode {args.logmode}'\
+            + f' --nranks {args.nranks} --stages {args.stages}' # for debugging
+        if args.skipcmd: cmd += ' --skipcmd'
+        print(f'RUN SHELL SCRIPT: {cmd}')
+        os.system(cmd)
+    else:
+        from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+        jungfrau_dark_proc(parser)
 
-    jungfrau_dark_proc(parser)
-    print('%s TOTAL TIME (with imports and parser) %.3f sec' % (SCRNAME, time() - t0_sec_tot))
+    print('%s %s TOTAL TIME %.3f sec' % (SCRNAME, 'shell wrapper' if args.wrapper else 'script', time() - t0_sec_tot))
 
 if __name__ == "__main__":
     do_main()
