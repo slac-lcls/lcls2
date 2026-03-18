@@ -622,10 +622,12 @@ def jungfrau_deploy_constants(parser):
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
         logger.debug('fmerge_prefix: %s' % fmerge_prefix)
-        nda = uc.merge_panels(lst_cons)
+        nda = uc.merge_panels(lst_cons, dtype=vtype)
         fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
         logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
                     + '\n    save in %s\n' % fmerge)
+
+        #vtype ???
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
 
         if True:
@@ -640,6 +642,7 @@ def jungfrau_deploy_constants(parser):
           kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
           kwa_depl['shortname'] = shortname
           kwa_depl['dbsuffix'] = dbsuffix
+          kwa_depl['deploy'] = deploy
           kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
           kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
 
@@ -648,32 +651,37 @@ def jungfrau_deploy_constants(parser):
                 'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
           logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
 
-        if deploy:
-          expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
+        expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
 
-          if dbsuffix:
-              resp = add_data_and_doc_to_detdb_extended(nda, expname, longname, **kwa_depl)
-          else:
-              # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-              resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
-          if resp:
-              #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
-              if dbsuffix:
-                  fmt = (None, resp[0], None, resp[1])
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
-              else:
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
-          else:
-              logger.error('constants are not deployed')
-              exit()
-        else:
-          logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **kwa_depl)
 
     repoman.logfile_save()
 
 
-def jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs):
+def save_metadata_in_json_file(fname, **kwa):
+    with open(fname, 'w') as jfile:
+       json.dump(kwa, jfile, indent=4)
+    logger.info('metadata saved in %s' % fname)
 
+
+def load_metadata_from_json_file(fname):
+    try:
+        with open(fname, 'r') as file:
+            d = json.load(file)
+        return d
+    except FileNotFoundError:
+        logger.info(f"Error: The file '{fname}' was not found.")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error: Failed to decode JSON from the file '{fname}'. Check file format.")
+        return None
+
+
+def jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs):
+    """ISSUE: this deployment does not work if requested from mpirun runk, due to issue with authorisation.
+       FIX: - in this script save merged data and metadata in repo-files.
+            - run script jungfrau_deploy_from_files(**kwargs)
+    """
     t0_sec_depl = time()
 
     fac_mode  = kwargs.get('fac_mode', 0o664)
@@ -719,59 +727,120 @@ def jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs):
         fmt = DIC_CTYPE_FMT[ctype]
         octype = ctype
         logger.info('\n%s deploy constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
+        vtype = cc.dic_calib_name_to_dtype[ctype]
 
-        nda = dcc[ctype]
+        nda = dcc[ctype].astype(vtype)
         logger.info(info_ndarr(nda, '>>>> %s' % ctype))
 
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
         logger.debug('fmerge_prefix: %s' % fmerge_prefix)
-        fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
+        fname = '%s-%s' % (fmerge_prefix, ctype)
+        fmerge = '%s.txt' % fname
         t0_sec_save = time()
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
-        nda = load_txt(fmerge)
+
         logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
-                    + '\n    saved in %s\n save-formatted-load time: %.3f sec\n ' % (fmerge, time()-t0_sec_save))
+                    + '\n    saved in %s\n save formatted time: %.3f sec\n ' % (fmerge, time()-t0_sec_save))
+        kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
+        kwa_depl['dskwargs'].pop('smd_callback',None) # remove
+        kwa_depl['smd_callback'] = 'removed'
+        kwa_depl['repoman'] = repoman
+        kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+        kwa_depl['run_orig'] = orun.runnum
+        kwa_depl['iofname'] = fmerge
+        kwa_depl['ctype'] = ctype
+        kwa_depl['dtype'] = 'ndarray'
+        kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+        kwa_depl['shortname'] = shortname
+        kwa_depl['dbsuffix'] = dbsuffix
+        kwa_depl['deploy'] = deploy
+        kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+        kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
 
-        if True:
-          kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
-          kwa_depl['repoman'] = repoman
-          kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
-          kwa_depl['run_orig'] = orun.runnum
-          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
-          kwa_depl['iofname'] = fmerge
-          kwa_depl['ctype'] = ctype
-          kwa_depl['dtype'] = 'ndarray'
-          kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
-          kwa_depl['shortname'] = shortname
-          kwa_depl['dbsuffix'] = dbsuffix
-          kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
-          kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
+        d = ups.dict_filter(kwa_depl, list_keys=('dskwargs', 'dirrepo','dettype', 'tsshort', \
+              'run', 'run_orig', 'run_beg', 'run_end',\
+              'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
+        logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
+        logger.debug('TOTAL kwa_depl:\n%s' % str(kwa_depl))
 
-          d = ups.dict_filter(kwa_depl, list_keys=('dskwargs', 'dirrepo','dettype', 'tsshort', \
-                'run', 'run_orig', 'run_beg', 'run_end',\
-                'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
-          logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
-
-        if deploy:
-          expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
-
-          if dbsuffix:
-              resp = add_data_and_doc_to_detdb_extended(nda, expname, longname, **kwa_depl)
-          else:
-              # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-              resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
-          if resp:
-              if dbsuffix:
-                  fmt = (None, resp[0], None, resp[1])
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
-              else:
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
-          else:
-              logger.error('constants are not deployed')
-        else:
-          logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+        save_metadata_in_json_file('%s.json' % fname, **kwa_depl)
+        expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
+        nda = load_txt(fmerge) if deploy else None
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **kwa_depl)
 
     logger.info('DIRECT DEPLOYMENT OF CONSTANTS TOTAL TIME: %.3f sec' % (time()-t0_sec_depl))
+
+
+
+def deploy_constants_for_data_and_metadata(nda, expname, _longname, **kwa_depl):
+    deploy = kwa_depl.get('deploy', False)
+    dbsuffix = kwa_depl.get('dbsuffix', '')
+    #longname = kwa_depl.get('longname', None)
+
+    if deploy:
+        if dbsuffix:
+            resp = add_data_and_doc_to_detdb_extended(nda, expname, _longname, **kwa_depl)
+        else:
+            # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            resp = add_data_and_two_docs(nda, expname, _longname, **kwa_depl)
+        if resp:
+            if dbsuffix:
+                fmt = (None, resp[0], None, resp[1])
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
+            else:
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+        else:
+            logger.error('constants are not deployed')
+    else:
+        logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+
+def jungfrau_deploy_constants_from_files(parser, dettype='jungfrau'):
+    """command WITH -F:
+       jungfrau_deploy_constants -k exp=mfx100848724,run=49 -o ./work1 -F [-D]
+    """
+    import psana.detector.utils_psana as up
+    import psana.pyalgos.generic.Utils as gu
+    args = parser.parse_args() # namespae of parameters
+    kwargs = vars(args) # dict of parameters
+    str_dskwargs = kwargs.get('dskwargs', None)
+    repoman = init_repoman_and_logger(**kwargs)
+    repoman.set_dettype(dettype)
+    dmerge = repoman.makedir_merge()
+    logger.info('uses directory for merging: %s' % dmerge)
+    dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=None)
+    #logger.info('DataSource kwargs: %s' % str(dskwargs))
+    ptrn = '-%s-r%04d-' % (dskwargs['exp'], dskwargs['run']) # ex.: -mfx100848724-r0049-
+    logger.debug('pattern: %s' % ptrn)
+    expname = dskwargs.get('exp', None)
+    fnames = uts.get_list_of_files_in_dir_for_pattern(dmerge, pattern=ptrn)
+    fnames = [fn for fn in fnames if '.json' in fn]
+    logger.info('fnames: \n  %s' % '\n  '.join(fnames))
+
+    for fn in fnames:
+        t0_sec_metad = time()
+        metad = load_metadata_from_json_file(fn)
+        # re-define metadata using optional parameters
+        metad['deploy']   = args.deploy
+        metad['ctdepl']   = args.ctdepl
+        metad['logmode']  = args.logmode
+        metad['high']     = args.high
+        metad['medium']   = args.medium
+        metad['low']      = args.low
+        metad['tstamp']   = args.tstamp
+        metad['run_beg']  = args.run_beg
+        metad['run_end']  = args.run_end
+        metad['comment']  = args.comment
+        metad['dbsuffix'] = args.dbsuffix
+        logger.info('\n fname: %s\n loading time: %.6f sec\n metadata: %s' % (fn, time()-t0_sec_metad, metad))
+        longname = metad.get('longname', None)
+        ctype = metad.get('ctype', None)
+        fndata = fn.replace('.json', '.txt')
+        logger.info('ctype:%s fndata: %s' % (ctype, fndata))
+        t0_sec_data = time()
+        nda = load_txt(fndata)
+        logger.info(info_ndarr(nda,'ctype: %s loading time: %.3f sec' % (ctype, time()-t0_sec_data)))
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **metad)
 
 # EOF
