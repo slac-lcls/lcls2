@@ -8,7 +8,7 @@ from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.tools import get_smd_n_events
 
 from .callback_batch import CallbackBatchBuilder
-from .run import RunSmallData
+from .run import CallbackRunState, RunSmallData
 
 
 class BatchIterator(object):
@@ -17,7 +17,7 @@ class BatchIterator(object):
     SmdReaderManager returns this object when a chunk is read.
     """
 
-    def __init__(self, views, configs, dsparms):
+    def __init__(self, views, configs, dsparms, callback_run_state=None):
         self.dsparms = dsparms
 
         # Requires all views
@@ -37,7 +37,12 @@ class BatchIterator(object):
                                    intg_stream_id=dsparms.intg_stream_id,
                                    batch_size=dsparms.batch_size,
                                    use_proxy_events=use_proxy_events)
-            self.run_smd = RunSmallData(self.eb, configs, dsparms)
+            self.run_smd = RunSmallData(
+                self.eb,
+                configs,
+                dsparms,
+                callback_run_state=callback_run_state,
+            )
             self.callback_batch_builder = CallbackBatchBuilder(
                 self.eb,
                 self.run_smd,
@@ -78,6 +83,7 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
+        self.callback_run_state = CallbackRunState() if dsparms.smd_callback else None
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         assert self.n_files > 0
@@ -379,7 +385,12 @@ class SmdReaderManager(object):
         mmrv_bufs = [
             self.smdr.show(i) for i in range(self.n_files)
         ]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self.dsparms)
+        batch_iter = BatchIterator(
+            mmrv_bufs,
+            self.configs,
+            self.dsparms,
+            callback_run_state=self.callback_run_state,
+        )
         self.got_events = self.smdr.view_size
         return batch_iter
 

@@ -13,10 +13,19 @@ if mode == 'mpi':
     from mpi4py import MPI
     rank = MPI.COMM_WORLD.Get_rank()
     size = MPI.COMM_WORLD.Get_size()
-    assert size in (1, 3), "Test test only allow on bigdata core (try again without mpirun or with -n 3)"
+    ps_eb_nodes = int(os.environ.get("PS_EB_NODES", "1"))
+    min_size = 1 + 2 * ps_eb_nodes
+    assert size == 1 or size >= min_size, (
+        "Test requires at least one BD per EB. "
+        f"Use size=1 for serial or mpirun -n >= {min_size} for PS_EB_NODES={ps_eb_nodes}."
+    )
 else:
     rank = 0
     size = 1
+    ps_eb_nodes = 1
+
+# Keep SMD chunks small so multi-EB runs distribute work across EB ranks.
+os.environ["PS_SMD_N_EVENTS"] = "1"
 
 def smd_callback(run):
     edet = run.Detector('HX2:DVD:GCC:01:PMON,hello1')
@@ -37,7 +46,7 @@ def generate_testdata(xtc_path):
     print("Generate test_data")
     if not xtc_path.exists():
         if rank == 0:
-            xtc_path.mkdir()
+            xtc_path.mkdir(parents=True)
             setup_input_files(xtc_path, n_files=2, slow_update_freq=4, n_motor_steps=3, n_events_per_step=10, gen_run2=False)
             print(f"Done generating data in {xtc_path}")
 
@@ -48,23 +57,28 @@ def run_test_loop_callback(xtc_dir, withstep=False):
     else:
         callback = smd_callback
 
-    ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir,
-            smd_callback=callback
-            )
+    ds = DataSource(
+        exp='xpptut15',
+        run=14,
+        dir=xtc_dir,
+        smd_callback=callback,
+        skip_calib_load="all",
+    )
 
     cn_events = 0
     for run in ds.runs():
-        det = run.Detector('xppcspad')
         edet = run.Detector('HX2:DVD:GCC:01:PMON,hello1')
         sdet = run.Detector('motor2')
         for evt in run.events():
-            img = det.raw.calib(evt)
             cn_events +=1
-            print(f'bigdata {cn_events=}', evt.timestamp, img.shape, edet(evt), sdet(evt))
+            print(f'bigdata {cn_events=}', evt.timestamp, edet(evt), sdet(evt))
 
-    # Only checking bigdata rank
-    if ds.unique_user_rank():
-        assert cn_events == 13, f"{cn_events=} expected 13"
+    total_events = cn_events
+    if mode == 'mpi':
+        total_events = MPI.COMM_WORLD.reduce(cn_events, op=MPI.SUM, root=0)
+
+    if rank == 0:
+        assert total_events == 13, f"{total_events=} expected 13"
 
 
 if __name__ == "__main__":

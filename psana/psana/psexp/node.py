@@ -7,6 +7,7 @@ from psana import utils
 from psana.dgram import Dgram
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.events import Events
+from psana.psexp.run import CallbackRunState
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
@@ -968,6 +969,7 @@ class EventBuilderNode(object):
         chunk_id = 0
         rr_next_bd = 1
         enforce_strict_rr = self.dsparms.smd_callback != 0 and n_bd_nodes > 1
+        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
 
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
@@ -983,7 +985,7 @@ class EventBuilderNode(object):
             if not bypass_bd:
                 self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms,
+                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state,
             )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
@@ -1080,10 +1082,13 @@ class EventBuilderNode(object):
                     # Check if destinations are valid
                     destinations = np.asarray(list(smd_batch_dict.keys()))
                     if any(destinations > n_bd_nodes):
-                        self.logger.debug(
-                            f"MESSAGE INVALID_DEST ({destinations}). MUST BE <= {n_bd_nodes} (#N_BDS)"
+                        raise RuntimeError(
+                            "Invalid explicit smd_callback destination(s) %s for local "
+                            "bigdata group size %d. Explicit event destinations are "
+                            "interpreted within each EB's local bd_comm and are only "
+                            "supported reliably with PS_EB_NODES=1."
+                            % (destinations.tolist(), n_bd_nodes)
                         )
-                        break
 
                     while smd_batch_dict:
                         if waiting_bds:  # Check first if there are bd nodes waiting
@@ -1208,6 +1213,7 @@ class EventBuilderNode(object):
     def start_broadcast(self):
         smd_comm = self.comms.smd_comm
         bd_comm = self.comms.bd_comm
+        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
 
         while True:
             smd_chunk = self._request_data(smd_comm)
@@ -1215,7 +1221,7 @@ class EventBuilderNode(object):
                 break
 
             eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms
+                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state
             )
 
             for smd_batch_dict, _ in eb_man.batches():
