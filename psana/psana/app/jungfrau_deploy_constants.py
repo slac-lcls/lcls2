@@ -13,6 +13,7 @@ USAGE = 'Usage:'\
       + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
       + '\n  datinfo -k exp=mfxdaq23,run=7 -d jungfrau # test data'\
       + '\n  %s -k exp=ascdaq023,run=36 -d jungfrau -o ./work # data' % SCRNAME\
+      + '\n  %s -k exp=mfx100848724,run=49 -o ./work1 -F' % SCRNAME\
       + '\nREGULAR COMMAND:'\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work -D # data' % SCRNAME\
       + '\n  %s -k exp=mfxdaq23,run=10,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau' % SCRNAME\
@@ -29,13 +30,14 @@ def argument_parser():
     d_dirrepo = DIR_REPO_JUNGFRAU # './work'
     d_nsegstot= None # e.i. 32 if entire array needs to be saved
     d_deploy  = False
+    d_depfiles= False
     d_logmode = 'INFO'
     d_ctdepl  = 'psrnx' # - for constants from dark, alternatively 'go' - if gain and offset needs to be deployed
     d_paninds = None
     d_high    = None #16.40
     d_medium  = None #5.466
     d_low     = None #0.164
-    d_version = 'V2025-07-14'
+    d_version = 'V2026-03-10'
     d_run_beg = None
     d_run_end = 'end'
     d_comment = 'no comment'
@@ -51,7 +53,8 @@ def argument_parser():
     h_dirrepo = 'non-default repository of calibration results, default = %s' % d_dirrepo
     h_nsegstot= 'total number of segments in the detector at deployment, '\
                 'None - auto-defined from max segment index in data, default = %s' % str(d_nsegstot)
-    h_deploy  = 'deploy constants to the calib dir, default = %s' % d_deploy
+    h_deploy  = 'deploy constants to the calib DB, default = %s' % d_deploy
+    h_depfiles= 'deploy constants to DB from data and metadata files, default = %s' % d_depfiles
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_high    = 'default high   gain ADU/keV, default = %s' % str(d_high)
     h_medium  = 'default medium gain ADU/keV, default = %s' % str(d_medium)
@@ -83,23 +86,28 @@ def argument_parser():
     parser.add_argument('-C', '--comment', default=d_comment,  type=str,   help=h_comment)
     parser.add_argument('-S', '--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)
     parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
+    parser.add_argument('-F', '--depfiles',action='store_true', help=h_depfiles)
 
     return parser
 
 
 def do_main():
 
+    from time import time
+    t0_sec = time()
+
     parser = argument_parser()
     args = parser.parse_args()
     #opts = vars(args)
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
-    assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    #assert args.detname is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
 
-    from time import time
-    from psana.detector.UtilsJungfrauCalib import jungfrau_deploy_constants
-    t0_sec = time()
-    jungfrau_deploy_constants(parser)
+    import psana.detector.UtilsJungfrauCalib as ujc
+    if args.depfiles:
+        ujc.jungfrau_deploy_constants_from_files(parser)
+    else:
+        ujc.jungfrau_deploy_constants(parser)
     logger.info('is completed, consumed time %.3f sec' % (time() - t0_sec))
 
 
