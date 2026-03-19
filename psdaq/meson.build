@@ -10,8 +10,6 @@ rt_dep = cc.find_library('rt', required: false)
 prometheus_core_dep = cc.find_library('prometheus-cpp-core', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
 prometheus_pull_dep = cc.find_library('prometheus-cpp-pull', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
 
-cuda_compiler = find_program('nvcc', required: false)
-
 psdaq_incdir = include_directories('.')
 
 subdir('psdaq')
