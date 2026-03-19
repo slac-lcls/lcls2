@@ -94,6 +94,17 @@ class CuGenerator(pr.Device):
             verify       = False,
         ))
 
+        self.add(pr.RemoteVariable(
+            name         = "cuFiducialResyncCount",
+            description  = "Count of fixed rate marker resyncs",
+            offset       =  0x1C,
+            bitSize      =  16,
+            bitOffset    =  0x0,
+            base         = pr.UInt,
+            mode         = "RO",
+            verify       = False,
+        ))
+
         @self.command(name="ClearFiducialErr", description="Clear the fiducial error latch",)
         def ClearFiducialErr():
             self.cuFiducialIntv.set(0)
