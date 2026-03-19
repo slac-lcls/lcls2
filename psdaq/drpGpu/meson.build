@@ -1,5 +1,4 @@
 
-
 if cuda_compiler.found()
   cuda_args = [
     '-gencode=arch=compute_86,code=sm_86',
@@ -20,6 +19,11 @@ if cuda_compiler.found()
       '-lcuda',
    ]
   )
+
+  cuszp_dep = reducers_proj.dependency('cuSZp_shared')
+  cusz_dep  = reducers_proj.dependency('psz_cu_compile_settings')
+  lc_dep    = reducers_proj.dependency('lc_shared')
+  pfpl_dep  = reducers_proj.dependency('pfpl_shared')
 
   drpgpu_inc_dir = include_directories('..')
 
@@ -135,58 +139,61 @@ if cuda_compiler.found()
     ],
   )
 
-  #https://github.com/burtscher/LC-framework
-  #LcReducer_lib = shared_library('LcReducer',
-  #  'LcReducer.cu',
-  #  include_directories: [
-  #    drpgpu_inc_dir,
-  #    lc_inc_dir,
-  #  ],
-  #  install: true,
-  #  install_rpath: libdir_install_rpath,
-  #  link_with: [],
-  #  dependencies: [
-  #    xtcdata_dep,
-  #    cuda_dep,
-  #    #lc_dep,
-  #  ],
-  #)
+  LcReducer_lib = shared_library('LcReducer',
+    'LcReducer.cu',
+    include_directories: [
+      drpgpu_inc_dir,
+      #lc_inc_dir,
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    dependencies: [
+      xtcdata_dep,
+      cuda_dep,
+      lc_dep,
+      psalg_utils_dep,
+    ],
+  )
 
-  #https://github.com/burtscher/PFPL
-  #PfplReducer_lib = shared_library('PfplReducer',
-  #  'PfplReducer.cu',
-  #  include_directories: [drpgpu_inc_dir],
-  #  install: true,
-  #  install_rpath: libdir_install_rpath,
-  #  link_with: [],
-  #  dependencies: [
-  #    xtcdata_dep,
-  #  ],
-  #)
+  PfplReducer_lib = shared_library('PfplReducer',
+    'PfplReducer.cu',
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    dependencies: [
+      xtcdata_dep,
+      pfpl_dep,
+      psalg_utils_dep,
+    ],
+  )
 
-  #https://github.com/szcompressor/cuSZ
-  #CuSzReducer_lib = shared_library('CuSzReducer',
-  #  'CuSzReducer.cu',
-  #  include_directories: [drpgpu_inc_dir],
-  #  install: true,
-  #  install_rpath: libdir_install_rpath,
-  #  link_with: [],
-  #  dependencies: [
-  #    #xtcdata_dep,
-  #  ],
-  #)
+  CuSzReducer_lib = shared_library('CuSzReducer',
+    'CuSzReducer.cu',
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    dependencies: [
+      xtcdata_dep,
+      cusz_dep,
+      psalg_utils_dep,
+    ],
+  )
 
-  #https://github.com/szcompressor/cuSZp
-  #CuSZpReducer_lib = shared_library('CuSZpReducer',
-  #  'CuSZpReducer.cu',
-  #  include_directories: [drpgpu_inc_dir],
-  #  install: true,
-  #  install_rpath: libdir_install_rpath,
-  #  link_with: [],
-  #  dependencies: [
-  #    xtcdata_dep,
-  #  ],
-  #)
+  CuSZpReducer_lib = shared_library('CuSZpReducer',
+    'CuSZpReducer.cu',
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    dependencies: [
+      xtcdata_dep,
+      cuszp_dep,
+      psalg_utils_dep,
+    ],
+  )
 
   executable('pgpread_gpu',
     [

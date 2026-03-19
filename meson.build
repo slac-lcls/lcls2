@@ -64,6 +64,14 @@ subdir('xtcdata')
 subdir('psalg')
 subdir('psana')
 
+
+cuda_compiler = find_program('nvcc', required: false)
+
+if cuda_compiler.found()
+  cmake = import('cmake')
+  reducers_proj = cmake.subproject('psdaq_reducers')
+endif
+
 if get_option('build_daq')
   subdir('psdaq')
 endif

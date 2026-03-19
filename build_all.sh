@@ -61,6 +61,8 @@ fi
 if command -v nvcc >/dev/null 2>&1; then
   export LDFLAGS_OLD="$LDFLAGS"
   export LDFLAGS=""
+  export CXXFLAGS_OLD="$CXXFLAGS"
+  export CXXFLAGS="" #$(echo "$CXXFLAGS" | sed -E 's/(^| )-fPI(C|E)( |$)/ /g')"
 fi
 
 #########
@@ -142,6 +144,10 @@ if [ $no_daq == 0 ]; then
   cd ..
 fi
 
-# Reset LDFLAGS back:
-export LDFLAGS="$LDFLAGS_OLD"
-unset LDFLAGS_OLD
+if command -v nvcc >/dev/null 2>&1; then
+  # Reset LDFLAGS back:
+  export LDFLAGS="$LDFLAGS_OLD"
+  unset LDFLAGS_OLD
+  export CXXFLAGS="$CXXFLAGS_OLD"
+  unset CXXFLAGS_OLD
+fi

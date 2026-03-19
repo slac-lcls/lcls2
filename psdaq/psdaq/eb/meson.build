@@ -1,7 +1,7 @@
 
 eb_incdir = include_directories('..')
 
-libfabric_dep = cc.find_library('libfabric')
+libfabric_dep = cc.find_library('libfabric', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
 
 service_dep = declare_dependency(
   link_with: service_lib,

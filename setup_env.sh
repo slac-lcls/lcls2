@@ -41,7 +41,10 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    conda activate xpp_drp_cpu_311_dev
+    #conda activate xpp_drp_cpu_311_dev
+    #conda activate ps_20250204
+    #conda activate xpp_drp_gpu_311_dev
+    conda activate ps_20250204_gpu
 else
     echo "CONDA area not found"
     exit 1
