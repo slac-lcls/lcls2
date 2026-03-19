@@ -25,6 +25,60 @@ class DevReset(pr.Device):
         super().__init__(name=name, description=description, **kwargs)
 
         self.add(pr.RemoteVariable(
+            name         = 'timingFbData',
+            description  = "serial data",
+            offset       = 0x00,
+            bitSize      = 18,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
+            name         = 'timingFbRst',
+            description  = "reset",
+            offset       = 0x00,
+            bitSize      = 1,
+            bitOffset    = 18,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
+            name         = 'timingFbLocked',
+            description  = "locked",
+            offset       = 0x00,
+            bitSize      = 1,
+            bitOffset    = 19,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
+            name         = 'timingFbResetDone',
+            description  = "ResetDone",
+            offset       = 0x00,
+            bitSize      = 1,
+            bitOffset    = 20,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
+            name         = 'timingFbBypassDone',
+            description  = "BypassDone",
+            offset       = 0x00,
+            bitSize      = 1,
+            bitOffset    = 21,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
+            name         = 'timingFbBypassErr',
+            description  = "BypassErr",
+            offset       = 0x00,
+            bitSize      = 1,
+            bitOffset    = 22,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+        self.add(pr.RemoteVariable(
             name         = 'clearTimingPhyReset',
             description  = "Clear timingPhyRst",
             offset       = 0x0100,
