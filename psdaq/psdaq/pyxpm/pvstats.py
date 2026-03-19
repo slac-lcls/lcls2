@@ -288,11 +288,12 @@ class CuStatus(object):
         self._device = device
         self._phase  = phase
 
-        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
-        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
-        self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
-        self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
-        self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
+        self._pv_timeStamp     = addPV(name+':TimeStamp'    ,'L')
+        self._pv_pulseId       = addPV(name+':PulseId'      ,'L')
+        self._pv_fiducialIntv  = addPV(name+':FiducialIntv' ,'I')
+        self._pv_fiducialErr   = addPV(name+':FiducialErr'  ,'I')
+        self._pv_fiducialSyncs = addPV(name+':FiducialSyncs','I')
+        self._pv_PhCuToSC      = addPV(name+':CuToSCPhase'  ,'f')
 
     def update(self):
 
@@ -304,10 +305,10 @@ class CuStatus(object):
                 pv.post(value)
 
         timev = divmod(float(time.time_ns()), 1.0e9)
-        updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
-        updatePv(self._pv_pulseId     , self._device.pulseId          .get())
-        updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
-        updatePv(self._pv_PhCuToSC    , self._phase .phase())
+        updatePv(self._pv_timeStamp    , self._device.timeStampSec()         )
+        updatePv(self._pv_pulseId      , self._device.pulseId          .get())
+        updatePv(self._pv_fiducialIntv , self._device.cuFiducialIntv   .get())
+        updatePv(self._pv_PhCuToSC     , self._phase .phase())
 
         def updatePv(pv,v):
             if v is not None:
@@ -317,7 +318,8 @@ class CuStatus(object):
                     value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                     pv.post(value)
 
-        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
+        updatePv(self._pv_fiducialErr  , self._device.cuFiducialIntvErr.get())
+        updatePv(self._pv_fiducialSyncs, self._device.cuFiducialResyncCount.get())
 
 class NoCuStatus(object):
     def __init__(self, name):

@@ -260,6 +260,7 @@ class TPGMini(pr.Device):
 
     def setup(self,isUED):
         if True:
+            print(f'Setting up TPGMini')
             if isUED:
                 self.BaseControl.set(238)
                 #  Set the fixed rate markers
@@ -274,7 +275,6 @@ class TPGMini(pr.Device):
                 self.FixedRateDiv[7].set(     1)  # beam request
                 self.FixedRateDiv[8].set(  1000)  # dest b1
                 self.FixedRateDiv[9].set(   500)  # dest b2
-                self.RateReload.set(1)
 
             else:
                 self.BaseControl.set(200)
@@ -286,11 +286,11 @@ class TPGMini(pr.Device):
                 self.FixedRateDiv[4].set(    91)
                 self.FixedRateDiv[5].set(    13)
                 self.FixedRateDiv[6].set(     1)
+                #  New 35.5 kHz rate for laser sync during NC operation
+                self.FixedRateDiv[7].set(    26)
                 #  And some rate markers tied to beam simulation
-                self.FixedRateDiv[7].set(  9100)  # beam request
                 self.FixedRateDiv[8].set( 91000)  # dest b1
                 self.FixedRateDiv[9].set(  9100)  # dest b2
-                self.RateReload.set(1)
 
             #  Set the AC rate markers
             self.ACRateDiv[0].set(120)
@@ -300,5 +300,6 @@ class TPGMini(pr.Device):
             self.ACRateDiv[4].set(  2)
             self.ACRateDiv[5].set(  1)
             self.ACRateReload.set(1)
+            self.RateReload.set(1)
 
 

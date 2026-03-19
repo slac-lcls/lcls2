@@ -114,9 +114,6 @@ def main():
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
 
-    if isGen or isXTPG:
-        xpm.TPGMini.setup(False)
-
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
                       noTiming=args.T, fidRate=1./args.F)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
@@ -151,6 +148,13 @@ def main():
                     #app.groupL0Reset.set(0xff)
                     #time.sleep(1.e-3)
                     #app.groupL0Reset.set(0)
+
+                    if isGen or isXTPG:
+                        print(f'Setting up TPGMini')
+                        xpm.TPGMini.setup(False)
+                    else:
+                        print(f'No TPGMini')
+
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))

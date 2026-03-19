@@ -115,7 +115,7 @@ def main():
         for gain_mode in gain_modes:
             gain_mode=gain_mode.strip()
             print(f"gain mode: {gain_mode}")
-            events = (gains_dict[gain_mode]['stop'])/gains_dict[gain_mode]['step']
+            events = (gains_dict[gain_mode]['stop'])//gains_dict[gain_mode]['step']
             pulserStart=gains_dict[gain_mode]['start']
             pulserStop=gains_dict[gain_mode]['stop']
             pulserStep=gains_dict[gain_mode]['step']
