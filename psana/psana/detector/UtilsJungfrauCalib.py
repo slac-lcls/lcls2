@@ -196,7 +196,6 @@ def jungfrau_dark_proc(parser):
     events  = args.events
     stepnum = args.stepnum
     stepmax = args.stepmax
-    evcode  = args.evcode
     segind  = args.segind
     igmode  = args.igmode
     dirrepo = args.dirrepo
