@@ -20,13 +20,8 @@ USAGE = 'Usage:'\
       + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY'\
       + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY'\
       + f'\n  mpirun --mca osc ^ucx -n 5 {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY WITH MPIRUN'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 50 --wrapper --skipcmd ### RUN WRAPPER'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 50 --wrapper --submit ### RUN WRAPPER WITHOUT EXECUTING COMMANDS'\
       + f'\nHELP:\n  {SCRNAME} -h'
-#      + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-#      + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
-#      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
-#      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
-#      + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
 #      + '\n'\
 
 
@@ -48,11 +43,11 @@ def argument_parser():
     d_filemode= 0o664
     d_group   = 'ps-users'
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
-    d_int_hi  = M14-3   # highest intensity accepted for dark evaluation, ex: 16000
+    d_int_hi  = M14-1   # highest intensity accepted for dark evaluation, ex: 16000
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
     d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
     d_rms_lo  = 0.001   # rms distribution low
-    d_rms_hi  = M14-3   # rms distribution high, ex: 16000
+    d_rms_hi  = M14-1   # rms distribution high, ex: 16000
     d_rmsnlo  = 6.0     # rms distribution number-of-sigmas low
     d_rmsnhi  = 6.0     # rms distribution number-of-sigmas high
     d_fraclm  = 0.1     # allowed fraction limit
@@ -64,13 +59,13 @@ def argument_parser():
     d_deploy  = False
     d_save    = False
     d_plotim  = 0
-    d_evcode  = None
     d_segind  = None
     d_igmode  = None
     d_wrapper = False
+    d_submit  = False
+    d_stages  = 7
     d_nranks  = 1
-    d_stages  = '7'
-    d_skipcmd = False
+    d_nnodes  = 1
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -101,19 +96,18 @@ def argument_parser():
     h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_version = 'constants version, default = %s' % str(d_version)
-    h_datbits = 'data bits, e.g. 0x7fff is 15-bit mask for epixm320, default = %s' % hex(d_datbits)
+    h_datbits = 'data bits, e.g. 0x3fff is 14-bit mask for jungfrau with 2 bits for gain modes, default = %s' % hex(d_datbits)
     h_save    = 'save constants in repository, default = %s' % d_save
     h_ctdepl    = '(str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
-    h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
-                'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
-    h_nranks  = 'FOR WRAPPER: if >1 then use mpirun -n {nranks}, default = %s' % d_nranks
     h_wrapper = 'FOR WRAPPER: directly run wrapper jungfrau_dark_proc_mpi.sh in stead of python script, default = %s' % d_wrapper
-    h_stages  = 'FOR WRAPPER: bitword 1/2/4 for stages 1/2/3 or any bit combination, default = %s' % d_stages
-    h_skipcmd = 'FOR WRAPPER: skip commands, just show for debugging what script is doing, default = %s' % d_skipcmd
+    h_submit  = 'FOR WRAPPER: submit commands for execution, otherwise show what script is doing for debugging, default = %s' % d_submit
+    h_stages  = 'FOR WRAPPER: bitword 001/010/100 for stages 1/2/3, respectively, or any bit combination, default = %d' % d_stages
+    h_nranks  = 'FOR WRAPPER: passed to sbatch --ntasks-per-node=NRANKS, default = %s' % d_nranks
+    h_nnodes  = 'FOR WRAPPER: number of nodes FOR NOW works for 1 ONLY, default = %s' % d_nnodes
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc2 data for jungfrau')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -146,13 +140,14 @@ def argument_parser():
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
     parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
-    parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
     parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
     parser.add_argument('--wrapper',       action='store_true',              help=h_wrapper)
+    parser.add_argument('--submit',        action='store_true',              help=h_submit)
+    parser.add_argument('--stages',        default=d_stages,     type=int,   help=h_stages)
     parser.add_argument('--nranks',        default=d_nranks,     type=int,   help=h_nranks)
-    parser.add_argument('--stages',        default=d_stages,     type=str,   help=h_stages)
-    parser.add_argument('--skipcmd',       action='store_true',              help=h_skipcmd)
+    parser.add_argument('--nnodes',        default=d_nnodes,     type=int,   help=h_nnodes)
+
     return parser
 
 
@@ -177,9 +172,10 @@ def do_main():
         scr_dir = os.path.dirname(os.path.abspath(__file__))
         scr_name = f'{scr_dir}/jungfrau_dark_proc_wrapper.sh'
         cmd = f'{scr_name} -k {args.dskwargs} -d {args.detname} --nrecs {args.nrecs} --nrecs1 {args.nrecs1} --dirrepo {args.dirrepo} --logmode {args.logmode}'\
-            + f' --nranks {args.nranks} --stages {args.stages}' # for debugging
-        if args.skipcmd: cmd += ' --skipcmd'
-        print(f'RUN SHELL SCRIPT: {cmd}')
+            + f' --datbits {args.datbits} --int_lo {args.int_lo} --int_hi {args.int_hi} --fraclo {args.fraclo} --frachi {args.frachi}'\
+            + f' --stages {args.stages} --nranks {args.nranks} --nnodes {args.nnodes} ' # for debugging
+        if args.submit: cmd += ' --submit'
+        print(f'RUN SHELL SCRIPT-WRAPPER FOR A SEQUENCE OF COMMANDS:\n{cmd}')
         os.system(cmd)
     else:
         from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
