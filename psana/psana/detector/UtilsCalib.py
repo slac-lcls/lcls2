@@ -182,7 +182,6 @@ def proc_block_short(block, **kwa):
     int_hi     = kwa.get('int_hi', datbits-1) # highest intensity accepted for dark evaluation
     fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
-    frac05     = 0.5
 
     logger.debug('in proc_block_short for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
@@ -226,7 +225,7 @@ def proc_block_short(block, **kwa):
     gate_lo = np.maximum(np.floor(arr_qlo), gate_lo).astype(dtype=block.dtype)
     gate_hi = np.minimum(np.ceil(arr_qhi),  gate_hi).astype(dtype=block.dtype)
     cond = gate_hi>gate_lo
-    gate_hi[np.logical_not(cond)] +=1
+    gate_hi[np.logical_not(cond)] +=1 # protection against equal limits
 
     logger.debug('proc_block_short results'\
                 +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\
