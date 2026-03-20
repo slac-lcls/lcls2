@@ -2,19 +2,25 @@
 ####!/usr/bin/env zsh
 
 # LOCAL PARAMETERS:
-# --skipcmd ### for debugging, show what script is doing, but DO NOT EXECUTE COMMANDS
+# --submit ### for debugging, show what script is doing, but DO NOT EXECUTE COMMANDS
 # --stages ### ALL-for all, 1-for stage 1 ONLY, 2-...
 # --nranks ### number of mpirun runks, if 1-no mpi
 
-# lcls2/psana/psana/app/jungfrau_dark_proc_wrapper.sh --skipcmd ### SKIP/DO NOT execute commands of this script, just show structure of calls
 # lcls2/psana/psana/app/jungfrau_dark_proc_wrapper.sh -S 1 ### run stage 1 ONLY !
 # lcls2/psana/psana/app/jungfrau_dark_proc_wrapper.sh -S 2 ### run stage 2 ONLY !
-# jungfrau_dark_proc --wrapper --skipcmd -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stages 7
+# jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stages 7 --wrapper [--submit]
 
+show_argv() {
+    local i=0
+    for arg in "$@"; do
+        i=$((i + 1))
+        printf '  %02d: %s\n' "$i" "$arg"
+    done
+}
 
 # Initialize variables with default values
 M14="0x3fff"
-M14minus="0x3ffc"
+M14minus="0x3ffe"
 
 dskwargs="exp=mfx100848724,run=49" # "exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc"
 detname="jungfrau"
@@ -51,8 +57,9 @@ evcode="None"
 segind="None"
 igmode="None"
 nranks="1"   #"19" 1-no mpi
+nnodes="1"   # FOR NOW WORKS FOR 1 ONLY
 stages="ALL" # expected "1" or "2"
-skipcmd=false # for debudding of this script execute/skip commands
+submit=false # execute/skip commands for debudding of this script
 
 # Loop through all arguments
 while [[ "$#" -gt 0 ]]; do
@@ -189,12 +196,16 @@ while [[ "$#" -gt 0 ]]; do
             nranks="$2"
             shift
             ;;
+        --nnodes)
+            nnodes="$2"
+            shift
+            ;;
         -S|--stages)
             stages="$2"
             shift
             ;;
-        --skipcmd)
-            skipcmd=true
+        --submit)
+            submit=true
             shift
             ;;
         *)
@@ -206,18 +217,13 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 istages=$(($stages))
-
 ((stage1 = istages & 1)); [[ stage1 -gt 0 ]] && stage1=true || stage1=false
 ((stage2 = istages & 2)); [[ stage2 -gt 0 ]] && stage2=true || stage2=false
 ((stage3 = istages & 4)); [[ stage3 -gt 0 ]] && stage3=true || stage3=false
 
-echo "--stages $stages"
-echo "stage1:  $stage1"
-echo "stage2:  $stage2"
-echo "stage3:  $stage3"
-echo "skipcmd: $skipcmd"
-
-#exit 0
+echo
+echo "in $0"
+echo "--stages $stages: do stages 1/2/3: $stage1/$stage2/$stage3"
 
 script_dir=$(dirname "$(realpath "$0")")
 echo "script_dir: $script_dir"
@@ -228,11 +234,12 @@ c12="--dirmode $dirmode --filemode $filemode --events $events -e $evstep"
 c13="--int_lo $int_lo --int_hi $int_hi --intnlo $intnlo --intnhi $intnhi --rms_lo $rms_lo --rms_hi $rms_hi --rmsnlo $rmsnlo --rmsnhi $rmsnhi"
 c14="--fraclm $fraclm --fraclo $fraclo --frachi $frachi -v $version --datbits $datbits -D $deploy -p $plotim -c $evcode -I $segind -G $igmode"
 c1="$c11 $c12 $c13 $c14"
+c01="--datbits $datbits --int_lo $int_lo --int_hi $int_hi --fraclo $fraclo --frachi $frachi"
 
 #echo $c1
 cmnpars="-k $dskwargs -d $detname -o $dirrepo -L $logmode"
 cmd00="jungfrau_dark_proc $cmnpars" ### "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1"
-cmd10="$cmd00 --nrecs $nrecs1 --nrecs1 $nrecs1"
+cmd10="$cmd00 --nrecs $nrecs1 --nrecs1 $nrecs1 $c01"
 cmd11="$cmd10 --stepnum 0"
 cmd12="$cmd10 --stepnum 1"
 cmd13="$cmd10 --stepnum 2"
@@ -271,16 +278,15 @@ if $stage1; then
   echo
   echo "=== STAGE 1 - evaluate intensity gates for $fraclo and $frachi part of statistics on $nrecs1 events"
 
-  if [[ "$skipcmd" == false ]]; then nohup $cmd11 >/dev/null 2>&1 & fi
+  if $submit; then nohup $cmd11 >/dev/null 2>&1 & fi
   pid11=$!
   echo "started PID $pid11 for command: $cmd11"
 
-  if [[ "$skipcmd" == false ]]; then nohup $cmd12 >/dev/null 2>&1 & fi
+  if $submit; then nohup $cmd12 >/dev/null 2>&1 & fi
   pid12=$!
   echo "started PID $pid12 for command: $cmd12"
-
-  echo "run command: $cmd13"
-  if [[ "$skipcmd" == false ]]; then $cmd13; fi
+  echo "             run command: $cmd13"
+  if $submit; then $cmd13; fi
 
   for p in {$pid11,$pid12}; do
     if ps -p $p > /dev/null; then
@@ -310,10 +316,12 @@ if $stage2; then
   #### Test: sbatch --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 100 --nrecs1 0"
   #### Ex: sbatch --wait --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
   #cmd_sbatch="sbatch --wait --ntasks-per-node $nranks $script_dir/jungfrau_dark_proc_sbatch.sh \"$cmd20\""
-  cmd_sbatch="sbatch --export=ALL --ntasks-per-node $nranks $script_dir/jungfrau_dark_proc_sbatch.sh \"$cmd20\""
+  file="$script_dir/jungfrau_dark_proc_sbatch.sh"
+  cmd_sbatch=(sbatch --export=ALL --nodes=$nnodes --ntasks-per-node=$nranks "$file" "$cmd20")
   echo "command for sbatch: $cmd20"
-  echo "cmd_sbatch: $cmd_sbatch"
-  if [[ "$skipcmd" == false ]]; then $cmd_sbatch; fi
+  echo "cmd_sbatch split arguments:"
+  show_argv "${cmd_sbatch[@]}"
+  if $submit; then "${cmd_sbatch[@]}"; fi
 fi # $stage2
 
 
@@ -321,6 +329,7 @@ if $stage3; then
   echo
   echo "=== STAGE 3 - deploy calibration constants"
   echo "run command: $cmd30"
+  if $submit; then "$cmd30"; fi
 fi # $stage3
 
 
