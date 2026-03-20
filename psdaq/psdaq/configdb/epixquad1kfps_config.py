@@ -31,6 +31,8 @@ seglist = [0,1,2,3,4]
 
 DEBUG_PIXEL_MASK_SAVED=False
 DEBUG_ADC_TRAIN_WRITE=False
+DEBUG_RANDOM_PIXEL_MAP=False
+USE_ACCELERATED_MATRIX_WRITE=False
 
 def get_trigger_buffers():
     """
@@ -449,20 +451,24 @@ def config_expert(base, cfg, writePixelMap=True):
             pixelConfigMap = np.reshape(a,(16,178,192))
 
             # ***CAUTION ONLY FOR DEBUGGING *** Enable here to test pixel by pixel write
-            #shape = (16, 178, 192)
-            #pixelConfigMap = np.random.choice([8, 12], size=shape, p=[0.5, 0.5]).astype(np.uint8)
+            if DEBUG_RANDOM_PIXEL_MAP:
+                shape = (16, 178, 192)
+                pixelConfigMap = np.random.choice([8, 12], size=shape, p=[0.5, 0.5]).astype(np.uint8)
 
-            if False:
+            matrix_cfg_t0 = time.perf_counter()
+            if USE_ACCELERATED_MATRIX_WRITE:
                 #
                 #  Accelerated matrix configuration (~2 seconds)
                 #
                 #  Found that gain_mode is mapping to [M/M/L/M/M]
                 #    Like trbit is always zero (Saci was disabled!)
                 #
+                accel_t0 = time.perf_counter()
                 core = cbase.SaciConfigCore
                 core.enable.set(True)
                 core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
                 core.enable.set(False)
+                print(f'SetAsicsMatrix accelerated write took {time.perf_counter() - accel_t0:.3f} s')
                 if DEBUG_PIXEL_MASK_SAVED:
                     saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
                     print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
@@ -488,6 +494,8 @@ def config_expert(base, cfg, writePixelMap=True):
 
                 #  Now fix any pixels not at the common value
                 banks = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
+                changed_pixels = 0
+                per_pixel_t0 = time.perf_counter()
                 for i in asics:
                     saci = cbase.Epix10kaSaci[i]
                     nrows = pixelConfigMap.shape[1]
@@ -498,6 +506,7 @@ def config_expert(base, cfg, writePixelMap=True):
                     for row in range(nrows):
                         for col in range(ncols):
                             if pixelConfigMap[i,row,col]!=masic[i]:
+                                changed_pixels += 1
                                 if row >= (nrows>>1):
                                     mrow = row - (nrows>>1)
                                     if col < (ncols>>1):
@@ -519,14 +528,16 @@ def config_expert(base, cfg, writePixelMap=True):
                                 saci.RowCounter.set(row)
                                 saci.ColCounter.set(bankOffset | (mcol%48))
                                 saci.WritePixelData.set(int(pixelConfigMap[i,row,col]))
+                logging.info('SetAsicsMatrix per-pixel write took %.3f s (%d pixel updates)',
+                             time.perf_counter() - per_pixel_t0, changed_pixels)
 
                 if DEBUG_PIXEL_MASK_SAVED:
                     saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
                     print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
 
-            logging.debug('SetAsicsMatrix complete')
+            logging.info(f'SetAsicsMatrix complete in {time.perf_counter() - matrix_cfg_t0:.3f} s')
         else:
-            print('writePixelMap but no new map')
+            logging.info('writePixelMap but no new map')
             logging.debug(cfg)
 
     #  Important that Asic IsEn is True while configuring and false when running

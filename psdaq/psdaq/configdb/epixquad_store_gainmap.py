@@ -51,7 +51,14 @@ def epixquad_readmap(fname,gains):
     vgain1 = gain_dict[gains[1]]['value']
 
     e = np.genfromtxt(fname,dtype=np.uint8)
-    e = e*vgain1 + (vgain0-vgain1)
+    # Map binary mask values directly onto the requested gains:
+    # input 0 -> gains[0], input 1 -> gains[1].
+    e = e * (vgain1 - vgain0) + vgain0
+    # break the elements into quads
+    # expected format is 4 quads (each quad is 2 x 2 asics) with the following layout:
+    #           384
+    # 352 |------0------|------1------|
+    # 352 |------3------|------2------|
     e = np.vsplit(e,4)
     
     #  break the elements into asics
