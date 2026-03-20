@@ -20,10 +20,14 @@ if cuda_compiler.found()
    ]
   )
 
-  cuszp_dep = reducers_proj.dependency('cuSZp_shared')
-  cusz_dep  = reducers_proj.dependency('psz_cu_compile_settings')
-  lc_dep    = reducers_proj.dependency('lc_shared')
-  pfpl_dep  = reducers_proj.dependency('pfpl_shared')
+  conda_opt = ['conda_prefix=' + conda_base]
+  lc_proj = subproject('lc', default_options: conda_opt)
+  lc_dep = lc_proj.get_variable('lc_dep')
+  pfpl_proj = subproject('pfpl', default_options: conda_opt)
+  pfpl_dep = pfpl_proj.get_variable('pfpl_dep')
+
+  cusz_dep  = cusz_proj.dependency('psz_cu_compile_settings')
+  cuszp_dep = cuszp_proj.dependency('cuSZp_shared')
 
   drpgpu_inc_dir = include_directories('..')
 
@@ -147,7 +151,6 @@ if cuda_compiler.found()
     ],
     install: true,
     install_rpath: libdir_install_rpath,
-    link_with: [],
     dependencies: [
       xtcdata_dep,
       cuda_dep,

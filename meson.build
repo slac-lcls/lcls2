@@ -69,7 +69,8 @@ cuda_compiler = find_program('nvcc', required: false)
 
 if cuda_compiler.found()
   cmake = import('cmake')
-  reducers_proj = cmake.subproject('psdaq_reducers')
+  cusz_proj = cmake.subproject('cusz')
+  cuszp_proj = cmake.subproject('cuszp')
 endif
 
 if get_option('build_daq')

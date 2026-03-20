@@ -1,0 +1,9 @@
+[wrap-git]
+url = https://github.com/szcompressor/cuSZ.git
+revision = 0976ab46840995892ad6205628a3f0a5eb86fdf0
+depth = 1
+method = cmake
+patch_directory = cusz
+
+#[provide]
+#dependency_names = cusz_dep
