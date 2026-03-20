@@ -100,8 +100,22 @@ def _force_mfx_overrides(exp, kwargs):
     prev_batch_size = kwargs.get("batch_size")
     batch_size = prev_batch_size if prev_batch_size is not None else 1000
     node_count = _detect_node_count()
+    capped_eb_nodes = False
     if node_count > 0:
-        os.environ["PS_EB_NODES"] = str(node_count)
+        if prev_eb_nodes is None:
+            os.environ["PS_EB_NODES"] = str(node_count)
+        else:
+            try:
+                requested_eb_nodes = int(prev_eb_nodes)
+            except ValueError:
+                os.environ["PS_EB_NODES"] = str(node_count)
+                capped_eb_nodes = True
+            else:
+                if requested_eb_nodes < 1 or requested_eb_nodes > node_count:
+                    os.environ["PS_EB_NODES"] = str(node_count)
+                    capped_eb_nodes = True
+                else:
+                    os.environ["PS_EB_NODES"] = str(requested_eb_nodes)
     os.environ["PS_SMD_N_EVENTS"] = "5000"
     batch_override = batch_size > 10
     if batch_override:
@@ -122,6 +136,8 @@ def _force_mfx_overrides(exp, kwargs):
                 prev_smd_n_events if prev_smd_n_events is not None else "unset",
             )
         )
+        if capped_eb_nodes:
+            msg += ", capped PS_EB_NODES to detected node count %s" % node_count
         if batch_override:
             msg += ", batch_size=1 (was %s)" % (prev_batch_size if prev_batch_size is not None else "unset")
         logger.debug(msg)
