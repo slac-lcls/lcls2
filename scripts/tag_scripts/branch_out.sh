@@ -15,7 +15,7 @@ NC='\033[0m' # No Color
 
 HUTCH_NAME="$1"
 REMOTE_DIR="$2"
-LOCAL_BASE_DIR="/sdf/home/m/mavaylon/mavaylon/tag_scripts/local/lcls2"
+LOCAL_BASE_DIR="/cds/sw/ds/ana/test_lcl2/ssh_clone/lcls2"
 
 # Check for required arguments
 if [ -z "$1" ] || [ -z "$2" ]; then
