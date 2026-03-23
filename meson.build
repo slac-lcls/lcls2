@@ -10,6 +10,7 @@ project(
 cuda_exists = add_languages('cuda', required: false, native: false)
 
 conda_base = get_option('conda_prefix')
+cuda_base = get_option('custom_cuda_path')
 py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
@@ -52,7 +53,7 @@ add_project_link_arguments(
     '-Xlinker=-z,now',
     '-Xlinker=-rpath,' + join_paths(conda_base, 'lib'),
     '-L' + join_paths(conda_base, 'lib'),
-    '-L,' + join_paths(conda_base, 'targets/x86_64-linux/lib'),
+    '-L' + join_paths(conda_base, 'targets/x86_64-linux/lib'),
   ],
   language: 'cuda'
 )
