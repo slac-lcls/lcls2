@@ -21,6 +21,12 @@ namespace Drp {
 namespace Pds {
   namespace Trg {
 
+    enum class GpuDispatchType : uint8_t
+    {
+      None,
+      TmoTeb
+    };
+
     class TriggerPrimitive
     {
     public:
@@ -41,6 +47,7 @@ namespace Pds {
                            size_t    const        outBufsCnt,
                            unsigned  const&       index,
                            unsigned  const        nPanels) {}
+      virtual GpuDispatchType gpuDispatchType() const { return GpuDispatchType::None; }
       virtual size_t size() const = 0;
     };
   }

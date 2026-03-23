@@ -6,6 +6,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
 #include "psdaq/trigger/TriggerPrimitive.hh"
+#include "psdaq/trigger/tmoTebPrimitive_gpu_dev.hh"
 #include "psdaq/eb/eb.hh"
 
 // Uncomment to dump a tracebuffer when a PGPReader event counter jump occurs
@@ -34,6 +35,7 @@ Collector::Collector(const Parameters&                  para,
                      const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool            (pool),
   m_triggerPrimitive(triggerPrimitive),
+  m_gpuDispatchType (triggerPrimitive ? triggerPrimitive->gpuDispatchType() : Trg::GpuDispatchType::None),
   m_terminate       (terminate),
   m_terminate_d     (terminate_d),
   m_readerQueue     (reader->queue()), // Buffer index queue for Reader to Collector comms
@@ -113,48 +115,41 @@ int Collector::_setupGraph()
   return 0;
 }
 
-// This kernel collects and event builds contributions from the DMA streams
-static __global__
-void _collector(unsigned*      const  __restrict__ head,
-                unsigned*      const  __restrict__ tail,
-                RingIndexDtoD* const  __restrict__ readerQueue,
-                cuda::std::atomic<unsigned> const& terminate)
+// This device function collects and event builds contributions from the DMA streams
+static __device__
+void _collectorStep(unsigned*      const  __restrict__ head,
+                    unsigned*      const  __restrict__ tail,
+                    RingIndexDtoD* const  __restrict__ readerQueue,
+                    cuda::std::atomic<unsigned> const& terminate)
 {
-  int panel = blockIdx.x * blockDim.x + threadIdx.x;
-  //printf("### Collector: panel %u, tail %u, head %u\n", panel, tail, head);
+  //printf("### Collector: tail %u, head %u\n", tail, head);
 
   // Refresh the head if the tail has caught up to it
   // It might be desireable to refresh the head on every call, but that could
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
   if (*tail == *head) {
-    __shared__ unsigned hd0;
-
     // Get one intermediate buffer index per FPGA
-    unsigned hdN;
-    while ((hdN = readerQueue->pend()) == *head) {
-      if (terminate.load(cuda::std::memory_order_acquire))  return;
+    unsigned hd;
+    unsigned ns{8};
+    while ((hd = readerQueue->pend()) == *head) {
+      if (terminate.load(cuda::std::memory_order_acquire))
+        return;
+      __nanosleep(ns);
+      if (ns < 256)  ns *= 2;
     }
-    //printf("### Collector: panel %u, hdN %u\n", panel, hdN);
-    if (panel == 0)  hd0 = hdN;
+    //printf("### Collector: hd %u\n", hd);
 
-    // @todo: grp.sync();
-    __syncthreads();
-
-    if (hdN != hd0) {                   // Do this even for panel == 0?
-      printf("Index mismatch for FPGA[%u]: %u != %u", panel, hdN, hd0);
-      while (true);                     // abort(); ???
-    }
     // Advance head
-    if (panel == 0)  *head = hdN;
+    *head = hd;
   }
 }
 
 // This will re-launch the current graph
-static __global__
-void _graphLoop(unsigned*      const  __restrict__ idx,
-                RingIndexDtoH* const  __restrict__ collectorQueue,
-                cuda::std::atomic<unsigned> const& terminate)
+static __device__
+void _graphLoopStep(unsigned*      const  __restrict__ idx,
+                    RingIndexDtoH* const  __restrict__ collectorQueue,
+                    cuda::std::atomic<unsigned> const& terminate)
 {
   if (terminate.load(cuda::std::memory_order_acquire))  return;
 
@@ -164,7 +159,47 @@ void _graphLoop(unsigned*      const  __restrict__ idx,
   //printf("### Collector: posted, new idx %u\n", *idx);
 
   // This will re-launch the current graph
+  //printf("### Collector: relaunch\n");
   cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+}
+
+struct NoEventFn
+{
+  __device__
+  void operator()(float     const* const,
+                  const size_t,
+                  uint32_t* const* const,
+                  const size_t,
+                  const unsigned,
+                  const unsigned) const
+  {
+  }
+};
+
+template<typename EventFn>
+static __global__
+void _fusedCollector(unsigned*        const __restrict__ head,
+                     unsigned*        const __restrict__ tail,
+                     RingIndexDtoD*   const __restrict__ readerQueue,
+                     RingIndexDtoH*   const __restrict__ collectorQueue,
+                     cuda::std::atomic<unsigned> const&  terminate,
+                     EventFn                             eventFn,
+                     float     const* const              calibBuffers,
+                     size_t           const              calibBufsCnt,
+                     uint32_t* const* const              out,
+                     size_t           const              outBufsCnt,
+                     unsigned         const              nPanels)
+{
+  // Find which pebble buffers are ready for processing
+  _collectorStep(head, tail, readerQueue, terminate);
+
+  if (terminate.load(cuda::std::memory_order_acquire))  return;
+
+  // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
+  eventFn(calibBuffers, calibBufsCnt, out, outBufsCnt, *tail, nPanels);
+
+  // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
+  _graphLoopStep(tail, collectorQueue, terminate);
 }
 
 cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
@@ -182,25 +217,38 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
     return 0;
   }
 
-  // Find which pebble buffers are ready for processing
-  _collector<<<1, 1, 0, stream>>>(m_head,
-                                  m_tail,
-                                  m_readerQueue.d,
-                                  m_terminate_d);
-
-  // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
-    m_triggerPrimitive->event(stream,
-                              calibBuffers,
-                              calibBufsCnt,
-                              hostWrtBufs_d,
-                              hostWrtBufsCnt,
-                              *m_tail,
-                              nPanels);
+  unsigned threads = 1;
+  unsigned blocks  = 1;
+  printf("Collector blocks %u * threads %u = %u threads\n", blocks, threads, blocks * threads);
+  switch (m_gpuDispatchType) {
+    case Trg::GpuDispatchType::TmoTeb:
+      _fusedCollector<<<blocks, threads, 0, stream>>>(m_head,
+                                                      m_tail,
+                                                      m_readerQueue.d,
+                                                      m_collectorQueue.d,
+                                                      m_terminate_d,
+                                                      Trg::TmoTebEventFn{},
+                                                      calibBuffers,
+                                                      calibBufsCnt,
+                                                      hostWrtBufs_d,
+                                                      hostWrtBufsCnt,
+                                                      nPanels);
+      break;
+    case Trg::GpuDispatchType::None:
+    default:
+      _fusedCollector<<<blocks, threads, 0, stream>>>(m_head,
+                                                      m_tail,
+                                                      m_readerQueue.d,
+                                                      m_collectorQueue.d,
+                                                      m_terminate_d,
+                                                      NoEventFn{},
+                                                      calibBuffers,
+                                                      calibBufsCnt,
+                                                      hostWrtBufs_d,
+                                                      hostWrtBufsCnt,
+                                                      nPanels);
+      break;
   }
-
-  // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
-  _graphLoop<<<1, 1, 0, stream>>>(m_tail, m_collectorQueue.d, m_terminate_d);
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph),
@@ -218,6 +266,7 @@ void Collector::start()
   resetEventCounter();
 
   // Launch the Collector graph
+  printf("*** Collector: Launching graph\n");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
 

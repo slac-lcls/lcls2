@@ -13,6 +13,6 @@ void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       unsigned  const&       index,
                                       unsigned  const        nPanels)
 {
-  logging::critical("TriggerPrimitive::setupGpu called by a CPU DRP");
+  logging::critical("TmoTebPrimitive::setupGpu called by a CPU DRP");
   abort();
 }

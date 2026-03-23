@@ -10,13 +10,11 @@
 #include "MemPool.hh"
 #include "RingIndex_DtoD.hh"
 #include "RingIndex_DtoH.hh"
+#include "psdaq/trigger/TriggerPrimitive.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 namespace Pds {
   class TimingHeader;
-  namespace Trg {
-    class TriggerPrimitive;
-  }
 }
 
 namespace Drp {
@@ -74,6 +72,7 @@ private:
 private:
   MemPoolGpu&                        m_pool;
   Pds::Trg::TriggerPrimitive*        m_triggerPrimitive;
+  Pds::Trg::GpuDispatchType          m_gpuDispatchType;
   const std::atomic<bool>&           m_terminate;
   const cuda::std::atomic<unsigned>& m_terminate_d;
   cudaStream_t                       m_stream;

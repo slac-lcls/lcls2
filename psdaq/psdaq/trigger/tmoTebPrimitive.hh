@@ -26,7 +26,8 @@ namespace Pds {
                    size_t    const        outBufsCnt,
                    unsigned  const&       index,
                    unsigned  const        nPanels) override;
-      size_t size() const override  { return sizeof(TmoTebData); }
+      GpuDispatchType gpuDispatchType() const override { return GpuDispatchType::TmoTeb; }
+    size_t size() const override  { return sizeof(TmoTebData); }
     };
   }
 }
