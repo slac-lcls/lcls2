@@ -36,11 +36,11 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except zmq.Again:
-            logging.error('getState() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.error('getState(%s) timeout (%.1f sec)' % (self.front_req_endpoint, self.timeout / 1000.))
             logging.info('getState() reinitializing zmq socket')
             self.front_req_init()
         except Exception as ex:
-            logging.error('getState() Exception: %s' % ex)
+            logging.error('getState(%s) Exception: %s' % (self.front_req_endpoint, ex))
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -61,11 +61,11 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except zmq.Again:
-            logging.error('getPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.error('getPlatform(%s) timeout (%.1f sec)' % (self.front_req_endpoint, self.timeout / 1000.))
             logging.info('getPlatform() reinitializing zmq socket')
             self.front_req_init()
         except Exception as ex:
-            logging.error('getPlatform() Exception: %s' % ex)
+            logging.error('getPlatform(%s) Exception: %s' % (self.front_req_endpoint, ex))
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -97,11 +97,11 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except zmq.Again:
-            logging.error('storeJsonConfig() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.error('storeJsonConfig(%s) timeout (%.1f sec)' % (self.front_req_endpoint, self.timeout / 1000.))
             logging.info('storeJsonConfig() reinitializing zmq socket')
             self.front_req_init()
         except Exception as ex:
-            logging.error('storeJsonConfig() Exception: %s' % ex)
+            logging.error('storeJsonConfig(%s) Exception: %s' % (self.front_req_endpoint, ex))
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -122,11 +122,11 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except zmq.Again:
-            logging.error('selectPlatform() timeout (%.1f sec)' % (self.timeout / 1000.))
+            logging.error('selectPlatform(%s) timeout (%.1f sec)' % (self.front_req_endpoint, self.timeout / 1000.))
             logging.info('selectPlatform() reinitializing zmq socket')
             self.front_req_init()
         except Exception as ex:
-            logging.error('selectPlatform() Exception: %s' % ex)
+            logging.error('selectPlatform(%s) Exception: %s' % (self.front_req_endpoint, ex))
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -147,7 +147,7 @@ class DaqControl:
             self.fast_req.send_json(msg)
             reply = self.fast_req.recv_json()
         except Exception as ex:
-            print('getInstrument() Exception: %s' % ex)
+            print('getInstrument(%s) Exception: %s' % (self.fast_req_endpoint, ex))
         else:
             try:
                 r1 = reply['body']['instrument']
@@ -168,7 +168,7 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
-            print('getStatus() Exception: %s' % ex)
+            print('getStatus(%s) Exception: %s' % (self.front_req_endpoint, ex))
         except KeyboardInterrupt:
             print('KeyboardInterrupt')
         else:
@@ -246,11 +246,11 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except zmq.Again:
-            errorMessage = 'setState() timeout (%.1f sec)' % (self.timeout / 1000.)
+            errorMessage = 'setState(%s) timeout (%.1f sec)' % (self.front_req_endpoint, self.timeout / 1000.)
             logging.info('setState() reinitializing zmq socket')
             self.front_req_init()
         except Exception as ex:
-            errorMessage = 'setState() Exception: %s' % ex
+            errorMessage = 'setState(%s) Exception: %s' % (self.front_req_endpoint, ex)
         else:
             try:
                 errorMessage = reply['body']['err_info']
@@ -269,7 +269,7 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
-            errorMessage = 'setConfig() Exception: %s' % ex
+            errorMessage = 'setConfig(%s) Exception: %s' % (self.front_req_endpoint, ex)
         else:
             try:
                 errorMessage = reply['body']['err_info']
@@ -295,7 +295,7 @@ class DaqControl:
                 self.fast_req.send_json(msg)
                 reply = self.fast_req.recv_json()
             except Exception as ex:
-                errorMessage = 'setRecord() Exception: %s' % ex
+                errorMessage = 'setRecord(%s) Exception: %s' % (self.fast_req_endpoint, ex)
             else:
                 try:
                     errorMessage = reply['body']['err_info']
@@ -317,7 +317,7 @@ class DaqControl:
             reply = self.fast_req.recv_json()
             logging.debug(f'getBlock reply={reply}')
         except Exception as ex:
-            print('getBlock() Exception 1: %s' % ex)
+            print('getBlock(%s) Exception 1: %s' % (self.fast_req_endpoint, ex))
         else:
             try:
                 r1 = reply['body']
@@ -343,7 +343,7 @@ class DaqControl:
                 self.front_req.send_json(msg)
                 reply = self.front_req.recv_json()
             except Exception as ex:
-                errorMessage = 'setBypass() Exception: %s' % ex
+                errorMessage = 'setBypass(%s) Exception: %s' % (self.front_req_endpoint, ex)
             else:
                 try:
                     errorMessage = reply['body']['err_info']
@@ -368,7 +368,7 @@ class DaqControl:
             self.front_req.send_json(msg)
             reply = self.front_req.recv_json()
         except Exception as ex:
-            errorMessage = 'setTransition() Exception: %s' % ex
+            errorMessage = 'setTransition(%s) Exception: %s' % (self.front_req_endpoint, ex)
         else:
             try:
                 errorMessage = reply['body']['err_info']
