@@ -20,7 +20,7 @@ USAGE = 'Usage:'\
       + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY'\
       + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY'\
       + f'\n  mpirun --mca osc ^ucx -n 5 {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY WITH MPIRUN'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 50 --wrapper --submit ### RUN WRAPPER WITHOUT EXECUTING COMMANDS'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 50 --wrapper --submit ### RUN WRAPPER AND SUBMIT COMMANDS FOR EXECUTIOBN'\
       + f'\nHELP:\n  {SCRNAME} -h'
 #      + '\n'\
 
@@ -53,18 +53,17 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-03-05'
+    d_version = 'V2026-03-23'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
     d_ctdepl  = 'psr'   # for constants from dark, 'psrnx'
     d_deploy  = False
     d_save    = False
     d_plotim  = 0
     d_segind  = None
-    d_igmode  = None
     d_wrapper = False
     d_submit  = False
     d_stages  = 7
-    d_nranks  = 1
+    d_nranks  = 19
     d_nnodes  = 1
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
@@ -102,12 +101,11 @@ def argument_parser():
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
-    h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
     h_wrapper = 'FOR WRAPPER: directly run wrapper jungfrau_dark_proc_mpi.sh in stead of python script, default = %s' % d_wrapper
-    h_submit  = 'FOR WRAPPER: submit commands for execution, otherwise show what script is doing for debugging, default = %s' % d_submit
-    h_stages  = 'FOR WRAPPER: bitword 001/010/100 for stages 1/2/3, respectively, or any bit combination, default = %d' % d_stages
+    h_submit  = 'FOR WRAPPER: submit commands for execution, otherwise show what wrapper is doing for debugging, default = %s' % d_submit
+    h_stages  = 'FOR WRAPPER: bitword 001/010/100 for stages 1/2/3, respectively, or any other bit combination, default = %d' % d_stages
     h_nranks  = 'FOR WRAPPER: passed to sbatch --ntasks-per-node=NRANKS, default = %s' % d_nranks
-    h_nnodes  = 'FOR WRAPPER: number of nodes FOR NOW works for 1 ONLY, default = %s' % d_nnodes
+    h_nnodes  = 'FOR WRAPPER: number of nodes, default = %s' % d_nnodes
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc2 data for jungfrau')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -141,7 +139,6 @@ def argument_parser():
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
     parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
-    parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
     parser.add_argument('--wrapper',       action='store_true',              help=h_wrapper)
     parser.add_argument('--submit',        action='store_true',              help=h_submit)
     parser.add_argument('--stages',        default=d_stages,     type=int,   help=h_stages)
@@ -173,14 +170,22 @@ def do_main():
         scr_name = f'{scr_dir}/jungfrau_dark_proc_wrapper.sh'
         cmd = f'{scr_name} -k {args.dskwargs} -d {args.detname} --nrecs {args.nrecs} --nrecs1 {args.nrecs1} --dirrepo {args.dirrepo} --logmode {args.logmode}'\
             + f' --datbits {args.datbits} --int_lo {args.int_lo} --int_hi {args.int_hi} --fraclo {args.fraclo} --frachi {args.frachi}'\
-            + f' --stages {args.stages} --nranks {args.nranks} --nnodes {args.nnodes} ' # for debugging
+            + f' --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
+            + f' --int_hi {args.int_hi} --int_lo {args.int_lo} --intnhi {args.intnhi} --intnlo {args.intnlo}'\
+            + f' --rms_hi {args.rms_hi} --rms_lo {args.rms_lo} --rmsnhi {args.rmsnhi} --rmsnlo {args.rmsnlo} --fraclm {args.fraclm}'\
+            + f' --stages {args.stages} --nranks {args.nranks} --nnodes {args.nnodes}'
+        #   + f' --events {args.events} --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
+        ### ADD BOOL FIELDS FOR STAGE 2 AND 3
         if args.submit: cmd += ' --submit'
-        print(f'RUN SHELL SCRIPT-WRAPPER FOR A SEQUENCE OF COMMANDS:\n{cmd}')
+        if args.deploy: cmd += ' --deploy'
+        if args.save:   cmd += ' --save'
+        print(f'RUN SHELL SCRIPT-WRAPPER FOR SEQUENCE OF COMMANDS:\n{cmd}')
         os.system(cmd)
     else:
         from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
         jungfrau_dark_proc(parser)
 
+    if not args.submit: print('\nadd option --submit to execute commands\n')
     print('%s %s TOTAL TIME %.3f sec' % (SCRNAME, 'shell wrapper' if args.wrapper else 'script', time() - t0_sec_tot))
 
 if __name__ == "__main__":
