@@ -9,6 +9,11 @@ option('conda_prefix',
   description: 'Path to conda env directory',
 )
 
+option('custom_cuda_path',
+  type: 'string',
+  description: 'Path to cuda s install directory',
+)
+
 option('epics_base',
   type: 'string',
   description: 'Path to epics base',

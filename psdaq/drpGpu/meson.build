@@ -8,30 +8,46 @@ if cuda_compiler.found()
     #'--verbose',
   ]
 
-  cuda_dep = declare_dependency(
-    include_directories: [
-      include_directories(join_paths(conda_base, 'targets/x86_64-linux/include/')),
-      include_directories(join_paths(conda_base, 'targets/x86_64-linux/include/cccl/')),
-    ],
-    link_args: [
-      '-L' + join_paths(join_paths(conda_base, 'targets/x86_64-linux/lib/')),
-      '-lcudart',
-      '-lcuda',
-   ]
+  if cuda_base != ''
+    # using CUDA_ROOT
+    cuda_path = cuda_base
+  else
+    # use cuda in conda
+    cuda_path = conda_base
+  endif
+
+  cuda_inc_dir = include_directories([
+      join_paths(cuda_path, 'targets/x86_64-linux/include'),
+      join_paths(cuda_path, 'targets/x86_64-linux/include/cccl/')
+    ]
   )
 
-  conda_opt = ['conda_prefix=' + conda_base]
-  lc_proj = subproject('lc', default_options: conda_opt)
+  cuda_lib_dirs = [
+    join_paths(cuda_path, 'targets/x86_64-linux/lib'),
+    join_paths(cuda_path, 'lib64/stubs'), # Using stubs from toolkit
+    join_paths(cuda_path, 'lib/'),
+    join_paths(cuda_path, 'lib64/'),
+  ]
+
+  cudart_dep = cc.find_library('cudart', dirs: cuda_lib_dirs)
+  cuda_main_dep = cc.find_library('cuda', dirs: cuda_lib_dirs)
+  cufile_dep = cc.find_library('cufile', dirs: cuda_lib_dirs)
+
+  cuda_dep = declare_dependency(
+    include_directories: cuda_inc_dir,
+    dependencies: [cudart_dep, cuda_main_dep],
+  )
+
+  subproj_options = ['conda_prefix=' + cuda_path]
+  lc_proj = subproject('lc', default_options: subproj_options)
   lc_dep = lc_proj.get_variable('lc_dep')
-  pfpl_proj = subproject('pfpl', default_options: conda_opt)
+  pfpl_proj = subproject('pfpl', default_options: subproj_options)
   pfpl_dep = pfpl_proj.get_variable('pfpl_dep')
 
   cusz_dep  = cusz_proj.dependency('psz_cu_compile_settings')
   cuszp_dep = cuszp_proj.dependency('cuSZp_shared')
 
   drpgpu_inc_dir = include_directories('..')
-
-  cufile_dep = cc.find_library('cufile', dirs: join_paths(conda_base, 'lib'))
 
   drpbase_gpu_lib = shared_library('drpbase_gpu',
     [

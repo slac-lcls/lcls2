@@ -63,6 +63,10 @@ if command -v nvcc >/dev/null 2>&1; then
   export LDFLAGS=""
   export CXXFLAGS_OLD="$CXXFLAGS"
   export CXXFLAGS="" #$(echo "$CXXFLAGS" | sed -E 's/(^| )-fPI(C|E)( |$)/ /g')"
+  if [ -n "$CUDA_ROOT" ]; then
+    # If CUDA_ROOT is set use that not what's in conda
+    OPTIONS="$OPTIONS -Dcustom_cuda_path=$CUDA_ROOT"
+  fi
 fi
 
 #########
@@ -145,7 +149,7 @@ if [ $no_daq == 0 ]; then
 fi
 
 if command -v nvcc >/dev/null 2>&1; then
-  # Reset LDFLAGS back:
+  # Reset LDFLAGS and CXXFLAGS back:
   export LDFLAGS="$LDFLAGS_OLD"
   unset LDFLAGS_OLD
   export CXXFLAGS="$CXXFLAGS_OLD"

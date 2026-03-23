@@ -41,10 +41,15 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    # GPU - daq
+
+    #conda activate ps_20250204_gpu
+    #conda activate ps_20241122
     conda activate daq_20260311
-    # Other
-    #conda activate ps_20250204
+    #export CUDA_ROOT=/sdf/group/lcls/ds/tools/cuda13.0.1/
+    #export PATH=$CUDA_ROOT/bin:$PATH
+    #export LD_LIBRARY_PATH=$CUDA_ROOT/lib64:$LD_LIBRARY_PATH
+
+
 else
     echo "CONDA area not found"
     exit 1
