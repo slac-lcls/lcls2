@@ -197,7 +197,6 @@ def jungfrau_dark_proc(parser):
     stepnum = args.stepnum
     stepmax = args.stepmax
     segind  = args.segind
-    igmode  = args.igmode
     dirrepo = args.dirrepo
 
     dirmode  = kwargs.get('dirmode',  0o2775)
@@ -279,8 +278,7 @@ def jungfrau_dark_proc(parser):
                   ('is None' if step_docstring is None else str(metadic)))
             logger.info(s)
 
-            igm = igmode if igmode is not None else\
-                  metadic['gainMode'] if step_docstring is not None\
+            igm = metadic.get('gainMode', istep) if step_docstring is not None\
                   else istep
             gmname = DIC_IND_TO_GAIN_MODE.get(igm, None)
             kwargs['gainmode'] = gmname
