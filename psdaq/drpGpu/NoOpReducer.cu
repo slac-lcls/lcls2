@@ -54,8 +54,15 @@ NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
 
 // GPU kernel for actually performing the data reduction
 // In this case, the calibrated data is just copied to the output buffer
-static __global__
-void _noOpReduce(unsigned const*                    index,
+//static __global__
+namespace Drp {
+  namespace Gpu {
+
+    struct NoOpReduceFn
+    {
+      __device__
+      //void _noOpReduce(unsigned const*                    index,
+void operator()(unsigned const                     index,
                  float    const* const __restrict__ calibBuffers,
                  size_t   const                     calibBufsCnt,
                  uint8_t       * const __restrict__ dataBuffers,
@@ -66,49 +73,92 @@ void _noOpReduce(unsigned const*                    index,
 {
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
   int stride = blockDim.x * gridDim.x;
-  unsigned const idx{*index}; // Dereference only once
+  //unsigned const idx{*index}; // Dereference only once
+  unsigned const idx{index};
   float const* const __restrict__ calib = &calibBuffers[idx * calibBufsCnt];
   float*       const __restrict__ data  = (float*)(&dataBuffers[idx * dataBufsCnt]);
-  float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
+  //float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
   //if (offset == 0)  printf("### NoOpReduce: calibCnt %lu, dataCnt %lu, stride %u, idx %u, calib %p:%p, data %p:%p\n",
   //                         calibBufsCnt, dataBufsCnt, stride, idx, &calib[0],&calib[calibBufsCnt], &data[0], &data[calibBufsCnt]);
   for (unsigned i = offset; i < calibBufsCnt; i += stride) {
     //if (i < 4) {
     //  printf("### NoOpReduce: idx %u, cnt %lu, ref %p: i %u, calib %f, ref %f\n", idx%refBufCnt, calibBufsCnt, ref, i, calib[i], ref ? ref[i] : 0.f);
     //}
-    if (ref && (calib[i] != ref[i])) {
+    //if (ref && (calib[i] != ref[i])) {
     //  printf("### NoOpReduce: blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n", blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
-      ++(*error);
-    }
+    //  ++(*error);
+    //}
     data[i] = calib[i];
   }
 
   // Place the size of the reduced data just before the data
   if (offset == 0) {
     size_t* const __restrict__ extent = &((size_t*)data)[-1];
-    *extent = calibBufsCnt * sizeof(*calib); //Buffers);
+    *extent = calibBufsCnt * sizeof(*calib);
   }
 }
+    };
+
+  } // Gpu
+} // Drp
 
 // This routine records the graph that does the data reduction
-void NoOpReducer::recordGraph(cudaStream_t          stream,
-                              unsigned const&       index,
-                              float    const* const calibBuffers,
-                              size_t   const        calibBufsCnt,
-                              uint8_t       * const dataBuffers,
-                              size_t   const        dataBufsCnt)
+//void NoOpReducer::recordGraph(cudaStream_t          stream,
+//                              unsigned const&       index,
+//                              float    const* const calibBuffers,
+//                              size_t   const        calibBufsCnt,
+//                              uint8_t       * const dataBuffers,
+//                              size_t   const        dataBufsCnt)
+//{
+//  printf("*** calibBufsCnt %zu, dataBufsCnt %zu, refBufs_d %p\n", calibBufsCnt, dataBufsCnt, m_refBufs_d);
+//  int threads = 32; //1024;
+//  int blocks  = 20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
+//  _noOpReduce<<<blocks, threads, 0, stream>>>(&index,
+//                                              calibBuffers,
+//                                              calibBufsCnt,
+//                                              dataBuffers,
+//                                              dataBufsCnt,
+//                                              m_refBufs_d,
+//                                              m_refBufCnt,
+//                                              m_errorCnt_d);
+//}
+void NoOpReducer::recordGraph(cudaStream_t                       stream,
+                              unsigned*                    const index,
+                              RingQueueHtoD<unsigned>*     const inputQueue,
+                              float const*                 const calibBuffers,
+                              size_t                       const calibBufsCnt,
+                              uint8_t*                     const dataBuffers,
+                              size_t                       const dataBufsCnt,
+                              RingQueueDtoH<ReducerTuple>* const outputQueue,
+                              unsigned*                    const done)
 {
-  printf("*** calibBufsCnt %zu, dataBufsCnt %zu, refBufs_d %p\n", calibBufsCnt, dataBufsCnt, m_refBufs_d);
-  int threads = 32; //1024;
-  int blocks  = 20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
-  _noOpReduce<<<blocks, threads, 0, stream>>>(&index,
-                                              calibBuffers,
-                                              calibBufsCnt,
-                                              dataBuffers,
-                                              dataBufsCnt,
-                                              m_refBufs_d,
-                                              m_refBufCnt,
-                                              m_errorCnt_d);
+  cudaDeviceProp prop;
+  chkError(cudaGetDeviceProperties(&prop, 0));
+  const auto tpMP{prop.maxThreadsPerMultiProcessor};
+  unsigned nMPs;
+  switch (tpMP) {
+    case 1536:  nMPs = 40;  break;
+    case 2048:  nMPs = 10;  break;
+    default:
+      logging::critical("Unexpected number of threads per MultiProcessor %u", tpMP);
+      abort();
+  };
+  const auto maxBpMP{prop.maxBlocksPerMultiProcessor};
+  auto threads{tpMP/maxBpMP}; //{32}; // @todo: Move to green contexts for improved robustness
+  auto blocks {nMPs*maxBpMP}; //{16*48}; //20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
+  printf("NoOpReducer blocks %u * threads %u = %u threads\n", blocks, threads, blocks * threads);
+  _reduce<<<blocks, threads, 0, stream>>>(index,
+                                          inputQueue,
+                                          NoOpReduceFn{},
+                                          calibBuffers,
+                                          calibBufsCnt,
+                                          dataBuffers,
+                                          dataBufsCnt,
+                                          m_refBufs_d,
+                                          m_refBufCnt,
+                                          m_errorCnt_d,
+                                          outputQueue,
+                                          done);
 }
 
 #if 1 // hasGraph == true case

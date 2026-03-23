@@ -129,6 +129,7 @@ if(CMAKE_CUDA_COMPILER)
     #   export CUSZ_DIR=~/git/psdaq-reducers/install/lib64/cmake/CUSZ
     #   export cuSZp_DIR=~/git/psdaq-reducers/install/cmake
 
+#--- NoOp
     add_library(NoOpReducer SHARED
         NoOpReducer.cu
     )

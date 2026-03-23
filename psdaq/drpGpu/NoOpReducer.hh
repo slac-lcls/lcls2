@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ReducerAlgo.hh"
+#include "ReducerAlgo_gpu.hh"
 
 
 namespace Drp {
@@ -12,15 +12,22 @@ public:
   NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~NoOpReducer() {}
 
-  bool   hasGraph() const override; // { return true; }
+  bool   hasGraph()    const override; // { return true; }
   size_t payloadSize() const override { return m_pool.calibBufsSize(); }
-  void   recordGraph(cudaStream_t       stream,
-                     const unsigned&    index,
-                     float const* const calibBuffers,
-                     const size_t       calibBufsCnt,
-                     uint8_t    * const dataBuffers,
-                     const size_t       dataBufsCnt) override;
-  void     reduce   (cudaGraphExec_t, cudaStream_t, unsigned index, size_t* dataSize, unsigned* error) override;
+  void   recordGraph(cudaStream_t                       stream,
+                     unsigned*                    const index,
+                     RingQueueHtoD<unsigned>*     const inputQueue,
+                     float const*                 const calibBuffers,
+                     size_t                       const calibBufsCnt,
+                     uint8_t*                     const dataBuffers,
+                     size_t                       const dataBufsCnt,
+                     RingQueueDtoH<ReducerTuple>* const outputQueue,
+                     unsigned*                    const done) override;
+  void     reduce   (cudaGraphExec_t,
+                     cudaStream_t,
+                     unsigned  index,
+                     size_t*   dataSize,
+                     unsigned* error) override;
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:

@@ -30,12 +30,13 @@ struct ReducerMetrics
 {
 };
 
+// @todo: Clean up; Moved to ReducerAlgo.hh
     //using ReducerTuple = std::tuple<unsigned, size_t>;
-struct ReducerTuple
-{
-  unsigned index;
-  size_t   dataSize;
-};
+//struct ReducerTuple
+//{
+//  unsigned index;
+//  size_t   dataSize;
+//};
 
 class Reducer
 {

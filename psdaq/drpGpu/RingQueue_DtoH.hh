@@ -90,14 +90,14 @@ public:
     auto tail = m_tail_h->load(memory_order_acquire);
     auto head = m_head_h->load(memory_order_acquire);
     //bool wait{false};
-    unsigned ns{8};
+    //unsigned ns{8};
     while (tail == head) {                             // Wait for head to advance while empty
       if (m_terminate.load(std::memory_order_acquire)) {
         printf("*** RingQueue_DtoH::pop: Empty @ %u, capacity %u\n", tail, m_capacityMask+1);
         return false;
       }
-      _nsSleep(ns);
-      if (ns < 256)  ns *= 2;
+      //_nsSleep(ns);
+      //if (ns < 256)  ns *= 2;
       head = m_head_h->load(memory_order_acquire);
       //if (!wait) {
       //  wait = true;

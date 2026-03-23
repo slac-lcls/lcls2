@@ -39,18 +39,26 @@ public:
 
 CuSZpReducer::CuSZpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo (para, pool, det),
-  m_errorBound(1.2e-4)                  // Set absolute error bound
+  m_errorBound(1.2e-4),                 // Set absolute error bound
+  m_error_d   (nullptr)                 // Unused as yet
 {
 }
 
 // This routine records the graph that does the data reduction
-void CuSZpReducer::recordGraph(cudaStream_t       stream,
-                               const unsigned&    index,
-                               float const* const calibBuffers,
-                               const size_t       calibBufCnt,
-                               uint8_t    * const dataBuffers,
-                               const size_t       dataBufCnt)
+void CuSZpReducer::recordGraph(cudaStream_t                       stream,
+                               unsigned*                    const index,
+                               RingQueueHtoD<unsigned>*     const inputQueue,
+                               float const*                 const calibBuffers,
+                               size_t                       const calibBufsCnt,
+                               uint8_t*                     const dataBuffers,
+                               size_t                       const dataBufsCnt,
+                               RingQueueDtoH<ReducerTuple>* const outputQueue,
+                               unsigned*                    const done)
 {
+  // @todo: More work is needed here
+  logging::critical("CuSZpReducer::recordGraph: To be implemented");
+  abort();
+
   //uint8_t* d_internal_compressed{nullptr};
   //auto m = psz_create_resource_manager(F4, calibBufCnt, 1, 1, stream);
   //

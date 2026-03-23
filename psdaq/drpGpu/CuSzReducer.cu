@@ -35,7 +35,8 @@ CuSzReducer::CuSzReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
   m_predictor(Lorenzo),
   m_mode     (Rel),                     // set compression mode
   m_eb       (1.2e-4),                  // set error bound
-  m_m        (nullptr)
+  m_m        (nullptr),
+  m_error_d  (nullptr)                  // Unused as yet
 {
 }
 
@@ -48,13 +49,20 @@ CuSzReducer::~CuSzReducer()
 }
 
 // This routine records the graph that does the data reduction
-void CuSzReducer::recordGraph(cudaStream_t       stream,
-                              const unsigned&    index,
-                              float const* const calibBuffers,
-                              const size_t       calibBufCnt,
-                              uint8_t    * const dataBuffers,
-                              const size_t       dataBufCnt)
+void CuSzReducer::recordGraph(cudaStream_t                       stream,
+                              unsigned*                    const index,
+                              RingQueueHtoD<unsigned>*     const inputQueue,
+                              float const*                 const calibBuffers,
+                              size_t                       const calibBufsCnt,
+                              uint8_t*                     const dataBuffers,
+                              size_t                       const dataBufsCnt,
+                              RingQueueDtoH<ReducerTuple>* const outputQueue,
+                              unsigned*                    const done)
 {
+  // @todo: More work is needed here
+  logging::critical("CuSzReducer::recordGraph: To be implemented");
+  abort();
+
   //uint8_t* d_internal_compressed{nullptr};
   //auto m = psz_create_resource_manager(F4, calibBufCnt, 1, 1, stream);
   //

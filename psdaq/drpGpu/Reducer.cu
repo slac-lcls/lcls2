@@ -298,57 +298,33 @@ int Reducer::_setupGraph(unsigned instance)
 /** This kernel receives a message from TebReceiver that indicates which
  * calibBuffer is ready for reducing.
  */
-static __global__ void _receive(//unsigned* const       __restrict__ head,
-                                //unsigned* const       __restrict__ tail,
-                                //const cuda::std::atomic<unsigned>& terminate)
-                                unsigned*                     const __restrict__ index,
-                                Gpu::RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
-                                unsigned*                     const __restrict__ done)
-{
-//  //printf("### _receive 1 done %d, tail %u, head %u\n", terminate.load(), *tail, *head);
-//
-//  // Wait for the head to advance with respect to the tail
-//  auto t = *tail;
-//  unsigned ns = 8;
-//  while (*head == t) {
-//    if (terminate.load(cuda::std::memory_order_acquire))  break;
-//    __nanosleep(ns);
-//    if (ns < 256)  ns *= 2;
-//  }
-//  //printf("### Reducer receive:   h %u, t %u, d %d\n", *head, t, terminate.load());
-
-  //printf("### Reducer receive: 1, done %u\n", *done);
-  *done |= !inputQueue->pop(index);
-  //printf("### Reducer receive: 2, idx %u, done %u\n", *index, *done);
-}
+//static __global__
+//void _receive(unsigned*                     const __restrict__ index,
+//              Gpu::RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
+//              unsigned*                     const __restrict__ done)
+//{
+//  //printf("### Reducer receive: 1, done %u\n", *done);
+//  *done |= !inputQueue->pop(index);
+//  //printf("### Reducer receive: 2, idx %u, done %u\n", *index, *done);
+//}
 
 /** This will re-launch the current graph */
-static __global__ void _graphLoop(//unsigned* const       __restrict__ head,
-                                  //unsigned* const       __restrict__ tail,
-                                  //const cuda::std::atomic<unsigned>& terminate)
-                                  unsigned const*                   const __restrict__ index,
-                                  uint8_t*                          const __restrict__ dataBuffers,
-                                  size_t                            const              dataBufsCnt,
-                                  Gpu::RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
-                                  unsigned*                         const __restrict__ done)
-{
-//  //printf("### Reducer graphLoop: 1, done %d, idx %u\n", terminate.load(), *head);
-//  if (terminate.load(cuda::std::memory_order_acquire))  return;
-//
-//  //printf("### Reducer graphLoop: 2 t %u, h %u\n", *tail, *head);
-//
-//  // Signal that this worker is done
-//  *tail = *head;                   // With nworkers > 1, head - tail may be > 1
-
-  auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
-  auto dataSize = ((size_t*)data)[-1];
-  //printf("### Reducer graphLoop: push {%u, %lu}, done %u\n", *index, dataSize, *done);
-  *done |= !outputQueue->push({*index, dataSize});
-  if (!*done) {
-    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  }
-  //printf("### Reducer graphLoop: 3, idx %u, done %u\n", *index, *done);
-}
+//static __global__
+//void _graphLoop(unsigned const*                   const __restrict__ index,
+//                uint8_t*                          const __restrict__ dataBuffers,
+//                size_t                            const              dataBufsCnt,
+//                Gpu::RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
+//                unsigned*                         const __restrict__ done)
+//{
+//  auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
+//  auto dataSize = ((size_t*)data)[-1];
+//  //printf("### Reducer graphLoop: push {%u, %lu}, done %u\n", *index, dataSize, *done);
+//  *done |= !outputQueue->push({*index, dataSize});
+//  if (!*done) {
+//    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+//  }
+//  //printf("### Reducer graphLoop: idx %u, done %u\n", *index, *done);
+//}
 
 cudaGraph_t Reducer::_recordGraph(unsigned instance)
 {
@@ -370,27 +346,36 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
 
   // Handle messages from TebReceiver to process an event
   //_receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_tails_d[instance], m_terminate_d);
-  printf("*** Reducer::_recordGraph: instance %d, iq h %p, d %p\n", instance, m_inputQueues2[instance].h, m_inputQueues2[instance].d);
-  _receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_inputQueues2[instance].d, m_done_d);
+  //printf("*** Reducer::_recordGraph: instance %d, iq h %p, d %p\n", instance, m_inputQueues2[instance].h, m_inputQueues2[instance].d);
+  //_receive<<<1, 1, 0, stream>>>(m_heads_d[instance], m_inputQueues2[instance].d, m_done_d);
 
   // Perform the reduction algorithm
+  //m_algos[instance]->recordGraph(stream,
+  //                               *m_heads_d[instance],
+  //                               calibBuffers,
+  //                               calibBufsCnt,
+  //                               dataBuffers,
+  //                               dataBufsCnt);
   m_algos[instance]->recordGraph(stream,
-                                 *m_heads_d[instance],
+                                 m_heads_d[instance],
+                                 m_inputQueues2[instance].d,
                                  calibBuffers,
                                  calibBufsCnt,
                                  dataBuffers,
-                                 dataBufsCnt);
+                                 dataBufsCnt,
+                                 m_outputQueues2[instance].d,
+                                 m_done_d);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed.
   //_graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
   //                                m_tails_d[instance],
   //                                m_terminate_d);
-  printf("*** Reducer::_recordGraph: instance %d, oq h %p, d %p\n", instance, m_outputQueues2[instance].h, m_outputQueues2[instance].d);
-  _graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
-                                  dataBuffers,
-                                  dataBufsCnt,
-                                  m_outputQueues2[instance].d,
-                                  m_done_d);
+  //printf("*** Reducer::_recordGraph: instance %d, oq h %p, d %p\n", instance, m_outputQueues2[instance].h, m_outputQueues2[instance].d);
+  //_graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],
+  //                                dataBuffers,
+  //                                dataBufsCnt,
+  //                                m_outputQueues2[instance].d,
+  //                                m_done_d);
 
   // Signal to the host that the worker is done
   //chkError(cudaEventRecord(event, stream));

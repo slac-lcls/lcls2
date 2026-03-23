@@ -63,14 +63,14 @@ public:
     auto next = (head+1) & m_capacityMask;
     auto tail = m_tail_h->load(memory_order_acquire);
     //bool wait{false};
-    unsigned ns{8};
+    //unsigned ns{8};
     while (next == tail) {                             // Wait for tail to advance while full
       if (m_terminate.load(std::memory_order_acquire)) {
         printf("*** RingQueue_HtoD::push: full @ %u, capacity %u\n", tail, m_capacityMask+1);
         return false;
       }
-      _nsSleep(ns);
-      if (ns < 256)  ns *= 2;
+      //_nsSleep(ns);
+      //if (ns < 256)  ns *= 2;
       tail = m_tail_h->load(memory_order_acquire);
       //if (!wait) {
       //  wait = true;

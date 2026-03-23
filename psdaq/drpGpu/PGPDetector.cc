@@ -199,6 +199,8 @@ void TebReceiver::_recorder()
     size_t dataSize;
     if (result->persist() || result->monitor()) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
+      if (result->service() != TransitionId::L1Accept)
+        printf("*** TebRcvr::recorder: wkr %u, idx %u\n", worker, index);
       ReducerTuple rt;
       if (!drp.reducerReceive(worker, &rt)) [[unlikely]] // This blocks until result is ready from GPU
         continue;
