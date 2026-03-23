@@ -276,7 +276,7 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
     base = {}
     #  Connect to the camera and the PCIe card
     cbase = ePixM.Root(top_level              = '/tmp',
-                       dev                    = '/dev/datadev_0',
+                       dev                    = dev,
                        pollEn                 = False,
                        initRead               = False,
                        justCtrl               = True,
