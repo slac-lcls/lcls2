@@ -148,8 +148,7 @@ def jungfrau_dark_proc(parser):
 
 
 def jungfrau_dark_proc_mpi(parser):
-    """jungfrau dark data processing for single (of 3) gain mode.
-    """
+    """jungfrau dark data processing in mpi"""
     t0_sec = time()
     tdt = t0_sec
 
@@ -165,7 +164,6 @@ def jungfrau_dark_proc_mpi(parser):
     stepnum = args.stepnum
     stepmax = args.stepmax
     segind  = args.segind
-    igmode  = args.igmode
     dirrepo = args.dirrepo
     save    = args.save
     deploy  = args.deploy
@@ -254,8 +252,7 @@ def jungfrau_dark_proc_mpi(parser):
               'is None' if step_docstring is None else\
               str(metadic))
 
-        igm = igmode if igmode is not None else\
-              metadic['gainMode'] if step_docstring is not None\
+        igm = metadic.get('gainMode', istep) if step_docstring is not None\
               else istep
         gmname = DIC_IND_TO_GAIN_MODE.get(igm, None)
         kwargs['gainmode'] = gmname
