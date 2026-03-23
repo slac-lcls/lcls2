@@ -45,10 +45,6 @@ elif [ -d "/sdf/group/lcls/" ]; then
     #conda activate ps_20250204_gpu
     #conda activate ps_20241122
     conda activate daq_20260311
-    #export CUDA_ROOT=/sdf/group/lcls/ds/tools/cuda13.0.1/
-    #export PATH=$CUDA_ROOT/bin:$PATH
-    #export LD_LIBRARY_PATH=$CUDA_ROOT/lib64:$LD_LIBRARY_PATH
-
 
 else
     echo "CONDA area not found"
@@ -62,11 +58,10 @@ else
   echo "$AUTH_FILE file is missing"
 fi
 
-<<<<<<< HEAD
 export CUDA_ROOT=/usr/local/cuda
 if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
-    #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
 fi
 
@@ -78,10 +73,9 @@ elif [ -n "$ZSH_VERSION" ]; then
     SCRIPT_SOURCE="${(%):-%x}"
 fi
 
+#RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
 RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
-=======
-RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
->>>>>>> 5e69d1572 (WIP: updated build scripts to use meson)
+
 export PATH=$RELDIR/install/bin:${PATH}
 echo $RELDIR
 

@@ -63,8 +63,8 @@ if command -v nvcc >/dev/null 2>&1; then
   export LDFLAGS=""
   export CXXFLAGS_OLD="$CXXFLAGS"
   export CXXFLAGS="" #$(echo "$CXXFLAGS" | sed -E 's/(^| )-fPI(C|E)( |$)/ /g')"
-  if [ -n "$CUDA_ROOT" ]; then
-    # If CUDA_ROOT is set use that not what's in conda
+  if [ -n "$CUDA_ROOT" ] && [ -e "$CUDA_ROOT" ]; then
+    # If CUDA_ROOT is set and exists use that not what's in conda
     OPTIONS="$OPTIONS -Dcustom_cuda_path=$CUDA_ROOT"
   fi
 fi
