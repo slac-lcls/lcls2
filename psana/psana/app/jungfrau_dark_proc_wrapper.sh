@@ -49,16 +49,15 @@ rmsnhi="6.0"
 fraclm="0.1"
 fraclo="0.05"
 frachi="0.95"
-version="V2026-02-10"
+version="V2026-03-23"
 datbits="$M14"
-deploy="False"
+deploy=false
+save=false
 plotim="0"
-evcode="None"
 segind="None"
-igmode="None"
-nranks="1"   #"19" 1-no mpi
-nnodes="1"   # FOR NOW WORKS FOR 1 ONLY
-stages="ALL" # expected "1" or "2"
+nranks="19"   #"19" 1-no mpi
+nnodes="1"
+stages=7
 submit=false # execute/skip commands for debudding of this script
 
 # Loop through all arguments
@@ -173,23 +172,19 @@ while [[ "$#" -gt 0 ]]; do
             shift
             ;;
         -D|--deploy)
-            deploy="$2"
-            shift
+            deploy=true
+            #shift
+            ;;
+        -S|--save)
+            save=true
+            #shift
             ;;
         -p|--plotim)
             plotim="$2"
             shift
             ;;
-        -c|--evcode)
-            evcode="$2"
-            shift
-            ;;
         -I|--segind)
             segind="$2"
-            shift
-            ;;
-        -G|--igmode)
-            igmode="$2"
             shift
             ;;
         -N|--nranks)
@@ -206,7 +201,7 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --submit)
             submit=true
-            shift
+            #shift
             ;;
         *)
             echo "Unknown parameter passed: $1"
@@ -229,14 +224,13 @@ script_dir=$(dirname "$(realpath "$0")")
 echo "script_dir: $script_dir"
 
 
-c11="jungfrau_dark_proc -k $dskwargs -d $detname -n $nrecs --nrecs1 $nrecs1 -o $dirrepo -L $logmode -E $errskip --stepnum $stepnum --stepmax $stepmax --evskip $evskip"
-c12="--dirmode $dirmode --filemode $filemode --events $events -e $evstep"
-c13="--int_lo $int_lo --int_hi $int_hi --intnlo $intnlo --intnhi $intnhi --rms_lo $rms_lo --rms_hi $rms_hi --rmsnlo $rmsnlo --rmsnhi $rmsnhi"
-c14="--fraclm $fraclm --fraclo $fraclo --frachi $frachi -v $version --datbits $datbits -D $deploy -p $plotim -c $evcode -I $segind -G $igmode"
-c1="$c11 $c12 $c13 $c14"
-c01="--datbits $datbits --int_lo $int_lo --int_hi $int_hi --fraclo $fraclo --frachi $frachi"
+#c11="jungfrau_dark_proc -k $dskwargs -d $detname -n $nrecs --nrecs1 $nrecs1 -o $dirrepo -L $logmode -E $errskip --stepnum $stepnum --stepmax $stepmax --evskip $evskip"
+#c12="--dirmode $dirmode --filemode $filemode --events $events -e $evstep"
+#c13="--int_lo $int_lo --int_hi $int_hi --intnlo $intnlo --intnhi $intnhi --rms_lo $rms_lo --rms_hi $rms_hi --rmsnlo $rmsnlo --rmsnhi $rmsnhi"
+#c14="--fraclm $fraclm --fraclo $fraclo --frachi $frachi -v $version --datbits $datbits -D $deploy -p $plotim -I $segind"
+#c1="$c11 $c12 $c13 $c14"
 
-#echo $c1
+c01="--datbits $datbits --int_lo $int_lo --int_hi $int_hi --fraclo $fraclo --frachi $frachi"
 cmnpars="-k $dskwargs -d $detname -o $dirrepo -L $logmode"
 cmd00="jungfrau_dark_proc $cmnpars" ### "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1"
 cmd10="$cmd00 --nrecs $nrecs1 --nrecs1 $nrecs1 $c01"
@@ -252,13 +246,15 @@ cmd13="$cmd10 --stepnum 2"
 #cmdmpi="mpirun --mca osc ^ucx -n $nranks"
 #[[ "$nranks" != "1" ]] && cmdmpi="mpirun --mca osc ^ucx -n $nranks " || cmdmpi=""
 
-#cmd20="$cmdmpi$cmd00 --nrecs $nrecs --nrecs1 0"
-#cmd20="$script_dir/jungfrau_dark_proc.py $cmnpars --nrecs $nrecs --nrecs1 0"
-cmd20="$cmd00 --nrecs $nrecs --nrecs1 0"
-#cmd21="$cmd20 --stepnum 0"
-#cmd22="$cmd20 --stepnum 1"
-#cmd23="$cmd20 --stepnum 2"
 
+#c02_proc="--events $events --evskip $evskip --stepnum $stepnum --stepmax $stepmax"
+c02_proc="--evskip $evskip" # --stepnum $stepnum --stepmax $stepmax"
+c02_status="--int_hi $int_hi --int_lo $int_lo --intnhi $intnhi --intnlo $intnlo --rms_hi $rms_hi --rms_lo $rms_lo --rmsnhi $rmsnhi --rmsnlo $rmsnlo --fraclm $fraclm"
+cmd20="$cmd00 --nrecs $nrecs --nrecs1 0 $c02_proc $c02_status"
+if $deploy; then cmd20="$cmd20 --deploy"; fi
+if $save;   then cmd20="$cmd20 --save"; fi
+
+#cmd30="$script_dir/jungfrau_deploy_constants.py $cmnpars -F" # -S -D
 cmd30="jungfrau_deploy_constants $cmnpars -F" # -S -D
 
 if [[ "$logmode" == "DEBUG" ]]; then
@@ -312,13 +308,14 @@ fi ### $stage1 || $stage2
 
 if $stage2; then
   #echo
-  echo "=== STAGE 2 - evaluate gated average, rms, min, max, pixel status on $nrecs events"
+  echo "=== STAGE 2 - evaluate per-pixel gated average, rms, min, max, status on $nrecs events in each of 3 step/gain range"
   #### Test: sbatch --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 100 --nrecs1 0"
   #### Ex: sbatch --wait --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
   #cmd_sbatch="sbatch --wait --ntasks-per-node $nranks $script_dir/jungfrau_dark_proc_sbatch.sh \"$cmd20\""
+  logfile="$dirrepo/jungfrau/logs/$(date +%Y)/$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
   file="$script_dir/jungfrau_dark_proc_sbatch.sh"
-  cmd_sbatch=(sbatch --export=ALL --nodes=$nnodes --ntasks-per-node=$nranks "$file" "$cmd20")
-  echo "command for sbatch: $cmd20"
+  cmd_sbatch=(sbatch --partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=$nnodes --ntasks-per-node=$nranks "$file" "$cmd20")
+  #echo "command for sbatch: $cmd20"
   echo "cmd_sbatch split arguments:"
   show_argv "${cmd_sbatch[@]}"
   if $submit; then "${cmd_sbatch[@]}"; fi
@@ -329,7 +326,7 @@ if $stage3; then
   echo
   echo "=== STAGE 3 - deploy calibration constants"
   echo "run command: $cmd30"
-  if $submit; then "$cmd30"; fi
+  if $submit; then $cmd30; fi
 fi # $stage3
 
 
