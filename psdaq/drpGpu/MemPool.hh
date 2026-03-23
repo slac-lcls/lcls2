@@ -38,11 +38,11 @@ namespace Drp {
 
 // DmaDsc structure from:
 //   https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
-struct DmaDsc
+struct __attribute__((packed)) DmaDsc
 {
   uint32_t error;
   uint32_t size;
-  uint32_t _pad[6+8];                   // +8 for 512-bit PCIe frames
+  uint32_t _pad[6]; //+8];                   // +8 for 512-bit PCIe frames
 };
 
 struct DetPanel

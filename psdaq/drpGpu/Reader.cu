@@ -160,13 +160,13 @@ void _calibrate(float*        const        __restrict__ calib,
   //if (tid == 0)  printf("*** Reader: calibrate returning\n");
 }
 
-__device__ bool     indicesValid = false;
-__device__ unsigned dmaBufferIdx = 0;
-__device__ unsigned pebbleIdx    = 0;
-__device__ unsigned blockCount1  = 0;
-__shared__ bool     isLastBlockDone1;
-__device__ unsigned blockCount2  = 0;
-__shared__ bool     isLastBlockDone2;
+static __device__ bool     indicesValid = false;
+static __device__ unsigned dmaBufferIdx = 0;
+static __device__ unsigned pebbleIdx    = 0;
+static __device__ unsigned blockCount1  = 0;
+static __shared__ bool     isLastBlockDone1;
+static __device__ unsigned blockCount2  = 0;
+static __shared__ bool     isLastBlockDone2;
 
 static __global__
 void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpgas]
@@ -194,6 +194,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
   if (threadIdx.x == 0) {                  // Thread 0 of each block
     if (blockIdx.x == 0) {
       // Allocate the index of the next set of intermediate buffers to be used
+      //printf("### Reader: allocate pblIdx\n");
       pebbleIdx = readerQueue->allocate(); // This blocks when no buffers available
       //printf("### Reader: pblIdx %u\n", pebbleIdx);
 
@@ -224,7 +225,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
     unsigned value = atomicInc(&blockCount1, gridDim.x); // Thread 0 signals that it is done
     isLastBlockDone1 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last block to be done
   }
-  __syncthreads();   // Synchronize to make sure that each thread (all blocks) reads the correct value of isLastBlockDone
+  __syncthreads();   // Synchronize to ensure that each thread (all blocks) reads the correct value of isLastBlockDone
   if (isLastBlockDone1) {               // Only last block will have set isLastBlockDone true
     if (threadIdx.x == 0) {             // Thread 0 updates global memory
       indicesValid = true;              // Thread 0 of last block signals indices in global memory are valid
@@ -272,12 +273,13 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
     auto const __restrict__ ref = refBuffers ? &refBuffers[(pblBufIdx % refBufCnt) * calibBufsCnt] : (float*)0;
     //if (tid == 0)  printf("### Reader: idx %u, refBuffers %p, ref %p\n", pblBufIdx%refBufCnt, refBuffers, ref);
 
-    auto const stride  = blockDim.x * gridDim.x;
+    //auto const stride  = blockDim.x * gridDim.x;
     //if (tid == 0)  printf("### calibrate: nElements %lu, stride %u, idx %u, calib %p:%p\n",
     //                       elementCnt, stride, pblBufIdx, &out[0],&out[elementCnt]);
 
     _calibrate(out, raw, elementCnt, rangeOffset, rangeBits, pedArray, gainArray, ref);
 
+    __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
     if (threadIdx.x == 0) {
       //if (blockIdx.x == 88)  printf("### Reader: blkIdx %d, pblIdx %u\n", blockIdx.x, pblBufIdx);
 
@@ -289,7 +291,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
       //if (blockIdx.x == 0)  printf("### Reader: pblIdx %4u, gridDim %d, blkIdx %3d, value %3u, last %d\n", pblBufIdx, gridDim.x, blockIdx.x, value, isLastBlockDone2);
     }
     __syncthreads();    // Synchronize to make sure that each thread reads the correct value of isLastBlockDone
-    //if (tid == 0)  printf("### Reader: pblIdx %4u\n", pblBufIdx);
+    //if (tid == 0)  printf("### Reader: pblIdx %4u, blkCnt %u\n", pblBufIdx, blockCount2);
     if (isLastBlockDone2) {
       //if (tid == 0)  printf("### Reader: lastBlkDone T, blk %3u, pblIdx %4u\n", blockIdx.x, pblBufIdx);
       if (threadIdx.x == 0) {
@@ -301,6 +303,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
         indicesValid = false;           // syncthreads() happens after DMA on next launch
 
         // Relaunch the graph
+        //printf("### Reader: 2 relaunch\n");
         cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
       }
     }
@@ -313,6 +316,7 @@ void _handleDMA(CUdeviceptr*  const        __restrict__ swFpgaRegs,    // [nFpga
       indicesValid = false;             // syncthreads() happens after DMA on next launch
 
       // Relaunch the graph
+      //printf("### Reader: 1 relaunch\n");
       cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
     }
   }
@@ -353,12 +357,12 @@ cudaGraph_t Reader::_recordGraph()
   // Determine how many processing resources to reserve for the Reader kernel
   // @todo: The maybe should be done in PgpDetector in conjunction with the other components
   cudaDeviceProp prop;
-  cudaGetDeviceProperties(&prop, 0);
+  chkError(cudaGetDeviceProperties(&prop, 0));
   const auto tpMP{prop.maxThreadsPerMultiProcessor};
-  unsigned nSMs;                  // @todo: Maybe allow nSMs to be overridable?
+  unsigned nMPs;
   switch (tpMP) {
-    case 1536:  nSMs = 4;  break;
-    case 2048:  nSMs = 2;  break;
+    case 1536:  nMPs = 4;  break;
+    case 2048:  nMPs = 2;  break;
     default:
       logging::critical("Unexpected number of threads per MultiProcessor %u", tpMP);
       abort();
@@ -366,9 +370,11 @@ cudaGraph_t Reader::_recordGraph()
   // Slightly better times seem to be achieved when nPixels/stride is an integer
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
-  unsigned nThreads{32}; // @todo: Should come from para.nGpuThreads or a kwarg?
-  unsigned nBlocks{189}; //{nSMs * tpMP / nThreads}; // {189};
+  const auto maxBpMP{prop.maxBlocksPerMultiProcessor};
+  unsigned nThreads{tpMP/maxBpMP}; //{32}; // @todo: Move to green contexts for improved robustness
+  unsigned nBlocks{nMPs*maxBpMP}; //{63}; //{189}; //{nMPs * tpMP / nThreads}; // {189};
   unsigned stride{nBlocks * nThreads};
+  printf("Reader: blocks %u * threads %u = %u threads\n", nBlocks, nThreads, stride);
 
   logging::info("GPU threads per SM: %d, total threads: %u, SMs %.1f, elements per thread: %.1f\n",
                 tpMP, stride, float(stride) / tpMP, float(calibBufsCnt) / stride);
@@ -449,5 +455,6 @@ void Reader::start()
   }
 
   // Launch the Reader graph
+  printf("*** Reader: Launching graph\n");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
