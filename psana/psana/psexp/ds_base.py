@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import glob
 import json
@@ -52,6 +54,12 @@ class DsParms:
     fetch_calib_cache_max_retries: int
     skip_calib_load: list
     dbsuffix: str
+    gpu_detector: str | None = None
+    gpu_queue_depth: int = 3
+    gpu_profile: str = "off"
+    gpu_profile_output: str | None = None
+    gpu_validate: bool = False
+    gpu_validate_every: int = 0
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
@@ -145,6 +153,19 @@ class DataSourceBase(abc.ABC):
         Log file path. If None, logs to stdout (default: None).
     auto_tune : bool
         Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
+    gpu_detector : str
+        Detector name to enable GPU processing for. Prototype 1 supports only
+        'jungfrau' (default: None).
+    gpu_queue_depth : int
+        Number of in-flight GPU queue slots (default: 3).
+    gpu_profile : str
+        GPU profiling mode: 'off', 'summary', or 'trace' (default: 'off').
+    gpu_profile_output : str
+        Output path for GPU profiling data (default: None).
+    gpu_validate : bool
+        Enable CPU-vs-GPU validation checks (default: False).
+    gpu_validate_every : int
+        Validation cadence in events; 0 disables periodic validation (default: 0).
     """
 
     def __init__(self, **kwargs):
@@ -186,6 +207,28 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
+        self.gpu_detector = kwargs.get("gpu_detector", None)
+        if isinstance(self.gpu_detector, str):
+            self.gpu_detector = self.gpu_detector.strip().lower() or None
+        self.gpu_queue_depth = int(kwargs.get("gpu_queue_depth", 3))
+        self.gpu_profile = str(kwargs.get("gpu_profile", "off")).strip().lower()
+        self.gpu_profile_output = kwargs.get("gpu_profile_output", None)
+        self.gpu_validate = kwargs.get("gpu_validate", False)
+        self.gpu_validate_every = int(kwargs.get("gpu_validate_every", 0))
+
+        if self.gpu_detector not in (None, "jungfrau"):
+            raise InvalidDataSourceArgument(
+                f"Unsupported gpu_detector={self.gpu_detector!r}; Prototype 1 only supports 'jungfrau'"
+            )
+        if self.gpu_queue_depth <= 0:
+            raise InvalidDataSourceArgument("gpu_queue_depth must be greater than 0")
+        if self.gpu_profile not in ("off", "summary", "trace"):
+            raise InvalidDataSourceArgument(
+                f"Unsupported gpu_profile={self.gpu_profile!r}; expected one of 'off', 'summary', or 'trace'"
+            )
+        if self.gpu_validate_every < 0:
+            raise InvalidDataSourceArgument("gpu_validate_every must be greater than or equal to 0")
+
         # Retry config
         self.max_retries = int(os.environ.get("PS_R_MAX_RETRIES", "60")) if self.live else 0
         if not self.live:
@@ -200,18 +243,24 @@ class DataSourceBase(abc.ABC):
 
         # Package up DataSource parameters
         self.dsparms = DsParms(
-            self.batch_size,
-            self.max_events,
-            self.max_retries,
-            self.live,
-            self.timestamps,
-            self.intg_det,
-            self.intg_delta_t,
-            self.use_calib_cache,
-            self.cached_detectors,
-            self.fetch_calib_cache_max_retries,
-            self.skip_calib_load,
-            self.dbsuffix,
+            batch_size=self.batch_size,
+            max_events=self.max_events,
+            max_retries=self.max_retries,
+            live=self.live,
+            timestamps=self.timestamps,
+            intg_det=self.intg_det,
+            intg_delta_t=self.intg_delta_t,
+            use_calib_cache=self.use_calib_cache,
+            cached_detectors=self.cached_detectors,
+            fetch_calib_cache_max_retries=self.fetch_calib_cache_max_retries,
+            skip_calib_load=self.skip_calib_load,
+            dbsuffix=self.dbsuffix,
+            gpu_detector=self.gpu_detector,
+            gpu_queue_depth=self.gpu_queue_depth,
+            gpu_profile=self.gpu_profile,
+            gpu_profile_output=self.gpu_profile_output,
+            gpu_validate=self.gpu_validate,
+            gpu_validate_every=self.gpu_validate_every,
             smd_callback=self.smd_callback,
         )
 
@@ -223,7 +272,9 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
-            "log_level", "log_file", 'auto_tune'
+            "log_level", "log_file", "auto_tune", "gpu_detector",
+            "gpu_queue_depth", "gpu_profile", "gpu_profile_output",
+            "gpu_validate", "gpu_validate_every"
         }
         for k in kwargs:
             if k not in known_keys:

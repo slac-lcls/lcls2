@@ -26,6 +26,7 @@ from psana.psexp.tools import mode
 from psana.psexp.mpi_shmem import MPISharedMemory
 from psana.detector.shared_geo_cache import SharedGeoCache
 from psana.detector.shared_calibc_cache import SharedCalibcCache
+from psana.gpu.run_gpu import RunGpu
 from psana.smalldata import SmallData
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.calib_xtc import CalibXtcConverter
@@ -709,7 +710,8 @@ class MPIDataSource(DataSourceBase):
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
-            run = RunParallel(
+            run_cls = RunGpu if self.dsparms.gpu_detector else RunParallel
+            run = run_cls(
                 expt,                 # experiment string
                 runnum,               # run number (int)
                 ts,                   # begin-run timestamp

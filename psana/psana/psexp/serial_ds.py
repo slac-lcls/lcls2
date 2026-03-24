@@ -4,6 +4,7 @@ import numpy as np
 
 from psana import utils
 from psana.dgrammanager import DgramManager
+from psana.gpu.run_gpu import RunGpu
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
 from psana.psexp.run import RunSerial
@@ -84,7 +85,8 @@ class SerialDataSource(DataSourceBase):
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
-            run = RunSerial(
+            run_cls = RunGpu if self.dsparms.gpu_detector else RunSerial
+            run = run_cls(
                 expt,                 # experiment string
                 runnum,               # run number (int)
                 ts,                   # begin-run timestamp
