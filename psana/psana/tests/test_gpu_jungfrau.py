@@ -90,9 +90,13 @@ def test_gpu_jungfrau_raw_wrapper_prefers_gpu_result_and_falls_back():
     evt = SimpleNamespace(_gpu_calib="gpu-calib", _gpu_raw=np.array([5, 6], dtype=np.uint16), _gpu_raw_storage="host")
 
     assert wrapper.calib(evt) == "gpu-calib"
+    assert wrapper.calib_gpu(evt) == "gpu-calib"
     np.testing.assert_array_equal(wrapper.raw(evt), np.array([5, 6], dtype=np.uint16))
+    np.testing.assert_array_equal(wrapper.raw_gpu(evt), np.array([5, 6], dtype=np.uint16))
 
     fallback_evt = SimpleNamespace()
+    assert wrapper.raw_gpu(fallback_evt) is None
+    assert wrapper.calib_gpu(fallback_evt) is None
     assert wrapper.calib(fallback_evt, cversion=0) == "cpu-calib"
     assert cpu_raw.calib_calls
 

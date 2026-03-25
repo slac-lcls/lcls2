@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import argparse
+
 import numpy as np
 
 try:
@@ -7,6 +10,13 @@ except Exception:  # pragma: no cover
     cp = None
 
 from psana import DataSource
+from psana.gpu.tools.jungfrau_cpu_reference import (
+    DEFAULT_CVERSION,
+    add_datasource_args,
+    apply_max_events,
+    datasource_kwargs_from_args,
+    load_reference,
+)
 
 
 def _to_host(arr):
@@ -15,33 +25,31 @@ def _to_host(arr):
     return np.asarray(arr)
 
 
+def _prepare_for_compare(cpu_arr, gpu_arr):
+    cpu_host = np.asarray(cpu_arr)
+    gpu_host = np.asarray(gpu_arr)
+    note = None
+    if gpu_host.shape != cpu_host.shape:
+        squeezed_gpu = np.squeeze(gpu_host)
+        if squeezed_gpu.shape == cpu_host.shape:
+            note = f"gpu_squeezed_from={gpu_host.shape}"
+            gpu_host = squeezed_gpu
+        else:
+            raise SystemExit(
+                f"Shape mismatch: cpu={cpu_host.shape} gpu={gpu_host.shape}"
+            )
+    return cpu_host, gpu_host, note
+
+
 def _build_parser():
     parser = argparse.ArgumentParser(
-        description="Validate psana Jungfrau GPU calib against the CPU reference."
+        description="Validate psana Jungfrau GPU arrays against a saved CPU reference file."
     )
-    source_group = parser.add_argument_group("data source")
-    source_group.add_argument(
-        "--file",
-        default=None,
-        help="Input xtc2 file.",
-    )
-    source_group.add_argument(
-        "-e",
-        "--exp",
-        default=None,
-        help="Experiment name for DataSource(exp=..., run=...).",
-    )
-    source_group.add_argument(
-        "-r",
-        "--run",
-        type=int,
-        default=None,
-        help="Run number for DataSource(exp=..., run=...).",
-    )
-    source_group.add_argument(
-        "--xtc-dir",
-        default=None,
-        help="Pass dir=... to DataSource for experiment/run mode.",
+    add_datasource_args(parser)
+    parser.add_argument(
+        "--cpu-reference",
+        required=True,
+        help="Path to a .npy CPU reference file produced by save_jungfrau_cpu_reference.py.",
     )
     parser.add_argument(
         "--detector",
@@ -49,10 +57,16 @@ def _build_parser():
         help="Detector name to validate.",
     )
     parser.add_argument(
+        "--compare",
+        default="calib",
+        choices=("raw", "calib", "both"),
+        help="Which saved array(s) to compare against the GPU run.",
+    )
+    parser.add_argument(
         "--events",
         type=int,
         default=2,
-        help="Number of events to compare.",
+        help="Number of reference events to compare.",
     )
     parser.add_argument(
         "--max-events",
@@ -87,38 +101,85 @@ def _build_parser():
     return parser
 
 
-def _datasource_kwargs(args):
-    has_file = args.file is not None
-    has_exp_run = args.exp is not None or args.run is not None
+def _validate_reference_source(args, reference):
+    ref_source = reference.get("source") or {}
+    if args.detector != reference.get("detector"):
+        raise SystemExit(
+            f"Detector mismatch: validator asked for {args.detector!r}, reference has {reference.get('detector')!r}"
+        )
+    if args.exp is not None or args.run is not None:
+        if ref_source.get("exp") != args.exp or int(ref_source.get("run", -1)) != int(args.run):
+            raise SystemExit(
+                f"Reference source mismatch: validator exp/run={args.exp}/{args.run}, "
+                f"reference exp/run={ref_source.get('exp')}/{ref_source.get('run')}"
+            )
+    if args.file is not None and ref_source.get("files") != args.file:
+        raise SystemExit(
+            f"Reference file mismatch: validator file={args.file!r}, reference file={ref_source.get('files')!r}"
+        )
+    if args.compare in ("raw", "both") and reference.get("raw") is None:
+        raise SystemExit("Selected --compare raw but the reference file does not contain raw arrays.")
 
-    if has_file and has_exp_run:
-        raise SystemExit("Use either --file or --exp/--run, not both.")
-    if has_file:
-        if args.xtc_dir is not None:
-            raise SystemExit("--xtc-dir is only valid with --exp/--run.")
-        return {"files": args.file}
-    if args.exp is not None and args.run is not None:
-        ds_kwargs = {"exp": args.exp, "run": args.run}
-        if args.xtc_dir is not None:
-            ds_kwargs["dir"] = args.xtc_dir
-        return ds_kwargs
-    if args.exp is None and args.run is None:
-        raise SystemExit("Provide either --file or both --exp and --run.")
-    raise SystemExit("When using experiment mode, both --exp and --run are required.")
+
+def _iter_compare_modes(compare):
+    if compare == "both":
+        return ("raw", "calib")
+    return (compare,)
+
+
+def _gpu_array_for_mode(gpu_det, gpu_evt, mode, cversion):
+    gpu_raw = getattr(gpu_det, "raw")
+    if mode == "raw":
+        staged = getattr(gpu_raw, "raw_gpu", None)
+        if staged is not None:
+            arr = staged(gpu_evt, copy=False)
+            if arr is not None:
+                return arr, getattr(gpu_evt, "_gpu_raw_storage", None)
+        return gpu_raw.raw(gpu_evt, copy=False), getattr(gpu_evt, "_gpu_raw_storage", None)
+
+    staged = getattr(gpu_raw, "calib_gpu", None)
+    if staged is not None:
+        arr = staged(gpu_evt, copy=False)
+        if arr is not None:
+            return arr, getattr(gpu_evt, "_gpu_calib_storage", None)
+    return gpu_raw.calib(gpu_evt, cversion=cversion), getattr(gpu_evt, "_gpu_calib_storage", None)
+
+
+def _reference_array_for_mode(reference, index, mode):
+    return np.asarray(reference[mode][index])
+
+
+def _compare_one(mode, reference, index, gpu_det, gpu_evt, cversion, rtol, atol):
+    gpu_arr, storage = _gpu_array_for_mode(gpu_det, gpu_evt, mode, cversion)
+    if gpu_arr is None:
+        raise SystemExit(f"GPU {mode} array is missing for event {index}")
+    cpu_arr, gpu_host, compare_note = _prepare_for_compare(
+        _reference_array_for_mode(reference, index, mode),
+        _to_host(gpu_arr),
+    )
+    diff = float(np.max(np.abs(cpu_arr - gpu_host)))
+    ok = bool(np.allclose(cpu_arr, gpu_host, rtol=rtol, atol=atol))
+    note_suffix = f" {compare_note}" if compare_note else ""
+    print(
+        f"event {index} {mode}: timestamp={int(gpu_evt.timestamp)} "
+        f"gpu_type={type(gpu_arr).__module__}.{type(gpu_arr).__name__} "
+        f"storage={storage} shape={gpu_host.shape} max_abs_diff={diff:.6g} allclose={ok}{note_suffix}"
+    )
+    if not ok:
+        raise SystemExit(1)
 
 
 def main():
     args = _build_parser().parse_args()
-    ds_kwargs = _datasource_kwargs(args)
+    reference = load_reference(args.cpu_reference)
+    _validate_reference_source(args, reference)
 
-    if args.max_events is not None:
-        ds_kwargs = dict(ds_kwargs)
-        ds_kwargs["max_events"] = args.max_events
+    ref_events = int(reference["events"])
+    target_events = min(int(args.events), ref_events)
+    if target_events <= 0:
+        raise SystemExit("Reference file does not contain any events.")
 
-    cpu_ds = DataSource(**ds_kwargs)
-    cpu_run = next(cpu_ds.runs())
-    cpu_det = cpu_run.Detector(args.detector)
-
+    ds_kwargs = apply_max_events(datasource_kwargs_from_args(args), args.max_events)
     gpu_ds = DataSource(
         **ds_kwargs,
         gpu_detector=args.detector,
@@ -128,25 +189,29 @@ def main():
     gpu_run = next(gpu_ds.runs())
     gpu_det = gpu_run.Detector(args.detector)
 
+    ref_timestamps = np.asarray(reference["event_timestamps"], dtype=np.uint64)
+    cversion = int(reference.get("cversion", DEFAULT_CVERSION))
+
     compared = 0
-    for event_index, (cpu_evt, gpu_evt) in enumerate(zip(cpu_run.events(), gpu_run.events())):
-        cpu_arr = cpu_det.raw.calib(cpu_evt)
-        gpu_arr = gpu_det.raw.calib(gpu_evt)
-        gpu_host = _to_host(gpu_arr)
-        diff = float(np.max(np.abs(cpu_arr - gpu_host)))
-        ok = bool(np.allclose(cpu_arr, gpu_host, rtol=args.rtol, atol=args.atol))
-        print(
-            f"event {event_index}: gpu_type={type(gpu_arr).__name__} "
-            f"shape={gpu_host.shape} max_abs_diff={diff:.6g} allclose={ok}"
-        )
-        if not ok:
-            raise SystemExit(1)
-        compared += 1
-        if compared >= args.events:
+    for gpu_evt in gpu_run.events():
+        if compared >= target_events:
             break
 
-    if compared == 0:
-        raise SystemExit("No events were compared.")
+        gpu_ts = np.uint64(gpu_evt.timestamp)
+        ref_ts = ref_timestamps[compared]
+        if gpu_ts != ref_ts:
+            raise SystemExit(
+                f"Timestamp mismatch at event {compared}: gpu={int(gpu_ts)} reference={int(ref_ts)}"
+            )
+
+        for mode in _iter_compare_modes(args.compare):
+            _compare_one(mode, reference, compared, gpu_det, gpu_evt, cversion, args.rtol, args.atol)
+        compared += 1
+
+    if compared < target_events:
+        raise SystemExit(
+            f"Reference requested {target_events} events, but GPU stream produced only {compared}."
+        )
 
 
 if __name__ == "__main__":

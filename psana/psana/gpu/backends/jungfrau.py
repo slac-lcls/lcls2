@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
+import psana.detector.NDArrUtils as au
 from psana.psexp.run import Run
 
 from psana.gpu.backends.base import GpuDetectorBackend
@@ -55,16 +56,18 @@ class GpuJungfrauBackend(GpuDetectorBackend):
 
         seg_ids = tuple(det_raw._segment_numbers)
         first_seg = segs[seg_ids[0]].raw
-        raw_shape = first_seg.shape if len(seg_ids) == 1 else (len(seg_ids),) + first_seg.shape
+        stack_shape = first_seg.shape if len(seg_ids) == 1 else (len(seg_ids),) + first_seg.shape
+        raw_shape = tuple(au.reshape_to_3d(np.empty(stack_shape, dtype=first_seg.dtype)).shape)
         raw_dtype = first_seg.dtype
-        self._ensure_slot_raw_buffers(slot, raw_shape, raw_dtype)
+        self._ensure_slot_raw_buffers(slot, stack_shape, raw_shape, raw_dtype)
 
         if len(seg_ids) == 1:
-            np.copyto(slot.host_raw, first_seg, casting="no")
+            np.copyto(slot.host_raw_stack, first_seg, casting="no")
         else:
             for idx, seg_id in enumerate(seg_ids):
-                np.copyto(slot.host_raw[idx], segs[seg_id].raw, casting="no")
+                np.copyto(slot.host_raw_stack[idx], segs[seg_id].raw, casting="no")
 
+        slot.host_raw = au.reshape_to_3d(slot.host_raw_stack)
         slot.metadata["raw_shape"] = tuple(raw_shape)
         slot.metadata["raw_dtype"] = str(raw_dtype)
         slot.metadata["segment_ids"] = seg_ids
@@ -325,13 +328,14 @@ class GpuJungfrauBackend(GpuDetectorBackend):
             return cp.asnumpy(arr)
         return np.asarray(arr)
 
-    def _ensure_slot_raw_buffers(self, slot, raw_shape, raw_dtype):
-        if slot.raw_shape == tuple(raw_shape) and slot.raw_dtype == raw_dtype and slot.host_raw is not None:
+    def _ensure_slot_raw_buffers(self, slot, stack_shape, raw_shape, raw_dtype):
+        if slot.raw_shape == tuple(raw_shape) and slot.raw_dtype == raw_dtype and getattr(slot, "host_raw_stack", None) is not None:
             return
 
         slot.raw_shape = tuple(raw_shape)
         slot.raw_dtype = raw_dtype
-        slot.host_raw = self._empty_host_buffer(raw_shape, raw_dtype)
+        slot.host_raw_stack = self._empty_host_buffer(stack_shape, raw_dtype)
+        slot.host_raw = au.reshape_to_3d(slot.host_raw_stack)
 
         cp = self._get_cupy()
         if cp is not None:
@@ -378,6 +382,18 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         except Exception:
             cupyx = None
 
+        if cp is not None:
+            try:
+                cp.cuda.runtime.getDeviceCount()
+            except Exception as exc:
+                self.run.logger.debug(
+                    "Disabling CuPy for Jungfrau GPU backend because CUDA runtime is unavailable: %s",
+                    exc,
+                    exc_info=True,
+                )
+                cp = None
+                cupyx = None
+
         self._cp = cp
         self._cupyx = cupyx
         return self._cp
@@ -404,25 +420,31 @@ class GpuJungfrauRaw:
         self._backend = backend
 
     def raw(self, evt, copy=True):
+        gpu_raw = self.raw_gpu(evt, copy=copy)
+        if gpu_raw is not None:
+            return gpu_raw
+        return self._cpu_raw.raw(evt, copy=copy)
+
+    def raw_gpu(self, evt, copy=False):
         gpu_raw = getattr(evt, "_gpu_raw", None)
         if gpu_raw is None:
-            return self._cpu_raw.raw(evt, copy=copy)
-
-        storage = getattr(evt, "_gpu_raw_storage", "host")
-        if storage == "device":
-            cp = self._backend._get_cupy()
-            if cp is not None:
-                return cp.array(gpu_raw, copy=copy)
-        return np.array(gpu_raw, copy=copy)
+            return None
+        return self._array_from_evt_data(gpu_raw, getattr(evt, "_gpu_raw_storage", "host"), copy=copy)
 
     def calib(self, evt, **kwargs):
         if self._kwargs_require_cpu(kwargs):
             return self._cpu_raw.calib(evt, **kwargs)
 
-        gpu_calib = getattr(evt, "_gpu_calib", None)
+        gpu_calib = self.calib_gpu(evt, copy=False)
         if gpu_calib is not None:
             return gpu_calib
         return self._cpu_raw.calib(evt, **kwargs)
+
+    def calib_gpu(self, evt, copy=False):
+        gpu_calib = getattr(evt, "_gpu_calib", None)
+        if gpu_calib is None:
+            return None
+        return self._array_from_evt_data(gpu_calib, getattr(evt, "_gpu_calib_storage", "host"), copy=copy)
 
     def _kwargs_require_cpu(self, kwargs):
         if not kwargs:
@@ -432,6 +454,13 @@ class GpuJungfrauRaw:
         size_blk = kwargs.get("size_blk", 512 * 1024)
         allowed = set(kwargs.keys()) <= {"cversion", "size_blk"}
         return (not allowed) or cversion != 3 or size_blk != 512 * 1024
+
+    def _array_from_evt_data(self, arr, storage, copy=False):
+        if storage == "device":
+            cp = self._backend._get_cupy()
+            if cp is not None:
+                return cp.array(arr, copy=copy)
+        return np.array(arr, copy=copy)
 
     def __getattr__(self, name):
         return getattr(self._cpu_raw, name)
