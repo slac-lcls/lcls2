@@ -7,7 +7,10 @@ import pytest
 
 import psana.pycalgos.utilsdetector as ud
 from psana.gpu.backends.jungfrau import GpuJungfrauBackend, GpuJungfrauRaw
+from psana.gpu.execution import CupyExecutionBackend
+from psana.gpu.pipeline import GpuPipeline
 from psana.gpu.profiler import GpuProfiler
+from psana.gpu.runtime import make_gpu_runtime
 
 
 class _CpuRawStub:
@@ -24,9 +27,14 @@ class _CpuRawStub:
         return np.array([1, 2, 3], dtype=np.uint16)
 
 
+class _ExecutionStub:
+    def array_from_evt_data(self, arr, storage, copy=False):
+        return np.array(arr, copy=copy)
+
+
 class _BackendStub:
-    def _get_cupy(self):
-        return None
+    def __init__(self):
+        self.execution = _ExecutionStub()
 
 
 class _LoggerStub:
@@ -45,10 +53,17 @@ class _LoggerStub:
 
 def _dummy_run():
     return SimpleNamespace(
+        expt='xpptut',
         runnum=17,
         logger=logging.getLogger("test_gpu_jungfrau"),
         profiler=None,
-        dsparms=SimpleNamespace(det_classes={"normal": {}}),
+        dsparms=SimpleNamespace(
+            det_classes={"normal": {}},
+            gpu_detector='jungfrau',
+            gpu_runtime='default',
+            gpu_pipeline='default',
+            gpu_queue_depth=2,
+        ),
     )
 
 
@@ -99,6 +114,20 @@ def test_gpu_jungfrau_raw_wrapper_prefers_gpu_result_and_falls_back():
     assert wrapper.calib_gpu(fallback_evt) is None
     assert wrapper.calib(fallback_evt, cversion=0) == "cpu-calib"
     assert cpu_raw.calib_calls
+
+
+def test_make_gpu_runtime_builds_default_runtime():
+    run = _dummy_run()
+    profiler = GpuProfiler(mode='off', run_label='exp:r17')
+    run.profiler = profiler
+
+    runtime = make_gpu_runtime(run=run, profiler=profiler)
+
+    assert runtime.describe() == {'runtime': 'cupy', 'pipeline': '3stage'}
+    assert isinstance(runtime.execution, CupyExecutionBackend)
+    assert isinstance(runtime.backend, GpuJungfrauBackend)
+    assert isinstance(runtime.pipeline, GpuPipeline)
+    assert runtime.backend.execution is runtime.execution
 
 
 def test_gpu_jungfrau_backend_transition_invalidates_cache():

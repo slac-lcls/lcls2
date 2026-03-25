@@ -14,11 +14,12 @@ class GpuResidencyCache:
     the rest of the prototype can continue to run.
     """
 
-    def __init__(self, profiler=None, logger=None):
+    def __init__(self, profiler=None, logger=None, uploader=None):
         self.profiler = profiler
         self.logger = logger
         self._entries: dict[Any, Any] = {}
         self._storage_kind: dict[Any, str] = {}
+        self._uploader = uploader
         self._cupy = None
         self._cupy_checked = False
 
@@ -54,6 +55,9 @@ class GpuResidencyCache:
             self._storage_kind.pop(key, None)
 
     def _upload(self, host_array):
+        if self._uploader is not None:
+            return self._uploader(host_array)
+
         cp = self._get_cupy()
         np_array = np.ascontiguousarray(host_array)
         if cp is None:

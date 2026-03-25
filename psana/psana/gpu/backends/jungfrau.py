@@ -10,20 +10,16 @@ from psana.gpu.backends.base import GpuDetectorBackend
 
 
 class GpuJungfrauBackend(GpuDetectorBackend):
-    """Prototype 1 Jungfrau backend with raw staging and lazy cache uploads."""
+    """Prototype 1 Jungfrau backend with detector-specific staging and cache logic."""
 
     detector_name = "jungfrau"
 
-    def __init__(self, run):
-        super().__init__(run)
+    def __init__(self, run, execution_backend=None):
+        super().__init__(run, execution_backend=execution_backend)
         self._resolved_det_name = None
         self._det_raw = None
         self._host_calib = None
         self._cache_version = None
-        self._cp = None
-        self._cupyx = None
-        self._gpu_import_checked = False
-        self._pixel_index_cache = {}
 
     def make_detector(self, name, accept_missing=False, **kwargs):
         requested_name = name
@@ -37,12 +33,7 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         return det
 
     def allocate_slot_buffers(self, slot):
-        cp = self._get_cupy()
-        if cp is not None and slot.stream is None:
-            try:
-                slot.stream = cp.cuda.Stream(non_blocking=True)
-            except Exception:
-                slot.stream = None
+        self.execution.allocate_slot_stream(slot)
         return None
 
     def pack_l1_to_host(self, rec, slot):
@@ -100,42 +91,7 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         if slot.host_raw is None:
             return None
 
-        copy_start = time.perf_counter()
-        cp = self._get_cupy()
-        if cp is not None and slot.dev_raw is not None:
-            copy_start_evt = cp.cuda.Event()
-            copy_stop_evt = cp.cuda.Event()
-            try:
-                if slot.stream is not None:
-                    with slot.stream:
-                        copy_start_evt.record()
-                        slot.dev_raw.set(slot.host_raw)
-                        copy_stop_evt.record()
-                else:
-                    copy_start_evt.record()
-                    slot.dev_raw.set(slot.host_raw)
-                    copy_stop_evt.record()
-                copy_stop_evt.synchronize()
-                if getattr(self.run, "profiler", None) is not None:
-                    self.run.profiler.record_copy(cp.cuda.get_elapsed_time(copy_start_evt, copy_stop_evt) / 1e3)
-                storage = "device"
-                raw_obj = slot.dev_raw
-            except Exception as exc:
-                self.run.logger.debug(
-                    "Falling back to host-backed raw slot after CuPy copy failed: %s",
-                    exc,
-                    exc_info=True,
-                )
-                storage = "host"
-                raw_obj = slot.host_raw
-                if getattr(self.run, "profiler", None) is not None:
-                    self.run.profiler.record_copy(time.perf_counter() - copy_start)
-        else:
-            storage = "host"
-            raw_obj = slot.host_raw
-            if getattr(self.run, "profiler", None) is not None:
-                self.run.profiler.record_copy(time.perf_counter() - copy_start)
-
+        raw_obj, storage = self.execution.copy_raw_to_execution(slot.host_raw, slot)
         slot.metadata["raw_storage"] = storage
         slot.metadata["raw_device"] = raw_obj
         rec.event._gpu_raw = raw_obj
@@ -148,38 +104,10 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         if raw_obj is None:
             return None
 
-        cp = self._get_cupy()
         device_cache = slot.metadata.get("device_cache") or {}
         ccons = device_cache.get("ccons")
-
-        if cp is not None and slot.metadata.get("raw_storage") == "device" and ccons is not None:
-            kernel_start = cp.cuda.Event()
-            kernel_stop = cp.cuda.Event()
-            try:
-                if slot.stream is not None:
-                    with slot.stream:
-                        kernel_start.record()
-                        self._gpu_calib_v3(raw_obj, ccons, slot.dev_out)
-                        kernel_stop.record()
-                else:
-                    kernel_start.record()
-                    self._gpu_calib_v3(raw_obj, ccons, slot.dev_out)
-                    kernel_stop.record()
-
-                kernel_stop.synchronize()
-                if getattr(self.run, "profiler", None) is not None:
-                    self.run.profiler.record_kernel(cp.cuda.get_elapsed_time(kernel_start, kernel_stop) / 1e3)
-                calib = cp.array(slot.dev_out, copy=True)
-                storage = "device"
-            except Exception as exc:
-                self.run.logger.debug(
-                    "Falling back to host Jungfrau calibration after GPU compute failed: %s",
-                    exc,
-                    exc_info=True,
-                )
-                calib = self._cpu_calib_v3(slot.host_raw, device_cache)
-                storage = "host"
-        else:
+        calib, storage = self.execution.compute_jungfrau_calib_v3(raw_obj, ccons, slot)
+        if calib is None:
             kernel_start = time.perf_counter()
             calib = self._cpu_calib_v3(slot.host_raw, device_cache)
             storage = "host"
@@ -193,7 +121,6 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         return calib
 
     def on_transition(self, rec, state_version):
-        # Conservative Prototype 1 policy: force cache refresh after transitions.
         self.device_cache.invalidate()
         self._host_calib = None
         self._cache_version = None
@@ -283,21 +210,6 @@ class GpuJungfrauBackend(GpuDetectorBackend):
             dtype,
         )
 
-
-    def _gpu_calib_v3(self, raw, ccons, out):
-        cp = self._get_cupy()
-        raw_flat = raw.reshape(-1)
-        out_flat = out.reshape(-1)
-        size = int(raw_flat.size)
-        base_idx = self._pixel_index(size)
-        gain_idx = (raw_flat >> 14).astype(cp.int32, copy=False)
-        cc_idx = 2 * (base_idx + size * gain_idx)
-        pedoff = cp.take(ccons, cc_idx)
-        gain = cp.take(ccons, cc_idx + 1)
-        out_flat[...] = (cp.bitwise_and(raw_flat, 0x3FFF).astype(cp.float32) - pedoff) * gain
-        out.shape = raw.shape
-        return out
-
     def _cpu_calib_v3(self, raw, device_cache):
         import psana.pycalgos.utilsdetector as ud
 
@@ -308,25 +220,9 @@ class GpuJungfrauBackend(GpuDetectorBackend):
         if ccons is None:
             return np.asarray(raw)
 
-        host_ccons = self._to_host_array(ccons)
+        host_ccons = self.execution.to_host_array(ccons)
         out = np.empty(raw.shape, dtype=np.float32)
         return ud.calib_jungfrau_v3(np.asarray(raw), host_ccons, 512 * 1024, out)
-
-    def _pixel_index(self, size):
-        cp = self._get_cupy()
-        if cp is None:
-            return None
-        idx = self._pixel_index_cache.get(size)
-        if idx is None:
-            idx = cp.arange(size, dtype=cp.int32)
-            self._pixel_index_cache[size] = idx
-        return idx
-
-    def _to_host_array(self, arr):
-        cp = self._get_cupy()
-        if cp is not None and isinstance(arr, cp.ndarray):
-            return cp.asnumpy(arr)
-        return np.asarray(arr)
 
     def _ensure_slot_raw_buffers(self, slot, stack_shape, raw_shape, raw_dtype):
         if slot.raw_shape == tuple(raw_shape) and slot.raw_dtype == raw_dtype and getattr(slot, "host_raw_stack", None) is not None:
@@ -334,74 +230,9 @@ class GpuJungfrauBackend(GpuDetectorBackend):
 
         slot.raw_shape = tuple(raw_shape)
         slot.raw_dtype = raw_dtype
-        slot.host_raw_stack = self._empty_host_buffer(stack_shape, raw_dtype)
+        slot.host_raw_stack = self.execution.empty_host_buffer(stack_shape, raw_dtype)
         slot.host_raw = au.reshape_to_3d(slot.host_raw_stack)
-
-        cp = self._get_cupy()
-        if cp is not None:
-            try:
-                slot.dev_raw = cp.empty(raw_shape, dtype=raw_dtype)
-                slot.dev_out = cp.empty(raw_shape, dtype=np.float32)
-            except Exception as exc:
-                self.run.logger.debug(
-                    "Failed to allocate CuPy raw buffers for Jungfrau slot %d: %s",
-                    slot.slot_id,
-                    exc,
-                    exc_info=True,
-                )
-                slot.dev_raw = None
-                slot.dev_out = None
-        else:
-            slot.dev_raw = None
-            slot.dev_out = None
-
-    def _empty_host_buffer(self, shape, dtype):
-        cupyx = self._get_cupyx()
-        if cupyx is not None:
-            try:
-                return cupyx.empty_pinned(shape, dtype=dtype)
-            except Exception as exc:
-                self.run.logger.debug(
-                    "Failed to allocate pinned host buffer for Jungfrau raw staging: %s",
-                    exc,
-                    exc_info=True,
-                )
-        return np.empty(shape, dtype=dtype)
-
-    def _get_cupy(self):
-        if self._gpu_import_checked:
-            return self._cp
-
-        self._gpu_import_checked = True
-        try:
-            import cupy as cp
-        except Exception:
-            cp = None
-        try:
-            import cupyx
-        except Exception:
-            cupyx = None
-
-        if cp is not None:
-            try:
-                cp.cuda.runtime.getDeviceCount()
-            except Exception as exc:
-                self.run.logger.debug(
-                    "Disabling CuPy for Jungfrau GPU backend because CUDA runtime is unavailable: %s",
-                    exc,
-                    exc_info=True,
-                )
-                cp = None
-                cupyx = None
-
-        self._cp = cp
-        self._cupyx = cupyx
-        return self._cp
-
-    def _get_cupyx(self):
-        if not self._gpu_import_checked:
-            self._get_cupy()
-        return self._cupyx
+        self.execution.allocate_slot_buffers(slot, raw_shape, raw_dtype)
 
 
 class GpuJungfrauDetector:
@@ -456,11 +287,7 @@ class GpuJungfrauRaw:
         return (not allowed) or cversion != 3 or size_blk != 512 * 1024
 
     def _array_from_evt_data(self, arr, storage, copy=False):
-        if storage == "device":
-            cp = self._backend._get_cupy()
-            if cp is not None:
-                return cp.array(arr, copy=copy)
-        return np.array(arr, copy=copy)
+        return self._backend.execution.array_from_evt_data(arr, storage, copy=copy)
 
     def __getattr__(self, name):
         return getattr(self._cpu_raw, name)

@@ -75,6 +75,16 @@ def _build_parser():
         help="Pass max_events to DataSource to cap events read from the source.",
     )
     parser.add_argument(
+        "--gpu-runtime",
+        default="default",
+        help="GPU runtime selection forwarded to DataSource (default: default).",
+    )
+    parser.add_argument(
+        "--gpu-pipeline",
+        default="default",
+        help="GPU pipeline selection forwarded to DataSource (default: default).",
+    )
+    parser.add_argument(
         "--gpu-queue-depth",
         type=int,
         default=3,
@@ -183,6 +193,8 @@ def main():
     gpu_ds = DataSource(
         **ds_kwargs,
         gpu_detector=args.detector,
+        gpu_runtime=args.gpu_runtime,
+        gpu_pipeline=args.gpu_pipeline,
         gpu_queue_depth=args.gpu_queue_depth,
         gpu_profile=args.gpu_profile,
     )

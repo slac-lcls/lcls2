@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 
-from psana.gpu.cache import GpuResidencyCache
+from psana.gpu.execution import make_gpu_execution_backend
 from psana.psexp.run import Run
 
 
@@ -11,12 +11,15 @@ class GpuDetectorBackend(ABC):
 
     detector_name = None
 
-    def __init__(self, run):
+    def __init__(self, run, execution_backend=None):
         self.run = run
-        self.device_cache = GpuResidencyCache(
-            profiler=getattr(run, "profiler", None),
-            logger=getattr(run, "logger", None),
+        self.execution = execution_backend or make_gpu_execution_backend(
+            'cupy',
+            run=run,
+            profiler=getattr(run, 'profiler', None),
+            logger=getattr(run, 'logger', None),
         )
+        self.device_cache = self.execution.make_residency_cache()
 
     def make_detector(self, name, accept_missing=False, **kwargs):
         return Run.Detector(self.run, name, accept_missing=accept_missing, **kwargs)
@@ -40,10 +43,10 @@ class GpuDetectorBackend(ABC):
         return None
 
 
-def make_gpu_backend(detector_name, run):
+def make_gpu_backend(detector_name, run, execution_backend=None):
     if detector_name == "jungfrau":
         from psana.gpu.backends.jungfrau import GpuJungfrauBackend
 
-        return GpuJungfrauBackend(run)
+        return GpuJungfrauBackend(run, execution_backend=execution_backend)
 
     raise ValueError(f"Unsupported gpu_detector={detector_name!r}")

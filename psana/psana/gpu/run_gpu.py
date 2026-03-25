@@ -2,8 +2,7 @@ from psana.psexp import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.run import Run
 
-from psana.gpu.backends import make_gpu_backend
-from psana.gpu.pipeline import GpuPipeline
+from psana.gpu.runtime import make_gpu_runtime
 from psana.gpu.profiler import GpuProfiler
 from psana.gpu.record_stream import iter_records
 
@@ -39,12 +38,10 @@ class RunGpu(Run):
             logger=self.logger,
             run_label=f"{self.expt}:r{self.runnum}",
         )
-        self.backend = make_gpu_backend(self.dsparms.gpu_detector, run=self)
-        self.pipeline = GpuPipeline(
-            backend=self.backend,
-            queue_depth=self.dsparms.gpu_queue_depth,
-            profiler=self.profiler,
-        )
+        self.runtime = make_gpu_runtime(run=self, profiler=self.profiler)
+        # Keep compatibility aliases for code that still reaches into RunGpu internals.
+        self.backend = getattr(self.runtime, 'backend', None)
+        self.pipeline = getattr(self.runtime, 'pipeline', None)
 
         super()._setup_envstore()
 
@@ -93,19 +90,19 @@ class RunGpu(Run):
             yield from self.bd_node.start()
 
     def Detector(self, name, accept_missing=False, **kwargs):
-        return self.backend.make_detector(name, accept_missing=accept_missing, **kwargs)
+        return self.runtime.make_detector(name, accept_missing=accept_missing, **kwargs)
 
     def events(self):
         try:
             for rec in iter_records(self.start(), self._run_ctx):
                 if rec.is_transition:
-                    self.pipeline.handle_transition(rec)
+                    self.runtime.handle_transition(rec)
                     self._handle_transition(rec.dgrams)
                     if rec.service == TransitionId.EndRun:
                         return
                     continue
 
-                self.pipeline.submit_l1(rec)
-                yield from self.pipeline.pop_ready()
+                self.runtime.submit_l1(rec)
+                yield from self.runtime.pop_ready()
         finally:
-            self.profiler.flush_summary()
+            self.runtime.finalize()

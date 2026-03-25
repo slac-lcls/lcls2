@@ -55,6 +55,8 @@ class DsParms:
     skip_calib_load: list
     dbsuffix: str
     gpu_detector: str | None = None
+    gpu_runtime: str = "default"
+    gpu_pipeline: str = "default"
     gpu_queue_depth: int = 3
     gpu_profile: str = "off"
     gpu_profile_output: str | None = None
@@ -156,6 +158,12 @@ class DataSourceBase(abc.ABC):
     gpu_detector : str
         Detector name to enable GPU processing for. Prototype 1 supports only
         'jungfrau' (default: None).
+    gpu_runtime : str
+        GPU execution runtime selection. Phase 1 supports 'default' and 'cupy'
+        (default: 'default').
+    gpu_pipeline : str
+        GPU execution pipeline selection. Phase 1 supports 'default' and '3stage'
+        (default: 'default').
     gpu_queue_depth : int
         Number of in-flight GPU queue slots (default: 3).
     gpu_profile : str
@@ -210,6 +218,8 @@ class DataSourceBase(abc.ABC):
         self.gpu_detector = kwargs.get("gpu_detector", None)
         if isinstance(self.gpu_detector, str):
             self.gpu_detector = self.gpu_detector.strip().lower() or None
+        self.gpu_runtime = str(kwargs.get("gpu_runtime", "default")).strip().lower() or "default"
+        self.gpu_pipeline = str(kwargs.get("gpu_pipeline", "default")).strip().lower() or "default"
         self.gpu_queue_depth = int(kwargs.get("gpu_queue_depth", 3))
         self.gpu_profile = str(kwargs.get("gpu_profile", "off")).strip().lower()
         self.gpu_profile_output = kwargs.get("gpu_profile_output", None)
@@ -219,6 +229,14 @@ class DataSourceBase(abc.ABC):
         if self.gpu_detector not in (None, "jungfrau"):
             raise InvalidDataSourceArgument(
                 f"Unsupported gpu_detector={self.gpu_detector!r}; Prototype 1 only supports 'jungfrau'"
+            )
+        if self.gpu_runtime not in ("default", "cupy"):
+            raise InvalidDataSourceArgument(
+                f"Unsupported gpu_runtime={self.gpu_runtime!r}; Phase 1 supports 'default' and 'cupy'"
+            )
+        if self.gpu_pipeline not in ("default", "3stage"):
+            raise InvalidDataSourceArgument(
+                f"Unsupported gpu_pipeline={self.gpu_pipeline!r}; Phase 1 supports 'default' and '3stage'"
             )
         if self.gpu_queue_depth <= 0:
             raise InvalidDataSourceArgument("gpu_queue_depth must be greater than 0")
@@ -256,6 +274,8 @@ class DataSourceBase(abc.ABC):
             skip_calib_load=self.skip_calib_load,
             dbsuffix=self.dbsuffix,
             gpu_detector=self.gpu_detector,
+            gpu_runtime=self.gpu_runtime,
+            gpu_pipeline=self.gpu_pipeline,
             gpu_queue_depth=self.gpu_queue_depth,
             gpu_profile=self.gpu_profile,
             gpu_profile_output=self.gpu_profile_output,
@@ -273,7 +293,7 @@ class DataSourceBase(abc.ABC):
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
             "log_level", "log_file", "auto_tune", "gpu_detector",
-            "gpu_queue_depth", "gpu_profile", "gpu_profile_output",
+            "gpu_runtime", "gpu_pipeline", "gpu_queue_depth", "gpu_profile", "gpu_profile_output",
             "gpu_validate", "gpu_validate_every"
         }
         for k in kwargs:
