@@ -1,19 +1,18 @@
 import argparse
 import logging
-import signal
 import sys
 
 from psana.pscalib.app.calib_prefetch.calib_utils import CalibSource
 from psana.utils import Logger
 
-
 def main():
     """
     Entry point for the calibration prefetcher CLI tool.
 
-    Parses command-line arguments, sets up logging and signal handlers,
+    Parses command-line arguments, sets up logging
     and initializes the CalibSource to fetch calibration constants.
     """
+    print('****** hello ******')
     parser = argparse.ArgumentParser(description="Calibration Prefetcher")
     parser.add_argument('-e', '--expcode', default=None, help='Experiment code')
     parser.add_argument('--xtc-dir', default=None, help='Optional path to XTC directory')
@@ -39,13 +38,6 @@ def main():
         handler = logging.FileHandler(args.log_file)
         handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
         log.logger.addHandler(handler)
-
-    def signal_handler(sig, frame):
-        log.info("Shutting down gracefully...")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
 
     calib_source = CalibSource(
         expcode=args.expcode,
