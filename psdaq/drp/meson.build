@@ -177,6 +177,7 @@ executable('drp_udpencoder',
     contributor_lib,
     utilities_lib,
   ],
+  cpp_args: ['-Wno-uninitialized',],
 )
 
 executable('tpr_trigger',
@@ -289,6 +290,7 @@ executable('drp_validate',
   #install: true,
   #install_rpath: libdir_install_rpath,
   link_with: [],
+  cpp_args: ['-Wno-uninitialized',],
 )
 
 executable('opaltt_test',
@@ -326,6 +328,7 @@ executable('drp_groupsync',
   #install: true,
   #install_rpath: libdir_install_rpath,
   link_with: [],
+  cpp_args: ['-Wno-uninitialized',],
 )
 
 executable('ePixMDescTest',

@@ -2,20 +2,23 @@
 psdaq_inc = include_directories('../../..')
 drp_inc = include_directories('../../../drp')
 
-pgpdriver_sources = files(
-  'pgpdriver.cc',
-  'aximicronn25q.cc',
-  'mcsfile.cc'
-)
 
 pgpdriver_lib = shared_library('pgpdriver',
-  pgpdriver_sources,
+  [
+    'pgpdriver.cc',
+    'aximicronn25q.cc',
+    'mcsfile.cc',
+  ],
   include_directories: [
     psdaq_inc,
     drp_inc,
   ],
   link_with: epicstools_lib,
   install: true,
+  cpp_args: [
+    '-Wall',
+    '-Wno-uninitialized',
+  ],
 )
 
 install_headers(
