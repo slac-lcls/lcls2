@@ -49,6 +49,7 @@ hsd_lib = shared_library('hsd',
   ],
   install_rpath: libdir_install_rpath,
   install: true,
+  cpp_args: ['-Wno-uninitialized',],
 )
 
 mempeek = executable('mempeek',
