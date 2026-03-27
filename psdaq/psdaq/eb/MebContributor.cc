@@ -251,13 +251,13 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     if (svc != XtcData::TransitionId::L1Accept) {
       void* rmtAdx = (void*)link->rmtAdx(offset);
       if (svc != XtcData::TransitionId::SlowUpdate) {
-        logging::info("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
+        logging::info("MebCtrb   sent %12s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
                       XtcData::TransitionId::name(svc),
                       ddg->time.seconds(), ddg->time.nanoseconds(),
                       ddg->pulseId(), dst, rmtAdx, 0, idx, _maxEvSize);
       }
       else {
-        logging::debug("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
+        logging::debug("MebCtrb   sent %12s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08x + %u * %08zx)",
                        XtcData::TransitionId::name(svc),
                        ddg->time.seconds(), ddg->time.nanoseconds(),
                        ddg->pulseId(), dst, rmtAdx, 0, idx, _maxEvSize);
@@ -411,13 +411,13 @@ int MebContributor::post(const EbDgram* dgram)
       if (svc != XtcData::TransitionId::L1Accept) {
         void* rmtAdx = (void*)link->rmtAdx(offset);
         if (svc != XtcData::TransitionId::SlowUpdate) {
-          logging::info("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
+          logging::info("MebCtrb   sent %12s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
                         XtcData::TransitionId::name(svc),
                         dgram->time.seconds(), dgram->time.nanoseconds(),
                         dgram->pulseId(), src, rmtAdx, _bufRegSize[src], idx, _maxTrSize);
         }
         else {
-          logging::debug("MebCtrb   sent %s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
+          logging::debug("MebCtrb   sent %12s @ %u.%09u (%014lx) to MEB ID %u @ %16p (%08zx + %u * %08zx)",
                          XtcData::TransitionId::name(svc),
                          dgram->time.seconds(), dgram->time.nanoseconds(),
                          dgram->pulseId(), src, rmtAdx, _bufRegSize[src], idx, _maxTrSize);

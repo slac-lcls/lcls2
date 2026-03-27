@@ -146,6 +146,8 @@ public:
 
 // ---
 
+std::mutex PvMonitor::m_commonMutex;
+
 PvMonitor::PvMonitor(const PvParameters&      para,
                      const std::string&       alias,
                      const std::string&       pvName,
@@ -181,6 +183,7 @@ PvMonitor::PvMonitor(const PvParameters&      para,
     m_nMatch                (0),
     m_nEmpty                (0),
     m_nTooOld               (0),
+    m_timeDiff              (0),
     m_latency               (0)
 {
     // ZMQ socket for reporting errors
@@ -194,8 +197,7 @@ int PvMonitor::getParams(std::string& fieldName, Name::DataType& xtcType, int& r
     if (m_state == NotReady) {
         // Wait for PV to connect
         const std::chrono::seconds tmo(3);
-        m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; });
-        if (m_state != Ready) {
+        if (!m_condition.wait_for(lock, tmo, [this] { return m_state == Ready; })) {
             auto msg("PV "+name()+" hasn't connected");
             json jmsg = createAsyncWarnMsg(m_para.alias, msg);
             m_notifySocket.send(jmsg.dump());
@@ -246,6 +248,8 @@ void PvMonitor::shutdown()
     m_nMatch   = 0;
     m_nEmpty   = 0;
     m_nTooOld  = 0;
+    m_timeDiff = 0;
+    m_latency  = 0;
 }
 
 void PvMonitor::onConnect()
@@ -291,6 +295,17 @@ void PvMonitor::onDisconnect()
     m_notifySocket.send(jmsg.dump());
 }
 
+/*  There are several scenarios handled by the code below:
+ *  - Normal running, when timeout() is not called:
+ *    - for every L1 there is a PV update
+ *    - The rate of L1s is greater than that of the PVs
+ *    - The rate of L1s is lower than that of the PVs
+ *  - The PV doesn't update and timeout() is called for every L1
+ *  - The PV updates just when the timeout() routine is called:
+ *    - updated() obtains the mutex before timeout()
+ *    - timeout() obtains the mutex before updated()
+ *  In each of these cases the l1Queue is to be drained.
+ */
 void PvMonitor::updated()
 {
     // Queue updates only when Ready and in Running
@@ -308,8 +323,12 @@ void PvMonitor::updated()
     logging::debug("PV updated @        %u.%09u,      latency  %12ld ms  %s",
                    timestamp.seconds(), timestamp.nanoseconds(), m_latency/1000, name().c_str());
 
-    while (l1Queue.wait_for_nonempty()) { // Wait for an L1 dgram
-        EbDgram* dgram = l1Queue.front();
+    while (l1Queue.wait_for_nonempty()) {     // Wait, with mutex released, for an L1 dgram
+        // Protect against timeout() changing l1Queue
+        std::unique_lock<std::mutex> lock(m_mutex);
+
+        EbDgram* dgram;
+        if (!l1Queue.peek(dgram))  break;  // timeout() emptied l1Queue before mutex was obtained
 
         //static uint64_t last_ts = 0;
         //uint64_t ts = timestamp.to_ns();
@@ -334,53 +353,57 @@ void PvMonitor::updated()
     }
 }
 
-void PvMonitor::_tL1EqPv(EbDgram* l1Dg, const TimeStamp& pvTs)
+void PvMonitor::_event(EbDgram* dgram, const void* bufEnd)
 {
-    {
-        std::unique_lock<std::mutex> lock(m_mutex); // Protect again multiple PVs updating dgram
+    // Protect against multiple PVs updating dgram
+    std::unique_lock<std::mutex> lock(m_commonMutex);
 
-        const void* bufEnd = (char*)l1Dg + m_bufferSize;
-        NamesId     namesId(m_det.nodeId, PvDetector::RawNamesIndex + m_id);
-        CreateData  cd(l1Dg->xtc, bufEnd, m_det.namesLookup(), namesId);
-        void*       data = cd.get_ptr();    // Fetch a pointer to the next part of contiguous memory
-        Name&       nm = cd.nameindex().names().get(RawDef::field);
-        if (nm.rank() != 0) {               // Handle vectors and arrays, etc.
-            size_t   payloadSize = (char*)bufEnd - (char*)data;
-            uint32_t shape[MaxRank];
-            size_t   size = getData(data, payloadSize, shape); // Write the data into the L1 Xtc
-            if (size > payloadSize) {       // Check actual size vs available size
-                logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
-                               payloadSize, size, name().c_str());
-                l1Dg->xtc.damage.increase(Damage::Truncated);
-            }
-            if (m_firstDimOverride != 0) {
-                shape[1] = shape[0] / m_firstDimOverride;
-                shape[0] = m_firstDimOverride;
-            }
-            cd.set_array_shape(RawDef::field, shape); // Allocate the space after filling it
+    NamesId     namesId(m_det.nodeId, PvDetector::RawNamesIndex + m_id);
+    CreateData  cd     (dgram->xtc, bufEnd, m_det.namesLookup(), namesId);
+    void*       data = cd.get_ptr();    // Fetch a pointer to the next part of contiguous memory
+    Name&       nm   = cd.nameindex().names().get(RawDef::field);
+    if (nm.rank()) {                    // Handle vectors and arrays, etc.
+        size_t   payloadSize = (char*)bufEnd - (char*)data;
+        uint32_t shape[MaxRank];
+        size_t   size = getData(data, payloadSize, shape); // Write the data into the L1 Xtc
+        if (size > payloadSize) {       // Check actual size vs available size
+            logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
+                           payloadSize, size, name().c_str());
+            dgram->xtc.damage.increase(Damage::Truncated);
         }
-        else {                              // Handle scalars
-            switch (nm.type()) {
-                case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
-                case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
-                case Name::INT32:
-                case Name::ENUMVAL:
-                case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
-                case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
-                case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
-                case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
-                case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
-                case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
-                case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
-                case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
-                default: {
-                    logging::critical("Unsupported scalar type %d for %s", nm.type(), nm.name());
-                    abort();
-                    break;
-                }
+        if (m_firstDimOverride != 0) {
+            shape[1] = shape[0] / m_firstDimOverride;
+            shape[0] = m_firstDimOverride;
+        }
+        cd.set_array_shape(RawDef::field, shape); // Allocate the space after filling it
+    }
+    else {                              // Handle scalars
+        switch (nm.type()) {
+            case Name::INT8:      cd.set_value(RawDef::field, *static_cast<int8_t  *>(data));  break;
+            case Name::INT16:     cd.set_value(RawDef::field, *static_cast<int16_t *>(data));  break;
+            case Name::INT32:
+            case Name::ENUMVAL:
+            case Name::ENUMDICT:  cd.set_value(RawDef::field, *static_cast<int32_t *>(data));  break;
+            case Name::INT64:     cd.set_value(RawDef::field, *static_cast<int64_t *>(data));  break;
+            case Name::UINT8:     cd.set_value(RawDef::field, *static_cast<uint8_t *>(data));  break;
+            case Name::UINT16:    cd.set_value(RawDef::field, *static_cast<uint16_t*>(data));  break;
+            case Name::UINT32:    cd.set_value(RawDef::field, *static_cast<uint32_t*>(data));  break;
+            case Name::UINT64:    cd.set_value(RawDef::field, *static_cast<uint64_t*>(data));  break;
+            case Name::FLOAT:     cd.set_value(RawDef::field, *static_cast<float   *>(data));  break;
+            case Name::DOUBLE:    cd.set_value(RawDef::field, *static_cast<double  *>(data));  break;
+            default: {
+                logging::critical("Unsupported scalar type %d for %s", nm.type(), nm.name());
+                abort();
+                break;
             }
         }
     }
+}
+
+void PvMonitor::_tL1EqPv(EbDgram* l1Dg, const TimeStamp& pvTs)
+{
+    const void* bufEnd = (char*)l1Dg + m_bufferSize;
+    _event(l1Dg, bufEnd);
 
     ++m_nMatch;
     logging::debug("PV matches L1!!  L1 %u.%09u = PV %u.%09u  %s",
@@ -395,15 +418,16 @@ void PvMonitor::_tL1EqPv(EbDgram* l1Dg, const TimeStamp& pvTs)
 
 void PvMonitor::_tL1LtPv(EbDgram* l1Dg, const TimeStamp& pvTs)
 {
-    {
-        std::unique_lock<std::mutex> lock(m_mutex); // Protect again multiple PVs updating dgram
+  {
+    // Protect against multiple PVs updating dgram
+    std::unique_lock<std::mutex> lock(m_commonMutex);
 
-        // Because L1Accpts show up in time order, we know that no older L1 will
-        // show up to possibly match the PV's timestamp.  Thus, when the L1 is
-        // older than the PV (t(PV) > t(L1)), mark it damaged and dismiss it.
-        // Then go await another L1 and reattempt matching.
-        l1Dg->xtc.damage.increase(Damage::MissingData);
-    }
+    // Because L1Accpts show up in time order, we know that no older L1 will
+    // show up to possibly match the PV's timestamp.  Thus, when the L1 is
+    // older than the PV (t(PV) > t(L1)), mark it damaged and dismiss it.
+    // Then go await another L1 and reattempt matching.
+    l1Dg->xtc.damage.increase(Damage::MissingData);
+  }
 
     ++m_nEmpty;
     logging::debug("PV too young!!   L1 %u.%09u < PV %u.%09u  %s",
@@ -429,6 +453,16 @@ void PvMonitor::_tL1GtPv(EbDgram* l1Dg, const TimeStamp& pvTs)
                    l1Dg->time.seconds(), (l1Dg->time.nanoseconds()>>16)&0xfffe, l1Dg->time.nanoseconds()&0x1ffff,
                    pvTs.seconds(),       (pvTs.nanoseconds()>>16)&0xfffe,       pvTs.nanoseconds()&0x1ffff,
                    name().c_str());
+}
+
+void PvMonitor::timeout(EbDgram* dgram)
+{
+    // Protect against updated() changing l1Queue
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    // Dequeue only when dg is the expected one
+    EbDgram* dg;
+    if (l1Queue.peek(dg) && (dg == dgram))  l1Queue.try_pop(dg);
 }
 
 // ---
@@ -799,8 +833,8 @@ std::string PvDrp::configure(const json& msg)
     m_evtQueue.startup();
 
     // Start the reader and collector threads
-    m_readerThread = std::thread{&PvDrp::_reader, this};
-    m_collectorThread = std::thread(&PvDrp::_collector, std::ref(*this));
+    m_readerThread    = std::thread{&PvDrp::_reader, this};
+    m_collectorThread = std::thread(&PvDrp::_collector, this);
 
     return std::string();
 }
@@ -862,6 +896,9 @@ int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                              nTooOld += pvMonitor->nTooOld();
                          m_nTooOld = nTooOld;
                          return m_nTooOld; });
+    m_nTimedOut = 0;
+    exporter->add("drp_timeout_count", labels, MetricType::Counter,
+                  [&](){return m_nTimedOut;});
     // @todo: Support multiple PVs
     exporter->add("drp_time_diff", labels, MetricType::Gauge,
                   [&](){ return m_det.pvMonitors()[0]->timeDiff(); });
@@ -913,10 +950,6 @@ void PvDrp::_reader()
 {
     m_terminate.store(false, std::memory_order_release);
 
-    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()            ?
-                    std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
-                    1500 };
-
     logging::info("PGPReader thread is starting with process ID %lu", syscall(SYS_gettid));
     if (prctl(PR_SET_NAME, "drp/Reader", 0, 0, 0) == -1) {
         perror("prctl");
@@ -954,7 +987,7 @@ void PvDrp::_reader()
             m_nEvents++;
 
             // Pass all events to the Collector to maintain time order
-            m_evtQueue.push(dgram);
+            m_evtQueue.push(index);
 
             // Pass L1s to the PV monitors to add PV data
             if (dgram->service() == TransitionId::L1Accept) {
@@ -962,10 +995,6 @@ void PvDrp::_reader()
                     pvMonitor->l1Queue.push(dgram);
                 }
             }
-        }
-        else {
-            // Time out batches for the TEB
-            tebContributor().timeout();
         }
     }
 
@@ -989,25 +1018,55 @@ void PvDrp::_collector()
         perror("prctl");
     }
 
-    EbDgram* evtDg;
-    while (m_evtQueue.pop(evtDg)) {
-        auto index = pool.pebble.index(evtDg);
-        TransitionId::Value service = evtDg->service();
-        if (service == TransitionId::L1Accept) {
-            bool quit{false};
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()            ?
+                    std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
+                    1500 };
+
+    unsigned index;
+    bool rc = m_evtQueue.pop(index);
+    while (rc) {
+        auto evtDg = (EbDgram*)pool.pebble[index];
+        TransitionId::Value transitionId = evtDg->service();
+        logging::debug("PvDrp      saw %12s @ %u.%09u (%014lx)",
+                       TransitionId::name(transitionId),
+                       evtDg->time.seconds(), evtDg->time.nanoseconds(),
+                       evtDg->pulseId());
+        if (transitionId == TransitionId::L1Accept) {
+            bool timedOut{false};
             for (auto& pvMonitor: m_det.pvMonitors()) {
-                EbDgram* pvDg;
-                quit = !pvMonitor->pvQueue.pop(pvDg);
-                if (quit) [[unlikely]]  break;
-                if (pvDg != evtDg) [[unlikely]] { // Could be an assert()
-                    logging::critical("Dgram mismatch for %s: got TimeStamp %u.%09u, expected %u.%09u",
-                                      pvMonitor->name().c_str(),
-                                      pvDg->time.seconds(),  pvDg->time.nanoseconds(),
-                                      evtDg->time.seconds(), evtDg->time.nanoseconds());
-                    abort();
+                EbDgram* pvDg{nullptr};
+                ms_t age{Eb::latency<ms_t>(evtDg->time)};
+                if (age < tmo) [[likely]] // Not yet timed out and not terminating
+                    pvMonitor->pvQueue.popW(pvDg, (tmo-age).count());
+                else         [[unlikely]] // Sample when timed out or terminating
+                    pvMonitor->pvQueue.try_pop(pvDg);
+                if (!pvDg)  [[unlikely]] {
+                    logging::debug("PV    timed out!!             %s", pvMonitor->name().c_str());
+                    pvMonitor->timeout(evtDg); // Attempt to remove evtDg from updated()'s input queue
+                    timedOut = true;
+                }
+                else if (pvDg != evtDg) [[unlikely]] {
+                    // pvDg is likely the late arrival of a previously timed out
+                    //   evtDg.  In this case it has been recognized and can
+                    //   thus be ignored.  Its pebble buffer may already have
+                    //   been deallocated.  Even so, it is safe to examine its
+                    //   contents as it is nominally a valid buffer, but it may
+                    //   have been reallocated and have updated contents.
+                    logging::debug("Dgram mismatch for %s: got TimeStamp %u.%09u, expected %u.%09u",
+                                   pvMonitor->name().c_str(),
+                                   pvDg->time.seconds(),  pvDg->time.nanoseconds(),
+                                   evtDg->time.seconds(), evtDg->time.nanoseconds());
                 }
             }
-            if (quit) [[unlikely]]  break;
+            if (timedOut) [[unlikely]] {
+                logging::debug("Event timed out!! "
+                               "          @ %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                               evtDg->time.seconds(),  evtDg->time.nanoseconds(),
+                               evtDg->time.seconds(), (evtDg->time.nanoseconds()>>16)&0xfffe, evtDg->time.nanoseconds()&0x1ffff,
+                               Eb::latency<ms_t>(evtDg->time));
+                evtDg->xtc.damage.increase(Damage::TimedOut);
+                ++m_nTimedOut;
+            }
         }
         else {
             // Find the transition dgram in the pool
@@ -1016,7 +1075,18 @@ void PvDrp::_collector()
                 _handleTransition(*evtDg, *trDg);
         }
 
+        // Prepare trigger input data based on the event and send it to the TEB
+        // Must be from the same thread in which batches are timed out
         _sendToTeb(*evtDg, index);
+
+        // Time out batches for the TEB
+        // Must be from the same thread in which they are processed (_sendToTeb())
+        while (!m_evtQueue.try_pop(index)) {  // Poll
+            if (tebContributor().timeout()) { // After batch is timed out
+                rc = m_evtQueue.popW(index);  // pend
+                break;
+            }
+        }
     }
     logging::info("Collector is exiting");
 }
@@ -1026,8 +1096,8 @@ void PvDrp::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
     // Initialize the transition dgram's header
     trDg = evtDg;
 
-    TransitionId::Value service = trDg.service();
-    if (service != TransitionId::SlowUpdate) {
+    TransitionId::Value transitionId = trDg.service();
+    if (transitionId != TransitionId::SlowUpdate) {
         // copy the temporary xtc created on phase 1 of the transition
         // into the real location
         Xtc& trXtc = m_det.transitionXtc();
@@ -1037,10 +1107,10 @@ void PvDrp::_handleTransition(EbDgram& evtDg, EbDgram& trDg)
         memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
 
         // Enable/disable PV updates
-        if (service == TransitionId::Enable) {
+        if (transitionId == TransitionId::Enable) {
             m_det.enable();
         }
-        else if (service == TransitionId::Disable) {
+        else if (transitionId == TransitionId::Disable) {
             m_det.disable();
         }
     }
@@ -1058,6 +1128,7 @@ void PvDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
         throw "Dgram overflowed buffer";
     }
 
+    // Prepare trigger input data for the TEB
     auto l3InpBuf = tebContributor().fetch(index);
     EbDgram* l3InpDg = new(l3InpBuf) EbDgram(dgram);
     if (l3InpDg->isEvent()) {
@@ -1067,6 +1138,8 @@ void PvDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
             trgPrimitive->event(pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
     }
+
+    // Send the trigger input data to the TEB
     tebContributor().process(l3InpDg);
 }
 

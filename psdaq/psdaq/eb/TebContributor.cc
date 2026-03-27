@@ -408,13 +408,13 @@ void TebContributor::_post(const Batch& batch)
       if (svc != XtcData::TransitionId::L1Accept) {
         void* rmtAdx = (void*)link->rmtAdx(offset);
         if (svc != XtcData::TransitionId::SlowUpdate) {
-          logging::info("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+          logging::info("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
                         XtcData::TransitionId::name(svc),
                         dgram->time.seconds(), dgram->time.nanoseconds(),
                         dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
         }
         else {
-          logging::debug("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
+          logging::debug("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08x + %u * %08zx)",
                          XtcData::TransitionId::name(svc),
                          dgram->time.seconds(), dgram->time.nanoseconds(),
                          dgram->pulseId(), dst, rmtAdx, 0, idx, _prms.maxInputSize);
@@ -554,13 +554,13 @@ void TebContributor::_post(const EbDgram* dgram)
         if (svc != XtcData::TransitionId::L1Accept) {
           void* rmtAdx = (void*)link->rmtAdx(offset);
           if (svc != XtcData::TransitionId::SlowUpdate) {
-            logging::info("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
+            logging::info("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
                           XtcData::TransitionId::name(svc),
                           dgram->time.seconds(), dgram->time.nanoseconds(),
                           dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
           }
           else {
-            logging::debug("TebCtrb   sent %s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
+            logging::debug("TebCtrb   sent %12s @ %u.%09u (%014lx) to TEB ID %u @ %16p (%08zx + %u * %08zx)",
                            XtcData::TransitionId::name(svc),
                            dgram->time.seconds(), dgram->time.nanoseconds(),
                            dgram->pulseId(), src, rmtAdx, _batMan.batchRegionSize(), idx, sizeof(*dgram));
