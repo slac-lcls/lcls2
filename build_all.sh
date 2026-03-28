@@ -63,8 +63,8 @@ if command -v nvcc >/dev/null 2>&1; then
   export LDFLAGS=""
   export CXXFLAGS_OLD="$CXXFLAGS"
   export CXXFLAGS="" #$(echo "$CXXFLAGS" | sed -E 's/(^| )-fPI(C|E)( |$)/ /g')"
-  if [ -n "$CUDA_ROOT" ]; then
-    # If CUDA_ROOT is set use that not what's in conda
+  # If CUDA_ROOT is set and exists use that not what's in conda
+  if [ -n "$CUDA_ROOT" ] && [ -e "$CUDA_ROOT" ]; then
     OPTIONS="$OPTIONS -Dcustom_cuda_path=$CUDA_ROOT"
   fi
 fi
@@ -75,76 +75,16 @@ fi
 if [ ! -d "$BUILDDIR/meson-private" ]; then
     meson setup "$BUILDDIR" $OPTIONS
 else
-    pipOptions=""
-fi
-
-cmake_build xtcdata
-
-if [ $no_shmem == 0 ]; then
-    cmake_build psalg
-else
-    cmake_build psalg -DBUILD_SHMEM=OFF
-fi
-cd psalg
-pip install --no-deps --prefix=$INSTDIR $pipOptions .
-cd ..
-
-if [ $no_daq == 0 ]; then
-    # to build psdaq with setuptools
-    cmake_build psdaq -DCPM_SOURCE_CACHE=$HOME/.cache/CPM
-    cd psdaq
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-    cd ..
-fi
-
-if [ $no_ana == 0 ]; then
-    # to build psana with setuptools
-    cd psana
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-fi
-# The removal of site.py in setup 49.0.0 breaks "develop" installations
-# which are outside the normal system directories: /usr, /usr/local,
-# $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
-# The suggested fix, in the bug report, is the following: "I recommend
-# that the project use pip install --prefix or possibly pip install
-# --target to install packages and supply a sitecustomize.py to ensure
-# that directory ends up as a site dir and gets .pth processing. That
-# approach should be future-proof (at least against the sunset of
-# easy_install). All python setup.py commands in the code above have
-# been replaced with pip commands. The following code implements the
-# sitecustomize.py file. Pip bilds the python modules in a sandbox,
-# so it requires all the code for the module to be in the same
-# folder. The C++ code for the modules built in psana was therefore
-# moved from psalg to psana.
-if [ $pyInstallStyle == "develop" ]; then
-  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ] && \
-     [ ! -f $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py ]; then
-cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
-import site
-
-site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
-EOF
-  fi
+    meson setup "$BUILDDIR" $OPTIONS --reconfigure || \
+    meson setup "$BUILDDIR" $OPTIONS --wipe
 fi
 meson compile -C "$BUILDDIR"
 meson install -C "$BUILDDIR"
 
-pip install --prefix=$INSTDIR .
+pip install --prefix=$INSTDIR . #--no-index
 if [ $no_daq == 0 ]; then
   cd psdaq
-  pip install --prefix=$INSTDIR .
+  pip install --prefix=$INSTDIR . #--no-index
   cd ..
 fi
 

@@ -78,7 +78,11 @@ if cuda_compiler.found()
       'tmoTeb.cc'
     ],
     include_directories: [trigger_inc_dir],
-    dependencies: [psalg_utils_dep, xtcdata_dep],
+    dependencies: [
+      psalg_utils_dep,
+      xtcdata_dep,
+      nlohmann_json_dep,
+    ],
     #link_with: [],
     install: true,
     install_rpath: libdir_install_rpath,
