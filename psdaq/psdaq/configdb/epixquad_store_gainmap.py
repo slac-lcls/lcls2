@@ -14,6 +14,12 @@ gain_dict = {
     'AML': {'value': 0x0, 'trbit': 0},
 }
 
+# Fixed low uses pixel value 0x8 and is treated here as trbit-flexible.
+# That allows an ASIC to mix L with either the trbit=0 family (M/AML)
+# or the trbit=1 family (H/AHL), while still rejecting ASIC-local mixes
+# that require both trbit families for non-L gains.
+TRBIT_FLEXIBLE_GAINS = {'L'}
+
 STORE_ROWS = 1408
 STORE_COLS = 384
 ASIC_ROWS = 176
@@ -95,9 +101,24 @@ def _summary_from_counts(counts):
     return ', '.join(f'{int(label)}:{int(count)}' for label, count in sorted(counts.items()))
 
 
+def _resolve_asic_trbit(gains_present):
+    fixed_gains = [gain for gain in gains_present if gain not in TRBIT_FLEXIBLE_GAINS]
+    fixed_trbits = {gain_dict[gain]['trbit'] for gain in fixed_gains}
+
+    if len(fixed_trbits) > 1:
+        raise ValueError(
+            f'Incompatible non-L gains {sorted(fixed_gains)} require multiple trbit values'
+        )
+
+    if fixed_trbits:
+        return fixed_trbits.pop()
+
+    # Pure-L ASICs default to trbit=0 for deterministic behavior.
+    return 0
+
+
 def _legacy_binary_map(store_labels, gains):
-    if gain_dict[gains[0]]['trbit'] != gain_dict[gains[1]]['trbit']:
-        raise ValueError(f'Incompatible gains {gains} for pixel configuration')
+    _resolve_asic_trbit(gains)
 
     vgain0 = gain_dict[gains[0]]['value']
     vgain1 = gain_dict[gains[1]]['value']
@@ -111,7 +132,7 @@ def _legacy_binary_map(store_labels, gains):
     mapped = store_labels * (vgain1 - vgain0) + vgain0
 
     d = {}
-    trbit = gain_dict[gains[0]]['trbit']
+    trbit = _resolve_asic_trbit(gains)
     for i in range(ASIC_COUNT):
         d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
 
@@ -135,14 +156,13 @@ def _label_map_to_pixel_map(store_labels, label_map):
             raise ValueError(f'ASIC {i} uses unmapped labels {missing}; add --map entries for them')
 
         gains_present = sorted({label_map[label] for label in labels_present})
-        trbits = {gain_dict[gain]['trbit'] for gain in gains_present}
-        if len(trbits) != 1:
+        try:
+            trbit = _resolve_asic_trbit(gains_present)
+        except ValueError as exc:
             raise ValueError(
                 f'ASIC {i} mixes gains with incompatible trbit values: '
                 f'{gains_present} from labels {labels_present}'
-            )
-
-        trbit = trbits.pop()
+            ) from exc
         d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
 
         pixel_asic = np.zeros_like(asic_labels, dtype=np.uint8)
