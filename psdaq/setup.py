@@ -118,6 +118,7 @@ if 'PSDAQ' in BUILD_LIST :
             'configdb = psdaq.configdb.configdb:main',
             'configdb_GUI = psdaq.configdb.configdb_GUI:main',
             'configdb_multimod = psdaq.configdb.configdb_multimod:configdb_multimod',
+            'epixquad_assembled_to_gainmap = psdaq.configdb.epixquad_assembled_to_gainmap:main',
             'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
             'epixquad_gainmap_mask = psdaq.configdb.epixquad_gainmap_mask:main',
             'epixquad_create_pixelmask = psdaq.configdb.epixquad_create_pixelmask:main',
