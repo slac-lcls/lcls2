@@ -63,8 +63,8 @@ if command -v nvcc >/dev/null 2>&1; then
   export LDFLAGS=""
   export CXXFLAGS_OLD="$CXXFLAGS"
   export CXXFLAGS="" #$(echo "$CXXFLAGS" | sed -E 's/(^| )-fPI(C|E)( |$)/ /g')"
+  # If CUDA_ROOT is set and exists use that not what's in conda
   if [ -n "$CUDA_ROOT" ] && [ -e "$CUDA_ROOT" ]; then
-    # If CUDA_ROOT is set and exists use that not what's in conda
     OPTIONS="$OPTIONS -Dcustom_cuda_path=$CUDA_ROOT"
   fi
 fi
@@ -81,10 +81,10 @@ fi
 meson compile -C "$BUILDDIR"
 meson install -C "$BUILDDIR"
 
-pip install --prefix=$INSTDIR .
+pip install --prefix=$INSTDIR . #--no-index
 if [ $no_daq == 0 ]; then
   cd psdaq
-  pip install --prefix=$INSTDIR .
+  pip install --prefix=$INSTDIR . #--no-index
   cd ..
 fi
 

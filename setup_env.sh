@@ -17,8 +17,8 @@ if [ -d "/cds/sw/" ]; then
 
     osrel=`uname -r`
     case $osrel in
-        *el9*) conda activate daq_20260311;;#daq_20250402_r9;;
-        *)     conda activate daq_20250402;;
+        *el9*) conda activate daq_20260311;;
+        *)     conda activate daq_20260311;;#daq_20250402;;
     esac
 
     # DAQ bundle from the active default environment
@@ -42,8 +42,6 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
 
-    #conda activate ps_20250204_gpu
-    #conda activate ps_20241122
     conda activate daq_20260311
 
 else
@@ -65,7 +63,7 @@ if [ -h "$CUDA_ROOT" ]; then
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
 fi
 
-# In ASC lab the command for zsh does not work, but in XPP it does. 
+# In ASC lab the command for zsh does not work, but in XPP it does.
 # So we need to check which shell we are in to get the correct path to the script
 if [ -n "$BASH_VERSION" ]; then
     SCRIPT_SOURCE="${BASH_SOURCE[0]}"

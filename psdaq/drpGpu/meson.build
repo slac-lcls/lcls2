@@ -4,6 +4,7 @@ if cuda_compiler.found()
     '-gencode=arch=compute_86,code=sm_86',
     '-gencode=arch=compute_90,code=sm_90',
     '-Wno-deprecated-gpu-targets',
+    '-Xcompiler=-fPIC',
     #'-G', #for debugging
     #'--verbose',
   ]
@@ -24,7 +25,7 @@ if cuda_compiler.found()
 
   cuda_lib_dirs = [
     join_paths(cuda_path, 'targets/x86_64-linux/lib'),
-    join_paths(cuda_path, 'lib64/stubs'), # Using stubs from toolkit
+    #join_paths(cuda_path, 'lib64/stubs'), # Using stubs from toolkit
     join_paths(cuda_path, 'lib/'),
     join_paths(cuda_path, 'lib64/'),
   ]
@@ -32,6 +33,8 @@ if cuda_compiler.found()
   cudart_dep = cc.find_library('cudart', dirs: cuda_lib_dirs)
   cuda_main_dep = cc.find_library('cuda', dirs: cuda_lib_dirs)
   cufile_dep = cc.find_library('cufile', dirs: cuda_lib_dirs)
+  # Patched cufile lib with no glibc restriction for log2f
+  #cufile_dep = cc.find_library('cufile', dirs: '/cds/home/k/kmecseki/cuda2/')
 
   cuda_dep = declare_dependency(
     include_directories: cuda_inc_dir,
@@ -70,6 +73,7 @@ if cuda_compiler.found()
     ],
   )
 
+  # Remove link_args when using newer conda (with sysroot 2.28< (kernel 4.18<))
   executable('drp_gpu',
     [
       'PGPDetectorApp.cc',
@@ -91,6 +95,8 @@ if cuda_compiler.found()
       zmq_dep,
       prometheus_pull_dep,
       cufile_dep,
+      nlohmann_json_dep,
+      #threads_dep,
     ],
     install: true,
     install_rpath: libdir_install_rpath,
@@ -106,6 +112,17 @@ if cuda_compiler.found()
     ],
     #pie: true,
     cuda_args: cuda_args,
+    link_args: [
+      '/lib64/libcuda.so.1',
+      '/lib64/librt.so.1',
+      '/lib64/libpthread.so.0',
+      '/lib64/libdl.so.2',
+      '/lib64/libc.so.6',
+      '/lib64/libm.so.6',
+      '/lib64/ld-linux-x86-64.so.2',
+      '/lib64/libutil.so.1',
+      '/lib64/libresolv.so.2',
+    ],
   )
 
   AreaDetector_gpu_lib = shared_library('AreaDetector_gpu',
@@ -125,6 +142,7 @@ if cuda_compiler.found()
       cuda_dep,
       xtcdata_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -143,6 +161,7 @@ if cuda_compiler.found()
       psalg_utils_dep,
       cuda_dep,
       python_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -156,6 +175,7 @@ if cuda_compiler.found()
       #python_dep,
       xtcdata_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -172,6 +192,7 @@ if cuda_compiler.found()
       cuda_dep,
       lc_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -185,6 +206,7 @@ if cuda_compiler.found()
       xtcdata_dep,
       pfpl_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -198,6 +220,7 @@ if cuda_compiler.found()
       xtcdata_dep,
       cusz_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
@@ -211,6 +234,7 @@ if cuda_compiler.found()
       xtcdata_dep,
       cuszp_dep,
       psalg_utils_dep,
+      nlohmann_json_dep,
     ],
   )
 
