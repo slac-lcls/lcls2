@@ -8,13 +8,13 @@ Outputs:
 - optional assembled-detector PNG preview for visual inspection
 
 Default mask semantics:
+- label 0: pixels inside the requested radius
+- label 1: pixels outside the requested radius
+
+3-gain mask semantics:
 - label 0: pixels inside the requested radius within the beam-center quadrants
 - label 1: pixels outside the requested radius but still within the beam-center quadrants
 - outer label: pixels outside the beam-center quadrants
-
-Binary mask semantics:
-- label 0: pixels inside the requested radius
-- label 1: pixels outside the requested radius
 
 The beam-center quadrants are the dynamic 2x2 ASIC block selected from the beam
 center in assembled-detector coordinates.
@@ -208,10 +208,10 @@ def _save_preview(path, mask, center_x, center_y, outer_label, x0, x1, y0, y1):
 
 def _parse_args():
     parser = argparse.ArgumentParser(description='Generate epixquad gain-map mask input for configdb workflows')
-    parser.add_argument('--binary-mode', choices=('LM', 'LH'), default=None,
-                        help='Emit a full-detector binary radial mask: 0 inside radius, 1 outside radius')
+    parser.add_argument('--3gain-mode', dest='three_gain_mode', action='store_true',
+                        help='Emit a 3-label mask using beam-center quadrants plus an outer region')
     parser.add_argument('-r', '--radius', type=float, required=True,
-                        help='Radius in pixels for label 0 within the beam-center quadrants')
+                        help='Radius in pixels for label 0')
     parser.add_argument('--dx', type=float, default=0.0,
                         help='Beam-center x displacement in pixels from default center')
     parser.add_argument('--dy', type=float, default=0.0,
@@ -232,12 +232,12 @@ def _parse_args():
 def main():
     args = _parse_args()
 
-    if args.binary_mode is None and args.outer_label in (0, 1):
+    if args.outer_label in (0, 1) and args.three_gain_mode:
         raise ValueError(f'outer-label must not collide with radial labels 0/1: {args.outer_label}')
 
     center_x = args.center_x + args.dx
     center_y = args.center_y + args.dy
-    if args.binary_mode is None:
+    if args.three_gain_mode:
         block_row, block_col, x0, x1, y0, y1 = _beam_center_block(center_x, center_y)
         _validate_radius(args.radius, center_x, center_y, x0, x1, y0, y1)
         assembled = _build_mask(args.radius, center_x, center_y, args.outer_label, x0, x1, y0, y1)
@@ -262,20 +262,21 @@ def main():
     count_str = ', '.join(f'{int(label)}:{int(count)}' for label, count in zip(unique, counts))
     print(f'Wrote {args.output} with shape {store_mask.shape}')
     print(f'Beam center (x, y) = ({center_x:.3f}, {center_y:.3f}) pixels')
-    if args.binary_mode is None:
+    if args.three_gain_mode:
         print(f'Beam-center quadrant block row/col = ({block_row}, {block_col})')
         print(f'Beam-center quadrant bounds x=[{x0}, {x1}), y=[{y0}, {y1})')
     else:
-        print(f'Binary mode = {args.binary_mode}')
         print('Binary mask semantics: 0 = inside radius, 1 = outside radius')
     print(f'Radius = {args.radius}')
     print(f'Label counts = {count_str}')
     if args.assembled_output:
         print(f'Wrote assembled PNG preview to {args.assembled_output}')
-    if args.binary_mode == 'LM':
-        print(f'Suggested upload: epixquad_store_gainmap --file {args.output} --map 0:L --map 1:M ...')
-    elif args.binary_mode == 'LH':
-        print(f'Suggested upload: epixquad_store_gainmap --file {args.output} --map 0:L --map 1:H ...')
+    if args.three_gain_mode:
+        print(f'Suggested upload: epixquad_store_gainmap --file {args.output} --map 0:L --map 1:M --map {args.outer_label}:H ...')
+    else:
+        print('Suggested uploads:')
+        print(f'  epixquad_store_gainmap --file {args.output} --map 0:L --map 1:M ...')
+        print(f'  epixquad_store_gainmap --file {args.output} --map 0:L --map 1:H ...')
 
 
 if __name__ == '__main__':
