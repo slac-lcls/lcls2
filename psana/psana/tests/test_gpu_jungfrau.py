@@ -71,22 +71,45 @@ def test_gpu_profiler_summary_and_trace(tmp_path):
     logger = _LoggerStub()
     summary_path = tmp_path / "gpu-summary.json"
     profiler = GpuProfiler(mode="summary", output_path=str(summary_path), logger=logger, run_label="exp:r1")
+    profiler.record_initialization(0.01)
+    profiler.record_event_loop_wall(0.02)
     profiler.record_stage1(0.001)
     profiler.record_queue_wait(0.002)
     profiler.record_transition_drain(0.003)
+    profiler.record_transfer(1024 * 1024, 0.001)
     profiler.record_event_completed()
     summary = profiler.flush_summary()
 
     assert summary["events_completed"] == 1
+    assert summary["metrics"]["initialization"]["count"] == 1
+    assert summary["metrics"]["initialization"]["total_s"] == pytest.approx(0.01)
+    assert summary["metrics"]["event_loop_wall"]["count"] == 1
+    assert summary["metrics"]["event_loop_wall"]["total_s"] == pytest.approx(0.02)
+    assert summary["metrics"]["initialization"]["min_s"] == pytest.approx(0.01)
     assert summary["metrics"]["stage1"]["count"] == 1
+    assert summary["metrics"]["stage1"]["min_s"] == pytest.approx(0.001)
+    assert summary["transfer"]["count"] == 1
+    assert summary["transfer"]["total_bytes"] == 1024 * 1024
+    assert summary["transfer"]["avg_rate_Bps"] == pytest.approx(1024 * 1024 / 0.001)
     assert summary_path.exists()
     written = json.loads(summary_path.read_text(encoding="utf-8"))
     assert written["run"] == "exp:r1"
-    assert logger.messages
+    assert written["metrics"]["initialization"]["total_s"] == pytest.approx(0.01)
+    assert written["metrics"]["event_loop_wall"]["total_s"] == pytest.approx(0.02)
+    assert written["transfer"]["total_bytes"] == 1024 * 1024
+    assert logger.messages[0] == "gpu profile summary run=exp:r1 events=1"
+    assert logger.messages[1] == "gpu profile cpu_wall_s init=0.010 loop=0.020 rate_evt_s=50.000"
+    assert logger.messages[2] == "gpu profile avg_s stage1=0.001 queue=0.002 drain=0.003 copy=0.000 kernel=0.000 cache_upload=0.000 transfer_size_mib=1.000 transfer_rate_mib_s=1000.000"
+    assert logger.messages[3] == "gpu profile min_s stage1=0.001 queue=0.002 drain=0.003 copy=0.000 kernel=0.000 cache_upload=0.000 transfer_size_mib=1.000 transfer_rate_mib_s=1000.000"
+    assert logger.messages[4] == "gpu profile max_s stage1=0.001 queue=0.002 drain=0.003 copy=0.000 kernel=0.000 cache_upload=0.000 transfer_size_mib=1.000 transfer_rate_mib_s=1000.000"
+    assert logger.messages[5] == "gpu profile total_s stage1=0.001 queue=0.002 drain=0.003 copy=0.000 kernel=0.000 cache_upload=0.000 transfer_size_mib=1.000 transfer_rate_mib_s=1000.000"
 
     trace_path = tmp_path / "gpu-trace.jsonl"
     trace = GpuProfiler(mode="trace", output_path=str(trace_path), run_label="exp:r2")
+    trace.record_initialization(0.02)
+    trace.record_event_loop_wall(0.03)
     trace.record_stage1(0.004)
+    trace.record_transfer(2048, 0.002)
     trace.record_event_completed()
     trace.flush_summary()
     trace.record_stage1(0.005)

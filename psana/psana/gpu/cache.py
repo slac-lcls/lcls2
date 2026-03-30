@@ -36,11 +36,14 @@ class GpuResidencyCache:
         start = time.perf_counter()
         arr, kind = self._upload(host_array)
         dt_s = time.perf_counter() - start
+        size_bytes = int(np.asarray(host_array).nbytes)
 
         self._entries[key] = arr
         self._storage_kind[key] = kind
         if self.profiler is not None:
             self.profiler.record_cache_upload(dt_s)
+            if kind == "device":
+                self.profiler.record_transfer(size_bytes, dt_s)
         return arr
 
     def invalidate(self, predicate=None):

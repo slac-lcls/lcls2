@@ -1,3 +1,5 @@
+import time
+
 from psana.psexp import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.run import Run
@@ -28,6 +30,7 @@ class RunGpu(Run):
         begingrun_dgrams,
         comms=None,
     ):
+        init_start = time.perf_counter()
         super().__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
         self.configs = configs
         self.comms = comms
@@ -58,6 +61,8 @@ class RunGpu(Run):
             self._setup_mpi_nodes(dm, smdr_man, configs)
 
         self._setup_run_calibconst()
+        self.profiler.emit_summary = (self.comms is None or self._nodetype == "bd")
+        self.profiler.record_initialization(time.perf_counter() - init_start)
 
     def _setup_mpi_nodes(self, dm, smdr_man, configs):
         # Import lazily to avoid a serial-import cycle with mpi_ds.
@@ -93,6 +98,7 @@ class RunGpu(Run):
         return self.runtime.make_detector(name, accept_missing=accept_missing, **kwargs)
 
     def events(self):
+        loop_start = time.perf_counter()
         try:
             for rec in iter_records(self.start(), self._run_ctx):
                 if rec.is_transition:
@@ -105,4 +111,5 @@ class RunGpu(Run):
                 self.runtime.submit_l1(rec)
                 yield from self.runtime.pop_ready()
         finally:
+            self.profiler.record_event_loop_wall(time.perf_counter() - loop_start)
             self.runtime.finalize()

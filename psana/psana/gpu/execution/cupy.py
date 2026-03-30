@@ -76,6 +76,7 @@ class CupyExecutionBackend(GpuExecutionBackend):
 
     def copy_raw_to_execution(self, host_raw, slot):
         copy_start = time.perf_counter()
+        size_bytes = int(np.asarray(host_raw).nbytes)
         cp = self._get_cupy()
         if cp is not None and slot.dev_raw is not None:
             copy_start_evt = cp.cuda.Event()
@@ -92,7 +93,9 @@ class CupyExecutionBackend(GpuExecutionBackend):
                     copy_stop_evt.record()
                 copy_stop_evt.synchronize()
                 if self.profiler is not None:
-                    self.profiler.record_copy(cp.cuda.get_elapsed_time(copy_start_evt, copy_stop_evt) / 1e3)
+                    dt_s = cp.cuda.get_elapsed_time(copy_start_evt, copy_stop_evt) / 1e3
+                    self.profiler.record_copy(dt_s)
+                    self.profiler.record_transfer(size_bytes, dt_s)
                 return slot.dev_raw, 'device'
             except Exception as exc:
                 if self.logger is not None:
