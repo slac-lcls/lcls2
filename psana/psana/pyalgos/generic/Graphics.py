@@ -199,11 +199,11 @@ def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=1
     if ylabel is not None: axes.set_ylabel(ylabel, fontsize=fslab, **kwa)
 
 
-def show(mode=None):
+def show(mode=None, pause_sec=0.001):
     if mode is None: plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
     else           : plt.ion()  # do not hold control
-    #plt.pause(0.001) # hack to make it work... othervise show() does not work...
-    plt.show()
+    plt.show(block=(mode is None))
+    plt.pause(pause_sec) # hack to make it work... otherwise show() does not work...
 
 
 def draw():
