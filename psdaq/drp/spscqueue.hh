@@ -68,10 +68,37 @@ public:
                 return !is_empty() || m_terminate.load(std::memory_order_acquire);
             });
             if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
-                return false;
+                return false;           // Empty and terminating
             }
         }
 
+        // Not empty
+        value = m_ring_buffer[index & m_buffer_mask];
+        int64_t next = index + 1;
+        m_read_index.store(next, std::memory_order_release);
+        return true;
+    }
+
+    // blocking read from queue with ms timeout
+    bool popW(T& value, unsigned msTmo)
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+
+        // check if queue is empty
+        if (index == m_write_index.load(std::memory_order_acquire)) {
+            const auto tmo{std::chrono::milliseconds(msTmo)};
+            std::unique_lock<std::mutex> lock(m_mutex);
+            if (!m_condition.wait_for(lock, tmo, [this] {
+                    return !is_empty() || m_terminate.load(std::memory_order_acquire);
+                })) {
+                return false;           // Timed out
+            }
+            if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
+                return false;           // Empty and terminating
+            }
+        }
+
+        // Not empty
         value = m_ring_buffer[index & m_buffer_mask];
         int64_t next = index + 1;
         m_read_index.store(next, std::memory_order_release);

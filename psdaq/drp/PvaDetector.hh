@@ -57,6 +57,7 @@ public:
     void onDisconnect() override;
     void updated()      override;
 public:
+    void timeout(Pds::EbDgram*);
     void startup();
     void shutdown();
     int  getParams(std::string& fieldName, XtcData::Name::DataType& xtcType, int& rank);
@@ -69,11 +70,12 @@ public:
     int64_t  timeDiff() const { return m_timeDiff; }
     int64_t  latency()  const { return m_latency; }
 private:
+    void _event(Pds::EbDgram*, const void* bufEnd);
     void _tL1EqPv(Pds::EbDgram*, const XtcData::TimeStamp&);
     void _tL1LtPv(Pds::EbDgram*, const XtcData::TimeStamp&);
     void _tL1GtPv(Pds::EbDgram*, const XtcData::TimeStamp&);
 private:
-  enum State { NotReady, Armed, Ready };
+    enum State { NotReady, Armed, Ready };
 private:
     const Parameters&               m_para;
     mutable std::mutex              m_mutex;
@@ -92,6 +94,7 @@ public:
     SPSCQueue<Pds::EbDgram*>        pvQueue;
     SPSCQueue<Pds::EbDgram*>        l1Queue;
 private:
+    static std::mutex               m_commonMutex;
     PvDetector&                     m_det;
     ZmqContext                      m_context;
     ZmqSocket                       m_notifySocket;
@@ -149,19 +152,20 @@ private:
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
-    const PvParameters&      m_para;
-    PvDetector&              m_det;
-    Pgp                      m_pgp;
-    std::thread              m_readerThread;
-    std::thread              m_collectorThread;
-    SPSCQueue<Pds::EbDgram*> m_evtQueue;
-    std::atomic<bool>        m_terminate;
-    uint64_t                 m_nEvents;
-    uint64_t                 m_nUpdates;
-    uint64_t                 m_nMatch;
-    uint64_t                 m_nEmpty;
-    uint64_t                 m_nTooOld;
-    int64_t                  m_timeDiff;
+    const PvParameters& m_para;
+    PvDetector&         m_det;
+    Pgp                 m_pgp;
+    std::thread         m_readerThread;
+    std::thread         m_collectorThread;
+    SPSCQueue<unsigned> m_evtQueue;
+    std::atomic<bool>   m_terminate;
+    uint64_t            m_nEvents;
+    uint64_t            m_nUpdates;
+    uint64_t            m_nMatch;
+    uint64_t            m_nEmpty;
+    uint64_t            m_nTooOld;
+    uint64_t            m_nTimedOut;
+    int64_t             m_timeDiff;
 };
 
 

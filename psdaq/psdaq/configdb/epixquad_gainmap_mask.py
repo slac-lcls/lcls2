@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
 """
-Generate an epixquad gain-map mask for configdb workflows.
+Generate epixquad gain-map masks for configdb workflows.
 
 Outputs:
 - store-layout text file for psdaq/psdaq/configdb/epixquad_store_gainmap.py
 - optional assembled-detector PNG preview for visual inspection
 
-Mask semantics:
+Default mask semantics:
+- label 0: pixels inside the requested radius
+- label 1: pixels outside the requested radius
+
+3-gain mask semantics:
 - label 0: pixels inside the requested radius within the beam-center quadrants
 - label 1: pixels outside the requested radius but still within the beam-center quadrants
 - outer label: pixels outside the beam-center quadrants
@@ -85,6 +89,15 @@ def _build_mask(radius, center_x, center_y, outer_label, x0, x1, y0, y1):
     block = np.ones((y1 - y0, x1 - x0), dtype=np.uint8)
     block[rr < radius] = 0
     mask[y0:y1, x0:x1] = block
+    return mask
+
+
+def _build_binary_mask(radius, center_x, center_y):
+    yy, xx = np.indices((IMG_ROWS, IMG_COLS), dtype=np.float64)
+    rr = np.sqrt((xx - center_x) ** 2 + (yy - center_y) ** 2)
+
+    mask = np.ones((IMG_ROWS, IMG_COLS), dtype=np.uint8)
+    mask[rr < radius] = 0
     return mask
 
 
@@ -195,8 +208,10 @@ def _save_preview(path, mask, center_x, center_y, outer_label, x0, x1, y0, y1):
 
 def _parse_args():
     parser = argparse.ArgumentParser(description='Generate epixquad gain-map mask input for configdb workflows')
+    parser.add_argument('--3gain-mode', dest='three_gain_mode', action='store_true',
+                        help='Emit a 3-label mask using beam-center quadrants plus an outer region')
     parser.add_argument('-r', '--radius', type=float, required=True,
-                        help='Radius in pixels for label 0 within the beam-center quadrants')
+                        help='Radius in pixels for label 0')
     parser.add_argument('--dx', type=float, default=0.0,
                         help='Beam-center x displacement in pixels from default center')
     parser.add_argument('--dy', type=float, default=0.0,
@@ -217,15 +232,22 @@ def _parse_args():
 def main():
     args = _parse_args()
 
-    if args.outer_label in (0, 1):
+    if args.outer_label in (0, 1) and args.three_gain_mode:
         raise ValueError(f'outer-label must not collide with radial labels 0/1: {args.outer_label}')
 
     center_x = args.center_x + args.dx
     center_y = args.center_y + args.dy
-    block_row, block_col, x0, x1, y0, y1 = _beam_center_block(center_x, center_y)
-    _validate_radius(args.radius, center_x, center_y, x0, x1, y0, y1)
+    if args.three_gain_mode:
+        block_row, block_col, x0, x1, y0, y1 = _beam_center_block(center_x, center_y)
+        _validate_radius(args.radius, center_x, center_y, x0, x1, y0, y1)
+        assembled = _build_mask(args.radius, center_x, center_y, args.outer_label, x0, x1, y0, y1)
+    else:
+        if args.radius <= 0:
+            raise ValueError(f"Radius must be > 0: {args.radius}")
+        block_row = block_col = None
+        x0, x1, y0, y1 = 0, IMG_COLS, 0, IMG_ROWS
+        assembled = _build_binary_mask(args.radius, center_x, center_y)
 
-    assembled = _build_mask(args.radius, center_x, center_y, args.outer_label, x0, x1, y0, y1)
     store_mask = _assembled_to_store_layout(assembled)
 
     np.savetxt(args.output, store_mask, fmt='%u')
@@ -240,12 +262,21 @@ def main():
     count_str = ', '.join(f'{int(label)}:{int(count)}' for label, count in zip(unique, counts))
     print(f'Wrote {args.output} with shape {store_mask.shape}')
     print(f'Beam center (x, y) = ({center_x:.3f}, {center_y:.3f}) pixels')
-    print(f'Beam-center quadrant block row/col = ({block_row}, {block_col})')
-    print(f'Beam-center quadrant bounds x=[{x0}, {x1}), y=[{y0}, {y1})')
+    if args.three_gain_mode:
+        print(f'Beam-center quadrant block row/col = ({block_row}, {block_col})')
+        print(f'Beam-center quadrant bounds x=[{x0}, {x1}), y=[{y0}, {y1})')
+    else:
+        print('Binary mask semantics: 0 = inside radius, 1 = outside radius')
     print(f'Radius = {args.radius}')
     print(f'Label counts = {count_str}')
     if args.assembled_output:
         print(f'Wrote assembled PNG preview to {args.assembled_output}')
+    if args.three_gain_mode:
+        print(f'Suggested upload: epixquad_store_gainmap --file {args.output} --map 0:L --map 1:M --map {args.outer_label}:H ...')
+    else:
+        print('Suggested uploads:')
+        print(f'  epixquad_store_gainmap --file {args.output} --map 0:L --map 1:M ...')
+        print(f'  epixquad_store_gainmap --file {args.output} --map 0:L --map 1:H ...')
 
 
 if __name__ == '__main__':
