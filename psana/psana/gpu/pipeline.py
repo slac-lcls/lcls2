@@ -48,7 +48,11 @@ class GpuPipeline:
         for slot in self.slots:
             self.backend.allocate_slot_buffers(slot)
         self._free_slots = deque(self.slots)
+        self._submitted_slots = deque()
         self._ready_slots = deque()
+
+    def has_free_slot(self):
+        return bool(self._free_slots)
 
     def submit_l1(self, rec):
         if not self._free_slots:
@@ -75,42 +79,49 @@ class GpuPipeline:
         self.backend.transfer_to_device(rec, slot)
         slot.state = GpuSlotState.RUNNING
         self.backend.launch_compute(rec, slot)
-        slot.state = GpuSlotState.DONE
-        self._ready_slots.append(slot)
+        self._submitted_slots.append(slot)
+        self._promote_ready_slots()
         return slot
 
     def pop_ready(self):
-        while self._ready_slots:
-            slot = self._ready_slots.popleft()
-            record = slot.record
-            submit_t = slot.metadata.get("submit_t")
-            if self.profiler is not None and submit_t is not None:
-                self.profiler.record_queue_wait(time.perf_counter() - submit_t)
-                self.profiler.record_event_completed()
-            slot.reset()
-            self._free_slots.append(slot)
-            if record is not None:
-                yield record.event
+        self._promote_ready_slots()
+        yield from self._consume_ready_slots()
+
+    def wait_ready(self):
+        self._promote_ready_slots()
+        if not self._ready_slots and self._submitted_slots:
+            slot = self._submitted_slots[0]
+            self.backend.wait_slot(slot)
+            self._promote_ready_slots()
+            if not self._ready_slots:
+                raise RuntimeError(
+                    f"GPU backend failed to complete slot {slot.slot_id} after wait"
+                )
+        yield from self._consume_ready_slots()
+
+    def flush(self):
+        while self._submitted_slots or self._ready_slots:
+            if self._ready_slots:
+                yield from self._consume_ready_slots()
+                continue
+            yield from self.wait_ready()
 
     def drain(self):
-        while self._ready_slots:
-            slot = self._ready_slots.popleft()
-            slot.reset()
-            self._free_slots.append(slot)
-
         for slot in self.slots:
             if slot.state != GpuSlotState.EMPTY:
                 slot.reset()
-                if slot not in self._free_slots:
-                    self._free_slots.append(slot)
+        self._submitted_slots.clear()
+        self._ready_slots.clear()
+        self._free_slots = deque(self.slots)
 
     def handle_transition(self, rec):
         drain_start = time.perf_counter()
-        self.drain()
+        events = list(self.flush())
         if self.profiler is not None:
             self.profiler.record_transition_drain(time.perf_counter() - drain_start)
         self.state_version += 1
         self.backend.on_transition(rec, self.state_version)
+        return events
 
     def _build_metadata(self, rec):
         metadata = {
@@ -122,3 +133,26 @@ class GpuPipeline:
         except Exception:
             metadata["timestamp"] = None
         return metadata
+
+    def _promote_ready_slots(self):
+        while self._submitted_slots:
+            slot = self._submitted_slots[0]
+            if not self.backend.slot_is_ready(slot):
+                break
+            self._submitted_slots.popleft()
+            slot.state = GpuSlotState.DONE
+            self.backend.on_slot_ready(slot)
+            self._ready_slots.append(slot)
+
+    def _consume_ready_slots(self):
+        while self._ready_slots:
+            slot = self._ready_slots.popleft()
+            record = slot.record
+            submit_t = slot.metadata.get("submit_t")
+            if self.profiler is not None and submit_t is not None:
+                self.profiler.record_queue_wait(time.perf_counter() - submit_t)
+                self.profiler.record_event_completed()
+            slot.reset()
+            self._free_slots.append(slot)
+            if record is not None:
+                yield record.event

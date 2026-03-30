@@ -39,6 +39,15 @@ class GpuDetectorBackend(ABC):
     def launch_compute(self, rec, slot):
         return None
 
+    def slot_is_ready(self, slot):
+        return self.execution.slot_is_ready(slot)
+
+    def wait_slot(self, slot):
+        return self.execution.wait_slot(slot)
+
+    def on_slot_ready(self, slot):
+        return self.execution.on_slot_ready(slot)
+
     def on_transition(self, rec, state_version):
         return None
 

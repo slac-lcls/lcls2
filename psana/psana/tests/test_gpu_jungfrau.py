@@ -184,3 +184,85 @@ def test_gpu_jungfrau_backend_cpu_calib_v3_matches_reference():
 
     actual = backend._cpu_calib_v3(raw, {"ccons": ccons})
     np.testing.assert_allclose(actual, expected)
+
+
+class _AsyncBackendStub:
+    def __init__(self):
+        self.ready = {}
+        self.waited = []
+        self.completed = []
+
+    def allocate_slot_buffers(self, slot):
+        return None
+
+    def pack_l1_to_host(self, rec, slot):
+        return None
+
+    def ensure_device_cache(self, rec, slot):
+        return None
+
+    def transfer_to_device(self, rec, slot):
+        return None
+
+    def launch_compute(self, rec, slot):
+        self.ready[slot.slot_id] = False
+        return None
+
+    def slot_is_ready(self, slot):
+        return self.ready.get(slot.slot_id, True)
+
+    def wait_slot(self, slot):
+        self.waited.append(slot.slot_id)
+        self.ready[slot.slot_id] = True
+        return None
+
+    def on_slot_ready(self, slot):
+        self.completed.append(slot.slot_id)
+        return None
+
+    def on_transition(self, rec, state_version):
+        return None
+
+
+def _l1_record(evt):
+    return SimpleNamespace(dgrams=[], service=12, event=evt)
+
+
+def test_gpu_pipeline_preserves_submission_order_for_async_slots():
+    backend = _AsyncBackendStub()
+    pipeline = GpuPipeline(backend=backend, queue_depth=2, profiler=None)
+    evt1 = SimpleNamespace(tag="evt1")
+    evt2 = SimpleNamespace(tag="evt2")
+
+    pipeline.submit_l1(_l1_record(evt1))
+    pipeline.submit_l1(_l1_record(evt2))
+
+    backend.ready[1] = True
+    assert list(pipeline.pop_ready()) == []
+
+    backend.ready[0] = True
+    assert list(pipeline.pop_ready()) == [evt1, evt2]
+    assert backend.completed == [0, 1]
+    assert pipeline.has_free_slot()
+
+
+def test_gpu_pipeline_wait_ready_and_transition_flush_pending_slots():
+    backend = _AsyncBackendStub()
+    pipeline = GpuPipeline(backend=backend, queue_depth=1, profiler=None)
+    evt = SimpleNamespace(tag="evt")
+
+    pipeline.submit_l1(_l1_record(evt))
+
+    assert not pipeline.has_free_slot()
+    assert list(pipeline.wait_ready()) == [evt]
+    assert backend.waited == [0]
+    assert pipeline.has_free_slot()
+
+    evt2 = SimpleNamespace(tag="evt2")
+    pipeline.submit_l1(_l1_record(evt2))
+    flushed = pipeline.handle_transition(SimpleNamespace())
+
+    assert flushed == [evt2]
+    assert backend.waited == [0, 0]
+    assert pipeline.state_version == 1
+    assert pipeline.has_free_slot()

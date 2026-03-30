@@ -102,14 +102,19 @@ class RunGpu(Run):
         try:
             for rec in iter_records(self.start(), self._run_ctx):
                 if rec.is_transition:
-                    self.runtime.handle_transition(rec)
+                    yield from self.runtime.handle_transition(rec)
                     self._handle_transition(rec.dgrams)
                     if rec.service == TransitionId.EndRun:
                         return
                     continue
 
+                while not self.runtime.has_free_slot():
+                    yield from self.runtime.wait_ready()
+
                 self.runtime.submit_l1(rec)
                 yield from self.runtime.pop_ready()
+            yield from self.runtime.flush()
         finally:
+            self.runtime.drain()
             self.profiler.record_event_loop_wall(time.perf_counter() - loop_start)
             self.runtime.finalize()

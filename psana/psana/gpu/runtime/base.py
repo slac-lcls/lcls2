@@ -33,5 +33,21 @@ class GpuRuntime(ABC):
     def pop_ready(self):
         raise NotImplementedError
 
+    @abstractmethod
+    def has_free_slot(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def wait_ready(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def flush(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def drain(self):
+        raise NotImplementedError
+
     def finalize(self):
         return None

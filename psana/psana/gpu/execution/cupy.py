@@ -91,11 +91,10 @@ class CupyExecutionBackend(GpuExecutionBackend):
                     copy_start_evt.record()
                     slot.dev_raw.set(host_raw)
                     copy_stop_evt.record()
-                copy_stop_evt.synchronize()
+                slot.metadata["copy_events"] = (copy_start_evt, copy_stop_evt)
+                slot.metadata["copy_transfer_bytes"] = size_bytes
                 if self.profiler is not None:
-                    dt_s = cp.cuda.get_elapsed_time(copy_start_evt, copy_stop_evt) / 1e3
-                    self.profiler.record_copy(dt_s)
-                    self.profiler.record_transfer(size_bytes, dt_s)
+                    pass
                 return slot.dev_raw, 'device'
             except Exception as exc:
                 if self.logger is not None:
@@ -104,6 +103,8 @@ class CupyExecutionBackend(GpuExecutionBackend):
                         exc,
                         exc_info=True,
                     )
+                slot.metadata.pop("copy_events", None)
+                slot.metadata.pop("copy_transfer_bytes", None)
         if self.profiler is not None:
             self.profiler.record_copy(time.perf_counter() - copy_start)
         return host_raw, 'host'
@@ -123,15 +124,20 @@ class CupyExecutionBackend(GpuExecutionBackend):
                     kernel_start.record()
                     self._jungfrau_calib_v3(raw_obj, ccons, slot.dev_out)
                     kernel_stop.record()
+                    calib = cp.array(slot.dev_out, copy=True)
+                    done_evt = cp.cuda.Event()
+                    done_evt.record()
             else:
                 kernel_start.record()
                 self._jungfrau_calib_v3(raw_obj, ccons, slot.dev_out)
                 kernel_stop.record()
+                calib = cp.array(slot.dev_out, copy=True)
+                done_evt = cp.cuda.Event()
+                done_evt.record()
 
-            kernel_stop.synchronize()
-            if self.profiler is not None:
-                self.profiler.record_kernel(cp.cuda.get_elapsed_time(kernel_start, kernel_stop) / 1e3)
-            return cp.array(slot.dev_out, copy=True), 'device'
+            slot.metadata["kernel_events"] = (kernel_start, kernel_stop)
+            slot.metadata["completion_event"] = done_evt
+            return calib, 'device'
         except Exception as exc:
             if self.logger is not None:
                 self.logger.debug(
@@ -139,6 +145,18 @@ class CupyExecutionBackend(GpuExecutionBackend):
                     exc,
                     exc_info=True,
                 )
+            stream = slot.stream if slot.stream is not None else cp.cuda.get_current_stream()
+            try:
+                stream.synchronize()
+            except Exception:
+                pass
+            copy_events = slot.metadata.pop("copy_events", None)
+            copy_size = slot.metadata.pop("copy_transfer_bytes", None)
+            if self.profiler is not None:
+                self._record_cuda_elapsed(copy_events, self.profiler.record_copy)
+                self._record_cuda_transfer(copy_events, copy_size)
+            slot.metadata.pop("kernel_events", None)
+            slot.metadata.pop("completion_event", None)
             return None, None
 
     def to_host_array(self, arr):
@@ -212,3 +230,66 @@ class CupyExecutionBackend(GpuExecutionBackend):
         if not self._gpu_import_checked:
             self._get_cupy()
         return self._cupyx
+
+    def slot_is_ready(self, slot):
+        evt = slot.metadata.get("completion_event")
+        if evt is None:
+            return True
+        try:
+            return bool(evt.query())
+        except Exception:
+            return True
+
+    def wait_slot(self, slot):
+        evt = slot.metadata.get("completion_event")
+        if evt is None:
+            return None
+        try:
+            evt.synchronize()
+        except Exception:
+            return None
+        return None
+
+    def on_slot_ready(self, slot):
+        if self.profiler is None:
+            slot.metadata.pop("copy_events", None)
+            slot.metadata.pop("copy_transfer_bytes", None)
+            slot.metadata.pop("kernel_events", None)
+            slot.metadata.pop("completion_event", None)
+            return None
+
+        copy_events = slot.metadata.pop("copy_events", None)
+        copy_size = slot.metadata.pop("copy_transfer_bytes", None)
+        kernel_events = slot.metadata.pop("kernel_events", None)
+        slot.metadata.pop("completion_event", None)
+        self._record_cuda_elapsed(copy_events, self.profiler.record_copy)
+        self._record_cuda_transfer(copy_events, copy_size)
+        self._record_cuda_elapsed(kernel_events, self.profiler.record_kernel)
+        return None
+
+    def _record_cuda_elapsed(self, events, recorder):
+        if events is None or recorder is None:
+            return None
+        cp = self._get_cupy()
+        if cp is None:
+            return None
+        start_evt, stop_evt = events
+        try:
+            recorder(cp.cuda.get_elapsed_time(start_evt, stop_evt) / 1e3)
+        except Exception:
+            return None
+        return None
+
+    def _record_cuda_transfer(self, events, size_bytes):
+        if events is None or self.profiler is None or not size_bytes:
+            return None
+        cp = self._get_cupy()
+        if cp is None:
+            return None
+        start_evt, stop_evt = events
+        try:
+            dt_s = cp.cuda.get_elapsed_time(start_evt, stop_evt) / 1e3
+        except Exception:
+            return None
+        self.profiler.record_transfer(size_bytes, dt_s)
+        return None

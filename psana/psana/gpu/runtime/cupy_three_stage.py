@@ -33,13 +33,25 @@ class CupyThreeStageRuntime(GpuRuntime):
         return self.backend.make_detector(name, accept_missing=accept_missing, **kwargs)
 
     def handle_transition(self, rec):
-        self.pipeline.handle_transition(rec)
+        return self.pipeline.handle_transition(rec)
 
     def submit_l1(self, rec):
         return self.pipeline.submit_l1(rec)
 
     def pop_ready(self):
         yield from self.pipeline.pop_ready()
+
+    def has_free_slot(self):
+        return self.pipeline.has_free_slot()
+
+    def wait_ready(self):
+        yield from self.pipeline.wait_ready()
+
+    def flush(self):
+        yield from self.pipeline.flush()
+
+    def drain(self):
+        self.pipeline.drain()
 
     def finalize(self):
         if self.profiler is not None:

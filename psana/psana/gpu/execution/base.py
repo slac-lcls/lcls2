@@ -51,3 +51,12 @@ class GpuExecutionBackend(ABC):
 
     def array_from_evt_data(self, arr, storage, copy=False):
         return np.array(arr, copy=copy)
+
+    def slot_is_ready(self, slot):
+        return True
+
+    def wait_slot(self, slot):
+        return None
+
+    def on_slot_ready(self, slot):
+        return None
