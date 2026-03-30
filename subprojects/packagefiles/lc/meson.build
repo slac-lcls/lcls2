@@ -8,7 +8,6 @@ project('LC',
     'b_staticpic=true',
   ])
 
-# Compilers
 cpp = meson.get_compiler('cpp')
 cuda = meson.get_compiler('cuda')
 

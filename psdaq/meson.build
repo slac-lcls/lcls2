@@ -1,14 +1,22 @@
-numpy_dep = dependency('numpy')
 threads_dep = dependency('threads')
 nlohmann_json_dep = dependency('nlohmann_json', required: false)
 
-cc = meson.get_compiler('cpp')
 zmq_dep = cc.find_library('zmq')
 dl_dep = cc.find_library('dl', required: false)
 rt_dep = cc.find_library('rt', required: false)
 
-prometheus_core_dep = cc.find_library('prometheus-cpp-core', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
-prometheus_pull_dep = cc.find_library('prometheus-cpp-pull', dirs: [join_paths(get_option('conda_prefix'), 'lib')])
+prometheus_core_dep = cc.find_library('prometheus-cpp-core', 
+  dirs: [
+    join_paths(get_option('conda_prefix'), 'lib'), # python 3.11
+    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
+  ]
+)
+prometheus_pull_dep = cc.find_library('prometheus-cpp-pull',
+  dirs: [
+    join_paths(get_option('conda_prefix'), 'lib'), # python 3.11
+    join_paths(get_option('conda_prefix'), 'lib64'), # python 3.9
+  ]
+)
 
 psdaq_incdir = include_directories('.')
 

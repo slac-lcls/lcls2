@@ -1,5 +1,3 @@
-numpy_dep = dependency('numpy')
-
 psana_incdir = include_directories(
     '.'
 )
