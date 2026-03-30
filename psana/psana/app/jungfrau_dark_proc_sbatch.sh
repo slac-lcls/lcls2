@@ -1,18 +1,17 @@
 #!/bin/bash
 
-## sbatch ./lcls2/psana/psana/app/jungfrau_dark_proc_sbatch.sh # execute this script
+## sbatch ./lcls2/psana/psana/app/jungfrau_dark_proc_sbatch.sh # execute this script with default command
 ## sbatch --wait --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
 ## sbatch --nodes=1 --ntasks-per-node=19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
 ## squeue -u dubrovin # check batch jobs in queue
 ## scancel [JobID]
-## killall mpirun # does not work
 ## scontrol show jobid <job_id>
 
 #SBATCH --partition=milano
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=19
 #SBATCH --exclusive
-#SBATCH --output=jungfrau_dark_calib_%j.log
+#SBATCH --output=log_jungfrau_dark_proc_sbatch_%j.log
 #SBATCH --account=lcls:prjdat21
 
 echo "SLURM_JOB_NAME: $SLURM_JOB_NAME"
@@ -20,7 +19,6 @@ echo "SLURM_JOB_ID: $SLURM_JOB_ID"
 echo "SLURM_NNODES: $SLURM_NNODES"
 echo "SLURM_NPROCS: $SLURM_NPROCS"
 echo "SLURM_NTASKS: $SLURM_NTASKS"
-
 echo "SLURM_SUBMIT_DIR: $SLURM_SUBMIT_DIR"
 echo "SLURM_SUBMIT_HOST: $SLURM_SUBMIT_HOST"
 echo "SLURM_JOB_NODELIST: $SLURM_JOB_NODELIST"
@@ -29,15 +27,6 @@ echo "SLURM_JOB_CPUS_PER_NODE: $SLURM_JOB_CPUS_PER_NODE"
 echo "SLURM_CPUS_PER_TASK: $SLURM_CPUS_PER_TASK"
 echo "SLURM_ARRAY_TASK_ID: $SLURM_ARRAY_TASK_ID"
 
-# DO NOT WORK?
-#echo "SBATCH_TIMELIMIT: $SBATCH_TIMELIMIT"
-#echo "SBATCH_ACCOUNT: $SBATCH_ACCOUNT"
-#echo "SBATCH_PARTITION: $SBATCH_PARTITION"
-#echo "SBATCH_OUTPUT: $SBATCH_OUTPUT"
-#echo "SBATCH_EXCLUSIVE: $SBATCH_EXCLUSIVE"
-
-#jdp="/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2/psana/psana/app/jungfrau_dark_proc.py"
-#cmd="$jdp -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 100 --nrecs1 0"
 # -u flushes print statements which can otherwise be hidden if mpi hangs and ?-m mpi4py.run? can prevent some hanging jobs
 #mpirun --mca osc ^ucx python -u -m mpi4py.run $cmd
 
