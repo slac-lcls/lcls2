@@ -18,14 +18,6 @@ def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
     return ds, orun, det
 
 
-def issue_2026_mm_dd():
-    """ISSUE:
-       PROBLEM:
-       FIX:
-    """
-    print('template')
-
-
 def issue_2026_02_04():
     """jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 --stepnum 1
        ISSUE: continue seems does not work in the step loop
@@ -110,9 +102,124 @@ def issue_2026_03_16():
         data = det.raw.calib(evt)  # calibrated data
         print(f"Extracted calib for {evt}")
 
-#===
+
+
+def issue_2026_03_27(subtest='0o7777'):
+    """ISSUE: 2026-03-26 3:20PM O'Grady, Paul Christopher
+              Dubrovin, Mikhail?; Vincent Esposito <vincent.esposito@stanford.edu>?
+              Hi Mikhail, Vincent sees unusual looking images for the jungfrau 1M in xppc00125 run 77 (see attached).
+              I think Vincent deployed a dark using run 76.  Can you have a look to see if you see anything wrong?
+       REASON: detector does not work. Dark raw intensity jumps between 3k and 50k
+       FIX: Vincent will meet with detector grp
+
+       datinfo -k exp=xppc00125,run=77 -d jungfrau1M
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    #from time import sleep
+
+    events = 20
+
+    ds = DataSource(exp='xppc00125', run=77, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector('jungfrau1M')
+
+    peds = det.raw._pedestals()
+    mask = det.raw._mask();
+    mask_default = det.raw._mask_default()
+    mask_calib_or_default = det.raw._mask_calib_or_default()
+    mask_edges = det.raw._mask_edges(edge_rows=0, edge_cols=0)
+    mask_center = det.raw._mask_center()
+    mask_neighbors = det.raw._mask_neighbors(mask_default)
+    stat = det.raw._status() #; stat.shape = (3*512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)) #; mask_stat.shape = (512, 1024)
+    print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
+    print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
+    print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
+    print(ndu.info_ndarr(mask_default,          'XXX _mask_default', last=10))
+    print(ndu.info_ndarr(mask_calib_or_default, 'XXX _mask_calib_or_default', last=10))
+    print(ndu.info_ndarr(mask_edges,            'XXX _mask_edges', last=10))
+    print(ndu.info_ndarr(mask_center,           'XXX _mask_center', last=10))
+    print(ndu.info_ndarr(mask_neighbors,        'XXX _mask_neighbors', last=10))
+    print(ndu.info_ndarr(mask,                  'XXX _mask', last=10))
+
+    plot_image = True # False
+
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(run.events()):
+            #if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+            if raw is None: continue
+
+            print('=== evt:%03d'%nevt)
+            print(ndu.info_ndarr(raw, '=== evt:%03d raw' % nevt, last=10))
+            img = raw[0,:]
+            #img = raw[1,:]
+            #img.shape = (2*512, 1024)
+            #calib = det.raw.calib(evt)
+            #print(ndu.info_ndarr(calib, '    calib', last=10))
+            #print('>> end calib')
+            #img = det.raw.image(evt)
+            #img = calib
+            #img = mask
+            #img = mask_edges
+            #img = stat
+            #img = det.raw.image(evt, nda=calib)
+            #img = calib; img.shape = (512, 1024)
+            #img = raw; img.shape = (512, 1024)
+            #img = ndu.reshape_to_3d(peds)
+            #img.shape = (512, 1024)
+            #img = peds[0,0,:]
+            #img = peds; img.shape = (3*512, 1024)
+            #print('evt:', nevt)
+            #print('    raw  :', raw.shape)
+            #print('    calib:', calib.shape)
+
+            print(ndu.info_ndarr(img, '            img', last=10))
+
+            if plot_image:
+                if flimg is None:
+                    #flimg = fleximage(img, h_in=10, w_in=12)
+                    flimg = fleximagespec(img, h_in=7, w_in=20)
+                    gr.plt.ion()
+                #print('    image:', img.shape)
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                #gr.draw_fig(flimg.fig)
+                #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+                #gr.draw_fig(flimg.fig)
+                #flimg.fig.canvas.draw_idle()
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+                #gr.plt.show(block=False)
+                #gr.plt.pause(0.01)
+        if plot_image: gr.show()
+
+
+
+
+
+
+
+
+
     
 #===
+
+def issue_2026_MM_DD(subtest='0o7777'):
+    """ISSUE:
+       PROBLEM:
+       FIX:
+    """
+    print('template')
+
+#===
+    
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -149,6 +256,7 @@ def selector():
     elif TNAME in ('1',): issue_2026_02_04()
     elif TNAME in ('2',): issue_2026_02_26()
     elif TNAME in ('3',): issue_2026_03_16()
+    elif TNAME in ('4',): issue_2026_03_27(args.subtest)
     elif TNAME in ('99',): issue_2026_02_04(args.subtest)
     else:
         print(USAGE())
