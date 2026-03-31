@@ -1,16 +1,26 @@
 import json
 import logging
+import os
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 import psana.pycalgos.utilsdetector as ud
+from psana.gpu.run_gpu import RunGpu
 from psana.gpu.backends.jungfrau import GpuJungfrauBackend, GpuJungfrauRaw
+from psana.gpu.descriptors import (
+    JungfrauDescriptorBatch,
+    JungfrauDescriptorBuilder,
+    JungfrauPayloadDescriptor,
+)
 from psana.gpu.execution import CupyExecutionBackend
+from psana.gpu.parsers import ParsedJungfrauBatch, TransitionalJungfrauIngressParser
 from psana.gpu.pipeline import GpuPipeline
 from psana.gpu.profiler import GpuProfiler
+from psana.gpu.readers import PinnedHostBulkReader, PinnedHostIngressBuffer
 from psana.gpu.runtime import make_gpu_runtime
+from psana.gpu.runtime.bulk_reader import BulkReaderRuntime
 
 
 class _CpuRawStub:
@@ -184,6 +194,316 @@ def test_gpu_jungfrau_backend_cpu_calib_v3_matches_reference():
 
     actual = backend._cpu_calib_v3(raw, {"ccons": ccons})
     np.testing.assert_allclose(actual, expected)
+
+
+def test_bulk_reader_runtime_skeleton_constructs():
+    run = _dummy_run()
+    run.dsparms.gpu_runtime = "bulk-reader"
+    run.dsparms.gpu_pipeline = "descriptor"
+    run.dsparms.det_classes = {
+        "normal": {
+            ("jungfrau1M", "raw"): type("Jungfrau_raw_0_0_0", (), {"__module__": "psana.detector.jungfrau"})
+        }
+    }
+
+    runtime = make_gpu_runtime(run=run, profiler=None)
+
+    assert isinstance(runtime, BulkReaderRuntime)
+    assert runtime.describe() == {"runtime": "bulk-reader", "pipeline": "descriptor"}
+    assert isinstance(runtime.bulk_reader, PinnedHostBulkReader)
+    assert isinstance(runtime.descriptor_builder, JungfrauDescriptorBuilder)
+    assert isinstance(runtime.parser, TransitionalJungfrauIngressParser)
+    with pytest.raises(NotImplementedError):
+        runtime.has_free_slot()
+
+
+def test_jungfrau_payload_descriptor_builder_and_pinned_reader(tmp_path):
+    class _OffsetAlg:
+        intOffset = 8
+        intDgramSize = 16
+
+    class _SmdInfo:
+        offsetAlg = _OffsetAlg()
+
+    run = _dummy_run()
+    run.dsparms.det_classes = {
+        "normal": {
+            ("jungfrau1M", "raw"): type("Jungfrau_raw_0_0_0", (), {"__module__": "psana.detector.jungfrau"})
+        }
+    }
+    builder = JungfrauDescriptorBuilder(run)
+    dgram = SimpleNamespace(
+        smdinfo=[_SmdInfo()],
+        jungfrau1M={0: object(), 1: object()},
+    )
+    descriptors = builder.build_from_smd_dgrams(
+        smd_dgrams=[None, dgram],
+        service=12,
+        timestamp=123,
+    )
+
+    assert isinstance(descriptors, JungfrauDescriptorBatch)
+    assert len(descriptors) == 1
+    descriptor = JungfrauPayloadDescriptor(
+        timestamp=descriptors.descriptors[0].timestamp,
+        service=descriptors.descriptors[0].service,
+        det_name=descriptors.descriptors[0].det_name,
+        file_id=descriptors.descriptors[0].file_id,
+        offset=descriptors.descriptors[0].offset,
+        size=descriptors.descriptors[0].size,
+        segment_count=descriptors.descriptors[0].segment_count,
+        cache_key=descriptors.descriptors[0].cache_key,
+    )
+
+    assert descriptor.det_name == "jungfrau1M"
+    assert descriptor.file_id == 1
+    assert descriptor.offset == 8
+    assert descriptor.size == 16
+    assert descriptor.segment_count == 2
+
+    data = bytes(range(64))
+    data_path = tmp_path / "payload.bin"
+    data_path.write_bytes(data)
+
+    reader_run = _dummy_run()
+    reader_run.dm = SimpleNamespace(fds=[-1, os.open(str(data_path), os.O_RDONLY)])
+    reader = PinnedHostBulkReader(run=reader_run)
+    ingress = reader.allocate_ingress_buffer([descriptor])
+
+    assert ingress.storage == "pinned-host"
+    assert len(ingress.payloads) == 1
+    assert ingress.payloads[0].shape == (16,)
+    reader.read_batch([descriptor], ingress)
+    np.testing.assert_array_equal(np.asarray(ingress.payloads[0]), np.frombuffer(data[8:24], dtype=np.uint8))
+    os.close(reader_run.dm.fds[1])
+
+
+def test_bulk_reader_runtime_plans_and_fills_descriptor_batch(tmp_path):
+    class _OffsetAlg:
+        intOffset = 4
+        intDgramSize = 8
+
+    class _SmdInfo:
+        offsetAlg = _OffsetAlg()
+
+    run = _dummy_run()
+    run.dsparms.gpu_runtime = "bulk-reader"
+    run.dsparms.gpu_pipeline = "descriptor"
+    run.dsparms.gpu_batch_size = 4
+    run.dsparms.det_classes = {
+        "normal": {
+            ("jungfrau1M", "raw"): type("Jungfrau_raw_0_0_0", (), {"__module__": "psana.detector.jungfrau"})
+        }
+    }
+    data = bytes(range(32))
+    data_path = tmp_path / "payload.bin"
+    data_path.write_bytes(data)
+    run.dm = SimpleNamespace(fds=[os.open(str(data_path), os.O_RDONLY)])
+
+    runtime = make_gpu_runtime(run=run, profiler=None)
+    dgram = SimpleNamespace(
+        smdinfo=[_SmdInfo()],
+        jungfrau1M={0: object()},
+    )
+
+    batch = runtime.plan_next_smd_batch(smd_dgrams=[dgram], service=12, timestamp=999)
+
+    assert isinstance(batch, JungfrauDescriptorBatch)
+    assert len(batch) == 1
+    filled = runtime.fill_next_smd_batch()
+    assert filled is not None
+    filled_batch, ingress = filled
+    assert filled_batch.timestamp == 999
+    np.testing.assert_array_equal(np.asarray(ingress.payloads[0]), np.frombuffer(data[4:12], dtype=np.uint8))
+    popped = runtime.pop_filled_smd_batch()
+    assert popped is not None
+    popped_batch, popped_ingress = popped
+    assert popped_batch.timestamp == 999
+    assert popped_ingress is ingress
+    runtime.drain()
+    os.close(run.dm.fds[0])
+
+
+def test_bulk_reader_runtime_ingest_smd_dgrams(tmp_path):
+    class _OffsetAlg:
+        intOffset = 2
+        intDgramSize = 6
+
+    class _SmdInfo:
+        offsetAlg = _OffsetAlg()
+
+    run = _dummy_run()
+    run.dsparms.gpu_runtime = "bulk-reader"
+    run.dsparms.gpu_pipeline = "descriptor"
+    run.dsparms.det_classes = {
+        "normal": {
+            ("jungfrau1M", "raw"): type("Jungfrau_raw_0_0_0", (), {"__module__": "psana.detector.jungfrau"})
+        }
+    }
+    data = bytes(range(32))
+    data_path = tmp_path / "payload.bin"
+    data_path.write_bytes(data)
+    run.dm = SimpleNamespace(fds=[os.open(str(data_path), os.O_RDONLY)])
+
+    runtime = make_gpu_runtime(run=run, profiler=None)
+    dgram = SimpleNamespace(
+        smdinfo=[_SmdInfo()],
+        jungfrau1M={0: object()},
+    )
+    batch, ingress = runtime.ingest_smd_dgrams([dgram], service=12, timestamp=777)
+
+    assert isinstance(batch, JungfrauDescriptorBatch)
+    assert len(batch) == 1
+    np.testing.assert_array_equal(np.asarray(ingress.payloads[0]), np.frombuffer(data[2:8], dtype=np.uint8))
+    os.close(run.dm.fds[0])
+
+
+def test_transitional_jungfrau_ingress_parser_rebuilds_event(monkeypatch):
+    import psana.gpu.parsers.jungfrau as parser_mod
+
+    built = {}
+
+    class _FakeDgram:
+        def __init__(self, config, view, offset=0):
+            built["config"] = config
+            built["view"] = bytes(view)
+            built["offset"] = offset
+
+    class _FakeEvent:
+        def __init__(self, dgrams, run=None):
+            self._dgrams = dgrams
+            self._run = run
+
+    monkeypatch.setattr(parser_mod.dgram, "Dgram", _FakeDgram)
+    monkeypatch.setattr(parser_mod, "Event", _FakeEvent)
+
+    run = _dummy_run()
+    run.dm = SimpleNamespace(configs=["cfg0", "cfg1"])
+    run._run_ctx = "run-ctx"
+    parser = TransitionalJungfrauIngressParser(run)
+    batch = JungfrauDescriptorBatch(
+        timestamp=123,
+        service=12,
+        det_name="jungfrau1M",
+        descriptors=(
+            JungfrauPayloadDescriptor(
+                timestamp=123,
+                service=12,
+                det_name="jungfrau1M",
+                file_id=1,
+                offset=8,
+                size=4,
+                segment_count=1,
+                cache_key=("jungfrau",),
+            ),
+        ),
+        cache_key=("jungfrau",),
+    )
+    ingress = PinnedHostIngressBuffer(payloads=[np.arange(4, dtype=np.uint8)])
+
+    parsed = parser.parse_batch(batch, ingress)
+
+    assert isinstance(parsed, ParsedJungfrauBatch)
+    assert parsed.storage == "host-dgram"
+    assert parsed.event._run == "run-ctx"
+    assert parsed.dgrams[0] is None
+    assert built["config"] == "cfg1"
+    assert built["view"] == bytes(range(4))
+    assert built["offset"] == 0
+
+
+def test_bulk_reader_runtime_parses_filled_batches(monkeypatch, tmp_path):
+    class _OffsetAlg:
+        intOffset = 1
+        intDgramSize = 4
+
+    class _SmdInfo:
+        offsetAlg = _OffsetAlg()
+
+    run = _dummy_run()
+    run.dsparms.gpu_runtime = "bulk-reader"
+    run.dsparms.gpu_pipeline = "descriptor"
+    run.dsparms.det_classes = {
+        "normal": {
+            ("jungfrau1M", "raw"): type("Jungfrau_raw_0_0_0", (), {"__module__": "psana.detector.jungfrau"})
+        }
+    }
+    data = bytes(range(16))
+    data_path = tmp_path / "payload.bin"
+    data_path.write_bytes(data)
+    run.dm = SimpleNamespace(fds=[os.open(str(data_path), os.O_RDONLY)])
+
+    runtime = make_gpu_runtime(run=run, profiler=None)
+    sentinel = SimpleNamespace(event="evt")
+    monkeypatch.setattr(runtime.parser, "parse_batch", lambda batch, ingress: sentinel)
+    dgram = SimpleNamespace(
+        smdinfo=[_SmdInfo()],
+        jungfrau1M={0: object()},
+    )
+
+    parsed = runtime.ingest_and_parse_smd_dgrams([dgram], service=12, timestamp=55)
+
+    assert parsed is sentinel
+    assert runtime.pop_parsed_smd_batch() is sentinel
+    os.close(run.dm.fds[0])
+
+
+def test_run_gpu_bulk_reader_batches_yields_planned_batches():
+    dgram = SimpleNamespace(
+        env=lambda: 12 << 24,
+        timestamp=lambda: 101,
+    )
+    run = object.__new__(RunGpu)
+    run.runtime = SimpleNamespace(
+        uses_smdonly=True,
+        ingest_smd_dgrams=lambda smd_dgrams, service, timestamp: (
+            JungfrauDescriptorBatch(
+                timestamp=timestamp,
+                service=service,
+                det_name="jungfrau1M",
+                descriptors=(
+                    JungfrauPayloadDescriptor(
+                        timestamp=timestamp,
+                        service=service,
+                        det_name="jungfrau1M",
+                        file_id=0,
+                        offset=4,
+                        size=8,
+                        segment_count=1,
+                        cache_key=("jungfrau",),
+                    ),
+                ),
+                cache_key=("jungfrau",),
+            ),
+            "ingress",
+        ),
+    )
+    run.start = lambda: iter([[dgram]])
+
+    batches = list(run.bulk_reader_batches())
+
+    assert len(batches) == 1
+    batch, ingress = batches[0]
+    assert batch.timestamp == 101
+    assert ingress == "ingress"
+
+
+def test_run_gpu_bulk_reader_events_yields_parsed_events():
+    dgram = SimpleNamespace(
+        env=lambda: 12 << 24,
+        timestamp=lambda: 202,
+    )
+    parsed = SimpleNamespace(event="gpu-event")
+    run = object.__new__(RunGpu)
+    run.runtime = SimpleNamespace(
+        uses_smdonly=True,
+        ingest_and_parse_smd_dgrams=lambda smd_dgrams, service, timestamp: parsed,
+    )
+    run.start = lambda: iter([[dgram]])
+
+    events = list(run.bulk_reader_events())
+
+    assert events == ["gpu-event"]
 
 
 class _AsyncBackendStub:

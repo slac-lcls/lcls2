@@ -1318,22 +1318,32 @@ class BigDataNode(object):
 
             yield dgrams
 
-    def start_smdonly(self):
+    def _make_smd_broadcast_getter(self):
         bd_comm = self.comms.bd_comm
 
         def get_smd():
-            smd_batch_np = bd_comm.bcast(None, root=0)  # receive the broadcast
+            smd_batch_np = bd_comm.bcast(None, root=0)
             count = smd_batch_np.size
             return bytearray(smd_batch_np) if count > 0 else bytearray()
 
-        t0 = time.monotonic()
+        return get_smd
 
+    def iter_smdonly(self):
+        get_smd = self._make_smd_broadcast_getter()
         events = SmdEvents(self.configs,
                            self.dm,
                            self.dsparms.max_retries,
                            self.dsparms.use_smds,
                            self.shared_state,
                            get_smd=get_smd)
+        for dgrams in events:
+            if self.shared_state.terminate_flag.value:
+                continue
+            yield dgrams
+
+    def start_smdonly(self):
+        t0 = time.monotonic()
+        events = self.iter_smdonly()
         ts_table = {}
 
         cn_events = 0

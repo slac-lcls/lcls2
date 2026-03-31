@@ -1,5 +1,6 @@
 import time
 
+from psana import utils
 from psana.psexp import TransitionId
 from psana.psexp.events import Events
 from psana.psexp.run import Run
@@ -92,12 +93,19 @@ class RunGpu(Run):
         elif self._nodetype == "eb":
             self.eb_node.start()
         elif self._nodetype == "bd":
+            if getattr(self.runtime, "uses_smdonly", False):
+                yield from self.bd_node.iter_smdonly()
+                return
             yield from self.bd_node.start()
 
     def Detector(self, name, accept_missing=False, **kwargs):
         return self.runtime.make_detector(name, accept_missing=accept_missing, **kwargs)
 
     def events(self):
+        if getattr(self.runtime, "uses_smdonly", False):
+            raise NotImplementedError(
+                "bulk-reader runtime is not yet wired into run.events(); use bulk_reader_events() or bulk_reader_batches() during the experimental phase"
+            )
         loop_start = time.perf_counter()
         try:
             for rec in iter_records(self.start(), self._run_ctx):
@@ -118,3 +126,43 @@ class RunGpu(Run):
             self.runtime.drain()
             self.profiler.record_event_loop_wall(time.perf_counter() - loop_start)
             self.runtime.finalize()
+
+    def bulk_reader_batches(self):
+        if not getattr(self.runtime, "uses_smdonly", False):
+            raise RuntimeError("bulk_reader_batches() is only available for the bulk-reader runtime")
+
+        for smd_dgrams in self.start():
+            service = utils.first_service(smd_dgrams)
+            timestamp = utils.first_timestamp(smd_dgrams)
+            if not TransitionId.isEvent(service):
+                continue
+            batch, ingress = self.runtime.ingest_smd_dgrams(
+                smd_dgrams=smd_dgrams,
+                service=service,
+                timestamp=timestamp,
+            )
+            if batch.is_empty:
+                continue
+            yield batch, ingress
+
+    def bulk_reader_parsed_batches(self):
+        if not getattr(self.runtime, "uses_smdonly", False):
+            raise RuntimeError("bulk_reader_parsed_batches() is only available for the bulk-reader runtime")
+
+        for smd_dgrams in self.start():
+            service = utils.first_service(smd_dgrams)
+            timestamp = utils.first_timestamp(smd_dgrams)
+            if not TransitionId.isEvent(service):
+                continue
+            parsed = self.runtime.ingest_and_parse_smd_dgrams(
+                smd_dgrams=smd_dgrams,
+                service=service,
+                timestamp=timestamp,
+            )
+            if parsed is None:
+                continue
+            yield parsed
+
+    def bulk_reader_events(self):
+        for parsed in self.bulk_reader_parsed_batches():
+            yield parsed.event

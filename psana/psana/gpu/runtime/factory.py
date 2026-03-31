@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from psana.gpu.runtime.bulk_reader import BulkReaderRuntime
 from psana.gpu.runtime.cupy_three_stage import CupyThreeStageRuntime
 
 DEFAULT_GPU_RUNTIME = 'default'
 DEFAULT_GPU_PIPELINE = 'default'
-SUPPORTED_GPU_RUNTIMES = (DEFAULT_GPU_RUNTIME, 'cupy')
-SUPPORTED_GPU_PIPELINES = (DEFAULT_GPU_PIPELINE, '3stage')
+SUPPORTED_GPU_RUNTIMES = (DEFAULT_GPU_RUNTIME, 'cupy', 'bulk-reader')
+SUPPORTED_GPU_PIPELINES = (DEFAULT_GPU_PIPELINE, '3stage', 'descriptor')
 
 
 def normalize_gpu_runtime_name(name):
@@ -32,6 +33,8 @@ def make_gpu_runtime(run, profiler=None):
 
     if runtime_name == 'cupy' and pipeline_name == '3stage':
         return CupyThreeStageRuntime(run=run, profiler=profiler)
+    if runtime_name == 'bulk-reader' and pipeline_name == 'descriptor':
+        return BulkReaderRuntime(run=run, profiler=profiler)
 
     raise ValueError(
         f'Unsupported gpu runtime/pipeline combination: runtime={runtime_name!r} pipeline={pipeline_name!r}'
