@@ -36,26 +36,26 @@ xtc_headers = files(
     'TypeId.hh',
     'VarDef.hh',
     'Smd.hh',
-    'XtcUpdateIter.hh'
+    'XtcUpdateIter.hh',
 )
 
 xtc_shlib = shared_library('xtc',
     xtc_sources,
     include_directories: xtcdata_incdir,
     install: true,
-    install_rpath: libdir_install_rpath
+    install_rpath: libdir_install_rpath,
 )
 
 xtc_static_lib = static_library('staticXtc',
   xtc_sources,
   include_directories: [xtcdata_incdir],
   install: true,
-  install_rpath: libdir_install_rpath
+  install_rpath: libdir_install_rpath,
 )
 
 xtcdata_dep = declare_dependency(
-  link_with : xtc_shlib,
-  include_directories : include_directories('../..')
+  link_with: xtc_shlib,
+  include_directories: include_directories('../..'),
 )
 
 install_headers(

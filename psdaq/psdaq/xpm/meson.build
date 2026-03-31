@@ -30,7 +30,7 @@ xpm_lib = shared_library(
 
 executable('xpm_simple',
     'xpm_simple.cc',
-    dependencies : [
+    dependencies: [
         yaml_cpp_dep,
         dl_dep,
         threads_dep,
@@ -40,5 +40,6 @@ executable('xpm_simple',
       service_lib,
       cphw_lib
     ],
-    install : true,
+    install: true,
+    install_rpath: libdir_install_rpath,
 )
