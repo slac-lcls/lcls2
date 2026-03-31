@@ -18,6 +18,10 @@ mmhw_lib = shared_library('mmhw',
   link_with: service_lib,
   dependencies: [threads_dep],
   install: true,
+  cpp_args: [
+    '-Wno-volatile',
+    '-Wno-deprecated-enum-enum-conversion',
+  ],
 )
 
 mmregtest_exe = executable('mmregtest',

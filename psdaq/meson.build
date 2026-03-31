@@ -22,7 +22,7 @@ psdaq_incdir = include_directories('.')
 
 subdir('psdaq')
 subdir('drp')
-subdir('drpGpu')
+#subdir('drpGpu') # Only compiles in Python 3.11
 subdir('epicsArch')
 
 py.extension_module(
@@ -35,7 +35,7 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
-    override_options : ['cython_language=cpp'],
+    override_options: ['cython_language=cpp'],
 )
 
 py.extension_module(
@@ -48,7 +48,7 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
-    override_options : ['cython_language=cpp'],
+    override_options: ['cython_language=cpp'],
 )
 
 py.extension_module(
@@ -61,7 +61,7 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
-    override_options : ['cython_language=cpp'],
+    override_options: ['cython_language=cpp'],
 )
 
 py.extension_module(
@@ -74,5 +74,5 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
-    override_options : ['cython_language=cpp'],
+    override_options: ['cython_language=cpp'],
 )

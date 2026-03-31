@@ -60,13 +60,13 @@ tmoTeb_lib = shared_library('tmoTeb',
   install: true,
   install_rpath: libdir_install_rpath,
 )
-
+cuda_compiler = find_program('nvcc', required: false)
 if cuda_compiler.found()
   cuda_args = [
     '-gencode=arch=compute_86,code=sm_86',
     '-gencode=arch=compute_90,code=sm_90',
     '-Wno-deprecated-gpu-targets',
-    '--compiler-options=-fPIC',
+    '-Xcompiler=-fPIC',
     #'-G', #for debugging
     #'--verbose',
   ]
@@ -86,6 +86,7 @@ if cuda_compiler.found()
     #link_with: [],
     install: true,
     install_rpath: libdir_install_rpath,
+    cuda_args: cuda_args,
   )
 endif
 

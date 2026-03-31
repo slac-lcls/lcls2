@@ -2,7 +2,7 @@
 drp_inc_dir = include_directories('..')
 eigen_inc_dir = include_directories(join_paths(get_option('conda_prefix'), 'include', 'eigen3'))
 
-sls_dep = cc.find_library('libSlsDetector')
+sls_dep = cc.find_library('SlsDetector')
 
 drpbase_lib = shared_library('drpbase',
   [

@@ -31,7 +31,12 @@ if cuda_compiler.found()
   ]
 
   cudart_dep = cc.find_library('cudart', dirs: cuda_lib_dirs)
-  cuda_main_dep = cc.find_library('cuda', dirs: cuda_lib_dirs)
+  cuda_main_dep = cc.find_library('cuda',
+    dirs: [
+      cuda_lib_dirs,
+      join_paths(cuda_path, 'lib64/stubs'), # Only needed in Python 3.9
+    ]
+  )
   cufile_dep = cc.find_library('cufile', dirs: cuda_lib_dirs)
   # Patched cufile lib with no glibc restriction for log2f
   #cufile_dep = cc.find_library('cufile', dirs: '/cds/home/k/kmecseki/cuda2/')

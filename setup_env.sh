@@ -17,8 +17,8 @@ if [ -d "/cds/sw/" ]; then
 
     osrel=`uname -r`
     case $osrel in
-        *el9*) conda activate ps_20241122;;#daq_20260311;;
-        *)     conda activate ps_20241122;;#daq_20260311;;#daq_20250402;;
+        *el9*) conda activate daq_20250402_r9;;#ps_20241122;;#daq_20260311;;
+        *)     conda activate daq_20250402_r9;;#ps_20241122;;#daq_20260311;;#daq_20250402;;
     esac
 
     # DAQ bundle from the active default environment

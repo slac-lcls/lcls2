@@ -64,6 +64,7 @@ subdir('psana')
 cuda_compiler = find_program('nvcc', required: false)
 
 if cuda_compiler.found()
+  add_languages('cuda', native: false) # Python 3.9
   cmake = import('cmake')
   cusz_proj = cmake.subproject('cusz')
   cuszp_proj = cmake.subproject('cuszp')

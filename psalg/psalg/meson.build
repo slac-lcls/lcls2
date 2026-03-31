@@ -1,5 +1,5 @@
 rt_dep = cc.find_library('rt', required: false)
-libcurl_dep = cc.find_library('libcurl')
+libcurl_dep = cc.find_library('curl')
 threads_dep = dependency('threads')
 
 subdir('utils')
