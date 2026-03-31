@@ -10,3 +10,10 @@
     kernels should stay device-resident and be scheduled with the same event
     pipeline, the runtime needs an explicit shared-context / shared-stream /
     shared-buffer contract.
+- Spin GPU-side XTC parsing into a separate `GPUDgram` workstream.
+  - Design note:
+    [`GPU_DGRAM_DESIGN.md`](./GPU_DGRAM_DESIGN.md)
+  - Near-term deliverables:
+    minimal Jungfrau `NamesLookup` schema,
+    CPU reference walker,
+    and device-side structural parser views
