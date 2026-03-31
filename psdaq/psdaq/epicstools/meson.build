@@ -1,10 +1,10 @@
 
-com_dep = cc.find_library('Com', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
-ca_dep = cc.find_library('ca', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
-pvaClient_dep = cc.find_library('pvaClient', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
-pvAccessCA_dep = cc.find_library('pvAccessCA', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
-pvaData_dep = cc.find_library('pvData', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
-pvAccess_dep = cc.find_library('pvAccess', dirs: [join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))])
+com_dep = cc.find_library('Com', dirs: [epics_lib])
+ca_dep = cc.find_library('ca', dirs: [epics_lib])
+pvaClient_dep = cc.find_library('pvaClient', dirs: [epics_lib])
+pvAccessCA_dep = cc.find_library('pvAccessCA', dirs: [epics_lib])
+pvaData_dep = cc.find_library('pvData', dirs: [epics_lib])
+pvAccess_dep = cc.find_library('pvAccess', dirs: [epics_lib])
 
 epics_inc_dir = include_directories(join_paths(get_option('epics_base'), 'include'))
 epics_comp_inc_dir = include_directories(join_paths(get_option('epics_base'), 'include', 'compiler', 'gcc'))
@@ -64,3 +64,4 @@ tstPvMon_exe = executable('tstPvMon',
   install_rpath: libdir_install_rpath,
   #install: true,
 )
+

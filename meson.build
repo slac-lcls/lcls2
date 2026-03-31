@@ -19,6 +19,8 @@ python_dep = py.dependency(embed: true)
 numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())']).stdout().strip()
 numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
 
+epics_lib = join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))
+
 # Have to set the linker flags manually, as nvcc's linker conflicts with
 # the gcc linker args that conda sets.
 add_project_link_arguments(
@@ -54,7 +56,7 @@ add_project_link_arguments(
   language: 'cuda'
 )
 
-libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir'))
+libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir')) + ':' + epics_lib
 bindir_install_rpath = join_paths(get_option('prefix'), get_option('bindir'))
 
 subdir('xtcdata')
