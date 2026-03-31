@@ -34,7 +34,7 @@ geometry_shlib = shared_library(
     dependencies: [libcurl_dep, openmp_dep]
 )
 
-install_headers(
-    geometry_headers,
-    install_dir: 'include/psalg/geometry'
-)
+#install_headers(
+#    geometry_headers,
+#    install_dir: 'include/psalg/geometry'
+#)

@@ -3,7 +3,7 @@ alloc_headers = files(
     'Allocator.hh'
 )
 
-install_headers(
-    alloc_headers,
-    install_dir: 'include/psalg/alloc'
-)
+#install_headers(
+#    alloc_headers,
+#    install_dir: 'include/psalg/alloc'
+#)

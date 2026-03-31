@@ -277,9 +277,9 @@ py.extension_module(
     override_options : ['cython_language=cpp'],
  )
 
-py = import('python').find_installation()
+#py = import('python').find_installation()
 
-install_subdir(
-  'psana',
-  install_dir: py.get_install_dir()
-)
+#install_subdir(
+#  'psana',
+#  install_dir: py.get_install_dir()
+#)

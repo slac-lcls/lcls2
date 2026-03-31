@@ -21,9 +21,9 @@ pgpdriver_lib = shared_library('pgpdriver',
   ],
 )
 
-install_headers(
-  'pgpdriver.h'
-)
+#install_headers(
+#  'pgpdriver.h'
+#)
 
 executable('status',
   'status.cc',

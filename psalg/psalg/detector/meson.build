@@ -34,7 +34,7 @@ detector_shlib = shared_library(
     link_with: [xtc_shlib, utils_shlib, calib_shlib, geometry_shlib]
 )
 
-install_headers(
-    detector_headers,
-    install_dir: 'include/psalg/detector'
-)
+#install_headers(
+#    detector_headers,
+#    install_dir: 'include/psalg/detector'
+#)

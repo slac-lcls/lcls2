@@ -122,10 +122,10 @@ calibTrigger_lib = shared_library('calibTrigger',
   install_rpath: libdir_install_rpath,
 )
 
-install_headers(
-  [
-    'TimingTebData.hh',
-    'TmoTebData.hh',
-  ],
-  subdir: 'psdaq/trigger'
-)
+#install_headers(
+#  [
+#    'TimingTebData.hh',
+#    'TmoTebData.hh',
+#  ],
+#  subdir: 'psdaq/trigger'
+#)

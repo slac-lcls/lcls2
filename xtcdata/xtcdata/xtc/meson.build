@@ -58,7 +58,7 @@ xtcdata_dep = declare_dependency(
   include_directories: include_directories('../..'),
 )
 
-install_headers(
-    xtc_headers,
-    install_dir: 'include/xtcdata/xtc',
-)
+#install_headers(
+#    xtc_headers,
+#    install_dir: 'include/xtcdata/xtc',
+#)

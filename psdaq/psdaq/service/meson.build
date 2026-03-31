@@ -65,7 +65,7 @@ exporter_lib = shared_library('exporter',
     install: true,
 )
 
-install_headers(
-  'EbDgram.hh',
-  subdir: 'psdaq/service',
-)
+#install_headers(
+#  'EbDgram.hh',
+#  subdir: 'psdaq/service',
+#)

@@ -28,7 +28,7 @@ psalg_utils_dep = declare_dependency(
     include_directories: psalg_incdir
 )
 
-install_headers(
-    utils_headers,
-    install_dir: 'include/psalg/utils'
-)
+#install_headers(
+#    utils_headers,
+#    install_dir: 'include/psalg/utils'
+#)

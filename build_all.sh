@@ -22,7 +22,7 @@ elif [ -d "/sdf/group/lcls/" ]; then
   no_daq=1
 fi
 
-while getopts "fd" opt; do
+while getopts "fdcp" opt; do
   case $opt in
     d) no_daq=0
     ;;
@@ -72,19 +72,20 @@ fi
 #########
 # Build #
 #########
-if [ ! -d "$BUILDDIR/meson-private" ]; then
-    meson setup "$BUILDDIR" $OPTIONS
-else
-    meson setup "$BUILDDIR" $OPTIONS --reconfigure || \
-    meson setup "$BUILDDIR" $OPTIONS --wipe
+if [ ! -d "$BUILDDIR" ]; then
+  meson setup "$BUILDDIR" $OPTIONS
+  #meson setup "$BUILDDIR" $OPTIONS --reconfigure || \
+  #meson setup "$BUILDDIR" $OPTIONS --wipe
 fi
-meson compile -C "$BUILDDIR"
-meson install -C "$BUILDDIR"
 
-pip install --prefix=$INSTDIR . #--no-index
+meson compile -C "$BUILDDIR"
+
+meson install --only-changed -C "$BUILDDIR"
+pip install --no-compile --prefix=$INSTDIR . #--no-index
+  
 if [ $no_daq == 0 ]; then
   cd psdaq
-  pip install --prefix=$INSTDIR . #--no-index
+  pip install --no-compile --prefix=$INSTDIR . #--no-index
   cd ..
 fi
 

@@ -71,11 +71,11 @@ executable(
     dependencies: [rt_dep],
 )
 
-install_headers(
-  [
-    'ShmemClient.hh',
-    'XtcMonitorServer.hh',
-    'XtcMonitorMsg.hh',
-  ],
-    install_dir: 'include/psalg/shmem'
-)
+#install_headers(
+#  [
+#    'ShmemClient.hh',
+#    'XtcMonitorServer.hh',
+#    'XtcMonitorMsg.hh',
+#  ],
+#    install_dir: 'include/psalg/shmem'
+#)

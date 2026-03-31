@@ -129,10 +129,10 @@ tstClocks_exe = executable('tstClocks',
   #install: true,
 )
 
-install_headers(
-  [
-    'eb.hh',
-    'ResultDgram.hh',
-  ],
-  subdir: 'psdaq/eb'
-)
+#install_headers(
+#  [
+#    'eb.hh',
+#    'ResultDgram.hh',
+#  ],
+#  subdir: 'psdaq/eb'
+#)

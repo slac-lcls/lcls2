@@ -40,7 +40,7 @@ calib_shlib = shared_library(
     dependencies: [libcurl_dep],
 )
 
-install_headers(
-    calib_headers,
-    install_dir: 'include/psalg/calib'
-)
+#install_headers(
+#    calib_headers,
+#    install_dir: 'include/psalg/calib'
+#)

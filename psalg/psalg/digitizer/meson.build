@@ -17,7 +17,7 @@ digitizer_shlib = shared_library(
     link_with: [xtc_shlib, utils_shlib]
 )
 
-install_headers(
-    digitizer_headers,
-    install_dir: 'include/psalg/digitizer'
-)
+#install_headers(
+#    digitizer_headers,
+#    install_dir: 'include/psalg/digitizer'
+#)
