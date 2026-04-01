@@ -248,6 +248,19 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
     )
 
+    add_executable(gpudgramSkeleton
+        gpudgramSkeleton.cu
+    )
+    target_include_directories(gpudgramSkeleton PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(gpudgramSkeleton
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+
 #--- Tests
 
     add_executable(calibTest
@@ -280,6 +293,7 @@ if(CMAKE_CUDA_COMPILER)
         CuSZpReducer
         pgpread_gpu
         cudaDeviceProperties
+        gpudgramSkeleton
         ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
         RUNTIME DESTINATION bin
