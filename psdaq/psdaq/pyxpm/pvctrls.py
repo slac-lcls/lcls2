@@ -606,7 +606,10 @@ class PVCtrls(object):
         ip_comp = ip.split('.')
         xpm_num = name.rsplit(':',1)[1]
         v = 0x0ff00000 | ((int(xpm_num)&0xff)<<12)
-        if ip_comp[3]!=0:
+        if ip_comp[3]=='0':
+            ip = socket.gethostbyname(socket.gethostname())
+            v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-  0)&0xff)<<4)
+        else:
             v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-100)&0xff)<<4)
         xpm.XpmApp.paddr.set(v)
         logging.info('Set PADDR to 0x{:08x}'.format(v))
@@ -629,7 +632,8 @@ class PVCtrls(object):
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm)
 
-        self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
+#        self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
+        self._clock_control = None
 
         if 'XTPG' in imageName:
             #  Set the initial timestamp
@@ -800,7 +804,7 @@ class PVCtrls(object):
                             #if ((end==nL0) and done==0):
                             #  Somehow nL0 can exceed the end point
                             if ((end<=nL0) and done==0):
-                                logging.warning(f'Recover stepDone for group {i} events {end}')
+                                logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}')
                                 g.stepDone(True)
 
     def zrcv(self):

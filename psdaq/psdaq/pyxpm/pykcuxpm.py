@@ -83,7 +83,9 @@ def main():
     )
 
     # Start the system
+    print(f'======== Starting DevRoot =========')
     base.start()
+    print(f'======== Finished DevRoot =========')
 
     xpm = base.XPM
     app = base.XPM.XpmApp

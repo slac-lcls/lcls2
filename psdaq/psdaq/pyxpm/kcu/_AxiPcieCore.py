@@ -9,11 +9,13 @@
 #-----------------------------------------------------------------------------
 
 import pyrogue              as pr
-from psdaq.utils import enable_cameralink_gateway # to get surf
+from psdaq.utils import enable_lcls2_pgp_pcie_apps # to get surf
 import surf.axi             as axi
 import surf.devices.micron  as micron
 import surf.devices.nxp     as nxp
+import surf.devices.silabs  as silabs
 import surf.xilinx          as xil
+import axipcie              as pcie
 
 import xpm
 import kcu
@@ -140,6 +142,7 @@ class AxiPcieCore(pr.Device):
 
         self.numDmaLanes = numDmaLanes
         self.startArmed  = True
+        self.boardType   = boardType
 
         # PCI PHY status
         self.add(xil.AxiPciePhy(
@@ -217,6 +220,44 @@ class AxiPcieCore(pr.Device):
                 enabled = False
             ))
 
+        elif boardType == 'C1100':
+            self.add(axi.AxiLiteMasterProxy(
+                name   = 'AxilBridge',
+                offset = 0x70000,
+            ))
+
+            qsfpOffset = [0x0F_00_0000, 0x0F_10_0000]
+
+            if False:
+                self.add(xpm.Si5394(
+                    offset  = 0x70000,
+                    memBase = self.AxilBridge.proxy,
+                    enabled = False, # enabled=False because I2C are slow transactions and might "log jam" register transaction pipeline
+                ))
+
+                self.add(pcie.CmsSubsystem(
+                    name       = 'CmsBridge',
+                    offset     = 0x8000_0000,
+                    memBase    = self.AxilBridge.proxy,
+                    moduleType = 'QSFP',
+                    numCages   = 2,
+                ))
+
+                for i in range(2):
+                    self.add(QSFPMonitor(
+                        name    = f'Qsfp[{i}]',
+                        offset  = qsfpOffset[i],
+                        memBase = self.CmsBridge.proxy,
+                        enabled = False, # enabled=False because I2C are slow transactions and might "log jam" register transaction pipeline
+                    ))
+
+    def QSFP(self,index):
+        if self.boardType == 'Kcu1500':
+            self.I2cMux.set((1<<4) if index==0 else (1<<j))
+            return self.QSFP
+        if self.boardType == 'C1100':
+            return getattr(self,f'Qsfp[{index}]')
+        return None
 
     def _start(self):
         super()._start()

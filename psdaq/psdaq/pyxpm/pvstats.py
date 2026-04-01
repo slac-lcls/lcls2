@@ -84,11 +84,12 @@ class QSFPStatus(object):
         self._nlinks= nLinks
 
     def update(self):
+        return  ##  Until C1100 QSFP readout works
 
         j = self._link % 2
-        self._xpm.AxiPcieCore.I2cMux.set((1<<4) if j==0 else (1<<1))
-        rxp = self._xpm.AxiPcieCore.QSFP.getRxPwr()
-        txp = self._xpm.AxiPcieCore.QSFP.getTxBiasI()
+        QSFP = self._xpm.AxiPcieCore.QSFP(j)
+        rxp = QSFP.getRxPwr()
+        txp = QSFP.getTxBiasI()
         for lane in range(4):
             self._value['TxPower'][4*self._link+lane] = txp[lane]
             self._value['RxPower'][4*self._link+lane] = rxp[lane]
@@ -288,8 +289,8 @@ class CuStatus(object):
         self._device = device
         self._phase  = phase
 
-        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
-        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
+#        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
+#        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
         self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
         self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
         self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
@@ -304,8 +305,8 @@ class CuStatus(object):
                 pv.post(value)
 
         timev = divmod(float(time.time_ns()), 1.0e9)
-        updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
-        updatePv(self._pv_pulseId     , self._device.pulseId          .get())
+#        updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
+#        updatePv(self._pv_pulseId     , self._device.pulseId          .get())
         updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
         updatePv(self._pv_PhCuToSC    , self._phase .phase())
 
@@ -322,8 +323,8 @@ class CuStatus(object):
 class NoCuStatus(object):
     def __init__(self, name):
 
-        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
-        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
+#        self._pv_timeStamp    = addPV(name+':TimeStamp'   ,'L')
+#        self._pv_pulseId      = addPV(name+':PulseId'     ,'L')
         self._pv_fiducialIntv = addPV(name+':FiducialIntv','I')
         self._pv_fiducialErr  = addPV(name+':FiducialErr' ,'I')
         self._pv_PhCuToSC     = addPV(name+':CuToSCPhase' ,'f')
@@ -338,6 +339,7 @@ class MonClkStatus(object):
         self._pv_bpClk  = addPV(name+':BpClk' ,'f')
         self._pv_fbClk  = addPV(name+':FbClk' ,'f')
         self._pv_recClk = addPV(name+':RecClk','f')
+        self._pv_phyClk = addPV(name+':PhyClk','f')
 
     def handle(self, msg, offset, timev):
         w = struct.unpack_from('<LLLL',msg,offset)
@@ -345,6 +347,7 @@ class MonClkStatus(object):
         updatePv(self._pv_bpClk , w[0]&0xfffffff, timev)
         updatePv(self._pv_fbClk , w[1]&0xfffffff, timev)
         updatePv(self._pv_recClk, w[2]&0xfffffff, timev)
+        updatePv(self._pv_phyClk, w[3]&0xfffffff, timev)
         return offset
 
 class GroupStats(object):

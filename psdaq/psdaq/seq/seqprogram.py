@@ -52,7 +52,7 @@ class SeqUser:
         else:
             aidx = self.idxseq.get()
             for idx in aidx:
-                if idx==0 or idx==ridx:
+                if idx<2 or idx==ridx:
                     continue
                 print( 'Removing seq %d'%idx)
                 self.idxseq0r.put(idx,wait=tmo)
@@ -81,7 +81,8 @@ class SeqUser:
 
         print( 'Confirmed ninstr %d'%ninstr)
 
-        self.insert.put(1,wait=tmo)
+        #  Need a long timeout for the 32k instruction lists
+        self.insert.put(1,timeout=30.0)
 
         #  How to handshake the insert.put -> idxseq0.get (RPC?)
         time.sleep(1.0)
@@ -122,7 +123,7 @@ class SeqUser:
             self.sync(refresh)  # schedule the reset
         else:
             self.begin(refresh) # reset now
-        self.clean()
+#        self.clean(self._idx)
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
@@ -130,6 +131,7 @@ def main():
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
     parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
+    parser.add_argument("--clean", action='store_true', help="stop & clean before programming")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 
@@ -144,39 +146,45 @@ def main():
         engine = int(sengine)
         print(f'** engine {engine} fname {fname} **')
 
-        config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
-        seq = 'from psdaq.seq.seq import *\n'
-        seq += open(fname).read()
-        exec(compile(seq, fname, 'exec'), {}, config)
-        
-        print(f'descset  {config["descset"]}')
-        print(f'seqcodes {config["seqcodes"]}')
-        if 'refresh' not in config:
-            config['refresh']=False
-        print(f'refresh  {config["refresh"]}')
-        if args.verbose:
-            print('instrset (before preproc):')
-            for i in config["instrset"]:
-                print(i)
-        config['instrset'] = preproc(config['instrset'])
-        if args.verbose:
-            print('instrset (after preproc):')
-            for i in config["instrset"]:
-                print(i)
-
         seq = SeqUser(f'{args.pv}:SEQENG:{engine}')
-        seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
+        if args.clean:
+            seq.stop()
+            seq.clean()
+
+        if len(fname):
+            config = {'title':'TITLE', 'descset':None, 'instrset':None, 'seqcodes':None, 'repeat':False}
+            seqstr = 'from psdaq.seq.seq import *\n'
+            seqstr += open(fname).read()
+            exec(compile(seqstr, fname, 'exec'), {}, config)
+        
+            print(f'descset  {config["descset"]}')
+            print(f'seqcodes {config["seqcodes"]}')
+            if 'refresh' not in config:
+                config['refresh']=False
+            print(f'refresh  {config["refresh"]}')
+            if args.verbose:
+                print('instrset (before preproc):')
+                for i in config["instrset"]:
+                    print(i)
+            config['instrset'] = preproc(config['instrset'])
+            if args.verbose:
+                print('instrset (after preproc):')
+                for i in config["instrset"]:
+                    print(i)
+
+            seq.execute(config['title'],config['instrset'],config['descset'],sync=not args.reset,refresh=config['refresh'])
+
+            engineMask |= (1<<engine)
+
+            for e in range(4*engine,4*engine+4):
+                desc[e] = ''
+            for e,d in config['seqcodes'].items():
+                desc[4*engine+e] = d
+            print(f'desc {desc}')
+
+            seqcodes_pv.put(desc,wait=tmo)
+
         del seq
-
-        engineMask |= (1<<engine)
-
-        for e in range(4*engine,4*engine+4):
-            desc[e] = ''
-        for e,d in config['seqcodes'].items():
-            desc[4*engine+e] = d
-        print(f'desc {desc}')
-
-    seqcodes_pv.put(desc,wait=tmo)
 
     if args.start:
         pvSeqReset = Pv(f'{args.pv}:SeqReset')

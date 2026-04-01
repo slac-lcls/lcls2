@@ -21,8 +21,8 @@ from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.pvhandler import *
 import psdaq.pyxpm.autosave as autosave
 
-##MIN_FW_VERSION = 0x030c0100
-MIN_FW_VERSION = 0
+MIN_FW_VERSION = 0x030d0300  # TPGMini was added for timestamp tracking
+#MIN_FW_VERSION = 0
 
 class NoLock(object):
     def __init__(self):
@@ -143,13 +143,6 @@ def main():
 
                 elif cycle == 10:   # Wait for PVSeq to register with autosave/restore
                     autosave.restore()
-
-                    ##  Now handled in l0delay pv callback
-                    #  This is necessary after restoring L0Delays
-                    #  Can also fix strange behavior in common group
-                    #app.groupL0Reset.set(0xff)
-                    #time.sleep(1.e-3)
-                    #app.groupL0Reset.set(0)
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))

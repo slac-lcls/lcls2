@@ -13,6 +13,7 @@ import rogue
 import click
 import struct
 import time
+import subprocess
 
 import kcu
 
@@ -56,6 +57,7 @@ class DevRoot(pr.Root):
                  isXpmGen       = True,
                  isUED          = False,
                  xvcPort        = None,
+                 zmqSrvEn       = False,
                  **kwargs):
 
         print(f'DevRoot dataDebug {dataDebug}')
@@ -77,6 +79,11 @@ class DevRoot(pr.Root):
             initRead    = initRead,
             **kwargs)
 
+        # Add ZMQ server
+        if zmqSrvEn:
+            self.zmqServer = pr.interfaces.ZmqServer(root=self, addr='127.0.0.1', port=0)
+            self.addInterface(self.zmqServer)
+
         # Unhide the RemoteVariableDump command
         self.RemoteVariableDump.hidden = False
 
@@ -84,12 +91,25 @@ class DevRoot(pr.Root):
         self.memMap = kcu.createAxiPcieMemMap(dev, 'localhost', 8000)
         self.memMap.setName('PCIe_Bar0')
 
+        # Determine boardType
+        boardType = None
+        isXpmGen  = False
+        result = subprocess.run(['cat',dev.replace('/dev/','/proc/')],capture_output=True,text=True)
+        for line in result.stdout.split('\n'):
+            if 'Build' in line:
+                if 'C1100' in line: boardType = 'C1100'
+                if 'Kcu1500' in line: boardType = 'Kcu1500'
+                if 'Gen' in line: isXpmGen = True
+        if boardType is None:
+            raise RuntimeError('Could not parse boardType from datadev')
+
         # Instantiate the top level Device and pass it the memory map
         self.add(kcu.DevPcie(
             name        = 'XPM',
             memBase     = self.memMap,
             isXpmGen    = isXpmGen,
             isUED       = isUED,
+            boardType   = boardType,
         ))
 
         # Create empty list
@@ -154,7 +174,9 @@ class DevRoot(pr.Root):
     def start(self, **kwargs):
         super().start(**kwargs)
 
+        print(f'======== Starting DevPcie =========')
         self.XPM.start()
+        print(f'======== Done DevPcie =============')
 
 #        # Hide all the "enable" variables
 #        for enableList in self.find(typ=pr.EnableVariable):
@@ -164,23 +186,6 @@ class DevRoot(pr.Root):
         # Check if simulation
         if (self.dev == 'sim'):
             pass
-
-        # Check if PGP[lane].VC[0] = SRPv3 (register access) is enabled
-        elif self.enVcMask[0]:
-            self.ReadAll()
-            self.ReadAll()
-
-            # Load the configurations
-            if self.enableConfig:
-
-                # Read all the variables
-                self.ReadAll()
-                self.ReadAll()
-
-                # Load the YAML configurations
-                defaultFile.extend(self.defaultFile)
-                print(f'Loading {defaultFile} Configuration File...')
-                self.LoadConfig(defaultFile)
 
     # Function calls after loading YAML configuration
     def initialize(self):

@@ -34,6 +34,35 @@ class DevReset(pr.Device):
             mode         = "RW",
         ))
 
+        self.add(pr.RemoteVariable(
+            name         = 'tFbData',
+            description  = "2-byte data sample",
+            offset       = 0x0000,
+            bitSize      =  18,
+            bitOffset    =  0x00,
+            base         = pr.UInt,
+            mode         = "RO",
+        ))
+
+        def BitField(name,desc,bitOffset):
+            self.add(pr.RemoteVariable(
+                name         = name,
+                description  = desc,
+                offset       = 0x0000,
+                bitSize      =  1,
+                bitOffset    =  bitOffset,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+
+        BitField('tFbReset'      ,'Reset signal'             ,18)
+        BitField('tFbLocked'     ,'Locked signal'            ,19)
+        BitField('tFbResetDone'  ,'Reset done signal'        ,20)
+        BitField('tFbBuffBypDone','Buffer bypass done signal',21)
+        BitField('tFbBuffBypErr' ,'Buffer bypass erro signal',22)
+        BitField('tFbValid'      ,'Register valid'           ,23)
+
+
 class NoTimingFrameRx(pr.Device):
     def __init__(self,
                  name        = 'NoTimingFrameRx',
@@ -56,6 +85,9 @@ class NoTimingFrameRx(pr.Device):
         pass
 
     def update(self):
+        pass
+
+    def Dump(self):
         pass
 
 class NoCuGenerator(pr.Device):
@@ -148,18 +180,20 @@ class DevPcie(pr.Device):
                     memBase     = 0,
                     isXpmGen    = True,
                     isUED       = False,
+                    boardType   = 'Kcu1500',
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         self.isXpmGen = isXpmGen
         self.isUED    = isUED
         self.fwVersion = 0x03070000
+        self.boardType = boardType
 
         ######################################################################
         
         # Add devices
         self.add(kcu.AxiPcieCore(
             name    = 'AxiPcieCore',
-            boardType = 'Kcu1500',
+            boardType = boardType,
             memBase = memBase,
             offset  = 0x00000000, 
             expand  = False,
@@ -202,7 +236,7 @@ class DevPcie(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = memBase,
             name   = 'SeqEng_0',
-            offset = 0x00840000,
+            offset = 0x00C00000,
         ))
 
         self.add(xpm.TPGMini(
@@ -216,6 +250,13 @@ class DevPcie(pr.Device):
             name   = 'DevReset',
             offset = 0x00820000,
         ))
+
+        for i in range(8):
+            self.add(xpm.XpmPathTimer(
+                memBase = memBase,
+                name    = f'XpmPathTimer_{i}',
+                offset  = 0x00870000+i*0x1000,
+            ))
 
         self.add(timing.GthRxAlignCheck(
             memBase = memBase,
@@ -250,10 +291,23 @@ class DevPcie(pr.Device):
             click.secho(errMsg, bg='red')
             raise ValueError(errMsg)
 
-        #  Reprogram the reference clock
-        self.AxiPcieCore.I2cMux.set(1<<2)
-        self.AxiPcieCore.Si570._program(0 if self.isUED else 1)
-        time.sleep(0.01)
+        if self.boardType == 'Kcu1500':
+            #  Reprogram the reference clock
+            self.AxiPcieCore.I2cMux.set(1<<2)
+            self.AxiPcieCore.Si570._program(0 if self.isUED else 1)
+            time.sleep(0.01)
+
+        if self.boardType == 'C1100':
+            #  Reprogram the reference clock
+            #self.AxiPcieCore.Si5394._program(0 if self.isUED else 1)
+            #time.sleep(0.01)
+            pass
+
+        if self.boardType == 'C1100':
+            print(f'MMCM lock : {self.XpmApp.mmcmLock.get()}')
+            self.XpmApp.mmcmRst.set(0)
+            print(f'MMCM reset : {self.XpmApp.mmcmRst.get()}')
+
         #  Reset the Tx and Rx PLLs
         for i in range(8):
             self.XpmApp.link.set(i)
@@ -265,55 +319,16 @@ class DevPcie(pr.Device):
             time.sleep(0.01)
             self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
-        self.DevReset.clearTimingPhyReset.set(1)
 
         if self.isXpmGen:
-            if self.isUED:
-                self.TPGMini.BaseControl.set(238)
-                #  Set the fixed rate markers
-                self.TPGMini.FixedRateDiv[0].set(500000)
-                self.TPGMini.FixedRateDiv[1].set(  1000)
-                self.TPGMini.FixedRateDiv[2].set(   500)
-                self.TPGMini.FixedRateDiv[3].set(   100)
-                self.TPGMini.FixedRateDiv[4].set(    50)
-                self.TPGMini.FixedRateDiv[5].set(    10)
-                self.TPGMini.FixedRateDiv[6].set(     5)
-                #  And some rate markers tied to beam simulation
-                self.TPGMini.FixedRateDiv[7].set(     1)  # beam request
-                self.TPGMini.FixedRateDiv[8].set(  1000)  # dest b1
-                self.TPGMini.FixedRateDiv[9].set(   500)  # dest b2
-                self.TPGMini.RateReload.set(1)
-
-            else:
-                self.TPGMini.BaseControl.set(200)
-                #  Set the fixed rate markers
-                self.TPGMini.FixedRateDiv[0].set(910000)
-                self.TPGMini.FixedRateDiv[1].set( 91000)
-                self.TPGMini.FixedRateDiv[2].set(  9100)
-                self.TPGMini.FixedRateDiv[3].set(   910)
-                self.TPGMini.FixedRateDiv[4].set(    91)
-                self.TPGMini.FixedRateDiv[5].set(    13)
-                self.TPGMini.FixedRateDiv[6].set(     1)
-                #  And some rate markers tied to beam simulation
-                self.TPGMini.FixedRateDiv[7].set(  9100)  # beam request
-                self.TPGMini.FixedRateDiv[8].set( 91000)  # dest b1
-                self.TPGMini.FixedRateDiv[9].set(  9100)  # dest b2
-                self.TPGMini.RateReload.set(1)
-
-            #  Set the AC rate markers
-            self.TPGMini.ACRateDiv[0].set(120)
-            self.TPGMini.ACRateDiv[1].set( 60)
-            self.TPGMini.ACRateDiv[2].set( 12)
-            self.TPGMini.ACRateDiv[3].set(  6)
-            self.TPGMini.ACRateDiv[4].set(  2)
-            self.TPGMini.ACRateDiv[5].set(  1)
-            self.TPGMini.ACRateReload.set(1)
-
+            self.TPGMini.setup(self.isUED)
 
         #  Reset to realign the rate markers
-        self.DevReset.clearTimingPhyReset.set(0)
-        time.sleep(0.001)
+        print('Clearing timing phy reset')
         self.DevReset.clearTimingPhyReset.set(1)
+        time.sleep(0.001)
+        self.DevReset.clearTimingPhyReset.set(0)
+        time.sleep(1)
 
         self.UsTiming.update()
         self.UsTiming.Dump()
@@ -323,7 +338,20 @@ class DevPcie(pr.Device):
         print(f'TxClkFreqRaw {self.UsGthRx.TxClkFreqRaw.get()}')
         print(f'RxClkFreqRaw {self.UsGthRx.RxClkFreqRaw.get()}')
 
-        self.AxiPcieCore.I2cMux.set(1<<4)
-        print(f'QSFP0: {self.AxiPcieCore.QSFP.getRxPwr()}')
-        self.AxiPcieCore.I2cMux.set(1<<1)
-        print(f'QSFP1: {self.AxiPcieCore.QSFP.getRxPwr()}')
+        if self.boardType == 'Kcu1500':
+            self.AxiPcieCore.I2cMux.set(1<<4)
+            print(f'QSFP0: {self.AxiPcieCore.QSFP.getRxPwr()}')
+            self.AxiPcieCore.I2cMux.set(1<<1)
+            print(f'QSFP1: {self.AxiPcieCore.QSFP.getRxPwr()}')
+
+        def DumpField(name):
+            print(f'{name} {getattr(self.DevReset,name).get()}')
+
+        DumpField('tFbReset')
+        DumpField('tFbLocked')
+        DumpField('tFbResetDone')
+        DumpField('tFbBuffBypDone')
+        DumpField('tFbBuffBypErr')
+        DumpField('tFbValid')
+
+        self.TPGMini.dump()

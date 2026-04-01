@@ -12,6 +12,7 @@ import json
 verbose = True
 
 NSubSeq = 64
+SeqAddrLen = 15
 
 def _nwords(instr):
     return 1
@@ -50,16 +51,26 @@ class Engine(object):
         self.dump()
 
         a = 0
-        self._caches[a] = SeqCache(0,3,[FixedRateSync(5,1),FixedRateSync(5,1),Branch.unconditional(line=0)])
-        self._ram   [a  ].set(FixedRateSync(5,1)._word())
-        self._ram   [a+1].set(FixedRateSync(5,1)._word())
-        self._ram   [a+2].set(Branch.unconditional(line=0)._word(a))
+        self._caches[a] = SeqCache(0,3,[FixedRateSync(5,1),Upper(0),Jump.unconditional(line=0)])
+        self.writeRam(a  ,FixedRateSync(5,1)._word())
+        self.writeRam(a+1,Upper(0)._word())
+        self.writeRam(a+2,Jump.unconditional(line=0)._word())
+
         a = (1<<reg.seqAddrLen.get())-1
-        self._caches[a] = SeqCache(1,1,[Branch.unconditional(line=0)])
-        self._ram   [a].set(Branch.unconditional(line=a)._word(a))
+        self._caches[a-1] = SeqCache(1,2,[Upper(a),Jump.unconditional(line=a)])
+        self.writeRam(a-1,Upper(a)._word())
+        self.writeRam(a  ,Jump.unconditional(line=a)._word())
         self._indices = 3   # bit mask of committed sequences
         self._seq     = []  # instruction sequence to be committed
         self._autosave()
+
+    def readRam(self, index):
+        #return self._ram[index].get()
+        return self._ram.get(index=index)
+
+    def writeRam(self, index, val):
+        #self._ram[index].set(val)
+        self._ram.set(val,index=index)
 
     def cacheSeq(self,val):
         seq = []
@@ -75,11 +86,11 @@ class Engine(object):
                     seq.append(FixedRateSync(args[1],args[2]))
                 elif instr == ACRateSync.opcode:
                     seq.append(ACRateSync(args[1],args[2],args[3]))
-                elif instr == Branch.opcode:
+                elif instr == Jump.opcode:
                     if nargs == 1:
-                        seq.append(Branch.unconditional(args[1]))
+                        seq.append(Jump.unconditional(args[1]))
                     else:
-                        seq.append(Branch.conditional(args[1],args[2],args[3]))
+                        seq.append(Jump.conditional(args[1],args[2],args[3]))
                 elif instr == CheckPoint.opcode:
                     seq.append(CheckPoint())
                 elif instr == ControlRequest.opcode:
@@ -88,6 +99,10 @@ class Engine(object):
                     seq.append(Call(args[1]))
                 elif instr == Return.opcode:
                     seq.append(Return())
+                elif instr == Upper.opcode:
+                    seq.append(Upper(args[1]))
+                else:
+                    logging.error(f'Error parsing instruction {args}')
 
         except StopIteration:
             pass
@@ -109,7 +124,8 @@ class Engine(object):
             best_ram = 0
             if True:
                 addr = 0
-                none_found = 1<<self._reg.seqAddrLen.get()
+                #none_found = 1<<self._reg.seqAddrLen.get()
+                none_found = 1<<SeqAddrLen
                 best_size = none_found
                 keys = sorted(self._caches.keys())
                 for key in keys:
@@ -150,11 +166,13 @@ class Engine(object):
             #  Translate addresses
             addr = best_ram
             words = relocate(self._seq,best_ram)
+            logging.info(f'Relocated {nwords} instructions')
+
             if words is None:
                 rval = -3
             else:
                 for i,w in enumerate(words):
-                    self._ram[best_ram+i].set(w)
+                    self.writeRam(best_ram+i,w)
 
             logging.info('Translated addresses rval = {}'.format(rval))
 
@@ -177,7 +195,7 @@ class Engine(object):
         ram  = self._reg.SeqMem_0.mem
         for key,seq in self._caches.items():
             if seq.index == index:
-                self._ram[key].set(key)
+                self.writeRam(key,key)
                 del self._caches[key]
                 self._autosave()
                 return 0
@@ -193,7 +211,7 @@ class Engine(object):
                 break
 
         if a>=0:
-            self._jump.setManStart(a,0)
+            self._jump.setManStart(a)
             self._jump.setManSync (sync)
             logging.info('sequence started at address 0x{:x}'.format(a))
         else:
@@ -242,7 +260,7 @@ class Engine(object):
         for key,entry in self._caches.items():
             if entry.index == i:
                 for j in range(entry.size):
-                    ram = self._ram[key+j].get()
+                    ram = self.readRam(key+j)
                     logging.info('[{:08x}] {:08x} {:}'.format(key+j,ram,decodeInstr(ram)))
 
     def _autosave(self):
@@ -252,6 +270,7 @@ class Engine(object):
             d[k] = v.save()
         s = json.dumps((int(self._indices),d))
         autosave.addJson(f'SEQENG_{self._id}', self, s)
+        logging.info(f'autosave added SEQENG_{self._id}')
 
     def restore(self,v):
         obj = json.loads(v)
@@ -292,7 +311,7 @@ class PVSeq(object):
             provider.add(pvname,pv)
             return pv
 
-        self._pv_Instrs        = _addPV('INSTRS'    ,'aI',[0]*16384, self.instrs)
+        self._pv_Instrs        = _addPV('INSTRS'    ,'aI',[0]*(1<<SeqAddrLen), self.instrs)
         self._pv_RmvSeq        = _addPV('RMVSEQ'    , 'I',        0, self.rmvseq)
         self._pv_Ins           = _addPV('INS'       , 'I',        0, self.ins)
         self._pv_SchedReset    = _addPV('SCHEDRESET', 'I',        0, self.schedReset)
@@ -337,10 +356,12 @@ class PVSeq(object):
     def ins(self, pv, val):
         if val:
             rval = self._eng.insertSeq()
+            logging.info(f'insertSeq returned {rval}')
+
             pvUpdate(self._pv_Seq00Idx,rval)
             aval = np.insert(self._pv_SeqIdx.current()['value'],0,rval)
             pvUpdate(self._pv_SeqIdx,aval)
-            print(f'Updated SeqIdx with {aval}')
+            logging.info(f'Updated SeqIdx with {aval}')
 
     def schedReset(self, pv, val):
         if val>0:
@@ -377,7 +398,7 @@ class PVSeq(object):
         pvUpdate(self._pv_Running,0)
 
     def dump(self, pv, val):
-        logging.info('Dump engine {self._eng._id} : runidx {self._pv_RunIdx.current()}')
+        logging.info(f'Dump engine {self._eng._id} : runidx {self._pv_RunIdx.current().value}')
         self._eng.dump()
 
     def refresh(self):

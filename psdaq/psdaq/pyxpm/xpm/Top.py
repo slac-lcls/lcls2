@@ -227,7 +227,7 @@ class Top(pr.Device):
         self.add(xpm.XpmSequenceEngine(
             memBase = self.srp,
             name   = 'SeqEng_0',
-            offset = 0x80040000,
+            offset = 0x80400000,
         ))
 
         # DDC at 0x80060000 + 0x1000*i
@@ -247,7 +247,7 @@ class Top(pr.Device):
         self.add(xpm.XpmPhase(
             memBase = self.srp,
             name   = 'CuToScPhase',
-            offset = 0x80080000,
+            offset = 0x80040000,
         ))
 
     def start(self):
