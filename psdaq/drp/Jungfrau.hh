@@ -57,6 +57,7 @@ private:
     std::vector<unsigned> m_segNos;
     std::vector<std::string> m_serNos;
     std::vector<std::string> m_slsHosts;
+    std::vector<uint16_t> m_modIds;
     std::unique_ptr<sls::Detector> m_slsDet;
     std::unordered_map<std::string, std::unordered_map<uint32_t, std::string>> m_configEnums;
     JungfrauIdLookup m_idLookup;
