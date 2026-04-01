@@ -323,6 +323,9 @@ void Jungfrau::_connectionInfo(PyObject*)
                 serNo = "_" + serNo;
             }
             m_para->serNo += serNo;
+
+            // save the expected moduleid so we can verify the frame data
+            m_modIds.push_back(moduleIds[i]);
         }
     }
     catch (const sls::RuntimeError &err) {
@@ -816,6 +819,7 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                                                                        subframes[subframeIdx].num_elem(),
                                                                        JungfrauData::PacketNum);
 
+        uint16_t moduleID = m_modIds[moduleIdx];
         uint64_t framenum = 0;
         uint64_t timestamp = 0;
         unsigned segNo = m_segNos[moduleIdx];
@@ -862,6 +866,13 @@ void Jungfrau::_event(XtcData::Xtc& xtc,
                         dataXtc.damage.increase(XtcData::Damage::Corrupted);
                         break;
                     }
+                }
+                // check if the data has the correct moduleID - this will be wrong if the fiber mapping is wrong
+                if (packet->header.moduleID != moduleID) {
+                    logging::error("Corrupted data: lane-seg-host[%zu-%u-%s] packet[%u] unexpected moduleId %u [%u]",
+                                   moduleIdx, segNo, slsHost, udpIdx, packet->header.moduleID, moduleID);
+                    dataXtc.damage.increase(XtcData::Damage::Corrupted);
+                    break;
                 }
                 // check that the packets have been properly descrambled
                 if (packet->header.packetnum != udpIdx) {
