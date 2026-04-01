@@ -81,11 +81,11 @@ fi
 meson compile -C "$BUILDDIR"
 
 meson install --only-changed -C "$BUILDDIR"
-pip install --no-compile --prefix=$INSTDIR . #--no-index
-  
+uv pip install --no-compile --no-build-isolation --prefix=$INSTDIR . #--no-index
+
 if [ $no_daq == 0 ]; then
   cd psdaq
-  pip install --no-compile --prefix=$INSTDIR . #--no-index
+  uv pip install --no-compile --no-build-isolation --prefix=$INSTDIR . #--no-index
   cd ..
 fi
 

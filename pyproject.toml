@@ -75,4 +75,4 @@ line-length = 160
 
 [tool.setuptools.packages.find]
 where = ["psalg", "psana"]
-include = ["psalg", "psalg.daqPipes*", "psalg.utils*", "psana", "psana.debugtools*", "psana.pscalib*", "psana.gtaphqt*", "psana.peakFinder*", "psana.momentum*", "psana.app*", "psana.hexanode*", "psana.psexp*", "psana.xtcav*", "psana.dgramPort*", "psana.pyalgos", "psana.detector*", "psana.pop*"] 
+include = ["psalg", "psalg.daqPipes*", "psalg.utils*", "psana", "psana.debugtools*", "psana.pscalib*", "psana.gtaphqt*", "psana.peakFinder*", "psana.momentum*", "psana.app*", "psana.hexanode*", "psana.psexp*", "psana.xtcav*", "psana.dgramPort*", "psana.pyalgos*", "psana.pycalgos*", "psana.detector*", "psana.pop*"]

@@ -51,7 +51,7 @@ py.extension_module(
 )
 
 py.extension_module(
-    'peakFinder',
+    'peakFinder_ext',
     'psana/peakFinder/peakFinder.pyx',
     'psana/peakFinder/src/PeakFinderAlgos.cc',
     'psana/peakFinder/src/LocalExtrema.cc',
@@ -277,9 +277,32 @@ py.extension_module(
     override_options : ['cython_language=cpp'],
  )
 
+#py.extension_module(
+#    'hexanode_ext',
+#    sources: ['psana/hexanode/hexanode_ext.pyx',
+#              'psana/hexanode/src/cfib.cc',
+#              'psana/hexanode/src/wrap_resort64c.cc',
+#              'psana/hexanode/src/SortUtils.cc',
+#              'psana/hexanode/src/LMF_IO.cc',
+#    ],
+#    include_directories: [psana_incdir],
+#    install: true,
+#    install_rpath: libdir_install_rpath,
+#    subdir: 'psana',
+#    link_with: [],
+#    dependencies: [numpy_dep],
+#    override_options : ['cython_language=cpp'],
+#)
+
 #py = import('python').find_installation()
 
 #install_subdir(
 #  'psana',
 #  install_dir: py.get_install_dir()
 #)
+
+# Copy geometry files over
+install_subdir(
+  'psana/pscalib/geometry/data',
+  install_dir: py.get_install_dir() / 'pscalib/geometry/data',
+)
