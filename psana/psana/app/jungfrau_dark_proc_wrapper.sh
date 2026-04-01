@@ -61,8 +61,8 @@ run_beg="0"
 run_end="end"
 tstamp="None"
 dbsuffix="None"
-nranks="19"   #"19" 1-no mpi
-nnodes="1"
+logfile="$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
+slurmpars="--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19"
 wrapper=7
 submit=false # execute/skip commands for debudding of this script
 
@@ -221,12 +221,8 @@ while [[ "$#" -gt 0 ]]; do
             segind="$2"
             shift
             ;;
-        -N|--nranks)
-            nranks="$2"
-            shift
-            ;;
-        --nnodes)
-            nnodes="$2"
+        --slurmpars)
+            slurmpars="$2"
             shift
             ;;
         --wrapper)
@@ -266,6 +262,8 @@ script_dir=$(dirname "$(realpath "$0")")
 
 cmnpars="-k $dskwargs -d $detname -o $dirrepo -L $logmode"
 cmd00="jungfrau_dark_proc $cmnpars" ### "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1"
+
+time {
 
 t0_sec=$SECONDS
 
@@ -335,11 +333,12 @@ if $stage2; then
   #logfile="$dirrepo/jungfrau/logs/$(date +%Y)/$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
   logfile="$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
   file="$script_dir/jungfrau_dark_proc_sbatch.sh"
+  cmd_sbatch=(sbatch)
   if $stage3; then
-      cmd_sbatch=(sbatch --wait --partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=$nnodes --ntasks-per-node=$nranks "$file" "$cmd20")
-  else
-      cmd_sbatch=(sbatch --partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=$nnodes --ntasks-per-node=$nranks "$file" "$cmd20")
+      cmd_sbatch+=(--wait)
   fi
+  cmd_sbatch+=($slurmpars "$file" "$cmd20")
+
   echo "command for sbatch: $cmd20"
   echo "cmd_sbatch split arguments:"
   show_argv "${cmd_sbatch[@]}"
@@ -368,5 +367,7 @@ fi # $stage3
 dt_sec=$((SECONDS - t0_sec))
 echo
 echo "TOTAL CONSUMED TIME: $dt_sec sec"
+
+} # time
 
 exit 0
