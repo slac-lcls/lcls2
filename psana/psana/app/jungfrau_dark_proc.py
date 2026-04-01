@@ -7,6 +7,8 @@ import sys
 #logger = logging.getLogger(__name__)
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+from datetime import datetime
+import getpass
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -35,7 +37,7 @@ def argument_parser():
     d_detname = 'jungfrau' #  None
     d_nrecs   = 1000  # number of records to collect and process
     d_nrecs1  = 50    # number of records to process at 1st stage
-    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work1'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
@@ -56,9 +58,9 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-03-25'
+    d_version = 'V2026-03-31'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
-    d_ctdepl  = 'psr'   # for constants from dark, 'psrnx'
+    d_ctdepl  = 'prs'   # for constants from dark, 'prsnx'
     d_deploy  = False
     d_save    = False
     d_plotim  = 0
@@ -66,8 +68,8 @@ def argument_parser():
 
     d_wrapper = 0
     d_submit  = False
-    d_nranks  = 19
-    d_nnodes  = 1
+    logfile = datetime.now().strftime('%Y-%m-%dT%I%M%S') + f'_jungfrau_dark_proc_{getpass.getuser()}.log'
+    d_slurmpars = f'--output={logfile} --nodes=1 --ntasks-per-node=19'
 
     d_tstamp  = None # 20180910111049
     d_run_beg = None
@@ -111,8 +113,8 @@ def argument_parser():
 
     h_wrapper = 'WRAPPER: bitword 001/010/100 runs wrapper jungfrau_dark_proc_wrapper.sh for stages 1/2/3, respectively, or any bit combination, default = %d' % d_wrapper
     h_submit  = 'WRAPPER: submit commands for execution, otherwise show what wrapper is doing for debugging, default = %s' % d_submit
-    h_nranks  = 'WRAPPER: passed to sbatch --ntasks-per-node=NRANKS, default = %s' % d_nranks
-    h_nnodes  = 'WRAPPER: number of nodes, default = %s' % d_nnodes
+    h_slurmpars = '(str) space-separated list of slurm parameters, '\
+                'ex: -slurmpars "--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19", default = %s' % str(d_slurmpars)
 
     h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
     h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
@@ -155,8 +157,7 @@ def argument_parser():
 
     parser.add_argument('--submit',        action='store_true',              help=h_submit)
     parser.add_argument('--wrapper',       default=d_wrapper,    type=int,   help=h_wrapper)
-    parser.add_argument('--nranks',        default=d_nranks,     type=int,   help=h_nranks)
-    parser.add_argument('--nnodes',        default=d_nnodes,     type=int,   help=h_nnodes)
+    parser.add_argument('--slurmpars',     default=d_slurmpars,  type=str,   help=h_slurmpars)
 
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
@@ -194,7 +195,8 @@ def do_main():
             +=f' --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
             + f' --intnhi {args.intnhi} --intnlo {args.intnlo}'\
             + f' --rms_hi {args.rms_hi} --rms_lo {args.rms_lo} --rmsnhi {args.rmsnhi} --rmsnlo {args.rmsnlo} --fraclm {args.fraclm}'\
-            + f' --nranks {args.nranks} --nnodes {args.nnodes}'
+            + f' --slurmpars "{args.slurmpars}"'
+#            + f' --nranks {args.nranks} --nnodes {args.nnodes}'
         if args.wrapper & 4:
             cmd += f' --ctdepl {args.ctdepl} --version {args.version}'
             if args.tstamp   is not None: cmd += f' --tstamp {args.tstamp}'
