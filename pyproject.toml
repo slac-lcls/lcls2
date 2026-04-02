@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["meson-python", "wheel"]
+build-backend = "mesonpy"
 
 [project]
 name = "lcls"
@@ -72,7 +72,3 @@ ignore = ['E221', 'E222', 'E266']
 
 [tool.ruff]
 line-length = 160
-
-[tool.setuptools.packages.find]
-where = ["psalg", "psana"]
-include = ["psalg", "psalg.daqPipes*", "psalg.utils*", "psana", "psana.debugtools*", "psana.pscalib*", "psana.gtaphqt*", "psana.peakFinder*", "psana.momentum*", "psana.app*", "psana.hexanode*", "psana.psexp*", "psana.xtcav*", "psana.dgramPort*", "psana.pyalgos*", "psana.pycalgos*", "psana.detector*", "psana.pop*"]

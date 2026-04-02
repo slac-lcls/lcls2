@@ -15,18 +15,21 @@ cmake_option="RelWithDebInfo"
 pyInstallStyle="develop"
 force_clean=0
 build_ext_list=""
+develop_mode=0
 
 if [ -d "/cds/sw/" ]; then
-  no_daq=0
+  build_daq=1
 elif [ -d "/sdf/group/lcls/" ]; then
-  no_daq=1
+  build_daq=0
 fi
 
-while getopts "fdcp" opt; do
+while getopts "fdc" opt; do
   case $opt in
-    d) no_daq=0
+    d) build_daq=1
     ;;
     f) force_clean=1                  # Force clean is required building between rhel6&7
+    ;;
+    c) develop_mode=1
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -51,7 +54,13 @@ fi
 
 OPTIONS="-Dconda_prefix=$CONDA_PREFIX -Dprefix="$INSTDIR" -Depics_base=$EPICS_BASE -Depics_host_arch=$EPICS_HOST_ARCH"
 
-if [ $no_daq == 0 ]; then
+if [ $develop_mode == 1 ]; then
+  OPTIONS="$OPTIONS -Dpython.bytecompile=-1"
+else
+  OPTIONS="$OPTIONS -Dbuildtype=release"
+fi
+
+if [ $build_daq == 1 ]; then
   OPTIONS="$OPTIONS -Dbuild_daq=true"
 else
   OPTIONS="$OPTIONS -Dbuild_daq=false"
@@ -72,20 +81,39 @@ fi
 #########
 # Build #
 #########
-if [ ! -d "$BUILDDIR" ]; then
-  meson setup "$BUILDDIR" $OPTIONS
-  #meson setup "$BUILDDIR" $OPTIONS --reconfigure || \
-  #meson setup "$BUILDDIR" $OPTIONS --wipe
+if [ $develop_mode == 1 ]; then
+  if [ ! -d "$BUILDDIR" ]; then
+    meson setup "$BUILDDIR" $OPTIONS
+  fi
+  meson compile -C "$BUILDDIR"
+  meson install --only-changed --no-rebuild -C "$BUILDDIR"
+else
+  if [ $develop_mode == 0 ]; then
+    uv pip install . \
+      --no-compile \
+      --no-deps \
+      --no-build-isolation \
+      --prefix=$INSTDIR \
+      --config-settings setup-args="$OPTIONS" \
+      --config-settings compile-args="-j8" \
+      --config-settings install-args="--only-changed --no-rebuild" \
+      -v
+      #--no-index
+  fi
 fi
 
-meson compile -C "$BUILDDIR"
-
-meson install --only-changed -C "$BUILDDIR"
-uv pip install --no-compile --no-build-isolation --prefix=$INSTDIR . #--no-index
-
-if [ $no_daq == 0 ]; then
+if [ $build_daq == 1 ]; then
   cd psdaq
-  uv pip install --no-compile --no-build-isolation --prefix=$INSTDIR . #--no-index
+    uv pip install . \
+      --no-compile \
+      --no-deps \
+      --no-build-isolation \
+      --prefix=$INSTDIR \
+      --config-settings setup-args="$OPTIONS" \
+      --config-settings compile-args="-j8" \
+      --config-settings install-args="--only-changed --no-rebuild" \
+      -v
+      #--no-index
   cd ..
 fi
 

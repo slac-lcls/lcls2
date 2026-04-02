@@ -49,7 +49,7 @@ xtc_shlib = shared_library('xtc',
 xtc_static_lib = static_library('staticXtc',
   xtc_sources,
   include_directories: [xtcdata_incdir],
-  install: true,
+  #install: true,
   install_rpath: libdir_install_rpath,
 )
 
