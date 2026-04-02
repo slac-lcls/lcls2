@@ -36,7 +36,7 @@ import numpy as np
 
 #from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
 from psana.pyalgos.generic.HBins import HBins
-from hexanode import py_hit_class
+from psana.hexanode_ext import py_hit_class
 
 OSQRT3 = 1./sqrt(3.)
 SEC_TO_NS = 1E9

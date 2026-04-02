@@ -81,41 +81,39 @@ fi
 #########
 # Build #
 #########
-if [ $develop_mode == 1 ]; then
-  if [ ! -d "$BUILDDIR" ]; then
-    meson setup "$BUILDDIR" $OPTIONS
-  fi
-  meson compile -C "$BUILDDIR"
-  meson install --only-changed --no-rebuild -C "$BUILDDIR"
-else
-  if [ $develop_mode == 0 ]; then
-    uv pip install . \
-      --no-compile \
-      --no-deps \
-      --no-build-isolation \
-      --prefix=$INSTDIR \
-      --config-settings setup-args="$OPTIONS" \
-      --config-settings compile-args="-j8" \
-      --config-settings install-args="--only-changed --no-rebuild" \
-      -v
-      #--no-index
-  fi
+if [ ! -d "$BUILDDIR" ]; then
+  meson setup "$BUILDDIR" $OPTIONS
+fi
+meson compile -C "$BUILDDIR"
+meson install --only-changed --no-rebuild -C "$BUILDDIR"
+if [ $develop_mode == 0 ]; then
+  uv pip install . \
+    --no-compile \
+    --no-deps \
+    --no-build-isolation \
+    --prefix=$INSTDIR \
+    --config-settings setup-args="$OPTIONS" \
+    --config-settings compile-args="-j8" \
+    --config-settings install-args="--only-changed --no-rebuild" \
+    -v
+    #--no-index
 fi
 
-if [ $build_daq == 1 ]; then
-  cd psdaq
-    uv pip install . \
-      --no-compile \
-      --no-deps \
-      --no-build-isolation \
-      --prefix=$INSTDIR \
-      --config-settings setup-args="$OPTIONS" \
-      --config-settings compile-args="-j8" \
-      --config-settings install-args="--only-changed --no-rebuild" \
-      -v
-      #--no-index
-  cd ..
-fi
+
+#if [ $build_daq == 1 ]; then
+#  cd psdaq
+#    uv pip install . \
+#      --no-compile \
+#      --no-deps \
+#      --no-build-isolation \
+#      --prefix=$INSTDIR \
+#      --config-settings setup-args="$OPTIONS" \
+#      --config-settings compile-args="-j8" \
+#      --config-settings install-args="--only-changed --no-rebuild" \
+#      -v
+#      #--no-index
+#  cd ..
+#fi
 
 if command -v nvcc >/dev/null 2>&1; then
   # Reset LDFLAGS and CXXFLAGS back:

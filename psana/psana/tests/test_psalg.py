@@ -16,7 +16,7 @@ def test_hexanode():
 
     print("indeed in psana/psana/tests/test_hexanode.py")
 
-    from psana.hexanode_ext import fib
+    from psana.hexanode import fib
     n = 9
     v = fib(n)
     print("fib(%d) = %d"% (n,v))
@@ -48,7 +48,7 @@ def test_cfd():
 
 
 def test_peakFinder():
-    import psana.peakFinder_ext as peakFinder
+    import psana.peakFinder as peakFinder
     import numpy as np
     import matplotlib.pyplot as plt
     import time

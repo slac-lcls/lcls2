@@ -36,7 +36,7 @@ from psana.hexanode.DLDUtils import load_config_pars, load_calibration_tables, t
 
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
 import psana.pyalgos.generic.Utils as gu
-import hexanode
+import psana.hexanode_ext as hexanode
 
 def print_tdc_ns(tdc_ns, cmt='  tdc_ns ', fmt=' %7.2f', offset='    '):
     sh = tdc_ns.shape

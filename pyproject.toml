@@ -1,6 +1,8 @@
 [build-system]
-requires = ["meson-python", "wheel"]
-build-backend = "mesonpy"
+#requires = ["meson-python", "wheel"]
+#build-backend = "mesonpy"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "lcls"
@@ -72,3 +74,15 @@ ignore = ['E221', 'E222', 'E266']
 
 [tool.ruff]
 line-length = 160
+
+#[tool.hatch.build]
+#include = [
+#  "install/**"
+#]
+
+[tool.hatch.build.targets.wheel]
+packages = ["lcls2"]
+#artifacts = ["install/bin/*", "install/lib/*"]
+
+[tool.hatch.build.targets.wheel.sources]
+"install" = "lcls2/compiled"
