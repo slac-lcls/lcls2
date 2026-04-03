@@ -43,7 +43,7 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
 
     #conda activate daq_20260311
-    conda activate ps_20241122
+    conda activate ps_20241122_h
 
 else
     echo "CONDA area not found"

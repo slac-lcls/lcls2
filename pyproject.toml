@@ -73,23 +73,33 @@ ignore = ['E221', 'E222', 'E266']
 [tool.ruff]
 line-length = 160
 
-#[tool.hatch.build.targets.sdist]
-#include = [
-#    'install/*',
-#    '/LICENSE.md',
-#    '/README.md',
-#]
+[tool.hatch.build.targets.sdist]
+artifacts = ["install"]
+include = [
+    "/LICENSE.md",
+    "/README.md",
+]
+exclude = [
+    "**/.gitignore",
+    "pyproject.toml",
+]
 
-#[tool.hatch.build.targets.wheel]
-#packages = ["lcls2"]
-#packages = ["install"]
-#include = [
-#    '/LICENSE.md',
-#    '/README.md',
-#]
-#[tool.hatch.build.targets.wheel.force-include]
-#"include/bin" = "bin"
-#"include/lib" = "lib"
+[tool.hatch.build.targets.sdist.sources]
+"install/lib" = "lib"
+"install/bin" = "bin"
 
-#[tool.hatch.build.targets.wheel.sources]
-#"install" = "lcls2"
+[tool.hatch.build.targets.wheel]
+packages = ["lcls2"]
+artifacts = ["install"]
+include = [
+    "/LICENSE.md",
+    "/README.md",
+]
+exclude = [
+    "**/.gitignore",
+    "pyproject.toml",
+]
+
+[tool.hatch.build.targets.wheel.sources]
+"install/lib" = "lib"
+"install/bin" = "bin"

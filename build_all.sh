@@ -12,6 +12,7 @@ else
 fi
 
 force_clean=0
+compile_only=0
 
 if [ -d "/cds/sw/" ]; then
   build_daq=1
@@ -19,11 +20,13 @@ elif [ -d "/sdf/group/lcls/" ]; then
   build_daq=0
 fi
 
-while getopts "fd" opt; do
+while getopts "fdc" opt; do
   case $opt in
     d) build_daq=1
     ;;
     f) force_clean=1                  # Force clean is required building between rhel6&7
+    ;;
+    c) compile_only=1
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -79,9 +82,11 @@ fi
 if [ ! -d "$BUILDDIR" ]; then
   meson setup "$BUILDDIR" $OPTIONS
 fi
-meson compile -C "$BUILDDIR"
-meson install --only-changed --no-rebuild -C "$BUILDDIR"
-uv pip install . \
+meson compile -C "$BUILDDIR" -j8
+meson install --only-changed --no-rebuild --quiet -C "$BUILDDIR"
+
+if [ $compile_only == 0 ]; then
+  uv pip install . \
     --no-compile \
     --no-deps \
     --no-build-isolation \
@@ -92,19 +97,20 @@ uv pip install . \
     #-v
     #--no-index
 
-if [ $build_daq == 1 ]; then
-  cd psdaq
-    uv pip install . \
-      --no-compile \
-      --no-deps \
-      --no-build-isolation \
-      --prefix=$INSTDIR \
-      --config-settings setup-args="$OPTIONS" \
-      --config-settings compile-args="-j8" \
-      --config-settings install-args="--only-changed --no-rebuild"
-#      -v
-#      #--no-index
-  cd ..
+  if [ $build_daq == 1 ]; then
+    cd psdaq
+      uv pip install . \
+        --no-compile \
+        --no-deps \
+        --no-build-isolation \
+        --prefix=$INSTDIR \
+        --config-settings setup-args="$OPTIONS" \
+        --config-settings compile-args="-j8" \
+        --config-settings install-args="--only-changed --no-rebuild"
+      # -v
+      #--no-index
+    cd ..
+  fi
 fi
 
 if command -v nvcc >/dev/null 2>&1; then
