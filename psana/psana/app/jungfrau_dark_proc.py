@@ -66,7 +66,6 @@ def argument_parser():
     d_save    = False
     d_plotim  = 0
     d_segind  = None
-
     d_wrapper = 0
     d_submit  = False
     logfile = datetime.now().strftime('%Y-%m-%dT%I%M%S') + f'_jungfrau_dark_proc_{getpass.getuser()}.log'
@@ -115,7 +114,6 @@ def argument_parser():
     h_submit  = 'WRAPPER: submit commands for execution, otherwise show what wrapper is doing for debugging, default = %s' % d_submit
     h_slurmpars = '(str) space-separated list of slurm parameters, applied for STAGE 2 only'\
                 'ex: --slurmpars "--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19", default = %s' % str(d_slurmpars)
-
     h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
     h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
     h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
@@ -154,11 +152,9 @@ def argument_parser():
     parser.add_argument('-S', '--save',    action='store_true',              help=h_save)
     parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
-
     parser.add_argument('--submit',        action='store_true',              help=h_submit)
     parser.add_argument('--wrapper',       default=d_wrapper,    type=int,   help=h_wrapper)
     parser.add_argument('--slurmpars',     default=d_slurmpars,  type=str,   help=h_slurmpars)
-
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
     parser.add_argument('--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
@@ -172,7 +168,7 @@ def argument_parser():
 
 def dict_slurmpars_from_str(s):
     """converts str of slurm parameters to dict. Missing values for boolean parameters are substituted by None
-       USES: spaces " " to split parameters and "=" to split key value
+       USES: spaces " " to split parameters and "=" to split key and value
        s = "--partition=milano --exclusive ..."
     """
     flds = s.split() # ['--partition=milano', '--exclusive', ...]
@@ -182,12 +178,13 @@ def dict_slurmpars_from_str(s):
 
 
 def set_slurmpars(defslp, optslp):
-    """ returns str of combined default and optional slurmpars"""
+    """returns str of combined default and optional slurmpars with default replaced by optional"""
     dic_slp = dict_slurmpars_from_str(defslp)
     dic_opt = dict_slurmpars_from_str(optslp)
     for k,v in dic_opt.items():
         dic_slp[k] = v
     return ' '.join([f'{k}={v}' for k,v in dic_slp.items()]).replace('=NONE','') #  "--exclusive=NONE" > "--exclusive"
+
 
 def do_main():
     from time import time
@@ -214,13 +211,13 @@ def do_main():
 
         if args.wrapper & 2:
             slurmpars = set_slurmpars(defs.slurmpars, args.slurmpars)
-            print('combined default and optional slurmpars:\n  ', slurmpars)
+            #print('combined default and optional slurmpars:\n  ', slurmpars)
             cmd\
             +=f' --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
             + f' --intnhi {args.intnhi} --intnlo {args.intnlo}'\
             + f' --rms_hi {args.rms_hi} --rms_lo {args.rms_lo} --rmsnhi {args.rmsnhi} --rmsnlo {args.rmsnlo} --fraclm {args.fraclm}'\
             + f' --slurmpars "{slurmpars}"'
-#            + f' --nranks {args.nranks} --nnodes {args.nnodes}'
+
         if args.wrapper & 4:
             cmd += f' --ctdepl {args.ctdepl} --version {args.version}'
             if args.tstamp   is not None: cmd += f' --tstamp {args.tstamp}'
@@ -236,7 +233,6 @@ def do_main():
         params = cmd.split(maxsplit=1)[1]
         print(f'RUN SHELL SCRIPT-WRAPPER {scr_name} FOR SEQUENCE OF COMMANDS WITH PARAMETERS:\n{params}\n')
         os.system(cmd)
-        #if not args.submit: print('\nadd option --submit to execute commands\n')
     else:
         from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
         jungfrau_dark_proc(parser)

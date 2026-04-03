@@ -277,7 +277,7 @@ if $stage2; then
   c02_status="--int_hi $int_hi --int_lo $int_lo --intnhi $intnhi --intnlo $intnlo --rms_hi $rms_hi --rms_lo $rms_lo --rmsnhi $rmsnhi --rmsnlo $rmsnlo --fraclm $fraclm"
   cmd20="$cmd00 --nrecs $nrecs --nrecs1 0 $c02_proc $c02_status"
   if $save;  then cmd20+=" --save"; fi
-  #if $deploy; then cmd20="$cmd20 --deploy"; fi
+  #if $deploy; then cmd20+=" --deploy"; fi
 fi # $stage2
 
 if $stage3; then
@@ -308,13 +308,10 @@ if $stage1 || $stage2; then
   echo
   echo "=== make sbatch list of parameters/commands"
   #### Ex: sbatch [--wait] --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
-
   file="$script_dir/jungfrau_dark_proc_sbatch.sh"
   cmd_sbatch=(sbatch)
   if $stage3; then cmd_sbatch+=(--wait); fi
-  #cmd_sbatch+=($slurmpars "$file" "$cmd20")
   cmd_sbatch+=($slurmpars "$file" "$cmd11" "$cmd12" "$cmd13" "$cmd20" "$dirrepo")
-
   echo "cmd_sbatch split arguments:"
   show_argv "${cmd_sbatch[@]}"
 fi # $stage1 || $stage2
@@ -322,8 +319,7 @@ fi # $stage1 || $stage2
 if $submit; then
     "${cmd_sbatch[@]}";
 else
-    echo
-    echo "add option --submit to execute commands in sbatch"
+    echo; echo "add option --submit to execute commands in sbatch"
 fi
 
 if $stage3; then
