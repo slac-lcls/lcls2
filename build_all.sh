@@ -11,11 +11,7 @@ else
   export INSTDIR="$TESTRELDIR"
 fi
 
-cmake_option="RelWithDebInfo"
-pyInstallStyle="develop"
 force_clean=0
-build_ext_list=""
-develop_mode=0
 
 if [ -d "/cds/sw/" ]; then
   build_daq=1
@@ -23,13 +19,11 @@ elif [ -d "/sdf/group/lcls/" ]; then
   build_daq=0
 fi
 
-while getopts "fdc" opt; do
+while getopts "fd" opt; do
   case $opt in
     d) build_daq=1
     ;;
     f) force_clean=1                  # Force clean is required building between rhel6&7
-    ;;
-    c) develop_mode=1
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -52,13 +46,14 @@ if [ $force_clean == 1 ]; then
   fi
 fi
 
-OPTIONS="-Dconda_prefix=$CONDA_PREFIX -Dprefix="$INSTDIR" -Depics_base=$EPICS_BASE -Depics_host_arch=$EPICS_HOST_ARCH"
+OPTIONS="-Dconda_prefix=$CONDA_PREFIX \
+         -Dprefix="$INSTDIR" \
+         -Depics_base=$EPICS_BASE \
+         -Depics_host_arch=$EPICS_HOST_ARCH \
+         -Dpython.bytecompile=-1"
 
-if [ $develop_mode == 1 ]; then
-  OPTIONS="$OPTIONS -Dpython.bytecompile=-1"
-else
-  OPTIONS="$OPTIONS -Dbuildtype=release"
-fi
+# When building for a release (debug is default)
+#OPTIONS="$OPTIONS -Dbuildtype=release"
 
 if [ $build_daq == 1 ]; then
   OPTIONS="$OPTIONS -Dbuild_daq=true"
@@ -86,34 +81,31 @@ if [ ! -d "$BUILDDIR" ]; then
 fi
 meson compile -C "$BUILDDIR"
 meson install --only-changed --no-rebuild -C "$BUILDDIR"
-if [ $develop_mode == 0 ]; then
-  uv pip install . \
+uv pip install . \
     --no-compile \
     --no-deps \
     --no-build-isolation \
     --prefix=$INSTDIR \
     --config-settings setup-args="$OPTIONS" \
     --config-settings compile-args="-j8" \
-    --config-settings install-args="--only-changed --no-rebuild" \
-    -v
+    --config-settings install-args="--only-changed --no-rebuild"
+    #-v
     #--no-index
-fi
 
-
-#if [ $build_daq == 1 ]; then
-#  cd psdaq
-#    uv pip install . \
-#      --no-compile \
-#      --no-deps \
-#      --no-build-isolation \
-#      --prefix=$INSTDIR \
-#      --config-settings setup-args="$OPTIONS" \
-#      --config-settings compile-args="-j8" \
-#      --config-settings install-args="--only-changed --no-rebuild" \
+if [ $build_daq == 1 ]; then
+  cd psdaq
+    uv pip install . \
+      --no-compile \
+      --no-deps \
+      --no-build-isolation \
+      --prefix=$INSTDIR \
+      --config-settings setup-args="$OPTIONS" \
+      --config-settings compile-args="-j8" \
+      --config-settings install-args="--only-changed --no-rebuild"
 #      -v
 #      #--no-index
-#  cd ..
-#fi
+  cd ..
+fi
 
 if command -v nvcc >/dev/null 2>&1; then
   # Reset LDFLAGS and CXXFLAGS back:
