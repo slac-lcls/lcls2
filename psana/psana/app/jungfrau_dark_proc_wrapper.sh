@@ -2,13 +2,12 @@
 
 # LOCAL PARAMETERS:
 # --submit  ### for debugging, show what script is doing, but DO NOT EXECUTE COMMANDS
-# --wrapper ### 0b111 - for all stages, 1-for stage 1 ONLY, 2-...
-# --nranks  ### number of mpirun runks, if 1-no mpi
-# --nnodes  ### number of mpirun nodes
+# --wrapper ### 0b111 - for all stages, 1-for stage 1 ONLY, 2-..., 4-...
+# --slurmpars ### "--partition=milano --account=lcls:prjdat21 --export=ALL --output=2026-04-02T031738_jungfrau_dark_proc_dubrovin.log --nodes=1 --ntasks-per-node=19"
 
 # lcls2/psana/psana/app/jungfrau_dark_proc_wrapper.sh -S 1 ### run stage 1 ONLY !
 # lcls2/psana/psana/app/jungfrau_dark_proc_wrapper.sh -S 2 ### run stage 2 ONLY !
-# jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 [--submit]
+# jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 [--deploy] [--submit]
 
 show_argv() {
     local i=0
@@ -49,7 +48,7 @@ rmsnhi="6.0"
 fraclm="0.1"
 fraclo="0.05"
 frachi="0.95"
-version="V2026-03-23"
+version="V2026-04-02"
 datbits="$M14"
 plotim="0"
 segind="None"
@@ -61,8 +60,8 @@ run_beg="0"
 run_end="end"
 tstamp="None"
 dbsuffix="None"
-logfile="$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
-slurmpars="--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19"
+logfile="$(date +%Y-%m-%dT%H%M%S)_jungfrau_dark_proc_wrapper_$(whoami)_%j.log"
+slurmpars="--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=5"
 wrapper=7
 submit=false # execute/skip commands for debudding of this script
 
@@ -246,26 +245,24 @@ istages=$(($wrapper))
 ((stage2 = istages & 2)); [[ stage2 -gt 0 ]] && stage2=true || stage2=false
 ((stage3 = istages & 4)); [[ stage3 -gt 0 ]] && stage3=true || stage3=false
 
-echo
-echo "in $0"
-echo "--wrapper $wrapper: do stages 1/2/3: $stage1/$stage2/$stage3"
+#echo
+echo "in wrapper: $0"
+echo "     --wrapper $wrapper: do stages 1/2/3: $stage1/$stage2/$stage3"
 
 script_dir=$(dirname "$(realpath "$0")")
-#echo "script_dir: $script_dir"
-
-
-#c11="jungfrau_dark_proc -k $dskwargs -d $detname -n $nrecs --nrecs1 $nrecs1 -o $dirrepo -L $logmode -E $errskip --stepnum $stepnum --stepmax $stepmax --evskip $evskip"
-#c12="--dirmode $dirmode --filemode $filemode --events $events -e $evstep"
-#c13="--int_lo $int_lo --int_hi $int_hi --intnlo $intnlo --intnhi $intnhi --rms_lo $rms_lo --rms_hi $rms_hi --rmsnlo $rmsnlo --rmsnhi $rmsnhi"
-#c14="--fraclm $fraclm --fraclo $fraclo --frachi $frachi -v $version --datbits $datbits -D $deploy -p $plotim -I $segind"
-#c1="$c11 $c12 $c13 $c14"
 
 cmnpars="-k $dskwargs -d $detname -o $dirrepo -L $logmode"
 cmd00="jungfrau_dark_proc $cmnpars" ### "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1"
 
-time {
+#time {
 
 t0_sec=$SECONDS
+
+cmd11="NONE"
+cmd12="NONE"
+cmd13="NONE"
+cmd20="NONE"
+cmd30="NONE"
 
 if $stage1; then
   c01="--datbits $datbits --int_lo $int_lo --int_hi $int_hi --fraclo $fraclo --frachi $frachi"
@@ -273,101 +270,75 @@ if $stage1; then
   cmd11="$cmd10 --stepnum 0"
   cmd12="$cmd10 --stepnum 1"
   cmd13="$cmd10 --stepnum 2"
-
-  echo
-  echo "=== STAGE 1 - evaluate intensity gates for $fraclo and $frachi part of statistics on $nrecs1 events"
-
-  if $submit; then nohup $cmd11 >/dev/null 2>&1 & fi
-  pid11=$!
-  echo "started PID $pid11 for command: $cmd11"
-
-  if $submit; then nohup $cmd12 >/dev/null 2>&1 & fi
-  pid12=$!
-  if $submit; then space="      "; else space=""; fi
-  echo "started PID $pid12 for command: $cmd12"
-  echo "            $space run command: $cmd13"
-  if $submit; then $cmd13; fi
-
-  for p in {$pid11,$pid12}; do
-    if ps -p $p > /dev/null; then
-      echo "process $p is running"
-    else
-      echo "process $p is not running"
-    fi
-  done
-  dt_sec=$((SECONDS - t0_sec))
-  echo "STAGE 1 IS COMPLETED time for three steps: $dt_sec sec"
 fi ### $stage1
 
-
-if $stage1 || $stage2; then
-  echo
-  echo "CHECK THAT ALL 6 ARRAYS WITH GATE LIMITS ARE AVAILABLE for -d $detname and -k $dskwargs"
-  cmddir="ls -ltr $dirrepo/jungfrau/block_results/"
-  echo $cmddir
-  $cmddir
-  echo
-fi ### $stage1 || $stage2
-
-
 if $stage2; then
-
-  #nevts=$(($nrecs * 3))
-  #echo "evaluate total number of events as $nevts"
-  #exit 1
-
-  #cmdmpi="mpirun --mca osc ^ucx -n $nranks"
-  #[[ "$nranks" != "1" ]] && cmdmpi="mpirun --mca osc ^ucx -n $nranks " || cmdmpi=""
-
-  #c02_proc="--events $events --evskip $evskip --stepnum $stepnum --stepmax $stepmax"
   c02_proc="--evskip $evskip" # --stepnum $stepnum --stepmax $stepmax"
   c02_status="--int_hi $int_hi --int_lo $int_lo --intnhi $intnhi --intnlo $intnlo --rms_hi $rms_hi --rms_lo $rms_lo --rmsnhi $rmsnhi --rmsnlo $rmsnlo --fraclm $fraclm"
   cmd20="$cmd00 --nrecs $nrecs --nrecs1 0 $c02_proc $c02_status"
-  if $save;  then cmd20="$cmd20 --save"; fi
+  if $save;  then cmd20+=" --save"; fi
   #if $deploy; then cmd20="$cmd20 --deploy"; fi
-
-  #echo
-  echo "=== STAGE 2 - evaluate per-pixel gated average, rms, min, max, status on $nrecs events in each of 3 step/gain range"
-  #### Ex: sbatch [--wait] --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
-
-  #logfile="$dirrepo/jungfrau/logs/$(date +%Y)/$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
-  logfile="$(date +%Y-%m-%dT%H%M%S)_log_jungfrau_dark_proc_$(whoami)_%j.log"
-  file="$script_dir/jungfrau_dark_proc_sbatch.sh"
-  cmd_sbatch=(sbatch)
-  if $stage3; then
-      cmd_sbatch+=(--wait)
-  fi
-  cmd_sbatch+=($slurmpars "$file" "$cmd20")
-
-  echo "command for sbatch: $cmd20"
-  echo "cmd_sbatch split arguments:"
-  show_argv "${cmd_sbatch[@]}"
-  if $submit; then "${cmd_sbatch[@]}"; fi
 fi # $stage2
-
 
 if $stage3; then
   c03_pars="--ctdepl $ctdepl --version $version"
   cmd30="jungfrau_deploy_constants $cmnpars -F $c03_pars"
-
-  if [[ "$tstamp"  != "None" ]]; then cmd30="$cmd30 --tstamp $tstamp"; fi
-  if [[ "$run_beg" != "0" ]]; then cmd30="$cmd30 --run_beg $run_beg"; fi
-  if [[ "$run_end" != "end" ]]; then cmd30="$cmd30 --run_end $run_end"; fi
-  if [[ "$comment" != "no cmt" ]]; then cmd30="$cmd30 --comment \"$comment\""; fi
-  if [[ "$dbsuffix" != "None" ]]; then cmd30="$cmd30 --dbsuffix $dbsuffix"; fi
-  if $deploy; then cmd30="$cmd30 $c03_pars --deploy"; fi
-
-  echo
-  echo "=== STAGE 3 - deploy calibration constants"
-  echo "run command: $cmd30"
-  if $submit; then $cmd30; fi
+  if [[ "$tstamp"  != "None" ]]; then cmd30+="$ --tstamp $tstamp"; fi
+  if [[ "$run_beg" != "0" ]]; then cmd30+=" --run_beg $run_beg"; fi
+  if [[ "$run_end" != "end" ]]; then cmd30+=" --run_end $run_end"; fi
+  if [[ "$comment" != "no cmt" ]]; then cmd30+=" --comment \"$comment\""; fi
+  if [[ "$dbsuffix" != "None" ]]; then cmd30+=" --dbsuffix $dbsuffix"; fi
+  if $deploy; then cmd30+=" --deploy"; fi
 fi # $stage3
 
+echo
+echo "=== STAGE 1 commands - evaluate intensity gates for $fraclo and $frachi part of statistics on $nrecs1 events"
+echo "cmd11: $cmd11"
+echo "cmd12: $cmd12"
+echo "cmd13: $cmd13"
+echo
+echo "=== STAGE 2 command - evaluate per-pixel gated average, rms, status[, min, max] on $nrecs events in each of 3 step/gain range"
+echo "cmd20: $cmd20"
+echo
+echo "=== STAGE 3 command - deploy calibration constants"
+echo "cmd30: $cmd30"
+
+
+if $stage1 || $stage2; then
+  echo
+  echo "=== make sbatch list of parameters/commands"
+  #### Ex: sbatch [--wait] --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
+
+  file="$script_dir/jungfrau_dark_proc_sbatch.sh"
+  cmd_sbatch=(sbatch)
+  if $stage3; then cmd_sbatch+=(--wait); fi
+  #cmd_sbatch+=($slurmpars "$file" "$cmd20")
+  cmd_sbatch+=($slurmpars "$file" "$cmd11" "$cmd12" "$cmd13" "$cmd20" "$dirrepo")
+
+  echo "cmd_sbatch split arguments:"
+  show_argv "${cmd_sbatch[@]}"
+fi # $stage1 || $stage2
+
+if $submit; then
+    "${cmd_sbatch[@]}";
+else
+    echo
+    echo "add option --submit to execute commands in sbatch"
+fi
+
+if $stage3; then
+  echo
+  echo "=== STAGE 3 - deploy calibration constants"
+  echo "command: $cmd30"
+  if $submit; then $cmd30
+  else echo; echo "add option --submit to execute command above"
+  fi
+fi # $stage3
 
 dt_sec=$((SECONDS - t0_sec))
 echo
 echo "TOTAL CONSUMED TIME: $dt_sec sec"
 
-} # time
+#} # time
 
 exit 0
