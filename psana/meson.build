@@ -45,7 +45,7 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
-    link_with: [xtc_shlib, psalg_shlib],
+    link_with: [xtc_shlib, psalg_shlib, shmemclient_shlib],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
 )
