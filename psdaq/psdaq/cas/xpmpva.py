@@ -26,6 +26,7 @@ frLMH       = { 'L':0, 'H':1, 'M':2, 'm':3 }
 toLMH       = { 0:'L', 1:'H', 2:'M', 3:'m' }
 
 ATCAWidget  = None
+nohier      = False
 
 def isATCA(v):
     result = ('Kcu1500' not in v) and ('C1100' not in v)
@@ -55,7 +56,7 @@ class PvPAddr(QtWidgets.QWidget):
         if err is None:
             s = '-'
             qs = '%x'%q
-            if qs[0:8]=='ffffffff':
+            if qs[0:8]=='ffffffff' or nohier:
                 s = 'XTPG'
             elif qs[0:2]=='ff':
                 shelf = int(qs[2:4],16)
@@ -415,7 +416,7 @@ class XpmGroups(object):
         # adding try except because in the fee teststand xpm0 is not reachable
         paddr = Pv(pvbase+'PAddr').get()
 
-        if paddr!=0xffffffff:
+        if paddr!=0xffffffff and not nohier:
             name = xpmLinkId(paddr)[0]
             if 'XPM' in name:
                 xpmpath=":".join(pvbase_split[:pos])
@@ -695,8 +696,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
     parser.add_argument("--nopatt", help="no pattern stats", action='store_true')
+    parser.add_argument("--nohier", help="no hierarchy", action='store_true')
     parser.add_argument("pvs", help="pvs to monitor",nargs='+')
     args = parser.parse_args()
+
+    global nohier
+    nohier = args.nohier
 
     app = QtWidgets.QApplication([])
     MainWindow = QtWidgets.QMainWindow()

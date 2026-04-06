@@ -21,7 +21,8 @@ from psdaq.pyxpm.pvxtpg  import *
 from psdaq.pyxpm.pvhandler import *
 import psdaq.pyxpm.autosave as autosave
 
-MIN_FW_VERSION = 0x030d0300  # TPGMini was added for timestamp tracking
+MIN_FW_VERSION = 0x030e0100  # Sequence engine addressing expanded to 15b
+#MIN_FW_VERSION = 0x030d0300  # TPGMini was added for timestamp tracking
 #MIN_FW_VERSION = 0
 
 class NoLock(object):
