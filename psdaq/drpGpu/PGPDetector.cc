@@ -57,12 +57,19 @@ TebReceiver::~TebReceiver()
   printf("*** TebRcvr::dtor: 3\n");
 }
 
+//bool     lDisable{false};
+//uint64_t lReduceStarts{0};
+//uint64_t lReduceReceives{0};
+//unsigned lLastIndex{0};
+unsigned lState{0};
+
 int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
-                             std::map<std::string, std::string>&        labels)
+                              std::map<std::string, std::string>&   labels)
 {
   exporter->add("DRP_smdWriting",  labels, MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
   exporter->add("DRP_fileWriting", labels, MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
   exporter->add("DRP_recordQueue", labels, MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
+  exporter->add("DRP_recordState", labels, MetricType::Gauge, [&](){ return lState; });
 
   return 0;
 }
@@ -110,7 +117,7 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
   //printf("\n");
 
   size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-  m_fileWriter->writeEvent(devPtr, size, dgram->time);
+  if (m_fileWriter)  m_fileWriter->writeEvent(devPtr, size, dgram->time);
 
   // small data writing
   Smd smd;
@@ -126,6 +133,7 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
  *  processing and dispose of the event.  It presumes that the caller has
  *  already vetted index and result
  */
+
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
   tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
@@ -138,6 +146,14 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
                  TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
+//  if (result.service() == TransitionId::Disable) {
+//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reduceStarts %lu, reduceReceives %lu, lastIdx %u, idx %u, state %u\n",
+//           m_recordQueue.guess_size(), lReduceStarts, lReduceReceives, lLastIndex, index, lState);
+//    static_cast<PGPDrp&>(m_drp).reducerDump();
+//    lDisable = true;
+//    const_cast<Parameters*>(&m_para)->verbose++;
+//  }
+
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
 
@@ -148,6 +164,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
     static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
     m_worker = (m_worker + 1) % m_para.nworkers;
+//    ++lReduceStarts;
+//    lLastIndex = index;
   }
 }
 
@@ -176,7 +194,7 @@ void TebReceiver::_recorder()
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
-  m_fileWriter->registerStream(m_stream);
+  if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
   //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
@@ -186,12 +204,21 @@ void TebReceiver::_recorder()
   // Collect completion information from the reducer kernels in time order
   unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
+    lState = 1;
     // Wait for a new Result to appear from the TEB via the complete() method above
     ResultTuple items;
-    if (!m_recordQueue.pop(items))  continue;
+    if (!m_recordQueue.pop(items)) {
+      lState = 15;
+      printf("*** TebRcvr::recorder: No item from recordQueue\n");
+      continue;
+    }
+    lState = 2;
     const auto index  = std::get<0>(items);
     const auto result = std::get<1>(items);
     nvtx3::mark("Recorder", nvtx3::payload{index});
+//    if (lDisable) {
+//      printf("*** TebRcvr::recorder: Disable T, idx %u, result->svc %u\n", index, result->service());
+//    }
     logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
                    TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
@@ -199,13 +226,17 @@ void TebReceiver::_recorder()
     size_t dataSize;
     if (result->persist() || result->monitor()) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
-      if (result->service() != TransitionId::L1Accept)
-        printf("*** TebRcvr::recorder: wkr %u, idx %u\n", worker, index);
+      lState = 3;
       ReducerTuple rt;
-      if (!drp.reducerReceive(worker, &rt)) [[unlikely]] // This blocks until result is ready from GPU
+      if (!drp.reducerReceive(worker, &rt)) [[unlikely]] { // This blocks until result is ready from GPU
+        lState = 14;
+        printf("*** TebRcvr::recorder: No item from reducerReceiver %u\n", worker);
         continue;
+      }
+      lState = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       worker = (worker + 1) % m_para.nworkers;
+//      ++lReduceReceives;
 
       if (rt.index != index) [[unlikely]] { // Sanity check
         logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, rt.index);
@@ -213,15 +244,21 @@ void TebReceiver::_recorder()
       }
       dataSize = rt.dataSize;
     }
+    lState = 5;
 
-    //printf("*** TebRcvr::recorder: 1 idx %u, dataSize %zu\n", index, dataSize);
-    //printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
-    //       result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
+//    if (lDisable) {
+//      printf("*** TebRcvr::recorder: reduceReceives %lu\n", lReduceReceives);
+//      drp.reducerDump();
+//      printf("*** TebRcvr::recorder: 1 idx %u, dataSize %zu\n", index, dataSize);
+//      printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
+//             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
+//    }
 
     // Release the GPU intermediate buffers for reuse
-    drp.freeBufs(index);
+    drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
+    lState = 6;
 
     // Look up the datagram, whether transition or L1Accept
     auto dgram = result->isEvent() ? (EbDgram*)m_pool.pebble[index] : m_pool.transitionDgrams[index];
@@ -253,6 +290,7 @@ void TebReceiver::_recorder()
                        pulseId);
       }
     }
+    lState = 7;
 
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
@@ -292,6 +330,7 @@ void TebReceiver::_recorder()
       buffer -= sizeof(Dgram);          // Points to the start of the Dgram
       dgSize  = cpSize;
     }
+    lState = 8;
 
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
     if (dgSize > maxSize) {
@@ -382,6 +421,7 @@ void TebReceiver::_recorder()
       m_latPid = pulseId;
     }
     //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
+    lState = 9;
 
     m_evtSize = dgSize;
 
@@ -402,6 +442,7 @@ void TebReceiver::_recorder()
       }
     }
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
+    lState = 10;
 
     // Synchronize before releasing buffers
     //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
@@ -411,15 +452,18 @@ void TebReceiver::_recorder()
         m_pool.freeTr(dgram);
         //printf("*** TebRcvr::recorder: 8, freeTr %014lx\n", pulseId);
     }
+    lState = 11;
 
     // Free the pebble datagram buffer
     m_pool.freePebble(index);
     //printf("*** TebRcvr::recorder: 8, freePebble %d\n", index);
+    lState = 12;
 
     //// Free the reduce buffer
     //m_reducer->release(index);
     //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
     nvtx3::mark("Pebble released", nvtx3::payload{index});
+    lState = 13;
   }
 
   logging::info("Recorder thread is exiting");
@@ -438,9 +482,9 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   m_nNoTrDgrams(0)
 {
   if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
-    logging::critical("Failed to allocate lane/vc "
-                      "- does another process have (one or more of) %s open?",
-                      m_para.device.c_str());
+    logging::critical("Failed to allocate lane/vc: '%m' "
+                      "- does another process have %s:%02x open?",
+                      m_para.device.c_str(), m_para.laneMask);
     abort();
   }
 
@@ -547,7 +591,7 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
   //auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec)
   //    { size_t sum = 0;  for (auto& q: vec) sum += q.guess_size();  return sum; };
-  //uint64_t nbuffers = memPool.panels().size() * memPool.nbuffers();
+  //uint64_t nbuffers = memPool.nbuffers();
   //exporter->constant("drp_worker_queue_depth", labels, nbuffers);
   //
   //exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
@@ -583,21 +627,29 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                 [&](){return m_nNoTrDgrams;});
 
-  // @todo: Expand for all units in memPool.panels()
-  const unsigned unit{0};
   exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
   exporter->add("drp_num_pgp_in_user",  labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInUser(unit);});
+                [&](){return memPool.nPgpInUser();});
   exporter->add("drp_num_pgp_in_hw",    labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInHw(unit);});
+                [&](){return memPool.nPgpInHw();});
   exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInPreHw(unit);});
+                [&](){return memPool.nPgpInPreHw();});
   exporter->add("drp_num_pgp_in_rx",    labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInRx(unit);});
+                [&](){return memPool.nPgpInRx();});
 
   m_reducer->setupMetrics(exporter, labels);
 
   return 0;
+}
+
+void PGPDrp::freeBuffers(unsigned index)
+{
+  const auto timingHeader = m_det.getTimingHeader(index);
+  const auto bufferMask = pool.nbuffers() - 1;
+  const auto pgpIndex = timingHeader->evtCounter & bufferMask;
+  auto event = &pool.pgpEvents[pgpIndex];
+  //printf("*** PGPDrp::freeBuffers: bufIndex, %u, pgpIndex %u, event %p\n", index, pgpIndex, event);
+  m_collector->freeDma(event);
 }
 
 void PGPDrp::_collector()
@@ -648,10 +700,18 @@ void PGPDrp::_collector()
     for (unsigned b = 0; b < nRet; ++b) {
       drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
       auto timingHeader = m_det.getTimingHeader(bufIndex);
+      //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
+      //auto p = (const uint32_t*)timingHeader;
+      //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
+      //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
       auto pgpIndex = timingHeader->evtCounter & bufferMask;
+      //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
       auto event = &pool.pgpEvents[pgpIndex];
-      if (event->mask == 0)
+      if (event->mask == 0) {
+        printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
         continue;                       // Skip broken event
+      }
+      //printf("*** PGPDrp::collector: event %p\n", event);
 
       auto pid = timingHeader->pulseId();
       //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());

@@ -10,9 +10,9 @@ using json = nlohmann::json;
 json Drp::Gpu::Detector::connectionInfo(const json& msg)
 {
   logging::debug("Gpu::Detector::connectionInfo");
-  json result;              // @todo: how to handle more than one?
-  for (const auto& det : m_dets) {
-    result = det->connectionInfo(msg);
+  json result{};
+  if (m_det) {
+    result = m_det->connectionInfo(msg);
   }
   logging::debug("Gpu::Detector::connectionInfo: end");
   return result;
@@ -21,43 +21,35 @@ json Drp::Gpu::Detector::connectionInfo(const json& msg)
 void Drp::Gpu::Detector::connectionShutdown()
 {
   logging::debug("Gpu::Detector::connectionShutdown");
-  for (const auto& det : m_dets) {
-    det->connectionShutdown();
+  if (m_det) {
+    m_det->connectionShutdown();
   }
   logging::debug("Gpu::Detector::connectionShutdown: end");
 }
 
 void Drp::Gpu::Detector::connect(const json& connect_json, const std::string& collectionId)
 {
-  logging::debug("Gpu::Detector::connect");
-  for (const auto& det : m_dets) {
-    det->nodeId = nodeId;
-    det->connect(connect_json, collectionId);
+  logging::debug("Gpu::Detector::connect: this %p, &det %p, det %p", this, &m_det, m_det);
+  if (m_det) {
+    m_det->nodeId = nodeId;
+    m_det->connect(connect_json, collectionId);
   }
-  logging::debug("Gpu::Detector::connect: end");
+  logging::debug("Gpu::Detector::connect: end this %p, &det %p, det %p", this, &m_det, m_det);
 }
 
 unsigned Drp::Gpu::Detector::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-  logging::debug("Gpu::Detector::configure");
-  unsigned rc = 0;
+  logging::debug("Gpu::Detector::configure: this %p, &det %p, det %p", this, &m_det, m_det);
+  unsigned rc{0};
 
-  // Configure each panel in turn
-  // @todo: Do we really want to extend the Xtc for each panel, or does one speak for all?
-  // @todo: Calling the CPU Detector's configure for each panel seems wrong as that nominally
-  //        also sets up the Xtc for the CPU Detector's data, which is different from the
-  //        GPU Detector's data.  Get rid of this method to force it to be overridden by the
-  //        GPU Detector's implementation?
-  unsigned i = 0;
-  for (const auto& det : m_dets) {
-    printf("*** Gpu::Detector configure for %u start\n", i);
-    rc = det->configure(config_alias, xtc, bufEnd);
-    printf("*** Gpu::Detector configure for %u done: rc %d, sz %u\n", i, rc, xtc.sizeofPayload());
+  // Do configure
+  //printf("*** Gpu::Detector::configure start: this %p &det %p, det %p\n", this, &m_det, m_det);
+  if (m_det) {
+    rc = m_det->configure(config_alias, xtc, bufEnd);
+    //printf("*** Gpu::Detector configure done: rc %d, sz %u\n", rc, xtc.sizeofPayload());
     if (rc) {
-      logging::error("Gpu::Detector::configure failed for %s\n", m_params[i].device);
-      break;
+      logging::error("Gpu::Detector::configure failed for %s\n", m_para->device);
     }
-    ++i;
   }
 
   logging::debug("Gpu::Detector::configure: end");
@@ -67,14 +59,13 @@ unsigned Drp::Gpu::Detector::configure(const std::string& config_alias, Xtc& xtc
 unsigned Drp::Gpu::Detector::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 {
   logging::debug("Gpu::Detector::beginrun");
-  // Do beginRun for each panel in turn
-  unsigned rc = 0;
-  unsigned i = 0;
-  for (const auto& det : m_dets) {
-    rc = det->beginrun(xtc, bufEnd, runInfo);
+  unsigned rc{0};
+
+  // Do beginRun
+  if (m_det) {
+    rc = m_det->beginrun(xtc, bufEnd, runInfo);
     if (rc) {
-      logging::error("Gpu::Detector::beginrun failed for %s\n", m_params[i].device);
-      break;
+      logging::error("Gpu::Detector::beginrun failed for %s\n", m_para->device);
     }
   }
 
@@ -85,14 +76,13 @@ unsigned Drp::Gpu::Detector::beginrun(Xtc& xtc, const void* bufEnd, const json& 
 unsigned Drp::Gpu::Detector::beginstep(Xtc& xtc, const void* bufEnd, const json& stepInfo)
 {
   logging::debug("Gpu::Detector::beginstep");
-  // Do beginStep for each panel in turn
-  unsigned rc = 0;
-  unsigned i = 0;
-  for (const auto& det : m_dets) {
-    rc = det->beginstep(xtc, bufEnd, stepInfo);
+  unsigned rc{0};
+
+  // Do beginStep
+  if (m_det) {
+    rc = m_det->beginstep(xtc, bufEnd, stepInfo);
     if (rc) {
-      logging::error("Gpu::Detector::beginstep failed for %s\n", m_params[i].device);
-      break;
+      logging::error("Gpu::Detector::beginstep failed for %s\n", m_para->device);
     }
   }
 
@@ -103,14 +93,13 @@ unsigned Drp::Gpu::Detector::beginstep(Xtc& xtc, const void* bufEnd, const json&
 unsigned Drp::Gpu::Detector::enable(Xtc& xtc, const void* bufEnd, const json& info)
 {
   logging::debug("Gpu::Detector::enable");
-  // Do Enable for each panel in turn
-  unsigned rc = 0;
-  unsigned i = 0;
-  for (const auto& det : m_dets) {
-    rc = det->enable(xtc, bufEnd, info);
+  unsigned rc{0};
+
+  // Do Enable
+  if (m_det) {
+    rc = m_det->enable(xtc, bufEnd, info);
     if (rc) {
-      logging::error("Gpu::Detector::enable failed for %s\n", m_params[i].device);
-      break;
+      logging::error("Gpu::Detector::enable failed for %s\n", m_para->device);
     }
   }
 
@@ -121,14 +110,13 @@ unsigned Drp::Gpu::Detector::enable(Xtc& xtc, const void* bufEnd, const json& in
 unsigned Drp::Gpu::Detector::disable(Xtc& xtc, const void* bufEnd, const json& info)
 {
   logging::debug("Gpu::Detector::disable");
-  // Do Disable for each panel in turn
-  unsigned rc = 0;
-  unsigned i = 0;
-  for (const auto& det : m_dets) {
-    rc = det->disable(xtc, bufEnd, info);
+  unsigned rc{0};
+
+  // Do Disable
+  if (m_det) {
+    rc = m_det->disable(xtc, bufEnd, info);
     if (rc) {
-      logging::error("Gpu::Detector::disable failed for %s\n", m_params[i].device);
-      break;
+      logging::error("Gpu::Detector::disable failed for %s\n", m_para->device);
     }
   }
 
@@ -138,7 +126,7 @@ unsigned Drp::Gpu::Detector::disable(Xtc& xtc, const void* bufEnd, const json& i
 
 void Drp::Gpu::Detector::shutdown()
 {
-  for (const auto& det : m_dets) {
-    det->shutdown();
+  if (m_det) {
+    m_det->shutdown();
   }
 }

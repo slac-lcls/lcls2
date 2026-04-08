@@ -1,6 +1,5 @@
 #include "EpixUHRsim.hh"
 
-#include "GpuAsyncLib.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -26,9 +25,9 @@ namespace Drp {
   class PGPEvent;
   namespace Gpu {
 
-// The functionality of the Drp::Detector is need to set up each of the panels
+// The functionality of the Drp::Detector is needed to set up the panel
 // However, the data description and handling in the GPU case will be different,
-// so we create a Drp Detector class to handle just the protion we need.
+// so we create a Drp Detector class to handle just the portion we need.
 // Derive from Drp::SimDetector so it can be made non-abstract.
 class SimDet : public SimDetector
 {
@@ -44,7 +43,6 @@ public:
 
   void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
-                   const unsigned        panel,
                    uint16_t const* const data) override { /* Not used */ }
   void generateEvents(unsigned nEvents)
   {
@@ -74,7 +72,7 @@ public:
         //}
       }
     }
-    printf("Number of pixels generated for each of %zu gain ranges:\n", nGainEvts.size());
+    printf("*** Number of pixels generated for each of %zu gain ranges:\n", nGainEvts.size());
     uint64_t total = 0;
     for (unsigned i = 0; i < nGainEvts.size(); ++i) {
       printf("  %9lu", nGainEvts[i]);
@@ -162,27 +160,23 @@ public:
 
 
 EpixUHRsim::EpixUHRsim(Drp::Parameters& para, MemPoolGpu& pool) :
-  Drp::Gpu::Detector(&para, &pool)
+  Gpu::Detector(&para, &pool)
 {
   _initialize<Drp::Gpu::SimDet>(para, pool);
+  printf("*** EpixUHRsim::ctor: this %p, &det %p, det %p\n", this, &m_det, m_det);
 
   // Check there is enough space in the DMA buffers for this many pixels
   assert(NPixels <= (pool.dmaSize() - sizeof(DmaDsc) - sizeof(TimingHeader)) / sizeof(uint16_t));
 
   // Set up buffers
-  auto nPanels = pool.panels().size();
-  pool.createCalibBuffers(nPanels, NPixels);
+  pool.createCalibBuffers(NPixels);
 
-  // Allocate space for the calibration constants for each panel
-  m_pedsVec_d.resize(nPanels);
-  m_gainsVec_d.resize(nPanels);
-  for (unsigned i = 0; i < nPanels; ++i) {
-    chkError(cudaMalloc(&m_pedsVec_d[i],  NRanges * NPixels * sizeof(*m_pedsVec_d[i])));
-    chkError(cudaMalloc(&m_gainsVec_d[i], NRanges * NPixels * sizeof(*m_gainsVec_d[i])));
-  }
+  // Allocate space for the calibration constants
+  chkError(cudaMalloc(&m_pedsVec_d,  NRanges * NPixels * sizeof(*m_pedsVec_d)));
+  chkError(cudaMalloc(&m_gainsVec_d, NRanges * NPixels * sizeof(*m_gainsVec_d)));
 
   // Generate fake raw event data and load it onto the device
-  auto& simDet = *static_cast<SimDet*>(m_dets[0]);
+  auto& simDet = *static_cast<SimDet*>(m_det);
   auto  nEvents{10};                    // @todo: TBR
   simDet.generateEvents(nEvents);
 }
@@ -191,10 +185,8 @@ EpixUHRsim::~EpixUHRsim()
 {
   printf("*** EpixUHRsim dtor 1\n");
   auto pool = m_pool->getAs<MemPoolGpu>();
-  for (unsigned i = 0; i < pool->panels().size(); ++i) {
-    chkError(cudaFree(m_gainsVec_d[i]));
-    chkError(cudaFree(m_pedsVec_d[i]));
-  }
+  if (m_gainsVec_d)  chkError(cudaFree(m_gainsVec_d));
+  if (m_pedsVec_d)   chkError(cudaFree(m_pedsVec_d));
   printf("*** EpixUHRsim dtor 2\n");
 
   pool->destroyCalibBuffers();
@@ -203,18 +195,16 @@ EpixUHRsim::~EpixUHRsim()
 
 unsigned EpixUHRsim::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-  logging::info("Gpu::EpixUHRsim configure");
+  logging::info("Gpu::EpixUHRsim configure: this %p, &det %p, det %p", this, &m_det, m_det);
 
-  // Only 1 panel in the simulator
-  unsigned panel{0};
-  unsigned rc = m_dets[panel]->configure(config_alias, xtc, bufEnd);
-  printf("*** Gpu::EpixUHRsim configure for %u done: rc %d, sz %u\n", panel, rc, xtc.sizeofPayload());
+  unsigned rc = m_det->configure(config_alias, xtc, bufEnd);
+  printf("*** Gpu::EpixUHRsim configure done: rc %d, sz %u\n", rc, xtc.sizeofPayload());
   if (rc) {
-    logging::error("Gpu::EpixUHRsim::configure failed for %s\n", m_params[panel].device);
+    logging::error("Gpu::EpixUHRsim::configure failed for %s\n", m_para->device);
   }
 
   Alg alg("raw", 0, 0, 0);
-  NamesId namesId(nodeId, EventNamesIndex); // + panel);
+  NamesId namesId(nodeId, EventNamesIndex);
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,
                                          m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
@@ -229,35 +219,31 @@ unsigned EpixUHRsim::configure(const std::string& config_alias, Xtc& xtc, const 
 
 unsigned EpixUHRsim::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info)
 {
-  // Only 1 panel in the simulator
-  unsigned rc = m_dets[0]->beginrun(xtc, bufEnd, info);
+  unsigned rc = m_det->beginrun(xtc, bufEnd, info);
   if (rc) {
-    logging::error("Gpu::EpixUHRsim::beginrun failed for %s\n", m_params[0].device);
+    logging::error("Gpu::EpixUHRsim::beginrun failed for %s\n", m_para->device);
   }
 
   // Load the calibration constants onto the GPU
-  // @todo: Fetch calibration constants for each panel
   std::vector<f32vec_t> peds(NRanges);
   std::vector<f32vec_t> gains(NRanges);
   auto pool = m_pool->getAs<MemPoolGpu>();
-  for (unsigned i = 0; i < pool->panels().size(); ++i) {
-    auto peds_d  = m_pedsVec_d[i];
-    auto gains_d = m_gainsVec_d[i];
-    for (unsigned range = 0; range < NRanges; ++range) {
-      peds[range].resize(NPixels);
-      gains[range].resize(NPixels);
-      for (unsigned pixel = 0; pixel < NPixels; ++pixel) {
-        peds[range][pixel]  = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1);
-        gains[range][pixel] = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1); // What's appropriate here?
-      }
-      chkError(cudaMemcpy(peds_d,  peds[range].data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
-      chkError(cudaMemcpy(gains_d, gains[range].data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
-      peds_d  += NPixels;
-      gains_d += NPixels;
+  auto peds_d  = m_pedsVec_d;
+  auto gains_d = m_gainsVec_d;
+  for (unsigned range = 0; range < NRanges; ++range) {
+    peds[range].resize(NPixels);
+    gains[range].resize(NPixels);
+    for (unsigned pixel = 0; pixel < NPixels; ++pixel) {
+      peds[range][pixel]  = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1);
+      gains[range][pixel] = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1); // What's appropriate here?
     }
+    chkError(cudaMemcpy(peds_d,  peds[range].data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
+    chkError(cudaMemcpy(gains_d, gains[range].data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
+    peds_d  += NPixels;
+    gains_d += NPixels;
   }
 
-  auto& simDet = *static_cast<SimDet*>(m_dets[0]);
+  auto& simDet = *static_cast<SimDet*>(m_det);
   simDet.calculateReference(peds, gains);
 
   return rc;
@@ -265,21 +251,21 @@ unsigned EpixUHRsim::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohm
 
 void EpixUHRsim::issuePhase2(TransitionId::Value tid)
 {
-  m_dets[0]->gpuDetector()->issuePhase2(tid);
+  m_det->gpuDetector()->issuePhase2(tid);
 }
 
 float const* EpixUHRsim::referenceBuffers() const
 {
-  printf("EpixUHRsim::referenceBuffers\n");
-  auto& simDet = *static_cast<SimDet*>(m_dets[0]);
-  return simDet.referenceBuffers();
+  printf("*** EpixUHRsim::referenceBuffers\n");
+  auto simDet = static_cast<SimDet*>(m_det);
+  return simDet->referenceBuffers();
 }
 
 unsigned EpixUHRsim::referenceBufCnt() const
 {
-  printf("EpixUHRsim::referenceBufCnt\n");
-  auto& simDet = *static_cast<SimDet*>(m_dets[0]);
-  return simDet.referenceBufCnt();
+  printf("*** EpixUHRsim::referenceBufCnt\n");
+  auto simDet = static_cast<SimDet*>(m_det);
+  return simDet->referenceBufCnt();
 }
 
 
@@ -287,26 +273,23 @@ void EpixUHRsim::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent*, uin
 {
   logging::info("Gpu::EpixUHRsim event");
 
-  // @todo: Deal with prescaled raw or calibrated data for each panel here?
+  // @todo: Deal with prescaled raw or calibrated data here?
 }
 
 //__device__ void EpixUHRsim::calibrate(float*    const __restrict__ calib,
 //                                      uint16_t* const __restrict__ raw,
-//                                      unsigned  const              count,
-//                                      unsigned  const              nPanels) const
+//                                      unsigned  const              count) const
 //{
 //  auto const tid     = blockIdx.x * blockDim.x + threadIdx.x;
 //  auto const stride  = gridDim.x * blockDim.x;
-//  if (tid == 0)  printf("*** tid %d, stride %d, nPanels %u\n", tid, stride, nPanels);
-//  auto const panel   = tid / (stride / nPanels);  // Split the panel handling evenly across the allocated threads
-//  if (tid == 0)  printf("*** panel %u\n", panel);
-//  constexpr auto nPixels = count / nPanels;
+//  if (tid == 0)  printf("*** tid %d, stride %d\n", tid, stride);
+//  constexpr auto nPixels = count;
 //
 //  if (tid == 0)  printf("*** m_pedArr_d %p\n", m_pedArr_d);
-//  auto const pedArr  = m_pedArr_d[panel];
+//  auto const pedArr  = m_pedArr_d;
 //  if (tid == 0)  printf("*** pedArr %p\n", pedArr);
 //  if (tid == 0)  printf("*** m_gainArr_d %p\n", m_gainArr_d);
-//  auto const gainArr = m_gainArr_d[panel];
+//  auto const gainArr = m_gainArr_d;
 //  if (tid == 0)  printf("*** gainArr %p\n", gainArr);
 //  if (tid == 0)  printf("*** count %u\n", count);
 //  for (auto i = tid; i < count; i += stride) {
@@ -314,7 +297,7 @@ void EpixUHRsim::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent*, uin
 //    auto const peds  = &pedArr [range * nPixels];
 //    auto const gains = &gainArr[range * nPixels];
 //    auto const data  = raw[i] & ((1 << RangeOffset) - 1);
-//    calib[panel * nPixels + i] = (data - peds[i]) * gains[i];
+//    calib[i] = (data - peds[i]) * gains[i];
 //  }
 //  printf("*** calibrate returning\n");
 //}
@@ -324,13 +307,12 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
                                   size_t   const                     calibBufsCnt,
                                   uint16_t const* const __restrict__ in,
                                   unsigned const&                    index,
-                                  unsigned const                     panel,
                                   float    const* const __restrict__ peds_,
                                   float    const* const __restrict__ gains_)
 {
 #if 0
-  // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
-  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * EpixUHRsim::NPixels];
+  // Place the calibrated data in the calibBuffers array at the appropriate offset
+  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt];
   int stride = gridDim.x * blockDim.x;
   int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -367,26 +349,21 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
 // This routine records the graph that calibrates the data
 void EpixUHRsim::recordGraph(cudaStream_t          stream,
                              const unsigned&       index_d,
-                             const unsigned        panel,
                              uint16_t const* const rawBuffer)
 {
   uhr_scoped_range r{/*"EpixUHRsim::recordGraph"*/}; // Expose function name via NVTX
 
-  auto pool    = m_pool->getAs<MemPoolGpu>();
-  auto nPanels = pool->panels().size();
-
-  // Check that panel is within range
-  assert (panel < nPanels);
+  auto pool = m_pool->getAs<MemPoolGpu>();
 
   // @todo: want 3 blocks of 512 threads to handle 126 pixels each
   unsigned   chunks{128};               // Number of pixels handled per thread
   unsigned   tpb   {256};               // Threads per block
   unsigned   bpg   {(NPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
-  const auto peds         = m_pedsVec_d[panel];
-  const auto gains        = m_gainsVec_d[panel];
+  const auto peds         = m_pedsVec_d;
+  const auto gains        = m_gainsVec_d;
   auto const calibBuffers = pool->calibBuffers_d();
   auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
-  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, panel, peds, gains);
+  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, peds, gains);
 }
 
 // The class factory

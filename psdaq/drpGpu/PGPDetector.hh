@@ -80,8 +80,9 @@ public:
     { return m_reducer->receive(wkr, items); }
   void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
     { m_reducer->event(xtc, be, sz); }
-  void freeBufs(unsigned idx)           // @todo: Bad name
-    { m_collector->freeDma(idx); }
+  void freeBuffers(unsigned idx);
+  void reducerDump() const
+    { m_reducer->dump(); }
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
   void _collector();

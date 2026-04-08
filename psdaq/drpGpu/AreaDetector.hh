@@ -20,15 +20,13 @@ public:
 public:
 //  __device__ void calibrate(float*    const calib,
 //                            uint16_t* const raw,
-//                            unsigned  const count,
-//                            unsigned  const nFpgas) const;
+//                            unsigned  const count) const;
   unsigned     rangeOffset() const override { return 14; }
   unsigned     rangeBits()   const override { return 2; }
   float const* pedestals_d() const override { return nullptr; }; // @todo: TBD
   float const* gains_d()     const override { return nullptr; }; // @todo: TBD
   void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
-                   const unsigned        panel,
                    uint16_t const* const data) override;
 private:
   unsigned m_nPixels;

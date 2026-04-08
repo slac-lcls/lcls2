@@ -73,7 +73,7 @@ protected:
 class CudaContext
 {
 public:
-    CudaContext();
+    CudaContext() { chkFatal(cuInit(0)); }
 
     /**
      * Creates a CUDA context, selects a device and ensures that stream memory ops are available.

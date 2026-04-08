@@ -30,20 +30,18 @@ public:
 public:
 //  __device__ void calibrate(float*    const calib,
 //                            uint16_t* const raw,
-//                            unsigned  const count,
-//                            unsigned  const nPanels) const;
+//                            unsigned  const count) const;
   unsigned     rangeOffset() const override { return RangeOffset; }
   unsigned     rangeBits()   const override { return RangeBits; }
-  float const* pedestals_d() const override { return m_pedsVec_d[0]; };  // Panel 0 only
-  float const* gains_d()     const override { return m_gainsVec_d[0]; }; // Panel 0 only
+  float const* pedestals_d() const override { return m_pedsVec_d; };
+  float const* gains_d()     const override { return m_gainsVec_d; };
 
   void recordGraph(cudaStream_t          stream,
                    const unsigned&       index,
-                   const unsigned        panel,
                    uint16_t const* const data) override;
 private:
-  std::vector<float*> m_pedsVec_d;  // [nPanels][NRanges * NPixels]
-  std::vector<float*> m_gainsVec_d; // [nPanels][NRanges * NPixels]
+  float* m_pedsVec_d;                   // [NRanges * NPixels]
+  float* m_gainsVec_d;                  // [NRanges * NPixels]
 };
 
   } // Gpu

@@ -1,9 +1,5 @@
 #pragma once
 
-#include "GpuAsyncLib.hh"
-
-#include "GpuAsyncOffsets.h"
-
 #include <cstddef>
 #include <vector>
 #include <atomic>
@@ -53,8 +49,8 @@ private:
   cudaGraphExec_t                    m_graphExec;
   Ptr<RingIndexDtoD>                 m_readerQueue;
   unsigned*                          m_head;
-  CUdeviceptr*                       m_dmaBuffers;    // [nFpgas * dmaCount][maxDmaSize]
-  CUdeviceptr*                       m_swFpgaRegs;    // [nFpgas]
+  CUdeviceptr*                       m_dmaBuffers;    // [dmaCount][maxDmaSize]
+  CUdeviceptr*                       m_fpgaRegs;
   const Parameters&                  m_para;
 };
 

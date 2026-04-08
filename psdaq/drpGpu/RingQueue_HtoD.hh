@@ -113,6 +113,18 @@ public:
     return true;
   }
 
+  __host__ unsigned head() const
+  {
+    using namespace cuda::std;
+    return m_head_h->load(memory_order_acquire);
+  }
+
+  __host__ unsigned tail() const
+  {
+    using namespace cuda::std;
+    return m_tail_h->load(memory_order_acquire);
+  }
+
   __host__ unsigned occupancy() const
   {
     using namespace cuda::std;

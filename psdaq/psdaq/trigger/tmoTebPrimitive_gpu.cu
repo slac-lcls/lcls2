@@ -12,14 +12,13 @@ using namespace Drp::Gpu;
 static __global__
 void _event(float     const* const __restrict__ calibBuffers,
             size_t    const                     calibBufsCnt,
-            uint32_t* const* const __restrict__ out,
+            uint32_t* const        __restrict__ out,
             size_t    const                     outBufsCnt,
-            unsigned  const&                    index,
-            size_t    const                     nPanels)
+            unsigned  const&                    index)
 {
   //printf("### TmoTebPrimitive::event: idx %u\n", index);
 
-  TmoTebEventFn{}(calibBuffers, calibBufsCnt, out, outBufsCnt, index, nPanels);
+  TmoTebEventFn{}(calibBuffers, calibBufsCnt, out, outBufsCnt, index);
 
   //printf("### TmoTebPrimitive::event: Done with idx %u\n", index);
 }
@@ -28,13 +27,12 @@ void _event(float     const* const __restrict__ calibBuffers,
 void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       float     const* const calibBuffers,
                                       size_t    const        calibBufsCnt,
-                                      uint32_t* const* const out,
+                                      uint32_t* const        out,
                                       size_t    const        outBufsCnt,
-                                      unsigned  const&       index,
-                                      unsigned  const        nPanels)
+                                      unsigned  const&       index)
 {
   printf("*** TmoTebPrimitive::event 1\n");
-  _event<<<1, 1, 0, stream>>>(calibBuffers, calibBufsCnt, out, outBufsCnt, index, nPanels);
+  _event<<<1, 1, 0, stream>>>(calibBuffers, calibBufsCnt, out, outBufsCnt, index);
   printf("*** TmoTebPrimitive::event 2\n");
 }
 

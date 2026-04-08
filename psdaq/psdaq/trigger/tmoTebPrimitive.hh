@@ -22,10 +22,9 @@ namespace Pds {
       void   event(cudaStream_t           stream,
                    float     const* const calibBuffers,
                    size_t    const        calibBufsCnt,
-                   uint32_t* const* const out,
+                   uint32_t* const        out,
                    size_t    const        outBufsCnt,
-                   unsigned  const&       index,
-                   unsigned  const        nPanels) override;
+                   unsigned  const&       index) override;
       GpuDispatchType gpuDispatchType() const override { return GpuDispatchType::TmoTeb; }
     size_t size() const override  { return sizeof(TmoTebData); }
     };

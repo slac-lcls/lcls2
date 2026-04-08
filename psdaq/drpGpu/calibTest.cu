@@ -7,13 +7,14 @@
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
 
-#include "GpuAsyncLib.hh"
+#include "gpuUtils.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "drp/spscqueue.hh"
 
 namespace cg = cooperative_groups;
 
 using namespace Pds;
+using namespace Drp::Gpu;
 
 using us_t = std::chrono::microseconds;
 
@@ -971,8 +972,8 @@ int main(int argc, char **argv)
       case 'B':  nBlocks     = std::stoi(optarg);  break;
       default: {
         printf("%s [-n <nEvents (%u)>] [-g <nGains (%u)>] [-p <nPixels (%u)>] "
-               "[t <nThreads (%u)] [t <nBlocks (%u)]\n",
-               argv[0], nEvents, nGains, nPixels, nThreads, nBlocks);
+               "[-t <nThreads (%u)] [-T <nGpuThreads (%u)] [-B <nBlocks (%u)]\n",
+               argv[0], nEvents, nGains, nPixels, nThreads, nGpuThreads, nBlocks);
         return 1;
       }
     }

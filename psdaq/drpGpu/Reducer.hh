@@ -49,6 +49,7 @@ public:
                    std::map<std::string, std::string>& labels);
   void startup();
   void shutdown();
+  void dump() const;
   bool start(unsigned worker, unsigned index)
     { if (m_algos[0]->hasGraph()) { return m_inputQueues2[worker].h->push(index);    }
       else                        { m_inputQueues[worker].push(index);  return true; } }

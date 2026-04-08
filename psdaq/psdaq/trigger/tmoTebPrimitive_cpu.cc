@@ -8,10 +8,9 @@ using logging = psalg::SysLog;
 void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       float     const* const calibBuffers,
                                       size_t    const        calibBufsCnt,
-                                      uint32_t* const* const out,
+                                      uint32_t* const        out,
                                       size_t    const        outBufsCnt,
-                                      unsigned  const&       index,
-                                      unsigned  const        nPanels)
+                                      unsigned  const&       index)
 {
   logging::critical("TmoTebPrimitive::setupGpu called by a CPU DRP");
   abort();

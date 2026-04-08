@@ -23,7 +23,7 @@ if(CMAKE_CUDA_COMPILER)
 
     add_library(drpbase_gpu SHARED
         MemPool.cc
-        GpuAsyncLib.cc
+        gpuUtils.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -232,6 +232,7 @@ if(CMAKE_CUDA_COMPILER)
 
 #--- Tools
 
+    # @todo: Needs to be converted to aes-stream-drivers v7.0.  Use rdmaTest in the meantime
     add_executable(pgpread_gpu
         pgpread.cc
         GpuAsyncLib.cc
@@ -264,7 +265,7 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(calibTest
         calibTest.cu
-        GpuAsyncLib.cc
+        gpuUtils.cc
     )
     target_include_directories(calibTest PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -279,8 +280,8 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(fileWriteTest_gpu
         fileWriteTest.cc
-        GpuAsyncLib.cc
         FileWriter.cc
+        gpuUtils.cc
     )
     target_include_directories(fileWriteTest_gpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>

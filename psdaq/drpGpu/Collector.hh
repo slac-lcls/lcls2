@@ -59,16 +59,14 @@ public:
             const std::atomic<bool>& terminate, const cuda::std::atomic<unsigned>& terminate_d);
   ~Collector(); // = default;
   void start();
-  void freeDma(unsigned index);
   void freeDma(PGPEvent*);
   void handleBrokenEvent(const PGPEvent&) {}
   void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
   unsigned receive(Detector*, CollectorMetrics&);
 private:
-  int         _setupGraph();
+  int _setupGraph();
   cudaGraph_t _recordGraph(cudaStream_t);
-  unsigned    _checkDmaDsc(unsigned index) const;
-  unsigned    _checkTimingHeader(unsigned index) const;
+  void _freeDma(unsigned index);
 private:
   MemPoolGpu&                        m_pool;
   Pds::Trg::TriggerPrimitive*        m_triggerPrimitive;

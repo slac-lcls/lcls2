@@ -34,25 +34,22 @@ DataDev::DataDev(const char* path) {
 
 // -------------------------------------------------------------------
 
-CudaContext::CudaContext()
-{
-    chkFatal(cuInit(0));
-}
-
 bool CudaContext::init(int device, bool quiet) {
 
-    int devs = 0;
-    if (chkError(cuDeviceGetCount(&devs)))
+    int devCount = 0;
+    if (chkError(cudaGetDeviceCount(&devCount)))
         return false;
-    logging::debug("Total GPU devices: %d", devs);
-    if (devs <= 0) {
+    logging::debug("Total GPU devices: %d", devCount);
+    if (devCount <= 0) {
         logging::error("No GPU devices available!");
         return false;
     }
 
+    if (!quiet)  listDevices();
+
     device = device < 0 ? 0 : device;
-    if (devs <= device) {
-        logging::error("Invalid GPU device number %d! There are only %d devices available", device, devs);
+    if (devCount <= device) {
+        logging::error("Invalid GPU device number %d! There are only %d devices available", device, devCount);
         return false;
     }
     _devNo = device;
@@ -60,7 +57,7 @@ bool CudaContext::init(int device, bool quiet) {
     // Actually get the device...
     CUresult status;
     if ((status = cuDeviceGet(&device_, device)) != CUDA_SUCCESS) {
-        logging::error("Could not get GPU device! code=%d", status);
+        logging::error("Failed to get GPU device %d: code=%d", device, status);
         return false;
     }
 
@@ -68,7 +65,7 @@ bool CudaContext::init(int device, bool quiet) {
     char name[256];
     if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
         return false;
-    logging::info("Selected GPU device: %s", name);
+    logging::info("Selected GPU device %d: %s", device, name);
 
     cudaDeviceProp deviceProp;
     chkError(cudaGetDeviceProperties(&deviceProp, device_));
@@ -78,7 +75,7 @@ bool CudaContext::init(int device, bool quiet) {
     size_t global_mem = 0;
     if (chkError(cuDeviceTotalMem(&global_mem, device_)))
         return false;
-    logging::debug("Global memory: %zu MB", global_mem >> 20);
+    logging::info("Global memory: %zu MB", global_mem >> 20);
     if (global_mem > (size_t)4 << 30)
         logging::debug("64-bit Memory Address support");
 
@@ -281,7 +278,6 @@ void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem)
 
 DmaTgt_t dmaTgtGet(const DataDev& datadev)
 {
-    // @todo: This line addresses only lane 0
     const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
     uint32_t regVal;
     auto rc = dmaReadRegister(datadev.fd(), reg, &regVal);
@@ -298,7 +294,6 @@ DmaTgt_t dmaTgtGet(const DataDev& datadev)
 
 void dmaTgtSet(const DataDev& datadev, DmaTgt_t tgt)
 {
-    // @todo: This line addresses only lane 0
     const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
     auto rc = dmaWriteRegister(datadev.fd(), reg, tgt);
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
@@ -308,10 +303,10 @@ void dmaTgtSet(const DataDev& datadev, DmaTgt_t tgt)
 void dmaIdxReset(const DataDev& datadev)
 {
     // Toggle the writeEnable register to reset the DMA buffer index
-    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnableV1.offset;
     uint32_t value;
     auto rc = dmaReadRegister(datadev.fd(), reg, &value);
-    rc = dmaWriteRegister(datadev.fd(), reg, value & ~GpuAsyncReg_WriteEnable.bitMask);
+    rc = dmaWriteRegister(datadev.fd(), reg, value & ~GpuAsyncReg_WriteEnableV1.bitMask);
     if (rc) perror("dmaIdxReset: dmaWriteRegister 1");
     rc = dmaWriteRegister(datadev.fd(), reg, value);
     if (rc) perror("dmaIdxReset: dmaWriteRegister 2");

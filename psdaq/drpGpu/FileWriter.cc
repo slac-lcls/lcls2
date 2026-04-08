@@ -1,7 +1,7 @@
 #include "FileWriter.hh"
 
+#include "gpuUtils.hh"
 #include "psalg/utils/SysLog.hh"
-#include "GpuAsyncLib.hh"
 
 #include <fcntl.h>
 #include <assert.h>

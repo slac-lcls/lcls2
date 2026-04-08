@@ -129,7 +129,7 @@ void _collectorStep(unsigned*      const  __restrict__ head,
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
   if (*tail == *head) {
-    // Get one intermediate buffer index per FPGA
+    // Get the intermediate buffer index
     unsigned hd;
     unsigned ns{8};
     while ((hd = readerQueue->pend()) == *head) {
@@ -168,9 +168,8 @@ struct NoEventFn
   __device__
   void operator()(float     const* const,
                   const size_t,
-                  uint32_t* const* const,
+                  uint32_t* const,
                   const size_t,
-                  const unsigned,
                   const unsigned) const
   {
   }
@@ -184,11 +183,10 @@ void _fusedCollector(unsigned*        const __restrict__ head,
                      RingIndexDtoH*   const __restrict__ collectorQueue,
                      cuda::std::atomic<unsigned> const&  terminate,
                      EventFn                             eventFn,
-                     float     const* const              calibBuffers,
+                     float     const* const __restrict__ calibBuffers,
                      size_t           const              calibBufsCnt,
-                     uint32_t* const* const              out,
-                     size_t           const              outBufsCnt,
-                     unsigned         const              nPanels)
+                     uint32_t*        const __restrict__ out,
+                     size_t           const              outBufsCnt)
 {
   // Find which pebble buffers are ready for processing
   _collectorStep(head, tail, readerQueue, terminate);
@@ -196,7 +194,7 @@ void _fusedCollector(unsigned*        const __restrict__ head,
   if (terminate.load(cuda::std::memory_order_acquire))  return;
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  eventFn(calibBuffers, calibBufsCnt, out, outBufsCnt, *tail, nPanels);
+  eventFn(calibBuffers, calibBufsCnt, out, outBufsCnt, *tail);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
   _graphLoopStep(tail, collectorQueue, terminate);
@@ -206,9 +204,8 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
 {
   col_scoped_range r{/*"Collector::_recordGraph"*/}; // Expose function name via NVTX
 
-  auto nPanels        = m_pool.panels().size();
   auto hostWrtBufs_d  = m_pool.hostWrtBufs_d();
-  auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(**hostWrtBufs_d);
+  auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs_d);
   auto calibBuffers   = m_pool.calibBuffers_d();
   auto calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers);
 
@@ -231,8 +228,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
                                                       calibBuffers,
                                                       calibBufsCnt,
                                                       hostWrtBufs_d,
-                                                      hostWrtBufsCnt,
-                                                      nPanels);
+                                                      hostWrtBufsCnt);
       break;
     case Trg::GpuDispatchType::None:
     default:
@@ -245,8 +241,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
                                                       calibBuffers,
                                                       calibBufsCnt,
                                                       hostWrtBufs_d,
-                                                      hostWrtBufsCnt,
-                                                      nPanels);
+                                                      hostWrtBufsCnt);
       break;
   }
 
@@ -270,7 +265,7 @@ void Collector::start()
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
 
-void Collector::freeDma(unsigned index)
+void Collector::_freeDma(unsigned index)
 {
   //printf("*** Collector: Collector::freeDma: 1 idx %u\n", index);
   m_collectorQueue.h->release(index);
@@ -286,79 +281,11 @@ void Collector::freeDma(unsigned index)
 
 void Collector::freeDma(PGPEvent* event)
 {
-  //printf("*** Collector::freeDma: evt %p\n", event);
+  //printf("*** Collector::freeDma: evt %p, idx %u, pgpIdx %zu\n", event, event->buffers[0].index, event - &m_pool.pgpEvents[0]);
   const uint32_t lane = 0;                   // The lane is always 0 for GPU-enabled PGP devices
   DmaBuffer* buffer = &event->buffers[lane];
   event->mask = 0;
-  freeDma(buffer->index);
-}
-
-unsigned Collector::_checkDmaDsc(unsigned index) const
-{
-  unsigned   rc   = 0;
-  const auto cnt  = m_pool.hostWrtBufsSize() / sizeof(uint32_t);
-  const auto dsc0 = (DmaDsc*)(&m_pool.hostWrtBufsVec_h()[0][index * cnt]);
-
-  logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x",
-                 0, index, dsc0->error, dsc0->size);
-
-  for (unsigned i = 1; i < m_pool.panels().size(); ++i) {
-    bool ne = false;
-    const auto dscN = (DmaDsc*)(&m_pool.hostWrtBufsVec_h()[i][index * cnt]);
-    ne |= dscN->error != dsc0->error;
-    ne |= dscN->size  != dsc0->size;
-
-    if (ne) {
-      if (rc ^ 1) {
-        logging::debug("panel %d: dma %d hdr: err %08x,  sz %08x",
-                       0, index, dsc0->error, dsc0->size);
-      }
-      logging::debug("panel %d: idx %d dma: err %08x,  sz %08x",
-                     i, index, dscN->error, dscN->size);
-      rc |= 1;                          // If different, include panel 0 in the list
-    }
-    rc |= 1 << i;
-  }
-
-  return rc;
-}
-
-unsigned Collector::_checkTimingHeader(unsigned index) const
-{
-  unsigned   rc   = 0;
-  const auto cnt  = m_pool.hostWrtBufsSize() / sizeof(uint32_t);
-  const auto dsc0 = (DmaDsc*)(&m_pool.hostWrtBufsVec_h()[0][index * cnt]);
-  const auto th0  = (TimingHeader*)&dsc0[1];
-
-  logging::debug("panel %d: idx %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
-                 0, index, th0->control(), th0->pulseId(), th0->time.value(), th0->env, th0->evtCounter,
-                 th0->_opaque[0], th0->_opaque[1]);
-
-  for (unsigned i = 1; i < m_pool.panels().size(); ++i) {
-    bool ne = false;
-    const auto dscN = (DmaDsc*)(&m_pool.hostWrtBufsVec_h()[i][index * cnt]);
-    const auto thN  = (TimingHeader*)&dscN[1];
-    ne |= thN->control()    != th0->control();
-    ne |= thN->pulseId()    != th0->pulseId();
-    ne |= thN->time.value() != th0->time.value();
-    ne |= thN->env          != th0->env;
-    ne |= thN->evtCounter   != th0->evtCounter;
-
-    if (ne) {
-      if (rc ^ 1) {
-        logging::debug("panel %d: idx %d  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
-                       0, index, th0->control(), th0->pulseId(), th0->time.value(), th0->env, th0->evtCounter,
-                       th0->_opaque[0], th0->_opaque[1]);
-      }
-      logging::debug("panel %d: dma %d  th: ctl %02x, pid %014lx, ts %u.%09u, env %08x, ctr %08x, opq %08x %08x",
-                     i, index, thN->control(), thN->pulseId(), thN->time.seconds(), thN->time.nanoseconds(),
-                     thN->env, thN->evtCounter, thN->_opaque[0], thN->_opaque[1]);
-      rc |= 1;                          // If different, include panel 0 in the list
-    }
-    rc |= 1 << i;
-  }
-
-  return rc;
+  _freeDma(buffer->index);
 }
 
 unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
@@ -377,7 +304,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
   static unsigned itb = 0;
 #endif
 
-  const auto     hostWrtBufs    = m_pool.hostWrtBufsVec_h()[0]; // When no error, hdrs in all are the same
+  const auto     hostWrtBufs    = m_pool.hostWrtBufs_h(); // When no error, hdrs in all are the same
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
   uint64_t       lastPid        = m_lastPid;
@@ -388,8 +315,15 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
   while (tail != head) {
     //printf("*** Collector::receive: tail %u\n", tail);
     col_scoped_range loop_range{/*"Collector::receive", */nvtx3::payload{tail}};
-    const auto dmaDsc       = (DmaDsc*)(&hostWrtBufs[tail * hostWrtBufsCnt]);
+    const auto dmaDsc       = (DmaDsc*)&hostWrtBufs[tail * hostWrtBufsCnt];
     const auto timingHeader = (TimingHeader*)&dmaDsc[1];
+
+    if (m_para.verbose) {
+      printf("*** Collector::receive: dmaDsc[%u] %p, th %p\n", tail, dmaDsc, timingHeader);
+      const auto& p = (const uint32_t*)dmaDsc;
+      printf("*** Collector::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
+             p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    }
 
     // Wait for pulse ID to become non-zero
     uint64_t pid = timingHeader->pulseId();
@@ -416,9 +350,9 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     lastPid = pid;
 
     // Check for DMA buffer overflow
-    if (dmaDsc->error & 0x4) [[unlikely]] {
-      logging::critical("DMA buffer overflow: size %d B", m_pool.dmaSize());
-      exit(EXIT_FAILURE);
+    if (dmaDsc->overflow()) [[unlikely]] {
+      logging::critical("DMA buffer overflow: size %d B vs %d B", dmaDsc->size, m_pool.dmaSize());
+      // @todo: Temporarily commented out: abort();
     }
 
     // Measure TimingHeader arrival latency as early as possible
@@ -431,27 +365,18 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
     // Write to the DMA start register in the FPGA
     unsigned dmaIdx = tail % m_pool.dmaCount();
     //printf("*** Collector::receive: Enable write to DMA buffer %u\n", dmaIdx);
-    for (auto& panel : m_pool.panels()) {
-      auto rc = gpuSetWriteEn(panel.gpu.fd(), dmaIdx);
-      if (rc < 0) [[unlikely]] {
-        logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
-        abort();
-      }
+    auto rc = gpuSetWriteEn(m_pool.panel->gpu.fd(), dmaIdx);
+    if (rc < 0) [[unlikely]] {
+      logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
+      abort();
     }
 #endif
 
-    // Handle the case when the headers don't match across panels
-    // @todo: Too expensive?  This fetches the headers of all panels from the GPU
-    //        Maybe do the test on the GPU and set a flag if they differ and
-    //        print here when it is set
-    unsigned dmas, ths;
-    if ( (dmas = _checkDmaDsc(tail)) || (ths = _checkTimingHeader(tail)) ) [[unlikely]] {
-      // Assume we can recover from non-matching panel headers
-      logging::error("Headers differ between panels: DmaDsc: %02x, TimingHeader: %02x", dmas, ths);
-      freeDma(tail);                    // Leaves event mask = 0
-      metrics.m_nHdrMismatch += 1;
-      continue;
-    }
+    logging::debug("dma %u, hdr %08x, sz %08x = %u", tail, dmaDsc->header, dmaDsc->size);
+    logging::debug("idx %u  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
+                   tail, timingHeader->control(), timingHeader->pulseId(), timingHeader->time.value(),
+                   timingHeader->env, timingHeader->evtCounter,
+                   timingHeader->_opaque[0], timingHeader->_opaque[1]);
 
     uint32_t size = dmaDsc->size;       // Size of the DMA
     uint32_t index = tail;
@@ -468,9 +393,9 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
     uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
     unsigned pgpIndex = evtCounter & bufferMask;
-    PGPEvent*  event  = &m_pool.pgpEvents[pgpIndex];
-    //if (event->mask)  printf("*** Collector::receive: PGPEvent mask (%02x) != 0 for ctr %u\n",
-    //                         event->mask, pgpIndex);
+    PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+    if (event->mask)  printf("*** Collector::receive: PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
+                             event->mask, pgpIndex, evtCounter);
     DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
     buffer->size = size;                       //   "
     buffer->index = index;                     //   "
@@ -478,26 +403,28 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
     m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
-    if (dmaDsc->error) [[unlikely]] {
+    // @todo: Need to work out which bits mean error
+    if (dmaDsc->header) [[unlikely]] {  // @todo: Revisit bits to be ignored
       // Assume we can recover from non-overflow DMA errors
       if (metrics.m_nDmaErrors < 5) {   // Limit prints at rate
-        logging::error("DMA error 0x%x", dmaDsc->error);
+        logging::error("DMA error 0x%08x", dmaDsc->header);
       }
       // This assumes the DMA succeeded well enough that evtCounter is valid
-      handleBrokenEvent(*event);
-      freeDma(event);                   // Leaves event mask = 0
-      metrics.m_nDmaErrors += 1;
-      continue;
+// @todo: Temporarily commented out:
+//      handleBrokenEvent(*event);
+//      freeDma(event);                   // Leaves event mask = 0
+//      metrics.m_nDmaErrors += 1;
+//      continue;
     }
 
     XtcData::TransitionId::Value transitionId = timingHeader->service();
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
-    logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  err 0x%x",
+    logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
                    size,
                    reinterpret_cast<const uint64_t*>(data)[0], // PulseId
                    reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
                    reinterpret_cast<const uint32_t*>(data)[4], // env
-                   dmaDsc->error);
+                   dmaDsc->header);
 
     if (transitionId == TransitionId::BeginRun) {
       resetEventCounter();              // Compensate for the ClearReadout sent before BeginRun
@@ -581,7 +508,7 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
     metrics.m_nevents += 1;
     tail = (tail + 1) & bufferMask;
-    //printf("*** Collector::receive: tail %u\n", tail);
+    //printf("*** Collector::receive: tail %u, event->mask %02x\n", tail, event->mask);
   }
   unsigned nEvents = (head - m_last) & bufferMask;
   m_last = tail;

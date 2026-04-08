@@ -1,8 +1,6 @@
 #pragma once
 
-#include "GpuAsyncLib.hh"
-
-#include "GpuAsyncOffsets.h"
+#include "gpuUtils.hh"
 
 #include <cstddef>
 #include <vector>
@@ -36,30 +34,58 @@
 namespace Drp {
   namespace Gpu {
 
-// DmaDsc structure from:
-//   https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
-struct __attribute__((packed)) DmaDsc
-{
-  uint32_t error;
-  uint32_t size;
-  uint32_t _pad[6]; //+8];                   // +8 for 512-bit PCIe frames
-};
-
-struct DetPanel
-{
-  DataDev        datadev;
-  GpuDmaBuffer_t dmaBuffers[MAX_BUFFERS];
-  GpuDmaBuffer_t swFpgaRegs;
-  std::string    name;
-  DetPanel(std::string& device) : datadev(device.c_str()), name(device) {}
-};
-
 // @todo: Move to a common header file or use std::pair/std::tuple
 template <class T>
 struct Ptr
 {
   T* h = nullptr;                       // A host pointer
   T* d = nullptr;                       // A device pointer
+};
+
+// DmaDsc structure from:
+//   https://github.com/slaclab/surf/blob/main/axi/dma/rtl/v2/AxiStreamDmaV2Write.vhd
+struct __attribute__((packed)) DmaDsc
+{
+  uint32_t header;
+  uint32_t size;
+
+  inline uint32_t result()    const { return  header        & 0x03; }
+  inline uint32_t overflow()  const { return (header >>  2) & 0x01; }
+  inline uint32_t cont()      const { return (header >>  3) & 0x01; }
+  inline uint32_t lastUser()  const { return (header >> 16) & 0xFF; }
+  inline uint32_t firstUser() const { return (header >> 24) & 0xFF; }
+};
+
+static_assert(sizeof(DmaDsc) == 8, "DmaDsc must be 64-bits (8-bytes)");
+
+/**
+ * Wraps a data_dev device so it can be automatically freed
+ */
+class DataDev
+{
+public:
+  DataDev(const char* path);
+  ~DataDev()
+  {
+    close(fd_);
+  }
+
+  int fd() const { return fd_; }
+
+protected:
+  int fd_;
+};
+
+struct DetPanel
+{
+  DataDev               datadev;
+  Ptr<void>             fpgaRegs;
+  std::vector<uint8_t*> dmaBuffers;     // Host vector of dmaCount dptrs
+  uint8_t**             dmaBuffers_d;   // Device array of dmaCount dptrs
+  std::string           name;
+  CoreRegisters         coreRegs;
+
+  DetPanel(std::string& device) : datadev(device.c_str()), name(device) {}
 };
 
 class MemPoolGpu : public Drp::MemPool
@@ -69,50 +95,48 @@ public:
   virtual ~MemPoolGpu();
   int initialize(Parameters& para);
 public:   // Virtuals
-  int fd(unsigned unit=0) const override;
+  int fd() const override { return m_panel->datadev.fd(); }
   int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:  // Virtuals
   ssize_t _freeDma(unsigned count, uint32_t* indices) override { return 0; /* Nothing to do */ }
 public:
   const CudaContext& context() const { return m_context; }
-  const std::vector<DetPanel>& panels() const { return m_panels; }
-  void createHostBuffers(unsigned panel, size_t size);
-  void destroyHostBuffers(unsigned panel);
-  void createCalibBuffers(unsigned nPanels, unsigned nElements);
+  const std::shared_ptr<DetPanel> panel() const { return m_panel; }
+  void createHostBuffers(size_t size);
+  void destroyHostBuffers();
+  void createCalibBuffers(unsigned nElements);
   void destroyCalibBuffers();
   void createReduceBuffers(size_t nBytes, size_t reserved);
   void destroyReduceBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
-  const auto& hostWrtBufsVec_h() const { return m_hostWrtBufsVec_h; }
-  const auto& hostWrtBufsVec_d() const { return m_hostWrtBufsVec_d; }
-  const auto& hostWrtBufs_d()    const { return m_hostWrtBufs_d; }
+  const auto& hostWrtBufs_h() const { return m_hostWrtBufs_h; }
+  const auto& hostWrtBufs_d() const { return m_hostWrtBufs_d; }
   const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
   const auto& reduceBuffers_d()  const { return m_reduceBuffers_d; }
   size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
   size_t calibBufsSize()         const { return m_calibBufsSize; }
   size_t reduceBufsSize()        const { return m_reduceBufsSize; }
   size_t reduceBufsReserved()    const { return m_reduceBufsRsvd; }
-  // @todo: Right place for these?
-  int64_t nPgpInUser (unsigned unit) const { return dmaGetRxBuffinUserCount  (fd(unit)); }
-  int64_t nPgpInHw   (unsigned unit) const { return dmaGetRxBuffinHwCount    (fd(unit)); }
-  int64_t nPgpInPreHw(unsigned unit) const { return dmaGetRxBuffinPreHwQCount(fd(unit)); }
-  int64_t nPgpInRx   (unsigned unit) const { return dmaGetRxBuffinSwQCount   (fd(unit)); }
+public:
+  int64_t nPgpInUser () const { return dmaGetRxBuffinUserCount  (fd()); }
+  int64_t nPgpInHw   () const { return dmaGetRxBuffinHwCount    (fd()); }
+  int64_t nPgpInPreHw() const { return dmaGetRxBuffinPreHwQCount(fd()); }
+  int64_t nPgpInRx   () const { return dmaGetRxBuffinSwQCount   (fd()); }
 private:
   int  _gpuMapFpgaMem(int fd, CUdeviceptr& buffer, uint64_t offset, size_t size, int write);
   void _gpuUnmapFpgaMem(CUdeviceptr& buffer);
 private:
-  CudaContext             m_context;
-  std::vector<DetPanel>   m_panels;
-  unsigned                m_setMaskBytesDone;
-  size_t                  m_hostWrtBufsSize;
-  std::vector<uint32_t*>  m_hostWrtBufsVec_h; // [nPanels][nBuffers * nElements]
-  std::vector<uint32_t*>  m_hostWrtBufsVec_d; // [nPanels][nBuffers * nElements]
-  uint32_t**              m_hostWrtBufs_d;    // [nPanels][nBuffers * nElements]
-  size_t                  m_calibBufsSize;
-  float*                  m_calibBuffers_d;   // [nBuffers * nPanels * nElements]
-  size_t                  m_reduceBufsSize;
-  size_t                  m_reduceBufsRsvd;
-  uint8_t*                m_reduceBuffers_d;  // [nBuffers * nBytes]
+  CudaContext               m_context;
+  std::shared_ptr<DetPanel> m_panel;
+  bool                      m_setMaskBytesDone;
+  size_t                    m_hostWrtBufsSize;
+  uint32_t*                 m_hostWrtBufs_h;    // [nBuffers * nElements]
+  uint32_t*                 m_hostWrtBufs_d;    // [nBuffers * nElements]
+  size_t                    m_calibBufsSize;
+  float*                    m_calibBuffers_d;   // [nBuffers * nElements]
+  size_t                    m_reduceBufsSize;
+  size_t                    m_reduceBufsRsvd;
+  uint8_t*                  m_reduceBuffers_d;  // [nBuffers * nBytes]
 };
 
   } // Gpu

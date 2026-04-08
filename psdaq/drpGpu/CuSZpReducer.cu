@@ -1,6 +1,5 @@
 #include "CuSZpReducer.hh"
 
-#include "GpuAsyncLib.hh"
 #include "MemPool.hh"
 #include "Detector.hh"
 #include "drp/drp.hh"

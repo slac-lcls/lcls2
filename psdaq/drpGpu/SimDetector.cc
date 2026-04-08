@@ -21,6 +21,7 @@ using namespace Drp::Gpu;
 
 static const unsigned EvtCtrMask = 0xffffff;
 
+[[maybe_unused]]
 static int _nsSleep(unsigned ns)
 {
   struct timespec ts{0, ns};
@@ -46,6 +47,8 @@ SimDetector::SimDetector(Parameters* para, MemPoolGpu* pool, unsigned len) :
     auto rate = std::stof(para->kwargs["sim_su_rate"]);
     m_suPeriod = ms_t{rate ? unsigned(1000./rate) : 0};
   }
+
+  printf("*** SimDetector::ctor: this %p, len %u, l1Delay %u\n", this, m_length, m_l1Delay);
 }
 
 SimDetector::~SimDetector()
@@ -103,7 +106,7 @@ void SimDetector::connectionShutdown()
 // setup up device to receive data over pgp
 void SimDetector::connect(const json& connect_json, const std::string& collectionId)
 {
-  logging::debug("SimDetector::connect");
+  logging::debug("SimDetector::connect: this %p", this);
 
   m_readoutGroup = connect_json["body"]["drp"][collectionId]["det_info"]["readout"];
 
@@ -111,12 +114,12 @@ void SimDetector::connect(const json& connect_json, const std::string& collectio
   if (it != m_para->kwargs.end())
     m_length = stoi(it->second) * sizeof(uint32_t); // Convert to bytes
 
-  logging::debug("SimDetector::connect: end");
+  logging::debug("SimDetector::connect: end this %p", this);
 }
 
 void SimDetector::issuePhase2(TransitionId::Value tid)
 {
-  logging::debug("SimDetector::issuePhase2: tid %s", TransitionId::name(tid));
+  logging::debug("SimDetector::issuePhase2: this %p, tid %s", this, TransitionId::name(tid));
   m_eventQueue.push(tid);
 }
 
@@ -138,10 +141,12 @@ size_t SimDetector::_genTimingHeader(uint8_t* buffer, TransitionId::Value tid)
   return sizeof(*th);
 }
 
-void SimDetector::_trigger(CUdeviceptr dmaBuffer, uint32_t dmaSize) const
+void SimDetector::_trigger(uint8_t* dmaBuffer, uint32_t dmaSize) const
 {
+  DmaDsc dmaDsc{0, dmaSize};
+
   // Write the dmaSize to the 2nd word of the DMA buffer
-  chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(uint32_t)), &dmaSize, sizeof(dmaSize), cudaMemcpyDefault, m_stream));
+  chkError(cudaMemcpyAsync((void*)dmaBuffer, &dmaDsc, sizeof(dmaDsc), cudaMemcpyDefault, m_stream));
 }
 
 void SimDetector::_eventSimulator()
@@ -169,11 +174,14 @@ void SimDetector::_eventSimulator()
   bool verify{m_para->kwargs.find("sim_l1_verify") != m_para->kwargs.end()};
   bool running{false};
   auto suTime{fast_monotonic_clock::now()};
-  auto swFpgaRegs{memPool.panels()[0].swFpgaRegs.ptr};
+  auto panel{memPool.panel()};
+  auto fpgaRegs{panel->fpgaRegs.h};
+  auto& coreRegs{panel->coreRegs};
   unsigned dmaIdx{0};
   uint32_t dmaCntMsk{memPool.dmaCount() - 1};
-  std::vector<uint8_t> buffer(sizeof(TimingHeader)); // No default constructor for TimingHeader
-  auto dmaBuffers{memPool.panels()[0].dmaBuffers};
+  std::vector<uint8_t> thBuffer(sizeof(TimingHeader)); // No default constructor for TimingHeader
+  auto thOffset{coreRegs.dmaDataBytes()};
+  auto dmaBuffers{panel->dmaBuffers};
   while (!m_terminate.load(std::memory_order_acquire)) {
     // Wait for a new transition to appear from the "control level"
     TransitionId::Value tid;
@@ -190,11 +198,13 @@ void SimDetector::_eventSimulator()
     // Wait for DMA buffer to become ready for writing
     //bool wait{false};
     //unsigned ns{8};
-    volatile uint8_t* const wrEnReg{swFpgaRegs + GPU_ASYNC_WR_ENABLE(dmaIdx)};
+    volatile uint8_t* const wrEnReg{(uint8_t*)fpgaRegs + coreRegs.freeListOffset(dmaIdx)};
     //uint32_t hndShk;
-    auto dmaBuffer = dmaBuffers[dmaIdx].dptr;
+    auto dmaBuffer = dmaBuffers[dmaIdx];
+    //printf("*** SimDetector::evtSim: dmaIdx %u, dmaBuffer %p\n", dmaIdx, dmaBuffer);
     //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDefault, m_stream));
     //chkError(cudaStreamSynchronize(m_stream));
+    //printf("*** SimDetector::evtSim: Wait for wrEnReg[%u] %p\n", dmaIdx, wrEnReg);
     while (*wrEnReg == 0) { // || (hndShk != 0)) {
       if (m_terminate.load(std::memory_order_acquire))
         break;
@@ -218,10 +228,12 @@ void SimDetector::_eventSimulator()
     *wrEnReg = 0;                       // Disable "DMAs" to this buffer
 
     auto evtIdx = m_evtCounter;         // Fetch this before it's incremented in _genTimingHeader
-    auto thSize = _genTimingHeader(buffer.data(), tid);
+    auto thSize = _genTimingHeader(thBuffer.data(), tid);
+    //uint32_t*p = (uint32_t*)thBuffer.data();
+    //printf("*** SimDetector::evtSim: thBuf %08x %08x %08x %08x %08x %08x %08x %08x\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
     size_t dmaSize{thSize};
     if (tid == TransitionId::L1Accept) {
-      auto hdrSize{sizeof(DmaDsc) + thSize};
+      auto hdrSize{thOffset + thSize};
       uint8_t* data_d;
       auto dataSize = _genL1Payload(&data_d, evtIdx, 0); // Don't do partial events for now: m_length);
       if (verify) {  // Avoid overhead by not injecting data if it's not going to be verified
@@ -229,7 +241,8 @@ void SimDetector::_eventSimulator()
       }
       dmaSize += dataSize;
     }
-    chkError(cudaMemcpyAsync((void*)(dmaBuffer + sizeof(DmaDsc)), buffer.data(), thSize, cudaMemcpyDefault, m_stream));
+    //printf("*** SimDetector::evtSim: dmaBuf %p + thOs %u = %p\n", dmaBuffer, thOffset, dmaBuffer + thOffset);
+    chkError(cudaMemcpyAsync((void*)(dmaBuffer + thOffset), thBuffer.data(), thSize, cudaMemcpyDefault, m_stream));
     _trigger(dmaBuffer, dmaSize);
     dmaIdx = (dmaIdx + 1) & dmaCntMsk;
 

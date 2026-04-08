@@ -251,7 +251,7 @@ void PGPDetectorApp::handleConnect(const json& msg)
 {
     logging::debug("PGPDetectorApp::handleConnect");
 
-    json body = json({});
+    json body({});
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
@@ -680,7 +680,8 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
-        if (kwargs.first == "dmaSize")        continue;  // GPU DRP
+        if (kwargs.first == "dmaBufSize")     continue;  // GPU DRP
+        if (kwargs.first == "dmaBufCount")    continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator

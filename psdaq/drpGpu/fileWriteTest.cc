@@ -16,7 +16,7 @@
 #include <cuda_runtime.h>
 
 #include "psalg/utils/SysLog.hh"
-#include "GpuAsyncLib.hh"
+#include "gpuUtils.hh"
 #include "FileWriter.hh"
 
 using logging = psalg::SysLog;

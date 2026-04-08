@@ -32,7 +32,7 @@ namespace Drp {
       virtual size_t _genL1Payload(uint8_t** buffer, size_t index, size_t bufSize) = 0;
     private:
       size_t _genTimingHeader(uint8_t* buffer, XtcData::TransitionId::Value);
-      void _trigger(CUdeviceptr buffer, uint32_t dmaSize) const;
+      void _trigger(uint8_t* buffer, uint32_t dmaSize) const;
       void _eventSimulator();
     private:
       using ms_t = std::chrono::milliseconds;

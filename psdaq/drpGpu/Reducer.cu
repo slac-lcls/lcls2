@@ -414,6 +414,17 @@ void Reducer::shutdown()
   }
 }
 
+void Reducer::dump() const
+{
+  if (m_algos[0]->hasGraph()) {
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      printf("Reducer %u: in: head %u, tail %u, out: head %u, tail %u\n", i,
+             m_inputQueues2[i].h->head(), m_inputQueues2[i].h->tail(),
+             m_outputQueues2[i].h->head(), m_outputQueues2[i].h->tail());
+    }
+  }
+}
+
 void Reducer::_worker(unsigned worker)
 {
   red_scoped_range r{/*"Reducer::_worker"*/}; // Expose function name via NVTX
