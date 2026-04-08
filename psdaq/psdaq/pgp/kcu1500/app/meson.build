@@ -38,6 +38,8 @@ kcu_pgp_status = executable('kcuPgpStatus',
   'xPgpStatus.cpp',
   include_directories: [kcu_inc_dir],
   link_with: [kcu_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_hist = executable('kcuHist',
@@ -64,34 +66,46 @@ kcu_sim_valid = executable('kcuSimValid',
 kcu_loop_test = executable('kcuLoopTest',
   'xLoopTest.cpp',
   include_directories: [kcu_inc_dir],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_reg = executable('kcuReg',
   'xReg.cpp',
   include_directories: [kcu_inc_dir],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_read = executable('kcuRead',
   'xRead.cpp',
   include_directories: [kcu_inc_dir],
   dependencies: threads_dep,
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_read_bulk = executable('kcuReadBulk',
   'xReadBulk.cpp',
   include_directories: [kcu_inc_dir],
   dependencies: [threads_dep],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_write = executable('kcuWrite',
   'xWrite.cpp',
   include_directories: [kcu_inc_dir],
   dependencies: [threads_dep],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_dma_status = executable('kcuDmaStatus',
   'xDmaStatus.cpp',
   include_directories: [kcu_inc_dir],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 kcu_margin = executable('kcuMargin',
@@ -99,4 +113,6 @@ kcu_margin = executable('kcuMargin',
   include_directories: [kcu_inc_dir],
   link_with: [kcu_lib],
   dependencies: [threads_dep],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )

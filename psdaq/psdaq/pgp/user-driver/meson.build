@@ -32,6 +32,8 @@ executable('status',
     drp_inc
   ],
   link_with: [pgpdriver_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 executable('pgpmon',
@@ -41,6 +43,8 @@ executable('pgpmon',
     drp_inc
   ],
   link_with: [pgpdriver_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 executable('looptest',
@@ -50,6 +54,8 @@ executable('looptest',
     drp_inc
   ],
   link_with: [pgpdriver_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 executable('promload',
@@ -59,6 +65,8 @@ executable('promload',
     drp_inc
   ],
   link_with: [pgpdriver_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )
 
 executable('mcstest',
@@ -68,4 +76,6 @@ executable('mcstest',
 #        drp_inc
 #    ],
   link_with: [pgpdriver_lib],
+  install_rpath: libdir_install_rpath,
+  #install: true,
 )

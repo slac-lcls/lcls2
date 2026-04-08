@@ -28,6 +28,7 @@ mmregtest_exe = executable('mmregtest',
   'mmregtest.cc',
   include_directories: mmhw_inc_dir,
   #install: true,
+  install_rpath: libdir_install_rpath,
 )
 
 mmxvc_exe = executable('mmxvc',
@@ -42,4 +43,5 @@ mmxvc_exe = executable('mmxvc',
     python_dep,
   ],
   #install: true,
+  install_rpath: libdir_install_rpath,
 )
