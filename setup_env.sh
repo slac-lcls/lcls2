@@ -17,7 +17,7 @@ if [ -d "/cds/sw/" ]; then
 
     osrel=`uname -r`
     case $osrel in
-        *el9*) conda activate daq_20250402_r9;; #daq_20260311;;
+        *el9*) conda activate daq_20250402_r9_h;; #daq_20260311;;
         *)     conda activate daq_20250402;;    #daq_20260311;;
     esac
 

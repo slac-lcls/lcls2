@@ -1,39 +1,38 @@
-
 rogue_dep = cc.find_library('rogue-core')
 
-hsd_sources = files(
-  'AdcCore.cc',
-  'AdcSync.cc',
-  'Adt7411.cc',
-  'ClkSynth.cc',
-  #'DmaCore.cc',
-  #'FlashController.cc',
-  'FexCfg.cc',
-  'FmcCore.cc',
-  'FmcSpi.cc',
-  'Histogram.cc',
-  'I2cSwitch.cc',
-  'Jesd204b.cc',
-  'LocalCpld.cc',
-  'Mmcm.cc',
-  'Pgp2b.cc',
-  'Pgp3.cc',
-  'PhyCore.cc',
-  'PvDef.cc',
-  'QABase.cc',
-  'Tps2481.cc',
-  #'Validator.cc,
-  'Fmc134Ctrl.cc',
-  'Fmc134Cpld.cc',
-  'Ad7291.cc',
-  'OptFmc.cc',
-  'Module134.cc',
-  'Module126.cc',
-  'ModuleBase.cc',
-  'ChipAdcReg.cc'
-)
-
 hsd_inc_dir = include_directories('../..')
+
+hsd_sources = files(
+  'src/AdcCore.cc',
+  'src/AdcSync.cc',
+  'src/Adt7411.cc',
+  'src/ClkSynth.cc',
+  #'src/DmaCore.cc',
+  #'src/FlashController.cc',
+  'src/FexCfg.cc',
+  'src/FmcCore.cc',
+  'src/FmcSpi.cc',
+  'src/Histogram.cc',
+  'src/I2cSwitch.cc',
+  'src/Jesd204b.cc',
+  'src/LocalCpld.cc',
+  'src/Mmcm.cc',
+  'src/Pgp2b.cc',
+  'src/Pgp3.cc',
+  'src/PhyCore.cc',
+  'src/PvDef.cc',
+  'src/QABase.cc',
+  'src/Tps2481.cc',
+  #'src/Validator.cc,
+  'src/Fmc134Ctrl.cc',
+  'src/Fmc134Cpld.cc',
+  'src/Ad7291.cc',
+  'src/OptFmc.cc',
+  'src/Module134.cc',
+  'src/Module126.cc',
+  'src/ModuleBase.cc',
+  'src/ChipAdcReg.cc'
+)
 
 hsd_lib = shared_library('hsd',
   hsd_sources,
@@ -53,7 +52,7 @@ hsd_lib = shared_library('hsd',
 )
 
 mempeek = executable('mempeek',
-  'mempeek.cc',
+  'src/mempeek.cc',
   include_directories: hsd_inc_dir,
   link_with: mmhw_lib,
   dependencies: [
@@ -66,7 +65,7 @@ mempeek = executable('mempeek',
 
 
 hsd_eyescan = executable('hsd_eyescan',
-  'hsd_eyescan.cc',
+  'src/hsd_eyescan.cc',
   include_directories: hsd_inc_dir,
   dependencies: [
     threads_dep,
@@ -79,10 +78,10 @@ hsd_eyescan = executable('hsd_eyescan',
 )
 
 hsd134PVs_sources = [
-  'hsd134PVs.cc',
-  'PV134Ctrls.cc',
-  'PVCtrlsBase.cc',
-  'PV134Stats.cc',
+  'src/hsd134PVs.cc',
+  'src/PV134Ctrls.cc',
+  'src/PVCtrlsBase.cc',
+  'src/PV134Stats.cc',
 ]
 
 hsd134PVs = executable('hsd134PVs',
@@ -107,10 +106,10 @@ hsd134PVs = executable('hsd134PVs',
 )
 
 hsd126PVs_sources = [
-  'hsd126PVs.cc',
-  'PV126Ctrls.cc',
-  'PVCtrlsBase.cc',
-  'PV126Stats.cc',
+  'src/hsd126PVs.cc',
+  'src/PV126Ctrls.cc',
+  'src/PVCtrlsBase.cc',
+  'src/PV126Stats.cc',
 ]
 
 hsd126PVs = executable('hsd126PVs',
@@ -131,14 +130,14 @@ hsd126PVs = executable('hsd126PVs',
 )
 
 hsd_sim = executable('hsd_sim',
-  'hsd_sim.cc', 
+  'src/hsd_sim.cc', 
   install_rpath: libdir_install_rpath,
   #install: true,
 )
 
 hsdRead = executable('hsdRead',
   [
-    'hsdRead.cc',
+    'src/hsdRead.cc',
     '../../../psalg/psalg/digitizer/src/Stream.cc'
   ],
   dependencies: [

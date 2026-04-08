@@ -2,7 +2,7 @@
 trigger_inc_dir = include_directories('../..')
 
 trigger_lib = shared_library('trigger',
-  'utilities.cc',
+  'src/utilities.cc',
   include_directories: [trigger_inc_dir],
   dependencies: [
     psalg_utils_dep,
@@ -14,9 +14,9 @@ trigger_lib = shared_library('trigger',
 
 mfxTripperTeb_lib = shared_library('mfxTripperTeb',
   [
-    'mfxTripperPrimitive.cc',
-    'mfxTripperPrimitive_jungfrau.cc',
-    'mfxTripperTeb.cc',
+    'src/mfxTripperPrimitive.cc',
+    'src/mfxTripperPrimitive_jungfrau.cc',
+    'src/mfxTripperTeb.cc',
   ],
   include_directories: [
     trigger_inc_dir,
@@ -33,10 +33,10 @@ mfxTripperTeb_lib = shared_library('mfxTripperTeb',
 
 tmoTrigger_lib = shared_library('tmoTrigger',
   [
-    'TriggerPrimitiveExample_cam.cc',
-    'TriggerPrimitiveExample_xpphsd.cc',
-    'TriggerPrimitiveExample_bld.cc',
-    'TriggerExample.cc',
+    'src/TriggerPrimitiveExample_cam.cc',
+    'src/TriggerPrimitiveExample_xpphsd.cc',
+    'src/TriggerPrimitiveExample_bld.cc',
+    'src/TriggerExample.cc',
   ],
   include_directories: [trigger_inc_dir],
   dependencies: [
@@ -49,8 +49,8 @@ tmoTrigger_lib = shared_library('tmoTrigger',
 
 tmoTeb_lib = shared_library('tmoTeb',
   [
-    'tmoTebPrimitive.cc',
-    'tmoTeb.cc',
+    'src/tmoTebPrimitive.cc',
+    'src/tmoTeb.cc',
   ],
   include_directories: [trigger_inc_dir],
   dependencies: [
@@ -73,9 +73,9 @@ if cuda_compiler.found()
   cuda_inc = include_directories('../..')
   tmoTeb_gpu_lib = shared_library('tmoTeb_gpu',
     [
-      'tmoTebPrimitive.cc',
-      'tmoTebPrimitive_gpu.cu',
-      'tmoTeb.cc'
+      'src/tmoTebPrimitive.cc',
+      'src/tmoTebPrimitive_gpu.cu',
+      'src/tmoTeb.cc'
     ],
     include_directories: [trigger_inc_dir],
     dependencies: [
@@ -92,9 +92,9 @@ endif
 
 tstTebPy_lib = shared_library('tstTebPy',
   [
-    'timingTebPrimitive.cc',
-    'tmoTebPrimitive.cc',
-    'tebPyTrigger.cc',
+    'src/timingTebPrimitive.cc',
+    'src/tmoTebPrimitive.cc',
+    'src/tebPyTrigger.cc',
   ],
   include_directories: [trigger_inc_dir],
   dependencies: [
@@ -110,8 +110,8 @@ tstTebPy_lib = shared_library('tstTebPy',
 
 calibTrigger_lib = shared_library('calibTrigger',
   [
-    'calibTriggerDrp.cc',
-    'calibTriggerTeb.cc',
+    'src/calibTriggerDrp.cc',
+    'src/calibTriggerTeb.cc',
   ],
   include_directories: [trigger_inc_dir],
   dependencies: [

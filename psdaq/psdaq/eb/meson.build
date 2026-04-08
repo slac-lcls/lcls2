@@ -9,11 +9,11 @@ service_dep = declare_dependency(
 
 utilities_lib = shared_library('utilities',
   [
-    'utilities.cc',
-    'Endpoint.cc',
-    'EbLfLink.cc',
-    'EbLfServer.cc',
-    'EbLfClient.cc',
+    'src/utilities.cc',
+    'src/Endpoint.cc',
+    'src/EbLfLink.cc',
+    'src/EbLfServer.cc',
+    'src/EbLfClient.cc',
   ],
   include_directories: [eb_incdir],
   dependencies: [
@@ -28,11 +28,11 @@ utilities_lib = shared_library('utilities',
 
 contributor_lib = shared_library('contributor',
   [
-    'EbCtrbInBase.cc',
-    'TebContributor.cc',
-    'MebContributor.cc',
-    'BatchManager.cc',
-    'Batch.cc',
+    'src/EbCtrbInBase.cc',
+    'src/TebContributor.cc',
+    'src/MebContributor.cc',
+    'src/BatchManager.cc',
+    'src/Batch.cc',
   ],
   dependencies: [
     libfabric_dep,
@@ -48,12 +48,12 @@ contributor_lib = shared_library('contributor',
 
 eventBuilder_lib = shared_library('eventBuilder',
   [
-    'EbAppBase.cc',
-    'EventBuilder.cc',
-    'EbEpoch.cc',
-    'EbEvent.cc',
-    'BatchManager.cc',
-    'Batch.cc',
+    'src/EbAppBase.cc',
+    'src/EventBuilder.cc',
+    'src/EbEpoch.cc',
+    'src/EbEvent.cc',
+    'src/BatchManager.cc',
+    'src/Batch.cc',
   ],
   dependencies: [
     xtcdata_dep,
@@ -74,7 +74,7 @@ eventBuilder_lib = shared_library('eventBuilder',
 )
 
 tstEbLfLink_exe = executable('tstEbLfLink',
-  'tstEbLfLink.cc',
+  'src/tstEbLfLink.cc',
   include_directories: [
     eb_incdir,
     include_directories('../..'),
@@ -89,10 +89,11 @@ tstEbLfLink_exe = executable('tstEbLfLink',
     collection_lib,
   ],
   #install: true,
+  install_rpath: libdir_install_rpath,
 )
 
 teb_exe = executable('teb',
-  'teb.cc',
+  'src/teb.cc',
   include_directories: [
     eb_incdir,
     include_directories('../..'),
@@ -115,10 +116,11 @@ teb_exe = executable('teb',
     exporter_lib,
   ],
   install: true,
+  install_rpath: libdir_install_rpath,
 )
 
 tstClocks_exe = executable('tstClocks',
-  'tstClocks.cc',
+  'src/tstClocks.cc',
   include_directories: [
     eb_incdir,
     include_directories('../..'),
@@ -127,6 +129,7 @@ tstClocks_exe = executable('tstClocks',
     #rt_dep,
   ],
   #install: true,
+  install_rpath: libdir_install_rpath,
 )
 
 #install_headers(
