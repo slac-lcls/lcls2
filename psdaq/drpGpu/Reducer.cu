@@ -463,9 +463,7 @@ void Reducer::_worker(unsigned worker)
       //chkError(cudaMemcpyAsync((void*)head, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
       *head = index;
     }
-    printf("*** Reducer::_worker: worker %u index %u\n", instance, index);
-
-    printf("*** Reducer worker: algo->reduce\n");
+    printf("*** Reducer::_worker: worker %u index %u\n", worker, index);
 
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
