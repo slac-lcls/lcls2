@@ -199,6 +199,7 @@ static std::map<std::string,unsigned> _bmmonMcaddr
     { "MecUsrDio",     0xefff185d },
     { "HxxDg1BmMon",   0xefff185f },
     { "Em3l0BmMon",    0xefff1860 },
+    { "Sp1L2Wv8",      0xefff1861 },
 };
 
 

@@ -6,6 +6,14 @@
 Usage::
     from psana.detector.UtilsJungfrauCalib import *
 
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau
+
+phase 1 ONLY: USE --nrecs == --nrecs1, e.g.:
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 50 --nrecs1 50
+
+phase 2 ONLY: USE --nrecs1 0, e.g.:
+jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --stepnum 0 --nrecs 100 --nrecs1 0
+
 This software was developed for the SIT project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
@@ -19,7 +27,7 @@ logger = logging.getLogger(__name__)
 from time import time
 import os
 import sys
-import psana
+from psana import DataSource
 import numpy as np
 from time import time #, localtime, strftime
 import json
@@ -28,25 +36,21 @@ import psana.detector.dir_root as dr
 import psana.detector.UtilsCalib as uc
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge
 import psana.detector.utils_psana as ups # seconds, data_source_kwargs#
-from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile # import divide_protected
+from psana.detector.NDArrUtils import info_ndarr, save_ndarray_in_textfile, load_txt # import divide_protected
 import psana.detector.Utils as uts # info_dict
 import psana.pscalib.calib.CalibConstants as cc
-from psana.detector.UtilsCalibRepo import save_constants_in_repository
+#from psana.detector.UtilsCalibRepo import save_constants_in_repository
 from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs, add_data_and_doc_to_detdb_extended
 
 SCRNAME = os.path.basename(sys.argv[0])
 MAX_DETNAME_SIZE = 20
 NUMBER_OF_GAIN_MODES = 3
 
-CTYPES_DARK = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
-CTYPES_DEPL = CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
+CTYPES_DARK = uc.CTYPES_DARK #('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
+CTYPES_DEPL = uc.CTYPES_DEPL #CTYPES_DARK + ('pixel_gain', 'pixel_offset', 'status_extra')
 
 dic_calib_char_to_name = cc.dic_calib_char_to_name # {'p':'pedestals', 'r':'pixel_rms', 's':'pixel_status',...}
 # "p"-pedestals, "r"-rms, "s"-status, "g" or "c" - gain or charge-injection gain,
-
-#DIC_GAIN_MODE = {'DYNAMIC':         0,
-#                 'FORCE_SWITCH_G1': 1,
-#                 'FORCE_SWITCH_G2': 2}
 
 DIC_GAIN_MODE = {'g0': 0,
                  'g1': 1,
@@ -57,10 +61,8 @@ DIC_IND_TO_GAIN_MODE = {v:k for k,v in DIC_GAIN_MODE.items()} # or uts.inverse_d
 M14 = 0x3fff # 16383, 14-bit mask
 #FNAME_PANEL_ID_ALIASES = '%s/.aliases_jungfrau.txt' % dr.DIR_REPO_JUNGFRAU
 
-
 #print('\n  DIR_ROOT', dr.DIR_ROOT,\
 #      '\n  DIR_REPO', dr.DIR_REPO)
-
 
 dic_ctype_fmt = uc.dic_ctype_fmt
 
@@ -76,7 +78,7 @@ class DarkProcJungfrau(uc.DarkProc):
 
     def init_proc(self):
         uc.DarkProc.init_proc(self)
-        shape_raw = self.arr_med.shape
+        shape_raw = self.gate_lo.shape
         self.bad_switch = np.zeros(shape_raw, dtype=np.uint8)
 
 
@@ -107,10 +109,10 @@ class DarkProcJungfrau(uc.DarkProc):
         uc.DarkProc.summary(self)
         logger.info('\n  status 64: %8d pixel with bad gain mode switch' % self.bad_switch.sum())
         self.arr_sta += self.bad_switch*64 # add bad gain mode switch to pixel_status
-        self.arr_msk = np.select((self.arr_sta>0,), (self.arr0,), 1) #re-evaluate mask
+        #self.arr_msk = np.select((self.arr_sta>0,), (self.arr0,), 1) #re-evaluate mask
         self.block = None
         self.irec = -1
-        logger.info('summary consumes %.3f sec' % (time()-t0_sec))
+        logger.info('SUMMARY consumes %.3f sec' % (time()-t0_sec))
 
 
     def info_results(self, cmt='DarkProc results'):
@@ -149,30 +151,37 @@ def print_uniqueid(uniqueid, segind):
 
 
 def get_jungfrau_gain_mode_object(odet):
-    """Returns gain mode object, usage: gmo=..., gmo.name, gmo.names.items(), gm.values.items(), etc.
-    """
+    """Returns gain mode object, usage: gmo=..., gmo.name, gmo.names.items(), gm.values.items(), etc."""
     dcfg = odet.raw._config_object()
 
 
 def open_DataSource(**kwargs):
-    #ds = psana.DataSource(exp='mfxdaq23', run=7, dir='/sdf/data/lcls/drpsrcf/ffb/MFX/mfxdaq23/xtc')
+    t0_sec = time()
     dskwargs = ups.data_source_kwargs(**kwargs)
+    #dskwargs['max_events'] = kwargs.get('events', 3000)
+    permit_info  = kwargs.get('info_xtc_files', True)
+    batch_size   = kwargs.get('batch_size', None)
+    smd_callback = kwargs.get('smd_callback', None)
+    if batch_size is not None:
+        dskwargs['batch_size'] = batch_size
+    if smd_callback is not None:
+        dskwargs['smd_callback'] = smd_callback
     logger.info('DataSource dskwargs: %s' % (dskwargs))
-    try: ds = psana.DataSource(**dskwargs)
+    #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=1)
+    try: ds = DataSource(**dskwargs)
     except Exception as err:
         logger.error('DataSource(**dskwargs) does not work for **dskwargs: %s\n    %s' % (dskwargs, err))
         sys.exit('EXIT - requested DataSource does not exist or is not accessible.')
-
-    logger.debug('ds.runnum_list = %s' % str(ds.runnum_list))
     logger.debug('ds.detectors = %s' % str(ds.detectors))
     xtc_files = getattr(ds, 'xtc_files', None)
-    logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
+    if permit_info:
+      logger.info('ds.xtc_files:\n  %s' % ('None' if xtc_files is None else '\n  '.join(ds.xtc_files)))
+    logger.info('OPEN DataSource TIME: %.3f sec' % (time()-t0_sec))
     return ds, dskwargs
 
 
 def jungfrau_dark_proc(parser):
-    """jungfrau dark data processing for single (of 3) gain mode.
-    """
+    """jungfrau dark data processing for single (of 3) gain mode."""
     t0_sec = time()
     tdt = t0_sec
 
@@ -187,9 +196,7 @@ def jungfrau_dark_proc(parser):
     events  = args.events
     stepnum = args.stepnum
     stepmax = args.stepmax
-    evcode  = args.evcode
     segind  = args.segind
-    igmode  = args.igmode
     dirrepo = args.dirrepo
 
     dirmode  = kwargs.get('dirmode',  0o2775)
@@ -202,6 +209,7 @@ def jungfrau_dark_proc(parser):
     #    ecm = EventCodeManager(evcode, verbos=0)
     #    logger.info('requested event-code list %s' % str(ecm.event_code_list()))
 
+    logger.info('sys.argv: %s' % str(sys.argv))
     s = 'DIC_GAIN_MODE {<name> : <number>}'
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
     logger.info(s)
@@ -218,6 +226,7 @@ def jungfrau_dark_proc(parser):
     dettype = None
     step_docstring = None
     terminate_runs = False
+    status = 0
 
     for irun, orun in enumerate(ds.runs()):
         logger.info('\n%s Run %d %s' % (20*'=', orun.runnum, 20*'='))
@@ -230,10 +239,10 @@ def jungfrau_dark_proc(parser):
             dettype = odet.raw._dettype
             repoman.set_dettype(dettype)
             uniqueid = odet.raw._uniqueid
-            logger.info('det.raw._uniqueid.split: %s' % str('\n'.join(uniqueid.split('_'))))
+            logger.debug('det.raw._uniqueid.split: %s' % str('\n'.join(uniqueid.split('_'))))
 
-        logger.info('created %s detector object of type %s' % (detname, dettype))
-        logger.info(ups.info_detector(odet, cmt='detector info:\n      ', sep='\n      '))
+        logger.info('created %s detector object of type %s' % (detname, dettype)\
+                   + ups.info_detector(odet, cmt='detector info:\n      ', sep='\n      '))
 
         try:
           step_docstring = orun.Detector('step_docstring')
@@ -243,41 +252,37 @@ def jungfrau_dark_proc(parser):
         terminate_steps = False
         nevrun = 0
         nnones = 0
+
         for istep, step in enumerate(orun.steps()):
-            nsteptot += 1
-
-            metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
-            logger.info((100*'=') + '\n step_docstring ' +
-                  'is None' if step_docstring is None else\
-                  str(metadic))
-
-            if stepmax is not None and nsteptot>stepmax:
-                logger.info('==== Step:%02d loop is terminated, --stepmax=%d' % (nsteptot, stepmax))
-                terminate_runs = True
-                break
+            logger.info('==== begin step %d' % istep)
 
             if stepnum is not None:
-                # process calibcycle stepnum ONLY if stepnum is specified
                 if istep < stepnum:
-                    logger.info('Skip step %d < --stepnum = %d' % (istep, stepnum))
+                    logger.info('skip step %d < --stepnum = %d   -> continue step loop' % (istep, stepnum))
                     continue
+
                 elif istep > stepnum:
-                    logger.info('Break further processing due to step %d > --stepnum = %d' % (istep, stepnum))
+                    logger.info('Break further processing due to step %d -> --stepnum = %d   > break step loop' % (istep, stepnum))
                     terminate_runs = True
                     break
 
-            ############################### TBD
+            nsteptot += 1
 
-            igm = igmode if igmode is not None else\
-                  metadic['gainMode'] if step_docstring is not None\
+            if stepmax is not None and nsteptot>stepmax:
+                logger.info('==== step:%02d loop is terminated --stepnum=%d --stepmax=%d' % (nsteptot, stepnum, stepmax))
+                terminate_runs = True
+                break
+
+            metadic = json.loads(step_docstring(step)) if step_docstring is not None else {}
+            s = '%s step: %d %s\n    step_docstring %s' % (30*'=', istep, 30*'=',\
+                  ('is None' if step_docstring is None else str(metadic)))
+            logger.info(s)
+
+            igm = metadic.get('gainMode', istep) if step_docstring is not None\
                   else istep
-            #gmo = get_jungfrau_gain_mode_object(odet)
-            #igm = DIC_GAIN_MODE[gmo.name]
-            #igm = igmode if igmode is not None else istep
             gmname = DIC_IND_TO_GAIN_MODE.get(igm, None)
             kwargs['gainmode'] = gmname
             logger.info('gain mode: %s igm: %d' % (gmname, igm))
-            ###############################
 
             if dpo is None:
                kwargs['dettype'] = dettype
@@ -288,6 +293,8 @@ def jungfrau_dark_proc(parser):
                dpo.detid = uniqueid
                dpo.gmindex = igm
                dpo.gmname = gmname
+               dpo.odet = odet
+               dpo.orun = orun
 
                igm0 = igm
 
@@ -316,12 +323,12 @@ def jungfrau_dark_proc(parser):
                 #    logger.info('break at ievt %d == --evstep=%d' % (ievt, evstep))
                 #    break
 
-                if nevtot>=events:
-                    print()
-                    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
-                    terminate_steps = True
-                    terminate_runs = True
-                    break
+                #if nevtot>=events:
+                #    print()
+                #    logger.info('break at nevtot %d == --events=%d' % (nevtot, events))
+                #    terminate_steps = True
+                #    terminate_runs = True
+                #    break
 
                 #if ecm:
                 #  if not ecm.select(evt):
@@ -354,7 +361,12 @@ def jungfrau_dark_proc(parser):
                 if dpo is not None:
                     #print(info_ndarr(raw,'XXX raw'))
                     status = dpo.event(raw,ievt)
-                    if status == 2:
+                    if status == 1:
+                        terminate_runs = True
+                        if stepnum is not None:
+                            terminate_steps = True
+                        break # evt loop
+                    elif status == 2:
                         logger.info('requested statistics --nrecs=%d is collected - terminate loops' % args.nrecs)
                         #if ecm:
                         #    terminate_runs = True
@@ -363,18 +375,22 @@ def jungfrau_dark_proc(parser):
 
                 # End of event-loop
 
-            print()
+            logger.info('end of the event loop for step %d' % istep)
+
             ss = 'run[%d] %d  end of step %d  events total/run/step/selected: %4d/%4d/%4d/%4d'%\
                  (irun, orun.runnum, istep, nevtot, nevrun, ievt+1, nevsel)
             logger.info(ss)
-
 
             #if ecm:
             #    logger.info('continue to accumulate statistics, due to --evcode=%s' % evcode)
             #else:
             #    logger.info('reset statistics for next step')
 
-            save_results(dpo, orun, odet, **kwargs)
+            if args.nrecs == args.nrecs1 and status==1:
+                uc.save_block_results(dpo, orun, odet, **kwargs)
+            else:
+                dpo.summary()
+                uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
             if terminate_steps:
@@ -391,7 +407,8 @@ def jungfrau_dark_proc(parser):
         #    break
 
         if dpo is not None:
-            save_results(dpo, orun, odet, **kwargs)
+            dpo.summary()
+            uc.save_results_in_repository(dpo, orun, odet, **kwargs)
             dpo=None
 
         if terminate_runs:
@@ -403,32 +420,6 @@ def jungfrau_dark_proc(parser):
     logger.info('number of runs processed %d' % (irun+1))
     logger.info('%s\ntotal consumed time = %.3f sec.' % (40*'_', time()-t0_sec))
     repoman.logfile_save()
-
-
-def save_results(dpo, orun, odet, **kwa):
-    logger.info('begin save_results')
-    t0_sec = time()
-    if dpo is None: return
-    dpo.summary()
-    dpo.show_plot_results()
-
-    ctypes = CTYPES_DARK # ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min', 'pixel_status')
-    arr_av1, arr_rms, arr_sta = dpo.constants_av1_rms_sta()
-    arr_max, arr_min = dpo.constants_max_min()
-    consts = arr_av1, arr_rms, arr_max, arr_min, arr_sta
-    logger.info('evaluated constants: \n  %s\n  %s\n  %s\n  %s\n  %s' % (
-                info_ndarr(arr_av1, 'arr_av1', first=0, last=5),\
-                info_ndarr(arr_rms, 'arr_rms', first=0, last=5),\
-                info_ndarr(arr_max, 'arr_max', first=0, last=5),\
-                info_ndarr(arr_min, 'arr_min', first=0, last=5),\
-                info_ndarr(arr_sta, 'arr_sta', first=0, last=5)))
-    dic_consts = dict(zip(ctypes, consts))
-
-    kwa.setdefault('max_detname_size', MAX_DETNAME_SIZE)
-    kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
-    save_constants_in_repository(dic_consts, **kwa_depl)
-    del(dpo)
-    logger.info('save_results time %.3f sec' % (time()-t0_sec))
 
 
 def fname_merged_gmodes(dir_ctype, fnprefix, ctype):
@@ -568,7 +559,7 @@ def jungfrau_deploy_constants(parser):
     shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
     logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
 
-    ctypes = CTYPES_DEPL
+    #ctypes = CTYPES_DEPL
     ctypes = [dic_calib_char_to_name[c] for c in ctdepl]
 
     logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
@@ -628,10 +619,12 @@ def jungfrau_deploy_constants(parser):
         dmerge = repoman.makedir_merge()
         fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
         logger.debug('fmerge_prefix: %s' % fmerge_prefix)
-        nda = uc.merge_panels(lst_cons)
+        nda = uc.merge_panels(lst_cons, dtype=vtype)
         fmerge = '%s-%s.txt' % (fmerge_prefix, ctype)
         logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
                     + '\n    save in %s\n' % fmerge)
+
+        #vtype ???
         save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
 
         if True:
@@ -646,6 +639,7 @@ def jungfrau_deploy_constants(parser):
           kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
           kwa_depl['shortname'] = shortname
           kwa_depl['dbsuffix'] = dbsuffix
+          kwa_depl['deploy'] = deploy
           kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
           kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
 
@@ -654,27 +648,196 @@ def jungfrau_deploy_constants(parser):
                 'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
           logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
 
-        if deploy:
-          expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
+        expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
 
-          if dbsuffix:
-              resp = add_data_and_doc_to_detdb_extended(nda, expname, longname, **kwa_depl)
-          else:
-              # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-              resp = add_data_and_two_docs(nda, expname, longname, **kwa_depl)
-          if resp:
-              #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
-              if dbsuffix:
-                  fmt = (None, resp[0], None, resp[1])
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
-              else:
-                  logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
-          else:
-              logger.error('constants are not deployed')
-              exit()
-        else:
-          logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **kwa_depl)
 
     repoman.logfile_save()
+
+
+def save_metadata_in_json_file(fname, **kwa):
+    with open(fname, 'w') as jfile:
+       json.dump(kwa, jfile, indent=4)
+    logger.info('metadata saved in %s' % fname)
+
+
+def load_metadata_from_json_file(fname):
+    try:
+        with open(fname, 'r') as file:
+            d = json.load(file)
+        return d
+    except FileNotFoundError:
+        logger.info(f"Error: The file '{fname}' was not found.")
+        return None
+    except json.JSONDecodeError:
+        print(f"Error: Failed to decode JSON from the file '{fname}'. Check file format.")
+        return None
+
+
+def jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs):
+    """ISSUE: this deployment does not work if requested from mpirun runk, due to issue with authorisation.
+       FIX: - in this script save merged data and metadata in repo-files.
+            - run script jungfrau_deploy_from_files(**kwargs)
+    """
+    t0_sec_depl = time()
+
+    fac_mode  = kwargs.get('fac_mode', 0o664)
+    group     = kwargs.get('group', 'ps-users')
+    shape_seg = kwargs.get('shape_seg', (512,1024)) # pixel_gain:  shape:(3, 1, 512, 1024)  size:1572864  dtype:float32
+    nsegstot  = kwargs.get('nsegstot', None)
+    deploy    = kwargs.get('deploy', False)
+    detname   = kwargs.get('detname', None)
+    ctdepl    = kwargs.get('ctdepl', 'prsnx')
+    dbsuffix  = kwargs.get('dbsuffix', '')
+    max_detname_size = kwargs.setdefault('max_detname_size', MAX_DETNAME_SIZE)
+
+    DIC_CTYPE_FMT = dic_ctype_fmt(**kwargs)
+
+    repoman  = kwargs.get('repoman', None)
+    dskwargs = kwargs.get('dskwargs', None)
+    #ds       = kwargs.get('ds', None)
+    #orun     = kwargs.get('orun', None)
+    #odet     = kwargs.get('odet', None)
+    #odet = orun.Detector(detname, **kwargs)
+
+    trun_sec = ups.seconds(orun.timestamp) # 1607569818.532117 sec
+    ts_run, ts_now = ups.tstamps_run_and_now(trun_sec) #, fmt=uc.TSTAMP_FORMAT)
+
+    dettype = odet.raw._dettype
+    uniqueid = odet.raw._uniqueid
+    seginds = odet.raw._sorted_segment_inds
+    segids = uniqueid.split('_')[1:]
+    logger.debug('det.raw._uniqueid.split:\n%s' % ('\n'.join(uniqueid.split('_')))\
+                +'det.raw._sorted_segment_inds: %s' % str(seginds))
+
+    longname = uniqueid
+    shortname = uc.detector_name_short(longname, maxsize=max_detname_size)
+    logger.debug('detector names:\n  long name: %s\n  short name: %s' % (longname, shortname))
+
+    ctypes = [dic_calib_char_to_name[c] for c in ctdepl] # CTYPES_DARK
+
+    logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
+
+    dcc = merger.dict_ctype_constants()
+
+    for ctype in ctypes:
+        fmt = DIC_CTYPE_FMT[ctype]
+        octype = ctype
+        logger.info('\n%s deploy constants for calib type %s %s' % (70*'_', ctype, 70*'_'))
+        vtype = cc.dic_calib_name_to_dtype[ctype]
+
+        nda = dcc[ctype].astype(vtype)
+        logger.info(info_ndarr(nda, '>>>> %s' % ctype))
+
+        dmerge = repoman.makedir_merge()
+        fmerge_prefix = fname_prefix_merge(dmerge, shortname, ts_run, orun.expt, orun.runnum)
+        logger.debug('fmerge_prefix: %s' % fmerge_prefix)
+        fname = '%s-%s' % (fmerge_prefix, ctype)
+        fmerge = '%s.txt' % fname
+        t0_sec_save = time()
+        save_ndarray_in_textfile(nda, fmerge, fac_mode, fmt, umask=0o0, group=group)
+
+        logger.info(info_ndarr(nda, '%s\n    merged detector constants of %s' % (10*'-', ctype))\
+                    + '\n    saved in %s\n save formatted time: %.3f sec\n ' % (fmerge, time()-t0_sec_save))
+        kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwargs)
+        kwa_depl['dskwargs'].pop('smd_callback',None) # remove
+        kwa_depl['smd_callback'] = 'removed'
+        kwa_depl['repoman'] = repoman
+        kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
+        kwa_depl['run_orig'] = orun.runnum
+        kwa_depl['iofname'] = fmerge
+        kwa_depl['ctype'] = ctype
+        kwa_depl['dtype'] = 'ndarray'
+        kwa_depl['extpars'] = {'content':'extended parameters dict->json->str',}
+        kwa_depl['shortname'] = shortname
+        kwa_depl['dbsuffix'] = dbsuffix
+        kwa_depl['deploy'] = deploy
+        kwa_depl.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+        kwa_depl.pop('repoman',None) # remove repoman parameters from kwargs
+
+        d = ups.dict_filter(kwa_depl, list_keys=('dskwargs', 'dirrepo','dettype', 'tsshort', \
+              'run', 'run_orig', 'run_beg', 'run_end',\
+              'longname', 'shortname', 'segment_ids', 'segment_inds', 'shape_as_daq', 'nsegstot', 'version'))
+        logger.info('DEPLOY partial metadata: %s' % uts.info_dict(d, fmt='%12s: %s', sep='\n  '))
+        logger.debug('TOTAL kwa_depl:\n%s' % str(kwa_depl))
+
+        save_metadata_in_json_file('%s.json' % fname, **kwa_depl)
+        expname = orun.expt  #'test' # FOR TEST ONLY > cdb_test
+        nda = load_txt(fmerge) if deploy else None
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **kwa_depl)
+
+    logger.info('DIRECT DEPLOYMENT OF CONSTANTS TOTAL TIME: %.3f sec' % (time()-t0_sec_depl))
+
+
+
+def deploy_constants_for_data_and_metadata(nda, expname, _longname, **kwa_depl):
+    deploy = kwa_depl.get('deploy', False)
+    dbsuffix = kwa_depl.get('dbsuffix', '')
+    #longname = kwa_depl.get('longname', None)
+
+    if deploy:
+        if dbsuffix:
+            resp = add_data_and_doc_to_detdb_extended(nda, expname, _longname, **kwa_depl)
+        else:
+            # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            resp = add_data_and_two_docs(nda, expname, _longname, **kwa_depl)
+        if resp:
+            if dbsuffix:
+                fmt = (None, resp[0], None, resp[1])
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % fmt)
+            else:
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+        else:
+            logger.error('constants are not deployed')
+    else:
+        logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+
+def jungfrau_deploy_constants_from_files(parser, dettype='jungfrau'):
+    """command WITH -F:
+       jungfrau_deploy_constants -k exp=mfx100848724,run=49 -o ./work1 -F [-D]
+    """
+    import psana.detector.utils_psana as up
+    import psana.pyalgos.generic.Utils as gu
+    args = parser.parse_args() # namespae of parameters
+    kwargs = vars(args) # dict of parameters
+    str_dskwargs = kwargs.get('dskwargs', None)
+    repoman = init_repoman_and_logger(**kwargs)
+    repoman.set_dettype(dettype)
+    dmerge = repoman.makedir_merge()
+    logger.info('uses directory for merging: %s' % dmerge)
+    dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=None)
+    #logger.info('DataSource kwargs: %s' % str(dskwargs))
+    ptrn = '-%s-r%04d-' % (dskwargs['exp'], dskwargs['run']) # ex.: -mfx100848724-r0049-
+    logger.debug('pattern: %s' % ptrn)
+    expname = dskwargs.get('exp', None)
+    fnames = uts.get_list_of_files_in_dir_for_pattern(dmerge, pattern=ptrn)
+    fnames = [fn for fn in fnames if '.json' in fn]
+    logger.info('fnames: \n  %s' % '\n  '.join(fnames))
+
+    for fn in fnames:
+        t0_sec_metad = time()
+        metad = load_metadata_from_json_file(fn)
+        # re-define metadata using optional parameters
+        metad['deploy']   = args.deploy
+        metad['ctdepl']   = args.ctdepl
+        metad['logmode']  = args.logmode
+        metad['high']     = args.high
+        metad['medium']   = args.medium
+        metad['low']      = args.low
+        metad['tstamp']   = args.tstamp
+        metad['run_beg']  = args.run_beg
+        metad['run_end']  = args.run_end
+        metad['comment']  = args.comment
+        metad['dbsuffix'] = args.dbsuffix
+        logger.info('\n fname: %s\n loading time: %.6f sec\n metadata: %s' % (fn, time()-t0_sec_metad, metad))
+        longname = metad.get('longname', None)
+        ctype = metad.get('ctype', None)
+        fndata = fn.replace('.json', '.txt')
+        logger.info('ctype:%s fndata: %s' % (ctype, fndata))
+        t0_sec_data = time()
+        nda = load_txt(fndata)
+        logger.info(info_ndarr(nda,'ctype: %s loading time: %.3f sec' % (ctype, time()-t0_sec_data)))
+        deploy_constants_for_data_and_metadata(nda, expname, longname, **metad)
 
 # EOF

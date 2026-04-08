@@ -692,13 +692,13 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
 
         if (transitionId != TransitionId::L1Accept) {
             if (transitionId != TransitionId::SlowUpdate) {
-                logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
+                logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
                               TransitionId::name(transitionId),
                               timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                               timingHeader->pulseId());
             }
             else {
-                logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
+                logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
                                TransitionId::name(transitionId),
                                timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                                timingHeader->pulseId());
@@ -1079,12 +1079,12 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
             if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
 
-            logging::info("TebRcvr    saw %s @ %u.%09u (%014lx)",
+            logging::info("TebRcvr    saw %12s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }
         else {
-            logging::debug("TebRcvr    saw %s @ %u.%09u (%014lx)",
+            logging::debug("TebRcvr    saw %12s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
                            dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
         }

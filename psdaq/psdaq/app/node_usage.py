@@ -178,7 +178,10 @@ class ResourceAnalyzer:
 
         # Collect all processes and transformations from all parsers
         for parser in parsers:
-            self.processes.extend(parser.get_processes())
+            source = parser.cnf_file.name
+            for proc in parser.get_processes():
+                proc['_source'] = source
+                self.processes.append(proc)
             self.renames.update(parser.renames)
             self.extended.update(parser.extended)
 
@@ -383,6 +386,11 @@ class OutputFormatter:
             if host in cores_usage and cores_usage[host] > 0:
                 cores_info = f"  Cores: {cores_usage[host]} allocated"
                 lines.append(f"│ {''.ljust(19)}│ {''.ljust(6)}│ {cores_info[:49].ljust(49)}│")
+
+            # Add source file(s) info
+            sources = sorted(set(p.get('_source', '?') for p in procs))
+            source_info = f"  Source: {', '.join(sources)}"
+            lines.append(f"│ {''.ljust(19)}│ {''.ljust(6)}│ {source_info[:49].ljust(49)}│")
 
         lines.append("└" + "─" * 20 + "┴" + "─" * 7 + "┴" + "─" * 50 + "┘")
 

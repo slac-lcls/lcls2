@@ -7,7 +7,8 @@ from psana.smdreader import SmdReader
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.tools import get_smd_n_events
 
-from .run import RunSmallData
+from .callback_batch import CallbackBatchBuilder
+from .run import CallbackRunState, RunSmallData
 
 
 class BatchIterator(object):
@@ -16,7 +17,7 @@ class BatchIterator(object):
     SmdReaderManager returns this object when a chunk is read.
     """
 
-    def __init__(self, views, configs, dsparms):
+    def __init__(self, views, configs, dsparms, callback_run_state=None):
         self.dsparms = dsparms
 
         # Requires all views
@@ -36,7 +37,19 @@ class BatchIterator(object):
                                    intg_stream_id=dsparms.intg_stream_id,
                                    batch_size=dsparms.batch_size,
                                    use_proxy_events=use_proxy_events)
-            self.run_smd = RunSmallData(self.eb, configs, dsparms)
+            self.run_smd = RunSmallData(
+                self.eb,
+                configs,
+                dsparms,
+                callback_run_state=callback_run_state,
+            )
+            self.callback_batch_builder = CallbackBatchBuilder(
+                self.eb,
+                self.run_smd,
+                dsparms.smd_callback,
+                batch_size=dsparms.batch_size,
+                respect_batch_size=True,
+            )
 
     def __iter__(self):
         return self
@@ -57,21 +70,10 @@ class BatchIterator(object):
             if self.eb.nevents == 0:
                 raise StopIteration
         else:
-            while self.run_smd.proxy_events == [] and self.eb.has_more():
-                for evt in self.dsparms.smd_callback(self.run_smd):
-                    self.run_smd.proxy_events.append(evt._proxy_evt)
-
-            if not self.run_smd.proxy_events:
+            callback_batch = self.callback_batch_builder.next_batch(run_serial=True)
+            if callback_batch is None:
                 raise StopIteration
-
-            # Generate a bytearray representation of all the proxy events.
-            # Note that setting run_serial=True allow EventBuilder to combine
-            # L1Accept and transitions into one batch (key=0). Here, step_dict
-            # is always an empty bytearray.
-            batch_dict, step_dict = self.eb.gen_bytearray_batch(
-                self.run_smd.proxy_events, run_serial=True
-            )
-            self.run_smd.proxy_events = []
+            batch_dict, step_dict = callback_batch
 
         return batch_dict, step_dict
 
@@ -81,6 +83,7 @@ class SmdReaderManager(object):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
         self.configs = configs
+        self.callback_run_state = CallbackRunState() if dsparms.smd_callback else None
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
         assert self.n_files > 0
@@ -382,7 +385,12 @@ class SmdReaderManager(object):
         mmrv_bufs = [
             self.smdr.show(i) for i in range(self.n_files)
         ]
-        batch_iter = BatchIterator(mmrv_bufs, self.configs, self.dsparms)
+        batch_iter = BatchIterator(
+            mmrv_bufs,
+            self.configs,
+            self.dsparms,
+            callback_run_state=self.callback_run_state,
+        )
         self.got_events = self.smdr.view_size
         return batch_iter
 

@@ -1,4 +1,5 @@
 setup_env_local.sh
+.vscode/
 build
 install
 *.pyc

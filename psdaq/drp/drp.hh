@@ -87,6 +87,9 @@ public:
         uint64_t offset = index*m_bufferSize;
         return &m_buffer[offset];
     }
+    inline unsigned index(void* buffer) const {
+      return (static_cast<uint8_t*>(buffer) - m_buffer) / m_bufferSize;
+    }
     size_t size() const {return m_size;}
     uint8_t* buffer() const { return m_buffer; }
     size_t bufferSize() const {return m_bufferSize;} // L1Accepts

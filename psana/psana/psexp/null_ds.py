@@ -18,6 +18,9 @@ class NullRun(object):
     def steps(self):
         return iter([])
 
+    def close_shared_memory(self):
+        return
+
 
 class NullDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
@@ -44,3 +47,6 @@ class NullDataSource(DataSourceBase):
 
     def is_srv(self):
         return True
+
+    def is_bd(self):
+        return False

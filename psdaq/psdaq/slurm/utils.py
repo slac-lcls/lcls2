@@ -13,6 +13,9 @@ SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
+HUTCH_DEFAULT_LOG_SUBDIRS = {
+    "xpp": os.path.join("daq", "logs"),
+}
 
 logger = logging.getLogger(__name__)
 
@@ -80,13 +83,15 @@ class SbatchManager:
     ):
         self.sb_script = ""
         now = datetime.now()
+        self.user = os.environ["USER"]
+        self.hutch = self.user[: self.user.find("opr")]
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        if output is None:
-            self.output_path = os.path.join(
-                os.environ.get("HOME", ""), now.strftime("%Y"), now.strftime("%m")
-            )
-        else:
-            self.output_path = os.path.join( output, now.strftime("%Y"), now.strftime("%m"))
+        output_root = output
+        if output_root is None:
+            output_root = self.get_default_output_root()
+        self.output_path = os.path.join(
+            output_root, now.strftime("%Y"), now.strftime("%m")
+        )
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
         self.configfilename = configfilename
@@ -95,9 +100,14 @@ class SbatchManager:
         self.station = station
         self.as_step = as_step
         self.verbose = verbose
-        self.user = os.environ["USER"]
-        self.hutch = self.user[: self.user.find("opr")]
         self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
+
+    def get_default_output_root(self):
+        home_dir = os.environ.get("HOME", "")
+        hutch_log_subdir = HUTCH_DEFAULT_LOG_SUBDIRS.get(self.hutch)
+        if hutch_log_subdir is not None:
+            return os.path.join(home_dir, hutch_log_subdir)
+        return home_dir
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
@@ -263,12 +273,41 @@ class SbatchManager:
 
         env_opt = "--export="
 
+        env_group = str(details.get("env_group", "daq")).lower()
+        if env_group not in ("daq", "ami"):
+            logger.warning("Unknown env_group '%s' for %s. Falling back to 'daq'.", env_group, job_name)
+            env_group = "daq"
+        env_prefix = env_group.upper()
+
+        selected_testreldir = os.environ.get(f"{env_prefix}_TESTRELDIR", "")
+        if not selected_testreldir:
+            selected_testreldir = os.environ.get("TESTRELDIR", "")
+
+        selected_conda_prefix = os.environ.get(f"{env_prefix}_CONDA_PREFIX", "")
+        if not selected_conda_prefix:
+            selected_conda_prefix = os.environ.get("CONDA_PREFIX", "")
+
+        selected_conda_default_env = os.environ.get(
+            f"{env_prefix}_CONDA_DEFAULT_ENV", ""
+        )
+        if not selected_conda_default_env:
+            selected_conda_default_env = os.environ.get("CONDA_DEFAULT_ENV", "")
+
         # Inherit follows from user's account
         env_opt += "HOME"
         env_opt += ",USER"
-        env_opt += ",TESTRELDIR"
-        env_opt += ",CONDA_PREFIX"
-        env_opt += ",CONDA_DEFAULT_ENV"
+        if selected_testreldir:
+            env_opt += f",TESTRELDIR={selected_testreldir}"
+        else:
+            env_opt += ",TESTRELDIR"
+        if selected_conda_prefix:
+            env_opt += f",CONDA_PREFIX={selected_conda_prefix}"
+        else:
+            env_opt += ",CONDA_PREFIX"
+        if selected_conda_default_env:
+            env_opt += f",CONDA_DEFAULT_ENV={selected_conda_default_env}"
+        else:
+            env_opt += ",CONDA_DEFAULT_ENV"
         env_opt += ",CONDA_EXE"
         env_opt += ",CONFIGDB_AUTH"
         env_opt += ",SUBMODULEDIR"
@@ -286,7 +325,7 @@ class SbatchManager:
 
         # For x11 forwarding
         env_opt += ",DISPLAY"
-        env_opt += ",XAUTHORITY=$HOME/.Xauthority"
+        env_opt += ",XAUTHORITY"
 
         # Include any exists in setup_env.sh backdoor
         env_opt += ",$DAQMGR_EXPORT"

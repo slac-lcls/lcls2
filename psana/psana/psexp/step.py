@@ -8,12 +8,22 @@ from psana.event import Event
 
 class Step(object):
 
-    def __init__(self, step_evt, evt_iter, run_ctx, proxy_events=None, esm=None, run=None):
+    def __init__(
+        self,
+        step_evt,
+        evt_iter,
+        run_ctx,
+        proxy_events=None,
+        esm=None,
+        run=None,
+        callback_run_state=None,
+    ):
         self.evt = step_evt
         self._evt_iter = evt_iter
         self._run_ctx = run_ctx
         self.esm = esm
         self.run = run  # For RunDrp to access dm and curr_dgramedit
+        self.callback_run_state = callback_run_state
 
         # RunSmallData can pass proxy_events so that when Step goes
         # through events, it can add all non L1Accept transitions to the list.
@@ -48,6 +58,9 @@ class Step(object):
                 if self.proxy_events is not None:
                     self.proxy_events.append(evt._proxy_evt)
                 if svc == TransitionId.EndStep:
+                    if self.callback_run_state is not None:
+                        self.callback_run_state.in_step = False
+                        self.callback_run_state.current_step_evt = None
                     return
                 continue
 

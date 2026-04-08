@@ -59,23 +59,26 @@ def dumpTiming(tim):
 
 def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     global args
-
     logging.info('xpmdet_init')
 
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
     if (detect_C1100()):
-        root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False,xvcPort=None)
+       # print("Board Detected C1100")
+        root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False, xvcPort=None)
+        root.__enter__()
         logging.info("Board Detected C1100")
+
     else:
+       # print("Board Detected KCU1500")
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
+        root.__enter__()
         logging.info("Board Detected KCU1500")
-    root.__enter__()
+
     args['root'] = root.PcieControl.DevPcie
     args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
-
-
+#    print("init done")
 ##  Moved to connectionInfo so supervisor can execute it only once
 #    logging.info('Reset timing data path')
 #    dumpTiming(root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx)
@@ -83,11 +86,11 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
 #    time.sleep(0.1)
 #    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
 
-
     return root
 
 # called on alloc
 def xpmdet_connectionInfo(alloc_json_str):
+   # print("xpmdet_connectionInfo")
     root = args['root']
 
     xma = root.TDetTiming.TriggerEventManager.XpmMessageAligner
@@ -100,7 +103,6 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     if barrier_global.supervisor:
 
-        logging.info('Reset timing data path')
         tim = root.TDetTiming.TimingFrameRx
         dumpTiming(tim)
         time.sleep(0.1)
@@ -134,16 +136,19 @@ def xpmdet_connectionInfo(alloc_json_str):
         txId = timTxId('tdet')
         xma.TxId.set(txId)
 
+        rxId = xma.RxId.get()
+        logging.info('rxId {:x}'.format(rxId))
+
         #  Disable all timing links
         for i in range(8):
             teb = getattr(root.TDetTiming.TriggerEventManager,f'TriggerEventBuffer[{i}]')
             teb.MasterEnable.set(0)
             teb.ResetCounters()
             teb.FifoReset()
-
         xpmdet_unconfig()
 
         rxId = xma.RxId.get()
+        logging.info('rxId {:x}'.format(rxId))
 
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
             logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
@@ -161,7 +166,6 @@ def xpmdet_connectionInfo(alloc_json_str):
                 logging.critical(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Aborting.  Try TxPllReset.");
                 raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
     barrier_global.wait()
-
     rxId = xma.RxId.get()
     logging.info('rxId {:x}'.format(rxId))
 

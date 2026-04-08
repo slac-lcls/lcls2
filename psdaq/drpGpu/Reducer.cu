@@ -463,6 +463,7 @@ void Reducer::_worker(unsigned worker)
       //chkError(cudaMemcpyAsync((void*)head, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
       *head = index;
     }
+    printf("*** Reducer::_worker: worker %u index %u\n", instance, index);
 
     printf("*** Reducer worker: algo->reduce\n");
 
@@ -480,6 +481,7 @@ void Reducer::_worker(unsigned worker)
 
     auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     m_reduce_us = std::chrono::duration_cast<us_t>(now - t0).count();
+    printf("*** Reducer::_worker: dt %lu\n", m_reduce_us);
 
     if (errorCnt)
       logging::error("Reducer found %u mismatch errors", errorCnt);

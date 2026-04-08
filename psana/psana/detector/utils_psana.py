@@ -38,6 +38,7 @@ def seconds(ts, epoch_offset_sec=631152000) -> float:
 
     see lcls2/psana/psana/event.py
     """
+    if ts is None: return None
     assert isinstance(ts, int)
     return float(ts>>32) + float(ts&0xffffffff)*1.e-9 + epoch_offset_sec
 
@@ -48,7 +49,8 @@ def timestamp_run(run, fmt='%Y-%m-%dT%H:%M:%S'):
     return str_tstamp(fmt=fmt, time_sec=seconds(run.timestamp))
 
 
-def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp'), ordered=True):
+def dict_filter(d, list_keys=('exp', 'run', 'files', 'dir', 'max_events', 'shmem', 'smalldata_kwargs', 'drp', 'batch_size',
+                              'PS_SMD_N_EVENTS', 'PS_EB_NODES'), ordered=True):
     if ordered:
         from collections import OrderedDict
         return OrderedDict([(k, d.get(k, None)) for k in list_keys])

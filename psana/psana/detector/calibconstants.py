@@ -80,6 +80,7 @@ class CalibConstants:
         logger.debug('__init__') #  self.__class__.__name__
 
         assert is_dict_like(calibconst), 'Input parameter should be dict-like: %s' % str(calibconst)
+        self._det_name = detname
         self._reset(calibconst)
         self._kwa = kwa
         self._logmet_init = kwa.get('logmet_init', logger.debug)
@@ -233,8 +234,157 @@ class CalibConstants:
             do_tilt            = kwa.get('do_tilt',True),\
             cframe             = kwa.get('cframe',0))
 
+    def _shared_calibc_cache_key(self, segnums, mapmode, fillholes, **kwa):
+        cache = getattr(self, "_shared_calibc_cache", None)
+        if cache is None or not getattr(cache, "enabled", False):
+            return None, None, None
+        det_name = getattr(self, "_det_name", "unknown")
+        drp_class = getattr(self, "_drp_class_name", "raw")
+        payload = {
+            "det": det_name,
+            "drp": drp_class,
+            "segnums": list(segnums) if segnums is not None else None,
+            "mapmode": mapmode,
+            "fillholes": fillholes,
+            "pix_scale_size_um": kwa.get("pix_scale_size_um", None),
+            "xy0_off_pix": kwa.get("xy0_off_pix", None),
+            "do_tilt": kwa.get("do_tilt", True),
+            "cframe": kwa.get("cframe", 0),
+            "geom_id": kwa.get("geom_id", None),
+        }
+        cache_id = cache.build_cache_id(payload)
+        key = cache.make_key(det_name, drp_class, cache_id)
+        return cache, key, (det_name, drp_class, cache_id)
+
+    def seed_cached_pixel_coord_indexes_shared(self, segnums=None, **kwa):
+        """
+        Precompute and package CalibConstants image-mapping artifacts for shared memory.
+
+        Returns a payload dict containing a shared-memory cache key (`meta`), array
+        specifications (`specs`), and the computed numpy arrays (`arrays`). The caller
+        is responsible for allocating shared arrays and copying these data into them.
+        """
+        mapmode = kwa.get('mapmode', 2)
+        fillholes = kwa.get('fillholes', True)
+        if mapmode == 4:
+            return None
+        if segnums is None:
+            segnums = self.segment_numbers_total()
+
+        cache, key, meta = self._shared_calibc_cache_key(segnums, mapmode, fillholes, **kwa)
+        if cache is None:
+            return None
+
+        resp = self.pixel_coord_indexes(**kwa)
+        if resp is None:
+            return None
+
+        rc_tot_max = [np.max(np.ravel(a)) for a in resp]
+        rows, cols = [reshape_to_3d(a)[segnums,:,:] for a in resp]
+        img_entries, multinds, nentries = statistics_of_pixel_arrays(rows, cols)
+        mult_keys = np.fromiter(multinds.keys(), dtype=np.int64, count=len(multinds))
+        mult_vals = np.fromiter(multinds.values(), dtype=np.int64, count=len(multinds))
+        nent_keys = np.fromiter(nentries.keys(), dtype=np.int64, count=len(nentries))
+        nent_vals = np.fromiter(nentries.values(), dtype=np.int64, count=len(nentries))
+
+        arrays = {
+            "pix_rows": rows,
+            "pix_cols": cols,
+            "rc_tot_max": np.asarray(rc_tot_max, dtype=np.int64),
+            "img_entries": img_entries,
+            "dmulti_pix_keys": mult_keys,
+            "dmulti_pix_vals": mult_vals,
+            "dmulti_img_keys": nent_keys,
+            "dmulti_img_vals": nent_vals,
+        }
+
+        if fillholes:
+            img_pix_ascend_ind, img_holes, hole_rows, hole_cols, hole_inds1d =\
+                statistics_of_holes(rows, cols)
+            arrays.update({
+                "img_pix_ascend_ind": img_pix_ascend_ind,
+                "img_holes": img_holes,
+                "hole_rows": hole_rows,
+                "hole_cols": hole_cols,
+                "hole_inds1d": hole_inds1d,
+            })
+
+        specs = {name: (arr.shape, str(arr.dtype)) for name, arr in arrays.items()}
+        return {"key": key, "meta": meta, "specs": specs, "arrays": arrays}
+
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
         logger.debug('CalibConstants.cached_pixel_coord_indexes')
+
+        mapmode = kwa.get('mapmode', 2)
+        fillholes = kwa.get('fillholes', True)
+
+        if segnums is None:
+            segnums = self.segment_numbers_total()
+
+        cache, key, meta = self._shared_calibc_cache_key(segnums, mapmode, fillholes, **kwa)
+        if cache is not None and mapmode != 4:
+
+            def _dict_from_shared(keys_arr, vals_arr):
+                if keys_arr is None or vals_arr is None:
+                    return None
+                if keys_arr.size == 0:
+                    return {}
+                return dict(zip(keys_arr.tolist(), vals_arr.tolist()))
+
+            rows = cache.get_if_present(key, "pix_rows")
+            cols = cache.get_if_present(key, "pix_cols")
+            rc_tot_max = cache.get_if_present(key, "rc_tot_max")
+            img_entries = cache.get_if_present(key, "img_entries")
+            mult_keys = cache.get_if_present(key, "dmulti_pix_keys")
+            mult_vals = cache.get_if_present(key, "dmulti_pix_vals")
+            nent_keys = cache.get_if_present(key, "dmulti_img_keys")
+            nent_vals = cache.get_if_present(key, "dmulti_img_vals")
+            img_pix_ascend_ind = cache.get_if_present(key, "img_pix_ascend_ind")
+            img_holes = cache.get_if_present(key, "img_holes")
+            hole_rows = cache.get_if_present(key, "hole_rows")
+            hole_cols = cache.get_if_present(key, "hole_cols")
+            hole_inds1d = cache.get_if_present(key, "hole_inds1d")
+
+            cache_ready = (
+                rows is not None
+                and cols is not None
+                and rc_tot_max is not None
+                and img_entries is not None
+                and mult_keys is not None
+                and mult_vals is not None
+                and nent_keys is not None
+                and nent_vals is not None
+            )
+            if fillholes:
+                cache_ready = cache_ready and (
+                    img_pix_ascend_ind is not None
+                    and img_holes is not None
+                    and hole_rows is not None
+                    and hole_cols is not None
+                    and hole_inds1d is not None
+                )
+
+            if cache_ready:
+                if meta is not None:
+                    det_name, drp_class, cache_id = meta
+                    logger.debug(
+                        "SharedCalibcCache hit det=%s drp=%s cache_id=%s",
+                        det_name,
+                        drp_class,
+                        cache_id,
+                    )
+                self._pix_rc = (rows, cols)
+                self._rc_tot_max = [int(rc_tot_max[0]), int(rc_tot_max[1])]
+                self.img_entries = img_entries
+                self.dmulti_pix_to_img_idx = _dict_from_shared(mult_keys, mult_vals)
+                self.dmulti_imgidx_numentries = _dict_from_shared(nent_keys, nent_vals)
+                if fillholes:
+                    self.img_pix_ascend_ind = img_pix_ascend_ind
+                    self.img_holes = img_holes
+                    self.hole_rows = hole_rows
+                    self.hole_cols = hole_cols
+                    self.hole_inds1d = hole_inds1d
+                return None
 
         resp = self.pixel_coord_indexes(**kwa)
         if resp is None: return None
@@ -242,10 +392,6 @@ class CalibConstants:
         logger.debug(info_ndarr(resp, 'detector total rows, cols: '))
         self._rc_tot_max = [np.max(np.ravel(a)) for a in resp]
         logger.debug('_rc_tot_max: %s' % str(self._rc_tot_max))
-
-        # PRESERVE PIXEL INDEXES FOR USED SEGMENTS ONLY
-        if segnums is None:
-            segnums = self.segment_numbers_total()
 
         logmet_init = self._logmet_init
         logmet_init(info_ndarr(segnums, 'preserve pixel indices for segments '))
@@ -257,9 +403,6 @@ class CalibConstants:
         s = 'evaluate_pixel_coord_indexes:'
         for i,a in enumerate(self._pix_rc): s += info_ndarr(a, '\n  %s '%('rows','cols')[i], last=3)
         logmet_init(s)
-
-        mapmode = kwa.get('mapmode',2)
-        fillholes = kwa.get('fillholes',True)
 
         if mapmode <4:
           self.img_entries, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries=\

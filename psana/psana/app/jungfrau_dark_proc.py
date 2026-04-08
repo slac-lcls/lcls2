@@ -1,26 +1,34 @@
 #!/usr/bin/env python
 
+from time import time
+t0_sec_tot = time()
+
 import sys
+#logger = logging.getLogger(__name__)
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
-logger = logging.getLogger(__name__)
+from datetime import datetime
+import getpass
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
-#M14 = 0o37777 # 14-bits of data, 2 bits for gain mode switch
-M14 = 0x3fff # 16383, 14-bit mask
+M14 = 0x3fff # 0o37777, 16383, 14-bit of data mask, 2 bits for gain mode switch
 
-USAGE = 'Usage:'\
-      + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
-      + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
-      + '\nExamples:'\
-      + '\nTests:'\
-      + '\n  datinfo -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau # test data'\
-      + '\n  %s -k exp=mfxdaq23,run=7,dir=/sdf/data/lcls/drpsrcf/ffb/mfx/mfxdaq23/xtc/ -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
-      + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
-      + '\n\n  Try: %s -h' % SCRNAME
+USAGE = f'\n  {SCRNAME} -k <\"str-of-datasource-kwargs\"> -d <detector>'\
+      + '\n     [-o <repository-directory>] [-L <logging-mode>] [other-kwargs]'\
+      + '\ntests:'\
+      + '\n  datinfo -k exp=mfx100848724,run=49 -d jungfrau ### TEST DATA'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY'\
+      + f'\n  mpirun --mca osc ^ucx -n 5 {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY WITH MPIRUN'\
+      + f'\n\n  commands for wrapper:'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 1 [--submit]            ### RUN WRAPPER FOR STAGE 1 ONLY'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 2 [--submit]            ### RUN WRAPPER FOR STAGE 2 AND SUBMIT COMMANDS FOR EXECUTIOBN'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 4 [--submit]            ### RUN WRAPPER FOR STAGE 3 AND DEPLOY CONSTANTS IN DB'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 [--deploy] [--submit] ### RUN WRAPPER FOR ALL STAGES'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 --slurmpars="--nodes=1 --ntasks-per-node=19" [--deploy] [--submit] ### RUN WRAPPER FOR ALL STAGES'\
+      + f'\nHELP:\n  {SCRNAME} -h'
+#      + '\n'\
 
 
 def argument_parser():
@@ -30,37 +38,43 @@ def argument_parser():
     d_detname = 'jungfrau' #  None
     d_nrecs   = 1000  # number of records to collect and process
     d_nrecs1  = 50    # number of records to process at 1st stage
-    #d_idx     = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
-    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work1'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
-    d_events  = 1000000 # last event number in the step to process
-    d_evstep  = 1000000
+    d_events  = 10000   # max_events in DataSource(max_events=events,...)
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
     d_int_lo  = 1       # lowest  intensity accepted for dark evaluation
-    d_int_hi  = M14-3   # highest intensity accepted for dark evaluation, ex: 16000
+    d_int_hi  = M14-1   # highest intensity accepted for dark evaluation, ex: 16000
     d_intnlo  = 6.0     # intensity ditribution number-of-sigmas low
     d_intnhi  = 6.0     # intensity ditribution number-of-sigmas high
     d_rms_lo  = 0.001   # rms distribution low
-    d_rms_hi  = M14-3   # rms distribution high, ex: 16000
+    d_rms_hi  = M14-1   # rms distribution high, ex: 16000
     d_rmsnlo  = 6.0     # rms distribution number-of-sigmas low
     d_rmsnhi  = 6.0     # rms distribution number-of-sigmas high
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-06-07'
+    d_version = 'V2026-04-02'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
+    d_ctdepl  = 'prs'   # for constants from dark, 'prsnx'
     d_deploy  = False
+    d_save    = False
     d_plotim  = 0
-    d_evcode  = None
     d_segind  = None
-    d_igmode  = None
-    d_mpi     = False
+    d_wrapper = 0
+    d_submit  = False
+    logfile = datetime.now().strftime('%Y-%m-%dT%I%M%S') + f'_jungfrau_dark_proc_{getpass.getuser()}.log'
+    d_slurmpars = f'--partition=milano --account=lcls:prjdat21 --exclusive --export=ALL --output={logfile} --nodes=1 --ntasks-per-node=19'
+    d_tstamp  = None # 20180910111049
+    d_run_beg = None
+    d_run_end = 'end'
+    d_comment = None
+    d_dbsuffix= None
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -70,15 +84,13 @@ def argument_parser():
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_detname = 'detector name, default = %s' % d_detname
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
-    #h_idx     = 'segment index (0-31 for jungfrau) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
     h_evskip  = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events  = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
-    h_evstep  = 'maximal number of events to process in each step, default = %s' % d_evstep
+    h_events  = 'total number of events to read from xtc2 file, DataSource(..., max_events=events, ...), default = %s' % str(d_events)
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -93,21 +105,28 @@ def argument_parser():
     h_fraclo  = 'fraction of statistics [0,1] below low  limit of the gate, default = %f' % d_fraclo
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_version = 'constants version, default = %s' % str(d_version)
-    h_datbits = 'data bits, e.g. 0x7fff is 15-bit mask for epixm320, default = %s' % hex(d_datbits)
-    h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
+    h_datbits = 'data bits, e.g. 0x3fff is 14-bit mask for jungfrau with 2 bits for gain modes, default = %s' % hex(d_datbits)
+    h_save    = 'save constants in repository, default = %s' % d_save
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
-    h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
-                'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
-    h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
-    h_mpi     = 'use with MPI, default = %s' % d_mpi
 
-    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
+    h_wrapper = 'WRAPPER: bitword 001/010/100 runs wrapper jungfrau_dark_proc_wrapper.sh for stages 1/2/3, respectively, or any bit combination, default = %d' % d_wrapper
+    h_submit  = 'WRAPPER: submit commands for execution, otherwise show what wrapper is doing for debugging, default = %s' % d_submit
+    h_slurmpars = '(str) space-separated list of slurm parameters, applied for STAGE 2 only'\
+                'ex: --slurmpars "--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19", default = %s' % str(d_slurmpars)
+    h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
+    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
+    h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
+    h_run_beg = 'DEPLOY: first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
+    h_run_end = 'DEPLOY: last run for validity range, default = %s' % str(d_run_end)
+    h_comment = 'DEPLOY: comment added to constants metadata, default = %s' % str(d_comment)
+    h_dbsuffix= 'DEPLOY: suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
+
+    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc2 data for jungfrau')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
-    #parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
@@ -115,7 +134,6 @@ def argument_parser():
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
     parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
     parser.add_argument('--events',        default=d_events,     type=int,   help=h_events)
-    parser.add_argument('-e', '--evstep',  default=d_evstep,     type=int,   help=h_evstep)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
@@ -131,39 +149,99 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
-    parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
-    parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
-    parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
+    parser.add_argument('-S', '--save',    action='store_true',              help=h_save)
+    parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
-    parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
-    parser.add_argument('-M', '--mpi',     action='store_true',              help=h_mpi)
+    parser.add_argument('--submit',        action='store_true',              help=h_submit)
+    parser.add_argument('--wrapper',       default=d_wrapper,    type=int,   help=h_wrapper)
+    parser.add_argument('--slurmpars',     default=d_slurmpars,  type=str,   help=h_slurmpars)
+    parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
+    parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
+    parser.add_argument('--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
+    parser.add_argument('--run_beg', default=d_run_beg,  type=int,   help=h_run_beg)
+    parser.add_argument('--run_end', default=d_run_end,  type=str,   help=h_run_end)
+    parser.add_argument('--comment', default=d_comment,  type=str,   help=h_comment)
+    parser.add_argument('--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)
+
     return parser
+
+
+def dict_slurmpars_from_str(s):
+    """converts str of slurm parameters to dict. Missing values for boolean parameters are substituted by None
+       USES: spaces " " to split parameters and "=" to split key and value
+       s = "--partition=milano --exclusive ..."
+    """
+    flds = s.split() # ['--partition=milano', '--exclusive', ...]
+    wlst = [f.split('=') for f in flds] # [['--partition', 'milano'], ['--exclusive'],...
+    d = {kv[0]: kv[1] if len(kv)>1 else 'NONE' for kv in wlst} # {'--partition': 'milano', '--exclusive': 'NONE', ...}
+    return d
+
+
+def set_slurmpars(defslp, optslp):
+    """returns str of combined default and optional slurmpars with default replaced by optional"""
+    dic_slp = dict_slurmpars_from_str(defslp)
+    dic_opt = dict_slurmpars_from_str(optslp)
+    for k,v in dic_opt.items():
+        dic_slp[k] = v
+    return ' '.join([f'{k}={v}' for k,v in dic_slp.items()]).replace('=NONE','') #  "--exclusive=NONE" > "--exclusive"
 
 
 def do_main():
     from time import time
+    t0_sec = time()
 
     parser = argument_parser()
     args = parser.parse_args()
     kwa = vars(args)
+    defs = parser.parse_args([])
 
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
-    print('use code for MPI: %s' % args.mpi)
+#    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+#    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
 
-    t0_sec = time()
-    if args.mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
-    else:        from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+    if args.wrapper > 0:
+        import os
+        scr_dir = os.path.dirname(os.path.abspath(__file__))
+        scr_name = f'{scr_dir}/jungfrau_dark_proc_wrapper.sh'
+        cmd = f'{scr_name} -k {args.dskwargs} -d {args.detname} --nrecs {args.nrecs} --nrecs1 {args.nrecs1} --dirrepo {args.dirrepo} --logmode {args.logmode}'\
+            + f' --datbits {args.datbits} --int_lo {args.int_lo} --int_hi {args.int_hi} --fraclo {args.fraclo} --frachi {args.frachi} --wrapper {args.wrapper}'
 
-    jungfrau_dark_proc(parser)
-    logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
-    sys.exit(0)
+        if args.wrapper & 2:
+            slurmpars = set_slurmpars(defs.slurmpars, args.slurmpars)
+            #print('combined default and optional slurmpars:\n  ', slurmpars)
+            cmd\
+            +=f' --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
+            + f' --intnhi {args.intnhi} --intnlo {args.intnlo}'\
+            + f' --rms_hi {args.rms_hi} --rms_lo {args.rms_lo} --rmsnhi {args.rmsnhi} --rmsnlo {args.rmsnlo} --fraclm {args.fraclm}'\
+            + f' --slurmpars "{slurmpars}"'
 
+        if args.wrapper & 4:
+            cmd += f' --ctdepl {args.ctdepl} --version {args.version}'
+            if args.tstamp   is not None: cmd += f' --tstamp {args.tstamp}'
+            if args.comment  is not None: cmd += f' --comment "{args.comment}"'
+            if args.run_beg  is not None: cmd += f' --run_beg {args.run_beg}'
+            if args.run_end != 'end': cmd += f' --run_end {args.run_end}'
+            if args.dbsuffix is not None: cmd += f' --dbsuffix {args.dbsuffix}'
+            if args.save:   cmd += ' --save'
+            if args.deploy: cmd += ' --deploy'
+
+        ### ADD BOOL FIELDS FOR STAGE 2 AND 3
+        if args.submit: cmd += ' --submit'
+        params = cmd.split(maxsplit=1)[1]
+        print(f'RUN SHELL SCRIPT-WRAPPER {scr_name} FOR SEQUENCE OF COMMANDS WITH PARAMETERS:\n{params}\n')
+        os.system(cmd)
+    else:
+        from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+        jungfrau_dark_proc(parser)
+
+    msg = '%s TOTAL TIME %.3f sec' % ('shell wrapper' if args.wrapper>0 else 'script', time() - t0_sec_tot)
+    print(f'{SCRNAME} {msg}')
 
 if __name__ == "__main__":
     do_main()
+    sys.exit(0)
 
 # EOF
