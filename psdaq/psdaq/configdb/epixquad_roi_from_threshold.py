@@ -27,8 +27,8 @@ def _parse_args():
     parser = argparse.ArgumentParser(
         description='Generate an epixquad ROI mask from thresholded psana data'
     )
-    parser.add_argument('-e', '--exp', required=True, help='experiment code, for example ued1015999')
-    parser.add_argument('-r', '--run', required=True, type=int, help='run number')
+    parser.add_argument('-e', '--exp', help='experiment code, for example ued1015999')
+    parser.add_argument('-r', '--run', type=int, help='run number')
     parser.add_argument(
         '--xtc-dir',
         default=None,
@@ -45,7 +45,7 @@ def _parse_args():
         default='calib',
         help='detector data object to threshold (default: calib)',
     )
-    parser.add_argument('-t', '--threshold', required=True, type=float, help='threshold applied to each event')
+    parser.add_argument('-t', '--threshold', type=float, help='threshold applied to each event')
     parser.add_argument(
         '--expand-radius',
         type=int,
@@ -78,19 +78,42 @@ def _parse_args():
         action='store_true',
         help='write a deployable epixquad gainmap text file with ROI->0 and background->1',
     )
+    parser.add_argument(
+        '--test-diamond',
+        '--testDiamond',
+        dest='test_diamond',
+        action='store_true',
+        help='create a 5x5 mask with 3 peaks and print the result of binary mask expansion with radius=2',
+    )
     return parser.parse_args()
 
 
-def diamond_offsets(radius):
+def diamond_offsets(radius, debug_print=False):
+    if debug_print:
+        print(f'Calculating diamond offsets for radius {radius}')
     offsets = []
     for dr in range(-radius, radius + 1):
         max_dc = radius - abs(dr)
         for dc in range(-max_dc, max_dc + 1):
             offsets.append((dr, dc))
+            if debug_print:
+                print(f'Diamond offset: ({dr}, {dc})')
     return offsets
 
 
-def expand_binary_mask(mask, radius):
+def expand_binary_mask(mask, radius, debug_print=False):
+    """Dilate a binary mask by a Manhattan-distance diamond of the given radius.
+
+    Each True pixel in ``mask`` acts as a seed. The output marks any pixel whose
+    row/column offset ``(dr, dc)`` from at least one seed satisfies
+    ``abs(dr) + abs(dc) <= radius``. This is binary morphological dilation with
+    a diamond-shaped structuring element in the L1/Manhattan metric.
+
+    The implementation pads the mask by ``radius`` pixels on each side, then
+    ORs together shifted mask-sized views from the padded array. Padding keeps
+    the shifted reads in bounds while the output remains the same shape as the
+    input mask.
+    """
     if radius <= 0:
         return np.asarray(mask, dtype=bool)
 
@@ -109,9 +132,41 @@ def expand_binary_mask(mask, radius):
     col_stop = radius + mask.shape[-1]
 
     expanded = np.zeros_like(mask, dtype=bool)
-    for dr, dc in diamond_offsets(radius):
+    for dr, dc in diamond_offsets(radius, debug_print=debug_print):
         expanded |= padded[..., row_start + dr:row_stop + dr, col_start + dc:col_stop + dc]
     return expanded
+
+
+def _print_debug_mask(title, mask):
+    print(title)
+    print(np.asarray(mask, dtype=int))
+
+
+def _print_diamond_expansion_walkthrough(mask, radius, max_shifts=3):
+    mask = np.asarray(mask, dtype=bool)
+    offsets = diamond_offsets(radius, debug_print=True)
+
+    pad_width = [(0, 0)] * mask.ndim
+    pad_width[-2] = (radius, radius)
+    pad_width[-1] = (radius, radius)
+    padded = np.pad(mask, pad_width, mode='constant', constant_values=False)
+
+    row_start = radius
+    row_stop = radius + mask.shape[-2]
+    col_start = radius
+    col_stop = radius + mask.shape[-1]
+
+    _print_debug_mask('padded mask:', padded)
+
+    expanded = np.zeros_like(mask, dtype=bool)
+    for idx, (dr, dc) in enumerate(offsets[:max_shifts], start=1):
+        shifted = padded[..., row_start + dr:row_stop + dr, col_start + dc:col_stop + dc]
+        _print_debug_mask(f'shift {idx} with offset ({dr}, {dc}):', shifted)
+        expanded |= shifted
+        _print_debug_mask(f'expanded after shift {idx}:', expanded)
+
+    expanded = expand_binary_mask(mask, radius=radius)
+    _print_debug_mask(f'expanded with radius={radius}:', expanded)
 
 
 def _validate_module_shape(array, name):
@@ -186,6 +241,19 @@ def _output_stem(output_dir, runnum, detobj, expand_radius):
 
 def main():
     args = _parse_args()
+
+    if args.test_diamond:
+        test_mask = np.zeros((5, 5), dtype=bool)
+        test_mask[2, 2] = True
+        _print_debug_mask('test mask:', test_mask)
+        _print_diamond_expansion_walkthrough(test_mask, radius=2, max_shifts=3)
+        return
+    if args.exp is None:
+        raise ValueError('--exp is required unless --test-diamond is used')
+    if args.run is None:
+        raise ValueError('--run is required unless --test-diamond is used')
+    if args.threshold is None:
+        raise ValueError('--threshold is required unless --test-diamond is used')
     if args.expand_radius < 0:
         raise ValueError(f'expand radius must be non-negative, got {args.expand_radius}')
     if args.max_nevents <= 0:
@@ -197,9 +265,7 @@ def main():
     ds_kwargs = {
         'exp': args.exp,
         'run': args.run,
-        'intg_det': args.detname,
         'max_events': args.max_nevents,
-        'detectors': [],
     }
     if args.xtc_dir is not None:
         ds_kwargs['dir'] = args.xtc_dir
