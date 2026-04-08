@@ -22,7 +22,7 @@ psdaq_incdir = include_directories('.')
 
 subdir('psdaq')
 subdir('drp')
-#subdir('drpGpu') # Only compiles in Python 3.11
+subdir('drpGpu')
 subdir('epicsArch')
 
 py.extension_module(

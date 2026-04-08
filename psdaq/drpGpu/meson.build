@@ -102,6 +102,7 @@ if cuda_compiler.found()
       cufile_dep,
       nlohmann_json_dep,
       #threads_dep,
+      libfabric_dep,
     ],
     install: true,
     install_rpath: libdir_install_rpath,
@@ -115,7 +116,6 @@ if cuda_compiler.found()
       contributor_lib,
       utilities_lib,
     ],
-    #pie: true,
     cuda_args: cuda_args,
     link_args: [
       '/lib64/libcuda.so.1',
@@ -257,7 +257,6 @@ if cuda_compiler.found()
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
-    #pie: true,
     cuda_args: cuda_args,
   )
 
@@ -270,7 +269,6 @@ if cuda_compiler.found()
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
-    #pie: true,
     cuda_args: cuda_args,
   )
 
@@ -287,7 +285,6 @@ if cuda_compiler.found()
     #install: true,
     #install_rpath: libdir_install_rpath,
     link_with: [],
-    #pie: true,
     cuda_args: cuda_args,
   )
 endif
