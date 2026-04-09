@@ -283,7 +283,7 @@ if cuda_compiler.found()
       cuda_dep,
     ],
     #install: true,
-    #install_rpath: libdir_install_rpath,
+    install_rpath: libdir_install_rpath,
     link_with: [],
     cuda_args: cuda_args,
   )
