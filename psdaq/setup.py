@@ -120,6 +120,7 @@ if 'PSDAQ' in BUILD_LIST :
             'configdb_multimod = psdaq.configdb.configdb_multimod:configdb_multimod',
             'epixquad_save_calib_image = psdaq.configdb.epixquad_save_calib_image:main',
             'epixquad_roi_from_threshold = psdaq.configdb.epixquad_roi_from_threshold:main',
+            'epixquad_mask_npy_to_gainmap = psdaq.configdb.epixquad_mask_npy_to_gainmap:main',
             'epixquad_assembled_to_gainmap = psdaq.configdb.epixquad_assembled_to_gainmap:main',
             'epixquad_store_gainmap = psdaq.configdb.epixquad_store_gainmap:main',
             'epixquad_gainmap_mask = psdaq.configdb.epixquad_gainmap_mask:main',
