@@ -12,7 +12,7 @@ from psana import DataSource
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description='Save one epixquad calib array, assembled image, and optional geometry for Mask Editor'
+        description='Save one epixquad calib array, assembled image, and geometry for Mask Editor'
     )
     parser.add_argument('-e', '--exp', required=True, help='experiment code, for example ued1015999')
     parser.add_argument('-r', '--run', required=True, type=int, help='run number')
@@ -43,11 +43,6 @@ def _parse_args():
         '--path',
         default='.',
         help='output directory to create/use for generated files (default: current directory)',
-    )
-    parser.add_argument(
-        '--write-geometry',
-        action='store_true',
-        help='also write the geometry text used by psana in .data format for Mask Editor',
     )
     return parser.parse_args()
 
@@ -117,20 +112,14 @@ def main():
 
     calib_path = Path(f'{stem}_calib.npy')
     np.save(calib_path, calib)
-    print(calib_path)
-    print(f'calib shape {calib.shape}, dtype {calib.dtype}')
 
     image_path = Path(f'{stem}_img.npy')
     np.save(image_path, image)
-    print(image_path)
-    print(f'image shape {image.shape}, dtype {image.dtype}')
 
-    if args.write_geometry:
-        geotxt, source = _geometry_text(det)
-        geometry_path = Path(f'{stem}_geometry.data')
-        geometry_path.write_text(geotxt)
-        print(geometry_path)
-        print(f'geometry source {source}')
+    geotxt, _source = _geometry_text(det)
+    geometry_path = Path(f'{stem}_geometry.data')
+    geometry_path.write_text(geotxt)
+    print(f'Wrote 3 output files successfully in {output_dir.resolve()}')
 
 
 if __name__ == '__main__':
