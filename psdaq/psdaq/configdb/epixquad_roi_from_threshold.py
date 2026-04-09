@@ -15,6 +15,9 @@ import sys
 import numpy as np
 from psana import DataSource
 
+if __package__ in (None, ''):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
 from psdaq.configdb.epixquad_gainmap_mask import _assembled_to_store_layout
 
 ASIC_ROWS = 176
