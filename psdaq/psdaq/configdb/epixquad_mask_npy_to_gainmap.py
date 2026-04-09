@@ -50,8 +50,8 @@ def _parse_args():
     parser.add_argument(
         '-o',
         '--output',
-        required=True,
-        help='Output store-layout gainmap text file with shape (1408, 384)',
+        default=None,
+        help='Output store-layout gainmap text file with shape (1408, 384); default is ./<input-stem>_gainmap.txt',
     )
     parser.add_argument(
         '--assembled-output',
@@ -78,6 +78,11 @@ def _read_detector_mask(path):
             f'Expected detector mask shape {(MODULE_COUNT, MODULE_ROWS, MODULE_COLS)}, got {mask.shape} from {path}'
         )
     return np.asarray(mask)
+
+
+def _default_output_path(input_path):
+    input_path = Path(input_path)
+    return Path.cwd() / f'{input_path.stem}_gainmap.txt'
 
 
 def _assemble_epixquad_panel(mask):
@@ -137,7 +142,8 @@ def main():
     detector_mask = _read_detector_mask(args.input)
     assembled = _assemble_epixquad_panel(detector_mask)
     store_mask = _assembled_to_store_layout(np.asarray(assembled, dtype=np.uint8))
-    np.savetxt(args.output, store_mask, fmt='%u')
+    output_path = Path(args.output) if args.output is not None else _default_output_path(args.input)
+    np.savetxt(output_path, store_mask, fmt='%u')
 
     if args.assembled_output:
         assembled_path = Path(args.assembled_output)
@@ -153,17 +159,17 @@ def main():
             raise ValueError(f'geometry-output must be a .png file: {geometry_path}')
         _save_geometry_preview(geometry_path, detector_mask, args.geometry_file)
 
-    unique, counts = np.unique(detector_mask, return_counts=True)
-    count_str = ', '.join(f'{int(label)}:{int(count)}' for label, count in zip(unique, counts))
-    print(f'Read detector mask {args.input} with shape {detector_mask.shape}')
-    print(f'Assembled mask shape {assembled.shape}')
-    print(f'Wrote {args.output} with shape {store_mask.shape}')
-    print(f'Label counts = {count_str}')
+    print(f'Wrote gainmap text file: {output_path}')
+    print('Next step: deploy to the config DB with:')
+    print('epixquad_store_gainmap \\')
+    print(f'  --file {output_path} \\')
+    print('  --map 0:L --map 1:M \\')
+    print('  --inst ued --alias BEAM --name epixquad1kfps --segm 0')
+    print('Use --map 1:H instead if you want the background in high gain mode.')
     if args.assembled_output:
-        print(f'Wrote assembled PNG preview to {args.assembled_output}')
+        print(f'Wrote PNG preview: {args.assembled_output}')
     if args.geometry_output:
-        print(f'Wrote geometry PNG preview to {args.geometry_output} using {args.geometry_file}')
-    print('Next step: upload with epixquad_store_gainmap --file ... --map LABEL:GAIN')
+        print(f'Wrote geometry PNG preview: {args.geometry_output}')
 
 
 if __name__ == '__main__':

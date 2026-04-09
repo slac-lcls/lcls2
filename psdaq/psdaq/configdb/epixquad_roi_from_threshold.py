@@ -75,13 +75,6 @@ def _parse_args():
         help='write an assembled detector-panel PNG overlay of the accumulated ROI mask',
     )
     parser.add_argument(
-        '--write-gainmap-txt',
-        '--writeGainmapTxt',
-        dest='write_gainmap_txt',
-        action='store_true',
-        help='write a deployable epixquad gainmap text file with ROI->0 and background->1',
-    )
-    parser.add_argument(
         '--test-diamond',
         '--testDiamond',
         dest='test_diamond',
@@ -312,21 +305,23 @@ def main():
     stem = _output_stem(output_dir, args.run, args.detobj, args.expand_radius)
     npy_path = Path(f'{stem}.npy')
     np.save(npy_path, accumulated)
-    print(npy_path)
+
+    gainmap_path = Path(f'{stem}_gainmap.txt')
+    write_gainmap_txt(accumulated, gainmap_path)
+    print(f'Wrote gainmap text file: {gainmap_path}')
+    print('Next step: deploy to the config DB with:')
+    print('epixquad_store_gainmap \\')
+    print(f'  --file {gainmap_path} \\')
+    print('  --map 0:L --map 1:M \\')
+    print('  --inst ued --alias BEAM --name epixquad1kfps --segm 0')
+    print('Use --map 1:H instead if you want the background in high gain mode.')
 
     if args.write_png:
         if preview_frames is None:
             raise RuntimeError('cannot write PNG without at least one valid event')
         png_path = Path(f'{stem}_panel.png')
         write_roi_panel_png(preview_frames, accumulated, png_path)
-        print(png_path)
-
-    if args.write_gainmap_txt:
-        gainmap_path = Path(f'{stem}_gainmap.txt')
-        store_mask = write_gainmap_txt(accumulated, gainmap_path)
-        print(gainmap_path)
-        labels = sorted(int(v) for v in np.unique(store_mask))
-        print(f'gainmap shape {store_mask.shape}, labels {labels}')
+        print(f'Wrote PNG preview: {png_path}')
 
 
 if __name__ == '__main__':
