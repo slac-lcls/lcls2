@@ -72,7 +72,7 @@ def _parse_args():
         '--writePng',
         dest='write_png',
         action='store_true',
-        help='write an assembled detector-panel PNG overlay of the accumulated ROI mask',
+        help='write a geometry/image-space PNG overlay of the accumulated ROI mask',
     )
     parser.add_argument(
         '--test-diamond',
@@ -183,25 +183,39 @@ def assemble_epixquad_panel(array):
     return np.vstack([top, bottom])
 
 
-def write_roi_panel_png(image, roi_mask, png_path):
+def write_roi_geometry_png(image, roi_mask, det, png_path):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
+    from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
 
-    panel_image = assemble_epixquad_panel(image)
-    panel_mask = assemble_epixquad_panel(np.asarray(roi_mask, dtype=bool))
+    geotxt = _geometry_text(det)
+    if geotxt is None:
+        raise RuntimeError('Geometry-space PNG preview requires detector geometry')
+
+    geo = GeometryAccess()
+    geo.load_pars_from_str(geotxt)
+    rows, cols = geo.get_pixel_coord_indexes(do_tilt=True, cframe=0)
+
+    image2d = img_from_pixel_arrays(rows, cols, W=np.asarray(image), vbase=0)
+    mask2d = img_from_pixel_arrays(
+        rows,
+        cols,
+        W=np.asarray(roi_mask, dtype=np.uint8),
+        vbase=0,
+    ).astype(bool)
 
     fig, ax = plt.subplots(figsize=(10, 9), dpi=160)
-    ax.imshow(panel_image, cmap='gray', origin='upper')
+    ax.imshow(image2d, cmap='gray', origin='upper')
     ax.imshow(
-        np.ma.masked_where(~panel_mask, panel_mask),
+        np.ma.masked_where(~mask2d, mask2d),
         cmap='Reds',
         alpha=0.45,
         origin='upper',
         interpolation='none',
     )
-    ax.contour(panel_mask.astype(float), levels=[0.5], colors=['cyan'], linewidths=0.6)
-    ax.set_title('ROI overlay detector panel')
+    ax.contour(mask2d.astype(float), levels=[0.5], colors=['cyan'], linewidths=0.6)
+    ax.set_title('ROI overlay geometry image')
     ax.set_xlabel('col')
     ax.set_ylabel('row')
     fig.tight_layout()
@@ -215,6 +229,13 @@ def write_gainmap_txt(roi_mask, output_path):
     store_mask = _assembled_to_store_layout(assembled_labels)
     np.savetxt(output_path, store_mask, fmt='%u')
     return store_mask
+
+
+def _geometry_text(det):
+    geotxt, _meta = det.raw._det_geotxt_and_meta()
+    if geotxt is not None:
+        return geotxt
+    return det.raw._det_geotxt_default()
 
 
 def _read_frames(det, evt, detobj):
@@ -319,8 +340,8 @@ def main():
     if args.write_png:
         if preview_frames is None:
             raise RuntimeError('cannot write PNG without at least one valid event')
-        png_path = Path(f'{stem}_panel.png')
-        write_roi_panel_png(preview_frames, accumulated, png_path)
+        png_path = Path(f'{stem}_geometry.png')
+        write_roi_geometry_png(preview_frames, accumulated, det, png_path)
         print(f'Wrote PNG preview: {png_path}')
 
 

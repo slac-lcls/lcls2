@@ -106,6 +106,26 @@ def retry(cmd,val):
                 raise e
         break
 
+def _hydrate_map_mode_partial_config(cfg):
+    if ':types:' not in cfg:
+        cfg[':types:'] = {}
+
+    if 'user' not in cfg or 'gain_mode' not in cfg['user']:
+        return
+
+    if cfg['user']['gain_mode'] != 5 or 'pixel_map' in cfg['user']:
+        return
+
+    if ocfg is None or 'user' not in ocfg or 'pixel_map' not in ocfg['user']:
+        raise KeyError('user.pixel_map is required when user.gain_mode == 5')
+
+    copy_config_entry(cfg, ocfg, 'user.pixel_map')
+    copy_config_entry(cfg[':types:'], ocfg[':types:'], 'user.pixel_map')
+    for i in range(16):
+        key = f'expert.EpixQuad.Epix10kaSaci{i}.trbit'
+        copy_config_entry(cfg, ocfg, key)
+        copy_config_entry(cfg[':types:'], ocfg[':types:'], key)
+
 #
 #  Apply the configuration dictionary to the rogue registers
 #
@@ -390,6 +410,8 @@ def user_to_expert(base, cfg, full=False):
                      'pixel_map' in cfg['user'])):
         gain_mode = cfg['user']['gain_mode']
         if gain_mode==5:
+            if 'pixel_map' not in cfg['user']:
+                raise KeyError('user.pixel_map is required when user.gain_mode == 5')
             a  = cfg['user']['pixel_map']
         else:
             mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
@@ -742,6 +764,7 @@ def epixquad_scan_keys(update):
 
     cfg = {}
     copy_reconfig_keys(cfg,ocfg,json.loads(update))
+    _hydrate_map_mode_partial_config(cfg)
     # Apply to expert
     pixelMapChanged = user_to_expert(base,cfg,full=False)
     #  Retain mandatory fields for XTC translation
@@ -788,6 +811,7 @@ def epixquad_update(update):
     # extract updates
     cfg = {}
     update_config_entry(cfg,ocfg,json.loads(update))
+    _hydrate_map_mode_partial_config(cfg)
     #  Apply to expert
     writePixelMap = user_to_expert(base,cfg,full=False)
     #  Apply config
