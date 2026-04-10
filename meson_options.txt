@@ -1,0 +1,25 @@
+option('build_daq',
+  type: 'boolean',
+  value: false,
+  description: 'Build DAQ too',
+)
+
+option('conda_prefix',
+  type: 'string',
+  description: 'Path to conda env directory',
+)
+
+option('custom_cuda_path',
+  type: 'string',
+  description: 'Path to cuda s install directory',
+)
+
+option('epics_base',
+  type: 'string',
+  description: 'Path to epics base',
+)
+
+option('epics_host_arch',
+  type: 'string',
+  description: 'Epics host arch env variable',
+)

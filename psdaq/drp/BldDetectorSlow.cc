@@ -18,7 +18,7 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
-#include "psdaq/eb/TebContributor.hh"
+#include "psdaq/eb/src/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include <getopt.h>
 #include <Python.h>

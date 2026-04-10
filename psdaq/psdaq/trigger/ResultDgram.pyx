@@ -1,6 +1,6 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from libc.stdint cimport uint32_t
-cimport psdaq.trigger.ResultDgram as dgram
+cimport psdaq.trigger.ResultDgramw as dgram
 
 cdef class ResultDgram():
     cdef Py_buffer buf

@@ -7,14 +7,14 @@ import numpy as np
 
 def test_01() :
     print(50*'_', '\nTest of include psana.hexanode')
-    from hexanode import fib, met1
+    from psana.hexanode import fib, met1
     met1()
     print('fib(9):', fib(9))
 
 #------------------------------
 
 def test_templ(nda) :
-    from hexanode import test_nda
+    from psana.hexanode import test_nda
     test_nda(nda)
     print('Returned array:\n', nda)
 
@@ -29,7 +29,7 @@ def test_02() :
 #------------------------------
 
 def test_03() :
-    from hexanode import test_nda_f8, test_nda_i2, test_nda_u2
+    from psana.hexanode import test_nda_f8, test_nda_i2, test_nda_u2
 
     print(50*'_', '\nTest of specialized methods test_nda_f8(nda), test_nda_i2(nda), test_nda_u2(nda)')
     nda = np.ones((2,3), dtype=np.float64)
@@ -47,7 +47,7 @@ def test_03() :
 #------------------------------
 
 def test_09() :
-    import hexanode
+    import psana.hexanode
     print(50*'_', '\nTest print')
 
 #------------------------------
@@ -58,7 +58,7 @@ def usage(tname):
     if tname in ('0','1') : s+='\n 1 - met1(), fib(9)'
     if tname in ('0','2') : s+='\n 2 - templated function test_nda'
     if tname in ('0','3') : s+='\n 3 - methods test_nda_f8(nda), test_nda_i2(nda), test_nda_u2(nda)'
-    if tname in ('0','9') : s+='\n 9 - test import hexanode'
+    if tname in ('0','9') : s+='\n 9 - test import psana.hexanode'
     return s
 
 #------------------------------

@@ -12,7 +12,7 @@ Usage::
 """
 from psana.detector.NDArrUtils import info_ndarr
 
-import utilsdetector_ext as udext # !!! NAME utilsdetector_ext is defined in lcls2/psana/setup.py
+import psana.utilsdetector_ext as udext # !!! NAME utilsdetector_ext is defined in lcls2/psana/setup.py
 from time import time
 
 MSK =  0x3fff # 16383 or (1<<14)-1 - 14-bit mask

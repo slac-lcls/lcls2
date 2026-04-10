@@ -2,44 +2,31 @@
 
 set -e
 
+BUILDDIR=builddir
+
 # choose local directory where packages will be installed
 if [ -z "$TESTRELDIR" ]; then
-  export INSTDIR=`pwd`/install
+  export INSTDIR=$(pwd)/install
 else
   export INSTDIR="$TESTRELDIR"
 fi
 
-cmake_option="RelWithDebInfo"
-pyInstallStyle="develop"
-psana_setup_args=""
 force_clean=0
-no_ana=0
-no_shmem=0
-build_ext_list=""
+compile_only=0
 
 if [ -d "/cds/sw/" ]; then
-    no_daq=0
+  build_daq=1
 elif [ -d "/sdf/group/lcls/" ]; then
-    no_daq=1
+  build_daq=0
 fi
 
-while getopts "c:p:s:b:fdam" opt; do
+while getopts "fdc" opt; do
   case $opt in
-    c) cmake_option="$OPTARG"
+    d) build_daq=1
     ;;
-    d) no_daq=1
+    f) force_clean=1                  # Force clean is required building between rhel6&7
     ;;
-    a) no_ana=1
-    ;;
-    m) no_shmem=1
-    ;;
-    p) pyInstallStyle="$OPTARG"
-    ;;
-    s) psana_setup_args="$OPTARG"
-    ;;
-    b) build_ext_list="$OPTARG"
-    ;;
-    f) force_clean=1                       # Force clean is required building between rhel6&7
+    c) compile_only=1
     ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
@@ -47,105 +34,89 @@ while getopts "c:p:s:b:fdam" opt; do
   esac
 done
 
-pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
-
-echo "CMAKE_BUILD_TYPE:" $cmake_option
-echo "Python install option:" $pyInstallStyle
-echo "build_ext_list:" $build_ext_list
-export BUILD_LIST=$build_ext_list
+echo "INSTDIR:" $INSTDIR
 
 if [ $force_clean == 1 ]; then
-    echo "force_clean"
-    if [ -d "$INSTDIR" ]; then
-        rm -rf "$INSTDIR"
-    fi
-    if [ -d xtcdata/build ]; then
-        rm -rf xtcdata/build
-    fi
-    if [ -d psdaq/build ]; then
-        rm -rf psdaq/build
-    fi
-    if [ -d psalg/build ]; then
-        rm -rf psalg/build
-    fi
-fi
-
-function cmake_build() {
-    cd $1
-    shift
-    mkdir -p build
-    cd build
-    cmake -DCMAKE_INSTALL_PREFIX=$INSTDIR -DCMAKE_PREFIX_PATH=$CONDA_PREFIX -DCMAKE_BUILD_TYPE=$cmake_option $@ ..
-    make -j 4 install
-    cd ../..
-}
-
-# "python setup.py develop" seems to not create this for you
-# (although "install" does)
-mkdir -p $INSTDIR/lib/python$pyver/site-packages/
-if [ $pyInstallStyle == "develop" ]; then
-    pipOptions="--editable"
-else
-    pipOptions=""
-fi
-
-cmake_build xtcdata
-
-if [ $no_shmem == 0 ]; then
-    cmake_build psalg
-else
-    cmake_build psalg -DBUILD_SHMEM=OFF
-fi
-cd psalg
-pip install --no-deps --prefix=$INSTDIR $pipOptions .
-cd ..
-
-if [ $no_daq == 0 ]; then
-    # to build psdaq with setuptools
-    cmake_build psdaq -DCPM_SOURCE_CACHE=$HOME/.cache/CPM
-    cd psdaq
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-    cd ..
-fi
-
-if [ $no_ana == 0 ]; then
-    # to build psana with setuptools
-    cd psana
-    # force build of the extensions.  do this because in some cases
-    # setup.py is unable to detect if an external header file changed
-    # (e.g. in xtcdata).  but in many cases it is fine without "-f" - cpo
-    if [ $pyInstallStyle == "develop" ]; then
-        python setup.py build_ext -f --inplace
-    fi
-    pip install --no-deps --prefix=$INSTDIR $pipOptions .
-fi
-# The removal of site.py in setup 49.0.0 breaks "develop" installations
-# which are outside the normal system directories: /usr, /usr/local,
-# $HOME/.local. etc. See: https://github.com/pypa/setuptools/issues/2295
-# The suggested fix, in the bug report, is the following: "I recommend
-# that the project use pip install --prefix or possibly pip install
-# --target to install packages and supply a sitecustomize.py to ensure
-# that directory ends up as a site dir and gets .pth processing. That
-# approach should be future-proof (at least against the sunset of
-# easy_install). All python setup.py commands in the code above have
-# been replaced with pip commands. The following code implements the
-# sitecustomize.py file. Pip bilds the python modules in a sandbox,
-# so it requires all the code for the module to be in the same
-# folder. The C++ code for the modules built in psana was therefore
-# moved from psalg to psana.
-if [ $pyInstallStyle == "develop" ]; then
-  if [ ! -f $INSTDIR/lib/python$pyver/site-packages/site.py ] && \
-     [ ! -f $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py ]; then
-cat << EOF > $INSTDIR/lib/python$pyver/site-packages/sitecustomize.py
-import site
-
-site.addsitedir('$INSTDIR/lib/python$pyver/site-packages')
-EOF
+  echo "force_clean"
+  if [ -d "$INSTDIR" ]; then
+    rm -rf "$INSTDIR"
   fi
+  if [ -d build ]; then
+    rm -rf build
+  fi
+  if [ -d builddir ]; then
+    rm -rf builddir
+  fi
+fi
+
+OPTIONS="-Dconda_prefix=$CONDA_PREFIX \
+         -Dprefix="$INSTDIR" \
+         -Depics_base=$EPICS_BASE \
+         -Depics_host_arch=$EPICS_HOST_ARCH \
+         -Dpython.bytecompile=-1"
+
+# When building for a release (debug is default)
+#OPTIONS="$OPTIONS -Dbuildtype=release"
+
+if [ $build_daq == 1 ]; then
+  OPTIONS="$OPTIONS -Dbuild_daq=true"
+else
+  OPTIONS="$OPTIONS -Dbuild_daq=false"
+fi
+
+# Have to clear LDFLAGS set by conda if we are compiling the cuda parts too
+if command -v nvcc >/dev/null 2>&1; then
+  export LDFLAGS_OLD="$LDFLAGS"
+  export LDFLAGS=""
+  export CXXFLAGS_OLD="$CXXFLAGS"
+  export CXXFLAGS=""
+  # If CUDA_ROOT is set and exists use that not what's in conda
+  if [ -n "$CUDA_ROOT" ] && [ -e "$CUDA_ROOT" ]; then
+    OPTIONS="$OPTIONS -Dcustom_cuda_path=$CUDA_ROOT"
+  fi
+fi
+
+#########
+# Build #
+#########
+if [ ! -d "$BUILDDIR" ]; then
+  meson setup "$BUILDDIR" $OPTIONS
+fi
+meson compile -C "$BUILDDIR" -j8
+meson install --only-changed --no-rebuild --quiet -C "$BUILDDIR"
+
+if [ $compile_only == 0 ]; then
+  uv pip install . \
+    --no-compile \
+    --no-deps \
+    --no-build-isolation \
+    --prefix=$INSTDIR \
+    --config-settings setup-args="$OPTIONS" \
+    --config-settings compile-args="-j8" \
+    --config-settings install-args="--only-changed --no-rebuild"
+    #-v
+    #--no-index
+
+  if [ $build_daq == 1 ]; then
+    cd psdaq
+      uv pip install . \
+        --no-compile \
+        --no-deps \
+        --no-build-isolation \
+        --prefix=$INSTDIR \
+        --config-settings setup-args="$OPTIONS" \
+        --config-settings compile-args="-j8" \
+        --config-settings install-args="--only-changed --no-rebuild"
+      # -v
+      #--no-index
+    cd ..
+  fi
+fi
+
+if command -v nvcc >/dev/null 2>&1; then
+  # Reset LDFLAGS and CXXFLAGS back:
+  export LDFLAGS="$LDFLAGS_OLD"
+  unset LDFLAGS_OLD
+  export CXXFLAGS="$CXXFLAGS_OLD"
+  unset CXXFLAGS_OLD
 fi

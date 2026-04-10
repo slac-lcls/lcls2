@@ -2,7 +2,7 @@
 
 #include "ReducerAlgo.hh"
 
-#include <pfpl/f32_abs_comp_gpu.hh>
+#include <f32_abs_comp_gpu.hh>
 
 namespace Drp {
   namespace Gpu {

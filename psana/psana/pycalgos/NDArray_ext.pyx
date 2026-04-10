@@ -58,10 +58,10 @@ cdef extern from "psalg/utils/ctest_utils.hh" namespace "psalg":
     void ctest_nda_v2[T](T*, long*, int&) except +
 
 def print_cnparr(dtypes2d nda):
-    print 'nda.dtype   :', str(nda.dtype)
-    print 'nda.ndim    :', nda.ndim
-    print 'nda.size    :', nda.size
-    print 'nda.shape[0]:', nda.shape[0]
+    print('nda.dtype   :', str(nda.dtype))
+    print('nda.ndim    :', nda.ndim)
+    print('nda.size    :', nda.size)
+    print('nda.shape[0]:', nda.shape[0])
 
 def test_nda_fused_v2(dtypes2d nda):
     print_cnparr(nda)
@@ -73,7 +73,7 @@ def test_nda_fused_v2(dtypes2d nda):
         shape[i] = nda.shape[i]
     ctest_nda_v2(&nda[0,0], shape, ndim)
     free(shape)
-    print 'XXXXXXX test_nda_fused_v2 nda:\n', nda
+    print('XXXXXXX test_nda_fused_v2 nda:\n', nda)
 
     #nda.shape[0] = 5
     #nda.shape[1] = 2
@@ -227,7 +227,7 @@ ctypedef fused dtypes1d :
 # 1. parameter vector[T] MUST go after T* pkvals, othervise type T is undefined...
 # 2. can't define parameters double baseline and threshold as T ... event for fused type dtypesv
 
-cdef extern from "peakFinder/WFAlgos.hh" namespace "psalg":
+cdef extern from "psana/peakFinder/WFAlgos.hh" namespace "psalg":
     index_t find_edges[T](
         index_t npkmax,
         T* pkvals,

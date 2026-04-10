@@ -18,7 +18,7 @@
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
-#include "psdaq/eb/TebContributor.hh"
+#include "psdaq/eb/src/TebContributor.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "DrpBase.hh"
 #include "PGPDetector.hh"

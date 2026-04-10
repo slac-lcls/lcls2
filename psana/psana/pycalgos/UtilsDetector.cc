@@ -1,5 +1,5 @@
 
-#include "pycalgos/UtilsDetector.hh"
+#include "psana/pycalgos/UtilsDetector.hh"
 #include <iostream> // std::cout
 #include <chrono> // time
 

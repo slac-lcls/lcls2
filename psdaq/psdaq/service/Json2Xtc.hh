@@ -8,7 +8,8 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "xtcdata/xtc/ShapesData.hh"
-#include <Python.h>
+//#include <python3.11/Python.h>
+#include <python3.9/Python.h>
 #include <string>
 #include <vector>
 
