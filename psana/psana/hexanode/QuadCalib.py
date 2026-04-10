@@ -27,7 +27,7 @@ import os
 import sys
 #from copy import deepcopy
 
-import hexanode
+import psana.hexanode_ext as hexanode
 import numpy as np
 from time import time
 from math import sqrt

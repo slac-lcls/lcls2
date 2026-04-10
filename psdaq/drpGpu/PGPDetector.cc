@@ -6,8 +6,8 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "psdaq/eb/TebContributor.hh"
-#include "psdaq/eb/ResultDgram.hh"
+#include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/eb/src/ResultDgram.hh"
 #include "drp/DrpBase.hh"
 #include "xtcdata/xtc/Smd.hh"
 

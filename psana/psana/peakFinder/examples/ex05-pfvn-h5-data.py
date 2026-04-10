@@ -7,7 +7,7 @@
 import sys
 import numpy as np
 
-from psalg_ext import peak_finder_algos
+from psana.psalg_ext import peak_finder_algos
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, reshape_to_2d
 import psana.pyalgos.generic.Graphics as gr
 from utils import plot_peaks_on_img, data_hdf5_v0

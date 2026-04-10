@@ -20,6 +20,9 @@ echo find . -name "*.pyc" -delete
 echo find . -name build -type d -exec rm -rf {} +
      find . -name build -type d -exec rm -rf {} +
 
+echo find . -name builddir -type d -exec rm -rf {} +
+     find . -name builddir -type d -exec rm -rf {} +
+
 echo find . -name __pycache__ -type d -exec rm -rf {} +
      find . -name __pycache__ -type d -exec rm -rf {} +
 

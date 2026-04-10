@@ -80,7 +80,7 @@ Created: 2017-08-10 by Mikhail Dubrovin
 """
 
 #from psalg_ext import peak_finder_algos
-import psalg_ext as algos
+import psana.psalg_ext as algos
 import numpy as np
 
 

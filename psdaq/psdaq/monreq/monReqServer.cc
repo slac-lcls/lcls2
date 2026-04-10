@@ -1,12 +1,12 @@
 #include "psalg/shmem/XtcMonitorServer.hh"
 
-#include "psdaq/eb/eb.hh"
-#include "psdaq/eb/EbAppBase.hh"
-#include "psdaq/eb/EbEvent.hh"
+#include "psdaq/eb/src/eb.hh"
+#include "psdaq/eb/src/EbAppBase.hh"
+#include "psdaq/eb/src/EbEvent.hh"
 
-#include "psdaq/eb/EbLfClient.hh"
+#include "psdaq/eb/src/EbLfClient.hh"
 
-#include "psdaq/eb/utilities.hh"
+#include "psdaq/eb/src/utilities.hh"
 
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/Fifo.hh"
