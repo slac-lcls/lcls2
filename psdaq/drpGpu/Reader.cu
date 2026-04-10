@@ -27,9 +27,11 @@ Reader::Reader(const Parameters&                  para,
                MemPoolGpu&                        pool,
                Detector&                          det,
                size_t                             trgPrimitiveSize,
+               cudaExecutionContext_t             green_ctx,
                const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
   m_det        (det),
+  //m_ctx        (green_ctx),
   m_terminate_d(terminate_d),
   m_para       (para)
 {
@@ -48,6 +50,7 @@ Reader::Reader(const Parameters&                  para,
   // Allocate a stream at lowest priority so that higher priority can
   // be given to downstream stages that help drain the system
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  //chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
 
   const auto panel = m_pool.panel();
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
@@ -80,9 +83,6 @@ Reader::~Reader()
 
 int Reader::_setupGraph()
 {
-  cudaGraphExec_t& graphExec = m_graphExec;
-  cudaStream_t     stream    = m_stream;
-
   // Generate the graph
   logging::debug("Recording Reader graph");
   auto graph = _recordGraph();
@@ -91,7 +91,7 @@ int Reader::_setupGraph()
   }
 
   // Instantiate the graph
-  if (chkError(cudaGraphInstantiate(&graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
+  if (chkError(cudaGraphInstantiate(&m_graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
                "Reader graph create failed")) {
     return -1;
   }
@@ -101,7 +101,7 @@ int Reader::_setupGraph()
 
   // Upload the graph so it can be launched by the scheduler kernel later
   logging::debug("Uploading Reader graph...");
-  if (chkError(cudaGraphUpload(graphExec, stream), "Reader graph upload failed")) {
+  if (chkError(cudaGraphUpload(m_graphExec, m_stream), "Reader graph upload failed")) {
     return -1;
   }
 
@@ -327,7 +327,6 @@ cudaGraph_t Reader::_recordGraph()
   rdr_scoped_range r{/*"Reader::_recordGraph"*/}; // Expose function name via NVTX
 
   auto panel                = m_pool.panel();
-  auto stream               = m_stream;
   auto const wrEnReg_d      = (uint8_t*)panel->fpgaRegs.d + panel->coreRegs.freeListOffset(0);
   auto const dmaBuffers_d   = panel->dmaBuffers_d;
   auto const dmaCount       = m_pool.dmaCount();
@@ -368,7 +367,7 @@ cudaGraph_t Reader::_recordGraph()
   logging::info("GPU threads per SM: %d, total threads: %u, SMs %.1f, elements per thread: %.1f\n",
                 tpMP, stride, float(stride) / tpMP, float(calibBufsCnt) / stride);
 
-  if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
+  if (chkError(cudaStreamBeginCapture(m_stream, cudaStreamCaptureModeThreadLocal),
                "Stream begin-capture failed")) {
     return 0;
   }
@@ -389,9 +388,10 @@ cudaGraph_t Reader::_recordGraph()
                                                  refBuffers_d,
                                                  refBufCnt,
                                                  m_terminate_d);
+  chkError(cudaGetLastError(), "Launch of _handleDMA kernel failed");
 
   cudaGraph_t graph;
-  if (chkError(cudaStreamEndCapture(stream, &graph), "Stream end-capture failed")) {
+  if (chkError(cudaStreamEndCapture(m_stream, &graph), "Stream end-capture failed")) {
     return 0;
   }
 
@@ -424,19 +424,19 @@ void Reader::start()
 #endif // HOST_REARMS_DMA
 
   // Enable a DMA for buffer 0 only
-  unsigned instance{0};
+  unsigned dmaBufIdx{0};
   /****************************************************************************
    * Clear the handshake space
    * Originally was cuStreamWriteValue32, but the stream functions are not
    * supported within graphs. cuMemsetD32Async acts as a good replacement.
    ****************************************************************************/
-  const auto dmaBufs = panel->dmaBuffers[instance];
+  const auto dmaBufs = panel->dmaBuffers[dmaBufIdx];
   chkError(cudaMemsetAsync(dmaBufs + 4, 0, sizeof(uint32_t), m_stream));
-  printf("*** Reader: instance %u, dmaBuffer %p\n", instance, (void*)dmaBufs);
+  printf("*** Reader: dmaBufIdx %u, dmaBuffer %p\n", dmaBufIdx, (void*)dmaBufs);
 
 #ifndef HOST_REARMS_DMA
   // Write to the DMA start register in the FPGA to trigger the write
-  panel->coreRegs.returnFreeListIndex(instance);
+  panel->coreRegs.returnFreeListIndex(dmaBufIdx);
 #endif // HOST_REARMS_DMA
 
   // Launch the Reader graph

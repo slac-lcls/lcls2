@@ -30,6 +30,7 @@ static inline unsigned nxtPwrOf2(unsigned n)
 Reducer::Reducer(const Parameters&                  para,
                  MemPoolGpu&                        pool,
                  Detector&                          det,
+                 cudaExecutionContext_t             green_ctx,
                  const std::atomic<bool>&           terminate,
                  const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
@@ -58,6 +59,7 @@ Reducer::Reducer(const Parameters&                  para,
   m_tails_d.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
+    //chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamDefault, prio));
 
     // Keep track of the head and tail indices of the Reducer stream
     chkError(cudaHostAlloc(&m_heads_h[i], sizeof(*m_heads_h[i]), cudaHostAllocDefault));

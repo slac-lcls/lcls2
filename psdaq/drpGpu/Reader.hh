@@ -30,8 +30,8 @@ struct ReaderMetrics
 class Reader
 {
 public:
-  Reader(const Parameters&, MemPoolGpu&, Detector&,
-         size_t trgPrimitiveSize, const cuda::std::atomic<unsigned>& terminate_d);
+  Reader(const Parameters&, MemPoolGpu&, Detector&, size_t trgPrimitiveSize,
+         cudaExecutionContext_t, const cuda::std::atomic<unsigned>& terminate_d);
   ~Reader();
   void start();
 public:
@@ -44,6 +44,7 @@ private:
 private:
   MemPoolGpu&                        m_pool;
   Detector&                          m_det;
+  //cudaExecutionContext_t             m_ctx;
   const cuda::std::atomic<unsigned>& m_terminate_d;
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;

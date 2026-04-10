@@ -77,10 +77,14 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   if (para.kwargs.find("gpuId") != para.kwargs.end())
     gpuId = std::stoul(const_cast<Parameters&>(para).kwargs["gpuId"]);
 
+  // Initialize the device context
   if (!m_context.init(gpuId, para.verbose == 0)) {
     logging::critical("CUDA initialize failed");
     abort();
   }
+
+  // Now that we _have_ the device, perhaps we now also need to _set_ it?
+  chkError(cudaSetDevice(m_context.deviceNo()));
 
   // Check for required device attributes
   struct RequiredExts_t {

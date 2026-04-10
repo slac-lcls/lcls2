@@ -55,7 +55,8 @@ struct CollectorMetrics
 class Collector
 {
 public:
-  Collector(const Parameters&, MemPoolGpu&, const std::shared_ptr<Reader>&, Pds::Trg::TriggerPrimitive*,
+  Collector(const Parameters&, MemPoolGpu&, const std::shared_ptr<Reader>&,
+            Pds::Trg::TriggerPrimitive*, cudaExecutionContext_t,
             const std::atomic<bool>& terminate, const cuda::std::atomic<unsigned>& terminate_d);
   ~Collector(); // = default;
   void start();

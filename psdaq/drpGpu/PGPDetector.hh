@@ -42,14 +42,14 @@ public:
   ~TebReceiver() override;
   FileWriterBase& fileWriter() override { return *m_fileWriter; }
   SmdWriterBase& smdWriter() override { return *m_smdWriter; };
-  void setup();
+  void setup(cudaExecutionContext_t green_ctx);
   void teardown();
 protected:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels) override;
   void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
-  void _recorder();
+  void _recorder(cudaExecutionContext_t green_ctx);
   void _writeDgram(XtcData::Dgram*, void* devPtr);
 private:
   Pds::Eb::MebContributor&         m_mon;
@@ -85,10 +85,12 @@ public:
     { m_reducer->dump(); }
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
+  void _setupGreenContexts(MemPoolGpu& memPool);
   void _collector();
 private:
   const Parameters&            m_para;
   Detector&                    m_det;
+  cudaExecutionContext_t       m_green_ctx[3];
   std::atomic<bool>            m_terminate;
   cuda::std::atomic<unsigned>* m_terminate_d;
   std::shared_ptr<Reader>      m_reader;

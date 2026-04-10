@@ -59,7 +59,7 @@ void _reduce(unsigned*                    const __restrict__ index,
     __nanosleep(ns);
     if (ns < 256)  ns *= 2;
   }
-  if (*done)  { printf("### _reducer: done 1\n"); return; }
+  if (*done)  return;
 
   // Perform the reduction algorithm
   reduceFn(*index, calibBuffers, calibBufsCnt, dataBuffers, dataBufsCnt, refBuffers, refBufCnt, error);
@@ -84,8 +84,6 @@ void _reduce(unsigned*                    const __restrict__ index,
       if (!*done) {
         //printf("### _reducer: relaunch\n");
         cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-      } else {
-        printf("### _reducer: done 2\n");
       }
     }
   }

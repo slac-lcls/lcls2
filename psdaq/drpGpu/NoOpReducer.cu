@@ -158,6 +158,7 @@ void NoOpReducer::recordGraph(cudaStream_t                       stream,
                                           m_errorCnt_d,
                                           outputQueue,
                                           done);
+  chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
 }
 
 #if 1 // hasGraph == true case

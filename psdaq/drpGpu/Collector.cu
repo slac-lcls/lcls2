@@ -31,6 +31,7 @@ Collector::Collector(const Parameters&                  para,
                      MemPoolGpu&                        pool,
                      const std::shared_ptr<Reader>&     reader,
                      Trg::TriggerPrimitive*             triggerPrimitive,
+                     cudaExecutionContext_t             green_ctx,
                      const std::atomic<bool>&           terminate,
                      const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool            (pool),
@@ -60,6 +61,7 @@ Collector::Collector(const Parameters&                  para,
 
   // Create the Collector EB stream with higher priority than the Reader
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  //chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
   logging::debug("Done with creating collector stream");
 
   // Keep track of the head and tail indices of the Collector stream
@@ -493,13 +495,13 @@ unsigned Collector::receive(Detector* det, CollectorMetrics& metrics)
 
     if (transitionId != XtcData::TransitionId::L1Accept) {
       if (transitionId != XtcData::TransitionId::SlowUpdate) {
-        logging::info("PGPReader  saw %s @ %u.%09u (%014lx)",
+        logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
                       XtcData::TransitionId::name(transitionId),
                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                       timingHeader->pulseId());
       }
       else {
-        logging::debug("PGPReader  saw %s @ %u.%09u (%014lx)",
+        logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
                        XtcData::TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId());

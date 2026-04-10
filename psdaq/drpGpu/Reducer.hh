@@ -42,6 +42,7 @@ class Reducer
 {
 public:
   Reducer(const Parameters&, MemPoolGpu&, Detector&,
+          cudaExecutionContext_t             green_ctx,
           const std::atomic<bool>&           terminate_h,
           const cuda::std::atomic<unsigned>& terminate_d);
   ~Reducer();

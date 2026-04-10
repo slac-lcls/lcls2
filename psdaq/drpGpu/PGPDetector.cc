@@ -74,7 +74,7 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   return 0;
 }
 
-void TebReceiver::setup()
+void TebReceiver::setup(cudaExecutionContext_t green_ctx)
 {
   printf("*** TebRcvr::setup: 1\n");
   m_worker = 0;
@@ -95,7 +95,7 @@ void TebReceiver::setup()
   m_recordQueue.startup();
 
   // Start the Data Recorder
-  m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
+  m_recorderThread = std::thread(&TebReceiver::_recorder, this, green_ctx);
 }
 
 void TebReceiver::teardown()
@@ -169,7 +169,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   }
 }
 
-void TebReceiver::_recorder()
+void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 {
   tr_scoped_range r{/*"TebReceiver::_recorder"*/}; // Expose function name via NVTX
 
@@ -193,7 +193,7 @@ void TebReceiver::_recorder()
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
-  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
@@ -278,13 +278,13 @@ void TebReceiver::_recorder()
         json msg = createPulseIdMsg(pulseId);
         m_inprocSend.send(msg.dump());
 
-        logging::info("Recorder   saw %s @ %u.%09u (%014lx)",
+        logging::info("Recorder   saw %12s @ %u.%09u (%014lx)",
                       TransitionId::name(transitionId),
                       dgram->time.seconds(), dgram->time.nanoseconds(),
                       pulseId);
       }
       else {
-        logging::debug("Recorder   saw %s @ %u.%09u (%014lx)",
+        logging::debug("Recorder   saw %12s @ %u.%09u (%014lx)",
                        TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(),
                        pulseId);
@@ -473,10 +473,11 @@ void TebReceiver::_recorder()
 PGPDrp::PGPDrp(Parameters&    parameters,
                MemPoolGpu&    memPool,
                Gpu::Detector& detector,
-               ZmqContext&    context) :
-  DrpBase      (parameters, memPool, detector, context),
+               ZmqContext&    zmqContext) :
+  DrpBase      (parameters, memPool, detector, zmqContext),
   m_para       (parameters),
   m_det        (detector),
+  m_green_ctx  {{}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
   m_nNoTrDgrams(0)
@@ -487,6 +488,9 @@ PGPDrp::PGPDrp(Parameters&    parameters,
                       m_para.device.c_str(), m_para.laneMask);
     abort();
   }
+
+  // Partition the GPU for the various kernels to be run
+  _setupGreenContexts(memPool);
 
   // Set up thread termination flags
   chkError(cudaMalloc(&m_terminate_d,    sizeof(*m_terminate_d)));
@@ -501,6 +505,69 @@ PGPDrp::~PGPDrp()
   printf("*** PGPDrp::dtor: 1\n");
   chkError(cudaFree(m_terminate_d));
   printf("*** PGPDrp::dtor: 2\n");
+}
+
+void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
+{
+  auto gpu_device_index{memPool.context().deviceNo()};
+  chkError(cudaSetDevice(gpu_device_index));
+
+  // Get all available GPU SM resources
+  cudaDevResource initial_SM_resources = {};
+  chkError(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
+                                    &initial_SM_resources,   // Device resource to populate
+                                    cudaDevResourceTypeSm)); // Resource type
+
+  logging::info("Initial SM resources: %d SMs", initial_SM_resources.sm.smCount); // number of available SMs
+
+  // Special fields relevant for partitioning
+  logging::info("  - Min. SM partition size: %d SMs", initial_SM_resources.sm.minSmPartitionSize);
+  logging::info("  - SM co-scheduled alignment: %d SMs", initial_SM_resources.sm.smCoscheduledAlignment);
+
+  //// Get all available GPU Work Queue resources
+  //cudaDevResource initial_WQ_config_resources = {};
+  //chkError(cudaDeviceGetDevResource(gpu_device_index,                     // GPU device
+  //                                  &initial_WQ_config_resources,         // Device resource to populate
+  //                                  cudaDevResourceTypeWorkqueueConfig)); // Resource type
+  //
+  //logging::info("Initial WQ config. resources: ");
+  //logging::info("  - WQ concurrency limit: %d", initial_WQ_config_resources.wqConfig.wqConcurrencyLimit);
+  //logging::info("  - WQ sharing scope: %d", initial_WQ_config_resources.wqConfig.sharingScope);
+
+  // Split SM resources
+  constexpr int nbGroups {2};
+  constexpr unsigned default_split_flags {0};
+  cudaDevResource remainder {};
+  cudaDevResource result[nbGroups] {{}, {}};
+  cudaDevSmResourceGroupParams group_params[2] =  {
+    {.smCount=4,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
+    {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
+  chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
+
+  // Generate resource descriptors for each resource
+  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}};
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[0], &result[0], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[1], &result[1], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[2], &remainder, 1));
+
+  // Create green contexts
+  chkError(cudaGreenCtxCreate(&m_green_ctx[0], resource_desc[0], gpu_device_index, 0));
+  chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
+  chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
+
+  // Get all available GPU SM resources
+  for (unsigned i = 0; i < nbGroups+1; ++i) {
+    cudaDevResource final_SM_resources = {};
+    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
+                                            &final_SM_resources,     // Device resource to populate
+                                            cudaDevResourceTypeSm)); // Resource type
+
+    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
+
+    // Special fields relevant for partitioning
+    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
+    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
+  }
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -521,20 +588,20 @@ std::string PGPDrp::configure(const json& msg)
   auto tpSz = trgPrimitive ? trgPrimitive->size() : 0;
 
   // Set up a Reader to receive DMAed data and calibrate it
-  m_reader = std::make_shared<Reader>(m_para, memPool, m_det, tpSz, *m_terminate_d);
+  m_reader = std::make_shared<Reader>(m_para, memPool, m_det, tpSz, m_green_ctx[0], *m_terminate_d);
 
   // Create the event building collector, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_collector = std::make_unique<Collector>(m_para, memPool, m_reader, trgPrimitive, m_terminate, *m_terminate_d);
+  m_collector = std::make_unique<Collector>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
-  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_terminate, *m_terminate_d);
+  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
 
   // Set up the TebReceiver
-  static_cast<TebReceiver&>(tebReceiver()).setup();
+  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
 
   // Start the Reducers
   m_reducer->startup();
