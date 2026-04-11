@@ -64,7 +64,7 @@ namespace Drp {
 void operator()(unsigned const                     index,
                  float    const* const __restrict__ calibBuffers,
                  size_t   const                     calibBufsCnt,
-                 uint8_t       * const __restrict__ dataBuffers,
+                 uint8_t*        const __restrict__ dataBuffers,
                  size_t   const                     dataBufsCnt,
                  float    const* const __restrict__ refBuffers,
                  unsigned const                     refBufCnt,
@@ -90,11 +90,11 @@ void operator()(unsigned const                     index,
     data[i] = calib[i];
   }
 
-  // Place the size of the reduced data just before the data
-  if (offset == 0) {
-    size_t* const __restrict__ extent = &((size_t*)data)[-1];
-    *extent = calibBufsCnt * sizeof(*calib);
-  }
+//  // Place the size of the reduced data just before the data
+//  if (offset == 0) {
+//    size_t* const __restrict__ extent = &((size_t*)data)[-1];
+//    *extent = calibBufsCnt * sizeof(*calib);
+//  }
 }
     };
 
@@ -129,6 +129,7 @@ void NoOpReducer::recordGraph(cudaStream_t                       stream,
                               uint8_t*                     const dataBuffers,
                               size_t                       const dataBufsCnt,
                               RingQueueDtoH<ReducerTuple>* const outputQueue,
+                              uint64_t*                    const state_d,
                               unsigned*                    const done)
 {
   cudaDeviceProp prop;
@@ -157,6 +158,7 @@ void NoOpReducer::recordGraph(cudaStream_t                       stream,
                                           m_refBufCnt,
                                           m_errorCnt_d,
                                           outputQueue,
+                                          state_d,
                                           done);
   chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
 }

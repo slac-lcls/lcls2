@@ -121,6 +121,16 @@ Reducer::Reducer(const Parameters&                  para,
       }
     }
 
+  // Prepare metrics for tracking kernel state
+    m_metrics.state.resize(m_para.nworkers);
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      if (!m_metrics.state[i].h) {
+        chkError(cudaHostAlloc(&m_metrics.state[i].h, sizeof(*m_metrics.state[i].h), cudaHostAllocDefault));
+        chkError(cudaHostGetDevicePointer(&m_metrics.state[i].d, m_metrics.state[i].h, 0));
+      }
+      *m_metrics.state[i].h = 0;
+    }
+
     if (m_algos[0]->hasGraph()) {         // Same value for all instances
       // Prepare the CUDA graphs
       m_graphExecs.resize(m_para.nworkers);
@@ -139,6 +149,14 @@ Reducer::Reducer(const Parameters&                  para,
 Reducer::~Reducer()
 {
   printf("*** Reducer::dtor\n");
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    if (m_metrics.state[i].h) {
+      cudaFreeHost(m_metrics.state[i].h);
+      m_metrics.state[i].h = nullptr;
+      m_metrics.state[i].d = nullptr;
+    }
+  }
+
   if (m_algos.size() && m_algos[0]->hasGraph()) { // Same value for all instances
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (m_inputQueues2[i].d)  chkError(cudaFree(m_inputQueues2[i].d));
@@ -205,6 +223,11 @@ Reducer::~Reducer()
 int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                           std::map<std::string, std::string>&   labels)
 {
+  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+    auto wkr = std::to_string(i);
+    exporter->add("DRP_redState"+wkr, labels, MetricType::Gauge, [&, i](){ return m_metrics.state[i].h ? *m_metrics.state[i].h : 0; });
+  }
+
   if (m_algos.size() && m_algos[0]->hasGraph()) {         // Same value for all instances
     for (unsigned i = 0; i < m_inputQueues2.size(); ++i) {
       auto wkr = std::to_string(i);
@@ -358,6 +381,8 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
   //                               calibBufsCnt,
   //                               dataBuffers,
   //                               dataBufsCnt);
+  printf("*** Reducer::recordGraph: instance %u\n", instance);
+  printf("*** Reducer::recordGraph: state[instance] %p\n", m_metrics.state[instance].d);
   m_algos[instance]->recordGraph(stream,
                                  m_heads_d[instance],
                                  m_inputQueues2[instance].d,
@@ -366,6 +391,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
                                  dataBuffers,
                                  dataBufsCnt,
                                  m_outputQueues2[instance].d,
+                                 m_metrics.state[instance].d,
                                  m_done_d);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed.

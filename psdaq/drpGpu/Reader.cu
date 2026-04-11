@@ -3,6 +3,7 @@
 #include "Detector.hh"
 #include "drp/spscqueue.hh"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/trigger/TriggerPrimitive.hh"
@@ -27,11 +28,11 @@ Reader::Reader(const Parameters&                  para,
                MemPoolGpu&                        pool,
                Detector&                          det,
                size_t                             trgPrimitiveSize,
-               cudaExecutionContext_t             green_ctx,
+               const cudaExecutionContext_t&      green_ctx,
                const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
   m_det        (det),
-  //m_ctx        (green_ctx),
+  m_ctx        (green_ctx),
   m_terminate_d(terminate_d),
   m_para       (para)
 {
@@ -47,10 +48,16 @@ Reader::Reader(const Parameters&                  para,
   int prio{prioLo};
   logging::debug("Reader stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
 
+//  CUcontext green_primary;
+//  cuCtxFromGreenCtx(&green_primary, green_ctx);
+//  cuCtxSetCurrent(green_primary);
+
   // Allocate a stream at lowest priority so that higher priority can
   // be given to downstream stages that help drain the system
   chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   //chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
+  //cudaStreamCreate(&m_stream);
+  //cuGreenCtxStreamCreate(&m_stream, green_ctx, CU_STREAM_NON_BLOCKING, 0);
 
   const auto panel = m_pool.panel();
   for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
@@ -61,6 +68,11 @@ Reader::Reader(const Parameters&                  para,
   // Prepare buffers visible to the host for receiving headers
   const size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
   m_pool.createHostBuffers(bufSz);
+
+  // Prepare a metric for tracking kernel state
+  chkError(cudaHostAlloc(&m_metrics.state.h, sizeof(*m_metrics.state.h), cudaHostAllocDefault));
+  chkError(cudaHostGetDevicePointer(&m_metrics.state.d, m_metrics.state.h, 0));
+  *m_metrics.state.h = 0;
 
   // Prepare the CUDA graph
   if (_setupGraph()) {
@@ -73,12 +85,26 @@ Reader::~Reader()
 {
   chkError(cudaGraphExecDestroy(m_graphExec));
 
+  if (m_metrics.state.h) {
+    chkError(cudaFreeHost(m_metrics.state.h));
+    m_metrics.state.h = nullptr;
+    m_metrics.state.d = nullptr;
+  }
+
   m_pool.destroyHostBuffers();
 
   chkError(cudaStreamDestroy(m_stream));
 
   if (m_readerQueue.d)  chkError(cudaFree(m_readerQueue.d));
   if (m_readerQueue.h)  delete m_readerQueue.h;
+}
+
+int Reader::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
+                         std::map<std::string, std::string>&   labels)
+{
+  exporter->add("DRP_rdrState", labels, MetricType::Gauge, [&](){ return m_metrics.state.h ? *m_metrics.state.h : 0; });
+
+  return 0;
 }
 
 int Reader::_setupGraph()
@@ -168,9 +194,11 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
                 unsigned  const                            rangeBits,
                 float     const* const        __restrict__ refBuffers,
                 unsigned  const                            refBufCnt,
+                uint64_t* const               __restrict__ state,
                 cuda::std::atomic<unsigned> const&         terminate)
 {
   auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
+  if (tid == 0) *state = 1;
 
   auto const __restrict__ dmaBufs = &dmaBuffers[0];
 
@@ -178,10 +206,12 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
 
   if (threadIdx.x == 0) {                  // Thread 0 of each block
     if (blockIdx.x == 0) {
+      *state = 2;
       // Allocate the index of the next set of intermediate buffers to be used
       //printf("### Reader: allocate pblIdx\n");
       pebbleIdx = readerQueue->allocate(); // This blocks when no buffers available
       //printf("### Reader: pblIdx %u\n", pebbleIdx);
+      *state = 3;
 
       const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
       //bool wait{false};
@@ -190,6 +220,7 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       while (*mem == 0) {                  // Wait for DMA completion
         if (terminate.load(cuda::std::memory_order_acquire))
           return;
+        *state = 4;
         __nanosleep(ns);
         if (ns < 256)  ns *= 2;
         //if (!wait) {
@@ -200,13 +231,14 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       //if (wait)
       //  printf("### Reader::handleDMA: wait F, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
       //printf("### Reader: dma[%u] %p: sz %u\n", dmaBufIdx, mem, *mem);
+      *state = 5;
       auto next = (dmaBufIdx + 1) & (dmaCount - 1);      // Prepare for the next DMA buffer
       *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;      // Clear the handshake space of the next DMA buffer
       *(volatile uint8_t*)(wrEnReg + next * 4) = 1;      // Enable the DMA on this dataDev
       dmaBufferIdx = next;                               // Update global memory
       //printf("### Reader: next %lu, hand shake %p, next write enable %p\n", next, dmaBufs[next] + 4, wrEnReg + next * 4);
     }
-
+    if (tid == 0)  *state = 6;
     __threadfence();                                     // Ensure global memory is updated before the following
     unsigned value = atomicInc(&blockCount1, gridDim.x); // Thread 0 signals that it is done
     isLastBlockDone1 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last block to be done
@@ -216,15 +248,18 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
     if (threadIdx.x == 0) {             // Thread 0 updates global memory
       indicesValid = true;              // Thread 0 of last block signals indices in global memory are valid
       blockCount1 = 0;                  // Reset for next time
+      *state = 7;
     }
   }
   unsigned ns{8};
   while(!indicesValid) {                // All threads wait for indices to become valid
     if (terminate.load(cuda::std::memory_order_acquire))
       return;
+    if (tid == 0) *state = 8;
     __nanosleep(ns);
     if (ns < 256)  ns *= 2;
   }
+  if (tid == 0) *state = 9;
   auto pblBufIdx = pebbleIdx;           // All threads load pebble idx into a register from global memory
 
   // Save the DMA descriptor and TimingHeader in pinned memory
@@ -241,6 +276,7 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
   //if (tid == 0)  printf("### Reader: nDscWords %lu, nHdrWords %lu\n", nDscWords, nHdrWords);
   if      (tid < nDscWords)  { hdr[tid] = in[tid]; } //printf("### Reader: tid %d, hdr %08x\n", tid, hdr[tid]); }
   else if (tid < nHdrWords)  { hdr[tid] = in[nFrmWords + tid - nDscWords]; } //printf("### Reader: tid %d, i %lu, hdr %08x\n", tid, nFrmWords + tid - nDscWords, hdr[tid]); }
+  if (tid == 0) *state = 10;
 
   // Calibrate
   //if (threadIdx.x == 0 && blockIdx.x == 88)  printf("### Reader: blk %3d, in[1] %u, th sz %lu\n", blockIdx.x, in[1], sizeof(TimingHeader));
@@ -262,12 +298,15 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
     //if (tid == 0)  printf("### calibrate: nElements %lu, stride %u, idx %u, calib %p:%p\n",
     //                       elementCnt, stride, pblBufIdx, &out[0],&out[elementCnt]);
 
+    if (tid == 0) *state = 11;
     _calibrate(out, raw, elementCnt, rangeOffset, rangeBits, pedArray, gainArray, ref);
+    if (tid == 0) *state = 12;
 
     __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
     if (threadIdx.x == 0) {
       //if (blockIdx.x == 88)  printf("### Reader: blkIdx %d, pblIdx %u\n", blockIdx.x, pblBufIdx);
 
+      if (tid == 0) *state = 13;
       __threadfence();                                     // Ensure global memory is updated before the following
       unsigned value = atomicInc(&blockCount2, gridDim.x); // Thread 0 signals that it is done
       isLastBlockDone2 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last  block to be done
@@ -286,6 +325,7 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
 
         blockCount2 = 0;                // Reset for next time
         indicesValid = false;           // syncthreads() happens after DMA on next launch
+        *state = 14;
 
         // Relaunch the graph
         //printf("### Reader: 2 relaunch\n");
@@ -299,12 +339,14 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       //printf("### Reader: posted  %u\n", pblBufIdx);
 
       indicesValid = false;             // syncthreads() happens after DMA on next launch
+      *state = 15;
 
       // Relaunch the graph
       //printf("### Reader: 1 relaunch\n");
       cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
     }
   }
+  if (tid == 0) *state = 16;
 }
 
 /******************************************************************************
@@ -346,26 +388,35 @@ cudaGraph_t Reader::_recordGraph()
   // @todo: The maybe should be done in PgpDetector in conjunction with the other components
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, 0));
-  const auto tpMP{prop.maxThreadsPerMultiProcessor};
-  unsigned nMPs;
-  switch (tpMP) {
-    case 1536:  nMPs = 4;  break;
-    case 2048:  nMPs = 2;  break;
+  const auto tpSM{prop.maxThreadsPerMultiProcessor};
+  unsigned nSMs;
+  switch (tpSM) {
+    case 1536:  nSMs = 4;  break;
+    case 2048:  nSMs = 2;  break;
     default:
-      logging::critical("Unexpected number of threads per MultiProcessor %u", tpMP);
+      logging::critical("Unexpected number of threads per MultiProcessor %u", tpSM);
       abort();
   };
+//  cudaDevResource smResources = {};
+//  chkError(cudaExecutionCtxGetDevResource(m_ctx,                   // Reader's context
+//                                          &smResources,            // Device resource to populate
+//                                          cudaDevResourceTypeSm)); // Resource type
+//  const auto nSMs{smResources.sm.smCount};
   // Slightly better times seem to be achieved when nPixels/stride is an integer
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
-  const auto maxBpMP{prop.maxBlocksPerMultiProcessor};
-  auto nThreads{tpMP/maxBpMP}; //{32}; // @todo: Move to green contexts for improved robustness
-  auto nBlocks{nMPs*maxBpMP}; //{63}; //{189}; //{nMPs * tpMP / nThreads}; // {189};
+  const auto maxBpSM{prop.maxBlocksPerMultiProcessor};
+  auto nThreads{tpSM/maxBpSM}; //{32}; // @todo: Move to green contexts for improved robustness
+  auto nBlocks{nSMs*maxBpSM}; //{63}; //{189}; //{nSMs * tpSM / nThreads}; // {189};
   auto stride{nBlocks * nThreads};
   printf("*** Reader: blocks %u * threads %u = %u threads\n", nBlocks, nThreads, stride);
 
   logging::info("GPU threads per SM: %d, total threads: %u, SMs %.1f, elements per thread: %.1f\n",
-                tpMP, stride, float(stride) / tpMP, float(calibBufsCnt) / stride);
+                tpSM, stride, float(stride) / tpSM, float(calibBufsCnt) / stride);
+
+//  CUcontext ctx;
+//  chkError(cuCtxFromGreenCtx(&ctx, m_ctx));
+//  chkError(cuCtxSetCurrent(ctx));
 
   if (chkError(cudaStreamBeginCapture(m_stream, cudaStreamCaptureModeThreadLocal),
                "Stream begin-capture failed")) {
@@ -387,6 +438,7 @@ cudaGraph_t Reader::_recordGraph()
                                                  rangeBits,
                                                  refBuffers_d,
                                                  refBufCnt,
+                                                 m_metrics.state.d,
                                                  m_terminate_d);
   chkError(cudaGetLastError(), "Launch of _handleDMA kernel failed");
 

@@ -85,7 +85,7 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
-  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, true);
+  m_fileWriter = nullptr; //std::make_unique<FileWriter>(maxBufSize, true);
   //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, true); // For 2 ping pong buffers
   printf("*** TebRcvr::setup: 2\n");
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
@@ -193,7 +193,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
-  chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
+  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  //chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
@@ -490,7 +491,7 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   }
 
   // Partition the GPU for the various kernels to be run
-  _setupGreenContexts(memPool);
+//  _setupGreenContexts(memPool);
 
   // Set up thread termination flags
   chkError(cudaMalloc(&m_terminate_d,    sizeof(*m_terminate_d)));
@@ -555,19 +556,26 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
   chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
 
+//  CUcontext green_primary;
+//  cuCtxFromGreenCtx(&green_primary, m_green_ctx[0]);
+//  cuCtxSetCurrent(green_primary);
+//
+//  cudaStream_t stream;
+//  cudaStreamCreate(&stream);
+
   // Get all available GPU SM resources
-  for (unsigned i = 0; i < nbGroups+1; ++i) {
-    cudaDevResource final_SM_resources = {};
-    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
-                                            &final_SM_resources,     // Device resource to populate
-                                            cudaDevResourceTypeSm)); // Resource type
-
-    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
-
-    // Special fields relevant for partitioning
-    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
-    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
-  }
+//  for (unsigned i = 0; i < nbGroups+1; ++i) {
+//    cudaDevResource final_SM_resources = {};
+//    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
+//                                            &final_SM_resources,     // Device resource to populate
+//                                            cudaDevResourceTypeSm)); // Resource type
+//
+//    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
+//
+//    // Special fields relevant for partitioning
+//    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
+//    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
+//  }
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -652,10 +660,6 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                                             {"partition", std::to_string(m_para.partition)},
                                             {"detname", m_para.detName},
                                             {"alias", m_para.alias}};
-  m_colMetrics.m_nevents = 0L;
-  exporter->add("drp_event_rate", labels, MetricType::Rate,
-                [&](){return m_colMetrics.m_nevents.load();});
-
   //auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec)
   //    { size_t sum = 0;  for (auto& q: vec) sum += q.guess_size();  return sum; };
   //uint64_t nbuffers = memPool.nbuffers();
@@ -663,33 +667,6 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   //
   //exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
   //              [&](){return queueLength(m_workerQueues);});
-
-  m_colMetrics.m_nDmaRet = 0;
-  exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nDmaRet.load();});
-  m_colMetrics.m_dmaBytes = 0;
-  exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
-                [&](){return m_colMetrics.m_dmaBytes.load();});
-  m_colMetrics.m_dmaSize = 0;
-  exporter->add("drp_dma_size", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_dmaSize.load();});
-  exporter->add("drp_th_latency", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_latency.load();});
-  m_colMetrics.m_nDmaErrors = 0;
-  exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nDmaErrors.load();});
-  m_colMetrics.m_nNoComRoG = 0;
-  exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nNoComRoG.load();});
-  m_colMetrics.m_nMissingRoGs = 0;
-  exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nMissingRoGs.load();});
-  m_colMetrics.m_nTmgHdrError = 0;
-  exporter->add("drp_num_th_error", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nTmgHdrError.load();});
-  m_colMetrics.m_nPgpJumps = 0;
-  exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nPgpJumps.load();});
   m_nNoTrDgrams = 0;
   exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                 [&](){return m_nNoTrDgrams;});
@@ -703,6 +680,10 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                 [&](){return memPool.nPgpInPreHw();});
   exporter->add("drp_num_pgp_in_rx",    labels, MetricType::Gauge,
                 [&](){return memPool.nPgpInRx();});
+
+  m_reader->setupMetrics(exporter, labels);
+
+  m_collector->setupMetrics(exporter, labels);
 
   m_reducer->setupMetrics(exporter, labels);
 
@@ -740,9 +721,9 @@ void PGPDrp::_collector()
   }
 
   // Establish context in this thread
-  auto& memPool = *pool.getAs<MemPoolGpu>();
-  chkError(cudaSetDevice(memPool.context().deviceNo()));
-  chkError(cuCtxSetCurrent(memPool.context().context()));
+//  auto& memPool = *pool.getAs<MemPoolGpu>();
+//  chkError(cudaSetDevice(memPool.context().deviceNo()));
+//  chkError(cuCtxSetCurrent(memPool.context().context()));
 
   // Start the PGP reader on the GPU
   m_reader->start();
@@ -761,8 +742,7 @@ void PGPDrp::_collector()
       break;
     }
 
-    auto nRet = m_collector->receive(&m_det, m_colMetrics); // This can block
-    m_colMetrics.m_nDmaRet.store(nRet);
+    auto nRet = m_collector->receive(&m_det); // This can block
 
     for (unsigned b = 0; b < nRet; ++b) {
       drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};

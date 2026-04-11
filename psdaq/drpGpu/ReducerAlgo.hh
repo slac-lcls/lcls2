@@ -36,13 +36,14 @@ public:
   virtual bool   hasGraph()    const = 0;
   virtual size_t payloadSize() const = 0;
   virtual void   recordGraph(cudaStream_t                       stream,
-                             unsigned* const                    index,
-                             RingQueueHtoD<unsigned>* const     inputQueue,
-                             float     const* const             calibBuffers,
-                             size_t    const                    calibBufsCnt,
-                             uint8_t        * const             dataBuffers,
-                             size_t    const                    dataBufsCnt,
+                             unsigned*                    const index,
+                             RingQueueHtoD<unsigned>*     const inputQueue,
+                             float const*                 const calibBuffers,
+                             size_t                       const calibBufsCnt,
+                             uint8_t*                     const dataBuffers,
+                             size_t                       const dataBufsCnt,
                              RingQueueDtoH<ReducerTuple>* const outputQueue,
+                             uint64_t*                    const state_d,
                              unsigned*                    const done) = 0;
   virtual void     reduce   (cudaGraphExec_t,
                              cudaStream_t,

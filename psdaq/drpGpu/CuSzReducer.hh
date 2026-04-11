@@ -25,6 +25,7 @@ public:
                      uint8_t*                     const dataBuffers,
                      size_t                       const dataBufsCnt,
                      RingQueueDtoH<ReducerTuple>* const outputQueue,
+                     uint64_t*                    const state_d,
                      unsigned*                    const done) override;
   void     reduce   (cudaGraphExec_t,
                      cudaStream_t,

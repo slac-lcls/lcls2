@@ -4,6 +4,9 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include <string>
+#include <map>
+#include <memory>
 
 #include <cuda_runtime.h>
 #include <cuda/std/atomic>
@@ -28,6 +31,7 @@ class Detector;
 
 struct ReducerMetrics
 {
+  std::vector< Ptr<uint64_t> > state;
 };
 
 // @todo: Clean up; Moved to ReducerAlgo.hh
@@ -88,6 +92,7 @@ private:
   unsigned*                             m_done_d;
   uint64_t                              m_reduce_us;
   const Parameters&                     m_para;
+  ReducerMetrics                        m_metrics;
 };
 
   } // Gpu

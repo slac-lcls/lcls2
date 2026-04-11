@@ -56,6 +56,7 @@ void CuSzReducer::recordGraph(cudaStream_t                       stream,
                               uint8_t*                     const dataBuffers,
                               size_t                       const dataBufsCnt,
                               RingQueueDtoH<ReducerTuple>* const outputQueue,
+                              uint64_t*                    const state_d,
                               unsigned*                    const done)
 {
   // @todo: More work is needed here

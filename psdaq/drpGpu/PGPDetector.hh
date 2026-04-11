@@ -98,8 +98,6 @@ private:
   std::unique_ptr<Reducer>     m_reducer;
   std::thread                  m_collectorThread;
   uint64_t                     m_nNoTrDgrams;
-  ReaderMetrics                m_wkrMetrics;
-  CollectorMetrics             m_colMetrics;
 };
 
   } // Gpu

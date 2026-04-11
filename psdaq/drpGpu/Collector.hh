@@ -14,6 +14,7 @@
 #include "xtcdata/xtc/TransitionId.hh"
 
 namespace Pds {
+  class MetricExporter;
   class TimingHeader;
 }
 
@@ -25,31 +26,19 @@ class Reader;
 
 struct CollectorMetrics
 {
-  CollectorMetrics() :
-    m_nevents     (0),
-    m_nDmaRet     (0),
-    m_nHdrMismatch(0),
-    m_dmaSize     (0),
-    m_dmaBytes    (0),
-    m_latency     (0),
-    m_nDmaErrors  (0),
-    m_nNoComRoG   (0),
-    m_nMissingRoGs(0),
-    m_nTmgHdrError(0),
-    m_nPgpJumps   (0)
-  {
-  }
-  std::atomic<uint64_t> m_nevents;
-  std::atomic<uint64_t> m_nDmaRet;
-  std::atomic<uint64_t> m_nHdrMismatch;
-  std::atomic<uint64_t> m_dmaSize;
-  std::atomic<uint64_t> m_dmaBytes;
-  std::atomic<uint64_t> m_latency;
-  std::atomic<uint64_t> m_nDmaErrors;
-  std::atomic<uint64_t> m_nNoComRoG;
-  std::atomic<uint64_t> m_nMissingRoGs;
-  std::atomic<uint64_t> m_nTmgHdrError;
-  std::atomic<uint64_t> m_nPgpJumps;
+  Ptr<uint64_t>         state {nullptr, nullptr};
+
+  std::atomic<uint64_t> nEvents      {0};
+  std::atomic<uint64_t> nDmaRet      {0};
+  std::atomic<uint64_t> nHdrMismatch {0};
+  std::atomic<uint64_t> dmaSize      {0};
+  std::atomic<uint64_t> dmaBytes     {0};
+  std::atomic<uint64_t> latency      {0};
+  std::atomic<uint64_t> nDmaErrors   {0};
+  std::atomic<uint64_t> nNoComRoG    {0};
+  std::atomic<uint64_t> nMissingRoGs {0};
+  std::atomic<uint64_t> nTmgHdrError {0};
+  std::atomic<uint64_t> nPgpJumps    {0};
 };
 
 class Collector
@@ -59,11 +48,13 @@ public:
             Pds::Trg::TriggerPrimitive*, cudaExecutionContext_t,
             const std::atomic<bool>& terminate, const cuda::std::atomic<unsigned>& terminate_d);
   ~Collector(); // = default;
+  int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
+                   std::map<std::string, std::string>& labels);
   void start();
   void freeDma(PGPEvent*);
   void handleBrokenEvent(const PGPEvent&) {}
   void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
-  unsigned receive(Detector*, CollectorMetrics&);
+  unsigned receive(Detector*);
 private:
   int _setupGraph();
   cudaGraph_t _recordGraph(cudaStream_t);
@@ -87,6 +78,7 @@ private:
   XtcData::TransitionId::Value       m_lastTid;
   uint32_t                           m_lastData[6];
   const Parameters&                  m_para;
+  CollectorMetrics                   m_metrics;
 };
 
   } // Gpu

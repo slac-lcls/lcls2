@@ -78,6 +78,7 @@ void PfplReducer::recordGraph(cudaStream_t                       stream,
                               uint8_t*                     const dataBuffers,
                               size_t                       const dataBufsCnt,
                               RingQueueDtoH<ReducerTuple>* const outputQueue,
+                              uint64_t*                    const state_d,
                               unsigned*                    const done)
 {
   pfpl_scoped_range r{/*"PfplReducer::recordGraph"*/}; // Expose function name via NVTX
