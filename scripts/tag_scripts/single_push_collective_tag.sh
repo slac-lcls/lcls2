@@ -104,8 +104,7 @@ for item in "$ROOT_DIR"/*; do
         else
             echo -e "${GREEN}  Clone Hash: ${GIT_HASH}${NC}"
 
-            # ✅ UPDATED HERE: hutch + YYYYMMDD
-            DATE_STR=$(date +%Y%m%d)
+            DATE_STR=$(git show -s --format=%cd --date=format:%Y%m%d "$GIT_HASH")
             TAG_NAME="${HUTCH_NAME}-${DATE_STR}"
             echo -e "${GREEN}  Tag Name: ${TAG_NAME}${NC}"
 
