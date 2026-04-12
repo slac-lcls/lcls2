@@ -104,7 +104,14 @@ for item in "$ROOT_DIR"/*; do
         else
             echo -e "${GREEN}  Clone Hash: ${GIT_HASH}${NC}"
 
-            DATE_STR=$(git show -s --format=%cd --date=format:%Y%m%d "$GIT_HASH")
+            CLONE_TIME=$(git reflog --grep-reflog=clone -n 1 --format='%ct' 2>/dev/null)
+
+            if [ -z "$CLONE_TIME" ]; then
+                echo -e "${YELLOW}  Warning: Could not determine clone time${NC}"
+                continue
+            fi
+
+            DATE_STR=$(date -d @"$CLONE_TIME" +%Y%m%d)
             TAG_NAME="${HUTCH_NAME}-${DATE_STR}"
             echo -e "${GREEN}  Tag Name: ${TAG_NAME}${NC}"
 
