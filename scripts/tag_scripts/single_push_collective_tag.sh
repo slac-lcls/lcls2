@@ -104,8 +104,9 @@ for item in "$ROOT_DIR"/*; do
         else
             echo -e "${GREEN}  Clone Hash: ${GIT_HASH}${NC}"
 
-            # Create tag name
-            TAG_NAME="${HUTCH_NAME}-${GIT_HASH:0:9}"
+            # ✅ UPDATED HERE: hutch + YYYYMMDD
+            DATE_STR=$(date +%Y%m%d)
+            TAG_NAME="${HUTCH_NAME}-${DATE_STR}"
             echo -e "${GREEN}  Tag Name: ${TAG_NAME}${NC}"
 
             # Switch to tag repository to create the tag
