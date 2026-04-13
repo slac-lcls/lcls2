@@ -104,7 +104,7 @@ for item in "$ROOT_DIR"/*; do
         else
             echo -e "${GREEN}  Clone Hash: ${GIT_HASH}${NC}"
 
-            CLONE_TIME=$(git reflog --grep-reflog=clone -n 1 --format='%ct' 2>/dev/null)
+            CLONE_TIME=$(git reflog --grep-reflog=clone -n 1 --date=unix 2>/dev/null | sed -n 's/.*HEAD@{\([0-9]*\)}:.*/\1/p')
 
             if [ -z "$CLONE_TIME" ]; then
                 echo -e "${YELLOW}  Warning: Could not determine clone time${NC}"

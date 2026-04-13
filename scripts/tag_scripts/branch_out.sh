@@ -2,8 +2,48 @@
 # Sync tracked changes from the most recent matching source lcls2 repo to a branch repo
 # Creates a branch and commits the changes locally
 #
-# Usage: ./branch_out.sh <hutch_name> <root_dir> <branch_dir> <prefix>
-# Example: ./branch_out.sh tmo /sdf/data/lcls/ds/prj/prjcwang31/results/software /cds/sw/ds/ana/test_lcl2/ssh_clone/lcls2 lcls2
+# Arguments:
+#   <hutch_name>
+#       Short identifier used to name the output branch.
+#       Example: tmo → branch name becomes tmo-<git_hash>
+#
+#   <root_dir>
+#       Directory containing multiple cloned git repositories.
+#       The script scans this directory, filters repos by prefix,
+#       and selects the MOST RECENTLY CLONED repo (via git reflog).
+#       This repo becomes the SOURCE of changes.
+#
+#   <branch_dir>
+#       Path to a single base git repository where changes will be applied.
+#       The script will:
+#         - ensure it is clean
+#         - checkout master
+#         - pull latest changes
+#         - create or switch to a branch
+#         - copy changes from the selected source repo
+#         - commit and push
+#
+#   <prefix>
+#       Filter applied to repo names inside <root_dir>.
+#       Only repos whose names START WITH this prefix are considered.
+#       Example:
+#         prefix=lcls2 → matches lcls2, lcls2_dev, lcls2_clone_1
+#
+# Usage:
+#   ./branch_out.sh <hutch_name> <root_dir> <branch_dir> <prefix>
+#
+# Example:
+#   ./branch_out.sh tmo \
+#       /sdf/data/lcls/ds/prj/prjcwang31/results/software \
+#       /cds/sw/ds/ana/test_lcl2/ssh_clone/lcls2 \
+#       lcls2
+#
+# Flow:
+#   1. Scan <root_dir> for git repos matching <prefix>
+#   2. Determine most recent clone using git reflog timestamp
+#   3. Use that repo as source of changes
+#   4. Apply changes into <branch_dir>
+#   5. Commit and push to a new branch
 
 set -e
 
@@ -65,12 +105,12 @@ for candidate in "$ROOT_DIR"/*; do
         continue
     fi
 
-    # Must have clone timestamp marker
-    if [ ! -f "$candidate/.clone_time" ]; then
+    CLONE_TIME=$(git -C "$candidate" reflog --grep-reflog=clone -n 1 --date=unix 2>/dev/null | sed -n 's/.*HEAD@{\([0-9]*\)}:.*/\1/p')
+    
+    if [ -z "$CLONE_TIME" ]; then
+        echo -e "${YELLOW}Warning: Could not determine clone time for ${REPO_NAME}${NC}"
         continue
     fi
-
-    CLONE_TIME=$(cat "$candidate/.clone_time")
 
     if [ "$CLONE_TIME" -gt "$LATEST_CLONE_TIME" ]; then
         LATEST_CLONE_TIME="$CLONE_TIME"
@@ -79,7 +119,7 @@ for candidate in "$ROOT_DIR"/*; do
 done
 
 if [ -z "$MONITOR_REPO" ]; then
-    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' and a .clone_time file ${NC}"
+    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
     exit 1
 fi
 
