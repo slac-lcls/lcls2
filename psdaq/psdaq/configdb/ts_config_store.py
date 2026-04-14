@@ -1,6 +1,6 @@
 from psdaq.configdb.typed_json import cdict
 from psdaq.configdb.get_config import update_config
-from psdaq.configdb.tsdef import *
+import psdaq.configdb.tsdef as tsdef
 import psdaq.configdb.configdb as cdb
 
 def usual_cdict():
@@ -12,7 +12,7 @@ def usual_cdict():
     top.set("firmwareVersion:RO",   0, 'UINT32')
 
     top.define_enum('trigModeEnum', {'FixedRate':0,'EventCode':2})
-    top.define_enum('fixedRateEnum', fixedRateHzToMarker)
+    top.define_enum('fixedRateEnum', tsdef.fixedRateHzToMarker)
     top.define_enum('boolEnum', {'False':0, 'True':1})
 
     top.define_enum('linacEnum', {'Cu': 0, 'SC': 1})
@@ -78,7 +78,7 @@ def calib_cdict():
     top.set('help:RO', help_str, 'CHARSTR')
 
     top.define_enum('trigModeEnum', {'FixedRate':0,'EventCode':2})
-    top.define_enum('fixedRateEnum', fixedRateHzToMarker)
+    top.define_enum('fixedRateEnum', tsdef.fixedRateHzToMarker)
 
     # For now, only the ability to change the fixed-rate trigger rate is provided
     for group in range(8):
@@ -99,6 +99,8 @@ if __name__ == "__main__":
 
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
+
+    tsdef.set_instrument(args.inst)
 
     if args.alias == 'CALIB':
         top = calib_cdict()
