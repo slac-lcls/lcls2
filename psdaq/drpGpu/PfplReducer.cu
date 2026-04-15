@@ -44,10 +44,25 @@ PfplReducer::PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
 static __global__
 void _receive(unsigned*                const __restrict__ index,
               RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
-              unsigned*                const __restrict__ done)
+              cuda::std::atomic<unsigned>  const&         terminate)
 {
   //printf("### Reducer receive: 1, done %u\n", *done);
-  *done |= !inputQueue->pop(index);
+  //bool wait{false};
+  unsigned ns{8};
+  while (!inputQueue->pop(index)) {
+    if (terminate.load(cuda::std::memory_order_acquire)) {
+      printf("### Reducer receive: inputQueue empty\n");
+      return;
+    }
+    __nanosleep(ns);
+    if (ns < 256)  ns *= 2;
+    //if (!wait) {
+    //  wait = true;
+    //  printf("### Reducer receive: wait T, tail %d, head %d\n", inputQueue->tail(), inputQueue->head());
+    //}
+  }
+  //if (wait)
+  //  printf("### Reducer receive: wait F, tail %d, head %d\n", inputQueue->tail(), inputQueue->head());
   //printf("### Reducer receive: 2, idx %u, done %u\n", *index, *done);
 }
 
@@ -57,29 +72,42 @@ void _graphLoop(unsigned const*              const __restrict__ index,
                 uint8_t*                     const __restrict__ dataBuffers,
                 size_t                       const              dataBufsCnt,
                 RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
-                unsigned*                    const __restrict__ done)
+                cuda::std::atomic<unsigned>  const&             terminate)
 {
   auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
   auto dataSize = ((size_t*)data)[-1];
   //printf("### Reducer graphLoop: push {%u, %lu}, done %u\n", *index, dataSize, *done);
-  *done |= !outputQueue->push({*index, dataSize});
-  if (!*done) {
-    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  //bool wait{false};
+  unsigned ns{8};
+  while (!outputQueue->push({*index, dataSize})) {
+    if (terminate.load(cuda::std::memory_order_acquire)) {
+      printf("### Reducer graphLoop: outputQueue full\n");
+      return;
+    }
+    __nanosleep(ns);
+    if (ns < 256)  ns *= 2;
+    //if (!wait) {
+    //  wait = true;
+    //  printf("### Reducer graphLoop: wait T, next %d, tail %d\n", outputQueue->next(), outputQueue->tail());
+    //}
   }
+  //if (wait)
+  //  printf("### Reducer graphLoop: wait F, next %d, tail %d\n", outputQueue->next(), outputQueue->tail());
+  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
   //printf("### Reducer graphLoop: idx %u, done %u\n", *index, *done);
 }
 
 // This routine records the graph that does the data reduction
-void PfplReducer::recordGraph(cudaStream_t                       stream,
-                              unsigned*                    const index,
-                              RingQueueHtoD<unsigned>*     const inputQueue,
-                              float const*                 const calibBuffers,
-                              size_t                       const calibBufsCnt,
-                              uint8_t*                     const dataBuffers,
-                              size_t                       const dataBufsCnt,
-                              RingQueueDtoH<ReducerTuple>* const outputQueue,
-                              uint64_t*                    const state_d,
-                              unsigned*                    const done)
+void PfplReducer::recordGraph(cudaStream_t                        stream,
+                              unsigned*                    const  index,
+                              RingQueueHtoD<unsigned>*     const  inputQueue,
+                              float const*                 const  calibBuffers,
+                              size_t                       const  calibBufsCnt,
+                              uint8_t*                     const  dataBuffers,
+                              size_t                       const  dataBufsCnt,
+                              RingQueueDtoH<ReducerTuple>* const  outputQueue,
+                              uint64_t*                    const  state_d,
+                              cuda::std::atomic<unsigned>  const& terminate_d)
 {
   pfpl_scoped_range r{/*"PfplReducer::recordGraph"*/}; // Expose function name via NVTX
 
@@ -88,7 +116,7 @@ void PfplReducer::recordGraph(cudaStream_t                       stream,
   abort();
 
   // Handle messages from TebReceiver to process an event
-  _receive<<<1, 1, 0, stream>>>(index, inputQueue, done);
+  _receive<<<1, 1, 0, stream>>>(index, inputQueue, terminate_d);
 
   m_compressor.updateGraph(stream,
                            *index,
@@ -102,7 +130,7 @@ void PfplReducer::recordGraph(cudaStream_t                       stream,
                                   dataBuffers,
                                   dataBufsCnt,
                                   outputQueue,
-                                  done);
+                                  terminate_d);
 }
 
 void PfplReducer::reduce(cudaGraphExec_t graph,

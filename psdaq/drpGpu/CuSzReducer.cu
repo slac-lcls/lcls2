@@ -48,16 +48,16 @@ CuSzReducer::~CuSzReducer()
 }
 
 // This routine records the graph that does the data reduction
-void CuSzReducer::recordGraph(cudaStream_t                       stream,
-                              unsigned*                    const index,
-                              RingQueueHtoD<unsigned>*     const inputQueue,
-                              float const*                 const calibBuffers,
-                              size_t                       const calibBufsCnt,
-                              uint8_t*                     const dataBuffers,
-                              size_t                       const dataBufsCnt,
-                              RingQueueDtoH<ReducerTuple>* const outputQueue,
-                              uint64_t*                    const state_d,
-                              unsigned*                    const done)
+void CuSzReducer::recordGraph(cudaStream_t                        stream,
+                              unsigned*                    const  index,
+                              RingQueueHtoD<unsigned>*     const  inputQueue,
+                              float const*                 const  calibBuffers,
+                              size_t                       const  calibBufsCnt,
+                              uint8_t*                     const  dataBuffers,
+                              size_t                       const  dataBufsCnt,
+                              RingQueueDtoH<ReducerTuple>* const  outputQueue,
+                              uint64_t*                    const  state_d,
+                              cuda::std::atomic<unsigned>  const& terminate_d)
 {
   // @todo: More work is needed here
   logging::critical("CuSzReducer::recordGraph: To be implemented");

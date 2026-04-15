@@ -10,6 +10,8 @@
 #include "psdaq/trigger/tmoTebPrimitive_gpu_dev.hh"
 #include "psdaq/eb/eb.hh"
 
+#include <time.h>
+
 // Uncomment to dump a tracebuffer when a PGPReader event counter jump occurs
 //#define USE_TRACEBUFFER
 
@@ -49,7 +51,7 @@ Collector::Collector(const Parameters&                  para,
   m_para            (para)
 {
   // Set up buffer index queue for Collector to Host comms
-  m_collectorQueue.h = new RingIndexDtoH(pool.nbuffers(), m_terminate, m_terminate_d);
+  m_collectorQueue.h = new RingIndexDtoH(pool.nbuffers());
   chkError(cudaMalloc(&m_collectorQueue.d,                     sizeof(*m_collectorQueue.d)));
   chkError(cudaMemcpy( m_collectorQueue.d, m_collectorQueue.h, sizeof(*m_collectorQueue.d), cudaMemcpyHostToDevice));
 
@@ -170,65 +172,63 @@ int Collector::_setupGraph()
 
 // This device function collects and event builds contributions from the DMA streams
 static __device__
-void _collectorStep(unsigned*      const  __restrict__ head,
-                    unsigned*      const  __restrict__ tail,
-                    RingIndexDtoD* const  __restrict__ readerQueue,
-                    uint64_t*      const  __restrict__ state,
-                    cuda::std::atomic<unsigned> const& terminate)
+bool _pendEvents(unsigned*      const  __restrict__ head,
+                 unsigned*      const  __restrict__ tail,
+                 RingIndexDtoD* const  __restrict__ readerQueue,
+                 uint64_t*      const  __restrict__ state)
 {
-  auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid == 0)  *state = 2;
-  //printf("### Collector: tail %u, head %u\n", tail, head);
+  *state = 2;
+  //printf("### Collector: _pendEvents: tail %u, head %u\n", tail, head);
 
   // Refresh the head if the tail has caught up to it
   // It might be desireable to refresh the head on every call, but that could
   // prevent progressing the tail toward the head since it blocks when there
   // is no change.  @todo: Revisit this
   if (*tail == *head) {
-    if (tid == 0)  *state = 3;
+    *state = 3;
     // Get the intermediate buffer index
     unsigned hd;
     unsigned ns{8};
-    while ((hd = readerQueue->pend()) == *head) {
-      if (terminate.load(cuda::std::memory_order_acquire))
-        return;
-      if (tid == 0)  *state = 4;
+    while (!readerQueue->pend(&hd) || (hd == *head)) {
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
+      else {
+        *state = 4;
+        return false;
+      }
     }
-    //printf("### Collector: hd %u\n", hd);
-    if (tid == 0)  *state = 5;
+    //printf("### Collector: _pendEvents: hd %u\n", hd);
 
     // Advance head
     *head = hd;
   }
-  if (tid == 0)  *state = 6;
+  *state = 6;
+  return true;
 }
 
 // This will re-launch the current graph
 static __device__
-void _graphLoopStep(unsigned*      const  __restrict__ idx,
-                    RingIndexDtoH* const  __restrict__ collectorQueue,
-                    uint64_t*      const  __restrict__ state,
-                    cuda::std::atomic<unsigned> const& terminate)
+bool _postEvent(unsigned*      const  __restrict__ idx,
+                RingIndexDtoH* const  __restrict__ collectorQueue,
+                uint64_t*      const  __restrict__ state)
 {
-  auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid == 0)  *state = 10;
-
-  if (terminate.load(cuda::std::memory_order_acquire))
-    return;
-  if (tid == 0)  *state = 11;
+  *state = 10;
 
   // Push index to host and increment to the next one
   //printf("### Collector: post idx %u\n", *idx);
-  *idx = collectorQueue->post(*idx);
+  unsigned ns{8};
+  while (!collectorQueue->post(idx)) {
+    __nanosleep(ns);
+    if (ns < 256)  ns *= 2;
+    else {
+      *state = 11;
+      return false;
+    }
+  }
   //printf("### Collector: posted, new idx %u\n", *idx);
-  if (tid == 0)  *state = 12;
+  *state = 12;
 
-  // This will re-launch the current graph
-  //printf("### Collector: relaunch\n");
-  cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  if (tid == 0)  *state = 13;
+  return true;
 }
 
 struct NoEventFn
@@ -242,6 +242,8 @@ struct NoEventFn
   {
   }
 };
+
+static __device__ unsigned lState = 0;
 
 template<typename EventFn>
 static __global__
@@ -257,23 +259,42 @@ void _fusedCollector(unsigned*        const __restrict__ head,
                      size_t           const              outBufsCnt,
                      uint64_t*        const __restrict__ state)
 {
-  auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
-  if (tid == 0)  *state = 1;
+  // This code currently expects to be run in a single thread
+  bool waiting{false};
+  do {
+    switch (lState) {
+      case 0: {
+        // Find which pebble buffers are ready for processing
+        if (!_pendEvents(head, tail, readerQueue, state)) {
+          waiting = true;
+          break;                          // Retry case 0 after relaunch
+        }
+        // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
+        eventFn(calibBuffers, calibBufsCnt, out, outBufsCnt, *tail);
 
-  // Find which pebble buffers are ready for processing
-  _collectorStep(head, tail, readerQueue, state, terminate);
-  if (tid == 0)  *state = 7;
+        lState = 1;
+        // Fall through to case 1
+      }
+      case 1: {
+        // Post event to the host, and thus the TEB
+        if (!_postEvent(tail, collectorQueue, state)) {
+          waiting = true;
+          break;                          // Retry case 1 after relaunch
+        }
+        lState = 0;                       // Relaunch to await new events
+        break;
+      }
+      default: {
+        printf("### Collector: Illegal state %u\n", lState); // @todo: Replace with error return code
+        break;
+      }
+    }
+  } while (!waiting);
 
-  if (terminate.load(cuda::std::memory_order_acquire))  return;
-  if (tid == 0)  *state = 8;
-
-  // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  eventFn(calibBuffers, calibBufsCnt, out, outBufsCnt, *tail);
-  if (tid == 0)  *state = 9;
-
-  // Re-launch! Additional behavior can be put in graphLoop as needed. For now, it just re-launches the current graph.
-  _graphLoopStep(tail, collectorQueue, state, terminate);
-  if (tid == 0)  *state = 14;
+  // Relaunch the current graph when not terminating
+  if (!terminate.load(cuda::std::memory_order_acquire)) {
+    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  }
 }
 
 cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
@@ -366,6 +387,12 @@ void Collector::freeDma(PGPEvent* event)
   _freeDma(buffer->index);
 }
 
+static int _nsSleep(unsigned ns)
+{
+  struct timespec ts{0, ns};
+  return nanosleep(&ts, nullptr);
+}
+
 unsigned Collector::receive(Detector* det)
 {
   col_scoped_range r{/*"Collector::receive"*/}; // Expose function name via NVTX
@@ -387,7 +414,21 @@ unsigned Collector::receive(Detector* det)
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
   uint64_t       lastPid        = m_lastPid;
 
-  unsigned head = m_collectorQueue.h->pend();
+  //bool wait{false};
+  unsigned ns{8};
+  unsigned head;
+  while(!m_collectorQueue.h->pend(&head)) {
+    if (m_terminate.load(std::memory_order_acquire))
+      break;
+    _nsSleep(ns);
+    if (ns < 256)  ns *= 2;
+    //if (!wait) {
+    //  wait = true;
+    //  printf("*** riDtoH::pend: wait T, tail %d, head %d\n", tail, head);
+    //}
+  }
+  //if (wait)
+  //  printf("*** riDtoH::pend: wait F, tail %d, head %d\n", tail, head);
   unsigned tail = m_last;
   //if (tail != head)  printf("*** Collector::receive: tail %u, head %u\n", tail, head);
   while (tail != head) {

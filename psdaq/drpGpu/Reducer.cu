@@ -46,10 +46,6 @@ Reducer::Reducer(const Parameters&                  para,
   int prio{prioHi+1};
   logging::debug("Reducer stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
 
-  // Create a 'done' flag
-  chkError(cudaMalloc(&m_done_d,    sizeof(*m_done_d)));
-  chkError(cudaMemset( m_done_d, 0, sizeof(*m_done_d)));
-
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
   m_t0.resize(m_para.nworkers);
@@ -99,12 +95,12 @@ Reducer::Reducer(const Parameters&                  para,
       for (unsigned i = 0; i < m_para.nworkers; ++i) {
         printf("*** Reducer::ctor: 1 wkr %u\n", i);
         auto& iq = m_inputQueues2[i];
-        iq.h = new RingQueueHtoD<unsigned>(nEntries, m_terminate, m_terminate_d);
+        iq.h = new RingQueueHtoD<unsigned>(nEntries);
         chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
         chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
         printf("*** Reducer::ctor: 2 wkr %u\n", i);
         auto& oq = m_outputQueues2[i];
-        oq.h = new RingQueueDtoH<ReducerTuple>(nEntries, m_terminate, m_terminate_d);
+        oq.h = new RingQueueDtoH<ReducerTuple>(nEntries);
         chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
         chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
         printf("*** Reducer::ctor: 3 wkr %u\n", i);
@@ -216,7 +212,6 @@ Reducer::~Reducer()
   m_streams.clear();
   printf("*** Reducer dtor 5\n");
 
-  if (m_done_d)  chkError(cudaFree(m_done_d));
   printf("*** Reducer dtor end\n");
 }
 
@@ -392,7 +387,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
                                  dataBufsCnt,
                                  m_outputQueues2[instance].d,
                                  m_metrics.state[instance].d,
-                                 m_done_d);
+                                 m_terminate_d);
 
   // Re-launch! Additional behavior can be put in graphLoop as needed.
   //_graphLoop<<<1, 1, 0, stream>>>(m_heads_d[instance],

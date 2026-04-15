@@ -121,16 +121,16 @@ void operator()(unsigned const                     index,
 //                                              m_refBufCnt,
 //                                              m_errorCnt_d);
 //}
-void NoOpReducer::recordGraph(cudaStream_t                       stream,
-                              unsigned*                    const index,
-                              RingQueueHtoD<unsigned>*     const inputQueue,
-                              float const*                 const calibBuffers,
-                              size_t                       const calibBufsCnt,
-                              uint8_t*                     const dataBuffers,
-                              size_t                       const dataBufsCnt,
-                              RingQueueDtoH<ReducerTuple>* const outputQueue,
-                              uint64_t*                    const state_d,
-                              unsigned*                    const done)
+void NoOpReducer::recordGraph(cudaStream_t                        stream,
+                              unsigned*                    const  index,
+                              RingQueueHtoD<unsigned>*     const  inputQueue,
+                              float const*                 const  calibBuffers,
+                              size_t                       const  calibBufsCnt,
+                              uint8_t*                     const  dataBuffers,
+                              size_t                       const  dataBufsCnt,
+                              RingQueueDtoH<ReducerTuple>* const  outputQueue,
+                              uint64_t*                    const  state_d,
+                              cuda::std::atomic<unsigned>  const& terminate_d)
 {
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, 0));
@@ -159,7 +159,7 @@ void NoOpReducer::recordGraph(cudaStream_t                       stream,
                                           m_errorCnt_d,
                                           outputQueue,
                                           state_d,
-                                          done);
+                                          terminate_d);
   chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
 }
 

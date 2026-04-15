@@ -7,26 +7,18 @@
 #include <cuda/atomic>
 #include <cuda/std/atomic>
 
-#ifndef __NVCC__
-#define __nanosleep(x) {}
-#define __threadfence() {}
-#define __syncthreads() {}
-#endif
-
 namespace Drp {
   namespace Gpu {
 
 class RingIndexDtoD
 {
 public:
-  __host__ RingIndexDtoD(const unsigned                     capacity,
-                         const cuda::std::atomic<unsigned>& terminate_d) :
+  __host__ RingIndexDtoD(const unsigned capacity) :
     m_head_h      (nullptr),
     m_head_d      (nullptr),
     m_tail_h      (nullptr),
     m_tail_d      (nullptr),
-    m_capacityMask(capacity-1),    // Range of the buffer index [0, capacity-1]
-    m_terminate_d (terminate_d)
+    m_capacityMask(capacity-1)     // Range of the buffer index [0, capacity-1]
   {
     assert(capacity & (capacity - 1));  // Capacity must be a power of 2
 
@@ -47,81 +39,42 @@ public:
     if (m_head_h)  chkError(cudaFreeHost(m_head_h));
   }
 
-  __device__ unsigned allocate()                       // Return next index in monotonic fashion
+  __device__ bool allocate(unsigned* index)            // Return next index in monotonic fashion
   {
     using namespace cuda;
     auto head = m_head_d->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
     auto tail = m_tail_d->load(memory_order_acquire);
-    //bool wait{false};
-    unsigned ns{8};
-    while (next == tail) {                             // Wait for tail to advance while full
-      if (m_terminate_d.load(cuda::std::memory_order_acquire))
-        break;
-      __nanosleep(ns);
-      if (ns < 256)  ns *= 2;
-      tail = m_tail_d->load(memory_order_acquire);
-      //if (!wait) {
-      //  wait = true;
-      //  printf("### riDtoD::allocate: wait T, next %d, tail %d\n", next, tail);
-      //}
-    }
-    //if (wait)
-    //  printf("### riDtoD::allocate: wait F, next %d, tail %d\n", next, tail);
-    return head;                                       // Caller now fills buffer[head]
+    if (next == tail)  return false;                   // Full: caller waits for tail to advance before retrying
+    *index = head;                                     // Caller now fills buffer[head]
+    return true;
   }
 
-  __device__ void post(unsigned idx)                   // Move head forward when not full
+  __device__ bool post(unsigned index)                 // Move head forward when not full
   {
     using namespace cuda;
     auto head = m_head_d->load(memory_order_acquire);
-    //bool wait{false};
-    unsigned ns{8};
-    while (idx != head) {                              // Wait for tail to advance while full
-      if (m_terminate_d.load(cuda::std::memory_order_acquire))
-        break;
-      __nanosleep(ns);
-      if (ns < 256)  ns *= 2;
-      head = m_head_d->load(memory_order_acquire);
-      //if (!wait) {
-      //  wait = true;
-      //  printf("### riDtoD::post: wait T, idx %d, head %d\n", idx, head);
-      //}
-    }
-    //if (wait)
-    //  printf("### riDtoD::post: wait F, idx %d, head %d\n", idx, head);
-    auto next = (idx+1) & m_capacityMask;
+    if (index != head)  return false;                  // Full: caller waits for tail to advance before retrying
+    auto next = (index+1) & m_capacityMask;
     m_head_d->store(next, memory_order_release);       // Publish new head
+    return true;
   }
 
-  __device__ unsigned pend() const                     // Return current head
+  __device__ bool pend(unsigned* index) const          // Return current head
   {
     using namespace cuda;
     auto tail = m_tail_d->load(memory_order_acquire);
     auto head = m_head_d->load(memory_order_acquire);
-    //bool wait{false};
-    unsigned ns{8};
-    while (tail == head) {                             // Wait for head to advance while empty
-      if (m_terminate_d.load(cuda::std::memory_order_acquire))
-        break;
-      __nanosleep(ns);
-      if (ns < 256)  ns *= 2;
-      head = m_head_d->load(memory_order_acquire);
-      //if (!wait) {
-      //  wait = true;
-      //  printf("### riDtoD::pend: wait T, tail %d, head %d\n", tail, head);
-      //}
-    }
-    //if (wait)
-    //  printf("### riDtoD::pend: wait F, tail %d, head %d\n", tail, head);
-    return head;                                       // Caller now processes buffers up to [head]
+    if (tail == head)  return false;                   // Empty: caller waits for head to advance before retrying
+    *index = head;                                     // Caller now processes buffers up to [head]
+    return true;
   }
 
-  __host__ void release(unsigned idx)                  // Move tail forward
+  __host__ void release(unsigned index)                // Move tail forward
   {
     using namespace cuda;
     auto tail = m_tail_h->load(memory_order_acquire);
-    assert(idx == tail);                               // Require in-order freeing
+    assert(index == tail);                             // Require in-order freeing
     auto next = (tail+1) & m_capacityMask;
     m_tail_h->store(next, memory_order_release);       // Publish new tail
   }
@@ -151,7 +104,6 @@ private:
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_h; // Must stay coherent across streams
   cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_d; // Must stay coherent across streams
   const unsigned                                     m_capacityMask;
-  const cuda::std::atomic<unsigned>&                 m_terminate_d;
 };
 
   }

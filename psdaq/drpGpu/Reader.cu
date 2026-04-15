@@ -37,7 +37,7 @@ Reader::Reader(const Parameters&                  para,
   m_para       (para)
 {
   // Set up buffer index allocator for DMA to Collector comms
-  m_readerQueue.h = new RingIndexDtoD(m_pool.nbuffers(), m_terminate_d);
+  m_readerQueue.h = new RingIndexDtoD(m_pool.nbuffers());
   chkError(cudaMalloc(&m_readerQueue.d,                  sizeof(*m_readerQueue.d)));
   chkError(cudaMemcpy( m_readerQueue.d, m_readerQueue.h, sizeof(*m_readerQueue.d), cudaMemcpyHostToDevice));
 
@@ -208,21 +208,29 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
     if (blockIdx.x == 0) {
       *state = 2;
       // Allocate the index of the next set of intermediate buffers to be used
-      //printf("### Reader: allocate pblIdx\n");
-      pebbleIdx = readerQueue->allocate(); // This blocks when no buffers available
-      //printf("### Reader: pblIdx %u\n", pebbleIdx);
+      //printf("### Reader: Allocate pblIdx\n");
+      //bool wait{false};
+      unsigned ns{8};
+      while (!readerQueue->allocate(&pebbleIdx)) { // This blocks when no buffers available
+        __nanosleep(ns);
+        if (ns < 256)  ns *= 2;
+        else if (terminate.load(cuda::std::memory_order_acquire))  return;
+        //if (!wait) {
+        //  wait = true;
+        //  printf("### Reader::handleDMA: wait T, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
+        //}
+      }
+      //printf("### Reader: Allocated pblIdx %u\n", pebbleIdx);
       *state = 3;
 
       const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
       //bool wait{false};
-      unsigned ns{8};
+      ns = 8;
       //printf("### Reader::handleDMA: Wait for dmaBufs[%u] %p\n", dmaBufIdx, mem);
       while (*mem == 0) {                  // Wait for DMA completion
-        if (terminate.load(cuda::std::memory_order_acquire))
-          return;
-        *state = 4;
         __nanosleep(ns);
         if (ns < 256)  ns *= 2;
+        else if (terminate.load(cuda::std::memory_order_acquire))  return;
         //if (!wait) {
         //  wait = true;
         //  printf("### Reader::handleDMA: wait T, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
@@ -231,18 +239,18 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       //if (wait)
       //  printf("### Reader::handleDMA: wait F, dmaIdx %u, pblIdx %u\n", dmaBufIdx, pebbleIdx);
       //printf("### Reader: dma[%u] %p: sz %u\n", dmaBufIdx, mem, *mem);
-      *state = 5;
+      *state = 4;
       auto next = (dmaBufIdx + 1) & (dmaCount - 1);      // Prepare for the next DMA buffer
       *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;      // Clear the handshake space of the next DMA buffer
       *(volatile uint8_t*)(wrEnReg + next * 4) = 1;      // Enable the DMA on this dataDev
       dmaBufferIdx = next;                               // Update global memory
       //printf("### Reader: next %lu, hand shake %p, next write enable %p\n", next, dmaBufs[next] + 4, wrEnReg + next * 4);
     }
-    if (tid == 0)  *state = 6;
     __threadfence();                                     // Ensure global memory is updated before the following
     unsigned value = atomicInc(&blockCount1, gridDim.x); // Thread 0 signals that it is done
     isLastBlockDone1 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last block to be done
   }
+  if (tid == 0)  *state = 5;
   __syncthreads();   // Synchronize to ensure that each thread (all blocks) reads the correct value of isLastBlockDone
   if (isLastBlockDone1) {               // Only last block will have set isLastBlockDone true
     if (threadIdx.x == 0) {             // Thread 0 updates global memory
@@ -251,13 +259,12 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       *state = 7;
     }
   }
+  if (tid == 0) *state = 8;
   unsigned ns{8};
   while(!indicesValid) {                // All threads wait for indices to become valid
-    if (terminate.load(cuda::std::memory_order_acquire))
-      return;
-    if (tid == 0) *state = 8;
     __nanosleep(ns);
     if (ns < 256)  ns *= 2;
+    else if (terminate.load(cuda::std::memory_order_acquire))  return;
   }
   if (tid == 0) *state = 9;
   auto pblBufIdx = pebbleIdx;           // All threads load pebble idx into a register from global memory
@@ -303,10 +310,10 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
     if (tid == 0) *state = 12;
 
     __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
+    if (tid == 0) *state = 13;
     if (threadIdx.x == 0) {
       //if (blockIdx.x == 88)  printf("### Reader: blkIdx %d, pblIdx %u\n", blockIdx.x, pblBufIdx);
 
-      if (tid == 0) *state = 13;
       __threadfence();                                     // Ensure global memory is updated before the following
       unsigned value = atomicInc(&blockCount2, gridDim.x); // Thread 0 signals that it is done
       isLastBlockDone2 = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last  block to be done
@@ -314,18 +321,33 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
       //if (isLastBlockDone2)  printf("### Reader: lastBlkDone T, blk %3u\n", blockIdx.x);
       //if (blockIdx.x == 0)  printf("### Reader: pblIdx %4u, gridDim %d, blkIdx %3d, value %3u, last %d\n", pblBufIdx, gridDim.x, blockIdx.x, value, isLastBlockDone2);
     }
+    if (tid == 0) *state = 14;
     __syncthreads();    // Synchronize to make sure that each thread reads the correct value of isLastBlockDone
+    if (tid == 0) *state = 15;
     //if (tid == 0)  printf("### Reader: pblIdx %4u, blkCnt %u\n", pblBufIdx, blockCount2);
     if (isLastBlockDone2) {
       //if (tid == 0)  printf("### Reader: lastBlkDone T, blk %3u, pblIdx %4u\n", blockIdx.x, pblBufIdx);
       if (threadIdx.x == 0) {
         //printf("### Reader: blk %3d, posting %u\n", blockIdx.x, pblBufIdx);
-        readerQueue->post(pblBufIdx);
+        //bool wait{false};
+      if (tid == 0) *state = 16;
+        unsigned ns{8};
+        while (!readerQueue->post(pblBufIdx)) {
+          __nanosleep(ns);
+          if (ns < 256)  ns *= 2;
+          else if (terminate.load(cuda::std::memory_order_acquire))  return;
+          //if (!wait) {
+          //  wait = true;
+          //  printf("### riDtoD::post: wait T, idx %d, head %d\n", idx, head);
+          //}
+        }
+        //if (wait)
+        //  printf("### riDtoD::post: wait F, idx %d, head %d\n", idx, head);
         //printf("### Reader: blk %3d, posted  %u\n", blockIdx.x, pblBufIdx);
 
         blockCount2 = 0;                // Reset for next time
         indicesValid = false;           // syncthreads() happens after DMA on next launch
-        *state = 14;
+        *state = 17;
 
         // Relaunch the graph
         //printf("### Reader: 2 relaunch\n");
@@ -334,19 +356,31 @@ void _handleDMA(uint8_t*  const               __restrict__ wrEnReg,
     }
   } else {                              // Transitions
     if (tid == 0) {
+      *state = 18;
       //printf("### Reader: posting %u\n", pblBufIdx);
-      readerQueue->post(pblBufIdx);
+      //bool wait{false};
+      unsigned ns{8};
+      while (!readerQueue->post(pblBufIdx)) {
+        __nanosleep(ns);
+        if (ns < 256)  ns *= 2;
+        else if (terminate.load(cuda::std::memory_order_acquire))  return;
+        //if (!wait) {
+        //  wait = true;
+        //  printf("### riDtoD::post: wait T, idx %d, head %d\n", idx, head);
+        //}
+      }
+      //if (wait)
+      //  printf("### riDtoD::post: wait F, idx %d, head %d\n", idx, head);
       //printf("### Reader: posted  %u\n", pblBufIdx);
 
       indicesValid = false;             // syncthreads() happens after DMA on next launch
-      *state = 15;
+      *state = 19;
 
       // Relaunch the graph
       //printf("### Reader: 1 relaunch\n");
       cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
     }
   }
-  if (tid == 0) *state = 16;
 }
 
 /******************************************************************************

@@ -162,7 +162,19 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   if (result.persist() || result.monitor()) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
-    static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
+    //bool wait{false};
+    while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
+      if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+        printf("*** TebRcvr::complete: inputQueue full\n");
+        return;                         // @todo: Revisit
+      }
+      //if (!wait) {
+      //  wait = true;
+      //  printf("*** TebRcvr::complete: wait T, next %d, tail %d\n", next, tail);
+      //}
+    }
+    //if (wait)
+    //  printf("*** TebRcvr::complete: wait F, next %d, tail %d\n", next, tail);
     m_worker = (m_worker + 1) % m_para.nworkers;
 //    ++lReduceStarts;
 //    lLastIndex = index;
@@ -209,7 +221,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     // Wait for a new Result to appear from the TEB via the complete() method above
     ResultTuple items;
     if (!m_recordQueue.pop(items)) {
-      lState = 15;
       printf("*** TebRcvr::recorder: No item from recordQueue\n");
       continue;
     }
@@ -229,11 +240,19 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lState = 3;
       ReducerTuple rt;
-      if (!drp.reducerReceive(worker, &rt)) [[unlikely]] { // This blocks until result is ready from GPU
-        lState = 14;
-        printf("*** TebRcvr::recorder: No item from reducerReceiver %u\n", worker);
-        continue;
+      //bool wait{false};
+      while (!drp.reducerReceive(worker, &rt)) { // Block here until a result is ready from GPU
+        if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+          printf("*** TebRcvr::recorder: outputQueue empty\n");
+          return;                       // @todo: Revisit
+        }
+        //if (!wait) {
+        //  wait = true;
+        //  printf("*** TebRcvr::recorder: wait T, tail %d, head %d\n", tail, head);
+        //}
       }
+      //if (wait)
+      //  printf("*** TebRcvr::recorder: wait F, tail %d, head %d\n", tail, head);
       lState = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       worker = (worker + 1) % m_para.nworkers;
@@ -464,7 +483,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     //m_reducer->release(index);
     //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
     nvtx3::mark("Pebble released", nvtx3::payload{index});
-    lState = 13;
   }
 
   logging::info("Recorder thread is exiting");
@@ -564,18 +582,18 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
 //  cudaStreamCreate(&stream);
 
   // Get all available GPU SM resources
-//  for (unsigned i = 0; i < nbGroups+1; ++i) {
-//    cudaDevResource final_SM_resources = {};
-//    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
-//                                            &final_SM_resources,     // Device resource to populate
-//                                            cudaDevResourceTypeSm)); // Resource type
-//
-//    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
-//
-//    // Special fields relevant for partitioning
-//    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
-//    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
-//  }
+  for (unsigned i = 0; i < nbGroups+1; ++i) {
+    cudaDevResource final_SM_resources = {};
+    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
+                                            &final_SM_resources,     // Device resource to populate
+                                            cudaDevResourceTypeSm)); // Resource type
+
+    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
+
+    // Special fields relevant for partitioning
+    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
+    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
+  }
 }
 
 std::string PGPDrp::configure(const json& msg)
