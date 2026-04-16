@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #------------------------------
-import peakFinder as algos
+import psana.peakFinder as algos
 import numpy as np
 #------------------------------
 #import psana.pyalgos.generic.NDArrGenerators as ag

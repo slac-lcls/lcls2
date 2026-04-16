@@ -33,13 +33,13 @@ public:
     Bld(const Bld&);
     ~Bld();
 public:
-    static const unsigned MTU = 9000;
-    static const unsigned TimestampPos      =  0; // LCLS-II style
-    static const unsigned PulseIdPos        =  8; // LCLS-II style
-    static const unsigned HeaderSize        = 20;
-    static const unsigned DgramTimestampPos =  0; // LCLS-I style
-    static const unsigned DgramPulseIdPos   =  8; // LCLS-I style
-    static const unsigned DgramHeaderSize   = 60;
+    static inline constexpr unsigned MTU = 9000;
+    static inline constexpr unsigned TimestampPos      =  0; // LCLS-II style
+    static inline constexpr unsigned PulseIdPos        =  8; // LCLS-II style
+    static inline constexpr unsigned HeaderSize        = 20;
+    static inline constexpr unsigned DgramTimestampPos =  0; // LCLS-I style
+    static inline constexpr unsigned DgramPulseIdPos   =  8; // LCLS-I style
+    static inline constexpr unsigned DgramHeaderSize   = 60;
 public:
     bool     ready      () const { return (m_position + m_payloadSize + 4) <= m_bufferSize; }
     void     clear      (uint64_t ts);

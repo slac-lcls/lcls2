@@ -10,7 +10,7 @@ import sys
 import numpy as np
 
 from time import time
-import psalg_ext as algos
+import psana.psalg_ext as algos
 from psana.pyalgos.generic.NDArrUtils import print_ndarr
 import psana.pyalgos.generic.Graphics as gr
 

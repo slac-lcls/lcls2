@@ -3,7 +3,7 @@
 
 import os
 import sys
-import hexanode
+import psana.hexanode as hexanode
 import numpy as np
 from time import time
 from math import sqrt

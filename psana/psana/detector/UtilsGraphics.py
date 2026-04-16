@@ -168,6 +168,7 @@ class fleximage(flexbase):
         logger.debug('fleximage.update amin: %.3f amax: %.3f' % (amin, amax))
         self.imsh.set_data(img)
         self.imsh.set_clim(amin, amax)
+        self.fig.canvas.draw_idle()
         #gr.show(mode=1)
 
 
@@ -199,6 +200,7 @@ class flexhist(flexbase):
         kwa.setdefault('orientation', u'vertical')
         if 'arr' in kwa: kwa.pop('arr')
         self.his = gr_hist(self.axhi, arr, **kwa)
+        self.fig.canvas.draw_idle()
 
 
     def axtitle(self, title=''):

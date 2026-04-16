@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import hexanode
+import psana.hexanode_ext as hexanode
 
 def test_01():
     print('call pure python')

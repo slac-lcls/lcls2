@@ -29,7 +29,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
-#include "psdaq/eb/TebContributor.hh"
+#include "psdaq/eb/src/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
