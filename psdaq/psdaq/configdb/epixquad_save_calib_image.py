@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Save representative epixquad calib/image arrays for manual mask editing."""
+"""Save representative epixquad raw/calib/image arrays for manual mask editing."""
 
 import argparse
 from pathlib import Path
@@ -12,7 +12,7 @@ from psana import DataSource
 
 def _parse_args():
     parser = argparse.ArgumentParser(
-        description='Save one epixquad calib array, assembled image, and geometry for Mask Editor'
+        description='Save one epixquad raw array, calib array, assembled image, and geometry for Mask Editor'
     )
     parser.add_argument('-e', '--exp', required=True, help='experiment code, for example ued1015999')
     parser.add_argument('-r', '--run', required=True, type=int, help='run number')
@@ -85,23 +85,26 @@ def main():
     run = next(ds.runs())
     det = run.Detector(args.detname)
 
+    raw = None
     calib = None
     image = None
     selected_good_event = None
 
     ngood = 0
     for evt in run.events():
+        raw_candidate = det.raw.raw(evt)
         calib_candidate = det.raw.calib(evt)
-        if calib_candidate is None:
+        if raw_candidate is None or calib_candidate is None:
             continue
         if ngood == args.event_index:
+            raw = np.asarray(raw_candidate)
             calib = np.asarray(calib_candidate)
             image = det.raw.image(evt, nda=calib)
             selected_good_event = ngood
             break
         ngood += 1
 
-    if calib is None:
+    if raw is None or calib is None:
         raise RuntimeError(
             f'No valid detector event found for event-index={args.event_index} within max-nevents={args.max_nevents}'
         )
@@ -109,6 +112,9 @@ def main():
         raise RuntimeError('det.raw.image(evt, nda=calib) returned None; geometry may be unavailable')
 
     stem = _output_stem(output_dir, args.run, args.detname, selected_good_event)
+
+    raw_path = Path(f'{stem}_raw.npy')
+    np.save(raw_path, raw)
 
     calib_path = Path(f'{stem}_calib.npy')
     np.save(calib_path, calib)
@@ -119,7 +125,7 @@ def main():
     geotxt, _source = _geometry_text(det)
     geometry_path = Path(f'{stem}_geometry.data')
     geometry_path.write_text(geotxt)
-    print(f'Wrote 3 output files successfully in {output_dir.resolve()}')
+    print(f'Wrote 4 output files successfully in {output_dir.resolve()}')
 
 
 if __name__ == '__main__':
