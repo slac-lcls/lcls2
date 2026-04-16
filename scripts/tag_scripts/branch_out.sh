@@ -1,49 +1,24 @@
 #!/bin/bash
-# Sync tracked changes from the most recent matching source lcls2 repo to a branch repo
+# Sync tracked changes from matching source lcls2 repos to a branch repo
 # Creates a branch and commits the changes locally
 #
 # Arguments:
 #   <hutch_name>
 #       Short identifier used to name the output branch.
-#       Example: tmo → branch name becomes tmo-<git_hash>
 #
 #   <root_dir>
 #       Directory containing multiple cloned git repositories.
-#       The script scans this directory, filters repos by prefix,
-#       and selects the MOST RECENTLY CLONED repo (via git reflog).
-#       This repo becomes the SOURCE of changes.
+#       The script scans this directory and filters repos by prefix.
 #
 #   <branch_dir>
 #       Path to a single base git repository where changes will be applied.
-#       The script will:
-#         - ensure it is clean
-#         - checkout master
-#         - pull latest changes
-#         - create or switch to a branch
-#         - copy changes from the selected source repo
-#         - commit and push
 #
 #   <prefix>
 #       Filter applied to repo names inside <root_dir>.
 #       Only repos whose names START WITH this prefix are considered.
-#       Example:
-#         prefix=lcls2 → matches lcls2, lcls2_dev, lcls2_clone_1
 #
 # Usage:
 #   ./branch_out.sh <hutch_name> <root_dir> <branch_dir> <prefix>
-#
-# Example:
-#   ./branch_out.sh tmo \
-#       /sdf/data/lcls/ds/prj/prjcwang31/results/software \
-#       /cds/sw/ds/ana/test_lcl2/ssh_clone/lcls2 \
-#       lcls2
-#
-# Flow:
-#   1. Scan <root_dir> for git repos matching <prefix>
-#   2. Determine most recent clone using git reflog timestamp
-#   3. Use that repo as source of changes
-#   4. Apply changes into <branch_dir>
-#   5. Commit and push to a new branch
 
 set -e
 
@@ -86,9 +61,13 @@ if [ ! -d "$BRANCH_DIR/.git" ]; then
     exit 1
 fi
 
-# Find the most recent cloned git repo whose name starts with PREFIX
 MONITOR_REPO=""
 LATEST_CLONE_TIME=0
+
+#### ADDED ####
+git config --global --add safe.directory '*'
+FOUND_MATCH=false
+#### END ####
 
 for candidate in "$ROOT_DIR"/*; do
     [ -d "$candidate" ] || continue
@@ -105,134 +84,132 @@ for candidate in "$ROOT_DIR"/*; do
         continue
     fi
 
-    CLONE_TIME=$(git -C "$candidate" reflog --grep-reflog=clone -n 1 --date=unix 2>/dev/null | sed -n 's/.*HEAD@{\([0-9]*\)}:.*/\1/p')
-    
-    if [ -z "$CLONE_TIME" ]; then
-        echo -e "${YELLOW}Warning: Could not determine clone time for ${REPO_NAME}${NC}"
+    #### ADDED ####
+    FOUND_MATCH=true
+    MONITOR_REPO="$candidate"
+
+    echo -e "${GREEN}Processing matching repo:${NC} $MONITOR_REPO"
+    #### END ####
+
+    # Get short git hash from source repo
+    cd "$MONITOR_REPO"
+    echo -e "${GREEN} REMOTE FOLDER ${NC}"
+    echo -e "${YELLOW}Move to monitored folder ${NC}"
+
+    GIT_HASH=$(git rev-parse --short HEAD)
+
+    #### CHANGED ####
+    BRANCH_NAME="${HUTCH_NAME}-${REPO_NAME}"
+    #### END ####
+
+    echo "GIT_HASH=${GIT_HASH}"
+    echo "BRANCH_NAME=${BRANCH_NAME}"
+
+    echo -e "${YELLOW}diff folder with origin ${NC}"
+    # Get list of all modified tracked files (staged + unstaged)
+    git status
+    git add --all
+    CHANGED_FILES=$(git diff --name-only HEAD)
+
+    #### CHANGED ####
+    if [ -z "$CHANGED_FILES" ]; then
+        echo -e "${YELLOW}No tracked changes to sync for ${REPO_NAME}. Skipping.${NC}"
         continue
     fi
+    #### END ####
 
-    if [ "$CLONE_TIME" -gt "$LATEST_CLONE_TIME" ]; then
-        LATEST_CLONE_TIME="$CLONE_TIME"
-        MONITOR_REPO="$candidate"
+    echo -e "${YELLOW}Files to sync: ${NC}"
+    echo "$CHANGED_FILES"
+    echo ""
+
+    # Create new branch in branch repo
+    cd "$BRANCH_DIR"
+    echo -e "${GREEN}LOCAL${NC}"
+    echo -e "${YELLOW}move to branch folder ${NC}"
+    echo -e "${YELLOW}Restoring repository to master branch...${NC}"
+
+    # Note: The branch repo should never have changes. If it does, we do not want to stash and have it be forgotten
+    # We will abort until the user resolves a clean local repo. This command checks tracked and untracked files.
+    if [ -n "$(git status --porcelain)" ]; then
+        echo -e "${RED}Error: Base repo is not clean. Aborting.${NC}"
+        exit 1
     fi
-done
 
-if [ -z "$MONITOR_REPO" ]; then
-    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
-    exit 1
-fi
-
-echo -e "${GREEN}Most recent matching clone selected:${NC} $MONITOR_REPO"
-
-# Get short git hash from source repo
-cd "$MONITOR_REPO"
-echo -e "${GREEN} REMOTE FOLDER ${NC}"
-echo -e "${YELLOW}Move to monitored folder ${NC}"
-
-git config --global --add safe.directory '*'
-
-GIT_HASH=$(git rev-parse --short HEAD)
-BRANCH_NAME="${HUTCH_NAME}-${GIT_HASH}"
-
-echo "GIT_HASH=${GIT_HASH}"
-echo "BRANCH_NAME=${BRANCH_NAME}"
-
-echo -e "${YELLOW}diff folder with origin ${NC}"
-# Get list of all modified tracked files (staged + unstaged)
-git status
-git add --all
-CHANGED_FILES=$(git diff --name-only HEAD)
-
-if [ -z "$CHANGED_FILES" ]; then
-    echo -e "${RED}No tracked changes to sync. Exiting. ${NC}"
-    exit 0
-fi
-
-echo -e "${YELLOW}Files to sync: ${NC}"
-echo "$CHANGED_FILES"
-echo ""
-
-# Create new branch in branch repo
-cd "$BRANCH_DIR"
-echo -e "${GREEN}LOCAL${NC}"
-echo -e "${YELLOW}move to branch folder ${NC}"
-echo -e "${YELLOW}Restoring repository to master branch...${NC}"
-
-# Note: The branch repo should never have changes. If it does, we do not want to stash and have it be forgotten
-# We will abort until the user resolves a clean local repo. This command checks tracked and untracked files.
-if [ -n "$(git status --porcelain)" ]; then
-    echo -e "${RED}Error: Base repo is not clean. Aborting.${NC}"
-    exit 1
-fi
-
-# Switch to master branch
-echo -e "Switching to master branch..."
-if git show-ref --verify --quiet refs/heads/master; then
-    git checkout master
-else
-    echo -e "${RED}Error: 'master' branch does not exist${NC}"
-    exit 1
-fi
-
-# Pull latest changes from remote
-echo -e "Pulling latest changes from remote..."
-git pull
-
-echo -e "${GREEN}Repository restored to original state in master/main${NC}"
-echo ""
-
-git checkout "$GIT_HASH"
-echo -e "${GREEN}Checking hash ${GIT_HASH} ${NC} "
-
-if git show-ref --verify --quiet refs/heads/"$BRANCH_NAME"; then
-    echo -e "${YELLOW}Branch '$BRANCH_NAME' exists. Switching to it... ${NC}"
-    git checkout "$BRANCH_NAME"
-
-    echo -e "${YELLOW}Pulling latest changes for existing branch...${NC}"
-    git pull origin "$BRANCH_NAME" || true
-else
-    echo -e "${YELLOW}Branch '$BRANCH_NAME' does not exist. Creating and switching to it... ${NC}"
-    git checkout -b "$BRANCH_NAME"
-fi
-
-update=false
-# Copy each changed file
-echo -e "${GREEN}Synching folders ${NC}"
-
-for file in $CHANGED_FILES; do
-    if [ -f "$MONITOR_REPO/$file" ]; then
-        mkdir -p "$(dirname "$file")"
-        cp "$MONITOR_REPO/$file" "$file"
-        git add "$file"
-        update=true
-        echo ".. $file synced and added to git"
+    # Switch to master branch
+    echo -e "Switching to master branch..."
+    if git show-ref --verify --quiet refs/heads/master; then
+        git checkout master
     else
-        if [ -f "$file" ]; then
-            echo ".. $file deleted in source"
-            git rm "$file"
-            update=true
-        else
-            echo ".. $file doesn't exist in local repo. Delete not needed, skipping"
-        fi
+        echo -e "${RED}Error: 'master' branch does not exist${NC}"
+        exit 1
     fi
-done
 
-# Commit
-echo -e "${GREEN}Commit${NC}"
-if $update; then
-   echo -e "${GREEN}Committing changes in branch ${BRANCH_NAME} ${NC}"
-   git commit -m "Sync from lcls2 (${BRANCH_NAME})
+    # Pull latest changes from remote
+    echo -e "Pulling latest changes from remote..."
+    git pull
+
+    echo -e "${GREEN}Repository restored to original state in master/main${NC}"
+    echo ""
+
+    git checkout "$GIT_HASH"
+    echo -e "${GREEN}Checking hash ${GIT_HASH} ${NC} "
+
+    if git show-ref --verify --quiet refs/heads/"$BRANCH_NAME"; then
+        echo -e "${YELLOW}Branch '$BRANCH_NAME' exists. Switching to it... ${NC}"
+        git checkout "$BRANCH_NAME"
+
+        echo -e "${YELLOW}Pulling latest changes for existing branch...${NC}"
+        git pull origin "$BRANCH_NAME" || true
+    else
+        echo -e "${YELLOW}Branch '$BRANCH_NAME' does not exist. Creating and switching to it... ${NC}"
+        git checkout -b "$BRANCH_NAME"
+    fi
+
+    update=false
+    # Copy each changed file
+    echo -e "${GREEN}Synching folders ${NC}"
+
+    for file in $CHANGED_FILES; do
+        if [ -f "$MONITOR_REPO/$file" ]; then
+            mkdir -p "$(dirname "$file")"
+            cp "$MONITOR_REPO/$file" "$file"
+            git add "$file"
+            update=true
+            echo ".. $file synced and added to git"
+        else
+            if [ -f "$file" ]; then
+                echo ".. $file deleted in source"
+                git rm "$file"
+                update=true
+            else
+                echo ".. $file doesn't exist in local repo. Delete not needed, skipping"
+            fi
+        fi
+    done
+
+    # Commit
+    echo -e "${GREEN}Commit${NC}"
+    if $update; then
+       echo -e "${GREEN}Committing changes in branch ${BRANCH_NAME} ${NC}"
+       git commit -m "Sync from lcls2 (${BRANCH_NAME})
    Source: $MONITOR_REPO
    Source commit: $GIT_HASH
    Files synced:
    $CHANGED_FILES"
-else
-   echo -e "${YELLOW}No new changes committed ${NC}"
-fi
+    else
+       echo -e "${YELLOW}No new changes committed ${NC}"
+    fi
 
-echo ""
-echo "=== Sync Complete ==="
-echo "Branch created: $BRANCH_NAME"
-echo "Pushing to $BRANCH_NAME..."
-git push -u origin "$BRANCH_NAME"
+    echo ""
+    echo "=== Sync Complete ==="
+    echo "Branch created: $BRANCH_NAME"
+    echo "Pushing to $BRANCH_NAME..."
+    git push -u origin "$BRANCH_NAME"
+done
+
+#### ADDED ####
+if ! $FOUND_MATCH; then
+    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
+    exit 1
+fi
+#### END ####
