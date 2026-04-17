@@ -17,11 +17,13 @@ no_ana=0
 no_shmem=0
 build_ext_list=""
 
-if [ -d "/cds/sw/" ]; then
-    no_daq=0
-elif [ -d "/sdf/group/lcls/" ]; then
-    no_daq=1
-fi
+#cpo hack
+no_daq=0
+#if [ -d "/cds/sw/" ]; then
+#    no_daq=0
+#elif [ -d "/sdf/group/lcls/" ]; then
+#    no_daq=1
+#fi
 
 while getopts "c:p:s:b:fdam" opt; do
   case $opt in
