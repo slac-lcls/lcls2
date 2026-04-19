@@ -10,12 +10,44 @@ markers in the exact shape consumed by `epixquad1kfps_config.py`:
 - readable ASIC rows: `0..175`
 - padded rows: `176..177`
 
-Each JSON file describes one test group. A loader can:
+Each test JSON file describes one test group. A loader can:
 
 1. allocate an array of shape `(16, 178, 192)`
 2. fill it with `background_value`
 3. set each listed marker to `value`
 4. program the resulting array as `cfg['user']['pixel_map']`
+
+On top of the per-test JSONs, this directory can also hold pattern-sequence
+JSON files. A sequence file provides an ordered list of pattern runs to execute
+in one detector session.
+
+## Configure-time debug override
+
+`epixquad1kfps_config.py` can be directed to override `cfg['user']['pixel_map']`
+from these JSON definitions at configure time.
+
+Supported environment variables:
+
+- `EPIXQUAD_DEBUG_TEST_FILE=/path/to/test.json`
+- `EPIXQUAD_DEBUG_SEQUENCE_FILE=/path/to/sequence.json`
+- `EPIXQUAD_DEBUG_PATTERN_INDEX=<int>` (default `0`)
+- `EPIXQUAD_DEBUG_GROUP_INDEX=<int>` (default `0`)
+- `EPIXQUAD_DEBUG_MARKER_GROUPS=group1[,group2,...]`
+- `EPIXQUAD_DEBUG_PATTERN_OUTDIR=/path/to/save/materialized/patterns`
+
+Use either `EPIXQUAD_DEBUG_TEST_FILE` or `EPIXQUAD_DEBUG_SEQUENCE_FILE`, but
+not both at the same time.
+
+In standalone test-file mode, if a file contains multiple marker groups, the
+loader defaults to group `0` in first-seen order. You can override that with
+`EPIXQUAD_DEBUG_GROUP_INDEX`, or select explicit names with
+`EPIXQUAD_DEBUG_MARKER_GROUPS`.
+
+When enabled, the configure hook forces:
+
+- `cfg['user']['gain_mode'] = 5`
+- `cfg['user']['pixel_map'] = materialized (16,178,192) array`
+- per-ASIC `trbit` values from the selected test JSON
 
 Recommended defaults for current tests:
 
@@ -59,7 +91,7 @@ For the current JSON test groups, `trbit=0` is recommended because:
 - both are fixed modes
 - the interpretation is simple and does not rely on auto high/medium/low splitting
 
-## JSON schema
+## Test JSON schema
 
 Each test JSON uses the following top-level fields:
 
@@ -83,6 +115,34 @@ Each marker entry contains:
 - `value`: pixel code to write for this point
 - `tags`: optional tags for quadrant / hypothesis / purpose
 
+## Pattern-sequence JSON schema
+
+Each sequence JSON uses the following top-level fields:
+
+- `version`: schema version
+- `sequence_name`: stable short name
+- `description`: brief purpose of the sequence
+- `defaults`: suggested scan defaults
+- `patterns`: ordered list of pattern runs
+
+The `defaults` block can include:
+
+- `readout_count`: suggested number of events per pattern
+- `record`: whether runs should be recorded
+- `config_alias`: suggested DAQ config alias
+
+Each pattern entry contains:
+
+- `pattern_index`: integer pattern number
+- `test_file`: path to one test JSON file relative to this directory
+- `marker_groups`: one or more marker groups from that test file to enable for this run
+- `group_index`: optional numeric fallback if `marker_groups` is omitted; defaults to `0`
+- `label`: short human-readable pattern label
+- `purpose`: what this pattern is expected to prove
+- `priority`: optional relative priority such as `high`, `medium`, `low`
+- `readout_count`: optional per-pattern override
+- `notes`: optional list of free-form notes
+
 ## Files
 
 - `manifest.json`: quick index of all test files
@@ -91,6 +151,8 @@ Each marker entry contains:
 - `tests/03_single_asic_quadrants.json`
 - `tests/04_single_asic_column_regions.json`
 - `tests/05_single_asic_row_regions.json`
+- `sequences/priority_shortlist.json`
+- `sequences/detector_day_v1.json`
 
 The first goal is to establish the empirical mapping from programmed
 `(asic,row,col)` coordinates to observed raw gain-bit locations, without

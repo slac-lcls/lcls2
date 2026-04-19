@@ -22,5 +22,15 @@
       "file": "tests/05_single_asic_row_regions.json",
       "purpose": "Probe multiple row bands of one ASIC to detect any unexpected vertical remap or row-address issue."
     }
+  ],
+  "sequences": [
+    {
+      "file": "sequences/priority_shortlist.json",
+      "purpose": "Short high-priority sequence for limited detector time."
+    },
+    {
+      "file": "sequences/detector_day_v1.json",
+      "purpose": "Full detector-day run order covering orientation, quadrant, column-region, and row-region hypotheses."
+    }
   ]
 }

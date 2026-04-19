@@ -19,6 +19,7 @@ import surf.protocols.batcher  as batcher  # for Start/StopRun
 import l2si_core               as l2si
 import lcls2_pgp_fw_lib.shared as shared
 import logging
+from psdaq.debugtools.epixquad1kfps.pattern_loader import load_debug_pattern
 
 base = None
 pv = None
@@ -33,6 +34,97 @@ DEBUG_PIXEL_MASK_SAVED=False
 DEBUG_ADC_TRAIN_WRITE=False
 DEBUG_RANDOM_PIXEL_MAP=False
 USE_ACCELERATED_MATRIX_WRITE=False
+
+
+def _apply_debug_pattern_override(cfg):
+    """Optionally overrides user.pixel_map/trbit from debug test definitions.
+
+    Two usage modes are supported.
+
+    Standalone test-file mode:
+      EPIXQUAD_DEBUG_TEST_FILE=/path/to/test.json
+      EPIXQUAD_DEBUG_MARKER_GROUPS=group1[,group2,...]
+      EPIXQUAD_DEBUG_GROUP_INDEX=<int>
+
+      Use this when you want to run a single test JSON directly. If the selected
+      test file contains multiple marker groups, you can select them either by
+      name with EPIXQUAD_DEBUG_MARKER_GROUPS or by first-seen index with
+      EPIXQUAD_DEBUG_GROUP_INDEX. If neither is set, the loader defaults to
+      group 0.
+
+    Sequence-pattern mode:
+      EPIXQUAD_DEBUG_SEQUENCE_FILE=/path/to/sequence.json
+      EPIXQUAD_DEBUG_PATTERN_INDEX=<int>
+
+      Use this when a wrapper/scan driver iterates through a sequence file. Each
+      sequence pattern selects one test file and usually one marker group for
+      that run. EPIXQUAD_DEBUG_PATTERN_INDEX defaults to 0. The legacy
+      EPIXQUAD_DEBUG_STEP_INDEX name is still accepted for compatibility.
+
+    Optional in both modes:
+      EPIXQUAD_DEBUG_PATTERN_OUTDIR=/path/to/save/materialized/patterns
+
+    Wrapper/control-file mode:
+      A client-side wrapper can update a shared JSON control file before each
+      run. This is needed when the DAQ/config process is already running and
+      environment-variable changes in the client will not propagate into that
+      process. The control-file path defaults to the loader's built-in path
+      unless overridden by EPIXQUAD_DEBUG_CONTROL_FILE in the DAQ process
+      environment.
+
+    When enabled, this function forces:
+      cfg['user']['gain_mode'] = 5
+      cfg['user']['pixel_map'] = materialized (16,178,192) pattern
+      cfg['expert']['EpixQuad']['Epix10kaSaci{i}']['trbit'] per loaded test
+
+    If neither EPIXQUAD_DEBUG_TEST_FILE nor EPIXQUAD_DEBUG_SEQUENCE_FILE is
+    set, this function leaves cfg unchanged.
+    """
+    materialized = load_debug_pattern(cfg.get('user'))
+    if materialized is None:
+        return False
+
+    cfg.setdefault('user', {})
+    cfg.setdefault('expert', {})
+    cfg['expert'].setdefault('EpixQuad', {})
+
+    cfg['user']['gain_mode'] = 5
+    cfg['user']['pixel_map'] = materialized['pixel_map'].tolist()
+    for i, trbit in enumerate(materialized['trbit_by_asic']):
+        cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
+        cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
+
+    marker_preview = ', '.join(
+        '%s:a%d:r%d:c%d:v%d' % (
+            m.get('label', '?'),
+            m['asic'],
+            m['row'],
+            m['col'],
+            m['value'],
+        )
+        for m in materialized.get('selected_markers', [])[:6]
+    )
+    log_parts = [
+        f"loaded debug pattern test={materialized['test_name']}",
+        f"source={materialized['source_kind']}",
+        f"selection_source={materialized.get('selection_source', 'unknown')}",
+        f"groups={materialized.get('selected_groups', [])}",
+        f"active_pixels={materialized.get('active_pixel_count', 0)}",
+        f"source_file={materialized['source_file']}",
+    ]
+    if 'sequence_name' in materialized:
+        log_parts.append(f"sequence={materialized['sequence_name']}")
+        log_parts.append(f"pattern_index={materialized['pattern_index']}")
+        if 'pattern_label' in materialized:
+            log_parts.append(f"pattern_label={materialized['pattern_label']}")
+        if 'test_file' in materialized:
+            log_parts.append(f"test_file={materialized['test_file']}")
+    if 'control_file' in materialized:
+        log_parts.append(f"control_file={materialized['control_file']}")
+    if marker_preview:
+        log_parts.append(f"markers={marker_preview}")
+    logging.warning(' '.join(log_parts))
+    return True
 
 def get_trigger_buffers():
     """
@@ -238,7 +330,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
-    
+
     if DEBUG_ADC_TRAIN_WRITE:
         print("[DEBUG-ADC] Reading ADC calibration constants from PROM...")
         cbase.CypressS25Fl.readCmd(0x3000000)
@@ -251,7 +343,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         # Save to .npy
         npy_file = os.path.join(outdir, f"adc_training_{ts}.npy")
         np.save(npy_file, np.array(adc_data))
-        print(f"[DEBUG-ADC] Saved ADC training data to {npy_file}") 
+        print(f"[DEBUG-ADC] Saved ADC training data to {npy_file}")
 
     logging.info('epixquad_unconfig')
     epixquad_unconfig(base)
@@ -284,7 +376,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     logging.info(f"Configuring Run/DAQ triggers for lane {lane}: run_buf={run_buf}, daq_buf={daq_buf}")
 
     # --- Run trigger: EVR event code 6 (~1080 Hz)
-    
+
     trigman.TriggerEventBuffer[run_buf].TriggerSource.set(1)  # EVR
     trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].EnableReg.set(1)
     trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].RateType.set(2)  # EventCode mode/ControlWord
@@ -293,8 +385,8 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].EnableTrig.set(1)
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Source.set(run_buf)
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Polarity.set(1)  # Rising
-    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Width.set(1) 
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Width.set(1)
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)
 
     # --- DAQ trigger: XPM, partition-based (~100 Hz)
     trigman.TriggerEventBuffer[daq_buf].TriggerSource.set(0)  # XPM
@@ -302,7 +394,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     # Delay tuned by user.start_ns via user_to_expert()
     logging.info("Run/DAQ trigger buffers configured")
 
-    # We stay in expternal trigger mode througout 
+    # We stay in expternal trigger mode througout
     epixquad_external_trigger(base)
     return base
 
@@ -351,6 +443,8 @@ def user_to_expert(base, cfg, full=False):
     global group
     global lane
 
+    _apply_debug_pattern_override(cfg)
+
     pbase = base['pci']
 
     d = {}
@@ -358,7 +452,7 @@ def user_to_expert(base, cfg, full=False):
     if hasUser and 'start_ns' in cfg['user']:
         rawStart = cfg['user']['start_ns']
         run_buf, daq_buf = get_trigger_buffers()
-        
+
         # --- DAQ trigger delay (XPM)
         daq_triggerDelay = calc_daq_trigger_delay(base, rawStart, group)
         #d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{daq_buf}].TriggerDelay'] = daq_triggerDelay
@@ -659,7 +753,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg)
 
     pbase = base['pci']
-    
+
     run_buf, daq_buf = get_trigger_buffers()
 
     #  Force write Run/DAQ Trigger Delay here until configdb is fixed
@@ -683,7 +777,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     logging.info(f"Setting DAQ trigger buffer {daq_buf} Partition to group {group}")
     trigman.TriggerEventBuffer[daq_buf].Partition.set(group)
- 
+
     #pbase.StartRun()
     startRun(pbase)
 
@@ -859,18 +953,18 @@ def epixquad_update(update):
     return result
 
 def epixquad_enable_runtrigger(base):
-    pbase = base['pci'] 
+    pbase = base['pci']
     run_buf, daq_buf = get_trigger_buffers()
     trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)
     print(f'[DEBUG-RUNTRIG] Enable RunTrigger')
 
 
 def epixquad_disable_runtrigger(base):
-    pbase = base['pci'] 
+    pbase = base['pci']
     run_buf, daq_buf = get_trigger_buffers()
     trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(0)  
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(0)
     print(f'[DEBUG-RUNTRIG] Disable RunTrigger')
 
 #
