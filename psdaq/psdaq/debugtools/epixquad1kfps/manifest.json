@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "description": "Manifest for direct user.pixel_map detector-day test definitions",
+  "tests": [
+    {
+      "file": "tests/01_module0_asic_orientation.json",
+      "purpose": "Probe ASIC-local orientation across ASICs 0-3 in one module using identical 2-point asymmetric markers."
+    },
+    {
+      "file": "tests/02_all_modules_anchor_asic0.json",
+      "purpose": "Probe one anchor ASIC from each module using the same 2-point marker to separate module placement from intra-module orientation."
+    },
+    {
+      "file": "tests/03_single_asic_quadrants.json",
+      "purpose": "Probe the four quadrants of one ASIC to test whether the top quadrants receive an extra 180-degree remap."
+    },
+    {
+      "file": "tests/04_single_asic_column_regions.json",
+      "purpose": "Probe four 48-column regions of one ASIC without assuming the current bank-address interpretation is correct."
+    },
+    {
+      "file": "tests/05_single_asic_row_regions.json",
+      "purpose": "Probe multiple row bands of one ASIC to detect any unexpected vertical remap or row-address issue."
+    }
+  ]
+}

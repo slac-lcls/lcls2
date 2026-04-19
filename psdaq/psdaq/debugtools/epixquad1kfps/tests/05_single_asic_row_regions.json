@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "test_name": "single_asic_row_regions",
+  "description": "Four 2-point markers at different row bands of ASIC 0 to detect vertical remap or row-address inconsistencies.",
+  "array_shape": [16, 178, 192],
+  "readable_rows": 176,
+  "background_value": 12,
+  "default_marker_value": 8,
+  "trbit_by_asic": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "markers": [
+    {"label": "R0_A", "group": "R0", "asic": 0, "row": 20, "col": 40, "value": 8, "tags": ["row-region", "region-0"]},
+    {"label": "R0_B", "group": "R0", "asic": 0, "row": 32, "col": 56, "value": 8, "tags": ["row-region", "region-0"]},
+    {"label": "R1_A", "group": "R1", "asic": 0, "row": 60, "col": 40, "value": 8, "tags": ["row-region", "region-1"]},
+    {"label": "R1_B", "group": "R1", "asic": 0, "row": 72, "col": 56, "value": 8, "tags": ["row-region", "region-1"]},
+    {"label": "R2_A", "group": "R2", "asic": 0, "row": 110, "col": 40, "value": 8, "tags": ["row-region", "region-2"]},
+    {"label": "R2_B", "group": "R2", "asic": 0, "row": 122, "col": 56, "value": 8, "tags": ["row-region", "region-2"]},
+    {"label": "R3_A", "group": "R3", "asic": 0, "row": 150, "col": 40, "value": 8, "tags": ["row-region", "region-3"]},
+    {"label": "R3_B", "group": "R3", "asic": 0, "row": 162, "col": 56, "value": 8, "tags": ["row-region", "region-3"]}
+  ]
+}
