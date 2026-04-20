@@ -154,6 +154,13 @@ Two direct-write hypotheses are prepared:
   Interpretation: one logical bank is `44 x 192`, and the JSON `bank` field
   selects a 44-row band inside the ASIC.
 
+Two sparse-marker follow-up files are also prepared:
+
+- `direct/03_bank_markers_178x48.json`
+  Two separated marker pixels inside one logical `178 x 48` bank.
+- `direct/04_bank_markers_44x192.json`
+  Two separated marker pixels inside one logical `44 x 192` bank.
+
 In both files:
 
 - pattern `0` probes logical bank `0`
@@ -199,6 +206,134 @@ What to look for first in raw data:
 
 If one hypothesis gives four clean and distinct regions while the other does
 not, use that as the working bank-shape model for the next round of testing.
+
+## Step 3c: Optional Sparse In-Bank Marker Test
+
+Use this only after the full-bank blind-bank test has identified:
+
+- which coordinate hypothesis is more plausible, and
+- which logical bank you want to resolve more precisely
+
+Purpose:
+
+- keep the chosen bank hypothesis fixed
+- probe only one bank at a time with two separated pixels
+- determine the in-bank orientation, not just the bank landing region
+
+This is the step that turns:
+
+- coarse bank landing
+
+into:
+
+- explicit bank-local `(row, col)` orientation inside raw data
+
+Use these files:
+
+- `direct/03_bank_markers_178x48.json`
+- `direct/04_bank_markers_44x192.json`
+
+Pattern selection rule:
+
+- choose the sparse-marker file that matches the winning full-bank hypothesis
+- choose the same pattern index as the logical bank you want to inspect
+
+Examples:
+
+- if `direct/01_blind_bank_probe.json` pattern `2` gave the cleanest or most
+  informative bank landing, then use:
+  - `direct/03_bank_markers_178x48.json`
+  - `EPIXQUAD_DEBUG_PATTERN_INDEX=2`
+- if `direct/02_blind_bank_probe_rowband.json` pattern `1` looked like the
+  correct row-band interpretation, then use:
+  - `direct/04_bank_markers_44x192.json`
+  - `EPIXQUAD_DEBUG_PATTERN_INDEX=1`
+
+Example for the `178 x 48` sparse-marker follow-up:
+
+```bash
+cd ~/lcls2
+source ./setup_env.sh >/dev/null
+export EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=psdaq/psdaq/debugtools/epixquad1kfps/direct/03_bank_markers_178x48.json
+export EPIXQUAD_DEBUG_PATTERN_INDEX=0
+```
+
+Example for the `44 x 192` sparse-marker follow-up:
+
+```bash
+cd ~/lcls2
+source ./setup_env.sh >/dev/null
+export EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=psdaq/psdaq/debugtools/epixquad1kfps/direct/04_bank_markers_44x192.json
+export EPIXQUAD_DEBUG_PATTERN_INDEX=0
+```
+
+What these patterns contain:
+
+- one ASIC
+- one logical bank
+- two marker pixels
+- the two pixels are intentionally separated in both row and col so that
+  `identity`, `flipud`, `fliplr`, and `rot180` can be distinguished
+
+What to look for:
+
+- do both markers land inside the same raw bank region identified by the full-bank test?
+- does the pair preserve the expected up/down ordering?
+- does the pair preserve the expected left/right ordering?
+- which transform best matches what you see:
+  - `identity`
+  - `flipud`
+  - `fliplr`
+  - `rot180`
+
+What this test gives you:
+
+- the final in-bank orientation for the chosen bank
+- the last missing piece needed to map:
+  - `(logical asic, logical bank, logical row, logical col)`
+  - to observed `det.raw.raw` coordinates
+
+## Result Table Template
+
+Use this table to record the detector-day outcome after `02`, `01`, and the
+blind-bank runs. The intent is to build up the practical mapping from logical
+programming coordinates to observed `det.raw.raw` coordinates.
+
+| Logical ASIC | `02` raw module | `02` coarse raw block | `01` orientation | Blind-bank mode | Bank 0 landing | Bank 1 landing | Bank 2 landing | Bank 3 landing | Working conclusion |
+|---|---|---|---|---|---|---|---|---|---|
+| `0` |  |  |  |  |  |  |  |  |  |
+| `1` |  |  |  |  |  |  |  |  |  |
+| `2` |  |  |  |  |  |  |  |  |  |
+| `3` |  |  |  |  |  |  |  |  |  |
+
+Suggested values:
+
+- `02 raw module`
+  - one of `0`, `1`, `2`, `3`
+- `02 coarse raw block`
+  - e.g. `upper-left`, `upper-right`, `lower-left`, `lower-right`
+- `01 orientation`
+  - one of `identity`, `flipud`, `fliplr`, `rot180`, `unresolved`
+- `Blind-bank mode`
+  - one of `178x48`, `44x192`, `both`, `neither`
+- `Bank N landing`
+  - short description of the observed region in raw data
+  - e.g. `top stripe`, `left narrow band`, `same as bank1`, `not seen`
+- `Working conclusion`
+  - short statement of the current best mapping for that ASIC
+
+Use this companion table when the chosen blind-bank hypothesis is clear and you
+want to record the implied low-level mapping rule.
+
+| Chosen ASIC | Chosen bank mode | Logical bank meaning | Raw region pattern | Still missing |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
+Examples of `Still missing`:
+
+- `need sparse in-bank orientation`
+- `need to confirm bank 2/3 reachability`
+- `need second ASIC cross-check`
 
 ## Step 4: Run Diagnoses In Order
 

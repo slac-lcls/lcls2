@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "direct_name": "bank_markers_44x192",
+  "description": "Sparse two-point probes inside one logical 44x192 bank. Use after the full-bank probe favors the row-band hypothesis.",
+  "coordinate_mode": "bank_rc_44x192",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic0 band0 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 6, "col": 20},
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 31, "col": 150}
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic0 band1 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 1, "row": 6, "col": 20},
+        {"kind": "pixel", "asic": 0, "bank": 1, "row": 31, "col": 150}
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic0 band2 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 2, "row": 6, "col": 20},
+        {"kind": "pixel", "asic": 0, "bank": 2, "row": 31, "col": 150}
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic0 band3 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 3, "row": 6, "col": 20},
+        {"kind": "pixel", "asic": 0, "bank": 3, "row": 31, "col": 150}
+      ]
+    }
+  ]
+}
