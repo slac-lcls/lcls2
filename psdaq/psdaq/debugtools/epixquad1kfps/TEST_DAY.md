@@ -9,6 +9,7 @@ results with known trust limits:
 
 - `02_all_modules_anchor_asic0.json` is the best coarse placement test.
 - `01_module0_asic_orientation.json` is the next best coarse-orientation test.
+- After `02` and `01` are resolved, use a direct blind-bank probe on one ASIC.
 - `05_single_asic_row_regions.json` is useful for vertical addressing checks.
 - `03_single_asic_quadrants.json` and `04_single_asic_column_regions.json`
   should be treated more cautiously because the current per-pixel write loop
@@ -20,6 +21,8 @@ results with known trust limits:
 |---|---|---|
 | `tests/02_all_modules_anchor_asic0.json` | Which raw module / coarse ASIC block responds? | `module_location` |
 | `tests/01_module0_asic_orientation.json` | After coarse placement, is the 2-point marker flipped or rotated? | `asic_orientation` |
+| `direct/01_blind_bank_probe.json` | If one bank is `178 x 48`, where do bank ids `0..3` land? | visual/raw check first |
+| `direct/02_blind_bank_probe_rowband.json` | If one bank is `44 x 192`, where do bank ids `0..3` land? | visual/raw check first |
 | `tests/03_single_asic_quadrants.json` | Which quadrant inside the winning coarse block responds? | `quadrants` |
 | `tests/04_single_asic_column_regions.json` | Which 48-column band responds? | `column_regions` |
 | `tests/05_single_asic_row_regions.json` | Which row band responds? | `row_regions` |
@@ -31,6 +34,7 @@ The workflow has three layers:
 1. Program and collect one DAQ run per pattern.
 2. Extract one run at a time from raw data into reusable `.npy` and `.json` summaries.
 3. Run one diagnosis at a time from the extracted summaries.
+4. If `02` and `01` converge cleanly, optionally run a direct blind-bank test on one ASIC.
 
 Keep extraction and diagnosis separate. Extraction is expensive because it reads
 raw data. Diagnosis is cheap and can be rerun as many times as needed.
@@ -78,6 +82,14 @@ PYTHONPATH=psdaq python3 psdaq/psdaq/debugtools/epixquad1kfps/run_pattern_sequen
   --outdir /tmp/epixquad1kfps_patterns
 ```
 
+Recommended first-pass order on the detector:
+
+1. Run the priority shortlist.
+2. Read `module_location` from `02_all_modules_anchor_asic0.json`.
+3. Read `asic_orientation` from `01_module0_asic_orientation.json`.
+4. Pick one ASIC with the cleanest coarse location/orientation result.
+5. Only then run a direct blind-bank probe on that ASIC.
+
 ## Step 3: Extract Raw Summaries
 
 After the runs are collected, extract one run at a time into reusable run
@@ -121,6 +133,72 @@ Outputs from extraction:
   - `dominant_code.npy`
   - `dominant_confidence.npy`
   - `summary.json`
+
+## Step 3b: Optional Direct Blind-Bank Test
+
+Use this only after `02_all_modules_anchor_asic0.json` and
+`01_module0_asic_orientation.json` have given a usable coarse answer.
+
+Purpose:
+
+- bypass the current `mrow/mcol`-based write path entirely
+- drive explicit `(asic, bank, row, col)` writes
+- test bank-shape hypotheses directly on one chosen ASIC
+
+Two direct-write hypotheses are prepared:
+
+- `direct/01_blind_bank_probe.json`
+  Interpretation: one logical bank is `178 x 48`, and the JSON `bank` field is
+  the hardware bank id.
+- `direct/02_blind_bank_probe_rowband.json`
+  Interpretation: one logical bank is `44 x 192`, and the JSON `bank` field
+  selects a 44-row band inside the ASIC.
+
+In both files:
+
+- pattern `0` probes logical bank `0`
+- pattern `1` probes logical bank `1`
+- pattern `2` probes logical bank `2`
+- pattern `3` probes logical bank `3`
+
+Run one pattern per DAQ run. The direct path is not yet wrapped by
+`run_pattern_sequence.py`; set the environment explicitly before each run.
+
+Example for the `178 x 48` bank hypothesis:
+
+```bash
+cd ~/lcls2
+source ./setup_env.sh >/dev/null
+export EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=psdaq/psdaq/debugtools/epixquad1kfps/direct/01_blind_bank_probe.json
+export EPIXQUAD_DEBUG_PATTERN_INDEX=0
+```
+
+Then do one normal Configure/BeginRun/EndRun cycle. Repeat with:
+
+- `EPIXQUAD_DEBUG_PATTERN_INDEX=1`
+- `EPIXQUAD_DEBUG_PATTERN_INDEX=2`
+- `EPIXQUAD_DEBUG_PATTERN_INDEX=3`
+
+Example for the `44 x 192` row-band hypothesis:
+
+```bash
+cd ~/lcls2
+source ./setup_env.sh >/dev/null
+export EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=psdaq/psdaq/debugtools/epixquad1kfps/direct/02_blind_bank_probe_rowband.json
+export EPIXQUAD_DEBUG_PATTERN_INDEX=0
+```
+
+Then repeat for pattern indices `1`, `2`, and `3`.
+
+What to look for first in raw data:
+
+- do the four runs land in four distinct regions?
+- do they stay on the chosen ASIC or jump elsewhere?
+- does the changed region look more like `178 x 48` or `44 x 192`?
+- do all four bank ids appear reachable?
+
+If one hypothesis gives four clean and distinct regions while the other does
+not, use that as the working bank-shape model for the next round of testing.
 
 ## Step 4: Run Diagnoses In Order
 
@@ -260,13 +338,18 @@ For the current deployed path, read results in this order:
    Look next at `01_module0_asic_orientation.json` to understand coarse flips
    and rotations.
 
-3. `row_regions`
+3. direct blind-bank test
+   If `02` and `01` are clean enough, test one ASIC with
+   `direct/01_blind_bank_probe.json` and/or
+   `direct/02_blind_bank_probe_rowband.json`.
+
+4. `row_regions`
    Use this for a safer vertical-address sanity check.
 
-4. `quadrants`
+5. `quadrants`
    Use this as exploratory evidence only.
 
-5. `column_regions`
+6. `column_regions`
    Use this as exploratory evidence for the bank-addressing question, knowing
    the current deployed path may already be biasing the outcome.
 

@@ -30,13 +30,17 @@ Supported environment variables:
 
 - `EPIXQUAD_DEBUG_TEST_FILE=/path/to/test.json`
 - `EPIXQUAD_DEBUG_SEQUENCE_FILE=/path/to/sequence.json`
+- `EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=/path/to/direct.json`
 - `EPIXQUAD_DEBUG_PATTERN_INDEX=<int>` (default `0`)
 - `EPIXQUAD_DEBUG_GROUP_INDEX=<int>` (default `0`)
 - `EPIXQUAD_DEBUG_MARKER_GROUPS=group1[,group2,...]`
 - `EPIXQUAD_DEBUG_PATTERN_OUTDIR=/path/to/save/materialized/patterns`
 
-Use either `EPIXQUAD_DEBUG_TEST_FILE` or `EPIXQUAD_DEBUG_SEQUENCE_FILE`, but
-not both at the same time.
+Use only one of:
+
+- `EPIXQUAD_DEBUG_TEST_FILE`
+- `EPIXQUAD_DEBUG_SEQUENCE_FILE`
+- `EPIXQUAD_DEBUG_DIRECT_WRITE_FILE`
 
 In standalone test-file mode, if a file contains multiple marker groups, the
 loader defaults to group `0` in first-seen order. You can override that with
@@ -48,6 +52,10 @@ When enabled, the configure hook forces:
 - `cfg['user']['gain_mode'] = 5`
 - `cfg['user']['pixel_map'] = materialized (16,178,192) array`
 - per-ASIC `trbit` values from the selected test JSON
+
+In direct-write mode, the injected `user.pixel_map` is only a background-only
+placeholder for metadata/debugging. The actual hardware programming is done
+later in `config_expert()` from explicit `(asic, bank, row, col)` operations.
 
 Recommended defaults for current tests:
 
@@ -157,3 +165,71 @@ Each pattern entry contains:
 The first goal is to establish the empirical mapping from programmed
 `(asic,row,col)` coordinates to observed raw gain-bit locations, without
 assuming the current bank math is correct.
+
+## Direct register-write JSON schema
+
+Direct register-write mode is intended for blind bank tests after coarse module
+and ASIC orientation are known. It bypasses the current logical `pixel_map`
+reconstruction and writes ASIC-local coordinates directly.
+
+Top-level fields:
+
+- `version`: schema version
+- `direct_name`: stable short name
+- `description`: brief purpose of the direct-write file
+- `coordinate_mode`: optional logical coordinate convention; defaults to `bank_rc_178x48`
+- `background_value`: scalar or 16-element list, one background code per ASIC
+- `default_selected_value`: default explicit-write value
+- `trbit_by_asic`: scalar or 16-element list of ASIC `trbit` values
+- `patterns`: ordered list of direct-write patterns
+
+Each direct-write pattern contains:
+
+- `pattern_index`: integer pattern number
+- `label`: short human-readable pattern label
+- `ops`: list of direct hardware write operations
+
+Supported direct op kinds:
+
+- `pixel`
+  - fields: `asic`, `bank`, `row`, `col`, optional `value`
+  - writes one explicit ASIC-local pixel
+- `bank_fill`
+  - fields: `asic`, `bank`, optional `row_range`, optional `col_range`, optional `value`
+  - fills a rectangular region inside one explicit bank
+  - defaults depend on `coordinate_mode`
+
+Supported `coordinate_mode` values:
+
+- `bank_rc_178x48`
+  - logical bank shape: `178 x 48`
+  - logical `bank` means hardware bank id
+  - logical `row`: `0..177`
+  - logical `col`: `0..47`
+  - hardware write:
+    - `RowCounter <- row`
+    - `ColCounter <- BANK_OFFSETS[bank] | col`
+
+- `bank_rc_44x192`
+  - logical bank shape: `44 x 192`
+  - logical `bank` means one 44-row band inside the ASIC
+  - logical `row`: `0..43`
+  - logical `col`: `0..191`
+  - hardware expansion:
+    - `hw_row = bank * 44 + row`
+    - `hw_bank = col // 48`
+    - `hw_col = col % 48`
+    - `RowCounter <- hw_row`
+    - `ColCounter <- BANK_OFFSETS[hw_bank] | hw_col`
+
+In both modes:
+
+- `asic`: `0..15`
+- `bank`: `0..3`
+
+and the direct path bypasses the existing `mrow/mcol` reconstruction logic.
+
+Example file:
+
+- `direct/01_blind_bank_probe.json`
+- `direct/02_blind_bank_probe_rowband.json`

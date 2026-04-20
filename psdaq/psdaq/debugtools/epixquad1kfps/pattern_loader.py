@@ -10,9 +10,16 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 SHAPE = (16, 178, 192)
+DIRECT_COORD_MODE_BANK_RC_178X48 = 'bank_rc_178x48'
+DIRECT_COORD_MODE_BANK_RC_44X192 = 'bank_rc_44x192'
+DIRECT_COORD_MODES = (
+    DIRECT_COORD_MODE_BANK_RC_178X48,
+    DIRECT_COORD_MODE_BANK_RC_44X192,
+)
 
 ENV_TEST_FILE = 'EPIXQUAD_DEBUG_TEST_FILE'
 ENV_SEQUENCE_FILE = 'EPIXQUAD_DEBUG_SEQUENCE_FILE'
+ENV_DIRECT_FILE = 'EPIXQUAD_DEBUG_DIRECT_WRITE_FILE'
 ENV_PATTERN_INDEX = 'EPIXQUAD_DEBUG_PATTERN_INDEX'
 ENV_STEP_INDEX = 'EPIXQUAD_DEBUG_STEP_INDEX'
 ENV_GROUP_INDEX = 'EPIXQUAD_DEBUG_GROUP_INDEX'
@@ -304,6 +311,224 @@ def _load_sequence_pattern(sequence_file, pattern_index):
     return materialized
 
 
+def _coerce_scalar_or_list(value, *, size, name):
+    if isinstance(value, (list, tuple)):
+        if len(value) != size:
+            raise ValueError(f'expected {size} values for {name}, got {len(value)}')
+        return [int(v) for v in value]
+    return [int(value)] * size
+
+
+def _coerce_range(value, *, limit, default_start, default_stop, name):
+    if value is None:
+        return int(default_start), int(default_stop)
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        raise ValueError(f'{name} must be [start, stop], got {value!r}')
+    start, stop = int(value[0]), int(value[1])
+    if not (0 <= start < stop <= limit):
+        raise ValueError(f'{name}={value!r} out of range 0..{limit}')
+    return start, stop
+
+
+def _build_direct_background_placeholder(background_value_by_asic):
+    arr = np.empty(SHAPE, dtype=np.uint8)
+    for asic, value in enumerate(background_value_by_asic):
+        arr[asic, :, :] = int(value)
+    return arr
+
+
+def _direct_coordinate_limits(coordinate_mode):
+    if coordinate_mode == DIRECT_COORD_MODE_BANK_RC_178X48:
+        return {
+            'row_limit': SHAPE[1],
+            'col_limit': 48,
+            'row_default_stop': SHAPE[1],
+            'col_default_stop': 48,
+        }
+    if coordinate_mode == DIRECT_COORD_MODE_BANK_RC_44X192:
+        return {
+            'row_limit': 44,
+            'col_limit': SHAPE[2],
+            'row_default_stop': 44,
+            'col_default_stop': SHAPE[2],
+        }
+    raise ValueError(f'unsupported direct coordinate_mode: {coordinate_mode!r}')
+
+
+def _normalize_direct_op(op, *, default_selected_value, coordinate_mode):
+    limits = _direct_coordinate_limits(coordinate_mode)
+    kind = str(op.get('kind', 'pixel')).strip()
+    if kind == 'pixel':
+        asic = int(op['asic'])
+        bank = int(op['bank'])
+        row = int(op['row'])
+        col = int(op['col'])
+        value = int(op.get('value', default_selected_value))
+        if not (0 <= asic < SHAPE[0]):
+            raise ValueError(f'invalid direct pixel ASIC index {asic}')
+        if not (0 <= bank < 4):
+            raise ValueError(f'invalid direct pixel bank index {bank}')
+        if not (0 <= row < limits['row_limit']):
+            raise ValueError(f'invalid direct pixel row {row}')
+        if not (0 <= col < limits['col_limit']):
+            raise ValueError(f'invalid direct pixel bank-local col {col}')
+        return {
+            'kind': 'pixel',
+            'asic': asic,
+            'bank': bank,
+            'row': row,
+            'col': col,
+            'value': value,
+        }
+
+    if kind == 'bank_fill':
+        asic = int(op['asic'])
+        bank = int(op['bank'])
+        value = int(op.get('value', default_selected_value))
+        if not (0 <= asic < SHAPE[0]):
+            raise ValueError(f'invalid direct bank-fill ASIC index {asic}')
+        if not (0 <= bank < 4):
+            raise ValueError(f'invalid direct bank-fill bank index {bank}')
+        row_start, row_stop = _coerce_range(
+            op.get('row_range'),
+            limit=limits['row_limit'],
+            default_start=0,
+            default_stop=limits['row_default_stop'],
+            name='row_range',
+        )
+        col_start, col_stop = _coerce_range(
+            op.get('col_range'),
+            limit=limits['col_limit'],
+            default_start=0,
+            default_stop=limits['col_default_stop'],
+            name='col_range',
+        )
+        return {
+            'kind': 'bank_fill',
+            'asic': asic,
+            'bank': bank,
+            'row_start': row_start,
+            'row_stop': row_stop,
+            'col_start': col_start,
+            'col_stop': col_stop,
+            'value': value,
+        }
+
+    raise ValueError(f'unsupported direct-write op kind: {kind!r}')
+
+
+def _materialize_direct_spec(direct_spec, pattern_index):
+    patterns = _sequence_patterns(direct_spec)
+    matches = [
+        pattern for i, pattern in enumerate(patterns)
+        if _pattern_index(pattern, i) == int(pattern_index)
+    ]
+    if not matches:
+        raise ValueError(
+            f'pattern_index={pattern_index} not found in direct-write spec '
+            f"{direct_spec.get('direct_name', 'unnamed_direct')}"
+        )
+    if len(matches) > 1:
+        raise ValueError(
+            f'duplicate pattern_index={pattern_index} in direct-write spec '
+            f"{direct_spec.get('direct_name', 'unnamed_direct')}"
+        )
+
+    pattern = matches[0]
+    background_value = pattern.get('background_value', direct_spec.get('background_value', 12))
+    background_value_by_asic = _coerce_scalar_or_list(
+        background_value,
+        size=SHAPE[0],
+        name='background_value',
+    )
+    trbit_by_asic = _coerce_scalar_or_list(
+        direct_spec.get('trbit_by_asic', [0] * SHAPE[0]),
+        size=SHAPE[0],
+        name='trbit_by_asic',
+    )
+    default_selected_value = int(
+        pattern.get('default_selected_value', direct_spec.get('default_selected_value', 8))
+    )
+    coordinate_mode = str(
+        pattern.get(
+            'coordinate_mode',
+            direct_spec.get('coordinate_mode', DIRECT_COORD_MODE_BANK_RC_178X48),
+        )
+    ).strip()
+    if coordinate_mode not in DIRECT_COORD_MODES:
+        raise ValueError(
+            f'unsupported direct coordinate_mode={coordinate_mode!r}; '
+            f'expected one of {DIRECT_COORD_MODES}'
+        )
+    ops = [
+        _normalize_direct_op(
+            op,
+            default_selected_value=default_selected_value,
+            coordinate_mode=coordinate_mode,
+        )
+        for op in pattern.get('ops', [])
+    ]
+    if not ops:
+        raise ValueError(
+            f'direct-write pattern_index={pattern_index} has no ops in '
+            f"{direct_spec.get('direct_name', 'unnamed_direct')}"
+        )
+
+    op_summary = []
+    direct_pixel_count = 0
+    for op in ops:
+        if op['kind'] == 'pixel':
+            direct_pixel_count += 1
+            op_summary.append(
+                {
+                    'kind': 'pixel',
+                    'asic': op['asic'],
+                    'bank': op['bank'],
+                    'row': op['row'],
+                    'col': op['col'],
+                    'value': op['value'],
+                }
+            )
+        else:
+            npix = (op['row_stop'] - op['row_start']) * (op['col_stop'] - op['col_start'])
+            direct_pixel_count += npix
+            op_summary.append(
+                {
+                    'kind': 'bank_fill',
+                    'asic': op['asic'],
+                    'bank': op['bank'],
+                    'row_range': [op['row_start'], op['row_stop']],
+                    'col_range': [op['col_start'], op['col_stop']],
+                    'value': op['value'],
+                    'pixel_count': npix,
+                }
+            )
+
+    return {
+        'override_kind': 'direct_write',
+        'direct_name': direct_spec.get('direct_name', 'unnamed_direct'),
+        'description': direct_spec.get('description', ''),
+        'pattern_index': int(pattern_index),
+        'pattern_label': pattern.get('label', f'direct-pattern-{pattern_index}'),
+        'coordinate_mode': coordinate_mode,
+        'background_value_by_asic': background_value_by_asic,
+        'trbit_by_asic': trbit_by_asic,
+        'pixel_map': _build_direct_background_placeholder(background_value_by_asic),
+        'direct_write_ops': ops,
+        'direct_write_summary': op_summary,
+        'direct_write_pixel_count': direct_pixel_count,
+    }
+
+
+def _load_direct_file(direct_file, pattern_index):
+    direct_path = _resolve_input_path(direct_file)
+    direct_spec = _load_json(direct_path)
+    materialized = _materialize_direct_spec(direct_spec, pattern_index)
+    materialized['source_file'] = str(direct_path)
+    materialized['source_kind'] = 'direct'
+    return materialized
+
+
 def load_debug_pattern(cfg_user=None):
     """Entry point used by epixquad1kfps_config.py.
 
@@ -393,6 +618,92 @@ def load_debug_pattern(cfg_user=None):
             meta['pattern_label'] = materialized.get('pattern_label', '')
         if 'test_file' in materialized:
             meta['test_file'] = materialized['test_file']
+        if 'control_file' in materialized:
+            meta['control_file'] = materialized['control_file']
+        with (outpath / f'{stem}.json').open('w') as f:
+            json.dump(meta, f, indent=2, sort_keys=True)
+
+    return materialized
+
+
+def load_debug_override(cfg_user=None):
+    """Loads either a pixel-map override or a direct register-write program.
+
+    Supported selectors:
+      - EPIXQUAD_DEBUG_TEST_FILE
+      - EPIXQUAD_DEBUG_SEQUENCE_FILE
+      - EPIXQUAD_DEBUG_DIRECT_WRITE_FILE
+
+    Only one mode may be active at a time. The control-file path supports the
+    same distinction with keys:
+      - test_file
+      - sequence_file
+      - direct_write_file
+
+    For direct-write mode, EPIXQUAD_DEBUG_PATTERN_INDEX selects one pattern from
+    the direct-write JSON. The returned dict includes:
+      - override_kind = 'direct_write'
+      - pixel_map = background-only placeholder array for metadata/debug
+      - direct_write_ops = normalized register-write operations
+    """
+    test_file = os.environ.get(ENV_TEST_FILE)
+    sequence_file = os.environ.get(ENV_SEQUENCE_FILE)
+    direct_file = os.environ.get(ENV_DIRECT_FILE)
+
+    enabled_env_modes = [v for v in (test_file, sequence_file, direct_file) if v]
+    if len(enabled_env_modes) > 1:
+        raise ValueError(
+            f'use only one of {ENV_TEST_FILE}, {ENV_SEQUENCE_FILE}, or {ENV_DIRECT_FILE}'
+        )
+
+    if test_file or sequence_file:
+        materialized = load_debug_pattern(cfg_user=cfg_user)
+        if materialized is not None:
+            materialized['override_kind'] = 'pixel_map'
+        return materialized
+
+    control_req = None if direct_file else _load_control_request()
+
+    if direct_file:
+        pattern_index = _coerce_pattern_index(cfg_user)
+        materialized = _load_direct_file(direct_file, pattern_index)
+        materialized['selection_source'] = 'env'
+        outdir = os.environ.get(ENV_OUTDIR)
+    elif control_req is not None and control_req.get('direct_write_file'):
+        if control_req.get('test_file') or control_req.get('sequence_file'):
+            raise ValueError(
+                'control file must specify only one of test_file, sequence_file, or direct_write_file'
+            )
+        materialized = _load_direct_file(
+            control_req['direct_write_file'],
+            int(control_req.get('pattern_index', control_req.get('step_index', 0))),
+        )
+        materialized['control_file'] = control_req['_control_file']
+        materialized['selection_source'] = 'control_file'
+        outdir = control_req.get('pattern_outdir')
+    else:
+        return load_debug_pattern(cfg_user=cfg_user)
+
+    if outdir:
+        outpath = _resolve_input_path(outdir)
+        outpath.mkdir(parents=True, exist_ok=True)
+        stem = f"{materialized['direct_name']}_pattern{materialized['pattern_index']:02d}"
+        np.save(outpath / f'{stem}_background.npy', materialized['pixel_map'])
+        meta = {
+            'override_kind': materialized['override_kind'],
+            'source_kind': materialized['source_kind'],
+            'source_file': materialized['source_file'],
+            'direct_name': materialized['direct_name'],
+            'description': materialized['description'],
+            'pattern_index': materialized['pattern_index'],
+            'pattern_label': materialized['pattern_label'],
+            'coordinate_mode': materialized['coordinate_mode'],
+            'background_value_by_asic': materialized['background_value_by_asic'],
+            'trbit_by_asic': materialized['trbit_by_asic'],
+            'direct_write_pixel_count': materialized['direct_write_pixel_count'],
+            'direct_write_summary': materialized['direct_write_summary'],
+            'selection_source': materialized.get('selection_source', 'unknown'),
+        }
         if 'control_file' in materialized:
             meta['control_file'] = materialized['control_file']
         with (outpath / f'{stem}.json').open('w') as f:

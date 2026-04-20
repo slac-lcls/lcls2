@@ -19,7 +19,7 @@ import surf.protocols.batcher  as batcher  # for Start/StopRun
 import l2si_core               as l2si
 import lcls2_pgp_fw_lib.shared as shared
 import logging
-from psdaq.debugtools.epixquad1kfps.pattern_loader import load_debug_pattern
+from psdaq.debugtools.epixquad1kfps.pattern_loader import load_debug_override
 
 base = None
 pv = None
@@ -29,15 +29,17 @@ group = None
 ocfg = None
 segids = None
 seglist = [0,1,2,3,4]
+debug_override = None
 
 DEBUG_PIXEL_MASK_SAVED=False
 DEBUG_ADC_TRAIN_WRITE=False
 DEBUG_RANDOM_PIXEL_MAP=False
 USE_ACCELERATED_MATRIX_WRITE=False
+BANK_OFFSETS = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
 
 
 def _apply_debug_pattern_override(cfg):
-    """Optionally overrides user.pixel_map/trbit from debug test definitions.
+    """Optionally overrides config from debug test definitions.
 
     Two usage modes are supported.
 
@@ -64,6 +66,20 @@ def _apply_debug_pattern_override(cfg):
     Optional in both modes:
       EPIXQUAD_DEBUG_PATTERN_OUTDIR=/path/to/save/materialized/patterns
 
+    Direct register-write mode:
+      EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=/path/to/direct.json
+      EPIXQUAD_DEBUG_PATTERN_INDEX=<int>
+
+      Use this when you want to bypass the current logical pixel-map to
+      bank/local-coordinate reconstruction and instead program explicit
+      ASIC-local writes. In this mode the loader provides:
+        - background value per ASIC
+        - per-ASIC trbits
+        - explicit write operations in (asic, bank, row, col)
+      A background-only placeholder user.pixel_map is still injected for
+      metadata/debugging, but the actual hardware writes happen later in
+      config_expert() from the direct op list.
+
     Wrapper/control-file mode:
       A client-side wrapper can update a shared JSON control file before each
       run. This is needed when the DAQ/config process is already running and
@@ -74,13 +90,16 @@ def _apply_debug_pattern_override(cfg):
 
     When enabled, this function forces:
       cfg['user']['gain_mode'] = 5
-      cfg['user']['pixel_map'] = materialized (16,178,192) pattern
+      cfg['user']['pixel_map'] = materialized (16,178,192) array
       cfg['expert']['EpixQuad']['Epix10kaSaci{i}']['trbit'] per loaded test
 
-    If neither EPIXQUAD_DEBUG_TEST_FILE nor EPIXQUAD_DEBUG_SEQUENCE_FILE is
-    set, this function leaves cfg unchanged.
+    If none of EPIXQUAD_DEBUG_TEST_FILE, EPIXQUAD_DEBUG_SEQUENCE_FILE, or
+    EPIXQUAD_DEBUG_DIRECT_WRITE_FILE is set, this function leaves cfg unchanged.
     """
-    materialized = load_debug_pattern(cfg.get('user'))
+    global debug_override
+
+    materialized = load_debug_override(cfg.get('user'))
+    debug_override = materialized
     if materialized is None:
         return False
 
@@ -94,24 +113,58 @@ def _apply_debug_pattern_override(cfg):
         cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
         cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
 
-    marker_preview = ', '.join(
-        '%s:a%d:r%d:c%d:v%d' % (
-            m.get('label', '?'),
-            m['asic'],
-            m['row'],
-            m['col'],
-            m['value'],
-        )
-        for m in materialized.get('selected_markers', [])[:6]
-    )
     log_parts = [
-        f"loaded debug pattern test={materialized['test_name']}",
+        f"loaded debug override kind={materialized.get('override_kind', 'unknown')}",
         f"source={materialized['source_kind']}",
         f"selection_source={materialized.get('selection_source', 'unknown')}",
-        f"groups={materialized.get('selected_groups', [])}",
-        f"active_pixels={materialized.get('active_pixel_count', 0)}",
         f"source_file={materialized['source_file']}",
     ]
+    if materialized.get('override_kind') == 'pixel_map':
+        marker_preview = ', '.join(
+            '%s:a%d:r%d:c%d:v%d' % (
+                m.get('label', '?'),
+                m['asic'],
+                m['row'],
+                m['col'],
+                m['value'],
+            )
+            for m in materialized.get('selected_markers', [])[:6]
+        )
+        log_parts.append(f"test={materialized['test_name']}")
+        log_parts.append(f"groups={materialized.get('selected_groups', [])}")
+        log_parts.append(f"active_pixels={materialized.get('active_pixel_count', 0)}")
+        if marker_preview:
+            log_parts.append(f"markers={marker_preview}")
+    else:
+        op_preview = ', '.join(
+            (
+                'fill:a%d:b%d:r[%d,%d):c[%d,%d):v%d' % (
+                    op['asic'],
+                    op['bank'],
+                    op['row_start'],
+                    op['row_stop'],
+                    op['col_start'],
+                    op['col_stop'],
+                    op['value'],
+                )
+                if op['kind'] == 'bank_fill' else
+                'pixel:a%d:b%d:r%d:c%d:v%d' % (
+                    op['asic'],
+                    op['bank'],
+                    op['row'],
+                    op['col'],
+                    op['value'],
+                )
+            )
+            for op in materialized.get('direct_write_summary', [])[:6]
+        )
+        log_parts.append(f"direct={materialized.get('direct_name', 'unnamed_direct')}")
+        log_parts.append(f"pattern_label={materialized.get('pattern_label', '')}")
+        log_parts.append(f"coordinate_mode={materialized.get('coordinate_mode', 'bank_rc_178x48')}")
+        log_parts.append(f"direct_pixels={materialized.get('direct_write_pixel_count', 0)}")
+        log_parts.append('pixel_map_metadata=background_only_placeholder')
+        if op_preview:
+            log_parts.append(f"ops={op_preview}")
     if 'sequence_name' in materialized:
         log_parts.append(f"sequence={materialized['sequence_name']}")
         log_parts.append(f"pattern_index={materialized['pattern_index']}")
@@ -121,9 +174,88 @@ def _apply_debug_pattern_override(cfg):
             log_parts.append(f"test_file={materialized['test_file']}")
     if 'control_file' in materialized:
         log_parts.append(f"control_file={materialized['control_file']}")
-    if marker_preview:
-        log_parts.append(f"markers={marker_preview}")
     logging.warning(' '.join(log_parts))
+    return True
+
+
+def _apply_direct_write_program(cbase, program, asics):
+    """Programs explicit ASIC-local writes for debug-only bank/pixel probes.
+
+    This bypasses the existing detector-view to bank/local-coordinate
+    reconstruction logic and writes register coordinates directly. Two direct
+    coordinate modes are supported:
+
+      bank_rc_178x48
+        - logical bank = hardware bank
+        - logical row = hardware row
+        - logical col = hardware bank-local col
+
+      bank_rc_44x192
+        - logical bank selects a 44-row band inside the ASIC
+        - logical row is local within that 44-row band
+        - logical col spans the full ASIC width and is expanded across the
+          four hardware bank offsets
+    """
+    if not program or program.get('override_kind') != 'direct_write':
+        return False
+
+    coordinate_mode = program.get('coordinate_mode', 'bank_rc_178x48')
+
+    def iter_hw_targets(op):
+        if coordinate_mode == 'bank_rc_178x48':
+            if op['kind'] == 'pixel':
+                yield (int(op['row']), int(op['bank']), int(op['col']), int(op['value']))
+                return
+            for row in range(int(op['row_start']), int(op['row_stop'])):
+                for col in range(int(op['col_start']), int(op['col_stop'])):
+                    yield (row, int(op['bank']), col, int(op['value']))
+            return
+
+        if coordinate_mode == 'bank_rc_44x192':
+            row_base = int(op['bank']) * 44
+            if op['kind'] == 'pixel':
+                logical_col = int(op['col'])
+                yield (
+                    row_base + int(op['row']),
+                    logical_col // 48,
+                    logical_col % 48,
+                    int(op['value']),
+                )
+                return
+            for row in range(int(op['row_start']), int(op['row_stop'])):
+                hw_row = row_base + row
+                for logical_col in range(int(op['col_start']), int(op['col_stop'])):
+                    yield (hw_row, logical_col // 48, logical_col % 48, int(op['value']))
+            return
+
+        raise ValueError(f'unsupported direct coordinate_mode: {coordinate_mode!r}')
+
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.PrepareMultiConfig.set(0)
+
+    background_value_by_asic = program['background_value_by_asic']
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.WriteMatrixData.set(int(background_value_by_asic[i]))
+
+    direct_write_t0 = time.perf_counter()
+    changed_pixels = 0
+    for op in program['direct_write_ops']:
+        saci = cbase.Epix10kaSaci[int(op['asic'])]
+        for hw_row, hw_bank, hw_col, hw_value in iter_hw_targets(op):
+            bank_offset = BANK_OFFSETS[int(hw_bank)]
+            saci.RowCounter.set(int(hw_row))
+            saci.ColCounter.set(bank_offset | int(hw_col))
+            saci.WritePixelData.set(int(hw_value))
+            changed_pixels += 1
+
+    logging.info(
+        'Direct debug write complete in %.3f s (%d explicit pixel updates, coordinate_mode=%s)',
+        time.perf_counter() - direct_write_t0,
+        changed_pixels,
+        coordinate_mode,
+    )
     return True
 
 def get_trigger_buffers():
@@ -442,6 +574,7 @@ def user_to_expert(base, cfg, full=False):
     global ocfg
     global group
     global lane
+    global debug_override
 
     _apply_debug_pattern_override(cfg)
 
@@ -560,7 +693,9 @@ def config_expert(base, cfg, writePixelMap=True):
         apply_dict('cbase',cbase,epixQuad)
 
     if writePixelMap:
-        if 'user' in cfg and 'pixel_map' in cfg['user']:
+        if debug_override is not None and debug_override.get('override_kind') == 'direct_write':
+            _apply_direct_write_program(cbase, debug_override, asics)
+        elif 'user' in cfg and 'pixel_map' in cfg['user']:
             #  Write the pixel gain maps
             #  Would like to send a 3d array
             a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
@@ -609,7 +744,6 @@ def config_expert(base, cfg, writePixelMap=True):
                     saci.WriteMatrixData.set(masic[i])  # 0x4000 v 0x84000
 
                 #  Now fix any pixels not at the common value
-                banks = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
                 changed_pixels = 0
                 per_pixel_t0 = time.perf_counter()
                 for i in asics:
@@ -640,7 +774,7 @@ def config_expert(base, cfg, writePixelMap=True):
                                         offset = 1
                                         mcol = (ncols-1) - col
                                 bank = int((mcol % (48<<2)) / 48)
-                                bankOffset = banks[bank]
+                                bankOffset = BANK_OFFSETS[bank]
                                 saci.RowCounter.set(row)
                                 saci.ColCounter.set(bankOffset | (mcol%48))
                                 saci.WritePixelData.set(int(pixelConfigMap[i,row,col]))
