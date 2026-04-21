@@ -157,6 +157,28 @@ def _load_debug_mask_npy_override(user_cfg):
     }
 
 
+def _format_direct_op_preview(op):
+    if op['kind'] == 'bank_fill':
+        row_range = op.get('row_range', (op['row_start'], op['row_stop']))
+        col_range = op.get('col_range', (op['col_start'], op['col_stop']))
+        return 'fill:a%d:b%d:r[%d,%d):c[%d,%d):v%d' % (
+            op['asic'],
+            op['bank'],
+            row_range[0],
+            row_range[1],
+            col_range[0],
+            col_range[1],
+            op['value'],
+        )
+    return 'pixel:a%d:b%d:r%d:c%d:v%d' % (
+        op['asic'],
+        op['bank'],
+        op['row'],
+        op['col'],
+        op['value'],
+    )
+
+
 def _apply_debug_pattern_override(cfg):
     """Optionally overrides config from debug test definitions.
 
@@ -242,7 +264,7 @@ def _apply_debug_pattern_override(cfg):
     cfg['expert'].setdefault('EpixQuad', {})
 
     cfg['user']['gain_mode'] = 5
-    cfg['user']['pixel_map'] = materialized['pixel_map'].tolist()
+    cfg['user']['pixel_map'] = np.asarray(materialized['pixel_map']).reshape(-1).tolist()
     for i, trbit in enumerate(materialized['trbit_by_asic']):
         cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
         cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
@@ -271,25 +293,7 @@ def _apply_debug_pattern_override(cfg):
             log_parts.append(f"markers={marker_preview}")
     else:
         op_preview = ', '.join(
-            (
-                'fill:a%d:b%d:r[%d,%d):c[%d,%d):v%d' % (
-                    op['asic'],
-                    op['bank'],
-                    op['row_start'],
-                    op['row_stop'],
-                    op['col_start'],
-                    op['col_stop'],
-                    op['value'],
-                )
-                if op['kind'] == 'bank_fill' else
-                'pixel:a%d:b%d:r%d:c%d:v%d' % (
-                    op['asic'],
-                    op['bank'],
-                    op['row'],
-                    op['col'],
-                    op['value'],
-                )
-            )
+            _format_direct_op_preview(op)
             for op in materialized.get('direct_write_summary', [])[:6]
         )
         log_parts.append(f"direct={materialized.get('direct_name', 'unnamed_direct')}")
