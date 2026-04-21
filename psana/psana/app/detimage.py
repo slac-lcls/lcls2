@@ -10,18 +10,18 @@ Example:
 import sys
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES, DICT_NAME_TO_LEVEL
 logger = logging.getLogger(__name__)
+import numpy as np
 import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
-
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
-USAGE = '%s -k <dataset-kwargs> -d <detector-name> -n <number-of-events> -m <number-events-to-skip> -M <mode-r/c/p> -L <log-level-str>'%SCRNAME\
-      + '\n  Examples:'\
-      + '\n  %s -k exp=xppc00125,run=148 -d jungfrau1M --figsize 16,10 --aminmax 0,10'%SCRNAME\
-      + '\n  %s -k exp=ued1015999,run=185 -d epixquad1kfps -M c'%SCRNAME\
-      + '\n  %s -k exp=ued1015999,run=185 -d epixquad1kfps -M p --gmind 2 --databits 0x3fff'%SCRNAME\
-      + '\n  %s -k exp=ued1016014,run=50 -d epixquad1kfps -M p --gmind 2 --databits 0x3fff'%SCRNAME\
-      + '\n  %s -k exp=ued1016014,run=50 -d epixquad1kfps -M c --aminmax "(-10,10) --as2d"'%SCRNAME\
+USAGE = f'{SCRNAME} -k <dataset-kwargs> -d <detector-name> [other arguments ...]'\
+      + f'\n  Examples:'\
+      + f'\n  {SCRNAME} -k exp=xppc00125,run=148 -d jungfrau1M --figsize 16,10 --aminmax 0,10'\
+      + f'\n  {SCRNAME} -k exp=ued1015999,run=185 -d epixquad1kfps -M c'\
+      + f'\n  {SCRNAME} -k exp=ued1015999,run=185 -d epixquad1kfps -M p --gmind 2 --databits 0x3fff'\
+      + f'\n  {SCRNAME} -k exp=ued1016014,run=50 -d epixquad1kfps -M p --gmind 2 --databits 0x3fff'\
+      + f'\n  {SCRNAME} -k exp=ued1016014,run=50 -d epixquad1kfps -M c --aminmax "(-10,10) --as2d"'\
 
 def argument_parser():
     import argparse
@@ -31,7 +31,7 @@ def argument_parser():
     d_events   = 5
     d_evskip   = 0
     d_logmode  = 'INFO'
-    d_fnprefix = 'img'
+    d_fnprefix = None
     d_figsize  = '12,8'
     d_aminmax  = 'None, None'
     d_aslice   = ':'
@@ -46,7 +46,7 @@ def argument_parser():
     h_events   = '(int) number of events to collect, default = %s' % d_events
     h_evskip   = '(int) number of events to skip, default = %s' % d_evskip
     h_logmode  = '(str) logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
-    h_fnprefix = '(str) output file name fnprefix, default = %s' % str(d_fnprefix)
+    h_fnprefix = '(str) output file name prefix, default = %s' % str(d_fnprefix)
     h_figsize  = '(str) figure size in inch, width, hight, default = %s' % str(d_figsize)
     h_aminmax  = '(str) intensity min, max values or None, default = %s' % str(d_aminmax)
     h_aslice   = '(str) slice applied to image, e.g. 0:180,620:, default = %s' % str(d_aslice)
@@ -74,7 +74,6 @@ def argument_parser():
 
     return parser
 
-import numpy as np
 def seg_sunrise(sh=(512, 1024), dtype=np.int32, vmax=None):
     nrows, ncols = sh
     rows = np.arange(nrows, dtype=dtype)
@@ -82,7 +81,6 @@ def seg_sunrise(sh=(512, 1024), dtype=np.int32, vmax=None):
     cs, rs = np.meshgrid(cols, rows)
     arr2d = cs + rs
     if vmax is not None: arr2d *= (vmax/(cs[-1]+rs[-1]))
-    print('XXX vmax', vmax)
     print('arr2d.shape:', arr2d.shape)
     return arr2d
 
@@ -97,16 +95,14 @@ def segments_with_gaps(a, gappix=10, gapval=0):
         lstarrs.append(a3d[i,])
     return np.vstack(lstarrs)
 
-
 def detimage():
-    """
-    """
+    if len(sys.argv)<5: sys.exit(f'{USAGE}\n\nEXIT DUE TO MISSING ARGUMENTS\ntry: {SCRNAME} -h')
+
     import os
     import numpy as np
     from psana import DataSource
     import psana.detector.utils_psana as up
     from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
-    #from time import sleep
 
     parser = argument_parser()
     args = parser.parse_args()
@@ -114,8 +110,6 @@ def detimage():
     kwa = vars(args)
 
     print('parser.parse_args: %s' % str(args))
-
-    #if len(sys.argv)<3: sys.exit('%s\n EXIT - MISSING ARGUMENTS\n' % USAGE)
 
     str_dskwargs = args.dskwargs
     detname  = args.detname
