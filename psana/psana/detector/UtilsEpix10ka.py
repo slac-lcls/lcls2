@@ -16,7 +16,7 @@ Usage::
     cbits = cbits_config_and_data_detector_epix10ka(det_raw, evt=None)  # used in det.raw._cbits_config_and_data_detector(evt)
     cbits = cbits_config_and_data_detector_epixhr2x2(det_raw, evt=None) # used in det.raw._cbits_config_and_data_detector(evt)
     maps = gain_maps_epix10ka_any(det_raw, evt=None)
-    s = def info_gain_mode_arrays(gmaps, first=0, last=5)
+    s = info_gain_mode_arrays(gmaps, first=0, last=5)
     gmstatist = pixel_gain_mode_statistics(gmaps)
     s = info_pixel_gain_mode_statistics(gmaps)
     s = info_pixel_gain_mode_statistics_for_raw(det_raw, evt=None, msg='pixel gain mode statistics: ')
@@ -458,7 +458,7 @@ def cbits_config_epixhr2x2(cob, shape=(288, 384)):
           1000 = 1<<3 = 8 - ga gain bit
           # add trbit
           010000 = 1<<4 = 16 - trbit
-
+1
     Parameters
     ----------
     cob : container.Container object
@@ -529,6 +529,8 @@ def cbits_config_and_data_detector_alg(data, cbits, data_gain_bit, gain_bit_shif
 
 
 def cbits_config_and_data_detector(det_raw, evt=None):
+    """eb._det_raw_cbits_config_and_data_detector > eb.cbits_config_and_data_detector > cbits_config_and_data_detector"""
+    logger.debug('XXX in cbits_config_and_data_detector')
     return cbits_config_and_data_detector_alg(\
              det_raw.raw(evt),\
              det_raw._cbits_config_detector(),\
@@ -586,11 +588,11 @@ def gain_maps_epix10ka_any(det_raw, evt=None):
     return gain_maps_epix10ka_any_alg(det_raw._cbits_config_and_data_detector(evt))
 
 
-def info_gain_mode_arrays(gmaps, first=0, last=5):
+def info_gain_mode_arrays(gmaps, first=0, last=5, spacer='\n  ', cmt='gain range arrays:'):
     """ gr0, gr1, gr2, gr3, gr4, gr5, gr6 = gmaps
     """
     recs = [info_ndarr(gr, 'gr%d'%i, first, last) for i,gr in enumerate(gmaps)]
-    return 'gain range arrays:\n  %s' % ('  %s\n'.join(recs))
+    return '%s%s%s' % (cmt, spacer, spacer.join(recs))
 
 
 def pixel_gain_mode_statistics(gmaps):
@@ -802,8 +804,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     -------
       - calibrated epix10ka data
     """
-
-    #print('XXXX calib_epix10ka_any kwa:', kwa)
+    logger.debug('XXXX calib_epix10ka_any kwa:', kwa)
 
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
@@ -830,6 +831,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     arrf = np.array(raw14, dtype=np.float32)
     if pedest is not None: arrf -= pedest
 
+    #print('XXX store.cmpars:', store.cmpars)
     if store.cmpars is not None:
         common_mode_epix_multigain_apply(arrf, gmaps, store)
 
