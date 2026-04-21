@@ -37,6 +37,125 @@ DEBUG_RANDOM_PIXEL_MAP=False
 USE_ACCELERATED_MATRIX_WRITE=False
 BANK_OFFSETS = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
 
+RAW_MASK_ASIC_LAYOUT = (
+    {'slot': 0, 'row_slice': (176, 352), 'col_slice': (192, 384), 'operator': 'identity'},
+    {'slot': 1, 'row_slice': (0, 176),   'col_slice': (192, 384), 'operator': 'rot180'},
+    {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192),   'operator': 'rot180'},
+    {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192),   'operator': 'identity'},
+)
+
+
+def _make_background_pixel_map(background_value):
+    return np.full((16, 178, 192), int(background_value), dtype=np.uint8)
+
+
+def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
+    """Converts a det.raw.raw-oriented mask into direct bank-addressed writes.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Raw-view mask with shape (4,352,384). Nonzero pixels are treated as
+        active and converted to direct writes.
+    selected_value : int
+        Pixel value to program for selected pixels.
+
+    Returns
+    -------
+    ops : list[dict]
+        Direct-write pixel ops in (asic, bank, row, col).
+    summary : list[dict]
+        Short per-ASIC summaries for logging.
+    """
+    if mask.shape != (4, 352, 384):
+        raise ValueError(
+            f'EPIXQUAD_DEBUG_MASK_NPY expects shape (4,352,384), got {mask.shape}'
+        )
+
+    active = np.asarray(mask) != 0
+    ops = []
+    summary = []
+    for segment in range(4):
+        seg_active = active[segment]
+        for layout in RAW_MASK_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            sub = seg_active[r0:r1, c0:c1]
+            coords = np.argwhere(sub)
+            if coords.size == 0:
+                continue
+
+            asic = 4 * segment + layout['slot']
+            operator = layout['operator']
+            for raw_local_row, raw_local_col in coords:
+                if operator == 'identity':
+                    prog_row = int(raw_local_row)
+                    prog_col = int(raw_local_col)
+                elif operator == 'rot180':
+                    prog_row = 175 - int(raw_local_row)
+                    prog_col = 191 - int(raw_local_col)
+                else:
+                    raise ValueError(f'unsupported raw-mask operator: {operator!r}')
+
+                bank = prog_col // 48
+                bank_col = prog_col % 48
+                ops.append({
+                    'kind': 'pixel',
+                    'asic': int(asic),
+                    'bank': int(bank),
+                    'row': int(prog_row),
+                    'col': int(bank_col),
+                    'value': int(selected_value),
+                })
+
+            summary.append({
+                'asic': int(asic),
+                'segment': int(segment),
+                'operator': operator,
+                'active_pixels': int(coords.shape[0]),
+                'raw_box': ((int(r0), int(r1)), (int(c0), int(c1))),
+            })
+    return ops, summary
+
+
+def _load_debug_mask_npy_override(user_cfg):
+    """Optional env-gated debug override from a raw-view mask .npy file.
+
+    Expected input mask orientation matches det.raw.raw(evt): shape (4,352,384).
+    The converter applies the measured ASIC subregion/operator mapping and emits
+    direct bank-addressed writes under the bank_rc_178x48 convention.
+    """
+    path = os.environ.get('EPIXQUAD_DEBUG_MASK_NPY')
+    if not path:
+        return None
+
+    selected_value = int(os.environ.get('EPIXQUAD_DEBUG_MASK_SELECTED_VALUE', '8'))
+    background_value = int(os.environ.get('EPIXQUAD_DEBUG_MASK_BACKGROUND_VALUE', '12'))
+    trbit = int(os.environ.get('EPIXQUAD_DEBUG_MASK_TRBIT', '0'))
+
+    mask = np.load(path)
+    ops, summary = _convert_raw_mask_to_direct_ops(mask, selected_value=selected_value)
+    stem = os.path.splitext(os.path.basename(path))[0]
+
+    return {
+        'override_kind': 'direct_write',
+        'source_kind': 'mask_npy',
+        'selection_source': 'env_mask_npy',
+        'source_file': os.path.abspath(path),
+        'direct_name': f'raw_mask_{stem}',
+        'pattern_label': 'raw-mask direct write',
+        'coordinate_mode': 'bank_rc_178x48',
+        'pixel_map': _make_background_pixel_map(background_value),
+        'trbit_by_asic': [trbit] * 16,
+        'background_value_by_asic': [background_value] * 16,
+        'selected_value': int(selected_value),
+        'background_value': int(background_value),
+        'direct_write_ops': ops,
+        'direct_write_summary': ops[:6],
+        'raw_mask_summary': summary,
+        'direct_write_pixel_count': len(ops),
+    }
+
 
 def _apply_debug_pattern_override(cfg):
     """Optionally overrides config from debug test definitions.
@@ -80,6 +199,18 @@ def _apply_debug_pattern_override(cfg):
       metadata/debugging, but the actual hardware writes happen later in
       config_expert() from the direct op list.
 
+    Raw-mask .npy mode:
+      EPIXQUAD_DEBUG_MASK_NPY=/path/to/mask.npy
+      EPIXQUAD_DEBUG_MASK_SELECTED_VALUE=8      # optional
+      EPIXQUAD_DEBUG_MASK_BACKGROUND_VALUE=12   # optional
+      EPIXQUAD_DEBUG_MASK_TRBIT=0               # optional
+
+      Use this when you already have a raw-view mask with the same shape and
+      orientation as det.raw.raw(evt), namely (4,352,384). The converter uses
+      the measured ASIC/operator mapping and emits direct bank-addressed pixel
+      writes under the bank_rc_178x48 convention. This bypasses the current
+      logical pixel_map reconstruction path entirely.
+
     Wrapper/control-file mode:
       A client-side wrapper can update a shared JSON control file before each
       run. This is needed when the DAQ/config process is already running and
@@ -93,12 +224,15 @@ def _apply_debug_pattern_override(cfg):
       cfg['user']['pixel_map'] = materialized (16,178,192) array
       cfg['expert']['EpixQuad']['Epix10kaSaci{i}']['trbit'] per loaded test
 
-    If none of EPIXQUAD_DEBUG_TEST_FILE, EPIXQUAD_DEBUG_SEQUENCE_FILE, or
-    EPIXQUAD_DEBUG_DIRECT_WRITE_FILE is set, this function leaves cfg unchanged.
+    If none of EPIXQUAD_DEBUG_TEST_FILE, EPIXQUAD_DEBUG_SEQUENCE_FILE,
+    EPIXQUAD_DEBUG_DIRECT_WRITE_FILE, or EPIXQUAD_DEBUG_MASK_NPY is set, this
+    function leaves cfg unchanged.
     """
     global debug_override
 
     materialized = load_debug_override(cfg.get('user'))
+    if materialized is None:
+        materialized = _load_debug_mask_npy_override(cfg.get('user'))
     debug_override = materialized
     if materialized is None:
         return False
@@ -163,6 +297,13 @@ def _apply_debug_pattern_override(cfg):
         log_parts.append(f"coordinate_mode={materialized.get('coordinate_mode', 'bank_rc_178x48')}")
         log_parts.append(f"direct_pixels={materialized.get('direct_write_pixel_count', 0)}")
         log_parts.append('pixel_map_metadata=background_only_placeholder')
+        if materialized.get('source_kind') == 'mask_npy':
+            log_parts.append(
+                f"mask_selected_value={materialized.get('selected_value', '?')}"
+            )
+            log_parts.append(
+                f"mask_background_value={materialized.get('background_value', '?')}"
+            )
         if op_preview:
             log_parts.append(f"ops={op_preview}")
     if 'sequence_name' in materialized:
