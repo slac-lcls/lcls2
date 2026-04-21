@@ -21,6 +21,11 @@ Currently implemented diagnoses:
   - ``row_regions``:
       reuse the coarse module/block result, then rank the four row bands
       inside the winning coarse block
+  - ``bank_marker_orientation``:
+      reuse the coarse module/block result, then inspect one expected bank
+      region for the two strongest sparse-marker peaks and classify the
+      in-bank transform as ``identity``, ``flipud``, ``fliplr``, ``rot180``,
+      or ``unresolved``
 
 The diagnosis operates on previously extracted products and does not reread raw
 data. This keeps diagnosis cheap and easy to iterate on.
@@ -50,6 +55,12 @@ ORIENTATION_TRANSFORMS = {
     'rot180': lambda dr, dc: (-dr, -dc),
 }
 
+BANK_COORD_MODES = ('bank_rc_178x48', 'bank_rc_44x192')
+BANK_MARKER_TEMPLATES = {
+    'bank_rc_178x48': ((12, 7), (145, 35)),
+    'bank_rc_44x192': ((6, 20), (31, 150)),
+}
+
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -58,7 +69,7 @@ def _parse_args():
     parser.add_argument('--input-dir', required=True,
                         help='Directory created by validate_pattern_runs.py')
     parser.add_argument('--diag', default='module_location',
-                        help='Diagnosis mode to run (module_location, asic_orientation, quadrants, column_regions, or row_regions)')
+                        help='Diagnosis mode to run (module_location, asic_orientation, quadrants, column_regions, row_regions, or bank_marker_orientation)')
     parser.add_argument('--run', default=None,
                         help='Comma-separated subset of run numbers to diagnose')
     parser.add_argument('--runs', default=None,
@@ -69,6 +80,13 @@ def _parse_args():
                         help='Warn if the total coarse deviation score is at or below this value')
     parser.add_argument('--log-level', default='INFO',
                         help='Python logging level (default INFO)')
+    parser.add_argument('--coordinate-mode', default='bank_rc_178x48',
+                        help='Bank coordinate convention for bank_marker_orientation '
+                             '(bank_rc_178x48 or bank_rc_44x192)')
+    parser.add_argument('--bank-index', type=int, default=None,
+                        help='Logical bank index 0..3 for bank_marker_orientation')
+    parser.add_argument('--peak-exclusion-radius', type=int, default=6,
+                        help='Suppression radius in pixels when searching for two sparse-marker peaks')
     return parser.parse_args()
 
 
@@ -204,6 +222,164 @@ def _orientation_match(expected_vec, observed_vec):
         })
     ranked.sort(key=lambda item: (item['error_l1'], item['operator']))
     return ranked
+
+
+def _bank_bbox_in_block(bbox, coordinate_mode, bank_index):
+    module = int(bbox['module'])
+    if coordinate_mode == 'bank_rc_178x48':
+        x0 = int(bbox['col0']) + int(bank_index) * 48
+        x1 = x0 + 48
+        return {
+            'module': module,
+            'row0': int(bbox['row0']),
+            'row1': int(bbox['row1']),
+            'col0': int(x0),
+            'col1': int(x1),
+        }
+    if coordinate_mode == 'bank_rc_44x192':
+        y0 = int(bbox['row0']) + int(bank_index) * 44
+        y1 = y0 + 44
+        return {
+            'module': module,
+            'row0': int(y0),
+            'row1': int(y1),
+            'col0': int(bbox['col0']),
+            'col1': int(bbox['col1']),
+        }
+    raise ValueError(f'unsupported coordinate_mode {coordinate_mode!r}')
+
+
+def _extract_two_peaks(background_deviation, bbox, exclusion_radius):
+    module = int(bbox['module'])
+    arr = np.asarray(
+        background_deviation[module, bbox['row0']:bbox['row1'], bbox['col0']:bbox['col1']],
+        dtype=np.float64,
+    )
+    work = np.array(arr, copy=True)
+    peaks = []
+    for _ in range(2):
+        flat_idx = int(np.argmax(work))
+        score = float(work.flat[flat_idx])
+        if score <= 0:
+            break
+        local_row, local_col = np.unravel_index(flat_idx, work.shape)
+        peaks.append({
+            'module': module,
+            'row': int(bbox['row0'] + local_row),
+            'col': int(bbox['col0'] + local_col),
+            'local_row': int(local_row),
+            'local_col': int(local_col),
+            'score': score,
+        })
+        y0 = max(0, local_row - exclusion_radius)
+        y1 = min(work.shape[0], local_row + exclusion_radius + 1)
+        x0 = max(0, local_col - exclusion_radius)
+        x1 = min(work.shape[1], local_col + exclusion_radius + 1)
+        work[y0:y1, x0:x1] = 0.0
+    return peaks
+
+
+def _diagnose_bank_marker_orientation(row, input_dir, min_total_score, coordinate_mode, bank_index, exclusion_radius):
+    if coordinate_mode not in BANK_COORD_MODES:
+        raise ValueError(
+            f'unsupported coordinate_mode {coordinate_mode!r}; expected one of {BANK_COORD_MODES}'
+        )
+    if bank_index is None or not (0 <= int(bank_index) < 4):
+        raise ValueError('bank_marker_orientation requires --bank-index in the range 0..3')
+
+    module_diag = _diagnose_module_location(row, min_total_score)
+    background_deviation = _load_run_array(input_dir, row, 'background_deviation.npy')
+    coarse_bbox = module_diag['best_block']['bbox_raw']
+    bank_bbox = _bank_bbox_in_block(coarse_bbox, coordinate_mode, int(bank_index))
+    peaks = _extract_two_peaks(background_deviation, bank_bbox, exclusion_radius)
+    expected_a, expected_b = BANK_MARKER_TEMPLATES[coordinate_mode]
+    expected_vec = (
+        int(expected_b[0]) - int(expected_a[0]),
+        int(expected_b[1]) - int(expected_a[1]),
+    )
+
+    warnings = list(module_diag.get('warnings', []))
+    if len(peaks) < 2:
+        warnings.append('insufficient_bank_marker_peaks')
+
+    best_match = None
+    alternative_ordering = None
+    if len(peaks) >= 2:
+        p0, p1 = peaks[0], peaks[1]
+        observed_forward = (
+            int(p1['local_row']) - int(p0['local_row']),
+            int(p1['local_col']) - int(p0['local_col']),
+        )
+        observed_reverse = (
+            int(p0['local_row']) - int(p1['local_row']),
+            int(p0['local_col']) - int(p1['local_col']),
+        )
+        forward_ranked = _orientation_match(expected_vec, observed_forward)
+        reverse_ranked = _orientation_match(expected_vec, observed_reverse)
+        best_forward = forward_ranked[0]
+        best_reverse = reverse_ranked[0]
+        if best_forward['error_l1'] <= best_reverse['error_l1']:
+            best_match = {
+                'operator': best_forward['operator'],
+                'error_l1': best_forward['error_l1'],
+                'exact': best_forward['exact'],
+                'observed_order': ['peak0', 'peak1'],
+                'expected_points': [list(expected_a), list(expected_b)],
+                'observed_vector': best_forward['observed_vector'],
+                'expected_vector_for_operator': best_forward['expected_vector'],
+                'peak_points': [p0, p1],
+                'all_operator_matches': forward_ranked,
+            }
+            alternative_ordering = {
+                'observed_order': ['peak1', 'peak0'],
+                'best_operator': best_reverse['operator'],
+                'error_l1': best_reverse['error_l1'],
+                'all_operator_matches': reverse_ranked,
+            }
+        else:
+            best_match = {
+                'operator': best_reverse['operator'],
+                'error_l1': best_reverse['error_l1'],
+                'exact': best_reverse['exact'],
+                'observed_order': ['peak1', 'peak0'],
+                'expected_points': [list(expected_a), list(expected_b)],
+                'observed_vector': best_reverse['observed_vector'],
+                'expected_vector_for_operator': best_reverse['expected_vector'],
+                'peak_points': [p1, p0],
+                'all_operator_matches': reverse_ranked,
+            }
+            alternative_ordering = {
+                'observed_order': ['peak0', 'peak1'],
+                'best_operator': best_forward['operator'],
+                'error_l1': best_forward['error_l1'],
+                'all_operator_matches': forward_ranked,
+            }
+        if best_match['error_l1'] != 0:
+            warnings.append('bank_marker_nonexact_match')
+
+    diagnosis = dict(module_diag)
+    diagnosis.update({
+        'diagnosis_type': 'bank_marker_orientation',
+        'coordinate_mode': coordinate_mode,
+        'bank_index': int(bank_index),
+        'bank_bbox_raw': bank_bbox,
+        'expected_marker_points': [list(expected_a), list(expected_b)],
+        'peak_exclusion_radius': int(exclusion_radius),
+        'bank_marker_orientation': best_match if best_match is not None else {
+            'operator': 'unresolved',
+            'error_l1': None,
+            'exact': False,
+            'observed_order': [],
+            'expected_points': [list(expected_a), list(expected_b)],
+            'observed_vector': None,
+            'expected_vector_for_operator': None,
+            'peak_points': peaks,
+            'all_operator_matches': [],
+        },
+        'alternative_ordering': alternative_ordering,
+    })
+    diagnosis['warnings'] = warnings
+    return diagnosis
 
 
 def _diagnose_asic_orientation(row, min_total_score):
@@ -639,6 +815,8 @@ def _write_summary_md(path, diagnoses, diag_mode):
         _write_column_regions_summary_md(path, diagnoses)
     elif diag_mode == 'row_regions':
         _write_row_regions_summary_md(path, diagnoses)
+    elif diag_mode == 'bank_marker_orientation':
+        _write_bank_marker_orientation_summary_md(path, diagnoses)
     else:
         raise RuntimeError(f'unsupported summary mode {diag_mode!r}')
 
@@ -805,6 +983,42 @@ def _write_row_regions_summary_md(path, diagnoses):
         f.write('\n'.join(lines))
 
 
+def _write_bank_marker_orientation_summary_md(path, diagnoses):
+    lines = [
+        '# Bank Marker Orientation Diagnosis',
+        '',
+        'Per-run coarse module/block diagnosis plus sparse in-bank 2-point orientation classification.',
+        '',
+    ]
+    for diag in diagnoses:
+        best_module = diag['best_module']
+        best_block = diag['best_block']
+        orient = diag['bank_marker_orientation']
+        lines.extend([
+            f"## Run {diag['run']} Pattern {diag['pattern_index']:02d} {diag['pattern_label']}",
+            '',
+            f"- test_name: `{diag['test_name']}`",
+            f"- marker_groups: `{diag['marker_groups']}`",
+            f"- best_module: `{best_module['module']}` score={best_module['score']:.3f}",
+            f"- best_block: `{best_block['block_label']}` in module `{best_block['module']}` score={best_block['score']:.3f}",
+            f"- coordinate_mode: `{diag['coordinate_mode']}`",
+            f"- bank_index: `{diag['bank_index']}`",
+            f"- bank_bbox_raw: `{diag['bank_bbox_raw']}`",
+            f"- operator: `{orient['operator']}`",
+            f"- exact: `{orient['exact']}`",
+            f"- error_l1: `{orient['error_l1']}`",
+            f"- observed_vector: `{orient['observed_vector']}`",
+            f"- expected_vector_for_operator: `{orient['expected_vector_for_operator']}`",
+        ])
+        if diag['warnings']:
+            lines.append(f"- warnings: `{diag['warnings']}`")
+        lines.append('')
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open('w') as f:
+        f.write('\n'.join(lines))
+
+
 def main():
     args = _parse_args()
     logging.basicConfig(
@@ -816,9 +1030,9 @@ def main():
     run_summaries_path = input_dir / 'run_summaries.json'
     if not run_summaries_path.exists():
         raise RuntimeError(f'missing run summaries file: {run_summaries_path}')
-    if args.diag not in ('module_location', 'asic_orientation', 'quadrants', 'column_regions', 'row_regions'):
+    if args.diag not in ('module_location', 'asic_orientation', 'quadrants', 'column_regions', 'row_regions', 'bank_marker_orientation'):
         raise RuntimeError(
-            f"unsupported --diag {args.diag!r}; supported: module_location, asic_orientation, quadrants, column_regions, row_regions"
+            f"unsupported --diag {args.diag!r}; supported: module_location, asic_orientation, quadrants, column_regions, row_regions, bank_marker_orientation"
         )
 
     run_summaries = _load_json(run_summaries_path)
@@ -850,6 +1064,24 @@ def main():
                 diag['run'], diag['pattern_index'],
                 diag['best_module']['module'], diag['best_block']['block_label'],
                 diag['orientation']['operator'],
+            )
+        elif args.diag == 'bank_marker_orientation':
+            diag = _diagnose_bank_marker_orientation(
+                row,
+                input_dir,
+                args.min_total_score,
+                args.coordinate_mode,
+                args.bank_index,
+                args.peak_exclusion_radius,
+            )
+            per_run_name = 'bank_marker_orientation.json'
+            combined_name = 'bank_marker_orientation_all.json'
+            summary_name = 'bank_marker_orientation_summary.md'
+            log_msg = 'diagnosed run=%d pattern=%02d best_module=%d best_block=%s bank=%d operator=%s'
+            log_args = (
+                diag['run'], diag['pattern_index'],
+                diag['best_module']['module'], diag['best_block']['block_label'],
+                diag['bank_index'], diag['bank_marker_orientation']['operator'],
             )
         else:
             if args.diag == 'quadrants':

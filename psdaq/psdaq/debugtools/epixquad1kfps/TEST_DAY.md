@@ -39,6 +39,35 @@ The workflow has three layers:
 Keep extraction and diagnosis separate. Extraction is expensive because it reads
 raw data. Diagnosis is cheap and can be rerun as many times as needed.
 
+## What Each Test Reveals
+
+- `02_all_modules_anchor_asic0.json`
+  - gives coarse anchor mapping:
+  - logical anchored ASIC -> raw segment/module
+  - logical anchored ASIC -> coarse raw ASIC block
+  - this strongly constrains, but does not by itself fully prove, the full ASIC enumeration
+
+- `01_module0_asic_orientation.json`
+  - gives ASIC-local placement/orientation inside the winning raw block
+  - practical outputs:
+    - raw ASIC quadrant-like location
+    - local transform such as `identity`, `flipud`, `fliplr`, `rot180`, or `unresolved`
+
+- direct full-bank probe
+  - gives bank landing geometry for one chosen ASIC
+  - practical outputs:
+    - whether bank ids `0..3` are all reachable
+    - which bank-shape hypothesis fits better: `178x48` or `44x192`
+    - whether the banks stack vertically, horizontally, or as row bands
+
+- direct sparse in-bank markers
+  - gives final in-bank pixel orientation for one chosen bank
+  - practical outputs:
+    - bank-local `identity`, `flipud`, `fliplr`, or `rot180`
+    - the last missing piece needed to map:
+      - `(logical asic, logical bank, logical row, logical col)`
+      - to observed `det.raw.raw` coordinates
+
 ## Step 1: Confirm The Pattern Sequence
 
 Dry-run the sequence before detector use:

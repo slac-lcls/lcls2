@@ -5,8 +5,10 @@
 This implements the first two phases of the detector-day validation workflow.
 
 Pass 0:
-  Build the expected run-to-pattern table from one pattern-sequence JSON and a
-  starting run number.
+  Build the expected run-to-pattern table from either:
+    - one pattern-sequence JSON in the original marker/test-file schema, or
+    - one direct-write JSON in the newer bank-probe schema,
+  plus a starting run number.
 
 Pass 2:
   For each selected run, scan ``det.raw.raw(evt)`` and compute stable raw-word
@@ -50,7 +52,7 @@ def _parse_args():
         description='Build run tables and raw-bit summaries for epixquad1kfps debug-pattern runs'
     )
     parser.add_argument('--sequence', required=True,
-                        help='Pattern-sequence JSON file')
+                        help='Pattern-sequence JSON file or direct-write JSON file')
     parser.add_argument('--exp', required=True,
                         help='Experiment name, for example ued1016014')
     parser.add_argument('--run-start', required=True, type=int,
@@ -158,38 +160,86 @@ def _selected_markers(test_spec, pattern):
 
 
 def _build_run_table(sequence_path, sequence_spec, run_start, patterns):
-    sequence_name = sequence_spec.get('sequence_name', 'unnamed_sequence')
+    sequence_name = sequence_spec.get(
+        'sequence_name',
+        sequence_spec.get('direct_name', 'unnamed_sequence'),
+    )
     rows = []
     for i, pattern in enumerate(patterns):
         pattern_index = _pattern_index(pattern, i)
         run_number = run_start + pattern_index
-        test_path = _resolve_input_path(pattern['test_file'], base_dir=sequence_path.parent)
-        test_spec = _load_json(test_path)
-        selected_markers, selected_groups = _selected_markers(test_spec, pattern)
-        rows.append({
-            'sequence_name': sequence_name,
-            'pattern_index': pattern_index,
-            'pattern_label': pattern.get('label', f'pattern-{pattern_index}'),
-            'run': run_number,
-            'test_name': test_spec.get('test_name', 'unnamed_test'),
-            'test_file': str(test_path),
-            'marker_groups': selected_groups,
-            'markers': [
+        if 'test_file' in pattern:
+            test_path = _resolve_input_path(pattern['test_file'], base_dir=sequence_path.parent)
+            test_spec = _load_json(test_path)
+            selected_markers, selected_groups = _selected_markers(test_spec, pattern)
+            rows.append({
+                'sequence_name': sequence_name,
+                'pattern_index': pattern_index,
+                'pattern_label': pattern.get('label', f'pattern-{pattern_index}'),
+                'run': run_number,
+                'test_name': test_spec.get('test_name', 'unnamed_test'),
+                'test_file': str(test_path),
+                'marker_groups': selected_groups,
+                'markers': [
+                    {
+                        'label': marker.get('label', ''),
+                        'group': marker.get('group'),
+                        'asic': int(marker['asic']),
+                        'row': int(marker['row']),
+                        'col': int(marker['col']),
+                        'value': int(marker.get('value', test_spec.get('default_marker_value', 0))),
+                        'tags': marker.get('tags', []),
+                    }
+                    for marker in selected_markers
+                ],
+                'purpose': pattern.get('purpose', ''),
+                'priority': pattern.get('priority', ''),
+                'notes': pattern.get('notes', []),
+            })
+            continue
+
+        if 'ops' in pattern:
+            coordinate_mode = pattern.get(
+                'coordinate_mode',
+                sequence_spec.get('coordinate_mode', 'bank_rc_178x48'),
+            )
+            ops = pattern.get('ops', [])
+            pixel_ops = [op for op in ops if op.get('kind', 'pixel') == 'pixel']
+            markers = [
                 {
-                    'label': marker.get('label', ''),
-                    'group': marker.get('group'),
-                    'asic': int(marker['asic']),
-                    'row': int(marker['row']),
-                    'col': int(marker['col']),
-                    'value': int(marker.get('value', test_spec.get('default_marker_value', 0))),
-                    'tags': marker.get('tags', []),
+                    'label': f"op{idx}",
+                    'group': f"bank{int(op['bank'])}",
+                    'asic': int(op['asic']),
+                    'row': int(op['row']),
+                    'col': int(op['col']),
+                    'value': int(op.get('value', sequence_spec.get('default_selected_value', 0))),
+                    'tags': ['direct-write', coordinate_mode],
                 }
-                for marker in selected_markers
-            ],
-            'purpose': pattern.get('purpose', ''),
-            'priority': pattern.get('priority', ''),
-            'notes': pattern.get('notes', []),
-        })
+                for idx, op in enumerate(pixel_ops)
+            ]
+            bank_ids = sorted({int(op['bank']) for op in ops if 'bank' in op})
+            marker_groups = [f'bank{bank}' for bank in bank_ids]
+            rows.append({
+                'sequence_name': sequence_name,
+                'pattern_index': pattern_index,
+                'pattern_label': pattern.get('label', f'pattern-{pattern_index}'),
+                'run': run_number,
+                'test_name': sequence_spec.get('direct_name', 'unnamed_direct'),
+                'test_file': str(sequence_path),
+                'marker_groups': marker_groups,
+                'markers': markers,
+                'purpose': pattern.get('purpose', sequence_spec.get('description', '')),
+                'priority': pattern.get('priority', ''),
+                'notes': pattern.get('notes', []),
+                'coordinate_mode': coordinate_mode,
+                'bank_index': bank_ids[0] if len(bank_ids) == 1 else None,
+                'direct_ops': ops,
+            })
+            continue
+
+        raise KeyError(
+            f'pattern_index={pattern_index} in {sequence_path} has neither test_file nor ops'
+        )
     return rows
 
 
@@ -392,6 +442,12 @@ def _analyze_run(entry, args, default_events):
         'confidence_threshold': float(args.confidence_threshold),
         'top_candidates': candidate_pixels,
     }
+    if 'coordinate_mode' in entry:
+        summary['coordinate_mode'] = entry['coordinate_mode']
+    if 'bank_index' in entry:
+        summary['bank_index'] = entry['bank_index']
+    if 'direct_ops' in entry:
+        summary['direct_ops'] = entry['direct_ops']
     arrays = {
         'bit14_occupancy': bit14_occupancy,
         'background_deviation': background_deviation.astype(np.float32),
