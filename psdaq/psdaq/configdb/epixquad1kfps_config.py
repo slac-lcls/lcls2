@@ -403,6 +403,63 @@ def _apply_direct_write_program(cbase, program, asics):
     )
     return True
 
+
+def _apply_raw_pixel_map_program(cbase, pixel_map_raw, asics):
+    if pixel_map_raw.shape != (4, 352, 384):
+        raise ValueError(
+            f'user.pixel_map_raw expects shape (4,352,384), got {pixel_map_raw.shape}'
+        )
+
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.PrepareMultiConfig.set(0)
+
+    matrix_cfg_t0 = time.perf_counter()
+    changed_pixels = 0
+
+    for segment in range(4):
+        seg = pixel_map_raw[segment]
+        for layout in RAW_MASK_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            operator = layout['operator']
+            asic = 4 * segment + layout['slot']
+            saci = cbase.Epix10kaSaci[asic]
+
+            asic_raw = np.asarray(seg[r0:r1, c0:c1], dtype=np.uint8)
+            common_value = mode(asic_raw)
+            saci.WriteMatrixData.set(int(common_value))
+
+            raw_rows, raw_cols = asic_raw.shape
+            for raw_row in range(raw_rows):
+                for raw_col in range(raw_cols):
+                    pixel_value = int(asic_raw[raw_row, raw_col])
+                    if pixel_value == common_value:
+                        continue
+
+                    if operator == 'identity':
+                        prog_row = raw_row
+                        prog_col = raw_col
+                    elif operator == 'rot180':
+                        prog_row = (raw_rows - 1) - raw_row
+                        prog_col = (raw_cols - 1) - raw_col
+                    else:
+                        raise ValueError(f'unsupported raw pixel-map operator: {operator!r}')
+
+                    bank = prog_col // 48
+                    bank_col = prog_col % 48
+                    saci.RowCounter.set(int(prog_row))
+                    saci.ColCounter.set(BANK_OFFSETS[int(bank)] | int(bank_col))
+                    saci.WritePixelData.set(pixel_value)
+                    changed_pixels += 1
+
+    logging.info(
+        'Raw pixel_map write complete in %.3f s (%d pixel updates)',
+        time.perf_counter() - matrix_cfg_t0,
+        changed_pixels,
+    )
+    return True
+
 def get_trigger_buffers():
     """
     Returns the Run/DAQ trigger buffer indices for the current PGP lane.
@@ -779,12 +836,27 @@ def user_to_expert(base, cfg, full=False):
     pixel_map_changed = False
     a = None
     if (hasUser and ('gain_mode' in cfg['user'] or
-                     'pixel_map' in cfg['user'])):
-        gain_mode = cfg['user']['gain_mode']
+                     'pixel_map' in cfg['user'] or
+                     'pixel_map_raw' in cfg['user'])):
+        gain_mode = cfg['user'].get('gain_mode', ocfg['user']['gain_mode'])
         if gain_mode==5:
-            if 'pixel_map' not in cfg['user']:
-                raise KeyError('user.pixel_map is required when user.gain_mode == 5')
-            a  = cfg['user']['pixel_map']
+            if 'pixel_map_raw' in cfg['user']:
+                a_raw = np.array(cfg['user']['pixel_map_raw'], dtype=np.uint8)
+                d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
+                logging.debug('pixel_map_raw len {}'.format(len(d['user.pixel_map_raw'])))
+                logging.info(
+                    'Prepared user.pixel_map_raw for config update: shape=%s nonzero_pixels=%d',
+                    a_raw.shape,
+                    int(np.count_nonzero(a_raw)),
+                )
+                pixel_map_changed = True
+            elif 'pixel_map' in cfg['user']:
+                a = cfg['user']['pixel_map']
+                logging.debug('pixel_map len {}'.format(len(a)))
+                d['user.pixel_map'] = a
+                pixel_map_changed = True
+            else:
+                raise KeyError('user.pixel_map_raw or user.pixel_map is required when user.gain_mode == 5')
         else:
             mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -793,9 +865,9 @@ def user_to_expert(base, cfg, full=False):
 
             for i in range(16):
                 d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-        logging.debug('pixel_map len {}'.format(len(a)))
-        d['user.pixel_map'] = a
-        pixel_map_changed = True
+            logging.debug('pixel_map len {}'.format(len(a)))
+            d['user.pixel_map'] = a
+            pixel_map_changed = True
 
     update_config_entry(cfg, ocfg, d)
 
@@ -840,6 +912,16 @@ def config_expert(base, cfg, writePixelMap=True):
     if writePixelMap:
         if debug_override is not None and debug_override.get('override_kind') == 'direct_write':
             _apply_direct_write_program(cbase, debug_override, asics)
+        elif 'user' in cfg and 'pixel_map_raw' in cfg['user']:
+            a = np.array(cfg['user']['pixel_map_raw'], dtype=np.uint8)
+            pixelConfigMapRaw = np.reshape(a, (4, 352, 384))
+            logging.info(
+                'Using user.pixel_map_raw write path: shape=%s nonzero_pixels=%d unique_values=%s',
+                pixelConfigMapRaw.shape,
+                int(np.count_nonzero(pixelConfigMapRaw)),
+                np.unique(pixelConfigMapRaw).tolist(),
+            )
+            _apply_raw_pixel_map_program(cbase, pixelConfigMapRaw, asics)
         elif 'user' in cfg and 'pixel_map' in cfg['user']:
             #  Write the pixel gain maps
             #  Would like to send a 3d array

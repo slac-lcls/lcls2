@@ -39,6 +39,7 @@ ASIC_COUNT = 16
 MODULE_COUNT = 4
 MODULE_ROWS = ASIC_ROWS * 2
 MODULE_COLS = ASIC_COLS * 2
+RAW_SHAPE = (MODULE_COUNT, MODULE_ROWS, MODULE_COLS)
 
 
 def copyValues(din, dout, k=None):
@@ -68,6 +69,21 @@ def _read_store_layout(fname):
             f'Expected gain-map file shape {(STORE_ROWS, STORE_COLS)}, got {labels.shape} from {fname}'
         )
     return labels
+
+
+def _read_raw_detector_layout(fname):
+    labels = np.load(fname)
+    if labels.shape != RAW_SHAPE:
+        raise ValueError(
+            f'Expected raw detector .npy shape {RAW_SHAPE}, got {labels.shape} from {fname}'
+        )
+
+    unique_labels = sorted(int(v) for v in np.unique(labels))
+    if any(label not in (0, 1) for label in unique_labels):
+        raise ValueError(
+            f'Raw detector .npy input must be binary with labels [0, 1], got {unique_labels}'
+        )
+    return np.asarray(labels, dtype=np.uint8)
 
 
 def _store_layout_to_asics(store_labels):
@@ -182,6 +198,26 @@ def _emit_detector_mask_artifacts(store_labels, input_path, detector_mask_output
         _compare_detector_chunks(detector_chunks, compare_mask_npy)
 
 
+def _emit_raw_detector_mask_artifacts(detector_chunks, input_path, detector_mask_output=None,
+                                      detector_preview_output=None, compare_mask_npy=None):
+    if detector_chunks.shape != RAW_SHAPE:
+        raise ValueError(
+            f'Expected raw detector chunk shape {RAW_SHAPE}, got {detector_chunks.shape}'
+        )
+
+    mask_output = Path(detector_mask_output) if detector_mask_output else _default_detector_mask_output(input_path)
+    preview_output = Path(detector_preview_output) if detector_preview_output else _default_detector_preview_output(input_path)
+
+    np.save(mask_output, detector_chunks)
+    _save_detector_preview(preview_output, detector_chunks)
+
+    print(f'Wrote detector-shaped mask array: {mask_output} shape={detector_chunks.shape}')
+    print(f'Wrote detector preview PNG:       {preview_output}')
+
+    if compare_mask_npy:
+        _compare_detector_chunks(detector_chunks, compare_mask_npy)
+
+
 def _parse_label_maps(entries):
     label_map = {}
     for entry in entries:
@@ -241,7 +277,7 @@ def _legacy_binary_map(store_labels, gains):
     print(f'Legacy gain mode: 0 -> {gains[0]}, 1 -> {gains[1]}')
     mapped = store_labels * (vgain1 - vgain0) + vgain0
 
-    d = {}
+    d = {'user.gain_mode': 5}
     trbit = _resolve_asic_trbit(gains)
     for i in range(ASIC_COUNT):
         d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
@@ -255,7 +291,7 @@ def _legacy_binary_map(store_labels, gains):
 def _label_map_to_pixel_map(store_labels, label_map):
     label_asics = _store_layout_to_asics(store_labels)
     pixel_asics = []
-    d = {}
+    d = {'user.gain_mode': 5}
 
     for i, asic_labels in enumerate(label_asics):
         labels_present, label_counts = np.unique(asic_labels, return_counts=True)
@@ -288,6 +324,65 @@ def _label_map_to_pixel_map(store_labels, label_map):
         )
 
     d['user.pixel_map'] = np.asarray(np.pad(pixel_asics, ((0, 0), (0, 2), (0, 0))), dtype=np.uint8)
+    return d
+
+
+RAW_ASIC_LAYOUT = (
+    {'slot': 0, 'row_slice': (176, 352), 'col_slice': (192, 384)},
+    {'slot': 1, 'row_slice': (0, 176),   'col_slice': (192, 384)},
+    {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192)},
+    {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192)},
+)
+
+
+def _binary_label_map_to_raw_pixel_map(raw_labels, label_map):
+    unique_labels = sorted(int(v) for v in np.unique(raw_labels))
+    if any(label not in (0, 1) for label in unique_labels):
+        raise ValueError(
+            f'Raw detector .npy input must be binary with labels [0, 1], got {unique_labels}'
+        )
+
+    missing = [label for label in (0, 1) if label not in label_map]
+    if missing:
+        raise ValueError(
+            f'Raw detector .npy input requires --map entries for labels 0 and 1, missing {missing}'
+        )
+
+    d = {'user.gain_mode': 5}
+    pixel_map_raw = np.zeros_like(raw_labels, dtype=np.uint8)
+
+    for label in (0, 1):
+        gain = label_map[label]
+        pixel_map_raw[raw_labels == label] = gain_dict[gain]['value']
+
+    for segment in range(MODULE_COUNT):
+        seg_labels = raw_labels[segment]
+        for layout in RAW_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            asic = 4 * segment + layout['slot']
+            asic_labels = seg_labels[r0:r1, c0:c1]
+
+            labels_present, label_counts = np.unique(asic_labels, return_counts=True)
+            labels_present = [int(v) for v in labels_present]
+            counts_dict = {int(label): int(count) for label, count in zip(labels_present, label_counts)}
+
+            gains_present = sorted({label_map[label] for label in labels_present})
+            try:
+                trbit = _resolve_asic_trbit(gains_present)
+            except ValueError as exc:
+                raise ValueError(
+                    f'ASIC {asic} mixes gains with incompatible trbit values: '
+                    f'{gains_present} from labels {labels_present}'
+                ) from exc
+
+            d[f'expert.EpixQuad.Epix10kaSaci{asic}.trbit'] = trbit
+            print(
+                f'ASIC {asic:02d}: labels [{_summary_from_counts(counts_dict)}] -> '
+                f'gains {gains_present}, trbit={trbit}'
+            )
+
+    d['user.pixel_map_raw'] = np.asarray(pixel_map_raw, dtype=np.uint8)
     return d
 
 
@@ -347,16 +442,6 @@ def main():
 
     import psdaq.configdb.configdb as cdb
 
-    store_labels = _read_store_layout(args.file)
-    print(f'Read {args.file} with shape {store_labels.shape} and labels {sorted(int(v) for v in np.unique(store_labels))}')
-    _emit_detector_mask_artifacts(
-        store_labels,
-        args.file,
-        detector_mask_output=args.detector_mask_output,
-        detector_preview_output=args.detector_preview_output,
-        compare_mask_npy=args.compare_mask_npy,
-    )
-
     detname = f'{args.name}_{args.segm}'
     db = 'devconfigdb' if args.dev else 'configdb'
     url = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
@@ -374,16 +459,48 @@ def main():
     copyValues(cfg, top)
 
     label_map = _parse_label_maps(args.map) if args.map else None
-    if label_map is not None:
-        print(f'Label map mode: {label_map}')
-        d = _label_map_to_pixel_map(store_labels, label_map)
+
+    input_path = Path(args.file)
+    if input_path.suffix == '.npy':
+        raw_labels = _read_raw_detector_layout(args.file)
+        print(f'Read raw detector mask {args.file} with shape {raw_labels.shape} and labels {sorted(int(v) for v in np.unique(raw_labels))}')
+        _emit_raw_detector_mask_artifacts(
+            raw_labels,
+            args.file,
+            detector_mask_output=args.detector_mask_output,
+            detector_preview_output=args.detector_preview_output,
+            compare_mask_npy=args.compare_mask_npy,
+        )
+        if label_map is None:
+            raise ValueError('Raw detector .npy input requires --map 0:GAIN --map 1:GAIN')
+        print(f'Raw detector label map mode: {label_map}')
+        d = _binary_label_map_to_raw_pixel_map(raw_labels, label_map)
     else:
-        d = _legacy_binary_map(store_labels, args.gain)
+        store_labels = _read_store_layout(args.file)
+        print(f'Read {args.file} with shape {store_labels.shape} and labels {sorted(int(v) for v in np.unique(store_labels))}')
+        _emit_detector_mask_artifacts(
+            store_labels,
+            args.file,
+            detector_mask_output=args.detector_mask_output,
+            detector_preview_output=args.detector_preview_output,
+            compare_mask_npy=args.compare_mask_npy,
+        )
+
+        if label_map is not None:
+            print(f'Label map mode: {label_map}')
+            d = _label_map_to_pixel_map(store_labels, label_map)
+        else:
+            d = _legacy_binary_map(store_labels, args.gain)
 
     copyValues(d, top)
 
-    print('Setting user.pixel_map')
-    top.set('user.pixel_map', d['user.pixel_map'])
+    top.set('user.gain_mode', d['user.gain_mode'])
+    if 'user.pixel_map' in d:
+        print('Setting user.pixel_map')
+        top.set('user.pixel_map', d['user.pixel_map'])
+    if 'user.pixel_map_raw' in d:
+        print('Setting user.pixel_map_raw')
+        top.set('user.pixel_map_raw', d['user.pixel_map_raw'])
 
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
     if not args.test:
