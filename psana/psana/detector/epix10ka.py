@@ -45,10 +45,11 @@ class epix10ka_raw_2_0_1(eb.epix_base):
 
 #    def raw(self, evt, copy=True) -> Array3d:
 #        """TEST overrides lcls2/psana/psana/detector/areadetector.py AreaDetectorRaw.raw"""
+#        print('XXX in epix10ka_raw_2_0_1.raw')
 #        return eb.epix_base.raw(self, evt, copy=copy)
 
 
-# calib is the same as in epix_base
+# calib is the same as in epix_base.calib
 #    def calib(self, evt, **kwa) -> Array3d:
 #        logger.debug('epix10ka_raw_2_0_1.calib')
 #        return eb.calib_epix10ka_any(self, evt, **kwa)
