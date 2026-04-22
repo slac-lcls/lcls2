@@ -283,6 +283,7 @@ def issue_2026_04_10(subtest='0o7777'):
        FIX:
     """
     from psana import DataSource
+    from time import time
     import sys
     import numpy as np
     import matplotlib.pyplot as plt
@@ -315,10 +316,12 @@ def issue_2026_04_10(subtest='0o7777'):
         while True:
             evt = next(myrun.events())
             #det.raw._raw_buf = None
+            t0_sec = time()
             raw = det.raw.raw(evt) #, copy=False)
+            print('XXX det.raw.raw(evt) time: %.6f sec' % (time() - t0_sec))
 
             cal = det.raw.calib(evt)
-            print('TEST EXIT  AreaDetectorRaw.raw IS CALLED TWISE')
+            print('XXX AreaDetectorRaw.raw IS CALLED TWISE')
 
             rimg = det.raw.image(evt, raw)
             dimg = det.raw.image(evt)
