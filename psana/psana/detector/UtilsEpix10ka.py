@@ -383,7 +383,7 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
     trbits = cob.trbit # [1 1 1 1] < per ASIC trbit in the panel, consisting off 4 ASICs
-    pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
+    pca = np.asarray(cob.asicPixelConfig)
     logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
     #print(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
     rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 176, 192 for epix10ka
@@ -391,15 +391,15 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     #t0_sec = time()
 
     # begin to create array of control bits
-    # Origin of ASICs in bottom-right corner, so
-    # stack them in upside-down matrix and rotete it by 180 deg.
-
-    #cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
-    #                                       np.hstack((pca[3],pca[0])))))) # 0.000090 sec
-
-    cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
-                                  np.flipud(np.fliplr(pca[1])))),
-                       np.hstack((pca[3],pca[0]))))
+    # Legacy Configure stored per-ASIC config as (4,176,192); new Configure
+    # stores panel-view config directly as (352,384), matching det.raw.raw.
+    if pca.shape == shape:
+        cbits = np.array(pca, copy=True)
+    else:
+        pca = pca[:, :rowsh, :]
+        cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
+                                      np.flipud(np.fliplr(pca[1])))),
+                           np.hstack((pca[3],pca[0]))))
 
     #cbits = np.bitwise_and(cbits,12) # 0o14 (bin:1100) # 0.000202 sec
     np.bitwise_and(cbits,12,out=cbits) # 0o14 (bin:1100) # 0.000135 sec
@@ -410,11 +410,19 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
 
     if all(trbits): cbits = np.bitwise_or(cbits, B04) # add trbit for all pixels (352, 384)
     elif not any(trbits): return cbits
-    else: # set trbit per ASIC
-        if trbits[2]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
-        if trbits[3]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
-        if trbits[0]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
-        if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:]) #0.000189 sec
+    else:
+        if pca.shape == shape:
+            # New Configure stores trbit in panel-quadrant order:
+            # [top-left, top-right, bottom-left, bottom-right].
+            if trbits[0]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
+            if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:])
+            if trbits[2]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
+            if trbits[3]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
+        else: # legacy per-ASIC order
+            if trbits[2]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
+            if trbits[3]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
+            if trbits[0]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
+            if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:]) #0.000189 sec
     return cbits
 
 

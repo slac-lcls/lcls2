@@ -49,6 +49,145 @@ def _make_background_pixel_map(background_value):
     return np.full((16, 178, 192), int(background_value), dtype=np.uint8)
 
 
+def _raw_pixel_map_shape():
+    return (4, 352, 384)
+
+
+def _asic_pixel_map_shape():
+    return (16, 178, 192)
+
+
+def _normalize_raw_pixel_map(pixel_map_raw):
+    arr = np.asarray(pixel_map_raw, dtype=np.uint8)
+    if arr.shape == _raw_pixel_map_shape():
+        return arr
+    if arr.size == np.prod(_raw_pixel_map_shape()):
+        return arr.reshape(_raw_pixel_map_shape())
+    raise ValueError(
+        f'user.pixel_map_raw expects shape {_raw_pixel_map_shape()}, got {arr.shape}'
+    )
+
+
+def _normalize_asic_pixel_map(pixel_map):
+    arr = np.asarray(pixel_map, dtype=np.uint8)
+    if arr.shape == _asic_pixel_map_shape():
+        return arr
+    if arr.size == np.prod(_asic_pixel_map_shape()):
+        return arr.reshape(_asic_pixel_map_shape())
+    raise ValueError(
+        f'user.pixel_map expects shape {_asic_pixel_map_shape()}, got {arr.shape}'
+    )
+
+
+def _asic_pixel_map_to_raw_pixel_map(pixel_map):
+    arr = _normalize_asic_pixel_map(pixel_map)
+    out = np.zeros(_raw_pixel_map_shape(), dtype=np.uint8)
+
+    for segment in range(4):
+        for layout in RAW_MASK_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            operator = layout['operator']
+            asic = 4 * segment + layout['slot']
+            readable = np.asarray(arr[asic, :176, :], dtype=np.uint8)
+            if operator == 'identity':
+                out[segment, r0:r1, c0:c1] = readable
+            elif operator == 'rot180':
+                out[segment, r0:r1, c0:c1] = np.flipud(np.fliplr(readable))
+            else:
+                raise ValueError(f'unsupported raw pixel-map operator: {operator!r}')
+
+    return out
+
+
+def _config_entry_exists(cfg, dotted_key):
+    node = cfg
+    for key in dotted_key.split('.'):
+        if not isinstance(node, dict) or key not in node:
+            return False
+        node = node[key]
+    return True
+
+
+def _copy_entry_or_fallback_type(cfg, src_cfg, dotted_key, fallback_type_key=None):
+    copy_config_entry(cfg, src_cfg, dotted_key)
+    try:
+        copy_config_entry(cfg[':types:'], src_cfg[':types:'], dotted_key)
+    except KeyError:
+        if fallback_type_key is None:
+            raise
+        copy_config_entry(cfg[':types:'], src_cfg[':types:'], fallback_type_key)
+
+
+def _get_cfg_pixel_map_raw(cfg, fallback_cfg=None):
+    candidates = [cfg]
+    if fallback_cfg is not None and fallback_cfg is not cfg:
+        candidates.append(fallback_cfg)
+
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or 'user' not in candidate:
+            continue
+        user = candidate['user']
+        if 'pixel_map_raw' in user:
+            return _normalize_raw_pixel_map(user['pixel_map_raw'])
+        if 'pixel_map' in user:
+            return _asic_pixel_map_to_raw_pixel_map(user['pixel_map'])
+
+    raise KeyError('user.pixel_map_raw or user.pixel_map is required')
+
+
+def _get_cfg_trbit_by_asic(cfg, fallback_cfg=None):
+    trbits = []
+    for i in range(16):
+        value = None
+        for candidate in (cfg, fallback_cfg):
+            if not isinstance(candidate, dict):
+                continue
+            try:
+                value = candidate['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit']
+                break
+            except KeyError:
+                continue
+        if value is None:
+            raise KeyError(f'expert.EpixQuad.Epix10kaSaci{i}.trbit is required')
+        trbits.append(int(value))
+    return trbits
+
+
+def _trbits_asic_to_panel_order(trbits_asic):
+    trbits_asic = list(trbits_asic)
+    if len(trbits_asic) != 16:
+        raise ValueError(f'expected 16 ASIC trbits, got {len(trbits_asic)}')
+
+    # Use the raw-panel ASIC placement already encoded in RAW_MASK_ASIC_LAYOUT.
+    # Panel order here is [top-left, top-right, bottom-left, bottom-right].
+    ordered_layout = sorted(
+        RAW_MASK_ASIC_LAYOUT,
+        key=lambda layout: (layout['row_slice'][0], layout['col_slice'][0]),
+    )
+
+    panel_trbits = []
+    for segment in range(4):
+        for layout in ordered_layout:
+            asic = 4 * segment + layout['slot']
+            panel_trbits.append(int(trbits_asic[asic]))
+
+    return panel_trbits
+
+
+def _analysis_config_from_cfg(cfg, fallback_cfg=None):
+    pixel_map_raw = _get_cfg_pixel_map_raw(cfg, fallback_cfg=fallback_cfg)
+    trbits_asic = _get_cfg_trbit_by_asic(cfg, fallback_cfg=fallback_cfg)
+    trbits_panel = _trbits_asic_to_panel_order(trbits_asic)
+    return pixel_map_raw, trbits_panel
+
+
+def _segment_trbits_panel(trbits_panel, seg):
+    start = 4 * seg
+    stop = start + 4
+    return list(trbits_panel[start:stop])
+
+
 def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
     """Converts a det.raw.raw-oriented mask into direct bank-addressed writes.
 
@@ -217,7 +356,7 @@ def _apply_debug_pattern_override(cfg):
         - background value per ASIC
         - per-ASIC trbits
         - explicit write operations in (asic, bank, row, col)
-      A background-only placeholder user.pixel_map is still injected for
+      A background-only placeholder user.pixel_map_raw is still injected for
       metadata/debugging, but the actual hardware writes happen later in
       config_expert() from the direct op list.
 
@@ -243,7 +382,7 @@ def _apply_debug_pattern_override(cfg):
 
     When enabled, this function forces:
       cfg['user']['gain_mode'] = 5
-      cfg['user']['pixel_map'] = materialized (16,178,192) array
+      cfg['user']['pixel_map_raw'] = materialized raw-view array (4,352,384)
       cfg['expert']['EpixQuad']['Epix10kaSaci{i}']['trbit'] per loaded test
 
     If none of EPIXQUAD_DEBUG_TEST_FILE, EPIXQUAD_DEBUG_SEQUENCE_FILE,
@@ -264,7 +403,9 @@ def _apply_debug_pattern_override(cfg):
     cfg['expert'].setdefault('EpixQuad', {})
 
     cfg['user']['gain_mode'] = 5
-    cfg['user']['pixel_map'] = np.asarray(materialized['pixel_map']).reshape(-1).tolist()
+    cfg['user']['pixel_map_raw'] = _get_cfg_pixel_map_raw(
+        {'user': materialized}
+    ).reshape(-1).tolist()
     for i, trbit in enumerate(materialized['trbit_by_asic']):
         cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
         cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
@@ -539,14 +680,28 @@ def _hydrate_map_mode_partial_config(cfg):
     if 'user' not in cfg or 'gain_mode' not in cfg['user']:
         return
 
-    if cfg['user']['gain_mode'] != 5 or 'pixel_map' in cfg['user']:
+    if cfg['user']['gain_mode'] != 5 or 'pixel_map_raw' in cfg['user']:
         return
 
-    if ocfg is None or 'user' not in ocfg or 'pixel_map' not in ocfg['user']:
-        raise KeyError('user.pixel_map is required when user.gain_mode == 5')
+    if ocfg is None or 'user' not in ocfg:
+        raise KeyError('full configuration is required when user.gain_mode == 5')
 
-    copy_config_entry(cfg, ocfg, 'user.pixel_map')
-    copy_config_entry(cfg[':types:'], ocfg[':types:'], 'user.pixel_map')
+    if _config_entry_exists(ocfg, 'user.pixel_map_raw'):
+        _copy_entry_or_fallback_type(cfg, ocfg, 'user.pixel_map_raw')
+    elif _config_entry_exists(ocfg, 'user.pixel_map'):
+        cfg.setdefault('user', {})
+        cfg['user']['pixel_map_raw'] = _asic_pixel_map_to_raw_pixel_map(
+            ocfg['user']['pixel_map']
+        ).reshape(-1).tolist()
+        _copy_entry_or_fallback_type(
+            cfg,
+            ocfg,
+            'user.pixel_map_raw',
+            fallback_type_key='user.pixel_map',
+        )
+    else:
+        raise KeyError('user.pixel_map_raw or user.pixel_map is required when user.gain_mode == 5')
+
     for i in range(16):
         key = f'expert.EpixQuad.Epix10kaSaci{i}.trbit'
         copy_config_entry(cfg, ocfg, key)
@@ -841,7 +996,7 @@ def user_to_expert(base, cfg, full=False):
         gain_mode = cfg['user'].get('gain_mode', ocfg['user']['gain_mode'])
         if gain_mode==5:
             if 'pixel_map_raw' in cfg['user']:
-                a_raw = np.array(cfg['user']['pixel_map_raw'], dtype=np.uint8)
+                a_raw = _normalize_raw_pixel_map(cfg['user']['pixel_map_raw'])
                 d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
                 logging.debug('pixel_map_raw len {}'.format(len(d['user.pixel_map_raw'])))
                 logging.info(
@@ -851,22 +1006,22 @@ def user_to_expert(base, cfg, full=False):
                 )
                 pixel_map_changed = True
             elif 'pixel_map' in cfg['user']:
-                a = cfg['user']['pixel_map']
-                logging.debug('pixel_map len {}'.format(len(a)))
-                d['user.pixel_map'] = a
+                a_raw = _asic_pixel_map_to_raw_pixel_map(cfg['user']['pixel_map'])
+                d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
+                logging.debug('pixel_map_raw len {}'.format(len(d['user.pixel_map_raw'])))
                 pixel_map_changed = True
             else:
                 raise KeyError('user.pixel_map_raw or user.pixel_map is required when user.gain_mode == 5')
         else:
             mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
-            a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
-            a = a.reshape(-1).tolist()
+            base_raw = _get_cfg_pixel_map_raw(ocfg)
+            a_raw = (np.asarray(base_raw, dtype=np.uint8) & 0x3) | mapv
 
             for i in range(16):
                 d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-            logging.debug('pixel_map len {}'.format(len(a)))
-            d['user.pixel_map'] = a
+            logging.debug('pixel_map_raw len {}'.format(a_raw.size))
+            d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
             pixel_map_changed = True
 
     update_config_entry(cfg, ocfg, d)
@@ -913,8 +1068,7 @@ def config_expert(base, cfg, writePixelMap=True):
         if debug_override is not None and debug_override.get('override_kind') == 'direct_write':
             _apply_direct_write_program(cbase, debug_override, asics)
         elif 'user' in cfg and 'pixel_map_raw' in cfg['user']:
-            a = np.array(cfg['user']['pixel_map_raw'], dtype=np.uint8)
-            pixelConfigMapRaw = np.reshape(a, (4, 352, 384))
+            pixelConfigMapRaw = _normalize_raw_pixel_map(cfg['user']['pixel_map_raw'])
             logging.info(
                 'Using user.pixel_map_raw write path: shape=%s nonzero_pixels=%d unique_values=%s',
                 pixelConfigMapRaw.shape,
@@ -1161,8 +1315,6 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
-
     topname = cfg['detName:RO'].split('_')
 
     scfg = {}
@@ -1172,9 +1324,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
-
-    a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-    pixelConfigMap = np.reshape(a,(16,178,192))
+    pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
     for seg in range(4):
         #  Construct the ID
@@ -1190,8 +1340,8 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
         top = cdict()
         top.setAlg('config', [2,0,0])
         top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-        top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')  # only the rows which have readable pixels
-        top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+        top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+        top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -1236,9 +1386,7 @@ def epixquad_scan_keys(update):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if pixelMapChanged:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
-        trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
+        pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
@@ -1246,8 +1394,8 @@ def epixquad_scan_keys(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
-            top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+            top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -1284,15 +1432,8 @@ def epixquad_update(update):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
-    scfg[0] = cfg
-
     if writePixelMap:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
-        try:
-            trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
-        except:
-            trbit = None
+        pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
@@ -1300,9 +1441,8 @@ def epixquad_update(update):
             top = cdict()
             top.setAlg('config', [2,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
-            if trbit is not None:
-                top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+            top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
