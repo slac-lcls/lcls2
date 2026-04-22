@@ -64,10 +64,8 @@ fi
 MONITOR_REPO=""
 LATEST_CLONE_TIME=0
 
-#### ADDED ####
 git config --global --add safe.directory '*'
 FOUND_MATCH=false
-#### END ####
 
 for candidate in "$ROOT_DIR"/*; do
     [ -d "$candidate" ] || continue
@@ -84,12 +82,10 @@ for candidate in "$ROOT_DIR"/*; do
         continue
     fi
 
-    #### ADDED ####
     FOUND_MATCH=true
     MONITOR_REPO="$candidate"
 
     echo -e "${GREEN}Processing matching repo:${NC} $MONITOR_REPO"
-    #### END ####
 
     # Get short git hash from source repo
     cd "$MONITOR_REPO"
@@ -97,10 +93,7 @@ for candidate in "$ROOT_DIR"/*; do
     echo -e "${YELLOW}Move to monitored folder ${NC}"
 
     GIT_HASH=$(git rev-parse --short HEAD)
-
-    #### CHANGED ####
     BRANCH_NAME="${HUTCH_NAME}-${REPO_NAME}"
-    #### END ####
 
     echo "GIT_HASH=${GIT_HASH}"
     echo "BRANCH_NAME=${BRANCH_NAME}"
@@ -111,12 +104,10 @@ for candidate in "$ROOT_DIR"/*; do
     git add --all
     CHANGED_FILES=$(git diff --name-only HEAD)
 
-    #### CHANGED ####
     if [ -z "$CHANGED_FILES" ]; then
         echo -e "${YELLOW}No tracked changes to sync for ${REPO_NAME}. Skipping.${NC}"
         continue
     fi
-    #### END ####
 
     echo -e "${YELLOW}Files to sync: ${NC}"
     echo "$CHANGED_FILES"
@@ -151,9 +142,6 @@ for candidate in "$ROOT_DIR"/*; do
     echo -e "${GREEN}Repository restored to original state in master/main${NC}"
     echo ""
 
-    git checkout "$GIT_HASH"
-    echo -e "${GREEN}Checking hash ${GIT_HASH} ${NC} "
-
     if git show-ref --verify --quiet refs/heads/"$BRANCH_NAME"; then
         echo -e "${YELLOW}Branch '$BRANCH_NAME' exists. Switching to it... ${NC}"
         git checkout "$BRANCH_NAME"
@@ -162,6 +150,8 @@ for candidate in "$ROOT_DIR"/*; do
         git pull origin "$BRANCH_NAME" || true
     else
         echo -e "${YELLOW}Branch '$BRANCH_NAME' does not exist. Creating and switching to it... ${NC}"
+        git checkout "$GIT_HASH"
+        echo -e "${GREEN}Checking hash ${GIT_HASH} ${NC} "
         git checkout -b "$BRANCH_NAME"
     fi
 
@@ -196,20 +186,18 @@ for candidate in "$ROOT_DIR"/*; do
    Source commit: $GIT_HASH
    Files synced:
    $CHANGED_FILES"
+
+       echo ""
+       echo "=== Sync Complete ==="
+       echo "Branch created: $BRANCH_NAME"
+       echo "Pushing to $BRANCH_NAME..."
+       git push -u origin "$BRANCH_NAME"
     else
        echo -e "${YELLOW}No new changes committed ${NC}"
     fi
-
-    echo ""
-    echo "=== Sync Complete ==="
-    echo "Branch created: $BRANCH_NAME"
-    echo "Pushing to $BRANCH_NAME..."
-    git push -u origin "$BRANCH_NAME"
 done
 
-#### ADDED ####
 if ! $FOUND_MATCH; then
     echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
     exit 1
 fi
-#### END ####
