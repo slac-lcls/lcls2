@@ -65,7 +65,8 @@ MONITOR_REPO=""
 LATEST_CLONE_TIME=0
 
 if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq '*'; then
-    git config --global --add safe.directory '*'
+    git config --global --add safe.directory '*' || \
+        echo "Warning: could not update global safe.directory; continuing"
 fi
 
 FOUND_MATCH=false
@@ -182,21 +183,21 @@ for candidate in "$ROOT_DIR"/*; do
 
     # Commit
     echo -e "${GREEN}Commit${NC}"
-    if $update; then
+    if git diff --cached --quiet; then
+        echo -e "${YELLOW}No changes to commit ${NC}"
+    else
        echo -e "${GREEN}Committing changes in branch ${BRANCH_NAME} ${NC}"
        git commit -m "Sync from lcls2 (${BRANCH_NAME})
-   Source: $MONITOR_REPO
-   Source commit: $GIT_HASH
-   Files synced:
-   $CHANGED_FILES"
+Source: $MONITOR_REPO
+Source commit: $GIT_HASH
+Files synced:
+$CHANGED_FILES"
 
        echo ""
        echo "=== Sync Complete ==="
        echo "Branch created: $BRANCH_NAME"
        echo "Pushing to $BRANCH_NAME..."
        git push -u origin "$BRANCH_NAME"
-    else
-       echo -e "${YELLOW}No new changes committed ${NC}"
     fi
 done
 
