@@ -31,17 +31,6 @@ Usage::
     calib = calib_epix10ka_any(det_raw, evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
 
-Debug dump mode::
-
-    Set environment variables before running code that calls ``det.raw.calib(evt)``:
-
-      PSANA_EPIX_DEBUG_OUTDIR=/path/to/output
-      PSANA_EPIX_DEBUG_EVENT_INDEX=50
-
-    When enabled, a one-shot debug dump is written for the selected valid event
-    index. Without ``PSANA_EPIX_DEBUG_OUTDIR`` (or legacy ``PSANA_EPIX_DEBUG_OUT``),
-    the additional debug products are not computed or written.
-
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
 
@@ -85,185 +74,6 @@ def data_bitword(dettype):
         HR has 14 data bits, gain bit is 15th (counting from 0)
     """
     return {'epix10ka':M14, 'epixhr':M14, 'epixhr2x2':M14, 'epixhremu':M14}.get(dettype, None)
-
-
-_DEBUG_STATE = {
-    'initialized': False,
-    'enabled': False,
-    'outdir': None,
-    'target_index': 0,
-    'seen': 0,
-    'done': False,
-}
-
-
-def _debug_init():
-    """Initializes one-shot debug dumping from environment variables."""
-    global _DEBUG_STATE
-    if _DEBUG_STATE['initialized']:
-        return _DEBUG_STATE
-
-    outdir = os.environ.get('PSANA_EPIX_DEBUG_OUTDIR', os.environ.get('PSANA_EPIX_DEBUG_OUT'))
-    target = os.environ.get('PSANA_EPIX_DEBUG_EVENT_INDEX', '0')
-    try:
-        target_index = int(target)
-    except Exception:
-        logger.warning('Invalid PSANA_EPIX_DEBUG_EVENT_INDEX=%s - use 0', str(target))
-        target_index = 0
-
-    _DEBUG_STATE.update({
-        'initialized': True,
-        'enabled': outdir not in (None, ''),
-        'outdir': outdir,
-        'target_index': max(target_index, 0),
-        'seen': 0,
-        'done': False,
-    })
-    return _DEBUG_STATE
-
-
-def _debug_safe_name(text):
-    return ''.join(c if (c.isalnum() or c in '._-') else '_' for c in str(text))
-
-
-def _debug_draw_rect(arr, y0, y1, x0, x1, value):
-    arr[max(0, y0):min(arr.shape[0], y1), max(0, x0):min(arr.shape[1], x1)] = value
-
-
-def _debug_make_index_map(shape):
-    """Returns a raw-shaped 64-subtile witness map and text legend."""
-    nseg, rows, cols = shape
-    if rows % 4 or cols % 4:
-        raise ValueError('index-map expects rows/cols divisible by 4, got %s' % str(shape))
-
-    subtile_rows, subtile_cols = rows // 4, cols // 4
-    arr = np.zeros(shape, dtype=np.float32)
-    lines = [
-        'Index map legend',
-        'shape=%s' % str(shape),
-        'subtile size=(%d, %d)' % (subtile_rows, subtile_cols),
-        'tile_index -> seg, subtile_row, subtile_col',
-        '',
-    ]
-
-    tile_index = 0
-    for seg in range(nseg):
-        for sr in range(4):
-            for sc in range(4):
-                y0 = sr * subtile_rows
-                x0 = sc * subtile_cols
-                tile = np.zeros((subtile_rows, subtile_cols), dtype=np.float32)
-
-                # Distinct outer frame and asymmetric markers to make flips obvious in masked.
-                _debug_draw_rect(tile, 0, 2, 0, subtile_cols, 100 + tile_index)
-                _debug_draw_rect(tile, subtile_rows - 2, subtile_rows, 0, subtile_cols, 100 + tile_index)
-                _debug_draw_rect(tile, 0, subtile_rows, 0, 2, 100 + tile_index)
-                _debug_draw_rect(tile, 0, subtile_rows, subtile_cols - 2, subtile_cols, 100 + tile_index)
-                _debug_draw_rect(tile, 4, 10, 4, subtile_cols // 2, 400 + tile_index)
-                _debug_draw_rect(tile, 4, subtile_rows // 2, 4, 10, 400 + tile_index)
-                _debug_draw_rect(tile, 6, 14, subtile_cols - 14, subtile_cols - 6, 700 + tile_index)
-
-                bitpos = (
-                    (subtile_rows // 2 - 10, subtile_cols // 2 - 18),
-                    (subtile_rows // 2 - 10, subtile_cols // 2 - 2),
-                    (subtile_rows // 2 - 10, subtile_cols // 2 + 14),
-                    (subtile_rows // 2 + 6, subtile_cols // 2 - 18),
-                    (subtile_rows // 2 + 6, subtile_cols // 2 - 2),
-                    (subtile_rows // 2 + 6, subtile_cols // 2 + 14),
-                )
-                for bit, (yy, xx) in enumerate(bitpos):
-                    val = 1600 + 40 * bit + tile_index if ((tile_index >> bit) & 1) else 800 + 20 * bit + tile_index
-                    _debug_draw_rect(tile, yy, yy + 8, xx, xx + 8, val)
-
-                tile += np.float32(tile_index * 5)
-                arr[seg, y0:y0 + subtile_rows, x0:x0 + subtile_cols] = tile
-                lines.append('%02d -> seg=%d subtile=(%d,%d)' % (tile_index, seg, sr, sc))
-                tile_index += 1
-
-    return arr, '\n'.join(lines) + '\n'
-
-
-def _debug_dump_one_event(det_raw, event_index, arrays):
-    """Saves one event worth of diagnostic arrays."""
-    state = _debug_init()
-    if not state['enabled']:
-        return
-
-    outdir = state['outdir']
-    if outdir is None:
-        return
-    if not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    detname = _debug_safe_name(getattr(det_raw, '_det_name', 'det'))
-    prefix = os.path.join(outdir, 'epixdebug_%s_e%03d' % (detname, event_index))
-
-    meta_lines = [
-        'epix debug dump',
-        'detector=%s' % str(getattr(det_raw, '_det_name', 'det')),
-        'event_index=%d' % event_index,
-        'stage files:',
-    ]
-    for stage_name, arr in arrays:
-        if arr is None:
-            continue
-        fname = '%s_%s.npy' % (prefix, stage_name)
-        np.save(fname, np.asarray(arr))
-        meta_lines.append('  %s -> %s shape=%s dtype=%s' % (
-            stage_name, os.path.basename(fname), str(np.asarray(arr).shape), str(np.asarray(arr).dtype)))
-
-    with open('%s_manifest.txt' % prefix, 'w') as f:
-        f.write('\n'.join(meta_lines) + '\n')
-
-
-def _debug_make_display_map(arr, base=1000.0):
-    """Maps discrete array values to spaced float levels for masked visualization."""
-    if arr is None:
-        return None, ''
-    nda = np.asarray(arr)
-    uniq = np.unique(nda)
-    disp = np.zeros(nda.shape, dtype=np.float32)
-    lines = ['value -> display']
-    for idx, val in enumerate(uniq):
-        level = base * (idx + 1)
-        disp[nda == val] = level
-        if hasattr(val, 'item'):
-            val = val.item()
-        lines.append('%s -> %.1f' % (str(val), level))
-    return disp, '\n'.join(lines) + '\n'
-
-
-def _debug_make_raw14_contrast_maps(arr):
-    """Returns robust contrast maps for viewing raw14 noise structure.
-
-    For each segment independently:
-    - subtract the panel median,
-    - scale by a robust sigma estimate from IQR,
-    - clip to a compact range for masked visualization.
-
-    The signed map preserves whether the frame is above/below the panel median.
-    The absolute map emphasizes where fluctuations are larger regardless of sign.
-    """
-    if arr is None:
-        return None, None
-
-    nda = np.asarray(arr, dtype=np.float32)
-    signed = np.zeros_like(nda, dtype=np.float32)
-    absolute = np.zeros_like(nda, dtype=np.float32)
-
-    for seg in range(nda.shape[0]):
-        panel = nda[seg]
-        med = np.median(panel)
-        q25, q75 = np.percentile(panel, (25.0, 75.0))
-        sigma = (q75 - q25) / 1.349
-        if not np.isfinite(sigma) or sigma < 1.0:
-            sigma = 1.0
-
-        z = (panel - med) / sigma
-        signed[seg] = np.clip(z, -8.0, 8.0)
-        absolute[seg] = np.clip(np.abs(z), 0.0, 8.0)
-
-    return signed, absolute
 
 
 class Storage:
@@ -383,7 +193,7 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
     trbits = cob.trbit # [1 1 1 1] < per ASIC trbit in the panel, consisting off 4 ASICs
-    pca = np.asarray(cob.asicPixelConfig)
+    pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
     logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
     #print(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
     rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 176, 192 for epix10ka
@@ -391,15 +201,15 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     #t0_sec = time()
 
     # begin to create array of control bits
-    # Legacy Configure stored per-ASIC config as (4,176,192); new Configure
-    # stores panel-view config directly as (352,384), matching det.raw.raw.
-    if pca.shape == shape:
-        cbits = np.array(pca, copy=True)
-    else:
-        pca = pca[:, :rowsh, :]
-        cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
-                                      np.flipud(np.fliplr(pca[1])))),
-                           np.hstack((pca[3],pca[0]))))
+    # Origin of ASICs in bottom-right corner, so
+    # stack them in upside-down matrix and rotete it by 180 deg.
+
+    #cbits = np.flipud(np.fliplr(np.vstack((np.hstack((pca[2],pca[1])),
+    #                                       np.hstack((pca[3],pca[0])))))) # 0.000090 sec
+
+    cbits = np.vstack((np.hstack((np.flipud(np.fliplr(pca[2])),
+                                  np.flipud(np.fliplr(pca[1])))),
+                       np.hstack((pca[3],pca[0]))))
 
     #cbits = np.bitwise_and(cbits,12) # 0o14 (bin:1100) # 0.000202 sec
     np.bitwise_and(cbits,12,out=cbits) # 0o14 (bin:1100) # 0.000135 sec
@@ -410,19 +220,11 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
 
     if all(trbits): cbits = np.bitwise_or(cbits, B04) # add trbit for all pixels (352, 384)
     elif not any(trbits): return cbits
-    else:
-        if pca.shape == shape:
-            # New Configure stores trbit in panel-quadrant order:
-            # [top-left, top-right, bottom-left, bottom-right].
-            if trbits[0]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
-            if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:])
-            if trbits[2]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
-            if trbits[3]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
-        else: # legacy per-ASIC order
-            if trbits[2]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
-            if trbits[3]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
-            if trbits[0]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
-            if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:]) #0.000189 sec
+    else: # set trbit per ASIC
+        if trbits[2]: np.bitwise_or(cbits[:rowsh,:colsh], B04, out=cbits[:rowsh,:colsh])
+        if trbits[3]: np.bitwise_or(cbits[rowsh:,:colsh], B04, out=cbits[rowsh:,:colsh])
+        if trbits[0]: np.bitwise_or(cbits[rowsh:,colsh:], B04, out=cbits[rowsh:,colsh:])
+        if trbits[1]: np.bitwise_or(cbits[:rowsh,colsh:], B04, out=cbits[:rowsh,colsh:]) #0.000189 sec
     return cbits
 
 
@@ -821,11 +623,6 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
     if cond_msg(gmaps is None, msg='gmaps is None'): return None
 
-    debug_state = _debug_init()
-    debug_index = debug_state['seen']
-    debug_state['seen'] += 1
-    debug_this_event = debug_state['enabled'] and (not debug_state['done']) and debug_index == debug_state['target_index']
-
     store = det_raw._store_ = Storage(det_raw, cmpars=cmpars, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
     store.counter += 1
     if store.counter < 1: print_gmaps_info(gmaps)
@@ -835,8 +632,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     store.counter += 1
     if not store.counter%100: print_gmaps_info(gmaps)
-    raw14 = np.bitwise_and(raw, det_raw._data_bit_mask)
-    arrf = np.array(raw14, dtype=np.float32)
+    arrf = np.array(raw & det_raw._data_bit_mask, dtype=np.float32)
     if pedest is not None: arrf -= pedest
 
     #print('XXX store.cmpars:', store.cmpars)
@@ -848,54 +644,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
 
     mask = store.mask
-    final_calib = arrf * factor if mask is None else arrf * factor * mask
-
-    if debug_this_event:
-        try:
-            cbits = det_raw._cbits_config_and_data_detector(evt)
-            datagainbit = np.bitwise_and(raw, det_raw._data_gain_bit)
-            databit05 = np.right_shift(datagainbit, det_raw._gain_bit_shift)
-            databit05_display, databit05_legend = _debug_make_display_map(databit05)
-            cbits_display, cbits_legend = _debug_make_display_map(cbits)
-            raw14_contrast, raw14_absdev = _debug_make_raw14_contrast_maps(raw14)
-            after_ped = np.array(raw14, dtype=np.float32)
-            if pedest is not None:
-                after_ped -= pedest
-            after_cm = np.array(arrf, copy=True)
-            gain_index = map_gain_range_index_for_gmaps(gmaps).astype(np.uint16) if gmaps is not None else None
-            gain_index_display = (gain_index.astype(np.float32) + 1.0) * 1000.0 if gain_index is not None else None
-            index_map, legend = _debug_make_index_map(raw.shape)
-            _debug_dump_one_event(det_raw, debug_index, (
-                ('00_index_map_64tile', index_map),
-                ('01_raw', raw),
-                ('02_raw14', raw14),
-                ('02a_raw14_contrast', raw14_contrast),
-                ('02b_raw14_absdev', raw14_absdev),
-                ('03_pedest', pedest),
-                ('04_raw14_minus_ped', after_ped),
-                ('05_after_cm', after_cm),
-                ('06_factor', factor),
-                ('07_mask', mask),
-                ('08_final_calib', final_calib),
-                ('09_gain_index', gain_index),
-                ('10_gain_index_display', gain_index_display),
-                ('11_databit05', databit05),
-                ('12_databit05_display', databit05_display),
-                ('13_cbits', cbits),
-                ('14_cbits_display', cbits_display),
-            ))
-            prefix = 'epixdebug_%s_e%03d' % (_debug_safe_name(getattr(det_raw, '_det_name', 'det')), debug_index)
-            with open(os.path.join(debug_state['outdir'], '%s_00_index_map_64tile_legend.txt' % prefix), 'w') as f:
-                f.write(legend)
-            with open(os.path.join(debug_state['outdir'], '%s_12_databit05_display_legend.txt' % prefix), 'w') as f:
-                f.write(databit05_legend)
-            with open(os.path.join(debug_state['outdir'], '%s_14_cbits_display_legend.txt' % prefix), 'w') as f:
-                f.write(cbits_legend)
-            debug_state['done'] = True
-        except Exception as err:
-            logger.warning('Failed epix debug dump for event %d: %s', debug_index, str(err))
-
-    return final_calib # gain correction
+    return arrf * factor if mask is None else arrf * factor * mask # gain correction
 
 
 def common_mode_epix_multigain_apply(arrf, gmaps, store):
