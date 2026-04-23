@@ -64,7 +64,10 @@ fi
 MONITOR_REPO=""
 LATEST_CLONE_TIME=0
 
-git config --global --add safe.directory '*'
+if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq '*'; then
+    git config --global --add safe.directory '*'
+fi
+
 FOUND_MATCH=false
 
 for candidate in "$ROOT_DIR"/*; do
