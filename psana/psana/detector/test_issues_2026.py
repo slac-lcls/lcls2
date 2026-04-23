@@ -278,6 +278,7 @@ def issue_2026_04_10(subtest='0o7777'):
 
               datinfo -k exp=ued1016014,run=51 -d epixquad1kfps
               datinfo -k exp=ued1015999,run=185 -d epixquad1kfps
+              datinfo -k exp=ued1011136,run=206 -d epixquad1kfps
               ('epixquad1kfps', 'raw') : <class 'psana.detector.epix10ka.epix10ka_raw_2_0_1'>
        PROBLEM:
        FIX:
@@ -307,6 +308,7 @@ def issue_2026_04_10(subtest='0o7777'):
 
     exp, run, detName = 'ued1016014', 50, 'epixquad1kfps'
     if isubset & 16: exp, run, detName = 'ued1015999', 185, 'epixquad1kfps'
+    if isubset & 32: exp, run, detName = 'ued1011136', 206, 'epixquad1kfps'
 
     ds = DataSource(exp=exp, run=run, detectors=[detName])
     myrun = next(ds.runs())
@@ -368,15 +370,24 @@ def issue_2026_04_10(subtest='0o7777'):
            plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5, fname='img-my-calib.png')
 
     if isubset & 16:
-        #while True:
+            vmin, vmax = 0,20
             evt = next(myrun.events())
             raw = det.raw.raw(evt) & 0x3fff
             peds = det.raw._pedestals()
             raw_peds = raw - peds[2,:]
             print(ndu.info_ndarr(raw_peds, 'raw - peds'))
-            plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8), block_show=True, pos=(10,10), vmin=0, vmax=20, fname='img-my-raw-peds.png')
+            plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8), block_show=True, pos=(10,10), vmin=vmin, vmax=vmax, fname='img-my-raw-peds.png')
 
-
+    if isubset & 32:
+        #while True:
+            #vmin, vmax = (0,20) if isubset & 16 else (-10,50)
+            evt = next(myrun.events())
+            #raw = det.raw.raw(evt) & 0x3fff
+            cal = det.raw.calib(evt)
+            peds = det.raw._pedestals()
+            #raw_peds = raw - peds[2,:]
+            #print(ndu.info_ndarr(raw_peds, 'raw - peds'))
+            print(ndu.info_ndarr(cal, 'cal'))
 
 
 def issue_2026_04_15(args):
