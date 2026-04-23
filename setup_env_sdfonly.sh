@@ -7,49 +7,29 @@ unset AMI_CONDA_PREFIX
 unset AMI_CONDA_DEFAULT_ENV
 unset AMI_TESTRELDIR
 
-if [ -d "/cds/sw/" ]; then
     # for psana
-    source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
-    export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
-    export DIR_PSDM=/cds/group/psdm
-    export SIT_PSDM_DATA=/cds/data/psdm
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_02202026
+source /sdf/group/lcls/ds/ana/sw/conda2/inst/etc/profile.d/conda.sh
+export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+export DIR_PSDM=/sdf/group/lcls/ds/ana
+export SIT_PSDM_DATA=/sdf/data/lcls/ds
+export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
 
-    osrel=`uname -r`
-    case $osrel in
-        *el9*) conda activate daq_20250402_r9;; #daq_20260311;;
-        *)     conda activate daq_20250402;;    #daq_20260311;;
-    esac
+conda activate daq_20250502_r9;
 
     # DAQ bundle from the active default environment
-    export DAQ_CONDA_PREFIX=${CONDA_PREFIX}
-    export DAQ_CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}
+export DAQ_CONDA_PREFIX=${CONDA_PREFIX}
+export DAQ_CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}
 
     # AMI bundle: keep DAQ as active shell env, resolve AMI prefix by name
-    export AMI_CONDA_DEFAULT_ENV=ps_20241122
-    AMI_PREFIX_RESOLVED=$(conda info --envs 2>/dev/null | awk -v env_name="${AMI_CONDA_DEFAULT_ENV}" '$1 == env_name {print $NF; exit}')
-    if [ -n "${AMI_PREFIX_RESOLVED}" ]; then
-        export AMI_CONDA_PREFIX=${AMI_PREFIX_RESOLVED}
-    else
-        echo "Warning: conda env ${AMI_CONDA_DEFAULT_ENV} not found; using DAQ_CONDA_PREFIX for AMI_CONDA_PREFIX"
-        export AMI_CONDA_PREFIX=${DAQ_CONDA_PREFIX}
-    fi
-    unset AMI_PREFIX_RESOLVED
-elif [ -d "/sdf/group/lcls/" ]; then
-    # for s3df
-    source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
-    export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
-    export DIR_PSDM=/sdf/group/lcls/ds/ana/
-    export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
-
-    #conda activate daq_20260311
-    #conda activate ps_20241122
-    conda activate daq_20250502_r9
+export AMI_CONDA_DEFAULT_ENV=ps_20241122
+AMI_PREFIX_RESOLVED=$(conda info --envs 2>/dev/null | awk -v env_name="${AMI_CONDA_DEFAULT_ENV}" '$1 == env_name {print $NF; exit}')
+if [ -n "${AMI_PREFIX_RESOLVED}" ]; then
+    export AMI_CONDA_PREFIX=${AMI_PREFIX_RESOLVED}
 else
-    echo "CONDA area not found"
-    exit 1
+    echo "Warning: conda env ${AMI_CONDA_DEFAULT_ENV} not found; using DAQ_CONDA_PREFIX for AMI_CONDA_PREFIX"
+    export AMI_CONDA_PREFIX=${DAQ_CONDA_PREFIX}
 fi
+unset AMI_PREFIX_RESOLVED
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
@@ -61,11 +41,11 @@ fi
 export CUDA_ROOT=/usr/local/cuda
 if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
-    export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
 fi
 
-# In ASC lab the command for zsh does not work, but in XPP it does.
+# In ASC lab the command for zsh does not work, but in XPP it does. 
 # So we need to check which shell we are in to get the correct path to the script
 if [ -n "$BASH_VERSION" ]; then
     SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -73,9 +53,7 @@ elif [ -n "$ZSH_VERSION" ]; then
     SCRIPT_SOURCE="${(%):-%x}"
 fi
 
-#RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
 RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
-
 export PATH=$RELDIR/install/bin:${PATH}
 echo $RELDIR
 
@@ -110,5 +88,14 @@ export RDMAV_HUGEPAGES_SAFE=1
 # needed by JupyterLab
 export JUPYTERLAB_WORKSPACES_DIR=${HOME}
 
+# cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
+if [ ! -d /usr/share/X11/xkb ]; then
+    export QT_XKB_CONFIG_ROOT=${CONDA_PREFIX}/lib
+fi
+
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
+
+# For GPU builds, until a better solution is found
+export CUSZ_DIR=/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ
+export cuSZp_DIR=/cds/home/c/claus/git/cuSZp/install/cmake

@@ -13,11 +13,8 @@ fi
 
 force_clean=0
 compile_only=0
-build_daq=0
 
-if [ -d "/cds/sw/" ]; then
-  build_daq=1
-fi
+build_daq=1
 
 while getopts "fdc" opt; do
   case $opt in
