@@ -77,16 +77,20 @@ def data_bitword(dettype):
 
 
 class Storage:
-    def __init__(self, det_raw, **kwa):
+    def __init__(self, det_raw, evt, **kwa):
         """Holds cached calibration parameters for the epix multi-gain getector.
-
-        **kwa
-        ------
-        cmpars (tuple) - common mode parameters, e.g. (7,2,100,10)
-        perpix (bool) - if True, preserves peds and gfac arrays shaped per pixel, as (<nsegs>, 352, 384, 7)
 
         Parameters
         ----------
+        - det_raw (psana.Detector.raw) - Detector.raw object
+        - evt (psana.Event) - Event object, None for legacy
+        - **kwa
+        -------
+          - cmpars (tuple) - common mode parameters, e.g. (7,2,100,10)
+          - perpix (bool) - if True, preserves peds and gfac arrays shaped per pixel, as (<nsegs>, 352, 384, 7)
+
+        Stack variables
+        ------------------
         - counter (int) - event counter
         - gain (ndarray (7, <nsegs>, 352, 384)) - gains from calibration constants
         - peds (ndarray (7, <nsegs>, 352, 384)) - pedestals from calibration constants
@@ -195,7 +199,7 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
     trbits = cob.trbit # [1 1 1 1] < per ASIC trbit in the panel, consisting off 4 ASICs
     pca = cob.asicPixelConfig # [:,:176,:] - fixed in daq # shape:(4, 176, 192) size:135168 dtype:uint8 [8 8 8 8 8...]
     logger.debug(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
-    #print(info_ndarr(cob.asicPixelConfig, 'trbits: %s asicPixelConfig:'%str(trbits)))
+    print(info_ndarr(cob.asicPixelConfig, 'cbits_config_epix10ka trbits: %s asicPixelConfig:'%str(trbits)))
     rowsh, colsh = int(shape[0]/2), int(shape[1]/2) # should be 176, 192 for epix10ka
 
     #t0_sec = time()
@@ -581,7 +585,7 @@ def print_gmaps_info(gmaps):
     logger.debug('%s\n%s' %\
       (info_gain_mode_arrays(gmaps), info_pixel_gain_mode_statistics(gmaps)))
 
-def cond_msg(c, msg='is None', output_meth=logger.debug):
+def cond_msg(c, msg='condition is True', output_meth=logger.debug):
     if c: output_meth(msg)
     return c
 
@@ -614,7 +618,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     -------
       - calibrated epix10ka data
     """
-    logger.debug('XXXX calib_epix10ka_any kwa:', kwa)
+    logger.debug('calib_epix10ka_any kwa:', kwa)
 
     nda_raw = kwa.get('nda_raw', None)
     raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
@@ -623,7 +627,8 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
     gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
     if cond_msg(gmaps is None, msg='gmaps is None'): return None
 
-    store = det_raw._store_ = Storage(det_raw, cmpars=cmpars, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
+    store = det_raw._store_ = Storage(det_raw, None, cmpars=cmpars, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
+
     store.counter += 1
     if store.counter < 1: print_gmaps_info(gmaps)
 
@@ -645,6 +650,60 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
     mask = store.mask
     return arrf * factor if mask is None else arrf * factor * mask # gain correction
+
+
+
+
+def calib_epix10ka_v02(det_raw, evt, **kwa): #cmpars=(7,2,100):
+    """
+    - **kwa - used here and passed to det_raw.mask_comb
+      - cmpars - (tuple) common mode parameters, e.g. (7,2,100)
+      - nda_raw - substitute for det_raw.raw(evt)
+      - mbits - parameter of the det_raw.mask_comb(...)
+      - mask - user defined mask passed as optional parameter
+    """
+    logger.debug('calib_epix10ka_v02 kwa:', kwa)
+    print('>>> UtilsEpix10ka.py: calib_epix10ka_v02 kwa:', kwa)
+
+    nda_raw = kwa.get('nda_raw', None)
+    cmpars  = kwa.get('cmpars', None)
+    raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
+    if cond_msg(raw is None, msg='raw is None', output_meth=logger.info): return None
+
+    gmaps = gain_maps_epix10ka_any(det_raw, evt) #tuple: 7 x shape:(4, 352, 384)
+    if cond_msg(gmaps is None, msg='gmaps is None'): return None
+
+    store = det_raw._store_ = Storage(det_raw, evt, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
+    store.counter += 1
+    if store.counter < 1: print_gmaps_info(gmaps)
+
+    factor = event_constants_for_gmaps(gmaps, store.gfac, default=1)  # 3d gain factors
+    pedest = event_constants_for_gmaps(gmaps, store.peds, default=0)  # 3d pedestals
+
+    store.counter += 1
+    if not store.counter%100: print_gmaps_info(gmaps)
+    raw14 = np.bitwise_and(raw, det_raw._data_bit_mask)
+    arrf = np.array(raw14, dtype=np.float32)
+    if pedest is not None: arrf -= pedest
+
+    #print('XXX store.cmpars:', store.cmpars)
+    if store.cmpars is not None:
+        common_mode_epix_multigain_apply(arrf, gmaps, store)
+
+    logger.debug(info_ndarr(arrf,  'arrf:'))
+
+    if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
+
+    mask = store.mask
+    final_calib = arrf * factor if mask is None else arrf * factor * mask
+
+    return final_calib # gain correction
+
+
+
+
+
+
 
 
 def common_mode_epix_multigain_apply(arrf, gmaps, store):
