@@ -24,10 +24,10 @@ namespace Pds_Epics {
     // Both the PutTracker's are copied over from the V4 example code.
     template<typename T> struct PutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(PutTracker);
-        pvac::Operation op;
         const T value;
+        pvac::Operation op;
         PutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const T& val)
-            :op(channel.put(this, pvReq)) ,value(val) {
+            : value(val), op(channel.put(this, pvReq)) {
 
             }
 
@@ -61,10 +61,10 @@ namespace Pds_Epics {
 
     template<typename T> struct VectorPutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(VectorPutTracker);
-        pvac::Operation op;
         const pvd::shared_vector<const T> value;
+        pvac::Operation op;
         VectorPutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const pvd::shared_vector<const T>& val)
-            :op(channel.put(this, pvReq)) ,value(val) {
+            : value(val), op(channel.put(this, pvReq)) {
 
             }
 
@@ -98,12 +98,12 @@ namespace Pds_Epics {
 
     struct StructurePutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(StructurePutTracker);
-        pvac::Operation op;
         const char* value;
         const unsigned* sizes;
-        bool ldebug;
+        bool ldebug; 
+        pvac::Operation op;
       StructurePutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const char* val, const unsigned* sz, bool debug)
-        :op(channel.put(this, pvReq)) ,value(val), sizes(sz), ldebug(debug) {
+          : value(val), sizes(sz), ldebug(debug), op(channel.put(this, pvReq)) {
         }
 
         virtual ~StructurePutTracker() { op.cancel(); }
