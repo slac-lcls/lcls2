@@ -16,7 +16,7 @@ HexFile::HexFile(const char* name)
     exit(1);
   }
 
-  uint8_t d;
+  uint8_t d=0;
   unsigned i=0;
   int c;
   while( (c=fgetc(f))!= EOF ) {

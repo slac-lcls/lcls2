@@ -69,7 +69,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
             _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %lu");
         }
         else{
-            printf("'%s': %llu\n",name.name(),descdata.get_value<uint64_t>(i));
+            printf("'%s': %lu\n",name.name(),descdata.get_value<uint64_t>(i));
         }
         break;
     }
@@ -109,7 +109,7 @@ void XtcUpdateIter::get_value(int i, Name& name, DescData& descdata){
             _dump<int64_t>(name.name(), descdata.get_array<int64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
         }
         else{
-            printf("'%s': %lld\n",name.name(),descdata.get_value<int64_t>(i));
+            printf("'%s': %ld\n",name.name(),descdata.get_value<int64_t>(i));
         }
         break;
     }
@@ -187,11 +187,11 @@ int XtcUpdateIter::process(Xtc* xtc, const void* bufEnd)
         _namesLookup[names.namesId()] = NameIndex(names);
         Alg& alg = names.alg();
 
-        for (unsigned i = 0; i < names.num(); i++) {
-            Name& name = names.get(i);
-        }
+        // for (unsigned i = 0; i < names.num(); i++) {
+        //     Name& name = names.get(i);
+        // }
 
-        unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
+        // unsigned namesSize = sizeof(Names) + (names.num() * sizeof(Name));
 
 
         // Copy Names to _tmpbuf if flag is set
@@ -251,7 +251,8 @@ int XtcUpdateIter::process(Xtc* xtc, const void* bufEnd)
 
         DescData descdata(shapesdata, _namesLookup[namesId]);
         Names& names = descdata.nameindex().names();
-        Data& data = shapesdata.data();
+        //        Data& data = shapesdata.data();
+        shapesdata.data();
         if (VERBOSE > 0) {
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
@@ -332,7 +333,7 @@ void XtcUpdateIter::updateTimeStamp(Dgram& d, uint64_t timestamp_val){
 
 
 void XtcUpdateIter::updateService(Dgram& d, uint8_t transitionId){
-    uint32_t new_env = d.env&0xf0ffffff | transitionId << 24;
+    uint32_t new_env = (d.env&0xf0ffffff) | (transitionId << 24);
     memcpy(&(d.env), &new_env, sizeof(uint32_t));
 }
 
@@ -432,6 +433,8 @@ void XtcUpdateIter::setValue(unsigned nodeId, unsigned namesId,
         _newData->set_value(newIndex, *(double*)data);
         break;
     }
+    default:
+        printf("  setValue(%s) not handled\n",name.str_type());
     }
 }
 
@@ -513,6 +516,8 @@ void XtcUpdateIter::addData(unsigned nodeId, unsigned namesId,
         memcpy(arrayT.data(), (char*) data, shp.size(name));
         break;
     }
+    default:
+        printf("  addData(%s) not handled\n",name.str_type());
     }
 
     if (VERBOSE > 0) {
@@ -534,7 +539,6 @@ Dgram& XtcUpdateIter::createTransition(unsigned utransId,
 {
     TransitionId::Value transId = (TransitionId::Value) utransId;
     TypeId tid(TypeId::Parent, 0);
-    uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
 

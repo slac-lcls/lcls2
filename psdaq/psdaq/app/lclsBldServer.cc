@@ -88,10 +88,10 @@ int main(int argc, char** argv) {
     lUsage = true;
   }
 
-  unsigned mcaddr;
+  unsigned mcaddr = 0;
   unsigned short port = 12148;
-  unsigned payloadWords;
-  unsigned typeId, bldInfo;
+  unsigned payloadWords = 0;
+  unsigned typeId = 0, bldInfo = 0;
 
   if (!bldType)
     lUsage = true;

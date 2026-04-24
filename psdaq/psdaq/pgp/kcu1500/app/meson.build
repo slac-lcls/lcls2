@@ -93,13 +93,13 @@ kcu_read_bulk = executable('kcuReadBulk',
   #install: true,
 )
 
-kcu_write = executable('kcuWrite',
-  'xWrite.cpp',
-  include_directories: [kcu_inc_dir],
-  dependencies: [threads_dep],
-  install_rpath: libdir_install_rpath,
-  #install: true,
-)
+#kcu_write = executable('kcuWrite',
+#  'xWrite.cpp',
+#  include_directories: [kcu_inc_dir],
+#  dependencies: [threads_dep],
+#  install_rpath: libdir_install_rpath,
+#  #install: true,
+#)
 
 kcu_dma_status = executable('kcuDmaStatus',
   'xDmaStatus.cpp',
