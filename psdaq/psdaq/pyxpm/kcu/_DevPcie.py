@@ -15,6 +15,7 @@ import time
 import xpm
 import kcu
 import LclsTimingCore as timing
+import surf.xilinx as xilinx
 from _AxiLiteRingBuffer import AxiLiteRingBuffer
 
 class DevReset(pr.Device):
@@ -24,60 +25,61 @@ class DevReset(pr.Device):
             **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbData',
-            description  = "serial data",
-            offset       = 0x00,
-            bitSize      = 18,
-            bitOffset    = 0,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbRst',
-            description  = "reset",
-            offset       = 0x00,
-            bitSize      = 1,
-            bitOffset    = 18,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbLocked',
-            description  = "locked",
-            offset       = 0x00,
-            bitSize      = 1,
-            bitOffset    = 19,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbResetDone',
-            description  = "ResetDone",
-            offset       = 0x00,
-            bitSize      = 1,
-            bitOffset    = 20,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbBypassDone',
-            description  = "BypassDone",
-            offset       = 0x00,
-            bitSize      = 1,
-            bitOffset    = 21,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
-        self.add(pr.RemoteVariable(
-            name         = 'timingFbBypassErr',
-            description  = "BypassErr",
-            offset       = 0x00,
-            bitSize      = 1,
-            bitOffset    = 22,
-            base         = pr.UInt,
-            mode         = "RO",
-        ))
+        if False:
+#            self.add(pr.RemoteVariable(
+#                name         = 'timingFbData',
+#                description  = "serial data",
+#                offset       = 0x00,
+#                bitSize      = 18,
+#                bitOffset    = 0,
+#                base         = pr.UInt,
+#                mode         = "RO",
+#            ))
+            self.add(pr.RemoteVariable(
+                name         = 'timingFbRst',
+                description  = "reset",
+                offset       = 0x00,
+                bitSize      = 1,
+                bitOffset    = 18,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+            self.add(pr.RemoteVariable(
+                name         = 'timingFbLocked',
+                description  = "locked",
+                offset       = 0x00,
+                bitSize      = 1,
+                bitOffset    = 19,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+            self.add(pr.RemoteVariable(
+                name         = 'timingFbResetDone',
+                description  = "ResetDone",
+                offset       = 0x00,
+                bitSize      = 1,
+                bitOffset    = 20,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+            self.add(pr.RemoteVariable(
+                name         = 'timingFbBypassDone',
+                description  = "BypassDone",
+                offset       = 0x00,
+                bitSize      = 1,
+                bitOffset    = 21,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
+            self.add(pr.RemoteVariable(
+                name         = 'timingFbBypassErr',
+                description  = "BypassErr",
+                offset       = 0x00,
+                bitSize      = 1,
+                bitOffset    = 22,
+                base         = pr.UInt,
+                mode         = "RO",
+            ))
         self.add(pr.RemoteVariable(
             name         = 'clearTimingPhyReset',
             description  = "Clear timingPhyRst",
@@ -115,6 +117,16 @@ class DevReset(pr.Device):
         BitField('tFbBuffBypDone','Buffer bypass done signal',21)
         BitField('tFbBuffBypErr' ,'Buffer bypass erro signal',22)
         BitField('tFbValid'      ,'Register valid'           ,23)
+
+        self.add(pr.RemoteVariable(
+            name         = 'simLoopback',
+            description  = "Simulated data",
+            offset       = 0x0100,
+            bitSize      =  3,
+            bitOffset    =  0x01,
+            base         = pr.UInt,
+            mode         = "RW",
+        ))
 
 
 class NoTimingFrameRx(pr.Device):
@@ -312,11 +324,18 @@ class DevPcie(pr.Device):
                 offset  = 0x00870000+i*0x1000,
             ))
 
-        self.add(timing.GthRxAlignCheck(
-            memBase = memBase,
-            name    = 'UsGthRx',
-            offset  = 0x00880000,
-        ))
+        if boardType=='Kcu1500':
+            self.add(timing.GthRxAlignCheck(
+                memBase = memBase,
+                name    = 'UsGthRx',
+                offset  = 0x00880000,
+            ))
+        else:
+            self.add(xilinx.GtRxAlignCheck(
+                memBase = memBase,
+                name    = 'UsGthRx',
+                offset  = 0x00880000,
+            ))
 
         self.add(xpm.TimingFrameRx(
             memBase = memBase,
@@ -332,7 +351,7 @@ class DevPcie(pr.Device):
 
     def start(self):
         print('---DevPcie.start---')
-        self.DevReset.clearTimingPhyReset.set(0)
+        self.DevReset.clearTimingPhyReset.set(1)
 
         #  Firmware version check
         fwVersion = self.AxiPcieCore.AxiVersion.FpgaVersion.get()
@@ -374,14 +393,13 @@ class DevPcie(pr.Device):
             self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
 
-        if self.isXpmGen:
-            self.TPGMini.setup(self.isUED)
+        self.TPGMini.setup(self.isUED)
 
         #  Reset to realign the rate markers
-        print('Clearing timing phy reset')
-        self.DevReset.clearTimingPhyReset.set(1)
-        time.sleep(0.001)
+        print('Clearing timing phy reset...')
         self.DevReset.clearTimingPhyReset.set(0)
+        time.sleep(0.001)
+        self.DevReset.clearTimingPhyReset.set(1)
         time.sleep(1)
 
         self.UsTiming.update()
@@ -409,3 +427,6 @@ class DevPcie(pr.Device):
         DumpField('tFbValid')
 
         self.TPGMini.dump()
+
+        #  Only for non-Gen testing
+        self.DevReset.simLoopback.set(2)

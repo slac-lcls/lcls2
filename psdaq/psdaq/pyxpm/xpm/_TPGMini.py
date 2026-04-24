@@ -108,7 +108,7 @@ class TPGMini(pr.Device):
             mode         = "RW",
             number       = 10,
             stride       = 4,
-            hidden       = True,
+            hidden       = False,
         )
 
         self.add(pr.RemoteVariable(
@@ -129,7 +129,7 @@ class TPGMini(pr.Device):
             mode         = "RW",
             number       = 6,
             stride       = 4,
-            hidden       = True,
+            hidden       = False,
         )
 
         self.add(pr.RemoteVariable(

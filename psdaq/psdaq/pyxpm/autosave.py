@@ -169,7 +169,8 @@ class NoAutosave(object):
         pass
 
     def addJson(self, name, obj, value):
-        print(f'objdict[{name}] = ({obj},{value})')
+        #print(f'objdict[{name}] = ({obj},{value})')
+        pass
 
     def modify(self, name, value):
         pass
