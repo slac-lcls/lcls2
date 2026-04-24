@@ -19,6 +19,7 @@ import surf.protocols.batcher  as batcher  # for Start/StopRun
 import l2si_core               as l2si
 import lcls2_pgp_fw_lib.shared as shared
 import logging
+from psdaq.configdb.epixquad_layout import RAW_ASIC_LAYOUT, RAW_SHAPE
 from psdaq.debugtools.epixquad1kfps.pattern_loader import load_debug_override
 
 base = None
@@ -37,15 +38,9 @@ DEBUG_RANDOM_PIXEL_MAP=False
 USE_ACCELERATED_MATRIX_WRITE=False
 BANK_OFFSETS = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
 
-RAW_MASK_ASIC_LAYOUT = (
-    {'slot': 0, 'row_slice': (176, 352), 'col_slice': (192, 384), 'operator': 'identity'},
-    {'slot': 1, 'row_slice': (0, 176),   'col_slice': (192, 384), 'operator': 'rot180'},
-    {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192),   'operator': 'rot180'},
-    {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192),   'operator': 'identity'},
-)
 PANEL_ASIC_LAYOUT = tuple(
     sorted(
-        RAW_MASK_ASIC_LAYOUT,
+        RAW_ASIC_LAYOUT,
         key=lambda layout: (layout['row_slice'][0], layout['col_slice'][0]),
     )
 )
@@ -53,7 +48,7 @@ PANEL_ASIC_LAYOUT = tuple(
 
 def _raw_pixel_map_shape():
     """Returns the raw-view panel map shape used by epixquad1kfps analysis/config."""
-    return (4, 352, 384)
+    return RAW_SHAPE
 
 
 def _normalize_raw_pixel_map(pixel_map_raw):
@@ -190,9 +185,9 @@ def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
     summary : list[dict]
         Short per-ASIC summaries for logging.
     """
-    if mask.shape != (4, 352, 384):
+    if mask.shape != RAW_SHAPE:
         raise ValueError(
-            f'EPIXQUAD_DEBUG_MASK_NPY expects shape (4,352,384), got {mask.shape}'
+            f'EPIXQUAD_DEBUG_MASK_NPY expects shape {RAW_SHAPE}, got {mask.shape}'
         )
 
     active = np.asarray(mask) != 0
@@ -200,7 +195,7 @@ def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
     summary = []
     for segment in range(4):
         seg_active = active[segment]
-        for layout in RAW_MASK_ASIC_LAYOUT:
+        for layout in RAW_ASIC_LAYOUT:
             r0, r1 = layout['row_slice']
             c0, c1 = layout['col_slice']
             sub = seg_active[r0:r1, c0:c1]
@@ -532,9 +527,9 @@ def _apply_direct_write_program(cbase, program, asics):
 
 
 def _apply_raw_pixel_map_program(cbase, pixel_map_raw, asics):
-    if pixel_map_raw.shape != (4, 352, 384):
+    if pixel_map_raw.shape != RAW_SHAPE:
         raise ValueError(
-            f'user.pixel_map_raw expects shape (4,352,384), got {pixel_map_raw.shape}'
+            f'user.pixel_map_raw expects shape {RAW_SHAPE}, got {pixel_map_raw.shape}'
         )
 
     for i in asics:
@@ -546,7 +541,7 @@ def _apply_raw_pixel_map_program(cbase, pixel_map_raw, asics):
 
     for segment in range(4):
         seg = pixel_map_raw[segment]
-        for layout in RAW_MASK_ASIC_LAYOUT:
+        for layout in RAW_ASIC_LAYOUT:
             r0, r1 = layout['row_slice']
             c0, c1 = layout['col_slice']
             operator = layout['operator']

@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 from psdaq.configdb.epixquad_cdict import epixquad_cdict
+from psdaq.configdb.epixquad_layout import MODULE_COUNT, RAW_ASIC_LAYOUT, RAW_SHAPE
 
 
 gain_dict = {
@@ -20,13 +21,7 @@ gain_dict = {
 # that require both trbit families for non-L gains.
 TRBIT_FLEXIBLE_GAINS = {'L'}
 
-ASIC_ROWS = 176
-ASIC_COLS = 192
 ASIC_COUNT = 16
-MODULE_COUNT = 4
-MODULE_ROWS = ASIC_ROWS * 2
-MODULE_COLS = ASIC_COLS * 2
-RAW_SHAPE = (MODULE_COUNT, MODULE_ROWS, MODULE_COLS)
 
 
 def copyValues(din, dout, k=None):
@@ -107,14 +102,6 @@ def _resolve_asic_trbit(gains_present):
 
     # Pure-L ASICs default to trbit=0 for deterministic behavior.
     return 0
-
-
-RAW_ASIC_LAYOUT = (
-    {'slot': 0, 'row_slice': (176, 352), 'col_slice': (192, 384)},
-    {'slot': 1, 'row_slice': (0, 176),   'col_slice': (192, 384)},
-    {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192)},
-    {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192)},
-)
 
 
 def _label_map_to_raw_pixel_map(raw_labels, label_map):
