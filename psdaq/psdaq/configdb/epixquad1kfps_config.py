@@ -45,16 +45,8 @@ RAW_MASK_ASIC_LAYOUT = (
 )
 
 
-def _make_background_pixel_map(background_value):
-    return np.full((16, 178, 192), int(background_value), dtype=np.uint8)
-
-
 def _raw_pixel_map_shape():
     return (4, 352, 384)
-
-
-def _asic_pixel_map_shape():
-    return (16, 178, 192)
 
 
 def _normalize_raw_pixel_map(pixel_map_raw):
@@ -66,38 +58,6 @@ def _normalize_raw_pixel_map(pixel_map_raw):
     raise ValueError(
         f'user.pixel_map_raw expects shape {_raw_pixel_map_shape()}, got {arr.shape}'
     )
-
-
-def _normalize_asic_pixel_map(pixel_map):
-    arr = np.asarray(pixel_map, dtype=np.uint8)
-    if arr.shape == _asic_pixel_map_shape():
-        return arr
-    if arr.size == np.prod(_asic_pixel_map_shape()):
-        return arr.reshape(_asic_pixel_map_shape())
-    raise ValueError(
-        f'user.pixel_map expects shape {_asic_pixel_map_shape()}, got {arr.shape}'
-    )
-
-
-def _asic_pixel_map_to_raw_pixel_map(pixel_map):
-    arr = _normalize_asic_pixel_map(pixel_map)
-    out = np.zeros(_raw_pixel_map_shape(), dtype=np.uint8)
-
-    for segment in range(4):
-        for layout in RAW_MASK_ASIC_LAYOUT:
-            r0, r1 = layout['row_slice']
-            c0, c1 = layout['col_slice']
-            operator = layout['operator']
-            asic = 4 * segment + layout['slot']
-            readable = np.asarray(arr[asic, :176, :], dtype=np.uint8)
-            if operator == 'identity':
-                out[segment, r0:r1, c0:c1] = readable
-            elif operator == 'rot180':
-                out[segment, r0:r1, c0:c1] = np.flipud(np.fliplr(readable))
-            else:
-                raise ValueError(f'unsupported raw pixel-map operator: {operator!r}')
-
-    return out
 
 
 def _config_entry_exists(cfg, dotted_key):
@@ -130,10 +90,8 @@ def _get_cfg_pixel_map_raw(cfg, fallback_cfg=None):
         user = candidate['user']
         if 'pixel_map_raw' in user:
             return _normalize_raw_pixel_map(user['pixel_map_raw'])
-        if 'pixel_map' in user:
-            return _asic_pixel_map_to_raw_pixel_map(user['pixel_map'])
 
-    raise KeyError('user.pixel_map_raw or user.pixel_map is required')
+    raise KeyError('user.pixel_map_raw is required')
 
 
 def _get_cfg_trbit_by_asic(cfg, fallback_cfg=None):
@@ -284,7 +242,7 @@ def _load_debug_mask_npy_override(user_cfg):
         'direct_name': f'raw_mask_{stem}',
         'pattern_label': 'raw-mask direct write',
         'coordinate_mode': 'bank_rc_178x48',
-        'pixel_map': _make_background_pixel_map(background_value),
+        'pixel_map_raw': np.full(_raw_pixel_map_shape(), int(background_value), dtype=np.uint8),
         'trbit_by_asic': [trbit] * 16,
         'background_value_by_asic': [background_value] * 16,
         'selected_value': int(selected_value),
@@ -403,9 +361,11 @@ def _apply_debug_pattern_override(cfg):
     cfg['expert'].setdefault('EpixQuad', {})
 
     cfg['user']['gain_mode'] = 5
-    cfg['user']['pixel_map_raw'] = _get_cfg_pixel_map_raw(
-        {'user': materialized}
-    ).reshape(-1).tolist()
+    if 'pixel_map_raw' in materialized:
+        pixel_map_raw = _normalize_raw_pixel_map(materialized['pixel_map_raw'])
+    else:
+        raise KeyError('debug override must provide pixel_map_raw')
+    cfg['user']['pixel_map_raw'] = pixel_map_raw.reshape(-1).tolist()
     for i, trbit in enumerate(materialized['trbit_by_asic']):
         cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
         cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
@@ -688,19 +648,8 @@ def _hydrate_map_mode_partial_config(cfg):
 
     if _config_entry_exists(ocfg, 'user.pixel_map_raw'):
         _copy_entry_or_fallback_type(cfg, ocfg, 'user.pixel_map_raw')
-    elif _config_entry_exists(ocfg, 'user.pixel_map'):
-        cfg.setdefault('user', {})
-        cfg['user']['pixel_map_raw'] = _asic_pixel_map_to_raw_pixel_map(
-            ocfg['user']['pixel_map']
-        ).reshape(-1).tolist()
-        _copy_entry_or_fallback_type(
-            cfg,
-            ocfg,
-            'user.pixel_map_raw',
-            fallback_type_key='user.pixel_map',
-        )
     else:
-        raise KeyError('user.pixel_map_raw or user.pixel_map is required when user.gain_mode == 5')
+        raise KeyError('user.pixel_map_raw is required when user.gain_mode == 5')
 
     for i in range(16):
         key = f'expert.EpixQuad.Epix10kaSaci{i}.trbit'
@@ -989,10 +938,7 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
     pixel_map_changed = False
-    a = None
-    if (hasUser and ('gain_mode' in cfg['user'] or
-                     'pixel_map' in cfg['user'] or
-                     'pixel_map_raw' in cfg['user'])):
+    if hasUser and ('gain_mode' in cfg['user'] or 'pixel_map_raw' in cfg['user']):
         gain_mode = cfg['user'].get('gain_mode', ocfg['user']['gain_mode'])
         if gain_mode==5:
             if 'pixel_map_raw' in cfg['user']:
@@ -1005,13 +951,8 @@ def user_to_expert(base, cfg, full=False):
                     int(np.count_nonzero(a_raw)),
                 )
                 pixel_map_changed = True
-            elif 'pixel_map' in cfg['user']:
-                a_raw = _asic_pixel_map_to_raw_pixel_map(cfg['user']['pixel_map'])
-                d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
-                logging.debug('pixel_map_raw len {}'.format(len(d['user.pixel_map_raw'])))
-                pixel_map_changed = True
             else:
-                raise KeyError('user.pixel_map_raw or user.pixel_map is required when user.gain_mode == 5')
+                raise KeyError('user.pixel_map_raw is required when user.gain_mode == 5')
         else:
             mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
@@ -1076,97 +1017,6 @@ def config_expert(base, cfg, writePixelMap=True):
                 np.unique(pixelConfigMapRaw).tolist(),
             )
             _apply_raw_pixel_map_program(cbase, pixelConfigMapRaw, asics)
-        elif 'user' in cfg and 'pixel_map' in cfg['user']:
-            #  Write the pixel gain maps
-            #  Would like to send a 3d array
-            a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-            pixelConfigMap = np.reshape(a,(16,178,192))
-
-            # ***CAUTION ONLY FOR DEBUGGING *** Enable here to test pixel by pixel write
-            if DEBUG_RANDOM_PIXEL_MAP:
-                shape = (16, 178, 192)
-                pixelConfigMap = np.random.choice([8, 12], size=shape, p=[0.5, 0.5]).astype(np.uint8)
-
-            matrix_cfg_t0 = time.perf_counter()
-            if USE_ACCELERATED_MATRIX_WRITE:
-                #
-                #  Accelerated matrix configuration (~2 seconds)
-                #
-                #  Found that gain_mode is mapping to [M/M/L/M/M]
-                #    Like trbit is always zero (Saci was disabled!)
-                #
-                accel_t0 = time.perf_counter()
-                core = cbase.SaciConfigCore
-                core.enable.set(True)
-                core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
-                core.enable.set(False)
-                print(f'SetAsicsMatrix accelerated write took {time.perf_counter() - accel_t0:.3f} s')
-                if DEBUG_PIXEL_MASK_SAVED:
-                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
-                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
-
-
-            else:
-                #
-                #  Pixel by pixel matrix configuration (up to 15 minutes)
-                #
-                #  Found that gain_mode is mapping to [H/M/M/H/M]
-                #    Like pixelmap is always 0xc
-                #
-                for i in asics:
-                    saci = cbase.Epix10kaSaci[i]
-                    saci.PrepareMultiConfig.set(0)
-
-                #  Set the whole ASIC to its most common value
-                masic = {}
-                for i in asics:
-                    masic[i] = mode(pixelConfigMap[i])
-                    saci = cbase.Epix10kaSaci[i]
-                    saci.WriteMatrixData.set(masic[i])  # 0x4000 v 0x84000
-
-                #  Now fix any pixels not at the common value
-                changed_pixels = 0
-                per_pixel_t0 = time.perf_counter()
-                for i in asics:
-                    saci = cbase.Epix10kaSaci[i]
-                    nrows = pixelConfigMap.shape[1]
-                    ncols = pixelConfigMap.shape[2]
-
-                    writeView = pixelConfigMap[:, :nrows, :ncols]
-
-                    for row in range(nrows):
-                        for col in range(ncols):
-                            if pixelConfigMap[i,row,col]!=masic[i]:
-                                changed_pixels += 1
-                                if row >= (nrows>>1):
-                                    mrow = row - (nrows>>1)
-                                    if col < (ncols>>1):
-                                        offset = 3
-                                        mcol = col
-                                    else:
-                                        offset = 0
-                                        mcol = col - (ncols>>1)
-                                else:
-                                    mrow = (nrows>>1)-1 - row
-                                    if col < (ncols>>1):
-                                        offset = 2
-                                        mcol = (ncols>>1)-1 - col
-                                    else:
-                                        offset = 1
-                                        mcol = (ncols-1) - col
-                                bank = int((mcol % (48<<2)) / 48)
-                                bankOffset = BANK_OFFSETS[bank]
-                                saci.RowCounter.set(row)
-                                saci.ColCounter.set(bankOffset | (mcol%48))
-                                saci.WritePixelData.set(int(pixelConfigMap[i,row,col]))
-                logging.info('SetAsicsMatrix per-pixel write took %.3f s (%d pixel updates)',
-                             time.perf_counter() - per_pixel_t0, changed_pixels)
-
-                if DEBUG_PIXEL_MASK_SAVED:
-                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
-                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
-
-            logging.info(f'SetAsicsMatrix complete in {time.perf_counter() - matrix_cfg_t0:.3f} s')
         else:
             logging.info('writePixelMap but no new map')
             logging.debug(cfg)

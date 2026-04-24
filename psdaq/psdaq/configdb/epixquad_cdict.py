@@ -14,12 +14,9 @@ def epixquad_cdict():
     help_str += "\nstart_ns     : nanoseconds to exposure start"
     help_str += "\ngate_ns      : nanoseconds of exposure window"
     help_str += "\ngain_mode    : High/Med/Low/AutoHiLo/AutoMedLo/Map"
-    help_str += "\npixel_map    : 3D-map of pixel gain/inj settings"
     help_str += "\npixel_map_raw: raw-view gain map with shape (4,352,384)"
     #top.set("help.user:RO", help_str, 'CHARSTR')
 
-    pixelMap = np.zeros((16,178,192),dtype=np.uint8)
-    top.set("user.pixel_map", pixelMap)
     pixelMapRaw = np.zeros((4,352,384),dtype=np.uint8)
     top.set("user.pixel_map_raw", pixelMapRaw)
 
