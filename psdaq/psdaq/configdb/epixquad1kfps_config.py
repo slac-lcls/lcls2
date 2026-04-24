@@ -43,9 +43,16 @@ RAW_MASK_ASIC_LAYOUT = (
     {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192),   'operator': 'rot180'},
     {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192),   'operator': 'identity'},
 )
+PANEL_ASIC_LAYOUT = tuple(
+    sorted(
+        RAW_MASK_ASIC_LAYOUT,
+        key=lambda layout: (layout['row_slice'][0], layout['col_slice'][0]),
+    )
+)
 
 
 def _raw_pixel_map_shape():
+    """Returns the raw-view panel map shape used by epixquad1kfps analysis/config."""
     return (4, 352, 384)
 
 
@@ -117,33 +124,52 @@ def _trbits_asic_to_panel_order(trbits_asic):
     if len(trbits_asic) != 16:
         raise ValueError(f'expected 16 ASIC trbits, got {len(trbits_asic)}')
 
-    # Use the raw-panel ASIC placement already encoded in RAW_MASK_ASIC_LAYOUT.
     # Panel order here is [top-left, top-right, bottom-left, bottom-right].
-    ordered_layout = sorted(
-        RAW_MASK_ASIC_LAYOUT,
-        key=lambda layout: (layout['row_slice'][0], layout['col_slice'][0]),
-    )
-
     panel_trbits = []
     for segment in range(4):
-        for layout in ordered_layout:
+        for layout in PANEL_ASIC_LAYOUT:
             asic = 4 * segment + layout['slot']
             panel_trbits.append(int(trbits_asic[asic]))
 
     return panel_trbits
 
 
+def _cbits_config_from_raw_map(pixel_map_raw, trbits_panel):
+    """Builds configure-time cbits in raw panel space from pixel_map_raw and trbit."""
+    pixel_map_raw = _normalize_raw_pixel_map(pixel_map_raw)
+    trbits_panel = np.asarray(trbits_panel, dtype=np.uint8)
+    if trbits_panel.shape == (16,):
+        trbits_panel = trbits_panel.reshape(4, 4)
+    if trbits_panel.shape != (4, 4):
+        raise ValueError(f'expected panel trbits shape (4, 4), got {trbits_panel.shape}')
+
+    cbits_config = np.bitwise_and(pixel_map_raw, 0x0F)
+    for segment in range(4):
+        for panel_asic, layout in enumerate(PANEL_ASIC_LAYOUT):
+            if not trbits_panel[segment, panel_asic]:
+                continue
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            # Broadcast trbit into bit 4 for the full ASIC tile in raw panel space.
+            np.bitwise_or(cbits_config[segment, r0:r1, c0:c1], 0x10, out=cbits_config[segment, r0:r1, c0:c1])
+    return cbits_config
+
+
 def _analysis_config_from_cfg(cfg, fallback_cfg=None):
     pixel_map_raw = _get_cfg_pixel_map_raw(cfg, fallback_cfg=fallback_cfg)
     trbits_asic = _get_cfg_trbit_by_asic(cfg, fallback_cfg=fallback_cfg)
-    trbits_panel = _trbits_asic_to_panel_order(trbits_asic)
-    return pixel_map_raw, trbits_panel
+    trbits_panel = np.asarray(_trbits_asic_to_panel_order(trbits_asic), dtype=np.uint8).reshape(4, 4)
+    cbits_config = _cbits_config_from_raw_map(pixel_map_raw, trbits_panel)
+    return pixel_map_raw, trbits_panel, cbits_config
 
 
 def _segment_trbits_panel(trbits_panel, seg):
-    start = 4 * seg
-    stop = start + 4
-    return list(trbits_panel[start:stop])
+    trbits_panel = np.asarray(trbits_panel, dtype=np.uint8)
+    if trbits_panel.shape == (16,):
+        trbits_panel = trbits_panel.reshape(4, 4)
+    if trbits_panel.shape != (4, 4):
+        raise ValueError(f'expected panel trbits shape (4, 4), got {trbits_panel.shape}')
+    return trbits_panel[seg].tolist()
 
 
 def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
@@ -1174,7 +1200,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
-    pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
+    pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
     for seg in range(4):
         #  Construct the ID
@@ -1188,10 +1214,11 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                                           analogId [0], analogId [1])
         segids[seg] = id
         top = cdict()
-        top.setAlg('config', [2,0,0])
+        top.setAlg('config', [3,0,0])
         top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
         top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
         top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+        top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -1236,16 +1263,17 @@ def epixquad_scan_keys(update):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if pixelMapChanged:
-        pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
+        pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
             top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+            top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -1283,16 +1311,17 @@ def epixquad_update(update):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if writePixelMap:
-        pixelConfigMap, trbit = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
+        pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
             top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
             top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+            top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
