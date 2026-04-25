@@ -515,7 +515,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
     _notifySocket.send(jmsg.dump());
   }
 
-  if (fixupCnt() + timeoutCnt() < 100)
+  if (fixupCnt() + timeoutCnt() < 50)
   {
     time_t now;  time (&now);   // Current time
     logging::error("%s, %014lx, size %zu is missing src %u (%s) @ %s",
@@ -524,12 +524,12 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
                    _prms.drps[srcId].c_str(), ctime(&now));
   }
   else {
-    auto msg("Too many events missing a contribution.  Aborting.");
+    auto msg("Too many events missing a contribution.  Going quiet.");
     json jmsg = createAsyncErrMsg(_prms.alias, msg);
     _notifySocket.send(jmsg.dump());
-    logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
-                      fixupCnt(), timeoutCnt());
-    abort();
+    //logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
+    //                  fixupCnt(), timeoutCnt());
+    //abort();
   }
 
   if (_fixupSrc)  _fixupSrc->observe(double(srcId));
