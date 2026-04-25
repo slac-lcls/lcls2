@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "direct_name": "bank_markers_178x48_asic2",
+  "description": "Sparse two-point probes inside one logical 178x48 bank for ASIC 2. Compare against ASIC 0/1/3 bank-marker runs to infer relative ASIC orientation.",
+  "coordinate_mode": "bank_rc_178x48",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic2 bank0 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 2, "bank": 0, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 2, "bank": 0, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic2 bank1 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 2, "bank": 1, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 2, "bank": 1, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic2 bank2 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 2, "bank": 2, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 2, "bank": 2, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic2 bank3 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 2, "bank": 3, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 2, "bank": 3, "row": 145, "col": 35}
+      ]
+    }
+  ]
+}

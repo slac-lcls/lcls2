@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "direct_name": "bank0_single_pixels_178x48",
+  "description": "One-pixel isolation probes for ASIC 0 bank 0 under the 178x48 bank hypothesis. Use to check whether a sparse write generates an extra top-row duplicate.",
+  "coordinate_mode": "bank_rc_178x48",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic0 bank0 pixel r12 c7",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 12, "col": 7}
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic0 bank0 pixel r145 c35",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic0 bank0 pixel r60 c7",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 60, "col": 7}
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic0 bank0 pixel r12 c35",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 12, "col": 35}
+      ]
+    }
+  ]
+}

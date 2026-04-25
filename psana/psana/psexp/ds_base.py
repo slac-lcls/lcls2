@@ -430,6 +430,20 @@ class DataSourceBase(abc.ABC):
             time.sleep(1)
         return file_found, true_xtc_file
 
+    def _missing_xtc_files_error(self):
+        if self.dsparms.max_retries > 0:
+            timeout = self.dsparms.max_retries
+            return FileNotFoundError(
+                "Timed out waiting for XTC files for exp=%s run=%s in dir=%s (timeout=%ss). "
+                "Checked for both final and .inprogress filenames."
+                % (self.exp, self.runnum, self.xtc_path, timeout)
+            )
+        return FileNotFoundError(
+            "No XTC files found for exp=%s run=%s in dir=%s. "
+            "Checked for both final and .inprogress filenames."
+            % (self.exp, self.runnum, self.xtc_path)
+        )
+
     def _get_file_info_from_db(self, runnum):
         """Returns a list of xtc2 files as shown in the db.
 
@@ -471,6 +485,19 @@ class DataSourceBase(abc.ABC):
                 file_info["dirname"] = os.path.dirname(all_xtc_files[0])
         return file_info
 
+    def _scan_run_files_on_disk(self, runnum):
+        smd_dir = os.path.join(self.xtc_path, "smalldata")
+        return sorted(
+            glob.glob(
+                os.path.join(smd_dir, "*r%s-s*.smd.xtc2" % (str(runnum).zfill(4)))
+            )
+            + glob.glob(
+                os.path.join(
+                    smd_dir, "*r%s-s*.smd.xtc2.inprogress" % (str(runnum).zfill(4))
+                )
+            )
+        )
+
     def _setup_run_files(self, runnum):
         """
         Generate list of smd and xtc files given a run number.
@@ -503,21 +530,20 @@ class DataSourceBase(abc.ABC):
             for i_smd, smd_file in enumerate(smd_files):
                 flag_found, true_xtc_file = self._check_file_exist_with_retry(smd_file)
                 if not flag_found:
-                    raise FileNotFoundError(true_xtc_file)
+                    if self.dir:
+                        self.logger.info(
+                            "Expected DB stream file %s not found under explicit dir=%s; "
+                            "falling back to on-disk stream discovery for this directory.",
+                            true_xtc_file,
+                            self.xtc_path,
+                        )
+                        smd_files = self._scan_run_files_on_disk(runnum)
+                        break
+                    raise self._missing_xtc_files_error()
                 smd_files[i_smd] = true_xtc_file
 
         else:
-            smd_dir = os.path.join(self.xtc_path, "smalldata")
-            smd_files = sorted(
-                glob.glob(
-                    os.path.join(smd_dir, "*r%s-s*.smd.xtc2" % (str(runnum).zfill(4)))
-                )
-                + glob.glob(
-                    os.path.join(
-                        smd_dir, "*r%s-s*.smd.xtc2.inprogress" % (str(runnum).zfill(4))
-                    )
-                )
-            )
+            smd_files = self._scan_run_files_on_disk(runnum)
 
         self.n_files = len(smd_files)
         assert (
@@ -536,7 +562,7 @@ class DataSourceBase(abc.ABC):
         for i_xtc, xtc_file in enumerate(xtc_files):
             flag_found, true_xtc_file = self._check_file_exist_with_retry(xtc_file)
             if not flag_found:
-                raise FileNotFoundError(true_xtc_file)
+                raise self._missing_xtc_files_error()
             xtc_files[i_xtc] = true_xtc_file
 
         self.smd_files = smd_files

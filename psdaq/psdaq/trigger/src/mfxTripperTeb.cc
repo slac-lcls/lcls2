@@ -34,6 +34,7 @@ namespace Pds {
             SEVCHK(ca_clear_channel(m_aduId), "Clear channel :ADU failed..");
             SEVCHK(ca_clear_channel(m_npixId), "Clear channel :NPIX failed..");
             SEVCHK(ca_clear_channel(m_npix_overId), "Clear channel :NPIX_OT failed..");
+            ca_context_destroy();
         }
     private:
         chid m_blockId; ///< Channel to trigger blocking of beam

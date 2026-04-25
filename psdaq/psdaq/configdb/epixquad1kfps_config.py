@@ -19,6 +19,8 @@ import surf.protocols.batcher  as batcher  # for Start/StopRun
 import l2si_core               as l2si
 import lcls2_pgp_fw_lib.shared as shared
 import logging
+from psdaq.configdb.epixquad_layout import RAW_ASIC_LAYOUT, RAW_SHAPE
+from psdaq.debugtools.epixquad1kfps.pattern_loader import load_debug_override
 
 base = None
 pv = None
@@ -28,11 +30,557 @@ group = None
 ocfg = None
 segids = None
 seglist = [0,1,2,3,4]
+debug_override = None
 
 DEBUG_PIXEL_MASK_SAVED=False
 DEBUG_ADC_TRAIN_WRITE=False
 DEBUG_RANDOM_PIXEL_MAP=False
 USE_ACCELERATED_MATRIX_WRITE=False
+BANK_OFFSETS = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
+
+PANEL_ASIC_LAYOUT = tuple(
+    sorted(
+        RAW_ASIC_LAYOUT,
+        key=lambda layout: (layout['row_slice'][0], layout['col_slice'][0]),
+    )
+)
+
+
+def _raw_pixel_map_shape():
+    """Returns the raw-view panel map shape used by epixquad1kfps analysis/config."""
+    return RAW_SHAPE
+
+
+def _normalize_raw_pixel_map(pixel_map_raw):
+    arr = np.asarray(pixel_map_raw, dtype=np.uint8)
+    if arr.shape == _raw_pixel_map_shape():
+        return arr
+    if arr.size == np.prod(_raw_pixel_map_shape()):
+        return arr.reshape(_raw_pixel_map_shape())
+    raise ValueError(
+        f'user.pixel_map_raw expects shape {_raw_pixel_map_shape()}, got {arr.shape}'
+    )
+
+
+def _config_entry_exists(cfg, dotted_key):
+    node = cfg
+    for key in dotted_key.split('.'):
+        if not isinstance(node, dict) or key not in node:
+            return False
+        node = node[key]
+    return True
+
+
+def _copy_entry_or_fallback_type(cfg, src_cfg, dotted_key, fallback_type_key=None):
+    copy_config_entry(cfg, src_cfg, dotted_key)
+    try:
+        copy_config_entry(cfg[':types:'], src_cfg[':types:'], dotted_key)
+    except KeyError:
+        if fallback_type_key is None:
+            raise
+        copy_config_entry(cfg[':types:'], src_cfg[':types:'], fallback_type_key)
+
+
+def _get_cfg_pixel_map_raw(cfg, fallback_cfg=None):
+    candidates = [cfg]
+    if fallback_cfg is not None and fallback_cfg is not cfg:
+        candidates.append(fallback_cfg)
+
+    for candidate in candidates:
+        if not isinstance(candidate, dict) or 'user' not in candidate:
+            continue
+        user = candidate['user']
+        if 'pixel_map_raw' in user:
+            return _normalize_raw_pixel_map(user['pixel_map_raw'])
+
+    raise KeyError('user.pixel_map_raw is required')
+
+
+def _get_cfg_trbit_by_asic(cfg, fallback_cfg=None):
+    trbits = []
+    for i in range(16):
+        value = None
+        for candidate in (cfg, fallback_cfg):
+            if not isinstance(candidate, dict):
+                continue
+            try:
+                value = candidate['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit']
+                break
+            except KeyError:
+                continue
+        if value is None:
+            raise KeyError(f'expert.EpixQuad.Epix10kaSaci{i}.trbit is required')
+        trbits.append(int(value))
+    return trbits
+
+
+def _trbits_asic_to_panel_order(trbits_asic):
+    trbits_asic = list(trbits_asic)
+    if len(trbits_asic) != 16:
+        raise ValueError(f'expected 16 ASIC trbits, got {len(trbits_asic)}')
+
+    # Panel order here is [top-left, top-right, bottom-left, bottom-right].
+    panel_trbits = []
+    for segment in range(4):
+        for layout in PANEL_ASIC_LAYOUT:
+            asic = 4 * segment + layout['slot']
+            panel_trbits.append(int(trbits_asic[asic]))
+
+    return panel_trbits
+
+
+def _cbits_config_from_raw_map(pixel_map_raw, trbits_panel):
+    """Builds configure-time cbits in raw panel space from pixel_map_raw and trbit."""
+    pixel_map_raw = _normalize_raw_pixel_map(pixel_map_raw)
+    trbits_panel = np.asarray(trbits_panel, dtype=np.uint8)
+    if trbits_panel.shape == (16,):
+        trbits_panel = trbits_panel.reshape(4, 4)
+    if trbits_panel.shape != (4, 4):
+        raise ValueError(f'expected panel trbits shape (4, 4), got {trbits_panel.shape}')
+
+    cbits_config = np.bitwise_and(pixel_map_raw, 0x0F)
+    for segment in range(4):
+        for panel_asic, layout in enumerate(PANEL_ASIC_LAYOUT):
+            if not trbits_panel[segment, panel_asic]:
+                continue
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            # Broadcast trbit into bit 4 for the full ASIC tile in raw panel space.
+            np.bitwise_or(cbits_config[segment, r0:r1, c0:c1], 0x10, out=cbits_config[segment, r0:r1, c0:c1])
+    return cbits_config
+
+
+def _analysis_config_from_cfg(cfg, fallback_cfg=None):
+    pixel_map_raw = _get_cfg_pixel_map_raw(cfg, fallback_cfg=fallback_cfg)
+    trbits_asic = _get_cfg_trbit_by_asic(cfg, fallback_cfg=fallback_cfg)
+    trbits_panel = np.asarray(_trbits_asic_to_panel_order(trbits_asic), dtype=np.uint8).reshape(4, 4)
+    cbits_config = _cbits_config_from_raw_map(pixel_map_raw, trbits_panel)
+    return pixel_map_raw, trbits_panel, cbits_config
+
+
+def _segment_trbits_panel(trbits_panel, seg):
+    trbits_panel = np.asarray(trbits_panel, dtype=np.uint8)
+    if trbits_panel.shape == (16,):
+        trbits_panel = trbits_panel.reshape(4, 4)
+    if trbits_panel.shape != (4, 4):
+        raise ValueError(f'expected panel trbits shape (4, 4), got {trbits_panel.shape}')
+    return trbits_panel[seg].tolist()
+
+
+def _convert_raw_mask_to_direct_ops(mask, *, selected_value):
+    """Converts a det.raw.raw-oriented mask into direct bank-addressed writes.
+
+    Parameters
+    ----------
+    mask : np.ndarray
+        Raw-view mask with shape (4,352,384). Nonzero pixels are treated as
+        active and converted to direct writes.
+    selected_value : int
+        Pixel value to program for selected pixels.
+
+    Returns
+    -------
+    ops : list[dict]
+        Direct-write pixel ops in (asic, bank, row, col).
+    summary : list[dict]
+        Short per-ASIC summaries for logging.
+    """
+    if mask.shape != RAW_SHAPE:
+        raise ValueError(
+            f'EPIXQUAD_DEBUG_MASK_NPY expects shape {RAW_SHAPE}, got {mask.shape}'
+        )
+
+    active = np.asarray(mask) != 0
+    ops = []
+    summary = []
+    for segment in range(4):
+        seg_active = active[segment]
+        for layout in RAW_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            sub = seg_active[r0:r1, c0:c1]
+            coords = np.argwhere(sub)
+            if coords.size == 0:
+                continue
+
+            asic = 4 * segment + layout['slot']
+            operator = layout['operator']
+            for raw_local_row, raw_local_col in coords:
+                if operator == 'identity':
+                    prog_row = int(raw_local_row)
+                    prog_col = int(raw_local_col)
+                elif operator == 'rot180':
+                    prog_row = 175 - int(raw_local_row)
+                    prog_col = 191 - int(raw_local_col)
+                else:
+                    raise ValueError(f'unsupported raw-mask operator: {operator!r}')
+
+                bank = prog_col // 48
+                bank_col = prog_col % 48
+                ops.append({
+                    'kind': 'pixel',
+                    'asic': int(asic),
+                    'bank': int(bank),
+                    'row': int(prog_row),
+                    'col': int(bank_col),
+                    'value': int(selected_value),
+                })
+
+            summary.append({
+                'asic': int(asic),
+                'segment': int(segment),
+                'operator': operator,
+                'active_pixels': int(coords.shape[0]),
+                'raw_box': ((int(r0), int(r1)), (int(c0), int(c1))),
+            })
+    return ops, summary
+
+
+def _load_debug_mask_npy_override(user_cfg):
+    """Optional env-gated debug override from a raw-view mask .npy file.
+
+    Expected input mask orientation matches det.raw.raw(evt): shape (4,352,384).
+    The converter applies the measured ASIC subregion/operator mapping and emits
+    direct bank-addressed writes under the bank_rc_178x48 convention.
+    """
+    path = os.environ.get('EPIXQUAD_DEBUG_MASK_NPY')
+    if not path:
+        return None
+
+    selected_value = int(os.environ.get('EPIXQUAD_DEBUG_MASK_SELECTED_VALUE', '8'))
+    background_value = int(os.environ.get('EPIXQUAD_DEBUG_MASK_BACKGROUND_VALUE', '12'))
+    trbit = int(os.environ.get('EPIXQUAD_DEBUG_MASK_TRBIT', '0'))
+
+    mask = np.load(path)
+    ops, summary = _convert_raw_mask_to_direct_ops(mask, selected_value=selected_value)
+    stem = os.path.splitext(os.path.basename(path))[0]
+
+    return {
+        'override_kind': 'direct_write',
+        'source_kind': 'mask_npy',
+        'selection_source': 'env_mask_npy',
+        'source_file': os.path.abspath(path),
+        'direct_name': f'raw_mask_{stem}',
+        'pattern_label': 'raw-mask direct write',
+        'coordinate_mode': 'bank_rc_178x48',
+        'pixel_map_raw': np.full(_raw_pixel_map_shape(), int(background_value), dtype=np.uint8),
+        'trbit_by_asic': [trbit] * 16,
+        'background_value_by_asic': [background_value] * 16,
+        'selected_value': int(selected_value),
+        'background_value': int(background_value),
+        'direct_write_ops': ops,
+        'direct_write_summary': ops[:6],
+        'raw_mask_summary': summary,
+        'direct_write_pixel_count': len(ops),
+    }
+
+
+def _format_direct_op_preview(op):
+    if op['kind'] == 'bank_fill':
+        row_range = op.get('row_range', (op['row_start'], op['row_stop']))
+        col_range = op.get('col_range', (op['col_start'], op['col_stop']))
+        return 'fill:a%d:b%d:r[%d,%d):c[%d,%d):v%d' % (
+            op['asic'],
+            op['bank'],
+            row_range[0],
+            row_range[1],
+            col_range[0],
+            col_range[1],
+            op['value'],
+        )
+    return 'pixel:a%d:b%d:r%d:c%d:v%d' % (
+        op['asic'],
+        op['bank'],
+        op['row'],
+        op['col'],
+        op['value'],
+    )
+
+
+def _apply_debug_pattern_override(cfg):
+    """Optionally overrides config from debug test definitions.
+
+    Two usage modes are supported.
+
+    Standalone test-file mode:
+      EPIXQUAD_DEBUG_TEST_FILE=/path/to/test.json
+      EPIXQUAD_DEBUG_MARKER_GROUPS=group1[,group2,...]
+      EPIXQUAD_DEBUG_GROUP_INDEX=<int>
+
+      Use this when you want to run a single test JSON directly. If the selected
+      test file contains multiple marker groups, you can select them either by
+      name with EPIXQUAD_DEBUG_MARKER_GROUPS or by first-seen index with
+      EPIXQUAD_DEBUG_GROUP_INDEX. If neither is set, the loader defaults to
+      group 0.
+
+    Sequence-pattern mode:
+      EPIXQUAD_DEBUG_SEQUENCE_FILE=/path/to/sequence.json
+      EPIXQUAD_DEBUG_PATTERN_INDEX=<int>
+
+      Use this when a wrapper/scan driver iterates through a sequence file. Each
+      sequence pattern selects one test file and usually one marker group for
+      that run. EPIXQUAD_DEBUG_PATTERN_INDEX defaults to 0. The legacy
+      EPIXQUAD_DEBUG_STEP_INDEX name is still accepted for compatibility.
+
+    Optional in both modes:
+      EPIXQUAD_DEBUG_PATTERN_OUTDIR=/path/to/save/materialized/patterns
+
+    Direct register-write mode:
+      EPIXQUAD_DEBUG_DIRECT_WRITE_FILE=/path/to/direct.json
+      EPIXQUAD_DEBUG_PATTERN_INDEX=<int>
+
+      Use this when you want to bypass the current logical pixel-map to
+      bank/local-coordinate reconstruction and instead program explicit
+      ASIC-local writes. In this mode the loader provides:
+        - background value per ASIC
+        - per-ASIC trbits
+        - explicit write operations in (asic, bank, row, col)
+      A background-only placeholder user.pixel_map_raw is still injected for
+      metadata/debugging, but the actual hardware writes happen later in
+      config_expert() from the direct op list.
+
+    Raw-mask .npy mode:
+      EPIXQUAD_DEBUG_MASK_NPY=/path/to/mask.npy
+      EPIXQUAD_DEBUG_MASK_SELECTED_VALUE=8      # optional
+      EPIXQUAD_DEBUG_MASK_BACKGROUND_VALUE=12   # optional
+      EPIXQUAD_DEBUG_MASK_TRBIT=0               # optional
+
+      Use this when you already have a raw-view mask with the same shape and
+      orientation as det.raw.raw(evt), namely (4,352,384). The converter uses
+      the measured ASIC/operator mapping and emits direct bank-addressed pixel
+      writes under the bank_rc_178x48 convention. This bypasses the current
+      logical pixel_map reconstruction path entirely.
+
+    Wrapper/control-file mode:
+      A client-side wrapper can update a shared JSON control file before each
+      run. This is needed when the DAQ/config process is already running and
+      environment-variable changes in the client will not propagate into that
+      process. The control-file path defaults to the loader's built-in path
+      unless overridden by EPIXQUAD_DEBUG_CONTROL_FILE in the DAQ process
+      environment.
+
+    When enabled, this function forces:
+      cfg['user']['gain_mode'] = 5
+      cfg['user']['pixel_map_raw'] = materialized raw-view array (4,352,384)
+      cfg['expert']['EpixQuad']['Epix10kaSaci{i}']['trbit'] per loaded test
+
+    If none of EPIXQUAD_DEBUG_TEST_FILE, EPIXQUAD_DEBUG_SEQUENCE_FILE,
+    EPIXQUAD_DEBUG_DIRECT_WRITE_FILE, or EPIXQUAD_DEBUG_MASK_NPY is set, this
+    function leaves cfg unchanged.
+    """
+    global debug_override
+
+    materialized = load_debug_override(cfg.get('user'))
+    if materialized is None:
+        materialized = _load_debug_mask_npy_override(cfg.get('user'))
+    debug_override = materialized
+    if materialized is None:
+        return False
+
+    cfg.setdefault('user', {})
+    cfg.setdefault('expert', {})
+    cfg['expert'].setdefault('EpixQuad', {})
+
+    cfg['user']['gain_mode'] = 5
+    if 'pixel_map_raw' in materialized:
+        pixel_map_raw = _normalize_raw_pixel_map(materialized['pixel_map_raw'])
+    else:
+        raise KeyError('debug override must provide pixel_map_raw')
+    cfg['user']['pixel_map_raw'] = pixel_map_raw.reshape(-1).tolist()
+    for i, trbit in enumerate(materialized['trbit_by_asic']):
+        cfg['expert']['EpixQuad'].setdefault(f'Epix10kaSaci{i}', {})
+        cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] = int(trbit)
+
+    log_parts = [
+        f"loaded debug override kind={materialized.get('override_kind', 'unknown')}",
+        f"source={materialized['source_kind']}",
+        f"selection_source={materialized.get('selection_source', 'unknown')}",
+        f"source_file={materialized['source_file']}",
+    ]
+    if materialized.get('override_kind') == 'pixel_map':
+        marker_preview = ', '.join(
+            '%s:a%d:r%d:c%d:v%d' % (
+                m.get('label', '?'),
+                m['asic'],
+                m['row'],
+                m['col'],
+                m['value'],
+            )
+            for m in materialized.get('selected_markers', [])[:6]
+        )
+        log_parts.append(f"test={materialized['test_name']}")
+        log_parts.append(f"groups={materialized.get('selected_groups', [])}")
+        log_parts.append(f"active_pixels={materialized.get('active_pixel_count', 0)}")
+        if marker_preview:
+            log_parts.append(f"markers={marker_preview}")
+    else:
+        op_preview = ', '.join(
+            _format_direct_op_preview(op)
+            for op in materialized.get('direct_write_summary', [])[:6]
+        )
+        log_parts.append(f"direct={materialized.get('direct_name', 'unnamed_direct')}")
+        log_parts.append(f"pattern_label={materialized.get('pattern_label', '')}")
+        log_parts.append(f"coordinate_mode={materialized.get('coordinate_mode', 'bank_rc_178x48')}")
+        log_parts.append(f"direct_pixels={materialized.get('direct_write_pixel_count', 0)}")
+        log_parts.append('pixel_map_metadata=background_only_placeholder')
+        if materialized.get('source_kind') == 'mask_npy':
+            log_parts.append(
+                f"mask_selected_value={materialized.get('selected_value', '?')}"
+            )
+            log_parts.append(
+                f"mask_background_value={materialized.get('background_value', '?')}"
+            )
+        if op_preview:
+            log_parts.append(f"ops={op_preview}")
+    if 'sequence_name' in materialized:
+        log_parts.append(f"sequence={materialized['sequence_name']}")
+        log_parts.append(f"pattern_index={materialized['pattern_index']}")
+        if 'pattern_label' in materialized:
+            log_parts.append(f"pattern_label={materialized['pattern_label']}")
+        if 'test_file' in materialized:
+            log_parts.append(f"test_file={materialized['test_file']}")
+    if 'control_file' in materialized:
+        log_parts.append(f"control_file={materialized['control_file']}")
+    logging.warning(' '.join(log_parts))
+    return True
+
+
+def _apply_direct_write_program(cbase, program, asics):
+    """Programs explicit ASIC-local writes for debug-only bank/pixel probes.
+
+    This bypasses the existing detector-view to bank/local-coordinate
+    reconstruction logic and writes register coordinates directly. Two direct
+    coordinate modes are supported:
+
+      bank_rc_178x48
+        - logical bank = hardware bank
+        - logical row = hardware row
+        - logical col = hardware bank-local col
+
+      bank_rc_44x192
+        - logical bank selects a 44-row band inside the ASIC
+        - logical row is local within that 44-row band
+        - logical col spans the full ASIC width and is expanded across the
+          four hardware bank offsets
+    """
+    if not program or program.get('override_kind') != 'direct_write':
+        return False
+
+    coordinate_mode = program.get('coordinate_mode', 'bank_rc_178x48')
+
+    def iter_hw_targets(op):
+        if coordinate_mode == 'bank_rc_178x48':
+            if op['kind'] == 'pixel':
+                yield (int(op['row']), int(op['bank']), int(op['col']), int(op['value']))
+                return
+            for row in range(int(op['row_start']), int(op['row_stop'])):
+                for col in range(int(op['col_start']), int(op['col_stop'])):
+                    yield (row, int(op['bank']), col, int(op['value']))
+            return
+
+        if coordinate_mode == 'bank_rc_44x192':
+            row_base = int(op['bank']) * 44
+            if op['kind'] == 'pixel':
+                logical_col = int(op['col'])
+                yield (
+                    row_base + int(op['row']),
+                    logical_col // 48,
+                    logical_col % 48,
+                    int(op['value']),
+                )
+                return
+            for row in range(int(op['row_start']), int(op['row_stop'])):
+                hw_row = row_base + row
+                for logical_col in range(int(op['col_start']), int(op['col_stop'])):
+                    yield (hw_row, logical_col // 48, logical_col % 48, int(op['value']))
+            return
+
+        raise ValueError(f'unsupported direct coordinate_mode: {coordinate_mode!r}')
+
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.PrepareMultiConfig.set(0)
+
+    background_value_by_asic = program['background_value_by_asic']
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.WriteMatrixData.set(int(background_value_by_asic[i]))
+
+    direct_write_t0 = time.perf_counter()
+    changed_pixels = 0
+    for op in program['direct_write_ops']:
+        saci = cbase.Epix10kaSaci[int(op['asic'])]
+        for hw_row, hw_bank, hw_col, hw_value in iter_hw_targets(op):
+            bank_offset = BANK_OFFSETS[int(hw_bank)]
+            saci.RowCounter.set(int(hw_row))
+            saci.ColCounter.set(bank_offset | int(hw_col))
+            saci.WritePixelData.set(int(hw_value))
+            changed_pixels += 1
+
+    logging.info(
+        'Direct debug write complete in %.3f s (%d explicit pixel updates, coordinate_mode=%s)',
+        time.perf_counter() - direct_write_t0,
+        changed_pixels,
+        coordinate_mode,
+    )
+    return True
+
+
+def _apply_raw_pixel_map_program(cbase, pixel_map_raw, asics):
+    if pixel_map_raw.shape != RAW_SHAPE:
+        raise ValueError(
+            f'user.pixel_map_raw expects shape {RAW_SHAPE}, got {pixel_map_raw.shape}'
+        )
+
+    for i in asics:
+        saci = cbase.Epix10kaSaci[i]
+        saci.PrepareMultiConfig.set(0)
+
+    matrix_cfg_t0 = time.perf_counter()
+    changed_pixels = 0
+
+    for segment in range(4):
+        seg = pixel_map_raw[segment]
+        for layout in RAW_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            operator = layout['operator']
+            asic = 4 * segment + layout['slot']
+            saci = cbase.Epix10kaSaci[asic]
+
+            asic_raw = np.asarray(seg[r0:r1, c0:c1], dtype=np.uint8)
+            common_value = mode(asic_raw)
+            saci.WriteMatrixData.set(int(common_value))
+
+            raw_rows, raw_cols = asic_raw.shape
+            for raw_row in range(raw_rows):
+                for raw_col in range(raw_cols):
+                    pixel_value = int(asic_raw[raw_row, raw_col])
+                    if pixel_value == common_value:
+                        continue
+
+                    if operator == 'identity':
+                        prog_row = raw_row
+                        prog_col = raw_col
+                    elif operator == 'rot180':
+                        prog_row = (raw_rows - 1) - raw_row
+                        prog_col = (raw_cols - 1) - raw_col
+                    else:
+                        raise ValueError(f'unsupported raw pixel-map operator: {operator!r}')
+
+                    bank = prog_col // 48
+                    bank_col = prog_col % 48
+                    saci.RowCounter.set(int(prog_row))
+                    saci.ColCounter.set(BANK_OFFSETS[int(bank)] | int(bank_col))
+                    saci.WritePixelData.set(pixel_value)
+                    changed_pixels += 1
+
+    logging.info(
+        'Raw pixel_map write complete in %.3f s (%d pixel updates)',
+        time.perf_counter() - matrix_cfg_t0,
+        changed_pixels,
+    )
+    return True
 
 def get_trigger_buffers():
     """
@@ -113,14 +661,17 @@ def _hydrate_map_mode_partial_config(cfg):
     if 'user' not in cfg or 'gain_mode' not in cfg['user']:
         return
 
-    if cfg['user']['gain_mode'] != 5 or 'pixel_map' in cfg['user']:
+    if cfg['user']['gain_mode'] != 5 or 'pixel_map_raw' in cfg['user']:
         return
 
-    if ocfg is None or 'user' not in ocfg or 'pixel_map' not in ocfg['user']:
-        raise KeyError('user.pixel_map is required when user.gain_mode == 5')
+    if ocfg is None or 'user' not in ocfg:
+        raise KeyError('full configuration is required when user.gain_mode == 5')
 
-    copy_config_entry(cfg, ocfg, 'user.pixel_map')
-    copy_config_entry(cfg[':types:'], ocfg[':types:'], 'user.pixel_map')
+    if _config_entry_exists(ocfg, 'user.pixel_map_raw'):
+        _copy_entry_or_fallback_type(cfg, ocfg, 'user.pixel_map_raw')
+    else:
+        raise KeyError('user.pixel_map_raw is required when user.gain_mode == 5')
+
     for i in range(16):
         key = f'expert.EpixQuad.Epix10kaSaci{i}.trbit'
         copy_config_entry(cfg, ocfg, key)
@@ -238,7 +789,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     print(f'firmwareVersion [{firmwareVersion:x}]')
     print(f'buildStamp      [{buildStamp}]')
     print(f'gitHash         [{gitHash:x}]')
-    
+
     if DEBUG_ADC_TRAIN_WRITE:
         print("[DEBUG-ADC] Reading ADC calibration constants from PROM...")
         cbase.CypressS25Fl.readCmd(0x3000000)
@@ -251,7 +802,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
         # Save to .npy
         npy_file = os.path.join(outdir, f"adc_training_{ts}.npy")
         np.save(npy_file, np.array(adc_data))
-        print(f"[DEBUG-ADC] Saved ADC training data to {npy_file}") 
+        print(f"[DEBUG-ADC] Saved ADC training data to {npy_file}")
 
     logging.info('epixquad_unconfig')
     epixquad_unconfig(base)
@@ -284,7 +835,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     logging.info(f"Configuring Run/DAQ triggers for lane {lane}: run_buf={run_buf}, daq_buf={daq_buf}")
 
     # --- Run trigger: EVR event code 6 (~1080 Hz)
-    
+
     trigman.TriggerEventBuffer[run_buf].TriggerSource.set(1)  # EVR
     trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].EnableReg.set(1)
     trigman.EvrV2CoreTriggers.EvrV2ChannelReg[run_buf].RateType.set(2)  # EventCode mode/ControlWord
@@ -293,8 +844,8 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].EnableTrig.set(1)
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Source.set(run_buf)
     trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Polarity.set(1)  # Rising
-    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Width.set(1) 
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+    trigman.EvrV2CoreTriggers.EvrV2TriggerReg[run_buf].Width.set(1)
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)
 
     # --- DAQ trigger: XPM, partition-based (~100 Hz)
     trigman.TriggerEventBuffer[daq_buf].TriggerSource.set(0)  # XPM
@@ -302,7 +853,7 @@ def epixquad_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     # Delay tuned by user.start_ns via user_to_expert()
     logging.info("Run/DAQ trigger buffers configured")
 
-    # We stay in expternal trigger mode througout 
+    # We stay in expternal trigger mode througout
     epixquad_external_trigger(base)
     return base
 
@@ -350,6 +901,9 @@ def user_to_expert(base, cfg, full=False):
     global ocfg
     global group
     global lane
+    global debug_override
+
+    _apply_debug_pattern_override(cfg)
 
     pbase = base['pci']
 
@@ -358,7 +912,7 @@ def user_to_expert(base, cfg, full=False):
     if hasUser and 'start_ns' in cfg['user']:
         rawStart = cfg['user']['start_ns']
         run_buf, daq_buf = get_trigger_buffers()
-        
+
         # --- DAQ trigger delay (XPM)
         daq_triggerDelay = calc_daq_trigger_delay(base, rawStart, group)
         #d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[{daq_buf}].TriggerDelay'] = daq_triggerDelay
@@ -405,25 +959,32 @@ def user_to_expert(base, cfg, full=False):
         d[f'expert.DevPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.Partition']=group
 
     pixel_map_changed = False
-    a = None
-    if (hasUser and ('gain_mode' in cfg['user'] or
-                     'pixel_map' in cfg['user'])):
-        gain_mode = cfg['user']['gain_mode']
+    if hasUser and ('gain_mode' in cfg['user'] or 'pixel_map_raw' in cfg['user']):
+        gain_mode = cfg['user'].get('gain_mode', ocfg['user']['gain_mode'])
         if gain_mode==5:
-            if 'pixel_map' not in cfg['user']:
-                raise KeyError('user.pixel_map is required when user.gain_mode == 5')
-            a  = cfg['user']['pixel_map']
+            if 'pixel_map_raw' in cfg['user']:
+                a_raw = _normalize_raw_pixel_map(cfg['user']['pixel_map_raw'])
+                d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
+                logging.debug('pixel_map_raw len {}'.format(len(d['user.pixel_map_raw'])))
+                logging.info(
+                    'Prepared user.pixel_map_raw for config update: shape=%s nonzero_pixels=%d',
+                    a_raw.shape,
+                    int(np.count_nonzero(a_raw)),
+                )
+                pixel_map_changed = True
+            else:
+                raise KeyError('user.pixel_map_raw is required when user.gain_mode == 5')
         else:
             mapv  = (0xc,0xc,0x8,0x0,0x0)[gain_mode] # H/M/L/AHL/AML
             trbit = (0x1,0x0,0x0,0x1,0x0)[gain_mode]
-            a  = (np.array(ocfg['user']['pixel_map'],dtype=np.uint8) & 0x3) | mapv
-            a = a.reshape(-1).tolist()
+            base_raw = _get_cfg_pixel_map_raw(ocfg)
+            a_raw = (np.asarray(base_raw, dtype=np.uint8) & 0x3) | mapv
 
             for i in range(16):
                 d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-        logging.debug('pixel_map len {}'.format(len(a)))
-        d['user.pixel_map'] = a
-        pixel_map_changed = True
+            logging.debug('pixel_map_raw len {}'.format(a_raw.size))
+            d['user.pixel_map_raw'] = a_raw.reshape(-1).tolist()
+            pixel_map_changed = True
 
     update_config_entry(cfg, ocfg, d)
 
@@ -466,98 +1027,17 @@ def config_expert(base, cfg, writePixelMap=True):
         apply_dict('cbase',cbase,epixQuad)
 
     if writePixelMap:
-        if 'user' in cfg and 'pixel_map' in cfg['user']:
-            #  Write the pixel gain maps
-            #  Would like to send a 3d array
-            a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-            pixelConfigMap = np.reshape(a,(16,178,192))
-
-            # ***CAUTION ONLY FOR DEBUGGING *** Enable here to test pixel by pixel write
-            if DEBUG_RANDOM_PIXEL_MAP:
-                shape = (16, 178, 192)
-                pixelConfigMap = np.random.choice([8, 12], size=shape, p=[0.5, 0.5]).astype(np.uint8)
-
-            matrix_cfg_t0 = time.perf_counter()
-            if USE_ACCELERATED_MATRIX_WRITE:
-                #
-                #  Accelerated matrix configuration (~2 seconds)
-                #
-                #  Found that gain_mode is mapping to [M/M/L/M/M]
-                #    Like trbit is always zero (Saci was disabled!)
-                #
-                accel_t0 = time.perf_counter()
-                core = cbase.SaciConfigCore
-                core.enable.set(True)
-                core.SetAsicsMatrix(json.dumps(pixelConfigMap.tolist()))
-                core.enable.set(False)
-                print(f'SetAsicsMatrix accelerated write took {time.perf_counter() - accel_t0:.3f} s')
-                if DEBUG_PIXEL_MASK_SAVED:
-                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
-                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
-
-
-            else:
-                #
-                #  Pixel by pixel matrix configuration (up to 15 minutes)
-                #
-                #  Found that gain_mode is mapping to [H/M/M/H/M]
-                #    Like pixelmap is always 0xc
-                #
-                for i in asics:
-                    saci = cbase.Epix10kaSaci[i]
-                    saci.PrepareMultiConfig.set(0)
-
-                #  Set the whole ASIC to its most common value
-                masic = {}
-                for i in asics:
-                    masic[i] = mode(pixelConfigMap[i])
-                    saci = cbase.Epix10kaSaci[i]
-                    saci.WriteMatrixData.set(masic[i])  # 0x4000 v 0x84000
-
-                #  Now fix any pixels not at the common value
-                banks = ((0xe<<7),(0xd<<7),(0xb<<7),(0x7<<7))
-                changed_pixels = 0
-                per_pixel_t0 = time.perf_counter()
-                for i in asics:
-                    saci = cbase.Epix10kaSaci[i]
-                    nrows = pixelConfigMap.shape[1]
-                    ncols = pixelConfigMap.shape[2]
-
-                    writeView = pixelConfigMap[:, :nrows, :ncols]
-
-                    for row in range(nrows):
-                        for col in range(ncols):
-                            if pixelConfigMap[i,row,col]!=masic[i]:
-                                changed_pixels += 1
-                                if row >= (nrows>>1):
-                                    mrow = row - (nrows>>1)
-                                    if col < (ncols>>1):
-                                        offset = 3
-                                        mcol = col
-                                    else:
-                                        offset = 0
-                                        mcol = col - (ncols>>1)
-                                else:
-                                    mrow = (nrows>>1)-1 - row
-                                    if col < (ncols>>1):
-                                        offset = 2
-                                        mcol = (ncols>>1)-1 - col
-                                    else:
-                                        offset = 1
-                                        mcol = (ncols-1) - col
-                                bank = int((mcol % (48<<2)) / 48)
-                                bankOffset = banks[bank]
-                                saci.RowCounter.set(row)
-                                saci.ColCounter.set(bankOffset | (mcol%48))
-                                saci.WritePixelData.set(int(pixelConfigMap[i,row,col]))
-                logging.info('SetAsicsMatrix per-pixel write took %.3f s (%d pixel updates)',
-                             time.perf_counter() - per_pixel_t0, changed_pixels)
-
-                if DEBUG_PIXEL_MASK_SAVED:
-                    saci = cbase.Epix10kaSaci[0].GetPixelBitmap("/tmp/pixel_mask.csv")
-                    print(f"[DEBUG-FIXEDLOW] Wrote PixelBitmap for Asic0")
-
-            logging.info(f'SetAsicsMatrix complete in {time.perf_counter() - matrix_cfg_t0:.3f} s')
+        if debug_override is not None and debug_override.get('override_kind') == 'direct_write':
+            _apply_direct_write_program(cbase, debug_override, asics)
+        elif 'user' in cfg and 'pixel_map_raw' in cfg['user']:
+            pixelConfigMapRaw = _normalize_raw_pixel_map(cfg['user']['pixel_map_raw'])
+            logging.info(
+                'Using user.pixel_map_raw write path: shape=%s nonzero_pixels=%d unique_values=%s',
+                pixelConfigMapRaw.shape,
+                int(np.count_nonzero(pixelConfigMapRaw)),
+                np.unique(pixelConfigMapRaw).tolist(),
+            )
+            _apply_raw_pixel_map_program(cbase, pixelConfigMapRaw, asics)
         else:
             logging.info('writePixelMap but no new map')
             logging.debug(cfg)
@@ -659,7 +1139,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     config_expert(base, cfg)
 
     pbase = base['pci']
-    
+
     run_buf, daq_buf = get_trigger_buffers()
 
     #  Force write Run/DAQ Trigger Delay here until configdb is fixed
@@ -683,7 +1163,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     logging.info(f"Setting DAQ trigger buffer {daq_buf} Partition to group {group}")
     trigman.TriggerEventBuffer[daq_buf].Partition.set(group)
- 
+
     #pbase.StartRun()
     startRun(pbase)
 
@@ -706,8 +1186,6 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     #
     #  Create the segment configurations from parameters required for analysis
     #
-    trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
-
     topname = cfg['detName:RO'].split('_')
 
     scfg = {}
@@ -717,9 +1195,7 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
-
-    a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-    pixelConfigMap = np.reshape(a,(16,178,192))
+    pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
     for seg in range(4):
         #  Construct the ID
@@ -733,10 +1209,11 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
                                                           analogId [0], analogId [1])
         segids[seg] = id
         top = cdict()
-        top.setAlg('config', [2,0,0])
+        top.setAlg('config', [3,0,0])
         top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-        top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')  # only the rows which have readable pixels
-        top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+        top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+        top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+        top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
         scfg[seg+1] = top.typed_json()
 
     result = []
@@ -781,18 +1258,17 @@ def epixquad_scan_keys(update):
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
     if pixelMapChanged:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
-        trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
+        pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
-            top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+            top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+            top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -829,25 +1305,18 @@ def epixquad_update(update):
     scfg[0] = cfg.copy()
     scfg[0]['detName:RO'] = topname[0]+'hw_'+topname[1]
 
-    scfg[0] = cfg
-
     if writePixelMap:
-        a = np.array(cfg['user']['pixel_map'],dtype=np.uint8)
-        pixelConfigMap = np.reshape(a,(16,178,192))
-        try:
-            trbit = [ cfg['expert']['EpixQuad'][f'Epix10kaSaci{i}']['trbit'] for i in range(16)]
-        except:
-            trbit = None
+        pixelConfigMap, trbit, cbits_config = _analysis_config_from_cfg(cfg, fallback_cfg=ocfg)
 
         cbase = base['cam']
         for seg in range(4):
             id = segids[seg]
             top = cdict()
-            top.setAlg('config', [2,0,0])
+            top.setAlg('config', [3,0,0])
             top.setInfo(detType='epix10ka', detName=topname[0], detSegm=seg+4*int(topname[1]), detId=id, doc='No comment')
-            top.set('asicPixelConfig', pixelConfigMap[4*seg:4*seg+4,:176].tolist(), 'UINT8')
-            if trbit is not None:
-                top.set('trbit'          , trbit[4*seg:4*seg+4], 'UINT8')
+            top.set('asicPixelConfig', pixelConfigMap[seg].tolist(), 'UINT8')
+            top.set('trbit'          , _segment_trbits_panel(trbit, seg), 'UINT8')
+            top.set('cbitsConfig'    , cbits_config[seg].tolist(), 'UINT8')
             scfg[seg+1] = top.typed_json()
 
     result = []
@@ -859,18 +1328,18 @@ def epixquad_update(update):
     return result
 
 def epixquad_enable_runtrigger(base):
-    pbase = base['pci'] 
+    pbase = base['pci']
     run_buf, daq_buf = get_trigger_buffers()
     trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)  
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(1)
     print(f'[DEBUG-RUNTRIG] Enable RunTrigger')
 
 
 def epixquad_disable_runtrigger(base):
-    pbase = base['pci'] 
+    pbase = base['pci']
     run_buf, daq_buf = get_trigger_buffers()
     trigman = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager
-    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(0)  
+    trigman.TriggerEventBuffer[run_buf].MasterEnable.set(0)
     print(f'[DEBUG-RUNTRIG] Disable RunTrigger')
 
 #

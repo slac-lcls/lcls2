@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""./lcls2/psana/psana/detector/test_issues_2024.py <TNAME>"""
+"""./lcls2/psana/psana/detector/test_issues_2026.py <TNAME> [-h]"""
 
 import sys
 import logging
@@ -201,14 +201,253 @@ def issue_2026_03_27(subtest='0o7777'):
         if plot_image: gr.show()
 
 
+def issue_2026_04_01(subtest='0o7777'):
+    """ISSUE:
+       PROBLEM:
+       FIX:
+
+    datinfo -k exp=tstx00117,run=330,dir=/sdf/data/lcls/drpsrcf/ffb/users/tst_data/tst/tstx00117/xtc/ -d epixuhr3x2
+
+    """
+    print('test of emulated data for epixuhr3x2')
+
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu
+    import psana.detector.UtilsEpixUHR as ueu
+    #from time import sleep
+
+    events = 20
+
+    ds = DataSource(exp='tstx00117', run=330, dir='/sdf/data/lcls/drpsrcf/ffb/users/tst_data/tst/tstx00117/xtc/', **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector('epixuhr3x2')
+
+    #peds = det.raw._pedestals()
+    #mask = det.raw._mask();
+    #print('type(det)', type(det))
+    print('det.raw._segment_numbers', det.raw._segment_numbers)
+
+    #cfgs = getattr(det, 'config')._seg_configs() # dict for {<segnum>: <psana.container.Container object>}
+    cfgs = det.config._seg_configs()
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+    if isubset & 1:
+        print('cfgs:', cfgs)
+        print('type(cfgs):', type(cfgs))
+        print('cfgs[0]:', cfgs[0])
+        print('dir(cfgs[0]):', dir(cfgs[0]))
+        print('cfgs[0].config:', cfgs[0].config)
+
+    if isubset & 2:
+        from psana.app.config_dump import dump
+        attrlist=[]
+        for myobj in cfgs.values():
+            dump(myobj, attrlist)
+
+    if isubset & 4:
+      for segnum in det.raw._segment_numbers:
+        cfg = cfgs.get(segnum, None)
+        if cfg is None:
+            print('segment %d configuration is None' % segnum)
+            continue
+        segcfg = cfg.config
+        #print('segment %d configuration: %s' % (segnum, str(dir(cfg.config))))
+        print('gainAsic:', segcfg.gainAsic)
+        print(ndu.info_ndarr(segcfg.gainCSVAsic, 'gainCSVAsic:'))
+      print(ndu.info_ndarr(ueu.cbits_epixuhr(det), '== cbits_epixuhr(det):'))
+      print(ndu.info_ndarr(ueu.gains_epixuhr(det), '== gains_epixuhr(det):'))
+
+    if isubset & 8:
+        cbits = ueu.cbits_epixuhr(det)
+        print(ndu.info_ndarr(ueu.cbits_epixuhr(det), 'cbits_epixuhr(det):'))
+        print(ndu.info_ndarr(ueu.gains_epixuhr(det), 'gains_epixuhr(det):'))
+        gmaps = ueu.gain_maps_epixuhr(cbits)
+        print(ueu.info_gain_mode_arrays(gmaps, first=0, last=5, spacer='\n    ', cmt='gain mode arrays:'))
 
 
+def issue_2026_04_10(subtest='0o7777'):
+    """ISSUE: Hart, Philip Adam, Apr 10, 2026, at 10:50AM
+              O'Grady, Paul Christopher; Dubrovin, Mikhail; Uervirojnangkoorn, Monarin; Siddiqui, Khalid
+              Hi, it's a bit hard to demonstrate the pedestal claim clearly since the raw data doesn't match the calib ordering (so I claim) but
+              python -i /sdf/home/p/philiph/repos/beamtime-calibration-suite/standalone_scripts/uedPedCheck.py
+              plots a dark frame image and the pixels that Mona has set low don't get pedestal subtracted.
+              Thanks,Philip
+
+              datinfo -k exp=ued1016014,run=51 -d epixquad1kfps
+              datinfo -k exp=ued1015999,run=185 -d epixquad1kfps
+              datinfo -k exp=ued1011136,run=206 -d epixquad1kfps
+              ('epixquad1kfps', 'raw') : <class 'psana.detector.epix10ka.epix10ka_raw_2_0_1'>
+       PROBLEM:
+       FIX:
+    """
+    from psana import DataSource
+    from time import time
+    import sys
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import psana.detector.NDArrUtils as ndu
+
+    def plot_image(image, title='image', call_clf=True, figsize=None, block_show=True,\
+                   pos=(10,10), vmin=None, vmax=None, fname=None):
+        #if call_clf: plt.clf()
+        fig = plt.figure(figsize=figsize)
+        axim = fig.add_axes((0.08, 0.05, 0.89, 0.93)) #, **kwa)
+        imsh = axim.imshow(image, vmin=vmin, vmax=vmax)
+        fig.canvas.manager.set_window_title(title)
+        #plt.title(title)
+        fig.canvas.manager.window.move(pos[0], pos[1])
+        plt.show(block=block_show)
+        if fname is not None:
+            print(f'save plot in file: {fname}')
+            fig.savefig(fname) #, **kwa)
+
+    isubset = 0o7777 if subtest is None else int(subtest)
+
+    exp, run, detName = 'ued1016014', 50, 'epixquad1kfps'
+    if isubset & 16: exp, run, detName = 'ued1015999', 185, 'epixquad1kfps'
+    if isubset & 32: exp, run, detName = 'ued1011136', 206, 'epixquad1kfps'
+
+    ds = DataSource(exp=exp, run=run, detectors=[detName])
+    myrun = next(ds.runs())
+    det = myrun.Detector(detName)
+
+    if isubset & 1:
+        while True:
+            evt = next(myrun.events())
+            #det.raw._raw_buf = None
+            t0_sec = time()
+            raw = det.raw.raw(evt) #, copy=False)
+            print('XXX det.raw.raw(evt) time: %.6f sec' % (time() - t0_sec))
+
+            cal = det.raw.calib(evt)
+            print('XXX AreaDetectorRaw.raw IS CALLED TWISE')
+
+            rimg = det.raw.image(evt, raw)
+            dimg = det.raw.image(evt)
+            #peds = det.calibconst["pedestals"][0] # shape (7, 4, 352, 384)
+            #pimg = det.raw.image(evt, peds[0])
+            cimg = det.raw.image(evt, cal)
+            break
+
+        print(ndu.info_ndarr(raw, 'raw:'))
+        print(ndu.info_ndarr(cal, 'cal:'))
+        #print(ndu.info_ndarr(pimg, 'pimg:'))
+        print(ndu.info_ndarr(dimg, 'dimg:'))
+        print(ndu.info_ndarr(rimg, 'rimg:'))
+        print(ndu.info_ndarr(cimg, 'cimg:'))
+
+        #plot_image(pimg, title='peds', call_clf=False)
+        #plot_image(dimg.clip(-50, 500), title='default image, clipped', call_clf=True)
+        plot_image(rimg, title='raw, image', block_show=False, pos=(10,0), fname='img-phil-raw.png')
+        plot_image(cimg.clip(-50, 500), title='calib, clipped', block_show=True, pos=(400,0), fname='img-phil-calib.png')
+
+    if isubset & 2:
+        #while True:
+            #evt = next(myrun.events())
+        for nevt,evt in enumerate(myrun.events()):
+            #det.raw._raw_buf = None
+            arr = det.raw._array(evt)
+            raw = det.raw.raw(evt) #, copy=False)
+            cal = det.raw.calib(evt)
+            print('XXX === evt: %03d' % nevt)
+            print(ndu.info_ndarr(raw, 'raw'))
+            print(ndu.info_ndarr(cal, 'cal'))
+            #print(ndu.info_ndarr(arr, 'arr'))
+            if nevt>1: break
+        #import matplotlib
+        #print(matplotlib.get_backend())
+        #plot_image(arr, title='det.raw._array', figsize=(8,8), block_show=False, pos=(500,0))
+        if isubset & 4:
+          plot_image(ndu.reshape_to_2d(raw), title='raw as 2d', figsize=(4,8), block_show=False, pos=(10,0))
+          plot_image(ndu.reshape_to_2d(cal), title='cal as 2d', figsize=(4,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
+          plot_image(ndu.reshape_to_2d(cal), title='cal as 2d re-scailed', figsize=(4,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5)
+        if isubset & 8:
+           plot_image(det.raw.image(evt, raw), title='det.raw.image(evt,raw)', figsize=(8,8), block_show=False, pos=(10,0))
+           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
+           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5, fname='img-my-calib.png')
+
+    if isubset & 16:
+            vmin, vmax = 0,20
+            evt = next(myrun.events())
+            raw = det.raw.raw(evt) & 0x3fff
+            peds = det.raw._pedestals()
+            raw_peds = raw - peds[2,:]
+            print(ndu.info_ndarr(raw_peds, 'raw - peds'))
+            plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8), block_show=True, pos=(10,10), vmin=vmin, vmax=vmax, fname='img-my-raw-peds.png')
+
+    if isubset & 32:
+        #while True:
+            #vmin, vmax = (0,20) if isubset & 16 else (-10,50)
+            evt = next(myrun.events())
+            #raw = det.raw.raw(evt) & 0x3fff
+            cal = det.raw.calib(evt)
+            peds = det.raw._pedestals()
+            #raw_peds = raw - peds[2,:]
+            #print(ndu.info_ndarr(raw_peds, 'raw - peds'))
+            print(ndu.info_ndarr(cal, 'cal'))
 
 
+def issue_2026_04_15(args):
+    """ISSUE: jungfrau 1M in xppc00125 run 77.
+       REASON:
+       FIX:
+       Mona: You can try ued1015999 run 185. Here's a full frame image of one shot sent by UED.
+       datinfo -k exp=ued1015999,run=185 -d epixquad1kfps
+       datinfo -k exp=xppc00125,run=148 -d jungfrau1M
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    #from time import sleep
 
+    events = args.events
+    isubset = 0o7777 if args.subtest is None else int(args.subtest)
 
+    if isubset & 1: expname, runnum, detname = 'xppc00125', 148, 'jungfrau1M'
+    if isubset & 2: expname, runnum, detname = 'ued1015999', 185, 'epixquad1kfps' # gain mode FL
 
-    
+    amin, amax = None, None
+    if isubset & 1: amin, amax = 0, 15
+
+    ds = DataSource(exp=expname, run=runnum, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector(detname)
+
+    geo_meta = det.calibconst['geometry']
+    if geo_meta is not None: print('geometry metadata:', geo_meta[1])
+
+    peds = det.raw._pedestals()
+    print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+
+    if True:
+        plot_image = True
+        flimg = None
+        for nevt,evt in enumerate(run.events()):
+            raw = det.raw.raw(evt)
+            print(ndu.info_ndarr(raw, '=== evt:%03d raw' % nevt, last=10))
+            #arr = np.array(raw, dtype=np.float32) & 0x7fff - peds[2,:] if isubset & 2 else raw
+            arr = det.raw.calib(evt)
+            #img = ndu.reshape_to_2d(raw)
+            img = det.raw.image(evt, arr)
+
+            print(ndu.info_ndarr(img, '             img', last=10))
+
+            if plot_image:
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=8, w_in=12, amin=amin, amax=amax)
+                    gr.plt.ion()
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+        if plot_image: gr.show()
+
 #===
 
 def issue_2026_MM_DD(subtest='0o7777'):
@@ -228,11 +467,13 @@ def argument_parser():
     d_detname  = 'archon' # None
     d_loglevel = 'INFO' # 'DEBUG'
     d_subtest  = None
+    d_events   = 5
     h_tname    = 'test name, usually numeric number 0,...,>20, default = %s' % d_tname
     h_dskwargs = '(str) dataset kwargs for DataSource(**kwargs), default = %s' % d_dskwargs
     h_detname  = 'detector name, default = %s' % d_detname
     h_subtest  = '(str) subtest name, default = %s' % d_subtest
     h_loglevel = 'logging level, one of %s, default = %s' % (', '.join(tuple(logging._nameToLevel.keys())), d_loglevel)
+    h_events   = '(int) number of events, default = %d' % d_events
     parser = ArgumentParser(description='%s is a bunch of tests for annual issues' % SCRNAME,\
                             usage='for list of implemented tests run it without parameters')
     parser.add_argument('tname',            default=d_tname,    type=str, help=h_tname)
@@ -240,6 +481,7 @@ def argument_parser():
     parser.add_argument('-d', '--detname',  default=d_detname,  type=str, help=h_detname)
     parser.add_argument('-L', '--loglevel', default=d_loglevel, type=str, help=h_loglevel)
     parser.add_argument('-s', '--subtest',  default=d_subtest,  type=str, help=h_subtest)
+    parser.add_argument('-n', '--events',   default=d_events,   type=int, help=h_events)
     return parser
 
 
@@ -257,7 +499,10 @@ def selector():
     elif TNAME in ('2',): issue_2026_02_26()
     elif TNAME in ('3',): issue_2026_03_16()
     elif TNAME in ('4',): issue_2026_03_27(args.subtest)
-    elif TNAME in ('99',): issue_2026_02_04(args.subtest)
+    elif TNAME in ('5',): issue_2026_04_01(args.subtest)
+    elif TNAME in ('6',): issue_2026_04_10(args.subtest)
+    elif TNAME in ('7',): issue_2026_04_15(args) # various images selected by -s [#]
+    elif TNAME in ('99',):issue_2026_MM_DD(args.subtest)
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
