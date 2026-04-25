@@ -34,8 +34,7 @@ CuSzReducer::CuSzReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
   m_predictor(Lorenzo),
   m_mode     (Rel),                     // set compression mode
   m_eb       (1.2e-4),                  // set error bound
-  m_m        (nullptr),
-  m_error_d  (nullptr)                  // Unused as yet
+  m_m        (nullptr)
 {
 }
 
@@ -48,16 +47,13 @@ CuSzReducer::~CuSzReducer()
 }
 
 // This routine records the graph that does the data reduction
-void CuSzReducer::recordGraph(cudaStream_t                       stream,
-                              unsigned*                    const index,
-                              RingQueueHtoD<unsigned>*     const inputQueue,
-                              float const*                 const calibBuffers,
-                              size_t                       const calibBufsCnt,
-                              uint8_t*                     const dataBuffers,
-                              size_t                       const dataBufsCnt,
-                              RingQueueDtoH<ReducerTuple>* const outputQueue,
-                              uint64_t*                    const state_d,
-                              unsigned*                    const done)
+void CuSzReducer::recordGraph(cudaStream_t       stream,
+                              unsigned*    const state,
+                              unsigned*    const index,
+                              float const* const calibBuffers,
+                              size_t       const calibBufsCnt,
+                              uint8_t*     const dataBuffers,
+                              size_t       const dataBufsCnt)
 {
   // @todo: More work is needed here
   logging::critical("CuSzReducer::recordGraph: To be implemented");
@@ -76,7 +72,7 @@ void CuSzReducer::reduce(cudaGraphExec_t,
                          cudaStream_t    stream,
                          unsigned        index,
                          size_t*         dataSize,
-                         unsigned*       error)
+                         unsigned*       retCode)
 {
   auto calibBuffers = m_pool.calibBuffers_d();
   auto calibBufsSz  = m_pool.calibBufsSize();
@@ -102,6 +98,7 @@ void CuSzReducer::reduce(cudaGraphExec_t,
   cudaMemcpy(dataBuffer, d_internal_compressed, compressed_len, cudaMemcpyDeviceToDevice);
   //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &compressed_len, sizeof(compressed_len), cudaMemcpyHostToDevice);
   *dataSize = compressed_len;
+  *retCode  = 0;                        // @todo: TBD
 }
 
 unsigned CuSzReducer::configure(Xtc& xtc, const void* bufEnd)

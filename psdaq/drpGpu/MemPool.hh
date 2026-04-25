@@ -17,9 +17,12 @@
 // nominally adds very little overhead but the documentation warns against
 // instrumenting code that takes less than 1 us to run.  The NVTX_DISABLE macro
 // can be defined to remove the NVTX calls from the codebase.
-//#define NVTX_DISABLE
+// - Apparently the meaning of this has evolved to enable and disable profile
+//   data collection in the Enable and Disable transitions, resp. and is
+//   unrelated to the use of NVTX.
+#define NVTX_DISABLE
 
-// If the HOST_REARMS_DMA  macro is defined, the GPU DRP can be run without
+// If the HOST_REARMS_DMA macro is defined, the GPU DRP can be run without
 // privileges.  The CPU rearms the DMA buffers for writing as early as possible,
 // but necessarily later than when the GPU can rearm them.  This will impact
 // performance so this definition is normally commented out.  In order to have
@@ -30,6 +33,21 @@
 // sudo chown root $TESTRELDIR/bin/drp_gpu; sudo chmod u+s $TESTRELDIR/bin/drp_gpu
 //
 //#define HOST_REARMS_DMA                 // Commented out => need sudo
+
+// The HOST_LAUNCHED_REDUCERS macro is used to determine when the Reducer GPU
+// code is launched.  Without this macro defined, Reducers constructed using a
+// CUDA graph are launched at startup time using the Reducer::startup() method.
+// Reducers launched this way remain present on the GPU for the duration of a
+// Configure/Unconfigure cycle.  The idea behind this is to amortise the launch
+// overhead and to pay it at a non-critical time.
+// Reducers composed of raw kernels are handled as if the macro were defined.
+// With it defined, Reducers, whether constructed using a graph or composed of
+// raw kernels are launched upon reception of a TEB result (in
+// TebReceiver::complete()).  The Reducer runs for as long as it takes for it to
+// process one event and then exits.  This means that the launch overhead is
+// paid in the real-time loop.
+//#define HOST_LAUNCHED_REDUCERS
+
 
 namespace Drp {
   namespace Gpu {
@@ -54,6 +72,9 @@ struct __attribute__((packed)) DmaDsc
   inline uint32_t cont()      const { return (header >>  3) & 0x01; }
   inline uint32_t lastUser()  const { return (header >> 16) & 0xFF; }
   inline uint32_t firstUser() const { return (header >> 24) & 0xFF; }
+
+  // firstUser = 0x02 is SOF: not an error
+  inline uint32_t errorMask() const { return 0xfdffffff; }
 };
 
 static_assert(sizeof(DmaDsc) == 8, "DmaDsc must be 64-bits (8-bytes)");

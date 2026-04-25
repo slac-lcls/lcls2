@@ -20,11 +20,13 @@ namespace Pds {
                    XtcData::Xtc&       xtc,
                    const void*         bufEnd) override;
       void   event(cudaStream_t           stream,
+                   unsigned* const        state,
                    float     const* const calibBuffers,
                    size_t    const        calibBufsCnt,
-                   uint32_t* const        out,
+                   uint32_t* const        outBuffers,
                    size_t    const        outBufsCnt,
-                   unsigned  const&       index) override;
+                   unsigned  const* const index,
+                   unsigned* const        retCode_d) override;
       GpuDispatchType gpuDispatchType() const override { return GpuDispatchType::TmoTeb; }
     size_t size() const override  { return sizeof(TmoTebData); }
     };

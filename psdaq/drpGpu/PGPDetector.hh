@@ -33,6 +33,15 @@ namespace Drp {
 class Detector;
 class MemPoolGpu;
 
+struct TebReceiverMetrics
+{
+  uint64_t cmpCtr          {0};
+  uint64_t recCtr          {0};
+  uint64_t reducerStarts   {0};
+  uint64_t reducerReceives {0};
+  uint64_t freeCtr         {0};
+};
+
 using ResultTuple = std::tuple<unsigned, const Pds::Eb::ResultDgram*>;
 
 class TebReceiver: public Drp::TebReceiverBase
@@ -63,6 +72,7 @@ private:
   std::shared_ptr<Collector>       m_collector;
   std::thread                      m_recorderThread;
   const Parameters&                m_para;
+  TebReceiverMetrics               m_metrics;
 };
 
 class PGPDrp : public DrpBase
@@ -74,9 +84,9 @@ public:
   unsigned unconfigure();
   void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
     { m_reducer->configure(xtc, bufEnd); }
-  bool reducerStart(unsigned wkr, unsigned& index)
+  bool reducerStart(unsigned wkr, unsigned& index) const
     { return m_reducer->start(wkr, index); }
-  bool reducerReceive(unsigned wkr, ReducerTuple* items)
+  bool reducerReceive(unsigned wkr, ReducerTuple* items) const
     { return m_reducer->receive(wkr, items); }
   void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
     { m_reducer->event(xtc, be, sz); }

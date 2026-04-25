@@ -31,82 +31,33 @@ public:
 
 LcReducer::LcReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo (para, pool, det),
-  m_compressor(pool.calibBufsSize(), 3),
-  m_error_d   (nullptr)                 // Unused as yet
+  m_compressor(pool.calibBufsSize(), 3)
 {
   if (para.verbose)  m_compressor.banner();
 }
 
-/** This kernel receives a message from TebReceiver that indicates which
- * calibBuffer is ready for reducing.
- */
-static __global__
-void _receive(unsigned*                const __restrict__ index,
-              RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
-              unsigned*                const __restrict__ done)
-{
-  //printf("### Reducer receive: 1, done %u\n", *done);
-  *done |= !inputQueue->pop(index);
-  //printf("### Reducer receive: 2, idx %u, done %u\n", *index, *done);
-}
-
-/** This will re-launch the current graph */
-static __global__
-void _graphLoop(unsigned const*              const __restrict__ index,
-                uint8_t*                     const __restrict__ dataBuffers,
-                size_t                       const              dataBufsCnt,
-                RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
-                unsigned*                    const __restrict__ done)
-{
-  auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
-  auto dataSize = ((size_t*)data)[-1];
-  //printf("### Reducer graphLoop: push {%u, %lu}, done %u\n", *index, dataSize, *done);
-  *done |= !outputQueue->push({*index, dataSize});
-  if (!*done) {
-    cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
-  }
-  //printf("### Reducer graphLoop: idx %u, done %u\n", *index, *done);
-}
-
 // This routine records the graph that does the data reduction
-void LcReducer::recordGraph(cudaStream_t                       stream,
-                            unsigned*                    const index,
-                            RingQueueHtoD<unsigned>*     const inputQueue,
-                            float const*                 const calibBuffers,
-                            size_t                       const calibBufsCnt,
-                            uint8_t*                     const dataBuffers,
-                            size_t                       const dataBufsCnt,
-                            RingQueueDtoH<ReducerTuple>* const outputQueue,
-                            uint64_t*                    const state_d,
-                            unsigned*                    const done)
+void LcReducer::recordGraph(cudaStream_t       stream,
+                            unsigned*    const state,
+                            unsigned*    const index,
+                            float const* const calibBuffers,
+                            size_t       const calibBufsCnt,
+                            uint8_t*     const dataBuffers,
+                            size_t       const dataBufsCnt)
 {
-  // @todo: More work is needed here
-  logging::critical("LcReducer::recordGraph: To be implemented");
-  abort();
-
-  // Handle messages from TebReceiver to process an event
-  _receive<<<1, 1, 0, stream>>>(index, inputQueue, done);
-
   m_compressor.updateGraph(stream,
                            *index,
                            (uint8_t*)calibBuffers,
                            calibBufsCnt * sizeof(*calibBuffers),
                            (uint8_t*)dataBuffers,
                            dataBufsCnt * sizeof(*dataBuffers));
-
-  // Re-launch! Additional behavior can be put in graphLoop as needed.
-  _graphLoop<<<1, 1, 0, stream>>>(index,
-                                  dataBuffers,
-                                  dataBufsCnt,
-                                  outputQueue,
-                                  done);
 }
 
 void LcReducer::reduce(cudaGraphExec_t graph,
                        cudaStream_t    stream,
                        unsigned        index,
                        size_t*         dataSize,
-                       unsigned*       error)
+                       unsigned*       retCode)
 {
   chkFatal(cudaGraphLaunch(graph, stream));
 
@@ -114,6 +65,7 @@ void LcReducer::reduce(cudaGraphExec_t graph,
   auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
   auto pSize   = buffer - sizeof(*dataSize);
   chkError(cudaMemcpyAsync((void*)dataSize, pSize, sizeof(*dataSize), cudaMemcpyDeviceToHost, stream));
+  *retCode = 0;                         // @todo: TBD
 }
 
 unsigned LcReducer::configure(Xtc& xtc, const void* bufEnd)

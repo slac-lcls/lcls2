@@ -41,11 +41,13 @@ namespace Pds {
                            XtcData::Xtc&       xtc,
                            const void*         bufEnd) = 0;
       virtual void   event(cudaStream_t           stream,
+                           unsigned* const        state,
                            float     const* const calibBuffers,
                            size_t    const        calibBufsCnt,
-                           uint32_t* const        out,
+                           uint32_t* const        outBuffers,
                            size_t    const        outBufsCnt,
-                           unsigned  const&       index) {}
+                           unsigned  const* const index,
+                           unsigned* const        retCode_d) {}
       virtual GpuDispatchType gpuDispatchType() const { return GpuDispatchType::None; }
       virtual size_t size() const = 0;
     };

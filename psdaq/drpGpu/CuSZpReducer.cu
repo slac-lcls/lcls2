@@ -38,27 +38,19 @@ public:
 
 CuSZpReducer::CuSZpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo (para, pool, det),
-  m_errorBound(1.2e-4),                 // Set absolute error bound
-  m_error_d   (nullptr)                 // Unused as yet
+  m_errorBound(1.2e-4)                  // Set absolute error bound
 {
 }
 
 // This routine records the graph that does the data reduction
-void CuSZpReducer::recordGraph(cudaStream_t                       stream,
-                               unsigned*                    const index,
-                               RingQueueHtoD<unsigned>*     const inputQueue,
-                               float const*                 const calibBuffers,
-                               size_t                       const calibBufsCnt,
-                               uint8_t*                     const dataBuffers,
-                               size_t                       const dataBufsCnt,
-                               RingQueueDtoH<ReducerTuple>* const outputQueue,
-                               uint64_t*                    const state_d,
-                               unsigned*                    const done)
+void CuSZpReducer::recordGraph(cudaStream_t       stream,
+                               unsigned*    const state,
+                               unsigned*    const index,
+                               float const* const calibBuffers,
+                               size_t       const calibBufsCnt,
+                               uint8_t*     const dataBuffers,
+                               size_t       const dataBufsCnt)
 {
-  // @todo: More work is needed here
-  logging::critical("CuSZpReducer::recordGraph: To be implemented");
-  abort();
-
   //uint8_t* d_internal_compressed{nullptr};
   //auto m = psz_create_resource_manager(F4, calibBufCnt, 1, 1, stream);
   //
@@ -72,7 +64,7 @@ void CuSZpReducer::reduce(cudaGraphExec_t graph,
                           cudaStream_t    stream,
                           unsigned        index,
                           size_t*         dataSize,
-                          unsigned*       error)
+                          unsigned*       retCode)
 {
   cuszp_scoped_range r{/*"CuSZpReducer::reduce"*/}; // Expose function name via NVTX
 
@@ -88,17 +80,11 @@ void CuSZpReducer::reduce(cudaGraphExec_t graph,
   auto dataBuffer  = &dataBuffers[index * dataBufsCnt];
 
   size_t cmpSize1 = 0;
-  //auto t0{Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)};
   cuSZp_compress_plain_f32(calibBuffer, dataBuffer, calibBufsCnt, &cmpSize1, m_errorBound, stream);
 
   //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &cmpSize1, sizeof(cmpSize1), cudaMemcpyHostToDevice);
   *dataSize = cmpSize1;
-  //auto now{Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-
-  //using us_t = std::chrono::microseconds;
-  //auto dt{std::chrono::duration_cast<us_t>(now - t0).count()};
-  //auto ratio{double(calibBufsSz)/double(cmpSize1)};
-  //printf("*** dt %lu us, in %zu / out %zu = %f\n", dt, calibBufsSz, cmpSize1, ratio);
+  *retCode = 0;                         // @todo: TBD
 }
 
 unsigned CuSZpReducer::configure(Xtc& xtc, const void* bufEnd)

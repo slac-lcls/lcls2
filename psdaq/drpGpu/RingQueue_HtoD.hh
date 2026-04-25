@@ -1,16 +1,11 @@
 #ifndef RINGQUEUE_HTOD_HH
 #define RINGQUEUE_HTOD_HH
 
-#include <time.h>
 #include <atomic>
 #include <cassert>
 
 #include <cuda_runtime.h>
 #include <cuda/std/atomic>
-
-#ifndef __NVCC__
-#define __nanosleep(x) {}
-#endif
 
 namespace Drp {
   namespace Gpu {
@@ -19,18 +14,14 @@ template <typename T>
 class RingQueueHtoD
 {
 public:
-  __host__ RingQueueHtoD(const unsigned                     capacity,
-                         const std::atomic<bool>&           terminate,
-                         const cuda::std::atomic<unsigned>& terminate_d) :
+  __host__ RingQueueHtoD(const unsigned capacity) :
     m_head_h      (nullptr),
     m_head_d      (nullptr),
     m_tail_h      (nullptr),
     m_tail_d      (nullptr),
     m_capacityMask(capacity-1),    // Range of the buffer queue [0, capacity-1]
     m_ringBuffer_h(nullptr),
-    m_ringBuffer_d(nullptr),
-    m_terminate   (terminate),
-    m_terminate_d (terminate_d)
+    m_ringBuffer_d(nullptr)
   {
     assert(capacity & (capacity - 1));  // Capacity must be a power of 2
 
@@ -56,57 +47,25 @@ public:
     if (m_head_h)        chkError(cudaFreeHost(m_head_h));
   }
 
-  __host__ bool push(const T& value)
+  __host__ bool push(const T& value) const             /** Store value at head and advance when not full */
   {
     using namespace cuda::std;
+    auto tail = m_tail_h->load(memory_order_acquire);
     auto head = m_head_h->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
-    auto tail = m_tail_h->load(memory_order_acquire);
-    //bool wait{false};
-    //unsigned ns{8};
-    while (next == tail) {                             // Wait for tail to advance while full
-      if (m_terminate.load(std::memory_order_acquire)) {
-        printf("*** RingQueue_HtoD::push: full @ %u, capacity %u\n", tail, m_capacityMask+1);
-        return false;
-      }
-      //_nsSleep(ns);
-      //if (ns < 256)  ns *= 2;
-      tail = m_tail_h->load(memory_order_acquire);
-      //if (!wait) {
-      //  wait = true;
-      //  printf("*** rqHtoD::push: wait T, next %d, tail %d\n", next, tail);
-      //}
-    }
-    //if (wait)
-    //  printf("*** rqHtoD::push: wait F, next %d, tail %d\n", next, tail);
+    if (next == tail)  return false;                   // Full: caller retries to wait for tail to advance
     asm volatile("mfence" ::: "memory");               // Avoid reordering of the head store and the tail load
     m_ringBuffer_h[head] = value;                      // Store value _before_ signaling it is available
     m_head_h->store(next, memory_order_release);       // Publish new head
     return true;
   }
 
-  __device__ bool pop(T* const __restrict__ value)
+  __device__ bool pop(T* const __restrict__ value) const /** Fetch value at tail and advance when not empty */
   {
     using namespace cuda::std;
     auto tail = m_tail_d->load(memory_order_acquire);
     auto head = m_head_d->load(memory_order_acquire);
-    //bool wait{false};
-    unsigned ns{8};
-    while (tail == head) {                             // Wait for head to advance while empty
-      if (m_terminate_d.load(memory_order_acquire)) {
-        printf("### RingQueue_HtoD::pop: empty @ %u, capacity %u\n", tail, m_capacityMask+1);
-        return false;
-      }
-      __nanosleep(ns);
-      if (ns < 256)  ns *= 2;
-      head = m_head_d->load(memory_order_acquire);
-      //if (!wait) {
-      //  wait = true;
-      //  printf("### rqHtoD::pop: wait T, tail %d, head %d\n", tail, head);
-      //}
-    }
-    //if (wait)
-    //  printf("### rqHtoD::pop: wait F, tail %d, head %d\n", tail, head);
+    if (tail == head)  return false;                   // Empty: caller retries to wait for head to advance
     *value = m_ringBuffer_d[tail];                     // Fetch value _before_ signaling it is available
     auto next = (tail+1) & m_capacityMask;
     m_tail_d->store(next, memory_order_release);       // Publish new tail
@@ -133,7 +92,7 @@ public:
     return (head - tail) & m_capacityMask;
   }
 
-  size_t size() const
+  __host__ __device__ size_t size() const
   {
     return m_capacityMask + 1;
   }
@@ -145,22 +104,13 @@ public:
   }
 
 private:
-  __host__ static int _nsSleep(unsigned ns)
-  {
-    struct timespec ts{0, ns};
-    return nanosleep(&ts, nullptr);
-  }
-
-private:
-  cuda::std::atomic<unsigned>*       m_head_h; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>*       m_head_d; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>*       m_tail_h; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>*       m_tail_d; // Must stay coherent across device and host
-  const unsigned                     m_capacityMask;
-  T*                                 m_ringBuffer_h;
-  T*                                 m_ringBuffer_d;
-  const std::atomic<bool>&           m_terminate;
-  const cuda::std::atomic<unsigned>& m_terminate_d;
+  cuda::std::atomic<unsigned>* m_head_h; // Must stay coherent across device and host
+  cuda::std::atomic<unsigned>* m_head_d; // Must stay coherent across device and host
+  cuda::std::atomic<unsigned>* m_tail_h; // Must stay coherent across device and host
+  cuda::std::atomic<unsigned>* m_tail_d; // Must stay coherent across device and host
+  const unsigned               m_capacityMask;
+  T*                           m_ringBuffer_h;
+  T*                           m_ringBuffer_d;
 };
 
   } // Gpu

@@ -12,6 +12,7 @@
 
 #include "drp/drp.hh"
 #include "MemPool.hh"                   // For Ptr
+#include "RingIndex_HtoD.hh"
 #include "RingIndex_DtoD.hh"
 
 namespace Pds {
@@ -29,7 +30,10 @@ class Detector;
 
 struct ReaderMetrics
 {
-  Ptr<uint64_t> state {nullptr, nullptr};
+  Ptr<uint64_t> state    {nullptr, nullptr};
+  Ptr<uint64_t> pblWtCtr {nullptr, nullptr};
+  Ptr<uint64_t> dmaWtCtr {nullptr, nullptr};
+  Ptr<uint64_t> fwdWtCtr {nullptr, nullptr};
 };
 
 class Reader
@@ -43,7 +47,8 @@ public:
   void start();
 public:
   MemPool& pool()  const { return m_pool; }
-  Ptr<RingIndexDtoD>& queue() { return m_readerQueue; }
+  Ptr<RingIndexHtoD>& pebbleQueue() { return m_pebbleQueue; }
+  Ptr<RingIndexDtoD>& readerQueue() { return m_readerQueue; }
 private:
   int         _setupGraph();
   cudaGraph_t _recordGraph();
@@ -55,8 +60,9 @@ private:
   const cuda::std::atomic<unsigned>& m_terminate_d;
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;
+  Ptr<RingIndexHtoD>                 m_pebbleQueue;
   Ptr<RingIndexDtoD>                 m_readerQueue;
-  unsigned*                          m_head;
+  unsigned*                          m_state_d;
   CUdeviceptr*                       m_dmaBuffers;    // [dmaCount][maxDmaSize]
   CUdeviceptr*                       m_fpgaRegs;
   const Parameters&                  m_para;

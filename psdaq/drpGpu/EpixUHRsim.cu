@@ -107,13 +107,13 @@ public:
         auto datum = raw[j] & ((1 << EpixUHRsim::RangeOffset) - 1);
         ref[j] = (float(datum) - pedestals[gain][j]) * gains[gain][j];
         //if (j < 4) {
-        //  printf("***SimDet::calcRef: i %u, j %u: raw %04x, dat %u, rng %u, ped %f, gn %f, ref %f\n", i, j, raw[j], datum, gain, pedestals[gain][j], gains[gain][j], ref[j]);
+        //  printf("***SimDet::calcRef: i %u, j %u: raw %04x, dat %u, rng %u, ped %f, gn %f, ref %f\n",
+        //         i, j, raw[j], datum, gain, pedestals[gain][j], gains[gain][j], ref[j]);
         //}
       }
     }
 
-    // Copy the reference data to the device
-    //chkError(cudaMalloc(&m_reference_d,                   reference.size() * sizeof(*m_reference_d)));
+    // Copy the reference data for all reference events to the device
     chkError(cudaMemcpy( m_reference_d, reference.data(), reference.size() * sizeof(*m_reference_d), cudaMemcpyDefault));
   }
   float const* referenceBuffers() const

@@ -58,10 +58,8 @@ TebReceiver::~TebReceiver()
 }
 
 //bool     lDisable{false};
-//uint64_t lReduceStarts{0};
-//uint64_t lReduceReceives{0};
 //unsigned lLastIndex{0};
-unsigned lState{0};
+unsigned lStateMon{0};
 
 int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                               std::map<std::string, std::string>&   labels)
@@ -69,7 +67,18 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   exporter->add("DRP_smdWriting",  labels, MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
   exporter->add("DRP_fileWriting", labels, MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
   exporter->add("DRP_recordQueue", labels, MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
-  exporter->add("DRP_recordState", labels, MetricType::Gauge, [&](){ return lState; });
+  exporter->add("DRP_recordState", labels, MetricType::Gauge, [&](){ return lStateMon; });
+
+  m_metrics.cmpCtr = 0;
+  m_metrics.recCtr = 0;
+  m_metrics.reducerStarts = 0;
+  m_metrics.reducerReceives = 0;
+  m_metrics.freeCtr = 0;
+  exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
+  exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
+  exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
+  exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
+  exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
 
   return 0;
 }
@@ -85,7 +94,7 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
-  m_fileWriter = nullptr; //std::make_unique<FileWriter>(maxBufSize, true);
+  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, true);
   //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, true); // For 2 ping pong buffers
   printf("*** TebRcvr::setup: 2\n");
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
@@ -147,8 +156,8 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
                  TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
 //  if (result.service() == TransitionId::Disable) {
-//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reduceStarts %lu, reduceReceives %lu, lastIdx %u, idx %u, state %u\n",
-//           m_recordQueue.guess_size(), lReduceStarts, lReduceReceives, lLastIndex, index, lState);
+//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
+//           m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
 //    static_cast<PGPDrp&>(m_drp).reducerDump();
 //    lDisable = true;
 //    const_cast<Parameters*>(&m_para)->verbose++;
@@ -156,15 +165,21 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
+  ++m_metrics.cmpCtr;
 
   // Start up a reducer only when there is a need for its result
   // Running the reducer on transitions is a no-op, so avoid its overhead
   if (result.persist() || result.monitor()) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
-    static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
+    while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
+      if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+        printf("*** TebRcvr::complete: Terminating on inputQueue[%u] full for idx %u\n", m_worker, index);
+        return;                         // @todo: Revisit
+      }
+    }
     m_worker = (m_worker + 1) % m_para.nworkers;
-//    ++lReduceStarts;
+    ++m_metrics.reducerStarts;
 //    lLastIndex = index;
   }
 }
@@ -193,8 +208,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
-  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
-  //chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamDefault, prio));
+  //chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
@@ -205,15 +220,15 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   // Collect completion information from the reducer kernels in time order
   unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
-    lState = 1;
+    lStateMon = 1;
     // Wait for a new Result to appear from the TEB via the complete() method above
     ResultTuple items;
     if (!m_recordQueue.pop(items)) {
-      lState = 15;
       printf("*** TebRcvr::recorder: No item from recordQueue\n");
       continue;
     }
-    lState = 2;
+    lStateMon = 2;
+    ++m_metrics.recCtr;
     const auto index  = std::get<0>(items);
     const auto result = std::get<1>(items);
     nvtx3::mark("Recorder", nvtx3::payload{index});
@@ -227,28 +242,29 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     size_t dataSize;
     if (result->persist() || result->monitor()) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
-      lState = 3;
+      lStateMon = 3;
       ReducerTuple rt;
-      if (!drp.reducerReceive(worker, &rt)) [[unlikely]] { // This blocks until result is ready from GPU
-        lState = 14;
-        printf("*** TebRcvr::recorder: No item from reducerReceiver %u\n", worker);
-        continue;
+      while (!drp.reducerReceive(worker, &rt)) { // Block here until a result is ready from GPU
+        if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+          printf("*** TebRcvr::recorder: Terminating on outputQueue[%u] empty\n", worker);
+          return;                       // @todo: Revisit
+        }
       }
-      lState = 4;
+      ++m_metrics.reducerReceives;
+      lStateMon = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
       worker = (worker + 1) % m_para.nworkers;
-//      ++lReduceReceives;
 
       if (rt.index != index) [[unlikely]] { // Sanity check
-        logging::critical("Recorder vs Reducer index mismatch: %u vs %u", index, rt.index);
+        logging::critical("Recorder vs Reducer index mismatch: wkr %u: %u vs %u", worker, index, rt.index);
         //abort();
       }
       dataSize = rt.dataSize;
     }
-    lState = 5;
+    lStateMon = 5;
 
 //    if (lDisable) {
-//      printf("*** TebRcvr::recorder: reduceReceives %lu\n", lReduceReceives);
+//      printf("*** TebRcvr::recorder: reducerReceives %lu\n", m_metrics.reducerReceives);
 //      drp.reducerDump();
 //      printf("*** TebRcvr::recorder: 1 idx %u, dataSize %zu\n", index, dataSize);
 //      printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
@@ -259,7 +275,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
-    lState = 6;
+    lStateMon = 6;
 
     // Look up the datagram, whether transition or L1Accept
     auto dgram = result->isEvent() ? (EbDgram*)m_pool.pebble[index] : m_pool.transitionDgrams[index];
@@ -291,7 +307,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
                        pulseId);
       }
     }
-    lState = 7;
+    lStateMon = 7;
 
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
@@ -331,7 +347,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       buffer -= sizeof(Dgram);          // Points to the start of the Dgram
       dgSize  = cpSize;
     }
-    lState = 8;
+    lStateMon = 8;
 
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
     if (dgSize > maxSize) {
@@ -422,7 +438,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       m_latPid = pulseId;
     }
     //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
-    lState = 9;
+    lStateMon = 9;
 
     m_evtSize = dgSize;
 
@@ -443,7 +459,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       }
     }
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
-    lState = 10;
+    lStateMon = 10;
 
     // Synchronize before releasing buffers
     //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
@@ -453,18 +469,18 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
         m_pool.freeTr(dgram);
         //printf("*** TebRcvr::recorder: 8, freeTr %014lx\n", pulseId);
     }
-    lState = 11;
+    lStateMon = 11;
 
     // Free the pebble datagram buffer
     m_pool.freePebble(index);
     //printf("*** TebRcvr::recorder: 8, freePebble %d\n", index);
-    lState = 12;
+    lStateMon = 12;
 
     //// Free the reduce buffer
     //m_reducer->release(index);
     //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
+    ++m_metrics.freeCtr;
     nvtx3::mark("Pebble released", nvtx3::payload{index});
-    lState = 13;
   }
 
   logging::info("Recorder thread is exiting");
@@ -491,7 +507,7 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   }
 
   // Partition the GPU for the various kernels to be run
-//  _setupGreenContexts(memPool);
+  _setupGreenContexts(memPool);
 
   // Set up thread termination flags
   chkError(cudaMalloc(&m_terminate_d,    sizeof(*m_terminate_d)));
@@ -513,7 +529,7 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   auto gpu_device_index{memPool.context().deviceNo()};
   chkError(cudaSetDevice(gpu_device_index));
 
-  // Get all available GPU SM resources
+  // Determine all available GPU SM resources
   cudaDevResource initial_SM_resources = {};
   chkError(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
                                     &initial_SM_resources,   // Device resource to populate
@@ -525,7 +541,7 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   logging::info("  - Min. SM partition size: %d SMs", initial_SM_resources.sm.minSmPartitionSize);
   logging::info("  - SM co-scheduled alignment: %d SMs", initial_SM_resources.sm.smCoscheduledAlignment);
 
-  //// Get all available GPU Work Queue resources
+  //// Determine all available GPU Work Queue resources
   //cudaDevResource initial_WQ_config_resources = {};
   //chkError(cudaDeviceGetDevResource(gpu_device_index,                     // GPU device
   //                                  &initial_WQ_config_resources,         // Device resource to populate
@@ -556,26 +572,19 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
   chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
 
-//  CUcontext green_primary;
-//  cuCtxFromGreenCtx(&green_primary, m_green_ctx[0]);
-//  cuCtxSetCurrent(green_primary);
-//
-//  cudaStream_t stream;
-//  cudaStreamCreate(&stream);
-
   // Get all available GPU SM resources
-//  for (unsigned i = 0; i < nbGroups+1; ++i) {
-//    cudaDevResource final_SM_resources = {};
-//    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
-//                                            &final_SM_resources,     // Device resource to populate
-//                                            cudaDevResourceTypeSm)); // Resource type
-//
-//    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
-//
-//    // Special fields relevant for partitioning
-//    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
-//    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
-//  }
+  for (unsigned i = 0; i < nbGroups+1; ++i) {
+    cudaDevResource final_SM_resources = {};
+    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
+                                            &final_SM_resources,     // Device resource to populate
+                                            cudaDevResourceTypeSm)); // Resource type
+
+    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
+
+    // Special fields relevant for partitioning
+    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
+    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
+  }
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -736,121 +745,117 @@ void PGPDrp::_collector()
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
   unsigned bufIndex = 0;                // Intermediate buffer index
-  while (true) {
+  while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
-    if (m_terminate.load(std::memory_order_relaxed)) {
-      break;
+
+    // Receive an event
+    if (!m_collector->receive(&m_det))  continue; // This can block
+
+    //drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
+    auto timingHeader = m_det.getTimingHeader(bufIndex);
+    //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
+    //auto p = (const uint32_t*)timingHeader;
+    //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
+    //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+    auto pgpIndex = timingHeader->evtCounter & bufferMask;
+    //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
+    auto event = &pool.pgpEvents[pgpIndex];
+    if (event->mask == 0) {
+      printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
+      continue;                       // Skip broken event
+    }
+    //printf("*** PGPDrp::collector: event %p\n", event);
+
+    auto pid = timingHeader->pulseId();
+    //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
+    if (pid <= lastPid)
+      logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
+    lastPid = pid;
+
+    // Allocate transition datagrams before allocating the pebble buffer
+    // since pebble buffers can't be freed out of order if this fails
+    TransitionId::Value transitionId = timingHeader->service();
+    EbDgram* trDgram;
+    if (transitionId != TransitionId::L1Accept) {
+      // Allocate a transition datagram from the pool
+      trDgram = pool.allocateTr();
+      if (!trDgram) [[unlikely]] {
+        m_collector->freeDma(event);  // Leaves event mask = 0
+        ++m_nNoTrDgrams;
+        continue;                     // Can happen during shutdown
+      }
     }
 
-    auto nRet = m_collector->receive(&m_det); // This can block
+    // Allocate a pebble buffer
+    //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
+    auto pebbleIndex = pool.allocate(); // This can block
+    //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
+    event->pebbleIndex = pebbleIndex;
+    Src src{m_det.nodeId};
 
-    for (unsigned b = 0; b < nRet; ++b) {
-      drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
-      auto timingHeader = m_det.getTimingHeader(bufIndex);
-      //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
-      //auto p = (const uint32_t*)timingHeader;
-      //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
-      //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-      auto pgpIndex = timingHeader->evtCounter & bufferMask;
-      //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
-      auto event = &pool.pgpEvents[pgpIndex];
-      if (event->mask == 0) {
-        printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
-        continue;                       // Skip broken event
+    // Make a new dgram in the pebble
+    // It must be an EbDgram in order to be able to send it to the MEB
+    auto dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
+
+    // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
+    auto l3InpBuf = tebContributor().fetch(pebbleIndex);
+    auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
+
+    if (transitionId == TransitionId::L1Accept) {
+      // @todo: Can event() here help with prescaled raw/calibrated data?
+      //m_det.event(dgram, bufEnd);
+      //const auto p = (uint32_t*)&timingHeader[1];
+      //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
+      if (trgPrimitive) { // else this DRP doesn't provide TEB input
+        // Copy the TEB input data from the GPU into the TEB input datagram
+        auto tpSz = trgPrimitive->size();
+        const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
+        auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
+        memcpy(buf, &timingHeader[1], tpSz);
       }
-      //printf("*** PGPDrp::collector: event %p\n", event);
+    } else {  // Transition
+      logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
+                     TransitionId::name(transitionId),
+                     dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
 
-      auto pid = timingHeader->pulseId();
-      //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
-      if (pid <= lastPid)
-        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
-      lastPid = pid;
+      // Store the empty transition dgram allocated above in the pebble
+      pool.transitionDgrams[pebbleIndex] = trDgram;
 
-      // Allocate transition datagrams before allocating the pebble buffer
-      // since pebble buffers can't be freed out of order if this fails
-      TransitionId::Value transitionId = timingHeader->service();
-      EbDgram* trDgram;
-      if (transitionId != TransitionId::L1Accept) {
-        // Allocate a transition datagram from the pool
-        trDgram = pool.allocateTr();
-        if (!trDgram) [[unlikely]] {
-          m_collector->freeDma(event);  // Leaves event mask = 0
-          ++m_nNoTrDgrams;
-          continue;                     // Can happen during shutdown
-        }
+      // Initialize the transition dgram's header
+      memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+
+      if (transitionId == TransitionId::SlowUpdate) {
+        // Store the SlowUpdate's payload in the transition datagram
+        const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+        m_det.slowupdate(trDgram->xtc, bufEnd);
+        //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
+      } else {                // Transition
+        // copy the temporary xtc created on phase 1 of the transition
+        // into the real location
+        Xtc& trXtc = m_det.transitionXtc();
+        trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+        const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+        auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+        //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
       }
-
-      // Allocate a pebble buffer
-      //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
-      auto pebbleIndex = pool.allocate(); // This can block
-      //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
-      event->pebbleIndex = pebbleIndex;
-      Src src{m_det.nodeId};
-
-      // Make a new dgram in the pebble
-      // It must be an EbDgram in order to be able to send it to the MEB
-      auto dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
-
-      // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
-      auto l3InpBuf = tebContributor().fetch(pebbleIndex);
-      auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
-
-      if (transitionId == TransitionId::L1Accept) {
-        // @todo: Can event() here help with prescaled raw/calibrated data?
-        //m_det.event(dgram, bufEnd);
-        //const auto p = (uint32_t*)&timingHeader[1];
-        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
-        if (trgPrimitive) { // else this DRP doesn't provide TEB input
-          // Copy the TEB input data from the GPU into the TEB input datagram
-          auto tpSz = trgPrimitive->size();
-          const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
-          auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
-          memcpy(buf, &timingHeader[1], tpSz);
-        }
-      } else {  // Transition
-        logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
-                       TransitionId::name(transitionId),
-                       dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
-
-        // Store the empty transition dgram allocated above in the pebble
-        pool.transitionDgrams[pebbleIndex] = trDgram;
-
-        // Initialize the transition dgram's header
-        memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
-
-        if (transitionId == TransitionId::SlowUpdate) {
-          // Store the SlowUpdate's payload in the transition datagram
-          const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
-          m_det.slowupdate(trDgram->xtc, bufEnd);
-          //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
-        } else {                // Transition
-          // copy the temporary xtc created on phase 1 of the transition
-          // into the real location
-          Xtc& trXtc = m_det.transitionXtc();
-          trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-          const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
-          auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-          memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-          //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
-        }
-      }
-
-      // Post level-3 input datagram to the TEB
-      //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
-      tebContributor().process(pebbleIndex);
-      nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
-
-      // Time out batches for the TEB
-      /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
-      ///     if (tebContributor.timeout()) {              // After batch is timed out,
-      ///         rc = m_workerQueues[worker].popW(batch); // pend
-      ///         break;
-      ///     }
-      /// }
-      /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
-
-      bufIndex = (bufIndex + 1) & bufferMask;
     }
+
+    // Post level-3 input datagram to the TEB
+    //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
+    tebContributor().process(pebbleIndex);
+    nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
+
+    // Time out batches for the TEB
+    /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
+    ///     if (tebContributor.timeout()) {              // After batch is timed out,
+    ///         rc = m_workerQueues[worker].popW(batch); // pend
+    ///         break;
+    ///     }
+    /// }
+    /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
+
+    bufIndex = (bufIndex + 1) & bufferMask;
   }
 
   // Flush the Reader buffers

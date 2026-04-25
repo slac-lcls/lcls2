@@ -180,7 +180,7 @@ void SimDetector::_eventSimulator()
   unsigned dmaIdx{0};
   uint32_t dmaCntMsk{memPool.dmaCount() - 1};
   std::vector<uint8_t> thBuffer(sizeof(TimingHeader)); // No default constructor for TimingHeader
-  auto thOffset{coreRegs.dmaDataBytes()};
+  auto frameSize{coreRegs.dmaDataBytes()};
   auto dmaBuffers{panel->dmaBuffers};
   while (!m_terminate.load(std::memory_order_acquire)) {
     // Wait for a new transition to appear from the "control level"
@@ -233,16 +233,20 @@ void SimDetector::_eventSimulator()
     //printf("*** SimDetector::evtSim: thBuf %08x %08x %08x %08x %08x %08x %08x %08x\n", p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
     size_t dmaSize{thSize};
     if (tid == TransitionId::L1Accept) {
-      auto hdrSize{thOffset + thSize};
+      auto payloadOffset{frameSize + sizeof(TimingHeader)};
       uint8_t* data_d;
-      auto dataSize = _genL1Payload(&data_d, evtIdx, 0); // Don't do partial events for now: m_length);
+      auto dataSize = _genL1Payload(&data_d, evtIdx, 0); // @todo: Not supporting partial events for now: m_length);
       if (verify) {  // Avoid overhead by not injecting data if it's not going to be verified
-        chkError(cudaMemcpyAsync((void*)(dmaBuffer + hdrSize), data_d, dataSize, cudaMemcpyDefault, m_stream));
+        // Copy (DtoD) the reference data to the DMA buffer after the TimingHeader
+        chkError(cudaMemcpyAsync((void*)(dmaBuffer + payloadOffset), data_d, dataSize, cudaMemcpyDefault, m_stream));
       }
       dmaSize += dataSize;
     }
-    //printf("*** SimDetector::evtSim: dmaBuf %p + thOs %u = %p\n", dmaBuffer, thOffset, dmaBuffer + thOffset);
-    chkError(cudaMemcpyAsync((void*)(dmaBuffer + thOffset), thBuffer.data(), thSize, cudaMemcpyDefault, m_stream));
+    //printf("*** SimDetector::evtSim: evtIdx %u, dmaIdx %u, dmaBuf %p + frmSz %u = %p\n",
+    //       evtIdx, dmaIdx, dmaBuffer, frameSize, dmaBuffer + frameSize);
+    // Copy (HtoD) the TimingHeader after the first DMA frame containing the DmaDsc
+    chkError(cudaMemcpyAsync((void*)(dmaBuffer + frameSize), thBuffer.data(), thSize, cudaMemcpyDefault, m_stream));
+    // Trigger the DMA completion "doorbell" by writing the total data size into the DmaDsc size word
     _trigger(dmaBuffer, dmaSize);
     dmaIdx = (dmaIdx + 1) & dmaCntMsk;
 
