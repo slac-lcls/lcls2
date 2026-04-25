@@ -452,7 +452,7 @@ bool Collector::receive(Detector* det)
   }
 #endif
 
-  logging::debug("dma %u, hdr %08x, sz %08x = %u", index, dmaDsc->header, dmaDsc->size);
+  logging::debug("dma %u, hdr %08x, sz %08x = %u", index, dmaDsc->header, dmaDsc->size, dmaDsc->size);
   logging::debug("idx %u  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
                  index, timingHeader->control(), timingHeader->pulseId(), timingHeader->time.value(),
                  timingHeader->env, timingHeader->evtCounter,
