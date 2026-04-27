@@ -130,6 +130,15 @@ def _build_parser():
         ),
     )
     parser.add_argument(
+        "--extra-gpu-work",
+        type=int,
+        default=0,
+        help=(
+            "Run this many extra in-place GPU math iterations after calibration "
+            "(default: 0)."
+        ),
+    )
+    parser.add_argument(
         "--compare-cpu-events",
         type=int,
         default=0,
@@ -262,11 +271,12 @@ def _nvtx_range(name):
 
 
 class JungfrauMultiOwnerGpu:
-    def __init__(self, det_raw, device_id):
+    def __init__(self, det_raw, device_id, extra_gpu_work=0):
         if cp is None:
             raise SystemExit("CuPy is required for this script.")
         self.det_raw = det_raw
         self.device_id = int(device_id)
+        self.extra_gpu_work = int(extra_gpu_work)
         self.device = cp.cuda.Device(self.device_id)
         self.device.use()
         self.stream = cp.cuda.Stream(non_blocking=True)
@@ -324,6 +334,8 @@ class JungfrauMultiOwnerGpu:
         copy_stop_evt = cp.cuda.Event()
         kernel_start_evt = cp.cuda.Event()
         kernel_stop_evt = cp.cuda.Event()
+        extra_start_evt = cp.cuda.Event()
+        extra_stop_evt = cp.cuda.Event()
 
         with self.stream:
             with _nvtx_range("psana2-gpu/h2d"):
@@ -345,17 +357,31 @@ class JungfrauMultiOwnerGpu:
                 out_flat[...] = (
                     cp.bitwise_and(raw_flat, 0x3FFF).astype(cp.float32) - pedoff
                 ) * gain
+                if self.extra_gpu_work > 0:
+                    extra_start_evt.record()
+                    scale = np.float32(1.000001)
+                    offset = np.float32(0.000001)
+                    for _ in range(self.extra_gpu_work):
+                        cp.multiply(out_flat, scale, out=out_flat)
+                        cp.add(out_flat, offset, out=out_flat)
+                    extra_stop_evt.record()
                 kernel_stop_evt.record()
 
         kernel_stop_evt.synchronize()
         copy_s = cp.cuda.get_elapsed_time(copy_start_evt, copy_stop_evt) / 1e3
         kernel_s = cp.cuda.get_elapsed_time(kernel_start_evt, kernel_stop_evt) / 1e3
+        extra_s = (
+            cp.cuda.get_elapsed_time(extra_start_evt, extra_stop_evt) / 1e3
+            if self.extra_gpu_work > 0
+            else 0.0
+        )
         return {
             "raw_host": raw_host,
             "raw_dev": raw_dev,
             "calib_dev": out_dev,
             "copy_s": copy_s,
             "kernel_s": kernel_s,
+            "extra_s": extra_s,
             "raw_bytes": int(raw_host.nbytes),
             "shape": tuple(raw_host.shape),
         }
@@ -373,6 +399,7 @@ def _process_cpu_raw_only(det, evt):
         "calib_dev": None,
         "copy_s": 0.0,
         "kernel_s": 0.0,
+        "extra_s": 0.0,
         "raw_bytes": int(raw_host.nbytes),
         "shape": tuple(raw_host.shape),
     }
@@ -449,6 +476,10 @@ def main():
         raise SystemExit("CuPy is unavailable in the current environment.")
     if args.cpu_raw_only and args.compare_cpu_events:
         raise SystemExit("--compare-cpu-events is incompatible with --cpu-raw-only.")
+    if args.cpu_raw_only and args.extra_gpu_work:
+        raise SystemExit("--extra-gpu-work is incompatible with --cpu-raw-only.")
+    if args.extra_gpu_work < 0:
+        raise SystemExit("--extra-gpu-work must be >= 0.")
     if args.gpu_auto and "--gpu-device" in os.sys.argv:
         raise SystemExit("Use either --gpu-device or --gpu-auto, not both.")
 
@@ -493,10 +524,15 @@ def main():
 
     worker = None
     if is_bd and not args.cpu_raw_only:
-        worker = JungfrauMultiOwnerGpu(det.raw, assigned_gpu_device)
+        worker = JungfrauMultiOwnerGpu(
+            det.raw,
+            assigned_gpu_device,
+            extra_gpu_work=args.extra_gpu_work,
+        )
         print(
             f"[Rank {rank}] pid={os.getpid()} local_rank={local_rank} "
-            f"using CUDA device {assigned_gpu_device} as an independent owner"
+            f"using CUDA device {assigned_gpu_device} as an independent owner "
+            f"extra_gpu_work={args.extra_gpu_work}"
             ,
             flush=True,
         )
@@ -505,6 +541,7 @@ def main():
     copied_bytes = 0
     total_copy_s = 0.0
     total_kernel_s = 0.0
+    total_extra_s = 0.0
     max_abs_diff = 0.0
     compare_failures = 0
     cpu_raw_type = None
@@ -525,6 +562,7 @@ def main():
         copied_bytes += result["raw_bytes"]
         total_copy_s += result["copy_s"]
         total_kernel_s += result["kernel_s"]
+        total_extra_s += result["extra_s"]
         if args.cpu_raw_only and cpu_raw_type is None:
             cpu_raw_type = (
                 f"{type(result['raw_host']).__module__}.{type(result['raw_host']).__name__}"
@@ -549,7 +587,8 @@ def main():
                     f"[Rank {rank}] event {processed} timestamp={int(evt.timestamp)} "
                     f"gpu_type={type(result['calib_dev']).__module__}.{type(result['calib_dev']).__name__} "
                     f"storage=device shape={result['shape']} "
-                    f"h2d_s={result['copy_s']:.6f} kernel_s={result['kernel_s']:.6f}",
+                    f"h2d_s={result['copy_s']:.6f} kernel_s={result['kernel_s']:.6f} "
+                    f"extra_s={result['extra_s']:.6f}",
                     flush=True,
                 )
         processed += 1
@@ -571,8 +610,10 @@ def main():
             print(
                 f"[Rank {rank}] summary events={processed} loop_s={loop_s:.3f} "
                 f"rate_evt_s={rate_evt_s:.3f} gpu_device={assigned_gpu_device} "
+                f"extra_gpu_work={args.extra_gpu_work} "
                 f"ccons_upload_s={worker._ccons_upload_s:.6f} "
                 f"copy_total_s={total_copy_s:.6f} kernel_total_s={total_kernel_s:.6f} "
+                f"extra_total_s={total_extra_s:.6f} "
                 f"copied_mib={mib:.3f} copy_rate_mib_s={copy_rate_mib_s:.3f} "
                 f"compare_events={min(processed, args.compare_cpu_events)} "
                 f"compare_failures={compare_failures} max_abs_diff={max_abs_diff:.6g}",
