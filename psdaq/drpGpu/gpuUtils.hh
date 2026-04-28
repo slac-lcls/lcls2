@@ -91,6 +91,9 @@ public:
   void     setWriteEnable(uint32_t val)
   { if    (_fwRegs)  _fwRegs->setWriteEnable(val);
     else             _writeSwReg(_swRegs, GpuAsyncReg_WriteEnableV1, val); }
+  void     setWriteCount(uint32_t val)
+  { if    (_fwRegs)  _fwRegs->setWriteCount(val);
+    else             _writeSwReg(_swRegs, GpuAsyncReg_WriteCountV1, val); }
   uint32_t axisDeMuxSelect() const
   { return _fwRegs ? _fwRegs->axisDeMuxSelect()
                    : _readSwReg(_swRegs, GpuAsyncReg_AxisDeMuxSelect); }

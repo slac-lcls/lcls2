@@ -508,13 +508,6 @@ void Reader::start()
   logging::info("Reader is starting");
 
   auto const panel = m_pool.panel();
-  if (panel->name != "/dev/null") {     // Else, Simulator mode
-    // Ensure that timing messages are DMAed to the GPU
-    dmaTgtSet(panel->coreRegs, DmaTgt_t::TGT_GPU);
-
-    // Ensure that the DMA round-robin index starts with buffer 0
-    dmaIdxReset(panel->coreRegs);
-  }
 
 #ifdef HOST_REARMS_DMA
   // Write to the DMA start register in the FPGA
@@ -529,11 +522,7 @@ void Reader::start()
 
   // Enable a DMA for buffer 0 only
   unsigned dmaBufIdx{0};
-  /****************************************************************************
-   * Clear the handshake space
-   * Originally was cuStreamWriteValue32, but the stream functions are not
-   * supported within graphs. cuMemsetD32Async acts as a good replacement.
-   ****************************************************************************/
+  // Clear handshake space on the GPU side (A.K.A. "GPU's doorbell")
   const auto dmaBufs = panel->dmaBuffers[dmaBufIdx];
   chkError(cudaMemsetAsync(dmaBufs + 4, 0, sizeof(uint32_t), m_stream));
   printf("*** Reader: dmaBufIdx %u, dmaBuffer %p\n", dmaBufIdx, (void*)dmaBufs);
@@ -542,6 +531,9 @@ void Reader::start()
   // Write to the DMA start register in the FPGA to trigger the write
   panel->coreRegs.returnFreeListIndex(dmaBufIdx);
 #endif // HOST_REARMS_DMA
+
+  // Ensure that the DMA round-robin index starts with buffer 0
+  dmaIdxReset(panel->coreRegs);
 
   // Launch the Reader graph
   printf("*** Reader: Launching graph\n");

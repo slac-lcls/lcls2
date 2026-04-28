@@ -232,6 +232,15 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     m_setMaskBytesDone = true;
   }
 
+  // Stop the FPGA side
+  m_panel->coreRegs.setWriteEnable(0);
+
+  // Configure the buffer counts on the FPGA side
+  m_panel->coreRegs.setWriteCount(m_dmaCount-1);
+
+  // Ensure that timing messages are DMAed to the GPU
+  dmaTgtSet(m_panel->coreRegs, DmaTgt_t::TGT_GPU);
+
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
   pgpEvents.resize(m_nbuffers); // Need 1 per intermediate buffer - w/o this have only dmaCount buffers
