@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "test_name": "single_asic_quadrants",
+  "description": "Four distinct 2-point markers in the four quadrants of ASIC 0 to test quadrant-level remap and top-half rotation.",
+  "array_shape": [16, 178, 192],
+  "readable_rows": 176,
+  "background_value": 12,
+  "default_marker_value": 8,
+  "trbit_by_asic": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "markers": [
+    {"label": "TL_A", "group": "TL", "asic": 0, "row": 20, "col": 20, "value": 8, "tags": ["quadrant", "top-left"]},
+    {"label": "TL_B", "group": "TL", "asic": 0, "row": 32, "col": 36, "value": 8, "tags": ["quadrant", "top-left"]},
+    {"label": "TR_A", "group": "TR", "asic": 0, "row": 20, "col": 120, "value": 8, "tags": ["quadrant", "top-right"]},
+    {"label": "TR_B", "group": "TR", "asic": 0, "row": 32, "col": 136, "value": 8, "tags": ["quadrant", "top-right"]},
+    {"label": "BL_A", "group": "BL", "asic": 0, "row": 120, "col": 20, "value": 8, "tags": ["quadrant", "bottom-left"]},
+    {"label": "BL_B", "group": "BL", "asic": 0, "row": 132, "col": 36, "value": 8, "tags": ["quadrant", "bottom-left"]},
+    {"label": "BR_A", "group": "BR", "asic": 0, "row": 120, "col": 120, "value": 8, "tags": ["quadrant", "bottom-right"]},
+    {"label": "BR_B", "group": "BR", "asic": 0, "row": 132, "col": 136, "value": 8, "tags": ["quadrant", "bottom-right"]}
+  ]
+}

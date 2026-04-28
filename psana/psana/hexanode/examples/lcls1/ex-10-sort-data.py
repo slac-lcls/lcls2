@@ -5,7 +5,7 @@ def usage() : return "Use command: python hexanode/examples/ex-10-sort-data.py"
 
 import os
 import sys
-import hexanode
+import psana.hexanode as hexanode
 import numpy as np
 from time import time
 from math import sqrt

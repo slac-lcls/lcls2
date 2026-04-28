@@ -66,12 +66,23 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
         logger.debug('add_event for %s' % s_rsch)
         DarkProcJungfrau.add_event(self, raw, irec)
 
+    def _init_neutral_summary_state(self):
+        """Mona - protection against hungry ranks.
+           Ensure ranks with no selected events still join summary reductions."""
+        if hasattr(self, 'arr_sum0'):
+            return
+        #uc.load_block_results(self, self.orun, self.odet, **self.kwa)
+        self.init_proc()
+
     def summary(self):
         #logger.info(uc.info_ndarr(self.arr_sum0, 'XXX summary begin irec: %d for %s arr_sum0:' % (self.irec, s_rsch), first=0, last=5))
-
         smd = self.smd
-        if self.irec  == -1: return
-        irec       = smd.sum(self.irec)
+        local_irec = self.irec
+        if self.irec == -1:
+            logger.warning('HUNGRY RANK !!!! in summary %s' % s_rsch)
+            self._init_neutral_summary_state()
+            local_irec = 0
+        irec       = smd.sum(local_irec)
 #        print('XXX summary irec:', irec, ' self.irec:', self.irec)
 
         arr_sum0   = smd.sum(self.arr_sum0)
@@ -148,8 +159,7 @@ def jungfrau_dark_proc(parser):
 
 
 def jungfrau_dark_proc_mpi(parser):
-    """jungfrau dark data processing for single (of 3) gain mode.
-    """
+    """jungfrau dark data processing in mpi"""
     t0_sec = time()
     tdt = t0_sec
 
@@ -164,9 +174,7 @@ def jungfrau_dark_proc_mpi(parser):
     events  = args.events
     stepnum = args.stepnum
     stepmax = args.stepmax
-    evcode  = args.evcode
     segind  = args.segind
-    igmode  = args.igmode
     dirrepo = args.dirrepo
     save    = args.save
     deploy  = args.deploy
@@ -255,8 +263,7 @@ def jungfrau_dark_proc_mpi(parser):
               'is None' if step_docstring is None else\
               str(metadic))
 
-        igm = igmode if igmode is not None else\
-              metadic['gainMode'] if step_docstring is not None\
+        igm = metadic.get('gainMode', istep) if step_docstring is not None\
               else istep
         gmname = DIC_IND_TO_GAIN_MODE.get(igm, None)
         kwargs['gainmode'] = gmname

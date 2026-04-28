@@ -90,6 +90,21 @@ class StepEvent(object):
         return env_values[0]
 
 
+class CallbackRunState:
+    """Holds callback-side run state that must persist across SMD chunks."""
+
+    def __init__(self):
+        self.esm = None
+        self.in_step = False
+        self.current_step_evt = None
+
+    def reset_envstore(self, configs):
+        self.esm = EnvStoreManager(configs)
+        self.in_step = False
+        self.current_step_evt = None
+        return self.esm
+
+
 class Run(object):
     def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams):
         self.expt, self.runnum, self.timestamp = (expt, runnum, timestamp)
@@ -793,9 +808,11 @@ class RunSmallData(Run):
     event generator available to user in smalldata callback.
     """
 
-    def __init__(self, eb, configs, dsparms):
+    def __init__(self, eb, configs, dsparms, callback_run_state=None):
         self.eb = eb
+        self.configs = configs
         self.dsparms = dsparms
+        self.callback_run_state = callback_run_state
         if not hasattr(self.dsparms, "calibconst") or self.dsparms.calibconst is None:
             self.dsparms.calibconst = {}
         self._calib_const = self.dsparms.calibconst
@@ -813,7 +830,18 @@ class RunSmallData(Run):
         # BatchIterator adds user-selected L1Accept to the list (default is add all).
         self.proxy_events = []
 
-        self.esm = EnvStoreManager(configs)
+        if self.callback_run_state is None:
+            self.esm = EnvStoreManager(configs)
+        else:
+            if self.callback_run_state.esm is None:
+                self.callback_run_state.reset_envstore(configs)
+            self.esm = self.callback_run_state.esm
+
+    def _reset_envstore(self):
+        if self.callback_run_state is None:
+            self.esm = EnvStoreManager(self.configs)
+        else:
+            self.esm = self.callback_run_state.reset_envstore(self.configs)
 
     def _iter_events(self):
         # EventBuilder.events() yields only one batch; loop to exhaust the view.
@@ -822,26 +850,44 @@ class RunSmallData(Run):
                 yield item
 
     def steps(self):
+        if self.callback_run_state is not None and self.callback_run_state.in_step:
+            yield Step(
+                self.callback_run_state.current_step_evt,
+                self._evt_iter,
+                self._run_ctx,
+                proxy_events=self.proxy_events,
+                esm=self.esm,
+                callback_run_state=self.callback_run_state,
+            )
         for (dgrams, proxy_evt)  in self._evt_iter:
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
+                if svc == TransitionId.BeginRun:
+                    self._reset_envstore()
                 self._update_envstore_from_dgrams(dgrams)
                 self.proxy_events.append(proxy_evt)
                 if svc == TransitionId.EndRun:
                     return
                 if svc == TransitionId.BeginStep:
+                    step_evt = Event(dgrams=dgrams, run=self._run_ctx)
+                    if self.callback_run_state is not None:
+                        self.callback_run_state.in_step = True
+                        self.callback_run_state.current_step_evt = step_evt
                     yield Step(
-                        Event(dgrams=dgrams, run=self._run_ctx),
+                        step_evt,
                         self._evt_iter,
                         self._run_ctx,
                         proxy_events=self.proxy_events,
                         esm=self.esm,
+                        callback_run_state=self.callback_run_state,
                     )
 
     def events(self):
         for (dgrams, proxy_evt) in self._iter_events():
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
+                if svc == TransitionId.BeginRun:
+                    self._reset_envstore()
                 self._update_envstore_from_dgrams(dgrams)
                 self.proxy_events.append(proxy_evt)
                 if svc == TransitionId.EndRun:

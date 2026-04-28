@@ -10,7 +10,7 @@ def _to_word(data,shift=0,mask=0):
     w = 0
     for b in data[::-1]:
         w = w<<8
-        w |= b
+        w |= int(b)
     w >>= shift
     if mask:
         w &= (1<<mask)-1

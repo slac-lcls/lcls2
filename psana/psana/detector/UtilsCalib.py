@@ -72,20 +72,20 @@ def tstamps_run_and_now(trun_sec): # unix epoch time, e.g. 1607569818.532117 sec
     return ts_run, ts_now
 
 
-def merge_panels(lst):
+def merge_panels(lst, dtype=None):
     """stacks 16 (or 4 or 1) arrays from list shaped as (7, 1, 352, 384) to (7, 16, 352, 384)"""
     npanels = len(lst)   # 16 or 4 or 1
     shape = lst[0].shape # (7, 1, 352, 384)
     ngmods = shape[0]    # 7
-    dtype = lst[0].dtype #
+    dtype = lst[0].dtype if dtype is None else dtype
 
-    logger.debug('In merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
+    logger.debug('in merge_panels: number of panels %d number of gain modes %d dtype %s' % (npanels,ngmods,str(dtype)))
 
     # make list for merging of (352,384) blocks in right order
     mrg_lst = []
     for igm in range(ngmods):
         nda1gm = np.stack([lst[ind][igm,0,:] for ind in range(npanels)])
-        mrg_lst.append(nda1gm)
+        mrg_lst.append(nda1gm.astype(dtype))
     return np.stack(mrg_lst)
 
 
@@ -182,7 +182,6 @@ def proc_block_short(block, **kwa):
     int_hi     = kwa.get('int_hi', datbits-1) # highest intensity accepted for dark evaluation
     fraclo     = kwa.get('fraclo', 0.05)    # fraction of statistics below low gate limit
     frachi     = kwa.get('frachi', 0.95)    # fraction of statistics below high gate limit
-    frac05     = 0.5
 
     logger.debug('in proc_block_short for exp=%s det=%s, block.shape=%s' % (exp, detname, str(block.shape)))
     logger.info(info_ndarr(block, 'begin processing of the data block', first=100, last=105))
@@ -226,7 +225,7 @@ def proc_block_short(block, **kwa):
     gate_lo = np.maximum(np.floor(arr_qlo), gate_lo).astype(dtype=block.dtype)
     gate_hi = np.minimum(np.ceil(arr_qhi),  gate_hi).astype(dtype=block.dtype)
     cond = gate_hi>gate_lo
-    gate_hi[np.logical_not(cond)] +=1
+    gate_hi[np.logical_not(cond)] +=1 # protection against equal limits
 
     logger.debug('proc_block_short results'\
                 +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\

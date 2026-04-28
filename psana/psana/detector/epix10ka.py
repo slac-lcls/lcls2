@@ -5,6 +5,9 @@ import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
 from psana.detector.detector_impl import DetectorImpl
+import psana.detector.Utils as ut # info_dict, is_true, is_none
+from psana.detector.NDArrUtils import info_ndarr
+
 import logging
 logger = logging.getLogger(__name__)
 
@@ -36,11 +39,23 @@ class epix10ka_raw_2_0_1(eb.epix_base):
 
 
     def _cbits_config_segment(self, cob):
-        """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object"""
+        """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object, where self=det.raw"""
         return eb.cbits_config_epix10ka(cob, shape=(352, 384))
 
 
-# calib is the same as in epix_base
+#    def raw(self, evt, copy=True) -> Array3d:
+#        """TEST overrides lcls2/psana/psana/detector/areadetector.py AreaDetectorRaw.raw"""
+#        print('XXX epix10ka_raw_2_0_1.raw')
+#        return eb.epix_base.raw(self, evt, copy=copy)
+
+
+#    def calib(self, evt, **kwa) -> Array3d:
+#        """TEST overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
+#        print('XXX epix10ka_raw_2_0_1.calib')
+#        return eb.ue.calib_epix10ka_v02(self, evt, **kwa)
+#        #return eb.ue.calib_epix10ka_v02(self, evt, nda_raw=self.raw(evt), **kwa)
+
+# calib is the same as in epix_base.calib
 #    def calib(self, evt, **kwa) -> Array3d:
 #        logger.debug('epix10ka_raw_2_0_1.calib')
 #        return eb.calib_epix10ka_any(self, evt, **kwa)

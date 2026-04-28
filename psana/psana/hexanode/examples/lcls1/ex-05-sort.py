@@ -2,7 +2,7 @@
 #------------------------------
 
 import sys
-import hexanode
+import psana.hexanode as hexanode
 import numpy as np
 from time import time
 

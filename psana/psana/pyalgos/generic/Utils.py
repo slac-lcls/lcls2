@@ -241,7 +241,7 @@ def get_list_of_files_in_dir_for_ext(dir, ext='.xtc'):
     return sorted(list_of_files)
 
 
-def get_list_of_files_in_dir_for_part_fname(dir, pattern='-r0022'):
+def get_list_of_files_in_dir_for_pattern(dir, pattern='-r0022'):
     """Returns the list of files in the directory for specified file name pattern or [] - empty list."""
     if dir is None: return []
     if not os.path.exists(dir): return []

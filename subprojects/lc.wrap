@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/burtscher/LC-framework.git
+revision = dfff4ebe0ab7065fef7d36632041086a79c3e9a2
+depth = 1
+patch_directory = lc
+
+[provide]
+dependency_names = lc_dep

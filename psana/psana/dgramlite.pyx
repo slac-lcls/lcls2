@@ -1,4 +1,4 @@
-from dgramlite cimport Xtc, Sequence, Dgram
+from psana.dgramlite cimport Xtc, Sequence, Dgram
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 
 cdef class DgramLite:

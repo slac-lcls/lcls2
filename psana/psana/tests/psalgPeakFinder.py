@@ -1,4 +1,4 @@
-import peakFinder
+import psana.peakFinder as peakFinder
 import numpy as np
 import matplotlib.pyplot as plt
 import time

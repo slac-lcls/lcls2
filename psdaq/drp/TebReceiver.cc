@@ -4,7 +4,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Smd.hh"
-#include "psdaq/eb/ResultDgram.hh"
+#include "psdaq/eb/src/ResultDgram.hh"
 
 using namespace XtcData;
 using namespace Drp;

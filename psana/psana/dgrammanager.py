@@ -7,7 +7,7 @@ from collections import deque
 
 try:
     # doesn't exist on macos
-    from shmem import PyShmemClient
+    from psana.shmem import PyShmemClient
 except:
     pass
 from psana import dgram

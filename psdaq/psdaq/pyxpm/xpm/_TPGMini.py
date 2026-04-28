@@ -288,9 +288,6 @@ class TPGMini(pr.Device):
                 self.FixedRateDiv[6].set(     1)
                 #  New 35.5 kHz rate for laser sync during NC operation
                 self.FixedRateDiv[7].set(    26)
-                #  And some rate markers tied to beam simulation
-                self.FixedRateDiv[8].set( 91000)  # dest b1
-                self.FixedRateDiv[9].set(  9100)  # dest b2
 
             #  Set the AC rate markers
             self.ACRateDiv[0].set(120)

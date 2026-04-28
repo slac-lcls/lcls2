@@ -1,0 +1,6 @@
+[wrap-git]
+url = https://github.com/szcompressor/cuSZp.git
+revision = 671d5f438f452f30192d333f206f3caa742f6350
+depth = 1
+method = cmake
+patch_directory = cuszp

@@ -318,7 +318,7 @@ class CuStatus(object):
                     value['timeStamp.secondsPastEpoch'], value['timeStamp.nanoseconds'] = timev
                     pv.post(value)
 
-        updatePv(self._pv_fiducialErr  , self._device.cuFiducialIntvErr.get())
+        updatePv(self._pv_fiducialErr , self._device.cuFiducialIntvErr.get())
         updatePv(self._pv_fiducialSyncs, self._device.cuFiducialResyncCount.get())
 
 class NoCuStatus(object):
@@ -548,11 +548,10 @@ class PathTimer(object):
 
     def update(self, pv, val):
         timev = divmod(float(time.time_ns()), 1.0e9)
-        latch = self._pathTimer.latched.get()
+        updatePv(self._pv_latched, self._pathTimer.latched.get(), timev)
         pathtm = [0 for i in range(14)]
         for i in range(14):
             pathtm[i] = self._pathTimer.chan[i].get()
-        updatePv(self._pv_latched, latch, timev)
         updatePv(self._pv_array, pathtm, timev)
 
 class PVStats(object):
@@ -565,7 +564,6 @@ class PVStats(object):
         global fidPeriod
         fidPeriod  = fiducialPeriod
 
-        self._name = name
         self._xpm  = xpm
         self._app  = xpm.XpmApp
 
@@ -603,7 +601,7 @@ class PVStats(object):
         else:
             self._sfpStat  = QSFPStatus  (name+':QSFPSTATUS',self._xpm)
 
-        self._pathTimer = [PathTimer(self._name, self._xpm, i) for i in range(8)]
+        self._pathTimer = [PathTimer(name, xpm, i) for i in range(8)]
 
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):

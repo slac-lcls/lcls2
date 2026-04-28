@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "test_name": "module0_asic_orientation",
+  "description": "Identical 2-point asymmetric marker in ASICs 0-3 to compare orientation within one module.",
+  "array_shape": [16, 178, 192],
+  "readable_rows": 176,
+  "background_value": 12,
+  "default_marker_value": 8,
+  "trbit_by_asic": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "markers": [
+    {"label": "asic0_A", "group": "asic0", "asic": 0, "row": 20, "col": 20, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic0_B", "group": "asic0", "asic": 0, "row": 35, "col": 60, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic1_A", "group": "asic1", "asic": 1, "row": 20, "col": 20, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic1_B", "group": "asic1", "asic": 1, "row": 35, "col": 60, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic2_A", "group": "asic2", "asic": 2, "row": 20, "col": 20, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic2_B", "group": "asic2", "asic": 2, "row": 35, "col": 60, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic3_A", "group": "asic3", "asic": 3, "row": 20, "col": 20, "value": 8, "tags": ["orientation", "module0"]},
+    {"label": "asic3_B", "group": "asic3", "asic": 3, "row": 35, "col": 60, "value": 8, "tags": ["orientation", "module0"]}
+  ]
+}

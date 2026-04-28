@@ -82,6 +82,10 @@ class Test:
         run_loop_callback = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "run_loop_callback.py"
         )
-        subprocess.check_call(
-            ["mpirun", "-n", "3", "python", run_loop_callback], env=env
-        )
+        subprocess.check_call(["python", run_loop_callback], env=env)
+
+        env["PS_EB_NODES"] = "1"
+        subprocess.check_call(["mpirun", "-n", "3", "python", run_loop_callback], env=env)
+
+        env["PS_EB_NODES"] = "2"
+        subprocess.check_call(["mpirun", "-n", "5", "python", run_loop_callback], env=env)

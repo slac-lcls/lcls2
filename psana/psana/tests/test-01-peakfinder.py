@@ -1,4 +1,4 @@
-import peakFinder as algos
+import psana.peakFinder as algos
 import numpy as np
 import os
 import psana.pyalgos.generic.Graphics as gr

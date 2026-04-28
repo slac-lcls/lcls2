@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 #------------------------------
 
-import psalg_ext
+import psana.psalg_ext
 
 #------------------------------
 
 def test01():
-    import psalg_ext
+    import psana.psalg_ext
     print('test import psalg_ext')
 
 #------------------------------
 
 def test02():
-    import psalg_ext
+    import psana.psalg_ext
     import numpy as np
     from psana.pyalgos.generic.NDArrUtils import print_ndarr
     print('test numpy.array')

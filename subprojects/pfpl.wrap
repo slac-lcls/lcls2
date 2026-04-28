@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/burtscher/PFPL.git
+revision = 182297be8928d107be88270539f59b586232b721
+depth = 1
+patch_directory = pfpl
+
+[provide]
+dependency_names = pfpl_dep

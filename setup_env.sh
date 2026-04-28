@@ -17,8 +17,8 @@ if [ -d "/cds/sw/" ]; then
 
     osrel=`uname -r`
     case $osrel in
-        *el9*) conda activate daq_20250402_r9;;
-        *)     conda activate daq_20250402;;
+        *el9*) conda activate daq_20250402_r9;; #daq_20260311;;
+        *)     conda activate daq_20250402;;    #daq_20260311;;
     esac
 
     # DAQ bundle from the active default environment
@@ -41,7 +41,10 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+
+    #conda activate daq_20260311
     conda activate ps_20241122
+
 else
     echo "CONDA area not found"
     exit 1
@@ -57,11 +60,11 @@ fi
 export CUDA_ROOT=/usr/local/cuda
 if [ -h "$CUDA_ROOT" ]; then
     export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
-    #export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
     export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
 fi
 
-# In ASC lab the command for zsh does not work, but in XPP it does. 
+# In ASC lab the command for zsh does not work, but in XPP it does.
 # So we need to check which shell we are in to get the correct path to the script
 if [ -n "$BASH_VERSION" ]; then
     SCRIPT_SOURCE="${BASH_SOURCE[0]}"
@@ -69,7 +72,9 @@ elif [ -n "$ZSH_VERSION" ]; then
     SCRIPT_SOURCE="${(%):-%x}"
 fi
 
+#RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
 RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
+
 export PATH=$RELDIR/install/bin:${PATH}
 echo $RELDIR
 
@@ -104,14 +109,5 @@ export RDMAV_HUGEPAGES_SAFE=1
 # needed by JupyterLab
 export JUPYTERLAB_WORKSPACES_DIR=${HOME}
 
-# cpo: workaround a qt bug which may no longer be there (dec 5, 2022)
-if [ ! -d /usr/share/X11/xkb ]; then
-    export QT_XKB_CONFIG_ROOT=${CONDA_PREFIX}/lib
-fi
-
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
-
-# For GPU builds, until a better solution is found
-export CUSZ_DIR=/cds/home/c/claus/git/cuSZ/install/lib64/cmake/CUSZ
-export cuSZp_DIR=/cds/home/c/claus/git/cuSZp/install/cmake

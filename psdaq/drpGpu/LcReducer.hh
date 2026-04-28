@@ -2,7 +2,7 @@
 
 #include "ReducerAlgo.hh"
 
-#include <lc/lc-compressor-QUANT_ABS_0_f32-BIT_4-RZE_1.hh>
+#include <lc-compressor-QUANT_ABS_0_f32-BIT_4-RZE_1.hh>
 
 namespace Drp {
   namespace Gpu {

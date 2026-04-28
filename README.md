@@ -7,7 +7,12 @@
 # build all packages in the repository and install them in ./install, option to choose build type
 # most developers can eliminate all the arguments to build_all.sh
 source setup_env.sh
-./build_all.sh -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+./build_all.sh
+
+Possible flags:
+-c Compile only - does not make entry points
+-f Force clean - recompiles all targets
+-d Build daq (automatically set on psbuild)
 
 ```
 

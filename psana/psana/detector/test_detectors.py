@@ -3,7 +3,7 @@ from psana.detector.detector_impl import hiddenmethod, DetectorImpl
 from amitypes import Array1d, Array2d, Array3d
 
 # For testing quadanode (this uses Cython for speed)
-from quadanode import waveforms, times
+from psana.quadanode import waveforms, times
 
 class hsd_raw_0_0_0(DetectorImpl):
     def __init__(self, *args):

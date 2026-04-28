@@ -8,7 +8,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psdaq/aes-stream-drivers/AxisDriver.h"
 #include "psdaq/aes-stream-drivers/DataDriver.h"
-#include "psdaq/eb/ResultDgram.hh"
+#include "psdaq/eb/src/ResultDgram.hh"
 
 #include <fcntl.h>
 #include <Python.h>

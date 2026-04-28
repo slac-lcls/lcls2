@@ -6,7 +6,7 @@ from .run import RunSmallData
 
 
 class EventBuilderManager(object):
-    def __init__(self, view, configs, dsparms):
+    def __init__(self, view, configs, dsparms, callback_run_state=None):
         self.configs = configs
         self.dsparms = dsparms
         self.n_files = len(self.configs)
@@ -20,7 +20,12 @@ class EventBuilderManager(object):
                                intg_stream_id=dsparms.intg_stream_id,
                                batch_size=dsparms.batch_size,
                                use_proxy_events=use_proxy_events)
-        self.run_smd = RunSmallData(self.eb, configs, dsparms)  # only used by smalldata callback
+        self.run_smd = RunSmallData(
+            self.eb,
+            configs,
+            dsparms,
+            callback_run_state=callback_run_state,
+        )  # only used by smalldata callback
         self.callback_batch_builder = CallbackBatchBuilder(
             self.eb,
             self.run_smd,
