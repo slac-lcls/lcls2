@@ -14,7 +14,7 @@ args = None
 def write_seq(instr, seqcodes, filename):
 
     if (len(instr) > 2000):
-        sys.stderr.write(f'*** Sequence has {len(instr)} instructions.  May be too large to load. ***\n')
+        logging.error(f'*** Sequence has {len(instr)} instructions.  May be too large to load. ***\n')
 
     with open(filename,"w") as f:
         f.write('# {} instructions\n'.format(len(instr)))

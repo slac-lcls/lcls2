@@ -45,10 +45,22 @@ def hsd_init(prefix, dev='dev/datadev_0'):
     global epics_prefix
     epics_prefix = prefix
 
-    root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
+    #  Lookup the board type
+    boardType = 'Kcu1500'
+    tst  = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev,boardType=boardType)
+    tst.start()
+    imageName = tst.PcieControl.DevPcie.AxiPcieCore.AxiVersion.ImageName.get()
+    if 'C1100' in imageName:
+        boardType = 'VariumC1100'
+    deviceId = tst.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DeviceId.get()
+    logging.warning(f'Found boardType {boardType} and deviceId {deviceId}')
+    tst.stop()
+
+    root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev,boardType=boardType,extended=deviceId!=0)
     root.__enter__()
-    args['root'] = root.PcieControl.DevKcu1500
-    args['core'] = root.PcieControl.DevKcu1500.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+    args['root'] = root.PcieControl.DevPcie
+    args['core'] = deviceId==0
+    args['swclk'] = boardType=='Kcu1500' and deviceId==0
 
     hsd_unconfig(prefix)
 
@@ -60,7 +72,7 @@ def hsd_connect(msg):
     supervisor,nworker = supervisor_info(alloc_json)
     barrier_global.init(supervisor,nworker)
 
-    if barrier_global.supervisor:
+    if barrier_global.supervisor and args['swclk']:
         # Check clock programming
         clockrange = (180.,190.)
         rate = root.MigIlvToPcieDma.MonClkRate_3.get()*1.e-6
