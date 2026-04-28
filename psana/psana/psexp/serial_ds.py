@@ -85,7 +85,7 @@ class SerialDataSource(DataSourceBase):
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
-            run_cls = RunGpu if self.dsparms.gpu_detector else RunSerial
+            run_cls = RunGpu if self.dsparms.gpu_detectors else RunSerial
             run = run_cls(
                 expt,                 # experiment string
                 runnum,               # run number (int)

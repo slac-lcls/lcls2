@@ -52,10 +52,11 @@ class GpuDetectorBackend(ABC):
         return None
 
 
-def make_gpu_backend(detector_name, run, execution_backend=None):
-    if detector_name == "jungfrau":
+def make_gpu_backend(detector_names, run, execution_backend=None):
+    detector_names = tuple(detector_names or ())
+    if detector_names == ("jungfrau",):
         from psana.gpu.backends.jungfrau import GpuJungfrauBackend
 
         return GpuJungfrauBackend(run, execution_backend=execution_backend)
 
-    raise ValueError(f"Unsupported gpu_detector={detector_name!r}")
+    raise ValueError(f"Unsupported gpu_detectors={detector_names!r}")

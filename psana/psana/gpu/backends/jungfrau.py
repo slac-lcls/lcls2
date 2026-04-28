@@ -170,8 +170,8 @@ class GpuJungfrauBackend(GpuDetectorBackend):
                 return self._resolved_det_name
 
         self.run.logger.warning(
-            "Unable to resolve a Jungfrau detector name from gpu_detector=%s",
-            self.detector_name,
+            "Unable to resolve a Jungfrau detector name from gpu_detectors=%s",
+            self.run.dsparms.gpu_detectors,
         )
         return None
 

@@ -86,8 +86,8 @@ def _build_parser():
     parser.add_argument(
         "--gpu-queue-depth",
         type=int,
-        default=3,
-        help="Queue depth for gpu_detector mode.",
+        default=2,
+        help="Queue depth for gpu_detectors mode.",
     )
     parser.add_argument(
         "--rtol",
@@ -206,7 +206,7 @@ def main():
     ds_kwargs = apply_max_events(datasource_kwargs_from_args(args), args.max_events)
     gpu_ds = DataSource(
         **ds_kwargs,
-        gpu_detector=args.detector,
+        gpu_detectors=[args.detector],
         gpu_runtime=args.gpu_runtime,
         gpu_pipeline=args.gpu_pipeline,
         gpu_queue_depth=args.gpu_queue_depth,

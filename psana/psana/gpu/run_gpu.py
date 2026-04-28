@@ -14,7 +14,7 @@ class RunGpu(Run):
     """GPU-enabled Run path.
 
     Patch 5 makes the run generic by delegating detector-specific work to a
-    backend object selected from ``gpu_detector``. The pipeline still runs as a
+    backend object selected from ``gpu_detectors``. The pipeline still runs as a
     no-op skeleton, but the orchestration no longer needs detector-specific
     knowledge.
     """

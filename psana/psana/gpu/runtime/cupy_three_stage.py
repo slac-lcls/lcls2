@@ -19,7 +19,7 @@ class CupyThreeStageRuntime(GpuRuntime):
             logger=getattr(run, 'logger', None),
         )
         self.backend = make_gpu_backend(
-            run.dsparms.gpu_detector,
+            run.dsparms.gpu_detectors,
             run=run,
             execution_backend=self.execution,
         )

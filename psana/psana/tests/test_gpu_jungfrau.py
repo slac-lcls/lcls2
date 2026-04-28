@@ -69,7 +69,7 @@ def _dummy_run():
         profiler=None,
         dsparms=SimpleNamespace(
             det_classes={"normal": {}},
-            gpu_detector='jungfrau',
+            gpu_detectors=('jungfrau',),
             gpu_runtime='default',
             gpu_pipeline='default',
             gpu_queue_depth=2,

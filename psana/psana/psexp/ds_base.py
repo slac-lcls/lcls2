@@ -54,10 +54,10 @@ class DsParms:
     fetch_calib_cache_max_retries: int
     skip_calib_load: list
     dbsuffix: str
-    gpu_detector: str | None = None
+    gpu_detectors: tuple[str, ...] = field(default_factory=tuple)
     gpu_runtime: str = "default"
     gpu_pipeline: str = "default"
-    gpu_queue_depth: int = 3
+    gpu_queue_depth: int = 2
     gpu_profile: str = "off"
     gpu_profile_output: str | None = None
     gpu_validate: bool = False
@@ -155,9 +155,9 @@ class DataSourceBase(abc.ABC):
         Log file path. If None, logs to stdout (default: None).
     auto_tune : bool
         Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
-    gpu_detector : str
-        Detector name to enable GPU processing for. Prototype 1 supports only
-        'jungfrau' (default: None).
+    gpu_detectors : list[str] or str
+        Detector names to enable GPU processing for. Phase 1 accepts a single
+        detector and supports only 'jungfrau' (default: None).
     gpu_runtime : str
         GPU execution runtime selection. Phase 1 supports 'default' and 'cupy'
         (default: 'default').
@@ -165,7 +165,7 @@ class DataSourceBase(abc.ABC):
         GPU execution pipeline selection. Phase 1 supports 'default' and '3stage'
         (default: 'default').
     gpu_queue_depth : int
-        Number of in-flight GPU queue slots (default: 3).
+        Number of in-flight GPU queue slots (default: 2).
     gpu_profile : str
         GPU profiling mode: 'off', 'summary', or 'trace' (default: 'off').
     gpu_profile_output : str
@@ -215,20 +215,24 @@ class DataSourceBase(abc.ABC):
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
-        self.gpu_detector = kwargs.get("gpu_detector", None)
-        if isinstance(self.gpu_detector, str):
-            self.gpu_detector = self.gpu_detector.strip().lower() or None
+        self.gpu_detectors = self._normalize_detector_names(
+            kwargs.get("gpu_detectors", None),
+        )
         self.gpu_runtime = str(kwargs.get("gpu_runtime", "default")).strip().lower() or "default"
         self.gpu_pipeline = str(kwargs.get("gpu_pipeline", "default")).strip().lower() or "default"
-        self.gpu_queue_depth = int(kwargs.get("gpu_queue_depth", 3))
+        self.gpu_queue_depth = int(kwargs.get("gpu_queue_depth", 2))
         self.gpu_profile = str(kwargs.get("gpu_profile", "off")).strip().lower()
         self.gpu_profile_output = kwargs.get("gpu_profile_output", None)
         self.gpu_validate = kwargs.get("gpu_validate", False)
         self.gpu_validate_every = int(kwargs.get("gpu_validate_every", 0))
 
-        if self.gpu_detector not in (None, "jungfrau"):
+        if len(self.gpu_detectors) > 1:
             raise InvalidDataSourceArgument(
-                f"Unsupported gpu_detector={self.gpu_detector!r}; Prototype 1 only supports 'jungfrau'"
+                f"Unsupported gpu_detectors={self.gpu_detectors!r}; Phase 1 supports one GPU detector"
+            )
+        if any(det != "jungfrau" for det in self.gpu_detectors):
+            raise InvalidDataSourceArgument(
+                f"Unsupported gpu_detectors={self.gpu_detectors!r}; Phase 1 only supports 'jungfrau'"
             )
         if self.gpu_runtime not in ("default", "cupy"):
             raise InvalidDataSourceArgument(
@@ -273,7 +277,7 @@ class DataSourceBase(abc.ABC):
             fetch_calib_cache_max_retries=self.fetch_calib_cache_max_retries,
             skip_calib_load=self.skip_calib_load,
             dbsuffix=self.dbsuffix,
-            gpu_detector=self.gpu_detector,
+            gpu_detectors=self.gpu_detectors,
             gpu_runtime=self.gpu_runtime,
             gpu_pipeline=self.gpu_pipeline,
             gpu_queue_depth=self.gpu_queue_depth,
@@ -292,7 +296,7 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
-            "log_level", "log_file", "auto_tune", "gpu_detector",
+            "log_level", "log_file", "auto_tune", "gpu_detectors",
             "gpu_runtime", "gpu_pipeline", "gpu_queue_depth", "gpu_profile", "gpu_profile_output",
             "gpu_validate", "gpu_validate_every"
         }
@@ -300,6 +304,34 @@ class DataSourceBase(abc.ABC):
             if k not in known_keys:
                 self.logger.warning(f"Unrecognized kwarg={k}")
 
+    def _normalize_detector_names(self, detectors):
+        """Normalize detector name kwargs to a deduplicated lowercase tuple."""
+        if detectors is None:
+            values = []
+        elif isinstance(detectors, str):
+            values = [detectors]
+        else:
+            try:
+                values = list(detectors)
+            except TypeError as exc:
+                raise InvalidDataSourceArgument(
+                    "gpu_detectors must be a detector name or an iterable of detector names"
+                ) from exc
+
+        normalized = []
+        seen = set()
+        for det in values:
+            if not isinstance(det, str):
+                raise InvalidDataSourceArgument(
+                    f"GPU detector names must be strings, got {type(det).__name__}"
+                )
+            name = det.strip().lower()
+            if not name:
+                continue
+            if name not in seen:
+                normalized.append(name)
+                seen.add(name)
+        return tuple(normalized)
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array

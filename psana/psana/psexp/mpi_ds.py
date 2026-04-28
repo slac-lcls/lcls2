@@ -710,7 +710,7 @@ class MPIDataSource(DataSourceBase):
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
-            run_cls = RunGpu if self.dsparms.gpu_detector else RunParallel
+            run_cls = RunGpu if self.dsparms.gpu_detectors else RunParallel
             run = run_cls(
                 expt,                 # experiment string
                 runnum,               # run number (int)

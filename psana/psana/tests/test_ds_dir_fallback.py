@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from psana.psexp.ds_base import DataSourceBase
+from psana.psexp.ds_base import DataSourceBase, InvalidDataSourceArgument
 
 
 class DummyDataSource(DataSourceBase):
@@ -17,6 +17,33 @@ class DummyDataSource(DataSourceBase):
 def touch(path):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"")
+
+
+def test_gpu_detectors_plural_kwarg_sets_dsparms():
+    ds = DummyDataSource(gpu_detectors=["jungfrau"])
+
+    assert ds.gpu_detectors == ("jungfrau",)
+    assert ds.gpu_queue_depth == 2
+    assert ds.dsparms.gpu_detectors == ("jungfrau",)
+    assert ds.dsparms.gpu_queue_depth == 2
+
+
+def test_gpu_detectors_accepts_string_value():
+    ds = DummyDataSource(gpu_detectors=" Jungfrau ", gpu_queue_depth=4)
+
+    assert ds.gpu_detectors == ("jungfrau",)
+    assert ds.dsparms.gpu_detectors == ("jungfrau",)
+    assert ds.dsparms.gpu_queue_depth == 4
+
+
+def test_gpu_detectors_rejects_multiple_detectors_for_phase1():
+    with pytest.raises(InvalidDataSourceArgument, match="supports one GPU detector"):
+        DummyDataSource(gpu_detectors=["jungfrau", "epixuhr"])
+
+
+def test_gpu_detectors_rejects_unsupported_detector():
+    with pytest.raises(InvalidDataSourceArgument, match="only supports 'jungfrau'"):
+        DummyDataSource(gpu_detectors=["epixuhr"])
 
 
 def test_explicit_dir_falls_back_to_on_disk_streams_when_db_list_mismatches(tmp_path, monkeypatch):
