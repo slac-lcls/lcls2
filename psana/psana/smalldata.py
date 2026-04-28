@@ -87,7 +87,6 @@ else:
     MODE = "SERIAL"
 
 # -----------------------------------------------------------------------------
-
 MISSING_INT = -99999
 MISSING_FLOAT = np.nan
 
@@ -761,7 +760,6 @@ class SmallData:  # (client)
         """
         event: int, psana.event.Event
         """
-
         if type(event) is int:
             timestamp = event
         elif hasattr(event, "timestamp"):
@@ -845,13 +843,35 @@ class SmallData:  # (client)
         return r
 
     def sum(self, value, inplace=False):
-        return self._reduction(value, MPI.SUM, inplace)
+        result = self._reduction(value, MPI.SUM, inplace)
+        return result
 
     def max(self, value, inplace=False):
         return self._reduction(value, MPI.MAX, inplace)
 
     def min(self, value, inplace=False):
         return self._reduction(value, MPI.MIN, inplace)
+
+    def prod(self, value, inplace=False):
+        return self._reduction(value, MPI.PROD, inplace)
+
+    def land(self, value, inplace=False):
+        return self._reduction(value, MPI.LAND, inplace)
+
+    def band(self, value, inplace=False):
+        return self._reduction(value, MPI.BAND, inplace)
+
+    def lor(self, value, inplace=False):
+        return self._reduction(value, MPI.LOR, inplace)
+
+    def bor(self, value, inplace=False):
+        return self._reduction(value, MPI.BOR, inplace)
+
+    def lxor(self, value, inplace=False):
+        return self._reduction(value, MPI.LXOR, inplace)
+
+    def bxor(self, value, inplace=False):
+        return self._reduction(value, MPI.BXOR, inplace)
 
     def _safe_reduction(self, value, op, inplace):
         """
@@ -985,7 +1005,6 @@ class SmallData:  # (client)
         Finish any final communication and join partial files
         (in parallel mode).
         """
-
         # >> finish communication
         if self._type == "client":
             # we want to send the finish signal to the server

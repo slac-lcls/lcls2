@@ -9,8 +9,18 @@ client_count = 3
 calib_prefetch_count = 1
 dgram_count = 64
 
-# Test-specific xtc2 file for jungfrau detector relative to the test file
-tmp_file_path = "/sdf/data/lcls/drpsrcf/ffb/users/monarin/jungfrau/mfx101332224-r9999-small.xtc2"
+# Disable shared Jungfrau derived cache and shared geometry cache for this test.
+TEST_ENV_OVERRIDES = {
+    "PS_JF_SHARE_DERIVED": "0",
+    "PS_GEO_SHARE": "0",
+}
+
+# This test is currently failing because of the behavior change in jungfrau.py.
+# The calib() currently returns one panel's calib (instead of whole detector in the old behavior.
+# MFX AMI is working because the shared memory has all the panels. 
+# The test can be fixed when we have a small 1M Jungfrau xtc2 file from XPP which has all the panels.
+tmp_file_path = "/sdf/data/lcls/drpsrcf/ffb/users/monarin/jungfrau/mfx101344525-r0125-s007-c000.first8GiB.xtc2"
+
 
 @pytest.mark.skipif(
     sys.platform == 'darwin' or
@@ -26,41 +36,43 @@ class TestCalibPrefetchCacheShmem:
     """
 
     @staticmethod
-    def launch_server(pid):
+    def launch_server(pid, env):
         cmd_args = [
             'shmemServer', '-c', str(client_count + calib_prefetch_count),
             '-n', '10', '-f', tmp_file_path, '-p', f'shmem_test_{pid}',
             '-r', '1', '-L', '1'
         ]
-        return subprocess.Popen(cmd_args)
+        return subprocess.Popen(cmd_args, env=env)
 
-    def launch_supervisor(self, pid, supervisor_ip_addr):
+    def launch_supervisor(self, pid, supervisor_ip_addr, env):
         shmem_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'shmem_client.py')
         cmd_args = ['python', shmem_file, pid, '1', supervisor_ip_addr, '--test-detector-cache']
-        return subprocess.Popen(cmd_args)
+        return subprocess.Popen(cmd_args, env=env)
 
-    def launch_client(self, pid, supervisor_ip_addr):
+    def launch_client(self, pid, supervisor_ip_addr, env):
         shmem_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'shmem_client.py')
         cmd_args = ['python', shmem_file, pid, '0', supervisor_ip_addr, '--test-detector-cache']
-        return subprocess.Popen(cmd_args)
+        return subprocess.Popen(cmd_args, env=env)
 
-    def launch_calib_prefetch(self, pid):
+    def launch_calib_prefetch(self, pid, env):
         cmd_args = [
             'python', '-m', 'psana.pscalib.app.calib_prefetch',
             '--shmem', f'shmem_test_{pid}',
-            '--log-level', 'DEBUG',
+            '--log-level', 'INFO',
             '--detectors', 'jungfrau'
         ]
-        return subprocess.Popen(cmd_args)
+        return subprocess.Popen(cmd_args, env=env)
 
     @pytest.mark.slow
     def test_detector_cache_shmem(self):
         cli = []
         pid = str(os.getpid())
-        srv = self.launch_server(pid)
+        env = os.environ.copy()
+        env.update(TEST_ENV_OVERRIDES)
+        srv = self.launch_server(pid, env)
         assert srv is not None, "server launch failure"
 
-        self.launch_calib_prefetch(pid)
+        self.launch_calib_prefetch(pid, env)
 
         IPAddr = socket.gethostbyname(socket.gethostname())
         sock = socket.socket()
@@ -72,9 +84,9 @@ class TestCalibPrefetchCacheShmem:
         try:
             for i in range(client_count):
                 if i == 0:
-                    cli.append(self.launch_supervisor(pid, supervisor_ip_addr))
+                    cli.append(self.launch_supervisor(pid, supervisor_ip_addr, env))
                 else:
-                    cli.append(self.launch_client(pid, supervisor_ip_addr))
+                    cli.append(self.launch_client(pid, supervisor_ip_addr, env))
                 assert cli[i] is not None, f"client {i} launch failure"
         except:
             srv.kill()

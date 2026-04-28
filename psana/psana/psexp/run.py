@@ -167,6 +167,10 @@ class Run(object):
         flag = self.shared_state.terminate_flag
         flag.value = True
 
+    def close_shared_memory(self):
+        """Hook for cleaning up shared-memory resources (no-op by default)."""
+        return
+
     def _check_empty_calibconst(self, det_name):
         # Some detectors do not have calibration constants - set default value to None
         if self._calib_const is None:
@@ -356,6 +360,14 @@ class Run(object):
                         time.sleep(1.0)  # optional delay between retries
                     else:
                         self.logger.error(f"Failed to load cache for {det_name}.{drp_class_name} after {max_retries} attempts")
+
+                shared_cache = getattr(self, "_shared_geo_cache", None)
+                if shared_cache is not None:
+                    setattr(iface, "_shared_geo_cache", shared_cache)
+
+                shared_calibc_cache = getattr(self, "_shared_calibc_cache", None)
+                if shared_calibc_cache is not None:
+                    setattr(iface, "_shared_calibc_cache", shared_calibc_cache)
 
                 # add properties for det.raw level
                 setattr(det, "_configs", self.configs)
@@ -791,8 +803,10 @@ class RunSmallData(Run):
 
         # Converts EventBuilder generator to an iterator for steps() call. This is
         # done so that we can pass it to Step (not sure why). Note that for
-        # events() call, we stil use the generator.
-        self._evt_iter = iter(self.eb.events())
+        # events() call, we still use the generator.
+        # Iterate over all EventBuilder batches so steps() can see transitions
+        # even when batch_size is small.
+        self._evt_iter = self._iter_events()
 
         # SmdDataSource and BatchIterator share this list. SmdDataSource automatically
         # adds transitions to this list (skip yield and so hidden from smd_callback).
@@ -800,6 +814,12 @@ class RunSmallData(Run):
         self.proxy_events = []
 
         self.esm = EnvStoreManager(configs)
+
+    def _iter_events(self):
+        # EventBuilder.events() yields only one batch; loop to exhaust the view.
+        while self.eb.has_more():
+            for item in self.eb.events():
+                yield item
 
     def steps(self):
         for (dgrams, proxy_evt)  in self._evt_iter:
@@ -819,7 +839,7 @@ class RunSmallData(Run):
                     )
 
     def events(self):
-        for (dgrams, proxy_evt) in self.eb.events():
+        for (dgrams, proxy_evt) in self._iter_events():
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):
                 self._update_envstore_from_dgrams(dgrams)

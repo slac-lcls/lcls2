@@ -43,7 +43,12 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
         self._cur  = []
 
     def _check(self):                 # Check if camera is sitting at a prompt
-        return ''.join(self._cur) == 'USER>'
+#        return ''.join(self._cur) == 'USER>'
+        prompt = ''.join(self._cur)
+        result = (prompt == 'USER>')
+        if not result:
+            logging.warning(f'_check found {prompt}')
+        return result
 
     def _await(self, tmo = 5.0):
         tEnd = time.time() + tmo
@@ -255,9 +260,13 @@ def piranha4_connectionInfo(cl, alloc_json_str):
 
     uart._rx._await()           # Wait for camera to be sitting at a prompt
 
-    uart._rx._clear()
-    uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
-    uart._rx._await()
+    # since we have been unable to reproduce the intermittent await crash with
+    # automated testing comment out SEM.set('0') and put in this sleep
+    # as a guess for what the issue might be.  - cpo 01/26/26
+    time.sleep(0.1)
+    #uart._rx._clear()
+    #uart.SEM.set('0') # Set internal exposure mode for quicker commanding (?!)
+    #uart._rx._await()
     uart._rx._clear()
     uart.GCP()
     uart._rx._await()

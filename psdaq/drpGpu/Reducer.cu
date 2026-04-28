@@ -80,7 +80,7 @@ Reducer::Reducer(const Parameters&            para,
   m_pool.createReduceBuffers(payloadSize, headerSize);
 
   // Prepare the CUDA graphs
-  if (true) { //m_algos[0]->hasGraph()) {         // Same value for all instances
+  if (m_algos[0]->hasGraph()) {         // Same value for all instances
     m_graphExecs.resize(m_streams.size());
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (_setupGraph(i)) {
@@ -327,7 +327,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned instance)
 void Reducer::startup()
 {
   // Launch the Reducer graphs
-  for (unsigned i = 0; i < m_para.nworkers; ++i) {
+  for (unsigned i = 0; i < m_graphExecs.size(); ++i) {
     chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
   }
 }
@@ -343,11 +343,14 @@ void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQu
     perror("prctl");
   }
 
+  //chkError(cuCtxSetCurrent(m_pool.context().context()));  // Needed, else kernels misbehave
+
   auto  algo   = m_algos[instance];
   auto  head   = m_heads_h[instance];
   auto  tail   = m_tails_h[instance];
   auto  stream = m_streams[instance];
-  auto& graph  = m_graphExecs[instance];
+  cudaGraphExec_t graph{0};           // Unused
+  if (algo->hasGraph())  graph = m_graphExecs[instance];
 
   unsigned index;
   while (inputQueue.pop(index)) {
@@ -359,11 +362,12 @@ void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQu
         chkError(cudaMemcpyAsync((void*)&hd, head, sizeof(*head), cudaMemcpyDeviceToHost, stream));
         chkError(cudaMemcpyAsync((void*)&tl, tail, sizeof(*tail), cudaMemcpyDeviceToHost, stream));
         chkError(cudaStreamSynchronize(stream));
-        //printf("*** Reducer::start[%u]: tail %d, head %d\n", instance, tl, hd);
+        printf("*** Reducer::_worker[%u]: tail %d, head %d\n", instance, tl, hd);
       } while (hd != tl);                     // Wait if the kernel is still processing
       chkError(cudaMemcpyAsync((void*)head, &index, sizeof(index), cudaMemcpyHostToDevice, stream));
       *head = index;
     }
+    printf("*** Reducer::_worker: worker %u index %u\n", instance, index);
 
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
 
@@ -378,6 +382,7 @@ void Reducer::_worker(unsigned instance, SPSCQueue<unsigned>& inputQueue, SPSCQu
 
     auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
     m_reduce_us = std::chrono::duration_cast<us_t>(now - t0).count();
+    printf("*** Reducer::_worker: dt %lu\n", m_reduce_us);
 
     // Signal completion to the recorder
     outputQueue.push(dataSize);

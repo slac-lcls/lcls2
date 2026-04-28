@@ -113,6 +113,8 @@ def main():
 #    imageName = 'xpmGen'
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
+    if isGen or isXTPG:
+        xpm.TPGMini.setup(False)
 
     pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
                       noTiming=args.T, fidRate=1./args.F)
@@ -141,20 +143,6 @@ def main():
 
                 elif cycle == 10:   # Wait for PVSeq to register with autosave/restore
                     autosave.restore()
-
-                    ##  Now handled in l0delay pv callback
-                    #  This is necessary after restoring L0Delays
-                    #  Can also fix strange behavior in common group
-                    #app.groupL0Reset.set(0xff)
-                    #time.sleep(1.e-3)
-                    #app.groupL0Reset.set(0)
-
-                    if isGen or isXTPG:
-                        print(f'Setting up TPGMini')
-                        xpm.TPGMini.setup(False)
-                    else:
-                        print(f'No TPGMini')
-
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))

@@ -9,6 +9,18 @@ project(psdaq)
 include(FindCUDAToolkit)
 if(CUDAToolkit_FOUND)
   enable_language(CUDA)
+
+  # CUDA 13 needs CCCL picked up this way:
+  # From https://github.com/NVIDIA/cccl/tree/main/examples/basic
+  include(cmake/CPM.cmake)
+
+  # This will automatically clone CCCL from GitHub and make the exported cmake targets available
+  CPMAddPackage(
+    NAME CCCL
+    GITHUB_REPOSITORY nvidia/cccl
+    GIT_TAG main # Fetches the latest commit on the main branch
+  )
+
   # Ensure nvcc uses the host compiler from our environment
   set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin $ENV{CC}")
   #set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -ccbin $ENV{CC} -rdc=true")

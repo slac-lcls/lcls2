@@ -61,7 +61,7 @@ def hsd_init(prefix, dev='dev/datadev_0'):
     args['root'] = root.PcieControl.DevPcie
     args['core'] = deviceId==0
     args['swclk'] = boardType=='Kcu1500' and deviceId==0
-
+    
     hsd_unconfig(prefix)
 
 def hsd_connect(msg):

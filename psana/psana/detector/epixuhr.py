@@ -27,6 +27,7 @@ epixuhrhw_config_2_1_1 = epixuhrhw_config_0_1_0
 epixuhrhw_config_3_0_0 = epixuhrhw_config_0_1_0
 epixuhrhw_config_3_1_0 = epixuhrhw_config_0_1_0
 epixuhrhw_config_3_2_0 = epixuhrhw_config_0_1_0
+epixuhrhw_config_3_2_1 = epixuhrhw_config_0_1_0
 
 epixuhr_config_1_0_0   = epixuhr_config_0_0_0
 epixuhr_config_2_0_0   = epixuhr_config_0_0_0
@@ -34,6 +35,7 @@ epixuhr_config_2_1_1   = epixuhr_config_0_0_0
 epixuhr_config_3_0_0   = epixuhr_config_0_0_0
 epixuhr_config_3_1_0   = epixuhr_config_0_0_0
 epixuhr_config_3_2_0   = epixuhr_config_0_0_0
+epixuhr_config_3_2_1   = epixuhr_config_0_0_0
 
 #class epixuhrhw_config_1_1_0(DetectorImpl):
 #    def __init__(self, *args, **kwargs):
@@ -322,6 +324,7 @@ epixuhr_raw_2_1_1 = epixuhr_raw_2_0_0
 epixuhr_raw_3_0_0 = epixuhr_raw_2_1_1
 epixuhr_raw_3_1_0 = epixuhr_raw_3_0_0
 epixuhr_raw_3_2_0 = epixuhr_raw_3_1_0
+epixuhr_raw_3_2_1 = epixuhr_raw_3_2_0
 
 #class epixuhr_raw_1_0_0(epixuhr_raw_0_0_0):
 #    def __init__(self, *args, **kwargs):

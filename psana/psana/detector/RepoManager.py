@@ -31,14 +31,15 @@ logger = logging.getLogger(__name__)
 
 class RepoManager(object):
     """Supports repository directories/files naming structure
-       dirrepo:       self.dirrepo
-       dir_dettype:   <dirrepo>/<dettype>
-       dir_merge:     <dirrepo>/<dettype>/merge_tmp/
-       dir_panel:     <dirrepo>/<dettype>/<panelid>/
-       dir_ctype:     <dirrepo>/<dettype>/<panelid>/<ctype>
-       dir_logs:      <dirrepo>/<dettype>/logs/
-       dir_logs_year: <dirrepo>/<dettype>/logs/<year>/
-       logname:       <dirrepo>/<dettype>/logs/<year>/<tstamp>_log_<suffix>.txt
+       dirrepo:           self.dirrepo
+       dir_dettype:       <dirrepo>/<dettype>
+       dir_block_results: <dirrepo>/<dettype>/block_results/
+       dir_merge:         <dirrepo>/<dettype>/merge_tmp/
+       dir_panel:         <dirrepo>/<dettype>/<panelid>/
+       dir_ctype:         <dirrepo>/<dettype>/<panelid>/<ctype>
+       dir_logs:          <dirrepo>/<dettype>/logs/
+       dir_logs_year:     <dirrepo>/<dettype>/logs/<year>/
+       logname:           <dirrepo>/<dettype>/logs/<year>/<tstamp>_log_<suffix>.txt
        dir_log_at_start: self.dir_log_at_star
        dir_log_at_start_year: <dir_log_at_start>/<year>/
        logname_at_start:      <dir_log_at_start>/<year>/<year>_<addname>_<suffix>..txt
@@ -115,6 +116,15 @@ class RepoManager(object):
     def makedir_merge(self, dname='merge_tmp'):
         assert os.path.exists(self.makedir_dettype())
         return self.makedir(self.dir_merge(dname))
+
+
+    def dir_block_results(self, dname='block_results'):
+        return os.path.join(self.dir_dettype(), dname)
+
+
+    def makedir_block_results(self, dname='block_results'):
+        assert os.path.exists(self.makedir_dettype())
+        return self.makedir(self.dir_block_results(dname))
 
 
     def dir_panel(self, panelid):
@@ -296,6 +306,7 @@ def init_repoman_and_logger(**kwa):
     group       = kwa.get('group', 'ps-users')
     fmt         = kwa.get('fmt', '[%(levelname).1s] %(filename)s L%(lineno)04d %(message)s')
     dirrepo     = kwa.get('dirrepo', 'work')
+    info_parser = kwa.get('info_parser', True)
     #print('XXX logsuffix', logsuffix)
 
     repoman = RepoManager(**kwa)
@@ -309,7 +320,7 @@ def init_repoman_and_logger(**kwa):
     if not (dirrepo in ('work1', './work1')):
         repoman.save_record_at_start(SCRNAME, adddict={}) #tsfmt='%Y-%m-%dT%H:%M:%S%z'
 
-    if parser is not None:
+    if parser is not None and info_parser:
         logger.info(ut.info_parser_arguments(parser))
 
     return repoman
@@ -336,6 +347,9 @@ def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
 
 def fname_prefix_merge(dmerge, shortname, tstamp, exp, irun):
     return '%s/%s-%s-%s-r%04d' % (dmerge, shortname, tstamp, exp, irun)
+
+def fname_prefix_block_results(dblkres, shortname, exp, irun, gainmode):
+    return '%s/%s-%s-r%04d-%s' % (dblkres, shortname, exp, irun, gainmode)
 
 
 if __name__ == "__main__":

@@ -56,16 +56,28 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         longname = self._uniqueid
         return longname, uc.detector_name_short(longname, maxsize=uj.MAX_DETNAME_SIZE)
 
-    def calib(self, evt, **kwa) -> Array2d:
+    def calib(self, evt, **kwa) -> Array3d:
         """ use kwa['cversion'] = 0,1,2,3 to switch between python, and C++ 1,2,3
             DEFAULT cversion = 3 is set in UtilsJungfrau.py class DetCache
             To use old good python calib method with common mode evaluation set:
             cversion=3 and cmpars=(7,3,200,10)
         """
-        #if ad.is_none(self.raw(evt), 'raw is None', logger_method=logger.debug): return None
-        if self.raw(evt) is None: return None
-        return uj.calib_jungfrau_versions(self, evt, **kwa)
+        # Avoid extra raw() copy here; calib immediately consumes raw per-event data.
+        # This keeps perf while raw() defaults to copy=True for safety elsewhere.
+        if self.raw(evt, copy=False) is None: return None
+
+        # The calib_jungfrau_version introduced in b9d213236a92984349490ea925e691949dbd12f2
+        # (known first bad commmit) has been found to have an issue with shape mismatched:
+        #
+        # File "/sdf/home/m/monarin/lcls2/psana/psana/detector/UtilsJungfrau.py", line 546, in add_gain_mask
+        # self.gmask[i,:] = self.gfac[i,:] * self.mask
+        # ValueError: operands could not be broadcast together with shapes (32,512,1024) (6,512,1024)
+        #
+        # Reproducer: create DataSource using files=[] and call det.raw.image(evt)
+        # Current hack to revert to old calib method:
+        #kwa['cversion'] = 0
         #return uj.calib_jungfrau(self, evt, **kwa) # !!! cversion=0
+        return uj.calib_jungfrau_versions(self, evt, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
     def __init__(self, *args, **kwa):

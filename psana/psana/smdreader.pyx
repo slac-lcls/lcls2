@@ -6,7 +6,7 @@ from libc.stdint cimport uint8_t, uint32_t, uint64_t
 from libc.stdlib cimport free, malloc
 from libc.string cimport memcpy
 from parallelreader cimport Buffer, ParallelReader
-from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FAILED, is_map_failed
+from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, is_map_failed
 
 import os
 import time
@@ -70,7 +70,10 @@ cdef class SmdReader:
     cdef float       total_time
     cdef int         num_threads
     cdef Buffer*     send_bufs                  # array of customed Buffers (one per EB node)
-    cdef uint64_t    sendbufsize                # size of each send buffer
+    cdef uint64_t    sendbufsize                # default size used when each send buffer is first allocated
+    cdef array.array send_buf_caps              # current capacity of each send buffer (bytes)
+    cdef uint64_t    sendbufsize_max            # hard cap for any EB send buffer
+    cdef double      sendbuf_growth_factor      # internal growth factor to avoid frequent remaps
     cdef int         n_eb_nodes
     cdef int         fakestep_flag
     cdef list        configs
@@ -135,9 +138,18 @@ cdef class SmdReader:
         self.repack_footer[fds.size] = fds.size
 
         # For speed, SmdReader puts together smd chunk and missing step info
-        # in parallel and store the new data in `send_bufs` (one buffer per stream).
+        # in parallel and store the new data in `send_bufs` (one buffer per EB).
         self.send_bufs          = <Buffer *>malloc(self.n_eb_nodes * sizeof(Buffer))
         self.sendbufsize        = 0x10000000
+        max_bufsize_raw = os.environ.get("PS_SMD_REPACK_MAX_BUFSIZE", "0x40000000")
+        try:
+            self.sendbufsize_max = int(max_bufsize_raw, 0)
+        except ValueError:
+            self.sendbufsize_max = 0x40000000
+        self.sendbuf_growth_factor = 1.5
+        if self.sendbufsize_max < self.sendbufsize:
+            self.sendbufsize_max = self.sendbufsize
+        self.send_buf_caps      = array.array('L', [self.sendbufsize] * self.n_eb_nodes)
         self._init_send_buffers()
 
         # Index of the slowest detector or intg_stream_id if given.
@@ -149,9 +161,16 @@ cdef class SmdReader:
     cdef void _init_send_buffers(self):
         cdef Py_ssize_t i
         cdef void* p
+        cdef uint64_t* send_buf_caps = <uint64_t*>self.send_buf_caps.data.as_voidptr
         for i in range(self.n_eb_nodes):
-            p = mmap(NULL, self.sendbufsize, PROT_READ | PROT_WRITE,
-                    MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+            p = mmap(
+                NULL,
+                send_buf_caps[i],
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS,
+                -1,
+                0,
+            )
             if is_map_failed(p):
                 raise MemoryError("SmdReader: mmap(send_buf) failed")
             self.send_bufs[i].chunk = <char*>p
@@ -165,11 +184,68 @@ cdef class SmdReader:
 
     def __dealloc__(self):
         cdef Py_ssize_t i
-        for i in range(self.n_eb_nodes):
-            if self.send_bufs[i].chunk != NULL:
-                munmap(<void*>self.send_bufs[i].chunk, self.sendbufsize)
+        cdef uint64_t* send_buf_caps = NULL
         if self.send_bufs != NULL:
+            if self.send_buf_caps is not None:
+                send_buf_caps = <uint64_t*>self.send_buf_caps.data.as_voidptr
+            for i in range(self.n_eb_nodes):
+                if self.send_bufs[i].chunk != NULL:
+                    if send_buf_caps != NULL:
+                        munmap(<void*>self.send_bufs[i].chunk, send_buf_caps[i])
+                    else:
+                        munmap(<void*>self.send_bufs[i].chunk, self.sendbufsize)
             free(self.send_bufs)
+
+    cdef void _ensure_send_buffer_capacity(self, int eb_idx, uint64_t required_size) except *:
+        cdef uint64_t* send_buf_caps = <uint64_t*>self.send_buf_caps.data.as_voidptr
+        cdef uint64_t current_cap = send_buf_caps[eb_idx]
+        cdef uint64_t target_cap = required_size
+        cdef uint64_t grown_cap = 0
+        cdef void* p
+
+        if required_size <= current_cap:
+            return
+
+        grown_cap = <uint64_t>(current_cap * self.sendbuf_growth_factor)
+        if grown_cap > target_cap:
+            target_cap = grown_cap
+
+        if target_cap > self.sendbufsize_max:
+            target_cap = self.sendbufsize_max
+
+        debug_print(
+            f"resize_send_buffer eb_node_id={eb_idx + 1} "
+            f"required={required_size} current_cap={current_cap} "
+            f"new_cap={target_cap} max_cap={self.sendbufsize_max}"
+        )
+
+        p = mmap(NULL, target_cap, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0)
+        if is_map_failed(p):
+            raise MemoryError(f"SmdReader: mmap(send_buf resize) failed (requested:{target_cap})")
+
+        if self.send_bufs[eb_idx].chunk != NULL:
+            munmap(<void*>self.send_bufs[eb_idx].chunk, current_cap)
+        self.send_bufs[eb_idx].chunk = <char*>p
+        send_buf_caps[eb_idx] = target_cap
+
+    cdef void _raise_repack_capacity_error(
+        self,
+        int eb_node_id,
+        uint64_t required_size,
+        uint64_t current_cap,
+        int max_step_stream,
+        uint64_t max_step_size,
+        int max_smd_stream,
+        uint64_t max_smd_size,
+    ) except *:
+        raise RuntimeError(
+            "Repacked data exceeds configured send-buffer limit. "
+            "Increase PS_SMD_REPACK_MAX_BUFSIZE (bytes) and retry. "
+            f"Details: eb_node_id:{eb_node_id} "
+            f"required:{required_size} current_cap:{current_cap} max_bufsize:{self.sendbufsize_max} "
+            f"max_step_stream:{max_step_stream} max_step_size:{max_step_size} "
+            f"max_smd_stream:{max_smd_stream} max_smd_size:{max_smd_size}."
+        )
 
     def set_configs(self, configs):
         # SmdReaderManager calls view (with batch_size=1)  at the beginning
@@ -229,7 +305,6 @@ cdef class SmdReader:
         debug_print("find_limit_ts called")
 
         cdef int i=0
-        cdef int j=0
         is_transition = not ignore_transition
 
         cdef uint64_t limit_ts=INVALID_TS
@@ -260,25 +335,46 @@ cdef class SmdReader:
             if require_events:
                 if pending_L1 <= 0:
                     # Remember the best transition-only stream in case no L1 streams exist
-                    if fallback_ts == INVALID_TS or buf_ts < fallback_ts or \
-                            (buf_ts == fallback_ts and fallback_winner > -1 and \
-                             buf.n_ready_events > self.prl_reader.bufs[fallback_winner].n_ready_events):
+                    if (
+                        fallback_ts == INVALID_TS
+                        or buf_ts < fallback_ts
+                        or (
+                            buf_ts == fallback_ts
+                            and fallback_winner > -1
+                            and buf.n_ready_events
+                            > self.prl_reader.bufs[fallback_winner].n_ready_events
+                        )
+                    ):
                         fallback_winner = i
                         fallback_ts = buf_ts
                     continue
                 elif pending_L1 < batch_size:
                     # Secondary choice: has L1 but not enough to satisfy batch_size
-                    if tier2_ts == INVALID_TS or buf_ts < tier2_ts or \
-                            (buf_ts == tier2_ts and tier2_winner > -1 and \
-                             buf.n_ready_events > self.prl_reader.bufs[tier2_winner].n_ready_events):
+                    if (
+                        tier2_ts == INVALID_TS
+                        or buf_ts < tier2_ts
+                        or (
+                            buf_ts == tier2_ts
+                            and tier2_winner > -1
+                            and buf.n_ready_events
+                            > self.prl_reader.bufs[tier2_winner].n_ready_events
+                        )
+                    ):
                         tier2_winner = i
                         tier2_ts = buf_ts
                     debug_print(f"    file[{i}]: pending_L1={pending_L1} (<batch) buf_ts={buf_ts} -- tier2 candidate stream {tier2_winner}")
                     continue
 
-            if tier1_ts == INVALID_TS or buf_ts < tier1_ts or \
-                    (buf_ts == tier1_ts and tier1_winner > -1 and \
-                     buf.n_ready_events > self.prl_reader.bufs[tier1_winner].n_ready_events):
+            if (
+                tier1_ts == INVALID_TS
+                or buf_ts < tier1_ts
+                or (
+                    buf_ts == tier1_ts
+                    and tier1_winner > -1
+                    and buf.n_ready_events
+                    > self.prl_reader.bufs[tier1_winner].n_ready_events
+                )
+            ):
                 tier1_winner = i
                 tier1_ts = buf_ts
             debug_print(f"    file[{i}]: pending_L1={pending_L1} buf_ts={buf_ts} tier1_ts={tier1_ts} --> tier1 candidate {tier1_winner}")
@@ -485,9 +581,10 @@ cdef class SmdReader:
             new_env = d.env & second_byte | self.L1Accept_EndOfBatch << 24
             if service == self.L1Accept:
                 memcpy(&(d.env), &new_env, sizeof(uint32_t))
-        debug_print(f"mark_endofbatch eob_stream:{eob_stream_id} eob_ts:{eob_ts} "
-                f"service:{service}")
-
+        debug_print(
+            f"mark_endofbatch eob_stream:{eob_stream_id} eob_ts:{eob_ts} "
+            f"service:{service}"
+        )
 
     @cython.boundscheck(False)
     def build_batch_view(self, batch_size=1000, intg_stream_id=-1, intg_delta_t=0, max_events=0, ignore_transition=True):
@@ -582,7 +679,13 @@ cdef class SmdReader:
                         break
                     else:
                         if self.n_intg_batch_L1 > 0:
-                            debug_print(f"[find_intg_limit_ts] EARLY EXIT: FAIL_ADVANCE={limit_ts==last_ts} INVALID={limit_ts==INVALID_TS} limit_ts={limit_ts} forcing partial batch with n_intg_batch_L1={self.n_intg_batch_L1}")
+                            debug_print(
+                                "[find_intg_limit_ts] EARLY EXIT: "
+                                f"FAIL_ADVANCE={limit_ts==last_ts} "
+                                f"INVALID={limit_ts==INVALID_TS} "
+                                f"limit_ts={limit_ts} forcing partial batch "
+                                f"with n_intg_batch_L1={self.n_intg_batch_L1}"
+                            )
                             batch_complete_flag = 1
                             break
                         else:
@@ -591,8 +694,10 @@ cdef class SmdReader:
                 self.n_intg_batch_L1 += 1
                 if self.n_intg_batch_L1 == batch_size:
                     batch_complete_flag = 1
-            debug_print(f"    batch loop: limit_ts={limit_ts} winner={self.winner} "
-                    f"L1={self.n_view_L1} batch_complete_flag={batch_complete_flag} ")
+            debug_print(
+                f"    batch loop: limit_ts={limit_ts} winner={self.winner} "
+                f"L1={self.n_view_L1} batch_complete_flag={batch_complete_flag} "
+            )
 
             # Delay committing limit_ts until all streams can be sure to contribute
             # their full range of dgrams
@@ -640,7 +745,7 @@ cdef class SmdReader:
                         cn_batch_bufs[i] += 1
 
                 # FOR DEBUGGING - Calling print with gil can slow down performance.
-                #with gil:
+                # with gil:
                 #    debug_print(f"    data[{i}]: st={i_st_blocks[i]} en={i_en_blocks[i]} "
                 #            f"block_size={block_sizes[i]} seen_offset={buf.seen_offset} "
                 #            f"n_seen_events={buf.n_seen_events}")
@@ -727,7 +832,6 @@ cdef class SmdReader:
                     f"total_time={self.total_time:.6f} sec")
         self.n_intg_batch_L1 = 0
         return True
-
 
     def get_next_fake_ts(self):
         """Returns next fake timestamp
@@ -916,12 +1020,42 @@ cdef class SmdReader:
         cdef Buffer* smd_buf
         cdef Py_buffer step_buf
         cdef int i=0, offset=0
-        cdef uint64_t smd_size=0, step_size=0, footer_size=0, total_size=0
+        cdef uint64_t smd_size=0, step_size=0, footer_size=0, total_size=0, required_size=0
+        cdef uint64_t max_step_size=0, max_smd_size=0
+        cdef int max_step_stream=-1, max_smd_stream=-1
         cdef char[:] view
         cdef int eb_idx = eb_node_id - 1  # eb rank starts from 1 (0 is Smd0)
         cdef char* send_buf
-        send_buf = self.send_bufs[eb_idx].chunk  # select the buffer for this eb
+        cdef uint64_t* send_buf_caps = <uint64_t*>self.send_buf_caps.data.as_voidptr
         cdef uint32_t* footer = <uint32_t*>self.repack_footer.data.as_voidptr
+
+        # Precompute required size before copying
+        footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
+        for i in range(self.prl_reader.nfiles):
+            step_size = memoryview(step_views[i]).nbytes
+            required_size += step_size
+            if step_size > max_step_size:
+                max_step_size = step_size
+                max_step_stream = i
+            if not only_steps:
+                smd_size = self.block_sizes[i]
+                required_size += smd_size
+                if smd_size > max_smd_size:
+                    max_smd_size = smd_size
+                    max_smd_stream = i
+        required_size += footer_size
+        if required_size > self.sendbufsize_max:
+            self._raise_repack_capacity_error(
+                eb_idx + 1,
+                required_size,
+                send_buf_caps[eb_idx],
+                max_step_stream,
+                max_step_size,
+                max_smd_stream,
+                max_smd_size,
+            )
+        self._ensure_send_buffer_capacity(eb_idx, required_size)
+        send_buf = self.send_bufs[eb_idx].chunk  # select the (possibly resized) buffer for this eb
 
         # Copy step and smd buffers if exist
         for i in range(self.prl_reader.nfiles):
@@ -945,7 +1079,6 @@ cdef class SmdReader:
             total_size += footer[i]
 
         # Copy footer
-        footer_size = sizeof(unsigned) * (self.prl_reader.nfiles + 1)
         memcpy(send_buf + offset, footer, footer_size)
         total_size += footer_size
         view = <char [:total_size]> (send_buf)
@@ -963,9 +1096,15 @@ cdef class SmdReader:
         cdef int c_only_steps = only_steps
         cdef int eb_idx = eb_node_id - 1         # eb rank starts from 1 (0 is Smd0)
         cdef char* send_buf
-        send_buf = self.send_bufs[eb_idx].chunk  # select the buffer for this eb
+        cdef uint64_t* send_buf_caps = <uint64_t*>self.send_buf_caps.data.as_voidptr
         cdef int i=0, offset=0
-        cdef uint64_t footer_size=0, total_size=0
+        cdef uint64_t smd_size=0, footer_size=0, total_size=0
+        cdef uint64_t max_step_size=0, max_smd_size=0
+        cdef int max_step_stream=-1, max_smd_stream=-1
+        debug_print(
+            f"repack_parallel enter eb_node_id={eb_node_id} only_steps={only_steps} "
+            f"nfiles={self.prl_reader.nfiles}"
+        )
 
         # Check if we need to append fakestep transition set
         cdef Py_buffer fake_pybuf
@@ -982,13 +1121,20 @@ cdef class SmdReader:
             offsets[i] = offset
             # Move offset and total size to include missing steps
             step_sizes[i]  = memoryview(step_views[i]).nbytes
+            if step_sizes[i] > max_step_size:
+                max_step_size = step_sizes[i]
+                max_step_stream = i
             total_size += step_sizes[i]
             offset += step_sizes[i]
 
             # Move offset and total size to include smd data
             if only_steps==0:
-                total_size += self.block_sizes[i]
-                offset += self.block_sizes[i]
+                smd_size = self.block_sizes[i]
+                if smd_size > max_smd_size:
+                    max_smd_size = smd_size
+                    max_smd_stream = i
+                total_size += smd_size
+                offset += smd_size
 
             # Move offset and total size to include fakestep transition set (if set)
             total_size += self._fakebuf_size
@@ -999,7 +1145,24 @@ cdef class SmdReader:
             ptr_step_bufs[i] = <char *>step_buf.buf
             PyBuffer_Release(&step_buf)
 
-        assert total_size <= self.sendbufsize, f"Repacked data exceeds send buffer's size (total:{total_size} bufsize:{self.sendbufsize})."
+        footer_size = sizeof(uint32_t) * (self.prl_reader.nfiles + 1)
+        debug_print(
+            f"repack_parallel size-check eb_node_id={eb_node_id} "
+            f"payload={total_size} footer={footer_size} required={total_size + footer_size} "
+            f"current_cap={send_buf_caps[eb_idx]} max_cap={self.sendbufsize_max}"
+        )
+        if total_size + footer_size > self.sendbufsize_max:
+            self._raise_repack_capacity_error(
+                eb_idx + 1,
+                total_size + footer_size,
+                send_buf_caps[eb_idx],
+                max_step_stream,
+                max_step_size,
+                max_smd_stream,
+                max_smd_size,
+            )
+        self._ensure_send_buffer_capacity(eb_idx, total_size + footer_size)
+        send_buf = self.send_bufs[eb_idx].chunk  # select the (possibly resized) buffer for this eb
 
         # Access raw C pointers so they can be used in nogil loop below
         cdef uint64_t* block_sizes = <uint64_t*>self.block_sizes.data.as_voidptr
@@ -1026,7 +1189,6 @@ cdef class SmdReader:
                 footer[i] += self._fakebuf_size
 
         # Copy footer
-        footer_size = sizeof(uint32_t) * (self.prl_reader.nfiles + 1)
         memcpy(send_buf + total_size, footer, footer_size)
         total_size += footer_size
         view = <char [:total_size]> (send_buf)

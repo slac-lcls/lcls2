@@ -39,6 +39,8 @@ public:
         m_buffer_mask = d.m_buffer_mask;
     }
 
+    // Write an item to the back of the queue
+    // Note that this does not check that the queue is full first!
     void push(T value)
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
@@ -111,8 +113,8 @@ public:
         return true;
     }
 
-    // non blocking read from queue
-    bool peek(T& value)
+    // Inspect the front of the queue returning empty status
+    bool peek(T& value) const
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
@@ -124,36 +126,57 @@ public:
         return true;
     }
 
+    // Inspect the front of the queue
     T& front()
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
         return m_ring_buffer[index & m_buffer_mask];
     }
 
+    // Inspect the front of the queue
     const T& front() const
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
         return m_ring_buffer[index & m_buffer_mask];
     }
 
+    // Inspect the back of the queue
     T& back()
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
         return m_ring_buffer[index & m_buffer_mask];
     }
 
+    // Inspect the back of the queue
     const T& back() const
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
         return m_ring_buffer[index & m_buffer_mask];
     }
 
+    // Check whether the queue is empty
     bool is_empty() const
     {
         return m_read_index.load(std::memory_order_acquire) ==
                m_write_index.load(std::memory_order_acquire);
     }
 
+    // Wait for the queue to become nonempty
+    bool wait_for_nonempty() const
+    {
+        if (is_empty()) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_condition.wait(lock, [this] {
+                return !is_empty() || m_terminate.load(std::memory_order_acquire);
+            });
+            if (m_terminate.load(std::memory_order_acquire) && is_empty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    // Return the occupancy of the queue
     int guess_size() const
     {
         int ret = m_write_index.load(std::memory_order_acquire) -
@@ -164,11 +187,13 @@ public:
         return ret;
     }
 
+    // Return the capacity of the queue
     size_t size() const
     {
         return m_ring_buffer.size();
     }
 
+    // Shut down the queue by releasing the lock
     void shutdown()
     {
         {
@@ -178,6 +203,7 @@ public:
         m_condition.notify_one();
     }
 
+    // Reset the state of the queue to allow it to be reused
     void startup()
     {
         m_terminate.store(false);
@@ -186,8 +212,8 @@ public:
     }
 
 private:
-    std::mutex m_mutex;
-    std::condition_variable m_condition;
+    mutable std::mutex m_mutex;
+    mutable std::condition_variable m_condition;
     std::atomic<bool> m_terminate;
     int64_t m_buffer_mask, m_capacity;
     std::vector<T> m_ring_buffer;

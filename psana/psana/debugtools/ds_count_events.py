@@ -62,6 +62,8 @@ def parse_args():
     parser.add_argument('--log_file', help='Path to log file for DataSource (optional)')
     parser.add_argument('--show_rank_stats', action='store_true',
                         help='Print per-rank statistics (default: only rank 0 summary)')
+    parser.add_argument('--test_pixel_coords', action='store_true',
+                        help='Call det.raw._pixel_coords() once and report timing')
     args = parser.parse_args()
     if args.skip_calib_load is not None:
         if any(det.lower() == "all" for det in args.skip_calib_load):
@@ -119,6 +121,11 @@ def create_datasource(args, rank):
     return ds
 
 
+def _rss_gb():
+    process = psutil.Process(os.getpid())
+    return process.memory_info().rss / (1024 ** 3)
+
+
 def main():
     args = parse_args()
     comm = MPI.COMM_WORLD
@@ -142,11 +149,28 @@ def main():
     if _parallel_pread is not None:
         _parallel_pread.reset_parallel_pread_stats()
 
+
     run = next(ds.runs())
 
+    if ds.unique_user_rank():
+        print(f"[Rank {rank}] rss_gb after next(ds.runs()) { _rss_gb():.3f}")
+
     det = run.Detector(args.debug_detector) if args.debug_detector else None
+    if det and ds.unique_user_rank():
+        print(f"[Rank {rank}] rss_gb after run.Detector({args.debug_detector}) { _rss_gb():.3f}")
     if rank == 0 and det:
         print(f"[INFO] Debugging detector: {args.debug_detector}")
+    if det and args.test_pixel_coords:
+        det_t0 = time.perf_counter()
+        coords = det.raw._pixel_coords()
+        det_dt = time.perf_counter() - det_t0
+        shape_msg = "None"
+        if coords is not None:
+            try:
+                shape_msg = ", ".join(str(a.shape) for a in coords)
+            except Exception:
+                shape_msg = "unavailable"
+        print(f"[Rank {rank}] det.raw._pixel_coords() time={det_dt:.6f}s shapes={shape_msg} rss_gb={_rss_gb():.3f}")
 
     local_count = 0
     event_loop_start = time.time()
@@ -176,7 +200,8 @@ def main():
                 _ = det.raw.calib(evt)
             else:
                 _ = det.raw.raw(evt)
-            det_call_seconds += time.perf_counter() - det_t0
+            det_t1 = time.perf_counter()
+            det_call_seconds += det_t1 - det_t0
             det_call_count += 1
             det_accessed = True
         elif det and args.debug_detector.lower() == 'dream_hsd_lmcp':
@@ -207,7 +232,7 @@ def main():
                 delta_calls = pread_calls - last_pread_calls
                 io_rate = (delta_bytes / delta_sec) if delta_sec > 1e-12 else 0.0
                 io_msg = (
-                    f" IO={io_rate / (1024 * 1024):.2f} MiB/s "
+                    f"IO={io_rate / (1024 * 1024):.2f} MiB/s "
                     f"bytes={delta_bytes / (1024 * 1024):.2f} MiB calls={delta_calls}"
                 )
                 last_pread_seconds = pread_sec
@@ -215,12 +240,12 @@ def main():
                 last_pread_calls = pread_calls
             else:
                 io_msg = ""
-            process = psutil.Process(os.getpid())
-            rss_gb = process.memory_info().rss / (1024 ** 3)
-            print(
-                f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
-                f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {io_msg}"
-            )
+            if ds.unique_user_rank():
+                rss_gb = _rss_gb()
+                print(
+                    f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
+                    f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {args.calib=} {io_msg}"
+                )
             ti0 = now
 
         local_count += 1
@@ -259,11 +284,8 @@ def main():
         total_rate = total / loop_elapsed_print if loop_elapsed_print > 0 else 0.0
         def _env(name, default=""):
             return os.environ.get(name, default)
-        march_vars = {k: _env(k, "unset") for k in sorted(os.environ) if k.startswith("PS_MARCH")}
         bd_chunk = _env("PS_BD_CHUNKSIZE", "unset")
-        print(f"[{args.log_level}] Marching env: " +
-              ", ".join(f"{k}={v}" for k, v in march_vars.items()) +
-              f", PS_BD_CHUNKSIZE={bd_chunk}")
+        print(f"[{args.log_level}] PS_BD_CHUNKSIZE={bd_chunk}")
         print(
             f"[{args.log_level}] {n_ebnodes=} {n_bdnodes=} "
             f"Load time={load_time_max:.2f}s Loop time={loop_elapsed_print:.2f}s "

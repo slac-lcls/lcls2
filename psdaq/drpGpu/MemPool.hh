@@ -10,7 +10,6 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
-#include <cuda/atomic>
 #include <nvtx3/nvtx3.hpp>
 
 #include "drp/drp.hh"
@@ -73,7 +72,7 @@ public:   // Virtuals
   int fd(unsigned unit=0) const override;
   int setMaskBytes(uint8_t laneMask, unsigned virtChan) override;
 private:  // Virtuals
-  void _freeDma(unsigned count, uint32_t* indices) override { /* Nothing to do */ }
+  ssize_t _freeDma(unsigned count, uint32_t* indices) override { return 0; /* Nothing to do */ }
 public:
   const CudaContext& context() const { return m_context; }
   const std::vector<DetPanel>& panels() const { return m_panels; }

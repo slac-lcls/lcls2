@@ -5,6 +5,7 @@
 #
 from psdaq.configdb.tsdef import *
 import math
+import logging
 
 verbose = False
 #verbose = True
@@ -399,6 +400,11 @@ def validate(filename):
     seq += open(filename).read()
     exec(compile(seq, filename, 'exec'), {}, config)
     l = preproc(config['instrset'])
+
+    if len(l) > 2048:
+        logging.warning(f'{filename} may be too large.  {len(l)} > 2048.')
+    else:
+        logging.info(f'{filename} has {len(l)} instructions.')
 
 #    for i,ins in enumerate(l):
 #        print(f'{i}: {ins}')

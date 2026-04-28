@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+from time import time
+t0_sec_tot = time()
+
 import sys
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
@@ -7,8 +10,7 @@ logger = logging.getLogger(__name__)
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
-#M14 = 0o37777 # 14-bits of data, 2 bits for gain mode switch
-M14 = 0x3fff # 16383, 14-bit mask
+M14 = 0x3fff # 0o37777, 16383, 14-bit of data mask, 2 bits for gain mode switch
 
 USAGE = 'Usage:'\
       + '\n  %s -k <\"str-of-datasource-kwargs\"> -d <detector> ' % SCRNAME\
@@ -20,6 +22,9 @@ USAGE = 'Usage:'\
       + '\n  %s -k exp=mfxdaq23,run=7 -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=ascdaq023,run=37 -d jungfrau -o ./work # data' % SCRNAME\
       + '\n  %s -k exp=mfx100861624,run=30 -d jungfrau -o work --stepnum 0 --stepmax 1 --segind 7' % SCRNAME\
+      + '\n'\
+      + '\n  %s -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 ### STAGE 1 ONLY' % SCRNAME\
+      + '\n  mpirun --mca osc ^ucx -n 5 %s -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -30,15 +35,13 @@ def argument_parser():
     d_detname = 'jungfrau' #  None
     d_nrecs   = 1000  # number of records to collect and process
     d_nrecs1  = 50    # number of records to process at 1st stage
-    #d_idx     = None  # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirrepo = DIR_REPO_JUNGFRAU # './work'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
     d_stepmax = 3
     d_evskip  = 0       # number of events to skip in the beginning of each step
-    d_events  = 1000000 # last event number in the step to process
-    d_evstep  = 1000000
+    d_events  = 10000   # max_events in DataSource(max_events=events,...)
     d_dirmode = 0o2775
     d_filemode= 0o664
     d_group   = 'ps-users'
@@ -53,14 +56,15 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2025-06-07'
+    d_version = 'V2026-03-05'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
+    d_ctdepl  = 'psr'   # for constants from dark, 'psrnx'
     d_deploy  = False
+    d_save    = False
     d_plotim  = 0
     d_evcode  = None
     d_segind  = None
     d_igmode  = None
-    d_mpi     = False
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -70,15 +74,13 @@ def argument_parser():
     h_nrecs   = 'number of records to calibrate pedestals, default = %s' % str(d_nrecs)
     h_detname = 'detector name, default = %s' % d_detname
     h_nrecs1  = 'number of records to process at 1st stage, default = %s' % str(d_nrecs1)
-    #h_idx     = 'segment index (0-31 for jungfrau) or all by default for processing, default = %s' % str(d_idx)
     h_dirrepo = 'repository for calibration results, default = %s' % d_dirrepo
     h_logmode = 'logging mode, one of %s, default = %s' % (STR_LEVEL_NAMES, d_logmode)
     h_errskip = 'flag to skip errors and keep processing, stop otherwise, default = %s' % d_errskip
     h_stepnum = 'step number to process or None for all steps, default = %s' % str(d_stepnum)
     h_stepmax = 'maximum number of steps to process, default = %s' % str(d_stepmax)
     h_evskip  = 'number of events to skip in the beginning of each step, default = %s' % str(d_evskip)
-    h_events  = 'number of events to process from the beginning of each step, default = %s' % str(d_events)
-    h_evstep  = 'maximal number of events to process in each step, default = %s' % d_evstep
+    h_events  = 'total number of events to read from xtc2 file, DataSource(..., max_events=events, ...), default = %s' % str(d_events)
     h_dirmode = 'directory access mode, default = %s' % oct(d_dirmode)
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_int_lo  = 'lowest  intensity accepted for dark evaluation, default = %d' % d_int_lo
@@ -94,20 +96,20 @@ def argument_parser():
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_version = 'constants version, default = %s' % str(d_version)
     h_datbits = 'data bits, e.g. 0x7fff is 15-bit mask for epixm320, default = %s' % hex(d_datbits)
+    h_save    = 'save constants in repository, default = %s' % d_save
+    h_ctdepl    = '(str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_evcode  = 'comma separated event codes for selection as OR combination, any negative %s'%\
                 'code inverts selection, default = %s'%str(d_evcode)
     h_segind  = 'segment index in det.raw.raw array to process, default = %s' % str(d_segind)
     h_igmode  = 'gainmode index FOR DEBUGGING, default = %s' % str(d_igmode)
-    h_mpi     = 'use with MPI, default = %s' % d_mpi
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--detname', default=d_detname,    type=str,   help=h_detname)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
     parser.add_argument('--nrecs1',        default=d_nrecs1,     type=int,   help=h_nrecs1)
-    #parser.add_argument('-i', '--idx',     default=d_idx,        type=int,   help=h_idx)
     parser.add_argument('-o', '--dirrepo', default=d_dirrepo,    type=str,   help=h_dirrepo)
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('-E', '--errskip', action='store_false',             help=h_errskip)
@@ -115,7 +117,6 @@ def argument_parser():
     parser.add_argument('--stepmax',       default=d_stepmax,    type=int,   help=h_stepmax)
     parser.add_argument('--evskip',        default=d_evskip,     type=int,   help=h_evskip)
     parser.add_argument('--events',        default=d_events,     type=int,   help=h_events)
-    parser.add_argument('-e', '--evstep',  default=d_evstep,     type=int,   help=h_evstep)
     parser.add_argument('--dirmode',       default=d_dirmode,    type=int,   help=h_dirmode)
     parser.add_argument('--filemode',      default=d_filemode,   type=int,   help=h_filemode)
     parser.add_argument('--int_lo',        default=d_int_lo,     type=int,   help=h_int_lo)
@@ -131,12 +132,13 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
+    parser.add_argument('-S', '--save',    action='store_true',              help=h_save)
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
-    parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
+    parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
+    parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-c', '--evcode',  default=d_evcode,     type=str,   help=h_evcode)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
     parser.add_argument('-G', '--igmode',  default=d_igmode,     type=int,   help=h_igmode)
-    parser.add_argument('-M', '--mpi',     action='store_true',              help=h_mpi)
     return parser
 
 
@@ -150,20 +152,20 @@ def do_main():
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.detname  is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
-    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
-
-    print('use code for MPI: %s' % args.mpi)
+#    assert args.stepnum  is not None, 'WARNING: option "--stepnum <stepnum>" MUST be specified.'
 
     t0_sec = time()
-    if args.mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
-    else:        from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+
+#    if use_mpi: from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
+#    else:       from psana.detector.UtilsJungfrauCalib    import jungfrau_dark_proc
+
+    from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
 
     jungfrau_dark_proc(parser)
-    logger.info('End of %s, consumed time %.3f sec' % (SCRNAME, time() - t0_sec))
-    sys.exit(0)
-
+    print('%s TOTAL TIME (with imports and parser) %.3f sec' % (SCRNAME, time() - t0_sec_tot))
 
 if __name__ == "__main__":
     do_main()
+    sys.exit(0)
 
 # EOF

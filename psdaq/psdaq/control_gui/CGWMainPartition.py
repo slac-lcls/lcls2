@@ -75,6 +75,13 @@ class CGWMainPartition(QGroupBox):
         self.w_select = None
         self.set_buts_enabled()
 
+        # this line is a useful debugging tool when doing automated
+        # testing: it automatically "clicks" the partition-select
+        # button which normally needs to be clicked
+        # manually. -cpo 01/16/26
+        #print('*** hack: autoclick the partition select button')
+        #self.but_select.click()
+
 #--------------------
 
     def set_tool_tips(self):
@@ -128,6 +135,15 @@ class CGWMainPartition(QGroupBox):
 
         #self.w_select.move(QCursor.pos()+QPoint(20,10))
         self.w_select.move(self.mapToGlobal(self.but_select.pos()) + QPoint(5, 22)) # (5,22) offset for frame
+        # this line is a useful debugging tool when using daqstate to
+        # transition automatically between states for testing: it automatically
+        # does the partition-select "apply" which normally needs to be clicked
+        # manually. one does have to remove this line once to manually select
+        # the desired detectors, and then add this line back in to be able
+        # go from UNALLOCATED to the desired state without requiring any
+        # manual clicking. -cpo 01/16/26
+        #print('*** automation: click apply for partition select')
+        #self.w_select.but_apply.click()
         resp=self.w_select.show()
 
         # MOVED TO QWPopupTableCheck
@@ -153,8 +169,10 @@ class CGWMainPartition(QGroupBox):
 #--------------------
 
     def update_select_window(self):
+        print('*** update select')
         logger.debug('update_select_window')
         if self.w_select is None: return
+        print('*** update_part')
         self.w_select.update_partition_table()
 
 #--------------------
@@ -268,7 +286,7 @@ class CGWMainPartition(QGroupBox):
             if self.w_select is not None: self.update_select_window()
 
         if state == 'unallocated':
-           if self.w_select is None: self.open_select_window()
+            if self.w_select is None: self.open_select_window()
         else:
            if self.w_select is not None:
               self.w_select.close()
