@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "direct_name": "asic_id_bank0_full",
+  "description": "One full bank-0 fill per pattern for rapid ASIC-ID localization. Select ASIC with EPIXQUAD_DEBUG_PATTERN_INDEX=0..15.",
+  "coordinate_mode": "bank_rc_178x48",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic0 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 0,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic1 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 1,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic2 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 2,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic3 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 3,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 4,
+      "label": "asic4 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 4,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 5,
+      "label": "asic5 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 5,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 6,
+      "label": "asic6 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 6,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 7,
+      "label": "asic7 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 7,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 8,
+      "label": "asic8 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 8,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 9,
+      "label": "asic9 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 9,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 10,
+      "label": "asic10 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 10,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 11,
+      "label": "asic11 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 11,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 12,
+      "label": "asic12 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 12,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 13,
+      "label": "asic13 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 13,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 14,
+      "label": "asic14 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 14,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 15,
+      "label": "asic15 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 15,
+          "bank": 0
+        }
+      ]
+    }
+  ]
+}

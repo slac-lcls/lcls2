@@ -26,7 +26,7 @@
 ** --
 */
 
-#include "psdaq/service/SpinLock.hh"
+#include "SpinLock.hh"
 
 #include <mutex>
 

@@ -48,9 +48,11 @@ def test_calib_constants_directly(expname, runnum, detnameid):
     from psana.pscalib.calib.MDBWebUtils import calib_constants
     #'pixel_rms', 'pixel_status', 'pedestals', 'pixel_gain', 'geometry'
     pedestals, _ = calib_constants(detnameid, exp=expname, ctype='pedestals',    run=runnum)
-    gain, _      = calib_constants(detnameid, exp=expname, ctype='pixel_gain',   run=runnum)
     rms, _       = calib_constants(detnameid, exp=expname, ctype='pixel_rms',    run=runnum)
     status, _    = calib_constants(detnameid, exp=expname, ctype='pixel_status', run=runnum)
+    gain_meta    = calib_constants(detnameid, exp=expname, ctype='pixel_gain',   run=runnum)
+
+    gain = None if gain_meta is None else gain_meta[0]
 
     logger.info(info_ndarr(pedestals, 'pedestals'))
     logger.info(info_ndarr(gain,      'gain     '))

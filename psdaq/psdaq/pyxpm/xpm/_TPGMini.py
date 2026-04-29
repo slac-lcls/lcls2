@@ -297,6 +297,6 @@ class TPGMini(pr.Device):
             self.ACRateDiv[4].set(  2)
             self.ACRateDiv[5].set(  1)
             self.ACRateReload.set(1)
-                self.RateReload.set(1)
+            self.RateReload.set(1)
 
 

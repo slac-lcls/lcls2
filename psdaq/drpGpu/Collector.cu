@@ -5,8 +5,8 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
-#include "psdaq/trigger/TriggerPrimitive.hh"
-#include "psdaq/eb/eb.hh"
+#include "psdaq/trigger/src/TriggerPrimitive.hh"
+#include "psdaq/eb/src/eb.hh"
 
 // Uncomment to dump a tracebuffer when a PGPReader event counter jump occurs
 //#define USE_TRACEBUFFER

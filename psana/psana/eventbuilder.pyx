@@ -5,7 +5,7 @@ import array
 
 from cpython.getargs cimport PyArg_ParseTupleAndKeywords
 from cpython.object cimport PyObject
-from dgramlite cimport Dgram, Xtc
+from psana.dgramlite cimport Dgram, Xtc
 from libc.stddef cimport size_t
 from libc.stdint cimport uint64_t
 

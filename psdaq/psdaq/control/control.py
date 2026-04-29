@@ -17,7 +17,7 @@ from p4p.client.thread import Context
 import epics
 from threading import Thread, Event, Condition
 from copy import deepcopy
-import dgramCreate as dc
+import psana.dgramCreate as dc
 from psdaq.control.ControlDef import ControlDef, create_msg, error_msg, warning_msg, step_msg, \
                                   progress_msg, fileReport_msg, front_pub_port, step_pub_port, \
                                   back_pub_port, front_rep_port, back_pull_port, fast_rep_port, \

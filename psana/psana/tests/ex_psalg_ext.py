@@ -3,7 +3,7 @@
 """
 
 #import psalg_ext
-from psalg_ext import peak_finder_algos
+from psana.psalg_ext import peak_finder_algos
 import numpy as np
 import matplotlib.pyplot as plt
 import time

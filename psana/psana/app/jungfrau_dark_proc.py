@@ -7,6 +7,8 @@ import sys
 #logger = logging.getLogger(__name__)
 from psana.detector.dir_root import DIR_REPO_JUNGFRAU
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
+from datetime import datetime
+import getpass
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
 
@@ -20,10 +22,11 @@ USAGE = f'\n  {SCRNAME} -k <\"str-of-datasource-kwargs\"> -d <detector>'\
       + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY'\
       + f'\n  mpirun --mca osc ^ucx -n 5 {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0 ### STAGE 2 ONLY WITH MPIRUN'\
       + f'\n\n  commands for wrapper:'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 1 [--submit]          ### RUN WRAPPER FOR STAGE 1 ONLY'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 2 [--submit]          ### RUN WRAPPER FOR STAGE 2 AND SUBMIT COMMANDS FOR EXECUTIOBN'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 4 --deploy [--submit] ### RUN WRAPPER FOR STAGE 3 AND DEPLOY CONSTANTS IN DB'\
-      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 --deploy [--submit] ### RUN WRAPPER FOR ALL STAGES'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 1 [--submit]            ### RUN WRAPPER FOR STAGE 1 ONLY'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 2 [--submit]            ### RUN WRAPPER FOR STAGE 2 AND SUBMIT COMMANDS FOR EXECUTIOBN'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 4 [--submit]            ### RUN WRAPPER FOR STAGE 3 AND DEPLOY CONSTANTS IN DB'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 [--deploy] [--submit] ### RUN WRAPPER FOR ALL STAGES'\
+      + f'\n  {SCRNAME} -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --wrapper 7 --slurmpars="--nodes=1 --ntasks-per-node=19" [--deploy] [--submit] ### RUN WRAPPER FOR ALL STAGES'\
       + f'\nHELP:\n  {SCRNAME} -h'
 #      + '\n'\
 
@@ -35,7 +38,7 @@ def argument_parser():
     d_detname = 'jungfrau' #  None
     d_nrecs   = 1000  # number of records to collect and process
     d_nrecs1  = 50    # number of records to process at 1st stage
-    d_dirrepo = DIR_REPO_JUNGFRAU # './work'
+    d_dirrepo = DIR_REPO_JUNGFRAU # './work1'
     d_logmode = 'INFO'
     d_errskip = True
     d_stepnum = None
@@ -56,19 +59,17 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2026-03-25'
+    d_version = 'V2026-04-02'
     d_datbits = M14     # 14-bits, 2 bits for gain mode switch
-    d_ctdepl  = 'psr'   # for constants from dark, 'psrnx'
+    d_ctdepl  = 'prs'   # for constants from dark, 'prsnx'
     d_deploy  = False
     d_save    = False
     d_plotim  = 0
     d_segind  = None
-
     d_wrapper = 0
     d_submit  = False
-    d_nranks  = 19
-    d_nnodes  = 1
-
+    logfile = datetime.now().strftime('%Y-%m-%dT%I%M%S') + f'_jungfrau_dark_proc_{getpass.getuser()}.log'
+    d_slurmpars = f'--partition=milano --account=lcls:prjdat21 --exclusive --export=ALL --output={logfile} --nodes=1 --ntasks-per-node=19'
     d_tstamp  = None # 20180910111049
     d_run_beg = None
     d_run_end = 'end'
@@ -111,9 +112,8 @@ def argument_parser():
 
     h_wrapper = 'WRAPPER: bitword 001/010/100 runs wrapper jungfrau_dark_proc_wrapper.sh for stages 1/2/3, respectively, or any bit combination, default = %d' % d_wrapper
     h_submit  = 'WRAPPER: submit commands for execution, otherwise show what wrapper is doing for debugging, default = %s' % d_submit
-    h_nranks  = 'WRAPPER: passed to sbatch --ntasks-per-node=NRANKS, default = %s' % d_nranks
-    h_nnodes  = 'WRAPPER: number of nodes, default = %s' % d_nnodes
-
+    h_slurmpars = '(str) space-separated list of slurm parameters, applied for STAGE 2 only'\
+                'ex: --slurmpars "--partition=milano --account=lcls:prjdat21 --export=ALL --output=$logfile --nodes=1 --ntasks-per-node=19", default = %s' % str(d_slurmpars)
     h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
     h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
     h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
@@ -152,12 +152,9 @@ def argument_parser():
     parser.add_argument('-S', '--save',    action='store_true',              help=h_save)
     parser.add_argument('-i', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
     parser.add_argument('-I', '--segind',  default=d_segind,     type=int,   help=h_segind)
-
     parser.add_argument('--submit',        action='store_true',              help=h_submit)
     parser.add_argument('--wrapper',       default=d_wrapper,    type=int,   help=h_wrapper)
-    parser.add_argument('--nranks',        default=d_nranks,     type=int,   help=h_nranks)
-    parser.add_argument('--nnodes',        default=d_nnodes,     type=int,   help=h_nnodes)
-
+    parser.add_argument('--slurmpars',     default=d_slurmpars,  type=str,   help=h_slurmpars)
     parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('-p', '--ctdepl',  default=d_ctdepl,     type=str,   help=h_ctdepl)
     parser.add_argument('--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
@@ -169,6 +166,26 @@ def argument_parser():
     return parser
 
 
+def dict_slurmpars_from_str(s):
+    """converts str of slurm parameters to dict. Missing values for boolean parameters are substituted by None
+       USES: spaces " " to split parameters and "=" to split key and value
+       s = "--partition=milano --exclusive ..."
+    """
+    flds = s.split() # ['--partition=milano', '--exclusive', ...]
+    wlst = [f.split('=') for f in flds] # [['--partition', 'milano'], ['--exclusive'],...
+    d = {kv[0]: kv[1] if len(kv)>1 else 'NONE' for kv in wlst} # {'--partition': 'milano', '--exclusive': 'NONE', ...}
+    return d
+
+
+def set_slurmpars(defslp, optslp):
+    """returns str of combined default and optional slurmpars with default replaced by optional"""
+    dic_slp = dict_slurmpars_from_str(defslp)
+    dic_opt = dict_slurmpars_from_str(optslp)
+    for k,v in dic_opt.items():
+        dic_slp[k] = v
+    return ' '.join([f'{k}={v}' for k,v in dic_slp.items()]).replace('=NONE','') #  "--exclusive=NONE" > "--exclusive"
+
+
 def do_main():
     from time import time
     t0_sec = time()
@@ -176,6 +193,7 @@ def do_main():
     parser = argument_parser()
     args = parser.parse_args()
     kwa = vars(args)
+    defs = parser.parse_args([])
 
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
@@ -190,11 +208,16 @@ def do_main():
         scr_name = f'{scr_dir}/jungfrau_dark_proc_wrapper.sh'
         cmd = f'{scr_name} -k {args.dskwargs} -d {args.detname} --nrecs {args.nrecs} --nrecs1 {args.nrecs1} --dirrepo {args.dirrepo} --logmode {args.logmode}'\
             + f' --datbits {args.datbits} --int_lo {args.int_lo} --int_hi {args.int_hi} --fraclo {args.fraclo} --frachi {args.frachi} --wrapper {args.wrapper}'
-        if args.wrapper & 2: cmd\
+
+        if args.wrapper & 2:
+            slurmpars = set_slurmpars(defs.slurmpars, args.slurmpars)
+            #print('combined default and optional slurmpars:\n  ', slurmpars)
+            cmd\
             +=f' --evskip {args.evskip} --stepnum {args.stepnum} --stepmax {args.stepmax}'\
             + f' --intnhi {args.intnhi} --intnlo {args.intnlo}'\
             + f' --rms_hi {args.rms_hi} --rms_lo {args.rms_lo} --rmsnhi {args.rmsnhi} --rmsnlo {args.rmsnlo} --fraclm {args.fraclm}'\
-            + f' --nranks {args.nranks} --nnodes {args.nnodes}'
+            + f' --slurmpars "{slurmpars}"'
+
         if args.wrapper & 4:
             cmd += f' --ctdepl {args.ctdepl} --version {args.version}'
             if args.tstamp   is not None: cmd += f' --tstamp {args.tstamp}'
@@ -202,15 +225,14 @@ def do_main():
             if args.run_beg  is not None: cmd += f' --run_beg {args.run_beg}'
             if args.run_end != 'end': cmd += f' --run_end {args.run_end}'
             if args.dbsuffix is not None: cmd += f' --dbsuffix {args.dbsuffix}'
+            if args.save:   cmd += ' --save'
+            if args.deploy: cmd += ' --deploy'
 
         ### ADD BOOL FIELDS FOR STAGE 2 AND 3
         if args.submit: cmd += ' --submit'
-        if args.deploy: cmd += ' --deploy'
-        if args.save:   cmd += ' --save'
         params = cmd.split(maxsplit=1)[1]
         print(f'RUN SHELL SCRIPT-WRAPPER {scr_name} FOR SEQUENCE OF COMMANDS WITH PARAMETERS:\n{params}\n')
         os.system(cmd)
-        if not args.submit: print('\nadd option --submit to execute commands\n')
     else:
         from psana.detector.UtilsJungfrauCalibMPI import jungfrau_dark_proc
         jungfrau_dark_proc(parser)

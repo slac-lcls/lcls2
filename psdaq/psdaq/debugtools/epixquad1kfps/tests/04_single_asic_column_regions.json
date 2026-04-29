@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "test_name": "single_asic_column_regions",
+  "description": "Four 2-point markers across the four 48-column regions of ASIC 0 without assuming the current bank-id math is correct.",
+  "array_shape": [16, 178, 192],
+  "readable_rows": 176,
+  "background_value": 12,
+  "default_marker_value": 8,
+  "trbit_by_asic": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "markers": [
+    {"label": "C0_A", "group": "C0", "asic": 0, "row": 40, "col": 20, "value": 8, "tags": ["column-region", "region-0"]},
+    {"label": "C0_B", "group": "C0", "asic": 0, "row": 52, "col": 36, "value": 8, "tags": ["column-region", "region-0"]},
+    {"label": "C1_A", "group": "C1", "asic": 0, "row": 40, "col": 68, "value": 8, "tags": ["column-region", "region-1"]},
+    {"label": "C1_B", "group": "C1", "asic": 0, "row": 52, "col": 84, "value": 8, "tags": ["column-region", "region-1"]},
+    {"label": "C2_A", "group": "C2", "asic": 0, "row": 40, "col": 116, "value": 8, "tags": ["column-region", "region-2"]},
+    {"label": "C2_B", "group": "C2", "asic": 0, "row": 52, "col": 132, "value": 8, "tags": ["column-region", "region-2"]},
+    {"label": "C3_A", "group": "C3", "asic": 0, "row": 40, "col": 164, "value": 8, "tags": ["column-region", "region-3"]},
+    {"label": "C3_B", "group": "C3", "asic": 0, "row": 52, "col": 180, "value": 8, "tags": ["column-region", "region-3"]}
+  ]
+}

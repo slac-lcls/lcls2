@@ -199,11 +199,11 @@ def add_title_labels_to_axes(axes, title=None, xlabel=None, ylabel=None, fslab=1
     if ylabel is not None: axes.set_ylabel(ylabel, fontsize=fslab, **kwa)
 
 
-def show(mode=None):
+def show(mode=None, pause_sec=0.001):
     if mode is None: plt.ioff() # hold contraol at show() (connect to keyboard for controllable re-drawing)
     else           : plt.ion()  # do not hold control
-    #plt.pause(0.001) # hack to make it work... othervise show() does not work...
-    plt.show()
+    plt.show(block=(mode is None))
+    plt.pause(pause_sec) # hack to make it work... otherwise show() does not work...
 
 
 def draw():
@@ -214,23 +214,23 @@ def draw_fig(fig):
     fig.canvas.draw()
 
 
-def save_plt(fname='img.png', verb=True, **kwa):
-    if verb: print('Save plot in file: %s' % fname)
+def save_plt(fname='img.png', fmt='save figure in file: %s', **kwa): #verb=True
+    if fmt is not None: print(fmt % fname)
     plt.savefig(fname, **kwa)
 
 
-def save_fig(fig, fname='img.png', prefix=None, suffix='.png', verb=True, **kwa):
+def save_fig(fig, fname='img.png', prefix=None, suffix='.png', fmt='save figure in file: %s', **kwa): #verb=True
     path = fname
     if prefix is not None:
         ts = strftime('%Y-%m-%dT%H%M%S', localtime(time()))
         path='%s%s%s' % (prefix,ts,suffix)
-    if verb: print('Save figure in file: %s' % path)
+    if fmt is not None: print(fmt % path)
     fig.savefig(path, **kwa)
 
 
-def save(fname='img.png', do_save=True, verb=True, **kwa):
+def save(fname='img.png', fmt='save figure in file: %s', do_save=True, **kwa):
     if not do_save: return
-    save_plt(fname, verb, **kwa)
+    save_plt(fname, fmt, **kwa)
 
 
 def proc_stat(weights, bins):

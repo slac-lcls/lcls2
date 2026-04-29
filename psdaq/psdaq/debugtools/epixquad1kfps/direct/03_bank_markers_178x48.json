@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "direct_name": "bank_markers_178x48",
+  "description": "Sparse two-point probes inside one logical 178x48 bank. Use after the full-bank probe identifies the preferred bank-shape hypothesis.",
+  "coordinate_mode": "bank_rc_178x48",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic0 bank0 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 0, "bank": 0, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic0 bank1 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 1, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 0, "bank": 1, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic0 bank2 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 2, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 0, "bank": 2, "row": 145, "col": 35}
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic0 bank3 markers",
+      "ops": [
+        {"kind": "pixel", "asic": 0, "bank": 3, "row": 12, "col": 7},
+        {"kind": "pixel", "asic": 0, "bank": 3, "row": 145, "col": 35}
+      ]
+    }
+  ]
+}
