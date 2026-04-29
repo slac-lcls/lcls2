@@ -1,6 +1,7 @@
 rt_dep = cc.find_library('rt', required: false)
 libcurl_dep = cc.find_library('curl')
 threads_dep = dependency('threads')
+conda_incdir = include_directories(join_paths(conda_base, 'include'))
 
 subdir('utils')
 subdir('geometry')
@@ -17,7 +18,7 @@ psalg_sources = files(
 psalg_shlib = shared_library(
     'psalg',
     psalg_sources,
-    include_directories: [psalg_incdir, xtcdata_incdir],
+    include_directories: [psalg_incdir, xtcdata_incdir, conda_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [utils_shlib, calib_shlib, geometry_shlib, digitizer_shlib, detector_shlib],
@@ -27,7 +28,7 @@ psalg_shlib = shared_library(
 executable(
     'datareader',
     'app/datareader.cc',
-    include_directories: [psalg_incdir, xtcdata_incdir],
+    include_directories: [psalg_incdir, xtcdata_incdir, conda_incdir],
     #install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, detector_shlib, psalg_shlib, utils_shlib, calib_shlib],
@@ -36,7 +37,7 @@ executable(
 executable(
     'hsd_valid',
     'tests/hsd_valid.cc',
-    include_directories: [psalg_incdir, xtcdata_incdir],
+    include_directories: [psalg_incdir, xtcdata_incdir, conda_incdir],
     #install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, psalg_shlib, digitizer_shlib]
