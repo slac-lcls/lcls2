@@ -10,7 +10,7 @@ psana/psana/tests/user_loops.py without sourcing setup_env.sh.
 
 Options:
   -p, --prefix DIR        Installation prefix (default: <repo>/install_psana)
-  -b, --build-list LIST   BUILD_LIST passed to psana (default: PSANA:DGRAM)
+  -b, --build-list LIST   BUILD_LIST passed to psana (default: PSANA:DGRAM:HSD:PYCALGOS)
   -t, --build-type TYPE   CMAKE_BUILD_TYPE (default: RelWithDebInfo)
   -j, --jobs N            Parallel build jobs (default: nproc or 4)
       --cmake-prefix DIR  Extra CMAKE_PREFIX_PATH entry (optional)
@@ -20,14 +20,15 @@ Options:
 
 Examples:
   ./build_psana.sh --clean
-  ./build_psana.sh -b "PSANA:DGRAM:NDARRAY" --with-psalg
+  ./build_psana.sh -b "PSANA:DGRAM:HSD:PYCALGOS"
+  ./build_psana.sh -b "PSANA:DGRAM:HSD:PYCALGOS"
 EOF
 }
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install_prefix="$repo_dir/install_psana"
 build_type="RelWithDebInfo"
-build_list="PSANA:DGRAM"
+build_list="PSANA:DGRAM:HSD:PYCALGOS"
 jobs=""
 cmake_prefix=""
 force_psalg=0
@@ -128,7 +129,7 @@ if [[ -n "${cmake_prefix:-}" ]]; then
 fi
 
 requires_psalg=0
-if [[ "$build_list" =~ (SHMEM|PEAKFINDER|CFD|NDARRAY|PYCALGOS) ]]; then
+if [[ "$build_list" =~ (SHMEM|PEAKFINDER|HSD|CFD|NDARRAY|PYCALGOS) ]]; then
   requires_psalg=1
 fi
 if [[ "$force_psalg" -eq 1 ]]; then
