@@ -14,6 +14,12 @@ show_stats="true"
 nranks="1"
 launcher="python"
 python_bin="${PYTHON_BIN:-python}"
+mps_enabled="false"
+mps_gpu_device="${MPS_GPU_DEVICE:-0}"
+MPS_STARTED=0
+MPS_CLEANUP_DIRS=()
+MPS_MONITOR_PID=""
+MPS_MONITOR_LOG=""
 
 usage() {
   cat <<EOF
@@ -27,6 +33,8 @@ Wrapper options:
   --python PATH          Python executable to run inside the activated env
   --trace LIST           Trace domains (default: ${trace_kinds})
   --sample MODE          Sampling mode (default: ${sample_mode})
+  --mps                  Start CUDA MPS before profiling and stop it on exit
+  --mps-gpu-device N     CUDA_VISIBLE_DEVICES value used for the MPS server (default: ${mps_gpu_device})
   --no-force-overwrite   Do not pass --force-overwrite=true to nsys
   --no-stats             Do not run 'nsys stats' after profiling
   -h, --help             Show this help
@@ -67,6 +75,14 @@ while (($#)); do
       sample_mode="$2"
       shift 2
       ;;
+    --mps)
+      mps_enabled="true"
+      shift
+      ;;
+    --mps-gpu-device)
+      mps_gpu_device="$2"
+      shift 2
+      ;;
     --no-force-overwrite)
       force_overwrite="false"
       shift
@@ -90,6 +106,65 @@ while (($#)); do
       ;;
   esac
 done
+
+stop_mps_monitor() {
+  if [[ -n "${MPS_MONITOR_PID}" ]]; then
+    kill "${MPS_MONITOR_PID}" >/dev/null 2>&1 || true
+    wait "${MPS_MONITOR_PID}" >/dev/null 2>&1 || true
+    MPS_MONITOR_PID=""
+  fi
+}
+
+stop_mps() {
+  stop_mps_monitor
+  if [[ "${MPS_STARTED}" == "1" ]]; then
+    echo quit | nvidia-cuda-mps-control >/dev/null 2>&1 || true
+    MPS_STARTED=0
+  fi
+  local dir
+  for dir in "${MPS_CLEANUP_DIRS[@]}"; do
+    rm -rf "${dir}" >/dev/null 2>&1 || true
+  done
+}
+
+log_mps_server_list() {
+  local label="$1"
+  local server_list
+  echo "MPS_CONTROL_${label}_GET_SERVER_LIST_BEGIN"
+  server_list="$(echo get_server_list | nvidia-cuda-mps-control 2>&1 || true)"
+  printf '%s\n' "${server_list}"
+  if [[ -n "${server_list}" ]]; then
+    echo "MPS_SERVER_PIDS_${label}=$(printf '%s\n' "${server_list}" | tr '\n' ' ')"
+  else
+    echo "MPS_SERVER_PIDS_${label}=none"
+  fi
+  echo "MPS_CONTROL_${label}_GET_SERVER_LIST_END"
+}
+
+start_mps_monitor() {
+  MPS_MONITOR_LOG="${log_path}.mps-pids"
+  : > "${MPS_MONITOR_LOG}"
+  (
+    while true; do
+      date -Is
+      pgrep -a 'nvidia-cuda-mps|nvidia-mps' || true
+      sleep 1
+    done >> "${MPS_MONITOR_LOG}" 2>&1
+  ) &
+  MPS_MONITOR_PID=$!
+  echo "MPS_PID_MONITOR_LOG=${MPS_MONITOR_LOG}"
+  echo "MPS_PID_MONITOR_PID=${MPS_MONITOR_PID}"
+}
+
+print_mps_monitor_summary() {
+  if [[ -n "${MPS_MONITOR_LOG}" && -f "${MPS_MONITOR_LOG}" ]]; then
+    echo "MPS_PID_MONITOR_UNIQUE_PROCESSES_BEGIN"
+    awk '/nvidia-cuda-mps|nvidia-mps/ {print}' "${MPS_MONITOR_LOG}" | sort -u || true
+    echo "MPS_PID_MONITOR_UNIQUE_PROCESSES_END"
+  fi
+}
+
+trap stop_mps EXIT
 
 if [[ ! -x "${nsys_bin}" ]]; then
   echo "error: nsys binary not found or not executable: ${nsys_bin}" >&2
@@ -127,6 +202,34 @@ if [[ ! -f "${target_script}" ]]; then
   exit 1
 fi
 
+if [[ "${mps_enabled}" == "true" ]]; then
+  if ! command -v nvidia-cuda-mps-control >/dev/null 2>&1; then
+    echo "error: nvidia-cuda-mps-control not found" >&2
+    exit 1
+  fi
+
+  export CUDA_VISIBLE_DEVICES="${mps_gpu_device}"
+  mps_tag="$(basename "${output_prefix}")_gpu${mps_gpu_device}_$$_${RANDOM}"
+  if [[ -z "${CUDA_MPS_PIPE_DIRECTORY:-}" ]]; then
+    export CUDA_MPS_PIPE_DIRECTORY="/tmp/nvidia-mps-${USER}-${mps_tag}"
+    MPS_CLEANUP_DIRS+=("${CUDA_MPS_PIPE_DIRECTORY}")
+  fi
+  if [[ -z "${CUDA_MPS_LOG_DIRECTORY:-}" ]]; then
+    export CUDA_MPS_LOG_DIRECTORY="/tmp/nvidia-mps-${USER}-${mps_tag}-log"
+    MPS_CLEANUP_DIRS+=("${CUDA_MPS_LOG_DIRECTORY}")
+  fi
+  mkdir -p "${CUDA_MPS_PIPE_DIRECTORY}" "${CUDA_MPS_LOG_DIRECTORY}"
+
+  echo "Starting CUDA MPS"
+  echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
+  echo "CUDA_MPS_PIPE_DIRECTORY=${CUDA_MPS_PIPE_DIRECTORY}"
+  echo "CUDA_MPS_LOG_DIRECTORY=${CUDA_MPS_LOG_DIRECTORY}"
+  nvidia-cuda-mps-control -d
+  MPS_STARTED=1
+  log_mps_server_list "AFTER_START"
+  sleep 2
+fi
+
 nsys_args=(
   profile
   --sample="${sample_mode}"
@@ -152,10 +255,27 @@ echo "output_prefix=${output_prefix}"
 echo "log_path=${log_path}"
 echo "nranks=${nranks}"
 echo "trace=${trace_kinds}"
+echo "mps_enabled=${mps_enabled}"
+if [[ "${mps_enabled}" == "true" ]]; then
+  echo "mps_gpu_device=${mps_gpu_device}"
+  echo "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}"
+  echo "CUDA_MPS_PIPE_DIRECTORY=${CUDA_MPS_PIPE_DIRECTORY:-}"
+  echo "CUDA_MPS_LOG_DIRECTORY=${CUDA_MPS_LOG_DIRECTORY:-}"
+fi
+
+if [[ "${mps_enabled}" == "true" ]]; then
+  start_mps_monitor
+fi
 
 set -x
 "${nsys_bin}" "${nsys_args[@]}" "${launcher}" "${launch_args[@]}"
 set +x
+
+if [[ "${mps_enabled}" == "true" ]]; then
+  stop_mps_monitor
+  print_mps_monitor_summary
+  log_mps_server_list "POST_PROFILE"
+fi
 
 if [[ "${show_stats}" != "true" ]]; then
   exit 0
