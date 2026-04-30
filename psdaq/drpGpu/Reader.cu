@@ -38,7 +38,7 @@ Reader::Reader(const Parameters&                  para,
   chkError(cudaMalloc(&m_pebbleQueue.d,                  sizeof(*m_pebbleQueue.d)));
   chkError(cudaMemcpy( m_pebbleQueue.d, m_pebbleQueue.h, sizeof(*m_pebbleQueue.d), cudaMemcpyDefault));
 
-  // Set up buffer index allocator for DMA to Collector comms
+  // Set up buffer index allocator for DMA to TrgInpGen comms
   m_readerQueue.h = new RingIndexDtoD(m_pool.nbuffers());
   chkError(cudaMalloc(&m_readerQueue.d,                  sizeof(*m_readerQueue.d)));
   chkError(cudaMemcpy( m_readerQueue.d, m_readerQueue.h, sizeof(*m_readerQueue.d), cudaMemcpyDefault));

@@ -618,17 +618,17 @@ std::string PGPDrp::configure(const json& msg)
   // Set up a Reader to receive DMAed data and calibrate it
   m_reader = std::make_shared<Reader>(m_para, memPool, m_det, tpSz, m_green_ctx[0], *m_terminate_d);
 
-  // Create the event building collector, which calculates the TEB input data
+  // Create the Trigger Input Generator, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_collector = std::make_unique<Collector>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
+  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
   m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
 
-  // Launch the Collector thread
+  // Launch the collector thread
   m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
@@ -637,8 +637,8 @@ std::string PGPDrp::configure(const json& msg)
   // Start the Reducers
   m_reducer->startup();
 
-  // Start the Collector before phase 2 is issued
-  m_collector->start();
+  // Start the TrgInpGen before phase 2 is issued
+  m_trgInpGen->start();
 
   // Start the PGP reader before phase 2 is issued
   m_reader->start();
@@ -663,7 +663,7 @@ unsigned PGPDrp::unconfigure()
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   printf("*** PGPDrp::unconfigure 3\n");
 
-  // Wait for the collector thread to finish
+  // Wait for the TrgInpGen thread to finish
   if (m_collectorThread.joinable()) {
     m_collectorThread.join();
     logging::info("Collector thread finished");
@@ -672,7 +672,7 @@ unsigned PGPDrp::unconfigure()
 
   m_reducer.reset();
   printf("*** PGPDrp::unconfigure 5\n");
-  m_collector.reset();
+  m_trgInpGen.reset();
   printf("*** PGPDrp::unconfigure 6\n");
   m_reader.reset();
   printf("*** PGPDrp::unconfigure 7\n");
@@ -711,7 +711,7 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
 
   m_reader->setupMetrics(exporter, labels);
 
-  m_collector->setupMetrics(exporter, labels);
+  m_trgInpGen->setupMetrics(exporter, labels);
 
   m_reducer->setupMetrics(exporter, labels);
 
@@ -748,7 +748,7 @@ void PGPDrp::_collector()
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
 
-  // Run the CPU side of the Collector
+  // Run the Collector
   auto trgPrimitive = triggerPrimitive();
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
@@ -758,7 +758,7 @@ void PGPDrp::_collector()
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
     // Receive an event
-    if (!m_collector->receive())  continue; // This can block
+    if (!m_trgInpGen->receive())  continue; // This can block
 
     //drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
     auto timingHeader = m_det.getTimingHeader(bufIndex);

@@ -9,7 +9,7 @@
 #include "drp/DrpBase.hh"
 #include "drp/spscqueue.hh"
 #include "Reader.hh"
-#include "Collector.hh"
+#include "TrgInpGen.hh"
 #include "Reducer.hh"
 #include "FileWriter.hh"
 
@@ -69,7 +69,7 @@ private:
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
   unsigned                         m_worker;      // For cycling through reducers
   SPSCQueue<ResultTuple>           m_recordQueue;
-  std::shared_ptr<Collector>       m_collector;
+  std::shared_ptr<TrgInpGen>       m_trgInpGen;
   std::thread                      m_recorderThread;
   const Parameters&                m_para;
   TebReceiverMetrics               m_metrics;
@@ -104,7 +104,7 @@ private:
   std::atomic<bool>            m_terminate;
   cuda::std::atomic<unsigned>* m_terminate_d;
   std::shared_ptr<Reader>      m_reader;
-  std::unique_ptr<Collector>   m_collector;
+  std::unique_ptr<TrgInpGen>   m_trgInpGen;
   std::unique_ptr<Reducer>     m_reducer;
   std::thread                  m_collectorThread;
   uint64_t                     m_nNoTrDgrams;

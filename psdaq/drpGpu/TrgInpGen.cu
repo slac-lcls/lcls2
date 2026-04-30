@@ -1,4 +1,4 @@
-#include "Collector.hh"
+#include "TrgInpGen.hh"
 
 #include "Reader.hh"
 
@@ -22,11 +22,11 @@ static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 static const unsigned EvtCtrMask = 0xffffff;
 
-struct col_domain{ static constexpr char const* name{"Collector"}; };
+struct col_domain{ static constexpr char const* name{"TrgInpGen"}; };
 using col_scoped_range = nvtx3::scoped_range_in<col_domain>;
 
 
-Collector::Collector(const Parameters&                  para,
+TrgInpGen::TrgInpGen(const Parameters&                  para,
                      MemPoolGpu&                        pool,
                      const std::shared_ptr<Reader>&     reader,
                      Trg::TriggerPrimitive*             triggerPrimitive,
@@ -45,24 +45,24 @@ Collector::Collector(const Parameters&                  para,
   m_lastTid         (TransitionId::Unconfigure),
   m_para            (para)
 {
-  // Set up buffer index queue for Collector to Host comms
-  m_collectorQueue.h = new RingIndexDtoH(pool.nbuffers());
-  chkError(cudaMalloc(&m_collectorQueue.d,                     sizeof(*m_collectorQueue.d)));
-  chkError(cudaMemcpy( m_collectorQueue.d, m_collectorQueue.h, sizeof(*m_collectorQueue.d), cudaMemcpyHostToDevice));
+  // Set up buffer index queue for TrgInpGen to Host comms
+  m_trgInpGenQueue.h = new RingIndexDtoH(pool.nbuffers());
+  chkError(cudaMalloc(&m_trgInpGenQueue.d,                     sizeof(*m_trgInpGenQueue.d)));
+  chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyHostToDevice));
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
   int prioHi;
   chkError(cudaDeviceGetStreamPriorityRange(&prioLo, &prioHi));
   int prio{prioLo-1};
-  logging::debug("Collector stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
+  logging::debug("TrgInpGen stream priority (range: LOW: %d to HIGH: %d): %d", prioLo, prioHi, prio);
 
-  // Create the Collector EB stream with higher priority than the Reader
+  // Create the TrgInpGen EB stream with higher priority than the Reader
   //chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
-  logging::debug("Done with creating collector stream");
+  logging::debug("Done with creating TrgInpGen stream");
 
-  // Keep track of the index of the Collector stream
+  // Keep track of the index of the TrgInpGen stream
   chkError(cudaMalloc(&m_index_d,    sizeof(*m_index_d)));
   chkError(cudaMemset( m_index_d, 0, sizeof(*m_index_d)));
 
@@ -87,14 +87,14 @@ Collector::Collector(const Parameters&                  para,
   chkError(cudaHostGetDevicePointer(&m_metrics.fwdWtCtr.d, m_metrics.fwdWtCtr.h, 0));
   *m_metrics.fwdWtCtr.h = 0;
 
-  // Prepare the Collector graph
+  // Prepare the TrgInpGen graph
   if (_setupGraph()) {
-    logging::critical("Failed to set up Collector graph");
+    logging::critical("Failed to set up TrgInpGen graph");
     abort();
   }
 }
 
-Collector::~Collector()
+TrgInpGen::~TrgInpGen()
 {
   chkError(cudaGraphExecDestroy(m_graphExec));
 
@@ -126,13 +126,13 @@ Collector::~Collector()
 
   chkError(cudaStreamDestroy(m_stream));
 
-  if (m_collectorQueue.d)  chkError(cudaFree(m_collectorQueue.d));
-  delete m_collectorQueue.h;
-  m_collectorQueue.d = nullptr;
-  m_collectorQueue.h = nullptr;
+  if (m_trgInpGenQueue.d)  chkError(cudaFree(m_trgInpGenQueue.d));
+  delete m_trgInpGenQueue.h;
+  m_trgInpGenQueue.d = nullptr;
+  m_trgInpGenQueue.h = nullptr;
 }
 
-int Collector::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
+int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                             std::map<std::string, std::string>&   labels)
 {
   *m_metrics.state.h = 0;
@@ -147,7 +147,7 @@ int Collector::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   exporter->add("DRP_colRcv",   labels, MetricType::Counter, [&](){ return m_metrics.pndWtCtr; });
   exporter->add("DRP_pidWtCtr", labels, MetricType::Counter, [&](){ return m_metrics.pidWtCtr; });
 
-  exporter->add("DRP_colQueOcc", labels, MetricType::Gauge,   [&](){ return m_collectorQueue.h->occupancy(); });
+  exporter->add("DRP_colQueOcc", labels, MetricType::Gauge,   [&](){ return m_trgInpGenQueue.h->occupancy(); });
 
   m_metrics.nEvents = 0L;
   exporter->add("DRP_evtCtr",   labels, MetricType::Counter, [&](){ return m_metrics.nEvents; });
@@ -184,10 +184,10 @@ int Collector::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   return 0;
 }
 
-int Collector::_setupGraph()
+int TrgInpGen::_setupGraph()
 {
   // Build the graph
-  logging::debug("Recording collector graph");
+  logging::debug("Recording TrgInpGen graph");
   cudaGraph_t graph = _recordGraph(m_stream);
   if (graph == 0) {
     return -1;
@@ -195,7 +195,7 @@ int Collector::_setupGraph()
 
   // Instantiate the graph
   if (chkError(cudaGraphInstantiate(&m_graphExec, graph, cudaGraphInstantiateFlagDeviceLaunch),
-               "Collector graph create failed")) {
+               "TrgInpGen graph create failed")) {
     return -1;
   }
 
@@ -203,15 +203,15 @@ int Collector::_setupGraph()
   cudaGraphDestroy(graph);
 
   // Upload the graph so it can be launched by the scheduler kernel later
-  logging::debug("Uploading Collector graph...");
-  if (chkError(cudaGraphUpload(m_graphExec, m_stream), "Collector graph upload failed")) {
+  logging::debug("Uploading TrgInpGen graph...");
+  if (chkError(cudaGraphUpload(m_graphExec, m_stream), "TrgInpGen graph upload failed")) {
     return -1;
   }
 
   return 0;
 }
 
-// This kernel collects and event builds contributions from the DMA streams
+// This kernel receives indices from the DMA stream
 static __global__
 void _trgInpGenRcv(unsigned*      const __restrict__ state,
                    unsigned*      const __restrict__ index,
@@ -285,9 +285,9 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
   //}
 }
 
-cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
+cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
 {
-  col_scoped_range r{/*"Collector::_recordGraph"*/}; // Expose function name via NVTX
+  col_scoped_range r{/*"TrgInpGen::_recordGraph"*/}; // Expose function name via NVTX
 
   auto hostWrtBufs_d  = m_pool.hostWrtBufs_d();
   auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs_d);
@@ -295,7 +295,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   auto calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers);
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
-               "Collector stream begin capture failed")) {
+               "TrgInpGen stream begin capture failed")) {
     return 0;
   }
 
@@ -321,34 +321,34 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   // Post the buffer to the host and relaunch
   _trgInpGenLoop<<<1, 1, 0, stream>>>(m_state_d,
                                       m_index_d,
-                                      m_collectorQueue.d,
+                                      m_trgInpGenQueue.d,
                                       m_metrics.state.d,
                                       m_metrics.fwdWtCtr.d,
                                       m_terminate_d);
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph),
-               "Collector stream end capture failed")) {
+               "TrgInpGen stream end capture failed")) {
     return 0;
   }
 
   return graph;
 }
 
-void Collector::start()
+void TrgInpGen::start()
 {
-  logging::info("Collector starting");
+  logging::info("TrgInpGen starting");
 
   resetEventCounter();
 
-  // Launch the Collector graph
-  printf("*** Collector: Launching graph\n");
+  // Launch the TrgInpGen graph
+  printf("*** TrgInpGen: Launching graph\n");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
 
-bool Collector::receive()
+bool TrgInpGen::receive()
 {
-  col_scoped_range r{/*"Collector::receive"*/}; // Expose function name via NVTX
+  col_scoped_range r{/*"TrgInpGen::receive"*/}; // Expose function name via NVTX
 
 #if defined(USE_TRACEBUFFER)
   struct trace_t
@@ -367,23 +367,23 @@ bool Collector::receive()
   uint64_t       lastPid        = m_lastPid;
 
   unsigned index;
-  while(!m_collectorQueue.h->pop(&index)) {
+  while(!m_trgInpGenQueue.h->pop(&index)) {
     if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
       m_metrics.nDmaRet = 0;
       return false;
     }
   }
-  //printf("*** Collector::receive: got index %u\n", index);
+  //printf("*** TrgInpGen::receive: got index %u\n", index);
   ++m_metrics.pndWtCtr;
 
-  col_scoped_range loop_range{/*"Collector::receive", */nvtx3::payload{index}};
+  col_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
   const auto dmaDsc       = (DmaDsc*)&hostWrtBufs[index * hostWrtBufsCnt];
   const auto timingHeader = (TimingHeader*)&dmaDsc[1];
 
   if (m_para.verbose > 2) {
-    printf("*** Collector::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
+    printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
     const auto& p = (const uint32_t*)dmaDsc;
-    printf("*** Collector::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
+    printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
            p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
   }
 
@@ -391,14 +391,14 @@ bool Collector::receive()
   uint64_t pid = timingHeader->pulseId();
   //printf("*** 1 pid %014lx\n", pid);
   while (pid <= lastPid) {
-    col_scoped_range loop_range2{/*"Collector::receive wait"*/};
+    col_scoped_range loop_range2{/*"TrgInpGen::receive wait"*/};
     if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  return false;
     pid = timingHeader->pulseId();
   }
   ++m_metrics.pidWtCtr;
   //printf("*** 2 pid %014lx\n", pid);
 
-  nvtx3::mark("Collector received", nvtx3::payload{index});
+  nvtx3::mark("TrgInpGen received", nvtx3::payload{index});
 #if defined(USE_TRACEBUFFER)
   traceBuffer[itb].tail    = tail;
   traceBuffer[itb].head    = head;
@@ -426,7 +426,7 @@ bool Collector::receive()
 #ifdef HOST_REARMS_DMA
   // Write to the DMA start register in the FPGA
   unsigned dmaIdx = index % m_pool.dmaCount();
-  //printf("*** Collector::receive: Enable write to DMA buffer %u\n", dmaIdx);
+  //printf("*** TrgInpGen::receive: Enable write to DMA buffer %u\n", dmaIdx);
   auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
   if (rc < 0) [[unlikely]] {
     logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
@@ -570,7 +570,7 @@ bool Collector::receive()
   }
 
   ++m_metrics.nEvents;
-  //printf("*** Collector::receive: index %u, event->mask %02x\n", index, event->mask);
+  //printf("*** TrgInpGen::receive: index %u, event->mask %02x\n", index, event->mask);
 
   m_metrics.nDmaRet = 1;
   return true;

@@ -24,7 +24,7 @@ namespace Drp {
 
 class Reader;
 
-struct CollectorMetrics
+struct TrgInpGenMetrics
 {
   Ptr<uint64_t> state    {nullptr, nullptr};
   Ptr<uint64_t> rcvWtCtr {nullptr, nullptr};
@@ -46,13 +46,13 @@ struct CollectorMetrics
   uint64_t      nPgpJumps    {0};
 };
 
-class Collector
+class TrgInpGen
 {
 public:
-  Collector(const Parameters&, MemPoolGpu&, const std::shared_ptr<Reader>&,
+  TrgInpGen(const Parameters&, MemPoolGpu&, const std::shared_ptr<Reader>&,
             Pds::Trg::TriggerPrimitive*, cudaExecutionContext_t,
             const std::atomic<bool>& terminate, const cuda::std::atomic<unsigned>& terminate_d);
-  ~Collector(); // = default;
+  ~TrgInpGen(); // = default;
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
   void start();
@@ -73,7 +73,7 @@ private:
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;
   const std::shared_ptr<Reader>&     m_reader;
-  Ptr<RingIndexDtoH>                 m_collectorQueue;
+  Ptr<RingIndexDtoH>                 m_trgInpGenQueue;
   unsigned*                          m_index_d;
   uint64_t                           m_lastPid;
   uint64_t                           m_latPid;
@@ -81,7 +81,7 @@ private:
   XtcData::TransitionId::Value       m_lastTid;
   uint32_t                           m_lastData[6];
   const Parameters&                  m_para;
-  CollectorMetrics                   m_metrics;
+  TrgInpGenMetrics                   m_metrics;
 };
 
   } // Gpu

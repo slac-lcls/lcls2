@@ -38,7 +38,7 @@ if(CMAKE_CUDA_COMPILER)
         PGPDetectorApp.cc
         PGPDetector.cc
         Reader.cu
-        Collector.cu
+        TrgInpGen.cu
         Reducer.cu
         FileWriter.cc
     )
