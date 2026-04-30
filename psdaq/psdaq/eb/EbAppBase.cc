@@ -523,7 +523,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
                    event->sequence(), event->size(), srcId,
                    _prms.drps[srcId].c_str(), ctime(&now));
   }
-  else {
+  else if (fixupCnt() + timeoutCnt() == 50) {
     auto msg("Too many events missing a contribution.  Going quiet.");
     json jmsg = createAsyncErrMsg(_prms.alias, msg);
     _notifySocket.send(jmsg.dump());
