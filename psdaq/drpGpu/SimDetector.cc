@@ -57,6 +57,7 @@ SimDetector::~SimDetector()
 
   if (m_stream) {
     chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
   }
 
   printf("*** SimDetector::dtor: 2\n");
@@ -80,7 +81,7 @@ json SimDetector::connectionInfo(const json& msg)
   m_terminate.store(false, std::memory_order_release);
 
   // Start the event simulator
-  m_eventThread = std::thread(&SimDetector::_eventSimulator, std::ref(*this));
+  m_eventThread = std::thread(&SimDetector::_eventSimulator, this);
 
   logging::debug("SimDetector::connectionInfo: end");
 
@@ -196,33 +197,16 @@ void SimDetector::_eventSimulator()
     }
 
     // Wait for DMA buffer to become ready for writing
-    //bool wait{false};
-    //unsigned ns{8};
     volatile uint8_t* const wrEnReg{(uint8_t*)fpgaRegs + coreRegs.freeListOffset(dmaIdx)};
-    //uint32_t hndShk;
     auto dmaBuffer = dmaBuffers[dmaIdx];
     //printf("*** SimDetector::evtSim: dmaIdx %u, dmaBuffer %p\n", dmaIdx, dmaBuffer);
-    //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDefault, m_stream));
-    //chkError(cudaStreamSynchronize(m_stream));
     //printf("*** SimDetector::evtSim: Wait for wrEnReg[%u] %p\n", dmaIdx, wrEnReg);
     while (*wrEnReg == 0) { // || (hndShk != 0)) {
       if (m_terminate.load(std::memory_order_acquire))
         break;
-      //_nsSleep(ns);
-      //if (ns < 256)  ns *= 2;
-      //if (!wait) {
-      //  wait = true;
-      //  printf("*** SimDetector::evtSim: wait T, dmaIdx %u, evtCtr %u, hndShk %u\n", dmaIdx, m_evtCounter, hndShk);
-      //}
-      //chkError(cudaMemcpyAsync(&hndShk, (void*)(dmaBuffer + sizeof(uint32_t)), sizeof(hndShk), cudaMemcpyDefault, m_stream));
-      //chkError(cudaStreamSynchronize(m_stream));
     }
     if (m_terminate.load(std::memory_order_acquire))
       break;
-    //if (wait) {
-    //  wait = false;
-    //  printf("*** SimDetector::evtSim: wait F, dmaIdx %u, evtCtr %u, hndShk %u\n", dmaIdx, m_evtCounter, hndShk);
-    //}
 
     asm volatile("mfence" ::: "memory");
     *wrEnReg = 0;                       // Disable "DMAs" to this buffer
@@ -277,6 +261,12 @@ void SimDetector::_eventSimulator()
       default:
         break;
     }
+  }
+
+  // Clean up
+  if (m_stream) {
+    chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
   }
 
   logging::info("Event simulator thread is exiting");

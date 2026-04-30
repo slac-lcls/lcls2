@@ -19,6 +19,7 @@ public:
   ~FileWriter() override;
   static void dumpProperties();
   int registerStream(cudaStream_t);
+  int deregisterStream(cudaStream_t);
   int open(const std::string& fileName) override;
   int close() override;
   void writeEvent(const void* devPtr, size_t size, const XtcData::TimeStamp) override;

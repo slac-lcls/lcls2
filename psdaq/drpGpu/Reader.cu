@@ -340,8 +340,8 @@ void _event(unsigned* const               __restrict__ state,
     }
 
     // Advance to the next state
-    // State variable is likely set before the last thread is done, but
-    // the next kernel won't check it before all this kernel completes
+    // State variable is likely set before the last thread is done, but the
+    // next kernel won't check it before all threads of this kernel complete
     if (tid == 0) *state = 3;
   }
 }
@@ -379,6 +379,10 @@ void _readerLoop(unsigned*      const __restrict__  state,
   //printf("### Reader: 2 relaunch\n");
   if (!terminate.load(cuda::std::memory_order_acquire)) {
     cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
+  }
+  else {
+    //printf("### Reader: Terminate is True: not relaunching\n");
+    lDmaBufferIdx = 0;                  // Reset for possible next time
   }
 }
 
@@ -538,4 +542,14 @@ void Reader::start()
   // Launch the Reader graph
   printf("*** Reader: Launching graph\n");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
+}
+
+void Reader::freeDma(PGPEvent* event)
+{
+  //printf("*** Reader::freeDma: evt %p, idx %u, pgpIdx %zu\n", event, event->buffers[0].index, event - &m_pool.pgpEvents[0]);
+  const uint32_t lane = 0;                   // The lane is always 0 for GPU-enabled PGP devices
+  DmaBuffer* buffer = &event->buffers[lane];
+  event->mask = 0;
+  m_pebbleQueue.h->push(buffer->index);
+  m_pool.freeDma(1, nullptr);
 }

@@ -22,7 +22,6 @@ namespace Pds {
 namespace Drp {
   namespace Gpu {
 
-class Detector;
 class Reader;
 
 struct CollectorMetrics
@@ -57,14 +56,12 @@ public:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
   void start();
-  void freeDma(PGPEvent*);
   void handleBrokenEvent(const PGPEvent&) {}
   void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
-  bool receive(Detector*);
+  bool receive();
 private:
   int _setupGraph();
   cudaGraph_t _recordGraph(cudaStream_t);
-  void _freeDma(unsigned index);
 private:
   MemPoolGpu&                        m_pool;
   Pds::Trg::TriggerPrimitive*        m_triggerPrimitive;
@@ -75,8 +72,7 @@ private:
   unsigned*                          m_state_d;
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;
-  Ptr<RingIndexHtoD>&                m_pebbleQueue;
-  Ptr<RingIndexDtoD>&                m_readerQueue;
+  const std::shared_ptr<Reader>&     m_reader;
   Ptr<RingIndexDtoH>                 m_collectorQueue;
   unsigned*                          m_index_d;
   uint64_t                           m_lastPid;

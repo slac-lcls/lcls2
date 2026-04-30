@@ -434,6 +434,9 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
   if (!terminate.load(cuda::std::memory_order_acquire))  {
     cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
   }
+  //else {
+  //  printf("### _reducerLoop: Terminate is True: not relaunching\n");
+  //}
 }
 #endif
 

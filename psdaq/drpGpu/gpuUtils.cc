@@ -172,6 +172,7 @@ void Drp::Gpu::dmaTgtSet(CoreRegisters& coreRegs, DmaTgt_t tgt)
 /** Function to reset the DMA buffer index */
 void Drp::Gpu::dmaIdxReset(CoreRegisters& coreRegs)
 {
+    // Toggle the writeEnable register to reset the DMA buffer index
     coreRegs.setWriteEnable(0);
     coreRegs.setWriteEnable(1);
 }

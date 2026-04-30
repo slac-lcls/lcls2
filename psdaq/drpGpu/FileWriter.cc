@@ -77,25 +77,18 @@ FileWriter::~FileWriter()
 
   close();
 
-  if (m_stream) {
-    printf("*** FileWriter::dtor 2\n");
-    if (chkError(cuFileStreamDeregister(m_stream))) {
-      logging::error("cuFile unable to deregister CUstream");
-    }
-  }
-
   if (m_buffer_d) {
-    printf("*** FileWriter::dtor 3\n");
+    printf("*** FileWriter::dtor 2\n");
     chkError(cudaFree(m_buffer_d));
     m_buffer_d = nullptr;
   }
 
-  printf("*** FileWriter::dtor 4\n");
+  printf("*** FileWriter::dtor 3\n");
   if (chkError(cuFileDriverClose())) {
     logging::critical("Error closing cuFile driver");
     exit(EXIT_FAILURE);
   }
-  printf("*** FileWriter::dtor 5\n");
+  printf("*** FileWriter::dtor 4\n");
 }
 
 // This must be called from the thread doing the file writing
@@ -110,6 +103,20 @@ int FileWriter::registerStream(cudaStream_t stream)
     return -1;
   }
   return 0;
+}
+
+int FileWriter::deregisterStream(cudaStream_t stream)
+{
+  int rc{0};
+
+  if (m_stream) {
+    if (chkError(cuFileStreamDeregister(m_stream))) {
+      logging::error("cuFile unable to deregister CUstream");
+      rc = -1;
+    }
+    m_stream = 0;
+  }
+  return rc;
 }
 
 void FileWriter::dumpProperties()

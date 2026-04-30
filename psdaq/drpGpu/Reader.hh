@@ -45,9 +45,9 @@ public:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
   void start();
+  void freeDma(PGPEvent*);
 public:
   MemPool& pool()  const { return m_pool; }
-  Ptr<RingIndexHtoD>& pebbleQueue() { return m_pebbleQueue; }
   Ptr<RingIndexDtoD>& readerQueue() { return m_readerQueue; }
 private:
   int         _setupGraph();

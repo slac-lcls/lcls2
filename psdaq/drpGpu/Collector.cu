@@ -1,6 +1,5 @@
 #include "Collector.hh"
 
-#include "Detector.hh"
 #include "Reader.hh"
 
 #include "psalg/utils/SysLog.hh"
@@ -39,8 +38,7 @@ Collector::Collector(const Parameters&                  para,
   m_terminate       (terminate),
   m_terminate_d     (terminate_d),
   m_retCode_d       (nullptr),
-  m_pebbleQueue     (reader->pebbleQueue()), // Pebble buffer index queue
-  m_readerQueue     (reader->readerQueue()), // Buffer index queue for Reader to Collector comms
+  m_reader          (reader),
   m_lastPid         (0),
   m_latPid          (0),
   m_lastComplete    (0),
@@ -221,7 +219,7 @@ void _trgInpGenRcv(unsigned*      const __restrict__ state,
                    uint64_t*      const __restrict__ stateMon,
                    uint64_t*      const __restrict__ rcvWtCtr)
 {
-  //printf("### _trgInpGenRcv: tail %u, head %u\n", *tail, *head);
+  //printf("### _trgInpGenRcv: state %u, index %u\n", *state, *index);
 
   if (*state == 0) {
     //*stateMon = 2;
@@ -270,7 +268,7 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
       }
     }
     if (!rc) {
-      //printf("### Collector: pushed, new index %u\n", *index);
+      //printf("### _trgInpGenLoop: pushed, new index %u\n", *index);
       *state = 0;
       //*stateMon = 12;
       //++(*fwdWtCtr);
@@ -282,6 +280,9 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
   if (!terminate.load(cuda::std::memory_order_acquire))  {
     cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
   }
+  //else {
+  //  printf("### _trgInpGenLoop: Terminate is True: not relaunching\n");
+  //}
 }
 
 cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
@@ -301,7 +302,7 @@ cudaGraph_t Collector::_recordGraph(cudaStream_t stream)
   // Find which pebble buffers are ready for processing
   _trgInpGenRcv<<<1, 1, 0, stream>>>(m_state_d,
                                      m_index_d,
-                                     m_readerQueue.d,
+                                     m_reader->readerQueue().d,
                                      m_metrics.state.d,
                                      m_metrics.rcvWtCtr.d);
 
@@ -345,26 +346,7 @@ void Collector::start()
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
 
-void Collector::_freeDma(unsigned index)
-{
-  //printf("*** Collector: Collector::freeDma: 1 idx %u\n", index);
-  m_pebbleQueue.h->push(index);
-  //printf("*** Collector: Collector::freeDma: 2 idx %u\n", index);
-
-  m_pool.freeDma(1, nullptr);
-  //printf("*** Collector: Collector::freeDma: 3 idx %u\n", index);
-}
-
-void Collector::freeDma(PGPEvent* event)
-{
-  //printf("*** Collector::freeDma: evt %p, idx %u, pgpIdx %zu\n", event, event->buffers[0].index, event - &m_pool.pgpEvents[0]);
-  const uint32_t lane = 0;                   // The lane is always 0 for GPU-enabled PGP devices
-  DmaBuffer* buffer = &event->buffers[lane];
-  event->mask = 0;
-  _freeDma(buffer->index);
-}
-
-bool Collector::receive(Detector* det)
+bool Collector::receive()
 {
   col_scoped_range r{/*"Collector::receive"*/}; // Expose function name via NVTX
 
@@ -431,8 +413,8 @@ bool Collector::receive(Detector* det)
 
   // Check for DMA buffer overflow
   if (dmaDsc->overflow()) [[unlikely]] {
-    logging::critical("DMA buffer overflow: size %d B vs %d B", dmaDsc->size, m_pool.dmaSize());
-    // @todo: Temporarily commented out: abort();
+    logging::critical("DMA overflowed buffer: size %d B vs %d B", dmaDsc->size, m_pool.dmaSize());
+    abort();
   }
 
   // Measure TimingHeader arrival latency as early as possible
@@ -459,25 +441,30 @@ bool Collector::receive(Detector* det)
                  timingHeader->_opaque[0], timingHeader->_opaque[1]);
 
   uint32_t size = dmaDsc->size;         // Size of the DMA
-  uint32_t lane = 0;      // The lane is always 0 for GPU-enabled PGP devices
   m_metrics.dmaSize   = size;
   m_metrics.dmaBytes += size;
 
   if (timingHeader->error()) [[unlikely]] {
-      if (m_metrics.nTmgHdrError < 5) { // Limit prints at rate
-          logging::error("Timing header error bit is set");
-      }
-      ++m_metrics.nTmgHdrError;
+    if (m_metrics.nTmgHdrError++ < 5) { // Limit prints at rate
+      logging::error("Timing header error bit is set");
+    }
   }
 
   uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
   unsigned pgpIndex = evtCounter & bufferMask;
   PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
-  if (event->mask)  printf("*** Collector::receive: PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
-                           event->mask, pgpIndex, evtCounter);
-  DmaBuffer* buffer = &event->buffers[lane]; // @todo: Do we care about this?
-  buffer->size = size;                       //   "
-  buffer->index = index;                     //   "
+  constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
+  DmaBuffer* buffer = &event->buffers[lane];
+  buffer->size = size;
+  buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
+  if (event->mask) [[unlikely]] {
+    logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
+                      event->mask, pgpIndex, evtCounter);
+    abort();
+  }
+  if (((1 << lane) & m_para.laneMask) == 0) [[unlikely]] {
+    logging::error("Lane %u is not in laneMask 0x%02", lane, m_para.laneMask);
+  }
   event->mask |= (1 << lane);
 
   m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
@@ -486,13 +473,12 @@ bool Collector::receive(Detector* det)
   // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
   if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
     // Assume we can recover from non-overflow DMA errors
-    if (m_metrics.nDmaErrors < 5) {     // Limit prints at rate
+    if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
       logging::error("DMA error 0x%08x", dmaDsc->header);
     }
     // This assumes the DMA succeeded well enough that evtCounter is valid
     handleBrokenEvent(*event);
-    freeDma(event);                     // Leaves event mask = 0
-    ++m_metrics.nDmaErrors;
+    m_reader->freeDma(event);           // Leaves event mask = 0
     return false;
   }
 
@@ -506,11 +492,11 @@ bool Collector::receive(Detector* det)
                  dmaDsc->header);
 
   if (transitionId == TransitionId::BeginRun) {
-    resetEventCounter();              // Compensate for the ClearReadout sent before BeginRun
+    resetEventCounter();                // Compensate for the ClearReadout sent before BeginRun
   }
   if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
     if (m_lastTid != TransitionId::Unconfigure) {
-      if ((m_metrics.nPgpJumps < 5) || m_para.verbose) { // Limit prints at rate
+      if ((m_metrics.nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
         auto evtCntDiff = evtCounter - m_lastComplete;
         logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s, index %u",
                        RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF, index);
@@ -520,8 +506,7 @@ bool Collector::receive(Detector* det)
                        m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
       }
       handleBrokenEvent(*event);
-      freeDma(event);                   // Leaves event mask = 0
-      ++m_metrics.nPgpJumps;
+      m_reader->freeDma(event);         // Leaves event mask = 0
 #if defined(USE_TRACEBUFFER)
       for (unsigned i = 0; i < traceBuffer.size(); ++i) {
         unsigned j = (itb + i) % traceBuffer.size();
@@ -534,7 +519,7 @@ bool Collector::receive(Detector* det)
       abort();
       return false;                     // Throw away out-of-sequence events
     } else if (transitionId != TransitionId::Configure) {
-      freeDma(event);                   // Leaves event mask = 0
+      m_reader->freeDma(event);         // Leaves event mask = 0
       return false;                     // Drain
     }
   }
@@ -550,7 +535,7 @@ bool Collector::receive(Detector* det)
                    timingHeader->pulseId(), m_para.partition, timingHeader->env);
     ++m_lastComplete;
     handleBrokenEvent(*event);
-    freeDma(event);                     // Leaves event mask = 0
+    m_reader->freeDma(event);           // Leaves event mask = 0
     ++m_metrics.nNoComRoG;
     return false;
   }
@@ -563,7 +548,7 @@ bool Collector::receive(Detector* det)
                      timingHeader->pulseId(), missingRogs, timingHeader->env);
       ++m_lastComplete;
       handleBrokenEvent(*event);
-      freeDma(event);                   // Leaves event mask = 0
+      m_reader->freeDma(event);         // Leaves event mask = 0
       ++m_metrics.nMissingRoGs;
       return false;
     }

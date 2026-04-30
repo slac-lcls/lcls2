@@ -195,23 +195,6 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     m_panel = std::make_shared<DetPanel>(para.device);
     logging::info("NULL PGP device '%s' opened", para.device.c_str());
 
-    // Allocate "DMA" write buffers on the GPU
-    auto& dmaBufs_d = m_panel->dmaBuffers_d;
-    printf("*** &dmaBufs_d %p vs %p\n", &m_panel->dmaBuffers_d, &dmaBufs_d);
-    chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
-    printf("***  dmaBufs_d %p vs %p\n", m_panel->dmaBuffers_d, dmaBufs_d);
-    m_panel->dmaBuffers.resize(m_dmaCount);
-    for (unsigned i = 0; i < m_dmaCount; ++i) {
-      uint8_t* dp{nullptr};
-      size_t   sz{m_dmaSize};
-      chkError(cudaMalloc(&dp,    sz));
-      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
-      chkError(cudaMemset( dp, 0, sz));
-      m_panel->dmaBuffers[i] = dp;
-      chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
-      printf("*** MemPool: &dmaBuf[%u] %p, %p, sz %zu\n", i, &dmaBufs_d[i], dp, sz);
-    }
-
     uint8_t* dp{nullptr};
     uint8_t* hp{nullptr};
     size_t regBlkSize{0x600 * sizeof(uint32_t)};
@@ -226,7 +209,30 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     // Init a register object
     m_panel->coreRegs.initialize(true, m_panel->fpgaRegs.h);
 
+    // Configure max. FPGA->GPU buffer on the "FPGA" side
+    m_panel->coreRegs.setRemoteWriteMaxSize(0, m_dmaSize);
+
     m_panel->coreRegs.setDataBytes(32);  // Fake up DMA frame size
+
+    // Get the DMA_AXI_CONFIG_G.DATA_BYTES_C from "FPGA"
+    const uint32_t dmaHeaderSize = m_panel->coreRegs.dmaDataBytes();
+
+    // Allocate "DMA" write buffers on the GPU
+    auto& dmaBufs_d = m_panel->dmaBuffers_d;
+    printf("*** &dmaBufs_d %p vs %p\n", &m_panel->dmaBuffers_d, &dmaBufs_d);
+    chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
+    printf("***  dmaBufs_d %p vs %p\n", m_panel->dmaBuffers_d, dmaBufs_d);
+    m_panel->dmaBuffers.resize(m_dmaCount);
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+      uint8_t* dp{nullptr};
+      size_t   sz{dmaHeaderSize + m_dmaSize};
+      chkError(cudaMalloc(&dp,    sz));
+      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
+      chkError(cudaMemset( dp, 0, sz));
+      m_panel->dmaBuffers[i] = dp;
+      chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
+      printf("*** MemPool: &dmaBuf[%u] %p, %p, sz %zu\n", i, &dmaBufs_d[i], dp, sz);
+    }
 
     // No need to call setMaskBytes, so fake done
     m_setMaskBytesDone = true;

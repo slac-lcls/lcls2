@@ -49,6 +49,7 @@ TebReceiver::~TebReceiver()
 
   if (m_stream) {
     chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
   }
 
   printf("*** TebRcvr::dtor: 2\n");
@@ -112,6 +113,7 @@ void TebReceiver::teardown()
   // Unblock the record queue
   m_recordQueue.shutdown();
 
+  // Wait for the recorder thread to finish
   if (m_recorderThread.joinable()) {
     m_recorderThread.join();
     logging::info("Recorder thread finished");
@@ -483,6 +485,14 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     nvtx3::mark("Pebble released", nvtx3::payload{index});
   }
 
+  // Clean up
+  if (m_stream) {
+    if (m_fileWriter)
+      m_fileWriter->deregisterStream(m_stream);
+    chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
+  }
+
   logging::info("Recorder thread is exiting");
 }
 
@@ -521,6 +531,7 @@ PGPDrp::~PGPDrp()
 {
   printf("*** PGPDrp::dtor: 1\n");
   chkError(cudaFree(m_terminate_d));
+  m_terminate_d = nullptr;
   printf("*** PGPDrp::dtor: 2\n");
 }
 
@@ -617,14 +628,20 @@ std::string PGPDrp::configure(const json& msg)
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
   m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
 
+  // Launch the Collector thread
+  m_collectorThread = std::thread(&PGPDrp::_collector, this);
+
   // Set up the TebReceiver
   static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
 
   // Start the Reducers
   m_reducer->startup();
 
-  // Launch the Collector thread
-  m_collectorThread = std::thread(&PGPDrp::_collector, std::ref(*this));
+  // Start the Collector before phase 2 is issued
+  m_collector->start();
+
+  // Start the PGP reader before phase 2 is issued
+  m_reader->start();
 
   return std::string{};
 }
@@ -637,6 +654,7 @@ unsigned PGPDrp::unconfigure()
   printf("*** PGPDrp::unconfigure 1\n");
 
   // @todo: Right place for this?
+  printf("*** PGPDrp::unconfigure: Setting terminate True\n");
   m_terminate.store(true, std::memory_order_release);
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   printf("*** PGPDrp::unconfigure 2\n");
@@ -645,6 +663,7 @@ unsigned PGPDrp::unconfigure()
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   printf("*** PGPDrp::unconfigure 3\n");
 
+  // Wait for the collector thread to finish
   if (m_collectorThread.joinable()) {
     m_collectorThread.join();
     logging::info("Collector thread finished");
@@ -706,7 +725,7 @@ void PGPDrp::freeBuffers(unsigned index)
   const auto pgpIndex = timingHeader->evtCounter & bufferMask;
   auto event = &pool.pgpEvents[pgpIndex];
   //printf("*** PGPDrp::freeBuffers: bufIndex, %u, pgpIndex %u, event %p\n", index, pgpIndex, event);
-  m_collector->freeDma(event);
+  m_reader->freeDma(event);
 }
 
 void PGPDrp::_collector()
@@ -729,27 +748,17 @@ void PGPDrp::_collector()
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
 
-  // Establish context in this thread
-//  auto& memPool = *pool.getAs<MemPoolGpu>();
-//  chkError(cudaSetDevice(memPool.context().deviceNo()));
-//  chkError(cuCtxSetCurrent(memPool.context().context()));
-
-  // Start the PGP reader on the GPU
-  m_reader->start();
-
-  // Start the Collector on the GPU
-  m_collector->start();
-
-  // Now run the CPU side of the Collector
+  // Run the CPU side of the Collector
   auto trgPrimitive = triggerPrimitive();
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
+  uint64_t l1Count = 0;
   unsigned bufIndex = 0;                // Intermediate buffer index
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
     // Receive an event
-    if (!m_collector->receive(&m_det))  continue; // This can block
+    if (!m_collector->receive())  continue; // This can block
 
     //drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
     auto timingHeader = m_det.getTimingHeader(bufIndex);
@@ -780,9 +789,9 @@ void PGPDrp::_collector()
       // Allocate a transition datagram from the pool
       trDgram = pool.allocateTr();
       if (!trDgram) [[unlikely]] {
-        m_collector->freeDma(event);  // Leaves event mask = 0
+        m_reader->freeDma(event);       // Leaves event mask = 0
         ++m_nNoTrDgrams;
-        continue;                     // Can happen during shutdown
+        continue;                       // Can happen during shutdown
       }
     }
 
@@ -802,8 +811,8 @@ void PGPDrp::_collector()
     auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
 
     if (transitionId == TransitionId::L1Accept) {
-      // @todo: Can event() here help with prescaled raw/calibrated data?
-      //m_det.event(dgram, bufEnd);
+      const void* bufEnd = (char*)dgram + pool.bufferSize();
+      m_det.event(*dgram, bufEnd, event, ++l1Count);
       //const auto p = (uint32_t*)&timingHeader[1];
       //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
       if (trgPrimitive) { // else this DRP doesn't provide TEB input
@@ -826,7 +835,7 @@ void PGPDrp::_collector()
 
       if (transitionId == TransitionId::SlowUpdate) {
         // Store the SlowUpdate's payload in the transition datagram
-        const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+        const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
         m_det.slowupdate(trDgram->xtc, bufEnd);
         //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
       } else {                // Transition
@@ -834,7 +843,7 @@ void PGPDrp::_collector()
         // into the real location
         Xtc& trXtc = m_det.transitionXtc();
         trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-        const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+        const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
         auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
         memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
         //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
