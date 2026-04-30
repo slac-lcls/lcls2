@@ -57,7 +57,7 @@ EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   _initialize<Drp::Gpu::XpmDetector>(para, pool);
 
   // Check there is enough space in the DMA buffers for this many pixels
-  assert(NPixels <= (pool.dmaSize() - sizeof(DmaDsc) - sizeof(TimingHeader)) / sizeof(uint16_t));
+  assert(NPixels <= (pool.dmaSize() - sizeof(TimingHeader)) / sizeof(uint16_t));
 
   // Set up buffers
   pool.createCalibBuffers(NPixels);
@@ -106,11 +106,18 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
   return 0;
 }
 
-void EpixUHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t count)
+void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count)
 {
-  logging::info("Gpu::EpixUHRemu event");
+  //logging::info("Gpu::EpixUHRemu event");
 
-  // @todo: Deal with prescaled raw or calibrated data for the panel here?
+  constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
+  DmaBuffer* buffer = &event->buffers[lane];
+  size_t size = buffer->size;
+  constexpr auto eventSize{sizeof(TimingHeader) + NPixels * sizeof(uint16_t)};
+  if      (size  < eventSize)          dgram.xtc.damage.increase(Damage::MissingData);
+  else if (size == m_pool->dmaSize())  dgram.xtc.damage.increase(Damage::Truncated);
+
+  // @todo: Deal with prescaled raw for the panel here?
 }
 
 unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)

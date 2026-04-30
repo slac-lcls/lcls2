@@ -269,11 +269,18 @@ unsigned EpixUHRsim::referenceBufCnt() const
 }
 
 
-void EpixUHRsim::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t count)
+void EpixUHRsim::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count)
 {
-  logging::info("Gpu::EpixUHRsim event");
+  //logging::info("Gpu::EpixUHRsim event");
 
-  // @todo: Deal with prescaled raw or calibrated data here?
+  constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
+  DmaBuffer* buffer = &event->buffers[lane];
+  auto size = buffer->size - sizeof(TimingHeader);
+  constexpr auto panelSize{NPixels * sizeof(uint16_t)};
+  if      (size  < panelSize)          dgram.xtc.damage.increase(Damage::MissingData);
+  else if (size == m_pool->dmaSize())  dgram.xtc.damage.increase(Damage::Truncated);
+
+  // @todo: Deal with prescaled raw data here?
 }
 
 //__device__ void EpixUHRsim::calibrate(float*    const __restrict__ calib,
