@@ -90,7 +90,8 @@ class epix10ka_raw_2_0_1(eb.epix_base):
                     f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
         return f
 
-#  Old detType for epix10ka
+# Detector aliases for raw alg versions emitted by DAQ.
 epix_raw_2_0_1 = epix10ka_raw_2_0_1
+epix10ka_raw_3_0_1 = epix10ka_raw_2_0_1
 
 # EOF
