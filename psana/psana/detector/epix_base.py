@@ -39,6 +39,7 @@ class epix_base(AreaDetectorRaw):
         self._seg_geo = None
         self._data_bit_mask = M14 # for epix10ka data
         self._data_gain_bit = B14 # for epix10ka data
+        self._data_gain_bitnum = 14 # for epix10ka data
         self._gain_bit_shift = 9  # for epix10ka data
         self._gains_def = (16.4, 5.466, 0.164) # ADU/keV epix10ka  H:M:L = 1 : 1/3 : 1/100
         #self._gains_def = (41.0, 13.7, 0.512) # ADU/keV epixhr2x2 H:M:L = 1 : 1/3 : 1/80
@@ -72,17 +73,13 @@ class epix_base(AreaDetectorRaw):
         return self._uniqueid
 
 
-#    def _config_object(self):
-#        """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
-#        """
-#        #logger.debug('det_raw._seg_configs(): ' + str(self._seg_configs()))
-#        return self._seg_configs()
-
-
     def _cbits_config_segment(self, cob):
-        """for epix10ka and epixhr2x2, ...
+        """for epix10ka, epixhr2x2, ...
            returns per-pixel array of gain control bits from segment configuration object
            cob=det.raw._seg_configs()[<seg-ind>].config
+           cbits = cob.asicPixelConfig # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 12 12 12...]
+           trbits = cob.trbit: [1 1 1 1]
+           IF DEFINED FOR ASIC then needs to be assembled FOR PANEL
         """
         logger.warning('epix_base._cbits_config_segment - MUST BE REIMPLEMENTED - return None')
         return None
@@ -96,10 +93,11 @@ class epix_base(AreaDetectorRaw):
 
 
     def _config_object(self):
-        """protected call to _seg_configs"""
+        """protected call to det.raw._seg_configs().
+           returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
+        """
         dcfg = self._seg_configs()
-        if dcfg is None:
-            logger.debug('epix_base._config_object - self._seg_configs is None - return None')
+        if ue.cond_msg(dcfg is None, msg='epix_base._config_object - _seg_configs is None - return None', output_meth=logger.warning):
             return None
         return dcfg
 
