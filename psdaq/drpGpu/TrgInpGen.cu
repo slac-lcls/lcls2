@@ -10,9 +10,6 @@
 
 #include <sys/prctl.h>
 
-// Uncomment to dump a tracebuffer when a PGPReader event counter jump occurs
-//#define USE_TRACEBUFFER
-
 using namespace XtcData;
 using namespace Pds;
 using namespace Drp;
@@ -45,6 +42,7 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_latPid          (0),
   m_lastComplete    (0),
   m_lastTid         (TransitionId::Unconfigure),
+  m_lastData        {0, 0, 0, 0, 0, 0},
   m_para            (para)
 {
   // Set up buffer index queue for TrgInpGen to Host comms
@@ -371,32 +369,16 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
     perror("prctl");
   }
 
-#if defined(USE_TRACEBUFFER)
-  struct trace_t
-  {
-    unsigned index;
-    uint64_t pid;
-    uint64_t lastPid;
-  };
-  static std::vector<struct trace_t> traceBuffer(2048);
-  static unsigned itb = 0;
-#endif
-
   const auto     hostWrtBufs    = m_pool.hostWrtBufs_h(); // When no error, hdrs in all are the same
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
-  uint64_t       lastPid        = m_lastPid;
 
-  unsigned index = 0;
   while (!m_terminate.load(std::memory_order_relaxed)) {
     unsigned nRet = 0;
-    unsigned head = m_trgInpGenQueue.h->head();
-    while (index != head) {
-      if (!m_trgInpGenQueue.h->pop(&index))  break;
-      //printf("*** TrgInpGen::receive: got index %u, head %u\n", index, head);
-      ++m_metrics.pndWtCtr;
-
+    unsigned index = 0;
+    while (m_trgInpGenQueue.h->pop(&index)) {
       tig_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
+      ++m_metrics.pndWtCtr;
 
       const auto dmaDsc       = (DmaDsc*)&hostWrtBufs[index * hostWrtBufsCnt];
       const auto timingHeader = (TimingHeader*)&dmaDsc[1];
@@ -408,30 +390,10 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
                p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
       }
 
-      // Wait for pulse ID to become non-zero
       uint64_t pid = timingHeader->pulseId();
-      //printf("*** 1 pid %014lx\n", pid);
-      while (pid <= lastPid) {
-        tig_scoped_range loop_range2{/*"TrgInpGen::receive wait"*/};
-        if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]]  break;
-        pid = timingHeader->pulseId();
-      }
-      if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]]  break;
-      ++m_metrics.pidWtCtr;
-      //printf("*** 2 pid %014lx\n", pid);
-
-      nvtx3::mark("TrgInpGen received", nvtx3::payload{index});
-#if defined(USE_TRACEBUFFER)
-      traceBuffer[itb].tail    = index;
-      traceBuffer[itb].head    = head;
-      traceBuffer[itb].pid     = pid;
-      traceBuffer[itb].lastPid = lastPid;
-      itb = (itb + 1) % traceBuffer.size();
-#endif
-
-      if (pid <= lastPid) [[unlikely]]
-        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
-      lastPid = pid;
+      if (pid <= m_lastPid) [[unlikely]]
+        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, m_lastPid);
+      m_lastPid = pid;
 
       // Check for DMA buffer overflow
       if (dmaDsc->overflow()) [[unlikely]] {
@@ -440,7 +402,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       }
 
       // Measure TimingHeader arrival latency as early as possible
-      if (pid - m_latPid > 1300000/14) {    // 10 Hz
+      if (pid - m_latPid > 1300000/14) {  // 10 Hz
         m_metrics.latency = Eb::latency<us_t>(timingHeader->time);
         m_latPid = pid;
       }
@@ -500,7 +462,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
         // This assumes the DMA succeeded well enough that evtCounter is valid
         handleBrokenEvent(*event);
-        m_reader->freeDma(event);           // Leaves event mask = 0
+        m_reader->freeDma(event);       // Leaves event mask = 0
         break;
       }
 
@@ -514,7 +476,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
                      dmaDsc->header);
 
       if (transitionId == TransitionId::BeginRun) {
-        resetEventCounter();                // Compensate for the ClearReadout sent before BeginRun
+        resetEventCounter();            // Compensate for the ClearReadout sent before BeginRun
       }
       if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
         if (m_lastTid != TransitionId::Unconfigure) {
@@ -528,21 +490,12 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
                            m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
           }
           handleBrokenEvent(*event);
-          m_reader->freeDma(event);         // Leaves event mask = 0
-#if defined(USE_TRACEBUFFER)
-          for (unsigned i = 0; i < traceBuffer.size(); ++i) {
-            unsigned j = (itb + i) % traceBuffer.size();
-            auto& tb = traceBuffer[j];
-            printf("%4u:%4u: t %4u h %4u p %014lx l %014lx\n", i, j, tb.tail, tb.head, tb.pid, tb.lastPid);
-          }
-          sleep(10);
-          printf("cur: p %014lx, e %u\n", timingHeader->pulseId(), timingHeader->evtCounter & EvtCtrMask);
-#endif
+          m_reader->freeDma(event);     // Leaves event mask = 0
           abort();
-          break;                            // Throw away out-of-sequence events
+          break;                        // Throw away out-of-sequence events
         } else if (transitionId != TransitionId::Configure) {
-          m_reader->freeDma(event);         // Leaves event mask = 0
-          break;                            // Drain
+          m_reader->freeDma(event);     // Leaves event mask = 0
+          break;                        // Drain
         }
       }
       m_lastComplete = evtCounter;
@@ -557,7 +510,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
         handleBrokenEvent(*event);
-        m_reader->freeDma(event);           // Leaves event mask = 0
+        m_reader->freeDma(event);       // Leaves event mask = 0
         ++m_metrics.nNoComRoG;
         break;
       }
@@ -570,7 +523,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
                          timingHeader->pulseId(), missingRogs, timingHeader->env);
           ++m_lastComplete;
           handleBrokenEvent(*event);
-          m_reader->freeDma(event);         // Leaves event mask = 0
+          m_reader->freeDma(event);     // Leaves event mask = 0
           ++m_metrics.nMissingRoGs;
           break;
         }
@@ -593,12 +546,13 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
 
       ++nRet;
       ++m_metrics.nEvents;
-      //printf("*** TrgInpGen::receive: index %u, event->mask %02x\n", index, event->mask);
     }
 
     m_metrics.nDmaRet = nRet;
     if (nRet)  collectorQueue.push(nRet);
   }
+
+  collectorQueue.shutdown();
 
   logging::info("TrgInpGen receiver is exiting");
 }
