@@ -42,7 +42,7 @@ def generate_engine(engine):
     instr.append(f'anchor = len(instrset)')
 
     for i in range(args.count):
-        v = (i*2+1)>>(engine*4)
+        v = ((i*2+1)>>(engine*4))&0xf
         instr.append(f'instrset.append( ControlRequest({v}) )')
         instr.append(f'instrset.append( {motion_step} )')
 
