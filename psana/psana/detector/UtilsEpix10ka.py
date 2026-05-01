@@ -30,6 +30,7 @@ Usage::
     calib = calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa)
     calib = calib_epix10ka_any(det_raw, evt, cmpars=(7,2,100,10),\
                             mbits=0o7, mask=None, edge_rows=10, edge_cols=10, center_rows=5, center_cols=5)
+    2026-05-01 add Storage_v02, arrNgrToPerPixelCons, cbits_config_epix10ka_v02, cbits_config_add_bit, grindex_array, calib_epix10ka_v02
 
 This software was developed for the LCLS project.
 If you use all or part of it, please give an appropriate acknowledgment.
