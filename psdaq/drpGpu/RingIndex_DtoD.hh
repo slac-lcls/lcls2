@@ -42,7 +42,7 @@ public:
   __device__ bool push(unsigned index) const           /** Move head forward when not full */
   {
     using namespace cuda;
-    auto tail = m_tail_h->load(memory_order_acquire);
+    auto tail = m_tail_d->load(memory_order_acquire);
     auto head = m_head_d->load(memory_order_acquire);
     auto next = (head+1)  & m_capacityMask;
     index     = (index+1) & m_capacityMask;
@@ -51,7 +51,7 @@ public:
       next = (next+1) & m_capacityMask;
     }
     if (next != head) {
-      m_head_h->store(next, memory_order_release);     // Publish new head
+      m_head_d->store(next, memory_order_release);     // Publish new head
     }
     return next != tail;
   }
@@ -66,6 +66,18 @@ public:
     auto next = (tail+1) & m_capacityMask;
     m_tail_d->store(next, memory_order_release);       // Publish new tail
     return true;
+  }
+
+  __host__ unsigned head() const
+  {
+    using namespace cuda::std;
+    return m_head_h->load(memory_order_acquire);
+  }
+
+  __host__ unsigned tail() const
+  {
+    using namespace cuda::std;
+    return m_tail_h->load(memory_order_acquire);
   }
 
   __host__ unsigned occupancy() const

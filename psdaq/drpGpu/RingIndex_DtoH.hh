@@ -47,8 +47,8 @@ public:
   __device__ bool push(unsigned index) const           /** Move head forward when not full */
   {
     using namespace cuda::std;
-    auto tail = m_tail_h->load(memory_order_acquire);
-    auto head = m_head_h->load(memory_order_acquire);
+    auto tail = m_tail_d->load(memory_order_acquire);
+    auto head = m_head_d->load(memory_order_acquire);
     auto next = (head+1)  & m_capacityMask;
     index     = (index+1) & m_capacityMask;
     while (next != index) {
@@ -56,7 +56,7 @@ public:
       next = (next+1) & m_capacityMask;
     }
     if (next != head) {
-      m_head_h->store(next, memory_order_release);     // Publish new head
+      m_head_d->store(next, memory_order_release);     // Publish new head
     }
     return next != tail;
   }
@@ -64,14 +64,26 @@ public:
   __host__ bool pop(unsigned* index) const             /** Return current head when not empty */
   {
     using namespace cuda::std;
-    auto tail = m_tail_d->load(memory_order_acquire);
-    auto head = m_head_d->load(memory_order_acquire);
+    auto tail = m_tail_h->load(memory_order_acquire);
+    auto head = m_head_h->load(memory_order_acquire);
     if (tail == head)  return false;                   // Empty: caller retries to wait for head to advance
     *index = tail;                                     // Caller now processes buffer at [tail]
     auto next = (tail+1) & m_capacityMask;
     asm volatile("mfence" ::: "memory");               // Avoid reordering of the tail store and the head load
-    m_tail_d->store(next, memory_order_release);       // Publish new tail
+    m_tail_h->store(next, memory_order_release);       // Publish new tail
     return true;
+  }
+
+  __host__ unsigned head() const
+  {
+    using namespace cuda::std;
+    return m_head_h->load(memory_order_acquire);
+  }
+
+  __host__ unsigned tail() const
+  {
+    using namespace cuda::std;
+    return m_tail_h->load(memory_order_acquire);
   }
 
   __host__ unsigned occupancy() const
