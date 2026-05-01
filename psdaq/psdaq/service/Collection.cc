@@ -38,7 +38,7 @@ static void dumpStack(const std::string& filePath)
   std::string gdb("gdb -q -n -ex \"thread apply all bt\" -ex detach -ex quit -p " +
                   std::to_string(getpid()) + " > " + filePath);
 
-  system(gdb.c_str());
+  if (system(gdb.c_str())) {}
 }
 
 static std::string mkFilePath(const std::string& filename)

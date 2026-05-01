@@ -12,7 +12,7 @@ class CubeTebReceiver: public TebReceiver
 public:
     CubeTebReceiver(const Parameters&, DrpBase&);
 public:
-    void process();
+    void finalize();
 protected:
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:

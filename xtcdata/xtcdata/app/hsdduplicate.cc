@@ -32,7 +32,6 @@ int main(int argc, char* argv[])
     int c;
     char* outname = 0;
     char* inname = 0;
-    unsigned nevents = 0;
     int parseErr = 0;
 
     while ((c = getopt(argc, argv, "hi:o:")) != -1) {

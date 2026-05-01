@@ -81,7 +81,7 @@ public:
                 _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
-                printf("'%s': %llu\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("'%s': %lu\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -121,7 +121,7 @@ public:
                 _dump<int64_t>(name.name(), descdata.get_array<int64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
-                printf("'%s': %lld\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("'%s': %ld\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -216,7 +216,7 @@ public:
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
-	    printf("Found %d names for namesid 0x%x\n",names.num(),namesId);
+	    printf("Found %d names for namesid 0x%x\n",names.num(),unsigned(namesId));
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
@@ -259,7 +259,7 @@ private:
 
 void usage(char* progname)
 {
-    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-S <max dgram bytes>] [-h] [-s]\n", progname);
+    fprintf(stderr, "Usage: %s -f <filename> [-d] [-n <nEvents>] [-w <nWords>] [-h] [-s]\n", progname);
 }
 
 int main(int argc, char* argv[])
@@ -273,10 +273,9 @@ int main(int argc, char* argv[])
     unsigned numWords = 3;
     bool printTimeAsUnsignedLong = false;
     bool doStats = false;
-    unsigned maxSize = 0x4000000;
     Stats stats;
 
-    while ((c = getopt(argc, argv, "hf:n:dw:c:TsS:")) != -1) {
+    while ((c = getopt(argc, argv, "hf:n:dw:c:Ts")) != -1) {
         switch (c) {
         case 'h':
             usage(argv[0]);
@@ -298,9 +297,6 @@ int main(int argc, char* argv[])
             break;
         case 's':
             doStats = true;
-            break;
-        case 'S':
-            maxSize = strtoul(optarg,NULL,0);
             break;
         case 'T':
             printTimeAsUnsignedLong = true;
@@ -334,21 +330,21 @@ int main(int argc, char* argv[])
         }
 
         // Use config from given config file as default
-        XtcFileIterator cfg_iter(cfg_fd, maxSize);
+        XtcFileIterator cfg_iter(cfg_fd, 0x4000000);
 
         // Only access the first dgram (config)
         dg = cfg_iter.next();
-        const void* bufEnd = ((char*)dg) + maxSize;
+        const void* bufEnd = ((char*)dg) + 0x4000000;
 
         // dbgiter will remember all the configs
         if (debugprint) dbgiter.iterate(&(dg->xtc), bufEnd);
 
     }
 
-    XtcFileIterator iter(fd, maxSize);
+    XtcFileIterator iter(fd, 0x4000000);
     unsigned nevent=0;
     dg = iter.next();
-    const void* bufEnd = ((char*)dg) + maxSize;
+    const void* bufEnd = ((char*)dg) + 0x4000000;
     while (dg) {
         if (nevent>=neventreq) break;
         nevent++;

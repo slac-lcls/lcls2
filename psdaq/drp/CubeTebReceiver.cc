@@ -311,7 +311,7 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::CubeResultDgram
                                              i);
             }
             m_terminate.store(false, std::memory_order_release);
-            m_collectorThread = std::thread(&CubeTebReceiver::process, std::ref(*this));
+            m_collectorThread = std::thread(&CubeTebReceiver::finalize, std::ref(*this));
 
             //  Write names for bin xtc
             const char* bufEnd = (char*)dgram + m_para.maxTrSize;
@@ -564,9 +564,9 @@ void CubeTebReceiver::_recordDgram(unsigned index, const CubeResultDgram& result
 
 }
 
-void CubeTebReceiver::process()
+void CubeTebReceiver::finalize()
 {
-    logging::info("CubeTebReceiver::process is starting with process ID %lu", syscall(SYS_gettid));
+    logging::info("CubeTebReceiver::finalize is starting with finalize ID %lu", syscall(SYS_gettid));
     char nameBuf[16];
     snprintf(nameBuf, sizeof(nameBuf), "drp/CubeTebProc");
     if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
@@ -590,11 +590,11 @@ void CubeTebReceiver::process()
         bool rc = m_workerOutputQueues[worker].pop(windex);
         if (rc) {
 
-            logging::debug("CubeTebReceiver::process index (%u) result(%x) bin (%u) worker (%u)",
+            logging::debug("CubeTebReceiver::finalize index (%u) result(%x) bin (%u) worker (%u)",
                            index, result.data(), result.binIndex(), worker);
 
             if (windex != index) {
-                logging::error("CubeTebReceiver::process index %u  windex %u",
+                logging::error("CubeTebReceiver::finalize index %u  windex %u",
                                index,windex);
                 abort();
             }
@@ -621,9 +621,9 @@ void CubeTebReceiver::process()
             }
         }
         else {
-            logging::info("CubeTebReceiver::process outputQ %u shutdown",worker);
+            logging::info("CubeTebReceiver::finalize outputQ %u shutdown",worker);
             break;
         }
     }
-    logging::info("CubeTebReceiver::process is exiting");
+    logging::info("CubeTebReceiver::finalize is exiting");
 }

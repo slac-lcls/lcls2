@@ -39,7 +39,7 @@ Dgram* XtcFileIterator::next()
             return 0;
         }
         else if (sz == 0) {
-            printf("XtcFileIterator::next read incomplete payload %zd/%zd\n", p-dg.xtc.payload(), dg.xtc.sizeofPayload());
+            printf("XtcFileIterator::next read incomplete payload %zd/%d\n", p-dg.xtc.payload(), dg.xtc.sizeofPayload());
             return 0;
         }
         else {

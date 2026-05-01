@@ -205,7 +205,6 @@ void addHsdConfigNames(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, N
 Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
                         unsigned& timestamp_val, void** bufEnd) {
     TypeId tid(TypeId::Parent, 0);
-    uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
@@ -261,7 +260,7 @@ int main(int argc, char* argv[])
                 nmotorsteps = atoi(optarg);
                 break;
             case 'f':
-                strncpy(xtcname, optarg, MAX_FNAME_LEN);
+                strncpy(xtcname, optarg, MAX_FNAME_LEN-1);
                 break;
             case 's':
                 starting_segment = atoi(optarg);
@@ -294,7 +293,6 @@ int main(int argc, char* argv[])
     struct timeval tv;
     TypeId tid(TypeId::Parent, 0);
     uint32_t env = 0;
-    uint64_t pulseId = 0;
     unsigned timestamp_val = 0;
     void* bufEnd;
 
@@ -370,7 +368,7 @@ int main(int argc, char* argv[])
         save(beginStepTr, xtcFile);
 
         void* buf = malloc(BUFSIZE);
-        for (int i = 0; i < nevents; i++) {
+        for (unsigned i = 0; i < nevents; i++) {
             if (counting_timestamps) {
                 tv.tv_sec = 0;
                 tv.tv_usec = timestamp_val;
