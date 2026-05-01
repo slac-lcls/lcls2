@@ -76,10 +76,10 @@ public:
         case(Name::UINT64):{
             if(data_rank > 0){
                 Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
-                printf("%s: %llu, %llu, %llu\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("%s: %lu, %lu, %lu\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %llu\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("%s: %lu\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -120,10 +120,10 @@ public:
         case(Name::INT64):{
             if(data_rank > 0){
                 Array<int64_t> arrT = descdata.get_array<int64_t>(i);
-                printf("%s: %lld, %lld, %lld\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
+                printf("%s: %ld, %ld, %ld\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
-                printf("%s: %lld\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("%s: %ld\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -258,7 +258,6 @@ int main(int argc, char* argv[])
     * then writes out (fseek) offset in smd.xtc2 file.
     */
     int c;
-    int writeTs = 0;
     char* tsname = 0;
     char* xtcname = 0;
     int parseErr = 0;
@@ -276,7 +275,6 @@ int main(int argc, char* argv[])
         usage(argv[0]);
         exit(0);
       case 't':
-        writeTs = 1;
         tsname = optarg;
         break;
       case 'n':
@@ -289,7 +287,7 @@ int main(int argc, char* argv[])
         xtcname = optarg;
         break;
       case 'o':
-        strncpy(outname, optarg, MAX_FNAME_LEN);
+        strncpy(outname, optarg, MAX_FNAME_LEN-1);
         break;
       default:
         parseErr++;

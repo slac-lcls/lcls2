@@ -305,10 +305,10 @@ class CuStatus(object):
                 pv.post(value)
 
         timev = divmod(float(time.time_ns()), 1.0e9)
-        updatePv(self._pv_timeStamp   , self._device.timeStampSec()         )
-        updatePv(self._pv_pulseId     , self._device.pulseId          .get())
-        updatePv(self._pv_fiducialIntv, self._device.cuFiducialIntv   .get())
-        updatePv(self._pv_PhCuToSC    , self._phase .phase())
+        updatePv(self._pv_timeStamp    , self._device.timeStampSec()         )
+        updatePv(self._pv_pulseId      , self._device.pulseId          .get())
+        updatePv(self._pv_fiducialIntv , self._device.cuFiducialIntv   .get())
+        updatePv(self._pv_PhCuToSC     , self._phase .phase())
 
         def updatePv(pv,v):
             if v is not None:

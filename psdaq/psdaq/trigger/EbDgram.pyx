@@ -39,6 +39,9 @@ cdef class Xtc():
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
 
+    def alloc(self,len):
+        self.cptr.extent += len
+
     @property
     def src(self):
         the_src = Src()

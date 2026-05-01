@@ -45,6 +45,8 @@ drp_dep = declare_dependency(
 executable('drp',
   [
     'AreaDetector.cc',
+    'CubeData.cc',
+    'CubeTebReceiver.cc',
     'Digitizer.cc',
     'EpixHR2x2.cc',
     'EpixHRemu.cc',
@@ -97,6 +99,8 @@ executable('drp',
 
 executable('drp_bld',
   [
+    'CubeData.cc',
+    'CubeTebReceiver.cc',
     'TebReceiver.cc',
     #'BldDetectorSlow.cc',
     'BldDetector.cc',

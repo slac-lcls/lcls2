@@ -13,6 +13,7 @@
 #include <sys/prctl.h>
 #include <net/if.h>
 #include "psdaq/aes-stream-drivers/DataDriver.h"
+#include "CubeTebReceiver.hh"
 #include "TebReceiver.hh"
 #include "RunInfoDef.hh"
 #include "psdaq/service/kwargs.hh"
@@ -27,6 +28,8 @@
 #include <Python.h>
 #include <inttypes.h>
 #include <time.h>
+
+//#define DBUG
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -69,6 +72,9 @@ static unsigned getVarDefSize(VarDef& vd, const std::vector<unsigned>& as) {
     }
     return sz;
 }
+
+enum {BldNamesIndex = NamesIndex::BASE}; // Revisit: This belongs in BldDetector
+
 
 BldPVA::BldPVA(std::string det,
                unsigned    interface) : _alg("raw",1,0,0), _interface(interface)
@@ -143,7 +149,8 @@ VarDef BldPVA::varDef(unsigned& sz, std::vector<unsigned>& sizes) const
   //  LCLS-I Style
   //
 BldFactory::BldFactory(const char* name,
-                       unsigned    interface) :
+                       unsigned    interface,
+                       bool        simulate) :
   _alg        ("raw", 2, 0, 0)
 {
     logging::warning("BldFactory::BldFactory %s", name);
@@ -223,16 +230,18 @@ BldFactory::BldFactory(const char* name,
         throw std::string("BLD name ")+name+" not recognized";
     }
     unsigned payloadSize = _varLenArr ? 0 : getVarDefSize(_varDef,_arraySizes);
+    
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
+                                     simulate,
                                      tscorr, _varLenArr, _entryByteSizes, _arraySizeMap);
 }
 
   //
   //  LCLS-II Style
   //
-BldFactory::BldFactory(const BldPVA& pva) :
+BldFactory::BldFactory(const BldPVA& pva, bool simulate) :
     _detName    (pva.detName()),
     _detType    (pva.detType()),
     _detId      (pva.detId  ()),
@@ -252,7 +261,8 @@ BldFactory::BldFactory(const BldPVA& pva) :
 
     _handler = std::make_shared<Bld>(mcaddr, mcport, pva.interface(),
                                      Bld::TimestampPos, Bld::PulseIdPos,
-                                     Bld::HeaderSize, payloadSize);
+                                     Bld::HeaderSize, payloadSize,
+                                     simulate);
 }
 
 BldFactory::BldFactory(const BldFactory& o) :
@@ -261,7 +271,7 @@ BldFactory::BldFactory(const BldFactory& o) :
     _detId      (o._detId),
     _alg        (o._alg)
 {
-    logging::error("BldFactory copy ctor called");
+    logging::warning("BldFactory copy ctor called");
 }
 
 BldFactory::~BldFactory()
@@ -408,12 +418,14 @@ Bld::Bld(unsigned mcaddr,
          unsigned pulseIdPos,
          unsigned headerSize,
          unsigned payloadSize,
+         bool     simulate,
          uint64_t timestampCorr,
          bool     varLenArr,
          std::vector<unsigned> entryByteSizes,
          std::map<unsigned,unsigned> arraySizeMap) :
     m_timestampPos(timestampPos), m_pulseIdPos(pulseIdPos),
     m_headerSize(headerSize), m_payloadSize(payloadSize),
+    m_simulate(simulate),
     m_bufferSize(0), m_position(0),  m_buffer(Bld::MTU), m_payload(m_buffer.data()),
     m_timestampCorr(timestampCorr), m_pulseId(0), m_pulseIdJump(0), m_varLenArr(varLenArr),
     m_entryByteSizes(entryByteSizes), m_arraySizeMap(arraySizeMap)
@@ -534,7 +546,22 @@ void     Bld::clear(uint64_t ts)
         // get new multicast if buffer is empty
         if ((m_position + m_payloadSize + 4) > m_bufferSize) {
             timestamp = 0;
-            ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
+            ssize_t bytes;
+            if (m_simulate) {  // generate a fake payload with timestamp ts
+                bytes = m_payloadSize + m_headerSize;
+                const double NS_PER_PID = 0.98e9/910000;
+                double dtns = ((ts>>32)-(headerTimestamp()>>32))*1.e9 + ((ts&0xffffffff)-(headerTimestamp()&0xffffffff));
+                double dpid = (dtns + 0.5*NS_PER_PID)/NS_PER_PID;
+                //  set new timestamp and pulse id
+                *reinterpret_cast<uint64_t*>(m_buffer.data()+m_timestampPos) = ts + m_timestampCorr;
+                *reinterpret_cast<uint64_t*>(m_buffer.data()+m_pulseIdPos) += uint64_t(dpid);
+                //  set the payload (not accounting for variable size payloads!!)
+                m_payload = &m_buffer[m_headerSize];
+                for(unsigned i=0; i<m_payloadSize/sizeof(double); i++)
+                    reinterpret_cast<double*>(m_payload)[i]++;
+            }
+            else
+                bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
             if (bytes <= 0)
                 break;
             m_bufferSize = bytes;
@@ -586,13 +613,19 @@ void     Bld::clear(uint64_t ts)
 uint64_t Bld::next()
 {
     uint64_t timestamp(0L);
+#ifdef DBUG
     uint64_t pulseId  (0L);
-
+#endif
     timespec ts;
     clock_gettime(CLOCK_REALTIME,&ts);
 
     // get new multicast if buffer is empty
     if ((m_position + m_payloadSize + 4) > m_bufferSize) {
+        if (m_simulate) {
+            logging::warning("Simulated BLD attempting next()");
+            return 0;
+        }
+
         ssize_t bytes = recv(m_sockfd, m_buffer.data(), Bld::MTU, MSG_DONTWAIT);
         if (bytes <= 0) {
             logging::info("Bld::next [%u.%09d] no data", ts.tv_sec, ts.tv_nsec);
@@ -602,7 +635,9 @@ uint64_t Bld::next()
         // To do: Handle partial reads?
         m_bufferSize = bytes;
         timestamp    = headerTimestamp();
+#ifdef DBUG
         pulseId      = headerPulseId  ();
+#endif
         m_payload    = &m_buffer[m_headerSize];
         _calcVarPayloadSize();
         m_position   = m_headerSize + m_payloadSize;
@@ -610,7 +645,9 @@ uint64_t Bld::next()
     }
     else if (m_position==0) {
         timestamp    = headerTimestamp();
+#ifdef DBUG
         pulseId      = headerPulseId  ();
+#endif
         m_payload    = &m_buffer[m_headerSize];
         _calcVarPayloadSize();
         m_position   = m_headerSize + m_payloadSize;
@@ -618,14 +655,18 @@ uint64_t Bld::next()
     else {
         uint32_t timestampOffset = *reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)&0xfffff;
         timestamp   = headerTimestamp() + timestampOffset;
+#ifdef DBUG
         uint32_t pulseIdOffset   = (*reinterpret_cast<uint32_t*>(m_buffer.data() + m_position)>>20)&0xfff;
         pulseId     = headerPulseId  () + pulseIdOffset;
+#endif
         m_payload   = &m_buffer[m_position + 4];
         _calcVarPayloadSize();
         m_position += 4 + m_payloadSize;
     }
 
+#ifdef DBUG
     logging::info("Bld::next timestamp %016llx  pulseId %016llx", timestamp, pulseId);
+#endif
 
     return timestamp;
 }
@@ -636,8 +677,70 @@ class BldDetector : public XpmDetector
 public:
     BldDetector(Parameters& para, MemPoolCpu& pool) : XpmDetector(&para, &pool) { virtChan = 0; }
     void event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override {}
+    //    void addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, double* dst, DescData& rawData);
+    unsigned rawNamesIndex() { return BldNamesIndex; }
+    unsigned cubeNamesIndex() { return BldNamesIndex+16; }
+    std::vector<VarDef>& rawDef() { return m_rawDef; }
+    unsigned maxMonBufSize() { return 0x1000; }
+private:
+    //    std::vector<VarDef> m_rawDef;
+    std::vector<VarDef> m_rawDef;
 };
 
+    /**
+//
+//  This is as generic as I can imagine
+//
+void BldDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                            double* dst, DescData& rawData)
+{
+    NamesId namesId(nodeId, BldNamesIndex+rawDefIndex);
+    Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    //VarDef& rawDef = m_rawDef[rawDefIndex];
+    //Name& name = rawDef.NameVec[valueIndex];
+    if (name.rank()==0) {
+        double v = 0;
+        switch(name.type()) {
+        case Name::UINT8 : v = rawData.get_value<uint8_t >(valueIndex); break;
+        case Name::UINT16: v = rawData.get_value<uint16_t>(valueIndex); break;
+        case Name::UINT32: v = rawData.get_value<uint32_t>(valueIndex); break;
+        case Name::UINT64: v = rawData.get_value<uint64_t>(valueIndex); break;
+        case Name::INT8  : v = rawData.get_value<int8_t  >(valueIndex); break;
+        case Name::INT16 : v = rawData.get_value<int16_t >(valueIndex); break;
+        case Name::INT32 : v = rawData.get_value<int32_t >(valueIndex); break;
+        case Name::INT64 : v = rawData.get_value<int64_t >(valueIndex); break;
+        case Name::FLOAT : v = rawData.get_value<float   >(valueIndex); break;
+        case Name::DOUBLE: v = rawData.get_value<double  >(valueIndex); break;
+        default: break;
+        }
+        *dst += v;
+    }
+    else {
+        uint32_t* shape = rawData.shape(name);
+        Array<double_t> calArrT((char*)dst, shape, name.rank());
+
+#define ADD_ARRAY(T) {                                           \
+            Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
+            for(unsigned i=0; i<rawArrT.num_elem(); i++)         \
+                calArrT.data()[i] += double(rawArrT.data()[i]);  \
+        } break;
+        switch(name.type()) {
+        case Name::UINT8 : ADD_ARRAY(uint8_t)
+        case Name::UINT16: ADD_ARRAY(uint16_t)
+        case Name::UINT32: ADD_ARRAY(uint32_t)
+        case Name::UINT64: ADD_ARRAY(uint64_t)
+        case Name::INT8  : ADD_ARRAY(int8_t)
+        case Name::INT16 : ADD_ARRAY(int16_t)
+        case Name::INT32 : ADD_ARRAY(int32_t)
+        case Name::INT64 : ADD_ARRAY(int64_t)
+        case Name::FLOAT : ADD_ARRAY(float)
+        case Name::DOUBLE: ADD_ARRAY(double)
+        default: break;
+        }
+#undef ADD_ARRAY
+    }
+}
+    **/
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
@@ -791,30 +894,34 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
     std::vector<std::shared_ptr<BldPVA> > bldPva(0);
 
     std::string s(m_para.detType);
+    bool simulate = m_para.kwargs.find("sim")!=m_para.kwargs.end();
+
     logging::warning("Parsing %s",s.c_str());
     for(size_t curr = 0, next = 0; next != std::string::npos; curr = next+1) {
         if (s==".") break;
         next  = s.find(',',curr+1);
         size_t pvpos = s.find('+',curr+1);
-        logging::debug("(%d,%d,%d)",curr,pvpos,next);
+        logging::info("(%d,%d,%d)",curr,pvpos,next);
         if (next == std::string::npos) {
             if (pvpos != std::string::npos)
                 bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,next),
                                                           interface));
             else
                 m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next).c_str(),
-                                                                interface));
+                                                                interface,
+                                                                simulate));
         }
         else if (pvpos > curr && pvpos < next)
             bldPva.push_back(std::make_shared<BldPVA>(s.substr(curr,next-curr),
                                                       interface));
         else
             m_config.push_back(std::make_shared<BldFactory>(s.substr(curr,next-curr).c_str(),
-                                                            interface));
+                                                            interface,
+                                                            simulate));
     }
 
     for(unsigned i=0; i<bldPva.size(); i++)
-        m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get()));
+        m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get(),simulate));
 
     uint64_t nextId = -1UL;
     uint64_t timestamp[m_config.size()];
@@ -857,8 +964,9 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
             tts <<= 32;
             tts |= ts.tv_nsec-TMO_NS;
         }
+#ifdef DBUG
         logging::debug("tmo time %016llx", tts);
-
+#endif
         //  get oldest timing header
         if (!timingHeader)
             timingHeader = next();
@@ -881,8 +989,9 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
             if (timestamp[i]<nextId)
                 nextId = timestamp[i];
         }
+#ifdef DBUG
         logging::debug("Bld next %016llx", nextId);
-
+#endif
         if (timingHeader) {
             if (timingHeader->service()!=TransitionId::L1Accept) {     //  Handle immediately
                 EbDgram* dgram = _handle(index);
@@ -909,9 +1018,11 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                     logging::warning("BLD configure");
 
                     // Revisit: This is intended to be done by BldDetector::configure()
+                    m_det->rawDef().clear();
                     for(unsigned i=0; i<m_config.size(); i++) {
                         NamesId namesId(m_det->nodeId, BldNamesIndex + i);
                         namesLookup[namesId] = m_config[i]->addToXtc(trDgram->xtc, bufEnd, namesId);
+                        m_det->rawDef().push_back(m_config[i]->varDef());
                     }
                     break;
                 }
@@ -922,7 +1033,7 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
 
                 m_current++;
                 timingHeader = 0;
-                _sendToTeb(*dgram, index);
+                _sendToTeb(*trDgram, index);
                 m_nevents++;
             }
             else if (ttv < tts) {  // Handle if old enough
@@ -995,6 +1106,13 @@ void Pgp::_sendToTeb(EbDgram& dgram, uint32_t index)
             triggerPrimitive->event(m_drp.pool, index, dgram.xtc, l3InpDg->xtc, bufEnd); // Produce
         }
     }
+    else if (dgram.service() == TransitionId::Configure) {
+        auto triggerPrimitive = m_drp.triggerPrimitive();
+        if (triggerPrimitive) { // else this DRP doesn't provide input
+            const void* bufEnd = (char*)&dgram + m_para.maxTrSize;
+            triggerPrimitive->configure(dgram.xtc, bufEnd);
+        }
+    }
     m_drp.tebContributor().process(l3InpDg);
 }
 
@@ -1004,7 +1122,10 @@ BldDrp::BldDrp(Parameters& para, MemPoolCpu& pool, Detector& det, ZmqContext& co
     m_pgp  (para, *this, &det)
 {
     // Set the TebReceiver we will use in the base class
-    setTebReceiver(std::make_unique<TebReceiver>(para, *this));
+    if (para.nCubeWorkers==0)
+        setTebReceiver(std::make_unique<TebReceiver>(para, *this));
+    else
+        setTebReceiver(std::make_unique<CubeTebReceiver>(para, *this));
 }
 
 std::string BldDrp::configure(const json& msg)
@@ -1259,7 +1380,7 @@ int main(int argc, char* argv[])
     Drp::Parameters para;
     std::string kwargs_str;
     int c;
-    while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:M:v")) != EOF) {
+    while((c = getopt(argc, argv, "l:p:o:C:b:d:D:u:P:T::k:M:Q:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -1295,6 +1416,9 @@ int main(int argc, char* argv[])
                 break;
             case 'M':
                 para.prometheusDir = optarg;
+                break;
+            case 'Q':
+                para.nCubeWorkers = std::stoi(optarg);
                 break;
             case 'v':
                 ++para.verbose;
@@ -1363,6 +1487,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "bld_tmo_ms")     continue;
+        if (kwargs.first == "sim")            continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;

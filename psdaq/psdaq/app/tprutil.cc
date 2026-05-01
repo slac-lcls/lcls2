@@ -418,7 +418,7 @@ void* frame_capture_thread(void* a)
   //int64_t bsarp = q.bsawp;
 
   printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
-  read(fd, buff, 32);
+  if (read(fd, buff, 32)) {}
   printf("..read\n");
   //  usleep(lcls2 ? 20 : 100000);
   //  usleep(100000);
@@ -478,7 +478,7 @@ void* frame_capture_thread(void* a)
       break;
     usleep(10000);
     printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
-    read(fd, buff, 32);
+    if (read(fd, buff, 32)) {}
     printf("..read\n");
   } while(1);
 
@@ -555,7 +555,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
   int64_t bsarp = q.bsawp;
 
   printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
-  read(fdbsa, buff, 32);
+  if (read(fdbsa, buff, 32)) {}
   //  usleep(lcls2 ? 20 : 100000);
   //  usleep(100000);
   //  disable channel 0
@@ -568,7 +568,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
 
   printf("BSA frames\n");
 
-  uint64_t active, avgdn, update, init, minor, major;
+  uint64_t active, avgdn, update=0, init, minor, major;
   nframes = 0;
   do {
     while(bsarp < q.bsawp && nframes<frames) {
@@ -599,7 +599,7 @@ void frame_capture(TprReg& reg, char tprid, bool lcls2, unsigned frames)
       break;
     usleep(10000);
     printf("Reading... %s  LINE %d\n",__FILE__,__LINE__);
-    read(fdbsa, buff, 32);
+    if (read(fdbsa, buff, 32)) {}
   } while(1);
 
   //  disable channel 0

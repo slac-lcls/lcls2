@@ -4,6 +4,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/service/IpcUtils.hh"
+#include "xtcdata/xtc/TransitionId.hh"
 
 #include <cstdint>
 #include <chrono>
@@ -43,6 +44,7 @@ namespace Pds {
       void event(const Pds::EbDgram* const* start,
                  const Pds::EbDgram**       end,
                  Pds::Eb::ResultDgram&      result) override;
+      void transition(Pds::Eb::ResultDgram& result) override;
       void shutdown() override;
       void cleanup();
     private:
@@ -470,7 +472,13 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
                                 const Pds::EbDgram**       end,
                                 Pds::Eb::ResultDgram&      result)
 {
-  *(Pds::Eb::ResultDgram*)_resData = result;
+  // Allow only L1Accept or Configure
+   XtcData::TransitionId::Value transitionId = result.service();
+   if (transitionId != XtcData::TransitionId::L1Accept &&
+       transitionId != XtcData::TransitionId::Configure)
+     return;
+
+   *(Pds::Eb::ResultDgram*)_resData = result;
 
   uint64_t rem = (1ull<<_inpData.size())-1;
   const Pds::EbDgram* const* ctrb = start;
@@ -505,9 +513,17 @@ void Pds::Trg::TebPyTrig::event(const Pds::EbDgram* const* start,
     if (recvmsg[0] != 'g')
       logging::error("Received error from Python: msg '%c'", recvmsg[0]);
 
-  result = *(Pds::Eb::ResultDgram*)_resData;
+  // This assignment changes the underlying data
+  //  result = *(Pds::Eb::ResultDgram*)_resData;
+
+  Pds::Eb::ResultDgram* r = (Pds::Eb::ResultDgram*)_resData;
+  memcpy((void*)&result, r, sizeof(*r)+r->xtc.sizeofPayload());
 }
 
+void Pds::Trg::TebPyTrig::transition(Pds::Eb::ResultDgram& result)
+{
+  *(Pds::Eb::ResultDgram*)_resData = result;
+}
 
 // The class factory
 

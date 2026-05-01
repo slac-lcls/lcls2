@@ -246,7 +246,7 @@ void EpixHRemu::event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event
 
     // Replace the dgram data by copying the ASIC 0 data
     // into the positions for all 4 ASICs
-    unsigned nlanes;
+    unsigned nlanes = 0;
     size_t dataSize = elemRowSize * sizeof(uint16_t);
     for (unsigned row = 0; row < elemRows; ++row) {
         nlanes = 0;

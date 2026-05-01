@@ -24,6 +24,7 @@
 #include "PGPDetector.hh"
 #include "EventBatcher.hh"
 #include "TebReceiver.hh"
+#include "CubeTebReceiver.hh"
 #include "psdaq/service/IpcUtils.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -248,6 +249,15 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
             } else {
                 transition = true;
                 EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
+
+                //  Allow trigger primitives to parse Configure/Names data
+                if (transitionId == TransitionId::Configure) {
+                    auto trgPrimitive = drp.triggerPrimitive();
+                    if (trgPrimitive) { // else this DRP doesn't provide input
+                        trgPrimitive->configure(trDgram->xtc, (char*)trDgram + para.maxTrSize);
+                    }
+                }
+
                 if (pythonDrp) {
                     Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
@@ -259,6 +269,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
                         memcpy((void*)inpDg, resData, sizeof(*resDg) + resDg->xtc.sizeofPayload());
                     }
                 }
+
             }
         }
 
@@ -342,7 +353,10 @@ PGPDrp::PGPDrp(Parameters& para, MemPool& pool, Detector& det, ZmqContext& conte
     m_pythonDrp(false)
 {
     // Set the TebReceiver we will use in the base class
-    setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
+    if (para.nCubeWorkers==0)
+        setTebReceiver(std::make_unique<TebReceiver>(m_para, *this));
+    else
+        setTebReceiver(std::make_unique<CubeTebReceiver>(m_para, *this));
 }
 
 std::string PGPDrp::configure(const json& msg)

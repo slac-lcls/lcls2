@@ -72,23 +72,33 @@ class Autosave(object):
 
     # save config
     def save(self):
+        #
+        #  Sometimes the configdb is inaccessible.  This should not be fatal.
+        #
+        nodb = True
         if self.db:
             logging.info('Updating {}'.format(self.db))
-            db_url, db_name, db_instrument, db_alias = self.db
-            mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr')
-            mycdb.add_device_config('xpm')
-
-            top = self._cdict()
-
-            if not db_alias in mycdb.get_aliases():
-                mycdb.add_alias(db_alias)
-
             try:
-                mycdb.modify_device(db_alias, top)
+                db_url, db_name, db_instrument, db_alias = self.db
+                mycdb = cdb.configdb(db_url, db_instrument, True, db_name, user=db_instrument+'opr')
+                mycdb.add_device_config('xpm')
+
+                top = self._cdict()
+
+                if not db_alias in mycdb.get_aliases():
+                    mycdb.add_alias(db_alias)
+
+                try:
+                    mycdb.modify_device(db_alias, top)
+                    nodb = False
+                except:
+                    #  No change generates an exception
+                    pass
+
             except:
-                pass
+                logging.warning('Error updating database.')
                 
-        else:
+        if nodb:
             print('--Autosave (no db)--')
             for k,v in self.pvdict.items():
                 print(f'  {k}: {v}')

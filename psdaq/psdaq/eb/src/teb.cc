@@ -615,6 +615,10 @@ void Teb::process(EbEvent* event)
       if (rdg->persist())  _writeCount++;
       if (rdg->monitor())  _monitor(rdg);
     }
+    else 
+    {   // Allow trigger to return a non-default result on transitions
+        _trigger->event(event->begin(), event->end(), *rdg); // Consume
+    }
 
     // Avoid sending Results to contributors that failed to supply Input
     uint64_t dsts = _receivers(dgram->readoutGroups()) & ~event->remaining();
@@ -742,8 +746,15 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
     if (flush)                          // Post the batch + transition
     {
-      _batch.end   = dgram;             // Append dgram to batch
+      // Make the batch big enough to contain the variable payload dgram
+      // Add one dgram buffer at the end for automatic EOL flag
+      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
+      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
+      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+
+      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
       _batch.dsts |= dsts;
+      _batch.start->setEOL();              // Force the processing to see only one dg
 
       _post(_batch);
 
