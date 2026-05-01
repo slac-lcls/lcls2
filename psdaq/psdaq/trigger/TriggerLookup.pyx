@@ -1,5 +1,5 @@
 from libcpp.vector cimport vector
-import EbDgram as edg
+import psdaq.EbDgram as edg
 
 cdef vector[char*] get_teb_lookup(event):
      cdef vector[char*] p

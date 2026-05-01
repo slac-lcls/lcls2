@@ -1,9 +1,9 @@
 from psdaq.trigger import tebTrigger
 from psdaq.configdb.typed_json import cdict
-from BldTebData import BldTebData, GasDetTebData, GmdTebData, XGmdTebData, PhaseCavityTebData, EBeamTebData
-from HrEncoderTebData import HrEncoderTebData
-from TimingTebData import TimingTebData
-from TmoTebData import TmoTebData
+from psdaq import BldTebData, GasDetTebData, GmdTebData, XGmdTebData, PhaseCavityTebData, EBeamTebData
+from psdaq import HrEncoderTebData
+from psdaq import TimingTebData
+from psdaq import TmoTebData
 import json
 import logging
 
@@ -14,7 +14,7 @@ config.setAlg('config', [2,0,0])
 config.setInfo('cubeinfo','cubeinfo',0,'serial1234',__file__)
 config.set('bins'         , 8192       , 'UINT32')  # mandatory field - flattened
 config.set('bin_dims'     , [64, 64, 2], 'UINT32')  # individual dimensions
-config.set('record_code'  , 256        , 'UINT16')  # example config data
+config.set('record_code'  , 272        , 'UINT16')  # example config data
 config.set('record_factor', 5121       , 'UINT32')  # --
 config.set('use_encoder'  , 0          , 'UINT8')
 config.set('use_gasdet'   , 0          , 'UINT8')
@@ -27,9 +27,9 @@ print(json.dumps(d))
 ds = tebTrigger.CubeTriggerDataSource(d)
 
 #  Lookup the detectors to use for trigger/binning decisions
-timing = ds.detector('timing_0',TimingTebData)
-bld    = ds.detector('bld_0'   ,BldTebData)
-enco   = ds.detector('mono_hrencoder_0',HrEncoderTebData)
+timing = ds.detector('timing_1',TimingTebData.TimingTebData)
+bld    = ds.detector('bld_0'   ,BldTebData.BldTebData)
+enco   = ds.detector('mono_hrencoder_0',HrEncoderTebData.HrEncoderTebData)
 
 #  Lookup the monitoring nodes for directing monitoring events
 mebs   = ds.mebs()   #  no argument results in all monitors

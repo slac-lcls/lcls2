@@ -7,10 +7,10 @@ import json
 import argparse
 
 from struct import unpack
-import EbDgram     as edg
-import ResultDgram as rdg
-import CubeResultDgram as qdg
-import CubeConfigDgram as cdg
+import psdaq.EbDgram     as edg
+import psdaq.ResultDgram as rdg
+import psdaq.CubeResultDgram as qdg
+import psdaq.CubeConfigDgram as cdg
 
 class ArgsParser(argparse.ArgumentParser):
     def __init__(self):

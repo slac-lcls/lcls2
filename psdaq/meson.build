@@ -26,6 +26,47 @@ subdir('drpGpu')
 subdir('epicsArch')
 
 py.extension_module(
+    'BldTebData',
+    'psdaq/trigger/BldTebData.pyx',
+    include_directories: [
+        psdaq_incdir,
+    ],
+    install: true,
+    subdir: 'psdaq',
+    install_rpath: libdir_install_rpath,
+    link_with: [trigger_lib],
+    override_options: ['cython_language=cpp'],
+)
+
+py.extension_module(
+    'CubeConfigDgram',
+    'psdaq/trigger/CubeConfigDgram.pyx',
+    include_directories: [
+        psdaq_incdir,
+        xtcdata_incdir,
+    ],
+    install: true,
+    subdir: 'psdaq',
+    install_rpath: libdir_install_rpath,
+    link_with: [xtc_shlib],
+    override_options: ['cython_language=cpp'],
+)
+
+py.extension_module(
+    'CubeResultDgram',
+    'psdaq/trigger/CubeResultDgram.pyx',
+    include_directories: [
+        psdaq_incdir,
+        xtcdata_incdir,
+    ],
+    install: true,
+    subdir: 'psdaq',
+    install_rpath: libdir_install_rpath,
+    link_with: [xtc_shlib],
+    override_options: ['cython_language=cpp'],
+)
+
+py.extension_module(
     'EbDgram',
     'psdaq/trigger/EbDgram.pyx',
     include_directories: [
@@ -36,6 +77,30 @@ py.extension_module(
     subdir: 'psdaq',
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib],
+    override_options: ['cython_language=cpp'],
+)
+
+py.extension_module(
+    'HrEncoderTebData',
+    'psdaq/trigger/HrEncoderTebData.pyx',
+    include_directories: [
+        psdaq_incdir,
+    ],
+    install: true,
+    subdir: 'psdaq',
+    install_rpath: libdir_install_rpath,
+    override_options: ['cython_language=cpp'],
+)
+
+py.extension_module(
+    'Piranha4TTTebData',
+    'psdaq/trigger/Piranha4TTTebData.pyx',
+    include_directories: [
+        psdaq_incdir,
+    ],
+    install: true,
+    subdir: 'psdaq',
+    install_rpath: libdir_install_rpath,
     override_options: ['cython_language=cpp'],
 )
 
@@ -82,6 +147,18 @@ py.extension_module(
     override_options: ['cython_language=cpp'],
 )
 
+#py.extension_module(
+#    'TriggerLookup',
+#    'psdaq/trigger/TriggerLookup.pyx',
+#    include_directories: [
+#        psdaq_incdir,
+#    ],
+#    install: true,
+#    subdir: 'psdaq',
+#    install_rpath: libdir_install_rpath,
+#    override_options: ['cython_language=cpp'],
+#)
+
 install_subdir(
   'psdaq',
   install_dir: py.get_install_dir(),
@@ -110,14 +187,30 @@ install_subdir(
     'CMakeLists.txt',
     'meson.build',
     'trigger/meson.build',
+    'trigger/BldTebData.pyx',
+    'trigger/BldTebDataw.pxd',
+    'trigger/CubeConfigDgram.pyx',
+    'trigger/CubeConfigDgramw.pxd',
+    'trigger/CubeResultDgram.pyx',
+    'trigger/CubeResultDgramw.pxd',
     'trigger/EbDgram.pyx',
     'trigger/EbDgramw.pxd',
+    'trigger/EBeamTebData.pxd',
+    'trigger/GasDetTebData.pxd',
+    'trigger/GmdTebData.pxd',
+    'trigger/HrEncoderTebData.pyx',
+    'trigger/HrEncoderTebDataw.pxd',
+    'trigger/PhaseCavityTebData.pxd',
+    'trigger/Piranha4TTTebData.pyx',
+    'trigger/Piranha4TTTebDataw.pxd',
     'trigger/ResultDgram.pyx',
     'trigger/ResultDgramw.pxd',
     'trigger/TimingTebData.pyx',
     'trigger/TimingTebDataw.pxd',
     'trigger/TmoTebData.pyx',
     'trigger/TmoTebDataw.pxd',
+    'trigger/TriggerLookup.pyx',
+    'trigger/XGmdTebData.pxd',
     'eb/meson.build',
     'slurm/readme.md',
     'slurm/slurm.cnf',

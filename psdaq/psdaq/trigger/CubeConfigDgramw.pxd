@@ -1,7 +1,7 @@
 from libc.stdint cimport uint32_t
-cimport psdaq.trigger.EbDgram as dgram
+cimport psdaq.trigger.EbDgramw as dgram
 
-cdef extern from 'psdaq/eb/CubeConfigDgram.hh' namespace "Pds::Eb":
+cdef extern from 'psdaq/eb/src/CubeConfigDgram.hh' namespace "Pds::Eb":
     cdef cppclass CubeConfigDgram:
         CubeConfigDgram(const dgram.EbDgram& dgram, unsigned id) except +
         void     bins          (uint32_t value)

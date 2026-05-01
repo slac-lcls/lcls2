@@ -1,7 +1,7 @@
 #pragma once
 
 #include "TebReceiver.hh"                   // Contains base class for TebReceiver
-#include "psdaq/eb/CubeResultDgram.hh"
+#include "psdaq/eb/src/CubeResultDgram.hh"
 
 namespace Drp {
 

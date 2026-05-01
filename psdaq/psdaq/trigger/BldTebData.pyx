@@ -5,7 +5,7 @@ cimport psdaq.trigger.XGmdTebData        as _XGmdTebData
 cimport psdaq.trigger.PhaseCavityTebData as _PhaseCavityTebData
 cimport psdaq.trigger.EBeamTebData       as _EBeamTebData
 cimport psdaq.trigger.GasDetTebData      as _GasDetTebData
-cimport psdaq.trigger.BldTebData         as _BldTebData
+cimport psdaq.trigger.BldTebDataw        as _BldTebData
 
 cdef class GmdTebData:
 

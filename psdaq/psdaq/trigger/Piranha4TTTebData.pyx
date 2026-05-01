@@ -1,5 +1,5 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-cimport psdaq.trigger.Piranha4TTTebData as ttt
+cimport psdaq.trigger.Piranha4TTTebDataw as ttt
 
 cdef class Piranha4TTTebData():
     cdef Py_buffer buf

@@ -1,6 +1,6 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from libc.stdint cimport int32_t, uint8_t
-cimport psdaq.trigger.HrEncoderTebData as ttt
+cimport psdaq.trigger.HrEncoderTebDataw as ttt
 
 cdef class HrEncoderTebData():
     cdef Py_buffer buf

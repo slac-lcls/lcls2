@@ -2,6 +2,7 @@
 trigger_inc_dir = include_directories('../..')
 
 trigger_lib = shared_library('trigger',
+  'src/BldTebData.cc',
   'src/utilities.cc',
   include_directories: [trigger_inc_dir],
   dependencies: [
@@ -92,6 +93,9 @@ endif
 
 tstTebPy_lib = shared_library('tstTebPy',
   [
+    'src/bldTebPrimitive.cc',
+    'src/hrEncoderTebPrimitive.cc',
+    'src/piranha4TebPrimitive.cc', 
     'src/timingTebPrimitive.cc',
     'src/tmoTebPrimitive.cc',
     'src/tebPyTrigger.cc',
@@ -103,6 +107,7 @@ tstTebPy_lib = shared_library('tstTebPy',
   ],
   link_with: [
     service_lib,
+    trigger_lib,
   ],
   install: true,
   install_rpath: libdir_install_rpath,
@@ -124,8 +129,16 @@ calibTrigger_lib = shared_library('calibTrigger',
 
 #install_headers(
 #  [
+#    'BldTebData.hh',
+#    'EBeamTebData.hh',
+#    'GasDetTebData.hh',
+#    'GmdTebData.hh',
+#    'HrEncoderTebData.hh',
+#    'PhaseCavityTebData.hh',
+#    'Piranha4TTTebData.hh",
 #    'TimingTebData.hh',
 #    'TmoTebData.hh',
+#    'XGmdTebData.hh',
 #  ],
 #  subdir: 'psdaq/trigger'
 #)

@@ -11,6 +11,8 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "xtcdata/xtc/VarDef.hh"
 
+//#define DBUG
+
 namespace Drp {
     class CubeDef : public XtcData::VarDef {
     public:
@@ -138,7 +140,10 @@ void CubeData::initialize(Src&       src,
         }
 
         const char* bufEnd = m_buffer[ibuff]+m_bufferSize;
-        Dgram& dg = *new (m_buffer[ibuff]) Dgram( Transition(), Xtc(TypeId(TypeId::Parent,0),src) );
+        Dgram& dg = *new (m_buffer[ibuff]) Dgram( Transition(TransitionBase::Event,
+                                                             TransitionId::Reset,
+                                                             TimeStamp(0UL),0), 
+                                                  Xtc(TypeId(TypeId::Parent,0),src) );
         Xtc& xtc = dg.xtc;
                 
         for(unsigned idef=0; idef<m_rawDefV.size(); idef++) {
@@ -229,13 +234,13 @@ void CubeData::initialize(Src&       src,
                 }
             }
         } // for(idef...
-
+#ifdef DBUG
         if (threadNum==0 && ibuff==0) {
             printf("data_init after\n");
             DumpIterator dump((char*)&dg.xtc);
             dump.iterate(&dg.xtc, bufEnd); 
         }
-
+#endif
         ibin += nbins;
     } // ibuff
 }
@@ -275,7 +280,8 @@ void CubeData::add    (unsigned   bin,
     unsigned nbins = m_binsPerBuf;
     unsigned ibuff = bin/nbins;
     unsigned ibin  = bin%nbins;
-    Xtc* xtc = (Xtc*)(((Dgram*)m_buffer[ibuff])->xtc.payload());
+    Dgram* dg = (Dgram*)m_buffer[ibuff];
+    Xtc* xtc = (Xtc*)(dg->xtc.payload());
 
     for(unsigned idef=0; idef<m_rawDefV.size(); idef++) {
 
@@ -283,9 +289,9 @@ void CubeData::add    (unsigned   bin,
 #ifdef DBUG
             ShapesData* shpd = rawDataV[idef];
             printf("idef %u  shapesdata %p\n", idef, shpd);
-            DUMP_XTC("SHPD", shpd             , (&dgram->xtc));
-            DUMP_XTC("DATA", (&shpd->data())  , (&dgram->xtc));
-            //DUMP_XTC("SHA",  (&shpd->shapes()), (&dgram->xtc)); // No shapes if no arrays
+            DUMP_XTC("SHPD", shpd             , dg);
+            DUMP_XTC("DATA", (&shpd->data())  , dg);
+            //DUMP_XTC("SHA",  (&shpd->shapes()), dg); // No shapes if no arrays
 #endif
             DescData rawdata(*(rawDataV[idef]), 
                              m_det.namesLookup()[m_rawNames[idef]] );
@@ -442,12 +448,13 @@ void CubeData::addBin (unsigned      bin,
     unsigned nbins = m_binsPerBuf;
     unsigned ibuff = bin/nbins;
     unsigned ibin  = bin%nbins;
-    Xtc& bxtc = ((Dgram*)m_buffer[ibuff])->xtc;
+    Dgram* bdg = (Dgram*)m_buffer[ibuff];
+    Xtc* xtc = (Xtc*)(bdg->xtc.payload());
 
     //  Check for timing system
     if (m_rawDefV[0].NameVec.size()==0) {
         NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
-        DescData cubedata(*(ShapesData*)(bxtc.payload()), m_det.namesLookup()[namesId]);
+        DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
         void* data = shapesDataV[0]->data().payload();
         for(unsigned i=0; i<nbins; i++)
             ((uint32_t*)data)[nbins+i] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+i]; // entries
@@ -458,7 +465,7 @@ void CubeData::addBin (unsigned      bin,
             VarDef& cubeDef = m_cubeDefV[idef];
 
             NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
-            DescData cubedata(*(ShapesData*)(bxtc.payload()), m_det.namesLookup()[namesId]);
+            DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
             void* data = shapesDataV[idef]->data().payload();
             ((uint32_t*)data)[1] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+ibin]; // entries
             unsigned dstSize = 2*sizeof(uint32_t);
@@ -479,7 +486,7 @@ void CubeData::addBin (unsigned      bin,
                 srcSize += binSize*nbins;
             }
 
-            bxtc = *(bxtc.next());
+            xtc = xtc->next();
         }
     }
 }

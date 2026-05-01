@@ -1,11 +1,11 @@
 from libc.stdint cimport uint64_t, uint32_t, uint8_t
-cimport GmdTebData           as _gmd
-cimport XGmdTebData          as _xgmd
-cimport PhaseCavityTebData   as _pcav
-cimport EBeamTebData         as _ebeam
-cimport GasDetTebData        as _gasdet
+cimport psdaq.trigger.GmdTebData           as _gmd
+cimport psdaq.trigger.XGmdTebData          as _xgmd
+cimport psdaq.trigger.PhaseCavityTebData   as _pcav
+cimport psdaq.trigger.EBeamTebData         as _ebeam
+cimport psdaq.trigger.GasDetTebData        as _gasdet
 
-cdef extern from 'psdaq/trigger/BldTebData.hh' namespace "Pds::Trg":
+cdef extern from 'psdaq/trigger/src/BldTebData.hh' namespace "Pds::Trg":
     cdef cppclass BldTebData:
         BldTebData(uint64_t  sources_) except +
         _gmd.GmdTebData*          gmd()

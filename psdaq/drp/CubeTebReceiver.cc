@@ -16,8 +16,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Smd.hh"
 #include "xtcdata/xtc/XtcIterator.hh"
-#include "psdaq/eb/CubeResultDgram.hh"
-#include "psdaq/eb/CubeConfigDgram.hh"
+#include "psdaq/eb/src/CubeConfigDgram.hh"
 #include "psdaq/service/Json2Xtc.hh"
 
 #include <sys/prctl.h>
@@ -31,6 +30,7 @@ using us_t = std::chrono::microseconds;
 
 typedef std::vector<ShapesData*> SDV;
 
+//#define DBUG
 //#define BIN_NORM   // Normalize
 
 namespace Drp {
@@ -411,6 +411,9 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
                 return dg;
             }
         }
+#ifdef DBUG
+        printf("CubeTebReceiver::_binDgram copy from worker %u\n",iworker);
+#endif
         m_sem[iworker].take();
         dg = m_cubedata[iworker]->copyBin(ibin, shapesDataV, dg);
         m_sem[iworker].give();
@@ -424,6 +427,9 @@ Pds::EbDgram* CubeTebReceiver::_binDgram(Pds::EbDgram* dg, const CubeResultDgram
         if (m_data_init[iworker].load(std::memory_order_relaxed))
             continue;
 
+#ifdef DBUG
+        printf("CubeTebReceiver::_binDgram add from worker %u\n",iworker);
+#endif
         m_sem[iworker].take();
         m_cubedata[iworker]->addBin(ibin, shapesDataV, dg);
         m_sem[iworker].give();

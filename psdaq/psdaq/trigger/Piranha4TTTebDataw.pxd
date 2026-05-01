@@ -1,6 +1,6 @@
 from libc.stdint cimport int32_t, uint8_t
 
-cdef extern from 'psdaq/trigger/Piranha4TTTebData.hh' namespace "Pds::Trg":
+cdef extern from 'psdaq/trigger/src/Piranha4TTTebData.hh' namespace "Pds::Trg":
     cdef cppclass Piranha4TTTebData:
         Piranha4TTTebData(float* payload_) except +
         float m_ampl

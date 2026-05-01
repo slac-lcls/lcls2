@@ -664,7 +664,9 @@ uint64_t Bld::next()
         m_position += 4 + m_payloadSize;
     }
 
+#ifdef DBUG
     logging::info("Bld::next timestamp %016llx  pulseId %016llx", timestamp, pulseId);
+#endif
 
     return timestamp;
 }

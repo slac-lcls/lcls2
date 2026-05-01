@@ -1,9 +1,9 @@
-#include "psdaq/trigger/BldTebData.hh"
-#include "psdaq/trigger/GmdTebData.hh"
-#include "psdaq/trigger/XGmdTebData.hh"
-#include "psdaq/trigger/PhaseCavityTebData.hh"
-#include "psdaq/trigger/GasDetTebData.hh"
-#include "psdaq/trigger/EBeamTebData.hh"
+#include "BldTebData.hh"
+#include "GmdTebData.hh"
+#include "XGmdTebData.hh"
+#include "PhaseCavityTebData.hh"
+#include "GasDetTebData.hh"
+#include "EBeamTebData.hh"
 
 using namespace Pds::Trg;
 

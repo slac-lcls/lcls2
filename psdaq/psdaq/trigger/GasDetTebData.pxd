@@ -1,6 +1,6 @@
 from libc.stdint cimport uint64_t, uint32_t, uint8_t
 
-cdef extern from 'psdaq/trigger/GasDetTebData.hh' namespace "Pds::Trg":
+cdef extern from 'psdaq/trigger/src/GasDetTebData.hh' namespace "Pds::Trg":
     cdef cppclass GasDetTebData:
         GasDetTebData(float f11ENRC_,
                       float f12ENRC_,
