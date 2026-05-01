@@ -306,13 +306,13 @@ def issue_2026_04_10(subtest='0o7777'):
 
     isubset = 0o7777 if subtest is None else int(subtest)
 
-    exp, run, detName = 'ued1016014', 50, 'epixquad1kfps'
-    if isubset & 16: exp, run, detName = 'ued1015999', 185, 'epixquad1kfps'
-    if isubset & 32: exp, run, detName = 'ued1011136', 206, 'epixquad1kfps'
+    exp, run, detname = ('ued1015999', 185, 'epixquad1kfps') if isubset & 16 else\
+                        ('ued1011136', 206, 'epixquad1kfps') if isubset & 32+64 else\
+                        ('ued1016014',  50, 'epixquad1kfps')
 
-    ds = DataSource(exp=exp, run=run, detectors=[detName])
+    ds = DataSource(exp=exp, run=run, detectors=[detname])
     myrun = next(ds.runs())
-    det = myrun.Detector(detName)
+    det = myrun.Detector(detname)
 
     if isubset & 1:
         while True:
@@ -365,9 +365,9 @@ def issue_2026_04_10(subtest='0o7777'):
           plot_image(ndu.reshape_to_2d(cal), title='cal as 2d', figsize=(4,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
           plot_image(ndu.reshape_to_2d(cal), title='cal as 2d re-scailed', figsize=(4,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5)
         if isubset & 8:
-           plot_image(det.raw.image(evt, raw), title='det.raw.image(evt,raw)', figsize=(8,8), block_show=False, pos=(10,0))
-           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
-           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5, fname='img-my-calib.png')
+          plot_image(det.raw.image(evt, raw), title='det.raw.image(evt,raw)', figsize=(8,8), block_show=False, pos=(10,0))
+          plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
+          plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5, fname='img-my-calib.png')
 
     if isubset & 16:
             vmin, vmax = 0,20
@@ -376,17 +376,57 @@ def issue_2026_04_10(subtest='0o7777'):
             peds = det.raw._pedestals()
             raw_peds = raw - peds[2,:]
             print(ndu.info_ndarr(raw_peds, 'raw - peds'))
-            plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8), block_show=True, pos=(10,10), vmin=vmin, vmax=vmax, fname='img-my-raw-peds.png')
+            plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8),\
+                       block_show=True, pos=(10,10), vmin=vmin, vmax=vmax, fname='img-my-raw-peds.png')
 
     if isubset & 32:
-        #while True:
-            #vmin, vmax = (0,20) if isubset & 16 else (-10,50)
+        print(ndu.info_ndarr(det.raw._pedestals(), 'det.raw._pedestals()'))
+        print(ndu.info_ndarr(det.raw._gain(), 'det.raw._gain()'))
+        print('det.raw._calibconst.keys():', det.raw._calibconst.keys())
+
+        evt = next(myrun.events())
+        #raw = det.raw.raw(evt) & 0x3fff
+        cal = det.raw.calib(evt)
+        #raw_peds = raw - peds[2,:]
+        #print(ndu.info_ndarr(raw_peds, 'raw - peds'))
+        print(ndu.info_ndarr(cal, 'cal'))
+
+        t1_sec = time()
+        a1 = det.raw._array(evt)
+        dt1_sec = time()-t1_sec
+        print(ndu.info_ndarr(a1, 'raw._array(evt)'))
+        print('>>> time alg1: %0.6f s' % dt1_sec)
+
+        t2_sec = time()
+        a2 = det.raw._array_v2(evt)
+        dt2_sec = time()-t1_sec
+        print(ndu.info_ndarr(a2, 'raw._array_v2(evt)'))
+        print('>>> time alg2: %0.6f s' % dt2_sec)
+
+        print('a1==a2', a1==a2)
+
+    if isubset & 64:
+        #print(ndu.info_ndarr(det.raw._pedestals(), 'det.raw._pedestals()'))
+        #print(ndu.info_ndarr(det.raw._gain(), 'det.raw._gain()'))
+        print('det.raw._calibconst.keys():', det.raw._calibconst.keys())
+        #evt = next(myrun.events())
+        #print(ndu.info_ndarr(det.raw.calib(evt), 'det.raw.calib(evt)'))
+        import psana.detector.UtilsEpix10ka as ue
+
+        if False:
+          for iseg in range(4):
+            cob=det.raw._seg_configs()[iseg].config
+            print(f'== seg {iseg} cob.trbit {cob.trbit}') # [1 1 1 1] < per ASIC trbit in the panel, consisting off 4 ASICs
+            #print(ndu.info_ndarr(cob.asicPixelConfig, '         cob.asicPixelConfig'))
+            cbits = ue.cbits_config_epix10ka_v02(cob)
+            #print(ndu.info_ndarr(cbits, 'cbits'))
+
+        #store = ue.Storage_v02(det.raw) #, perpix=True) # , **kwa)
+
+        if True:
             evt = next(myrun.events())
-            #raw = det.raw.raw(evt) & 0x3fff
-            cal = det.raw.calib(evt)
-            peds = det.raw._pedestals()
-            #raw_peds = raw - peds[2,:]
-            #print(ndu.info_ndarr(raw_peds, 'raw - peds'))
+            #cal = det.raw.calib(evt)
+            cal = ue.calib_epix10ka_v02(det.raw, evt) # **kwa
             print(ndu.info_ndarr(cal, 'cal'))
 
 
