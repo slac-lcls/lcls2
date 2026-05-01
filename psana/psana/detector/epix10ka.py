@@ -55,18 +55,11 @@ class epix10ka_raw_2_0_1(eb.epix_base):
 #        return eb.ue.calib_epix10ka_v02(self, evt, **kwa)
 #        #return eb.ue.calib_epix10ka_v02(self, evt, nda_raw=self.raw(evt), **kwa)
 
-# calib is the same as in epix_base.calib
-#    def calib(self, evt, **kwa) -> Array3d:
-#        logger.debug('epix10ka_raw_2_0_1.calib')
-#        return eb.calib_epix10ka_any(self, evt, **kwa)
-
 
 # MOVED TO epix_base
 #    def _gain_range_index(self, evt, **kwa):
 #        return eb.map_gain_range_index(self, evt, **kwa)
 
-
-# MOVED TO epix_base
 #    def _cbits_config_and_data_detector(self, evt=None):
 #        return eb.cbits_config_and_data_detector_epix10ka(self, evt)
 
@@ -74,23 +67,47 @@ class epix10ka_raw_2_0_1(eb.epix_base):
     def _array(self, evt) -> Array2d:
         f = None
         segs = self._segments(evt)
-        if segs is None:
-            pass
-        else:
+        if segs is not None:
             nsegs = len(segs)
             if nsegs==4:
-                nx = segs[0].raw.shape[1]
-                ny = segs[0].raw.shape[0]
-                f = np.zeros((ny*2,nx*2), dtype=segs[0].raw.dtype)
-                xa = [nx, 0, nx, 0]
-                ya = [ny, ny, 0, 0]
+                nr,nc = segs[0].raw.shape[-2:]
+                f = np.zeros((nr*2,nc*2), dtype=segs[0].raw.dtype)
+                ca = [nc, 0, nc, 0]
+                ra = [nr, nr, 0, 0]
                 for i in range(4):
-                    x = xa[i]
-                    y = ya[i]
-                    f[y:y+ny,x:x+nx] = segs[i].raw & 0x3fff
+                    c = ca[i]
+                    r = ra[i]
+                    f[r:r+nr,c:c+nc] = segs[i].raw & 0x3fff
         return f
 
-# Detector aliases for raw alg versions emitted by DAQ.
+
+    def _array_v2(self, evt) -> Array2d:
+        """easy stacking 4 panels to imaging array"""
+        segs = self._segments(evt)
+        if segs is None or len(segs) !=4: return None
+        return np.vstack((np.hstack((segs[3].raw, segs[2].raw)),\
+                          np.hstack((segs[1].raw, segs[0].raw)))) & 0x3fff
+
+
+class epix10ka_raw_3_0_0(epix10ka_raw_2_0_1):
+    def __init__(self, *args, **kwargs):
+        logger.debug('epix10ka_raw_2_0_1.__init__')
+        epix10ka_raw_2_0_1.__init__(self, *args, **kwargs)
+
+    def _cbits_config_segment(self, cob):
+        """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object, where self=det.raw"""
+        print(info_ndarr(cob.asicPixelConfig, 'XXX epix10ka_raw_3_0_0._cbits_config_segment'))
+        return cob.asicPixelConfig # expected panel shape:(352, 384) dtype:uint8
+        #return eb.cbits_config_epix10ka_v02(cob) # shape=(352, 384)
+
+    def calib(self, evt, **kwa) -> Array3d:
+        """TEST overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
+        print('XXX epix10ka_raw_2_0_1.calib')
+        return eb.ue.calib_epix10ka_v02(self, evt, **kwa)
+        #return eb.ue.calib_epix10ka_v02(self, evt, nda_raw=self.raw(evt), **kwa)
+
+
+#  Old detType for epix10ka
 epix_raw_2_0_1 = epix10ka_raw_2_0_1
 epix10ka_raw_3_0_1 = epix10ka_raw_2_0_1
 
