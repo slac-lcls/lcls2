@@ -663,7 +663,7 @@ unsigned PGPDrp::unconfigure()
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   printf("*** PGPDrp::unconfigure 3\n");
 
-  // Wait for the TrgInpGen thread to finish
+  // Wait for the Collector thread to finish
   if (m_collectorThread.joinable()) {
     m_collectorThread.join();
     logging::info("Collector thread finished");
@@ -748,6 +748,10 @@ void PGPDrp::_collector()
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
 
+  // Create a queue for handling batches of event indices
+  SPSCQueue<unsigned> collectorQueue(pool.nbuffers());
+  m_trgInpGen->start(collectorQueue);
+
   // Run the Collector
   auto trgPrimitive = triggerPrimitive();
   const uint32_t bufferMask = pool.nbuffers() - 1;
@@ -757,115 +761,122 @@ void PGPDrp::_collector()
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
-    // Receive an event
-    if (!m_trgInpGen->receive())  continue; // This can block
+    // Receive events
+    unsigned nRet;
+    if (!collectorQueue.pop(nRet))  continue; // This can block
 
-    //drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
-    auto timingHeader = m_det.getTimingHeader(bufIndex);
-    //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
-    //auto p = (const uint32_t*)timingHeader;
-    //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
-    //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-    auto pgpIndex = timingHeader->evtCounter & bufferMask;
-    //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
-    auto event = &pool.pgpEvents[pgpIndex];
-    if (event->mask == 0) {
-      printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
-      continue;                       // Skip broken event
-    }
-    //printf("*** PGPDrp::collector: event %p\n", event);
-
-    auto pid = timingHeader->pulseId();
-    //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
-    if (pid <= lastPid)
-      logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
-    lastPid = pid;
-
-    // Allocate transition datagrams before allocating the pebble buffer
-    // since pebble buffers can't be freed out of order if this fails
-    TransitionId::Value transitionId = timingHeader->service();
-    EbDgram* trDgram;
-    if (transitionId != TransitionId::L1Accept) {
-      // Allocate a transition datagram from the pool
-      trDgram = pool.allocateTr();
-      if (!trDgram) [[unlikely]] {
-        m_reader->freeDma(event);       // Leaves event mask = 0
-        ++m_nNoTrDgrams;
-        continue;                       // Can happen during shutdown
+    for (unsigned b = 0; b < nRet; ++b) {
+      drp_scoped_range batch_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
+      auto timingHeader = m_det.getTimingHeader(bufIndex);
+      //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
+      //auto p = (const uint32_t*)timingHeader;
+      //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
+      //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+      auto pgpIndex = timingHeader->evtCounter & bufferMask;
+      //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
+      auto event = &pool.pgpEvents[pgpIndex];
+      if (event->mask == 0) {
+        printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
+        continue;                       // Skip broken event
       }
-    }
+      //printf("*** PGPDrp::collector: event %p\n", event);
 
-    // Allocate a pebble buffer
-    //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
-    auto pebbleIndex = pool.allocate(); // This can block
-    //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
-    event->pebbleIndex = pebbleIndex;
-    Src src{m_det.nodeId};
+      auto pid = timingHeader->pulseId();
+      //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
+      if (pid <= lastPid)
+        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
+      lastPid = pid;
 
-    // Make a new dgram in the pebble
-    // It must be an EbDgram in order to be able to send it to the MEB
-    auto dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
-
-    // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
-    auto l3InpBuf = tebContributor().fetch(pebbleIndex);
-    auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
-
-    if (transitionId == TransitionId::L1Accept) {
-      const void* bufEnd = (char*)dgram + pool.bufferSize();
-      m_det.event(*dgram, bufEnd, event, ++l1Count);
-      //const auto p = (uint32_t*)&timingHeader[1];
-      //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
-      if (trgPrimitive) { // else this DRP doesn't provide TEB input
-        // Copy the TEB input data from the GPU into the TEB input datagram
-        auto tpSz = trgPrimitive->size();
-        const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
-        auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
-        memcpy(buf, &timingHeader[1], tpSz);
+      // Allocate transition datagrams before allocating the pebble buffer
+      // since pebble buffers can't be freed out of order if this fails
+      TransitionId::Value transitionId = timingHeader->service();
+      EbDgram* trDgram;
+      if (transitionId != TransitionId::L1Accept) {
+        // Allocate a transition datagram from the pool
+        trDgram = pool.allocateTr();
+        if (!trDgram) [[unlikely]] {
+          m_reader->freeDma(event);       // Leaves event mask = 0
+          ++m_nNoTrDgrams;
+          continue;                       // Can happen during shutdown
+        }
       }
-    } else {  // Transition
-      logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
-                     TransitionId::name(transitionId),
-                     dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
 
-      // Store the empty transition dgram allocated above in the pebble
-      pool.transitionDgrams[pebbleIndex] = trDgram;
+      // Allocate a pebble buffer
+      //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
+      auto pebbleIndex = pool.allocate(); // This can block
+      //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
+      event->pebbleIndex = pebbleIndex;
+      Src src{m_det.nodeId};
 
-      // Initialize the transition dgram's header
-      memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+      // Make a new dgram in the pebble
+      // It must be an EbDgram in order to be able to send it to the MEB
+      auto dgram = new(pool.pebble[pebbleIndex]) EbDgram(*timingHeader, src, m_para.rogMask);
 
-      if (transitionId == TransitionId::SlowUpdate) {
-        // Store the SlowUpdate's payload in the transition datagram
-        const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
-        m_det.slowupdate(trDgram->xtc, bufEnd);
-        //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
-      } else {                // Transition
-        // copy the temporary xtc created on phase 1 of the transition
-        // into the real location
-        Xtc& trXtc = m_det.transitionXtc();
-        trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-        const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
-        auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
-        memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
-        //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
+      // Prepare the trigger primitive with whatever input is needed for the TEB to make trigger decisions
+      auto l3InpBuf = tebContributor().fetch(pebbleIndex);
+      auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
+
+      if (transitionId == TransitionId::L1Accept) {
+        const void* bufEnd = (char*)dgram + pool.bufferSize();
+        m_det.event(*dgram, bufEnd, event, ++l1Count);
+        //const auto p = (uint32_t*)&timingHeader[1];
+        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
+        if (trgPrimitive) { // else this DRP doesn't provide TEB input
+          // Copy the TEB input data from the GPU into the TEB input datagram
+          auto tpSz = trgPrimitive->size();
+          const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
+          auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
+          memcpy(buf, &timingHeader[1], tpSz);
+        }
+      } else {  // Transition
+        logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
+                       TransitionId::name(transitionId),
+                       dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
+        // Store the empty transition dgram allocated above in the pebble
+        pool.transitionDgrams[pebbleIndex] = trDgram;
+
+        // Initialize the transition dgram's header
+        memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
+
+        if (transitionId == TransitionId::SlowUpdate) {
+          // Store the SlowUpdate's payload in the transition datagram
+          const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
+          m_det.slowupdate(trDgram->xtc, bufEnd);
+          //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
+        } else {                // Transition
+          // copy the temporary xtc created on phase 1 of the transition
+          // into the real location
+          Xtc& trXtc = m_det.transitionXtc();
+          trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
+          const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
+          auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
+          memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
+          //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
+        }
       }
+
+      // Post level-3 input datagram to the TEB
+      //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
+      tebContributor().process(pebbleIndex);
+      nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
+
+      // Time out batches for the TEB
+      /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
+      ///     if (tebContributor.timeout()) {              // After batch is timed out,
+      ///         rc = m_workerQueues[worker].popW(batch); // pend
+      ///         break;
+      ///     }
+      /// }
+      /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
+
+      bufIndex = (bufIndex + 1) & bufferMask;
     }
-
-    // Post level-3 input datagram to the TEB
-    //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
-    tebContributor().process(pebbleIndex);
-    nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
-
-    // Time out batches for the TEB
-    /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
-    ///     if (tebContributor.timeout()) {              // After batch is timed out,
-    ///         rc = m_workerQueues[worker].popW(batch); // pend
-    ///         break;
-    ///     }
-    /// }
-    /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
-
-    bufIndex = (bufIndex + 1) & bufferMask;
   }
+
+  // Clean up the Trigger Input Generator receiver
+  collectorQueue.shutdown();
+  m_trgInpGen->shutdown();
 
   // Flush the Reader buffers
   // @todo: dmaFlush();

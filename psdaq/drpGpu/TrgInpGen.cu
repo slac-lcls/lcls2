@@ -8,6 +8,8 @@
 #include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/eb/eb.hh"
 
+#include <sys/prctl.h>
+
 // Uncomment to dump a tracebuffer when a PGPReader event counter jump occurs
 //#define USE_TRACEBUFFER
 
@@ -22,8 +24,8 @@ static const char* const RED_ON  = "\033[0;31m";
 static const char* const RED_OFF = "\033[0m";
 static const unsigned EvtCtrMask = 0xffffff;
 
-struct col_domain{ static constexpr char const* name{"TrgInpGen"}; };
-using col_scoped_range = nvtx3::scoped_range_in<col_domain>;
+struct tig_domain{ static constexpr char const* name{"TrgInpGen"}; };
+using tig_scoped_range = nvtx3::scoped_range_in<tig_domain>;
 
 
 TrgInpGen::TrgInpGen(const Parameters&                  para,
@@ -287,7 +289,7 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
 
 cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
 {
-  col_scoped_range r{/*"TrgInpGen::_recordGraph"*/}; // Expose function name via NVTX
+  tig_scoped_range r{/*"TrgInpGen::_recordGraph"*/}; // Expose function name via NVTX
 
   auto hostWrtBufs_d  = m_pool.hostWrtBufs_d();
   auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs_d);
@@ -346,9 +348,28 @@ void TrgInpGen::start()
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
 }
 
-bool TrgInpGen::receive()
+void TrgInpGen::start(SPSCQueue<unsigned>& collectorQueue)
 {
-  col_scoped_range r{/*"TrgInpGen::receive"*/}; // Expose function name via NVTX
+  m_receiverThread = std::thread(&TrgInpGen::_receiver, this, std::ref(collectorQueue));
+}
+
+void TrgInpGen::shutdown()
+{
+  // Wait for the TrgInpGen receiver thread to finish
+  if (m_receiverThread.joinable()) {
+    m_receiverThread.join();
+    logging::info("TrgInpGen receiver thread finished");
+  }
+}
+
+void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
+{
+  tig_scoped_range r{/*"TrgInpGen::receiver"*/}; // Expose function name via NVTX
+
+  logging::info("TrgInpGen receiver is starting with process ID %lu\n", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "drp_gpu/TigRcvr", 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
 #if defined(USE_TRACEBUFFER)
   struct trace_t
@@ -366,212 +387,218 @@ bool TrgInpGen::receive()
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
   uint64_t       lastPid        = m_lastPid;
 
-  unsigned index;
-  while(!m_trgInpGenQueue.h->pop(&index)) {
-    if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
-      m_metrics.nDmaRet = 0;
-      return false;
-    }
-  }
-  //printf("*** TrgInpGen::receive: got index %u\n", index);
-  ++m_metrics.pndWtCtr;
+  unsigned index = 0;
+  while (!m_terminate.load(std::memory_order_relaxed)) {
+    unsigned nRet = 0;
+    unsigned head = m_trgInpGenQueue.h->head();
+    while (index != head) {
+      if (!m_trgInpGenQueue.h->pop(&index))  break;
+      //printf("*** TrgInpGen::receive: got index %u, head %u\n", index, head);
+      ++m_metrics.pndWtCtr;
 
-  col_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
-  const auto dmaDsc       = (DmaDsc*)&hostWrtBufs[index * hostWrtBufsCnt];
-  const auto timingHeader = (TimingHeader*)&dmaDsc[1];
+      tig_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
 
-  if (m_para.verbose > 2) {
-    printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
-    const auto& p = (const uint32_t*)dmaDsc;
-    printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
-           p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
-  }
+      const auto dmaDsc       = (DmaDsc*)&hostWrtBufs[index * hostWrtBufsCnt];
+      const auto timingHeader = (TimingHeader*)&dmaDsc[1];
 
-  // Wait for pulse ID to become non-zero
-  uint64_t pid = timingHeader->pulseId();
-  //printf("*** 1 pid %014lx\n", pid);
-  while (pid <= lastPid) {
-    col_scoped_range loop_range2{/*"TrgInpGen::receive wait"*/};
-    if (m_terminate.load(std::memory_order_acquire)) [[unlikely]]  return false;
-    pid = timingHeader->pulseId();
-  }
-  ++m_metrics.pidWtCtr;
-  //printf("*** 2 pid %014lx\n", pid);
+      if (m_para.verbose > 2) {
+        printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
+        const auto& p = (const uint32_t*)dmaDsc;
+        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
+               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+      }
 
-  nvtx3::mark("TrgInpGen received", nvtx3::payload{index});
+      // Wait for pulse ID to become non-zero
+      uint64_t pid = timingHeader->pulseId();
+      //printf("*** 1 pid %014lx\n", pid);
+      while (pid <= lastPid) {
+        tig_scoped_range loop_range2{/*"TrgInpGen::receive wait"*/};
+        if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]]  break;
+        pid = timingHeader->pulseId();
+      }
+      if (m_terminate.load(std::memory_order_relaxed)) [[unlikely]]  break;
+      ++m_metrics.pidWtCtr;
+      //printf("*** 2 pid %014lx\n", pid);
+
+      nvtx3::mark("TrgInpGen received", nvtx3::payload{index});
 #if defined(USE_TRACEBUFFER)
-  traceBuffer[itb].tail    = tail;
-  traceBuffer[itb].head    = head;
-  traceBuffer[itb].pid     = pid;
-  traceBuffer[itb].lastPid = lastPid;
-  itb = (itb + 1) % traceBuffer.size();
+      traceBuffer[itb].tail    = index;
+      traceBuffer[itb].head    = head;
+      traceBuffer[itb].pid     = pid;
+      traceBuffer[itb].lastPid = lastPid;
+      itb = (itb + 1) % traceBuffer.size();
 #endif
 
-  if (pid <= lastPid) [[unlikely]]
-    logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
-  lastPid = pid;
+      if (pid <= lastPid) [[unlikely]]
+        logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
+      lastPid = pid;
 
-  // Check for DMA buffer overflow
-  if (dmaDsc->overflow()) [[unlikely]] {
-    logging::critical("DMA overflowed buffer: size %d B vs %d B", dmaDsc->size, m_pool.dmaSize());
-    abort();
-  }
+      // Check for DMA buffer overflow
+      if (dmaDsc->overflow()) [[unlikely]] {
+        logging::critical("DMA overflowed buffer: size %d B vs %d B", dmaDsc->size, m_pool.dmaSize());
+        abort();
+      }
 
-  // Measure TimingHeader arrival latency as early as possible
-  if (pid - m_latPid > 1300000/14) {    // 10 Hz
-      m_metrics.latency = Eb::latency<us_t>(timingHeader->time);
-      m_latPid = pid;
-  }
+      // Measure TimingHeader arrival latency as early as possible
+      if (pid - m_latPid > 1300000/14) {    // 10 Hz
+        m_metrics.latency = Eb::latency<us_t>(timingHeader->time);
+        m_latPid = pid;
+      }
 
 #ifdef HOST_REARMS_DMA
-  // Write to the DMA start register in the FPGA
-  unsigned dmaIdx = index % m_pool.dmaCount();
-  //printf("*** TrgInpGen::receive: Enable write to DMA buffer %u\n", dmaIdx);
-  auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
-  if (rc < 0) [[unlikely]] {
-    logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
-    abort();
-  }
+      // Write to the DMA start register in the FPGA
+      unsigned dmaIdx = index % m_pool.dmaCount();
+      //printf("*** TrgInpGen::receive: Enable write to DMA buffer %u\n", dmaIdx);
+      auto rc = gpuSetWriteEn(m_pool.fd(), dmaIdx);
+      if (rc < 0) [[unlikely]] {
+        logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
+        abort();
+      }
 #endif
 
-  logging::debug("dma %u, hdr %08x, sz %08x = %u", index, dmaDsc->header, dmaDsc->size, dmaDsc->size);
-  logging::debug("idx %u  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
-                 index, timingHeader->control(), timingHeader->pulseId(), timingHeader->time.value(),
-                 timingHeader->env, timingHeader->evtCounter,
-                 timingHeader->_opaque[0], timingHeader->_opaque[1]);
+      logging::debug("dma %u, hdr %08x, sz %08x = %u", index, dmaDsc->header, dmaDsc->size, dmaDsc->size);
+      logging::debug("idx %u  th: ctl %02x, pid %014lx, ts %016lx, env %08x, ctr %08x, opq %08x %08x",
+                     index, timingHeader->control(), timingHeader->pulseId(), timingHeader->time.value(),
+                     timingHeader->env, timingHeader->evtCounter,
+                     timingHeader->_opaque[0], timingHeader->_opaque[1]);
 
-  uint32_t size = dmaDsc->size;         // Size of the DMA
-  m_metrics.dmaSize   = size;
-  m_metrics.dmaBytes += size;
+      uint32_t size = dmaDsc->size;         // Size of the DMA
+      m_metrics.dmaSize   = size;
+      m_metrics.dmaBytes += size;
 
-  if (timingHeader->error()) [[unlikely]] {
-    if (m_metrics.nTmgHdrError++ < 5) { // Limit prints at rate
-      logging::error("Timing header error bit is set");
-    }
-  }
-
-  uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
-  unsigned pgpIndex = evtCounter & bufferMask;
-  PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
-  constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
-  DmaBuffer* buffer = &event->buffers[lane];
-  buffer->size = size;
-  buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
-  if (event->mask) [[unlikely]] {
-    logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
-                      event->mask, pgpIndex, evtCounter);
-    abort();
-  }
-  if (((1 << lane) & m_para.laneMask) == 0) [[unlikely]] {
-    logging::error("Lane %u is not in laneMask 0x%02", lane, m_para.laneMask);
-  }
-  event->mask |= (1 << lane);
-
-  m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
-
-  // Check whether the DMA is reporting an error
-  // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
-  if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
-    // Assume we can recover from non-overflow DMA errors
-    if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
-      logging::error("DMA error 0x%08x", dmaDsc->header);
-    }
-    // This assumes the DMA succeeded well enough that evtCounter is valid
-    handleBrokenEvent(*event);
-    m_reader->freeDma(event);           // Leaves event mask = 0
-    return false;
-  }
-
-  XtcData::TransitionId::Value transitionId = timingHeader->service();
-  const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
-  logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
-                 size,
-                 reinterpret_cast<const uint64_t*>(data)[0], // PulseId
-                 reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
-                 reinterpret_cast<const uint32_t*>(data)[4], // env
-                 dmaDsc->header);
-
-  if (transitionId == TransitionId::BeginRun) {
-    resetEventCounter();                // Compensate for the ClearReadout sent before BeginRun
-  }
-  if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
-    if (m_lastTid != TransitionId::Unconfigure) {
-      if ((m_metrics.nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
-        auto evtCntDiff = evtCounter - m_lastComplete;
-        logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s, index %u",
-                       RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF, index);
-        logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
-                       data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
-        logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
-                       m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
+      if (timingHeader->error()) [[unlikely]] {
+        if (m_metrics.nTmgHdrError++ < 5) { // Limit prints at rate
+          logging::error("Timing header error bit is set");
+        }
       }
-      handleBrokenEvent(*event);
-      m_reader->freeDma(event);         // Leaves event mask = 0
+
+      uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
+      unsigned pgpIndex = evtCounter & bufferMask;
+      PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+      constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
+      DmaBuffer* buffer = &event->buffers[lane];
+      buffer->size = size;
+      buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
+      if (event->mask) [[unlikely]] {
+        logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
+                          event->mask, pgpIndex, evtCounter);
+        abort();
+      }
+      if (((1 << lane) & m_para.laneMask) == 0) [[unlikely]] {
+        logging::error("Lane %u is not in laneMask 0x%02", lane, m_para.laneMask);
+      }
+      event->mask |= (1 << lane);
+
+      m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
+
+      // Check whether the DMA is reporting an error
+      // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
+      if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
+        // Assume we can recover from non-overflow DMA errors
+        if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
+          logging::error("DMA error 0x%08x", dmaDsc->header);
+        }
+        // This assumes the DMA succeeded well enough that evtCounter is valid
+        handleBrokenEvent(*event);
+        m_reader->freeDma(event);           // Leaves event mask = 0
+        break;
+      }
+
+      XtcData::TransitionId::Value transitionId = timingHeader->service();
+      const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
+      logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
+                     size,
+                     reinterpret_cast<const uint64_t*>(data)[0], // PulseId
+                     reinterpret_cast<const uint64_t*>(data)[1], // Timestamp
+                     reinterpret_cast<const uint32_t*>(data)[4], // env
+                     dmaDsc->header);
+
+      if (transitionId == TransitionId::BeginRun) {
+        resetEventCounter();                // Compensate for the ClearReadout sent before BeginRun
+      }
+      if (evtCounter != ((m_lastComplete + 1) & EvtCtrMask)) [[unlikely]] {
+        if (m_lastTid != TransitionId::Unconfigure) {
+          if ((m_metrics.nPgpJumps++ < 5) || m_para.verbose) { // Limit prints at rate
+            auto evtCntDiff = evtCounter - m_lastComplete;
+            logging::error("%sPGPReader: Jump in TimingHeader evtCounter %u -> %u | difference %d, DMA size %u%s, index %u",
+                           RED_ON, m_lastComplete, evtCounter, evtCntDiff, size, RED_OFF, index);
+            logging::error("new data: %08x %08x %08x %08x %08x %08x  (%s)",
+                           data[0], data[1], data[2], data[3], data[4], data[5], TransitionId::name(transitionId));
+            logging::error("lastData: %08x %08x %08x %08x %08x %08x  (%s)",
+                           m_lastData[0], m_lastData[1], m_lastData[2], m_lastData[3], m_lastData[4], m_lastData[5], TransitionId::name(m_lastTid));
+          }
+          handleBrokenEvent(*event);
+          m_reader->freeDma(event);         // Leaves event mask = 0
 #if defined(USE_TRACEBUFFER)
-      for (unsigned i = 0; i < traceBuffer.size(); ++i) {
-        unsigned j = (itb + i) % traceBuffer.size();
-        auto& tb = traceBuffer[j];
-        printf("%4u:%4u: t %4u h %4u p %014lx l %014lx\n", i, j, tb.tail, tb.head, tb.pid, tb.lastPid);
-      }
-      sleep(10);
-      printf("cur: p %014lx, e %u\n", timingHeader->pulseId(), timingHeader->evtCounter & EvtCtrMask);
+          for (unsigned i = 0; i < traceBuffer.size(); ++i) {
+            unsigned j = (itb + i) % traceBuffer.size();
+            auto& tb = traceBuffer[j];
+            printf("%4u:%4u: t %4u h %4u p %014lx l %014lx\n", i, j, tb.tail, tb.head, tb.pid, tb.lastPid);
+          }
+          sleep(10);
+          printf("cur: p %014lx, e %u\n", timingHeader->pulseId(), timingHeader->evtCounter & EvtCtrMask);
 #endif
-      abort();
-      return false;                     // Throw away out-of-sequence events
-    } else if (transitionId != TransitionId::Configure) {
-      m_reader->freeDma(event);         // Leaves event mask = 0
-      return false;                     // Drain
-    }
-  }
-  m_lastComplete = evtCounter;
-  m_lastTid = transitionId;
-  memcpy(m_lastData, data, 24);
+          abort();
+          break;                            // Throw away out-of-sequence events
+        } else if (transitionId != TransitionId::Configure) {
+          m_reader->freeDma(event);         // Leaves event mask = 0
+          break;                            // Drain
+        }
+      }
+      m_lastComplete = evtCounter;
+      m_lastTid = transitionId;
+      memcpy(m_lastData, data, 24);
 
-  auto rogs = timingHeader->readoutGroups();
-  if ((rogs & (1 << m_para.partition)) == 0) {
-    logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                   XtcData::TransitionId::name(transitionId),
-                   timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                   timingHeader->pulseId(), m_para.partition, timingHeader->env);
-    ++m_lastComplete;
-    handleBrokenEvent(*event);
-    m_reader->freeDma(event);           // Leaves event mask = 0
-    ++m_metrics.nNoComRoG;
-    return false;
-  }
-  if (transitionId == XtcData::TransitionId::SlowUpdate) {
-    uint16_t missingRogs = m_para.rogMask & ~rogs;
-    if (missingRogs) [[unlikely]] {
-      logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                     XtcData::TransitionId::name(transitionId),
-                     timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                     timingHeader->pulseId(), missingRogs, timingHeader->env);
-      ++m_lastComplete;
-      handleBrokenEvent(*event);
-      m_reader->freeDma(event);         // Leaves event mask = 0
-      ++m_metrics.nMissingRoGs;
-      return false;
+      auto rogs = timingHeader->readoutGroups();
+      if ((rogs & (1 << m_para.partition)) == 0) {
+        logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
+                       XtcData::TransitionId::name(transitionId),
+                       timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                       timingHeader->pulseId(), m_para.partition, timingHeader->env);
+        ++m_lastComplete;
+        handleBrokenEvent(*event);
+        m_reader->freeDma(event);           // Leaves event mask = 0
+        ++m_metrics.nNoComRoG;
+        break;
+      }
+      if (transitionId == XtcData::TransitionId::SlowUpdate) {
+        uint16_t missingRogs = m_para.rogMask & ~rogs;
+        if (missingRogs) [[unlikely]] {
+          logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
+                         XtcData::TransitionId::name(transitionId),
+                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                         timingHeader->pulseId(), missingRogs, timingHeader->env);
+          ++m_lastComplete;
+          handleBrokenEvent(*event);
+          m_reader->freeDma(event);         // Leaves event mask = 0
+          ++m_metrics.nMissingRoGs;
+          break;
+        }
+      }
+
+      if (transitionId != XtcData::TransitionId::L1Accept) {
+        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+          logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
+                        XtcData::TransitionId::name(transitionId),
+                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                        timingHeader->pulseId());
+        }
+        else {
+          logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
+                         XtcData::TransitionId::name(transitionId),
+                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
+                         timingHeader->pulseId());
+        }
+      }
+
+      ++nRet;
+      ++m_metrics.nEvents;
+      //printf("*** TrgInpGen::receive: index %u, event->mask %02x\n", index, event->mask);
     }
+
+    m_metrics.nDmaRet = nRet;
+    if (nRet)  collectorQueue.push(nRet);
   }
 
-  if (transitionId != XtcData::TransitionId::L1Accept) {
-    if (transitionId != XtcData::TransitionId::SlowUpdate) {
-      logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                    XtcData::TransitionId::name(transitionId),
-                    timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                    timingHeader->pulseId());
-    }
-    else {
-      logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                     XtcData::TransitionId::name(transitionId),
-                     timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
-                     timingHeader->pulseId());
-    }
-  }
-
-  ++m_metrics.nEvents;
-  //printf("*** TrgInpGen::receive: index %u, event->mask %02x\n", index, event->mask);
-
-  m_metrics.nDmaRet = 1;
-  return true;
+  logging::info("TrgInpGen receiver is exiting");
 }
