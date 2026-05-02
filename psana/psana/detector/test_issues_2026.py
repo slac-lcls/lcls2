@@ -488,6 +488,78 @@ def issue_2026_04_15(args):
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
 
+
+
+
+
+
+
+
+
+def issue_2026_05_01(args):
+    """ISSUE:
+              datinfo -k exp=uedc00106,run=329 -d epixquad1kfps
+              datinfo -k exp=ued1015980,run=1 -d epixquad1kfps
+
+              ('epixquad1kfps', 'raw') : <class 'psana.detector.epix10ka.epix10ka_raw_3_0_1'>
+       PROBLEM:
+       FIX:
+    """
+    from psana import DataSource
+    from time import time
+    import sys
+    import numpy as np
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu
+
+    events = args.events
+    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+    #expname, runnum, detname = ('ued1015980',   1, 'epixquad1kfps') if isubset & 2 else\
+    #                           ('uedc00106',  329, 'epixquad1kfps')
+
+    expname, runnum, detname = 'uedc00106',  329, 'epixquad1kfps'
+
+    ds = DataSource(exp=expname, run=runnum, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector(detname)
+
+    #geo_meta = det.calibconst['geometry']
+    #if geo_meta is not None: print('geometry metadata:', geo_meta[1])
+
+    peds = det.raw._pedestals()
+    print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+
+    plot_image = False # True
+    flimg = None
+    if isubset & 1:
+        for nevt,evt in enumerate(run.events()):
+            #det.raw._raw_buf = None
+            raw = det.raw.raw(evt)
+            print('XXX === evt: %03d' % nevt)
+            print(ndu.info_ndarr(raw, '  raw'))
+
+            cal = det.raw.calib(evt)
+            print(ndu.info_ndarr(cal, '  cal'))
+
+            #arr = det.raw._array(evt)
+            #print(ndu.info_ndarr(arr, 'arr'))
+            #if nevt>1: break
+            
+            if plot_image:
+                #img = arr
+                #img = raw[0,:]
+                img=det.raw.image(evt, nda=raw)
+
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
+                    gr.plt.ion()
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+        if plot_image: gr.show()
+        
 #===
 
 def issue_2026_MM_DD(subtest='0o7777'):
@@ -542,6 +614,7 @@ def selector():
     elif TNAME in ('5',): issue_2026_04_01(args.subtest)
     elif TNAME in ('6',): issue_2026_04_10(args.subtest)
     elif TNAME in ('7',): issue_2026_04_15(args) # various images selected by -s [#]
+    elif TNAME in ('8',): issue_2026_05_01(args)
     elif TNAME in ('99',):issue_2026_MM_DD(args.subtest)
     else:
         print(USAGE())
