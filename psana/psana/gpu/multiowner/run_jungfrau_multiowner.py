@@ -210,6 +210,31 @@ def _visible_gpu_count():
     return int(cp.cuda.runtime.getDeviceCount())
 
 
+def _probe_visible_gpu_count():
+    if cp is None:
+        return None, "CuPy is unavailable"
+    try:
+        return int(cp.cuda.runtime.getDeviceCount()), None
+    except Exception as exc:  # pragma: no cover - diagnostic path
+        return None, f"{type(exc).__name__}: {exc}"
+
+
+def _gpu_visibility_summary():
+    visible_gpu_count, visible_gpu_error = _probe_visible_gpu_count()
+    fields = {
+        "rank": _world_rank(),
+        "local_rank": _local_rank(),
+        "host": os.environ.get("HOSTNAME") or os.uname().nodename,
+        "CUDA_VISIBLE_DEVICES": os.environ.get("CUDA_VISIBLE_DEVICES", "<unset>"),
+        "SLURM_STEP_GPUS": os.environ.get("SLURM_STEP_GPUS", "<unset>"),
+        "SLURM_JOB_GPUS": os.environ.get("SLURM_JOB_GPUS", "<unset>"),
+        "visible_gpu_count": visible_gpu_count,
+    }
+    if visible_gpu_error is not None:
+        fields["visible_gpu_error"] = visible_gpu_error
+    return " ".join(f"{key}={value}" for key, value in fields.items())
+
+
 def _auto_gpu_device(rank, local_rank, is_bd):
     visible_gpu_count = _visible_gpu_count()
     if visible_gpu_count <= 0:
@@ -277,8 +302,25 @@ class JungfrauMultiOwnerGpu:
         self.det_raw = det_raw
         self.device_id = int(device_id)
         self.extra_gpu_work = int(extra_gpu_work)
-        self.device = cp.cuda.Device(self.device_id)
-        self.device.use()
+        visible_gpu_count, visible_gpu_error = _probe_visible_gpu_count()
+        if visible_gpu_count is not None and visible_gpu_count <= self.device_id:
+            raise SystemExit(
+                f"Requested CUDA device {self.device_id}, but only {visible_gpu_count} "
+                f"visible device(s) are available on this rank. {_gpu_visibility_summary()}"
+            )
+        if visible_gpu_error is not None:
+            raise SystemExit(
+                "Unable to query visible CUDA devices before activating the GPU. "
+                f"{_gpu_visibility_summary()}"
+            )
+        try:
+            self.device = cp.cuda.Device(self.device_id)
+            self.device.use()
+        except Exception as exc:
+            raise SystemExit(
+                f"Failed to activate CUDA device {self.device_id}: "
+                f"{type(exc).__name__}: {exc}. {_gpu_visibility_summary()}"
+            ) from exc
         self.stream = cp.cuda.Stream(non_blocking=True)
         self.ccons_host = None
         self.ccons_dev = None
@@ -493,10 +535,11 @@ def main():
             if args.gpu_auto
             else args.gpu_device
         )
-        visible_gpus = 0 if args.cpu_raw_only else _visible_gpu_count()
+        visible_gpus = 0 if args.cpu_raw_only else _probe_visible_gpu_count()[0]
         print(
             f"[Rank {rank}] dry_run local_rank={local_rank} is_bd={is_bd} "
-            f"visible_gpus={visible_gpus} assigned_gpu={assigned_gpu_device}",
+            f"visible_gpus={visible_gpus} assigned_gpu={assigned_gpu_device} "
+            f"{_gpu_visibility_summary() if not args.cpu_raw_only else ''}".rstrip(),
             flush=True,
         )
         return
@@ -515,7 +558,8 @@ def main():
         )
     print(
         f"[Rank {rank}] pid={os.getpid()} local_rank={local_rank} "
-        f"assigned CUDA device {assigned_gpu_device} before run setup",
+        f"assigned CUDA device {assigned_gpu_device} before run setup "
+        f"{_gpu_visibility_summary() if not args.cpu_raw_only else ''}".rstrip(),
         flush=True,
     )
 

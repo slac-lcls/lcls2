@@ -1,7 +1,12 @@
 setup_env_local.sh
 .vscode/
-build
-install
+.codex
+.codex/
+build/
+builddir*/
+install/
+build_psana/
+install_psana/
 *.pyc
 *.egg-info/
 *~
@@ -19,3 +24,9 @@ nsys-*.log
 p[0-7].cnf.*
 *.ipynb_checkpoints
 !psana/psana/tests/test_data/**/*.xtc2
+
+# Meson wrap downloads and lockfiles
+/subprojects/.wraplock
+/subprojects/*/
+!/subprojects/packagefiles/
+!/subprojects/packagefiles/**
