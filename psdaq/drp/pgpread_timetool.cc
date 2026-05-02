@@ -301,7 +301,7 @@ int main(int argc, char* argv[])
     uint32_t                raw_counter                  = 0;
     uint32_t                last_raw_counter             = 0;
 
-    std::time_t             last_time;
+    std::time_t             last_time = 0;
     std::vector<uint8_t>    raw_vector;
 
     eventBuilderParser      my_frame;

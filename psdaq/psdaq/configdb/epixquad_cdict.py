@@ -5,7 +5,7 @@ import numpy as np
 def epixquad_cdict():
 
     top = cdict()
-    top.setAlg('config', [2,0,0])
+    top.setAlg('config', [3,0,0])
 
     #top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
     #top.set("firmwareVersion:RO",   0, 'UINT32')

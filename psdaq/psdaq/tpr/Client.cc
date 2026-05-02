@@ -132,7 +132,7 @@ void Client::start(TprBase::Partition partn)
   _dump();
 
   char buff[32];
-  read(_fdsh, &buff, 32 );
+  if (read(_fdsh, &buff, 32 )) {}
   _rp = _queues->allwp[_channel];
 }
 
@@ -144,7 +144,7 @@ void Client::start(TprBase::FixedRate rate)
   _dump();
 
   char buff[32];
-  read(_fdsh, &buff, 32 );
+  if (read(_fdsh, &buff, 32 )) {}
   _rp = _queues->allwp[_channel];
 }
 
@@ -156,7 +156,7 @@ void Client::start(TprBase::ACRate rate, unsigned timeSlotMask)
   _dump();
 
   char buff[32];
-  read(_fdsh, &buff, 32 );
+  if (read(_fdsh, &buff, 32 )) {}
   _rp = _queues->allwp[_channel];
 }
 
@@ -168,7 +168,7 @@ void Client::start(TprBase::EventCode evcode)
   _dump();
 
   char buff[32];
-  read(_fdsh, &buff, 32 );
+  if (read(_fdsh, &buff, 32 )) {}
   _rp = _queues->allwp[_channel];
 }
 
@@ -194,7 +194,7 @@ const Pds::Tpr::Frame* Client::advance(uint64_t pulseId)
       _rp++;
       if (f->pulseId == pulseId) return f;
     }
-    read(_fdsh, buff, 32);
+    if (read(_fdsh, buff, 32)) {}
   }
   return 0;
 }
@@ -210,7 +210,7 @@ const Pds::Tpr::Frame* Client::advance()
       _rp++;
       return f;
     }
-    read(_fdsh, buff, 32);
+    if (read(_fdsh, buff, 32)) {}
   }
   return 0;
 }

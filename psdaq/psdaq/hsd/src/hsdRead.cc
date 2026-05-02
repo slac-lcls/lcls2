@@ -103,7 +103,7 @@ static unsigned polls = 0;
 
 int main (int argc, char **argv) {
   int           fd;
-  int           numb;
+  int           numb = 0;
   bool          print = false;
   const char*         dev = "/dev/pgpdaq0";
   unsigned            client              = 0;

@@ -132,7 +132,7 @@ unsigned EpixQuad::_configure(XtcData::Xtc& xtc, const void* bufEnd, XtcData::Co
     for (unsigned q=0; q < 4; q++) {
         // Generic panel data
         {
-            Alg alg("raw", 2, 0, 1);
+            Alg alg("raw", 3, 0, 1);
             // copy the detName, detType, detId from the Config Names
             Names& configNames = configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+seg+1)].names();
             NamesId nid = m_evtNamesId[seg] = NamesId(nodeId, EventNamesIndex+seg);

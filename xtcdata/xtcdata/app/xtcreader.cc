@@ -81,7 +81,7 @@ public:
                 _dump<uint64_t>(name.name(), descdata.get_array<uint64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
-                printf("'%s': %llu\n",name.name(),descdata.get_value<uint64_t>(i));
+                printf("'%s': %lu\n",name.name(),descdata.get_value<uint64_t>(i));
             }
             break;
         }
@@ -121,7 +121,7 @@ public:
                 _dump<int64_t>(name.name(), descdata.get_array<int64_t>(i), _numWords, descdata.shape(name), name.rank(), " %ld");
             }
             else{
-                printf("'%s': %lld\n",name.name(),descdata.get_value<int64_t>(i));
+                printf("'%s': %ld\n",name.name(),descdata.get_value<int64_t>(i));
             }
             break;
         }
@@ -216,7 +216,7 @@ public:
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
             Data& data = shapesdata.data();
-	    printf("Found %d names for namesid 0x%x\n",names.num(),namesId);
+	    printf("Found %d names for namesid 0x%x\n",names.num(),unsigned(namesId));
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
                 get_value(i, name, descdata);
