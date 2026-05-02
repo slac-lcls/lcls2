@@ -11,6 +11,11 @@ install
 *.h5
 *.ami
 *.xtc2
+*.nsys-rep
+*.qdstrm
+nsys-*.log
+*.log.gpu-mem
+*.log.mps-pids
 p[0-7].cnf.*
 *.ipynb_checkpoints
 !psana/psana/tests/test_data/**/*.xtc2

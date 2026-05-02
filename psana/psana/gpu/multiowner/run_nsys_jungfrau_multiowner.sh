@@ -20,6 +20,8 @@ MPS_STARTED=0
 MPS_CLEANUP_DIRS=()
 MPS_MONITOR_PID=""
 MPS_MONITOR_LOG=""
+GPU_MONITOR_PID=""
+GPU_MONITOR_LOG=""
 
 usage() {
   cat <<EOF
@@ -115,8 +117,17 @@ stop_mps_monitor() {
   fi
 }
 
+stop_gpu_monitor() {
+  if [[ -n "${GPU_MONITOR_PID}" ]]; then
+    kill "${GPU_MONITOR_PID}" >/dev/null 2>&1 || true
+    wait "${GPU_MONITOR_PID}" >/dev/null 2>&1 || true
+    GPU_MONITOR_PID=""
+  fi
+}
+
 stop_mps() {
   stop_mps_monitor
+  stop_gpu_monitor
   if [[ "${MPS_STARTED}" == "1" ]]; then
     echo quit | nvidia-cuda-mps-control >/dev/null 2>&1 || true
     MPS_STARTED=0
@@ -139,6 +150,89 @@ log_mps_server_list() {
     echo "MPS_SERVER_PIDS_${label}=none"
   fi
   echo "MPS_CONTROL_${label}_GET_SERVER_LIST_END"
+}
+
+start_gpu_monitor() {
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    echo "GPU_MEMORY_MONITOR=unavailable"
+    return
+  fi
+
+  GPU_MONITOR_LOG="${log_path}.gpu-mem"
+  : > "${GPU_MONITOR_LOG}"
+  (
+    while true; do
+      echo "GPU_MONITOR_TS=$(date -Is)"
+      nvidia-smi \
+        --query-gpu=index,memory.used,memory.total,utilization.gpu \
+        --format=csv,noheader,nounits |
+        awk -F, '{
+          for (i = 1; i <= NF; i++) {
+            gsub(/^[ \t]+|[ \t]+$/, "", $i)
+          }
+          print "GPU_TOTAL index="$1" used_mib="$2" total_mib="$3" util_pct="$4
+        }' || true
+      nvidia-smi \
+        --query-compute-apps=pid,process_name,used_gpu_memory \
+        --format=csv,noheader,nounits 2>/dev/null |
+        awk -F, '{
+          for (i = 1; i <= NF; i++) {
+            gsub(/^[ \t]+|[ \t]+$/, "", $i)
+          }
+          if (NF >= 3) {
+            print "GPU_PROCESS pid="$1" used_mib="$3" name="$2
+          }
+        }' || true
+      sleep 1
+    done >> "${GPU_MONITOR_LOG}" 2>&1
+  ) &
+  GPU_MONITOR_PID=$!
+  echo "GPU_MEMORY_MONITOR_LOG=${GPU_MONITOR_LOG}"
+  echo "GPU_MEMORY_MONITOR_PID=${GPU_MONITOR_PID}"
+}
+
+print_gpu_monitor_summary() {
+  if [[ -z "${GPU_MONITOR_LOG}" || ! -f "${GPU_MONITOR_LOG}" ]]; then
+    return
+  fi
+
+  echo "GPU_MEMORY_MONITOR_SUMMARY_BEGIN"
+  awk '
+    $1 == "GPU_TOTAL" {
+      for (i = 1; i <= NF; i++) {
+        split($i, kv, "=")
+        if (kv[1] == "used_mib" && kv[2] > max_total) {
+          max_total = kv[2]
+        }
+      }
+    }
+    $1 == "GPU_PROCESS" {
+      pid = ""
+      mem = 0
+      name = ""
+      for (i = 1; i <= NF; i++) {
+        split($i, kv, "=")
+        if (kv[1] == "pid") {
+          pid = kv[2]
+        } else if (kv[1] == "used_mib") {
+          mem = kv[2]
+        } else if (kv[1] == "name") {
+          name = kv[2]
+        }
+      }
+      if (pid != "" && mem > max_by_pid[pid]) {
+        max_by_pid[pid] = mem
+        name_by_pid[pid] = name
+      }
+    }
+    END {
+      printf("GPU_MEMORY_MAX_TOTAL_MIB=%d\n", max_total)
+      for (pid in max_by_pid) {
+        printf("GPU_MEMORY_MAX_PROCESS pid=%s used_mib=%d name=%s\n", pid, max_by_pid[pid], name_by_pid[pid])
+      }
+    }
+  ' "${GPU_MONITOR_LOG}" | sort
+  echo "GPU_MEMORY_MONITOR_SUMMARY_END"
 }
 
 start_mps_monitor() {
@@ -266,10 +360,14 @@ fi
 if [[ "${mps_enabled}" == "true" ]]; then
   start_mps_monitor
 fi
+start_gpu_monitor
 
 set -x
 "${nsys_bin}" "${nsys_args[@]}" "${launcher}" "${launch_args[@]}"
 set +x
+
+stop_gpu_monitor
+print_gpu_monitor_summary
 
 if [[ "${mps_enabled}" == "true" ]]; then
   stop_mps_monitor
