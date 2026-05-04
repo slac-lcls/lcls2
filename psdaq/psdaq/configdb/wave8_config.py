@@ -445,8 +445,9 @@ def wave8_unconfig(base):
     # because this is called in init() and writes fail before the timing
     # the timing system is initialized.  Then subsequent writes start
     # silently failing as well resulting in lost configure phase2.
-    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable']
-    values = [0]
+    names_cfg = [epics_prefix+':Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable',
+                 epics_prefix+':Top:DataPathCtrl:EnableStream',] # 0x1 for Controls, 0x2 for DAQ
+    values = [0,0]
     ctxt_put(names_cfg, values)
 
     #  Leaving DAQ control.

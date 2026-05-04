@@ -96,8 +96,8 @@ class SeqJump(pr.Device):
         r = r | (0xffff0000 & (sync<<16))
         self.reg[15].set(r)
 
-    def setManStart(self,addr,pclass):
-        v = (addr&0xfff) | ((pclass&0xf)<<12)
+    def setManStart(self,addr):
+        v = addr
         r = self.reg[15].get()
         r = r & ~0xffff
         r = r | (0xffff & v)
@@ -107,28 +107,43 @@ class SeqMem(pr.Device):
     def __init__(   self, 
             name        = "SeqMem", 
             description = "Sequence memory", 
+            alen        = 11,
             **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
-        self.addRemoteVariables(
+#        self.addRemoteVariables(
+#            name         = "mem",
+#            offset       = 0x00,
+#            bitSize      = 32,
+#            bitOffset    = 0x00,
+#            stride       = 4,
+#            base         = pr.UInt,
+#            mode         = "RW",
+#            number       = 1<<alen,
+#            hidden       = True,
+#            verify       = False,
+#        )
+        self.add(pr.RemoteVariable(
             name         = "mem",
             offset       = 0x00,
-            bitSize      = 32,
+            bitSize      = 32*(1<<alen),
             bitOffset    = 0x00,
             stride       = 4,
             base         = pr.UInt,
             mode         = "RW",
-            number       = 2048,
+            numValues    = 1<<alen,
+            valueBits    = 32,
+            valueStride  = 32,
             hidden       = True,
             verify       = False,
-        )
+        ))
 
 class XpmSequenceEngine(pr.Device):
     def __init__(   self, 
                     name        = "XpmSequenceEngine", 
                     description = "XPM Sequence Engine module", 
                     nseq        = 8,
-                    alen        = 11,
+                    alen        = 15,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
 
@@ -199,6 +214,8 @@ class XpmSequenceEngine(pr.Device):
         for i in range(nseq):
             self.add(SeqMem(
                 name     = f'SeqMem_{i}',
-                offset   = 0x10000+i*(1<<(alen+2)),
+                #offset   = 0x200000+i*(1<<(alen+2)),
+                offset   = 0x200000+i*(1<<(15+2)),
+                alen     = alen,
             ))
 
