@@ -94,6 +94,7 @@ class PatternWaveform(object):
         self.gl.setBackground('w')
         self.index = 0
         self.q0 = None
+        self.q = []
 
     def _color(idx,nidx):
         x = float(idx)/float(nidx-1)
@@ -158,6 +159,8 @@ class PatternWaveform(object):
         else:
             q0.setXLink(self.q0)
 
+        self.q.append(q0)
+
         self.index += 1
 
 def main():
@@ -169,12 +172,12 @@ def main():
     if len(args.time)==1:
         args.time.insert(0,0.)
 
-    config = {'title':'TITLE', 'descset':None, 'instrset':None}
-
     app = QtWidgets.QApplication([])
     plot = PatternWaveform()
 
     for f in args.seq:
+        config = {'title':'TITLE', 'descset':None, 'instrset':None}
+
         engine,fname = f.split(':')[:2]
         print(f'eng {engine} fn {fname}')
 
@@ -190,6 +193,7 @@ def main():
         seq.execute(config['title'],config['instrset'],config['descset'])
 
         ydata = np.array(seq.ydata)+int(engine)*4+256
+
         plot.add(fname, seq.xdata, ydata, args.use_seconds)
 
     MainWindow = QtWidgets.QMainWindow()
