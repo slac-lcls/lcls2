@@ -123,26 +123,28 @@ struct DataDsc {
     void*    data;
 };
 
-class RawDef : public VarDef
-{
-public:
-    enum index { field };
-    RawDef(std::string& field, Name::DataType dType, int rank)
-    {
-        NameVec.push_back({field.c_str(), dType, rank});
-    }
-};
+    namespace {
+        class RawDef : public VarDef
+        {
+        public:
+            enum index { field };
+            RawDef(std::string& field, Name::DataType dType, int rank)
+            {
+                NameVec.push_back({field.c_str(), dType, rank});
+            }
+        };
 
-class InfoDef : public VarDef
-{
-public:
-    enum index { keys, detName };
-    InfoDef(std::string& detName)
-    {
-        NameVec.push_back({"keys",          Name::CHARSTR, 1});
-        NameVec.push_back({detName.c_str(), Name::CHARSTR, 1});
-    }
-};
+        class InfoDef : public VarDef
+        {
+        public:
+            enum index { keys, detName };
+            InfoDef(std::string& detName)
+            {
+                NameVec.push_back({"keys",          Name::CHARSTR, 1});
+                NameVec.push_back({detName.c_str(), Name::CHARSTR, 1});
+            }
+        };
+    };
 
 // ---
 
