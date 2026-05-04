@@ -1,8 +1,41 @@
+"""
+  One authoritative source for the ordering of the timing system markers
+"""
 import socket
 
-#  One authoritative source for the ordering of the timing system markers
+fixedRates  = []
+fixedRateHzToMarker = {}
+FixedIntvs = []
+FixedIntvsDict = {}
 
-if 'ued' in socket.gethostname():
+acRates     = []
+acTS        = []
+acRateHzToMarker    = {}
+ACIntvs    = []
+    
+ACIntvsDict = {}
+
+FixedFidRate  = 0   # seqplot
+FixedToACFids = 0   # needed for seqplot simulation
+
+def setUED():
+    global fixedRates
+    global fixedRateHzToMarker
+    global FixedIntvs
+    global FixedIntvsDict
+
+    global acRates
+    global acTS
+    global acRateHzToMarker
+    global ACIntvs
+
+    global ACIntvsDict
+
+    global FixedFidRate
+    global FixedToACFids
+
+    print('Set UED')
+
     fixedRates  = ['500kHz', '100kHz','50kHz','10kHz','5kHz','1kHz','500Hz','1Hz']
     fixedRateHzToMarker = {'500kHz':0, '100kHz':1, '50kHz':2, '10kHz':3, '5kHz':4, '1kHz':5, '500Hz':6, '1Hz':7}
     FixedIntvs = [1, 5, 10, 50, 100, 500, 1000, 500000]
@@ -30,7 +63,24 @@ if 'ued' in socket.gethostname():
     FixedFidRate  = 500e3            # seqplot
     FixedToACFids = int(500e3/360)   # needed for seqplot simulation
 
-else:
+def setDefault():
+    global fixedRates
+    global fixedRateHzToMarker
+    global FixedIntvs
+    global FixedIntvsDict
+
+    global acRates
+    global acTS
+    global acRateHzToMarker
+    global ACIntvs
+
+    global ACIntvsDict
+
+    global FixedFidRate
+    global FixedToACFids
+
+    print('Set DEFAULT')
+
     fixedRates  = ['1.02Hz','10.2Hz','102Hz','1.02kHz','10.2kHz','71.4kHz','929kHz', 'Undef7', 'Undef8', 'Undef9' ]
     fixedRateHzToMarker = {'929kHz':6, '71kHz':5, '10kHz':4, '1kHz':3, '100Hz':2, '10Hz':1, '1Hz':0}
     FixedIntvs = [910000, 91000, 9100, 910, 91, 13, 1]
@@ -56,4 +106,17 @@ else:
 
     FixedFidRate  = 910e3                 # seqplot
     FixedToACFids = int(910e3/0.98/360)   # needed for seqplot simulation
+
+#  This happens at time of import
+if 'ued' in socket.gethostname():
+    setUED()
+else:
+    setDefault()
+
+#  This can reset the values
+def set_instrument(name):
+    if name.lower()=='ued':
+        setUED()
+    else:
+        setDefault()
 

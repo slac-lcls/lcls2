@@ -39,7 +39,15 @@ class ebeam_raw_2_0_0(ebeam_ebeamAlg_0_7_1):
     def __init__(self, *args):
         super().__init__(*args)
 
+class ebeam_cube_2_0_0(ebeam_ebeamAlg_0_7_1):
+    def __init__(self, *args):
+        super().__init__(*args)
+
 class ebeamh_raw_2_0_0(ebeam_ebeamAlg_0_7_1):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+class ebeamh_cube_2_0_0(ebeam_ebeamAlg_0_7_1):
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -48,9 +56,19 @@ class gasdet_raw_1_0_0(DetectorImpl):
         super(gasdet_raw_1_0_0, self).__init__(*args)
         self._add_fields()
 
+class gasdet_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(gasdet_cube_2_0_0, self).__init__(*args)
+        self._add_fields()
+
 class bmmon_raw_1_0_0(DetectorImpl):
     def __init__(self, *args):
         super(bmmon_raw_1_0_0, self).__init__(*args)
+        self._add_fields()
+
+class bmmon_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(bmmon_cube_2_0_0, self).__init__(*args)
         self._add_fields()
 
 class pcav_raw_2_0_0(DetectorImpl):
@@ -58,14 +76,29 @@ class pcav_raw_2_0_0(DetectorImpl):
         super(pcav_raw_2_0_0, self).__init__(*args)
         self._add_fields()
 
+class pcav_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(pcav_cube_2_0_0, self).__init__(*args)
+        self._add_fields()
+
 class pcavh_raw_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super(pcavh_raw_2_0_0, self).__init__(*args)
         self._add_fields()
 
+class pcavh_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(pcavh_cube_2_0_0, self).__init__(*args)
+        self._add_fields()
+
 class gmd_raw_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super(gmd_raw_2_0_0, self).__init__(*args)
+        self._add_fields()
+
+class gmd_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(gmd_cube_2_0_0, self).__init__(*args)
         self._add_fields()
 
 class gmd_raw_2_1_0(DetectorImpl):
@@ -78,12 +111,22 @@ class xgmd_raw_2_0_0(DetectorImpl):
         super(xgmd_raw_2_0_0, self).__init__(*args)
         self._add_fields()
 
+class xgmd_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(xgmd_cube_2_0_0, self).__init__(*args)
+        self._add_fields()
+
 class xgmd_raw_2_1_0(DetectorImpl):
     def __init__(self, *args):
         super(xgmd_raw_2_1_0, self).__init__(*args)
         self._add_fields()
 
 class feespec_raw_1_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._add_fields()
+
+class feespec_cube_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
         self._add_fields()
@@ -158,4 +201,9 @@ class scbld_raw_1_0_0(DetectorImpl):
                     else:
                         return (getattr(info,'severity')>>(i*2))&3
                 setattr(self, f'{field}_sevr', func)
+
+class scbld_cube_2_0_0(DetectorImpl):
+    def __init__(self, *args):
+        super(scbld_cube_2_0_0, self).__init__(*args)
+        self._add_fields()
 

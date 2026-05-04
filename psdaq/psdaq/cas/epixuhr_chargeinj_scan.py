@@ -112,7 +112,6 @@ def main():
                                 else:
                                     matrix_list.append(gains_dict[gain_mode]['off'])
                         
-                        
                         d[f'{args.detname}:expert.pixelBitMaps._7_on_the_fly']=matrix_list
                         
                     

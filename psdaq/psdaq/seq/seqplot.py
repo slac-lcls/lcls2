@@ -193,7 +193,6 @@ def main():
         seq.execute(config['title'],config['instrset'],config['descset'])
 
         ydata = np.array(seq.ydata)+int(engine)*4+256
-
         plot.add(fname, seq.xdata, ydata, args.use_seconds)
 
     MainWindow = QtWidgets.QMainWindow()

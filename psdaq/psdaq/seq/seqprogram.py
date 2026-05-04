@@ -141,6 +141,19 @@ class SeqUser:
             
             
 
+    def seqcodes(self, codes):
+        desc = self.namespv.get()
+        for e in range(4*self.eng,4*self.eng+4):
+            desc[e] = ''
+        for e,d in codes.items():
+            desc[4*self.eng+e] = d
+        print(f'desc {desc}')
+        self.namespv.put(desc)
+
+
+            
+            
+
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
     parser.add_argument('--title', type=str, default='TITLE', required=False, help="title for the sequence; defaults to TITLE")
@@ -148,7 +161,7 @@ def main():
     parser.add_argument("--seq", required=True, nargs='+', type=str, help="sequence engine:script pairs; e.g. 0:train.py")
     parser.add_argument("--start", action='store_true', help="start the sequences")
     parser.add_argument("--reset", action='store_true', help="reset the sequences (async)")
-    parser.add_argument("--clean", action='store_true', help="stop & clean before programming")
+    parser.add_argument("--clean", action='store_true', help="clear the sequences before loading")
     parser.add_argument("--verbose", action='store_true', help="verbose output")
     args = parser.parse_args()
 

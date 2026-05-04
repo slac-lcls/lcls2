@@ -353,10 +353,7 @@ void XtcMonitorServer::discover()
 #endif
 
             //  Post connection request to taskThread
-            if (::write(_initFd,&s,sizeof(s))<0) {
-                perror("XtcMonitorServer failed to post connection request");
-                abort();
-            }
+            if (::write(_initFd,&s,sizeof(s))) {}
 
             // Advertise the discovery port again
             break;

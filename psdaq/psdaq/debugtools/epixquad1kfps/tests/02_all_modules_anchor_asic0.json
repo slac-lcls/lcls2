@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "test_name": "all_modules_anchor_asic0",
+  "description": "Identical 2-point asymmetric marker in ASICs 0, 4, 8, and 12 to track one anchor ASIC per module.",
+  "array_shape": [16, 178, 192],
+  "readable_rows": 176,
+  "background_value": 12,
+  "default_marker_value": 8,
+  "trbit_by_asic": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "markers": [
+    {"label": "asic0_A", "group": "asic0", "asic": 0, "row": 20, "col": 20, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic0_B", "group": "asic0", "asic": 0, "row": 35, "col": 60, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic4_A", "group": "asic4", "asic": 4, "row": 20, "col": 20, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic4_B", "group": "asic4", "asic": 4, "row": 35, "col": 60, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic8_A", "group": "asic8", "asic": 8, "row": 20, "col": 20, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic8_B", "group": "asic8", "asic": 8, "row": 35, "col": 60, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic12_A", "group": "asic12", "asic": 12, "row": 20, "col": 20, "value": 8, "tags": ["module-anchor"]},
+    {"label": "asic12_B", "group": "asic12", "asic": 12, "row": 35, "col": 60, "value": 8, "tags": ["module-anchor"]}
+  ]
+}

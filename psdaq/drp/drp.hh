@@ -32,6 +32,7 @@ struct Parameters
     Parameters() :
         partition(-1u),
         nworkers(10),
+        nCubeWorkers(0),
         detSegment(0),
         laneMask(0x1),
         loopbackPort(0),
@@ -40,6 +41,7 @@ struct Parameters
     }
     unsigned partition;
     unsigned nworkers;
+    unsigned nCubeWorkers;
     unsigned batchSize;
     unsigned detSegment;
     uint8_t laneMask;
@@ -57,6 +59,7 @@ struct Parameters
     int loopbackPort;
     unsigned verbose;
     size_t maxTrSize;
+    bool   cubeKeepRaw;
 };
 
 struct DmaBuffer

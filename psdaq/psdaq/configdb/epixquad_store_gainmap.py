@@ -4,6 +4,7 @@ import os
 import numpy as np
 
 from psdaq.configdb.epixquad_cdict import epixquad_cdict
+from psdaq.configdb.epixquad_layout import MODULE_COUNT, RAW_ASIC_LAYOUT, RAW_SHAPE
 
 
 gain_dict = {
@@ -20,10 +21,6 @@ gain_dict = {
 # that require both trbit families for non-L gains.
 TRBIT_FLEXIBLE_GAINS = {'L'}
 
-STORE_ROWS = 1408
-STORE_COLS = 384
-ASIC_ROWS = 176
-ASIC_COLS = 192
 ASIC_COUNT = 16
 
 
@@ -47,29 +44,19 @@ def copyValues(din, dout, k=None):
             dout.set(k, din, v[0])
 
 
-def _read_store_layout(fname):
-    labels = np.genfromtxt(fname, dtype=np.uint8)
-    if labels.shape != (STORE_ROWS, STORE_COLS):
+def _read_raw_detector_layout(fname):
+    labels = np.load(fname)
+    if labels.shape != RAW_SHAPE:
         raise ValueError(
-            f'Expected gain-map file shape {(STORE_ROWS, STORE_COLS)}, got {labels.shape} from {fname}'
+            f'Expected raw detector .npy shape {RAW_SHAPE}, got {labels.shape} from {fname}'
         )
-    return labels
 
-
-def _store_layout_to_asics(store_labels):
-    elems = np.vsplit(store_labels, 4)
-    asics = []
-    for elem in elems:
-        quadrants = []
-        for half in np.vsplit(elem, 2):
-            quadrants.extend(np.hsplit(half, 2))
-        asics.extend([
-            np.asarray(quadrants[3], dtype=np.uint8),
-            np.flipud(np.fliplr(quadrants[1])),
-            np.flipud(np.fliplr(quadrants[0])),
-            np.asarray(quadrants[2], dtype=np.uint8),
-        ])
-    return asics
+    unique_labels = sorted(int(v) for v in np.unique(labels))
+    if any(label not in (0, 1) for label in unique_labels):
+        raise ValueError(
+            f'Raw detector .npy input must be binary with labels [0, 1], got {unique_labels}'
+        )
+    return np.asarray(labels, dtype=np.uint8)
 
 
 def _parse_label_maps(entries):
@@ -117,96 +104,66 @@ def _resolve_asic_trbit(gains_present):
     return 0
 
 
-def _legacy_binary_map(store_labels, gains):
-    _resolve_asic_trbit(gains)
-
-    vgain0 = gain_dict[gains[0]]['value']
-    vgain1 = gain_dict[gains[1]]['value']
-    unique_labels = sorted(int(v) for v in np.unique(store_labels))
+def _label_map_to_raw_pixel_map(raw_labels, label_map):
+    unique_labels = sorted(int(v) for v in np.unique(raw_labels))
     if any(label not in (0, 1) for label in unique_labels):
         raise ValueError(
-            f'Legacy --gain mode only supports binary masks with labels 0/1, got {unique_labels}'
+            f'Raw detector .npy input must be binary with labels [0, 1], got {unique_labels}'
         )
 
-    print(f'Legacy gain mode: 0 -> {gains[0]}, 1 -> {gains[1]}')
-    mapped = store_labels * (vgain1 - vgain0) + vgain0
-
-    d = {}
-    trbit = _resolve_asic_trbit(gains)
-    for i in range(ASIC_COUNT):
-        d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-
-    pixel_maps = _store_layout_to_asics(mapped.astype(np.uint8))
-    d['user.pixel_map'] = np.asarray(np.pad(pixel_maps, ((0, 0), (0, 2), (0, 0))), dtype=np.uint8)
-    return d
-
-
-def _label_map_to_pixel_map(store_labels, label_map):
-    label_asics = _store_layout_to_asics(store_labels)
-    pixel_asics = []
-    d = {}
-
-    for i, asic_labels in enumerate(label_asics):
-        labels_present, label_counts = np.unique(asic_labels, return_counts=True)
-        labels_present = [int(v) for v in labels_present]
-        counts_dict = {int(label): int(count) for label, count in zip(labels_present, label_counts)}
-
-        missing = [label for label in labels_present if label not in label_map]
-        if missing:
-            raise ValueError(f'ASIC {i} uses unmapped labels {missing}; add --map entries for them')
-
-        gains_present = sorted({label_map[label] for label in labels_present})
-        try:
-            trbit = _resolve_asic_trbit(gains_present)
-        except ValueError as exc:
-            raise ValueError(
-                f'ASIC {i} mixes gains with incompatible trbit values: '
-                f'{gains_present} from labels {labels_present}'
-            ) from exc
-        d[f'expert.EpixQuad.Epix10kaSaci{i}.trbit'] = trbit
-
-        pixel_asic = np.zeros_like(asic_labels, dtype=np.uint8)
-        for label in labels_present:
-            gain = label_map[label]
-            pixel_asic[asic_labels == label] = gain_dict[gain]['value']
-        pixel_asics.append(pixel_asic)
-
-        print(
-            f'ASIC {i:02d}: labels [{_summary_from_counts(counts_dict)}] -> '
-            f'gains {gains_present}, trbit={trbit}'
+    missing = [label for label in (0, 1) if label not in label_map]
+    if missing:
+        raise ValueError(
+            f'Raw detector .npy input requires --map entries for labels 0 and 1, missing {missing}'
         )
 
-    d['user.pixel_map'] = np.asarray(np.pad(pixel_asics, ((0, 0), (0, 2), (0, 0))), dtype=np.uint8)
+    d = {'user.gain_mode': 5}
+    pixel_map_raw = np.zeros_like(raw_labels, dtype=np.uint8)
+
+    for label in (0, 1):
+        gain = label_map[label]
+        pixel_map_raw[raw_labels == label] = gain_dict[gain]['value']
+
+    for segment in range(MODULE_COUNT):
+        seg_labels = raw_labels[segment]
+        for layout in RAW_ASIC_LAYOUT:
+            r0, r1 = layout['row_slice']
+            c0, c1 = layout['col_slice']
+            asic = 4 * segment + layout['slot']
+            asic_labels = seg_labels[r0:r1, c0:c1]
+
+            labels_present, label_counts = np.unique(asic_labels, return_counts=True)
+            labels_present = [int(v) for v in labels_present]
+            counts_dict = {int(label): int(count) for label, count in zip(labels_present, label_counts)}
+
+            gains_present = sorted({label_map[label] for label in labels_present})
+            try:
+                trbit = _resolve_asic_trbit(gains_present)
+            except ValueError as exc:
+                raise ValueError(
+                    f'ASIC {asic} mixes gains with incompatible trbit values: '
+                    f'{gains_present} from labels {labels_present}'
+                ) from exc
+
+            d[f'expert.EpixQuad.Epix10kaSaci{asic}.trbit'] = trbit
+            print(
+                f'ASIC {asic:02d}: labels [{_summary_from_counts(counts_dict)}] -> '
+                f'gains {gains_present}, trbit={trbit}'
+            )
+
+    d['user.pixel_map_raw'] = np.asarray(pixel_map_raw, dtype=np.uint8)
     return d
-
-
-def epixquad_readmap(fname, gains=None, label_map=None):
-    store_labels = _read_store_layout(fname)
-    print(f'Read {fname} with shape {store_labels.shape} and labels {sorted(int(v) for v in np.unique(store_labels))}')
-
-    if label_map is not None:
-        return _label_map_to_pixel_map(store_labels, label_map)
-    if gains is None:
-        raise ValueError('Either gains or label_map must be provided')
-    return _legacy_binary_map(store_labels, gains)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Update epixquad gain map in configdb')
-    parser.add_argument('--file', help='input pixel mask in store layout', type=str, required=True)
-    parser.add_argument(
-        '--gain',
-        help='legacy binary mask gains for labels [0 1]',
-        default=['M', 'L'],
-        nargs=2,
-        choices=gain_dict.keys(),
-    )
+    parser = argparse.ArgumentParser(description='Update epixquad raw gain map in configdb')
+    parser.add_argument('--file', help='input raw detector mask .npy with shape (4,352,384)', type=str, required=True)
     parser.add_argument(
         '--map',
         action='append',
         default=[],
         metavar='LABEL:GAIN',
-        help='label-to-gain mapping for general masks, may be repeated (example: --map 0:H --map 1:AHL --map 2:M)',
+        help='label-to-gain mapping for the binary raw mask; required for labels 0 and 1 (example: --map 0:H --map 1:AHL)',
     )
     parser.add_argument('--dev', help='use development db', action='store_true')
     parser.add_argument('--inst', help='instrument', type=str, default='ued')
@@ -238,16 +195,22 @@ def main():
     copyValues(cfg, top)
 
     label_map = _parse_label_maps(args.map) if args.map else None
-    if label_map is not None:
-        print(f'Label map mode: {label_map}')
-        d = epixquad_readmap(args.file, label_map=label_map)
-    else:
-        d = epixquad_readmap(args.file, gains=args.gain)
+    if label_map is None:
+        raise ValueError('Raw detector .npy input requires --map 0:GAIN --map 1:GAIN')
+
+    if not args.file.endswith('.npy'):
+        raise ValueError(f'Only raw detector .npy input is supported, got {args.file}')
+
+    raw_labels = _read_raw_detector_layout(args.file)
+    print(f'Read raw detector mask {args.file} with shape {raw_labels.shape} and labels {sorted(int(v) for v in np.unique(raw_labels))}')
+    print(f'Raw detector label map mode: {label_map}')
+    d = _label_map_to_raw_pixel_map(raw_labels, label_map)
 
     copyValues(d, top)
 
-    print('Setting user.pixel_map')
-    top.set('user.pixel_map', d['user.pixel_map'])
+    top.set('user.gain_mode', d['user.gain_mode'])
+    print('Setting user.pixel_map_raw')
+    top.set('user.pixel_map_raw', d['user.pixel_map_raw'])
 
     top.setInfo('epix10kaquad', args.name, args.segm, args.id, 'No comment')
     if not args.test:

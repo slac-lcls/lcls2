@@ -4,8 +4,7 @@
 
 This standalone helper reads detector data directly with psana, accumulates a
 binary ROI mask across events, optionally expands the ROI with a diamond
-neighborhood, and can emit a detector-panel preview PNG plus a deployable
-store-layout gainmap text file for epixquad_store_gainmap.
+neighborhood, and can emit a detector-panel preview PNG.
 """
 
 import argparse
@@ -17,8 +16,6 @@ from psana import DataSource
 
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
-from psdaq.configdb.epixquad_gainmap_mask import _assembled_to_store_layout
 
 ASIC_ROWS = 176
 ASIC_COLS = 192
@@ -223,14 +220,6 @@ def write_roi_geometry_png(image, roi_mask, det, png_path):
     plt.close(fig)
 
 
-def write_gainmap_txt(roi_mask, output_path):
-    assembled = assemble_epixquad_panel(np.asarray(roi_mask, dtype=bool))
-    assembled_labels = np.where(assembled, 0, 1).astype(np.uint8)
-    store_mask = _assembled_to_store_layout(assembled_labels)
-    np.savetxt(output_path, store_mask, fmt='%u')
-    return store_mask
-
-
 def _geometry_text(det):
     geotxt, _meta = det.raw._det_geotxt_and_meta()
     if geotxt is not None:
@@ -326,16 +315,7 @@ def main():
     stem = _output_stem(output_dir, args.run, args.detobj, args.expand_radius)
     npy_path = Path(f'{stem}.npy')
     np.save(npy_path, accumulated)
-
-    gainmap_path = Path(f'{stem}_gainmap.txt')
-    write_gainmap_txt(accumulated, gainmap_path)
-    print(f'Wrote gainmap text file: {gainmap_path}')
-    print('Next step: deploy to the config DB with:')
-    print('epixquad_store_gainmap \\')
-    print(f'  --file {gainmap_path} \\')
-    print('  --map 0:L --map 1:M \\')
-    print('  --inst ued --alias BEAM --name epixquad1kfps --segm 0')
-    print('Use --map 1:H instead if you want the background in high gain mode.')
+    print(f'Wrote ROI mask ndarray: {npy_path}')
 
     if args.write_png:
         if preview_frames is None:

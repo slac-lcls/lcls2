@@ -90,6 +90,7 @@ public:
     {
         return (char*)(this + 1);
     }
+    //  This return type effectively limits extent to 31 bits
     int sizeofPayload() const
     {
         return extent - sizeof(Xtc);

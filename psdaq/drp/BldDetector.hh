@@ -21,12 +21,12 @@ public:
     XtcData::VarDef get(unsigned& payloadSize, std::vector<unsigned>& sizes);
 };
 
-class Bld
-{
+class Bld {
 public:
     Bld(unsigned mcaddr, unsigned port, unsigned interface,
         unsigned timestampPos, unsigned pulseIdPos,
         unsigned headerSize, unsigned payloadSize,
+        bool simulate,
         uint64_t timestampCorr=0, bool varLenArr=false,
         std::vector<unsigned> entryByteSizes={},      // For varLenArr Bld
         std::map<unsigned,unsigned> arraySizeMap={}); // For varLenArr Bld
@@ -46,7 +46,7 @@ public:
     uint64_t next       ();
     uint8_t* payload    () const { return m_payload; }
     unsigned payloadSize() const { return m_payloadSize; }
-    unsigned fd         () const { return m_sockfd; }
+    //    unsigned fd         () const { return m_sockfd; }
 private:
     uint64_t headerTimestamp  () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_timestampPos) - m_timestampCorr;}
     uint64_t headerPulseId    () const {return *reinterpret_cast<const uint64_t*>(m_buffer.data()+m_pulseIdPos);}
@@ -56,6 +56,7 @@ private:
     int      m_pulseIdPos;
     int      m_headerSize;
     int      m_payloadSize;
+    bool     m_simulate;
     int      m_sockfd;
     int      m_bufferSize;
     int      m_position;
@@ -99,10 +100,11 @@ private:
 class BldFactory
 {
 public:
-    BldFactory(const BldPVA& pva);
-    BldFactory(const char* name, unsigned interface);
-    BldFactory(const char* name, unsigned interface,
-               unsigned addr, unsigned port, std::shared_ptr<BldDescriptor>);
+    BldFactory(const BldPVA& pva, bool simulate);
+    BldFactory(const char* name, unsigned interface, bool simulate);
+    // BldFactory(const char* name, unsigned interface,
+    //            unsigned addr, unsigned port, std::shared_ptr<BldDescriptor>,
+    //            bool simulate);
     BldFactory(const BldFactory&);
     ~BldFactory();
 public:
@@ -114,6 +116,7 @@ public:
                                     const void* bufEnd,
                                     XtcData::NamesLookup&,
                                     XtcData::NamesId&);
+    XtcData::VarDef&   varDef() { return _varDef; }
 private:
     std::string                    _detName;
     std::string                    _detType;
@@ -143,7 +146,6 @@ private:
     void _sendToTeb(Pds::EbDgram& dgram, uint32_t index);
     bool _ready() const { return m_current < m_available; }
 private:
-    enum {BldNamesIndex = NamesIndex::BASE}; // Revisit: This belongs in BldDetector
     Parameters&                                m_para;
     DrpBase&                                   m_drp;
     Detector*                                  m_det;

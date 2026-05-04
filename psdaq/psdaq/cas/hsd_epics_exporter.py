@@ -16,7 +16,8 @@ PROM_PORT_BASE = 9200
 MAX_PROM_PORTS = 100
 
 bases = {'tmo':[f'DAQ:TMO:HSD:1_{dev[0]}:{dev[1]}' for dev in itertools.product(('01','1A','1B','3D','3E','88','89','B1','B2','DA'),('A','B'))],
-         'rix':[f'DAQ:RIX:HSD:1_{dev[0]}:{dev[1]}' for dev in itertools.product(('1A','1B','3D','3E'),('A','B'))],}
+         'rix':[f'DAQ:RIX:HSD:1_{dev[0]}:{dev[1]}' for dev in itertools.product(('1A','1B','3D','3E'),('A','B'))],
+         'xpp':[f'DAQ:XPP:HSD:1_{dev[0]}:{dev[1]}' for dev in itertools.product(('01','11'),('A','B'))],}
 
 class CustomCollector():
     def __init__(self, provider, hutch, identifier):
@@ -47,7 +48,8 @@ class CustomCollector():
             # the 14 values are [GTResetDone, RxDataValid, RxDataNAlign, SyncStatus, RxBufferOF, RxBufferUF, CommaPos, ModuleEn, SysRefDet, CommaDet, DispErr, DecErr, BuffLatency, CdrStatus]
             r = 0
             for i in range(8):
-                r |= pv.stat[i*15+field]<<i
+#                r |= pv.stat[i*15+field]<<i
+                r |= pv.stat[i*14+field]<<i
             return r
 
         def monjesd_counter(pv,field):
@@ -81,10 +83,10 @@ class CustomCollector():
                 for v in values:
                     fields.append( monjesd_bitfield(v,2) )  # RxDataNAlign
                 yield ('RxDataNAlign', fields)
-                counts = []
-                for v in values:
-                    counts.append( monjesd_counter(v,14) )  # StatusCnt
-                yield ('RxStatusCnt', counts)
+#                counts = []
+#                for v in values:
+#                    counts.append( monjesd_counter(v,14) )  # StatusCnt
+#                yield ('RxStatusCnt', counts)
             except TimeoutError:
                 logging.debug('collect %s: TimeoutError' % self._monjesd)
 

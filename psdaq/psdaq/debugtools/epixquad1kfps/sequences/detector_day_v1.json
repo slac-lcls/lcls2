@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "sequence_name": "detector_day_v1",
+  "description": "Full suggested run order for one detector day. Starts with coarse placement/orientation checks and then probes intra-ASIC quadrant, column-region, and row behavior.",
+  "defaults": {
+    "readout_count": 50,
+    "record": true,
+    "config_alias": "BEAM"
+  },
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "test_file": "../tests/02_all_modules_anchor_asic0.json",
+      "marker_groups": ["asic0"],
+      "label": "anchor asic0",
+      "purpose": "Establish coarse placement for the first module anchor.",
+      "priority": "high",
+      "notes": [
+        "Good opening test to confirm module-level placement before finer probing."
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "test_file": "../tests/02_all_modules_anchor_asic0.json",
+      "marker_groups": ["asic4"],
+      "label": "anchor asic4",
+      "purpose": "Establish coarse placement for the second module anchor.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 2,
+      "test_file": "../tests/02_all_modules_anchor_asic0.json",
+      "marker_groups": ["asic8"],
+      "label": "anchor asic8",
+      "purpose": "Establish coarse placement for the third module anchor.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 3,
+      "test_file": "../tests/02_all_modules_anchor_asic0.json",
+      "marker_groups": ["asic12"],
+      "label": "anchor asic12",
+      "purpose": "Establish coarse placement for the fourth module anchor.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 4,
+      "test_file": "../tests/01_module0_asic_orientation.json",
+      "marker_groups": ["asic0"],
+      "label": "module0 asic0 orientation",
+      "purpose": "Probe orientation of ASIC 0 inside one module.",
+      "priority": "high",
+      "notes": [
+        "Tests whether the top ASICs are rotated relative to the bottom ASICs."
+      ]
+    },
+    {
+      "pattern_index": 5,
+      "test_file": "../tests/01_module0_asic_orientation.json",
+      "marker_groups": ["asic1"],
+      "label": "module0 asic1 orientation",
+      "purpose": "Probe orientation of ASIC 1 inside one module.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 6,
+      "test_file": "../tests/01_module0_asic_orientation.json",
+      "marker_groups": ["asic2"],
+      "label": "module0 asic2 orientation",
+      "purpose": "Probe orientation of ASIC 2 inside one module.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 7,
+      "test_file": "../tests/01_module0_asic_orientation.json",
+      "marker_groups": ["asic3"],
+      "label": "module0 asic3 orientation",
+      "purpose": "Probe orientation of ASIC 3 inside one module.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 8,
+      "test_file": "../tests/03_single_asic_quadrants.json",
+      "marker_groups": ["TL"],
+      "label": "single-asic quadrant TL",
+      "purpose": "Probe top-left quadrant in isolation.",
+      "priority": "high",
+      "notes": [
+        "Most direct check of the suspected intra-ASIC top-half transform."
+      ]
+    },
+    {
+      "pattern_index": 9,
+      "test_file": "../tests/03_single_asic_quadrants.json",
+      "marker_groups": ["TR"],
+      "label": "single-asic quadrant TR",
+      "purpose": "Probe top-right quadrant in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 10,
+      "test_file": "../tests/03_single_asic_quadrants.json",
+      "marker_groups": ["BL"],
+      "label": "single-asic quadrant BL",
+      "purpose": "Probe bottom-left quadrant in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 11,
+      "test_file": "../tests/03_single_asic_quadrants.json",
+      "marker_groups": ["BR"],
+      "label": "single-asic quadrant BR",
+      "purpose": "Probe bottom-right quadrant in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 12,
+      "test_file": "../tests/04_single_asic_column_regions.json",
+      "marker_groups": ["C0"],
+      "label": "single-asic column region C0",
+      "purpose": "Probe first 48-column region in isolation.",
+      "priority": "high",
+      "notes": [
+        "Designed to determine whether all four regions are independently addressable."
+      ]
+    },
+    {
+      "pattern_index": 13,
+      "test_file": "../tests/04_single_asic_column_regions.json",
+      "marker_groups": ["C1"],
+      "label": "single-asic column region C1",
+      "purpose": "Probe second 48-column region in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 14,
+      "test_file": "../tests/04_single_asic_column_regions.json",
+      "marker_groups": ["C2"],
+      "label": "single-asic column region C2",
+      "purpose": "Probe third 48-column region in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 15,
+      "test_file": "../tests/04_single_asic_column_regions.json",
+      "marker_groups": ["C3"],
+      "label": "single-asic column region C3",
+      "purpose": "Probe fourth 48-column region in isolation.",
+      "priority": "high"
+    },
+    {
+      "pattern_index": 16,
+      "test_file": "../tests/05_single_asic_row_regions.json",
+      "marker_groups": ["R0"],
+      "label": "single-asic row region R0",
+      "purpose": "Probe first row band in isolation.",
+      "priority": "medium",
+      "notes": [
+        "Useful after column-region and quadrant results are understood."
+      ]
+    },
+    {
+      "pattern_index": 17,
+      "test_file": "../tests/05_single_asic_row_regions.json",
+      "marker_groups": ["R1"],
+      "label": "single-asic row region R1",
+      "purpose": "Probe second row band in isolation.",
+      "priority": "medium"
+    },
+    {
+      "pattern_index": 18,
+      "test_file": "../tests/05_single_asic_row_regions.json",
+      "marker_groups": ["R2"],
+      "label": "single-asic row region R2",
+      "purpose": "Probe third row band in isolation.",
+      "priority": "medium"
+    },
+    {
+      "pattern_index": 19,
+      "test_file": "../tests/05_single_asic_row_regions.json",
+      "marker_groups": ["R3"],
+      "label": "single-asic row region R3",
+      "purpose": "Probe fourth row band in isolation.",
+      "priority": "medium"
+    }
+  ]
+}
