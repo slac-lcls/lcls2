@@ -489,13 +489,6 @@ def issue_2026_04_15(args):
         if plot_image: gr.show()
 
 
-
-
-
-
-
-
-
 def issue_2026_05_01(args):
     """ISSUE:
               datinfo -k exp=uedc00106,run=329 -d epixquad1kfps
@@ -526,10 +519,10 @@ def issue_2026_05_01(args):
     #geo_meta = det.calibconst['geometry']
     #if geo_meta is not None: print('geometry metadata:', geo_meta[1])
 
-    peds = det.raw._pedestals()
-    print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+    #peds = det.raw._pedestals()
+    #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
 
-    plot_image = False # True
+    plot_image = True # True False
     flimg = None
     if isubset & 1:
         for nevt,evt in enumerate(run.events()):
@@ -538,7 +531,9 @@ def issue_2026_05_01(args):
             print('XXX === evt: %03d' % nevt)
             print(ndu.info_ndarr(raw, '  raw'))
 
+            t0_sec = time()
             cal = det.raw.calib(evt)
+            print('  calib time: %.6f sec' % (time() - t0_sec))  # ~3ms
             print(ndu.info_ndarr(cal, '  cal'))
 
             #arr = det.raw._array(evt)
@@ -548,7 +543,7 @@ def issue_2026_05_01(args):
             if plot_image:
                 #img = arr
                 #img = raw[0,:]
-                img=det.raw.image(evt, nda=raw)
+                img=det.raw.image(evt, nda=cal)
 
                 if flimg is None:
                     flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
