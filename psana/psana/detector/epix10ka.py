@@ -58,7 +58,7 @@ class epix10ka_raw_2_0_1(eb.epix_base):
     def calib(self, evt, **kwa) -> Array3d:
         """TEST overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
         logger.debug('XXX epix10ka_raw_2_0_1.calib')
-        return eb.epix_base.calib(self, evt, **kwa)(self, evt, **kwa)
+        return eb.epix_base.calib(self, evt, **kwa)
 #        return eb.ue.calib_epix10ka_v02(self, evt, **kwa)
 #        #return eb.ue.calib_epix10ka_v02(self, evt, nda_raw=self.raw(evt), **kwa)
 
