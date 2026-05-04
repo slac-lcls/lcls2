@@ -562,6 +562,9 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   cudaDevSmResourceGroupParams group_params[2] =  {
     {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
     {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
+  if (group_params[0].smCount < initial_SM_resources.sm.minSmPartitionSize) {
+    group_params[0].smCount = initial_SM_resources.sm.minSmPartitionSize;
+  }
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
   // Generate resource descriptors for each resource
