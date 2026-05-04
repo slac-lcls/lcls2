@@ -18,126 +18,127 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-class RawDef : public VarDef
-{
-public:
-    enum index
-    {
-        raw
+    namespace {
+        class RawDef : public VarDef
+        {
+        public:
+            enum index
+                {
+                    raw
+                };
+
+            RawDef()
+            {
+                Alg raw("raw", 2, 0, 0);
+                NameVec.push_back({"raw", Name::UINT16, 2, raw});
+            }
+        };
+
+        class XtcCopyIter : public XtcIterator
+        {
+        public:
+            enum { Stop, Continue };
+            XtcCopyIter(unsigned numWords, void*& buffer) :
+                XtcIterator(),
+                _numWords(numWords),
+                _buffer(buffer)
+            {
+            }
+
+            bool get_value(int i, Name& name, DescData& descdata)
+            {
+                int data_rank = name.rank();
+                int data_type = name.type();
+                logging::debug("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
+
+                std::string dscName(name.name());
+                if ((dscName != "raw") || (data_type != Name::UINT16) || (data_rank != 2)) {
+                    return false;
+                }
+
+                unsigned maxWords = 1;
+                char buffer[128];
+                int n = 0;
+                n += snprintf(&buffer[n], sizeof(buffer) - n, "'%s' ", name.name());
+                n += snprintf(&buffer[n], sizeof(buffer) - n, "(shape:");
+                auto shape = descdata.shape(name);
+                for (unsigned w = 0; w < name.rank(); w++) {
+                    n += snprintf(&buffer[n], sizeof(buffer) - n, " %d",shape[w]);
+                    maxWords *= shape[w];
+                }
+                n += snprintf(&buffer[n], sizeof(buffer) - n, "):");
+                unsigned numWords = _numWords;
+                if (maxWords < numWords)
+                    numWords = maxWords;
+
+                if (_buffer) {
+                    for (unsigned w = 0; w < 5; ++w) {
+                        n += snprintf(&buffer[n], sizeof(buffer) - n, " %04x", descdata.get_array<uint16_t>(i).data()[w]);
+                    }
+                    n += snprintf(&buffer[n], sizeof(buffer) - n, "\n");
+                    logging::debug("%s", buffer);
+                    memcpy(_buffer, descdata.get_array<uint16_t>(i).data(), numWords * sizeof(uint16_t));
+                }
+
+                return true;
+            }
+
+            int process(Xtc* xtc, const void* bufEnd)
+            {
+                switch (xtc->contains.id()) {
+                case (TypeId::Parent): {
+                    iterate(xtc, bufEnd);
+                    break;
+                }
+                case (TypeId::Names): {
+                    Names& names = *(Names*)xtc;
+                    _namesLookup[names.namesId()] = NameIndex(names);
+                    Alg& alg = names.alg();
+                    logging::debug("DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
+                                   names.detName(), names.segment(), names.detType(), names.detId(),
+                                   alg.name(), alg.version(), (int)names.namesId());
+
+                    for (unsigned i = 0; i < names.num(); i++) {
+                        Name& name = names.get(i);
+                        logging::debug("Name: '%s' Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
+                    }
+
+                    break;
+                }
+                case (TypeId::ShapesData): {
+                    ShapesData& shapesdata = *(ShapesData*)xtc;
+                    // lookup the index of the names we are supposed to use
+                    NamesId namesId = shapesdata.namesId();
+                    // protect against the fact that this namesid
+                    // may not have a NamesLookup.  cpo thinks this
+                    // should be fatal, since it is a sign the xtc is "corrupted",
+                    // in some sense.
+                    if (_namesLookup.count(namesId)<=0) {
+                        logging::critical("Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(unsigned)namesId);
+                        throw "invalid namesid";
+                        break;
+                    }
+                    DescData descdata(shapesdata, _namesLookup[namesId]);
+                    Names& names = descdata.nameindex().names();
+                    logging::debug("Found %d names for namesid 0x%x\n",names.num(),(unsigned)namesId);
+                    for (unsigned i = 0; i < names.num(); i++) {
+                        Name& name = names.get(i);
+                        if (get_value(i, name, descdata))  break;
+                    }
+                    break;
+                }
+                default:
+                    break;
+                }
+                return Continue;
+            }
+
+        private:
+            NamesLookup _namesLookup;
+            unsigned _numWords;
+            void*& _buffer;
+        };
     };
-
-    RawDef()
-    {
-        Alg raw("raw", 2, 0, 0);
-        NameVec.push_back({"raw", Name::UINT16, 2, raw});
-    }
-};
-
-class XtcCopyIter : public XtcIterator
-{
-public:
-    enum { Stop, Continue };
-    XtcCopyIter(unsigned numWords, void*& buffer) :
-        XtcIterator(),
-        _numWords(numWords),
-        _buffer(buffer)
-    {
-    }
-
-    bool get_value(int i, Name& name, DescData& descdata)
-    {
-        int data_rank = name.rank();
-        int data_type = name.type();
-        logging::debug("%d: '%s' rank %d, type %d\n", i, name.name(), data_rank, data_type);
-
-        std::string dscName(name.name());
-        if ((dscName != "raw") || (data_type != Name::UINT16) || (data_rank != 2)) {
-            return false;
-        }
-
-        unsigned maxWords = 1;
-        char buffer[128];
-        int n = 0;
-        n += snprintf(&buffer[n], sizeof(buffer) - n, "'%s' ", name.name());
-        n += snprintf(&buffer[n], sizeof(buffer) - n, "(shape:");
-        auto shape = descdata.shape(name);
-        for (unsigned w = 0; w < name.rank(); w++) {
-            n += snprintf(&buffer[n], sizeof(buffer) - n, " %d",shape[w]);
-            maxWords *= shape[w];
-        }
-        n += snprintf(&buffer[n], sizeof(buffer) - n, "):");
-        unsigned numWords = _numWords;
-        if (maxWords < numWords)
-            numWords = maxWords;
-
-        if (_buffer) {
-            for (unsigned w = 0; w < 5; ++w) {
-                n += snprintf(&buffer[n], sizeof(buffer) - n, " %04x", descdata.get_array<uint16_t>(i).data()[w]);
-            }
-            n += snprintf(&buffer[n], sizeof(buffer) - n, "\n");
-            logging::debug("%s", buffer);
-            memcpy(_buffer, descdata.get_array<uint16_t>(i).data(), numWords * sizeof(uint16_t));
-        }
-
-        return true;
-    }
-
-    int process(Xtc* xtc, const void* bufEnd)
-    {
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent): {
-            iterate(xtc, bufEnd);
-            break;
-        }
-        case (TypeId::Names): {
-            Names& names = *(Names*)xtc;
-            _namesLookup[names.namesId()] = NameIndex(names);
-            Alg& alg = names.alg();
-            logging::debug("DetName: %s, Segment %d, DetType: %s, DetId: %s, Alg: %s, Version: 0x%6.6x, namesid: 0x%x, Names:\n",
-                           names.detName(), names.segment(), names.detType(), names.detId(),
-                           alg.name(), alg.version(), (int)names.namesId());
-
-            for (unsigned i = 0; i < names.num(); i++) {
-                Name& name = names.get(i);
-                logging::debug("Name: '%s' Type: %d Rank: %d\n",name.name(),name.type(), name.rank());
-            }
-
-            break;
-        }
-        case (TypeId::ShapesData): {
-            ShapesData& shapesdata = *(ShapesData*)xtc;
-            // lookup the index of the names we are supposed to use
-            NamesId namesId = shapesdata.namesId();
-            // protect against the fact that this namesid
-            // may not have a NamesLookup.  cpo thinks this
-            // should be fatal, since it is a sign the xtc is "corrupted",
-            // in some sense.
-            if (_namesLookup.count(namesId)<=0) {
-                logging::critical("Corrupt xtc: namesid 0x%x not found in NamesLookup\n",(unsigned)namesId);
-                throw "invalid namesid";
-                break;
-            }
-            DescData descdata(shapesdata, _namesLookup[namesId]);
-            Names& names = descdata.nameindex().names();
-            logging::debug("Found %d names for namesid 0x%x\n",names.num(),(unsigned)namesId);
-            for (unsigned i = 0; i < names.num(); i++) {
-                Name& name = names.get(i);
-                if (get_value(i, name, descdata))  break;
-            }
-            break;
-        }
-        default:
-            break;
-        }
-        return Continue;
-    }
-
-private:
-    NamesLookup _namesLookup;
-    unsigned _numWords;
-    void*& _buffer;
-};
-
 
 EpixHRemu::EpixHRemu(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool)
