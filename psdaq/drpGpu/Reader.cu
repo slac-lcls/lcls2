@@ -55,12 +55,6 @@ Reader::Reader(const Parameters&                  para,
   //chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
   chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
 
-  const auto panel = m_pool.panel();
-  for (unsigned i = 0; i < m_pool.dmaCount(); ++i) {
-    printf("*** Reader: dmaBufIdx %u, hwWrtPtr %p, hwWrtStart %p\n",
-           i, (void*)(panel->dmaBuffers[i]), (uint8_t*)panel->fpgaRegs.d + panel->coreRegs.freeListOffset(i));
-  }
-
   // Prepare buffers visible to the host for receiving headers
   const size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
   m_pool.createHostBuffers(bufSz);
@@ -210,15 +204,12 @@ void _calibrate(float*        const        __restrict__ calib,
 }
 
 static __device__ unsigned lDmaBufferIdx = 0;
-static __device__ unsigned lDmaBufferNxt = 0;
 static __device__ unsigned lPebbleIdx    = 0;
 
 // Wait for the DMA size word to become non-zero
 static __global__
 void _waitForDMA(unsigned* const               __restrict__ state,
-                 uint8_t*  const               __restrict__ wrEnReg,
                  uint8_t   const* const* const __restrict__ dmaBuffers,    // [dmaCount][maxDmaSize]
-                 size_t    const                            dmaCount,
                  RingIndexHtoD*   const        __restrict__ pebbleQueue,
                  RingIndexDtoD*   const        __restrict__ readerQueue,
                  uint64_t* const               __restrict__ stateMon,
@@ -244,13 +235,10 @@ void _waitForDMA(unsigned* const               __restrict__ state,
     //++(*pblWtCtr);
   }
   if (*state == 1) {
-    auto dmaBufIdx = lDmaBufferIdx;     // All threads load DMA idx into a register from global memory
-    auto const __restrict__ dmaBufs = &dmaBuffers[0];
-
     // Wait for data to be DMAed into the GPU
-    const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBufs[dmaBufIdx] + 4);
+    const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBuffers[lDmaBufferIdx] + 4);
     unsigned ns{8};
-    //printf("### Reader::handleDMA: Wait for dmaBufs[%u] %p\n", dmaBufIdx, mem);
+    //printf("### Reader::handleDMA: Wait for dmaBuffers[%u] %p\n", lDmaBufferIdx, mem);
     while (*mem == 0) {                 // Wait for DMA completion
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
@@ -262,13 +250,7 @@ void _waitForDMA(unsigned* const               __restrict__ state,
     *state = 2;
     //*stateMon = 5;
     //++(*dmaWtCtr);
-    //printf("### Reader: dma[%u] %p: sz %u\n", dmaBufIdx, mem, *mem);
-
-    auto next = (dmaBufIdx + 1) & (dmaCount - 1);      // Prepare for the next DMA buffer
-    *(volatile uint32_t*)(dmaBufs[next] + 4) = 0;      // Clear the handshake space of the next DMA buffer
-    *(volatile uint8_t*)(wrEnReg + next * 4) = 1;      // Enable the DMA on this dataDev
-    lDmaBufferNxt = next;                              // Update global memory
-    //printf("### Reader: next %lu, hand shake %p, next write enable %p\n", next, dmaBufs[next] + 4, wrEnReg + next * 4);
+    //printf("### Reader: dma[%u] %p: sz %u\n", lDmaBufferIdx, mem, *mem);
   }
 }
 
@@ -324,7 +306,7 @@ void _event(unsigned* const               __restrict__ state,
       //if (tid == 0)  printf("### Reader: out %p\n", out);
       auto const payloadCnt = payloadSz/sizeof(*raw);
       //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu\n", payloadCnt, calibBufsCnt);
-      auto const elementCnt = payloadCnt > calibBufsCnt ? calibBufsCnt : payloadCnt; // @todo: Alert to truncation
+      auto const elementCnt = payloadCnt > calibBufsCnt ? calibBufsCnt : payloadCnt;
       //if (tid == 0)  printf("### Reader: payloadCnt %ld, calibBufsCnt %lu, cnt %lu\n",
       //                      payloadCnt, calibBufsCnt, elementCnt);
       auto const __restrict__ ref = refBuffers ? &refBuffers[(pblBufIdx % refBufCnt) * calibBufsCnt] : (float*)0;
@@ -348,11 +330,14 @@ void _event(unsigned* const               __restrict__ state,
 
 // This will re-launch the current graph
 static __global__
-void _readerLoop(unsigned*      const __restrict__  state,
-                 RingIndexDtoD* const __restrict__  readerQueue,
-                 cuda::std::atomic<unsigned> const& terminate,
-                 uint64_t*      const __restrict__  stateMon,
-                 uint64_t*      const __restrict__  evtCtr)
+void _readerLoop(unsigned* const               __restrict__ state,
+                 uint8_t*  const               __restrict__ wrEnReg,
+                 uint8_t   const* const* const __restrict__ dmaBuffers,    // [dmaCount][maxDmaSize]
+                 size_t    const                            dmaCount,
+                 RingIndexDtoD*   const        __restrict__ readerQueue,
+                 cuda::std::atomic<unsigned> const&         terminate,
+                 uint64_t* const               __restrict__ stateMon,
+                 uint64_t* const               __restrict__ evtCtr)
 {
   if (*state == 3) {
     //*stateMon = 13;
@@ -368,7 +353,13 @@ void _readerLoop(unsigned*      const __restrict__  state,
     }
     if (!rc) {
       //printf("### Reader: pushed pblIdx %u\n", lPebbleIdx);
-      lDmaBufferIdx = lDmaBufferNxt;
+
+      auto idx = lDmaBufferIdx;
+      *(volatile uint32_t*)(dmaBuffers[idx] + 4) = 0;   // Clear the handshake space
+      *(volatile uint8_t*)(wrEnReg + idx * 4) = 1;      // Enable the DMA
+      lDmaBufferIdx = (idx + 1) & (dmaCount - 1);       // Prepare for the next DMA buffer
+      //printf("### Reader: idx %lu, hand shake %p, next write enable %p\n", idx, dmaBufs[idx] + 4, wrEnReg + idx * 4);
+
       *state = 0;
       //*stateMon = 15;
       //++(*evtCtr);
@@ -428,32 +419,21 @@ cudaGraph_t Reader::_recordGraph()
   const auto tpSM{prop.maxThreadsPerMultiProcessor};
   unsigned nSMs;
   switch (tpSM) {
-    case 1536:  nSMs = 4;  break;
-    case 2048:  nSMs = 2;  break;
+    case 1536:  nSMs = 6;  break;
+    case 2048:  nSMs = 8;  break;
     default:
       logging::critical("Unexpected number of threads per MultiProcessor %u", tpSM);
       abort();
   };
-//  cudaDevResource smResources = {};
-//  chkError(cudaExecutionCtxGetDevResource(m_ctx,                   // Reader's context
-//                                          &smResources,            // Device resource to populate
-//                                          cudaDevResourceTypeSm)); // Resource type
-//  const auto nSMs{smResources.sm.smCount};
   // Slightly better times seem to be achieved when nPixels/stride is an integer
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
-  const auto maxBpSM{prop.maxBlocksPerMultiProcessor};
-  auto nThreads{tpSM/maxBpSM}; //{32}; // @todo: Move to green contexts for improved robustness
-  auto nBlocks{nSMs*maxBpSM}; //{63}; //{189}; //{nSMs * tpSM / nThreads}; // {189};
+  const auto bpSM{prop.maxBlocksPerMultiProcessor};
+  auto nThreads{tpSM/bpSM}; //{32}; // @todo: Move to green contexts for improved robustness
+  auto nBlocks{nSMs*bpSM}; //{63}; //{189}; //{nSMs * tpSM / nThreads}; // {189};
   auto stride{nBlocks * nThreads};
-  printf("*** Reader: blocks %u * threads %u = %u threads\n", nBlocks, nThreads, stride);
-
-  logging::info("GPU threads per SM: %d, total threads: %u, SMs %.1f, elements per thread: %.1f\n",
-                tpSM, stride, float(stride) / tpSM, float(calibBufsCnt) / stride);
-
-//  CUcontext ctx;
-//  chkError(cuCtxFromGreenCtx(&ctx, m_ctx));
-//  chkError(cuCtxSetCurrent(ctx));
+  logging::info("GPU threads per SM: %d, blocks per SM: %d, blocks %u * threads %u = %u total threads, SMs %.1f, elements per thread: %.1f\n",
+                tpSM, bpSM, nBlocks, nThreads, stride, float(stride) / tpSM, float(calibBufsCnt) / stride);
 
   if (chkError(cudaStreamBeginCapture(m_stream, cudaStreamCaptureModeThreadLocal),
                "Stream begin-capture failed")) {
@@ -461,9 +441,7 @@ cudaGraph_t Reader::_recordGraph()
   }
 
   _waitForDMA<<<1, 1, 1, m_stream>>>(m_state_d,
-                                     wrEnReg_d,
                                      dmaBuffers_d,
-                                     dmaCount,
                                      m_pebbleQueue.d,
                                      m_readerQueue.d,
                                      m_metrics.state.d,
@@ -492,6 +470,9 @@ cudaGraph_t Reader::_recordGraph()
 
   // Publish the current head index and re-launch
   _readerLoop<<<1, 1, 0, m_stream>>>(m_state_d,
+                                     wrEnReg_d,
+                                     dmaBuffers_d,
+                                     dmaCount,
                                      m_readerQueue.d,
                                      m_terminate_d,
                                      m_metrics.state.d,
@@ -503,7 +484,6 @@ cudaGraph_t Reader::_recordGraph()
     return 0;
   }
 
-  printf("*** Reader: Returning graph\n");
   return graph;
 }
 
@@ -524,17 +504,19 @@ void Reader::start()
   }
 #endif // HOST_REARMS_DMA
 
-  // Enable a DMA for buffer 0 only
-  unsigned dmaBufIdx{0};
-  // Clear handshake space on the GPU side (A.K.A. "GPU's doorbell")
-  const auto dmaBufs = panel->dmaBuffers[dmaBufIdx];
-  chkError(cudaMemsetAsync(dmaBufs + 4, 0, sizeof(uint32_t), m_stream));
-  printf("*** Reader: dmaBufIdx %u, dmaBuffer %p\n", dmaBufIdx, (void*)dmaBufs);
+  // Enable a DMA for all buffers
+  for (unsigned dmaBufIdx = 0; dmaBufIdx < m_pool.dmaCount(); ++dmaBufIdx) {
+    // Clear handshake space on the GPU side (A.K.A. "GPU's doorbell")
+    const auto dmaBufs = panel->dmaBuffers[dmaBufIdx];
+    chkError(cudaMemsetAsync(dmaBufs + 4, 0, sizeof(uint32_t), m_stream));
+    //const auto dmaWrtStart = (uint8_t*)panel->fpgaRegs.d + panel->coreRegs.freeListOffset(dmaBufIdx);
+    //printf("*** Reader: dmaBufIdx %u, dmaBuffer %p, hwWrtStart %p\n", dmaBufIdx, dmaBufs, dmaWrtStart);
 
 #ifndef HOST_REARMS_DMA
-  // Write to the DMA start register in the FPGA to trigger the write
-  panel->coreRegs.returnFreeListIndex(dmaBufIdx);
+    // Write to the DMA start register in the FPGA to trigger the write
+    panel->coreRegs.returnFreeListIndex(dmaBufIdx);
 #endif // HOST_REARMS_DMA
+  }
 
   // Ensure that the DMA round-robin index starts with buffer 0
   dmaIdxReset(panel->coreRegs);

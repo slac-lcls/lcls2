@@ -23,8 +23,8 @@ public:
   Detector(Parameters* para, MemPoolGpu* pool) :
     Drp::Detector(para, pool),
     m_det(nullptr)
-  { printf("*** Gpu::Detector::ctor: this %p, &det %p\n", this, &m_det); }
-  virtual ~Detector() { printf("*** Gpu::Detector: dtor\n"); if (m_det)  delete m_det; }
+  {}
+  virtual ~Detector() { if (m_det)  delete m_det; }
 
   Gpu::Detector* gpuDetector() override { return this; }
 
@@ -76,7 +76,6 @@ protected:
   void _initialize(Parameters& para, MemPoolGpu& pool) {
     // Create a Drp::Detector for the panel/PGP device
     m_det = new T(&para, &pool);
-    printf("*** Gpu::Detector:_init: this %p, &det %p, det %p\n", this, &m_det, m_det);
   }
 protected:
   Drp::Detector* m_det;

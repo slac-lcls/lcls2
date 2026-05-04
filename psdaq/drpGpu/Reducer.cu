@@ -89,17 +89,14 @@ Reducer::Reducer(const Parameters&                  para,
       m_inputQueues2.resize(m_para.nworkers);
       m_outputQueues2.resize(m_para.nworkers);
       for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        printf("*** Reducer::ctor: 1 wkr %u\n", i);
         auto& iq = m_inputQueues2[i];
         iq.h = new RingQueueHtoD<unsigned>(nEntries);
         chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
         chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
-        printf("*** Reducer::ctor: 2 wkr %u\n", i);
         auto& oq = m_outputQueues2[i];
         oq.h = new RingQueueDtoH<ReducerTuple>(nEntries);
         chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
         chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
-        printf("*** Reducer::ctor: 3 wkr %u\n", i);
       }
     } else
 #endif
@@ -154,8 +151,6 @@ Reducer::Reducer(const Parameters&                  para,
       }
     }
   }
-
-  printf("*** Reducer::ctor end\n");
 }
 
 Reducer::~Reducer()

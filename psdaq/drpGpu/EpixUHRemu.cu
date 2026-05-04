@@ -85,9 +85,7 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
   unsigned rc = 0;
 
   // Configure the XpmDetector for the panel
-  printf("*** Gpu::EpixUHRemu configure start\n");
   rc = m_det->configure(config_alias, xtc, bufEnd);
-  printf("*** Gpu::EpixUHRemu configure done: rc %d, sz %u\n", rc, xtc.sizeofPayload());
   if (rc) {
     logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_para->device);
   }

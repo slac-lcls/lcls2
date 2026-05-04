@@ -86,7 +86,6 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 void TebReceiver::setup(cudaExecutionContext_t green_ctx)
 {
-  printf("*** TebRcvr::setup: 1\n");
   m_worker = 0;
 
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
@@ -97,9 +96,7 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
   m_fileWriter = std::make_unique<FileWriter>(maxBufSize, true);
   //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, true); // For 2 ping pong buffers
-  printf("*** TebRcvr::setup: 2\n");
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
-  printf("*** TebRcvr::setup: 3\n");
 
   // Reset the record queue
   m_recordQueue.startup();
@@ -122,11 +119,6 @@ void TebReceiver::teardown()
 
 void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
 {
-  //uint32_t* p = (uint32_t*)dgram;
-  //printf("wDg: ");
-  //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-  //printf("\n");
-
   size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
   if (m_fileWriter)  m_fileWriter->writeEvent(devPtr, size, dgram->time);
 
@@ -568,7 +560,7 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   cudaDevResource remainder {};
   cudaDevResource result[nbGroups] {{}, {}};
   cudaDevSmResourceGroupParams group_params[2] =  {
-    {.smCount=4,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
+    {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
     {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 

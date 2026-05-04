@@ -392,15 +392,16 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
   // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   for (int i = pixel; i < nPixels; i += stride) {
-    const auto gain  = (in[i] >> GainOffset) & ((1 << GainBits) - 1);
-    const auto peds  = &peds_ [gain * nPixels];
-    const auto gains = &gains_[gain * nPixels];
-    const auto data  = in[i] & ((1 << GainOffset) - 1);
-    out[i] = (data - peds[i]) * gains[i];
+    auto const              gain  = (in[i] >> GainOffset) & ((1 << GainBits) - 1);
+    auto const __restrict__ peds  = &peds_ [gain * nPixels];
+    auto const __restrict__ gains = &gains_[gain * nPixels];
+    auto const              data  = in[i] & ((1 << GainOffset) - 1);
+    out[i] = (float(data) - peds[i]) * gains[i];
   }
 }
 
@@ -526,15 +527,16 @@ static __global__ void _calibrate2(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   for (int i = pixel; i < nPixels; i += stride) {
     auto        datum = in[i];
-    const auto  gain  = (datum >> GainOffset) & ((1 << GainBits) - 1);
-    const auto& pg    = pedGains[gain * nPixels + i];
+    auto const  gain  = (datum >> GainOffset) & ((1 << GainBits) - 1);
+    auto const& pg    = pedGains[gain * nPixels + i];
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - pg.ped) * pg.gain;
+    out[i] = (float(datum) - pg.ped) * pg.gain;
   }
 }
 
@@ -665,8 +667,8 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   extern __shared__ uint8_t smem[];
   //auto sIn    = (uint16_t*)smem;                      // uint16_t sIn[TPB];
@@ -688,7 +690,7 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - sPeds[pgIdx]) * sGains[pgIdx];
+    out[i] = (float(datum) - sPeds[pgIdx]) * sGains[pgIdx];
   }
 }
 
@@ -813,8 +815,8 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   extern __shared__ uint8_t smem[];
   //auto sIn       = (uint16_t*)smem;                      // uint16_t sIn[TPB];
@@ -834,7 +836,7 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
+    out[i] = (float(datum) - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
   }
 }
 

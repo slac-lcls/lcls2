@@ -540,14 +540,10 @@ json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
-  printf("*** PGPDetectorApp::connectionInfo 1\n");
     json info = m_det->connectionInfo(msg);
-  printf("*** PGPDetectorApp::connectionInfo 1a\n");
     body["connect_info"].update(info);
-  printf("*** PGPDetectorApp::connectionInfo 2\n");
     json bufInfo = m_drp->connectionInfo(ip);
     body["connect_info"].update(bufInfo); // Revisit: Should be in det_info
-  printf("*** PGPDetectorApp::connectionInfo 3\n");
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 

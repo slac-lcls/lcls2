@@ -231,7 +231,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
       chkError(cudaMemset( dp, 0, sz));
       m_panel->dmaBuffers[i] = dp;
       chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
-      printf("*** MemPool: &dmaBuf[%u] %p, %p, sz %zu\n", i, &dmaBufs_d[i], dp, sz);
+      //printf("*** MemPool: &dmaBuf[%u] %p, %p, sz %zu\n", i, &dmaBufs_d[i], dp, sz);
     }
 
     // No need to call setMaskBytes, so fake done
