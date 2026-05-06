@@ -121,6 +121,7 @@ void AreaDetector::event(Dgram& dgram, const void* bufEnd, PGPEvent*, uint64_t c
 //  }
 //}
 
+#if 0
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
                                   const size_t                       calibBufsCnt,
@@ -136,7 +137,9 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
     out[i] = float(in[i]);
   }
 }
+#endif
 
+#if 0 // Not currently used
 // This routine records the graph that calibrates the data
 void AreaDetector::recordGraph(cudaStream_t          stream,
                                const unsigned&       index_d,
@@ -152,6 +155,7 @@ void AreaDetector::recordGraph(cudaStream_t          stream,
   auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
   _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, m_nPixels);
 }
+#endif
 
 // The class factory
 

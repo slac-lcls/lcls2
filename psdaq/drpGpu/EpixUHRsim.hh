@@ -37,9 +37,9 @@ public:
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
-  void recordGraph(cudaStream_t          stream,
-                   const unsigned&       index,
-                   uint16_t const* const data) override;
+//  void recordGraph(cudaStream_t          stream,
+//                   const unsigned&       index,
+//                   uint16_t const* const data) override;
 
   void issuePhase2(XtcData::TransitionId::Value tid) override;
   float const* referenceBuffers() const override;

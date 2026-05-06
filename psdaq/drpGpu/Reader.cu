@@ -265,6 +265,7 @@ void _event(unsigned* const               __restrict__ state,
             size_t    const                            calibBufsCnt,
             float     const* const        __restrict__ pedArray,
             float     const* const        __restrict__ gainArray,
+            //auto      const                            calibFn,       // Not working
             unsigned  const                            rangeOffset,
             unsigned  const                            rangeBits,
             float     const* const        __restrict__ refBuffers,
@@ -318,6 +319,7 @@ void _event(unsigned* const               __restrict__ state,
 
       //if (tid == 0) *stateMon = 11;
       _calibrate(out, raw, elementCnt, rangeOffset, rangeBits, pedArray, gainArray, ref);
+      //if (calibFn) (*calibFn)(out, raw, elementCnt); // Not working
       //if (tid == 0) *stateMon = 12;
     }
 
@@ -411,6 +413,7 @@ cudaGraph_t Reader::_recordGraph()
   auto const refBufCnt      = m_det.referenceBufCnt();
   auto const pedArray_d     = m_det.pedestals_d();
   auto const gainArray_d    = m_det.gains_d();
+  //auto const calibFn_d      = m_det.getCalibFn(); // Not working
 
   // Determine how many processing resources to reserve for the Reader kernel
   // @todo: The maybe should be done in PgpDetector in conjunction with the other components
@@ -461,6 +464,7 @@ cudaGraph_t Reader::_recordGraph()
                                              calibBufsCnt,
                                              pedArray_d,
                                              gainArray_d,
+                                             //calibFn_d, // Not working
                                              rangeOffset,
                                              rangeBits,
                                              refBuffers_d,

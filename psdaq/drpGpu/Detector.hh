@@ -17,6 +17,11 @@ enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
        FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
        ReducerNamesIndex };         // index for xtc NamesId
 
+// Not working:
+//typedef void CalibrateFn_t(float*    const calib,
+//                           uint16_t* const raw,
+//                           unsigned  const nElements);
+
 class Detector : public Drp::Detector
 {
 public:
@@ -64,9 +69,10 @@ public:
   virtual float const* pedestals_d() const = 0;
   virtual float const* gains_d()     const = 0;
 
-  virtual void recordGraph(cudaStream_t          stream,
-                           const unsigned&       index_d,
-                           uint16_t const* const data) = 0;
+  //virtual void recordGraph(cudaStream_t          stream,
+  //                         const unsigned&       index_d,
+  //                         uint16_t const* const data) = 0;
+  //virtual CalibrateFn_t* getCalibFn() const { return nullptr; } // Not working
 
   virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only

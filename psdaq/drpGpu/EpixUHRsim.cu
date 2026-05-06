@@ -41,9 +41,9 @@ public:
   float const* pedestals_d() const override { return nullptr; /* Not used */ }
   float const* gains_d()     const override { return nullptr; /* Not used */ }
 
-  void recordGraph(cudaStream_t          stream,
-                   const unsigned&       index,
-                   uint16_t const* const data) override { /* Not used */ }
+//  void recordGraph(cudaStream_t          stream,
+//                   const unsigned&       index,
+//                   uint16_t const* const data) override { /* Not used */ }
   void generateEvents(unsigned nEvents)
   {
     // Generate data for nEvents events
@@ -256,18 +256,15 @@ void EpixUHRsim::issuePhase2(TransitionId::Value tid)
 
 float const* EpixUHRsim::referenceBuffers() const
 {
-  printf("*** EpixUHRsim::referenceBuffers\n");
   auto simDet = static_cast<SimDet*>(m_det);
   return simDet->referenceBuffers();
 }
 
 unsigned EpixUHRsim::referenceBufCnt() const
 {
-  printf("*** EpixUHRsim::referenceBufCnt\n");
   auto simDet = static_cast<SimDet*>(m_det);
   return simDet->referenceBufCnt();
 }
-
 
 void EpixUHRsim::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count)
 {
@@ -283,32 +280,44 @@ void EpixUHRsim::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw data here?
 }
 
-//__device__ void EpixUHRsim::calibrate(float*    const __restrict__ calib,
-//                                      uint16_t* const __restrict__ raw,
-//                                      unsigned  const              count) const
-//{
-//  auto const tid     = blockIdx.x * blockDim.x + threadIdx.x;
-//  auto const stride  = gridDim.x * blockDim.x;
-//  if (tid == 0)  printf("*** tid %d, stride %d\n", tid, stride);
-//  constexpr auto nPixels = count;
-//
-//  if (tid == 0)  printf("*** m_pedArr_d %p\n", m_pedArr_d);
-//  auto const pedArr  = m_pedArr_d;
-//  if (tid == 0)  printf("*** pedArr %p\n", pedArr);
-//  if (tid == 0)  printf("*** m_gainArr_d %p\n", m_gainArr_d);
-//  auto const gainArr = m_gainArr_d;
-//  if (tid == 0)  printf("*** gainArr %p\n", gainArr);
-//  if (tid == 0)  printf("*** count %u\n", count);
-//  for (auto i = tid; i < count; i += stride) {
-//    auto const range = (raw[i] >> RangeOffset) & ((1 << RangeBits) - 1);
-//    auto const peds  = &pedArr [range * nPixels];
-//    auto const gains = &gainArr[range * nPixels];
-//    auto const data  = raw[i] & ((1 << RangeOffset) - 1);
-//    calib[i] = (data - peds[i]) * gains[i];
-//  }
-//  printf("*** calibrate returning\n");
-//}
+#if 0 // Not working
+static __device__
+void _calibrate(float*    const __restrict__ calib,
+                uint16_t* const __restrict__ raw,
+                unsigned  const              nElements)
+{
+  auto const tid     = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride  = blockDim.x * gridDim.x;
+  printf("### EpixUHRemu _calibrate: calib %p, raw %p, nElements: %u\n", calib, raw, nElements);
 
+  constexpr unsigned rangeOffset{EpixUHRemu::RangeOffset};
+  constexpr unsigned rangeMask{(1 << EpixUHRemu::RangeBits) - 1};
+  constexpr unsigned dataMask{(1 << EpixUHRemu::RangeOffset) - 1};
+  auto const pedArr  = lPedsArray;
+  auto const gainArr = lGainsArray;
+  for (auto i = tid; i < nElements; i += stride) {
+    auto const              range = (raw[i] >> rangeOffset) & rangeMask;
+    auto const __restrict__ peds  = &pedArr [range * nElements];
+    auto const __restrict__ gains = &gainArr[range * nElements];
+    auto const              data  = raw[i] & dataMask;
+    calib[i] = (float(data) - peds[i]) * gains[i];
+
+    if (i < 4) {
+      printf("### Reader: tid %u, i %u: raw %p: %04x, dat %u, rng %u, ped %f, gn %f, cal %f\n", //, ref %p: %f\n",
+             tid, i, &raw[i], raw[i], data, range, peds[i], gains[i], calib[i]); //, &ref[i], ref ? ref[i] : 0.f);
+    }
+  }
+
+  printf("### EpixUHRemu _calibrate: done\n");
+}
+
+CalibrateFn_t* EpixUHRemu::getCalibFn() const
+{
+  return &_calibrate;
+}
+#endif
+
+#if 0
 // This kernel performs the data calibration
 static __global__ void _calibrate(float*   const        __restrict__ calibBuffers,
                                   size_t   const                     calibBufsCnt,
@@ -317,7 +326,6 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
                                   float    const* const __restrict__ peds_,
                                   float    const* const __restrict__ gains_)
 {
-#if 0
   // Place the calibrated data in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt];
   int stride = gridDim.x * blockDim.x;
@@ -350,9 +358,10 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
     }
     out[i] = (float(data) - sPeds[gain][i]) * sGains[gain][i];
   }
-#endif
 }
+#endif
 
+#if 0 // Not currently used
 // This routine records the graph that calibrates the data
 void EpixUHRsim::recordGraph(cudaStream_t          stream,
                              const unsigned&       index_d,
@@ -372,6 +381,7 @@ void EpixUHRsim::recordGraph(cudaStream_t          stream,
   auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
   _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, peds, gains);
 }
+#endif
 
 // The class factory
 
