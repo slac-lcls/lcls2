@@ -159,7 +159,6 @@ for candidate in "$ROOT_DIR"/*; do
         git checkout -b "$BRANCH_NAME"
     fi
 
-    update=false
     # Copy each changed file
     echo -e "${GREEN}Synching folders ${NC}"
 
@@ -168,13 +167,11 @@ for candidate in "$ROOT_DIR"/*; do
             mkdir -p "$(dirname "$file")"
             cp "$MONITOR_REPO/$file" "$file"
             git add "$file"
-            update=true
             echo ".. $file synced and added to git"
         else
             if [ -f "$file" ]; then
                 echo ".. $file deleted in source"
                 git rm "$file"
-                update=true
             else
                 echo ".. $file doesn't exist in local repo. Delete not needed, skipping"
             fi
