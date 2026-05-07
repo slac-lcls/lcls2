@@ -24,7 +24,6 @@ class BlueskyScan:
         self.mon_thread = threading.Thread(target=self.daq_monitor_thread, args=(), daemon=True)
         self.ready = threading.Event()
         self.motors = []                        # set in configure()
-        self.group_mask = None                  # set in configure()
         self.events=1                           # set in configure()
         self.record=False                       # set in configure()
         self.detname='scan'                     # set in configure()
@@ -128,8 +127,6 @@ class BlueskyScan:
                 configure_dict = {"NamesBlockHex": configureBlock,
                                   "readout_count": self.events,
                                   "step_group"   : self.group }
-                if self.group_mask is not None:
-                    configure_dict["group_mask"] = self.group_mask
 
                 if self.seq_ctl is not None:
                     configure_dict['seqpv_name'] = self.seq_ctl[0]
@@ -140,8 +137,6 @@ class BlueskyScan:
                 # set DAQ state
                 enable_dict = {'readout_count':self.events, 
                                'step_group':self.group}
-                if self.group_mask is not None:
-                    enable_dict['group_mask'] = self.group_mask
 
                 errMsg = self.control.setState('running',
                     {'configure':   configure_dict,
@@ -215,20 +210,20 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    def configure(self, *, motors=None, group_mask=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None, seq_ctl=None):
+    def configure(self, *, motors=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None, seq_ctl=None):
         """Set parameters for scan.
 
         Keyword arguments:
         motors -- list of motors, optional
             Motors with positions to include in the data stream
-        group_mask -- int, optional
-            Bit mask of readout groups
         events -- int, optional
             Number of events per scan point
         record -- bool, optional
             Enable recording of data
         detname -- str, optional
-            Detector name
+            Detector name to determine which readout group should be used by the
+            xpm to count events. Note that the detname should include the segment
+            number in the name, as in the daq cnf file.  e.g. "andor_0" and NOT "andor"
         scantype -- str, optional
             Scan type
         serial_number -- str, optional
@@ -248,13 +243,6 @@ class BlueskyScan:
                 logging.info('configure: %d motors' % len(self.motors))
             else:
                 raise TypeError('motors must be of type list')
-        if group_mask is not None:
-            if isinstance(group_mask, int):
-                self.group_mask = group_mask
-            else:
-                raise TypeError('group_mask must be of type int')
-        else:
-            self.group_mask = None
         if events is not None:
             if isinstance(events, int):
                 self.events = events
