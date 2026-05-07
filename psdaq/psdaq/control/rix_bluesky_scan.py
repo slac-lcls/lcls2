@@ -18,7 +18,6 @@ parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-neh-ctl001',
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=120, help='# of events to aquire at each step (default 120)')
-parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=36, help='bit mask of readout groups (default 36)')
 parser.add_argument('--groups', type=int, nargs='+', metavar='GROUP_LIST', default=[], help='list of readout groups (overrides -g)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
@@ -100,7 +99,7 @@ if args.seqctl is not None:
         seq_ctl = (args.seqctl[0],int(args.seqctl[1]),args.seqctl[2])
 
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype, seq_ctl=seq_ctl)
+mydaq.configure(motors=[motor1], events=args.c, record=args.record, detname=args.detname, scantype=args.scantype, seq_ctl=seq_ctl)
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.
