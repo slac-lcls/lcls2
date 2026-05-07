@@ -251,13 +251,13 @@ class AxiPcieCore(pr.Device):
                         enabled = False, # enabled=False because I2C are slow transactions and might "log jam" register transaction pipeline
                     ))
 
-    def QSFP(self,index):
-        if self.boardType == 'Kcu1500':
-            self.I2cMux.set((1<<4) if index==0 else (1<<j))
-            return self.QSFP
-        if self.boardType == 'C1100':
-            return getattr(self,f'Qsfp[{index}]')
-        return None
+#    def QSFP(self,index):
+#        if self.boardType == 'Kcu1500':
+#            self.I2cMux.set((1<<4) if index==0 else (1<<j))
+#            return self.QSFP
+#        if self.boardType == 'C1100':
+#            return getattr(self,f'Qsfp[{index}]')
+#        return None
 
     def _start(self):
         super()._start()

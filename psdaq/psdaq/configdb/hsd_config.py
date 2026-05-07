@@ -50,6 +50,7 @@ def hsd_init(prefix, dev='dev/datadev_0'):
         root.__enter__()
         args['root'] = root.PcieControl.DevPcie
         args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+        args['swclk'] = args['core']
 
     else:
         #  Lookup the board type
