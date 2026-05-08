@@ -166,6 +166,8 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     else:
         logging.info('Using timebase 186M')
         cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    
+    time.sleep(3.5)
 
     # TODO: To be removed, now commented out xpm glitch workaround
     ## Open a new thread here
