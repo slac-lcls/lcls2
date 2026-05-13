@@ -563,13 +563,6 @@ def issue_2026_05_01(args):
         if plot_image: gr.show()
 
 
-
-
-
-
-
-
-
 def issue_2026_05_04(args):
     """ISSUE: JWT example fro murali
        PROBLEM:
@@ -591,7 +584,6 @@ def issue_2026_05_04(args):
 
     session = Session()
     session.headers.update({"Authorization": "Bearer " + jwt })
-
 
     print("\033[0;31mGetting some calib data using the JWT\033[0m")
     ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_detnum1234/"
@@ -646,12 +638,29 @@ def issue_2026_05_05(args):
         for nevt,evt in enumerate(run.events()):
             print('==== evt: %03d' % nevt)
             raw = det.raw.raw(evt)
-            print(ndu.info_ndarr(det.raw.raw(evt), '  raw'))
-            print(ndu.info_ndarr(det.raw.image(evt), '  image'))
+            img = det.raw.image(evt)
+            print(ndu.info_ndarr(raw, '  raw'))
+            print(ndu.info_ndarr(img, '  image'))
 
+            if plot_image:
+                imgarr = raw   if isubset == 1 else\
+                         cal   if isubset == 2 else\
+                         cbits if isubset == 4 else\
+                         raw
 
+                #img=det.raw.image(evt, nda=raw)
+                #img=det.raw.image(evt, nda=cal)
+                img=det.raw.image(evt, nda=imgarr)
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
+                    gr.plt.ion()
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+        if plot_image: gr.show()
 
-    
 #===
 
 def issue_2026_MM_DD(args):
@@ -662,7 +671,6 @@ def issue_2026_MM_DD(args):
     print('template')
 
 #===
-    
 
 def argument_parser():
     from argparse import ArgumentParser
