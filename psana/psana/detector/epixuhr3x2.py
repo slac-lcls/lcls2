@@ -61,6 +61,8 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
         self._counter_image = 0
+        self._seg_geo = eb.sgs.Create(segname='EPIXUHR3X2:V1')
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr3x2-02.data'
 
     def raw(self, evt, sh_seg=(336,576)) -> Array3d:
         if cond_msg(evt is None, msg='evt is None - return None', output_meth=logger.warning):
@@ -79,7 +81,7 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
             out[nseg,:] = arrseg # save panel in the output array
         return out
 
-    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
+    def _image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
         if cond_msg(evt is None, msg='evt is None - return None', output_meth=logger.warning):
             return None
         self._counter_image += 1
