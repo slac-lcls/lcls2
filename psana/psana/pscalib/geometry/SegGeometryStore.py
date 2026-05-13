@@ -15,6 +15,7 @@ Usage::
     sg = sgs.Create(segname='EPIX10KA:V1')
     sg = sgs.Create(segname='EPIXHR2X2:V1')
     sg = sgs.Create(segname='EPIXHR1X4:V1')
+    sg = sgs.Create(segname='EPIXUHR3X2:V1')
     sg = sgs.Create(segname='PNCCD:V1')
     sg = sgs.Create(segname='JUNGFRAU:V1')
     sg = sgs.Create(segname='JUNGFRAU:V2')
@@ -86,6 +87,9 @@ def segment_geometry(**kwa):
     elif segname=='EPIXHR1X4:V1':
         from psana.pscalib.geometry.SegGeometryEpixHR1x4V1 import epixhr1x4_one, epixhr1x4_wpc
         return epixhr1x4_wpc if wpc else epixhr1x4_one
+    elif segname=='EPIXUHR3X2:V1':
+        from psana.pscalib.geometry.SegGeometryEpixUHR3x2V1 import epixuhr3x2_one, epixuhr3x2_wpc
+        return epixuhr3x2_wpc if wpc else epixuhr3x2_one
 #    elif segname=='EPIXM320:V1': # 1x4 panel is deprecated because of non-uniform panel geometry
 #        from psana.pscalib.geometry.SegGeometryEpixM320V1 import epixm320_one
 #        return epixm320_one
