@@ -802,7 +802,7 @@ def calib_epix10ka_v02(det_raw, evt, **kwa): #cmpars=(7,2,100):
 
     nda_raw = kwa.get('nda_raw', None)
     cmpars  = kwa.get('cmpars', None)
-    raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape:(352, 384) or suppose to be later (<nsegs>, 352, 384) dtype:uint16
+    raw = det_raw.raw(evt) if nda_raw is None else nda_raw # shape: (<nsegs>, 352, 384) dtype:uint16
     if cond_msg(raw is None, msg='raw is None', output_meth=logger.info): return None
 
     store = det_raw._store_ = Storage_v02(det_raw, **kwa) if det_raw._store_ is None else det_raw._store_  #perpix=True
