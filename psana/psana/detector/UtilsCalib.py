@@ -111,8 +111,10 @@ def proc_block(block, **kwa):
     nrecs1= block.shape[0]
     shape = block.shape[1:] #(ny, nx)
 
+    t_sec = time()
     arr1_u16 = np.ones(shape, dtype=np.uint16)
     arr1     = np.ones(shape, dtype=np.uint64)
+    print('TIMING proc_block_short alloc ones %.3f sec' % (time() - t_sec), flush=True)
 
     t1_sec = time()
 
@@ -203,29 +205,47 @@ def proc_block_short(block, **kwa):
       data_block + random [0,1)-0.5
     - this would distort data in the range [-0.5,+0.5) ADU, but would allow
       to get better interpolation for median and quantile values
-    - use nrecs1 (< nrecs) due to memory and time consumption
+      - use nrecs1 (< nrecs) due to memory and time consumption
     """
+    t_sec = time()
     blockf64 = block if datbits == 0xffff else (block & datbits)
+    print('TIMING proc_block_short datbits mask %.3f sec' % (time() - t_sec), flush=True)
 
-    arr_qlo = np.quantile(blockf64, fraclo, axis=0, method='lower')
-    arr_qhi = np.quantile(blockf64, frachi, axis=0, method='higher')
+    t_sec = time()
+    ind_lo = int(np.floor((nrecs1 - 1) * fraclo))
+    ind_hi = int(np.ceil ((nrecs1 - 1) * frachi))
+    block_part = np.partition(blockf64, (ind_lo, ind_hi), axis=0)
+    arr_qlo = block_part[ind_lo]
+    arr_qhi = block_part[ind_hi]
+    print('TIMING proc_block_short partition both %.3f sec indices lo/hi %d/%d' % (time() - t_sec, ind_lo, ind_hi), flush=True)
 
     logger.debug('block array quantile(frac) for qlo, qhi time = %.3f sec' % (time()-t1_sec))
 
+    t_sec = time()
     med_qlo = np.median(arr_qlo)
     med_qhi = np.median(arr_qhi)
+    print('TIMING proc_block_short median summaries %.3f sec' % (time() - t_sec), flush=True)
 
     s = 'data block processing results for median over pixels intensities:'\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate low limit' % (fraclo, med_qlo)\
       + '\n    %.3f fraction of the event spectrum is below %.3f ADU - gate upper limit' % (frachi, med_qhi)
 
+    t_sec = time()
     gate_lo = arr1_u16 * int_lo
     gate_hi = arr1_u16 * int_hi
+    print('TIMING proc_block_short init gate arrays %.3f sec' % (time() - t_sec), flush=True)
 
+    t_sec = time()
     gate_lo = np.maximum(np.floor(arr_qlo), gate_lo).astype(dtype=block.dtype)
+    print('TIMING proc_block_short gate_lo finalize %.3f sec' % (time() - t_sec), flush=True)
+    t_sec = time()
     gate_hi = np.minimum(np.ceil(arr_qhi),  gate_hi).astype(dtype=block.dtype)
+    print('TIMING proc_block_short gate_hi finalize %.3f sec' % (time() - t_sec), flush=True)
+    t_sec = time()
     cond = gate_hi>gate_lo
     gate_hi[np.logical_not(cond)] +=1 # protection against equal limits
+    print('TIMING proc_block_short equal-limit fix %.3f sec' % (time() - t_sec), flush=True)
+    print('TIMING proc_block_short total %.3f sec' % (time() - t0_sec), flush=True)
 
     logger.debug('proc_block_short results'\
                 +info_ndarr(gate_lo,     '\n    gate_lo[100:105]', first=100, last=105)\
