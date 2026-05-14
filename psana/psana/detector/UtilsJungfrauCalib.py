@@ -214,6 +214,31 @@ def jungfrau_dark_proc(parser):
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
     logger.info(s)
 
+    use_stage1_smd_callback = os.environ.get('JUNGFRAU_DARK_PROC_STAGE1_SMD_CALLBACK', '').lower() in ('1', 'true', 'yes', 'on')
+    if use_stage1_smd_callback and args.nrecs != args.nrecs1:
+        logger.warning('JUNGFRAU_DARK_PROC_STAGE1_SMD_CALLBACK is ignored because --nrecs=%d != --nrecs1=%d' % (args.nrecs, args.nrecs1))
+        use_stage1_smd_callback = False
+
+    if use_stage1_smd_callback:
+        def stage1_filter_callback(run):
+            logger.info('== stage1_filter_callback first call')
+            for istep_cb, step_cb in enumerate(run.steps()):
+                cond1 = True if stepmax is None else istep_cb < stepmax
+                cond2 = True if stepnum is None else istep_cb == stepnum
+                logger.info('== stage1_filter_callback begin step:%d cond1:%s cond2:%s evskip:%d nrecs:%d' %\
+                            (istep_cb, str(cond1), str(cond2), evskip, args.nrecs))
+                if cond1 and cond2:
+                    yielded = 0
+                    for ievt_cb, evt_cb in enumerate(step_cb.events()):
+                        if ievt_cb > evskip-1 and ievt_cb < args.nrecs:
+                            yielded += 1
+                            yield evt_cb
+                    logger.info('== stage1_filter_callback end step:%d yielded:%d' % (istep_cb, yielded))
+
+        kwargs['batch_size'] = 1
+        kwargs['smd_callback'] = stage1_filter_callback
+        logger.warning('DEBUG enabled: Stage 1 uses DataSource smd_callback because JUNGFRAU_DARK_PROC_STAGE1_SMD_CALLBACK is set')
+
     ds, dskwargs = open_DataSource(**kwargs)
 
     dpo = None
@@ -311,7 +336,7 @@ def jungfrau_dark_proc(parser):
                 nevrun += 1
                 nevtot += 1
 
-                if ievt<evskip:
+                if (not use_stage1_smd_callback) and ievt<evskip:
                     s = 'skip event %d < --evskip=%d' % (ievt, evskip)
                     #print(s, end='\r')
                     if (selected_record(ievt+1, events) and ievt<evskip-1)\
