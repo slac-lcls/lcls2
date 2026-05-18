@@ -55,6 +55,168 @@ hostname = get_hostname()
 s_rsch = 'rank:%03d/%03d-cpu:%03d-%s' % (rank, size, cpu_num, hostname)
 if is_rank0: print('%s sys.argv: %s' % (s_rsch, sys.argv))
 
+def _env_is_true(name):
+    return os.environ.get(name, '').lower() in ('1', 'true', 'yes', 'on')
+
+
+def _stage2_timing_template():
+    return {
+        'rank': rank,
+        'host': hostname,
+        'run': None,
+        'steps': 0,
+        'events': 0,
+        'raw_none': 0,
+        'first_evt_s': -1.0,
+        'ds_create_s': 0.0,
+        'smd_create_s': 0.0,
+        'next_run_s': 0.0,
+        'det_create_s': 0.0,
+        'event_loop_s': 0.0,
+        'raw_s': 0.0,
+        'dpo_event_s': 0.0,
+        'core_add_event_s': 0.0,
+        'add_mask_s': 0.0,
+        'add_astype_s': 0.0,
+        'add_gate_lo_s': 0.0,
+        'add_gate_hi_s': 0.0,
+        'add_gate_mask_s': 0.0,
+        'add_sum0_s': 0.0,
+        'add_sum1_s': 0.0,
+        'add_square_s': 0.0,
+        'add_sum2_s': 0.0,
+        'add_sta_lo_s': 0.0,
+        'add_sta_hi_s': 0.0,
+        'add_max_s': 0.0,
+        'add_min_s': 0.0,
+        'bad_switch_s': 0.0,
+        'summary_call_s': 0.0,
+        'summary_total_s': 0.0,
+        'summary_eval_s': 0.0,
+        'neutral_init_s': 0.0,
+        'red_irec_s': 0.0,
+        'red_sum0_s': 0.0,
+        'red_sum1_s': 0.0,
+        'red_sum2_s': 0.0,
+        'red_max_s': 0.0,
+        'red_min_s': 0.0,
+        'red_int_lo_s': 0.0,
+        'red_int_hi_s': 0.0,
+        'red_bad_switch_s': 0.0,
+        'merger_s': 0.0,
+        'deploy_s': 0.0,
+        'save_s': 0.0,
+        'total_s': 0.0,
+    }
+
+
+def _stage2_reduce_total(item):
+    return sum(item[k] for k in (
+        'red_irec_s', 'red_sum0_s', 'red_sum1_s', 'red_sum2_s',
+        'red_max_s', 'red_min_s', 'red_int_lo_s', 'red_int_hi_s',
+        'red_bad_switch_s'))
+
+
+def _print_stage2_timing_summary(local):
+    gathered = comm.gather(local, root=0)
+    if not is_rank0:
+        return
+
+    lines = [
+        '',
+        'STAGE2_TIMING SUMMARY',
+        'rank host run steps events raw_none first_evt ds_create smd_create next_run det_create '
+        'event_loop raw dpo_event core_add_event bad_switch summary reduce_total '
+        'summary_eval neutral_init merger deploy save total',
+    ]
+    for item in gathered:
+        red_total = _stage2_reduce_total(item)
+        lines.append('%04d %s %s %5d %6d %8d %.6f %.6f %.6f %.6f %.6f '
+              '%.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f %.6f' % (
+              item['rank'], item['host'], str(item['run']),
+              item['steps'], item['events'], item['raw_none'], item['first_evt_s'],
+              item['ds_create_s'], item['smd_create_s'], item['next_run_s'],
+              item['det_create_s'], item['event_loop_s'], item['raw_s'],
+              item['dpo_event_s'], item['core_add_event_s'], item['bad_switch_s'],
+              item['summary_call_s'], red_total, item['summary_eval_s'],
+              item['neutral_init_s'], item['merger_s'], item['deploy_s'],
+              item['save_s'], item['total_s']))
+
+    total_events = sum(item['events'] for item in gathered)
+    total_raw_none = sum(item['raw_none'] for item in gathered)
+    max_run_init = max(item['next_run_s'] for item in gathered)
+    max_event_loop = max(item['event_loop_s'] for item in gathered)
+    max_raw = max(item['raw_s'] for item in gathered)
+    max_dpo_event = max(item['dpo_event_s'] for item in gathered)
+    max_core_add_event = max(item['core_add_event_s'] for item in gathered)
+    max_bad_switch = max(item['bad_switch_s'] for item in gathered)
+    max_summary = max(item['summary_call_s'] for item in gathered)
+    max_reduce = max(_stage2_reduce_total(item) for item in gathered)
+    max_total = max(item['total_s'] for item in gathered)
+    loop_rate = 0.0 if max_event_loop <= 0 else total_events / max_event_loop
+    raw_rate = 0.0 if max_raw <= 0 else total_events / max_raw
+    dpo_event_rate = 0.0 if max_dpo_event <= 0 else total_events / max_dpo_event
+
+    lines.extend((
+        '',
+        'AGGREGATE',
+        'run_init_max_s=%.6f' % max_run_init,
+        'loop_time_max_s=%.6f' % max_event_loop,
+        'events_sum_all_ranks=%d' % total_events,
+        'loop_rate_events_per_s=%.3f' % loop_rate,
+        'raw_time_max_s=%.6f' % max_raw,
+        'raw_rate_events_per_s=%.3f' % raw_rate,
+        'dpo_event_time_max_s=%.6f' % max_dpo_event,
+        'dpo_event_rate_events_per_s=%.3f' % dpo_event_rate,
+        'core_add_event_time_max_s=%.6f' % max_core_add_event,
+        'bad_switch_time_max_s=%.6f' % max_bad_switch,
+        'summary_time_max_s=%.6f' % max_summary,
+        'reduce_total_time_max_s=%.6f' % max_reduce,
+        'raw_none_sum_all_ranks=%d' % total_raw_none,
+        'total_time_max_s=%.6f' % max_total,
+        'aggregate events_seen_by_main_loop=%d raw_none=%d max_event_loop=%.6fs '
+          'max_raw=%.6fs max_dpo_event=%.6fs max_core_add_event=%.6fs '
+          'max_bad_switch=%.6fs max_summary=%.6fs max_reduce=%.6fs max_total=%.6fs' % (
+          total_events, total_raw_none, max_event_loop, max_raw, max_dpo_event,
+          max_core_add_event, max_bad_switch, max_summary, max_reduce, max_total),
+    ))
+
+    add_event_keys = (
+        'add_mask_s', 'add_astype_s', 'add_gate_lo_s', 'add_gate_hi_s',
+        'add_gate_mask_s', 'add_sum0_s', 'add_sum1_s', 'add_square_s',
+        'add_sum2_s', 'add_sta_lo_s', 'add_sta_hi_s', 'add_max_s', 'add_min_s')
+    lines.extend((
+        '',
+        'ADD_EVENT_DETAIL SUMMARY',
+        'rank host events mask astype gate_lo gate_hi gate_mask sum0 sum1 square sum2 sta_lo sta_hi max min',
+    ))
+    for item in gathered:
+        lines.append('%04d %s %6d ' % (item['rank'], item['host'], item['events'])
+                     + ' '.join('%.6f' % item[k] for k in add_event_keys))
+
+    lines.extend((
+        '',
+        'ADD_EVENT_DETAIL AGGREGATE',
+        'add_mask_time_max_s=%.6f' % max(item['add_mask_s'] for item in gathered),
+        'add_astype_time_max_s=%.6f' % max(item['add_astype_s'] for item in gathered),
+        'add_gate_lo_time_max_s=%.6f' % max(item['add_gate_lo_s'] for item in gathered),
+        'add_gate_hi_time_max_s=%.6f' % max(item['add_gate_hi_s'] for item in gathered),
+        'add_gate_mask_time_max_s=%.6f' % max(item['add_gate_mask_s'] for item in gathered),
+        'add_sum0_time_max_s=%.6f' % max(item['add_sum0_s'] for item in gathered),
+        'add_sum1_time_max_s=%.6f' % max(item['add_sum1_s'] for item in gathered),
+        'add_square_time_max_s=%.6f' % max(item['add_square_s'] for item in gathered),
+        'add_sum2_time_max_s=%.6f' % max(item['add_sum2_s'] for item in gathered),
+        'add_sta_lo_time_max_s=%.6f' % max(item['add_sta_lo_s'] for item in gathered),
+        'add_sta_hi_time_max_s=%.6f' % max(item['add_sta_hi_s'] for item in gathered),
+        'add_max_time_max_s=%.6f' % max(item['add_max_s'] for item in gathered),
+        'add_min_time_max_s=%.6f' % max(item['add_min_s'] for item in gathered),
+    ))
+
+    for line in lines:
+        print(line, flush=True)
+        logger.info(line)
+
+
 class DarkProcJungfrauMPI(DarkProcJungfrau):
     """Extends DarkProcJungfrau for MPI"""
     def __init__(self, **kwa):
@@ -64,7 +226,18 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
 
     def add_event(self, raw, irec):
         logger.debug('add_event for %s' % s_rsch)
-        DarkProcJungfrau.add_event(self, raw, irec)
+        timing = getattr(self, '_stage2_timing', None)
+        if timing is None:
+            DarkProcJungfrau.add_event(self, raw, irec)
+            return
+
+        t0 = time()
+        uc.DarkProc.add_event(self, raw, irec)
+        timing['core_add_event_s'] += time() - t0
+
+        t0 = time()
+        self.add_statistics_bad_gain_switch(raw, irec)
+        timing['bad_switch_s'] += time() - t0
 
     def _init_neutral_summary_state(self):
         """Mona - protection against hungry ranks.
@@ -76,23 +249,37 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
 
     def summary(self):
         #logger.info(uc.info_ndarr(self.arr_sum0, 'XXX summary begin irec: %d for %s arr_sum0:' % (self.irec, s_rsch), first=0, last=5))
+        timing = getattr(self, '_stage2_timing', None)
+        t_summary0 = time()
         smd = self.smd
         local_irec = self.irec
         if self.irec == -1:
             logger.warning('HUNGRY RANK !!!! in summary %s' % s_rsch)
+            t_neutral0 = time()
             self._init_neutral_summary_state()
+            if timing is not None:
+                timing['neutral_init_s'] += time() - t_neutral0
             local_irec = 0
-        irec       = smd.sum(local_irec)
+
+        def timed_reduce(key, func, arg):
+            if timing is None:
+                return func(arg)
+            t0 = time()
+            value = func(arg)
+            timing[key] += time() - t0
+            return value
+
+        irec       = timed_reduce('red_irec_s', smd.sum, local_irec)
 #        print('XXX summary irec:', irec, ' self.irec:', self.irec)
 
-        arr_sum0   = smd.sum(self.arr_sum0)
-        arr_sum1   = smd.sum(self.arr_sum1)
-        arr_sum2   = smd.sum(self.arr_sum2)
-        arr_max    = smd.max(self.arr_max)
-        arr_min    = smd.min(self.arr_min)
-        sta_int_lo = smd.sum(self.sta_int_lo)
-        sta_int_hi = smd.sum(self.sta_int_hi)
-        bad_switch = smd.bor(self.bad_switch)
+        arr_sum0   = timed_reduce('red_sum0_s', smd.sum, self.arr_sum0)
+        arr_sum1   = timed_reduce('red_sum1_s', smd.sum, self.arr_sum1)
+        arr_sum2   = timed_reduce('red_sum2_s', smd.sum, self.arr_sum2)
+        arr_max    = timed_reduce('red_max_s', smd.max, self.arr_max)
+        arr_min    = timed_reduce('red_min_s', smd.min, self.arr_min)
+        sta_int_lo = timed_reduce('red_int_lo_s', smd.sum, self.sta_int_lo)
+        sta_int_hi = timed_reduce('red_int_hi_s', smd.sum, self.sta_int_hi)
+        bad_switch = timed_reduce('red_bad_switch_s', smd.bor, self.bad_switch)
 
         #logger.info(uc.info_ndarr(arr_sum0, 'XXX summary end irec: %s for %s arr_sum0:' % (str(irec), s_rsch), first=0, last=5))
 
@@ -110,7 +297,13 @@ class DarkProcJungfrauMPI(DarkProcJungfrau):
 
             logger.info('begin evaluation of results in %s on reduction rank' % s_rsch)
 
+            t_eval0 = time()
             DarkProcJungfrau.summary(self)
+            if timing is not None:
+                timing['summary_eval_s'] += time() - t_eval0
+
+        if timing is not None:
+            timing['summary_total_s'] += time() - t_summary0
 
 
 class Storage:
@@ -182,6 +375,12 @@ def jungfrau_dark_proc_mpi(parser):
     dirmode  = kwargs.get('dirmode',  0o2775)
     filemode = kwargs.get('filemode', 0o664)
     group    = kwargs.get('group', 'ps-users')
+    timing_enabled = _env_is_true('JUNGFRAU_DARK_PROC_STAGE2_TIMING')
+    stage2_timing = _stage2_timing_template() if timing_enabled else None
+    if timing_enabled and is_rank0:
+        msg = 'STAGE2_TIMING enabled by JUNGFRAU_DARK_PROC_STAGE2_TIMING'
+        print(msg, flush=True)
+        logger.info(msg)
 
     storage.setattr_from_kwargs(**kwargs)
 
@@ -195,12 +394,18 @@ def jungfrau_dark_proc_mpi(parser):
     kwargs['info_xtc_files'] = is_rank0
     kwargs['smd_callback'] = filter_callback
     #kwargs['max_events'] = kwargs.get('events', 3000)
+    t_ds0 = time()
     ds, dskwargs = open_DataSource(**kwargs)
+    if stage2_timing is not None:
+        stage2_timing['ds_create_s'] = time() - t_ds0
     #### kwargs['ds'] = ds
     kwargs['dskwargs'] = dskwargs
     logger.debug('on %s open DataSource as: %s' % (s_rsch, str(ds)))
 
+    t_smd0 = time()
     smd = ds.smalldata()
+    if stage2_timing is not None:
+        stage2_timing['smd_create_s'] = time() - t_smd0
 
     dpo = None
     merger = None
@@ -214,7 +419,11 @@ def jungfrau_dark_proc_mpi(parser):
     terminate_runs = False
 
     #for irun, orun in enumerate(ds.runs()):
+    t_run0 = time()
     orun = next(ds.runs())
+    if stage2_timing is not None:
+        stage2_timing['next_run_s'] = time() - t_run0
+        stage2_timing['run'] = orun.runnum
 
     #### !!!!!!!!!!!!!!!!!!!!
     #### kwargs['orun'] = orun  #### !!!!!!!!!!!!!!!!!!!!
@@ -239,7 +448,10 @@ def jungfrau_dark_proc_mpi(parser):
         # Detector is in the step/event loop to hide it from all ranks
         #d = ups.dict_filter(kwargs, list_keys=('accept_missing',))
         if odet is None:
+           t_det0 = time()
            odet = orun.Detector(detname, **kwargs)
+           if stage2_timing is not None:
+               stage2_timing['det_create_s'] += time() - t_det0
            #kwargs['odet'] = odet
 
         if dettype is None:
@@ -283,6 +495,7 @@ def jungfrau_dark_proc_mpi(parser):
            dpo.odet = odet
            dpo.orun = orun
            dpo.smd = smd
+           dpo._stage2_timing = stage2_timing
            igm0 = igm
 
         if igm != igm0:
@@ -291,18 +504,30 @@ def jungfrau_dark_proc_mpi(parser):
         if is_rank_sel:
            logger.info('%s\n== begin step %d gain mode "%s" index %d on %s' % (120*'-', istep, gmname, igm, s_rsch))
 
+        if stage2_timing is not None:
+            stage2_timing['steps'] += 1
+        t_event_loop0 = time()
         for ievt, evt in enumerate(step.events()):
             nevrun += 1
+            if stage2_timing is not None and stage2_timing['first_evt_s'] < 0:
+                stage2_timing['first_evt_s'] = time() - t0_sec
 
+            t_raw0 = time()
             raw = odet.raw.raw(evt)
+            if stage2_timing is not None:
+                stage2_timing['raw_s'] += time() - t_raw0
             if raw is None:
                 logger.debug('det.raw.raw(evt) is None in event %d' % ievt)
                 nnones =+ 1
+                if stage2_timing is not None:
+                    stage2_timing['raw_none'] += 1
                 continue
 
             raw = (raw if segind is None else raw[segind,:]) # NO & M14 here
 
             nevsel += 1
+            if stage2_timing is not None:
+                stage2_timing['events'] += 1
 
             tsec = time()
             dt   = tsec - tdt
@@ -313,12 +538,17 @@ def jungfrau_dark_proc_mpi(parser):
                 logger.info(ss)
 
             if dpo is not None:
+                t_dpo_event0 = time()
                 status = dpo.event(raw, ievt)
+                if stage2_timing is not None:
+                    stage2_timing['dpo_event_s'] += time() - t_dpo_event0
                 if status == 1:
                     logger.error('This option nrecs == nrecs1 should not be used with mpi')
                 elif status == 2:
                     logger.info('requested statistics --nrecs=%d is collected' % args.nrecs)
             # End of event-loop
+        if stage2_timing is not None:
+            stage2_timing['event_loop_s'] += time() - t_event_loop0
 
         ss = '%s runnum:%d end of step %d events run/step/selected: %4d/%4d/%4d  step time: %.3f sec'%\
              (s_rsch, orun.runnum, istep, nevrun, ievt+1, nevsel, time() - t0_sec_step)
@@ -327,20 +557,32 @@ def jungfrau_dark_proc_mpi(parser):
         logger.info('%s smd.summary: %s' % (s_rsch, str(smd.summary)))
 
         if smd.summary:
+            t_summary_call0 = time()
             dpo.summary()
+            if stage2_timing is not None:
+                stage2_timing['summary_call_s'] += time() - t_summary_call0
             if rank == dpo.rank_sum:
                 is_rank_sum = True
                 if True:
                     if merger is None:
                         merger = uc.MergerDarkArrays()
+                    t_merger0 = time()
                     merger.add_arrs_for_gain_range(dpo)
+                    if stage2_timing is not None:
+                        stage2_timing['merger_s'] += time() - t_merger0
                     if igm == 2:
+                        t_deploy0 = time()
                         resp = os.system('klist')
                         logger.info('>>>> save results in DB on %s\n  command klist:\n%s' % (s_rsch, str(resp)))
                         ujc.jungfrau_deploy_dark_direct(merger, orun, odet, **kwargs)
+                        if stage2_timing is not None:
+                            stage2_timing['deploy_s'] += time() - t_deploy0
                 if save:
                     logger.info('begin save_results_in_repository in %s' % s_rsch)
+                    t_save0 = time()
                     uc.save_results_in_repository(dpo, orun, odet, **kwargs)
+                    if stage2_timing is not None:
+                        stage2_timing['save_s'] += time() - t_save0
 
         #del(dpo)
         dpo = None
@@ -348,9 +590,12 @@ def jungfrau_dark_proc_mpi(parser):
     smd.done()
     logger.info('SMD.DONE %s' % s_rsch)
 
+    if stage2_timing is not None:
+        stage2_timing['total_s'] = time() - t0_sec
+        _print_stage2_timing_summary(stage2_timing)
+
     if is_rank_sum:
         logger.info('SUM %s total consumed time %.3f sec' % (s_rsch, time()-t0_sec))
         repoman.logfile_save()
 
 # EOF
-
