@@ -18,3 +18,16 @@ RAW_ASIC_LAYOUT = (
     {'slot': 2, 'row_slice': (0, 176),   'col_slice': (0, 192),   'operator': 'rot180'},
     {'slot': 3, 'row_slice': (176, 352), 'col_slice': (0, 192),   'operator': 'identity'},
 )
+
+
+def raw_detector_view(array):
+    """Tile raw epixquad segments into the shared 2x2 detector-panel view."""
+    import numpy as np
+
+    array = np.asarray(array)
+    if array.shape != RAW_SHAPE:
+        raise ValueError(f'raw_detector_view expects shape {RAW_SHAPE}, got {array.shape}')
+    return np.vstack([
+        np.hstack([array[3], array[2]]),
+        np.hstack([array[1], array[0]]),
+    ])

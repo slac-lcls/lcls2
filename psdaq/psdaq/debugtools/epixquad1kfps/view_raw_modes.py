@@ -6,6 +6,7 @@ import matplotlib as mpl
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import BoundaryNorm, ListedColormap
+from psdaq.configdb.epixquad_layout import raw_detector_view
 from psana import DataSource
 
 mpl.rcParams["font.size"] = 8
@@ -13,14 +14,6 @@ mpl.rcParams["font.size"] = 8
 TOP2_NAMES = ("00", "01", "10", "11")
 TOP2_COLORS = ("#2f2f2f", "#1f78b4", "#e66101", "#984ea3")
 MISMATCH_COLORS = {"FP": "#ff2d2d", "FN": "#00d5ff"}
-
-
-def epixquad_detector_view(arr):
-    assert arr.shape == (4, 352, 384)
-    return np.vstack([
-        np.hstack([arr[3], arr[0]]),
-        np.hstack([arr[2], arr[1]]),
-    ])
 
 
 def parse_args():
@@ -76,14 +69,14 @@ def parse_args():
 def _mask_view(mask, *, det, evt, use_raw_view):
     if mask.ndim == 3 and mask.shape == (4, 352, 384):
         mask = mask.astype(np.uint8)
-        return epixquad_detector_view(mask) if use_raw_view else det.raw.image(evt, mask)
+        return raw_detector_view(mask) if use_raw_view else det.raw.image(evt, mask)
     if mask.ndim == 2:
         return mask
     raise ValueError(f"unsupported mask shape: {mask.shape}")
 
 
 def _image_view(det, evt, arr, use_raw_view):
-    return epixquad_detector_view(arr) if use_raw_view else det.raw.image(evt, arr)
+    return raw_detector_view(arr) if use_raw_view else det.raw.image(evt, arr)
 
 
 def _load_mismatch_labels(csv_path, run_number):
