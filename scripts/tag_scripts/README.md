@@ -4,11 +4,11 @@
 
 ### Purpose
 
-Stored within the `lcls2` repository, this script creates tags for deployed production versions of the DAQ within a hutch. This allows accurate bookkeeping regarding what versions are deployed at a specific date per hutch.
+Stored within the `lcls2` repository, this script creates tags for deployed production versions of the DAQ within a hutch. This allows accurate bookkeeping of which versions are deployed at a specific date per hutch.
 
 ### Usage
 
-The script takes in arguments in order to be used across both `lcls2` and `ami`. There is only one copy of the script and it lives within the `lcls2` repo.
+The script accepts arguments so it can be used across both `lcls2` and `ami`. There is only one copy of the script, and it lives within the `lcls2` repo.
 
 - **`hutch_name`** — The name of the hutch, e.g., `xpp`, `tmo`.
   - Used as part of the tag name.
@@ -26,7 +26,7 @@ The script takes in arguments in order to be used across both `lcls2` and `ami`.
 
 ### Script
 
-This does not go over all parts of the script, but covers important details.
+This section does not cover all parts of the script, but highlights the important details.
 
 **Fetch latest commits:**
 
@@ -38,7 +38,7 @@ echo -e "${GREEN}Fetch complete${NC}"
 echo ""
 ```
 
-The `git fetch --all` is applied to the tag repo. This ensures we are pushing to an up-to-date repo. `pull` is not used because it performs a merge to the local copy — `fetch` is lighter.
+`git fetch --all` runs against the tag repo. This ensures we are pushing to an up-to-date repo. `pull` is not used because it performs a merge on the local copy — `fetch` is lighter.
 
 **The loop:**
 
@@ -107,7 +107,7 @@ The tag name is built from the hutch name argument and the date when the repo wa
                 git tag -a "$TAG_NAME" "$GIT_HASH" -m "Tag for ${HUTCH_NAME} install"
 ```
 
-It verifies that the hash exists in the history of the tag repo, then checks whether the tag already exists. This repeats across each item in the path and ends with a single push.
+It verifies that the hash exists in the history of the tag repo, then checks whether the tag already exists. This logic repeats for each item in the root directory; once all tags are created, a single push sends them upstream.
 
 ---
 
@@ -115,11 +115,11 @@ It verifies that the hash exists in the history of the tag repo, then checks whe
 
 ### Purpose
 
-The core idea is that this script monitors the DAQ directories in each hutch. If a change is detected, it creates a branch and pushes to the `lcls2` repo.
+This script monitors the DAQ directories in each hutch. If a change is detected, it creates a branch and pushes to the `lcls2` repo.
 
 ### Usage
 
-The script takes in arguments in order to be used across both `lcls2` and `ami`. There is only one copy of the script and it lives within the `lcls2` repo.
+The script accepts arguments so it can be used across both `lcls2` and `ami`. There is only one copy of the script, and it lives within the `lcls2` repo.
 
 - **`hutch_name`** — The name of the hutch, e.g., `xpp`, `tmo`.
   - Used as part of the branch name.
@@ -137,7 +137,7 @@ The script takes in arguments in order to be used across both `lcls2` and `ami`.
 
 ### Script
 
-This does not go over all parts of the script, but covers sections people may get stumped on.
+This section does not cover all parts of the script, but highlights sections that may be confusing.
 
 **Main loop:**
 
@@ -161,7 +161,7 @@ This will apply the changes.
 
 ## Cron
 
-You need to be on `psrel@sdfcron001`. The cron jobs themselves must be run as `psrel`. The `psrel` user is needed so that the dev team can update as needed, rather than relying on a single developer. The jobs are set to run once a week.
+You need to be on `psrel@sdfcron001`. The cron jobs themselves must be run as `psrel`. The `psrel` user is needed so that the dev team can update as needed, rather than relying on a single developer. The tag jobs are set to run once a week; the branch jobs run daily.
 
 > **Note:** `psrel` has git push access on `lcls2` and `ami` when using SSH clones.
 
