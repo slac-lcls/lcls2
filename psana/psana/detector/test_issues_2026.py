@@ -489,13 +489,6 @@ def issue_2026_04_15(args):
         if plot_image: gr.show()
 
 
-
-
-
-
-
-
-
 def issue_2026_05_01(args):
     """ISSUE:
               datinfo -k exp=uedc00106,run=329 -d epixquad1kfps
@@ -526,30 +519,39 @@ def issue_2026_05_01(args):
     #geo_meta = det.calibconst['geometry']
     #if geo_meta is not None: print('geometry metadata:', geo_meta[1])
 
-    peds = det.raw._pedestals()
-    print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+    #peds = det.raw._pedestals()
+    #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
 
-    plot_image = False # True
+    cbits = det.raw._cbits_config_detector()
+    print(ndu.info_ndarr(cbits, 'XXXX det.raw._cbits_config_detector()', last=10))
+
+    plot_image = True # True False
     flimg = None
-    if isubset & 1:
+    if isubset is not None:
         for nevt,evt in enumerate(run.events()):
             #det.raw._raw_buf = None
             raw = det.raw.raw(evt)
-            print('XXX === evt: %03d' % nevt)
+            print('==== evt: %03d' % nevt)
             print(ndu.info_ndarr(raw, '  raw'))
 
+            t0_sec = time()
             cal = det.raw.calib(evt)
+            print('  calib time: %.6f sec' % (time() - t0_sec))  # ~3ms
             print(ndu.info_ndarr(cal, '  cal'))
 
             #arr = det.raw._array(evt)
             #print(ndu.info_ndarr(arr, 'arr'))
             #if nevt>1: break
-            
-            if plot_image:
-                #img = arr
-                #img = raw[0,:]
-                img=det.raw.image(evt, nda=raw)
 
+            if plot_image:
+                imgarr = raw   if isubset == 1 else\
+                         cal   if isubset == 2 else\
+                         cbits if isubset == 4 else\
+                         raw
+
+                #img=det.raw.image(evt, nda=raw)
+                #img=det.raw.image(evt, nda=cal)
+                img=det.raw.image(evt, nda=imgarr)
                 if flimg is None:
                     flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
                     gr.plt.ion()
@@ -559,10 +561,109 @@ def issue_2026_05_01(args):
                 flimg.update(img)
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
-        
+
+
+def issue_2026_05_04(args):
+    """ISSUE: JWT example fro murali
+       PROBLEM:
+       FIX:
+    """
+    print('template')
+
+    #!/usr/bin/env python3
+
+    import os
+    import json
+
+    from requests import Session
+
+    # Get the JWT from the environment
+    jwt = os.environ["CALIB_JWT"]
+    if not jwt:
+        raise Exception("Cannot determine the JWT")
+
+    session = Session()
+    session.headers.update({"Authorization": "Bearer " + jwt })
+
+    print("\033[0;31mGetting some calib data using the JWT\033[0m")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_detnum1234/"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print("\033[0;31mMake sure we can edit calib information using the JWT\033[0m")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/test_edit_privilege"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+
+
+def issue_2026_05_05(args):
+    """ISSUE: command
+              datinfo -k exp=tstx00117,run=333,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00117/xtc -d epixuhr3x2
+              DOES NOT WORK, because det.raw.raw(evt) does not work
+       PROBLEM:
+       FIX:
+    """
+    from psana import DataSource
+    from time import time
+    import sys
+    import numpy as np
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu
+
+    events = args.events
+    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+
+    expname, runnum, detname = 'tstx00117',  333, 'epixuhr3x2'
+
+    #ds = DataSource(exp=expname, run=runnum, dir='/sdf/data/lcls/drpsrcf/ffb/tst/tstx00117/xtc', **{'max_events':events})
+    ds = DataSource(exp=expname, run=runnum, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector(detname)
+
+    #geo_meta = det.calibconst['geometry']
+    #if geo_meta is not None: print('geometry metadata:', geo_meta[1])
+
+    #peds = det.raw._pedestals()
+    #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+
+    cbits = det.raw._cbits_config_detector()
+    print(ndu.info_ndarr(cbits, 'XXX det.raw._cbits_config_detector()', last=10))
+
+    plot_image = True # True False
+    flimg = None
+    if isubset is not None:
+        for nevt,evt in enumerate(run.events()):
+            print('==== evt: %03d' % nevt)
+            raw = det.raw.raw(evt)
+            img = det.raw.image(evt)
+            print(ndu.info_ndarr(raw, '  raw'))
+            print(ndu.info_ndarr(img, '  image'))
+
+            if plot_image:
+                imgarr = raw   if isubset == 1 else\
+                         cal   if isubset == 2 else\
+                         cbits if isubset == 4 else\
+                         raw
+
+                #img=det.raw.image(evt, nda=raw)
+                #img=det.raw.image(evt, nda=cal)
+                img=det.raw.image(evt, nda=imgarr)
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
+                    gr.plt.ion()
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+        if plot_image: gr.show()
+
 #===
 
-def issue_2026_MM_DD(subtest='0o7777'):
+def issue_2026_MM_DD(args):
     """ISSUE:
        PROBLEM:
        FIX:
@@ -570,7 +671,6 @@ def issue_2026_MM_DD(subtest='0o7777'):
     print('template')
 
 #===
-    
 
 def argument_parser():
     from argparse import ArgumentParser
@@ -615,7 +715,9 @@ def selector():
     elif TNAME in ('6',): issue_2026_04_10(args.subtest)
     elif TNAME in ('7',): issue_2026_04_15(args) # various images selected by -s [#]
     elif TNAME in ('8',): issue_2026_05_01(args)
-    elif TNAME in ('99',):issue_2026_MM_DD(args.subtest)
+    elif TNAME in ('9',): issue_2026_05_04(args)
+    elif TNAME in ('10',):issue_2026_05_05(args)
+    elif TNAME in ('99',):issue_2026_MM_DD(args)
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)

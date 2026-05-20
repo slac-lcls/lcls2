@@ -207,9 +207,11 @@ class Storage_v02(): # Storage):
 
         self.cmpars = det_raw._common_mode() if cmpars is None else cmpars
 
-        s = 'Storage_v02 preserved constants:'\
+        s = 'Storage_v02 constants:'\
           + f'\n  shape_det: {self.shape_det}\n  shape_as_daq: {self.shape_as_daq}'\
           + f'\n  cmpars: {self.cmpars}'\
+          + info_ndarr(cbits_hm,  '\n  cbits_hm')\
+          + info_ndarr(cbits_lo,  '\n  cbits_lo')\
           + info_ndarr(self.mask, '\n  mask')\
           + info_ndarr(self.peds, '\n  peds')\
           + info_ndarr(self.gfac, '\n  gfac')
@@ -319,7 +321,7 @@ def cbits_config_epix10ka(cob, shape=(352, 384)):
 
 def cbits_config_epix10ka_v02(cob):
     """ v02 - for epix10ka_raw_3_0_0 and later
-        Mona is going to return cob.asicPixelConfig for entire panel, including trbit
+        Mona returns cob.cbitsConfig for entire panel, including trbit in 5-th position added to cob.asicPixelConfig
 
     Creates array of the segment control bits for epix10ka shape=(352, 384)
     from cob=det.raw._seg_configs()[<seg-ind>].config object.
@@ -338,14 +340,15 @@ def cbits_config_epix10ka_v02(cob):
         Contains:
         cob.asicPixelConfig: shape:(352, 384) size:136704 dtype:uint8 [12 12 12 12 12...]
         cob.trbit: [1 1 1 1] - per asic
+        cob.cbitsConfig includes trbit in 5-th position
 
     Returns
     -------
     xxxx: np.array, dtype:uint8, ndim=2, shape=(352, 384)
     """
-    cbits = cob.asicPixelConfig # expected panel shape:(352, 384) dtype:uint8
+    cbits = cob.cbitsConfig # expected panel shape:(352, 384) dtype:uint8
     #logger.debug(info_ndarr(cbits, 'trbits: %s asicPixelConfig:'%str(trbits)))
-    print(info_ndarr(cbits, '  XXX cbits_config_epix10ka_v02 asicPixelConfig:'))
+    logger.debug(info_ndarr(cbits, '  XXX cbits_config_epix10ka_v02 cbitsConfig (includes trbit):'))
     return cbits
 
 def cbits_config_epixhr1x4(cob, shape=(144, 768)):
@@ -796,7 +799,6 @@ def calib_epix10ka_v02(det_raw, evt, **kwa): #cmpars=(7,2,100):
       - mask - user defined mask passed as optional parameter
     """
     logger.debug('calib_epix10ka_v02 kwa:', kwa)
-    print('>>> UtilsEpix10ka.py: calib_epix10ka_v02 kwa:', kwa)
 
     nda_raw = kwa.get('nda_raw', None)
     cmpars  = kwa.get('cmpars', None)
@@ -807,10 +809,6 @@ def calib_epix10ka_v02(det_raw, evt, **kwa): #cmpars=(7,2,100):
     store.counter += 1
 
     igr = grindex_array(raw, gbit=det_raw._data_gain_bitnum) # per-pixel array of gain indices 0 or 1
-    print(info_ndarr(igr,  'XXX    igr:'))
-
-    #factor = store.gfac[igr,:] ???
-    #pedest = store.peds[igr,:]
 
     #for index in np.ndindex(arr.shape):
     #   print(index, arr[index])
@@ -822,12 +820,11 @@ def calib_epix10ka_v02(det_raw, evt, **kwa): #cmpars=(7,2,100):
     #print('XXX np.ndindex time: %.6f sec' % (time() - t0_sec)) # 4ms
 
     t0_sec = time()
-    factor = np.select((igr==0, igr==1), (store.gfac[0,:], store.gfac[1,:]))
     pedest = np.select((igr==0, igr==1), (store.peds[0,:], store.peds[1,:]))
-    print('XXX np.select time: %.6f sec' % (time() - t0_sec)) # 4ms
-
-    print(info_ndarr(factor,  'XXX factor:'))
-    print(info_ndarr(pedest,  'XXX pedest:'))
+    factor = np.select((igr==0, igr==1), (store.gfac[0,:], store.gfac[1,:]))
+    logger.debug('np.select for pedest & factor time: %.6f sec' % (time() - t0_sec)\
+                 +info_ndarr(factor,  '\n    factor:')\
+                 +info_ndarr(pedest,  '\n    pedest:'))
 
     raw14 = np.bitwise_and(raw, det_raw._data_bit_mask)
     arrf = np.array(raw14, dtype=np.float32)

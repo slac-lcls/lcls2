@@ -183,62 +183,62 @@ namespace Drp {
             L2Iter                m_timinput;
         };
     };
-};
 
-//
-//  Data types from LCLS-1
-//
-namespace PdsL1 {
-    class Xtc {
-    public:
-        char* payload() { return (char*)(this+1); }
-        uint32_t damage;
-        uint32_t src_log;
-        uint32_t src_phy;
-        uint32_t contains;
-        uint32_t extent;
-    };
-    class FrameV1 {
-    public:
-        uint16_t*   data() { return reinterpret_cast<uint16_t*>(this+1); }
-        uint16_t&   operator()(unsigned pix) { return data()[pix]; }
-        uint32_t	_pixels;	/**< Number of pixels. */
-        uint32_t	_depth;	/**< Number of bits per pixel. */
-        uint32_t	_offset;	/**< Fixed offset/pedestal value of pixel data. */
-        //uint8_t	_pixel_data[this->_pixels*((this->_depth+7)/8)];
-    };
-    class FIFOEvent {
-    public:
-        uint32_t	_timestampHigh;	/**< 119 MHz timestamp (fiducial) */
-        uint32_t	_timestampLow;	/**< 360 Hz timestamp */
-        uint32_t	_eventCode;	/**< event code (range 0-255) */
-    };
-    class EvrDataV4 {
-    public:
-        uint32_t	_u32NumFifoEvents;	/**< length of FIFOEvent list */
-        FIFOEvent*  _events() { return reinterpret_cast<FIFOEvent*>(this+1); }
-        //EvrData::FIFOEvent	_fifoEvents[this->_u32NumFifoEvents];
-    };
-    class TimeToolDataV1 {
-    public:
-        uint32_t	_event_type;	/**< Event designation */
-        uint32_t	_z;
-        double	_amplitude;	/**< Amplitude of the edge */
-        double	_position_pixel;	/**< Filtered pixel position of the edge */
-        double	_position_time;	/**< Filtered time position of the edge */
-        double	_position_fwhm;	/**< Full-width half maximum of filtered edge (in pixels) */
-        double	_nxt_amplitude;	/**< Amplitude of the next largest edge */
-        double	_ref_amplitude;	/**< Amplitude of reference at the edge */
-        //int32_t	_average_signal[cfg.signal_average_size()];
+    //
+    //  Data types from LCLS-1
+    //
+    namespace PdsL1 {
+        class Xtc {
+        public:
+            char* payload() { return (char*)(this+1); }
+            uint32_t damage;
+            uint32_t src_log;
+            uint32_t src_phy;
+            uint32_t contains;
+            uint32_t extent;
+        };
+        class FrameV1 {
+        public:
+            uint16_t*   data() { return reinterpret_cast<uint16_t*>(this+1); }
+            uint16_t&   operator()(unsigned pix) { return data()[pix]; }
+            uint32_t	_pixels;	/**< Number of pixels. */
+            uint32_t	_depth;	/**< Number of bits per pixel. */
+            uint32_t	_offset;	/**< Fixed offset/pedestal value of pixel data. */
+            //uint8_t	_pixel_data[this->_pixels*((this->_depth+7)/8)];
+        };
+        class FIFOEvent {
+        public:
+            uint32_t	_timestampHigh;	/**< 119 MHz timestamp (fiducial) */
+            uint32_t	_timestampLow;	/**< 360 Hz timestamp */
+            uint32_t	_eventCode;	/**< event code (range 0-255) */
+        };
+        class EvrDataV4 {
+        public:
+            uint32_t	_u32NumFifoEvents;	/**< length of FIFOEvent list */
+            FIFOEvent*  _events() { return reinterpret_cast<FIFOEvent*>(this+1); }
+            //EvrData::FIFOEvent	_fifoEvents[this->_u32NumFifoEvents];
+        };
+        class TimeToolDataV1 {
+        public:
+            uint32_t	_event_type;	/**< Event designation */
+            uint32_t	_z;
+            double	_amplitude;	/**< Amplitude of the edge */
+            double	_position_pixel;	/**< Filtered pixel position of the edge */
+            double	_position_time;	/**< Filtered time position of the edge */
+            double	_position_fwhm;	/**< Full-width half maximum of filtered edge (in pixels) */
+            double	_nxt_amplitude;	/**< Amplitude of the next largest edge */
+            double	_ref_amplitude;	/**< Amplitude of reference at the edge */
+            //int32_t	_average_signal[cfg.signal_average_size()];
+        };
     };
 };
 
 static void _load_xtc(std::vector<uint8_t>&, const char*);
 
 
-using Drp::Piranha4;
-using Drp::Piranha4TTFex;
+using namespace Drp;
 using Drp::Piranha::TT;
+using Drp::Piranha::TTSim;
 using Drp::Piranha::TTSimL1;
 using Drp::Piranha::TTSimL2;
 

@@ -40,12 +40,14 @@ import getpass
 #...detector/test_issues_2025.py 45
 
 IS_OFFSITE = os.environ.get('SIT_PSDM_OFFSITE', None) is not None
-URL_ENV = os.environ.get('LCLS_CALIB_HTTP', None)
+URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', None)
+CALIB_JWT  = os.environ.get('CALIB_JWT', None) is not None
 
 #print('IS_OFFSITE:', IS_OFFSITE)
-
+#URL = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
 URL = 'https://psextapi.slac.stanford.edu/calib_ws/' if IS_OFFSITE else\
       'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
+#URL_KRB = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
 URL_KRB = 'https://psextapi.slac.stanford.edu/ws-kerb/calib_ws/' if IS_OFFSITE else\
           'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
 URL_KRB_HEADERS = URL_KRB if IS_OFFSITE else\

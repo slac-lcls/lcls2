@@ -44,6 +44,9 @@ class Instruction(object):
         args[1:len(self.args)+1] = self.args
         return args
 
+    def print_(self):
+        return f'{self.args[0]:x}'
+
     def __str__(self):
         return self.print_()
 
@@ -123,17 +126,17 @@ class ACRateSync(Instruction):
         engine.request = 0
         engine.modes  |= 2
 
-class Branch(Instruction):
+class Jump(Instruction):
 
     opcode = 2
 
     def __init__(self, args):
         if len(args)>2:
             if args[2] > 0x3:
-                raise ValueError('Branch called with ctr={}'.format(args[2]))
+                raise ValueError('Jump called with ctr={}'.format(args[2]))
             if args[3] > Instruction.maxocc:
-                raise ValueError('Branch called with occ={}'.format(args[3]))
-        super(Branch, self).__init__(args)
+                raise ValueError('Jump called with occ={}'.format(args[3]))
+        super(Jump, self).__init__(args)
 
     def _word(self, a = None):
         if a is None:
@@ -157,9 +160,9 @@ class Branch(Instruction):
 
     def print_(self):
         if len(self.args)==2:
-            return 'Branch unconditional to line {}'.format(self.args[1])
+            return 'Jump unconditional to line {}'.format(self.args[1])
         else:
-            return 'Branch to line {} until ctr{}={}'.format(self.args[1],self.args[2],self.args[3])
+            return 'Jump to line {} until ctr{}={}'.format(self.args[1],self.args[2],self.args[3])
 
     def execute(self,engine):
         if len(self.args)==2:
@@ -278,6 +281,31 @@ class Return(Instruction):
         engine.instr = engine.returnaddr
         engine.returnaddr = None
 
+class Upper(Instruction):
+
+    opcode = 8
+
+    def __init__(self, line):
+        super(Upper, self).__init__((self.opcode, line))
+ 
+    def address(self):
+        return self.args[1]
+
+    def _word(self, a=None):
+        if a is None:
+            w = int((6<<29) | (self.args[1]>>11))
+        else:
+            w = int((6<<29) | (a>>11))
+        return w
+
+    def print_(self):
+        return f'Upper {(self.args[1]>>11):x}'
+
+    def execute(self,engine):
+        #  Simulation doesn't really do anything with this
+        engine.upper = self.args[1]
+        engine.instr += 1
+
 #
 #  Macro instructions
 #
@@ -293,7 +321,7 @@ class Macro(Instruction):
         raise RuntimeError(f'Attempting to simulate macro Wait({self.args})')
 
 
-class Wait(Instruction):
+class Wait(Macro):
 
     opcode = -1
 
@@ -325,12 +353,13 @@ class Wait(Instruction):
             l = [FixedRateSync(marker,occ=Instruction.maxocc)]*n
         else:
             l = [FixedRateSync(marker,occ=Instruction.maxocc),
-                 Branch.conditional( line, cc, n-1 )]
+                 Upper(line),
+                 Jump.conditional( line, cc, n-1 )]
         if rem > 0:
             l.append(FixedRateSync(marker,occ=rem))
         return l
             
-class WaitA(Instruction):
+class WaitA(Macro):
 
     opcode = -2
 
@@ -365,19 +394,52 @@ class WaitA(Instruction):
             l = [ACRateSync(timeslotm,marker,occ=Instruction.maxocc)]*n
         else:
             l = [ACRateSync(timeslotm,marker,occ=Instruction.maxocc),
-                 Branch.conditional( line, cc, n-1 )]
+                 Upper(line),
+                 Jump.conditional( line, cc, n-1 )]
         if rem > 0:
             l.append(ACRateSync(timeslotm,marker,occ=rem))
         return l
 
+class Branch(Macro):
+
+    opcode = -3
+
+    def __init__(self, args):
+        super(Branch, self).__init__(args)
+
+    @classmethod
+    def unconditional(cls, line):
+        return cls((cls.opcode, line))
+
+    @classmethod
+    def conditional(cls, line, counter, value):
+        return cls((cls.opcode, line, counter, value))
+
+    def print_(self):
+        return f'Branch({self.args[1:]})'
+
+    #  Create the replacement instructions for this macro
+    def replace(self):
+        line  = self.args[1]
+        l = [Upper(line)]
+        if len(self.args)>2:
+            cc    = self.args[2]
+            value = self.args[3]
+            l.append(Jump.conditional(line,cc,value))
+        else:
+            l.append(Jump.unconditional(line))
+        print(f'Branch {self.args} replaced with {l}')
+        return l
+
+
 def decodeInstr(w):
     idw = w>>29
-    instr = Instruction([])
+    instr = Instruction([w])
     if idw == 0:  # Branch
         if w&(1<<24):
-            instr = Branch.conditional(line=w&0x7ff,counter=(w>>27)&3,value=(w>>12)&Instruction.maxocc)
+            instr = Jump.conditional(line=w&0x7ff,counter=(w>>27)&3,value=(w>>12)&Instruction.maxocc)
         else:
-            instr = Branch.unconditional(line=w&0x7ff)
+            instr = Jump.unconditional(line=w&0x7ff)
     elif idw == 1: # Checkpoint
         instr = CheckPoint()
     elif idw == 2: # FixedRateSync
@@ -391,6 +453,9 @@ def decodeInstr(w):
             instr = Subroutine.return_()
         else:
             instr = Subroutine.call(w&0xfff)
+    elif idw == 6: # Upper
+        instr = Upper(line=w<<11)
+
     return instr
 
 #  validate the conditional counters in a list of instructions
@@ -412,7 +477,7 @@ def validate(filename):
     #  accumulate the branch statement source and targets
     d = {cc:[] for cc in range(Instruction.maxcc)}
     for line,instr in enumerate(l):
-        if instr.args[0]==Branch.opcode and len(instr.args)>2:
+        if instr.args[0]==Jump.opcode and len(instr.args)>2:
             cc   = instr.args[2]
             addr = instr.args[1]
             d[cc].append([addr,line])
@@ -446,11 +511,11 @@ def relocate(instrset,target,source=0):
         else:
             words.append(i._word())
 
-    for i,ins in enumerate(instrset):
-        print(f'{i}: {ins}')
+#    for i,ins in enumerate(instrset):
+#        print(f'{i}: {ins}')
 
-    for i,w in enumerate(words):
-        print(f'{i}: {w:x}')
+#    for i,w in enumerate(words):
+#        print(f'{i}: {w:x}')
 
     return words
 
@@ -461,7 +526,7 @@ def preproc(instrset):
     #  accumulate the branch statement source and targets
     d = {cc:[] for cc in range(Instruction.maxcc)}
     for line,instr in enumerate(instrset):
-        if instr.args[0]==Branch.opcode and len(instr.args)>2:
+        if instr.args[0]==Jump.opcode and len(instr.args)>2:
             cc   = instr.args[2]
             addr = instr.args[1]
             if line < addr:
@@ -492,6 +557,8 @@ def preproc(instrset):
             reps[line] = Wait.replace(instr, _findcc(line), line)
         elif instr.args[0]==WaitA.opcode:
             reps[line] = WaitA.replace(instr, _findcc(line), line)
+        elif instr.args[0]==Branch.opcode:
+            reps[line] = Branch.replace(instr)
 
 #    print(f'reps {reps}')
 
@@ -504,13 +571,17 @@ def preproc(instrset):
         return target
 
     def _relocate(instr):
-        if instr.opcode == Branch.opcode:
+        if instr.opcode == Jump.opcode:
             if len(instr.args) > 2:
-                return Branch.conditional(_target(instr.args[1]), 
-                                          instr.args[2], 
-                                          instr.args[3])
+                return Jump.conditional(_target(instr.args[1]), 
+                                        instr.args[2], 
+                                        instr.args[3])
             else:
-                return Branch.unconditional(_target(instr.args[1]))
+                return Jump.unconditional(_target(instr.args[1]))
+        elif instr.opcode == Upper.opcode:
+            print(f'Upper relocated from {instr.args[1]} to {_target(instr.args[1])}')
+            return Upper(_target(instr.args[1]))
+
         return instr
 
     newinstr = []

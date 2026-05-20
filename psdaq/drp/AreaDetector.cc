@@ -14,37 +14,39 @@ using logging = psalg::SysLog;
 
 namespace Drp {
 
-class FexDef : public VarDef
-{
-public:
-    enum index
-    {
-        array_fex
-    };
+    namespace {
+        class FexDef : public VarDef
+        {
+        public:
+            enum index
+                {
+                    array_fex
+                };
+        
+            FexDef()
+            {
+                Alg fex("fex", 1, 0, 0);
+                NameVec.push_back({"array_fex", Name::UINT16, 2, fex});
+            }
+        } _fexDef;
 
-    FexDef()
-    {
-        Alg fex("fex", 1, 0, 0);
-        NameVec.push_back({"array_fex", Name::UINT16, 2, fex});
+        class RawDef : public VarDef
+        {
+        public:
+            enum index
+                {
+                    value,
+                    array_raw
+                };
+        
+            RawDef()
+            {
+                Alg raw("raw", 1, 0, 0);
+                NameVec.push_back({"value",     Name::UINT32, 0, raw});
+                NameVec.push_back({"array_raw", Name::UINT16, 2, raw});
+            }
+        } _rawDef;
     }
-} _fexDef;
-
-class RawDef : public VarDef
-{
-public:
-    enum index
-    {
-        value,
-        array_raw
-    };
-
-    RawDef()
-    {
-        Alg raw("raw", 1, 0, 0);
-        NameVec.push_back({"value",     Name::UINT32, 0, raw});
-        NameVec.push_back({"array_raw", Name::UINT16, 2, raw});
-    }
-} _rawDef;
 
 AreaDetector::AreaDetector(Parameters* para, MemPool* pool) :
     XpmDetector(para, pool),

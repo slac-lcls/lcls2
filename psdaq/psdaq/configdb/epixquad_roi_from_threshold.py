@@ -17,6 +17,8 @@ from psana import DataSource
 if __package__ in (None, ''):
     sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
+from psdaq.configdb.epixquad_layout import raw_detector_view
+
 ASIC_ROWS = 176
 ASIC_COLS = 192
 MODULE_COUNT = 4
@@ -175,9 +177,7 @@ def _validate_module_shape(array, name):
 
 def assemble_epixquad_panel(array):
     array = _validate_module_shape(array, 'assemble_epixquad_panel')
-    top = np.hstack([array[3], array[2]])
-    bottom = np.hstack([array[1], array[0]])
-    return np.vstack([top, bottom])
+    return raw_detector_view(array)
 
 
 def write_roi_geometry_png(image, roi_mask, det, png_path):

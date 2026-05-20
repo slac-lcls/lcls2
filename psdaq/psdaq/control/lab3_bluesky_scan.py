@@ -18,7 +18,6 @@ parser.add_argument('-C', metavar='COLLECT_HOST', default='drp-tst-dev008',
 parser.add_argument('-t', type=int, metavar='TIMEOUT', default=10000,
                     help='timeout msec (default 10000)')
 parser.add_argument('-c', type=int, metavar='READOUT_COUNT', default=10, help='# of events to aquire at each step (default 10)')
-parser.add_argument('-g', type=int, metavar='GROUP_MASK', default=2, help='bit mask of readout groups (default 2)')
 parser.add_argument('--config', metavar='ALIAS', default='BEAM', help='configuration alias (default BEAM)')
 parser.add_argument('--detname', default='scan', help="detector name (default 'scan')")
 parser.add_argument('--scantype', default='scan', help="scan type (default 'scan')")
@@ -81,7 +80,7 @@ mydaq = BlueskyScan(control, daqState=daqState)
 dets = [mydaq]   # just one in this case, but it could be more than one
 
 # configure BlueskyScan object with a set of motors
-mydaq.configure(motors=[motor1], group_mask=args.g, events=args.c, record=args.record, detname=args.detname, scantype=args.scantype)
+mydaq.configure(motors=[motor1], events=args.c, record=args.record, detname=args.detname, scantype=args.scantype)
 
 # Scan motor1 from -10 to 10, stopping
 # at 15 equally-spaced points along the way and reading dets.

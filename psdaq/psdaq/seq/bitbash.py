@@ -42,15 +42,17 @@ def generate_engine(engine):
     instr.append(f'anchor = len(instrset)')
 
     for i in range(args.count):
-        v = ((i*2+1)>>(engine*4))&0xf
-        instr.append(f'instrset.append( ControlRequest({v}) )')
+        v = ((i*2)&~(i*2-1))|1
+        v = v>>(engine*4)
+        if v>0:
+            instr.append(f'instrset.append( ControlRequest({v}) )')
         instr.append(f'instrset.append( {motion_step} )')
 
     instr.append(f'instrset.append( Branch.unconditional(anchor) )')
 
     #  Write it
-    seqcodes = {i:'Base' if engine==0 and i==0 else f'C{4*engine+i-1}' for i in range(4)}
-    write_seq(instr, seqcodes, f'{args.path}/counter{engine}.py')
+    seqcodes = {i:'Base' if engine==0 and i==0 else f'B{4*engine+i-1}' for i in range(4)}
+    write_seq(instr, seqcodes, f'{args.path}/bitbash{engine}.py')
 
 def main():
     global args

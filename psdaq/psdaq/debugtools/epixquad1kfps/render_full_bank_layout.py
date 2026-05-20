@@ -5,14 +5,7 @@ import json
 from pathlib import Path
 
 import numpy as np
-
-
-def epixquad_detector_view(arr):
-    assert arr.shape == (4, 352, 384)
-    return np.vstack([
-        np.hstack([arr[3], arr[2]]),
-        np.hstack([arr[1], arr[0]]),
-    ])
+from psdaq.configdb.epixquad_layout import raw_detector_view
 
 
 def parse_args():
@@ -119,8 +112,8 @@ def main():
         label_markers[segment, center_row, center_col] = asic + 1
 
     if args.view_raw:
-        img = epixquad_detector_view(merged)
-        label_img = epixquad_detector_view(label_markers)
+        img = raw_detector_view(merged)
+        label_img = raw_detector_view(label_markers)
     else:
         from psana import DataSource
 

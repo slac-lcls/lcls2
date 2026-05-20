@@ -278,7 +278,7 @@ class TimingFrameRx(pr.Device):
         @self.command(name="C_RxReset", description="Reset Rx Link",)
         def C_RxReset():
             self.RxReset.set(1)
-            time.sleep(0.001)
+            time.sleep(0.01)  # C1100 may require longer
             self.RxReset.set(0)    
             #print('C_RxReset not implemented')
 

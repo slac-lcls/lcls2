@@ -1,0 +1,29 @@
+# TITLE      Geometry parameters for epixuhr3x2 2-segment detector
+# DATE_TIME  2026-05-13 10:30:00 PDT
+# METROLOGY  no metrology available
+# AUTHOR     dubrovin
+# EXPERIMENT tstx00117
+# DETECTOR   epixuhr3x2
+# CALIB_TYPE geometry
+# COMMENT:01 Manually created as an example for the 2-segment epixuhr3x2 detector
+
+# PARAM:01 PARENT     - name and version of the parent object
+# PARAM:02 PARENT_IND - index of the parent object
+# PARAM:03 OBJECT     - name and version of the object
+# PARAM:04 OBJECT_IND - index of the new object
+# PARAM:05 X0         - x-coordinate [um] of the object origin in the parent frame
+# PARAM:06 Y0         - y-coordinate [um] of the object origin in the parent frame
+# PARAM:07 Z0         - z-coordinate [um] of the object origin in the parent frame
+# PARAM:08 ROT_Z      - object design rotation angle [deg] around Z axis of the parent frame
+# PARAM:09 ROT_Y      - object design rotation angle [deg] around Y axis of the parent frame
+# PARAM:10 ROT_X      - object design rotation angle [deg] around X axis of the parent frame
+# PARAM:11 TILT_Z     - object tilt angle [deg] around Z axis of the parent frame
+# PARAM:12 TILT_Y     - object tilt angle [deg] around Y axis of the parent frame
+# PARAM:13 TILT_X     - object tilt angle [deg] around X axis of the parent frame
+
+# HDR PARENT   IND    OBJECT         IND    X0[um]  Y0[um]  Z0[um]   ROT-Z ROT-Y ROT-X    TILT-Z   TILT-Y   TILT-X
+
+EPIXUHRCAM:V1    0    EPIXUHR3X2:V1    0         0   18000       0       0     0     0    0.0      0.0      0.0
+EPIXUHRCAM:V1    0    EPIXUHR3X2:V1    1         0  -18000       0       0     0     0    0.0      0.0      0.0
+
+IP:V1            0    EPIXUHRCAM:V1    0         0       0 -100000      90     0     0    0.0      0.0      0.0

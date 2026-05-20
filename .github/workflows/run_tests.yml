@@ -30,14 +30,13 @@ jobs:
           environment-file: .daq_20250402.txt
 
       - name: Build
-        run: ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+        run: ./build_all.sh -d
 
       - name: Run Tests
         run: |
-          cd psana
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          cd ..
           export PATH=$(pwd)/install/bin:${PATH}
+          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           pytest psana/psana/tests/test_HBins.py \
                  psana/psana/tests/test_Time.py \
                  psana/psana/tests/test_TimeFormat.py \
