@@ -144,7 +144,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    #target_compile_options(NoOpReducer PUBLIC -O3)
 
 #--- LC
 
@@ -165,7 +164,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    #target_compile_options(LcReducer PUBLIC -O3)
 
 #--- PFPL
 
@@ -186,29 +184,47 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    #target_compile_options(PfplReducer PUBLIC -O3)
 
-#--- cuSZ
+#--- SLEEK
 
-    find_package(CUSZ REQUIRED)
+    find_package(SLEEK REQUIRED)
 
-    add_library(CuSzReducer SHARED
-        CuSzReducer.cu
+    add_library(SleekReducer SHARED
+        SleekReducer.cu
     )
-    target_include_directories(CuSzReducer PUBLIC
+    target_include_directories(SleekReducer PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
-    target_link_libraries(CuSzReducer
-        CUSZ::cusz
+    target_link_libraries(SleekReducer
+        SLEEK::sleek_shared
         xtcdata::xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
     )
-    #target_compile_options(CuSzReducer PUBLIC -O3)
 
+##--- cuSZ
+#
+#    find_package(CUSZ REQUIRED)
+#
+#    add_library(CuSzReducer SHARED
+#        CuSzReducer.cu
+#    )
+#    target_include_directories(CuSzReducer PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        $<INSTALL_INTERFACE:include>
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(CuSzReducer
+#        CUSZ::cusz
+#        xtcdata::xtc
+#        nlohmann_json::nlohmann_json
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
+#
 #--- cuSZp
 
     find_package(cuSZp REQUIRED)
@@ -228,7 +244,26 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    #target_compile_options(CuSZpReducer PUBLIC -O3)
+
+#--- EIP
+
+    find_package(EIP REQUIRED)
+
+    add_library(EipReducer SHARED
+        EipReducer.cu
+    )
+    target_include_directories(EipReducer PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(EipReducer
+        EIP::eip_shared
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
 
 #--- Tools
 
@@ -304,11 +339,12 @@ if(CMAKE_CUDA_COMPILER)
         EpixUHRemu_gpu
         EpixUHRsim_gpu
         NoOpReducer
-        #LcReducer_old
         LcReducer
         PfplReducer
-        CuSzReducer
-        CuSZpReducer
+        SleekReducer
+        #CuSzReducer
+        #CuSZpReducer
+        EipReducer
         pgpread_gpu
         cudaDeviceProperties
         ARCHIVE DESTINATION lib

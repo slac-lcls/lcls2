@@ -2,16 +2,16 @@
 
 #include "ReducerAlgo.hh"
 
-#include <pfpl/f32_abs_comp_gpu.hh>
+#include <sleek/SingleCompressorLossy.hh>
 
 namespace Drp {
   namespace Gpu {
 
-class PfplReducer : public ReducerAlgo
+class SleekReducer : public ReducerAlgo
 {
 public:
-  PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~PfplReducer() {}
+  SleekReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
+  virtual ~SleekReducer() {}
 
   bool   hasGraph()    const override { return true; }
   size_t payloadSize() const override { return m_compressor.maxSize(); }
@@ -30,7 +30,7 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  PFPL::Compressor m_compressor;
+  SLEEK::SingleCompressorLossy m_compressor;
 };
 
   } // Gpu

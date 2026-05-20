@@ -325,7 +325,7 @@ bool Reducer::_setupAlgos(Detector& det)
     }
     m_algos[i] = instance;
   }
-  logging::info("Loaded reducer library '%s'", soName.c_str());
+  logging::info("Loaded reducer library '%s' for %u workers", soName.c_str(), m_para.nworkers);
   return true;
 }
 

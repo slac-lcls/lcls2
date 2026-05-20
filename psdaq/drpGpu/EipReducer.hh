@@ -2,19 +2,19 @@
 
 #include "ReducerAlgo.hh"
 
-#include <pfpl/f32_abs_comp_gpu.hh>
+#include <eip/Compressor.hh>
 
 namespace Drp {
   namespace Gpu {
 
-class PfplReducer : public ReducerAlgo
+class EipReducer : public ReducerAlgo
 {
 public:
-  PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~PfplReducer() {}
+  EipReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det);
+  virtual ~EipReducer();
 
-  bool   hasGraph()    const override { return true; }
-  size_t payloadSize() const override { return m_compressor.maxSize(); }
+  bool   hasGraph()    const override { return false; }
+  size_t payloadSize() const override { return m_pool.calibBufsSize(); }
   void   recordGraph(cudaStream_t       stream,
                      unsigned*    const state,
                      unsigned*    const index,
@@ -30,7 +30,7 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  PFPL::Compressor m_compressor;
+  EIP::Compressor m_compressor;
 };
 
   } // Gpu

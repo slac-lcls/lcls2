@@ -38,19 +38,20 @@ LcReducer::LcReducer(const Parameters& para, const MemPoolGpu& pool, Detector& d
 
 // This routine records the graph that does the data reduction
 void LcReducer::recordGraph(cudaStream_t       stream,
-                            unsigned*    const state,
-                            unsigned*    const index,
-                            float const* const calibBuffers,
+                            unsigned*    const state_d,
+                            unsigned*    const index_d,
+                            float const* const calibBuffers_d,
                             size_t       const calibBufsCnt,
-                            uint8_t*     const dataBuffers,
+                            uint8_t*     const dataBuffers_d,
                             size_t       const dataBufsCnt)
 {
   m_compressor.updateGraph(stream,
-                           *index,
-                           (uint8_t*)calibBuffers,
-                           calibBufsCnt * sizeof(*calibBuffers),
-                           (uint8_t*)dataBuffers,
-                           dataBufsCnt * sizeof(*dataBuffers));
+                           state_d,
+                           index_d,
+                           (uint8_t*)calibBuffers_d,
+                           calibBufsCnt * sizeof(*calibBuffers_d),
+                           (uint8_t*)dataBuffers_d,
+                           dataBufsCnt * sizeof(*dataBuffers_d));
 }
 
 void LcReducer::reduce(cudaGraphExec_t graph,

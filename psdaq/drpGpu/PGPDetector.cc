@@ -94,8 +94,9 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
-  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, true);
-  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, true); // For 2 ping pong buffers
+  constexpr auto dio{true};
+  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, dio);
+  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, dio); // For 2 ping pong buffers
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
 
   // Reset the record queue

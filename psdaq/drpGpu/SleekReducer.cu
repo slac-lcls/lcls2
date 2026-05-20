@@ -1,4 +1,4 @@
-#include "PfplReducer.hh"
+#include "SleekReducer.hh"
 
 #include "MemPool.hh"
 #include "Detector.hh"
@@ -11,21 +11,21 @@ using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
 
-struct pfpl_domain{ static constexpr char const* name{"PfplReducer"}; };
-using pfpl_scoped_range = nvtx3::scoped_range_in<pfpl_domain>;
+struct sleek_domain{ static constexpr char const* name{"SleekReducer"}; };
+using sleek_scoped_range = nvtx3::scoped_range_in<sleek_domain>;
 
 
 namespace Drp {
   namespace Gpu {
 
-class PfplReducerDef : public VarDef
+class SleekReducerDef : public VarDef
 {
 public:
-  enum index { pfpl };
+  enum index { sleek };
 
-  PfplReducerDef()
+  SleekReducerDef()
   {
-    NameVec.push_back({"pfpl", Name::UINT8, 1});
+    NameVec.push_back({"sleek", Name::UINT8, 1});
   }
 };
 
@@ -33,23 +33,23 @@ public:
 } // Drp
 
 
-PfplReducer::PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
+SleekReducer::SleekReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo (para, pool, det),
-  m_compressor(pool.calibBufsSize(), 3.)
+  m_compressor(pool.calibBufsSize(), 3.0)
 {
   if (para.verbose)  m_compressor.banner();
 }
 
 // This routine records the graph that does the data reduction
-void PfplReducer::recordGraph(cudaStream_t       stream,
-                              unsigned*    const state_d,
-                              unsigned*    const index_d,
-                              float const* const calibBuffers_d,
-                              size_t       const calibBufsCnt,
-                              uint8_t*     const dataBuffers_d,
-                              size_t       const dataBufsCnt)
+void SleekReducer::recordGraph(cudaStream_t       stream,
+                               unsigned*    const state_d,
+                               unsigned*    const index_d,
+                               float const* const calibBuffers_d,
+                               size_t       const calibBufsCnt,
+                               uint8_t*     const dataBuffers_d,
+                               size_t       const dataBufsCnt)
 {
-  pfpl_scoped_range r{/*"PfplReducer::recordGraph"*/}; // Expose function name via NVTX
+  sleek_scoped_range r{/*"SleekReducer::recordGraph"*/}; // Expose function name via NVTX
 
   m_compressor.updateGraph(stream,
                            state_d,
@@ -61,13 +61,13 @@ void PfplReducer::recordGraph(cudaStream_t       stream,
 
 }
 
-void PfplReducer::reduce(cudaGraphExec_t graph,
-                         cudaStream_t    stream,
-                         unsigned        index,
-                         size_t*         dataSize,
-                         unsigned*       retCode)
+void SleekReducer::reduce(cudaGraphExec_t graph,
+                          cudaStream_t    stream,
+                          unsigned        index,
+                          size_t*         dataSize,
+                          unsigned*       retCode)
 {
-  pfpl_scoped_range r{/*"PfplpReducer::reduce"*/}; // Expose function name via NVTX
+  sleek_scoped_range r{/*"SleekpReducer::reduce"*/}; // Expose function name via NVTX
 
   chkFatal(cudaGraphLaunch(graph, stream));
 
@@ -79,22 +79,22 @@ void PfplReducer::reduce(cudaGraphExec_t graph,
   *retCode = 0;                          // @todo: TBD
 }
 
-unsigned PfplReducer::configure(Xtc& xtc, const void* bufEnd)
+unsigned SleekReducer::configure(Xtc& xtc, const void* bufEnd)
 {
   // Set up the names for L1Accept data
-  Alg alg("pfpl", 0, 0, 0);
+  Alg alg("sleek", 0, 0, 0);
   NamesId namesId(m_det.nodeId, ReducerNamesIndex);
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para.detName.c_str(), alg,
                                          m_para.detType.c_str(), m_para.serNo.c_str(), namesId, m_para.detSegment);
-  PfplReducerDef reducerDef;
+  SleekReducerDef reducerDef;
   names.add(xtc, bufEnd, reducerDef);
   m_det.namesLookup()[namesId] = NameIndex(names);
 
  return 0;
 }
 
-void PfplReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
+void SleekReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
 {
   // The Xtc header is constructed in the CPU's pebble buffer, but this buffer
   // is not used to hold all of the data.  However, bufEnd has to point to a
@@ -102,7 +102,7 @@ void PfplReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
   // both the header and data so that the Xtc allocate in data.set_array_shape()
   // can succeed.  This may be larger than the pebble buffer and we therefore
   // must be careful not to write beyond its end.
-  //printf("*** PfplReducer event: xtc %p, extent %u, size %u", &xtc, xtc.extent, dataSize);
+  //printf("*** SleekReducer event: xtc %p, extent %u, size %u", &xtc, xtc.extent, dataSize);
 
   // Data is Reduced data
   NamesId namesId(m_det.nodeId, ReducerNamesIndex);
@@ -116,7 +116,7 @@ void PfplReducer::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
   // Update the header with the size and shape of the data payload.
   // This does not write beyond the Xtc header in the pebble buffer.
   unsigned dataShape[MaxRank] = { dataSize };
-  data.set_array_shape(PfplReducerDef::pfpl, dataShape);
+  data.set_array_shape(SleekReducerDef::sleek, dataShape);
 }
 
 // The class factory
@@ -125,5 +125,5 @@ extern "C" Drp::Gpu::ReducerAlgo* createReducer(const Drp::Parameters&      para
                                                 const Drp::Gpu::MemPoolGpu& pool,
                                                 Drp::Gpu::Detector&         det)
 {
-  return new Drp::Gpu::PfplReducer(para, pool, det);
+  return new Drp::Gpu::SleekReducer(para, pool, det);
 }

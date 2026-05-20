@@ -145,9 +145,9 @@ void _reduce(unsigned* const        __restrict__ state,
 void NoOpReducer::recordGraph(cudaStream_t       stream,
                               unsigned*    const state_d,
                               unsigned*    const index_d,
-                              float const* const calibBuffers,
+                              float const* const calibBuffers_d,
                               size_t       const calibBufsCnt,
-                              uint8_t*     const dataBuffers,
+                              uint8_t*     const dataBuffers_d,
                               size_t       const dataBufsCnt)
 {
 #ifdef HAS_GRAPH
@@ -164,18 +164,18 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
       abort();
   };
   const auto maxBpSM{prop.maxBlocksPerMultiProcessor};
-  auto threads{tpSM/maxBpSM}; //{32}; // @todo: Move to green contexts for improved robustness
-  auto blocks {nSMs*maxBpSM}; //20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
-  printf("NoOpReducer blocks %u * threads %u = %u threads\n", blocks, threads, blocks * threads);
-  _reduce<<<blocks, threads, 0, stream>>>(state_d,
-                                          index_d,
-                                          calibBuffers,
-                                          calibBufsCnt,
-                                          dataBuffers,
-                                          dataBufsCnt,
-                                          m_refBufs_d,
-                                          m_refBufCnt,
-                                          m_retCode_d);
+  auto nThrs{tpSM/maxBpSM}; //{32}; // @todo: Find from green context
+  auto nBlks{nSMs*maxBpSM}; //20*48;
+  printf("NoOpReducer blocks %u * threads %u = %u threads\n", nBlks, nThrs, nBlks * nThrs);
+  _reduce<<<nBlks, nThrs, 0, stream>>>(state_d,
+                                       index_d,
+                                       calibBuffers_d,
+                                       calibBufsCnt,
+                                       dataBuffers_d,
+                                       dataBufsCnt,
+                                       m_refBufs_d,
+                                       m_refBufCnt,
+                                       m_retCode_d);
   chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
 #endif
 }

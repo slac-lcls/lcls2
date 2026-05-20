@@ -79,11 +79,11 @@ void CuSZpReducer::reduce(cudaGraphExec_t graph,
   auto calibBuffer = &calibBuffers[index * calibBufsCnt];
   auto dataBuffer  = &dataBuffers[index * dataBufsCnt];
 
-  size_t cmpSize1 = 0;
-  cuSZp_compress_plain_f32(calibBuffer, dataBuffer, calibBufsCnt, &cmpSize1, m_errorBound, stream);
+  size_t cmpSize{0};
+  cuSZp_compress_1D_plain_f32(calibBuffer, dataBuffer, calibBufsCnt, &cmpSize, m_errorBound, stream);
 
-  //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &cmpSize1, sizeof(cmpSize1), cudaMemcpyHostToDevice);
-  *dataSize = cmpSize1;
+  //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &cmpSize, sizeof(cmpSize), cudaMemcpyHostToDevice);
+  *dataSize = cmpSize;
   *retCode = 0;                         // @todo: TBD
 }
 
