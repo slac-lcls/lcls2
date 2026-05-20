@@ -23,9 +23,12 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
         self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+        self._store_ = None
         self._counter_image = 0
         self._seg_geo = eb.sgs.Create(segname='EPIXUHR3X2:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr3x2-02.data'
+        self._data_gain_bitnum = 15 # left-most bit
+        self._data_bit_mask = 0o3777 # 11-bit data mask
 
     def _cbits_config_segment(self, cob):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object, where self=det.raw
@@ -38,11 +41,11 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
 
     def calib(self, evt, **kwa) -> Array3d:
         """overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
-        #logger.debug('epixuhr3x2_raw_0_1_0.calib')
-        return ueu.calib(self, evt, **kwa)
+        return ueu.calib_v02(self, evt, **kwa)
 
-#    def _image(self, evt, **kwa) -> Array2d: # see in areadetector.py
-#        """NOW HIDDEN: returns raw[0,:] 2-d temporary image for a single panel raw data (1, 336, 576)"""
+#    def image(self, evt, **kwa) -> Array2d: # see in areadetector.py
+#        """temporary re-implement AreaDetector.image
+#           NOW HIDDEN: returns raw[0,:] 2-d temporary image for a single panel raw data (1, 336, 576)"""
 #        return ueu.image_v01(self, evt, **kwa)
 
 # EOF
