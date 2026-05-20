@@ -377,10 +377,10 @@ class SbatchManager:
 
         n_cores = self.get_n_cores(details)
         if not as_step:
-            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            jobstep_cmd = f"srun -n1 -c{n_cores} --cpu-bind=verbose,cores --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
         else:
             jobstep_cmd = (
-                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                f"srun -n1 --exclusive --cpus-per-task={n_cores} --cpu-bind=verbose,cores --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
                 + "&\n"
             )
         return jobstep_cmd
