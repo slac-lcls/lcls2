@@ -152,6 +152,20 @@ class Runner:
                 break
         return job_exists
 
+    def _wait_until_not_exists(self, unique_ids=None, verbose=False):
+        """Wait until matching Slurm jobs are no longer reported by squeue."""
+        for i in range(MAX_RETRIES):
+            if not self._exists(unique_ids=unique_ids):
+                return
+            if i == 0 and verbose:
+                print("Waiting for slurm jobs to leave queue...")
+            time.sleep(3)
+
+        msg = "Timed out waiting for slurm jobs to leave queue"
+        if unique_ids is not None:
+            msg += f": {unique_ids}"
+        raise RuntimeError(msg)
+
     def _check_unique_ids(self, unique_ids):
         """Check user's input unique IDs with cnf file"""
         if unique_ids is None:
@@ -293,8 +307,9 @@ class Runner:
                 time.sleep(3)
 
     def restart(self, unique_ids=None, verbose=False):
-        self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)
-        self.start(unique_ids=unique_ids, skip_check_exist=True)
+        self.stop(unique_ids=unique_ids, skip_wait=False, verbose=verbose)
+        self._wait_until_not_exists(unique_ids=unique_ids, verbose=verbose)
+        self.start(unique_ids=unique_ids)
 
     def get_statusdict(self, config_id, ldProcStatus):
         """Uses exclusively by spawnX definitions to retreive slurm jobid
