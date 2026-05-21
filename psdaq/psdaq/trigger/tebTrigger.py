@@ -7,9 +7,10 @@ import json
 import argparse
 
 from struct import unpack
-import EbDgram     as edg
-import ResultDgram as rdg
-
+import psdaq.EbDgram     as edg
+import psdaq.ResultDgram as rdg
+import psdaq.CubeResultDgram as qdg
+import psdaq.CubeConfigDgram as cdg
 
 class ArgsParser(argparse.ArgumentParser):
     def __init__(self):
@@ -22,16 +23,19 @@ class ArgsParser(argparse.ArgumentParser):
         return self.args
 
 class TriggerDataSource(object):
-    def __init__(self):
+    def __init__(self, cfg_cb=None):
 
         logging.info(f"[Python] Starting")
 
+        self._cfg_cb = cfg_cb
         self._mq_inp = None
         self._mq_res = None
         self._shm_inp = None
         self._shm_res = None
 
         self.connect_json = None
+        self.connect_info = None
+        self._det_src = dict()
 
         # Make args available to the user scripts
         self.args = ArgsParser().parse()
@@ -81,7 +85,7 @@ class TriggerDataSource(object):
                     )
                     sys.exit(1)
 
-                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Inputs shared memory key {shm_msg[1]} size {shm_msg[2]}")
                 break
 
         self._mq_res.send(b"g")
@@ -105,7 +109,7 @@ class TriggerDataSource(object):
                     self._shm_inp = None
                     sys.exit(1)
 
-                print(f"[Python] Set up Results shared memory key {shm_msg[1]}")
+                print(f"[Python] Set up Results shared memory key {shm_msg[1]} size {shm_msg[2]}")
                 break
 
         #print(f'max_size: {self._mq_inp.max_size}')
@@ -121,6 +125,7 @@ class TriggerDataSource(object):
                 if chr(message[0]) == 'd':
                     print(f"[Python] Received connect message '{connectMsg[:40]}...'")
                     self.connect_json = connectMsg
+                    self.connect_info = json.loads(connectMsg)
                     break
 
             else:
@@ -130,6 +135,24 @@ class TriggerDataSource(object):
             self._mq_res.send(b"c")
 
         self._mq_res.send(b"d") # Done
+
+        #  Now, wait for Configure
+        while True:
+            message, priority = self._mq_inp.receive()
+            #print(f"[Python] Received msg '{message}', prio '{priority}'")
+
+            if chr(message[0]) == 'g':
+                if self._cfg_cb:
+                    self._cfg_cb()
+                else:
+                    self._mq_res.send(b"g")
+                break
+            elif chr(message[0]) == 's':  # this might be problematic
+                print(f"[Python] Received stop while waiting for Configure")
+                break
+            else:
+                print(f"[Python] Unrecognized message '{chr(message[0])}' received")
+
 
     def __del__(self):
         if self._shm_inp is not None:
@@ -147,7 +170,7 @@ class TriggerDataSource(object):
             #print(f"[Python] Received msg '{message}', prio '{priority}'")
 
             if chr(message[0]) == 'g':
-                event = Event(self._shm_inp_mmap, self._shm_inp_bufSizes, int(message[1:],16))
+                event = Event(self._shm_inp_mmap, self._shm_inp_bufSizes, int(message[1:],16), self._det_src)
                 yield event
             elif chr(message[0]) == 's':
                 break
@@ -157,22 +180,78 @@ class TriggerDataSource(object):
     def result(self, persist, monitor):
 
         result = rdg.ResultDgram(self._shm_res_mmap, persist, monitor)
-
         self._mq_res.send(b"g")
 
         #print(
         #    f"[Python] Sent message 'g'"
         #)
 
+    def mebs(self, names=None):
+        r = 0
+        if 'meb' in self.connect_info['body'].keys():
+            for nodes in self.connect_info['body']['meb'].values():
+                if names is None:
+                    r |= 1 << nodes['meb_id']
+                elif isinstance(names,str):
+                    if names in nodes['proc_info']['alias']:
+                        r |= 1 << nodes['meb_id']
+                elif isinstance(names,list):
+                    for n in names:
+                         if n in nodes['proc_info']['alias']:
+                             r |= 1 << nodes['meb_id']
+                    
+        return r
+
+    def detector(self, name, tebType):
+        index = -1
+        for nodes in self.connect_info['body']['drp'].values():
+            if name == nodes['proc_info']['alias']:
+                index = len(self._det_src)
+                self._det_src[nodes['drp_id']] = index
+                break
+
+        if index<0:
+            raise RuntimeError(f'Detector {name} not found')
+
+        return Detector(index, tebType)
+
+class CubeTriggerDataSource(TriggerDataSource):
+
+    def __init__(self, config):
+        self.config = config
+        TriggerDataSource.__init__(self, self.configure)
+
+
+    def configure(self):
+        nbins = self.config['bins']
+        logging.warning(f'[Python] Setting nbins {nbins}')
+        result = cdg.CubeConfigDgram(self._shm_res_mmap, nbins, json.dumps(self.config))
+
+        self._mq_res.send(b"g")
+
+    """  persist     : put event into the cube
+         record      : record event 
+         monitor     : forward event to monitoring
+         bin_index   : cube bin the event sums into
+         bin_record  : record the cube bin 
+         bin_monitor : forward the cube bin to monitoring
+         flush       : reset the cube after this event is processed
+    """
+    def result(self, persist, record, monitor, bin_index, bin_record, bin_monitor, flush=False):
+        result = qdg.CubeResultDgram(self._shm_res_mmap, persist, record, monitor, 
+                                     bin_index, bin_record, bin_monitor, flush)
+        self._mq_res.send(b"g")
 
 # Revisit: Move this into a .pyx?
 class Event(object):
-    def __init__(self, shm_inp_mmap, shm_bufSizes, ctrb):
+    def __init__(self, shm_inp_mmap, shm_bufSizes, ctrb, det_src):
         self._shm_inp_mmap      = shm_inp_mmap
         self._shm_bufSizes = shm_bufSizes
         self._ctrb = ctrb
         self._idx = 0
         self._pid = None
+        self._det_src = det_src
+        self._det_lookup = None
 
     def __iter__(self):
         return self
@@ -201,3 +280,26 @@ class Event(object):
             raise StopIteration
 
         return datagram
+
+    def payload(self):
+        if self._det_lookup is None:
+            #            self._det_lookup = get_teb_lookup(self)
+            self._det_lookup = dict()
+            for i in range( len(self._shm_bufSizes) ):
+                if (self._ctrb >> i)&1:
+                    beg = self._shm_bufSizes[i]
+                    end = self._shm_bufSizes[i + 1]
+                    datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
+                    src = datagram.xtc.src.value()
+                    if src in self._det_src:
+                        self._det_lookup[ self._det_src[src] ] = datagram.xtc.payload()
+        return self._det_lookup
+
+class Detector(object):
+    def __init__(self, index, tebType):
+        self._tebId   = index
+        self._tebType = tebType
+
+    def trigger(self, event):
+        payld = event.payload()[self._tebId]
+        return self._tebType(payld) if payld else None

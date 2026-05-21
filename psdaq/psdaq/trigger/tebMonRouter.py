@@ -1,6 +1,6 @@
 from psdaq.trigger import tebTrigger
-from TimingTebData import TimingTebData
-from TmoTebData import TmoTebData
+from psdaq import TimingTebData
+from psdaq import TmoTebData
 import json
 import logging
 
@@ -80,7 +80,7 @@ for event in ds.events():
         if ctrb.xtc.src.value() == timing_id:
 
             payld = ctrb.xtc.payload()
-            data = TimingTebData(payld)
+            data = TimingTebData.TimingTebData(payld)
 
             eventcodes = data.eventcodes
             logging.debug(f'[Python] Eventcodes: {eventcodes}')
@@ -91,12 +91,8 @@ for event in ds.events():
                 mebs = ami_mebs.schedule()
             else:
                 mebs = usr_mebs.schedule()
-                
-        else:
-            payld = ctrb.xtc.payload()
-            data = TmoTebData(payld)
 
-            logging.debug(f'[Python] write {data.write:x}')
+            break
 
     ds.result(persist, mebs)
 

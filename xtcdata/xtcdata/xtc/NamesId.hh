@@ -2,7 +2,9 @@
 #define XtcData_NamesId_hh
 
 #include "xtcdata/xtc/Src.hh"
+#include <stdio.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 namespace XtcData
 {

@@ -353,7 +353,7 @@ void XtcMonitorServer::discover()
 #endif
 
             //  Post connection request to taskThread
-            ::write(_initFd,&s,sizeof(s));
+            if (::write(_initFd,&s,sizeof(s))) {}
 
             // Advertise the discovery port again
             break;

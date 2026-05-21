@@ -200,7 +200,7 @@ int main(int argc, char** argv) {
                q.gwp);
       }
       while(1) {
-        read(fd, buff, 32);
+        if (read(fd, buff, 32)) {}
         if (lverbose) {
           printf("allwp 0x%llx,  bsawp 0x%llx,  gwp 0x%llx\n",
                  q.allwp[idx],
@@ -255,7 +255,7 @@ void* bsa_thread(void* arg)
 
   int64_t rp = q.bsawp;
   while(1) {
-    read(fd, buff, 32);
+    if (read(fd, buff, 32)) {}
     while(rp < q.bsawp) {
       long long qi = rp%MAX_TPR_BSAQ;
       countFrame(reinterpret_cast<const uint32_t*>(&q.bsaq[qi].word[0]));

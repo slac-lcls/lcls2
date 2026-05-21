@@ -783,7 +783,7 @@ void Module126::sample_init(unsigned length,
     pfd.fd = _fd;
     pfd.events = POLLIN;
     while(poll(&pfd,1,0)>0) {
-      ::read(_fd, desc, sizeof(*desc));
+      if (::read(_fd, desc, sizeof(*desc))) {}
       nflush++;
     }
     delete[] data;

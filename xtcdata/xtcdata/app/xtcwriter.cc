@@ -238,7 +238,7 @@ public:
         switch(name.type()){
         case(Name::UINT8):{
             if(data_rank > 0){
-                Array<uint8_t> arrT = descdata.get_array<uint8_t>(i);
+                (void)descdata.get_array<uint8_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -249,7 +249,7 @@ public:
 
         case(Name::UINT16):{
             if(data_rank > 0){
-                Array<uint16_t> arrT = descdata.get_array<uint16_t>(i);
+                (void)descdata.get_array<uint16_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -260,7 +260,7 @@ public:
 
         case(Name::UINT32):{
             if(data_rank > 0){
-                Array<uint32_t> arrT = descdata.get_array<uint32_t>(i);
+                (void)descdata.get_array<uint32_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -271,7 +271,7 @@ public:
 
         case(Name::UINT64):{
             if(data_rank > 0){
-                Array<uint64_t> arrT = descdata.get_array<uint64_t>(i);
+                (void)descdata.get_array<uint64_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -282,7 +282,7 @@ public:
 
         case(Name::INT8):{
             if(data_rank > 0){
-                Array<int8_t> arrT = descdata.get_array<int8_t>(i);
+                (void)descdata.get_array<int8_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -293,7 +293,7 @@ public:
 
         case(Name::INT16):{
             if(data_rank > 0){
-                Array<int16_t> arrT = descdata.get_array<int16_t>(i);
+                (void)descdata.get_array<int16_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -304,7 +304,7 @@ public:
 
         case(Name::INT32):{
             if(data_rank > 0){
-                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                (void)descdata.get_array<int32_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -315,7 +315,7 @@ public:
 
         case(Name::INT64):{
             if(data_rank > 0){
-                Array<int64_t> arrT = descdata.get_array<int64_t>(i);
+                (void)descdata.get_array<int64_t>(i);
                 // printf("%s: %d, %d, %d\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -326,7 +326,7 @@ public:
 
         case(Name::FLOAT):{
             if(data_rank > 0){
-                Array<float> arrT = descdata.get_array<float>(i);
+                (void)descdata.get_array<float>(i);
                 // printf("%s: %f, %f\n",name.name(),arrT(0),arrT(1));
                     }
             else{
@@ -337,7 +337,7 @@ public:
 
         case(Name::DOUBLE):{
             if(data_rank > 0){
-                Array<double> arrT = descdata.get_array<double>(i);
+                (void)descdata.get_array<double>(i);
                 // printf("%s: %f, %f, %f\n",name.name(),arrT(0),arrT(1), arrT(2));
                     }
             else{
@@ -348,7 +348,7 @@ public:
 
         case(Name::CHARSTR):{
             if(data_rank > 0){
-                Array<char> arrT = descdata.get_array<char>(i);
+                (void)descdata.get_array<char>(i);
                 //printf("%s: \"%s\"\n",name.name(),arrT.data());
                     }
             else{
@@ -359,7 +359,7 @@ public:
 
         case(Name::ENUMVAL):{
             if(data_rank > 0){
-                Array<int32_t> arrT = descdata.get_array<int32_t>(i);
+                (void)descdata.get_array<int32_t>(i);
                 //printf("%s: %d, %d, %d\n",name.name(),arrT.data()[0],arrT.data()[1], arrT.data()[2]);
                     }
             else{
@@ -604,7 +604,6 @@ void addData(Xtc& xtc, const void* bufEnd, NamesLookup& namesLookup, unsigned no
 Dgram& createTransition(TransitionId::Value transId, bool counting_timestamps,
                         unsigned& timestamp_val, void** bufEnd) {
     TypeId tid(TypeId::Parent, 0);
-    uint64_t pulseId = 0;
     uint32_t env = 0;
     struct timeval tv;
     void* buf = malloc(BUFSIZE);
@@ -746,7 +745,7 @@ int main(int argc, char* argv[])
                 starting_segment = atoi(optarg);
                 break;
             case 'f':
-                strncpy(xtcname, optarg, MAX_FNAME_LEN);
+                strncpy(xtcname, optarg, MAX_FNAME_LEN-1);
                 break;
             case 't':
                 counting_timestamps = true;
@@ -773,7 +772,6 @@ int main(int argc, char* argv[])
     struct timeval tv;
     TypeId tid(TypeId::Parent, 0);
     uint32_t env = 0;
-    uint64_t pulseId = 0;
     unsigned timestamp_val = 0;
     void* bufEnd;
 
@@ -783,7 +781,6 @@ int main(int argc, char* argv[])
                                      &bufEnd);
 
     unsigned nodeid1 = starting_nodeid;
-    unsigned nodeid2 = starting_nodeid+1;
     NamesLookup namesLookup;
     unsigned iseg = 1; // add to 2nd segment for testing
     addRunInfoNames(config.xtc, bufEnd, namesLookup, nodeid1);

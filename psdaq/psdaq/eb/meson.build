@@ -135,6 +135,8 @@ tstClocks_exe = executable('tstClocks',
 #install_headers(
 #  [
 #    'eb.hh',
+#    'CubeConfigDgram.hh',
+#    'CubeResultDgram.hh',
 #    'ResultDgram.hh',
 #  ],
 #  subdir: 'psdaq/eb'

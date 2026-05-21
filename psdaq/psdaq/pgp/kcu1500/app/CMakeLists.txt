@@ -119,17 +119,17 @@ target_link_libraries(kcuReadBulk
    rt
 )
 
-add_executable(kcuWrite xWrite.cpp)
+#add_executable(kcuWrite xWrite.cpp)
 
-target_include_directories(kcuWrite PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-    $<INSTALL_INTERFACE:include>
-)
+#target_include_directories(kcuWrite PUBLIC
+#    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#    $<INSTALL_INTERFACE:include>
+#)
 
-target_link_libraries(kcuWrite
-   Threads::Threads
-   rt
-)
+#target_link_libraries(kcuWrite
+#   Threads::Threads
+#   rt
+#)
 
 add_executable(kcuDmaStatus xDmaStatus.cpp)
 

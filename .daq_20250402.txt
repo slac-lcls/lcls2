@@ -300,7 +300,6 @@ https://conda.anaconda.org/conda-forge/linux-64/cxx-compiler-1.8.0-h1a2810e_1.co
 https://conda.anaconda.org/conda-forge/linux-64/fonttools-4.55.3-py39h9399b63_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/fortran-compiler-1.8.0-h36df796_1.conda
 https://conda.anaconda.org/conda-forge/linux-64/freeglut-3.2.2-ha6d2627_3.conda
-https://conda.anaconda.org/conda-forge/linux-64/gdb-15.1-py39hc71013c_1.conda
 https://conda.anaconda.org/conda-forge/linux-64/git-2.45.2-pl5321he096aa3_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/glib-2.80.2-hf974151_0.conda
 https://conda.anaconda.org/conda-forge/linux-64/gmpy2-2.1.5-py39h7196dd7_3.conda

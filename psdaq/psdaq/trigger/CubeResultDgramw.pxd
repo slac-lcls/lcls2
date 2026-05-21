@@ -1,0 +1,21 @@
+from libc.stdint cimport uint32_t
+cimport psdaq.trigger.EbDgramw as dgram
+
+cdef extern from 'psdaq/eb/src/CubeResultDgram.hh' namespace "Pds::Eb":
+    cdef cppclass CubeResultDgram:
+        CubeResultDgram(const dgram.EbDgram& dgram, unsigned id) except +
+        void     persist(int      value)
+        int      persist()
+        void     monitor(uint32_t value)
+        uint32_t monitor()
+        uint32_t data()
+        void     record(int      value)
+        int      record()
+        void     binIndex      (uint32_t value)
+        uint32_t binIndex      ()
+        void     updateRecord  (int value)
+        int      updateRecord  ()
+        void     updateMonitor (int value)
+        int      updateMonitor ()
+        void     flush         (int value)
+        int      flush         ()
