@@ -466,77 +466,22 @@ class DarkProc():
 
     def add_event(self, raw, irec):
         logger.debug(info_ndarr(raw, 'add_event irec: %3d raw' % irec))
-        timing = getattr(self, '_stage2_timing', None)
-        if timing is None:
-            _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
-            _raw_f64 = _raw.astype(np.float64)
-
-            cond_lo = _raw<self.gate_lo
-            cond_hi = _raw>self.gate_hi
-            condlist = (np.logical_not(np.logical_or(cond_lo, cond_hi)),)
-
-            self.arr_sum0   += np.select(condlist, (self.arr1u64,), 0)
-            self.arr_sum1   += np.select(condlist, (_raw_f64,), 0)
-            self.arr_sum2   += np.select(condlist, (np.square(_raw_f64),), 0)
-
-            self.sta_int_lo += np.select((_raw<self.int_lo,), (self.arr1u64,), 0)
-            self.sta_int_hi += np.select((_raw>self.int_hi,), (self.arr1u64,), 0)
-
-            np.maximum(self.arr_max, _raw, out=self.arr_max)
-            np.minimum(self.arr_min, _raw, out=self.arr_min)
-            return
-
-        t0 = time()
         _raw = raw & self.datbits # use data bits only 16-bit default (should be 14 for jungfrau and epix10ka)
-        timing['add_mask_s'] += time() - t0
-
-        t0 = time()
         _raw_f64 = _raw.astype(np.float64)
-        timing['add_astype_s'] += time() - t0
 
-        t0 = time()
         cond_lo = _raw<self.gate_lo
-        timing['add_gate_lo_s'] += time() - t0
-
-        t0 = time()
         cond_hi = _raw>self.gate_hi
-        timing['add_gate_hi_s'] += time() - t0
-
-        t0 = time()
         condlist = (np.logical_not(np.logical_or(cond_lo, cond_hi)),)
-        timing['add_gate_mask_s'] += time() - t0
 
-        t0 = time()
         self.arr_sum0   += np.select(condlist, (self.arr1u64,), 0)
-        timing['add_sum0_s'] += time() - t0
-
-        t0 = time()
         self.arr_sum1   += np.select(condlist, (_raw_f64,), 0)
-        timing['add_sum1_s'] += time() - t0
+        self.arr_sum2   += np.select(condlist, (np.square(_raw_f64),), 0)
 
-        t0 = time()
-        _raw_f64_sq = np.square(_raw_f64)
-        timing['add_square_s'] += time() - t0
-
-        t0 = time()
-        self.arr_sum2   += np.select(condlist, (_raw_f64_sq,), 0)
-        timing['add_sum2_s'] += time() - t0
-
-        t0 = time()
         self.sta_int_lo += np.select((_raw<self.int_lo,), (self.arr1u64,), 0)
-        timing['add_sta_lo_s'] += time() - t0
-
-        t0 = time()
         self.sta_int_hi += np.select((_raw>self.int_hi,), (self.arr1u64,), 0)
-        timing['add_sta_hi_s'] += time() - t0
 
-        t0 = time()
         np.maximum(self.arr_max, _raw, out=self.arr_max)
-        timing['add_max_s'] += time() - t0
-
-        t0 = time()
         np.minimum(self.arr_min, _raw, out=self.arr_min)
-        timing['add_min_s'] += time() - t0
 
 
     def add_block(self):
