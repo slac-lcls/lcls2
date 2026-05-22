@@ -26,9 +26,6 @@ base = {"timebase": "186M", "prefix": None, "lane": 0}
 #   - Supports dual position calculation (peak-based and integral-based)
 #   - Uses HlsTrigBuffer for pause threshold (single threshold vs 2 in Wave8)
 #   - Supports optional FIR filtering bypass
-#
-# See: /sdf/home/e/espov/dev/md_helpers/lcls2/wave8he/plan-wave8he-config.md
-#
 
 
 def ctxt_get(names):

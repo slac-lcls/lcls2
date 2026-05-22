@@ -127,8 +127,7 @@ namespace Drp {
             cd.set_value(index++, posX);
             cd.set_value(index++, posY);
             
-            // Option C: Replace NaN with sentinel value (commented for team discussion)
-            // Uncomment below if consistency with other detectors requires sentinel values
+            // Other option: Replace NaN with sentinel value (commented for team discussion)
             // #define WAVE8HE_USE_POSITION_SENTINEL
             // #ifdef WAVE8HE_USE_POSITION_SENTINEL
             //     constexpr float INVALID_POSITION = -999.0f;
@@ -171,7 +170,7 @@ namespace Drp {
             
             // Extract integral-based X,Y positions (32-bit floats at offset 24)
             // NOTE: May be NaN if denominator (xp+xm) is zero. Users should check
-            // with std::isnan(). See WAVE8_HE_FIRMWARE.md for details.
+            // with std::isnan().
             float posX = *(reinterpret_cast<const float*>(data + 24));
             float posY = *(reinterpret_cast<const float*>(data + 28));
             
@@ -179,7 +178,7 @@ namespace Drp {
             cd.set_value(index++, posX);
             cd.set_value(index++, posY);
             
-            // Option C: Replace NaN with sentinel (see PeakStream for details)
+            // Other option: Replace NaN with sentinel (see PeakStream for details)
             // #ifdef WAVE8HE_USE_POSITION_SENTINEL
             //     constexpr float INVALID_POSITION = -999.0f;
             //     cd.set_value(index++, std::isnan(posX) ? INVALID_POSITION : posX);
