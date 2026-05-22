@@ -393,6 +393,7 @@ def jungfrau_dark_proc_mpi(parser):
     kwargs['batch_size'] = 1 # this batch_size parameter may need to be tweaked
     kwargs['info_xtc_files'] = is_rank0
     kwargs['smd_callback'] = filter_callback
+    kwargs.setdefault('skip_calib_load', 'all')
     #kwargs['max_events'] = kwargs.get('events', 3000)
     t_ds0 = time()
     ds, dskwargs = open_DataSource(**kwargs)
