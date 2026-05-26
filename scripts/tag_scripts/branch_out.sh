@@ -22,6 +22,102 @@
 
 set -e
 
+# ====== LOGGING SETUP ======
+# Determine log directory based on PREFIX and common path structure
+# This will be set based on where cron redirects output
+# For lcls prefix -> /sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/lcls2_branch
+# For ami prefix -> /sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/ami_branch
+
+# Error handler - writes detailed failure log
+handle_error() {
+    local exit_code=$?
+    local line_number=$1
+    
+    # Determine log directory from script arguments
+    # PREFIX is $4, will be set later but we need it in the trap
+    local script_prefix="${4:-unknown}"
+    
+    # Derive log directory
+    if [ "$script_prefix" = "lcls" ]; then
+        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/lcls2_branch"
+    elif [ "$script_prefix" = "ami" ]; then
+        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/ami_branch"
+    else
+        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/${script_prefix}_branch"
+    fi
+    
+    # Create failed_runs directory if it doesn't exist
+    FAILED_LOG_DIR="${LOG_DIR}/failed_runs"
+    mkdir -p "$FAILED_LOG_DIR"
+    
+    # Generate failed log filename with timestamp
+    TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
+    FAILED_LOG="${FAILED_LOG_DIR}/${TIMESTAMP}_FAILED.log"
+    
+    # Write detailed failure information
+    {
+        echo "=========================================="
+        echo "BRANCH SCRIPT FAILURE REPORT"
+        echo "=========================================="
+        echo ""
+        echo "Timestamp: $(date)"
+        echo "Hostname: $(hostname)"
+        echo "Script: ${BASH_SOURCE[0]}"
+        echo "Exit Code: $exit_code"
+        echo "Failed at Line: $line_number"
+        echo ""
+        echo "--- Input Parameters ---"
+        echo "HUTCH_NAME: ${HUTCH_NAME:-<not set>}"
+        echo "ROOT_DIR: ${ROOT_DIR:-<not set>}"
+        echo "BRANCH_DIR: ${BRANCH_DIR:-<not set>}"
+        echo "PREFIX: ${PREFIX:-<not set>}"
+        echo ""
+        echo "--- Environment ---"
+        echo "Current Working Directory: $(pwd)"
+        echo "Git User: $(git config --global user.name 2>/dev/null || echo '<not set>')"
+        echo "Git Email: $(git config --global user.email 2>/dev/null || echo '<not set>')"
+        echo ""
+        echo "--- Processing Context ---"
+        echo "Current Repo Being Processed: ${MONITOR_REPO:-<none>}"
+        echo "Current Repo Name: ${REPO_NAME:-<none>}"
+        echo "Git Hash: ${GIT_HASH:-<not set>}"
+        echo "Branch Name: ${BRANCH_NAME:-<not set>}"
+        echo "Changed Files:"
+        if [ -n "$CHANGED_FILES" ]; then
+            echo "$CHANGED_FILES"
+        else
+            echo "<none>"
+        fi
+        echo ""
+        
+        # Try to get git status from both repos if they're set
+        if [ -n "$MONITOR_REPO" ] && [ -d "$MONITOR_REPO/.git" ]; then
+            echo "--- Source Repo Git Status ---"
+            (cd "$MONITOR_REPO" 2>/dev/null && git status 2>&1) || echo "Could not get git status"
+            echo ""
+        fi
+        
+        if [ -n "$BRANCH_DIR" ] && [ -d "$BRANCH_DIR/.git" ]; then
+            echo "--- Branch Repo Git Status ---"
+            (cd "$BRANCH_DIR" 2>/dev/null && git status 2>&1) || echo "Could not get git status"
+            echo ""
+        fi
+        
+        echo "=========================================="
+        echo "END FAILURE REPORT"
+        echo "=========================================="
+    } > "$FAILED_LOG" 2>&1
+    
+    echo ""
+    echo "FAILURE LOG WRITTEN TO: $FAILED_LOG" >&2
+    
+    exit $exit_code
+}
+
+# Set up error trap
+trap 'handle_error $LINENO' ERR
+# ====== END LOGGING SETUP ======
+
 # Colors for output
 RED='### \033[0;31m'
 GREEN='\033[0;32m'
