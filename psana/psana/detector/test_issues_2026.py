@@ -523,7 +523,6 @@ def issue_2026_05_01(args):
     #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
 
     cbits = det.raw._cbits_config_detector()
-    print(ndu.info_ndarr(cbits, 'XXXX det.raw._cbits_config_detector()', last=10))
 
     plot_image = True # True False
     flimg = None
@@ -630,7 +629,6 @@ def issue_2026_05_05(args):
     #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
 
     cbits = det.raw._cbits_config_detector()
-    print(ndu.info_ndarr(cbits, 'XXX det.raw._cbits_config_detector()', last=10))
 
     plot_image = True # True False
     flimg = None
@@ -638,9 +636,9 @@ def issue_2026_05_05(args):
         for nevt,evt in enumerate(run.events()):
             print('==== evt: %03d' % nevt)
             raw = det.raw.raw(evt)
-            img = det.raw.image(evt)
+            cal = det.raw.calib(evt)
             print(ndu.info_ndarr(raw, '  raw'))
-            print(ndu.info_ndarr(img, '  image'))
+            print(ndu.info_ndarr(cal, '  cal'))
 
             if plot_image:
                 imgarr = raw   if isubset == 1 else\
@@ -648,6 +646,7 @@ def issue_2026_05_05(args):
                          cbits if isubset == 4 else\
                          raw
 
+                #img = det.raw.image(evt)
                 #img=det.raw.image(evt, nda=raw)
                 #img=det.raw.image(evt, nda=cal)
                 img=det.raw.image(evt, nda=imgarr)
@@ -726,7 +725,6 @@ def selector():
 
 def USAGE():
     import inspect
-    #return '\n  TEST'
     return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\
          + '\n'.join([s for s in inspect.getsource(selector).split('\n') if "TNAME in" in s])\
          + '\n\nHELP:\n  list of parameters: ./%s -h\n  list of tests:      ./%s' % (SCRNAME, SCRNAME)

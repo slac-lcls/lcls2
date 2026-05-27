@@ -2,6 +2,7 @@
 
 from bluesky import RunEngine
 from ophyd.status import Status
+import json
 import sys
 import logging
 import threading
@@ -28,6 +29,7 @@ class BlueskyScan:
         self.record=False                       # set in configure()
         self.detname='scan'                     # set in configure()
         self.scantype='scan'                    # set in configure()
+        self.scan_names={}                      # set in configure()
         self.serial_number='1234'               # set in configure()
         self.alg_name='raw'                     # set in configure()
         self.alg_version=[1,0,0]                # set in configure()
@@ -99,16 +101,28 @@ class BlueskyScan:
 
                 my_data = {}
 
-                # record step_value and step_docstring
+                # record step_value
                 my_data.update({'step_value': self.step_value})
-                docstring = f'{{"detname": "scan", "scantype": "{self.scantype}", "step": {self.step_value}}}'
-                my_data.update({'step_docstring': docstring})
 
-                # record motor positions
-                for motor in self.motors:
-                    if motor.name == ControlDef.STEP_VALUE:
-                        continue
-                    my_data.update({motor.name: motor.position})
+                # record motor positions.  BeginStep scan fields default to
+                # scanvarN by motor order; motor.name is recorded only as
+                # metadata in step_docstring unless scan_names overrides it.
+                scan_doc = {
+                    "detname": "scan",
+                    "scantype": self.scantype,
+                    "step": self.step_value,
+                }
+                scan_motors = [
+                    motor for motor in self.motors
+                    if motor.name != ControlDef.STEP_VALUE
+                ]
+                for motor_index, motor in enumerate(scan_motors):
+                    record_name = self._scan_record_name(motor, motor_index)
+                    my_data.update({record_name: motor.position})
+                    scan_doc[record_name] = motor.name
+
+                # record step_docstring
+                my_data.update({'step_docstring': json.dumps(scan_doc)})
 
                 data = {
                     "motors":           my_data,
@@ -210,7 +224,7 @@ class BlueskyScan:
         # the metadata for read_configuration()
         return {}
 
-    def configure(self, *, motors=None, events=None, record=None, detname=None, scantype=None, serial_number=None, alg_name=None, alg_version=None, seq_ctl=None):
+    def configure(self, *, motors=None, events=None, record=None, detname=None, scantype=None, scan_names=None, serial_number=None, alg_name=None, alg_version=None, seq_ctl=None):
         """Set parameters for scan.
 
         Keyword arguments:
@@ -226,6 +240,9 @@ class BlueskyScan:
             number in the name, as in the daq cnf file.  e.g. "andor_0" and NOT "andor"
         scantype -- str, optional
             Scan type
+        scan_names -- dict, optional
+            Mapping from motor object or motor.name to BeginStep scan variable name.
+            If unspecified, scan variables are named scanvarN by motor order.
         serial_number -- str, optional
             Serial number
         alg_name -- str, optional
@@ -263,6 +280,15 @@ class BlueskyScan:
                 self.scantype = scantype
             else:
                 raise TypeError('scantype must be of type str')
+        if scan_names is not None:
+            if not isinstance(scan_names, dict):
+                raise TypeError('scan_names must be a dict, e.g. {motor: "scanvar"} or {"motor_name": "scanvar"}')
+            for record_name in scan_names.values():
+                if not isinstance(record_name, str):
+                    raise TypeError('scan_names values must be str, e.g. {motor: "scanvar"} or {"motor_name": "scanvar"}')
+            self.scan_names = scan_names
+        else:
+            self.scan_names = {}
         if serial_number is not None:
             if isinstance(serial_number, str):
                 self.serial_number = serial_number
@@ -303,6 +329,15 @@ class BlueskyScan:
             logging.info(f'Found readout group {self.group} for {detname}.')
 
         return (self.read_configuration(),self.read_configuration())
+
+    def _scan_record_name(self, motor, motor_index):
+        try:
+            record_name = self.scan_names.get(motor)
+        except TypeError:
+            record_name = None
+        if record_name is None:
+            record_name = self.scan_names.get(motor.name, f'scanvar{motor_index}')
+        return record_name
 
     def _set_connected(self):
         self.push_socket.send_string('connected')

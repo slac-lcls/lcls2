@@ -172,6 +172,11 @@ def main() -> None:
         help="Disable auto skip of wekanode NUMA nodes.",
     )
     ap.add_argument(
+        "--use-all-numa",
+        action="store_true",
+        help="Use all detected NUMA nodes; disables automatic wekanode NUMA skipping.",
+    )
+    ap.add_argument(
         "--respect-cpuset",
         action="store_true",
         default=True,
@@ -195,6 +200,10 @@ def main() -> None:
         help="CPU assignment strategy (default: round-robin across NUMA nodes).",
     )
     args = ap.parse_args()
+    if args.use_all_numa:
+        if args.skip_numa:
+            raise SystemExit("--use-all-numa cannot be combined with --skip-numa")
+        args.auto_skip_weka = False
 
     cpu_to_numa = build_cpu_to_numa()
     if not cpu_to_numa:
