@@ -11,7 +11,7 @@ The follow-up CUDA stream learning notes for direct/per-workload vs row-based
 stage streams are in:
 
 ```text
-psana/psana/gpu/multiowner/cuda_stream_practice_notes.md
+psana/psana/gpu/multiowner/cuda_overlap_model_notes.md
 ```
 
 The benchmark is independent of psana event data. It uses NumPy/CuPy buffers,
