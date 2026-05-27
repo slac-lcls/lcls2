@@ -25,9 +25,9 @@ def main():
     nitems = 1_000_000
     block_size = 256
     grid_size = (nitems + block_size - 1) // block_size
-    iterations = 1000
+    iterations = 10
     spin_iters = 10000  # Number of iterations in the kernel to increase its execution time
-    queue_depth = 4
+    queue_depth = 10
     
     streams = [cp.cuda.Stream(non_blocking=True) for _ in range(queue_depth)]
     kernel = cp.RawKernel(SCALE_KERNEL, "scale_kernel")
@@ -46,7 +46,7 @@ def main():
     d2h_total_s = 0.0
     wall0 = time.perf_counter()
     records = [] # keep track of all events for final synchronization and timing
-    print(f"Starting {iterations} iterations with {queue_depth} streams and {spin_iters} spin iterations of H2D -> kernel -> D2H...")
+    print(f"Direct Method: Starting {iterations} iterations with {queue_depth} slots and {spin_iters} spin iterations of H2D -> kernel -> D2H...")
 
     for iteration in range(iterations):
         slot = iteration % queue_depth
