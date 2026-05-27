@@ -48,6 +48,10 @@ Examples:
   $(basename "$0") -n 1 --gres-gpu 1 -- \\
     --iterations 80 --streams-per-rank 16 --data-size 64M --compute-iters 4096 --pipeline-depth 1
 
+  $(basename "$0") -n 1 --gres-gpu 1 -- \\
+    --iterations 80 --pipeline-mode staged --pipeline-depth 3 \\
+    --data-size 64M --compute-iters 4096
+
   $(basename "$0") -n 4 --per-rank-reports -o /tmp/context-overlap -- \\
     --io-mode pread --io-file /path/to/input.bin --data-size 128M --compute-iters 8192
 EOF

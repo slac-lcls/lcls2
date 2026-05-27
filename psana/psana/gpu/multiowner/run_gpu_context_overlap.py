@@ -139,6 +139,15 @@ def _build_parser():
         help="Number of per-rank host/device slots. 1 is sequential; 2+ allows CPU I/O while prior GPU work runs.",
     )
     parser.add_argument(
+        "--pipeline-mode",
+        choices=("slot", "staged"),
+        default="slot",
+        help=(
+            "slot keeps H2D and kernel work on each slot's stream. "
+            "staged uses one H2D stream and one kernel stream with CUDA event dependencies."
+        ),
+    )
+    parser.add_argument(
         "--streams-per-rank",
         "--stream-per-rank",
         type=int,
@@ -274,6 +283,8 @@ def main():
         raise SystemExit("--pipeline-depth must be > 0.")
     if args.streams_per_rank <= 0:
         raise SystemExit("--streams-per-rank must be > 0.")
+    if args.pipeline_mode == "staged" and args.streams_per_rank != 1:
+        raise SystemExit("--pipeline-mode=staged currently requires --streams-per-rank=1.")
     if args.io_mode == "pread" and not args.io_file:
         raise SystemExit("--io-file is required when --io-mode=pread.")
 
@@ -316,7 +327,7 @@ def main():
         f"world_size={size} gpu_id={gpu_id} CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES', '<unset>')} "
         f"data_nbytes={data_nbytes} compute_elements={compute_elements} "
         f"compute_iters={args.compute_iters} pipeline_depth={args.pipeline_depth} "
-        f"streams_per_rank={args.streams_per_rank} "
+        f"pipeline_mode={args.pipeline_mode} streams_per_rank={args.streams_per_rank} "
         f"io_mode={args.io_mode} host_memory={args.host_memory}",
         flush=True,
     )
@@ -326,24 +337,115 @@ def main():
     wall0 = time.perf_counter()
 
     try:
-        for iteration in range(total_iterations):
-            timed_iteration = iteration - args.warmup
-            slot_set = slot_sets[iteration % args.pipeline_depth]
+        if args.pipeline_mode == "slot":
+            for iteration in range(total_iterations):
+                timed_iteration = iteration - args.warmup
+                slot_set = slot_sets[iteration % args.pipeline_depth]
 
-            if iteration >= args.pipeline_depth:
-                with _nvtx(f"rank{rank}/iter{timed_iteration}/wait_for_slot"):
-                    t0 = time.perf_counter()
+                if iteration >= args.pipeline_depth:
+                    with _nvtx(f"rank{rank}/iter{timed_iteration}/wait_for_slot"):
+                        t0 = time.perf_counter()
+                        for slot in slot_set:
+                            slot.stream.synchronize()
+                        if timed_iteration >= 0:
+                            slot_wait_s += time.perf_counter() - t0
+
+                if timed_iteration == 0:
+                    start_wall = time.perf_counter()
+
+                for stream_index, slot in enumerate(slot_set):
+                    # Simulate CPU-side work
+                    workload_iteration = iteration * args.streams_per_rank + stream_index
+                    io_time = _do_io(
+                        args,
+                        slot,
+                        fd,
+                        file_size,
+                        rank,
+                        size,
+                        workload_iteration,
+                        timed_iteration,
+                        stream_index,
+                    )
+                    if timed_iteration >= 0:
+                        io_s += io_time
+
+                    h2d_start = cp.cuda.Event()
+                    h2d_stop = cp.cuda.Event()
+                    kernel_start = cp.cuda.Event()
+                    kernel_stop = cp.cuda.Event()
+                    with slot.stream:
+                        with _nvtx(f"rank{rank}/iter{timed_iteration}/stream{stream_index}/h2d_enqueue"):
+                            h2d_start.record()
+                            cp.cuda.runtime.memcpyAsync(
+                                slot.dev_in.data.ptr,
+                                slot.host_ptr,
+                                data_nbytes,
+                                cp.cuda.runtime.memcpyHostToDevice,
+                                slot.stream.ptr,
+                            )
+                            h2d_stop.record()
+                        with _nvtx(f"rank{rank}/iter{timed_iteration}/stream{stream_index}/kernel_enqueue"):
+                            kernel_start.record()
+                            kernel(
+                                (grid_size,),
+                                (block_size,),
+                                (
+                                    slot.dev_in,
+                                    slot.dev_out,
+                                    np.int64(compute_elements),
+                                    np.int64(data_nbytes),
+                                    np.int32(args.compute_iters),
+                                    np.float32(rank + workload_iteration * 0.001),
+                                ),
+                            )
+                            kernel_stop.record()
+
+                    if timed_iteration >= 0:
+                        records.append((h2d_start, h2d_stop, kernel_start, kernel_stop))
+
+                if timed_iteration >= 0:
+                    if args.print_interval > 0 and rank == 0 and (timed_iteration + 1) % args.print_interval == 0:
+                        launched = (timed_iteration + 1) * args.streams_per_rank
+                        total = args.iterations * args.streams_per_rank
+                        print(
+                            f"[Rank 0] launched {timed_iteration + 1}/{args.iterations} "
+                            f"outer_iterations ({launched}/{total} stream_workloads)",
+                            flush=True,
+                        )
+
+            with _nvtx(f"rank{rank}/drain"):
+                t0 = time.perf_counter()
+                for slot_set in slot_sets:
                     for slot in slot_set:
                         slot.stream.synchronize()
-                    if timed_iteration >= 0:
-                        slot_wait_s += time.perf_counter() - t0
+                slot_wait_s += time.perf_counter() - t0
+        else:
+            h2d_stream = cp.cuda.Stream(non_blocking=True)
+            kernel_stream = cp.cuda.Stream(non_blocking=True)
+            slots = [slot_set[0] for slot_set in slot_sets]
+            # Host memory is reusable after H2D; device input is reusable after
+            # the kernel. Keep the compute dependency on the GPU timeline so the
+            # host can enqueue future H2Ds instead of blocking on kernel_done.
+            host_reuse_events = [None for _ in slots]
+            device_reuse_events = [None for _ in slots]
 
-            if timed_iteration == 0:
-                start_wall = time.perf_counter()
+            for iteration in range(total_iterations):
+                timed_iteration = iteration - args.warmup
+                slot_index = iteration % args.pipeline_depth
+                slot = slots[slot_index]
 
-            for stream_index, slot in enumerate(slot_set):
-                # Simulate CPU-side work
-                workload_iteration = iteration * args.streams_per_rank + stream_index
+                if host_reuse_events[slot_index] is not None:
+                    with _nvtx(f"rank{rank}/iter{timed_iteration}/wait_for_host_slot"):
+                        t0 = time.perf_counter()
+                        host_reuse_events[slot_index].synchronize()
+                        if timed_iteration >= 0:
+                            slot_wait_s += time.perf_counter() - t0
+
+                if timed_iteration == 0:
+                    start_wall = time.perf_counter()
+
+                workload_iteration = iteration
                 io_time = _do_io(
                     args,
                     slot,
@@ -353,7 +455,7 @@ def main():
                     size,
                     workload_iteration,
                     timed_iteration,
-                    stream_index,
+                    0,
                 )
                 if timed_iteration >= 0:
                     io_s += io_time
@@ -362,18 +464,26 @@ def main():
                 h2d_stop = cp.cuda.Event()
                 kernel_start = cp.cuda.Event()
                 kernel_stop = cp.cuda.Event()
-                with slot.stream:
-                    with _nvtx(f"rank{rank}/iter{timed_iteration}/stream{stream_index}/h2d_enqueue"):
+                with h2d_stream:
+                    with _nvtx(f"rank{rank}/iter{timed_iteration}/stage/h2d_enqueue"):
+                        if device_reuse_events[slot_index] is not None:
+                            cp.cuda.runtime.streamWaitEvent(
+                                h2d_stream.ptr,
+                                device_reuse_events[slot_index].ptr,
+                                0,
+                            )
                         h2d_start.record()
                         cp.cuda.runtime.memcpyAsync(
                             slot.dev_in.data.ptr,
                             slot.host_ptr,
                             data_nbytes,
                             cp.cuda.runtime.memcpyHostToDevice,
-                            slot.stream.ptr,
+                            h2d_stream.ptr,
                         )
                         h2d_stop.record()
-                    with _nvtx(f"rank{rank}/iter{timed_iteration}/stream{stream_index}/kernel_enqueue"):
+                with kernel_stream:
+                    with _nvtx(f"rank{rank}/iter{timed_iteration}/stage/kernel_enqueue"):
+                        cp.cuda.runtime.streamWaitEvent(kernel_stream.ptr, h2d_stop.ptr, 0)
                         kernel_start.record()
                         kernel(
                             (grid_size,),
@@ -388,27 +498,26 @@ def main():
                             ),
                         )
                         kernel_stop.record()
+                host_reuse_events[slot_index] = h2d_stop
+                device_reuse_events[slot_index] = kernel_stop
 
                 if timed_iteration >= 0:
                     records.append((h2d_start, h2d_stop, kernel_start, kernel_stop))
+                    if args.print_interval > 0 and rank == 0 and (timed_iteration + 1) % args.print_interval == 0:
+                        print(
+                            f"[Rank 0] launched {timed_iteration + 1}/{args.iterations} "
+                            f"outer_iterations ({timed_iteration + 1}/{args.iterations} stream_workloads)",
+                            flush=True,
+                        )
 
-            if timed_iteration >= 0:
-                if args.print_interval > 0 and rank == 0 and (timed_iteration + 1) % args.print_interval == 0:
-                    launched = (timed_iteration + 1) * args.streams_per_rank
-                    total = args.iterations * args.streams_per_rank
-                    print(
-                        f"[Rank 0] launched {timed_iteration + 1}/{args.iterations} "
-                        f"outer_iterations ({launched}/{total} stream_workloads)",
-                        flush=True,
-                    )
-
-        # Synchronize all streams at the end of each iteration
-        with _nvtx(f"rank{rank}/drain"):
-            t0 = time.perf_counter()
-            for slot_set in slot_sets:
-                for slot in slot_set:
-                    slot.stream.synchronize()
-            slot_wait_s += time.perf_counter() - t0
+            with _nvtx(f"rank{rank}/drain"):
+                t0 = time.perf_counter()
+                for event in device_reuse_events:
+                    if event is not None:
+                        event.synchronize()
+                h2d_stream.synchronize()
+                kernel_stream.synchronize()
+                slot_wait_s += time.perf_counter() - t0
 
         elapsed_s = time.perf_counter() - (start_wall or wall0)
         h2d_s = 0.0
@@ -430,6 +539,7 @@ def main():
             "compute_elements": compute_elements,
             "compute_iters": args.compute_iters,
             "pipeline_depth": args.pipeline_depth,
+            "pipeline_mode": args.pipeline_mode,
             "io_mode": args.io_mode,
             "host_memory": args.host_memory,
             "wall_s": elapsed_s,
@@ -443,7 +553,8 @@ def main():
         }
         print(
             f"[Rank {rank}] summary wall_s={elapsed_s:.6f} iter_s={result['iter_s']:.6f} "
-            f"workload_s={result['workload_s']:.6f} streams_per_rank={args.streams_per_rank} "
+            f"workload_s={result['workload_s']:.6f} pipeline_mode={args.pipeline_mode} "
+            f"streams_per_rank={args.streams_per_rank} "
             f"total_workloads={total_workloads} "
             f"io_s={io_s:.6f} slot_wait_s={slot_wait_s:.6f} "
             f"h2d_cuda_s={h2d_s:.6f} kernel_cuda_s={kernel_s:.6f} "

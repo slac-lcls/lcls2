@@ -7,6 +7,13 @@ psana/psana/gpu/multiowner/run_gpu_context_overlap.py
 psana/psana/gpu/multiowner/run_nsys_gpu_context_overlap.sh
 ```
 
+The follow-up CUDA stream learning notes for direct/per-workload vs row-based
+stage streams are in:
+
+```text
+psana/psana/gpu/multiowner/cuda_stream_practice_notes.md
+```
+
 The benchmark is independent of psana event data. It uses NumPy/CuPy buffers,
 async H2D copies, and a synthetic CUDA `spin_kernel` to study overlap across:
 
@@ -344,6 +351,61 @@ GPU. This is why kernel overlap is visible in both `1 rank x 8 streams` and
 
 Heavy has 65,536 blocks per kernel, enough for one kernel to keep the GPU busy.
 Kernels mostly serialize even when multiple streams or ranks submit work.
+
+## Heavy Scaling Sweep
+
+The 1-16 sweep compared three ways to submit the same heavy synthetic workload:
+
+```text
+1 rank x N streams
+N ranks x 1 stream, no MPS
+N ranks x 1 stream, MPS
+```
+
+Each row ran `80 * N` timed workloads with:
+
+```text
+--data-size 64M
+--compute-iters 4096
+--pipeline-depth 1
+```
+
+Raw summaries:
+
+```text
+/pscratch/sd/m/monarin/psana2-gpu/singleowner/gpuctx_n1_streams1_16_single_summary.txt
+/pscratch/sd/m/monarin/psana2-gpu/multiowner/gpuctx_n1_16_mps_nomps_summary.txt
+/pscratch/sd/m/monarin/psana2-gpu/multiowner/gpuctx_n1_16_mps_rerun_summary.txt
+```
+
+The MPS column below uses the persistent direct-MPS rerun. The single-rank
+stream sweep ran on `nid001156`; the multi-rank sweeps ran on `nid001028`, so
+small absolute differences include node-to-node variation.
+
+| N | 1 rank x N streams | N ranks no MPS | N ranks MPS | Best wall |
+|---:|---:|---:|---:|---|
+| 1 | 1.930321 | 1.598577 | 1.598345 | MPS |
+| 2 | 3.507996 | 3.246858 | 2.350682 | MPS |
+| 3 | 5.011604 | 4.114774 | 3.526241 | MPS |
+| 4 | 6.521273 | 6.025614 | 4.701689 | MPS |
+| 5 | 8.038565 | 6.857366 | 5.877167 | MPS |
+| 6 | 9.553533 | 8.225834 | 7.052643 | MPS |
+| 7 | 11.062881 | 9.612183 | 8.228287 | MPS |
+| 8 | 12.575893 | 10.973009 | 9.403605 | MPS |
+| 9 | 14.082003 | 12.343046 | 10.578998 | MPS |
+| 10 | 15.605163 | 13.712740 | 11.754482 | MPS |
+| 11 | 17.122633 | 15.077660 | 12.930421 | MPS |
+| 12 | 18.626352 | 16.467264 | 14.105496 | MPS |
+| 13 | 20.159299 | 17.833939 | 15.251501 | MPS |
+| 14 | 21.663446 | 19.196725 | 16.441869 | MPS |
+| 15 | 23.179733 | 20.576350 | 17.528669 | MPS |
+| 16 | 24.675055 | 21.950854 | 18.807781 | MPS |
+
+For heavy kernels, all three modes scale almost linearly with submitted work.
+MPS consistently reduces wall time for multi-rank submission; at 8 ranks it was
+14.3% faster than no-MPS and 25.2% faster than one process with 8 streams. At 16
+ranks it was 14.3% faster than no-MPS and 23.8% faster than one process with 16
+streams.
 
 ## Pipeline Depth Sweep
 

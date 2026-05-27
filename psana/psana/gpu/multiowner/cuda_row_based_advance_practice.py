@@ -42,8 +42,10 @@ def main():
     dev_in = [cp.empty(nitems, dtype=cp.float32) for _ in range(queue_depth)]
     dev_out = [cp.empty(nitems, dtype=cp.float32) for _ in range(queue_depth)]
 
-    done_events = [None for _ in range(queue_depth)]  # To track when each slot's operations are done
-
+    last_h2d_done = [None for _ in range(queue_depth)]  # To track when each slot's H2D is done
+    last_kernel_done = [None for _ in range(queue_depth)]  # To track when each slot's kernel is done
+    last_d2h_done = [None for _ in range(queue_depth)]  # To track when each slot's D2H is done
+    
     # Each iteration contains one H2D, one kernel, and one D2H, all recorded with events for timing.
     h2d_total_s = 0.0
     kernel_total_s = 0.0
@@ -55,12 +57,14 @@ def main():
     for iteration in range(iterations):
         slot = iteration % queue_depth
 
-        # Wait only if this slot has old in-flight work.
-        if done_events[slot] is not None:
-            done_events[slot].synchronize()  
-
         scale = np.float32(2.0 + iteration)  # Just to have some variation in the kernel argument
+
+        if last_h2d_done[slot] is not None:
+            last_h2d_done[slot].synchronize()  # Wait for the previous H2D to complete before reusing host_in[slot]
         host_in[slot].fill(np.float32(iteration))  # Fill input with some data
+
+        if last_d2h_done[slot] is not None:
+            last_d2h_done[slot].synchronize()  # Wait for the previous D2H to complete before reusing host_out[slot]
         host_out[slot].fill(np.float32(-1.0))  # Fill output with a known value to check results later
 
         h2d_start = cp.cuda.Event()
@@ -72,13 +76,21 @@ def main():
 
         # Stage 1: H2D
         with h2d_stream:
+            if last_kernel_done[slot] is not None:
+                h2d_stream.wait_event(last_kernel_done[slot])  # Ensure H2D waits for the previous kernel to complete before reusing dev_in[slot]
             h2d_start.record()
             dev_in[slot].set(host_in[slot], stream=h2d_stream)
             h2d_end.record()
+            last_h2d_done[slot] = h2d_end  # Mark this slot's H2D as done at h2d_end
         
         # Stage 2: Kernel execution (depends on H2D completion)
         with kernel_stream:
+            # Current input is ready.
             kernel_stream.wait_event(h2d_end)  # Ensure kernel waits for H2D to complete
+
+            # Previous output is no longer being copied out
+            if last_d2h_done[slot] is not None:
+                kernel_stream.wait_event(last_d2h_done[slot])  
             kernel_start.record()
             kernel(
                 (grid_size,),
@@ -87,6 +99,7 @@ def main():
                 stream=kernel_stream,
             )
             kernel_end.record()
+            last_kernel_done[slot] = kernel_end  # Mark this slot's kernel as done at kernel_end
         
         # Stage 3: D2H (depends on kernel completion)
         with d2h_stream:
@@ -94,11 +107,11 @@ def main():
             d2h_start.record()
             dev_out[slot].get(out=host_out[slot], stream=d2h_stream, blocking=False)
             d2h_end.record()
-            done_events[slot] = d2h_end  # Mark this slot as having work that will be done at d2h_end
+            last_d2h_done[slot] = d2h_end  # Mark this slot as having work that will be done at d2h_end
         
         records.append((h2d_start, h2d_end, kernel_start, kernel_end, d2h_start, d2h_end))
 
-    for event in done_events:
+    for event in last_d2h_done:
         if event is not None:
             event.synchronize()  # Ensure all work is done before final timing
     
