@@ -365,7 +365,12 @@ class SbatchManager:
         rtprio = self.get_rtprio(details)
         rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
 
-        cmd = f"{daqlog_header}{rtattr}{daq_cmd}"
+        step_env_dump = (
+            f'echo "===== STEP ENV AFTER SRUN ({job_name}) ====="; '
+            "env | sort; "
+            f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
+        )
+        cmd = f"{step_env_dump}{daqlog_header}{rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -375,12 +380,22 @@ class SbatchManager:
                 )
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
 
+        batch_env_dump = (
+            f'echo "===== BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+            "env | sort\n"
+            f'echo "===== END BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+        )
+
         n_cores = self.get_n_cores(details)
         if not as_step:
-            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            jobstep_cmd = (
+                batch_env_dump
+                + f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            )
         else:
             jobstep_cmd = (
-                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                batch_env_dump
+                + f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
                 + "&\n"
             )
         return jobstep_cmd
