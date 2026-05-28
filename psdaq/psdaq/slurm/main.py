@@ -344,8 +344,7 @@ class Runner:
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
 
-                arg_str = " ".join(args)
-                asyncio.run(self.proc.run(arg_str, wait_output=False))
+                asyncio.run(self.proc.run_exec(args, wait_output=False))
             except Exception:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
