@@ -1,5 +1,6 @@
 from psdaq.slurm.utils import (
     DAQMGR_DEBUG_ENV,
+    DAQMGR_DEBUG_ENV_DUMP_CMD,
     SbatchManager,
     build_sbatch_env,
     daqmgr_debug_env_enabled,
@@ -45,11 +46,20 @@ def test_jobstep_command_dumps_batch_and_step_env_when_enabled(tmp_path, monkeyp
     cmd = get_jobstep_cmd(tmp_path, monkeypatch)
 
     assert 'echo "===== BATCH ENV BEFORE SRUN (timing_0) ====="' in cmd
-    assert "env | sort\n" in cmd
+    assert f"{DAQMGR_DEBUG_ENV_DUMP_CMD}\n" in cmd
     assert cmd.index("===== BATCH ENV BEFORE SRUN") < cmd.index("srun -n1")
     assert 'echo "===== STEP ENV AFTER SRUN (timing_0) ====="' in cmd
-    assert "env | sort; " in cmd
+    assert f"{DAQMGR_DEBUG_ENV_DUMP_CMD}; " in cmd
     assert cmd.index("===== STEP ENV AFTER SRUN") < cmd.index("daqlog_header")
+
+
+def test_jobstep_command_redacts_configdb_auth_when_dumping_env(tmp_path, monkeypatch):
+    monkeypatch.setenv(DAQMGR_DEBUG_ENV, "1")
+
+    cmd = get_jobstep_cmd(tmp_path, monkeypatch)
+
+    assert "CONFIGDB_AUTH=*****" in cmd
+    assert "env | sort" not in cmd
 
 
 def test_daqmgr_debug_env_accepts_explicit_true_values():

@@ -18,6 +18,9 @@ HUTCH_DEFAULT_LOG_SUBDIRS = {
 }
 DAQMGR_DEBUG_ENV = "DAQMGR_DEBUG_ENV"
 DAQMGR_DEBUG_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
+DAQMGR_DEBUG_ENV_DUMP_CMD = (
+    'env | sed "s/^CONFIGDB_AUTH=.*/CONFIGDB_AUTH=*****/" | sort'
+)
 DAQMGR_SUBMIT_ENV_KEYS = {
     "HOME",
     "USER",
@@ -408,7 +411,7 @@ class SbatchManager:
         if debug_env:
             step_env_dump = (
                 f'echo "===== STEP ENV AFTER SRUN ({job_name}) ====="; '
-                "env | sort; "
+                f"{DAQMGR_DEBUG_ENV_DUMP_CMD}; "
                 f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
             )
         cmd = f"{step_env_dump}{daqlog_header}{rtattr}{daq_cmd}"
@@ -425,7 +428,7 @@ class SbatchManager:
         if debug_env:
             batch_env_dump = (
                 f'echo "===== BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
-                "env | sort\n"
+                f"{DAQMGR_DEBUG_ENV_DUMP_CMD}\n"
                 f'echo "===== END BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
             )
 
