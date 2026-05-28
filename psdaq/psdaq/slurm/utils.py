@@ -16,6 +16,8 @@ RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
 HUTCH_DEFAULT_LOG_SUBDIRS = {
     "xpp": os.path.join("daq", "logs"),
 }
+DAQMGR_DEBUG_ENV = "DAQMGR_DEBUG_ENV"
+DAQMGR_DEBUG_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
 DAQMGR_SUBMIT_ENV_KEYS = {
     "HOME",
     "USER",
@@ -46,13 +48,19 @@ def build_sbatch_env(source_env=None):
     # Build a clean environment for sbatch submission, only including necessary variables.
     if source_env is None:
         source_env = os.environ
-    
+
     env = {
         key: value
         for key, value in source_env.items()
         if key in DAQMGR_SUBMIT_ENV_KEYS
     }
     return env
+
+
+def daqmgr_debug_env_enabled(source_env=None):
+    if source_env is None:
+        source_env = os.environ
+    return source_env.get(DAQMGR_DEBUG_ENV, "").lower() in DAQMGR_DEBUG_ENV_TRUE_VALUES
 
 
 def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
@@ -394,11 +402,15 @@ class SbatchManager:
         rtprio = self.get_rtprio(details)
         rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
 
-        step_env_dump = (
-            f'echo "===== STEP ENV AFTER SRUN ({job_name}) ====="; '
-            "env | sort; "
-            f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
-        )
+        debug_env = daqmgr_debug_env_enabled()
+
+        step_env_dump = ""
+        if debug_env:
+            step_env_dump = (
+                f'echo "===== STEP ENV AFTER SRUN ({job_name}) ====="; '
+                "env | sort; "
+                f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
+            )
         cmd = f"{step_env_dump}{daqlog_header}{rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
@@ -409,11 +421,13 @@ class SbatchManager:
                 )
                 cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
 
-        batch_env_dump = (
-            f'echo "===== BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
-            "env | sort\n"
-            f'echo "===== END BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
-        )
+        batch_env_dump = ""
+        if debug_env:
+            batch_env_dump = (
+                f'echo "===== BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+                "env | sort\n"
+                f'echo "===== END BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+            )
 
         n_cores = self.get_n_cores(details)
         if not as_step:

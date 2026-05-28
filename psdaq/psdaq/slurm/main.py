@@ -130,7 +130,14 @@ class Runner:
             tmpfile.write(self.sbman.sb_script)
             tmpfile.flush()  # Make sure content is written to disk
             env = build_sbatch_env()
-            rc = asyncio.run(self.proc.run_exec(["sbatch", tmpfile.name], wait_output=True, env=env))
+            rc = asyncio.run(
+                self.proc.run_exec(
+                    ["sbatch", tmpfile.name],
+                    wait_output=True,
+                    env=env,
+                    echo_output=False,
+                )
+            )
             if rc != 0:
                 raise RuntimeError(f"sbatch failed with exit code {rc}")
 
