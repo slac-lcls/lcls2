@@ -3,7 +3,7 @@ from typing_extensions import Annotated
 import time
 import asyncio
 import socket
-from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries
+from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatch_env
 from psdaq.slurm.subproc import SubprocHelper
 import os
 import sys
@@ -129,8 +129,10 @@ class Runner:
         with tempfile.NamedTemporaryFile("w", delete=True, suffix=".sh") as tmpfile:
             tmpfile.write(self.sbman.sb_script)
             tmpfile.flush()  # Make sure content is written to disk
-            cmd = f"sbatch {tmpfile.name}"
-            asyncio.run(self.proc.run(cmd, wait_output=True))
+            env = build_sbatch_env()
+            rc = asyncio.run(self.proc.run_exec(["sbatch", tmpfile.name], wait_output=True, env=env))
+            if rc != 0:
+                raise RuntimeError(f"sbatch failed with exit code {rc}")
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())

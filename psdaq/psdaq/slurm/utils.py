@@ -16,6 +16,23 @@ RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
 HUTCH_DEFAULT_LOG_SUBDIRS = {
     "xpp": os.path.join("daq", "logs"),
 }
+DAQMGR_SUBMIT_ENV_KEYS = {
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "PATH",
+    "TESTRELDIR",
+    "CONDA_PREFIX",
+    "CONDA_DEFAULT_ENV",
+    "CONDA_EXE",
+    "CONFIGDB_AUTH",
+    "SUBMODULEDIR",
+    "DAQMGR_EXPORT",
+    "DISPLAY",
+    "XAUTHORITY",
+}
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +41,18 @@ class PSbatchSubCommand:
     START = 0
     STOP = 1
     RESTART = 2
+
+def build_sbatch_env(source_env=None):
+    # Build a clean environment for sbatch submission, only including necessary variables.
+    if source_env is None:
+        source_env = os.environ
+    
+    env = {
+        key: value
+        for key, value in source_env.items()
+        if key in DAQMGR_SUBMIT_ENV_KEYS
+    }
+    return env
 
 
 def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
