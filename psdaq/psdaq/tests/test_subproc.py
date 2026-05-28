@@ -9,7 +9,6 @@ def run_python(code, echo_output=False):
     return asyncio.run(
         helper.run_exec(
             [sys.executable, "-c", code],
-            wait_output=True,
             echo_output=echo_output,
         )
     )
@@ -47,8 +46,7 @@ def test_run_exec_preserves_shell_sensitive_arguments(capsys):
                 "-c",
                 "import sys; print(sys.argv[1])",
                 "value with spaces; $HOME",
-            ],
-            wait_output=True,
+            ]
         )
     )
 

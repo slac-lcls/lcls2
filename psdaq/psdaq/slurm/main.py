@@ -7,7 +7,7 @@ from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatc
 from psdaq.slurm.subproc import SubprocHelper
 import os
 import sys
-from subprocess import Popen
+from subprocess import DEVNULL, Popen
 from psdaq.slurm.config import Config
 import tempfile
 
@@ -133,7 +133,6 @@ class Runner:
             rc = asyncio.run(
                 self.proc.run_exec(
                     ["sbatch", tmpfile.name],
-                    wait_output=True,
                     env=env,
                     echo_output=False,
                 )
@@ -345,7 +344,13 @@ class Runner:
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
 
-                asyncio.run(self.proc.run_exec(args, wait_output=False))
+                Popen(
+                    args,
+                    stdin=DEVNULL,
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                    start_new_session=True,
+                )
             except Exception:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
@@ -389,7 +394,13 @@ class Runner:
                         "+F",
                         logfile,
                     ]
-                Popen(args)
+                Popen(
+                    args,
+                    stdin=DEVNULL,
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                    start_new_session=True,
+                )
             except Exception:
                 print("spawnLogfile failed for process '%s'" % config_id)
             else:
