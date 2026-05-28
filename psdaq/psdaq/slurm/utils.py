@@ -181,11 +181,13 @@ class SbatchManager:
                             results[jobparm] = jobparm_val
         return results
 
-    def get_job_info(self, use_sacct=False):
+    def get_job_info(self, use_sacct=False, strict=False):
         """
         Retrieves job information from Slurm using `squeue` or `sacct`.
-        Handles transient failures with retries, logs malformed lines,
-        and always returns a dictionary to ensure GUI stability.
+        Handles transient failures with retries and logs malformed lines.
+        In non-strict mode, returns an empty dictionary on Slurm query
+        failures to keep GUI status displays stable. In strict mode, re-raises
+        query failures so operational commands do not act on unknown state.
 
         Returns:
             dict: Mapping of job comment strings to job detail dictionaries.
@@ -207,7 +209,14 @@ class SbatchManager:
                     "squeue", "-u", user, "-h", "-o", format_string
                 )
         except Exception as e:
-            logger.warning("Failed to retrieve job info using Slurm: %s", str(e))
+            msg = f"Failed to retrieve job info using Slurm: {e}"
+            if isinstance(e, CalledProcessError) and e.stderr:
+                stderr_text = e.stderr.decode("utf-8", errors="replace").strip()
+                if stderr_text:
+                    msg += f"\nSlurm error: {stderr_text}"
+            logger.warning(msg)
+            if strict:
+                raise RuntimeError(msg) from e
             return {}
 
         job_details = {}

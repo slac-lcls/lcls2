@@ -147,10 +147,10 @@ class Runner:
             config_ids = unique_ids.split(",")
         return config_ids
 
-    def _exists(self, unique_ids=None):
+    def _exists(self, unique_ids=None, strict=False):
         """Check if the config matches any existing jobs"""
         job_exists = False
-        job_details = self.sbman.get_job_info()
+        job_details = self.sbman.get_job_info(strict=strict)
 
         config_ids = self._select_config_ids(unique_ids)
 
@@ -223,9 +223,10 @@ class Runner:
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
-        if self._exists(unique_ids=unique_ids) and not skip_check_exist:
-            msg = "Error: found one or more running jobs using the same resources"
-            raise RuntimeError(msg)
+        if not skip_check_exist:
+            if self._exists(unique_ids=unique_ids, strict=True):
+                msg = "Error: found one or more running jobs using the same resources"
+                raise RuntimeError(msg)
         if self.sbman.as_step:
             self.sbman.generate_as_step(self.sbjob, self.node_features)
             self.submit()
@@ -240,8 +241,8 @@ class Runner:
                             if details["flags"].find("x") > -1:
                                 job_state = None
                                 for i in range(MAX_RETRIES):
-                                    if self._exists(unique_ids=job_name):
-                                        job_details = self.sbman.get_job_info()
+                                    if self._exists(unique_ids=job_name, strict=True):
+                                        job_details = self.sbman.get_job_info(strict=True)
                                         job_state = job_details[details["comment"]][
                                             "state"
                                         ]
@@ -267,7 +268,7 @@ class Runner:
         by looking at the given cnf and match the comment (see below for detail) with
         comment returned by slurm."""
         self._check_unique_ids(unique_ids)
-        job_details = self.sbman.get_job_info()
+        job_details = self.sbman.get_job_info(strict=True)
 
         config_ids = []
         if unique_ids is not None:
