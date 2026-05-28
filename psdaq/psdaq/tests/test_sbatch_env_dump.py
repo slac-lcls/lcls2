@@ -1,3 +1,5 @@
+import shlex
+
 from psdaq.slurm.utils import (
     DAQMGR_DEBUG_ENV,
     DAQMGR_DEBUG_ENV_DUMP_CMD,
@@ -28,6 +30,13 @@ def get_jobstep_cmd(tmp_path, monkeypatch):
         job_name="timing_0",
         details={"cmd": "drp -P tst"},
     )
+
+
+def get_bash_payload(jobstep_cmd):
+    args = shlex.split(jobstep_cmd)
+    bash_index = args.index("bash")
+    assert args[bash_index + 1] == "-c"
+    return args[bash_index + 2]
 
 
 def test_jobstep_command_omits_env_dump_by_default(tmp_path, monkeypatch):
@@ -78,3 +87,47 @@ def test_daqmgr_debug_env_is_not_in_sbatch_env_allowlist():
     )
 
     assert env == {"HOME": "/tmp/home", "USER": "tstopr"}
+
+
+def test_jobstep_command_quotes_bash_payload_with_single_quotes(tmp_path, monkeypatch):
+    monkeypatch.delenv(DAQMGR_DEBUG_ENV, raising=False)
+    manager = create_manager(tmp_path, monkeypatch)
+    daq_cmd = "python -c 'print(1)'"
+
+    cmd = manager.get_jobstep_cmd(
+        node="drp-srcf-cmp001",
+        job_name="quoted_0",
+        details={"cmd": daq_cmd},
+    )
+
+    payload = get_bash_payload(cmd)
+    assert daq_cmd in payload
+    assert shlex.split(payload)[:5] == [
+        "daqlog_header",
+        "quoted_0",
+        "4",
+        "drp-srcf-cmp001",
+        daq_cmd,
+    ]
+
+
+def test_jobstep_command_preserves_shell_sensitive_bash_payload(tmp_path, monkeypatch):
+    monkeypatch.delenv(DAQMGR_DEBUG_ENV, raising=False)
+    manager = create_manager(tmp_path, monkeypatch)
+    daq_cmd = 'echo "$HOME"; printf "%s\\n" done'
+
+    cmd = manager.get_jobstep_cmd(
+        node="drp-srcf-cmp001",
+        job_name="shell_0",
+        details={"cmd": daq_cmd},
+    )
+
+    payload = get_bash_payload(cmd)
+    assert daq_cmd in payload
+    assert shlex.split(payload)[:5] == [
+        "daqlog_header",
+        "shell_0",
+        "4",
+        "drp-srcf-cmp001",
+        daq_cmd,
+    ]

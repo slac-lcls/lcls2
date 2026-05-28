@@ -407,8 +407,8 @@ class SbatchManager:
         # Generate as set of commands for srun
         daq_cmd = self.get_daq_cmd(details, job_name)
 
-        daqlog_header = (
-            f'daqlog_header {job_name} {self.platform} {node} "{daq_cmd.strip()}";'
+        daqlog_header = shlex.join(
+            ["daqlog_header", job_name, str(self.platform), node, daq_cmd.strip()]
         )
 
         rtprio = self.get_rtprio(details)
@@ -423,7 +423,7 @@ class SbatchManager:
                 f"{DAQMGR_DEBUG_ENV_DUMP_CMD}; "
                 f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
             )
-        cmd = f"{step_env_dump}{daqlog_header}{rtattr}{daq_cmd}"
+        cmd = f"{step_env_dump}{daqlog_header} ; {rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -431,7 +431,11 @@ class SbatchManager:
                 conda_profile = os.path.join(
                     CONDA_EXE[:loc_inst], "inst", "etc", "profile.d", "conda.sh"
                 )
-                cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
+                cmd = (
+                    f"source {shlex.quote(conda_profile)}; "
+                    f"conda activate {shlex.quote(details['conda_env'])}; "
+                    f"{cmd}"
+                )
 
         batch_env_dump = ""
         if debug_env:
@@ -442,15 +446,16 @@ class SbatchManager:
             )
 
         n_cores = self.get_n_cores(details)
+        bash_cmd = shlex.quote(cmd)
         if not as_step:
             jobstep_cmd = (
                 batch_env_dump
-                + f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                + f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
             )
         else:
             jobstep_cmd = (
                 batch_env_dump
-                + f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                + f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
                 + "&\n"
             )
         return jobstep_cmd
