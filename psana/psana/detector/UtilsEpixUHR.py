@@ -368,6 +368,8 @@ def calib_v02(det_raw, evt, **kwa):
                  +info_ndarr(pedest,  '\n    pedest:'))
 
     raw11 = np.bitwise_and(raw, det_raw._data_bit_mask)
+    # Shift data down 1 bit, since the gain bit was the LSB
+    raw11 >>= 1
     arrf = np.array(raw11, dtype=np.float32)
     if pedest is not None: arrf -= pedest
 
