@@ -459,12 +459,18 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
             gain_map_list: List[int] = cfg["expert"]["pixelBitMaps"][gain_map_key]
             gain_map: npt.NDArray[np.uint8] = np.array(gain_map_list, dtype=np.uint8).reshape((168, 192))
             manager.set_pixel_gain_map(asics=asics, map_data=gain_map)
-        else:
-            manager.set_pixel_gain(
-                asics=asics, gain_value=cfg["user"]["Gain"]["SetGainValue"]
-            )
-        # Need to check for the pixel gain maps... and also handle not SetSameGain4All
 
+            for i in range(6):
+                # Want to only record it for the "enabled" asics?
+                gainMapSelection[i] = gain_map.reshape(32256)
+        else:
+            new_gain: int = int(cfg["user"]["Gain"]["SetGainValue"])
+            manager.set_pixel_gain(asics=asics, gain_value=new_gain)
+
+            # Want to only record it for the "enabled" asics?
+            gainValSelection[:] = new_gain
+
+        # Need to check for the pixel gain maps... and also handle not SetSameGain4All
     time.sleep(1)
 
     # Configure any charge injection
