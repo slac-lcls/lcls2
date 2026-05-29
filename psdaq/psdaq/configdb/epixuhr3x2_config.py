@@ -429,6 +429,11 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
 
     manager.setup_bypasses_for_disabled_asics(asic_mask=asic_mask)
 
+    # Enable passThru, i.e., disable the gain expansion
+    for i in range(0, 6):
+        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
+        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
+
     # Setup the debug timing outputs
     board_ctrl: Dict[str, Any] = cfg["expert"]["FebFpga"]["App"]["BoardCtrl3x2Readout"]
     manager.setup_debug_timing_out(board_ctrl=board_ctrl)
