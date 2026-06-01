@@ -83,7 +83,7 @@ class SeqUser:
         print( 'Confirmed ninstr %d'%ninstr)
 
         #  Need a long timeout for the 32k instruction lists
-        self.insert.put(1,timeout=30.0)
+        self.insert.put(1,wait=30.0)
 
         #  How to handshake the insert.put -> idxseq0.get (RPC?)
         time.sleep(1.0)
@@ -132,27 +132,15 @@ class SeqUser:
         desc = self.namespv.get()
         for e in range(4*self.eng,4*self.eng+4):
             desc[e] = ''
-        for e,d in codes.items():
-            desc[4*self.eng+e] = d
-        print(f'desc {desc}')
+
+        if isinstance(codes,list):
+            for e,d in enumerate(codes):
+                desc[4*self.eng+e] = d
+        elif isinstance(codes,dict):
+            for e,d in codes.items():
+                desc[4*self.eng+e] = d
+
         self.namespv.put(desc)
-
-
-            
-            
-
-    def seqcodes(self, codes):
-        desc = self.namespv.get()
-        for e in range(4*self.eng,4*self.eng+4):
-            desc[e] = ''
-        for e,d in codes.items():
-            desc[4*self.eng+e] = d
-        print(f'desc {desc}')
-        self.namespv.put(desc)
-
-
-            
-            
 
 def main():
     parser = argparse.ArgumentParser(description='sequence pva programming')
@@ -204,13 +192,15 @@ def main():
 
             engineMask |= (1<<engine)
 
+            desc = {}
             for e in range(4*engine,4*engine+4):
                 desc[e] = ''
-            for e,d in config['seqcodes'].items():
-                desc[4*engine+e] = d
-            print(f'desc {desc}')
-
-            seqcodes_pv.put(desc,wait=tmo)
+                
+            ds = None
+            if config['descset'] is not None:
+                seq.seqcodes(config['descset'])
+            elif config['seqcodes'] is not None:
+                seq.seqcodes(config['seqcodes'])
 
         del seq
 
