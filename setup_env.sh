@@ -15,11 +15,19 @@ if [ -z "$ENV_MODE" ]; then
     return 1 2>/dev/null || exit 1
 fi
 
-# for s3df
-source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
-export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
-export DIR_PSDM=/sdf/group/lcls/ds/ana/
-export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+if [ -d "/cds/sw/" ]; then
+    # for cds
+    source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
+    export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
+    export DIR_PSDM=/cds/group/psdm
+    export SIT_PSDM_DATA=/cds/data/psdm
+else
+    # for s3df
+    source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
+    export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+    export DIR_PSDM=/sdf/group/lcls/ds/ana/
+    export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+fi
 
 case "$ENV_MODE" in
     psana)
