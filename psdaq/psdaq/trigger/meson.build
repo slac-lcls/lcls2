@@ -32,6 +32,26 @@ mfxTripperTeb_lib = shared_library('mfxTripperTeb',
   install_rpath: libdir_install_rpath,
 )
 
+mfxTripperEvSelectTeb_lib = shared_library('mfxTripperEvSelectTeb',
+  [
+    'src/mfxTripperPrimitive.cc',
+    'src/mfxTripperPrimitive_jungfrau.cc',
+    'src/mfxTripperPrimitive_timing.cc',
+    'src/mfxTripperEvSelectTeb.cc',
+  ],
+  include_directories: [
+    trigger_inc_dir,
+    include_directories(join_paths(get_option('epics_base'), 'include')),
+  ],
+  dependencies: [
+    xtcdata_dep,
+    psalg_utils_dep,
+    epics_dep,
+  ],
+  install: true,
+  install_rpath: libdir_install_rpath,
+)
+
 tmoTrigger_lib = shared_library('tmoTrigger',
   [
     'src/TriggerPrimitiveExample_cam.cc',

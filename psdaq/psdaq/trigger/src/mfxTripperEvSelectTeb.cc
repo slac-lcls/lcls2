@@ -1,12 +1,10 @@
 #include "Trigger.hh"
 #include "TripperTebData.hh"
 
-#include "utilities.hh"
-
 #include <cadef.h>
+#include "nlohmann/json.hpp"
 
 #include <cstdint>
-#include <stdio.h>
 #include <iostream>
 #include <cstring>
 
@@ -15,6 +13,9 @@ using json = nlohmann::json;
 /**
  * TEB Trigger data for detector protection.
  * "Trips" shutter when number of hot pixels (ADU above a threshold) exceeds a count.
+ * This version (as opposed to `mfxTripperTeb.cc`) also allows for event code selection.
+ * If a non-zero event code is provided for `acceptEventCode` in the configDB, only
+ * data for that event code will be saved and monitored.
  */
 
 namespace Pds {
@@ -38,13 +39,15 @@ namespace Pds {
         }
     private:
         chid m_blockId; ///< Channel to trigger blocking of beam
-        chid m_aduId;  ///< ADU threshold to consider pixel "hot"
-        chid m_npixId; ///< Maximum number of hot pixels
-        chid m_npix_overId; ///< Number of hot pixels found
-        std::string m_tripperPV;
+        chid m_aduId;  ///< Channel for ADU threshold to consider pixel "hot"
+        chid m_npixId; ///< Channel for maximum number of hot pixels
+        chid m_npix_overId; ///< Channel for number of hot pixels found
+        std::string m_tripperPV; ///< Base PV for the above channels
         bool m_tripped {false};
         bool m_printTrippedWarning {true};
         ca_client_context* m_context;
+
+        uint32_t m_evt_code{0};
     };
     };
 };
@@ -63,6 +66,15 @@ int Pds::Trg::MfxTripperTrigger::configure(const json&              connectMsg,
         std::cout << "Configuration requires tripBasePV to work! Check configdb!" << std::endl;
         return 1;
     }
+
+    if (top.contains("acceptEventCode")) {
+        m_evt_code = top["acceptEventCode"].get<uint32_t>();
+        std::cout << "Will only accept events with event code: " << m_evt_code << std::endl;
+    } else {
+        std::cerr << "Configuration requires acceptEventCode to work! Check configdb!" << std::endl;
+        return 1;
+    }
+
     SEVCHK(ca_context_create(ca_enable_preemptive_callback), "ca_context_create failed!");
     m_context = ca_current_context();
     int status;
@@ -123,6 +135,15 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
             maxHotPixels = data->smalldata.maxHotPixels;
             hotPixelThresh = data->smalldata.hotPixelThresh;
             foundJungfrau = true;
+        }
+
+        if (m_evt_code && strcmp(data->detType, "timing") == 0) {
+            // If we assigned an event code, check that it was present
+            if (!(data->smalldata.seqInfo[m_evt_code >> 4] & (1 << (m_evt_code & 0xF)))) {
+                // If the event code is not present do not write or monitor
+                wrt = false;
+                mon = false;
+            }
         }
     } while (++ctrb != end);
 
