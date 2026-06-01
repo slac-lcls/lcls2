@@ -73,6 +73,15 @@ namespace Pds {
       float bufend  [16];
     };
 
+    class MonTrig {
+    public:
+      uint32_t ontime;
+      uint32_t early;
+      uint32_t late;
+      uint32_t clk160;
+      int32_t  phase;
+    };
+
     class MonFlow {
     public:
       uint32_t fmask;
@@ -125,6 +134,7 @@ namespace Pds {
     };
 
     static const unsigned _sz_monTiming[] = {0};
+    static const unsigned _sz_monTrig  [] = {0};
     static const unsigned _sz_monPgp   [] = {4,4,4,4,4,4,4,4,4,4,4,4,4,};
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};

@@ -345,3 +345,40 @@ void Mmcm::_setFilt(unsigned m)
   printf("Filt_2 %x -> %x\n", unsigned(Filt_2), v);
   Filt_2 = v;
 }
+
+void Mmcm::setPhase(unsigned delay_frac)
+{
+  unsigned v;
+  // CLKOUT0_DIVIDE_F_G = 12.0, Fclk0 = Fvco/12.0 = 1300/14 MHz
+  //  Rising edge control
+  v = ClkOut0_1;
+  v &= ~0xe000;
+  v |= (delay_frac&0x7)<<13; // Fractional delay of vco
+  printf("ClkOut0_1 %x -> %x\n", unsigned(ClkOut0_1), v);
+  ClkOut0_1 = v;
+
+  //  Falling edge control
+  v = ClkOut5_2;
+  v &= ~0xe000;
+  v |= (delay_frac&0x7)<<13; // Fractional delay of vco
+  printf("ClkOut0_2 %x -> %x\n", unsigned(ClkOut5_2), v);
+  ClkOut5_2 = v;
+}
+
+void Mmcm::dump()
+{
+#define DMP(reg) { printf("%s : %04x\n", #reg, unsigned(reg)); }
+    DMP(ClkOut5_1);
+    DMP(ClkOut5_2);
+    DMP(ClkOut0_1);
+    DMP(ClkOut0_2);
+    DMP(ClkFbOut_1);
+    DMP(ClkFbOut_2);
+    DMP(DivClk);
+    DMP(Lock_1);
+    DMP(Lock_2);
+    DMP(Lock_3);
+    DMP(PowerU);
+    DMP(Filt_1);
+    DMP(Filt_2);
+}

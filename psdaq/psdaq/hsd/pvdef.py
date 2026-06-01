@@ -17,7 +17,8 @@ daqConfig = {'readoutGroup'     :('i', 0, 'ROG'),
              'fex_corr_accum'   :('i',12),
              'full_event'       :('i', 8, 'Min buffers thr'),
              'full_size_raw'    :('i', 2048, 'Min rows thr (40sa)'),
-             'full_size_fex'    :('i', 2048, 'Min rows thr (40sa)')}
+             'full_size_fex'    :('i', 2048, 'Min rows thr (40sa)'),
+             'trig_phaselock'   :('i', 0),}
 
 pgpConfig  = {'diffctrl'    :('ai', [15]*4),
               'precursor'   :('ai', [7]*4),
@@ -25,6 +26,8 @@ pgpConfig  = {'diffctrl'    :('ai', [15]*4),
 
 daqReset   = {'timrxrst'    :('i', 0),
               'timpllrst'   :('i', 0),
+              'mmcmsetup'   :('i', 0),
+              'mmcmphase'   :('i', 0, 'ADC/TIM clock phase'),
               'pgploopback' :('i', 0),
               'pgpnofull'   :('i', 0),
               'reset'       :('i', 0),
@@ -51,6 +54,12 @@ monTiming = {'timframecnt':('i', 0, '929kH nominal'),
              'hdrfifor'   :('i', 0, 'ROG HDR FIFO pause thr'),
              'fulltotrig' :('i', 0, 'Max full to L0 (timing clks)'),
              'nfulltotrig':('i', 0, 'Min nfull to L0 (timing clks)') }
+
+monTrig   = {'ontime'  :('i', 0),
+             'early'   :('i', 0),
+             'late'    :('i', 0),
+             'clk160'  :('i', 0),
+             'phase'   :('i', 0)}
 
 monPgp    = {'loclinkrdy' :('ai', [0]*4),
              'remlinkrdy' :('ai', [0]*4),
