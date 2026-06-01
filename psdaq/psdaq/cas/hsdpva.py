@@ -316,6 +316,8 @@ class Ui_MainWindow(object):
                             'Config' )
             maintab.addTab( PvScalarBox(title+':MONTIMING','Timing',monTiming),
                             'Timing' )
+            maintab.addTab( PvScalarBox(title+':MONTRIG','Trig',monTrig),
+                            'Trig' )
             maintab.addTab( PvArrayTable(title+':MONPGP','Pgp',monPgp),
                             'PGP' )
             maintab.addTab( PvArrayTable(title+':PGPCONFIG','Pgp Config',pgpConfig,edit=True),

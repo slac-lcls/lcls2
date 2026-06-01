@@ -48,6 +48,7 @@ namespace Pds {
 
     //  enumeration of PV insert order below
     enum { _monTiming,
+           _monTrig,
            _monPgp,
            _monRawBuf,
            _monFexBuf,
@@ -78,6 +79,7 @@ namespace Pds {
         _pv[_##name            ] = new EpicsPVA(STOU(pvbase_a + #name).c_str()); \
         _pv[_##name + _NumberOf] = new EpicsPVA(STOU(pvbase_b + #name).c_str()); }
       PV_ADD (monTiming);
+      PV_ADD (monTrig);
       PV_ADD (monPgp);
       PV_ADD (monRawBuf);
       PV_ADD (monFexBuf);
@@ -186,6 +188,14 @@ namespace Pds {
             fex._base[1].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monFexBuf); }
         }
+
+        { MonTrig v;
+          v.ontime = fex._triggerMon.num_ontime;
+          v.early  = fex._triggerMon.num_early;
+          v.late   = fex._triggerMon.num_late;
+          v.clk160 = fex._triggerMon.clk_160;
+          v.phase  = _m.optfmc().adcPhase();
+          PVPUT(monTrig); }
 
         { MonBufDetail v(reg,0);
           PVPUT(monRawDet); }
