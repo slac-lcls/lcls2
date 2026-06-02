@@ -25,10 +25,23 @@ def test_run_exec_can_suppress_success_output(capsys):
     assert output.err == ""
 
 
-def test_run_exec_prints_failure_output_when_suppressed(capsys):
+def test_run_exec_can_suppress_failure_output(capsys):
     rc = run_python(
         "import sys; print('stdout failed'); "
         "print('stderr failed', file=sys.stderr); sys.exit(7)"
+    )
+
+    assert rc == 7
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == ""
+
+
+def test_run_exec_prints_failure_output_when_requested(capsys):
+    rc = run_python(
+        "import sys; print('stdout failed'); "
+        "print('stderr failed', file=sys.stderr); sys.exit(7)",
+        echo_output=True,
     )
 
     assert rc == 7

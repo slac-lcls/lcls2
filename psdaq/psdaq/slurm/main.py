@@ -130,15 +130,13 @@ class Runner:
             tmpfile.write(self.sbman.sb_script)
             tmpfile.flush()  # Make sure content is written to disk
             env = build_sbatch_env()
-            rc = asyncio.run(
+            asyncio.run(
                 self.proc.run_exec(
                     ["sbatch", tmpfile.name],
                     env=env,
                     echo_output=False,
                 )
             )
-            if rc != 0:
-                raise RuntimeError(f"sbatch failed with exit code {rc}")
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())

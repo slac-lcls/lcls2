@@ -13,7 +13,7 @@ class SubprocHelper:
         )
 
         stdout, stderr = await proc.communicate()
-        if echo_output or proc.returncode != 0:
+        if echo_output:
             if stdout:
                 print(stdout.decode(), end="")
             if stderr:
