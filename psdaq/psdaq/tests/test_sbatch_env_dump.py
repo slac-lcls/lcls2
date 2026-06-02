@@ -89,6 +89,34 @@ def test_daqmgr_debug_env_is_not_in_sbatch_env_allowlist():
     assert env == {"HOME": "/tmp/home", "USER": "tstopr"}
 
 
+def test_sbatch_env_preserves_daqmgr_export_backdoor():
+    env = build_sbatch_env(
+        {
+            "HOME": "/tmp/home",
+            "USER": "tstopr",
+            "DAQMGR_EXPORT": "RDMAV_FORK_SAFE=1,OPENBLAS_NUM_THREADS=1",
+            "SLURM_CPU_BIND": "quiet,mask_cpu:0x1",
+        }
+    )
+
+    assert env == {
+        "HOME": "/tmp/home",
+        "USER": "tstopr",
+        "DAQMGR_EXPORT": "RDMAV_FORK_SAFE=1,OPENBLAS_NUM_THREADS=1",
+    }
+
+
+def test_jobstep_command_exports_daqmgr_export_for_restart_reuse(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "DAQMGR_EXPORT",
+        "RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1,OPENBLAS_NUM_THREADS=1",
+    )
+
+    cmd = get_jobstep_cmd(tmp_path, monkeypatch)
+
+    assert ",DAQMGR_EXPORT,$DAQMGR_EXPORT" in cmd
+
+
 def test_jobstep_command_quotes_bash_payload_with_single_quotes(tmp_path, monkeypatch):
     monkeypatch.delenv(DAQMGR_DEBUG_ENV, raising=False)
     manager = create_manager(tmp_path, monkeypatch)

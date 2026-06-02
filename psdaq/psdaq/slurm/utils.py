@@ -376,7 +376,9 @@ class SbatchManager:
         env_opt += ",DISPLAY"
         env_opt += ",XAUTHORITY"
 
-        # Include any exists in setup_env.sh backdoor
+        # Preserve DAQMGR_EXPORT for daqstat restarts, then expand its contents
+        # for the current step.
+        env_opt += ",DAQMGR_EXPORT"
         env_opt += ",$DAQMGR_EXPORT"
 
         # Include any exists in the configuration file
