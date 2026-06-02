@@ -34,7 +34,7 @@ if cuda_compiler.found()
   cuda_main_dep = cc.find_library('cuda',
     dirs: [
       cuda_lib_dirs,
-      join_paths(cuda_path, 'lib64/stubs'), # Only needed in Python 3.9
+      #join_paths(cuda_path, 'lib64/stubs'), # Only needed in Python 3.9
     ]
   )
   cufile_dep = cc.find_library('cufile', dirs: cuda_lib_dirs)

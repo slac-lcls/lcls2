@@ -13,11 +13,11 @@ py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
 # Python 3.11
-#numpy_dep = dependency('numpy')
+numpy_dep = dependency('numpy')
 
 # Python 3.9
-numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())']).stdout().strip()
-numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
+#numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())']).stdout().strip()
+#numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
 # the gcc linker args that conda sets.
@@ -65,7 +65,7 @@ subdir('psana')
 cuda_compiler = find_program('nvcc', required: false)
 
 if cuda_compiler.found()
-  add_languages('cuda', native: false) # Python 3.9
+  #add_languages('cuda', native: false) # Python 3.9
   cmake = import('cmake')
   cusz_proj = cmake.subproject('cusz')
   cuszp_proj = cmake.subproject('cuszp')
