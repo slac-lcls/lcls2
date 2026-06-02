@@ -16,29 +16,31 @@ If you use all or part of it, please give an appropriate acknowledgment.
 """
 
 import os
-#import sys
-#import logging
+
+# import sys
+# import logging
 import numpy as np
-#import psana.detector.UtilsCalib as uc
+
+# import psana.detector.UtilsCalib as uc
 import psana.detector.UtilsEventLoop as uel
 from psana.detector.UtilsDataBlock import DataBlock
-sys, logging, info_ndarr, message, SCRNAME, EventLoop =\
-   uel.sys, uel.logging, uel.au.info_ndarr, uel.message, uel.SCRNAME, uel.EventLoop
+
+sys, logging, info_ndarr, message, SCRNAME, EventLoop = uel.sys, uel.logging, uel.au.info_ndarr, uel.message, uel.SCRNAME, uel.EventLoop
 logger = logging.getLogger(__name__)
 
 
-def tmp_filename(fname=None, suffix='_EventLoopStatus.npy'):
-   """returns file name in
-      /lscratch/<username>/tmp/fname   if fname is not None or
-      /lscratch/<username>/tmp/<random-str>suffix
-   """
-   import tempfile
-   tmp_file = tempfile.NamedTemporaryFile(mode='r+b',suffix=suffix)
-   return tmp_file.name if fname is None else\
-          os.path.join(os.path.dirname(tmp_file.name), fname)
+def tmp_filename(fname=None, suffix="_EventLoopStatus.npy"):
+    """returns file name in
+    /lscratch/<username>/tmp/fname   if fname is not None or
+    /lscratch/<username>/tmp/<random-str>suffix
+    """
+    import tempfile
+
+    tmp_file = tempfile.NamedTemporaryFile(mode="r+b", suffix=suffix)
+    return tmp_file.name if fname is None else os.path.join(os.path.dirname(tmp_file.name), fname)
 
 
-def find_outliers(arr, title='', vmin=None, vmax=None, fmt='%.3f'):
+def find_outliers(arr, title="", vmin=None, vmax=None, fmt="%.3f"):
     assert isinstance(arr, np.ndarray)
     size = arr.size
     arr0 = np.zeros_like(arr, dtype=bool)
@@ -49,135 +51,127 @@ def find_outliers(arr, title='', vmin=None, vmax=None, fmt='%.3f'):
     arr1_hi = np.select((bad_hi,), (arr1,), 0)
     sum_lo = arr1_lo.sum()
     sum_hi = arr1_hi.sum()
-    s_lo = '%8d / %d (%6.3f%%) pixels %s <= %s'%\
-            (sum_lo, size, 100*sum_lo/size, title, 'unlimited' if vmin is None else fmt % vmin)
-    s_hi = '%8d / %d (%6.3f%%) pixels %s >= %s'%\
-            (sum_hi, size, 100*sum_hi/size, title, 'unlimited' if vmax is None else fmt % vmax)
+    s_lo = "%8d / %d (%6.3f%%) pixels %s <= %s" % (sum_lo, size, 100 * sum_lo / size, title, "unlimited" if vmin is None else fmt % vmin)
+    s_hi = "%8d / %d (%6.3f%%) pixels %s >= %s" % (sum_hi, size, 100 * sum_hi / size, title, "unlimited" if vmax is None else fmt % vmax)
     return bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi
 
 
-def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, snrmax=8):
+def evaluate_pixel_status(arr, title="", vmin=None, vmax=None, snrmax=8):
     """vmin/vmax - absolutly allowed min/max of the value"""
     assert isinstance(arr, np.ndarray)
 
-    logger.info('vmin %.3f: vmax: %.3f' % (vmin, vmax))
+    logger.info("vmin %.3f: vmax: %.3f" % (vmin, vmax))
 
-    bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi = find_outliers(arr, title=title, vmin=vmin, vmax=vmax, fmt='%.0f')
+    bad_lo, bad_hi, arr1_lo, arr1_hi, s_lo, s_hi = find_outliers(arr, title=title, vmin=vmin, vmax=vmax, fmt="%.0f")
 
     arr_sel = arr[np.logical_not(np.logical_or(bad_lo, bad_hi))]
     med = np.median(arr_sel)
-    spr = np.median(np.absolute(arr_sel-med))  # axis=None, out=None, overwrite_input=False, keepdims=False
+    spr = np.median(np.absolute(arr_sel - med))  # axis=None, out=None, overwrite_input=False, keepdims=False
     if spr == 0:
-       spr = np.std(arr_sel)
-       logger.warning('MEDIAN OF SPREAD FOR INT VALUES IS 0 replaced with STD = % .3f' % spr)
+        spr = np.std(arr_sel)
+        logger.warning("MEDIAN OF SPREAD FOR INT VALUES IS 0 replaced with STD = % .3f" % spr)
 
-    _vmin = med - snrmax*spr if vmin is None else max(med - snrmax*spr, vmin)
-    _vmax = med + snrmax*spr if vmax is None else min(med + snrmax*spr, vmax)
+    _vmin = med - snrmax * spr if vmin is None else max(med - snrmax * spr, vmin)
+    _vmax = med + snrmax * spr if vmax is None else min(med + snrmax * spr, vmax)
 
-    s_sel = '%s selected %d of %d pixels in' % (title, arr_sel.size, arr.size)\
-          + ' range (%s, %s)' % (str(vmin), str(vmax))\
-          + ' med: %.3f spr: %.3f' % (med, spr)
+    s_sel = (
+        "%s selected %d of %d pixels in" % (title, arr_sel.size, arr.size) + " range (%s, %s)" % (str(vmin), str(vmax)) + " med: %.3f spr: %.3f" % (med, spr)
+    )
 
-    s_range = u're-defined range for med \u00B1 %.1f*spr: (%.3f, %.3f)' % (snrmax, _vmin, _vmax)
+    s_range = "re-defined range for med \u00b1 %.1f*spr: (%.3f, %.3f)" % (snrmax, _vmin, _vmax)
     _, _, _arr1_lo, _arr1_hi, _s_lo, _s_hi = find_outliers(arr, title=title, vmin=_vmin, vmax=_vmax)
 
-    gap = 13*' '
-    logger.info('%s\n    %s\n         absolute limits:\n  %s\n  %s\n         evaluated limits:\n%s%s\n%s%s\n  %s\n  %s' %\
-        (20*'=', info_ndarr(arr, title, last=0), s_lo, s_hi, gap, s_sel, gap, s_range, _s_lo, _s_hi))
+    gap = 13 * " "
+    logger.info(
+        "%s\n    %s\n         absolute limits:\n  %s\n  %s\n         evaluated limits:\n%s%s\n%s%s\n  %s\n  %s"
+        % (20 * "=", info_ndarr(arr, title, last=0), s_lo, s_hi, gap, s_sel, gap, s_range, _s_lo, _s_hi)
+    )
 
     return _arr1_lo, _arr1_hi, _s_lo, _s_hi
 
 
-
-
-
-
 def feature_01(block, databits=0x3FFF, snrmax=8):
-
     logger.info("""Feature 1: mean intensity of frames in good range""")
     _block = block & databits
-    #block = np.bitwise_and(block, databits)
+    # block = np.bitwise_and(block, databits)
     sh_frame = block.shape[-2:]
-    print('frame shape:', sh_frame)
-    intensity_mean = np.sum(_block, axis=(-2,-1)) / block.size
-    logger.info(info_ndarr(intensity_mean, '\n  per-record intensity MEAN IN FRAME:', last=20))
+    print("frame shape:", sh_frame)
+    intensity_mean = np.sum(_block, axis=(-2, -1)) / block.size
+    logger.info(info_ndarr(intensity_mean, "\n  per-record intensity MEAN IN FRAME:", last=20))
 
-    intensity_med = np.median(_block, axis=(-2,-1))
-    logger.info(info_ndarr(intensity_med, '\n  per-record intensity MEDIAN IN FRAME:', last=20))
-    arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(intensity_med, title='Feat.1: intensity_med',\
-                                         vmin=0, vmax=databits, snrmax=snrmax)
+    intensity_med = np.median(_block, axis=(-2, -1))
+    logger.info(info_ndarr(intensity_med, "\n  per-record intensity MEDIAN IN FRAME:", last=20))
+    arr1_lo, arr1_hi, s_lo, s_hi = evaluate_pixel_status(intensity_med, title="Feat.1: intensity_med", vmin=0, vmax=databits, snrmax=snrmax)
     arr0 = np.zeros_like(arr1_lo, dtype=np.uint64)  # dtype=bool
-    arr1_good_frames = np.select((arr1_lo>0, arr1_hi>0), (arr0, arr0), 1)
-    logger.info('Total number of good events: %d' % arr1_good_frames.sum())
+    arr1_good_frames = np.select((arr1_lo > 0, arr1_hi > 0), (arr0, arr0), 1)
+    logger.info("Total number of good events: %d" % arr1_good_frames.sum())
 
     return arr1_good_frames
 
 
-
-
 class EventLoopStatus(EventLoop):
-    msgels='EventLoopStatus'
+    msgels = "EventLoopStatus"
 
     def __init__(self, parser):
         EventLoop.__init__(self, parser)
 
     def init_event_loop(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        logger.info('init_event_loop - dskwargs: %s detname: %s' % (str(self.dskwargs), self.detname))
-        #parser = self.parser
-        #args = self.args
-        #kwa = self.kwa
-        #nrecs   = kwa.get('nrecs', 10)
-        #self.nrecs  = kwa.get('nrecs',1000)
-        #kwa['init_event_loop'] = 'OK'
+        logger.info("init_event_loop - dskwargs: %s detname: %s" % (str(self.dskwargs), self.detname))
+        # parser = self.parser
+        # args = self.args
+        # kwa = self.kwa
+        # nrecs   = kwa.get('nrecs', 10)
+        # self.nrecs  = kwa.get('nrecs',1000)
+        # kwa['init_event_loop'] = 'OK'
         self.dbl = None
         self.status = None
-        self.dic_consts_tot = {} # {<gain_mode>:{<ctype>:nda3d_shape:(4, 192, 384)}}
+        self.dic_consts_tot = {}  # {<gain_mode>:{<ctype>:nda3d_shape:(4, 192, 384)}}
         self.kwa_depl = {}
         self.flimg = None
 
     def begin_run(self):
-        #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        logger.info('=== begin_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
+        # message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
+        logger.info("=== begin_run expname: %s runnum: %s" % (self.expname, str(self.runnum)))
 
     def end_run(self):
-        #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        logger.info('=== end_run expname: %s runnum: %s' % (self.expname, str(self.runnum)))
+        # message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
+        logger.info("=== end_run expname: %s runnum: %s" % (self.expname, str(self.runnum)))
 
-    def fname_data_block(self, ext='.npz'):
-        fname = '%s-data_block-%s-r%04d-%s' % (self.msgels, self.expname, self.runnum, self.detname)
-        fname += '-seg%s' % ('ALL' if self.segind is None else ('%03d' % self.segind))
-        fname += '-step%02d' % self.istep
-        fname += '-nrecs%04d' % self.nrecs
-        return tmp_filename(fname+ext)
+    def fname_data_block(self, ext=".npz"):
+        fname = "%s-data_block-%s-r%04d-%s" % (self.msgels, self.expname, self.runnum, self.detname)
+        fname += "-seg%s" % ("ALL" if self.segind is None else ("%03d" % self.segind))
+        fname += "-step%02d" % self.istep
+        fname += "-nrecs%04d" % self.nrecs
+        return tmp_filename(fname + ext)
 
     def begin_step(self):
-        #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        logger.info('begin_step istep/nevtot: %d/%s' % (self.istep, str(self.metadic)))
+        # message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
+        logger.info("begin_step istep/nevtot: %d/%s" % (self.istep, str(self.metadic)))
 
         dbl = self.dbl
         if dbl is None:
             odet = self.odet
             kwa = self.kwa
-            kwa['rms_hi'] = odet.raw._data_bit_mask - 10
-            kwa['int_hi'] = odet.raw._data_bit_mask - 10
-            kwa.setdefault('nrecs',10)
-            kwa.setdefault('datbits', 0xffff) # data bits 0xffff - 16-bit mask for detector without gain bit/s
+            kwa["rms_hi"] = odet.raw._data_bit_mask - 10
+            kwa["int_hi"] = odet.raw._data_bit_mask - 10
+            kwa.setdefault("nrecs", 10)
+            kwa.setdefault("datbits", 0xFFFF)  # data bits 0xffff - 16-bit mask for detector without gain bit/s
 
             dbl = self.dbl = DataBlock(**kwa)
             dbl.runnum = self.runnum
             dbl.exp = self.expname
-            dbl.ts_run, dbl.ts_now = self.ts_run, self.ts_now #uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FOR
+            dbl.ts_run, dbl.ts_now = self.ts_run, self.ts_now  # uc.tstamps_run_and_now(env, fmt=uc.TSTAMP_FOR
 
             self.fname_block = self.fname_data_block()
             self.exists_fdb = os.path.exists(self.fname_block)
-            logger.warning('%s tmp file: %s' % ({True:'EXISTS', False:'DOES NOT EXIST'}[self.exists_fdb], self.fname_block))
+            logger.warning("%s tmp file: %s" % ({True: "EXISTS", False: "DOES NOT EXIST"}[self.exists_fdb], self.fname_block))
             if not self.args.reset and self.exists_fdb:
                 dbl.load(fname=self.fname_block)
 
     def end_step(self):
-        #message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
-        logger.info(self.dbl.info_data_block(cmt='berofe saving data_block'))
+        # message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
+        logger.info(self.dbl.info_data_block(cmt="berofe saving data_block"))
         dbl = self.dbl
 
         if self.args.plotim:
@@ -185,66 +179,68 @@ class EventLoopStatus(EventLoop):
 
         if self.args.reset or not self.exists_fdb:
             dbl.save(self.fname_block)
-        del(dbl)
-        dbl=None
-        logger.info('==== End of step %1d ====\n' % self.istep)
+        del dbl
+        dbl = None
+        logger.info("==== End of step %1d ====\n" % self.istep)
 
     def proc_event(self, msgmaxnum=5):
-        #print('proc_event ievt/nevtot: %d/%d' % (self.ievt, self.nevtot))
+        # print('proc_event ievt/nevtot: %d/%d' % (self.ievt, self.nevtot))
         raw = self.odet.raw.raw(self.evt)
-        if self.segind is not None: raw = raw[self.segind,:]
-        if self.aslice is not None: raw = raw[self.aslice]
+        if self.segind is not None:
+            raw = raw[self.segind, :]
+        if self.aslice is not None:
+            raw = raw[self.aslice]
         is_full = self.dbl.event(raw, self.ievt)
         self.status = 2 if is_full else 1
-        if self.args.plotim: self.plot_event()
+        if self.args.plotim:
+            self.plot_event()
 
     def plot_event(self):
         raw = self.odet.raw.raw(self.evt)
-        logger.info(info_ndarr(raw, 'ievt:%04d raw:' % self.ievt, last=5))
+        logger.info(info_ndarr(raw, "ievt:%04d raw:" % self.ievt, last=5))
         img = np.array(raw)
         img = uel.au.reshape_to_2d(img)
         sh = img.shape
-        h = 6; w = h*sh[1]/sh[0] + 1
+        h = 6
+        w = h * sh[1] / sh[0] + 1
         if self.flimg is None:
-           global gr, fleximage
-           from psana.detector.UtilsGraphics import gr, fleximage
-           self.flimg = fleximage(img, h_in=h, w_in=w) # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
+            global gr, fleximage
+            from psana.detector.UtilsGraphics import gr, fleximage
+
+            self.flimg = fleximage(img, h_in=h, w_in=w)  # arr=arr_img)#, amin=0, amax=20), nneg=1, npos=3
         else:
-           self.flimg.update(img)
-        tit = 'Event %d' % self.ievt
+            self.flimg.update(img)
+        tit = "Event %d" % self.ievt
         self.flimg.fig.suptitle(tit, fontsize=16)
         gr.set_win_title(self.flimg.fig, titwin=tit)
-        #gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
-        gr.show(mode='DO NOT HOLD')
-
+        # gr.save_fig(flimg.fig, fname='img_det_raw_raw.png', verb=True)
+        gr.show(mode="DO NOT HOLD")
 
     def summary(self):
         message(msg=self.msgels, metname=sys._getframe().f_code.co_name, logmethod=logger.info)
         gainmodes = [k for k in self.dic_consts_tot.keys()]
-        gmodes = getattr(self.odet.raw, '_gain_modes', None)
-        logger.info('constants'\
-                   +'\n  created  for gain modes: %s' % str(gainmodes)\
-                   +'\n  expected for gain modes: %s' % str(gmodes))
-        ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
+        gmodes = getattr(self.odet.raw, "_gain_modes", None)
+        logger.info("constants" + "\n  created  for gain modes: %s" % str(gainmodes) + "\n  expected for gain modes: %s" % str(gmodes))
+        ctypes = ("pedestals", "pixel_rms", "pixel_status", "pixel_max", "pixel_min")
         kwa_depl = self.kwa_depl
-        kwa_depl['shape_as_daq'] = None if self.odet.raw is None else self.odet.raw._shape_as_daq()
-        kwa_depl['exp']          = self.expname
-        kwa_depl['det']          = self.detname
-        kwa_depl['run_orig']     = self.runnum
+        kwa_depl["shape_as_daq"] = None if self.odet.raw is None else self.odet.raw._shape_as_daq()
+        kwa_depl["exp"] = self.expname
+        kwa_depl["det"] = self.detname
+        kwa_depl["run_orig"] = self.runnum
 
-        #deploy_constants(ctypes, gmodes, **kwa_depl)
+        # deploy_constants(ctypes, gmodes, **kwa_depl)
 
     def feature_02(self):
         logger.info("""Feature 2: dark mean in good range""")
-        block_good = self.block[self.bool_good_frames,:] & self.databits
-        logger.info(info_ndarr(block_good, 'block of good records:', last=5))
-        return np.mean(block_good, axis=0, dtype=np.float)
+        block_good = self.block[self.bool_good_frames, :] & self.databits
+        logger.info(info_ndarr(block_good, "block of good records:", last=5))
+        return np.mean(block_good, axis=0, dtype=np.float64)
 
     def feature_03(self):
         logger.info("""Feature 3: dark RMS in good range""")
-        block_good = self.block[self.bool_good_frames,:] & self.databits
-        logger.info(info_ndarr(block_good, 'block of good records:', last=5))
-        return np.std(block_good, axis=0, dtype=np.float)
+        block_good = self.block[self.bool_good_frames, :] & self.databits
+        logger.info(info_ndarr(block_good, "block of good records:", last=5))
+        return np.std(block_good, axis=0, dtype=np.float64)
 
     def feature_04(self):
         logger.info("""Feature 4: TBD""")
@@ -255,36 +251,36 @@ class EventLoopStatus(EventLoop):
         return None
 
 
-def test_features(fname='fname.npz'):
+def test_features(fname="fname.npz"):
     dbl = DataBlock()
     dbl.load(fname=fname)
-    logger.info(dbl.info_data_block(cmt=''))
+    logger.info(dbl.info_data_block(cmt=""))
     good_frames = feature_01(dbl.block, databits=0x3FFF, snrmax=8)
-    logger.info('good_frames %s' % str(good_frames))
+    logger.info("good_frames %s" % str(good_frames))
 
 
 def det_pixel_status(parser):
-    args = parser.parse_args() # NameSpace
-    kwargs = vars(args)        # dict
+    args = parser.parse_args()  # NameSpace
+    kwargs = vars(args)  # dict
     STRLOGLEV = args.loglevel
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
 
-#    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
-    #fname = args.fname # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
+    #    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
+    # fname = args.fname # '/lscratch/dubrovin/tmp/EventLoopStatus-data_block-mfx101332224-r0204-jungfrau-seg003-step00-nrecs0100.npz'
 
-#    if os.path.exists(str(fname)):
-#        test_features(fname=fname)=
-#    else:
-#        evl = EventLoopStatus(parser)
-#        evl.event_loop()
-       
+    #    if os.path.exists(str(fname)):
+    #        test_features(fname=fname)=
+    #    else:
+    #        evl = EventLoopStatus(parser)
+    #        evl.event_loop()
+
     evl = EventLoopStatus(parser)
     evl.event_loop()
-    #test_features(fname=fname)
+    # test_features(fname=fname)
 
-    sys.exit('End of %s' % SCRNAME)
+    sys.exit("End of %s" % SCRNAME)
 
 
 if __name__ == "__main__":
-    sys.exit('\n  To test/use this module try command: det_pixel_status\n  %s\n' % (53*'='))
+    sys.exit("\n  To test/use this module try command: det_pixel_status\n  %s\n" % (53 * "="))
 # EOF

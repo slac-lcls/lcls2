@@ -103,7 +103,7 @@ INT_TYPES = [
     np.uint64,
     np.uint,
 ]
-FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.float128, float]
+FLOAT_TYPES = [float, np.float16, np.float32, np.float64, np.longdouble, float]
 
 # This is not actually implemented, so let's comment it out for now.
 # RAGGED_PREFIX   = 'ragged_'
@@ -176,6 +176,8 @@ def get_group_name(event_data_dict):
     if is_group(event_data_dict):
         datagroup = event_data_dict[ALIGN_GROUP_KW]
     return datagroup
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -236,9 +238,7 @@ class CacheArray:
             # keep appending to them.
             self.data = None
         else:
-            self.data = np.empty(
-                (self.cache_size,) + self.singleton_shape, dtype=self.dtype
-            )
+            self.data = np.empty((self.cache_size,) + self.singleton_shape, dtype=self.dtype)
         self.reset()
 
         return
@@ -349,10 +349,7 @@ class Server:  # (hdf5 handling)
                         is_len = is_len_key(dataset_name)
                         if is_var:
                             if is_len:
-                                raise KeyError(
-                                    'Key: event keys cannot have the form "var_*_len! (%s)'
-                                    % (dataset_name)
-                                )
+                                raise KeyError('Key: event keys cannot have the form "var_*_len! (%s)' % (dataset_name))
                             else:
                                 len_name = len_map[dataset_name]
                         if dataset_name not in dsets.keys():
@@ -380,10 +377,7 @@ class Server:  # (hdf5 handling)
                                 # be the same size.  Otherwise, flag an error.
                                 exp_len = len_evt[len_name][ts]
                                 if len(data) != exp_len:
-                                    raise TypeError(
-                                        "Data for %s is length %d, not %d!"
-                                        % (dataset_name, len(data), exp_len)
-                                    )
+                                    raise TypeError("Data for %s is length %d, not %d!" % (dataset_name, len(data), exp_len))
                             except Exception:
                                 # This is the first dataset for this length dataset,
                                 # so remember the length and forget all of the older ones!
@@ -419,7 +413,8 @@ class Server:  # (hdf5 handling)
                 cb(flatten_event_data_dict)
 
         # end for grp_event_data...
-        if self.swmr_mode: self.file_handle.flush()
+        if self.swmr_mode:
+            self.file_handle.flush()
         return
 
     def _get_data_info(self, data, dataset_name):
@@ -436,9 +431,7 @@ class Server:  # (hdf5 handling)
             maxshape = (None,) + data.shape
             dtype = data.dtype
         else:
-            raise TypeError(
-                "Type: Dataset %s type %s not compatible" % (dataset_name, type(data))
-            )
+            raise TypeError("Type: Dataset %s type %s not compatible" % (dataset_name, type(data)))
         return (shape, maxshape, dtype)
 
     def new_dset(self, dataset_name, data, datagroup):
@@ -450,9 +443,7 @@ class Server:  # (hdf5 handling)
             if hasattr(data, "dtype"):
                 (shape, maxshape, dtype) = self._get_data_info(data[0], dataset_name)
             else:
-                raise TypeError(
-                    "Type: Dataset %s is variable and should be a list!" % dataset_name
-                )
+                raise TypeError("Type: Dataset %s is variable and should be a list!" % dataset_name)
         else:
             (shape, maxshape, dtype) = self._get_data_info(data, dataset_name)
         if shape == (0,):
@@ -594,9 +585,7 @@ class SmallData:  # (client)
 
             self._comm_partition()
 
-    def setup_parms(
-        self, filename=None, batch_size=1000, cache_size=None, callbacks=[], swmr_mode=False
-    ):
+    def setup_parms(self, filename=None, batch_size=1000, cache_size=None, callbacks=[], swmr_mode=False):
         """
         Parameters
         ----------
@@ -654,9 +643,7 @@ class SmallData:  # (client)
                 # the same file multiple times.
                 if self._type == "client" and self._full_filename is not None:
                     if self._client_comm.Get_rank() == 0:
-                        for f in glob.glob(
-                            self._full_filename.replace(".h5", "_part*.h5")
-                        ):
+                        for f in glob.glob(self._full_filename.replace(".h5", "_part*.h5")):
                             os.remove(f)
                 # Need to make sure all smalldata ranks wait for the clean up to be done
                 # before they go about creating the new files.
@@ -664,9 +651,7 @@ class SmallData:  # (client)
                     self._smalldata_comm.barrier()
 
                 # Now make file
-                self._srv_filename = _format_srv_filename(
-                    self._dirname, self._basename, self._server_group.Get_rank()
-                )
+                self._srv_filename = _format_srv_filename(self._dirname, self._basename, self._server_group.Get_rank())
             else:
                 self._srv_filename = None
 
@@ -687,10 +672,7 @@ class SmallData:  # (client)
                     os.remove(f)
             self._srv_filename = self._full_filename  # dont hide file
             self._type = "serial"
-            self._server = Server(
-                filename=self._srv_filename, cache_size=cache_size, callbacks=callbacks,
-                swmr_mode=self.swmr_mode
-            )
+            self._server = Server(filename=self._srv_filename, cache_size=cache_size, callbacks=callbacks, swmr_mode=self.swmr_mode)
 
         return
 
@@ -710,10 +692,7 @@ class SmallData:  # (client)
         # partition into comms
         n_srv = self._server_group.size
         if n_srv < 1:
-            raise Exception(
-                "Attempting to run smalldata with no servers"
-                " set env var PS_SRV_NODES to be 1 or more"
-            )
+            raise Exception("Attempting to run smalldata with no servers set env var PS_SRV_NODES to be 1 or more")
 
         if self._server_group.rank != MPI.UNDEFINED:  # if in server group
             self._type = "server"
@@ -726,9 +705,7 @@ class SmallData:  # (client)
         elif self._client_group.rank != MPI.UNDEFINED:  # if in client group
             self._type = "client"
             self._srv_color = self._client_group.rank % n_srv
-            self._srvcomm = self._smalldata_comm.Split(
-                self._srv_color, RANK + 1
-            )  # keep rank order
+            self._srvcomm = self._smalldata_comm.Split(self._srv_color, RANK + 1)  # keep rank order
         else:
             # we are some other node type
             self._type = "other"
@@ -808,10 +785,7 @@ class SmallData:  # (client)
         else:
             # FIXME: cpo
             print(
-                'event data is "old", event timestamps'
-                " must increase monotonically"
-                " previous timestamp: %d, current: %d"
-                "" % (self._previous_timestamp, timestamp)
+                'event data is "old", event timestamps must increase monotonically previous timestamp: %d, current: %d' % (self._previous_timestamp, timestamp)
             )
             """
             raise IndexError('event data is "old", event timestamps'
@@ -966,9 +940,7 @@ class SmallData:  # (client)
         Note: this function should be called in a SmallData.summary: block
         """
         if self._full_filename is None:
-            print(
-                "Warning: smalldata not saving summary since no h5 filename specified"
-            )
+            print("Warning: smalldata not saving summary since no h5 filename specified")
             return
 
         # in parallel mode, only client rank 0 writes to file
@@ -986,10 +958,7 @@ class SmallData:  # (client)
         fh = self._get_full_file_handle()
         for dataset_name, data in data_dict.items():
             if data is None:
-                print(
-                    'Warning: dataset "%s" was passed value: None'
-                    "... ignoring that dataset" % dataset_name
-                )
+                print('Warning: dataset "%s" was passed value: None... ignoring that dataset' % dataset_name)
             else:
                 fh[dataset_name] = data
 
@@ -1105,9 +1074,7 @@ class SmallData:  # (client)
                 if dset_name in dsets.keys():
                     _, shape = dsets[dset_name]
                     vsource = h5py.VirtualSource(fn, dset_name, shape=shape)
-                    layout[
-                        index_of_last_fill : index_of_last_fill + shape[0], ...
-                    ] = vsource
+                    layout[index_of_last_fill : index_of_last_fill + shape[0], ...] = vsource
                     index_of_last_fill += shape[0]
 
                 else:
@@ -1115,9 +1082,7 @@ class SmallData:  # (client)
                         n_timestamps = dsets["/timestamp"][1][0]
                         index_of_last_fill += n_timestamps
 
-            joined_file.create_virtual_dataset(
-                dset_name, layout, fillvalue=_get_missing_value(dtype)
-            )
+            joined_file.create_virtual_dataset(dset_name, layout, fillvalue=_get_missing_value(dtype))
 
         joined_file.close()
 
