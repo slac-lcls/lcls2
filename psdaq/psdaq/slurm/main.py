@@ -13,6 +13,15 @@ import tempfile
 
 LOCALHOST = socket.gethostname()
 MAX_RETRIES = 30
+DAQMGR_DEBUG_TRACEBACK = "DAQMGR_DEBUG_TRACEBACK"
+DAQMGR_DEBUG_TRACEBACK_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def daqmgr_debug_traceback_enabled():
+    return (
+        os.environ.get(DAQMGR_DEBUG_TRACEBACK, "").lower()
+        in DAQMGR_DEBUG_TRACEBACK_TRUE_VALUES
+    )
 
 
 class Runner:
@@ -457,7 +466,20 @@ def main(
 
 
 def _do_main():
-    typer.run(main)
+    app = typer.Typer(
+        add_completion=False,
+        pretty_exceptions_show_locals=False,
+    )
+    app.command()(main)
+    try:
+        app()
+    except typer.Exit:
+        raise
+    except Exception as exc:
+        if daqmgr_debug_traceback_enabled():
+            raise
+        print(f"Error: {exc}", file=sys.stderr)
+        raise typer.Exit(1) from None
 
 
 if __name__ == "__main__":
