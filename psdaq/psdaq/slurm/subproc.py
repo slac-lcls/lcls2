@@ -1,32 +1,21 @@
 import asyncio
-import psutil
+import sys
 
 
 class SubprocHelper:
-    def __init__(self):
-        self.procs = {}
-
-    async def read_stdout(self, proc):
-        # Read data from stdout until EOF
-        data = ""
-        while True:
-            line = await proc.stdout.readline()
-            if line:
-                data += line.decode()
-            else:
-                break
-        return data
-
-    async def run(self, cmd, wait_output=False):
-        """Start psplot as a subprocess"""
-        proc = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    async def run_exec(self, args, env=None, echo_output=True):
+        """Start a subprocess without a shell."""
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
-        if wait_output:
-            stdout = await self.read_stdout(proc)
-            await proc.wait()
-        else:
-            self.procs[proc.pid] = proc
 
-    def pids(self):
-        return list(self.procs.keys())
+        stdout, stderr = await proc.communicate()
+        if echo_output or proc.returncode != 0:
+            if stdout:
+                print(stdout.decode(), end="")
+            if stderr:
+                print(stderr.decode(), end="", file=sys.stderr)
+        return proc.returncode
