@@ -137,8 +137,8 @@ class Runner:
                     echo_output=False,
                 )
             )
-            if rc != 0:
-                raise RuntimeError(f"sbatch failed with exit code {rc}")
+            #if rc != 0:
+            #    raise RuntimeError(f"sbatch failed with exit code {rc}")
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())
