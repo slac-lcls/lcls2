@@ -1,6 +1,8 @@
 #include "Trigger.hh"
 #include "TripperTebData.hh"
 
+#include "xtcdata/xtc/TransitionId.hh"
+
 #include <cadef.h>
 #include "nlohmann/json.hpp"
 
@@ -112,6 +114,9 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
                                         const Pds::EbDgram**       end,
                                         Pds::Eb::ResultDgram&      result)
 {
+    if (result.service() != XtcData::TransitionId::L1Accept) {
+        return;
+    }
     const Pds::EbDgram* const* ctrb = start;
 
     // Always write and monitor for now
