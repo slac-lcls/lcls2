@@ -24,6 +24,10 @@ def daqmgr_debug_traceback_enabled():
     )
 
 
+class DaqmgrUserError(Exception):
+    """Operator-facing error that should be printed without a traceback."""
+
+
 class Runner:
     # paths
     PATH_XTERM = "/usr/bin/xterm"
@@ -41,12 +45,16 @@ class Runner:
                 {},
                 config_dict,
             )
-        except Exception:
-            print("Error parsing configuration file:", sys.exc_info()[1])
+        except Exception as exc:
+            raise DaqmgrUserError(f"Error parsing configuration file: {exc}") from None
         self.platform = config_dict["platform"]
         self.configfilename = configfilename
         # Check if we are getting main or derived config file
         if config_dict["config"] is None:
+            if "procmgr_config" not in config_dict:
+                raise DaqmgrUserError(
+                    "Error parsing configuration file: missing procmgr_config"
+                )
             config = Config(config_dict["procmgr_config"])
             self.config = config.main_config
         else:
@@ -473,14 +481,19 @@ def _do_main():
     app.command()(main)
     try:
         app()
-    except typer.Exit:
-        raise
+    except typer.Exit as exc:
+        return exc.exit_code
+    except DaqmgrUserError as exc:
+        if daqmgr_debug_traceback_enabled():
+            raise
+        print(exc, file=sys.stderr)
+        return 1
     except Exception as exc:
         if daqmgr_debug_traceback_enabled():
             raise
         print(f"Error: {exc}", file=sys.stderr)
-        raise typer.Exit(1) from None
+        return 1
 
 
 if __name__ == "__main__":
-    _do_main()
+    sys.exit(_do_main())
