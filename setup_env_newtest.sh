@@ -7,17 +7,44 @@ unset AMI_CONDA_PREFIX
 unset AMI_CONDA_DEFAULT_ENV
 unset AMI_TESTRELDIR
 
-if [ -d "/sdf/group/lcls/" ]; then
+if [ -d "/cds/sw/" ]; then
+    # for psana
+    source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
+    export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
+    export DIR_PSDM=/cds/group/psdm
+    export SIT_PSDM_DATA=/cds/data/psdm
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_02202026
+
+    osrel=`uname -r`
+    case $osrel in
+        *el9*) conda activate daq_20250402_r9;; #daq_20260311;;
+        *)     conda activate daq_20250402;;    #daq_20260311;;
+    esac
+
+    # DAQ bundle from the active default environment
+    export DAQ_CONDA_PREFIX=${CONDA_PREFIX}
+    export DAQ_CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}
+
+    # AMI bundle: keep DAQ as active shell env, resolve AMI prefix by name
+    export AMI_CONDA_DEFAULT_ENV=ps_20241122
+    AMI_PREFIX_RESOLVED=$(conda info --envs 2>/dev/null | awk -v env_name="${AMI_CONDA_DEFAULT_ENV}" '$1 == env_name {print $NF; exit}')
+    if [ -n "${AMI_PREFIX_RESOLVED}" ]; then
+        export AMI_CONDA_PREFIX=${AMI_PREFIX_RESOLVED}
+    else
+        echo "Warning: conda env ${AMI_CONDA_DEFAULT_ENV} not found; using DAQ_CONDA_PREFIX for AMI_CONDA_PREFIX"
+        export AMI_CONDA_PREFIX=${DAQ_CONDA_PREFIX}
+    fi
+    unset AMI_PREFIX_RESOLVED
+elif [ -d "/sdf/group/lcls/" ]; then
     # for s3df
     source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
-    export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
 
     #conda activate daq_20260311
-    #conda activate ps_20241122
-    conda activate daq_20250402_r9
+    conda activate ps_20241122
+
 else
     echo "CONDA area not found"
     exit 1
