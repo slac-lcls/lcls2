@@ -19,13 +19,39 @@ from psdaq.cas.pvedit import *
 from p4p.client.thread import Context
 from psdaq.hsd.pvdef import *
 
-que       = None
-psSet     = None
-l0Enable  = None
-l0Disable = None
-monTrig   = None
+import pickle
 
-def analyze(q):
+que       = None
+
+class MonTrigPv(object):
+
+    def __init__(self, name, mincount):
+        self.name     = name
+        self.pv       = Pv(name+':MONTRIG', isStruct=True)
+        self.mincount = mincount
+        self.done     = False
+        self.value    = None
+        self.values   = []
+        
+        def monitor_cb(newval):
+            v = self.pv.to_value(newval)
+            total = v['ontime']+v['early']+v['late']
+            self.done = total > self.mincount
+            self.value = v
+            
+        try:
+            self.subscription = pvactx.monitor(self.pv.pvname, monitor_cb)
+            self.value = None
+        except TimeoutError as e:
+            logger.error("Timeout exception connecting to PV %s", self.pv.pvname)
+
+    def latch(self):
+#        self.values.append(self.value)
+        t = (self.name, self.value['ontime'], self.value['early'], self.value['late'], self.value['phase'])
+        print(f'Latched {t}')
+        que.put(t)
+        
+def analyze(q,names,record):
 
     app = pg.Qt.QtWidgets.QApplication([])
     win = pg.GraphicsLayoutWidget()
@@ -33,69 +59,64 @@ def analyze(q):
 
     pp = win.addPlot(data=[0],row=0,col=0)
     pp.setTitle('VCO Phase (ns)')
-    earlyplot = pp.plot(pen=pg.mkPen(color=(255,0,0)))
-    lateplot  = pp.plot(pen=pg.mkPen(color=(0,0,255)))
 
-    ph = []
-    de = []
-    dl = []
+    earlyplot = {}
+    lateplot  = {}
+    de        = {}
+    dl        = {}
+    ph        = {}
+    
+    for n in names:
+        earlyplot[n] = pp.plot(pen=pg.mkPen(color=(255,0,0)))
+        lateplot [n] = pp.plot(pen=pg.mkPen(color=(0,0,255)))
+        de       [n] = []
+        dl       [n] = []
+        ph       [n] = []
 
     ns_per_step = 1/56 * 70/13 / 6
 
+    f = None
+    if record:
+        f = open('hsdPs.pyc','wb')
+        
     while True:
-        total, early, late, phase = q.get()
+        t = q.get()
+
+        if f:
+            pickle.dump(t,f)
+            
+        n      = t[0]
+        ontime = t[1]
+        early  = t[2]
+        late   = t[3]
+        phase  = t[4]
+        total = ontime + early + late
 
         print(f'recv total {total}')
-        ph.append(phase*ns_per_step)
-        de.append(early/total)
-        dl.append(late /total)
+        ph[n].append(phase*ns_per_step)
+        de[n].append(early/total)
+        dl[n].append(late /total)
 
-        earlyplot.setData(ph,de)
-        lateplot .setData(ph,dl)
+        earlyplot[n].setData(ph[n],de[n])
+        lateplot [n].setData(ph[n],dl[n])
 
         win.show()
 
         app.processEvents()
 
 
-def callback(err):
-
-    global que
-
-    value = monTrig.__value__
-    print(f'callback {value}')
-
-    total  = value['ontime']+value['early']+value['late']
-    print(f'total {total}')
-    if total > args.period:
-        que.put((total,value['early'],value['late'],value['phase']))
-
-        l0Enable .put(0)
-        l0Disable.put(1<<args.group)
-
-        psVal = psSet.get()
-        psVal['mmcmsetup'] = 1
-        psVal['mmcmphase'] = value['phase']+args.range[2]
-        psSet.put(psVal)
-
-        if value['phase'] < args.range[1]:
-            l0Enable .put(1<<args.group)
-            l0Disable.put(0)
-        
 def main():
     global args
     global que
-    global psSet
-    global l0Enable
-    global l0Disable
-    global monTrig
 
     parser = argparse.ArgumentParser(description='simple pv monitor gui')
-    parser.add_argument("--base", help="PV base", default='DAQ:TMO:HSD:2_41:A')
+    parser.add_argument("--base", help="PV base", default='[DAQ:TMO:HSD:2_41:A]',nargs='+')
     parser.add_argument("--xpm",  help="XPM PV", default='DAQ:NEH:XPM:2')
-    parser.add_argument("--group",help="readout group", default=6)
+    parser.add_argument("--group",help="readout group", type=int, default=6)
     parser.add_argument("--period", help="period", type=float, default=140000)
     parser.add_argument("--range", help="range", type=int, nargs=3, default=(0,56,8))
+    parser.add_argument("--record", help="record to file", action='store_true', default=False)
+    parser.add_argument("--setup", help="set phase and exist", action='store_true', default=False)
     parser.add_argument("--verbose", help="verbose msg", action='store_true', default=False)
     args = parser.parse_args()
     if args.verbose:
@@ -103,27 +124,64 @@ def main():
     else:
         logging.getLogger().setLevel(logging.INFO)
 
-    que = Queue()
-    proc = Process(target=analyze, args=(que,))
-    proc.start()
+    psSet   = []
+    monTrig = []
+    for b in args.base:
+        psSet  .append(Pv(f'{b}:RESET'  ,isStruct=True))
+        monTrig.append(MonTrigPv(b,args.period))
 
-    psSet     = Pv(f'{args.base}:RESET'  ,isStruct=True)
+    groups = (1<<args.group) + 1
     l0Enable  = Pv(f'{args.xpm}:GroupL0Enable')
     l0Disable = Pv(f'{args.xpm}:GroupL0Disable')
 
-    psVal = psSet.get()
+    psVal = psSet[0].get()
     psVal['mmcmsetup'] = 1
-    psVal['mmcmphase'] = args.range[0]
-    psSet.put(psVal)
 
-    monTrig = Pv(f'{args.base}:MONTRIG',callback=callback,isStruct=True)
+    if args.setup:
+        print(f'Setting phase {args.range[0]}')
+        psVal['mmcmphase'] = args.range[0]
+        for p in psSet:
+            p.put(psVal)
+        sys.exit(1)
+        
+    l0Enable .put(0)
+    l0Disable.put(groups)
     
-    l0Enable .put(1<<args.group)
-    l0Disable.put(0)
+    que = Queue()
+    proc = Process(target=analyze, args=(que,args.base,args.record))
+    proc.start()
 
-    while(True):
-        time.sleep(1)
+    for ph in range(args.range[0],args.range[1],args.range[2]):
 
+        print(f'Setting phase {ph}')
+        psVal['mmcmphase'] = ph
+        for p in psSet:
+            p.put(psVal)
+
+        print(f'Enabling triggers for group 0x{groups:x}')
+        l0Enable .put(groups)
+        l0Disable.put(0)
+
+        #  Wait until done
+        while True:
+            print(f'Waiting')
+            time.sleep(1)
+            done = True
+            for m in monTrig:
+                done = done and m.done
+            if done:
+                break;
+            
+        print(f'Disabling')
+        l0Enable .put(0)
+        l0Disable.put(groups)
+
+        for m in monTrig:
+            m.latch()
+        
+    #  Dump and analyze
+#    app.processEvents()
+                       
     proc.join()
 
 if __name__ == '__main__':

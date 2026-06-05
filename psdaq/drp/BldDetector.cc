@@ -188,6 +188,7 @@ BldFactory::BldFactory(const char* name,
         else {
             mcaddr = 0xefff1901;
         }
+        _detType = std::string("pcav");
         _alg    = Alg("raw", 2, 0, 0);
         _varDef.NameVec = BldNames::PCav().NameVec;
     }
