@@ -180,9 +180,13 @@ def epix100_connectionInfo(base, alloc_json_str):
             9: "DAQ:FEH:XPM", #XPP  
             15:"DAQ:FEH:XPM", #XPP EPX
        	}
-        crate_id: int =	(rxId >> 12) & 0xF
+        # cpo hack for xpp june 5, 2026 since we're getting back crate id 0?
+        #crate_id: int =	(rxId >> 12) & 0xF
+        print('**** cpohack setting xpm crate_id to 8 ****')
+        crate_id = 8
         linkrx_pv: str = f"{crate_id_map[crate_id]}:{xpm}:LinkRxReady{port}"
         ctx: Context = Context("pva")
+        print('**** linkrx_pv:',linkrx_pv)
         ret: ntint = ctx.get(linkrx_pv)
         print(f"INFO:epix100:Checking timing link at: {linkrx_pv}")
         count: int = 0
