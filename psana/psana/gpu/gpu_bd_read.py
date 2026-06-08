@@ -7,11 +7,10 @@ from psana.psexp.ds_base import DsParms
 from psana.psexp.eventbuilder_manager import EventBuilderManager
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.smdreader_manager import SmdReaderManager
-from psana import dgram
+from psana.psexp.event_manager import EventManager
+from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
-from psana.dgrammanager import DgramManager
-
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -146,70 +145,46 @@ def main():
             # EventBuilder builds smd events by parsing the chunk header and walking the step buffers.
             eb_manager = EventBuilderManager(smd_chunk, smd_manager.configs, dsparms)
             n_batches = 0
-            for batch_dict, _ in eb_manager.batches():
+            for batch_dict, gpu_batch_dict, _ in eb_manager.batches_with_gpu():
                 n_batches += 1
+
+                # gpu_batch_dict is kept separate. Later this is where GPU BD scheduling starts.
+                for gpu_batch, _ in gpu_batch_dict.values():
+                    if gpu_batch:
+                        print(f"gpu_batch_bytes={len(gpu_batch)}")
+
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
                         continue
 
-                    batch_pf = PacketFooter(view=smd_batch)
-
-                    # Go through the batch smd events and read bigdata from the offsets
-                    smd_offset = 0
-                    for i_evt in range(batch_pf.n_packets):
-                        smd_event_size = batch_pf.get_size(i_evt)
-                        smd_event_view = smd_batch[smd_offset : smd_offset + smd_event_size]
-
-                        # Read one bigdata event
-                        evt_pf = PacketFooter(view=smd_event_view)
-                        dgrams = []
-                        dgram_offset = 0
-                        skip_event = False
-
-                        for i_smd in range(evt_pf.n_packets):
-                            smd_size = evt_pf.get_size(i_smd)
-                            if smd_size == 0:
-                                dgrams.append(None)
-                                continue
-
-                            # Extract the offset and size of the bigdata dgram from the smd event.
-                            smd_dgram = dgram.Dgram(
-                                config = smd_manager.configs[i_smd],
-                                view=smd_event_view,
-                                offset=dgram_offset,
-                            )
-                            dgram_offset += smd_size
-
-                            if not TransitionId.isEvent(smd_dgram.service()):
-                                print(f"Skipping non-event dgram: svc={smd_dgram.service()} ts={smd_dgram.timestamp}")
-                                skip_event = True
-                                break
-
-                            # Read bigdata from the xtc file using DgramManager
-                            bd_offset = smd_dgram.smdinfo[0].offsetAlg.intOffset
-                            bd_size = smd_dgram.smdinfo[0].offsetAlg.intDgramSize
-                            bd_buf = os.pread(bd_dm.fds[i_smd], bd_size, bd_offset)
-                            if len(bd_buf) != bd_size:
-                                raise RuntimeError(f"unexpected read size asked={bd_size} got={len(bd_buf)}")
-                            dgrams.append(dgram.Dgram(config=bd_dm.configs[i_smd], view=bd_buf))
-
-                        smd_offset += smd_event_size
-
-                        if skip_event:
-                            continue
-
+                    evt_manager = EventManager(
+                        smd_batch,
+                        smd_manager.configs,
+                        bd_dm,
+                        dsparms.max_retries,
+                        [False] * len(smd_manager.configs),
+                    )
+                    for dgrams in evt_manager:
                         evt = Event(dgrams=dgrams)
+                        if not TransitionId.isEvent(evt.service()):
+                            continue
                         n_events += 1
-                        print(f"bd_event: svc={evt.service()} ts={evt.timestamp}")
-                        if args.max_events and n_events >= args.max_events:
+                        none_streams = [i for i, dg in enumerate(dgrams) if dg is None]
+                        n_none = len(none_streams)
+                        print(
+                            f"bd_event: svc:{evt.service()} timestamp:{evt.timestamp} "
+                            f"n_dgrams:{len(dgrams)} n_none:{n_none} none_streams:{none_streams}"
+                        )
+                        if args.max_events > 0 and n_events >= args.max_events:
                             stop = True
                             break
+                    if evt_manager.exit_id:
+                        raise RuntimeError(f"EventManager failed with exit_id={evt_manager.exit_id}")
 
                     if stop:
                         break
                 if stop:
                     break
-
 
             msg += f" eb_batches={n_batches} bd_events={n_events}"
             print(msg)

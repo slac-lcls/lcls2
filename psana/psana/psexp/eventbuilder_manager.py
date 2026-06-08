@@ -34,21 +34,36 @@ class EventBuilderManager(object):
             respect_batch_size=True,
         )
 
-    def batches(self):
+    def _normalize_batch_result(self, batch_result):
+        if len(batch_result) == 3:
+            return batch_result
+
+        batch_dict, step_dict = batch_result
+        return batch_dict, {}, step_dict
+
+    def batches_with_gpu(self):
         while True:
-            # This eiter calls user-defined smalldata callback, which loops
-            # over smd events or skips (faster). To enable detector inteface
+            # This either calls user-defined smalldata callback, which loops
+            # over smd events or skips (faster). To enable detector interface
             # for smd events, evt.complete() (slow) is called.
             # Note: use _smd_callback for checking if user set any callback
             # through DataSource.
             if self.dsparms.smd_callback == 0:
-                batch_dict, step_dict = self.eb.build()
+                batch_result = self.eb.build()
                 if self.eb.nevents == 0 and self.eb.nsteps == 0:
                     break
+                batch_dict, gpu_batch_dict, step_dict = self._normalize_batch_result(
+                    batch_result
+                )
             else:
                 callback_batch = self.callback_batch_builder.next_batch()
                 if callback_batch is None:
                     break
                 batch_dict, step_dict = callback_batch
+                gpu_batch_dict = {}
 
+            yield batch_dict, gpu_batch_dict, step_dict
+
+    def batches(self):
+        for batch_dict, _, step_dict in self.batches_with_gpu():
             yield batch_dict, step_dict

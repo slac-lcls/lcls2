@@ -224,7 +224,7 @@ py.extension_module(
     install: true,
     install_rpath: libdir_install_rpath,
     subdir: 'psana',
-    link_with: [],
+    link_with: [xtc_shlib],
     dependencies: [],
     override_options : ['cython_language=cpp'],
  )
