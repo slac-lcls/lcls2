@@ -11,6 +11,13 @@ from psana.psexp.event_manager import EventManager
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
+from psana.gpu.gpu_batch import GpuBatchView
+from psana.gpu.gpu_compare import (
+    collect_no_split_reference,
+    compare_split_event,
+    digest_bytes,
+)
+
 
 def _parse_args():
     parser = argparse.ArgumentParser(
@@ -30,9 +37,9 @@ def _parse_args():
         help="Stop after this many events. 0 means all events.",
     )
     parser.add_argument(
-        "--direct",
+        "--compare-nosplit",
         action="store_true",
-        help="Try O_DIRECT when opening SMD files.",
+        help="Build no-GPU-split reference events for each SMD chunk.",
     )
     return parser.parse_args()
 
@@ -77,16 +84,8 @@ def _create_default_dsparms() -> DsParms:
     )
 
 
-def _open_fd(path: str, use_direct: bool = False) -> int:
-    """Open a file descriptor, optionally trying O_DIRECT first."""
-    flags = os.O_RDONLY
-    o_direct = getattr(os, "O_DIRECT", 0)
-    if use_direct and o_direct:
-        try:
-            return os.open(path, flags | o_direct)
-        except OSError:
-            pass
-    return os.open(path, flags)
+def _open_fd(path: str) -> int:
+    return os.open(path, os.O_RDONLY)
 
 
 def _build_eb_ready_chunk(smd_manager, eb_node_id=1):
@@ -117,7 +116,7 @@ def main():
     dsparms = _create_default_dsparms()
     dsparms.update_smd_state(list(smd_files), [False] * len(smd_files))
     smd_fds = np.array(
-        [_open_fd(path, use_direct=args.direct) for path in smd_files],
+        [_open_fd(path) for path in smd_files],
         dtype=np.int32,
     )
     try:
@@ -142,6 +141,16 @@ def main():
                 f"stream_packets={pf.n_packets} view_events={smd_manager.got_events}"
             )
 
+            if args.compare_nosplit:
+                ref_by_ts = collect_no_split_reference(
+                    smd_chunk,
+                    smd_manager.configs,
+                    dsparms,
+                    xtc_files,
+                    max_events=args.max_events,
+                )
+                msg += f" ref_events={len(ref_by_ts)}"
+
             # EventBuilder builds smd events by parsing the chunk header and walking the step buffers.
             eb_manager = EventBuilderManager(smd_chunk, smd_manager.configs, dsparms)
             n_batches = 0
@@ -149,9 +158,25 @@ def main():
                 n_batches += 1
 
                 # gpu_batch_dict is kept separate. Later this is where GPU BD scheduling starts.
+                split_by_ts = {}  # for comparing with no split reference
                 for gpu_batch, _ in gpu_batch_dict.values():
-                    if gpu_batch:
-                        print(f"gpu_batch_bytes={len(gpu_batch)}")
+                    gpu_view = GpuBatchView(gpu_batch, validate=True)
+                    if gpu_view.has_work:
+                        for desc in gpu_view.iter_read_descs(bd_dm):
+                            buf = os.pread(desc.fd, desc.size, desc.offset)
+                            if len(buf) != desc.size:
+                                raise RuntimeError(
+                                    f"GPU read failed: event={desc.batch_event_index} "
+                                    f"stream={desc.stream_id} offset={desc.offset} "
+                                    f"asked={desc.size} got={len(buf)}"
+                                )
+                            # Collecting gpu read data to be compared with no split reference
+                            per_stream = split_by_ts.setdefault(desc.timestamp, {})
+                            per_stream[desc.stream_id] = (len(buf), digest_bytes(buf))
+                            print(
+                                f"gpu_read: event={desc.batch_event_index} "
+                                f"stream={desc.stream_id} offset={desc.offset} size={desc.size}"
+                            )
 
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
@@ -168,6 +193,20 @@ def main():
                         evt = Event(dgrams=dgrams)
                         if not TransitionId.isEvent(evt.service()):
                             continue
+
+                        # Collect data for comparison with non-split dgrams
+                        per_stream = split_by_ts.setdefault(evt.timestamp, {})
+                        for stream_id, dg in enumerate(dgrams):
+                            if dg is None:
+                                per_stream.setdefault(stream_id, (0, None))
+                                continue
+                            dg_bytes = bytearray(dg)
+                            per_stream[stream_id] = (len(dg_bytes), digest_bytes(dg_bytes))
+
+                        if args.compare_nosplit:
+                            n_compare_streams = compare_split_event(ref_by_ts, split_by_ts, evt.timestamp)
+                            print(f"compare_ok timestamp={evt.timestamp} streams={n_compare_streams}")
+
                         n_events += 1
                         none_streams = [i for i, dg in enumerate(dgrams) if dg is None]
                         n_none = len(none_streams)
@@ -178,6 +217,7 @@ def main():
                         if args.max_events > 0 and n_events >= args.max_events:
                             stop = True
                             break
+
                     if evt_manager.exit_id:
                         raise RuntimeError(f"EventManager failed with exit_id={evt_manager.exit_id}")
 

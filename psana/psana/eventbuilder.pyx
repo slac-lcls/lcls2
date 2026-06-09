@@ -19,6 +19,17 @@ from psana import dgram
 from psana.dgramedit import PyDgram
 from psana.psexp import TransitionId
 from psana.dgramlite import SmdInfoLite
+from psana.gpu.gpu_batch import (
+    GPU_BATCH_MAGIC,
+    GPU_BATCH_VERSION,
+    GPU_DESC_FLAG_VALID,
+    GPU_DESC_FMT,
+    GPU_DESC_NBYTES,
+    GPU_EVENT_FMT,
+    GPU_EVENT_NBYTES,
+    GPU_HEADER_FMT,
+    GPU_HEADER_NBYTES,
+)
 import struct
 
 PROFILE_ENV = "PSANA_EB_PROFILE"
@@ -31,53 +42,6 @@ from cpython.pycapsule cimport PyCapsule_New
 
 MAX_BATCH_SIZE = 1000000
 
-# GPU batch ABI v1.
-#
-# Layout:
-#   [GpuBatchHeader][GpuEventTable][GpuDescTable]
-#
-# All table fields are little-endian uint64. Keep this table CPU/GPU friendly:
-# fixed-width rows, no Python objects, no PacketFooter, no embedded fd values.
-GPU_BATCH_MAGIC = int.from_bytes(b"GPUBAT1\0", "little")
-GPU_BATCH_VERSION = 1
-
-GPU_HEADER_FMT = "<11Q"
-GPU_EVENT_FMT = "<5Q"
-GPU_DESC_FMT = "<7Q"
-
-GPU_HEADER_NBYTES = struct.calcsize(GPU_HEADER_FMT)
-GPU_EVENT_NBYTES = struct.calcsize(GPU_EVENT_FMT)
-GPU_DESC_NBYTES = struct.calcsize(GPU_DESC_FMT)
-
-# Header fields:
-#   magic
-#   version
-#   header_nbytes
-#   event_entry_nbytes
-#   desc_entry_nbytes
-#   n_events
-#   n_desc
-#   gpu_stream_mask
-#   event_table_offset
-#   desc_table_offset
-#   total_nbytes
-
-# Event row fields:
-#   batch_event_index
-#   timestamp
-#   first_desc
-#   n_desc
-#   present_gpu_mask
-
-# Desc row fields:
-#   batch_event_index
-#   stream_id
-#   bd_offset
-#   bd_size
-#   smd_size
-#   flags
-#   reserved
-GPU_DESC_FLAG_VALID = 1
 cdef class ProxyEvent:
     """
     Lightweight container for one SMD 'event' during batching.
