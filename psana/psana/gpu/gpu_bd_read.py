@@ -17,6 +17,7 @@ from psana.gpu.gpu_compare import (
     compare_split_event,
     digest_bytes,
 )
+from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 
 
 def _parse_args():
@@ -130,6 +131,9 @@ def main():
         # Create DgramManager for bigdata reads
         bd_dm = DgramManager(xtc_files, configs=smd_manager.configs)
 
+        # GPU reader
+        gpu_reader = KvikioGpuReader()
+
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
         n_events = 0
         stop = False
@@ -162,21 +166,9 @@ def main():
                 for gpu_batch, _ in gpu_batch_dict.values():
                     gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if gpu_view.has_work:
-                        for desc in gpu_view.iter_read_descs(bd_dm):
-                            buf = os.pread(desc.fd, desc.size, desc.offset)
-                            if len(buf) != desc.size:
-                                raise RuntimeError(
-                                    f"GPU read failed: event={desc.batch_event_index} "
-                                    f"stream={desc.stream_id} offset={desc.offset} "
-                                    f"asked={desc.size} got={len(buf)}"
-                                )
-                            # Collecting gpu read data to be compared with no split reference
-                            per_stream = split_by_ts.setdefault(desc.timestamp, {})
-                            per_stream[desc.stream_id] = (len(buf), digest_bytes(buf))
-                            print(
-                                f"gpu_read: event={desc.batch_event_index} "
-                                f"stream={desc.stream_id} offset={desc.offset} size={desc.size}"
-                            )
+                        gpu_read = gpu_reader.read_batch(gpu_view, bd_dm)
+                        for timestamp, per_stream in gpu_read.by_timestamp.items():
+                            split_by_ts.setdefault(timestamp, {}).update(per_stream)
 
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
@@ -236,6 +228,7 @@ def main():
             os.close(int(fd))
         if "bd_dm" in locals():
             bd_dm.close()
+        gpu_reader.close()
 
 if __name__ == "__main__":
     main()
