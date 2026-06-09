@@ -31,9 +31,9 @@ class Detector;
 
 struct ReducerMetrics
 {
-  std::vector< Ptr<uint64_t> > state;
-  std::vector< Ptr<uint64_t> > inpWtCtr;
-  std::vector< Ptr<uint64_t> > outWtCtr;
+  std::vector<uint64_t*> state;
+  std::vector<uint64_t*> inpWtCtr;
+  std::vector<uint64_t*> outWtCtr;
 };
 
 class Reducer
@@ -92,8 +92,7 @@ private:
   std::vector<cudaStream_t>                       m_streams;
   std::vector<timePoint_t>                        m_t0;
   std::vector<cudaGraphExec_t>                    m_graphExecs;
-  std::vector<unsigned*>                          m_indices_h;
-  std::vector<unsigned*>                          m_indices_d;
+  std::vector<unsigned*>                          m_indices;
   uint64_t                                        m_reduce_us;
   Parameters const&                               m_para;
   ReducerMetrics                                  m_metrics;

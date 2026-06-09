@@ -176,7 +176,7 @@ void SimDetector::_eventSimulator()
   bool running{false};
   auto suTime{fast_monotonic_clock::now()};
   auto panel{memPool.panel()};
-  auto fpgaRegs{panel->fpgaRegs.h};
+  auto fpgaRegs{panel->fpgaRegs};
   auto& coreRegs{panel->coreRegs};
   unsigned dmaIdx{0};
   uint32_t dmaCntMsk{memPool.dmaCount() - 1};

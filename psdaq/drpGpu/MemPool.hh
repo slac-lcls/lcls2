@@ -100,7 +100,7 @@ protected:
 struct DetPanel
 {
   DataDev               datadev;
-  Ptr<void>             fpgaRegs;
+  void*                 fpgaRegs;
   std::vector<uint8_t*> dmaBuffers;     // Host vector of dmaCount dptrs
   uint8_t**             dmaBuffers_d;   // Device array of dmaCount dptrs
   std::string           name;
@@ -130,8 +130,7 @@ public:
   void createReduceBuffers(size_t nBytes, size_t reserved);
   void destroyReduceBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
-  const auto& hostWrtBufs_h() const { return m_hostWrtBufs_h; }
-  const auto& hostWrtBufs_d() const { return m_hostWrtBufs_d; }
+  const auto& hostWrtBufs()      const { return m_hostWrtBufs; }
   const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
   const auto& reduceBuffers_d()  const { return m_reduceBuffers_d; }
   size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
@@ -151,8 +150,7 @@ private:
   std::shared_ptr<DetPanel> m_panel;
   bool                      m_setMaskBytesDone;
   size_t                    m_hostWrtBufsSize;
-  uint32_t*                 m_hostWrtBufs_h;    // [nBuffers * nElements]
-  uint32_t*                 m_hostWrtBufs_d;    // [nBuffers * nElements]
+  uint32_t*                 m_hostWrtBufs;      // [nBuffers * nElements]
   size_t                    m_calibBufsSize;
   float*                    m_calibBuffers_d;   // [nBuffers * nElements]
   size_t                    m_reduceBufsSize;

@@ -15,80 +15,74 @@ class RingQueueHtoD
 {
 public:
   __host__ RingQueueHtoD(const unsigned capacity) :
-    m_head_h      (nullptr),
-    m_head_d      (nullptr),
-    m_tail_h      (nullptr),
-    m_tail_d      (nullptr),
+    m_head        (nullptr),
+    m_tail        (nullptr),
     m_capacityMask(capacity-1),    // Range of the buffer queue [0, capacity-1]
-    m_ringBuffer_h(nullptr),
-    m_ringBuffer_d(nullptr)
+    m_ringBuffer  (nullptr)
   {
     assert(capacity & (capacity - 1));  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head points to the next index to be allocated
-    chkError(cudaHostAlloc(&m_head_h, sizeof(*m_head_h), cudaHostAllocDefault));
-    chkError(cudaHostGetDevicePointer(&m_head_d, m_head_h, 0));
-    *m_head_h = 0;
+    chkError(cudaHostAlloc(&m_head, sizeof(*m_head), cudaHostAllocDefault));
+    *m_head = 0;
     // Tail points to the next index after the last freed one
-    chkError(cudaHostAlloc(&m_tail_h, sizeof(*m_tail_h), cudaHostAllocDefault));
-    chkError(cudaHostGetDevicePointer(&m_tail_d, m_tail_h, 0));
-    *m_tail_h = 0;
+    chkError(cudaHostAlloc(&m_tail, sizeof(*m_tail), cudaHostAllocDefault));
+    *m_tail = 0;
 
     // Use pinned memory for the ring buffer for low latency access from both Host and Device
-    chkError(cudaHostAlloc(&m_ringBuffer_h, capacity * sizeof(*m_ringBuffer_h), cudaHostAllocDefault));
-    chkError(cudaHostGetDevicePointer(&m_ringBuffer_d, m_ringBuffer_h, 0));
+    chkError(cudaHostAlloc(&m_ringBuffer, capacity * sizeof(*m_ringBuffer), cudaHostAllocDefault));
   }
 
   __host__ ~RingQueueHtoD()
   {
-    if (m_ringBuffer_h)  chkError(cudaFreeHost(m_ringBuffer_h));
-    if (m_tail_h)        chkError(cudaFreeHost(m_tail_h));
-    if (m_head_h)        chkError(cudaFreeHost(m_head_h));
+    if (m_ringBuffer)  chkError(cudaFreeHost(m_ringBuffer));
+    if (m_tail)        chkError(cudaFreeHost(m_tail));
+    if (m_head)        chkError(cudaFreeHost(m_head));
   }
 
   __host__ bool push(const T& value) const             /** Store value at head and advance when not full */
   {
     using namespace cuda::std;
-    auto tail = m_tail_h->load(memory_order_acquire);
-    auto head = m_head_h->load(memory_order_acquire);
+    auto tail = m_tail->load(memory_order_acquire);
+    auto head = m_head->load(memory_order_acquire);
     auto next = (head+1) & m_capacityMask;
     if (next == tail)  return false;                   // Full: caller retries to wait for tail to advance
     asm volatile("mfence" ::: "memory");               // Avoid reordering of the head store and the tail load
-    m_ringBuffer_h[head] = value;                      // Store value _before_ signaling it is available
-    m_head_h->store(next, memory_order_release);       // Publish new head
+    m_ringBuffer[head] = value;                        // Store value _before_ signaling it is available
+    m_head->store(next, memory_order_release);         // Publish new head
     return true;
   }
 
   __device__ bool pop(T* const __restrict__ value) const /** Fetch value at tail and advance when not empty */
   {
     using namespace cuda::std;
-    auto tail = m_tail_d->load(memory_order_acquire);
-    auto head = m_head_d->load(memory_order_acquire);
+    auto tail = m_tail->load(memory_order_acquire);
+    auto head = m_head->load(memory_order_acquire);
     if (tail == head)  return false;                   // Empty: caller retries to wait for head to advance
-    *value = m_ringBuffer_d[tail];                     // Fetch value _before_ signaling it is available
+    *value = m_ringBuffer[tail];                       // Fetch value _before_ signaling it is available
     auto next = (tail+1) & m_capacityMask;
-    m_tail_d->store(next, memory_order_release);       // Publish new tail
+    m_tail->store(next, memory_order_release);         // Publish new tail
     return true;
   }
 
-  __host__ unsigned head() const
+  __host__ __device__ unsigned head() const
   {
     using namespace cuda::std;
-    return m_head_h->load(memory_order_acquire);
+    return m_head->load(memory_order_acquire);
   }
 
-  __host__ unsigned tail() const
+  __host__ __device__ unsigned tail() const
   {
     using namespace cuda::std;
-    return m_tail_h->load(memory_order_acquire);
+    return m_tail->load(memory_order_acquire);
   }
 
-  __host__ unsigned occupancy() const
+  __host__ __device__ unsigned occupancy() const
   {
     using namespace cuda::std;
-    auto head = m_head_h->load(memory_order_acquire);
-    auto tail = m_tail_h->load(memory_order_acquire);
+    auto head = m_head->load(memory_order_acquire);
+    auto tail = m_tail->load(memory_order_acquire);
     return (head - tail) & m_capacityMask;
   }
 
@@ -99,18 +93,15 @@ public:
 
   __host__ void reset()
   {
-    *m_head_h = 0;
-    *m_tail_h = 0;
+    *m_head = 0;
+    *m_tail = 0;
   }
 
 private:
-  cuda::std::atomic<unsigned>* m_head_h; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>* m_head_d; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>* m_tail_h; // Must stay coherent across device and host
-  cuda::std::atomic<unsigned>* m_tail_d; // Must stay coherent across device and host
+  cuda::std::atomic<unsigned>* m_head; // Must stay coherent across device and host
+  cuda::std::atomic<unsigned>* m_tail; // Must stay coherent across device and host
   const unsigned               m_capacityMask;
-  T*                           m_ringBuffer_h;
-  T*                           m_ringBuffer_d;
+  T*                           m_ringBuffer;
 };
 
   } // Gpu

@@ -52,7 +52,7 @@ public:
   Pds::TimingHeader* getTimingHeader(uint32_t index) const override
   {
     auto       memPool    = m_pool->getAs<MemPoolGpu>();
-    const auto dmaBuffers = memPool->hostWrtBufs_h();
+    const auto dmaBuffers = memPool->hostWrtBufs();
     const auto cnt        = memPool->hostWrtBufsSize()/sizeof(*dmaBuffers);
     auto       dmaDsc     = (DmaDsc*)&dmaBuffers[index * cnt];
     return reinterpret_cast<Pds::TimingHeader*>(&dmaDsc[1]);

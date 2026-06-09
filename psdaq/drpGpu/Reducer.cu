@@ -49,16 +49,14 @@ Reducer::Reducer(const Parameters&                  para,
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
   m_t0.resize(m_para.nworkers);
-  m_indices_h.resize(m_para.nworkers);
-  m_indices_d.resize(m_para.nworkers);
+  m_indices.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     //chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
     chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamNonBlocking, prio));
 
     // Keep track of the head and tail indices of the Reducer stream
-    chkError(cudaHostAlloc(&m_indices_h[i], sizeof(*m_indices_h[i]), cudaHostAllocDefault));
-    chkError(cudaHostGetDevicePointer(&m_indices_d[i], m_indices_h[i], 0));
-    *m_indices_h[i] = 0;
+    chkError(cudaHostAlloc(&m_indices[i], sizeof(*m_indices[i]), cudaHostAllocDefault));
+    *m_indices[i] = 0;
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
 
@@ -126,18 +124,15 @@ Reducer::Reducer(const Parameters&                  para,
     m_metrics.inpWtCtr.resize(m_para.nworkers);
     m_metrics.outWtCtr.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      if (!m_metrics.state[i].h) {
-        chkError(cudaHostAlloc(&m_metrics.state[i].h, sizeof(*m_metrics.state[i].h), cudaHostAllocDefault));
-        chkError(cudaHostGetDevicePointer(&m_metrics.state[i].d, m_metrics.state[i].h, 0));
+      if (!m_metrics.state[i]) {
+        chkError(cudaHostAlloc(&m_metrics.state[i], sizeof(*m_metrics.state[i]), cudaHostAllocDefault));
       }
-      *m_metrics.state[i].h = 0;
+      *m_metrics.state[i] = 0;
 
-      chkError(cudaHostAlloc(&m_metrics.inpWtCtr[i].h, sizeof(*m_metrics.inpWtCtr[i].h), cudaHostAllocDefault));
-      chkError(cudaHostGetDevicePointer(&m_metrics.inpWtCtr[i].d, m_metrics.inpWtCtr[i].h, 0));
-      *m_metrics.inpWtCtr[i].h = 0;
-      chkError(cudaHostAlloc(&m_metrics.outWtCtr[i].h, sizeof(*m_metrics.outWtCtr[i].h), cudaHostAllocDefault));
-      chkError(cudaHostGetDevicePointer(&m_metrics.outWtCtr[i].d, m_metrics.outWtCtr[i].h, 0));
-      *m_metrics.outWtCtr[i].h = 0;
+      chkError(cudaHostAlloc(&m_metrics.inpWtCtr[i], sizeof(*m_metrics.inpWtCtr[i]), cudaHostAllocDefault));
+      *m_metrics.inpWtCtr[i] = 0;
+      chkError(cudaHostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i]), cudaHostAllocDefault));
+      *m_metrics.outWtCtr[i] = 0;
     }
 
     if (m_algos[0]->hasGraph()) {         // Same value for all instances
@@ -155,23 +150,19 @@ Reducer::Reducer(const Parameters&                  para,
 
 Reducer::~Reducer()
 {
-  printf("*** Reducer::dtor\n");
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    if (m_metrics.inpWtCtr[i].h) {
-      chkError(cudaFreeHost(m_metrics.inpWtCtr[i].h));
-      m_metrics.inpWtCtr[i].h = nullptr;
-      m_metrics.inpWtCtr[i].d = nullptr;
+    if (m_metrics.inpWtCtr[i]) {
+      chkError(cudaFreeHost(m_metrics.inpWtCtr[i]));
+      m_metrics.inpWtCtr[i] = nullptr;
     }
-    if (m_metrics.outWtCtr[i].h) {
-      chkError(cudaFreeHost(m_metrics.outWtCtr[i].h));
-      m_metrics.outWtCtr[i].h = nullptr;
-      m_metrics.outWtCtr[i].d = nullptr;
+    if (m_metrics.outWtCtr[i]) {
+      chkError(cudaFreeHost(m_metrics.outWtCtr[i]));
+      m_metrics.outWtCtr[i] = nullptr;
     }
 
-    if (m_metrics.state[i].h) {
-      cudaFreeHost(m_metrics.state[i].h);
-      m_metrics.state[i].h = nullptr;
-      m_metrics.state[i].d = nullptr;
+    if (m_metrics.state[i]) {
+      cudaFreeHost(m_metrics.state[i]);
+      m_metrics.state[i] = nullptr;
     }
   }
   m_metrics.inpWtCtr.clear();
@@ -225,34 +216,26 @@ Reducer::~Reducer()
     m_threads.clear();
   }
 
-  printf("*** Reducer dtor 1\n");
   for (auto& graphExec : m_graphExecs) {
     chkError(cudaGraphExecDestroy(graphExec));
   }
   m_graphExecs.clear();
-  printf("*** Reducer dtor 2\n");
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_algos[i])  delete m_algos[i];
   }
   m_algos.clear();
   m_dl.close();
-  printf("*** Reducer dtor 3\n");
 
   m_pool.destroyReduceBuffers();
-  printf("*** Reducer dtor 4\n");
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    chkError(cudaFreeHost(m_indices_h[i]));
+    chkError(cudaFreeHost(m_indices[i]));
 
     chkError(cudaStreamDestroy(m_streams[i]));
   }
-  m_indices_h.clear();
-  m_indices_d.clear();
+  m_indices.clear();
   m_streams.clear();
-  printf("*** Reducer dtor 5\n");
-
-  printf("*** Reducer dtor end\n");
 }
 
 int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
@@ -260,12 +243,12 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 {
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     auto wkr = std::to_string(i);
-    exporter->add("DRP_redState"+wkr, labels, MetricType::Gauge, [&, i](){ return m_metrics.state[i].h ? *m_metrics.state[i].h : 0; });
+    exporter->add("DRP_redState"+wkr, labels, MetricType::Gauge, [&, i](){ return m_metrics.state[i] ? *m_metrics.state[i] : 0; });
 
-    *m_metrics.inpWtCtr[i].h = 0;
-    *m_metrics.outWtCtr[i].h = 0;
-    exporter->add("DRP_inpWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.inpWtCtr[i].h ? *m_metrics.inpWtCtr[i].h : 0; });
-    exporter->add("DRP_outWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.outWtCtr[i].h ? *m_metrics.outWtCtr[i].h : 0; });
+    *m_metrics.inpWtCtr[i] = 0;
+    *m_metrics.outWtCtr[i] = 0;
+    exporter->add("DRP_inpWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.inpWtCtr[i] ? *m_metrics.inpWtCtr[i] : 0; });
+    exporter->add("DRP_outWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.outWtCtr[i] ? *m_metrics.outWtCtr[i] : 0; });
   }
 
   if (m_algos.size() && m_algos[0]->hasGraph()) {         // Same value for all workers
@@ -457,18 +440,18 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   // Handle messages from TebReceiver to process an event
   //printf("*** Reducer::_recordGraph: worker %d, iq h %p, d %p\n", worker, m_inputQueues2[worker].h, m_inputQueues2[worker].d);
   _reducerRcv<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                   m_indices_d[worker],
+                                   m_indices[worker],
                                    m_inputQueues2[worker].d,
-                                   m_metrics.state[worker].d,
-                                   m_metrics.inpWtCtr[worker].d);
+                                   m_metrics.state[worker],
+                                   m_metrics.inpWtCtr[worker]);
   chkError(cudaGetLastError(), "Launch of _reducerRcv kernel failed");
 #endif
 
   // Perform the reduction algorithm
-  printf("*** Reducer::recordGraph: state[%u] %p\n", worker, m_metrics.state[worker].d);
+  printf("*** Reducer::recordGraph: state[%u] %p\n", worker, m_metrics.state[worker]);
   m_algos[worker]->recordGraph(stream,
                                m_state_d[worker],
-                               m_indices_d[worker],
+                               m_indices[worker],
                                calibBuffers,
                                calibBufsCnt,
                                dataBuffers,
@@ -478,12 +461,12 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   // Post the completed buffer results and relaunch
   //printf("*** Reducer::_recordGraph: worker %d, oq h %p, d %p\n", worker, m_outputQueues2[worker].h, m_outputQueues2[worker].d);
   _reducerLoop<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                    m_indices_d[worker],
+                                    m_indices[worker],
                                     dataBuffers,
                                     dataBufsCnt,
                                     m_outputQueues2[worker].d,
-                                    m_metrics.state[worker].d,
-                                    m_metrics.outWtCtr[worker].d,
+                                    m_metrics.state[worker],
+                                    m_metrics.outWtCtr[worker],
                                     m_terminate_d);
   chkError(cudaGetLastError(), "Launch of _reducerLoop kernel failed");
 #endif
@@ -555,7 +538,7 @@ void Reducer::_worker(unsigned worker)
   chkError(cudaSetDevice(m_pool.context().deviceNo()));
 
   auto algo         = m_algos[worker];
-  auto index        = m_indices_h[worker];
+  auto index        = m_indices[worker];
   auto stream       = m_streams[worker];
   auto& inputQueue  = m_inputQueues[worker];
   auto& outputQueue = m_outputQueues[worker];
