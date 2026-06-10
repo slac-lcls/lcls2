@@ -18,6 +18,15 @@ from psana.gpu.gpu_compare import (
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpudgramlite import (
+    extract_dgram_info,
+    INFO_TIMESTAMP,
+    INFO_SERVICE,
+    INFO_EXTENT,
+    INFO_PAYLOAD_SIZE,
+    INFO_READ_SIZE,
+    INFO_STREAM_ID,
+)
 
 
 def _parse_args():
@@ -120,6 +129,7 @@ def main():
         [_open_fd(path) for path in smd_files],
         dtype=np.int32,
     )
+    gpu_reader = None
     try:
         smd_manager = SmdReaderManager(smd_fds, dsparms)
         # Read Configure and BeginRun
@@ -132,7 +142,7 @@ def main():
         bd_dm = DgramManager(xtc_files, configs=smd_manager.configs)
 
         # GPU reader
-        gpu_reader = KvikioGpuReader()
+        gpu_reader = KvikioGpuReader(keep_device_buffers=True)
 
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
         n_events = 0
@@ -167,8 +177,30 @@ def main():
                     gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if gpu_view.has_work:
                         gpu_read = gpu_reader.read_batch(gpu_view, bd_dm)
-                        for timestamp, per_stream in gpu_read.by_timestamp.items():
-                            split_by_ts.setdefault(timestamp, {}).update(per_stream)
+                        info_gpu = extract_dgram_info(
+                            gpu_read.data_gpu,
+                            gpu_read.desc_table_gpu,
+                            len(gpu_read.read_descs)
+                        )
+                        # Debug/validation only. This is the D2H point for the GPU-parsed header table.
+                        info_cpu = info_gpu.get()
+                        for desc, row in zip(gpu_read.read_descs, info_cpu):
+                            gpu_ts = int(row[INFO_TIMESTAMP])
+                            gpu_stream_id = int(row[INFO_STREAM_ID])
+                            gpu_service = int(row[INFO_SERVICE])
+                            gpu_extent = int(row[INFO_EXTENT])
+                            gpu_payload_size = int(row[INFO_PAYLOAD_SIZE])
+                            gpu_read_size = int(row[INFO_READ_SIZE])
+                            print(
+                                f"gpu_dgram: event={desc.batch_event_index} stream={gpu_stream_id} "
+                                f"timestamp={gpu_ts} service={gpu_service} "
+                                f"extent={gpu_extent} payload_size={gpu_payload_size} "
+                                f"read_size={gpu_read_size}"
+                            )
+                            # Keep existing split/no-split comparison format:
+                            # split_by_ts[timestamp][stream_id] = (dgram_size, digest)
+                            split_value = gpu_read.by_timestamp[desc.timestamp][desc.stream_id]
+                            split_by_ts.setdefault(gpu_ts, {})[gpu_stream_id] = split_value
 
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
@@ -228,7 +260,8 @@ def main():
             os.close(int(fd))
         if "bd_dm" in locals():
             bd_dm.close()
-        gpu_reader.close()
+        if gpu_reader is not None:
+            gpu_reader.close()
 
 if __name__ == "__main__":
     main()
