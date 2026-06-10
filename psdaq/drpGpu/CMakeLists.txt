@@ -207,6 +207,8 @@ if(CMAKE_CUDA_COMPILER)
 
 ##--- cuSZ
 #
+# 5/19/26 cuSZ from its own repo is replaced by the one in EIP
+#
 #    find_package(CUSZ REQUIRED)
 #
 #    add_library(CuSzReducer SHARED
@@ -247,23 +249,25 @@ if(CMAKE_CUDA_COMPILER)
 
 #--- EIP
 
-    find_package(EIP REQUIRED)
-
-    add_library(EipReducer SHARED
-        EipReducer.cu
-    )
-    target_include_directories(EipReducer PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include>
-        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
-    )
-    target_link_libraries(EipReducer
-        EIP::eip_shared
-        xtcdata::xtc
-        nlohmann_json::nlohmann_json
-        CUDA::cudart
-        CUDA::cuda_driver
-    )
+# 5/19/26: EIP's third party package is not ready for use in the DAQ yet
+#
+#    find_package(EIP REQUIRED)
+#
+#    add_library(EipReducer SHARED
+#        EipReducer.cu
+#    )
+#    target_include_directories(EipReducer PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        $<INSTALL_INTERFACE:include>
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(EipReducer
+#        EIP::eip_shared
+#        xtcdata::xtc
+#        nlohmann_json::nlohmann_json
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
 
 #--- Tools
 
@@ -343,8 +347,8 @@ if(CMAKE_CUDA_COMPILER)
         PfplReducer
         SleekReducer
         #CuSzReducer
-        #CuSZpReducer
-        EipReducer
+        CuSZpReducer
+        #EipReducer
         pgpread_gpu
         cudaDeviceProperties
         ARCHIVE DESTINATION lib
