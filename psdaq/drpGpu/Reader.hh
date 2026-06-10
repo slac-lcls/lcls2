@@ -30,10 +30,10 @@ class Detector;
 
 struct ReaderMetrics
 {
-  Ptr<uint64_t> state    {nullptr, nullptr};
-  Ptr<uint64_t> pblWtCtr {nullptr, nullptr};
-  Ptr<uint64_t> dmaWtCtr {nullptr, nullptr};
-  Ptr<uint64_t> fwdWtCtr {nullptr, nullptr};
+  std::vector<uint64_t*> states;
+  std::vector<uint64_t*> pblWtCtrs;
+  std::vector<uint64_t*> dmaWtCtrs;
+  std::vector<uint64_t*> fwdWtCtrs;
 };
 
 class Reader
@@ -47,24 +47,27 @@ public:
   void start();
   void freeDma(PGPEvent*);
 public:
-  MemPool& pool()  const { return m_pool; }
-  Ptr<RingIndexDtoD>& readerQueue() { return m_readerQueue; }
+  auto& pool()         const { return m_pool; }
+  auto& readerQueues() const { return m_readerQueues; }
+  auto  nReaders()     const { return m_nReaders; }
 private:
-  int         _setupGraph();
-  cudaGraph_t _recordGraph();
-  void        _reader(Detector&, ReaderMetrics&);
+  int         _setupGraph(unsigned reader);
+  cudaGraph_t _recordGraph(unsigned reader);
 private:
   MemPoolGpu&                        m_pool;
   Detector&                          m_det;
   const cudaExecutionContext_t&      m_ctx;
   const cuda::std::atomic<unsigned>& m_terminate_d;
-  cudaStream_t                       m_stream;
-  cudaGraphExec_t                    m_graphExec;
+  std::vector<cudaStream_t>          m_streams;
+  std::vector<unsigned*>             m_dmaBufferIdxes;
+  std::vector<unsigned*>             m_pebbleIdxes;
+  std::vector<cudaGraphExec_t>       m_graphExecs;
   Ptr<RingIndexHtoD>                 m_pebbleQueue;
-  Ptr<RingIndexDtoD>                 m_readerQueue;
-  unsigned*                          m_state_d;
+  std::vector< Ptr<RingIndexDtoD> >  m_readerQueues;
+  std::vector<unsigned*>             m_states_d;
   CUdeviceptr*                       m_dmaBuffers;    // [dmaCount][maxDmaSize]
   CUdeviceptr*                       m_fpgaRegs;
+  unsigned                           m_nReaders;
   const Parameters&                  m_para;
   ReaderMetrics                      m_metrics;
 };

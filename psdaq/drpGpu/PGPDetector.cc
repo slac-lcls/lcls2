@@ -647,31 +647,29 @@ unsigned PGPDrp::unconfigure()
   logging::info("PGPDrp::unconfigure: Shutting down");
 
   DrpBase::unconfigure(); // TebContributor must be shut down before the reader
-  printf("*** PGPDrp::unconfigure 1\n");
+  //printf("*** PGPDrp::unconfigure 1\n");
 
-  // @todo: Right place for this?
-  printf("*** PGPDrp::unconfigure: Setting terminate True\n");
   m_terminate.store(true, std::memory_order_release);
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
-  printf("*** PGPDrp::unconfigure 2\n");
+  //printf("*** PGPDrp::unconfigure 2\n");
 
   if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
-  printf("*** PGPDrp::unconfigure 3\n");
+  //printf("*** PGPDrp::unconfigure 3\n");
 
   // Wait for the Collector thread to finish
   if (m_collectorThread.joinable()) {
     m_collectorThread.join();
     logging::info("Collector thread finished");
   }
-  printf("*** PGPDrp::unconfigure 4\n");
+  //printf("*** PGPDrp::unconfigure 4\n");
 
   m_reducer.reset();
-  printf("*** PGPDrp::unconfigure 5\n");
+  //printf("*** PGPDrp::unconfigure 5\n");
   m_trgInpGen.reset();
-  printf("*** PGPDrp::unconfigure 6\n");
+  //printf("*** PGPDrp::unconfigure 6\n");
   m_reader.reset();
-  printf("*** PGPDrp::unconfigure 7\n");
+  //printf("*** PGPDrp::unconfigure 7\n");
 
   return 0;
 }

@@ -676,6 +676,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
+        if (kwargs.first == "nReaders")       continue;  // GPU DRP
         if (kwargs.first == "dmaBufSize")     continue;  // GPU DRP
         if (kwargs.first == "dmaBufCount")    continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP

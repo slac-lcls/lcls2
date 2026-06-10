@@ -10,6 +10,12 @@
 
 #include <sys/prctl.h>
 
+#if 0                                   // Set to 1 to enable device metrics.  These affect performance.
+#define DBG(stmt) stmt
+#else
+#define DBG(stmt)
+#endif
+
 using namespace XtcData;
 using namespace Pds;
 using namespace Drp;
@@ -45,10 +51,17 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_lastData        {0, 0, 0, 0, 0, 0},
   m_para            (para)
 {
+  // Gather up the device readerQueuers in a device array
+  auto& readerQueues = m_reader->readerQueues();
+  chkError(cudaMalloc(&m_readerQueues_d, m_reader->nReaders() * sizeof(*m_readerQueues_d)));
+  for (unsigned i = 0; i < m_reader->nReaders(); ++i) {
+    chkError(cudaMemcpy(&m_readerQueues_d[i], &readerQueues[i].d, sizeof(*m_readerQueues_d), cudaMemcpyDefault));
+  }
+
   // Set up buffer index queue for TrgInpGen to Host comms
   m_trgInpGenQueue.h = new RingIndexDtoH(pool.nbuffers());
   chkError(cudaMalloc(&m_trgInpGenQueue.d,                     sizeof(*m_trgInpGenQueue.d)));
-  chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyHostToDevice));
+  chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyDefault));
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
@@ -75,17 +88,14 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
 
   // Prepare a metric for tracking kernel state
-  chkError(cudaHostAlloc(&m_metrics.state.h, sizeof(*m_metrics.state.h), cudaHostAllocDefault));
-  chkError(cudaHostGetDevicePointer(&m_metrics.state.d, m_metrics.state.h, 0));
-  *m_metrics.state.h = 0;
+  chkError(cudaHostAlloc(&m_metrics.state, sizeof(*m_metrics.state), cudaHostAllocDefault));
+  *m_metrics.state = 0;
 
   // Prepare counter metrics for tracking execution progress
-  chkError(cudaHostAlloc(&m_metrics.rcvWtCtr.h, sizeof(*m_metrics.rcvWtCtr.h), cudaHostAllocDefault));
-  chkError(cudaHostGetDevicePointer(&m_metrics.rcvWtCtr.d, m_metrics.rcvWtCtr.h, 0));
-  *m_metrics.rcvWtCtr.h = 0;
-  chkError(cudaHostAlloc(&m_metrics.fwdWtCtr.h, sizeof(*m_metrics.fwdWtCtr.h), cudaHostAllocDefault));
-  chkError(cudaHostGetDevicePointer(&m_metrics.fwdWtCtr.d, m_metrics.fwdWtCtr.h, 0));
-  *m_metrics.fwdWtCtr.h = 0;
+  chkError(cudaHostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr), cudaHostAllocDefault));
+  *m_metrics.rcvWtCtr = 0;
+  chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
+  *m_metrics.fwdWtCtr = 0;
 
   // Prepare the TrgInpGen graph
   if (_setupGraph()) {
@@ -98,21 +108,18 @@ TrgInpGen::~TrgInpGen()
 {
   chkError(cudaGraphExecDestroy(m_graphExec));
 
-  if (m_metrics.rcvWtCtr.h) {
-    chkError(cudaFreeHost(m_metrics.rcvWtCtr.h));
-    m_metrics.rcvWtCtr.h = nullptr;
-    m_metrics.rcvWtCtr.d = nullptr;
+  if (m_metrics.rcvWtCtr) {
+    chkError(cudaFreeHost(m_metrics.rcvWtCtr));
+    m_metrics.rcvWtCtr = nullptr;
   }
-  if (m_metrics.fwdWtCtr.h) {
-    chkError(cudaFreeHost(m_metrics.fwdWtCtr.h));
-    m_metrics.fwdWtCtr.h = nullptr;
-    m_metrics.fwdWtCtr.d = nullptr;
+  if (m_metrics.fwdWtCtr) {
+    chkError(cudaFreeHost(m_metrics.fwdWtCtr));
+    m_metrics.fwdWtCtr = nullptr;
   }
 
-  if (m_metrics.state.h) {
-    chkError(cudaFreeHost(m_metrics.state.h));
-    m_metrics.state.h = nullptr;
-    m_metrics.state.d = nullptr;
+  if (m_metrics.state) {
+    chkError(cudaFreeHost(m_metrics.state));
+    m_metrics.state = nullptr;
   }
 
   if (m_retCode_d)  chkError(cudaFree(m_retCode_d));
@@ -130,17 +137,20 @@ TrgInpGen::~TrgInpGen()
   delete m_trgInpGenQueue.h;
   m_trgInpGenQueue.d = nullptr;
   m_trgInpGenQueue.h = nullptr;
+
+  if (m_readerQueues_d)  chkError(cudaFree(m_readerQueues_d));
+  m_readerQueues_d = nullptr;
 }
 
 int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
                             std::map<std::string, std::string>&   labels)
 {
-  *m_metrics.state.h = 0;
-  *m_metrics.rcvWtCtr.h = 0;
-  *m_metrics.fwdWtCtr.h = 0;
-  exporter->add("DRP_tigState", labels, MetricType::Gauge,   [&](){ return m_metrics.state.h    ? *m_metrics.state.h : 0; });
-  exporter->add("DRP_tigRcv",   labels, MetricType::Counter, [&](){ return m_metrics.rcvWtCtr.h ? *m_metrics.rcvWtCtr.h : 0; });
-  exporter->add("DRP_tigFwd",   labels, MetricType::Counter, [&](){ return m_metrics.fwdWtCtr.h ? *m_metrics.fwdWtCtr.h : 0; });
+  *m_metrics.state = 0;
+  *m_metrics.rcvWtCtr = 0;
+  *m_metrics.fwdWtCtr = 0;
+  exporter->add("DRP_tigState", labels, MetricType::Gauge,   [&](){ return m_metrics.state    ? *m_metrics.state    : 0; });
+  exporter->add("DRP_tigRcv",   labels, MetricType::Counter, [&](){ return m_metrics.rcvWtCtr ? *m_metrics.rcvWtCtr : 0; });
+  exporter->add("DRP_tigFwd",   labels, MetricType::Counter, [&](){ return m_metrics.fwdWtCtr ? *m_metrics.fwdWtCtr : 0; });
 
   m_metrics.pndWtCtr = 0;
   m_metrics.pidWtCtr = 0;
@@ -211,36 +221,42 @@ int TrgInpGen::_setupGraph()
   return 0;
 }
 
+static __device__ unsigned lReader = 0;
+
 // This kernel receives indices from the DMA stream
 static __global__
-void _trgInpGenRcv(unsigned*      const __restrict__ state,
-                   unsigned*      const __restrict__ index,
-                   RingIndexDtoD* const __restrict__ inputQueue,
-                   uint64_t*      const __restrict__ stateMon,
-                   uint64_t*      const __restrict__ rcvWtCtr)
+void _trgInpGenRcv(unsigned*      const        __restrict__ state,
+                   unsigned*      const        __restrict__ index,
+                   RingIndexDtoD* const* const __restrict__ readerQueues, // [nReaders]
+                   unsigned       const                     nReaders,
+                   unsigned       const                     nRdrShft,     // log2(nReaders)
+                   uint64_t*      const        __restrict__ stateMon,
+                   uint64_t*      const        __restrict__ rcvWtCtr)
 {
   //printf("### _trgInpGenRcv: state %u, index %u\n", *state, *index);
 
   if (*state == 0) {
-    //*stateMon = 2;
+    DBG(*stateMon = 2;)
     // Get the intermediate buffer index
     unsigned idx;
     unsigned ns{8};
-    while (!inputQueue->pop(&idx)) {
+    while (!readerQueues[lReader]->pop(&idx)) {
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       else {
-        //*stateMon = 4;
+        DBG(*stateMon = 4;)
         return;
       }
     }
-    //printf("### _trgInpGenRcv: got idx %u\n", idx);
+    idx = (idx << nRdrShft) | lReader;
+    //printf("### _trgInpGenRcv: got idx %u from reader %u, hd %u, tl %u, occ %u\n", idx, lReader,
+    //       readerQueues[lReader]->head(), readerQueues[lReader]->tail(), readerQueues[lReader]->occupancy());
     *state = 1;
-    //*stateMon = 5;
-    //++(*rcvWtCtr);
+    DBG(*stateMon = 5; ++(*rcvWtCtr);)
 
-    // Advance index
+    // Advance index and to next reader
     *index = idx;
+    atomicInc(&lReader, nReaders-1);
   }
 }
 
@@ -248,30 +264,30 @@ void _trgInpGenRcv(unsigned*      const __restrict__ state,
 static __global__
 void _trgInpGenLoop(unsigned*      const  __restrict__ state,
                     unsigned*      const  __restrict__ index,
-                    RingIndexDtoH* const  __restrict__ outputQueue,
+                    RingIndexDtoH* const  __restrict__ trgInpGenQueue,
                     uint64_t*      const  __restrict__ stateMon,
                     uint64_t*      const  __restrict__ fwdWtCtr,
                     cuda::std::atomic<unsigned> const& terminate)
 {
   if (*state == 2) {
-    //*stateMon = 10;
+    DBG(*stateMon = 10;)
     // Push index to host and increment to the next one
     //printf("### _trgInpGenLoop: push index %u\n", *index);
     bool rc;
     unsigned ns{8};
-    while ( (rc = !outputQueue->push(*index)) ) {
+    auto const idx{*index};
+    while ( (rc = !trgInpGenQueue->push(idx)) ) {
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       else {
-        //*stateMon = 11;
+        DBG(*stateMon = 11;)
         break;
       }
     }
     if (!rc) {
-      //printf("### _trgInpGenLoop: pushed, new index %u\n", *index);
+      //printf("### _trgInpGenLoop: pushed index %u\n", *index);
       *state = 0;
-      //*stateMon = 12;
-      //++(*fwdWtCtr);
+      DBG(*stateMon = 12; ++(*fwdWtCtr);)
     }
   }
 
@@ -280,19 +296,22 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
   if (!terminate.load(cuda::std::memory_order_acquire))  {
     cudaGraphLaunch(cudaGetCurrentGraphExec(), cudaStreamGraphTailLaunch);
   }
-  //else {
-  //  printf("### _trgInpGenLoop: Terminate is True: not relaunching\n");
-  //}
+  else {
+    //printf("### _trgInpGenLoop: Terminate is True: not relaunching\n");
+    lReader = 0;                        // Reset for possible next time
+  }
 }
 
 cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
 {
   tig_scoped_range r{/*"TrgInpGen::_recordGraph"*/}; // Expose function name via NVTX
 
-  auto hostWrtBufs_d  = m_pool.hostWrtBufs_d();
-  auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs_d);
+  auto hostWrtBufs    = m_pool.hostWrtBufs();
+  auto hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto calibBuffers   = m_pool.calibBuffers_d();
   auto calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers);
+  auto nReaders       = m_reader->nReaders();
+  auto const nRdrShft = ffs(nReaders) - 1; // log2(nReaders)
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "TrgInpGen stream begin capture failed")) {
@@ -302,9 +321,11 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
   // Find which pebble buffers are ready for processing
   _trgInpGenRcv<<<1, 1, 0, stream>>>(m_state_d,
                                      m_index_d,
-                                     m_reader->readerQueue().d,
-                                     m_metrics.state.d,
-                                     m_metrics.rcvWtCtr.d);
+                                     m_readerQueues_d,
+                                     nReaders,
+                                     nRdrShft,
+                                     m_metrics.state,
+                                     m_metrics.rcvWtCtr);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
   if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
@@ -312,7 +333,7 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                               m_state_d,
                               calibBuffers,
                               calibBufsCnt,
-                              hostWrtBufs_d,
+                              hostWrtBufs,
                               hostWrtBufsCnt,
                               m_index_d,
                               m_retCode_d);
@@ -322,8 +343,8 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
   _trgInpGenLoop<<<1, 1, 0, stream>>>(m_state_d,
                                       m_index_d,
                                       m_trgInpGenQueue.d,
-                                      m_metrics.state.d,
-                                      m_metrics.fwdWtCtr.d,
+                                      m_metrics.state,
+                                      m_metrics.fwdWtCtr,
                                       m_terminate_d);
 
   cudaGraph_t graph;
@@ -369,7 +390,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
     perror("prctl");
   }
 
-  const auto     hostWrtBufs    = m_pool.hostWrtBufs_h(); // When no error, hdrs in all are the same
+  const auto     hostWrtBufs    = m_pool.hostWrtBufs(); // When no error, hdrs in all are the same
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
 

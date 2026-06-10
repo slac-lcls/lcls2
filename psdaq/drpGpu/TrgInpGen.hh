@@ -9,7 +9,6 @@
 #include <cuda/std/atomic>
 
 #include "MemPool.hh"
-#include "RingIndex_HtoD.hh"
 #include "RingIndex_DtoD.hh"
 #include "RingIndex_DtoH.hh"
 #include "drp/spscqueue.hh"
@@ -28,24 +27,24 @@ class Reader;
 
 struct TrgInpGenMetrics
 {
-  Ptr<uint64_t> state    {nullptr, nullptr};
-  Ptr<uint64_t> rcvWtCtr {nullptr, nullptr};
-  Ptr<uint64_t> fwdWtCtr {nullptr, nullptr};
+  uint64_t* state    {nullptr};
+  uint64_t* rcvWtCtr {nullptr};
+  uint64_t* fwdWtCtr {nullptr};
 
-  uint64_t      pndWtCtr     {0};
-  uint64_t      pidWtCtr     {0};
+  uint64_t  pndWtCtr     {0};
+  uint64_t  pidWtCtr     {0};
 
-  uint64_t      nEvents      {0};
-  uint64_t      nDmaRet      {0};
-  uint64_t      nHdrMismatch {0};
-  uint64_t      dmaSize      {0};
-  uint64_t      dmaBytes     {0};
-  uint64_t      latency      {0};
-  uint64_t      nDmaErrors   {0};
-  uint64_t      nNoComRoG    {0};
-  uint64_t      nMissingRoGs {0};
-  uint64_t      nTmgHdrError {0};
-  uint64_t      nPgpJumps    {0};
+  uint64_t  nEvents      {0};
+  uint64_t  nDmaRet      {0};
+  uint64_t  nHdrMismatch {0};
+  uint64_t  dmaSize      {0};
+  uint64_t  dmaBytes     {0};
+  uint64_t  latency      {0};
+  uint64_t  nDmaErrors   {0};
+  uint64_t  nNoComRoG    {0};
+  uint64_t  nMissingRoGs {0};
+  uint64_t  nTmgHdrError {0};
+  uint64_t  nPgpJumps    {0};
 };
 
 class TrgInpGen
@@ -78,6 +77,7 @@ private:
   cudaStream_t                       m_stream;
   cudaGraphExec_t                    m_graphExec;
   const std::shared_ptr<Reader>&     m_reader;
+  RingIndexDtoD**                    m_readerQueues_d;
   Ptr<RingIndexDtoH>                 m_trgInpGenQueue;
   std::thread                        m_receiverThread;
   uint64_t                           m_lastPid;
