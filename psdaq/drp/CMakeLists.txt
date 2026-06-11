@@ -166,6 +166,20 @@ target_link_libraries(pgpread
     Threads::Threads
 )
 
+add_executable(wave8BldServer
+    wave8BldServer.cc
+)
+target_include_directories(wave8BldServer PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+)
+target_link_libraries(wave8BldServer
+    mmhw
+    bld
+    psalg::utils
+    xtcdata::xtc
+    Threads::Threads
+)
+
 add_executable(pgpread_timetool
     AxiBatcherParser.cc
     pgpread_timetool.cc

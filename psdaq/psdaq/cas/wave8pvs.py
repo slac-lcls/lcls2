@@ -1,4 +1,3 @@
-import rogue.hardware.pgp
 import pyrogue
 import pyrogue.utilities.prbs
 import pyrogue.utilities.fileio
