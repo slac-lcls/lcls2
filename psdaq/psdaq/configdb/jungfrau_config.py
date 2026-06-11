@@ -65,6 +65,13 @@ def jungfrau_connectionInfo(jungfrau_kcu, alloc_json_str):
 
     jungfrau_kcu.StopRun()
 
+    # timing seems to intermittently stop receiving frames
+    # and empirically this fixes it.  not sure if we need the sleep - cpo (06/10/26)
+    time.sleep(0.1)
+    print('**** cpo hack TxPhyPllReset ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    time.sleep(0.1)
+
     connect_info = {}
     connect_info["paddr"] = rxId
 
