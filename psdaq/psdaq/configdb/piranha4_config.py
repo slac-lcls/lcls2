@@ -31,6 +31,10 @@ chan = 0
 ocfg = None
 group = None
 
+#timebase
+clkRate      = 1300/7.  # MHz
+clksPerFrame = 200
+
 class MyUartPiranha4Rx(clink.ClinkSerialRx):
 
     def __init__(self, path):
@@ -114,6 +118,13 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     global lm
     global lane
     global xpmpv_global
+
+    global clkRate
+    global clksPerFrame
+
+    if timebase == "119M":
+        clkRate      = 119
+        clksPerFrame = 238
 
     print('piranha4_init')
 
@@ -344,17 +355,12 @@ def user_to_expert(cl, cfg, full=False):
     if (hasUser and 'start_ns' in cfg['user']):
         partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
-        #triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
-        # cpo hack for UED timing 05/05/26
-        if timebase=="119M":
-            triggerDelay   = int(rawStart*119./1000 - partitionDelay*238)
-        else:
-            triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
+        triggerDelay   = int(rawStart*clkRate/1000 - partitionDelay*clksPerFrame)
         
         print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-            print('Raise start_ns >= {:}'.format(partitionDelay*200*7000/1300))
+            print('Raise start_ns >= {:}'.format(partitionDelay*clksPerFrame*1000/clkRate))
             raise ValueError('triggerDelay computes to < 0')
 
         d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay
