@@ -229,6 +229,116 @@ static void setDetInfo(PyObject* parent, PyObject* pycontainertype, Names& names
     addObjHierarchy(parent, pycontainertype, keyName, detId, segment);
 }
 
+static int setDictObject(PyObject* dict, const char* key, PyObject* obj)
+{
+    if (!obj) return -1;
+    int fail = PyDict_SetItemString(dict, key, obj);
+    Py_DECREF(obj);
+    return fail;
+}
+
+static int setDictString(PyObject* dict, const char* key, const char* value)
+{
+    return setDictObject(dict, key, Py_BuildValue("s", value));
+}
+
+static int setDictUnsigned(PyObject* dict, const char* key, unsigned long value)
+{
+    return setDictObject(dict, key, PyLong_FromUnsignedLong(value));
+}
+
+static int setDictSigned(PyObject* dict, const char* key, long value)
+{
+    return setDictObject(dict, key, PyLong_FromLong(value));
+}
+
+static PyObject* buildConfigNamesEntry(NameIndex& nameIndex)
+{
+    Names& names = nameIndex.names();
+    NamesId namesId = names.namesId();
+    unsigned namesIdValue = namesId;
+    Alg& detAlg = names.alg();
+    const uint32_t algVersion = detAlg.version();
+
+    PyObject* pyFields = PyList_New(0);
+    if (!pyFields) return NULL;
+
+    IndexMap& shapeMap = nameIndex.shapeMap();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        long shapeIndex = -1;
+        if (name.rank() > 0) {
+            auto it = shapeMap.find(name.name());
+            if (it != shapeMap.end()) shapeIndex = it->second;
+        }
+
+        PyObject* pyField = PyDict_New();
+        if (!pyField) {
+            Py_DECREF(pyFields);
+            return NULL;
+        }
+
+        int fail = 0;
+        fail |= setDictString(pyField, "name", name.name());
+        fail |= setDictUnsigned(pyField, "type", name.type());
+        fail |= setDictUnsigned(pyField, "rank", name.rank());
+        fail |= setDictUnsigned(pyField, "field_index", i);
+        fail |= setDictSigned(pyField, "shape_index", shapeIndex);
+        if (fail || PyList_Append(pyFields, pyField)) {
+            Py_DECREF(pyField);
+            Py_DECREF(pyFields);
+            return NULL;
+        }
+        Py_DECREF(pyField);
+    }
+
+    PyObject* pyNames = PyDict_New();
+    if (!pyNames) {
+        Py_DECREF(pyFields);
+        return NULL;
+    }
+
+    int fail = 0;
+    fail |= setDictString(pyNames, "det_name", names.detName());
+    fail |= setDictString(pyNames, "det_type", names.detType());
+    fail |= setDictString(pyNames, "det_id", names.detId());
+    fail |= setDictString(pyNames, "alg_name", detAlg.name());
+    fail |= setDictObject(
+        pyNames,
+        "alg_version",
+        Py_BuildValue(
+            "(III)",
+            (algVersion >> 16) & 0xff,
+            (algVersion >> 8) & 0xff,
+            algVersion & 0xff
+        )
+    );
+    fail |= setDictUnsigned(pyNames, "segment", names.segment());
+    fail |= setDictUnsigned(pyNames, "names_id_value", namesIdValue);
+    fail |= setDictUnsigned(pyNames, "names_id_src", namesIdValue);
+    fail |= setDictUnsigned(pyNames, "node_id", namesId.nodeId());
+    fail |= setDictUnsigned(pyNames, "names_id", namesId.namesId());
+    fail |= setDictUnsigned(pyNames, "n_fields", names.num());
+    fail |= setDictObject(pyNames, "fields", pyFields);
+    if (fail) {
+        Py_DECREF(pyNames);
+        return NULL;
+    }
+
+    return pyNames;
+}
+
+static PyObject* config_names(PyDgramObject* self)
+{
+    PyObject* obj = PyObject_GetAttrString((PyObject*)self, "_config_names");
+    if (!obj) {
+        PyErr_Clear();
+        PyErr_SetString(PyExc_RuntimeError, "config_names is only available on Configure dgrams");
+        return NULL;
+    }
+    return obj;
+}
+
 static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
 {
     // This function gets called at configure: add attributes "software" and "version" to pyDgram and return
@@ -244,6 +354,9 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
     } else {
         throw "dictAssignConfig: software attribute already exists\n";
     }
+
+    PyObject* pyConfigNames = PyList_New(0);
+    if (!pyConfigNames) throw "dictAssignConfig: failed to create _config_names\n";
 
     for (auto & namesPair : namesLookup) {
         NameIndex& nameIndex = namesPair.second;
@@ -265,6 +378,24 @@ static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
             setAlg(software, pycontainertype, baseName, alg, segment);
             setDataInfo(software, pycontainertype, baseName, name, segment);
         }
+
+        PyObject* pyNames = buildConfigNamesEntry(nameIndex);
+        if (!pyNames) {
+            Py_DECREF(pyConfigNames);
+            throw "dictAssignConfig: failed to build _config_names entry\n";
+        }
+        if (PyList_Append(pyConfigNames, pyNames)) {
+            Py_DECREF(pyNames);
+            Py_DECREF(pyConfigNames);
+            throw "dictAssignConfig: failed to append _config_names entry\n";
+        }
+        Py_DECREF(pyNames);
+    }
+
+    int fail = PyObject_SetAttrString((PyObject*)pyDgram, "_config_names", pyConfigNames);
+    Py_DECREF(pyConfigNames);
+    if (fail) {
+        throw "dictAssignConfig: failed to set _config_names attribute\n";
     }
 }
 
@@ -1018,6 +1149,7 @@ static PyMethodDef dgram_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},
+    {"config_names", (PyCFunction)config_names, METH_NOARGS, "Configure Names metadata"},
     {NULL}  /* Sentinel */
 };
 
@@ -1122,4 +1254,3 @@ PyMODINIT_FUNC initdgram(void) {
     PyModule_AddObject(m, "Dgram", (PyObject *)&dgram_DgramType);
 }
 #endif
-

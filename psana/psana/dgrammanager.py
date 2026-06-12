@@ -82,6 +82,7 @@ class DgramManager(object):
             "transitionsOnly": False, # Used to skip draining L1Accepts if True
         }
         self.configs = []
+        self.gpu_config_tables = {}
         self._timestamps = []  # built when iterating
         self.found_endrun = True
 
@@ -222,6 +223,24 @@ class DgramManager(object):
         self.configs = dgrams
         self._setup_det_class_table()
         self._set_configinfo()
+        self._setup_gpu_config_tables()
+
+    def _setup_gpu_config_tables(self):
+        """Build optional GPU metadata tables from Configure dgrams."""
+        gpu_config_tables = {}
+
+        if os.environ.get("PS_TEST_GPU_STREAM_IDS"):
+            from psana.gpu.config.gpu_jungfrau_config import (
+                build_jungfrau_config_table_from_env,
+            )
+
+            jungfrau_table = build_jungfrau_config_table_from_env(self.configs)
+            if jungfrau_table:
+                gpu_config_tables["jungfrau"] = jungfrau_table
+
+        self.gpu_config_tables = gpu_config_tables
+        for config_consumer in self.config_consumers:
+            setattr(config_consumer, "gpu_config_tables", gpu_config_tables)
 
     def _setup_det_class_table(self):
         """
