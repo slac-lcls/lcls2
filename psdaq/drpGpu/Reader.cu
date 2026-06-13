@@ -6,8 +6,8 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/kwargs.hh"
-#include "psdaq/trigger/TriggerPrimitive.hh"
 #include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
+#include "psdaq/trigger/src/TriggerPrimitive.hh"
 
 #include <thread>
 

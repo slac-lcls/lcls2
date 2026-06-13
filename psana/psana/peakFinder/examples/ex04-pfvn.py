@@ -7,7 +7,7 @@ import sys
 from time import time
 import numpy as np
 
-from psalg_ext import peak_finder_algos
+from psana.psalg_ext import peak_finder_algos
 
 from psana.pyalgos.generic.NDArrGenerators import random_standard, add_random_peaks, add_ring
 from psana.pyalgos.generic.NDArrUtils import print_ndarr, reshape_to_2d

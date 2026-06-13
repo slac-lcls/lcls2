@@ -128,7 +128,7 @@ int main(int argc, char* argv[])
         smditer.reset();
         smditer.iterate(&(smalldg->xtc), bufEnd);
         printf("Small event %d, %s transition: time %d.%09d, "
-               "extent %d offset 0x%llx\n",
+               "extent %d offset 0x%lx\n",
                nevent,
                TransitionId::name(smalldg->service()),
                smalldg->time.seconds(),

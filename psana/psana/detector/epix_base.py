@@ -21,9 +21,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 from psana.detector.areadetector import sgs, AreaDetectorRaw, np, ut, DTYPE_MASK, DTYPE_STATUS, au
-from psana.detector.UtilsEpix10ka import calib_epix10ka_any, map_gain_range_index,\
-  cbits_config_epix10ka, cbits_config_epixhr2x2, cbits_config_epixhr1x4,\
-  cbits_config_and_data_detector, M14, M15, B14, B15
+import psana.detector.UtilsEpix10ka as ue
+calib_epix10ka_any, map_gain_range_index, cbits_config_epix10ka, cbits_config_epixhr2x2,\
+  cbits_config_epixhr1x4, cbits_config_and_data_detector, M14, M15, B14, B15 =\
+  ue.calib_epix10ka_any, ue.map_gain_range_index, ue.cbits_config_epix10ka, ue.cbits_config_epixhr2x2,\
+  ue.cbits_config_epixhr1x4, ue.cbits_config_and_data_detector, ue.M14, ue.M15, ue.B14, ue.B15
+
 import psana.detector.UtilsMask as um #import merge_status
 info_ndarr, reshape_to_3d = au.info_ndarr, au.reshape_to_3d
 
@@ -36,6 +39,7 @@ class epix_base(AreaDetectorRaw):
         self._seg_geo = None
         self._data_bit_mask = M14 # for epix10ka data
         self._data_gain_bit = B14 # for epix10ka data
+        self._data_gain_bitnum = 14 # for epix10ka data
         self._gain_bit_shift = 9  # for epix10ka data
         self._gains_def = (16.4, 5.466, 0.164) # ADU/keV epix10ka  H:M:L = 1 : 1/3 : 1/100
         #self._gains_def = (41.0, 13.7, 0.512) # ADU/keV epixhr2x2 H:M:L = 1 : 1/3 : 1/80
@@ -69,17 +73,13 @@ class epix_base(AreaDetectorRaw):
         return self._uniqueid
 
 
-#    def _config_object(self):
-#        """Returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
-#        """
-#        #logger.debug('det_raw._seg_configs(): ' + str(self._seg_configs()))
-#        return self._seg_configs()
-
-
     def _cbits_config_segment(self, cob):
-        """for epix10ka and epixhr2x2, ...
+        """for epix10ka, epixhr2x2, ...
            returns per-pixel array of gain control bits from segment configuration object
            cob=det.raw._seg_configs()[<seg-ind>].config
+           cbits = cob.asicPixelConfig # shape:(4, 178, 192) size:136704 dtype:uint8 [12 12 12 12 12...]
+           trbits = cob.trbit: [1 1 1 1]
+           IF DEFINED FOR ASIC then needs to be assembled FOR PANEL
         """
         logger.warning('epix_base._cbits_config_segment - MUST BE REIMPLEMENTED - return None')
         return None
@@ -93,10 +93,11 @@ class epix_base(AreaDetectorRaw):
 
 
     def _config_object(self):
-        """protected call to _seg_configs"""
+        """protected call to det.raw._seg_configs().
+           returns [dict]={<seg-index>:<cob>} of configuration objects for det.raw
+        """
         dcfg = self._seg_configs()
-        if dcfg is None:
-            logger.debug('epix_base._config_object - self._seg_configs is None - return None')
+        if ue.cond_msg(dcfg is None, msg='epix_base._config_object - _seg_configs is None - return None', output_meth=logger.warning):
             return None
         return dcfg
 
@@ -105,9 +106,10 @@ class epix_base(AreaDetectorRaw):
         """Returns array of control bits shape=(<number-of-segments>, 352, 384) from any config object."""
         dcfg = self._config_object() # or alias self._seg_configs()
         if dcfg is None: return None
-        #print('XXX dcfg:', dcfg)
         lst_cbits = [self._cbits_config_segment(v.config) for k,v in dcfg.items()]
-        return np.stack(tuple(lst_cbits))
+        cbits = np.stack(tuple(lst_cbits))
+        logger.debug(info_ndarr(cbits, 'det.raw._cbits_config_detector():', last=10))
+        return cbits
 
 
     def _cbits_config_and_data_detector(self, evt=None):

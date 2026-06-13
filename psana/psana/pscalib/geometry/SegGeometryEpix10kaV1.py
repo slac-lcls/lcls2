@@ -117,7 +117,7 @@ class SegGeometryEpix10kaV1(SegGeometry):
 
     def __init__(sp, **kwa):
         sp.use_wide_pix_center = kwa.get('use_wide_pix_center', True)
-        logger.debug('SegGeometryEpix10kaV1.__init__() use_wide_pix_center: %s' % sp.use_wide_pix_center)
+        logger.debug('__init__() use_wide_pix_center: %s' % sp.use_wide_pix_center)
 
         SegGeometry.__init__(sp)
 
@@ -164,7 +164,7 @@ class SegGeometryEpix10kaV1(SegGeometry):
 
 
     def print_member_data(sp):
-        s = 'SegGeometryEpix10kaV1.print_member_data()'\
+        s = 'print_member_data()'\
           + '\n    _rows : %d'    % sp._rows\
           + '\n    _cols : %d'    % sp._cols\
           + '\n    _pixs : %7.2f' % sp._pixs\
@@ -176,23 +176,24 @@ class SegGeometryEpix10kaV1(SegGeometry):
         logger.info(s)
 
 
-    def print_pixel_size_arrs(sp, rowslice=slice(171,181)):
+    def print_pixel_size_arrs(sp, rowslice=slice(171,181), colslice=slice(187,197)):
         sp.make_pixel_size_arrs()
-        s = 'SegGeometryEpix10kaV1.print_pixel_size_arrs()'\
+        s = 'print_pixel_size_arrs()'\
           + '\n  rowslice=%s' % str(rowslice)\
-          + '\n  sp.x_pix_size_um[rowslice,187:197]:\n'+ str(sp.x_pix_size_um[rowslice,187:197])\
-          + '\n  sp.x_pix_size_um.shape = '           + str(sp.x_pix_size_um.shape)\
-          + '\n  sp.y_pix_size_um:\n'                 + str(sp.y_pix_size_um)\
-          + '\n  sp.y_pix_size_um.shape = '           + str(sp.y_pix_size_um.shape)\
-          + '\n  sp.z_pix_size_um:\n'                 + str(sp.z_pix_size_um)\
-          + '\n  sp.z_pix_size_um.shape = '           + str(sp.z_pix_size_um.shape)\
-          + '\n  sp.pix_area_arr[rowslice,187:197]:\n'+ str(sp.pix_area_arr[rowslice,187:197])\
-          + '\n  sp.pix_area_arr.shape  = '           + str(sp.pix_area_arr.shape)
+          + '\n  colslice=%s' % str(colslice)\
+          + '\n  sp.x_pix_size_um[rowslice,colslice]:\n'+ str(sp.x_pix_size_um[rowslice,colslice])\
+          + '\n  sp.x_pix_size_um.shape = '             + str(sp.x_pix_size_um.shape)\
+          + '\n  sp.y_pix_size_um:\n'                   + str(sp.y_pix_size_um)\
+          + '\n  sp.y_pix_size_um.shape = '             + str(sp.y_pix_size_um.shape)\
+          + '\n  sp.z_pix_size_um:\n'                   + str(sp.z_pix_size_um)\
+          + '\n  sp.z_pix_size_um.shape = '             + str(sp.z_pix_size_um.shape)\
+          + '\n  sp.pix_area_arr[rowslice,colslice]:\n' + str(sp.pix_area_arr[rowslice,colslice])\
+          + '\n  sp.pix_area_arr.shape  = '             + str(sp.pix_area_arr.shape)
         logger.info(s)
 
 
     def print_maps_seg_um(sp):
-        s = 'SegGeometryEpix10kaV1.print_maps_seg_um()'\
+        s = 'print_maps_seg_um()'\
           + '\n  x_pix_arr_um =\n'      + str(sp.x_pix_arr_um)\
           + '\n  x_pix_arr_um.shape = ' + str(sp.x_pix_arr_um.shape)\
           + '\n  y_pix_arr_um =\n'      + str(sp.y_pix_arr_um)\
@@ -203,7 +204,7 @@ class SegGeometryEpix10kaV1(SegGeometry):
 
 
     def print_xy_1darr_um(sp):
-        s = 'SegGeometryEpix10kaV1.print_xy_1darr_um()'\
+        s = 'print_xy_1darr_um()'\
           + '\n  x_arr_um:\n'       + str(sp.x_arr_um)\
           + '\n  x_arr_um.shape = ' + str(sp.x_arr_um.shape)\
           + '\n  y_arr_um:\n'       + str(sp.y_arr_um)\
@@ -214,7 +215,7 @@ class SegGeometryEpix10kaV1(SegGeometry):
     def print_xyz_min_max_um(sp):
         xmin, ymin, zmin = sp.get_xyz_min_um()
         xmax, ymax, zmax = sp.get_xyz_max_um()
-        s = 'SegGeometryEpix10kaV1.print_xyz_min_max_um()'\
+        s = 'print_xyz_min_max_um()'\
           + '\n  In [um] xmin:%9.2f, xmax:%9.2f, ymin:%9.2f, ymax:%9.2f, zmin:%9.2f, zmax:%9.2f'\
             % (xmin, xmax, ymin, ymax, zmin, zmax)
         logger.info(s)

@@ -37,6 +37,21 @@ namespace Drp {
             memcpy(arrayT.data(), seg.data(), seg.num_elem());
         }
     };
+
+    class RawStreamDef {
+    public:
+        RawStreamDef() {
+            VarDef v;
+            for(unsigned i=0; i<8; i++)
+                W8::RawStream::varDef(v,i);
+            _rawDefV.push_back(v);
+        }
+
+        std::vector<VarDef>& rawDefV() { return _rawDefV; }
+    private:
+        std::vector<VarDef> _rawDefV;
+    } _rawStreamDef;
+
     class IntegralStream {
     public:
         static void varDef(XtcData::VarDef& v) {
@@ -189,4 +204,25 @@ void Wave8::_event(XtcData::Xtc& xtc,
 {
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
+
+void     Wave8::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) 
+{
+    if (valueIndex < 8) {
+        Array<uint16_t> rawArrT = rawData.get_array<uint16_t>(valueIndex);
+        Array<double_t> calArrT((char*)dst, rawArrT.shape(), rawArrT.rank());
+        //  Apply the calibration, so shape matters (No calibration)
+        for(unsigned ix=0; ix<rawArrT.shape()[0]; ix++)
+            calArrT(ix) += double( rawArrT(ix) );
+        logging::debug("AreaDetector::addToCubeArray  rawArrT %p  [%u %u %u %u] calArr %p [%f %f %f %f]",
+                       rawArrT.data(), rawArrT.data()[0], rawArrT.data()[1], rawArrT.data()[2], rawArrT.data()[3],
+                       calArrT.data(), calArrT.data()[0], calArrT.data()[1], calArrT.data()[2], calArrT.data()[3]);
+    }
+    else {
+        logging::error("Wave8::addToCube rawDefIndex %u", valueIndex);
+        abort();
+    }
+}
+
+std::vector<XtcData::VarDef>& Wave8::rawDef()
+{ return Drp::W8::_rawStreamDef.rawDefV(); }
 }

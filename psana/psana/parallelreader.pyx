@@ -1,6 +1,6 @@
 ## cython: linetrace=True
 ## distutils: define_macros=CYTHON_TRACE_NOGIL=1
-from parallelreader cimport Buffer
+from psana.parallelreader cimport Buffer
 from .mman_compat cimport mmap, munmap, PROT_READ, PROT_WRITE, MAP_PRIVATE, MAP_ANONYMOUS, MAP_FAILED, is_map_failed
 
 import os
@@ -11,7 +11,7 @@ DEF DEBUG_MODULE = "ParallelReader"
 include "cydebug.pxh"
 
 cimport cython
-from dgramlite cimport Dgram, Xtc
+from psana.dgramlite cimport Dgram, Xtc
 
 from psana.psexp import TransitionId
 

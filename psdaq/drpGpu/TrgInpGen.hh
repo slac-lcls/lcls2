@@ -12,7 +12,7 @@
 #include "RingIndex_DtoD.hh"
 #include "RingIndex_DtoH.hh"
 #include "drp/spscqueue.hh"
-#include "psdaq/trigger/TriggerPrimitive.hh"
+#include "psdaq/trigger/src/TriggerPrimitive.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
 namespace Pds {

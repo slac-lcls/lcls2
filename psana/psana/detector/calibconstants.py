@@ -472,7 +472,8 @@ class CalibConstants:
 
         if mapmode==0: return self.img_entries
 
-        if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.warning): return None
+        #if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.warning): return None
+        if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.debug): return None
 
         logger.debug(info_ndarr(nda, 'nda ', last=3))
         rows, cols = self._pix_rc

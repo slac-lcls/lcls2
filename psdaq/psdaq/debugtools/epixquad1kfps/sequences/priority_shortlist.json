@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "sequence_name": "priority_shortlist",
+  "description": "High-priority subset for limited detector access. Emphasizes intra-ASIC quadrant behavior, column-region ambiguity, and module anchors.",
+  "defaults": {
+    "readout_count": 50,
+    "record": true,
+    "config_alias": "BEAM"
+  },
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "test_file": "../tests/03_single_asic_quadrants.json",
+      "marker_groups": ["TL"],
+      "label": "single-asic quadrant TL",
+      "purpose": "Check the top-left quadrant marker in isolation.",
+      "priority": "high",
+      "notes": [
+        "Most direct probe of the suspected top-half intra-ASIC transform.",
+        "Use first if detector time is very limited."
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "test_file": "../tests/04_single_asic_column_regions.json",
+      "marker_groups": ["C0"],
+      "label": "single-asic column region C0",
+      "purpose": "Probe the first 48-column region in isolation.",
+      "priority": "high",
+      "notes": [
+        "Designed to test whether regions 2/3 alias onto 0/1 in the write path."
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "test_file": "../tests/02_all_modules_anchor_asic0.json",
+      "marker_groups": ["asic0"],
+      "label": "all-modules anchor asic0",
+      "purpose": "Check coarse placement of the first module anchor in isolation.",
+      "priority": "high",
+      "notes": [
+        "Separates module-order issues from intra-ASIC orientation issues."
+      ]
+    }
+  ]
+}

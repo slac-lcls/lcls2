@@ -237,7 +237,7 @@ int main(int argc, char* argv[])
 
                     uint64_t framenum = 0;
                     uint64_t timestamp = 0;
-                    XtcData::TimeStamp frameTime;
+                    XtcData::TimeStamp frameTime(0,0);
                     bool valid_frame = true;
                     bool valid_ts = true;
                     bool valid_num_packet = subframesUdp.size() == JungfrauData::PacketNum;

@@ -1,8 +1,10 @@
 #pragma once
 
 #include "drp.hh"
+#include "xtcdata/xtc/DescData.hh"
 #include "xtcdata/xtc/NamesId.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
+#include "xtcdata/xtc/VarDef.hh"
 #include "psdaq/service/EbDgram.hh"
 
 #include <string>
@@ -10,6 +12,7 @@
 #include <unordered_map>
 #include <nlohmann/json.hpp>
 
+static XtcData::NameIndex _noName;
 
 namespace Pds {
   namespace Eb {
@@ -44,6 +47,15 @@ public:
     virtual void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) { xtc = {{XtcData::TypeId::Parent, 0}, {nodeId}}; };
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) = 0;
     virtual void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) {};
+    // For binning into the cube
+    virtual void     addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData);
+    virtual unsigned subIndices    () { return 0; }
+    virtual unsigned rawNamesIndex () { return 0; }
+    virtual unsigned cubeNamesIndex() { return 0; }
+    virtual unsigned cubeBinBytes  () { return m_pool->bufferSize()*10; }
+    virtual std::vector<XtcData::VarDef>& rawDef();
+    virtual unsigned maxMonBufSize () { return (m_para->nCubeWorkers==0 ? 1:10) * m_pool->pebble.bufferSize(); }
+    //
     virtual void shutdown() {};
 
     // Scan methods.  Default is to fail.

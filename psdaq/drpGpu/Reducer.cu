@@ -4,7 +4,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
-#include "psdaq/eb/ResultDgram.hh"
+#include "psdaq/eb/src/ResultDgram.hh"
 #include "ReducerAlgo.hh"
 
 #include <sys/prctl.h>

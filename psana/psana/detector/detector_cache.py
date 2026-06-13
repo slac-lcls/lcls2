@@ -17,6 +17,8 @@ Usage:
 
 import pickle
 import time
+import os
+import tempfile
 from pathlib import Path
 
 from psana.utils import Logger
@@ -149,10 +151,30 @@ class DetectorCacheManager:
             else:
                 self.logger.warning(f"Entry for {drp_class_name} is empty")
 
+        # Atomic write the cache file
         t0 = time.monotonic()
-        with open(self.cache_file, 'wb') as f:
-            pickle.dump(full_cache, f)
-        self.logger.info(f"Saved cache to {self.cache_file} in {time.monotonic()-t0:.2f}s.")
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="wb",
+                dir=self.cache_file.parent,
+                prefix=f".{self.cache_file.name}.",
+                suffix=".inprogress",
+                delete=False,
+            ) as f:
+                temp_path = Path(f.name)
+                pickle.dump(full_cache, f)
+                f.flush()
+                os.fsync(f.fileno())
+
+            os.replace(temp_path, self.cache_file)
+            self.logger.info(f"Saved cache to {self.cache_file} in {time.monotonic()-t0:.2f}s.")
+        finally:
+            if temp_path is not None and temp_path.exists():
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
 
     def ensure(self):
         """

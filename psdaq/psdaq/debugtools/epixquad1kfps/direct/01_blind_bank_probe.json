@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "direct_name": "blind_bank_probe",
+  "description": "Direct debug-only bank probes on one ASIC. Use after module landing and ASIC orientation are known.",
+  "coordinate_mode": "bank_rc_178x48",
+  "background_value": 12,
+  "default_selected_value": 8,
+  "trbit_by_asic": 0,
+  "patterns": [
+    {
+      "pattern_index": 0,
+      "label": "asic0 bank0 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 0,
+          "bank": 0
+        }
+      ]
+    },
+    {
+      "pattern_index": 1,
+      "label": "asic0 bank1 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 0,
+          "bank": 1
+        }
+      ]
+    },
+    {
+      "pattern_index": 2,
+      "label": "asic0 bank2 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 0,
+          "bank": 2
+        }
+      ]
+    },
+    {
+      "pattern_index": 3,
+      "label": "asic0 bank3 full",
+      "ops": [
+        {
+          "kind": "bank_fill",
+          "asic": 0,
+          "bank": 3
+        }
+      ]
+    }
+  ]
+}

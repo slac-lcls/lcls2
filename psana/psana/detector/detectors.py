@@ -5,7 +5,7 @@ from .test_detectors        import *
 from .misc_detectors        import *
 from .bld                   import *
 from .envstore              import *
-from hsd                    import *
+from psana.hsd              import *
 from .opal                  import *
 from .piranha4              import *
 from .timetool              import *

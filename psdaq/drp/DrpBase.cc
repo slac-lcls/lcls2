@@ -1004,6 +1004,9 @@ void TebReceiverBase::resetCounters(bool all = false)
 
 void TebReceiverBase::process(const ResultDgram& result, unsigned index)
 {
+    logging::debug("TebReceiverBase::process result %p  svc 0x%x  extent 0x%x  index %u\n",
+                   &result, result.service(), result.xtc.extent, index);
+
     bool error = false;
     if (index != ((m_lastIndex + 1) & (m_pool.nbuffers() - 1))) {
         logging::critical("%sTebReceiver: jumping index %u  previous index %u  diff %d%s",
@@ -1185,7 +1188,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.alias      = para.alias;
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
-    m_mPrms.maxEvSize  = pool.pebble.bufferSize();
+    m_mPrms.maxEvSize  = det.maxMonBufSize();
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
@@ -1812,3 +1815,71 @@ static json createChunkRequestMsg()
     msg["body"] = body;
     return msg;
 }
+
+std::vector<XtcData::VarDef>& Drp::Detector::rawDef() { 
+    logging::error("Attempt to cube Detector without rawDef overriden");
+    abort();
+}
+
+//
+//  This is generic but without calibration
+//
+void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                              double* dst, DescData& rawData)
+{
+    NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
+    Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    if (name.rank()==0) {
+
+        /*
+#define ADD_VALUE(T) {                                           \
+            double v = double(rawData.get_value<T>(valueIndex)); \
+            *dst += v;                                           \
+            printf("[%s][%p] %f %f \n",name.name(),dst,*dst,v); \ 
+        break; }
+        */
+#define ADD_VALUE(T) {                                           \
+            double v = double(rawData.get_value<T>(valueIndex)); \
+            *dst += v;                                           \
+        break; }
+
+        switch(name.type()) {
+        case Name::UINT8 : ADD_VALUE(uint8_t)
+        case Name::UINT16: ADD_VALUE(uint16_t)
+        case Name::UINT32: ADD_VALUE(uint32_t)
+        case Name::UINT64: ADD_VALUE(uint64_t)
+        case Name::INT8  : ADD_VALUE(int8_t)
+        case Name::INT16 : ADD_VALUE(int16_t)
+        case Name::INT32 : ADD_VALUE(int32_t)
+        case Name::INT64 : ADD_VALUE(int64_t)
+        case Name::FLOAT : ADD_VALUE(float)
+        case Name::DOUBLE: ADD_VALUE(double)
+        default: break;
+        }
+    }
+    else {
+        uint32_t* shape = rawData.shape(name);
+        Array<double_t> calArrT((char*)dst, shape, name.rank());
+
+#define ADD_ARRAY(T) {                                           \
+            Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
+            for(unsigned i=0; i<rawArrT.num_elem(); i++)         \
+                calArrT.data()[i] += double(rawArrT.data()[i]);  \
+        } break;
+        switch(name.type()) {
+        case Name::UINT8 : ADD_ARRAY(uint8_t)
+        case Name::UINT16: ADD_ARRAY(uint16_t)
+        case Name::UINT32: ADD_ARRAY(uint32_t)
+        case Name::UINT64: ADD_ARRAY(uint64_t)
+        case Name::INT8  : ADD_ARRAY(int8_t)
+        case Name::INT16 : ADD_ARRAY(int16_t)
+        case Name::INT32 : ADD_ARRAY(int32_t)
+        case Name::INT64 : ADD_ARRAY(int64_t)
+        case Name::FLOAT : ADD_ARRAY(float)
+        case Name::DOUBLE: ADD_ARRAY(double)
+        default: break;
+        }
+#undef ADD_ARRAY
+    }
+}
+

@@ -31,6 +31,10 @@ chan = 0
 ocfg = None
 group = None
 
+#timebase
+clkRate      = 1300/7.  # MHz
+clksPerFrame = 200
+
 class MyUartPiranha4Rx(clink.ClinkSerialRx):
 
     def __init__(self, path):
@@ -115,6 +119,13 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     global lane
     global xpmpv_global
 
+    global clkRate
+    global clksPerFrame
+
+    if timebase == "119M":
+        clkRate      = 119
+        clksPerFrame = 238
+
     print('piranha4_init')
 
     lm=lanemask
@@ -146,10 +157,27 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     weakref.finalize(cl, cl.stop)
     cl.start()
 
+# modifing for ued only 2026/04/30 RM
+    if timebase=="119M":
+        logging.info('Using timebase 119M')
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.setDisp('UseModeSel')
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(1)
+        time.sleep(1.0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.C_RxReset()
+        time.sleep(1.0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0) # Reset the latching register
+    else:
+        logging.info('Using timebase 186M')
+        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
     # there appear to be no options to tell ClinkDevRoot to use
     # LCLS2 timing (without reading yaml files, which we don't
     # want to do) so set it by hand here.
-    cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    #cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
     time.sleep(3.5)
 
     # TODO: To be removed, now commented out xpm glitch workaround
@@ -327,11 +355,12 @@ def user_to_expert(cl, cfg, full=False):
     if (hasUser and 'start_ns' in cfg['user']):
         partitionDelay = getattr(cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner,'PartitionDelay[%d]'%group).get()
         rawStart       = cfg['user']['start_ns']
-        triggerDelay   = int(rawStart*1300/7000 - partitionDelay*200)
+        triggerDelay   = int(rawStart*clkRate/1000 - partitionDelay*clksPerFrame)
+        
         print('group {:}  partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(group,partitionDelay,rawStart,triggerDelay))
         if triggerDelay < 0:
             print('partitionDelay {:}  rawStart {:}  triggerDelay {:}'.format(partitionDelay,rawStart,triggerDelay))
-            print('Raise start_ns >= {:}'.format(partitionDelay*200*7000/1300))
+            print('Raise start_ns >= {:}'.format(partitionDelay*clksPerFrame*1000/clkRate))
             raise ValueError('triggerDelay computes to < 0')
 
         d['expert.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer.TriggerDelay']=triggerDelay

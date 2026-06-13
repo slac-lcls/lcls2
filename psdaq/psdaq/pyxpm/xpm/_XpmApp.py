@@ -296,6 +296,26 @@ class XpmApp(pr.Device):
             name         = "amcPLL",
             offset       =  0x14,
         ))
+
+        self.add(pr.RemoteVariable(
+            name         = 'mmcmRst',
+            description  = 'MMCM reset',
+            offset       = 0x28,
+            bitSize      = 1,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = 'RW'
+        ))
+            
+        self.add(pr.RemoteVariable(
+            name         = 'mmcmLock',
+            description  = 'MMCM locked',
+            offset       = 0x2c,
+            bitSize      = 1,
+            bitOffset    = 0,
+            base         = pr.UInt,
+            mode         = 'RO'
+        ))
             
         if linkMonitoring:
             self.add(pr.RemoteVariable(

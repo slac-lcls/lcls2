@@ -214,23 +214,23 @@ def draw_fig(fig):
     fig.canvas.draw()
 
 
-def save_plt(fname='img.png', verb=True, **kwa):
-    if verb: print('Save plot in file: %s' % fname)
+def save_plt(fname='img.png', fmt='save figure in file: %s', **kwa): #verb=True
+    if fmt is not None: print(fmt % fname)
     plt.savefig(fname, **kwa)
 
 
-def save_fig(fig, fname='img.png', prefix=None, suffix='.png', verb=True, **kwa):
+def save_fig(fig, fname='img.png', prefix=None, suffix='.png', fmt='save figure in file: %s', **kwa): #verb=True
     path = fname
     if prefix is not None:
         ts = strftime('%Y-%m-%dT%H%M%S', localtime(time()))
         path='%s%s%s' % (prefix,ts,suffix)
-    if verb: print('Save figure in file: %s' % path)
+    if fmt is not None: print(fmt % path)
     fig.savefig(path, **kwa)
 
 
-def save(fname='img.png', do_save=True, verb=True, **kwa):
+def save(fname='img.png', fmt='save figure in file: %s', do_save=True, **kwa):
     if not do_save: return
-    save_plt(fname, verb, **kwa)
+    save_plt(fname, fmt, **kwa)
 
 
 def proc_stat(weights, bins):

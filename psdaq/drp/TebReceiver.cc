@@ -4,7 +4,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Smd.hh"
-#include "psdaq/eb/ResultDgram.hh"
+#include "psdaq/eb/src/ResultDgram.hh"
 
 using namespace XtcData;
 using namespace Drp;
@@ -75,10 +75,12 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
     if (writing()) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
-        if (result.persist() || result.prescale()) {
-            _writeDgram(dgram);
+        if (transitionId == TransitionId::L1Accept) {
+            if (result.persist() || result.prescale()) {
+                _writeDgram(dgram);
+            }
         }
-        else if (transitionId != TransitionId::L1Accept) {
+        else {
             if (transitionId == TransitionId::BeginRun) {
                 offsetReset(); // reset offset when writing out a new file
                 _writeDgram(reinterpret_cast<Dgram*>(m_configureBuffer.data()));

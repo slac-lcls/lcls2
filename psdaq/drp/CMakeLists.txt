@@ -30,11 +30,14 @@ target_link_libraries(drpbase
 
 add_executable(drp
     AreaDetector.cc
+    CubeData.cc
+    CubeTebReceiver.cc
     Digitizer.cc
     EpixHR2x2.cc
     EpixHRemu.cc
     EpixM320.cc
     EpixUHR.cc
+    EpixUHR3x2.cc
     Epix100.cc
     EpixQuad.cc
     Jungfrau.cc
@@ -70,6 +73,8 @@ target_link_libraries(drp
 )
 
 add_executable(drp_bld
+    CubeData.cc
+    CubeTebReceiver.cc
     TebReceiver.cc
 #    BldDetectorSlow.cc
     BldDetector.cc
@@ -300,3 +305,4 @@ install(TARGETS drp
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+

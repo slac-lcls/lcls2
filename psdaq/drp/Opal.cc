@@ -21,19 +21,19 @@
 #include <algorithm>
 
 using namespace XtcData;
+using namespace Drp;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
 
 //#define DBUG
 
-namespace Drp {
-
+namespace {
     class RawDef : public VarDef
     {
     public:
         enum index { image };
         RawDef() { NameVec.push_back({"image", Name::UINT16, 2}); }
-    } rawDef;
+    };
 
     class FexDef : public VarDef
     {
@@ -90,7 +90,9 @@ namespace Drp {
             }
         }
     };
+};
 
+namespace Drp {
     class OpalTT {
     public:
         OpalTT(Opal& d, Parameters* para);
@@ -143,11 +145,11 @@ namespace Drp {
         unsigned              m_evtindex;
     };
 
-    class L2Iter : public XtcIterator
+    class OpalTTL2Iter : public XtcIterator
     {
     public:
         enum { Stop, Continue };
-        L2Iter() : XtcIterator() {}
+        OpalTTL2Iter() : XtcIterator() {}
 
         void get_value(int i, Name& name, DescData& descdata);
         int process(Xtc*, const void* bufEnd);
@@ -172,11 +174,10 @@ namespace Drp {
         Pds::Semaphore        m_filesem;
         XtcFileIterator*      m_iter;
         XtcFileIterator*      m_timiter;
-        L2Iter                m_input;
-        L2Iter                m_timinput;
+        OpalTTL2Iter          m_input;
+        OpalTTL2Iter          m_timinput;
     };
-
-};
+}
 
 //
 //  Data types from LCLS-1
@@ -230,12 +231,6 @@ namespace PdsL1 {
 
 static void _load_xtc(std::vector<uint8_t>&, const char*);
 
-
-using Drp::Opal;
-using Drp::OpalTT;
-using Drp::OpalTTFex;
-using Drp::OpalTTSimL1;
-using Drp::OpalTTSimL2;
 
 Opal::Opal(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
@@ -305,6 +300,7 @@ unsigned Opal::_configure(XtcData::Xtc& xtc,const void* bufEnd,XtcData::ConfigIt
                                                m_para->detName.c_str(), alg,
                                                m_para->detType.c_str(), m_para->serNo.c_str(), m_evtNamesId, m_para->detSegment);
 
+    RawDef rawDef;
     eventNames.add(xtc, bufEnd, rawDef);
     m_namesLookup[m_evtNamesId] = NameIndex(eventNames);
 
@@ -336,6 +332,7 @@ void Opal::write_image(XtcData::Xtc& xtc, const void* bufEnd, std::vector< XtcDa
     unsigned shape[MaxRank];
     shape[0] = m_rows;
     shape[1] = m_columns;
+    
     Array<uint16_t> arrayT = cd.allocate<uint16_t>(RawDef::image, shape);
     memcpy(arrayT.data(), subframes[2].data(), subframes[2].shape()[0]);
 }
@@ -790,7 +787,7 @@ void _load_xtc(std::vector<uint8_t>& buffer, const char* filename)
     }
 }
 
-int Drp::L2Iter::process(Xtc* xtc, const void* bufEnd)
+int Drp::OpalTTL2Iter::process(Xtc* xtc, const void* bufEnd)
 {
     switch (xtc->contains.id()) {
     case (TypeId::Parent): {

@@ -1,5 +1,5 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
-cimport psdaq.trigger.EbDgram as dgram
+cimport psdaq.trigger.EbDgramw as dgram
 from libc.stdint cimport uint64_t
 
 cdef class Src():
@@ -38,6 +38,9 @@ cdef class Xtc():
 
     def sizeofPayload(self):
         return self.cptr.sizeofPayload()
+
+    def alloc(self,len):
+        self.cptr.extent += len
 
     @property
     def src(self):

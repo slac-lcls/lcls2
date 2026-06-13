@@ -1,4 +1,4 @@
-import dgramCreate as dc
+import psana.dgramCreate as dc
 import numpy as np
 import os
 

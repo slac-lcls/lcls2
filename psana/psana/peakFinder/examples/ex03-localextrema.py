@@ -3,7 +3,7 @@
 """
 #----------
 import sys
-import psalg_ext as algos
+import psana.psalg_ext as algos
 import numpy as np
 #----------
 

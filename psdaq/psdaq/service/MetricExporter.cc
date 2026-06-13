@@ -135,7 +135,9 @@ void Pds::MetricExporter::add(const std::string& name,
             prometheusType = prometheus::MetricType::Gauge;
             break;
         default:
-          std::cout<<"Bad type: "<<int(type)<<"\n";
+            std::cout<<"Bad type: "<<int(type)<<".  Assuming Gauge\n";
+            prometheusType = prometheus::MetricType::Gauge;
+            break;
     }
     m_families.emplace_back(makeMetric(name, labels, prometheusType));
     m_values.push_back(value);

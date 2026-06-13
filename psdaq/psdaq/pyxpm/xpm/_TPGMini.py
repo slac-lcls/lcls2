@@ -108,7 +108,7 @@ class TPGMini(pr.Device):
             mode         = "RW",
             number       = 10,
             stride       = 4,
-            hidden       = True,
+            hidden       = False,
         )
 
         self.add(pr.RemoteVariable(
@@ -129,7 +129,7 @@ class TPGMini(pr.Device):
             mode         = "RW",
             number       = 6,
             stride       = 4,
-            hidden       = True,
+            hidden       = False,
         )
 
         self.add(pr.RemoteVariable(
@@ -297,6 +297,14 @@ class TPGMini(pr.Device):
             self.ACRateDiv[4].set(  2)
             self.ACRateDiv[5].set(  1)
             self.ACRateReload.set(1)
-                self.RateReload.set(1)
+            self.RateReload.set(1)
 
 
+    def dump(self):
+        print(f'BaseControl {self.BaseControl.get()}')
+        for i in range(10):
+            frd = getattr(self,f'FixedRateDiv[{i}]').get()
+            print(f'FixedRateDiv[{i}] {frd}')
+        for i in range(6):
+            acd = getattr(self,f'ACRateDiv[{i}]').get()
+            print(f'ACRateDiv[{i}] {acd}')

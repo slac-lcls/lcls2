@@ -13,9 +13,10 @@ int main(int argc, char* argv[])
 {
     Drp::Parameters para;
     int c;
+    char* endptr;
     std::string kwargs_str;
     std::string::size_type ii = 0;
-    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:v")) != EOF) {
+    while((c = getopt(argc, argv, "p:o:l:D:S:C:d:u:k:P:M:W:Q:v")) != EOF) {
         switch(c) {
             case 'p':
                 para.partition = std::stoi(optarg);
@@ -59,6 +60,10 @@ int main(int argc, char* argv[])
                 break;
             case 'W':
                 para.nworkers = std::stoi(optarg);
+                break;
+            case 'Q':
+                para.nCubeWorkers = std::strtol(optarg, &endptr, 0);
+                para.cubeKeepRaw  = *endptr=='+';
                 break;
             case 'v':
                 ++para.verbose;
@@ -117,6 +122,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "drp")               continue;  // PGPDetectorApp
         if (kwargs.first == "pythonScript")      continue;  // PGPDetectorApp
         if (kwargs.first == "sim_length")        continue;  // XpmDetector
+        if (kwargs.first == "sw_sim_length")     continue;  // AreaDetector
         if (kwargs.first == "timebase")          continue;  // XpmDetector
         if (kwargs.first == "xpmpv")             continue;  // BEBDetector
         if (kwargs.first == "feb_lane")          continue;  // BEBDetector
@@ -152,6 +158,10 @@ int main(int argc, char* argv[])
             if (kwargs.first == "segNums")           continue;
             if (kwargs.first == "slsHosts")          continue;
         }
+        if (para.detType == "epixuhr3x2") {
+            if (kwargs.first == "cfgDev")            continue;
+            if (kwargs.first == "cfgLaneMask")       continue;
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
@@ -175,3 +185,4 @@ int main(int argc, char* argv[])
     catch (...)                { logging::critical("Default exception"); }
     return EXIT_FAILURE;
 }
+

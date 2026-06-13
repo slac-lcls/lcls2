@@ -66,6 +66,7 @@ def selector():
     elif(tname=='13'):sg = test_segname('EPIXUHRASIC:V1')
     elif(tname=='14'):sg = test_segname('MTRXANY:V1')
     elif(tname=='15'):sg = test_segname('JUNGFRAU:V3')
+    elif(tname=='16'):sg = test_segname('EPIXUHR3X2:V1')
     elif(tname=='99'):sg = sgs.Create(segname='ABRACADABRA:V1');\
         logger.info('Return for non-existent segment name: %s' % sg)
     else: logger.warning('NON-EXPECTED TEST NAME: %s\n\n%s' % (tname, usage()))

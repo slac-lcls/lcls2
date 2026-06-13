@@ -67,7 +67,9 @@ def main():
     parser.add_argument('-U', action='store_true', help='is UED')
     parser.add_argument('--xvc', default=None, type=int, help='XVC port (2542)')
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+#    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+#                        format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
+    logging.basicConfig(level=logging.WARNING,
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
     if args.verbose:
         setVerbose(True)
@@ -83,7 +85,9 @@ def main():
     )
 
     # Start the system
+    print(f'======== Starting DevRoot =========')
     base.start()
+    print(f'======== Finished DevRoot =========')
 
     xpm = base.XPM
     app = base.XPM.XpmApp

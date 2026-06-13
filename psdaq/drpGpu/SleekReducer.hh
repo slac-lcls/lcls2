@@ -2,7 +2,7 @@
 
 #include "ReducerAlgo.hh"
 
-#include <sleek/SingleCompressorLossy.hh>
+#include <SingleCompressorLossy.hh>
 
 namespace Drp {
   namespace Gpu {

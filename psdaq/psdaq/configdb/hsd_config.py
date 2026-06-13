@@ -45,11 +45,30 @@ def hsd_init(prefix, dev='dev/datadev_0'):
     global epics_prefix
     epics_prefix = prefix
 
-    root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
-    root.__enter__()
-    args['root'] = root.PcieControl.DevPcie
-    args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+    if True:   # Until SUBMODULES is updated
+        root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
+        root.__enter__()
+        args['root'] = root.PcieControl.DevPcie
+        args['core'] = root.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DRIVER_TYPE_ID_G.get()==0
+        args['swclk'] = args['core']
 
+    else:
+        #  Lookup the board type
+        boardType = 'Kcu1500'
+        tst  = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev,boardType=boardType)
+        tst.start()
+        imageName = tst.PcieControl.DevPcie.AxiPcieCore.AxiVersion.ImageName.get()
+        if 'C1100' in imageName:
+            boardType = 'VariumC1100'
+        deviceId = tst.PcieControl.DevPcie.AxiPcieCore.AxiVersion.DeviceId.get()
+        logging.warning(f'Found boardType {boardType} and deviceId {deviceId}')
+        tst.stop()
+
+        root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev,boardType=boardType,extended=deviceId!=0)
+        root.__enter__()
+        args['root'] = root.PcieControl.DevPcie
+        args['core'] = deviceId==0
+        args['swclk'] = boardType=='Kcu1500' and deviceId==0
     
     hsd_unconfig(prefix)
 
@@ -59,19 +78,44 @@ def hsd_connect(msg):
 
     alloc_json = json.loads(msg)
     supervisor,nworker = supervisor_info(alloc_json)
+    print(f'hsd_connect: supervisor [{supervisor}] nworker [{nworker}]')
+    
     barrier_global.init(supervisor,nworker)
 
-    if barrier_global.supervisor:
+    if barrier_global.supervisor and args['swclk']:
         # Check clock programming
         clockrange = (180.,190.)
         rate = root.MigIlvToPcieDma.MonClkRate_3.get()*1.e-6
-
+        print(f'hsd_connect: clock rate [{rate}]')
+        
         if (rate < clockrange[0] or rate > clockrange[1]):
-            logging.info(f'Si570 clock rate {rate}.  Reprogramming')
+            logging.warning(f'Si570 clock rate {rate}.  Reprogramming')
             root.I2CBus.programSi570(1300/7.)
+
+            time.sleep(1.0)
+            rate = root.MigIlvToPcieDma.MonClkRate_3.get()*1.e-6
+
+            if (rate < clockrange[0] or rate > clockrange[1]):
+                logging.error(f'Si570 clock programming failed.  rate {rate}.')
 
     barrier_global.wait()
 
+    def toggleReset(v):
+        v.set(1)
+        time.sleep(0.001)
+        v.set(0)
+        time.sleep(0.001)
+
+    if root.PgpQPllLock.get()==0:
+        logging.warning('QPLL unlocked.  Resetting...')
+        toggleReset(root.PgpQPllReset)
+        time.sleep(0.001)
+        if root.PgpQPllLock.get()==0:
+            logging.error(f'PGP QPLL failed to lock')
+
+        toggleReset(root.PgpTxReset)
+        toggleReset(root.PgpRxReset)
+    
     time.sleep(1)
 
     # Set linkId
@@ -442,3 +486,19 @@ def hsd_update(update):
         copy_config_entry(cfg[':types:'],ocfg[':types:'],key)
     return json.dumps(cfg)
 
+
+if __name__ == '__main__':
+    import argparse
+    import sys
+    parser = argparse.ArgumentParser(prog=sys.argv[0], description='test connect method')
+    parser.add_argument('-P', default='DAQ:XPP:HSD:1_01:A', metavar='PREFIX')
+    parser.add_argument('--dev', default='/dev/datadev_1', help='device name')
+    pargs = parser.parse_args()
+
+    hsd_init(pargs.P, dev=pargs.dev)
+
+    #  For supervisor pattern
+    alloc = {'body': {'drp' : {'1': {'active'   : 1,
+                                     'proc_info': {'host':socket.gethostname(),
+                                                   'pid' : os.getpid()}}}}}
+    hsd_connect(json.dumps(alloc))

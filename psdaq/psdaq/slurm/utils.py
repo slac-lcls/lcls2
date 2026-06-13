@@ -16,6 +16,28 @@ RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
 HUTCH_DEFAULT_LOG_SUBDIRS = {
     "xpp": os.path.join("daq", "logs"),
 }
+DAQMGR_DEBUG_ENV = "DAQMGR_DEBUG_ENV"
+DAQMGR_DEBUG_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
+DAQMGR_DEBUG_ENV_DUMP_CMD = (
+    'env | sed "s/^CONFIGDB_AUTH=.*/CONFIGDB_AUTH=*****/" | sort'
+)
+DAQMGR_SUBMIT_ENV_KEYS = {
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "PATH",
+    "TESTRELDIR",
+    "CONDA_PREFIX",
+    "CONDA_DEFAULT_ENV",
+    "CONDA_EXE",
+    "CONFIGDB_AUTH",
+    "SUBMODULEDIR",
+    "DAQMGR_EXPORT",
+    "DISPLAY",
+    "XAUTHORITY",
+}
+
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +46,24 @@ class PSbatchSubCommand:
     START = 0
     STOP = 1
     RESTART = 2
+
+def build_sbatch_env(source_env=None):
+    # Build a clean environment for sbatch submission, only including necessary variables.
+    if source_env is None:
+        source_env = os.environ
+
+    env = {
+        key: value
+        for key, value in source_env.items()
+        if key in DAQMGR_SUBMIT_ENV_KEYS
+    }
+    return env
+
+
+def daqmgr_debug_env_enabled(source_env=None):
+    if source_env is None:
+        source_env = os.environ
+    return source_env.get(DAQMGR_DEBUG_ENV, "").lower() in DAQMGR_DEBUG_ENV_TRUE_VALUES
 
 
 def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
@@ -141,11 +181,13 @@ class SbatchManager:
                             results[jobparm] = jobparm_val
         return results
 
-    def get_job_info(self, use_sacct=False):
+    def get_job_info(self, use_sacct=False, strict=False):
         """
         Retrieves job information from Slurm using `squeue` or `sacct`.
-        Handles transient failures with retries, logs malformed lines,
-        and always returns a dictionary to ensure GUI stability.
+        Handles transient failures with retries and logs malformed lines.
+        In non-strict mode, returns an empty dictionary on Slurm query
+        failures to keep GUI status displays stable. In strict mode, re-raises
+        query failures so operational commands do not act on unknown state.
 
         Returns:
             dict: Mapping of job comment strings to job detail dictionaries.
@@ -167,7 +209,14 @@ class SbatchManager:
                     "squeue", "-u", user, "-h", "-o", format_string
                 )
         except Exception as e:
-            logger.warning("Failed to retrieve job info using Slurm: %s", str(e))
+            msg = f"Failed to retrieve job info using Slurm: {e}"
+            if isinstance(e, CalledProcessError) and e.stderr:
+                stderr_text = e.stderr.decode("utf-8", errors="replace").strip()
+                if stderr_text:
+                    msg += f"\nSlurm error: {stderr_text}"
+            logger.warning(msg)
+            if strict:
+                raise RuntimeError(msg) from e
             return {}
 
         job_details = {}
@@ -327,7 +376,9 @@ class SbatchManager:
         env_opt += ",DISPLAY"
         env_opt += ",XAUTHORITY"
 
-        # Include any exists in setup_env.sh backdoor
+        # Preserve DAQMGR_EXPORT for daqstat restarts, then expand its contents
+        # for the current step.
+        env_opt += ",DAQMGR_EXPORT"
         env_opt += ",$DAQMGR_EXPORT"
 
         # Include any exists in the configuration file
@@ -358,14 +409,23 @@ class SbatchManager:
         # Generate as set of commands for srun
         daq_cmd = self.get_daq_cmd(details, job_name)
 
-        daqlog_header = (
-            f'daqlog_header {job_name} {self.platform} {node} "{daq_cmd.strip()}";'
+        daqlog_header = shlex.join(
+            ["daqlog_header", job_name, str(self.platform), node, daq_cmd.strip()]
         )
 
         rtprio = self.get_rtprio(details)
         rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
 
-        cmd = f"{daqlog_header}{rtattr}{daq_cmd}"
+        debug_env = daqmgr_debug_env_enabled()
+
+        step_env_dump = ""
+        if debug_env:
+            step_env_dump = (
+                f'echo "===== STEP ENV AFTER SRUN ({job_name}) ====="; '
+                f"{DAQMGR_DEBUG_ENV_DUMP_CMD}; "
+                f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
+            )
+        cmd = f"{step_env_dump}{daqlog_header} ; {rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
@@ -373,14 +433,31 @@ class SbatchManager:
                 conda_profile = os.path.join(
                     CONDA_EXE[:loc_inst], "inst", "etc", "profile.d", "conda.sh"
                 )
-                cmd = f"source {conda_profile}; conda activate {details['conda_env']}; {cmd}"
+                cmd = (
+                    f"source {shlex.quote(conda_profile)}; "
+                    f"conda activate {shlex.quote(details['conda_env'])}; "
+                    f"{cmd}"
+                )
+
+        batch_env_dump = ""
+        if debug_env:
+            batch_env_dump = (
+                f'echo "===== BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+                f"{DAQMGR_DEBUG_ENV_DUMP_CMD}\n"
+                f'echo "===== END BATCH ENV BEFORE SRUN ({job_name}) ====="\n'
+            )
 
         n_cores = self.get_n_cores(details)
+        bash_cmd = shlex.quote(cmd)
         if not as_step:
-            jobstep_cmd = f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+            jobstep_cmd = (
+                batch_env_dump
+                + f"srun -n1 -c{n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
+            )
         else:
             jobstep_cmd = (
-                f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c '{cmd}'"
+                batch_env_dump
+                + f"srun -n1 --exclusive --cpus-per-task={n_cores} --unbuffered --job-name={job_name} {het_group_opt}{output_opt}{env_opt}bash -c {bash_cmd}"
                 + "&\n"
             )
         return jobstep_cmd

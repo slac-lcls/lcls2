@@ -39,7 +39,7 @@ void readline_from_config_file(FILE * ffile, char * text, __int32 max_len) {
 		bool start_of_line = true;
 
 		while (true) {
-			fread(&c, 1, 1, ffile);
+                        if (fread(&c, 1, 1, ffile)) {}
 			if (c == 13) continue;
 			if (start_of_line) {
 				if (c==' ' || c==9 || c==10) continue;
@@ -47,7 +47,7 @@ void readline_from_config_file(FILE * ffile, char * text, __int32 max_len) {
 			}
 			if (c=='/') { // if there is a comment then read until end of the line
 				while (c!=10) {
-					fread(&c,1,1,ffile);
+                                        if (fread(&c,1,1,ffile)) {}
 					if (c == 13) continue;
 				}
 				if (real_numbers_found) break;
