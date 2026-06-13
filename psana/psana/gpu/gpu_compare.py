@@ -1,11 +1,14 @@
 import hashlib
 import os
 
+import numpy as np
+
 from psana.dgrammanager import DgramManager
 from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.event_manager import EventManager
 from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.detector.NDArrUtils import reshape_to_3d
 
 
 def digest_bytes(view):
@@ -40,7 +43,68 @@ def compare_split_event(ref_by_ts, split_by_ts, timestamp, max_mismatches=5):
     return len(ref_event)
 
 
-def collect_no_split_reference(smd_chunk, configs, dsparms, xtc_files, max_events=0):
+def stack_jungfrau_raw(evt, segment_numbers):
+    segments = evt._det_segments.get(("jungfrau", "raw"))
+    if segments is None:
+        return None
+
+    segment_numbers = list(segment_numbers)
+    if any(segment not in segments for segment in segment_numbers):
+        return None
+
+    if len(segment_numbers) == 1:
+        return reshape_to_3d(segments[segment_numbers[0]].raw.copy())
+
+    first = segments[segment_numbers[0]].raw
+    raw = np.empty((len(segment_numbers),) + first.shape, dtype=first.dtype)
+    for row, segment in enumerate(segment_numbers):
+        np.copyto(raw[row], segments[segment].raw, casting="no")
+
+    return reshape_to_3d(raw).copy()
+
+
+def compare_jungfrau_raw(ref_raw_by_ts, gpu_raw_by_ts, timestamp):
+    ref_raw = ref_raw_by_ts.get(timestamp)
+    gpu_raw = gpu_raw_by_ts.get(timestamp)
+
+    if ref_raw is None:
+        raise RuntimeError(f"Missing Jungfrau raw reference for timestamp {timestamp}")
+
+    if gpu_raw is None:
+        raise RuntimeError(f"Missing GPU Jungfrau raw for timestamp {timestamp}")
+
+    if ref_raw.shape != gpu_raw.shape:
+        raise RuntimeError(
+            f"Jungfrau raw shape mismatch timestamp={timestamp}: "
+            f"ref={ref_raw.shape} gpu={gpu_raw.shape}"
+        )
+
+    if ref_raw.dtype != gpu_raw.dtype:
+        raise RuntimeError(
+            f"Jungfrau raw dtype mismatch timestamp={timestamp}: "
+            f"ref={ref_raw.dtype} gpu={gpu_raw.dtype}"
+        )
+
+    if not np.array_equal(ref_raw, gpu_raw):
+        mismatch = np.argwhere(ref_raw != gpu_raw)[0]
+        index = tuple(int(value) for value in mismatch)
+        raise RuntimeError(
+            f"Jungfrau raw mismatch timestamp={timestamp} index={index}: "
+            f"ref={int(ref_raw[index])} gpu={int(gpu_raw[index])}"
+        )
+
+    return ref_raw.shape
+
+
+def collect_no_split_reference(
+    smd_chunk,
+    configs,
+    dsparms,
+    xtc_files,
+    max_events=0,
+    jungfrau_raw_by_ts=None,
+    jungfrau_segments=None,
+):
     """
     Build no-GPU-split BigData reference events for one EB-ready SMD chunk.
 
@@ -86,6 +150,13 @@ def collect_no_split_reference(smd_chunk, configs, dsparms, xtc_files, max_event
                         )
 
                     ref_by_ts[evt.timestamp] = per_stream
+                    if (
+                        jungfrau_raw_by_ts is not None
+                        and jungfrau_segments is not None
+                    ):
+                        raw = stack_jungfrau_raw(evt, jungfrau_segments)
+                        if raw is not None:
+                            jungfrau_raw_by_ts[evt.timestamp] = raw
                     n_ref_events += 1
 
                     if max_events and n_ref_events >= max_events:

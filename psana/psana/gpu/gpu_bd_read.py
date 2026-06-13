@@ -14,12 +14,15 @@ from psana.psexp import TransitionId
 from psana.gpu.gpu_batch import GpuBatchView
 from psana.gpu.gpu_compare import (
     collect_no_split_reference,
+    compare_jungfrau_raw,
     compare_split_event,
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_jungfrau import (
+    assemble_jungfrau_raw,
     locate_jungfrau_raw,
+    prepare_jungfrau_raw_layout,
     JF_LOC_DIM0,
     JF_LOC_DIM1,
     JF_LOC_DIM2,
@@ -136,12 +139,13 @@ def smd_to_xtc_file(smd_file):
 def _stage_jungfrau_config_gpu(gpu_reader, bd_dm):
     table = bd_dm.gpu_config_tables.get("jungfrau")
     if table is None or not table:
-        return None, None
+        return None, None, None
 
     rows = np.ascontiguousarray(
         table.rows.view(np.uint64).reshape(table.n_rows, -1)
     )
-    return table, gpu_reader.cp.asarray(rows)
+    layout = prepare_jungfrau_raw_layout(table, cp=gpu_reader.cp)
+    return table, gpu_reader.cp.asarray(rows), layout
 
 
 def main():
@@ -170,14 +174,15 @@ def main():
         # GPU reader
         gpu_reader = KvikioGpuReader(keep_device_buffers=True)
         # This is the jungfrau raw array mapping per segment
-        jungfrau_config, jungfrau_config_gpu = _stage_jungfrau_config_gpu(
+        jungfrau_config, jungfrau_config_gpu, jungfrau_layout = _stage_jungfrau_config_gpu(
             gpu_reader,
             bd_dm,
         )
         if jungfrau_config is not None:
             print(
                 f"gpu_config: jungfrau rows={jungfrau_config.n_rows} "
-                f"cols={jungfrau_config_gpu.shape[1]}"
+                f"cols={jungfrau_config_gpu.shape[1]} "
+                f"raw_shape={jungfrau_layout.raw_shape}"
             )
 
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
@@ -192,12 +197,21 @@ def main():
             )
 
             if args.compare_nosplit:
+                ref_jungfrau_raw_by_ts = (
+                    {} if jungfrau_layout is not None else None
+                )
                 ref_by_ts = collect_no_split_reference(
                     smd_chunk,
                     smd_manager.configs,
                     dsparms,
                     xtc_files,
                     max_events=args.max_events,
+                    jungfrau_raw_by_ts=ref_jungfrau_raw_by_ts,
+                    jungfrau_segments=(
+                        None
+                        if jungfrau_layout is None
+                        else jungfrau_layout.segments.tolist()
+                    ),
                 )
                 msg += f" ref_events={len(ref_by_ts)}"
 
@@ -209,6 +223,7 @@ def main():
 
                 # gpu_batch_dict is kept separate. Later this is where GPU BD scheduling starts.
                 split_by_ts = {}  # for comparing with no split reference
+                gpu_jungfrau_raw_by_ts = {}
                 for gpu_batch, _ in gpu_batch_dict.values():
                     gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if gpu_view.has_work:
@@ -244,6 +259,18 @@ def main():
                                 jungfrau_config_gpu,
                                 len(gpu_read.read_descs),
                             )
+                            raw_gpu = assemble_jungfrau_raw(
+                                gpu_read.data_gpu,
+                                jf_loc_gpu,
+                                jungfrau_layout,
+                                gpu_view.header.n_events,
+                            )
+                            if args.compare_nosplit:
+                                raw_cpu_from_gpu = raw_gpu.get()
+                                for event in gpu_view.iter_events():
+                                    gpu_jungfrau_raw_by_ts[event.timestamp] = (
+                                        raw_cpu_from_gpu[event.batch_event_index].copy()
+                                    )
                             # Debug/validation only. This is a small D2H locator table.
                             jf_loc_cpu = jf_loc_gpu.get()
                             for row in jf_loc_cpu:
@@ -291,6 +318,16 @@ def main():
                         if args.compare_nosplit:
                             n_compare_streams = compare_split_event(ref_by_ts, split_by_ts, evt.timestamp)
                             print(f"compare_ok timestamp={evt.timestamp} streams={n_compare_streams}")
+                            if ref_jungfrau_raw_by_ts is not None:
+                                raw_shape = compare_jungfrau_raw(
+                                    ref_jungfrau_raw_by_ts,
+                                    gpu_jungfrau_raw_by_ts,
+                                    evt.timestamp,
+                                )
+                                print(
+                                    f"gpu_raw_compare_ok timestamp={evt.timestamp} "
+                                    f"shape={raw_shape}"
+                                )
 
                         n_events += 1
                         none_streams = [i for i, dg in enumerate(dgrams) if dg is None]
