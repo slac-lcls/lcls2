@@ -18,6 +18,21 @@ from psana.gpu.gpu_compare import (
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpu_jungfrau import (
+    locate_jungfrau_raw,
+    JF_LOC_DIM0,
+    JF_LOC_DIM1,
+    JF_LOC_DIM2,
+    JF_LOC_DTYPE_SIZE,
+    JF_LOC_NAMES_ID_VALUE,
+    JF_LOC_RAW_DEVICE_OFFSET,
+    JF_LOC_RAW_NBYTES,
+    JF_LOC_SEGMENT,
+    JF_LOC_STATUS,
+    JF_LOC_STATUS_FOUND,
+    JF_LOC_STREAM_ID,
+    JF_LOC_TIMESTAMP,
+)
 from psana.gpu.gpudgramlite import (
     extract_dgram_info,
     INFO_TIMESTAMP,
@@ -118,6 +133,17 @@ def smd_to_xtc_file(smd_file):
     return xtc_file
 
 
+def _stage_jungfrau_config_gpu(gpu_reader, bd_dm):
+    table = bd_dm.gpu_config_tables.get("jungfrau")
+    if table is None or not table:
+        return None, None
+
+    rows = np.ascontiguousarray(
+        table.rows.view(np.uint64).reshape(table.n_rows, -1)
+    )
+    return table, gpu_reader.cp.asarray(rows)
+
+
 def main():
     args = _parse_args()
     smd_files = _resolve_input_files(args.inputs)
@@ -143,6 +169,16 @@ def main():
 
         # GPU reader
         gpu_reader = KvikioGpuReader(keep_device_buffers=True)
+        # This is the jungfrau raw array mapping per segment
+        jungfrau_config, jungfrau_config_gpu = _stage_jungfrau_config_gpu(
+            gpu_reader,
+            bd_dm,
+        )
+        if jungfrau_config is not None:
+            print(
+                f"gpu_config: jungfrau rows={jungfrau_config.n_rows} "
+                f"cols={jungfrau_config_gpu.shape[1]}"
+            )
 
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
         n_events = 0
@@ -201,6 +237,31 @@ def main():
                             # split_by_ts[timestamp][stream_id] = (dgram_size, digest)
                             split_value = gpu_read.by_timestamp[desc.timestamp][desc.stream_id]
                             split_by_ts.setdefault(gpu_ts, {})[gpu_stream_id] = split_value
+                        if jungfrau_config_gpu is not None:
+                            jf_loc_gpu = locate_jungfrau_raw(
+                                gpu_read.data_gpu,
+                                gpu_read.desc_table_gpu,
+                                jungfrau_config_gpu,
+                                len(gpu_read.read_descs),
+                            )
+                            # Debug/validation only. This is a small D2H locator table.
+                            jf_loc_cpu = jf_loc_gpu.get()
+                            for row in jf_loc_cpu:
+                                if int(row[JF_LOC_STATUS]) != JF_LOC_STATUS_FOUND:
+                                    continue
+                                print(
+                                    "gpu_jungfrau: "
+                                    f"timestamp={int(row[JF_LOC_TIMESTAMP])} "
+                                    f"stream={int(row[JF_LOC_STREAM_ID])} "
+                                    f"names_id={int(row[JF_LOC_NAMES_ID_VALUE])} "
+                                    f"segment={int(row[JF_LOC_SEGMENT])} "
+                                    f"raw_device_offset={int(row[JF_LOC_RAW_DEVICE_OFFSET])} "
+                                    f"raw_nbytes={int(row[JF_LOC_RAW_NBYTES])} "
+                                    f"shape=({int(row[JF_LOC_DIM0])},"
+                                    f"{int(row[JF_LOC_DIM1])},"
+                                    f"{int(row[JF_LOC_DIM2])}) "
+                                    f"dtype_size={int(row[JF_LOC_DTYPE_SIZE])}"
+                                )
 
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
