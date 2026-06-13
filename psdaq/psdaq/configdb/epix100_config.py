@@ -181,6 +181,8 @@ def epix100_connectionInfo(base, alloc_json_str):
             15:"DAQ:FEH:XPM", #XPP EPX
        	}
         crate_id: int =	(rxId >> 12) & 0xF
+        crate_id = 9
+        print('**** cpo hack crate_id to 9 ****')
         linkrx_pv: str = f"{crate_id_map[crate_id]}:{xpm}:LinkRxReady{port}"
         ctx: Context = Context("pva")
         ret: ntint = ctx.get(linkrx_pv)
