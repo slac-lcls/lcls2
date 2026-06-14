@@ -3,18 +3,6 @@ import os
 import numpy as np
 
 
-RAW_OFFSET_STREAM_ID = 0
-RAW_OFFSET_NAMES_ID_VALUE = 1
-RAW_OFFSET_SEGMENT = 2
-RAW_OFFSET_RAW_REL_OFFSET = 3
-RAW_OFFSET_RAW_NBYTES = 4
-RAW_OFFSET_DIM0 = 5
-RAW_OFFSET_DIM1 = 6
-RAW_OFFSET_DIM2 = 7
-RAW_OFFSET_DTYPE_SIZE = 8
-RAW_OFFSET_EXPECTED_BD_SIZE = 9
-RAW_OFFSET_NCOLS = 10
-
 GPU_RAW_OFFSET_DTYPE = np.dtype(
     [
         ("stream_id", "<u8"),
@@ -147,12 +135,6 @@ class GpuRawOffsetCache:
             for key in sorted(self._rows_by_key)
         ]
         return np.asarray(rows, dtype=GPU_RAW_OFFSET_DTYPE)
-
-    def as_uint64_table(self):
-        rows = self.rows
-        if rows.size == 0:
-            return np.empty((0, RAW_OFFSET_NCOLS), dtype=np.uint64)
-        return np.ascontiguousarray(rows.view(np.uint64).reshape(rows.size, -1))
 
     def _pread(self, stream_id, size, offset):
         fd = self._fd_for_stream(stream_id)

@@ -5,8 +5,8 @@ import numpy as np
 from psana.gpu.gpu_compare import digest_bytes
 
 
-# Device-side descriptor table columns.  This table is intentionally plain uint64
-# so it can be copied to the GPU as-is and later consumed by kernels.
+# Bigdata read descriptor table columns.  This table is intentionally plain
+# uint64 so it can be joined with CPU-built GPU work descriptor tables.
 DESC_EVENT_INDEX = 0
 DESC_STREAM_ID = 1
 DESC_TIMESTAMP = 2
@@ -21,7 +21,6 @@ class KvikioBatchRead:
     by_timestamp: dict
     read_descs: tuple
     desc_table: np.ndarray
-    desc_table_gpu: object = None
     data_gpu: object = None
 
 
@@ -47,10 +46,6 @@ class KvikioGpuReader:
 
         if not read_descs:
             return KvikioBatchRead({}, read_descs, desc_table)
-
-        # H2D descriptor movement for the GPU BD prototype.  The Python KvikIO
-        # loop below still uses read_descs to choose the file handle.
-        desc_table_gpu = self.cp.asarray(desc_table)
 
         total_nbytes = int(
             desc_table[-1, DESC_DEVICE_OFFSET] + desc_table[-1, DESC_READ_SIZE]
@@ -97,7 +92,6 @@ class KvikioGpuReader:
                 by_timestamp,
                 read_descs,
                 desc_table,
-                desc_table_gpu=desc_table_gpu,
                 data_gpu=data_gpu,
             )
 
