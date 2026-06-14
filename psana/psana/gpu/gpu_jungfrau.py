@@ -108,6 +108,47 @@ def prepare_jungfrau_raw_layout(jungfrau_config_table, cp=None):
     )
 
 
+def build_jungfrau_raw_loc_table(desc_table, raw_offset_cache):
+    """
+    Build the Jungfrau raw locator table on CPU from cached dgram offsets.
+
+    This produces the same JF_LOC_* table layout as locate_jungfrau_raw(), but
+    does not require the GPU to parse XTC.  raw_offset_cache rows are inferred
+    once through psana.dgram.Dgram.raw_descriptors().
+    """
+    desc_table = np.asarray(desc_table, dtype=np.uint64)
+    if raw_offset_cache is None or desc_table.size == 0:
+        return np.empty((0, JF_LOC_NCOLS), dtype=np.uint64)
+
+    loc_rows = []
+    for desc_index, desc in enumerate(desc_table):
+        stream_id = int(desc[DESC_STREAM_ID])
+        device_offset = int(desc[DESC_DEVICE_OFFSET])
+        raw_rows = raw_offset_cache.rows_for_stream(stream_id)
+
+        for config_index, raw_row in enumerate(raw_rows):
+            loc_rows.append(
+                (
+                    desc_index,
+                    config_index,
+                    int(desc[DESC_EVENT_INDEX]),
+                    stream_id,
+                    int(desc[DESC_TIMESTAMP]),
+                    int(raw_row["names_id_value"]),
+                    int(raw_row["segment"]),
+                    device_offset + int(raw_row["raw_rel_offset"]),
+                    int(raw_row["raw_nbytes"]),
+                    int(raw_row["dim0"]),
+                    int(raw_row["dim1"]),
+                    int(raw_row["dim2"]),
+                    int(raw_row["dtype_size"]),
+                    JF_LOC_STATUS_FOUND,
+                )
+            )
+
+    return np.asarray(loc_rows, dtype=np.uint64).reshape(-1, JF_LOC_NCOLS)
+
+
 def assemble_jungfrau_raw(data_gpu, loc_gpu, layout, n_events, threads=256):
     """
     Assemble located Jungfrau raw payloads into det.raw.raw-compatible order.

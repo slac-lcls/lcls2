@@ -19,9 +19,10 @@ from psana.gpu.gpu_compare import (
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpu_raw_offset_cache import GpuRawOffsetCache
 from psana.gpu.gpu_jungfrau import (
     assemble_jungfrau_raw,
-    locate_jungfrau_raw,
+    build_jungfrau_raw_loc_table,
     prepare_jungfrau_raw_layout,
     JF_LOC_DIM0,
     JF_LOC_DIM1,
@@ -35,15 +36,6 @@ from psana.gpu.gpu_jungfrau import (
     JF_LOC_STATUS_FOUND,
     JF_LOC_STREAM_ID,
     JF_LOC_TIMESTAMP,
-)
-from psana.gpu.gpudgramlite import (
-    extract_dgram_info,
-    INFO_TIMESTAMP,
-    INFO_SERVICE,
-    INFO_EXTENT,
-    INFO_PAYLOAD_SIZE,
-    INFO_READ_SIZE,
-    INFO_STREAM_ID,
 )
 
 
@@ -136,16 +128,40 @@ def smd_to_xtc_file(smd_file):
     return xtc_file
 
 
-def _stage_jungfrau_config_gpu(gpu_reader, bd_dm):
+def _load_jungfrau_config(gpu_reader, bd_dm):
     table = bd_dm.gpu_config_tables.get("jungfrau")
     if table is None or not table:
-        return None, None, None
+        return None, None
 
-    rows = np.ascontiguousarray(
-        table.rows.view(np.uint64).reshape(table.n_rows, -1)
-    )
     layout = prepare_jungfrau_raw_layout(table, cp=gpu_reader.cp)
-    return table, gpu_reader.cp.asarray(rows), layout
+    return table, layout
+
+
+def _bootstrap_raw_offset_cache(raw_offset_cache, read_descs):
+    if raw_offset_cache is None:
+        return
+
+    before = raw_offset_cache.n_rows
+    cached_streams = []
+    for desc in read_descs:
+        if raw_offset_cache.is_stream_cached(desc.stream_id):
+            continue
+        raw_offset_cache.ensure_stream_cached(
+            desc.stream_id,
+            desc.offset,
+            desc.size,
+        )
+        cached_streams.append(desc.stream_id)
+
+    if raw_offset_cache.n_rows != before:
+        streams = ",".join(str(stream_id) for stream_id in cached_streams)
+        print(
+            "gpu_raw_offset_cache: "
+            f"cached_streams={streams} "
+            f"rows={raw_offset_cache.n_rows}/"
+            f"{raw_offset_cache.expected_n_rows} "
+            f"ready={raw_offset_cache.ready}"
+        )
 
 
 def main():
@@ -160,6 +176,7 @@ def main():
         dtype=np.int32,
     )
     gpu_reader = None
+    raw_offset_cache = None
     try:
         smd_manager = SmdReaderManager(smd_fds, dsparms)
         # Read Configure and BeginRun
@@ -174,15 +191,20 @@ def main():
         # GPU reader
         gpu_reader = KvikioGpuReader(keep_device_buffers=True)
         # This is the jungfrau raw array mapping per segment
-        jungfrau_config, jungfrau_config_gpu, jungfrau_layout = _stage_jungfrau_config_gpu(
+        jungfrau_config, jungfrau_layout = _load_jungfrau_config(
             gpu_reader,
             bd_dm,
         )
         if jungfrau_config is not None:
             print(
                 f"gpu_config: jungfrau rows={jungfrau_config.n_rows} "
-                f"cols={jungfrau_config_gpu.shape[1]} "
+                f"cols={len(jungfrau_config.rows.dtype.names)} "
                 f"raw_shape={jungfrau_layout.raw_shape}"
+            )
+            raw_offset_cache = GpuRawOffsetCache(
+                jungfrau_config,
+                xtc_files=xtc_files,
+                configs=smd_manager.configs,
             )
 
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
@@ -227,38 +249,20 @@ def main():
                 for gpu_batch, _ in gpu_batch_dict.values():
                     gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if gpu_view.has_work:
+                        read_descs = tuple(gpu_view.iter_read_descs(bd_dm))
+                        _bootstrap_raw_offset_cache(raw_offset_cache, read_descs)
                         gpu_read = gpu_reader.read_batch(gpu_view, bd_dm)
-                        info_gpu = extract_dgram_info(
-                            gpu_read.data_gpu,
-                            gpu_read.desc_table_gpu,
-                            len(gpu_read.read_descs)
-                        )
-                        # Debug/validation only. This is the D2H point for the GPU-parsed header table.
-                        info_cpu = info_gpu.get()
-                        for desc, row in zip(gpu_read.read_descs, info_cpu):
-                            gpu_ts = int(row[INFO_TIMESTAMP])
-                            gpu_stream_id = int(row[INFO_STREAM_ID])
-                            gpu_service = int(row[INFO_SERVICE])
-                            gpu_extent = int(row[INFO_EXTENT])
-                            gpu_payload_size = int(row[INFO_PAYLOAD_SIZE])
-                            gpu_read_size = int(row[INFO_READ_SIZE])
-                            print(
-                                f"gpu_dgram: event={desc.batch_event_index} stream={gpu_stream_id} "
-                                f"timestamp={gpu_ts} service={gpu_service} "
-                                f"extent={gpu_extent} payload_size={gpu_payload_size} "
-                                f"read_size={gpu_read_size}"
-                            )
+                        for desc in gpu_read.read_descs:
                             # Keep existing split/no-split comparison format:
                             # split_by_ts[timestamp][stream_id] = (dgram_size, digest)
                             split_value = gpu_read.by_timestamp[desc.timestamp][desc.stream_id]
-                            split_by_ts.setdefault(gpu_ts, {})[gpu_stream_id] = split_value
-                        if jungfrau_config_gpu is not None:
-                            jf_loc_gpu = locate_jungfrau_raw(
-                                gpu_read.data_gpu,
-                                gpu_read.desc_table_gpu,
-                                jungfrau_config_gpu,
-                                len(gpu_read.read_descs),
+                            split_by_ts.setdefault(desc.timestamp, {})[desc.stream_id] = split_value
+                        if raw_offset_cache is not None:
+                            jf_loc_cpu = build_jungfrau_raw_loc_table(
+                                gpu_read.desc_table,
+                                raw_offset_cache,
                             )
+                            jf_loc_gpu = gpu_reader.cp.asarray(jf_loc_cpu)
                             raw_gpu = assemble_jungfrau_raw(
                                 gpu_read.data_gpu,
                                 jf_loc_gpu,
@@ -271,8 +275,6 @@ def main():
                                     gpu_jungfrau_raw_by_ts[event.timestamp] = (
                                         raw_cpu_from_gpu[event.batch_event_index].copy()
                                     )
-                            # Debug/validation only. This is a small D2H locator table.
-                            jf_loc_cpu = jf_loc_gpu.get()
                             for row in jf_loc_cpu:
                                 if int(row[JF_LOC_STATUS]) != JF_LOC_STATUS_FOUND:
                                     continue
@@ -360,6 +362,8 @@ def main():
             bd_dm.close()
         if gpu_reader is not None:
             gpu_reader.close()
+        if raw_offset_cache is not None:
+            raw_offset_cache.close()
 
 if __name__ == "__main__":
     main()
