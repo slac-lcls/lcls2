@@ -43,12 +43,16 @@ def compare_split_event(ref_by_ts, split_by_ts, timestamp, max_mismatches=5):
     return len(ref_event)
 
 
-def stack_jungfrau_raw(evt, segment_numbers):
+def stack_jungfrau_raw(evt, segment_numbers=None):
     segments = evt._det_segments.get(("jungfrau", "raw"))
     if segments is None:
         return None
 
-    segment_numbers = list(segment_numbers)
+    if segment_numbers is None:
+        segment_numbers = sorted(segments)
+    else:
+        segment_numbers = list(segment_numbers)
+
     if any(segment not in segments for segment in segment_numbers):
         return None
 
@@ -150,10 +154,7 @@ def collect_no_split_reference(
                         )
 
                     ref_by_ts[evt.timestamp] = per_stream
-                    if (
-                        jungfrau_raw_by_ts is not None
-                        and jungfrau_segments is not None
-                    ):
+                    if jungfrau_raw_by_ts is not None:
                         raw = stack_jungfrau_raw(evt, jungfrau_segments)
                         if raw is not None:
                             jungfrau_raw_by_ts[evt.timestamp] = raw

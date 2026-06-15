@@ -12,7 +12,7 @@ from psana.gpu.gpu_kvikio_read import (
 
 
 JF_LOC_DESC_INDEX = 0
-JF_LOC_CONFIG_INDEX = 1
+JF_LOC_RAW_ROW_INDEX = 1
 JF_LOC_EVENT_INDEX = 2
 JF_LOC_STREAM_ID = 3
 JF_LOC_TIMESTAMP = 4
@@ -52,22 +52,28 @@ class JungfrauRawLayout:
         return int(self.dim0 * self.dim1 * self.dim2)
 
 
-def prepare_jungfrau_raw_layout(jungfrau_config_table, cp=None):
-    if not jungfrau_config_table:
+def prepare_jungfrau_raw_layout(raw_offset_source, cp=None):
+    if raw_offset_source is None:
         return None
 
     if cp is None:
         cp = _cupy()
 
-    rows = jungfrau_config_table.rows
-    segments = np.asarray(sorted(set(rows["segment"].astype(np.uint64))), dtype=np.uint64)
+    rows = raw_offset_source.rows
+    if rows.size == 0:
+        return None
+
+    segments = np.asarray(
+        sorted(set(rows["segment"].astype(np.uint64))),
+        dtype=np.uint64,
+    )
     if segments.size == 0:
         return None
 
-    dim0 = _single_config_value(rows, "dim0")
-    dim1 = _single_config_value(rows, "dim1")
-    dim2 = _single_config_value(rows, "dim2")
-    dtype_size = _single_config_value(rows, "dtype_size")
+    dim0 = _single_value(rows, "dim0")
+    dim1 = _single_value(rows, "dim1")
+    dim2 = _single_value(rows, "dim2")
+    dtype_size = _single_value(rows, "dtype_size")
     if dtype_size != np.dtype(np.uint16).itemsize:
         raise ValueError(f"Jungfrau raw dtype_size must be 2, got {dtype_size}")
 
@@ -105,11 +111,11 @@ def build_jungfrau_raw_loc_table(desc_table, raw_offset_cache):
         device_offset = int(desc[DESC_DEVICE_OFFSET])
         raw_rows = raw_offset_cache.rows_for_stream(stream_id)
 
-        for config_index, raw_row in enumerate(raw_rows):
+        for raw_row_index, raw_row in enumerate(raw_rows):
             loc_rows.append(
                 (
                     desc_index,
-                    config_index,
+                    raw_row_index,
                     int(desc[DESC_EVENT_INDEX]),
                     stream_id,
                     int(desc[DESC_TIMESTAMP]),
@@ -175,10 +181,12 @@ def assemble_jungfrau_raw(data_gpu, loc_gpu, layout, n_events, threads=256):
     return raw_gpu
 
 
-def _single_config_value(rows, name):
+def _single_value(rows, name):
     values = set(int(value) for value in rows[name])
     if len(values) != 1:
-        raise ValueError(f"Jungfrau config has inconsistent {name}: {sorted(values)}")
+        raise ValueError(
+            f"Jungfrau raw offsets have inconsistent {name}: {sorted(values)}"
+        )
     return values.pop()
 
 

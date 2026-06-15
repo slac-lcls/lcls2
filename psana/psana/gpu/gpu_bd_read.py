@@ -19,7 +19,7 @@ from psana.gpu.gpu_compare import (
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-from psana.gpu.gpu_raw_offset_cache import GpuRawOffsetCache
+from psana.gpu.gpu_raw_offset_cache import GpuRawOffsetCache, parse_stream_ids
 from psana.gpu.gpu_jungfrau import (
     assemble_jungfrau_raw,
     build_jungfrau_raw_loc_table,
@@ -128,15 +128,6 @@ def smd_to_xtc_file(smd_file):
     return xtc_file
 
 
-def _load_jungfrau_config(gpu_reader, bd_dm):
-    table = bd_dm.gpu_config_tables.get("jungfrau")
-    if table is None or not table:
-        return None, None
-
-    layout = prepare_jungfrau_raw_layout(table, cp=gpu_reader.cp)
-    return table, layout
-
-
 def _bootstrap_raw_offset_cache(raw_offset_cache, read_descs):
     if raw_offset_cache is None:
         return
@@ -146,20 +137,22 @@ def _bootstrap_raw_offset_cache(raw_offset_cache, read_descs):
     for desc in read_descs:
         if raw_offset_cache.is_stream_cached(desc.stream_id):
             continue
-        raw_offset_cache.ensure_stream_cached(
+        n_added = raw_offset_cache.ensure_stream_cached(
             desc.stream_id,
             desc.offset,
             desc.size,
         )
-        cached_streams.append(desc.stream_id)
+        if n_added:
+            cached_streams.append(desc.stream_id)
 
     if raw_offset_cache.n_rows != before:
         streams = ",".join(str(stream_id) for stream_id in cached_streams)
         print(
             "gpu_raw_offset_cache: "
             f"cached_streams={streams} "
-            f"rows={raw_offset_cache.n_rows}/"
-            f"{raw_offset_cache.expected_n_rows} "
+            f"streams={raw_offset_cache.n_cached_streams}/"
+            f"{raw_offset_cache.expected_n_streams} "
+            f"rows={raw_offset_cache.n_rows} "
             f"ready={raw_offset_cache.ready}"
         )
 
@@ -177,6 +170,7 @@ def main():
     )
     gpu_reader = None
     raw_offset_cache = None
+    jungfrau_layout = None
     try:
         smd_manager = SmdReaderManager(smd_fds, dsparms)
         # Read Configure and BeginRun
@@ -190,19 +184,14 @@ def main():
 
         # GPU reader
         gpu_reader = KvikioGpuReader(keep_device_buffers=True)
-        # This is the jungfrau raw array mapping per segment
-        jungfrau_config, jungfrau_layout = _load_jungfrau_config(
-            gpu_reader,
-            bd_dm,
-        )
-        if jungfrau_config is not None:
+        gpu_stream_ids = parse_stream_ids(os.environ.get("PS_TEST_GPU_STREAM_IDS"))
+        if gpu_stream_ids:
             print(
-                f"gpu_config: jungfrau rows={jungfrau_config.n_rows} "
-                f"cols={len(jungfrau_config.rows.dtype.names)} "
-                f"raw_shape={jungfrau_layout.raw_shape}"
+                "gpu_stream_ids: "
+                f"{','.join(str(stream_id) for stream_id in gpu_stream_ids)}"
             )
             raw_offset_cache = GpuRawOffsetCache(
-                jungfrau_config,
+                gpu_stream_ids,
                 xtc_files=xtc_files,
                 configs=smd_manager.configs,
             )
@@ -220,7 +209,7 @@ def main():
 
             if args.compare_nosplit:
                 ref_jungfrau_raw_by_ts = (
-                    {} if jungfrau_layout is not None else None
+                    {} if raw_offset_cache is not None else None
                 )
                 ref_by_ts = collect_no_split_reference(
                     smd_chunk,
@@ -229,11 +218,7 @@ def main():
                     xtc_files,
                     max_events=args.max_events,
                     jungfrau_raw_by_ts=ref_jungfrau_raw_by_ts,
-                    jungfrau_segments=(
-                        None
-                        if jungfrau_layout is None
-                        else jungfrau_layout.segments.tolist()
-                    ),
+                    jungfrau_segments=None,
                 )
                 msg += f" ref_events={len(ref_by_ts)}"
 
@@ -258,6 +243,19 @@ def main():
                             split_value = gpu_read.by_timestamp[desc.timestamp][desc.stream_id]
                             split_by_ts.setdefault(desc.timestamp, {})[desc.stream_id] = split_value
                         if raw_offset_cache is not None:
+                            if jungfrau_layout is None and raw_offset_cache.ready:
+                                jungfrau_layout = prepare_jungfrau_raw_layout(
+                                    raw_offset_cache,
+                                    cp=gpu_reader.cp,
+                                )
+                                if jungfrau_layout is not None:
+                                    print(
+                                        "gpu_raw_layout: "
+                                        f"raw_shape={jungfrau_layout.raw_shape}"
+                                    )
+                            if jungfrau_layout is None:
+                                continue
+
                             jf_loc_cpu = build_jungfrau_raw_loc_table(
                                 gpu_read.desc_table,
                                 raw_offset_cache,

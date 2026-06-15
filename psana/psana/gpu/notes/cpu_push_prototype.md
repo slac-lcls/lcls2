@@ -79,40 +79,39 @@ prototype path.
 
 Changed files:
 
-- `psana/psana/dgrammanager.py`
-- `psana/psana/gpu/config/__init__.py`
-- `psana/psana/gpu/config/gpu_jungfrau_config.py`
 - `psana/psana/gpu/gpu_jungfrau.py`
 - `psana/psana/gpu/gpu_raw_offset_cache.py`
 - `psana/src/dgram.cc`
 
 What changed:
 
-- `dgrammanager.py` builds optional GPU metadata tables when
-  `PS_TEST_GPU_STREAM_IDS` is set.
-- `gpu/config/gpu_jungfrau_config.py` builds a Configure-derived Jungfrau table
-  from `dgram.config_names()`.
+- `PS_TEST_GPU_STREAM_IDS` currently selects which stream-list indexes are
+  routed to the GPU prototype. This is debug routing metadata; later it should
+  become a DataSource/EventBuilder attribute derived from GPU detector
+  selection.
 - `gpu_raw_offset_cache.py` reads one representative bigdata dgram per GPU
   stream, calls `dgram.raw_descriptors()`, and caches dgram-relative raw
-  payload offsets.
+  payload offsets, names ids, segment ids, shapes, and dtype sizes.
 - `gpu_jungfrau.py`:
   - prepares the Jungfrau raw output layout,
   - builds a CPU raw locator table from the KvikIO descriptor table and raw
     offset cache,
   - launches a RawKernel that only copies raw payload bytes into the assembled
     output array.
-- `dgram.cc` exposes:
-  - `config_names()` for Configure dgram metadata,
-  - `raw_descriptors()` for lazy targeted L1Accept raw payload descriptors.
+- `dgram.cc` exposes `raw_descriptors()` for lazy targeted L1Accept raw
+  payload descriptors. This method reuses the Configure dgram's internal
+  `NamesLookup` and `DescData`; it does not require a separate public
+  Configure table API.
 
 The metadata split is:
 
 ```text
-Configure table:
-  (stream_id, names_id_value) -> segment, dtype, expected raw shape
+Selected GPU stream ids:
+  stream routing indexes from PS_TEST_GPU_STREAM_IDS
 
 Raw offset cache:
-  (stream_id, names_id_value) -> dgram-relative raw payload offset
+  (stream_id, names_id_value) -> dgram-relative raw payload offset,
+                                 segment identity, actual raw shape, dtype size
 
 GPU locator table:
   read descriptor + raw offset cache -> device raw payload offset
@@ -185,34 +184,13 @@ Example:
 (0, 9, 4801813440799607242, 152046, 7340630, 26216546)
 ```
 
-### Jungfrau GPU Config Table
-
-This table comes from Configure dgrams through `dgram.config_names()`.
-It maps Jungfrau `NamesId` values to detector segment metadata.
-
-Columns:
-
-```text
-stream_id, names_id_value, segment, raw_data_offset,
-dtype_size, dim0, dim1, dim2
-```
-
-Example:
-
-```text
-(0, 10, 18, 0, 2, 1, 512, 1024)
-(0, 11, 14, 0, 2, 1, 512, 1024)
-(0, 12, 10, 0, 2, 1, 512, 1024)
-(0, 13, 6, 0, 2, 1, 512, 1024)
-(0, 14, 30, 0, 2, 1, 512, 1024)
-(0, 15, 26, 0, 2, 1, 512, 1024)
-```
-
 ### Raw Offset Cache
 
 This table comes from one representative bigdata dgram per GPU stream through
 `dgram.raw_descriptors()`. `raw_rel_offset` is relative to the start of that
-bigdata dgram.
+bigdata dgram. `dim0`, `dim1`, `dim2`, and `dtype_size` are derived from the
+actual event-time raw descriptor shape and field byte size. `segment` comes
+from the Configure `Names` joined through the event `ShapesData` names id.
 
 Columns:
 
@@ -259,7 +237,7 @@ raw_device_offset = device_offset + raw_rel_offset
 Columns:
 
 ```text
-desc_index, config_index, event_index, stream_id, timestamp,
+desc_index, raw_row_index, event_index, stream_id, timestamp,
 names_id_value, segment, raw_device_offset, raw_nbytes,
 dim0, dim1, dim2, dtype_size, status
 ```

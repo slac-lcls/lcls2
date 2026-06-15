@@ -35,7 +35,7 @@ class GpuRawOffsetCache:
 
     def __init__(
         self,
-        gpu_config_table,
+        gpu_stream_ids,
         xtc_files=None,
         fds=None,
         configs=None,
@@ -43,7 +43,7 @@ class GpuRawOffsetCache:
         alg_name="raw",
         field_name="raw",
     ):
-        self.gpu_config_table = gpu_config_table
+        self.gpu_stream_ids = set(parse_stream_ids(gpu_stream_ids) or ())
         self.xtc_files = list(xtc_files) if xtc_files is not None else None
         self.fds = list(fds) if fds is not None else None
         self.configs = list(configs) if configs is not None else None
@@ -57,7 +57,7 @@ class GpuRawOffsetCache:
         self.field_name = field_name
         self._owned_fds = {}
         self._rows_by_key = {}
-        self._stream_keys = self._build_stream_keys(gpu_config_table)
+        self._cached_streams = set()
 
     def close(self):
         for fd in self._owned_fds.values():
@@ -65,8 +65,12 @@ class GpuRawOffsetCache:
         self._owned_fds.clear()
 
     @property
-    def expected_n_rows(self):
-        return sum(len(keys) for keys in self._stream_keys.values())
+    def expected_n_streams(self):
+        return len(self.gpu_stream_ids)
+
+    @property
+    def n_cached_streams(self):
+        return len(self._cached_streams)
 
     @property
     def n_rows(self):
@@ -74,22 +78,24 @@ class GpuRawOffsetCache:
 
     @property
     def ready(self):
-        return self.n_rows == self.expected_n_rows
+        return (
+            bool(self.gpu_stream_ids)
+            and self._cached_streams >= self.gpu_stream_ids
+        )
 
     def is_stream_cached(self, stream_id):
-        keys = self._stream_keys.get(int(stream_id), ())
-        return bool(keys) and all(key in self._rows_by_key for key in keys)
+        return int(stream_id) in self._cached_streams
 
     def ensure_stream_cached(self, stream_id, bd_offset, bd_size):
         stream_id = int(stream_id)
         bd_offset = int(bd_offset)
         bd_size = int(bd_size)
 
-        if stream_id not in self._stream_keys:
+        if stream_id not in self.gpu_stream_ids:
             return 0
 
         if self.is_stream_cached(stream_id):
-            return len(self._stream_keys[stream_id])
+            return len(self.rows_for_stream(stream_id))
 
         if bd_size <= 0:
             raise GpuRawOffsetCacheError(
@@ -100,22 +106,18 @@ class GpuRawOffsetCache:
         rows = self._build_rows(
             dgram_bytes,
             stream_id,
-            self._config_rows_for_stream(stream_id),
             expected_bd_size=bd_size,
         )
+        if rows.size == 0:
+            raise GpuRawOffsetCacheError(
+                f"Stream {stream_id} produced no "
+                f"{self.det_name}/{self.alg_name}/{self.field_name} descriptors"
+            )
 
         for row in rows:
             key = (int(row["stream_id"]), int(row["names_id_value"]))
             self._rows_by_key[key] = row
-
-        missing = [
-            key for key in self._stream_keys[stream_id]
-            if key not in self._rows_by_key
-        ]
-        if missing:
-            raise GpuRawOffsetCacheError(
-                f"Stream {stream_id} raw offset cache missing keys: {missing}"
-            )
+        self._cached_streams.add(stream_id)
 
         return len(rows)
 
@@ -123,8 +125,8 @@ class GpuRawOffsetCache:
         stream_id = int(stream_id)
         rows = [
             self._rows_by_key[key]
-            for key in self._stream_keys.get(stream_id, ())
-            if key in self._rows_by_key
+            for key in sorted(self._rows_by_key)
+            if key[0] == stream_id
         ]
         return np.asarray(rows, dtype=GPU_RAW_OFFSET_DTYPE)
 
@@ -168,11 +170,7 @@ class GpuRawOffsetCache:
             self._owned_fds[stream_id] = fd
         return fd
 
-    def _config_rows_for_stream(self, stream_id):
-        rows = self.gpu_config_table.rows
-        return rows[rows["stream_id"] == stream_id]
-
-    def _build_rows(self, dgram_bytes, stream_id, config_rows, expected_bd_size):
+    def _build_rows(self, dgram_bytes, stream_id, expected_bd_size):
         if stream_id >= len(self.configs):
             raise GpuRawOffsetCacheError(
                 f"stream_id {stream_id} outside configs length {len(self.configs)}"
@@ -195,57 +193,47 @@ class GpuRawOffsetCache:
         return _build_raw_offset_rows_from_descriptors(
             descriptors,
             stream_id,
-            config_rows,
             expected_bd_size=expected_bd_size,
         )
 
-    @staticmethod
-    def _build_stream_keys(gpu_config_table):
-        stream_keys = {}
-        if gpu_config_table is None or not gpu_config_table:
-            return stream_keys
 
-        for row in gpu_config_table.rows:
-            stream_id = int(row["stream_id"])
-            names_id = int(row["names_id_value"])
-            stream_keys.setdefault(stream_id, []).append((stream_id, names_id))
-
-        for keys in stream_keys.values():
-            keys.sort()
-        return stream_keys
+def parse_stream_ids(raw):
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        raw = raw.strip()
+        if not raw:
+            return None
+        return tuple(int(part.strip()) for part in raw.split(",") if part.strip())
+    return tuple(int(stream_id) for stream_id in raw)
 
 
 def _build_raw_offset_rows_from_descriptors(
     descriptors,
     stream_id,
-    config_rows,
     expected_bd_size=0,
 ):
     stream_id = int(stream_id)
     expected_bd_size = int(expected_bd_size)
-    configs_by_names_id = {
-        int(row["names_id_value"]): row
-        for row in np.asarray(config_rows)
-    }
     rows = []
 
     for desc in descriptors:
         names_id = int(desc["names_id_value"])
-        if names_id not in configs_by_names_id:
-            continue
-
-        config = configs_by_names_id[names_id]
+        shape = tuple(int(dim) for dim in desc["shape"])
+        dim0, dim1, dim2 = shape
+        raw_nbytes = int(desc["field_nbytes"])
+        dtype_size = raw_nbytes // (dim0 * dim1 * dim2)
         rows.append(
             (
-                int(config["stream_id"]),
+                stream_id,
                 names_id,
                 int(desc["segment"]),
                 int(desc["field_rel_offset"]),
-                int(desc["field_nbytes"]),
-                int(config["dim0"]),
-                int(config["dim1"]),
-                int(config["dim2"]),
-                int(config["dtype_size"]),
+                raw_nbytes,
+                dim0,
+                dim1,
+                dim2,
+                dtype_size,
                 expected_bd_size,
             )
         )
