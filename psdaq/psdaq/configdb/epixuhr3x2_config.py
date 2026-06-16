@@ -444,7 +444,7 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
     manager.init_waveform_control()
 
     # Setup each Asic
-    manager.set_running_asics(asics=asics)
+    manager.set_running_asics(asics=asics, app_cfg=cfg["expert"]["FebFpga"]["App"])
 
     manager.reset_asic_gt(asics=asics, emulator=manager.emulator)
 

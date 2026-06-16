@@ -371,7 +371,7 @@ class EpixUHR3x2_Manager:
             base_node=self.FebAsics[asic], registers_and_vals=registers_and_vals
         )
 
-    def _set_running_asic(self, asic: int) -> None:
+    def _set_running_asic(self, asic: int, reg_cfg: Dict[str, Any] = {}) -> None:
         registers_and_vals: Dict[str, Any] = {
             "enable": True,
             "TpsDacGain": 1,
@@ -416,10 +416,15 @@ class EpixUHR3x2_Manager:
             "CfgAutoflush": 0,
             "ExternalFlushN": 1,
             "ClusterDvMask": 16383,
-            #"PixNumModeEn": 1,
-            #"SerializerTestEn": 0,
+            # "PixNumModeEn": 1,
+            # "SerializerTestEn": 0,
         }
 
+        settable_registers: Tuple[str, ...] = ("DacAdcVrefCm", "DacVthr", "DacVrefCds")
+
+        registers_and_vals.update(
+            {k: v for k, v in reg_cfg.items() if k in settable_registers}
+        )
         self.write_many(
             base_node=self.FebAsics[asic], registers_and_vals=registers_and_vals
         )
@@ -434,11 +439,12 @@ class EpixUHR3x2_Manager:
             base_node=self.FebFramerAsics[asic], registers_and_vals=registers_and_vals
         )
 
-    def set_running_asics(self, asics: List[int]) -> None:
+    def set_running_asics(self, asics: List[int], app_cfg: Dict[str, Any] = {}) -> None:
         logger: logging.Logger = logging.getLogger(self._logger_name)
         for asic in asics:
             logger.info(f"Configuring Asic {asic}")
-            self._set_running_asic(asic=asic)
+            asic_reg_cfg: Dict[str, Any] = app_cfg[f"Asic[{asic}]"]
+            self._set_running_asic(asic=asic, reg_cfg=asic_reg_cfg)
             time.sleep(0.1)
             self._set_running_framer_asic(asic=asic)
 
