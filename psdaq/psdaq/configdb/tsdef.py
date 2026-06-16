@@ -34,8 +34,6 @@ def setUED():
     global FixedFidRate
     global FixedToACFids
 
-    print('Set UED')
-
     fixedRates  = ['500kHz', '100kHz','50kHz','10kHz','5kHz','1kHz','500Hz','1Hz']
     fixedRateHzToMarker = {'500kHz':0, '100kHz':1, '50kHz':2, '10kHz':3, '5kHz':4, '1kHz':5, '500Hz':6, '1Hz':7}
     FixedIntvs = [1, 5, 10, 50, 100, 500, 1000, 500000]
@@ -78,8 +76,6 @@ def setDefault():
 
     global FixedFidRate
     global FixedToACFids
-
-    print('Set DEFAULT')
 
     fixedRates  = ['1.02Hz','10.2Hz','102Hz','1.02kHz','10.2kHz','71.4kHz','929kHz', 'Undef7', 'Undef8', 'Undef9' ]
     fixedRateHzToMarker = {'929kHz':6, '71kHz':5, '10kHz':4, '1kHz':3, '100Hz':2, '10Hz':1, '1Hz':0}
