@@ -7,55 +7,50 @@ unset AMI_CONDA_PREFIX
 unset AMI_CONDA_DEFAULT_ENV
 unset AMI_TESTRELDIR
 
-ENV_MODE="${1:-}"
-
-if [ -z "$ENV_MODE" ]; then
-    echo "Error: environment mode is required."
-    echo "Usage: source setup_env.sh [psana|daq]"
-    return 1 2>/dev/null || exit 1
-fi
-
-if [ -d "/cds/sw/" ]; then
-    # for cds
-    source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
-    export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
-    export DIR_PSDM=/cds/group/psdm
-    export SIT_PSDM_DATA=/cds/data/psdm
-else
+if [ -d "/sdf/group/lcls/" ]; then
     # for s3df
     source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
     export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+else
+    # for cds
+    source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
+    export CONDA_ENVS_DIRS=/cds/sw/ds/ana/conda2/inst/envs/
+    export DIR_PSDM=/cds/group/psdm
+    export SIT_PSDM_DATA=/cds/data/psdm
 fi
 
-case "$ENV_MODE" in
-    psana)
-        conda activate psana_20260405
-        ;;
-    daq)
-        conda activate daq_20260311
-        AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
-        if [ -f "$AUTH_FILE" ]; then
-            source $AUTH_FILE
-        else
-          echo "$AUTH_FILE file is missing"
-        fi
-        
-        export CUDA_ROOT=/usr/local/cuda
-        if [ -h "$CUDA_ROOT" ]; then
-            export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
-            export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
-            export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
-        fi
-        ;;
-    *)
-        echo "Error: invalid environment mode: $ENV_MODE"
-        echo "Usage: source setup_env.sh [psana|daq]"
-        return 1 2>/dev/null || exit 1
-        ;;
-esac
+conda activate daq_20260311
 
+# DAQ bundle from the active default environment
+export DAQ_CONDA_PREFIX=${CONDA_PREFIX}
+export DAQ_CONDA_DEFAULT_ENV=${CONDA_DEFAULT_ENV}
+
+# AMI bundle: keep DAQ as active shell env, resolve AMI prefix by name
+export AMI_CONDA_DEFAULT_ENV=psana_20260405
+AMI_PREFIX_RESOLVED=$(conda info --envs 2>/dev/null | awk -v env_name="${AMI_CONDA_DEFAULT_ENV}" '$1 == env_name {print $NF; exit}')
+if [ -n "${AMI_PREFIX_RESOLVED}" ]; then
+    export AMI_CONDA_PREFIX=${AMI_PREFIX_RESOLVED}
+else
+    echo "Warning: conda env ${AMI_CONDA_DEFAULT_ENV} not found; using DAQ_CONDA_PREFIX for AMI_CONDA_PREFIX"
+    export AMI_CONDA_PREFIX=${DAQ_CONDA_PREFIX}
+fi
+unset AMI_PREFIX_RESOLVED
+
+AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
+if [ -f "$AUTH_FILE" ]; then
+    source $AUTH_FILE
+else
+    echo "$AUTH_FILE file is missing"
+fi
+        
+export CUDA_ROOT=/usr/local/cuda
+if [ -h "$CUDA_ROOT" ]; then
+    export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
+    export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
+fi
 
 # In ASC lab the command for zsh does not work, but in XPP it does.
 # So we need to check which shell we are in to get the correct path to the script
@@ -68,11 +63,8 @@ fi
 RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
 
 export PATH=$RELDIR/install/bin:${PATH}
-echo $RELDIR
-
-pyver=$(python -c "import sys; print(str(sys.version_info.major)+'.'+str(sys.version_info.minor))")
+pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
 export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
-# for procmgr
 export TESTRELDIR=$RELDIR/install
 
 export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
@@ -91,6 +83,3 @@ export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
-
-# needed by JupyterLab
-export JUPYTERLAB_WORKSPACES_DIR=${HOME}
