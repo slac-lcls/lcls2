@@ -70,6 +70,30 @@ class CGConfigParameters(ConfigParameters) :
         self.instr             = None
 
 
+    def get_serno(self, alias):
+        """Find the serial number for a detector alias."""
+        if not isinstance(self.s_platform, dict):
+            return None
+
+        for level in ('drp', 'tpr'):
+            print("ITERATING LEVEL:",level,flush=True)
+            print("ITERATING LEVEL:",level,flush=True)
+            level_dict = self.s_platform.get(level, {})
+            print("GOT DICT:", level_dict)
+            for _, item in level_dict.items():
+                print("TESTIN ITEM FOR ALIAS:", alias)
+                if item.get('proc_info', {}).get('alias') == alias:
+                    # We will pass around serial numbers in connect_info
+                    # These are truncated hashes of the full serial number to make
+                    # it easier to read. They also include the det type
+                    # E.g. f"{det_type}_{short_hash}_0"
+                    print("GOT ALIAS.", flush=True)
+                    print("ITEM HAS", item)
+                    print("****CONNECT_INFO", item.get('connect_info'))
+                    print("****SHORT_SN_ID:", item.get('connect_info', {}).get('short_sn_id'))
+                    return item.get('connect_info', {}).get('short_sn_id')
+
+
     def test_cpinit(self) :
         self.s_transition = 'tst-transition'
         self.s_state      = 'tst-state'
@@ -107,3 +131,4 @@ if __name__ == "__main__" :
     sys.exit(0)
 
 # EOF
+

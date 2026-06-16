@@ -16,6 +16,7 @@
 #include "EpixHRemu.hh"
 #include "EpixM320.hh"
 #include "EpixUHR.hh"
+#include "EpixUHR3x2.hh"
 #include "Epix100.hh"
 #include "Jungfrau.hh"
 #include "JungfrauEmulator.hh"
@@ -344,6 +345,7 @@ void PGPDetectorApp::initialize()
     f.register_type<Wave8>           ("wave8");
     f.register_type<HREncoder>       ("hrencoder");
     f.register_type<Piranha4>        ("piranha4");
+    f.register_type<EpixUHR3x2>      ("epixuhr3x2");
 
     m_det = f.create(&m_para, &m_pool);
     if (m_det == nullptr) {
@@ -751,3 +753,4 @@ int PGPDetectorApp::resetDrpPython()
 }
 
 }
+

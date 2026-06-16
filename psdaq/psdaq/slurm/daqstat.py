@@ -7,9 +7,17 @@ import _thread
 import locale
 import traceback
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import Qt, QVariant, QObject, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import (
+    PYQT_VERSION_STR,
+    QT_VERSION_STR,
+    Qt,
+    QVariant,
+    QObject,
+    pyqtSignal,
+    pyqtSlot,
+)
 from PyQt5.QtGui import QCursor, QBrush, QColor
-from PyQt5.QtWidgets import QApplication, QMessageBox, QTableWidgetItem
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QTableWidgetItem
 import subprocess
 
 
@@ -399,7 +407,7 @@ def main():
 
     (llsOptions, lsRemainder) = getopt.getopt(
         sys.argv[1:],
-        "vh:i:",
+        "vhi:",
         [
             "version",
             "help",
@@ -410,7 +418,7 @@ def main():
     for (sOpt, sArg) in llsOptions:
         if sOpt in ("-v", "-h", "--version", "--help"):
             showUsage()
-            return 1
+            return 0
         elif sOpt in ("-i", "--interval"):
             fProcmgrQueryInterval = float(sArg)
 
