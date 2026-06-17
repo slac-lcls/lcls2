@@ -343,6 +343,12 @@ def epixuhr3x2_connectionInfo(base, alloc_json_str):
     det_type: str = "epixuhr3x2"
     connect_info["short_sn_id"] = f"{det_type}_{manager.ShortSerNo}_0"
 
+    print(
+        "**** ePixUHR3x2 Panel Short Serial Number Identifier:",
+        connect_info["short_sn_id"],
+        "****"
+    )
+
     return connect_info
 
 
@@ -434,8 +440,9 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
         manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
         manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
 
-    # Setup the debug timing outputs
+    # Setup BoardCtrl3x2Readout Registers - this also sets the debug timing outputs
     board_ctrl: Dict[str, Any] = cfg["expert"]["FebFpga"]["App"]["BoardCtrl3x2Readout"]
+    # manager.setup_board_control_registers(board_ctrl=board_ctrl)
     manager.setup_debug_timing_out(board_ctrl=board_ctrl)
 
     # Setup trigger register config - tell detector to run off LCLS2 triggers

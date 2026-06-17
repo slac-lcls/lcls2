@@ -420,11 +420,8 @@ class EpixUHR3x2_Manager:
             # "SerializerTestEn": 0,
         }
 
-        settable_registers: Tuple[str, ...] = ("DacAdcVrefCm", "DacVthr", "DacVrefCds")
+        registers_and_vals.update(reg_cfg)
 
-        registers_and_vals.update(
-            {k: v for k, v in reg_cfg.items() if k in settable_registers}
-        )
         self.write_many(
             base_node=self.FebAsics[asic], registers_and_vals=registers_and_vals
         )
@@ -506,6 +503,30 @@ class EpixUHR3x2_Manager:
             self.FebFpga.App.BoardCtrl3x2Readout.timingOutSelect[2].set(t2_sel)
         else:
             self.FebFpga.App.BoardCtrl3x2Readout.timingOutEn[2].set(False)
+
+    def setup_board_control_registers(self, board_ctrl: Dict[str, Any]) -> None:
+        """Setup registers for BoardCtrl3x2Readout."""
+
+        self.setup_debug_timing_out(board_ctrl=board_ctrl)
+        BoardCtrl3x2Readout = self.FebFpga.App.BoardCtrl3x2Readout
+
+        LTM4664_A = BoardCtrl3x2Readout.LTM4664_A
+        LTM4664_A_regs: Dict[str, Any] = board_ctrl["LTM4664_A"]
+        self.write_many(
+            base_node=LTM4664_A, registers_and_vals=LTM4664_A_regs
+        )
+
+        LTM4664_B = BoardCtrl3x2Readout.LTM4664_B
+        LTM4664_B_regs: Dict[str, Any] = board_ctrl["LTM4664_B"]
+        self.write_many(
+            base_node=LTM4664_B, registers_and_vals=LTM4664_B_regs
+        )
+
+        LTM4664_C = BoardCtrl3x2Readout.LTM4664_C
+        LTM4664_C_regs: Dict[str, Any] = board_ctrl["LTM4664_C"]
+        self.write_many(
+            base_node=LTM4664_C, registers_and_vals=LTM4664_C_regs
+        )
 
     def power_on(self, asic_mask: int = 0x3F):
         self.FebFpga.App.EnableCommonAsicPower()
