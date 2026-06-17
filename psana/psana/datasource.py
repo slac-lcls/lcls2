@@ -147,6 +147,15 @@ class InvalidDataSource(Exception):
     pass
 
 
+def _files_are_smd(files):
+    """Return True if all provided files are SMD (.smd.xtc2) files."""
+    if isinstance(files, str):
+        files = [files]
+    return files and all(
+        isinstance(f, str) and f.endswith('.smd.xtc2') for f in files
+    )
+
+
 from psana.psexp.serial_ds import SerialDataSource
 from psana.psexp.singlefile_ds import SingleFileDataSource
 from psana.psexp.shmem_ds import ShmemDataSource

@@ -55,6 +55,16 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
+    # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau') or
+    # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
+    # yields GpuEventContext objects instead of Event objects.
+    gpu_det: object = None          # str | list[str] | None
+    n_gpu_streams: int = 2          # StreamPool size (§7)
+    # GPU-routed bigdata stream indices.  Populated automatically by
+    # gpu_events() from the SMD Configure dgrams (no bigdata access needed).
+    # Forwarded to EventBuilder so it can split those streams into GPUBAT1
+    # without relying on PS_TEST_GPU_STREAM_IDS.
+    gpu_stream_ids: list = None     # list[int] | None
 
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
@@ -183,6 +193,9 @@ class DataSourceBase(abc.ABC):
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
         self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
         self.cached_detectors = kwargs.get("cached_detectors", [])
+        # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau', ...)
+        self.gpu_det       = kwargs.get("gpu_det",        None)
+        self.n_gpu_streams = kwargs.get("n_gpu_streams",  2)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
@@ -195,8 +208,12 @@ class DataSourceBase(abc.ABC):
         if not kwargs.get("mpi_ts", False):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
-        # Final sanity check
-        assert self.batch_size > 0, "batch_size must be greater than 0"
+        # Final sanity check.
+        # batch_size=0 is allowed when gpu_det is set: gpu_events() will
+        # auto-compute the optimal value from GPU device properties.
+        if self.batch_size == 0 and not kwargs.get('gpu_det'):
+            self.batch_size = 1   # default for CPU path
+        assert self.batch_size >= 0, "batch_size must be >= 0"
 
         # Package up DataSource parameters
         self.dsparms = DsParms(
@@ -213,6 +230,8 @@ class DataSourceBase(abc.ABC):
             self.skip_calib_load,
             self.dbsuffix,
             smd_callback=self.smd_callback,
+            gpu_det=self.gpu_det,
+            n_gpu_streams=self.n_gpu_streams,
         )
 
         # Warn about unrecognized kwargs
@@ -223,7 +242,8 @@ class DataSourceBase(abc.ABC):
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
-            "log_level", "log_file", 'auto_tune'
+            "log_level", "log_file", 'auto_tune',
+            "gpu_det", "n_gpu_streams",
         }
         for k in kwargs:
             if k not in known_keys:

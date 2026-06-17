@@ -19,7 +19,8 @@ class EventBuilderManager(object):
                                filter_timestamps=dsparms.timestamps,
                                intg_stream_id=dsparms.intg_stream_id,
                                batch_size=dsparms.batch_size,
-                               use_proxy_events=use_proxy_events)
+                               use_proxy_events=use_proxy_events,
+                               gpu_stream_ids=getattr(dsparms, 'gpu_stream_ids', None))
         self.run_smd = RunSmallData(
             self.eb,
             configs,

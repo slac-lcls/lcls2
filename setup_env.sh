@@ -111,3 +111,25 @@ export JUPYTERLAB_WORKSPACES_DIR=${HOME}
 
 # needed by Ric to get correct libfabric man pages
 export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}
+
+# CuPy RawKernel (JIT compilation) requires libnvrtc.so.12 and libcudart.so.12.
+# The CUDA_ROOT block above covers a system CUDA toolkit at CUDA_ROOT/lib64.
+# For nodes where the toolkit is not installed there, discover the lib dirs of
+# the nvidia-cuda-nvrtc-cu12 / nvidia-cuda-runtime-cu12 pip packages via
+# Python importlib.  This works for any install location (~/.local, conda env,
+# venv, system site-packages) and any user without hard-coding paths.
+_cuda_libs=$(python3 -c "
+import importlib.util, os
+dirs = []
+for pkg in ('nvidia.cuda_nvrtc', 'nvidia.cuda_runtime'):
+    spec = importlib.util.find_spec(pkg)
+    if spec and spec.submodule_search_locations:
+        d = os.path.join(list(spec.submodule_search_locations)[0], 'lib')
+        if os.path.isdir(d):
+            dirs.append(d)
+print(':'.join(dirs))
+" 2>/dev/null)
+if [ -n "${_cuda_libs}" ]; then
+    export LD_LIBRARY_PATH=${_cuda_libs}${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+fi
+unset _cuda_libs

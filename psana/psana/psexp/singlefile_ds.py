@@ -10,7 +10,34 @@ class SingleFileDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
-        self.dsparms.update_smd_state([None], [False] * len(self.runnum_list))  # disable SMDs unsupported in single file mode
+
+        # GPU mode: when gpu_det= is set and the provided files are SMD files,
+        # populate dsparms.smd_files so that Run._gpu_events() can find them.
+        # The corresponding bigdata XTC2 files are derived automatically.
+        gpu_smd_files = None
+        if (self.dsparms.gpu_det and self.files
+                and all(isinstance(f, str) and f.endswith('.smd.xtc2')
+                        for f in self.files)):
+            gpu_smd_files = list(self.files)
+            # Derive bigdata XTC2 paths from SMD paths.
+            import os
+            xtc_files = [
+                os.path.join(
+                    os.path.dirname(os.path.dirname(f)),
+                    os.path.basename(f).split('.smd')[0] + '.xtc2'
+                )
+                for f in gpu_smd_files
+            ]
+            # Replace self.files with bigdata files so DgramManager reads them.
+            self.files = [f for f in xtc_files if os.path.exists(f)]
+
+        if gpu_smd_files:
+            self.dsparms.update_smd_state(gpu_smd_files,
+                                          [False] * len(gpu_smd_files))
+        else:
+            self.dsparms.update_smd_state([None],
+                                          [False] * len(self.runnum_list))
+
         self.runnum_list_index = 0
         self._setup_run()
         super()._start_prometheus_client()
@@ -76,6 +103,22 @@ class SingleFileDataSource(DataSourceBase):
         return found_next_run
 
     def runs(self):
+        if self.dsparms.gpu_det:
+            # GPU mode: all files are one combined multi-stream run.
+            # Open the first file to get BeginRun configs; the GPU pipeline
+            # (Run._gpu_events) then re-opens all streams together via
+            # gpu_events(dsparms.smd_files, ...).
+            if self._start_run():
+                expt, runnum, ts = self._get_runinfo()
+                run = RunSingleFile(
+                    expt, runnum, ts,
+                    self.dsparms, self.dm, None,
+                    self._configs, self.beginruns,
+                )
+                yield run
+            return
+
+        # Normal (CPU) path: one run per file.
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()

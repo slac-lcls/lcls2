@@ -140,6 +140,11 @@ class Run(object):
         return self.runnum
 
     def events(self):
+        # GPU path: delegate to gpu_events() when DataSource(gpu_det=...) is set.
+        if getattr(self.dsparms, 'gpu_det', None):
+            yield from self._gpu_events()
+            return
+        # CPU path (unchanged).
         for dgrams in self._evt_iter:
             if self._handle_transition(dgrams):
                 # EndRun handling here ends the stream
@@ -148,6 +153,59 @@ class Run(object):
                 continue  # swallow non-L1 transitions in events() stream
             # L1Accept: construct Event at the Run level
             yield Event(dgrams=dgrams, run=self._run_ctx)
+
+    def _gpu_events(self):
+        """Delegate to psana.gpu.gpu_events() when gpu_det is set.
+
+        Called by events() when DataSource(gpu_det='det_name', ...) is used.
+        Yields GpuEventContext instead of Event.  All other Run methods
+        (steps(), Detector(), calibconst, etc.) remain unchanged.
+        """
+        from psana.gpu.gpu_events import gpu_events as _gpu_events_impl
+
+        gpu_det = self.dsparms.gpu_det
+        smd_files = self.dsparms.smd_files
+        n_streams = getattr(self.dsparms, 'n_gpu_streams', 2)
+        batch_size = self.dsparms.batch_size
+
+        # Pre-load CPU detectors for ctx.raw() from the existing Run context.
+        # All detectors that are NOT the GPU-routed detector(s) go to CPU.
+        gpu_det_names = set(
+            [gpu_det] if isinstance(gpu_det, str) else list(gpu_det)
+        )
+        cpu_dets = {
+            name: self.Detector(name)
+            for name in self.detnames
+            if name not in gpu_det_names
+        }
+
+        # Transition callback: forward each transition's raw dgram bytes to
+        # _handle_transition() so the Run's envstore stays up to date (scan
+        # variables, step counts, etc.) — matching the CPU run.events() path.
+        def _on_transition(service, dgram_bytes):
+            # Re-parse the bytes into a dgram list matching _handle_transition's
+            # expected input format (list indexed by stream).  The GPU step
+            # batch comes from stream 0 of the combined EB output; build a
+            # one-element list so first_service() and _update_envstore work.
+            try:
+                import psana.dgram as _pdg
+                # Use config 0 to parse the transition dgram.
+                cfg0 = self._configs[0] if hasattr(self, '_configs') and self._configs else None
+                if cfg0 is not None:
+                    dg = _pdg.Dgram(config=cfg0, view=dgram_bytes, offset=0)
+                    self._handle_transition([dg])
+            except Exception:
+                pass  # envstore update is best-effort; never fail events()
+
+        yield from _gpu_events_impl(
+            smd_files,
+            gpu_det,
+            _cpu_dets_dict=cpu_dets,
+            _on_transition=_on_transition,
+            batch_size=batch_size,
+            max_events=self.dsparms.max_events,
+            n_streams=n_streams,
+        )
 
     def steps(self):
         for dgrams in self._evt_iter:
