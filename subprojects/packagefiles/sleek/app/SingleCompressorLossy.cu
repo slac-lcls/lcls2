@@ -511,7 +511,9 @@ int SingleCompressorLossy::_initialize(size_t insize, float errorBound)
   // eb variables
   const int e = 8;  // exponent bits
   const int m = 23;  // mantissa bits
-  _eb_e = (*((int*)&eb) >> m) & ((1 << e) - 1);  // extract biased exponent
+  //_eb_e = (*((int*)&eb) >> m) & ((1 << e) - 1);  // extract biased exponent
+  union { type_f f; uint32_t u; } eb_u = { .f = eb }; // RiC added to avoid type punning
+  _eb_e = (eb_u.u >> m) & ((1 << e) - 1);  // extract biased exponent
   _thr_e = _eb_e + (m + 1);  // biased exponent of threshold
   _offs = (_thr_e << m) - (1 << m);  // offset for lossless encoding
   if (_thr_e >= (1 << e) - 1) {fprintf(stderr, "QUANT_IABS_0_f32: ERROR: error_bound is too large\n"); return -1;}

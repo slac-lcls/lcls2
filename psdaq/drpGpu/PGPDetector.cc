@@ -234,8 +234,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
                    TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
     // If needed, wait for the next GPU Reducer in sequence to complete
-    size_t dataSize;
-    if (result->persist() || result->monitor()) {
+    size_t dataSize{0};
+    if (result->isEvent() && (result->persist() || result->monitor())) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lStateMon = 3;
       ReducerTuple rt;
@@ -784,7 +784,7 @@ void PGPDrp::_collector()
       // Allocate transition datagrams before allocating the pebble buffer
       // since pebble buffers can't be freed out of order if this fails
       TransitionId::Value transitionId = timingHeader->service();
-      EbDgram* trDgram;
+      EbDgram* trDgram{nullptr};
       if (transitionId != TransitionId::L1Accept) {
         // Allocate a transition datagram from the pool
         trDgram = pool.allocateTr();

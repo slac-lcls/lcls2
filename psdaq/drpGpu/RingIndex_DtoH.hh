@@ -23,7 +23,7 @@ public:
     m_tail        (nullptr),
     m_capacityMask(capacity-1)     // Range of the buffer index [0, capacity-1]
   {
-    assert(capacity & (capacity - 1));  // Capacity must be a power of 2
+    assert((capacity & (capacity - 1)) == 0);  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head refers to the next index to be allocated

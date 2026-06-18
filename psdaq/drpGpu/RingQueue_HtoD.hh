@@ -20,7 +20,7 @@ public:
     m_capacityMask(capacity-1),    // Range of the buffer queue [0, capacity-1]
     m_ringBuffer  (nullptr)
   {
-    assert(capacity & (capacity - 1));  // Capacity must be a power of 2
+    assert((capacity & (capacity - 1)) == 0);  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head points to the next index to be allocated

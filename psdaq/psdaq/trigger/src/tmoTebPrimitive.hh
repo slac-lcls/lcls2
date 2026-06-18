@@ -14,6 +14,10 @@ namespace Pds {
       int    configure(const nlohmann::json& configureMsg,
                        const nlohmann::json& connectMsg,
                        size_t                collectionId) override;
+      void   configure(const XtcData::Xtc& xtc, const void* bufEnd) override
+      {
+        TriggerPrimitive::configure(xtc, bufEnd);
+      }
       void   event(const Drp::MemPool& pool,
                    uint32_t            idx,
                    const XtcData::Xtc& ctrb,
@@ -27,8 +31,7 @@ namespace Pds {
                    size_t    const        outBufsCnt,
                    unsigned  const* const index,
                    unsigned* const        retCode_d) override;
-      GpuDispatchType gpuDispatchType() const override { return GpuDispatchType::TmoTeb; }
-    size_t size() const override  { return sizeof(TmoTebData); }
+      size_t size() const override  { return sizeof(TmoTebData); }
     };
   }
 }

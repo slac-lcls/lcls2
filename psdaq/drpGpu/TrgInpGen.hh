@@ -68,7 +68,6 @@ private:
 private:
   MemPoolGpu&                        m_pool;
   Pds::Trg::TriggerPrimitive*        m_triggerPrimitive;
-  Pds::Trg::GpuDispatchType          m_gpuDispatchType;
   const std::atomic<bool>&           m_terminate;
   const cuda::std::atomic<unsigned>& m_terminate_d;
   unsigned*                          m_retCode_d;

@@ -1,4 +1,4 @@
-#include "psdaq/trigger/src/tmoTebPrimitive.hh"
+#include "tmoTebPrimitive.hh"
 
 #include "psalg/utils/SysLog.hh"
 

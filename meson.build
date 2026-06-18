@@ -1,14 +1,20 @@
 project(
-    'lcls',
-    'cpp',
-    'cython',
-    version: '4.3.0',
-    default_options: ['cpp_std=c++20', 'libdir=lib']
+  'lcls',
+  'cpp',
+  'cython',
+  version: '4.3.0',
+  default_options: [
+    'cpp_std=c++20',
+    'libdir=lib',
+    'b_lto=true',
+    'b_ndebug=true',
+  ]
 )
 
 conda_base = get_option('conda_prefix')
 cuda_base = get_option('custom_cuda_path')
 cc = meson.get_compiler('cpp')
+ar = find_program('gcc-ar', required: true)
 py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
@@ -16,7 +22,7 @@ python_dep = py.dependency(embed: true)
 #numpy_dep = dependency('numpy')
 
 # Python 3.9
-numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())']).stdout().strip()
+numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())'], check: true).stdout().strip()
 numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
@@ -67,8 +73,9 @@ cuda_compiler = find_program('nvcc', required: false)
 if cuda_compiler.found()
   add_languages('cuda', native: false) # Python 3.9
   cmake = import('cmake')
-  cusz_proj = cmake.subproject('cusz')
-  cuszp_proj = cmake.subproject('cuszp')
+  # 6/16/26: Comment these out as they produce lots of warnings
+  #cusz_proj = cmake.subproject('cusz')
+  #cuszp_proj = cmake.subproject('cuszp')
 endif
 
 if get_option('build_daq')

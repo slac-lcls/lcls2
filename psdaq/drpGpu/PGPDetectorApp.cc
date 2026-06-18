@@ -292,7 +292,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 void PGPDetectorApp::handlePhase1(const json& msg)
 {
     std::string key = msg["header"]["key"];
-    TransitionId::Value tid;
+    TransitionId::Value tid{TransitionId::ClearReadout}; // Some invalid value
     logging::debug("handlePhase1 for %s in Gpu::PGPDetectorApp (m_det->scanEnabled() is %s)",
                    key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
 

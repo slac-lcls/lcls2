@@ -85,9 +85,12 @@ tmoTeb_lib = shared_library('tmoTeb',
 cuda_compiler = find_program('nvcc', required: false)
 if cuda_compiler.found()
   cuda_args = [
+    '-forward-unknown-to-host-compiler',
     '-gencode=arch=compute_86,code=sm_86',
     '-gencode=arch=compute_90,code=sm_90',
+    '-Wno-uninitialized',
     '-Wno-deprecated-gpu-targets',
+    '-fno-omit-frame-pointer',
     '-Xcompiler=-fPIC',
     #'-G', #for debugging
     #'--verbose',
@@ -116,7 +119,7 @@ tstTebPy_lib = shared_library('tstTebPy',
   [
     'src/bldTebPrimitive.cc',
     'src/hrEncoderTebPrimitive.cc',
-    'src/piranha4TebPrimitive.cc', 
+    'src/piranha4TebPrimitive.cc',
     'src/timingTebPrimitive.cc',
     'src/tmoTebPrimitive.cc',
     'src/tebPyTrigger.cc',
