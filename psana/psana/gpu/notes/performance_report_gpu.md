@@ -62,14 +62,18 @@ True end-to-end cost including GDS reads + CUDA kernel, measured as elapsed
 wall time for the full timed loop divided by event count.
 
 ```
-issue_batch()   →  non-blocking KvikIO pread() for GPU-routed streams
-CPU EventManager reads  →  CPU-stream bigdata reads (separate hardware)
-wait_batch()    →  futures collected (typically already done)
+issue_batch()   →  non-blocking KvikIO pread() for all 10 GPU-routed streams
+                   (NVMe → GPU VRAM directly via GDS, bypassing CPU entirely)
+wait_batch()    →  GDS futures collected (typically already done)
 kernel          →  fused_calib_gpu() on A100 CUDA stream
 ```
 
-GDS reads and CPU EventManager reads run concurrently on separate I/O
-engines.  This is the number that determines real experiment throughput.
+For `mfx100852324-r0077`, auto-discovery routes **all 10 streams** to the GPU
+because every stream contains only Jungfrau data (`hasattr(configure_dg,
+'jungfrau')` is True for every stream).  The CPU EventManager processes an
+empty batch — there are no CPU-routed streams in this run.  The I/O overlap
+that amortises cost is therefore GDS pipeline depth only: while batch N's kernel
+runs, GDS is already reading batches N+1 … N+n ahead.
 
 ### GPU D→H every event  (`12.8 ms/event`)
 
@@ -151,12 +155,12 @@ Batch 3:                         GDS read ──────┐  kernel ──�
 Steps inside `EventPool.submit(batch N)`:
 
 1. Issues GDS reads for batch N non-blocking (returns `PendingBatch` immediately).
-2. While GDS reads are in flight, the CPU EventManager reads the CPU-routed
-   streams for the same batch window (separate NVMe queues, separate hardware).
-3. Waits for GDS futures (`wait_batch()`).
-4. Launches `fused_calib_gpu()` on `stream[N % n]` — **non-blocking**.  The
+2. Waits for GDS futures (`wait_batch()`).  For this run the CPU EventManager
+   processes an empty batch (all 10 streams are GPU-routed); in runs that mix
+   detector types it would read CPU-routed streams concurrently with step 1.
+3. Launches `fused_calib_gpu()` on `stream[N % n]` — **non-blocking**.  The
    kernel is queued on the GPU but the CPU does not wait.
-5. Returns the results from `n` batches ago by synchronising `stream[(N-n) % n]`.
+4. Returns the results from `n` batches ago by synchronising `stream[(N-n) % n]`.
 
 **Why the depth matters:**
 
@@ -177,9 +181,8 @@ busy at all times:
 
 | Hardware unit | What it is doing |
 |---|---|
-| NVMe / GDS DMA | Reading 4 batches ahead (40 events × ~3.3 MB = ~130 MB queued) |
+| NVMe / GDS DMA | Reading all 10 Jungfrau streams 4 batches ahead (NVMe → GPU VRAM directly via KvikIO, bypassing CPU) |
 | A100 SMs | Running calibration kernels for batches N−1, N−2, N−3 concurrently |
-| CPU cores | Reading CPU-stream bigdata for batch N (DramManager) |
 | PCIe | Transferring calibconst updates if any (BeginStep) |
 
 When Python calls `ctx.get('calib').on_gpu`, the result was computed
