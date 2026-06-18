@@ -52,6 +52,9 @@ def jungfrau_init(
     weakref.finalize(jungfrau_kcu, jungfrau_kcu.stop)
     jungfrau_kcu.start()
 
+    print('*** cpohack: eliminate latency check to speed up link lock ***')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask = 0
+    time.sleep(0.1)
     return jungfrau_kcu
 
 
