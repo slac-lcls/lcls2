@@ -322,9 +322,18 @@ class GPUDetector:
         nrows_img = int(ix.max()) + 1
         ncols_img = int(iy.max()) + 1
 
-        self._scatter_ix  = cp.asarray(np.ascontiguousarray(ix.ravel()))
-        self._scatter_iy  = cp.asarray(np.ascontiguousarray(iy.ravel()))
-        self._image_shape = (nrows_img, ncols_img)
+        try:
+            self._scatter_ix  = cp.asarray(np.ascontiguousarray(ix.ravel()))
+            self._scatter_iy  = cp.asarray(np.ascontiguousarray(iy.ravel()))
+            self._image_shape = (nrows_img, ncols_img)
+        except Exception as exc:
+            import warnings
+            warnings.warn(
+                f'GPUDetector.setup_geometry: could not transfer scatter '
+                f'indices to GPU ({exc}).  ctx.get("*.image") will return '
+                f'None.  This typically occurs when the detector has many '
+                f'segments (e.g. full Jungfrau 16M) and GPU memory is limited.'
+            )
 
     def assemble_image(self, calib_gpu, stream=None):
         """Scatter calibrated segments onto a 2-D detector image on GPU.
@@ -344,14 +353,16 @@ class GPUDetector:
             return None
 
         cp    = _cupy()
-        ctx   = stream if stream is not None else cp.cuda.Stream.null
         nrows, ncols = self._image_shape
-
-        with ctx:
-            image_gpu = cp.zeros((nrows, ncols), dtype=cp.float32)
-            image_gpu[self._scatter_ix, self._scatter_iy] = calib_gpu.ravel()
-
-        return image_gpu
+        ctx   = stream if stream is not None else cp.cuda.Stream.null
+        try:
+            with ctx:
+                image_gpu = cp.zeros((nrows, ncols), dtype=cp.float32)
+                image_gpu[self._scatter_ix, self._scatter_iy] = calib_gpu.ravel()
+            return image_gpu
+        except Exception:
+            # OOM or other GPU error — image assembly unavailable this event.
+            return None
 
     # ------------------------------------------------------------------
     # Layout auto-detection

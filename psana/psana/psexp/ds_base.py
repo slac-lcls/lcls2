@@ -59,7 +59,7 @@ class DsParms:
     # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
     # yields GpuEventContext objects instead of Event objects.
     gpu_det: object = None          # str | list[str] | None
-    n_gpu_streams: int = 2          # StreamPool size (§7)
+    n_gpu_streams: int = 4          # EventPool depth; 4 concurrent streams optimal for NVMe io_depth
     # GPU-routed bigdata stream indices.  Populated automatically by
     # gpu_events() from the SMD Configure dgrams (no bigdata access needed).
     # Forwarded to EventBuilder so it can split those streams into GPUBAT1
@@ -195,7 +195,7 @@ class DataSourceBase(abc.ABC):
         self.cached_detectors = kwargs.get("cached_detectors", [])
         # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau', ...)
         self.gpu_det       = kwargs.get("gpu_det",        None)
-        self.n_gpu_streams = kwargs.get("n_gpu_streams",  2)
+        self.n_gpu_streams = kwargs.get("n_gpu_streams",  4)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)

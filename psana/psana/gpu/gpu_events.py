@@ -311,7 +311,7 @@ def gpu_events(
     _on_transition=None,
     batch_size: int = 0,   # 0 = auto-compute from GPU properties + detector shape
     max_events: int = 0,
-    n_streams: int = 2,
+    n_streams: int = 4,    # EventPool depth; 4 concurrent streams optimal for NVMe io_depth
     registry: GPUKernelRegistry = None,
 ) -> Iterator[GpuEventContext]:
     """Yield one GpuEventContext per L1Accept event.
