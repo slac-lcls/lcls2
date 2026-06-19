@@ -20,7 +20,7 @@ complete path:
     GpuEventContext.get('calib') → GPUResult
 
 Requires a CUDA GPU and real MFX data at:
-    /sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100852324-r0077*
+    /sdf/data/lcls/ds/prj/public01/xtc
 
 Marked @pytest.mark.slow — excluded from normal CI runs.
 
@@ -33,10 +33,11 @@ Run
 import glob
 import os
 
-import numpy as np
 import pytest
 
-_SMD_GLOB = os.environ.get('PSANA_GPU_TEST_SMD_GLOB', '')
+_EXP = os.environ.get('PSANA_GPU_TEST_EXP', 'mfx100852324')
+_RUN = int(os.environ.get('PSANA_GPU_TEST_RUN', '77'))
+_DIR = os.environ.get('PSANA_GPU_TEST_DIR', '/sdf/data/lcls/ds/prj/public01/xtc')
 _DET_NAME   = 'jungfrau'
 _BATCH_SIZE = 5
 _MAX_EVENTS = 10
@@ -51,7 +52,25 @@ def _gpu_available() -> bool:
 
 
 def _mfx_data_available() -> bool:
-    return bool(glob.glob(_SMD_GLOB))
+    smd_glob = os.path.join(
+        _DIR,
+        'smalldata',
+        f'{_EXP}-r{_RUN:04d}*.smd.xtc2',
+    )
+    return bool(glob.glob(smd_glob))
+
+
+def _make_gpu_datasource(max_events=_MAX_EVENTS, batch_size=_BATCH_SIZE):
+    from psana import DataSource
+
+    return DataSource(
+        exp=_EXP,
+        run=_RUN,
+        dir=_DIR,
+        gpu_det=_DET_NAME,
+        batch_size=batch_size,
+        max_events=max_events,
+    )
 
 
 requires_gpu = pytest.mark.skipif(
@@ -71,7 +90,7 @@ def test_gpu_event_loop_pdf_section9():
     Validates the complete GPU BD pipeline end-to-end using the public
     DataSource(gpu_det=) API:
 
-        ds = DataSource(files=smd_files, gpu_det='jungfrau')
+        ds = DataSource(exp='mfx100852324', run=77, dir=..., gpu_det='jungfrau')
         for run in ds.runs():
             for ctx in run.events():
                 calib = ctx.get('calib').on_gpu
@@ -85,47 +104,39 @@ def test_gpu_event_loop_pdf_section9():
     refinement (requires verified calibconst segment mapping).
     """
     if not _mfx_data_available():
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
+        pytest.skip(f'test data not found: exp={_EXP} run={_RUN} dir={_DIR}')
 
     import cupy as cp
-    from psana import DataSource
 
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    smd_files = list(dict.fromkeys(smd_files))
-
-    ds = DataSource(
-        files=smd_files,
-        gpu_det=_DET_NAME,
-        batch_size=_BATCH_SIZE,
-        max_events=_MAX_EVENTS,
-    )
+    ds = _make_gpu_datasource(max_events=_MAX_EVENTS)
 
     n_events = 0
-    for run in ds.runs():
-        for ctx in run.events():
-            calib = ctx.get('calib').on_gpu    # GpuEventContext → GPUResult → cp.ndarray
+    run = next(ds.runs())
+    for i_evt, ctx in enumerate(run.events()):
+        calib = ctx.get('calib').on_gpu    # GpuEventContext → GPUResult → cp.ndarray
+        print(f'{i_evt}: {ctx.timestamp} {calib.shape=}')
 
-            assert calib.dtype == cp.float32, (
-                f'evt={n_events}: expected float32, got {calib.dtype}'
-            )
-            assert calib.ndim == 3, (
-                f'evt={n_events}: expected 3-D (n_segs, nrows, ncols), '
-                f'got shape {calib.shape}'
-            )
-            n_segs, nrows, ncols = calib.shape
-            assert n_segs >= 1, (
-                f'evt={n_events}: n_segs must be >= 1, got {n_segs}'
-            )
-            assert (nrows, ncols) == (512, 1024), (
-                f'evt={n_events}: expected (512, 1024) panel size, '
-                f'got {(nrows, ncols)}'
-            )
-            assert not bool(cp.any(cp.isnan(calib))), (
-                f'evt={n_events}: NaN values in GPU calib '
-                f'(shape={calib.shape})'
-            )
+        assert calib.dtype == cp.float32, (
+            f'evt={n_events}: expected float32, got {calib.dtype}'
+        )
+        assert calib.ndim == 3, (
+            f'evt={n_events}: expected 3-D (n_segs, nrows, ncols), '
+            f'got shape {calib.shape}'
+        )
+        n_segs, nrows, ncols = calib.shape
+        assert n_segs >= 1, (
+            f'evt={n_events}: n_segs must be >= 1, got {n_segs}'
+        )
+        assert (nrows, ncols) == (512, 1024), (
+            f'evt={n_events}: expected (512, 1024) panel size, '
+            f'got {(nrows, ncols)}'
+        )
+        assert not bool(cp.any(cp.isnan(calib))), (
+            f'evt={n_events}: NaN values in GPU calib '
+            f'(shape={calib.shape})'
+        )
 
-            n_events += 1
+        n_events += 1
 
     assert n_events > 0, (
         'No events were produced.  '
@@ -142,51 +153,42 @@ def test_gpu_event_loop_raw_and_image():
     - ctx.get('image') → float32 assembled 2-D image (if geometry loaded)
     """
     if not _mfx_data_available():
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
+        pytest.skip(f'test data not found: exp={_EXP} run={_RUN} dir={_DIR}')
 
     import cupy as cp
-    from psana import DataSource
 
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    smd_files = list(dict.fromkeys(smd_files))
-
-    ds = DataSource(
-        files=smd_files,
-        gpu_det=_DET_NAME,
-        batch_size=_BATCH_SIZE,
-        max_events=3,
-    )
+    ds = _make_gpu_datasource(max_events=3)
 
     n_events = 0
-    for run in ds.runs():
-        for ctx in run.events():
-            # Raw ADC values
-            raw = ctx.get('raw').on_gpu
-            assert raw.dtype == cp.uint16, (
-                f'evt={n_events}: raw should be uint16, got {raw.dtype}'
-            )
-            assert raw.shape == ctx.get('calib').on_gpu.shape, (
-                f'evt={n_events}: raw shape {raw.shape} != '
-                f'calib shape {ctx.get("calib").on_gpu.shape}'
-            )
+    run = next(ds.runs())
+    for ctx in run.events():
+        # Raw ADC values
+        raw = ctx.get('raw').on_gpu
+        assert raw.dtype == cp.uint16, (
+            f'evt={n_events}: raw should be uint16, got {raw.dtype}'
+        )
+        assert raw.shape == ctx.get('calib').on_gpu.shape, (
+            f'evt={n_events}: raw shape {raw.shape} != '
+            f'calib shape {ctx.get("calib").on_gpu.shape}'
+        )
 
-            # All raw gain-bit patterns should be representable (0-3 in top 2 bits).
-            gbits = cp.asnumpy(raw >> 14)
-            assert set(gbits.ravel()).issubset({0, 1, 2, 3}), (
-                f'evt={n_events}: unexpected gain bit values: '
-                f'{set(gbits.ravel()) - {0,1,2,3}}'
-            )
+        # All raw gain-bit patterns should be representable (0-3 in top 2 bits).
+        gbits = cp.asnumpy(raw >> 14)
+        assert set(gbits.ravel()).issubset({0, 1, 2, 3}), (
+            f'evt={n_events}: unexpected gain bit values: '
+            f'{set(gbits.ravel()) - {0,1,2,3}}'
+        )
 
-            # Assembled 2-D image (optional — geometry may not be loaded for all runs)
-            try:
-                img = ctx.get('image').on_gpu
-                assert img.dtype == cp.float32
-                assert img.ndim == 2
-                assert img.shape[0] > 0 and img.shape[1] > 0
-            except KeyError:
-                pass   # geometry not available — skip silently
+        # Assembled 2-D image (optional — geometry may not be loaded for all runs)
+        try:
+            img = ctx.get('image').on_gpu
+            assert img.dtype == cp.float32
+            assert img.ndim == 2
+            assert img.shape[0] > 0 and img.shape[1] > 0
+        except KeyError:
+            pass   # geometry not available — skip silently
 
-            n_events += 1
+        n_events += 1
 
     assert n_events > 0
 
@@ -200,24 +202,14 @@ def test_gpu_event_loop_batch_size_5():
     and that the batch_event_index logic is correct for batch_size > 1.
     """
     if not _mfx_data_available():
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
-
-    from psana import DataSource
-
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    smd_files = list(dict.fromkeys(smd_files))
+        pytest.skip(f'test data not found: exp={_EXP} run={_RUN} dir={_DIR}')
 
     def count_events(batch_size):
-        ds = DataSource(
-            files=smd_files,
-            gpu_det=_DET_NAME,
-            batch_size=batch_size,
-            max_events=_MAX_EVENTS,
-        )
+        ds = _make_gpu_datasource(max_events=_MAX_EVENTS, batch_size=batch_size)
         n = 0
-        for run in ds.runs():
-            for _ in run.events():
-                n += 1
+        run = next(ds.runs())
+        for _ in run.events():
+            n += 1
         return n
 
     n_bs1 = count_events(1)

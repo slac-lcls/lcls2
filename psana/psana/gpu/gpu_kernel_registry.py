@@ -37,12 +37,13 @@ SimpleAreaCalibKernel   — Single-gain-mode: (raw − peds) × gmask
 
 default_registry()
     Returns (and caches) a GPUKernelRegistry pre-loaded with the two
-    built-in kernels above.  Used by gpu_events() and DataSource(gpu_det=)
-    unless the caller passes an explicit registry.
+    built-in kernels above.  Used by DataSource(gpu_det=...) and the
+    standalone prototype unless the caller passes an explicit registry.
 
 Custom kernel example
 ---------------------
-    from psana.gpu import GPUKernel, GPUKernelRegistry, gpu_events
+    from psana.gpu import GPUKernel, GPUKernelRegistry
+    from psana.gpu.gpu_events_prototype import gpu_events
 
     class MyEpix10kKernel(GPUKernel):
         name      = 'calib'
@@ -258,7 +259,8 @@ def gpu_kernel_from_file(cuda_file, func_name, det_types,
     -------
     .. code-block:: python
 
-        from psana.gpu import GPUKernelRegistry, gpu_kernel_from_file, gpu_events
+        from psana.gpu import GPUKernelRegistry, gpu_kernel_from_file
+        from psana.gpu.gpu_events_prototype import gpu_events
 
         kernel = gpu_kernel_from_file(
             '/path/to/my_epix10k_calib.cu',
@@ -473,8 +475,8 @@ def default_registry() -> GPUKernelRegistry:
                                         'cspad', 'cspad2x2', 'generic_area'
 
     The registry is a module-level singleton; it is used automatically by
-    gpu_events() and DataSource(gpu_det=...) unless the caller passes an
-    explicit registry parameter.
+    DataSource(gpu_det=...) and the standalone prototype unless the caller
+    passes an explicit registry parameter.
     """
     reg = GPUKernelRegistry()
     reg.register(JungfrauCalibKernel())

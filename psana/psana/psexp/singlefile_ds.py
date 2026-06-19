@@ -11,9 +11,9 @@ class SingleFileDataSource(DataSourceBase):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
 
-        # GPU mode: when gpu_det= is set and the provided files are SMD files,
-        # populate dsparms.smd_files so that Run._gpu_events() can find them.
-        # The corresponding bigdata XTC2 files are derived automatically.
+        # GPU mode with explicit SMD files still keeps the SMD file list on
+        # dsparms.  The integrated GPU iterator is currently wired through
+        # RunSerial; this path preserves the existing files= setup behavior.
         gpu_smd_files = None
         if (self.dsparms.gpu_det and self.files
                 and all(isinstance(f, str) and f.endswith('.smd.xtc2')
@@ -105,9 +105,8 @@ class SingleFileDataSource(DataSourceBase):
     def runs(self):
         if self.dsparms.gpu_det:
             # GPU mode: all files are one combined multi-stream run.
-            # Open the first file to get BeginRun configs; the GPU pipeline
-            # (Run._gpu_events) then re-opens all streams together via
-            # gpu_events(dsparms.smd_files, ...).
+            # Open the first file to get BeginRun configs.  Full GPU event
+            # iteration is currently integrated through RunSerial.
             if self._start_run():
                 expt, runnum, ts = self._get_runinfo()
                 run = RunSingleFile(

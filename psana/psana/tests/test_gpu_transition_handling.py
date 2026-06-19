@@ -42,9 +42,23 @@ import pytest
 
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
-from psana.gpu.gpu_events import _iter_step_services
+from psana.gpu.gpu_events_prototype import _iter_step_services
 
-_SMD_GLOB = os.environ.get('PSANA_GPU_TEST_SMD_GLOB', '')
+_MFX_EXP = os.environ.get('PSANA_GPU_TEST_EXP', 'mfx100852324')
+_MFX_RUN = int(os.environ.get('PSANA_GPU_TEST_RUN', '77'))
+_MFX_XTC_DIR = os.environ.get(
+    'PSANA_GPU_TEST_DIR',
+    '/sdf/data/lcls/ds/prj/public01/xtc',
+)
+_MFX_SMD_GLOB = os.path.join(
+    _MFX_XTC_DIR,
+    'smalldata',
+    f'{_MFX_EXP}-r{_MFX_RUN:04d}*.smd.xtc2',
+)
+_SMD_GLOB = os.environ.get(
+    'PSANA_GPU_TEST_SMD_GLOB',
+    _MFX_SMD_GLOB,
+)
 
 
 def _gpu_available() -> bool:
@@ -56,7 +70,27 @@ def _gpu_available() -> bool:
 
 
 def _mfx_data_available() -> bool:
+    return bool(glob.glob(_MFX_SMD_GLOB))
+
+
+def _smd_data_available() -> bool:
     return bool(glob.glob(_SMD_GLOB))
+
+
+def _make_gpu_datasource(max_events, batch_size=5, n_gpu_streams=None):
+    from psana import DataSource
+
+    kwargs = {
+        'exp': _MFX_EXP,
+        'run': _MFX_RUN,
+        'dir': _MFX_XTC_DIR,
+        'gpu_det': 'jungfrau',
+        'batch_size': batch_size,
+        'max_events': max_events,
+    }
+    if n_gpu_streams is not None:
+        kwargs['n_gpu_streams'] = n_gpu_streams
+    return DataSource(**kwargs)
 
 
 requires_gpu = pytest.mark.skipif(
@@ -197,7 +231,7 @@ def test_batch_splits_at_beginstep():
     Validation: the number of GPU batches must be strictly greater than
     ⌈n_events / batch_size⌉ because at least one batch is split by BeginStep.
     """
-    if not _mfx_data_available():
+    if not _smd_data_available():
         pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
 
     import os as _os
@@ -321,13 +355,12 @@ def test_beginstep_detected_and_called():
     is a no-op, but it must still be made.
     """
     if not _mfx_data_available():
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
+        pytest.skip(
+            f'test data not found: exp={_MFX_EXP} '
+            f'run={_MFX_RUN} dir={_MFX_XTC_DIR}'
+        )
 
-    from psana import DataSource
     from psana.gpu.gpu_calib import GPUDetector
-
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    smd_files = list(dict.fromkeys(smd_files))
 
     beginstep_call_count = [0]
     original_beginstep = GPUDetector.beginstep
@@ -338,11 +371,10 @@ def test_beginstep_detected_and_called():
 
     GPUDetector.beginstep = spy_beginstep
     try:
-        ds = DataSource(files=smd_files, gpu_det='jungfrau',
-                        batch_size=5, max_events=10)
-        for run in ds.runs():
-            for _ in run.events():
-                pass
+        ds = _make_gpu_datasource(max_events=10, batch_size=5)
+        run = next(ds.runs())
+        for _ in run.events():
+            pass
     finally:
         GPUDetector.beginstep = original_beginstep
 
@@ -363,13 +395,12 @@ def test_eventpool_drained_before_beginstep():
     would happen if a kernel were actively reading the buffer.
     """
     if not _mfx_data_available():
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
+        pytest.skip(
+            f'test data not found: exp={_MFX_EXP} '
+            f'run={_MFX_RUN} dir={_MFX_XTC_DIR}'
+        )
 
     import cupy as cp
-    from psana import DataSource
-
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    smd_files = list(dict.fromkeys(smd_files))
 
     # Run with batch_size=5 and n_streams=2 so multiple batches are in flight.
     # If beginstep() fires before the EventPool is drained, peds_gpu.set()
@@ -377,16 +408,19 @@ def test_eventpool_drained_before_beginstep():
     # corrupt data or raise a CUDA error.  We check for both.
     errors = []
     try:
-        ds = DataSource(files=smd_files, gpu_det='jungfrau',
-                        batch_size=5, max_events=20, n_gpu_streams=2)
-        for run in ds.runs():
-            for ctx in run.events():
-                calib = ctx.get('calib').on_gpu
-                if cp.any(cp.isnan(calib)):
-                    errors.append(
-                        f'NaN in calib at ts={ctx.timestamp} — '
-                        'possible calibconst corruption across BeginStep boundary'
-                    )
+        ds = _make_gpu_datasource(
+            max_events=20,
+            batch_size=5,
+            n_gpu_streams=2,
+        )
+        run = next(ds.runs())
+        for ctx in run.events():
+            calib = ctx.get('calib').on_gpu
+            if cp.any(cp.isnan(calib)):
+                errors.append(
+                    f'NaN in calib at ts={ctx.timestamp} — '
+                    'possible calibconst corruption across BeginStep boundary'
+                )
     except Exception as exc:
         errors.append(f'CUDA exception: {exc}')
 

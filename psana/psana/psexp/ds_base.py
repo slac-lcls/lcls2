@@ -60,19 +60,24 @@ class DsParms:
     # yields GpuEventContext objects instead of Event objects.
     gpu_det: object = None          # str | list[str] | None
     n_gpu_streams: int = 4          # EventPool depth; 4 concurrent streams optimal for NVMe io_depth
-    # GPU-routed bigdata stream indices.  Populated automatically by
-    # gpu_events() from the SMD Configure dgrams (no bigdata access needed).
-    # Forwarded to EventBuilder so it can split those streams into GPUBAT1
-    # without relying on PS_TEST_GPU_STREAM_IDS.
+    # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
+    # already parsed by DgramManager.  Forwarded to EventBuilder so it can
+    # split those streams into GPUBAT1 without relying on PS_TEST_GPU_STREAM_IDS.
     gpu_stream_ids: list = None     # list[int] | None
 
     def set_det_class_table(
-        self, det_classes, xtc_info, det_info_table, det_stream_id_table
+        self,
+        det_classes,
+        xtc_info,
+        det_info_table,
+        det_stream_ids_table,
+        det_stream_segments_table=None,
     ):
         self.det_classes = det_classes
         self.xtc_info = xtc_info
         self.det_info_table = det_info_table
-        self.det_stream_id_table = det_stream_id_table
+        self.det_stream_ids_table = det_stream_ids_table
+        self.det_stream_segments_table = det_stream_segments_table or {}
 
     def update_smd_state(self, smd_files, use_smds):
         self.smd_files = smd_files
@@ -82,11 +87,18 @@ class DsParms:
     def intg_stream_id(self):
         # We only set detector related fields later (setup run files) so there
         # is a chance that the stream id table is not created yet.
-        stream_id = -1
-        if hasattr(self, "det_stream_id_table"):
-            if self.intg_det in self.det_stream_id_table:
-                stream_id = self.det_stream_id_table[self.intg_det]
-        return stream_id
+        if not self.intg_det or not hasattr(self, "det_stream_ids_table"):
+            return -1
+
+        stream_ids = self.det_stream_ids_table.get(self.intg_det, [])
+        if len(stream_ids) == 0:
+            return -1
+        if len(stream_ids) != 1:
+            raise ValueError(
+                f"intg_det={self.intg_det!r} must map to exactly one stream, "
+                f"got {stream_ids}"
+            )
+        return stream_ids[0]
 
 class DataSourceBase(abc.ABC):
     """
@@ -209,8 +221,8 @@ class DataSourceBase(abc.ABC):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
         # Final sanity check.
-        # batch_size=0 is allowed when gpu_det is set: gpu_events() will
-        # auto-compute the optimal value from GPU device properties.
+        # batch_size=0 is allowed when gpu_det is set: GpuEvents will
+        # auto-compute the optimal value from GPU detector properties.
         if self.batch_size == 0 and not kwargs.get('gpu_det'):
             self.batch_size = 1   # default for CPU path
         assert self.batch_size >= 0, "batch_size must be >= 0"

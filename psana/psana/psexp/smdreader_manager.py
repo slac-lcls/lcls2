@@ -36,7 +36,8 @@ class BatchIterator(object):
                                    filter_timestamps=dsparms.timestamps,
                                    intg_stream_id=dsparms.intg_stream_id,
                                    batch_size=dsparms.batch_size,
-                                   use_proxy_events=use_proxy_events)
+                                   use_proxy_events=use_proxy_events,
+                                   gpu_stream_ids=getattr(dsparms, "gpu_stream_ids", None))
             self.run_smd = RunSmallData(
                 self.eb,
                 configs,
@@ -58,6 +59,20 @@ class BatchIterator(object):
         # With batch_size known, smditer returns a batch_dict of this format:
         # {rank:[bytearray, evt_size_list], ...}
         # for each next while updating offsets of each smd memoryview
+        batch_dict, _, step_dict = self.next_with_gpu()
+        return batch_dict, step_dict
+
+    def _normalize_batch_result(self, batch_result):
+        if len(batch_result) == 3:
+            return batch_result
+
+        batch_dict, step_dict = batch_result
+        return batch_dict, {}, step_dict
+
+    def next_with_gpu(self):
+        # With batch_size known, smditer returns a batch_dict of this format:
+        # {rank:[bytearray, evt_size_list], ...}
+        # for each next while updating offsets of each smd memoryview
         if not self.eb:
             raise StopIteration
 
@@ -66,16 +81,19 @@ class BatchIterator(object):
         # left in all views used by EventBuilder. From this while/for loops, we
         # either gets transitions from SmdDataSource and/or L1 from the callback.
         if self.dsparms.smd_callback == 0:
-            batch_dict, step_dict = self.eb.build()
-            if self.eb.nevents == 0:
+            batch_dict, gpu_batch_dict, step_dict = self._normalize_batch_result(
+                self.eb.build()
+            )
+            if self.eb.nevents == 0 and self.eb.nsteps == 0:
                 raise StopIteration
         else:
             callback_batch = self.callback_batch_builder.next_batch(run_serial=True)
             if callback_batch is None:
                 raise StopIteration
             batch_dict, step_dict = callback_batch
+            gpu_batch_dict = {}
 
-        return batch_dict, step_dict
+        return batch_dict, gpu_batch_dict, step_dict
 
 
 class SmdReaderManager(object):

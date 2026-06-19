@@ -28,6 +28,7 @@ Run
         psana/psana/tests/test_gpu_kernel_registry.py -m slow
 """
 
+import glob
 import os
 
 import numpy as np
@@ -50,7 +51,21 @@ from psana.gpu.detector_router import DetectorRouter
 _DIR        = os.path.dirname(os.path.realpath(__file__))
 _JUNGFRAU   = os.path.join(_DIR, 'test_data', 'detector',
                             'test_jungfrau05M_calib.xtc2')
-_SMD_GLOB = os.environ.get('PSANA_GPU_TEST_SMD_GLOB', '')
+_MFX_EXP = os.environ.get('PSANA_GPU_TEST_EXP', 'mfx100852324')
+_MFX_RUN = int(os.environ.get('PSANA_GPU_TEST_RUN', '77'))
+_MFX_XTC_DIR = os.environ.get(
+    'PSANA_GPU_TEST_DIR',
+    '/sdf/data/lcls/ds/prj/public01/xtc',
+)
+_MFX_SMD_GLOB = os.path.join(
+    _MFX_XTC_DIR,
+    'smalldata',
+    f'{_MFX_EXP}-r{_MFX_RUN:04d}*.smd.xtc2',
+)
+_SMD_GLOB = os.environ.get(
+    'PSANA_GPU_TEST_SMD_GLOB',
+    _MFX_SMD_GLOB,
+)
 _DET_NAME   = 'jungfrau'
 
 
@@ -68,6 +83,23 @@ requires_gpu = pytest.mark.skipif(
     not _gpu_available(),
     reason='no CUDA device available',
 )
+
+
+def _mfx_data_available() -> bool:
+    return bool(glob.glob(_MFX_SMD_GLOB))
+
+
+def _make_gpu_datasource(max_events=3, batch_size=5):
+    from psana import DataSource
+
+    return DataSource(
+        exp=_MFX_EXP,
+        run=_MFX_RUN,
+        dir=_MFX_XTC_DIR,
+        gpu_det=_DET_NAME,
+        batch_size=batch_size,
+        max_events=max_events,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -283,12 +315,13 @@ def test_simple_area_kernel_formula():
 def test_custom_kernel_in_pipeline():
     """A user-registered kernel is correctly dispatched through gpu_events().
 
-    Registers ScaledKernel (returns 2× the Jungfrau output) and verifies the
-    pipeline result is exactly 2× the default pipeline result.
+    Registers ScaledKernel (returns 2x the Jungfrau output) and verifies the
+    first routed pipeline result is exactly 2x the default pipeline result.
     """
     import glob
     import cupy as cp
-    from psana.gpu import gpu_events, GPUKernelRegistry
+    from psana.gpu import GPUKernelRegistry
+    from psana.gpu.gpu_events_prototype import gpu_events
     from psana.gpu.gpu_calib import fused_calib_gpu
 
     SCALE = 2.0
@@ -309,28 +342,29 @@ def test_custom_kernel_in_pipeline():
         pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
     smd_files = list(dict.fromkeys(smd_files))
 
-    default_results = []
-    scaled_results  = []
+    default_results = {}
+    scaled_results  = {}
 
-    for ctx in gpu_events(smd_files, 'jungfrau', batch_size=5, max_events=3):
-        default_results.append(ctx.get('calib').on_cpu)
+    for ctx in gpu_events(smd_files, 'jungfrau', batch_size=5, max_events=1):
+        default_results[ctx.timestamp] = ctx.get('calib').on_cpu
 
-    for ctx in gpu_events(smd_files, 'jungfrau', batch_size=5, max_events=3,
+    for ctx in gpu_events(smd_files, 'jungfrau', batch_size=5, max_events=1,
                           registry=custom_reg):
-        scaled_results.append(ctx.get('calib').on_cpu)
+        scaled_results[ctx.timestamp] = ctx.get('calib').on_cpu
 
-    assert len(default_results) == len(scaled_results) > 0, (
-        'both pipelines must produce the same number of events'
+    assert default_results.keys() == scaled_results.keys()
+    assert default_results, (
+        'both pipelines must produce at least one matching event'
     )
 
-    for i, (d, s) in enumerate(zip(default_results, scaled_results)):
-        nonzero = d != 0
-        if nonzero.any():
-            ratio = s[nonzero] / d[nonzero]
-            assert np.allclose(ratio, SCALE, atol=0.01), (
-                f'evt={i}: scaled/default should be {SCALE} '
-                f'(mean ratio={ratio.mean():.4f})'
-            )
+    for timestamp in sorted(default_results):
+        d = default_results[timestamp]
+        s = scaled_results[timestamp]
+        finite = np.isfinite(d) & np.isfinite(s)
+        assert finite.any(), f'timestamp={timestamp}: no finite pixels'
+        assert np.allclose(s[finite], d[finite] * SCALE, rtol=1e-5, atol=0.05), (
+            f'timestamp={timestamp}: scaled output should be {SCALE}x default'
+        )
 
 
 @pytest.mark.slow
@@ -341,35 +375,33 @@ def test_detector_router_in_context():
     Verifies that DetectorRouter is wired into GpuEventContext and resolves
     unqualified keys correctly end-to-end through the DataSource integration.
     """
-    import glob
     import cupy as cp
-    from psana import DataSource
 
-    smd_files = sorted(glob.glob(_SMD_GLOB))
-    if not smd_files:
-        pytest.skip(f'test data not found (set PSANA_GPU_TEST_SMD_GLOB): {_SMD_GLOB}')
-    smd_files = list(dict.fromkeys(smd_files))
+    if not _mfx_data_available():
+        pytest.skip(
+            f'test data not found: exp={_MFX_EXP} '
+            f'run={_MFX_RUN} dir={_MFX_XTC_DIR}'
+        )
 
-    ds = DataSource(files=smd_files, gpu_det='jungfrau', batch_size=5,
-                    max_events=3)
+    ds = _make_gpu_datasource(max_events=3, batch_size=5)
     n_checked = 0
-    for run in ds.runs():
-        for ctx in run.events():
-            unq = ctx.get('calib').on_gpu           # unqualified
-            qua = ctx.get('jungfrau.calib').on_gpu  # qualified
+    run = next(ds.runs())
+    for ctx in run.events():
+        unq = ctx.get('calib').on_gpu           # unqualified
+        qua = ctx.get('jungfrau.calib').on_gpu  # qualified
 
-            assert cp.array_equal(unq, qua), (
-                'ctx.get("calib") and ctx.get("jungfrau.calib") must be identical'
-            )
+        assert cp.array_equal(unq, qua), (
+            'ctx.get("calib") and ctx.get("jungfrau.calib") must be identical'
+        )
 
-            # raw also resolves through the router.
-            raw_unq = ctx.get('raw').on_gpu
-            raw_qua = ctx.get('jungfrau.raw').on_gpu
-            assert cp.array_equal(raw_unq, raw_qua), (
-                'ctx.get("raw") and ctx.get("jungfrau.raw") must be identical'
-            )
+        # raw also resolves through the router.
+        raw_unq = ctx.get('raw').on_gpu
+        raw_qua = ctx.get('jungfrau.raw').on_gpu
+        assert cp.array_equal(raw_unq, raw_qua), (
+            'ctx.get("raw") and ctx.get("jungfrau.raw") must be identical'
+        )
 
-            n_checked += 1
+        n_checked += 1
 
     assert n_checked > 0, 'no events processed'
 

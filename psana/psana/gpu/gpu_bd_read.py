@@ -14,10 +14,29 @@ from psana.psexp import TransitionId
 from psana.gpu.gpu_batch import GpuBatchView
 from psana.gpu.gpu_compare import (
     collect_no_split_reference,
+    compare_jungfrau_raw,
     compare_split_event,
     digest_bytes,
 )
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpu_raw_offset_cache import GpuRawOffsetCache, parse_stream_ids
+from psana.gpu.gpu_jungfrau import (
+    assemble_jungfrau_raw,
+    build_jungfrau_raw_loc_table,
+    prepare_jungfrau_raw_layout,
+    JF_LOC_DIM0,
+    JF_LOC_DIM1,
+    JF_LOC_DIM2,
+    JF_LOC_DTYPE_SIZE,
+    JF_LOC_NAMES_ID_VALUE,
+    JF_LOC_RAW_DEVICE_OFFSET,
+    JF_LOC_RAW_NBYTES,
+    JF_LOC_SEGMENT,
+    JF_LOC_STATUS,
+    JF_LOC_STATUS_FOUND,
+    JF_LOC_STREAM_ID,
+    JF_LOC_TIMESTAMP,
+)
 from psana.gpu.gpudgramlite import (
     extract_dgram_info,
     INFO_TIMESTAMP,
@@ -150,6 +169,35 @@ def smd_to_xtc_file(smd_file):
     return xtc_file
 
 
+def _bootstrap_raw_offset_cache(raw_offset_cache, read_descs):
+    if raw_offset_cache is None:
+        return
+
+    before = raw_offset_cache.n_rows
+    cached_streams = []
+    for desc in read_descs:
+        if raw_offset_cache.is_stream_cached(desc.stream_id):
+            continue
+        n_added = raw_offset_cache.ensure_stream_cached(
+            desc.stream_id,
+            desc.offset,
+            desc.size,
+        )
+        if n_added:
+            cached_streams.append(desc.stream_id)
+
+    if raw_offset_cache.n_rows != before:
+        streams = ",".join(str(stream_id) for stream_id in cached_streams)
+        print(
+            "gpu_raw_offset_cache: "
+            f"cached_streams={streams} "
+            f"streams={raw_offset_cache.n_cached_streams}/"
+            f"{raw_offset_cache.expected_n_streams} "
+            f"rows={raw_offset_cache.n_rows} "
+            f"ready={raw_offset_cache.ready}"
+        )
+
+
 def main():
     args = _parse_args()
     smd_files = _resolve_input_files(args.inputs)
@@ -163,6 +211,8 @@ def main():
     )
 
     gpu_detector = None
+    raw_offset_cache = None
+    jungfrau_layout = None
     from psana.psexp import TransitionId as _TID   # needed for beginstep check
 
     _compute_calib = None   # set below when --test-calib is active
@@ -214,6 +264,17 @@ def main():
 
         # GPU reader
         gpu_reader = KvikioGpuReader()
+        gpu_stream_ids = parse_stream_ids(os.environ.get("PS_TEST_GPU_STREAM_IDS"))
+        if gpu_stream_ids:
+            print(
+                "gpu_stream_ids: "
+                f"{','.join(str(stream_id) for stream_id in gpu_stream_ids)}"
+            )
+            raw_offset_cache = GpuRawOffsetCache(
+                gpu_stream_ids,
+                xtc_files=xtc_files,
+                configs=smd_manager.configs,
+            )
 
         # Smd0 builds smd chunks in a loop until it finds an EndRun or runs out of events.
         n_events = 0
@@ -227,12 +288,17 @@ def main():
             )
 
             if args.compare_nosplit:
+                ref_jungfrau_raw_by_ts = (
+                    {} if raw_offset_cache is not None else None
+                )
                 ref_by_ts = collect_no_split_reference(
                     smd_chunk,
                     smd_manager.configs,
                     dsparms,
                     xtc_files,
                     max_events=args.max_events,
+                    jungfrau_raw_by_ts=ref_jungfrau_raw_by_ts,
+                    jungfrau_segments=None,
                 )
                 msg += f" ref_events={len(ref_by_ts)}"
 
@@ -242,6 +308,7 @@ def main():
             for batch_dict, gpu_batch_dict, step_dict in eb_manager.batches_with_gpu():
                 n_batches += 1
                 split_by_ts = {}
+                gpu_jungfrau_raw_by_ts = {}
 
                 # -------------------------------------------------------
                 # BeginStep hook: refresh calibration constants in-place.
@@ -315,6 +382,10 @@ def main():
                     gpu_read = gpu_reader.wait_batch(
                         pending, compute_digest=args.compare_nosplit
                     )
+                    _bootstrap_raw_offset_cache(
+                        raw_offset_cache,
+                        gpu_read.read_descs,
+                    )
 
                     info_gpu = extract_dgram_info(
                         gpu_read.data_gpu,
@@ -350,6 +421,53 @@ def main():
                                 f"mean={calib_np.mean():.2f}"
                             )
 
+                    if raw_offset_cache is not None:
+                        if jungfrau_layout is None and raw_offset_cache.ready:
+                            jungfrau_layout = prepare_jungfrau_raw_layout(
+                                raw_offset_cache,
+                                cp=gpu_reader.cp,
+                            )
+                            if jungfrau_layout is not None:
+                                print(
+                                    "gpu_raw_layout: "
+                                    f"raw_shape={jungfrau_layout.raw_shape}"
+                                )
+
+                        if jungfrau_layout is not None:
+                            jf_loc_cpu = build_jungfrau_raw_loc_table(
+                                gpu_read.desc_table,
+                                raw_offset_cache,
+                            )
+                            jf_loc_gpu = gpu_reader.cp.asarray(jf_loc_cpu)
+                            raw_gpu = assemble_jungfrau_raw(
+                                gpu_read.data_gpu,
+                                jf_loc_gpu,
+                                jungfrau_layout,
+                                gpu_view.header.n_events,
+                            )
+                            if args.compare_nosplit:
+                                raw_cpu_from_gpu = raw_gpu.get()
+                                for event in gpu_view.iter_events():
+                                    gpu_jungfrau_raw_by_ts[event.timestamp] = (
+                                        raw_cpu_from_gpu[event.batch_event_index].copy()
+                                    )
+                            for row in jf_loc_cpu:
+                                if int(row[JF_LOC_STATUS]) != JF_LOC_STATUS_FOUND:
+                                    continue
+                                print(
+                                    "gpu_jungfrau: "
+                                    f"timestamp={int(row[JF_LOC_TIMESTAMP])} "
+                                    f"stream={int(row[JF_LOC_STREAM_ID])} "
+                                    f"names_id={int(row[JF_LOC_NAMES_ID_VALUE])} "
+                                    f"segment={int(row[JF_LOC_SEGMENT])} "
+                                    f"raw_device_offset={int(row[JF_LOC_RAW_DEVICE_OFFSET])} "
+                                    f"raw_nbytes={int(row[JF_LOC_RAW_NBYTES])} "
+                                    f"shape=({int(row[JF_LOC_DIM0])},"
+                                    f"{int(row[JF_LOC_DIM1])},"
+                                    f"{int(row[JF_LOC_DIM2])}) "
+                                    f"dtype_size={int(row[JF_LOC_DTYPE_SIZE])}"
+                                )
+
                 # -------------------------------------------------------
                 # Per-event output and compare (after both paths complete).
                 # -------------------------------------------------------
@@ -365,6 +483,16 @@ def main():
                             ref_by_ts, split_by_ts, evt.timestamp
                         )
                         print(f"compare_ok timestamp={evt.timestamp} streams={n_compare_streams}")
+                        if ref_jungfrau_raw_by_ts is not None:
+                            raw_shape = compare_jungfrau_raw(
+                                ref_jungfrau_raw_by_ts,
+                                gpu_jungfrau_raw_by_ts,
+                                evt.timestamp,
+                            )
+                            print(
+                                f"gpu_raw_compare_ok timestamp={evt.timestamp} "
+                                f"shape={raw_shape}"
+                            )
 
                 if stop:
                     break
@@ -381,6 +509,8 @@ def main():
             bd_dm.close()
         if gpu_reader is not None:
             gpu_reader.close()
+        if raw_offset_cache is not None:
+            raw_offset_cache.close()
 
 if __name__ == "__main__":
     main()

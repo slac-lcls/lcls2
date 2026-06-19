@@ -168,6 +168,14 @@ Example:
 to schedule KvikIO reads. `device_offset` is the offset into the contiguous
 `data_gpu` byte buffer where that bigdata dgram is read.
 
+Current assumption: the full descriptor table for one EventBuilder GPU batch is
+copied to one GPU as `desc_table_gpu`, and KvikIO reads all described bigdata
+dgrams into one `data_gpu` buffer on that GPU. If one CPU BD rank later drives
+more than one GPU, this batch needs an additional partitioning step. That split
+could be by event range, stream id, total read bytes, or another scheduling
+policy, but each GPU should receive only the descriptor subset and `data_gpu`
+allocation it owns.
+
 Columns:
 
 ```text
