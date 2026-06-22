@@ -73,9 +73,20 @@ cuda_compiler = find_program('nvcc', required: false)
 if cuda_compiler.found()
   add_languages('cuda', native: false) # Python 3.9
   cmake = import('cmake')
+  cmk_opts = cmake.subproject_options()
+  cmk_opts.add_cmake_defines({'CMAKE_BUILD_TYPE': 'RelWithDebInfo'})
+  cmk_opts.add_cmake_defines({'CMAKE_CUDA_ARCHITECTURES': '86;90'})
+  cmk_opts.set_override_option('cpp_std', 'c++17')
+  cmk_opts.set_override_option('cuda_std', 'c++17')
+  # Build fails with the following (which the old method had)?
+  #cmk_opts.append_compile_args('cuda', '-rdc=true')
+  cmk_opts.set_override_option('warning_level', '0')
+  cmk_opts.append_compile_args('cpp', '-w')
+  cmk_opts.append_compile_args('cuda', '-Xcompiler=-w')
+
   # 6/16/26: Comment these out as they produce lots of warnings
-  #cusz_proj = cmake.subproject('cusz')
-  #cuszp_proj = cmake.subproject('cuszp')
+  #cusz_proj = cmake.subproject('cusz', options: cmk_opts)
+  #cuszp_proj = cmake.subproject('cuszp', options: cmk_opts)
 endif
 
 if get_option('build_daq')
