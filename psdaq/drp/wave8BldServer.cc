@@ -10,10 +10,11 @@
 #include <netinet/in.h>
 
 #include "psdaq/aes-stream-drivers/AxisDriver.h"
-#include "psdaq/service/Fifo.hh"
+#include "psdaq/service/EbDgram.hh"
 #include "psdaq/bld/Server.hh"
 #include "psdaq/bld/Header.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include <stdexcept>
 #include "EventBatcher.hh"
 #include "drp.hh"
 
@@ -51,17 +52,17 @@ struct Wave8BldPayload {
 //   TEM2 base = 0x00C20000
 //   TEB[0] = base + sizeof(TEM2) = base + 0x9000
 //   TEB registers: enable@+0, group@+4, pauseThresh@+8, triggerDelay@+0xC
-static void init_kcu_teb(int dma_fd, unsigned readoutGroup)
+static void init_kcu_teb(int dma_fd, unsigned lane, unsigned readoutGroup)
 {
-    const uint32_t TEB0 = 0x00C29000;
-    dmaWriteRegister(dma_fd, TEB0 + 0x00, 1 << 2);       // enable = reset counters
-    dmaWriteRegister(dma_fd, TEB0 + 0x04, readoutGroup);  // group
-    dmaWriteRegister(dma_fd, TEB0 + 0x08, 16);            // pauseThresh
-    dmaWriteRegister(dma_fd, TEB0 + 0x0C, 42);            // triggerDelay
-    dmaWriteRegister(dma_fd, TEB0 + 0x00, 3);             // enable = 3
-    dmaWriteRegister(dma_fd, 0x00a00000,  1 << 30);       // DMA path clear
-    dmaWriteRegister(dma_fd, 0x00a00000,  1 << 31);       // DMA path enable
-    printf("kcu1500 TEB[0] enabled (group=%u)\n", readoutGroup);
+    const uint32_t TEB0 = 0x00C29000 + lane * 0x1000;
+    dmaWriteRegister(dma_fd, TEB0 + 0x00, 1 << 2);
+    dmaWriteRegister(dma_fd, TEB0 + 0x04, readoutGroup);
+    dmaWriteRegister(dma_fd, TEB0 + 0x08, 16);
+    dmaWriteRegister(dma_fd, TEB0 + 0x0C, 42);
+    dmaWriteRegister(dma_fd, TEB0 + 0x00, 3);
+    dmaWriteRegister(dma_fd, 0x00a00000 + 4 * (lane & 3), 1 << 30);
+    dmaWriteRegister(dma_fd, 0x00a00000 + 4 * (lane & 3), 1 << 31);
+    printf("kcu1500 TEB[%u] enabled (group=%u)\n", lane, readoutGroup);
 }
 
 static int setup_mc(unsigned addr, unsigned port, unsigned iface)
@@ -103,8 +104,9 @@ static int setup_mc(unsigned addr, unsigned port, unsigned iface)
 
 static void show_usage(const char* p)
 {
-    printf("Usage: %s -d <device> [-m <mcast_addr>] [-p <port>] [-i <iface>] [-g <group>] [-v]\n", p);
+    printf("Usage: %s -d <device> [-l <lane>] [-m <mcast_addr>] [-p <port>] [-i <iface>] [-g <group>] [-v]\n", p);
     printf("  -d  DMA device (e.g. /dev/datadev_0)\n");
+    printf("  -l  PGP lane number (default 1; use 0 if DAQ fiber is on lane 0)\n");
     printf("  -m  Multicast address (dotted decimal); omit for print-only mode\n");
     printf("  -p  UDP port (default 11001)\n");
     printf("  -i  Outgoing NIC address (dotted decimal, default 0.0.0.0)\n");
@@ -119,14 +121,16 @@ int main(int argc, char* argv[])
     unsigned    mc_port      = 11001;
     std::string iface_str    = "0.0.0.0";
     unsigned    readoutGroup = 0;
+    unsigned    lane         = 1;
     bool        verbose      = false;
 
     int c;
-    while ((c = getopt(argc, argv, "d:m:p:i:g:vh?")) != EOF) {
+    while ((c = getopt(argc, argv, "d:l:m:p:i:g:vh?")) != EOF) {
         switch (c) {
-        case 'd': device     = optarg;           break;
-        case 'm': mcast_addr = optarg;           break;
-        case 'p': mc_port    = atoi(optarg);     break;
+        case 'd': device       = optarg;         break;
+        case 'l': lane         = atoi(optarg);   break;
+        case 'm': mcast_addr   = optarg;         break;
+        case 'p': mc_port      = atoi(optarg);   break;
         case 'i': iface_str  = optarg;           break;
         case 'g': readoutGroup = atoi(optarg);   break;
         case 'v': verbose    = true;             break;
@@ -142,8 +146,8 @@ int main(int argc, char* argv[])
     // Open DMA device — DAQ lane is lane 1, VC 1
     uint8_t mask[DMA_MASK_SIZE];
     dmaInitMaskBytes(mask);
-    dmaAddMaskBytes(mask, dmaDest(1, 1));
-    printf("DMA dest: lane 1 VC 1 = 0x%x\n", dmaDest(1, 1));
+    dmaAddMaskBytes(mask, dmaDest(lane, 1));
+    printf("DMA dest: lane %u VC 1 = 0x%x\n", lane, dmaDest(lane, 1));
 
     fd = open(device.c_str(), O_RDWR);
     if (fd < 0) { perror(device.c_str()); return 1; }
@@ -155,12 +159,12 @@ int main(int argc, char* argv[])
 
     if (dmaSetMaskBytes(fd, mask)) {
         perror("dmaSetMaskBytes");
-        printf("Is another process holding %s lane 1 VC 1?\n", device.c_str());
+        printf("Is another process holding %s lane %u VC 1?\n", device.c_str(), lane);
         return 1;
     }
 
     // Enable kcu1500 TriggerEventBuffer so events are forwarded to DMA
-    init_kcu_teb(fd, readoutGroup);
+    init_kcu_teb(fd, lane, readoutGroup);
 
     // Set up multicast socket (optional — omit -m for print-only mode)
     int fd_mc = -1;
