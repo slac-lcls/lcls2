@@ -27,11 +27,13 @@ class CustomCollector():
         #  PVs to monitor
         self._monpgp  = []
         self._monjesd = []
+        self._montrig = []
         self._monoor  = []
         self._channels = bases[hutch]
         for i in self._channels:
             self._monpgp .append(f'{i}:MONPGP')
             self._monjesd.append(f'{i}:MONJESD')
+            self._montrig.append(f'{i}:MONTRIG')
             self._monoor .append(f'{i}:FEXOOR')
 
     def collect(self):
@@ -89,6 +91,21 @@ class CustomCollector():
 #                yield ('RxStatusCnt', counts)
             except TimeoutError:
                 logging.debug('collect %s: TimeoutError' % self._monjesd)
+
+            try:
+                values = self.ctx.get(self._montrig)
+                fields = []
+                for v in values:
+                    fields.append( getattr(v,'early') )
+                yield ('earlytrig', fields)
+
+                values = self.ctx.get(self._montrig)
+                fields = []
+                for v in values:
+                    fields.append( getattr(v,'late') )
+                yield ('latetrig', fields)
+            except TimeoutError:
+                logging.debug('collect %s: TimeoutError' % self._monpgp)
 
             try:
                 values = self.ctx.get(self._monoor)
