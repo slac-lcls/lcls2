@@ -47,11 +47,13 @@ def jungfrau_init(
         #'zmqSrvEn': True,        # Include ZMQ server (True by default)
     }
 
+    print('*** cpo here in init')
     jungfrau_kcu = lcls2_udp_pcie_apps.DevRoot(**myargs) # Requires the defaultFile parameter...
 
     weakref.finalize(jungfrau_kcu, jungfrau_kcu.stop)
     jungfrau_kcu.start()
 
+    print('*** cpo done init')
     return jungfrau_kcu
 
 
@@ -121,9 +123,11 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     print("jungfrau_config")
     group = grp  # Assign before calling other functions.
 
-    print('*** cpohack: eliminate latency check to speed up link lock ***')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask = 0
+    cpojunk_old = jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask.get()
+    #jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask.set(0)
     time.sleep(0.1)
+    cpojunk_new = jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask.get()
+    print('*** cpohack: eliminate latency check to speed up link lock ***',cpojunk_old,cpojunk_new)
 
     detsegm_list = []
     if isinstance(detsegm,int):
@@ -199,11 +203,6 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
         if lm & (1 << i):
             print(f"Enabling lane {i}")
             trigEventManager.TriggerEventBuffer[i].MasterEnable.set(1)
-
-    print('*** cpohack2: eliminate latency check to speed up link lock ***')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask = 0
-    print('*** cpohack3: eliminate latency check to speed up link lock: ***',jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].Mask)
-    time.sleep(0.1)
 
     return cfg_list
 
