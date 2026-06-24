@@ -15,6 +15,7 @@ import argparse
 import importlib
 import rogue
 import pyrogue.pydm
+import struct
 
 if __name__ == "__main__":
 
@@ -80,6 +81,14 @@ if __name__ == "__main__":
             pollEn         = args.pollEn,
             initRead       = args.initRead,
         ) as root:
+
+        def handle(msg):
+            s = struct.Struct('H')
+            siter = s.iter_unpack(msg)
+            src = next(siter)[0]
+            print(f'src is {src},  len is {len(msg)}')
+
+        root.handle(handle)
 
         ######################
         # Development PyDM GUI
