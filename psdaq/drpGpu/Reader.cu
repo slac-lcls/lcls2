@@ -307,7 +307,8 @@ void _waitForDMA(unsigned  const                            reader,
                  uint64_t* const               __restrict__ pblWtCtr,
                  uint64_t* const               __restrict__ dmaWtCtr)
 {
-  if (*state == 0) {
+  auto lclState{*state};
+  if (lclState == 0) {
     DBG(*stateMon = 1;)
     // Wait for data to be DMAed into the GPU
     const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBuffers[*dmaBufferIdx] + 4);
@@ -322,10 +323,11 @@ void _waitForDMA(unsigned  const                            reader,
       }
     }
     //printf("### Reader[%u]: dma[%u] %p: sz %u\n", reader, *dmaBufferIdx, mem, *mem);
-    *state = 1;
+    lclState = 1;
+    *state = lclState;
     DBG(*stateMon = 3; ++(*dmaWtCtr);)
   }
-  if (*state == 1) {
+  if (lclState == 1) {
     // Allocate the index of the next set of intermediate buffers to be used
     unsigned ns{8};
     unsigned idx;
