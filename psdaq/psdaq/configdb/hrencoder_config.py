@@ -16,7 +16,9 @@ import weakref
 import pyrogue as pr
 import surf.protocols.clink as clink
 import rogue.interfaces.stream
+from psdaq.cas.pgpmonitor import PgpMonitor
 
+pgp_mon = None
 hr_enc = None
 pv = None
 lm: int = 1
@@ -61,8 +63,15 @@ def hrencoder_init(
     global hr_enc
     global lm
     global lane
+    global pgp_mon
 
     print("hrencoder_init")
+
+    pgp_mon = PgpMonitor( dev      = dev,
+                          lanemask = lanemask,
+                          numVc    = 2 )
+    pgp_mon.__enter__()
+    pgp_mon.init_lanes()
 
     lm = lanemask
     lane = (lm & -lm).bit_length() - 1
@@ -91,6 +100,8 @@ def hrencoder_init(
 
 def hrencoder_connectionInfo(hr_enc, alloc_json_str):
     print("hrencoder_connect")
+
+    pgp_mon.check_lanes('connect')
 
     txId = timTxId("hrencoder")
 
@@ -149,6 +160,9 @@ def hrencoder_config(hr_enc, connect_str, cfgtype, detname, detsegm, grp):
     global group
 
     print("hrencoder_config")
+
+    pgp_mon.check_lanes('config')
+
     group = grp  # Assign before calling other functions.
 
     cfg = get_config(connect_str, cfgtype, detname, detsegm)
@@ -231,6 +245,19 @@ def hrencoder_update(update):
 def hrencoder_unconfig(hr_enc):
     print("hrencoder_unconfig")
 
+    pgp_mon.check_lanes('unconfig')
+
     hr_enc.StopRun()
 
     return hr_enc
+
+#
+#  Test standalone
+#
+if __name__ == "__main__":
+
+#    logging.basicConfig(level=logging.INFO)
+    base = hrencoder_init(None, dev='/dev/datadev_0')
+    hrencoder_connectionInfo(base, None)
+    logging.info('***** DONE *****')
+

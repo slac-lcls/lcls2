@@ -11,6 +11,8 @@ from psdaq.utils import enable_epix_uhr_gtreadout_dev
 import epix_uhr_gtreadout_dev as epixUhrDev
 import surf.protocols.batcher as batcher
 
+from psdaq.cas.pgpmonitor import PgpMonitor
+
 import time
 import json
 import os
@@ -170,6 +172,16 @@ def epixUHR_init(arg, dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
     base = {}
     #  Connect to the camera and the PCIe card
 
+    pcie_card = PgpMonitor(pollEn=False,
+                           initRead=False,
+                           dev=dev,
+                           lanemask=lanemask,
+                           numVc=2)
+    pcie_card.__enter__()
+    pcie_card.init_lanes()
+
+    base['pcie'] = pcie_card
+
     det_root = epixUhrDev.Root(
         dev          = dev,
         defaultFile  = ' ',
@@ -256,6 +268,8 @@ def epixUHR_init_feb(slane=None,schan=None):
 #  Set the local timing ID and fetch the remote timing ID
 #
 def epixUHR_connectionInfo(base, alloc_json_str) -> dict:
+
+    base['pcie'].check_lanes('connect')
 
 #
 #  To do:  get the IDs from the detector and not the timing link
@@ -593,6 +607,8 @@ def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
     global gain_map
     group = rog
 
+    base['pcie'].check_lanes('configure')
+
     #
     #  Retrieve the full configuration from the configDB
     #
@@ -681,6 +697,7 @@ def epixUHR_config(base,connect_str, cfgtype,detname,detsegm,rog) -> list:
 
 def epixUHR_unconfig(base) -> dict:
     logging.info('epixUHR_unconfig')
+    base['pcie'].check_lanes('unconfig')
     _stop(base)
     return base
 
@@ -826,11 +843,13 @@ def epixUHR_internal_trigger(base):
     
 def epixUHR_enable(base):
     logging.info('epixUHR_enable')
+    base['pcie'].check_lanes('enable')
     epixUHR_external_trigger(base)
     _start(base)
 
 def epixUHR_disable(base):
     logging.info('epixUHR_disable')
+    base['pcie'].check_lanes('disable')
     # Prevents transitions going through: epixUHR_internal_trigger(base)
 
 def _stop(base):
