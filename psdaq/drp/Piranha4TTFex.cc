@@ -17,8 +17,8 @@ using namespace XtcData;
 using psalg::NDArray;
 using logging = psalg::SysLog;
 
-enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _ROICUT,
-            _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
+enum PiranhaCuts { _NCALLS, _NOLASER, _FRAMESIZE, _ROICUT,
+                   _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
 static const char* cuts[] = {"NCalls",
                              "NoLaser",
                              "FrameSize",

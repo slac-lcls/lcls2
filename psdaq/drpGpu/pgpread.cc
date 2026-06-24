@@ -112,7 +112,7 @@ int main(int argc, char* argv[]) {
     ////////////////////////////////////////////
 
     printf("Opening device %s\n", dev);
-    DataGPU gpu0(dev);
+    DataDev datadev(dev);
 
     CudaContext context;
 
@@ -131,7 +131,7 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("Device supports unified addressing: %s\n", value ? "YES" : "NO");
 
     // Make the DMA target the GPU
-    auto tgt = dmaTgtGet(gpu0);
+    auto tgt = dmaTgtGet(datadev);
     const char* tgtName = "";
     switch (tgt) {
         case DmaTgt_t::TGT_CPU:  tgtName = "CPU";  break;
@@ -141,9 +141,9 @@ int main(int argc, char* argv[]) {
     if (lverbose)  printf("DMA target is changing from %s to %s\n",
                           tgtName, cpu ? "CPU" : "GPU");
     if (!cpu && tgt != DmaTgt_t::TGT_GPU)
-        dmaTgtSet(gpu0, DmaTgt_t::TGT_GPU);
+        dmaTgtSet(datadev, DmaTgt_t::TGT_GPU);
     else if (cpu && tgt != DmaTgt_t::TGT_CPU)
-        dmaTgtSet(gpu0, DmaTgt_t::TGT_CPU);
+        dmaTgtSet(datadev, DmaTgt_t::TGT_CPU);
 
     ////////////////////////////////////////////////
     // Create write and read buffers
@@ -152,7 +152,7 @@ int main(int argc, char* argv[]) {
     // This will store everything important for now
     GpuTestState_t state {};
 
-    state.fd = gpu0.fd();
+    state.fd = datadev.fd();
     state.context = context.context();
     state.buffer_count = buffers;
     state.verbose = lverbose;
@@ -162,7 +162,7 @@ int main(int argc, char* argv[]) {
     // This handles allocating buffers on the device and registering them with the driver.
     // After this call, the FPGA will be properly configured to run the test code.
     for ( int i = 0; i < buffers; ++i ) {
-        if (gpuInitBufferState(&state.buffers[i], gpu0.fd(), GPU_BUFFER_SIZE) < 0) {
+        if (gpuInitBufferState(&state.buffers[i], datadev.fd(), GPU_BUFFER_SIZE) < 0) {
             fprintf(stderr, "Failed to alloc buffer list\n");
             exit(1);
         }
@@ -191,7 +191,7 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < state.buffer_count; ++i)
         gpuDestroyBufferState(&state.buffers[i]);
 
-    res = gpuRemNvidiaMemory(gpu0.fd());
+    res = gpuRemNvidiaMemory(datadev.fd());
     if (res < 0) fprintf(stderr, "Error in IOCTL_GPUDMA_MEM_UNLOCK\n");
 
     return ret;
@@ -230,7 +230,7 @@ int run_host_test_guts(GpuTestState_t& state, int instance)
 
         // Write to the DMA start register in the FPGA
         if (state.verbose)  logInfo("%d Trigger write\n", instance);
-        //chkFatal(cuStreamWriteValue32(stream, state.hwWriteStart + 4 * instance, 0x01, 0));
+        //chkFatal(cuStreamWriteValue32(stream, state.swFpgaRegs.dptr + GPU_ASYNC_WR_ENABLE(instance), 0x01, 0));
         cuStreamSynchronize(stream);
         auto rc = gpuSetWriteEn(state.fd, instance);
         if (rc < 0) {

@@ -210,12 +210,18 @@ static __global__ __launch_bounds__(TPB, 3)
 #else
 static __global__ __launch_bounds__(TPB, 2)
 #endif
-void d_encode(const unsigned& index, const byte* const __restrict__ input_base, const int inBufSize, byte* const __restrict__ output_base, const long long outBufSize, int* const __restrict__ fullcarry, const float errorbound, const float threshold)
+void d_encode(unsigned* const __restrict__ state, unsigned const* const __restrict__ index,
+              const byte* const __restrict__ input_base, const int inBufSize, byte* const __restrict__ output_base, const long long outBufSize, int* const __restrict__ fullcarry, const float errorbound, const float threshold)
 {
-  byte const* const __restrict__ input   = &input_base[index * inBufSize];
+  // Added by RiC:
+  if (state && (*state != 1))  return;  // Skip when not in the right state
+
+  unsigned const idx{*index};           // Dereference only once
+  byte const* const __restrict__ input   = &input_base[idx * inBufSize];
   const int                      insize  = inBufSize;
-  byte*       const __restrict__ output  = &output_base[index * outBufSize];
+  byte*       const __restrict__ output  = &output_base[idx * outBufSize];
   long long*  const __restrict__ outsize = &((long long*)output)[-1]; // Place the size of the reduced data just before the data
+  // End RiC
 
   // allocate shared memory buffer
   __shared__ long long chunk [3 * (CS / sizeof(long long))];
@@ -308,6 +314,10 @@ void d_encode(const unsigned& index, const byte* const __restrict__ input_base, 
       head_out_f[0] = errorbound;
       // compute compressed size
       *outsize = &data_out[fullcarry[chunkID]] - output;
+
+      // Added by RiC:
+      if (state)  *state = 2;           // Advance to the next state
+      // End RiC
     }
   } while (true);
 }
@@ -334,28 +344,28 @@ static void CheckCuda(const int line)
 }
 
 
-PFPL_Compressor::PFPL_Compressor(size_t insize, float errorbound, float threshold) :
+Compressor::Compressor(size_t insize, float errorbound, float threshold) :
   _errorbound(errorbound),
   _threshold (threshold)
 {
   _initialize(insize);
 }
 
-PFPL_Compressor::PFPL_Compressor(size_t insize, float errorbound) :
+Compressor::Compressor(size_t insize, float errorbound) :
   _errorbound(errorbound),
   _threshold (std::numeric_limits<float>::infinity())
 {
   _initialize(insize);
 }
 
-PFPL_Compressor::~PFPL_Compressor()
+Compressor::~Compressor()
 {
   // clean up GPU memory
   cudaFree(_d_fullcarry);
   CheckCuda(__LINE__);
 }
 
-void PFPL_Compressor::_initialize(size_t insize)
+void Compressor::_initialize(size_t insize)
 {
   // get GPU info
   //cudaSetDevice(0);
@@ -371,7 +381,7 @@ void PFPL_Compressor::_initialize(size_t insize)
   const int chunks = (insize + CS - 1) / CS;  // round up
   CheckCuda(__LINE__);
   _maxsize = 3 * sizeof(int) + chunks * sizeof(short) + chunks * CS;
-  printf("*** SMs %d, mTpSM %d, blks %d, chunks %lld, maxSz %llu\n", SMs, mTpSM, _blocks, chunks, _maxsize);
+  printf("*** SMs %d, mTpSM %d, blks %d, chunks %d, maxSz %d\n", SMs, mTpSM, _blocks, chunks, _maxsize);
 
   // allocate GPU memory
   cudaMalloc((void**)&_d_fullcarry, chunks * sizeof(int));
@@ -383,21 +393,30 @@ void PFPL_Compressor::_initialize(size_t insize)
   }
 }
 
-void PFPL_Compressor::banner() const
+void Compressor::banner() const
 {
   printf("PFPL GPU Single-Precision ABS Compressor\n");
   printf("Copyright 2025 Texas State University\n\n");
 }
 
-void PFPL_Compressor::updateGraph(cudaStream_t      stream,
-                                  const unsigned&   index,
-                                  byte const* const d_input_base,
-                                  const long long   inBufSize,
-                                  byte* const       d_encoded_base,
-                                  const long long   encBufSize)
+void Compressor::updateGraph(cudaStream_t         stream,
+                             unsigned*      const state_d,
+                             unsigned*      const index_d,
+                             uint8_t const* const d_input_base,
+                             long long      const inBufSize,
+                             uint8_t*       const d_encoded_base,
+                             long long      const encBufSize)
 {
   d_reset<<<1, 1, 0, stream>>>();
   const int chunks = (inBufSize + CS - 1) / CS;  // round up
   cudaMemsetAsync(_d_fullcarry, 0, chunks * sizeof(byte), stream);
-  d_encode<<<_blocks, TPB, 0, stream>>>(index, d_input_base, inBufSize, d_encoded_base, encBufSize, _d_fullcarry, _errorbound, _threshold);
+  d_encode<<<_blocks, TPB, 0, stream>>>(state_d,
+                                        index_d,
+                                        d_input_base,
+                                        inBufSize,
+                                        d_encoded_base,
+                                        encBufSize,
+                                        _d_fullcarry,
+                                        _errorbound,
+                                        _threshold);
 }

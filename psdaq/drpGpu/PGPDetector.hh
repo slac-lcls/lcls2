@@ -3,11 +3,13 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <cuda_runtime.h>
+#include <cuda/std/atomic>
 #include <nlohmann/json.hpp>
 #include "drp/DrpBase.hh"
 #include "drp/spscqueue.hh"
 #include "Reader.hh"
-#include "Collector.hh"
+#include "TrgInpGen.hh"
 #include "Reducer.hh"
 #include "FileWriter.hh"
 
@@ -30,15 +32,17 @@ namespace Drp {
 
 class Detector;
 class MemPoolGpu;
-class RingIndexDtoD;
-class RingIndexDtoH;
-class RingIndexHtoD;
 
-struct ResultItems
+struct TebReceiverMetrics
 {
-  unsigned                    index;
-  const Pds::Eb::ResultDgram* result;
+  uint64_t cmpCtr          {0};
+  uint64_t recCtr          {0};
+  uint64_t reducerStarts   {0};
+  uint64_t reducerReceives {0};
+  uint64_t freeCtr         {0};
 };
+
+using ResultTuple = std::tuple<unsigned, const Pds::Eb::ResultDgram*>;
 
 class TebReceiver: public Drp::TebReceiverBase
 {
@@ -47,26 +51,28 @@ public:
   ~TebReceiver() override;
   FileWriterBase& fileWriter() override { return *m_fileWriter; }
   SmdWriterBase& smdWriter() override { return *m_smdWriter; };
-  void setup();
+  void setup(cudaExecutionContext_t green_ctx);
   void teardown();
 protected:
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels) override;
   void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
-  void _recorder();
+  void _recorder(cudaExecutionContext_t green_ctx);
   void _writeDgram(XtcData::Dgram*, void* devPtr);
 private:
   Pds::Eb::MebContributor&         m_mon;
   const std::atomic<bool>&         m_terminate;
   cudaStream_t                     m_stream;
-  std::unique_ptr<FileWriterAsync> m_fileWriter;
+  //std::unique_ptr<FileWriterAsync> m_fileWriter;
+  std::unique_ptr<FileWriter>      m_fileWriter;
   std::unique_ptr<Drp::SmdWriter>  m_smdWriter;
   unsigned                         m_worker;      // For cycling through reducers
-  SPSCQueue<ResultItems>           m_recordQueue;
-  std::shared_ptr<Collector>       m_collector;
+  SPSCQueue<ResultTuple>           m_recordQueue;
+  std::shared_ptr<TrgInpGen>       m_trgInpGen;
   std::thread                      m_recorderThread;
   const Parameters&                m_para;
+  TebReceiverMetrics               m_metrics;
 };
 
 class PGPDrp : public DrpBase
@@ -77,26 +83,31 @@ public:
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
   void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
-                                                { m_reducer->configure(xtc, bufEnd); }
-  void reducerStart(unsigned wkr, unsigned idx) { m_reducer->start(wkr, idx); }
-  void reducerReceive(unsigned wkr, size_t& sz) { m_reducer->receive(wkr, sz); }
-  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz) { m_reducer->event(xtc, be, sz); }
-  void freeBufs(unsigned idx)                   { m_collector->freeDma(idx); } // @todo: Bad name
+    { m_reducer->configure(xtc, bufEnd); }
+  bool reducerStart(unsigned wkr, unsigned& index) const
+    { return m_reducer->start(wkr, index); }
+  bool reducerReceive(unsigned wkr, ReducerTuple* items) const
+    { return m_reducer->receive(wkr, items); }
+  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
+    { m_reducer->event(xtc, be, sz); }
+  void freeBuffers(unsigned idx);
+  void reducerDump() const
+    { m_reducer->dump(); }
 private:
   int _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
+  void _setupGreenContexts(MemPoolGpu& memPool);
   void _collector();
 private:
-  const Parameters&          m_para;
-  Detector&                  m_det;
-  std::atomic<bool>          m_terminate;
-  cuda::atomic<uint8_t>*     m_terminate_d;
-  std::vector<Reader>        m_readers;        // One reader per panel
-  std::unique_ptr<Collector> m_collector;
-  std::unique_ptr<Reducer>   m_reducer;
-  std::thread                m_collectorThread;
-  uint64_t                   m_nNoTrDgrams;
-  ReaderMetrics              m_wkrMetrics;
-  CollectorMetrics           m_colMetrics;
+  const Parameters&            m_para;
+  Detector&                    m_det;
+  cudaExecutionContext_t       m_green_ctx[3];
+  std::atomic<bool>            m_terminate;
+  cuda::std::atomic<unsigned>* m_terminate_d;
+  std::shared_ptr<Reader>      m_reader;
+  std::unique_ptr<TrgInpGen>   m_trgInpGen;
+  std::unique_ptr<Reducer>     m_reducer;
+  std::thread                  m_collectorThread;
+  uint64_t                     m_nNoTrDgrams;
 };
 
   } // Gpu

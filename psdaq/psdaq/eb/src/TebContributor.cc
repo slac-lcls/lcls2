@@ -204,7 +204,7 @@ int TebContributor::configure()
   return 0;
 }
 
-Batch::Batch(const Pds::EbDgram* dgram, bool contractor_) :
+CtrbBatch::CtrbBatch(const Pds::EbDgram* dgram, bool contractor_) :
   entries   (dgram ? 1 : 0),
   tStart    (Pds::fast_monotonic_clock::now()),
   start     (dgram),
@@ -328,7 +328,7 @@ void TebContributor::process(const EbDgram* dgram)
   ++_eventCount;                        // Only count events handled
 }
 
-void TebContributor::_post(const Batch& batch)
+void TebContributor::_post(const CtrbBatch& batch)
 {
   using ns_t = std::chrono::nanoseconds;
   auto age   = Pds::fast_monotonic_clock::now() - batch.tStart;

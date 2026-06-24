@@ -208,10 +208,10 @@ BufferedFileWriterMT::~BufferedFileWriterMT()
     close();
     m_terminate = true;
     m_thread.join();
-    Buffer b;
+    Buffer b{nullptr, 0};
     while(!m_free.empty()) {
         m_free.pop(b);
-        free(b.p);
+        if (b.p)  free(b.p);
     }
     m_depth = m_free.count();
 }

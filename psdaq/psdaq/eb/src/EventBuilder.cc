@@ -306,7 +306,7 @@ void EventBuilder::_fixup(EbEvent*             event,
   while (remaining);
 
   //if (_verbose >= VL_EVENT)
-  if (_fixupCnt + _tmoEvtCnt < 100)
+  if (_fixupCnt + _tmoEvtCnt < 50)
   {
     const EbDgram* dg = event->creator();
     fprintf(stderr, "%-10s %15s %014lx, size %5zu, for  remaining %016lx, RoGs %04hx, contract %016lx, age %ld ms, latency %ld ms\n",
@@ -523,7 +523,7 @@ void EventBuilder::process(const EbDgram*    buffer,
 
     ctrb = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(ctrb) + size);
     imm++;
-    if ((ctrb > end) || (i == _maxEntries - 1))
+    if ((ctrb >= end) || (i == _maxEntries - 1))
     {
       static unsigned errCnt = 0;
       if (errCnt++ < 5) {
