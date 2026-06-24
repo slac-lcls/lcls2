@@ -13,11 +13,8 @@ fi
 
 force_clean=0
 compile_only=0
-build_daq=0
 
-if [ -d "/cds/sw/" ]; then
-  build_daq=1
-fi
+build_daq=1
 
 while getopts "fdc" opt; do
   case $opt in
@@ -56,7 +53,6 @@ OPTIONS="-Dconda_prefix=$CONDA_PREFIX \
 
 # When building for a release (debug is default)
 #OPTIONS="$OPTIONS -Dbuildtype=release"
-OPTIONS="$OPTIONS -Dbuildtype=debugoptimized"
 
 if [ $build_daq == 1 ]; then
   OPTIONS="$OPTIONS -Dbuild_daq=true"
