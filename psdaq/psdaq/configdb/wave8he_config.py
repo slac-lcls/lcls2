@@ -1,0 +1,542 @@
+from psdaq.configdb.get_config import get_config
+from psdaq.configdb.scan_utils import *
+from psdaq.configdb.typed_json import *
+from psdaq.cas.xpm_utils import timTxId
+import epics
+
+import json
+import time
+import pprint
+import logging
+
+prefix = None
+ocfg = None
+group = None
+lane = 0
+timebase = "186M"
+base = {"timebase": "186M", "prefix": None, "lane": 0}
+
+#
+# Wave8HE Configuration for LCLS-HE HLS Processing Firmware
+#
+# This configuration script supports the Wave8HE detector with HLS (High-Level Synthesis)
+# firmware. Key differences from standard Wave8:
+#   - Uses HlsProcessor instead of Integrators module
+#   - Configures baseline/signal regions (not power-of-2 sizes)
+#   - Supports dual position calculation (peak-based and integral-based)
+#   - Uses HlsTrigBuffer for pause threshold (single threshold vs 2 in Wave8)
+#   - Supports optional FIR filtering bypass
+
+
+def ctxt_get(names):
+    v = None
+    if isinstance(names, str):
+        v = epics.PV(names).get()
+    else:
+        if isinstance(names, list):
+            v = []
+            for i, n in enumerate(names):
+                v.append(epics.PV(n).get())
+    return v
+
+
+def ctxt_put(names, values):
+    r = []
+    print(f"ctxt_put [{names}] [{values}]")
+    if isinstance(names, str):
+        r.append(epics.PV(names).put(values))
+    else:
+        if isinstance(names, list):
+            for i, n in enumerate(names):
+                r.append(epics.PV(n).put(values[i]))
+    print(f"returned {r}")
+
+
+#  Create a dictionary of config key to PV name
+def epics_get(d):
+    # translate legal Python names to Rogue names
+    rogue_translate = {
+        "TriggerEventBuffer": "TriggerEventBuffer[0]",
+        "AdcReadout0": "AdcReadout[0]",
+        "AdcReadout1": "AdcReadout[1]",
+        "AdcReadout2": "AdcReadout[2]",
+        "AdcReadout3": "AdcReadout[3]",
+        "AdcConfig0": "AdcConfig[0]",
+        "AdcConfig1": "AdcConfig[1]",
+        "AdcConfig2": "AdcConfig[2]",
+        "AdcConfig3": "AdcConfig[3]",
+    }
+
+    rogue_not_arrays = ["BuffEn", "DelayAdcALane", "DelayAdcBLane"]
+
+    out = {}
+    for key, val in d.items():
+        #  Skip these that have no PVs yet or are auto-calculated
+        if (
+            "AdcPatternTester" in key
+            or "HlsProcessor.BaselineCnt" in key
+            or "HlsProcessor.SignalCnt" in key
+            or "HlsProcessor.CalcCfg_blScale" in key
+            or "HlsProcessor.CalcCfg_intBlScale" in key
+        ):
+            continue
+
+        pvname = rogue_translate[key] if key in rogue_translate else key
+        if isinstance(val, dict):
+            r = epics_get(val)
+            for k, v in r.items():
+                out[key + "." + k] = pvname + ":" + v
+        else:
+            if key in rogue_not_arrays:
+                for i, v in enumerate(val):
+                    out[key + f".[{i}]"] = pvname + "[%d]" % i
+            else:
+                out[key] = pvname
+    return out
+
+
+def confirm_xpm_rxid(txId, xpmId, json_str):
+    json_msg = json.loads(json_str)
+    xpm_base = json_msg["body"]["control"]["0"]["control_info"]["pv_base"]
+    xpm_pv = f"{xpm_base}:XPM:{(xpmId >> 16) & 0xFF}:RemoteLinkId{xpmId & 0xF}"
+    xvalues = int(ctxt_get(xpm_pv))
+    if xvalues != txId:
+        logging.warning(f"Found 0x{xvalues:x} from {xpm_pv}.  Expected 0x{txId:x}")
+
+
+def config_timing(epics_prefix, timebase="186M"):
+    # cpo found on 01/30/23 that when we toggle between LCLS1/LCLS2 timing
+    # using ModeSel that we generate junk into the KCU giving these errors:
+    # PGPReader: Jump in complete l1Count 0 -> 2 | difference 2, tid ClearReadout
+    # We used to go to LCLS1 timing on disconnect (which called
+    # this routine) to be friendly to the controls group.  Since we're now
+    # in the LCLS2 era, keep this always hardwired to ModeSel=1 (i.e. LCLS2 timing).
+    names = [
+        epics_prefix + ":Top:SystemRegs:timingUseMiniTpg",
+        epics_prefix + ":Top:TimingFrameRx:ModeSelEn",
+        epics_prefix + ":Top:TimingFrameRx:ModeSel",
+        epics_prefix + ":Top:TimingFrameRx:ClkSel",
+        epics_prefix + ":Top:TimingFrameRx:RxPllReset",
+    ]
+    values = [0, 1, 1, 1 if timebase == "186M" else 0, 1]
+    ctxt_put(names, values)
+
+    time.sleep(1.0)
+
+    names = [epics_prefix + ":Top:TimingFrameRx:RxPllReset"]
+    values = [0]
+    ctxt_put(names, values)
+
+    time.sleep(1.0)
+
+    names = [epics_prefix + ":Top:TimingFrameRx:RxDown", epics_prefix + ":Timing:TriggerSource"]  # 0=XPM/DAQ, 1=EVR
+    values = [0, 0]
+    ctxt_put(names, values)
+
+
+def wave8he_init(epics_prefix, dev="/dev/datadev_0", lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
+    global prefix
+    global lane
+    logging.getLogger().setLevel(40 - 10 * verbosity)
+    prefix = epics_prefix
+    base["prefix"] = epics_prefix
+    base["timebase"] = timebase
+    lm = lanemask
+    lane = (lm & -lm).bit_length() - 1
+    assert lm == (1 << lane)  # check that lanemask only has 1 bit for wave8he
+
+    print(f"--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---")
+
+    wave8he_unconfig(base)
+
+    return base
+
+
+def wave8he_init_feb(slane=None, schan=None):
+    global lane
+    if slane is not None:
+        lane = int(slane)
+
+
+def wave8he_connectionInfo(base, alloc_json_str):
+    epics_prefix = base["prefix"]
+
+    #  Switch to LCLS2 Timing
+    #    Need this to properly receive RxId
+    #    Controls is no longer in-control
+    config_timing(epics_prefix, timebase=base["timebase"])
+
+    #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
+    #txId = timTxId("wave8he")
+    txId = timTxId("wave8")
+    ctxt_put(epics_prefix + ":Top:TriggerEventManager:XpmMessageAligner:TxId", txId)
+    ctxt_put(epics_prefix + ":Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable", 0)
+
+    # Retrieve connection information from EPICS
+    # May need to wait for other processes here, so poll
+    for i in range(50):
+        values = int(ctxt_get(epics_prefix + ":Top:TriggerEventManager:XpmMessageAligner:RxId"))
+        if values != 0:
+            break
+        print("{:} is zero, retry".format(epics_prefix + ":Top:TriggerEventManager:XpmMessageAligner:RxId"))
+        time.sleep(0.1)
+
+    # Retrieve the XPM connection information from EPICS
+    # to verify a direct connection (not through a fanout)
+    #    confirm_xpm_rxid( txId, values, alloc_json_str)
+
+    d = {}
+    d["paddr"] = values
+    print(f"wave8he_connect returning {d}")
+    return d
+
+
+def detect_version():
+    """Detect if the board is a C1100 by reading /proc/datadev_0"""
+    file_datadev = "/proc/datadev_0"
+    isC1100 = False
+    try:
+        with open(file_datadev, "r", encoding="utf-8") as file:
+            for line in file:
+                if "Build String" in line:
+                    isC1100 = "C1100" in line
+                    break
+        return isC1100
+
+    except FileNotFoundError:
+        logging.error(f"Error: File '{file_datadev}' not found.")
+        return False
+    except Exception as e:
+        logging.error(f"Error reading file: {e}")
+        return False
+
+
+def user_to_expert(prefix, cfg, full=False):
+    global group
+    global ocfg
+    global timebase
+
+    d = {}
+
+    # Calculate trigger delay (same as Wave8)
+    try:
+        ctrlDelay = ctxt_get(prefix + "TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay")
+        if ctrlDelay is None:
+            print("Warning: Failed to retrieve control trigger delay.  Using partition delay as fallback.")
+            ctrlDelay = ctxt_get(prefix + "TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay")
+            delayFlag = False
+        else:
+            delayFlag = True
+        partitionDelay = ctxt_get(prefix + "TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]" % group)
+
+        clksPerFid = 200 if timebase == "186M" else 238
+        nsPerClk = 7000 / 1300.0 if timebase == "186M" else 1000 / 119.0
+
+        if delayFlag:
+            #  LCLS2 timing. Let controls set the delay value.
+            print("ctrlDelay {:}  partitionDelay {:}".format(ctrlDelay, partitionDelay))
+
+            triggerDelay = int(ctrlDelay - partitionDelay * clksPerFid)
+
+            print("triggerDelay {:}".format(triggerDelay))
+            if triggerDelay < 0:
+                print("Raise controls trigger delay >= {:} nanoseconds ({:} clock ticks)".format(-triggerDelay * nsPerClk, -triggerDelay))
+                raise ValueError("triggerDelay computes to < 0")
+
+            ctxt_put(prefix + "TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay", triggerDelay)
+
+    except KeyError:
+        pass
+
+    # Calculate HLS auto-derived values
+    # CRITICAL: These calculations MUST match C++ exactly (see HLS README)
+    try:
+        # Get baseline region values from config
+        baseline_beg = cfg.get("expert", {}).get("HlsProcessor", {}).get("BaselineBeg")
+        baseline_end = cfg.get("expert", {}).get("HlsProcessor", {}).get("BaselineEnd")
+
+        if baseline_beg is not None and baseline_end is not None:
+            # Calculate BaselineCnt
+            baseline_cnt = baseline_end - baseline_beg + 1
+            ctxt_put(prefix + "HlsProcessor:BaselineCnt", baseline_cnt)
+
+            # Calculate blScale: ((1 << 26) + (cnt // 2)) / cnt
+            # This matches C++: m_blScale = ((1 << BlScaleNBits) + (baselineCnt/2)) / ((float) baselineCnt)
+            if baseline_cnt != 0:
+                bl_scale = int(((1 << 26) + (baseline_cnt // 2)) / baseline_cnt)
+                ctxt_put(prefix + "HlsProcessor:CalcCfg_blScale", bl_scale)
+
+        # Get signal region values from config
+        signal_beg = cfg.get("expert", {}).get("HlsProcessor", {}).get("SignalBeg")
+        signal_end = cfg.get("expert", {}).get("HlsProcessor", {}).get("SignalEnd")
+
+        if signal_beg is not None and signal_end is not None:
+            # Calculate SignalCnt
+            signal_cnt = signal_end - signal_beg + 1
+            ctxt_put(prefix + "HlsProcessor:SignalCnt", signal_cnt)
+
+            # Calculate intBlScale: (signal_cnt / baseline_cnt) * (1 << 26)
+            # This matches C++: m_intBlScale = (signalCnt / (float) baselineCnt) * (1 << BlScaleNBits)
+            if baseline_beg is not None and baseline_end is not None:
+                baseline_cnt = baseline_end - baseline_beg + 1
+                if baseline_cnt != 0:
+                    int_bl_scale = int((signal_cnt / baseline_cnt) * (1 << 26))
+                    ctxt_put(prefix + "HlsProcessor:CalcCfg_intBlScale", int_bl_scale)
+
+    except KeyError:
+        pass
+
+
+def wave8he_config(base, connect_str, cfgtype, detname, detsegm, grp):
+    global lane
+    global group
+    global ocfg
+    global timebase
+
+    print(f"base [{base}]")
+    prefix = base["prefix"]
+    timebase = base["timebase"]
+    group = grp
+
+    #  Read the configdb
+    cfg = get_config(connect_str, cfgtype, detname, detsegm)
+    ocfg = cfg
+
+    #  Apply the user configs
+    epics_prefix = prefix + ":Top:"
+    user_to_expert(epics_prefix, cfg, full=True)
+
+    #  Assert clears (Wave8HE uses HlsTrigBuffer:CntRst instead of Integrators:CntRst)
+    names_clr = [epics_prefix + "BatcherEventBuilder:Blowoff", epics_prefix + "RawBuffers:CntRst", epics_prefix + "HlsTrigBuffer:CntRst"]
+    values = [1] * len(names_clr)
+    ctxt_put(names_clr, values)
+
+    # Wave8HE: Single pause threshold in HlsTrigBuffer (vs 2 in Wave8 Integrators)
+    names_cfg = [
+        epics_prefix + "TriggerEventManager:TriggerEventBuffer[0]:Partition",
+        epics_prefix + "TriggerEventManager:TriggerEventBuffer[0]:PauseThreshold",
+        epics_prefix + "TriggerEventManager:TriggerEventBuffer[0]:MasterEnable",
+        epics_prefix + "DataPathCtrl:EnableStream",  # 0x1 for Controls, 0x2 for DAQ
+        epics_prefix + "RawBuffers:FifoPauseThreshold",
+        epics_prefix + "HlsTrigBuffer:PauseThresh",
+    ]
+    values = [group, 16, 1, 0x2, 127, 127]
+    ctxt_put(names_cfg, values)
+
+    time.sleep(0.2)
+
+    #  Deassert clears
+    values = [0] * len(names_clr)
+    ctxt_put(names_clr, values)
+
+    #
+    #  Now construct the configuration we will record
+    #
+    top = cdict()
+    top.setAlg("config", [2, 0, 0])
+    detname_parts = cfg["detName:RO"].rsplit("_", 1)
+    top.setInfo(detType="wave8he", detName=detname_parts[0], detSegm=int(detname_parts[1]), detId=cfg["detId:RO"], doc="No comment")
+
+    top.define_enum("baselineEnum", {"_%d_samples" % (2**key): key for key in range(1, 8)})
+    top.define_enum("quadrantEnum", {"Even": 0, "Odd": 1})
+
+    top.set("firmwareBuild:RO", "-", "CHARSTR")
+    top.set("firmwareVersion:RO", 0, "UINT32")
+
+    # SystemRegs (same as Wave8)
+    top.set("expert.SystemRegs.AvccEn0", 1, "UINT8")
+    top.set("expert.SystemRegs.AvccEn1", 1, "UINT8")
+    top.set("expert.SystemRegs.Ap5V5En", 1, "UINT8")
+    top.set("expert.SystemRegs.Ap5V0En", 1, "UINT8")
+    top.set("expert.SystemRegs.A0p3V3En", 1, "UINT8")
+    top.set("expert.SystemRegs.A1p3V3En", 1, "UINT8")
+    top.set("expert.SystemRegs.Ap1V8En", 1, "UINT8")
+    top.set("expert.SystemRegs.FpgaTmpCritLatch", 0, "UINT8")
+    top.set("expert.SystemRegs.AdcCtrl1", 0, "UINT8")
+    top.set("expert.SystemRegs.AdcCtrl2", 0, "UINT8")
+    top.set("expert.SystemRegs.TrigEn", 0, "UINT8")
+    top.set("expert.SystemRegs.timingRxUserRst", 0, "UINT8")
+    top.set("expert.SystemRegs.timingTxUserRst", 0, "UINT8")
+    top.set("expert.SystemRegs.timingUseMiniTpg", 0, "UINT8")
+    top.set("expert.SystemRegs.TrigSrcSel", 1, "UINT8")
+
+    # FirFiltering configuration (Wave8HE specific)
+    top.set("expert.FirFiltering.BypassFilter", 0, "UINT8")  # 0=use FIR, 1=bypass
+    # Note: FIR taps (33 per channel × 8 channels = 264 values) are expert-only
+    # Not included in standard config - set via separate expert interface
+
+    # HlsTrigBuffer configuration (Wave8HE specific)
+    top.set("expert.HlsTrigBuffer.PauseThresh", 127, "UINT32")
+
+    # HlsProcessor - Baseline Region (from HLS README example - user configurable)
+    top.set("expert.HlsProcessor.BaselineBeg", 20, "UINT8")  # user config
+    top.set("expert.HlsProcessor.BaselineEnd", 52, "UINT8")  # user config
+    top.set("expert.HlsProcessor.BaselineCnt", 33, "UINT8")  # auto-calculated
+
+    # HlsProcessor - Signal Region (from HLS README example - user configurable)
+    top.set("expert.HlsProcessor.SignalBeg", 100, "UINT8")  # user config
+    top.set("expert.HlsProcessor.SignalEnd", 114, "UINT8")  # user config
+    top.set("expert.HlsProcessor.SignalCnt", 15, "UINT8")  # auto-calculated
+
+    # HlsProcessor - Calculation Config (auto-calculated)
+    top.set("expert.HlsProcessor.CalcCfg_blScale", 0, "UINT32")  # auto-calculated
+    top.set("expert.HlsProcessor.CalcCfg_intBlScale", 0, "UINT32")  # auto-calculated
+
+    # HlsProcessor - Peak-Based Position (from HLS README example)
+    top.set("expert.HlsProcessor.PosPeak_cx", -0.0198, "FLOAT")  # calibration constant
+    top.set("expert.HlsProcessor.PosPeak_cy", 0.019, "FLOAT")  # calibration constant
+    top.set("expert.HlsProcessor.PosPeak_xm", 2, "UINT8")  # diode index (from HLS example)
+    top.set("expert.HlsProcessor.PosPeak_xp", 4, "UINT8")  # diode index
+    top.set("expert.HlsProcessor.PosPeak_ym", 1, "UINT8")  # diode index
+    top.set("expert.HlsProcessor.PosPeak_yp", 3, "UINT8")  # diode index
+
+    # HlsProcessor - Integral-Based Position (from HLS README example)
+    top.set("expert.HlsProcessor.PosIntegral_cx", -0.0198, "FLOAT")  # calibration constant
+    top.set("expert.HlsProcessor.PosIntegral_cy", 0.019, "FLOAT")  # calibration constant
+    top.set("expert.HlsProcessor.PosIntegral_xm", 2, "UINT8")  # diode index (from HLS example)
+    top.set("expert.HlsProcessor.PosIntegral_xp", 4, "UINT8")  # diode index
+    top.set("expert.HlsProcessor.PosIntegral_ym", 1, "UINT8")  # diode index
+    top.set("expert.HlsProcessor.PosIntegral_yp", 3, "UINT8")  # diode index
+
+    # RawBuffers (same as Wave8)
+    top.set("expert.RawBuffers.BuffEn", [0] * 8, "UINT8")  # user config
+    top.set("expert.RawBuffers.BuffLen", 100, "UINT32")  # user config
+    top.set("expert.RawBuffers.FifoPauseThreshold", 100, "UINT32")
+    top.set("expert.RawBuffers.TrigPrescale", 0, "INT32")  # user config
+
+    # BatcherEventBuilder (same as Wave8)
+    top.set("expert.BatcherEventBuilder.Bypass", 0, "UINT8")
+    top.set("expert.BatcherEventBuilder.Timeout", 0, "UINT32")
+    top.set("expert.BatcherEventBuilder.Blowoff", 0, "UINT8")
+
+    # TriggerEventManager (same as Wave8)
+    top.set("expert.TriggerEventManager.TriggerEventBuffer.TriggerDelay", 0, "UINT32")  # user config
+
+    # ADC Delays (same as Wave8)
+    dlyAlane = [
+        [0x0C, 0x0B, 0x0E, 0x0E, 0x10, 0x10, 0x12, 0x0B],
+        [0x0A, 0x08, 0x0C, 0x0B, 0x0D, 0x0C, 0x0B, 0x0C],
+        [0x12, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13, 0x13],
+        [0x0D, 0x0C, 0x0D, 0x0B, 0x0A, 0x12, 0x12, 0x13],
+    ]
+    dlyBlane = [
+        [0x11, 0x11, 0x12, 0x12, 0x10, 0x11, 0x0B, 0x0B],
+        [0x0A, 0x0A, 0x0C, 0x0C, 0x0C, 0x0B, 0x0B, 0x0A],
+        [0x14, 0x14, 0x14, 0x14, 0x14, 0x12, 0x10, 0x11],
+        [0x13, 0x12, 0x13, 0x12, 0x12, 0x11, 0x12, 0x11],
+    ]
+
+    for iadc in range(4):
+        adc = "AdcReadout%d" % iadc
+        top.set("expert." + adc + ".DelayAdcALane", dlyAlane[iadc], "UINT8")
+        top.set("expert." + adc + ".DelayAdcBLane", dlyBlane[iadc], "UINT8")
+        top.set("expert." + adc + ".DMode", 3, "UINT8")
+        top.set("expert." + adc + ".Invert", 0, "UINT8")
+        top.set("expert." + adc + ".Convert", 3, "UINT8")
+
+    # ADC Configuration (same as Wave8)
+    for iadc in range(4):
+        adc = "AdcConfig%d" % iadc
+        zeroregs = [7, 8, 0xB, 0xC, 0xF, 0x10, 0x11, 0x12, 0x12, 0x13, 0x14, 0x16, 0x17, 0x18, 0x20]
+        for r in zeroregs:
+            top.set("expert." + adc + ".AdcReg_0x%04X" % r, 0, "UINT8")
+        top.set("expert." + adc + ".AdcReg_0x0006", 0x80, "UINT8")
+        top.set("expert." + adc + ".AdcReg_0x000D", 0x6C, "UINT8")
+        top.set("expert." + adc + ".AdcReg_0x0015", 1, "UINT8")
+        top.set("expert." + adc + ".AdcReg_0x001F", 0xFF, "UINT8")
+
+    # AdcPatternTester (same as Wave8)
+    top.set("expert.AdcPatternTester.Channel", 0, "UINT8")
+    top.set("expert.AdcPatternTester.Mask", 0, "UINT8")
+    top.set("expert.AdcPatternTester.Pattern", 0, "UINT8")
+    top.set("expert.AdcPatternTester.Samples", 0, "UINT32")
+    top.set("expert.AdcPatternTester.Request", 0, "UINT8")
+
+    scfg = top.typed_json()
+
+    #
+    #  Retrieve full configuration for recording
+    #
+    # GFD 2024/03/13 - epics.PV().get returns None if PV does not exist - only
+    # replace cfg value if retrieval worked. This prevents JSON errors (due to
+    # typing) when converting to XTC
+    d = epics_get(scfg["expert"])
+    keys = [key for key, v in d.items()]
+    names = [epics_prefix + v for key, v in d.items()]
+    values = ctxt_get(names)
+    for i, v in enumerate(values):
+        k = keys[i].split(".")
+        c = scfg["expert"]
+        while len(k) > 1:
+            c = c[k[0]]
+            del k[0]
+        if k[0][0] == "[":
+            elem = int(k[0][1:-1])
+            c[elem] = v if v else c[elem]
+        else:
+            c[k[0]] = v if v else c[k[0]]
+    version = ctxt_get(prefix + ":Top:AxiVersion:FpgaVersion")
+    scfg["firmwareVersion:RO"] = version if version else scfg["firmwareVersion:RO"]
+    # scfg['firmwareBuild:RO'  ] = ctxt_get(prefix+':AxiVersion:BuildStamp')
+
+    pprint.pprint(scfg)
+    v = json.dumps(scfg)
+
+    if "pci" in base:
+        #  Note that other segment levels can step on EventBuilder settings (Bypass,VcDataTap)
+        pbase = base["pci"]
+        getattr(pbase.DevPcie.Application, f"AppLane[{lane}]").VcDataTap.Tap.set(1)
+        eventBuilder = getattr(pbase.DevPcie.Application, f"AppLane[{lane}]").EventBuilder
+        eventBuilder.Bypass.set(5)
+        eventBuilder.Blowoff.set(False)
+        eventBuilder.SoftRst()
+
+    return v
+
+
+def wave8he_scan_keys(update):
+    global prefix
+    global ocfg
+    #  extract updates
+    cfg = {}
+    copy_reconfig_keys(cfg, ocfg, json.loads(update))
+    #  Apply group
+    user_to_expert(prefix + ":Top:", cfg, full=False)
+    #  Retain mandatory fields for XTC translation
+    for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
+        copy_config_entry(cfg, ocfg, key)
+        copy_config_entry(cfg[":types:"], ocfg[":types:"], key)
+    return json.dumps(cfg)
+
+
+def wave8he_update(update):
+    global prefix
+    global ocfg
+    #  extract updates
+    cfg = {}
+    epics_prefix = prefix + ":Top:"
+    update_config_entry(cfg, ocfg, json.loads(update))
+    #  Apply group
+    user_to_expert(epics_prefix, cfg, full=False)
+    #  Retain mandatory fields for XTC translation
+    for key in ("detType:RO", "detName:RO", "detId:RO", "doc:RO", "alg:RO"):
+        copy_config_entry(cfg, ocfg, key)
+        copy_config_entry(cfg[":types:"], ocfg[":types:"], key)
+    return json.dumps(cfg)
+
+
+#  This is really shutdown/disconnect
+def wave8he_unconfig(base):
+    epics_prefix = base["prefix"]
+    # cpo removed setting Partition=1 (aka readout group) here
+    # because this is called in init() and writes fail before the timing
+    # the timing system is initialized.  Then subsequent writes start
+    # silently failing as well resulting in lost configure phase2.
+    names_cfg = [epics_prefix + ":Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable"]
+    values = [0]
+    ctxt_put(names_cfg, values)
+
+    #  Leaving DAQ control.
+    config_timing(epics_prefix)
+
+    return None
