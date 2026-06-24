@@ -6,6 +6,38 @@ EventBuilder, reads full bigdata dgrams to GPU with KvikIO, and uses CPU-built
 metadata tables to locate Jungfrau raw payloads. The GPU no longer parses
 Dgram/XTC headers.
 
+## Current Agreed CPU-Push Direction
+
+Meeting summary:
+
+- Smd0 stays unchanged.
+- EventBuilder creates coherent `cpu_smd_batch` and `gpu_smd_batch` for the
+  same event range.
+- A CPU BD owns/schedules work onto a GPU. Multiple BD ranks may share one
+  GPU, so GPU assignment and queueing need to be explicit.
+- After a BD finishes CPU compute and schedules GPU work for a batch, it should
+  be able to request the next `cpu_smd_batch` / `gpu_smd_batch` from EB without
+  waiting for GPU result D2H.
+- GPU results stay on GPU by default. CPU join / D2H happens only at a
+  configured interval or by explicit user request.
+- Seema is focusing next on the MPI path, especially multiple BDs sharing one
+  GPU, so we can identify scheduling and throughput bottlenecks.
+
+Design implications:
+
+- `cpu_smd_batch` and `gpu_smd_batch` need a shared event identity, currently
+  timestamp / batch event index, so CPU and GPU results can be joined later.
+- The BD side needs in-flight batch tracking and backpressure. A batch's GPU
+  buffers must not be released, overwritten, or recycled until the associated
+  GPU work has completed and any requested join/D2H has happened.
+- For multiple BDs sharing one GPU, we need a single clear scheduling model:
+  GPU ownership per CPU process, queue ownership, CUDA stream allocation, memory
+  limits, and fairness/backpressure between BD ranks.
+- Mixed CPU/GPU routing for the same large detector should be avoided for the
+  performance path. If some segments remain CPU-routed, the current
+  `DetectorRouter` fallback can copy CPU-calibrated results back to GPU, but
+  that is only a correctness/debug bridge.
+
 ## EventBuilder Side
 
 Changed files:
@@ -74,6 +106,63 @@ What changed:
 
 The production BD node is not refactored yet. This is still a standalone
 prototype path.
+
+## Integrated DataSource / Event Join
+
+Changed files:
+
+- `psana/psana/gpu/gpu_events.py`
+- `psana/psana/gpu/gpu_stream.py`
+- `psana/psana/gpu/context.py`
+- `psana/psana/gpu/detector_router.py`
+- `psana/psana/psexp/run.py`
+
+What changed:
+
+- `RunSerial` uses `GpuEvents` when `DataSource(..., gpu_det=...)` is set.
+  The standard `run.events()` loop then yields `GpuEventContext` objects.
+- `GpuEvents` consumes the existing `SmdReaderManager` / EventBuilder path. It
+  does not create a new `DsParms`, `SmdReaderManager`, `DgramManager`, or
+  `EventBuilderManager`.
+- For each batch, `GpuEvents` issues GPU bigdata reads from `gpu_batch_dict`,
+  builds CPU `Event` objects from `cpu_batch_dict` through the normal
+  `EventManager`, then submits GPU detector work to `EventPool`.
+- `EventPool` keeps multiple batches in flight. When a CUDA stream slot is
+  recycled or flushed, GPU results are joined to CPU events by timestamp:
+
+```text
+CPU Event timestamp -> gpu_results_by_ts[timestamp]
+```
+
+- The joined user object is `GpuEventContext`. `ctx.get("calib").on_gpu`
+  returns the CuPy result already resident on the GPU. `ctx.get("calib").on_cpu`
+  is the point where D2H happens.
+
+Known inefficient fallback:
+
+- `DetectorRouter` supports partial detector routing, where some segments for
+  a large detector are GPU-routed and remaining segments are CPU-routed.
+- For partial routing, `DetectorRouter.compute_cpu_calib()` computes the CPU
+  segments on the host, then `DetectorRouter.assemble_full_calib()` copies
+  those CPU-calibrated segments back to the GPU with:
+
+```python
+cpu_gpu = cp.asarray(cpu_calib.astype(np.float32))
+```
+
+- This is intentionally a correctness bridge, not the desired performance path.
+  For Jungfrau, one calibrated segment is:
+
+```text
+512 * 1024 * 4 bytes = 2 MiB
+```
+
+  so leaving 13 segments on CPU would require roughly `26 MiB/event` of H2D
+  traffic just to assemble a full GPU result.
+- Preferred production behavior is to route all streams/segments for a GPU
+  detector to the GPU. CPU-only detectors should remain on CPU, but mixed
+  CPU/GPU routing for the same large detector should be avoided unless it is
+  explicitly requested for fallback/debug.
 
 ## Metadata Handling
 
