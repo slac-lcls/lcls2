@@ -13,6 +13,7 @@ from psdaq.utils import enable_epix_hr_m_320k
 import ePix320kM as ePixM
 import epix_hr_leap_common as leapCommon
 import surf.protocols.batcher as batcher
+from psdaq.cas.pgpmonitor import PgpMonitor
 
 import time
 import json
@@ -275,6 +276,15 @@ def epixm320_init(arg,dev='/dev/datadev_0',lanemask=0xf,xpmpv=None,timebase="186
 
     base = {}
     #  Connect to the camera and the PCIe card
+    pcie_card = PgpMonitor(pollEn=False,
+                           initRead=False,
+                           dev=dev,
+                           lanemask=lanemask,
+                           numVc=2)
+    pcie_card.__enter__()
+    pcie_card.init_lanes()
+    base['pcie'] = pcie_card
+    
     cbase = ePixM.Root(top_level              = '/tmp',
                        dev                    = dev,
                        pollEn                 = False,
@@ -361,6 +371,7 @@ def epixm320_init_feb(slane=None,schan=None):
 #
 def epixm320_connectionInfo(base, alloc_json_str):
 
+    base['pcie'].check_lanes('connect')
 #
 #  To do:  get the IDs from the detector and not the timing link
 #
@@ -637,6 +648,8 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     group = rog
 
+    base['pcie'].check_lanes('config')
+
     #
     #  Retrieve the full configuration from the configDB
     #
@@ -755,6 +768,7 @@ def epixm320_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
 def epixm320_unconfig(base):
     logging.info('epixm320_unconfig')
+    base['pcie'].check_lanes('unconfig')
     _stop(base)
     return base
 
