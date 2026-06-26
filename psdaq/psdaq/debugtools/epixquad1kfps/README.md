@@ -50,6 +50,59 @@ For the detector-day direct-write tests, the useful fixed-mode defaults were:
 That keeps the test patterns simple and independent of the auto-mode data gain
 bit split.
 
+## Standalone Gain-Mode Writer
+
+Use `write_gain_mode_standalone.py` to program the test gain modes without the
+DAQ or PyDM GUI.  Close any GUI or DAQ process using `/dev/datadev_0` first,
+because the script opens the camera register VC.
+
+Preview the register-write plan:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py \
+  --mode MapFML \
+  --dry-run
+```
+
+Write one of the full fixed modes:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py --mode FH
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py --mode FM
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py --mode FL
+```
+
+Write map modes with the built-in sparse selected-pixel list:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py --mode MapFML
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py --mode MapFHL
+```
+
+For custom selected pixels, use ASIC-local coordinates:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py \
+  --mode MapFML \
+  --no-default-pixels \
+  --pixel 0,12,7 \
+  --pixel 0,12,55
+```
+
+or raw-view segment coordinates:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/write_gain_mode_standalone.py \
+  --mode MapFHL \
+  --no-default-pixels \
+  --raw-pixel 0,188,199
+```
+
+By default the script only writes the ASIC gain registers.  Add
+`--load-ued-yaml` if you want it to load the standard UED camera YAML first.
+Add `--save-expected-map /tmp/map.npy` to save the expected raw-view FL mask
+for later comparison.
+
 ## Debugging Modes
 
 Two debug modes are supported.
@@ -179,10 +232,112 @@ Core tools:
 
 - `pattern_loader.py`
 - `run_pattern_sequence.py`
+- `diagnose_standalone_access.py`
 - `validate_pattern_runs.py`
 - `diagnose_pattern_runs.py`
 - `render_full_bank_layout.py`
 - `view_raw_modes.py`
+
+## Standalone Hardware Access Diagnostic
+
+Use `diagnose_standalone_access.py` before starting DAQ when checking a new
+test stand.  It reads PGP4 lane status, initializes the C1100 application path,
+then tries ePixQuad camera register access on VC1.  It does not start DAQ,
+write ASIC pixel maps, or write PROM contents.
+
+Example for the UED rdsrv421 setup:
+
+```bash
+cd /sdf/home/m/monarin/lcls2_worktree/ued-epix10ka-rdsrv421-daq
+source setup_env.sh
+python psdaq/psdaq/debugtools/epixquad1kfps/diagnose_standalone_access.py \
+  --dev /dev/datadev_0 \
+  --lane 0
+```
+
+If the startup PROM calibration check fails, rerun the camera access check in
+a fresh process with `--force-prom-bypass`.  A failed `Top.start()` can leave
+the camera VC open until the Python process exits, so the diagnostic does not
+retry `promWrEn=True` in the same process by default.
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/diagnose_standalone_access.py \
+  --dev /dev/datadev_0 \
+  --lane 0 \
+  --force-prom-bypass
+```
+
+To check whether the external XPM timing link is hooked up, run the C1100
+startup with standalone timing disabled and skip the camera access:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/diagnose_standalone_access.py \
+  --dev /dev/datadev_0 \
+  --lane 0 \
+  --standalone-timing false \
+  --skip-camera
+```
+
+For an external XPM link, expect `ConfigLclsTimingV2()`, `RxLinkUp=True`,
+`RxDown=False`, increasing `FidCount`/`sofCount`, and quiet CRC/decode/disparity
+error counters.  `ConfigureXpmMini()` means local generated timing, not proof
+that the external XPM timing fiber is connected.
+
+## XpmMini Standalone File Capture
+
+To try Larry's suggested standalone path, use the C1100 built-in XpmMini timing
+generator and the ePixQuad Rogue `StreamWriter`.  The helper below opens both
+the C1100 DevRoot and the ePixQuad camera root, then launches one PyDM GUI with
+both servers.  The GUI has separate tabs for `C1100 System`, `C1100 Debug`,
+`Camera System`, and `Camera Debug`.
+
+```bash
+cd /sdf/home/m/monarin/lcls2_worktree/ued-epix10ka-rdsrv421-daq
+source setup_env.sh
+python psdaq/psdaq/debugtools/epixquad1kfps/launch_xpmmini_writer_gui.py \
+  --dev /dev/datadev_0 \
+  --lane 0
+```
+
+In the PyDM GUI:
+
+- in `C1100 Debug`, run `DevRoot.StartRun()` to allow XpmMini-triggered traffic
+  through the C1100 event builder
+- in `Camera System`, load the UED camera YAML:
+  `/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026/epix-quad-1kfps/software/yml/ued/epixQuad_ASICs_allAsics_UED_1080Hz_settings.yml`
+- for a short debug capture, reduce the camera auto-trigger rate before opening
+  the writer: in `Camera Debug` set `Top.SystemRegs.AutoTrigFreqHz` to `10`
+  or set `Top.SystemRegs.AutoTrigPer` to `0x989680`
+- verify the camera side is armed:
+  `Top.SystemRegs.TrigSrcSel=3`, `Top.SystemRegs.AutoTrigEn=True`,
+  `Top.SystemRegs.TrigEn=True`, and `Top.RdoutCore.RdoutEn=True`
+- go to `Camera System`, or `Camera Debug` -> `Top.StreamWriter`
+- set `DataFile` to a writable `.dat` path, or click `AutoName`
+- click `Open`
+- watch `FrameCount` and `TotalSize`; a full-frame capture should grow by about
+  1 MB per image frame, not by only tens of bytes per record
+- click `Close`
+- in `C1100 Debug`, run `DevRoot.StopRun()`
+
+The ePixQuad writer routes camera VC0 data to file channel `1`, VC2 scope data
+to channel `2`, and VC3 monitoring data to channel `3`.  The helper defaults to
+`promWrEn=True` only to bypass the startup PROM validation seen on rdsrv421; do
+not execute ADC-training or PROM-writing commands unless that is intentional.
+
+For a command-line start of the C1100 run gate, add `--start-run`; the helper
+will call `DevRoot.StopRun()` when the GUI exits.
+
+Check the saved file with:
+
+```bash
+python psdaq/psdaq/debugtools/epixquad1kfps/read_xpmmini_rogue_file.py \
+  /tmp/epixquad_fullframe.data \
+  --data-channel 1 \
+  --max-frames 5
+```
+
+If the summary reports only 48-byte records and `decoded_image_frames: 0`, the
+file contains timing/event records but no full ePixQuad image frames.
 
 Pattern definitions:
 

@@ -42,8 +42,8 @@ elif [ -d "/sdf/group/lcls/" ]; then
     export DIR_PSDM=/sdf/group/lcls/ds/ana/
     export SIT_PSDM_DATA=/sdf/data/lcls/ds/
 
-    #conda activate daq_20260311
-    conda activate ps_20241122
+    export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
+    conda activate daq_20250402_r9
 
 else
     echo "CONDA area not found"
