@@ -318,7 +318,8 @@ Pgp::Pgp(const Parameters& para, MemPool& pool, Detector& det, PGPDrp& drp) :
 {
     if (pool.setMaskBytes(para.laneMask, det.virtChan)) {
         logging::critical("Failed to allocate lane/vc: '%m' "
-                          "- does another process have %s open?", para.device.c_str());
+                          "- does another process have %s:%02x open?",
+                          para.device.c_str(), para.laneMask);
         abort();
     }
 }

@@ -4,6 +4,9 @@ from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
 import epics
 
+from psdaq.utils import enable_lcls2_pgp_pcie_apps
+from psdaq.cas.pgpmonitor import PgpMonitor
+
 import json
 import time
 import pprint
@@ -121,6 +124,8 @@ def config_timing(epics_prefix, timebase='186M'):
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
     global lane
+    global base
+
     logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
     base['prefix'] = epics_prefix
@@ -131,6 +136,16 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
 
     print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
 
+    pcie_card = PgpMonitor(pollEn=False,
+                           initRead=False,
+                           dev=dev,
+                           lanemask=lanemask,
+                           numVc=2)
+    pcie_card.__enter__()
+    pcie_card.init_lanes()
+
+    base['pcie'] = pcie_card
+    
     wave8_unconfig(base)
 
     return base
@@ -141,6 +156,9 @@ def wave8_init_feb(slane=None,schan=None):
         lane = int(slane)
 
 def wave8_connectionInfo(base, alloc_json_str):
+
+    base['pcie'].check_lanes('connect')
+
     epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
@@ -171,25 +189,6 @@ def wave8_connectionInfo(base, alloc_json_str):
     print(f'wave8_connect returning {d}')
     return d
 
-def detect_version():
-    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
-    file_datadev='/proc/datadev_0'
-    isC1100 = False
-    try:
-        with open(file_datadev, 'r', encoding='utf-8') as file:
-            for line in file:
-                if 'Build String' in line:
-                    isC1100 = 'C1100' in line
-                    break
-        return isC1100
-
-    except FileNotFoundError:
-        logging.error(f"Error: File '{file_datadev}' not found.")
-        return False
-    except Exception as e:
-        logging.error(f"Error reading file: {e}")
-        return False
-     
 def user_to_expert(prefix, cfg, full=False):
     global group
     global ocfg
@@ -251,6 +250,8 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     prefix = base['prefix']
     timebase = base['timebase']
     group = grp
+
+    base['pcie'].check_lanes('config')
 
     #  Read the configdb
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
@@ -439,6 +440,8 @@ def wave8_update(update):
 
 #  This is really shutdown/disconnect
 def wave8_unconfig(base):
+
+    base['pcie'].check_lanes('unconfig')
 
     epics_prefix = base['prefix']
     # cpo removed setting Partition=1 (aka readout group) here

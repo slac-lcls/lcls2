@@ -615,7 +615,7 @@ class PVCtrls(object):
             ip_comp = ip.split('.')
             v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-100)&0xff)<<4)
         xpm.XpmApp.paddr.set(v)
-        logging.info('Set PADDR to 0x{:08x}'.format(v))
+        logging.warning('Set PADDR to 0x{:08x}'.format(v))
 
         self._name  = name
         self._ip    = ip

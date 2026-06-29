@@ -176,10 +176,16 @@ static __global__ __launch_bounds__(TPB, 3)
 #else
 static __global__ __launch_bounds__(TPB, 2)
 #endif
-void d_encode(const unsigned& index, const byte* const __restrict__ input, const long long inBufSize, byte* const __restrict__ out_base, const long long out_size, long long* const __restrict__ fullcarry)
+void d_encode(unsigned* const __restrict__ state, unsigned const* const __restrict__ index,
+              const byte* const __restrict__ input, const long long inBufSize, byte* const __restrict__ out_base, const long long out_size, long long* const __restrict__ fullcarry)
 {
+  // Added by RiC:
+  if (state && (*state != 1))  return;
+
+  unsigned const idx{*index};         // Dereference only once
   const int                insize = inBufSize;
-  byte* const __restrict__ output = &out_base[index * out_size];
+  byte* const __restrict__ output = &out_base[idx * out_size];
+  // End RiC
 
   // allocate shared memory buffer
   __shared__ long long chunk [3 * (CS / sizeof(long long))];
@@ -261,8 +267,13 @@ void d_encode(const unsigned& index, const byte* const __restrict__ input, const
       // compute compressed size
       auto outsize = &data_out[fullcarry[chunkID]] - output;
 
+      // Added by RiC:
       // Place the size of the reduced data just before the data
       ((long long*)output)[-1] = outsize;
+
+      // Advance to the next state
+      if (state)  *state = 2;
+      // End RiC
     }
   } while (true);
 }
@@ -288,12 +299,16 @@ static void CheckCuda(const int line)
   }
 }
 
-static __global__ void d_prepare(const unsigned&                index,
-                                 byte const* const __restrict__ d_input_base,
-                                 const long long                insize,
-                                 byte      * const __restrict__ dpreencdata)
+// Added by RiC:
+static __global__ void d_prepare(unsigned const* const __restrict__ state,
+                                 unsigned const* const __restrict__ index,
+                                 uint8_t  const* const __restrict__ d_input_base,
+                                 long long       const              insize,
+                                 uint8_t*        const __restrict__ dpreencdata)
 {
-  byte const* const __restrict__ d_input = &d_input_base[index * insize];
+  if (state && (*state != 1))  return;
+
+  uint8_t const* const __restrict__ d_input = &d_input_base[*index * insize];
 
   // @todo: Better to do this in steps of 32 or 64 bit words?
   int offset = blockIdx.x * blockDim.x + threadIdx.x;
@@ -302,9 +317,10 @@ static __global__ void d_prepare(const unsigned&                index,
     dpreencdata[i] = d_input[i];
   }
 }
+// End RiC
 
 
-LC_Compressor::LC_Compressor(size_t insize, double paramv)
+Compressor::Compressor(size_t insize, double paramv)
 {
   // get GPU info
   //cudaSetDevice(0);  // This causes CheckCuda in the dtor to report an error
@@ -327,7 +343,7 @@ LC_Compressor::LC_Compressor(size_t insize, double paramv)
   _paramv[0] = paramv;
 }
 
-LC_Compressor::~LC_Compressor()
+Compressor::~Compressor()
 {
   // clean up GPU memory
   cudaFree(_d_fullcarry);
@@ -335,26 +351,27 @@ LC_Compressor::~LC_Compressor()
   CheckCuda(__LINE__);
 }
 
-void LC_Compressor::banner() const
+void Compressor::banner() const
 {
   printf("GPU LC 1.2 Algorithm: QUANT_ABS_0_f32 BIT_4 RZE_1\n");
   printf("Copyright 2024 Texas State University\n\n");
 }
 
-void LC_Compressor::updateGraph(cudaStream_t      stream,
-                                const unsigned&   index,
-                                byte const* const d_input_base,
-                                const long long   inBufSize,
-                                byte* const       d_encoded_base,
-                                const long long   encBufSize)
+void Compressor::updateGraph(cudaStream_t         stream,
+                             unsigned*      const state_d,
+                             unsigned*      const index_d,
+                             uint8_t const* const d_input_base,
+                             long long      const inBufSize,
+                             uint8_t*       const d_encoded_base,
+                             long long      const encBufSize)
 {
   //cudaMemcpy(dpreencdata, d_input, inBufSize, cudaMemcpyDeviceToDevice);
-  d_prepare<<<_blocks, TPB, 0, stream>>>(index, d_input_base, inBufSize, _dpreencdata);
+  d_prepare<<<_blocks, TPB, 0, stream>>>(state_d, index_d, d_input_base, inBufSize, _dpreencdata);
   long long dpreencsize = inBufSize;
 
   d_QUANT_ABS_0_f32(dpreencsize, _dpreencdata, 1, _paramv, stream);
   d_reset<<<1, 1, 0, stream>>>();
   const long long chunks = (inBufSize + CS - 1) / CS;  // round up
   cudaMemsetAsync(_d_fullcarry, 0, chunks * sizeof(long long), stream);
-  d_encode<<<_blocks, TPB, 0, stream>>>(index, _dpreencdata, dpreencsize, d_encoded_base, encBufSize, _d_fullcarry);
+  d_encode<<<_blocks, TPB, 0, stream>>>(state_d, index_d, _dpreencdata, dpreencsize, d_encoded_base, encBufSize, _d_fullcarry);
 }
