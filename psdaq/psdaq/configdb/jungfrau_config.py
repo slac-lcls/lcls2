@@ -70,6 +70,11 @@ def jungfrau_connectionInfo(jungfrau_kcu, alloc_json_str):
     connect_info = {}
     connect_info["paddr"] = rxId
 
+    time.sleep(0.1)
+    print('**** cpo hack TxPhyPllReset ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    time.sleep(0.1)
+
     return connect_info
 
 
