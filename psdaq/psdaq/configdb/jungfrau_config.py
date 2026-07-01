@@ -209,6 +209,11 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
             print(f"Enabling lane {i}")
             trigEventManager.TriggerEventBuffer[i].MasterEnable.set(1)
 
+    time.sleep(0.1)
+    print('**** cpo hack TxPhyPllReset2 ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    time.sleep(0.1)
+
     return cfg_list
 
 
