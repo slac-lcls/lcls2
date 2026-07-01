@@ -152,7 +152,8 @@ class EventPool:
             # det_info is (psana_det, gpu_det_obj) or
             # (psana_det, gpu_det_obj, cpu_seg_map) for D1 combined routing.
             gpu_det_obj = det_info[1]
-            for ec in gpu_det_obj.process_batch(gv, gpu_read, stream=stream):
+            for ec in gpu_det_obj.process_batch(gv, gpu_read, stream=stream,
+                                                slot_id=slot):
                 ts_dict = gpu_results_by_ts.setdefault(ec.timestamp, {})
                 ts_dict[f'{det_name}.calib'] = ec.calib_gpu
                 if ec.raw_gpu is not None:
@@ -160,6 +161,12 @@ class EventPool:
                 if ec.image_gpu is not None:
                     ts_dict[f'{det_name}.image'] = ec.image_gpu
 
+        if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
+            try:
+                from psana.gpu.gpu_mpi import log_gpu_mem
+                log_gpu_mem(f'EventPool.submit slot={slot} write={self._write_idx}')
+            except Exception:
+                pass
         self._slots[slot] = (gpu_results_by_ts, list(cpu_evts), stream)
         self._write_idx += 1
 

@@ -104,7 +104,7 @@ class GPUKernel:
         gpu_detector : GPUDetector — has .peds_gpu, .gmask_gpu, .det_shape
         """
 
-    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None):
+    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None, out=None):
         """Apply calibration to one event's raw pixels on GPU.
 
         Parameters
@@ -113,6 +113,10 @@ class GPUKernel:
         peds_gpu  : cp.ndarray float32, flat, length n_modes * npixels
         gmask_gpu : cp.ndarray float32, flat, same length as peds_gpu
         stream    : cp.cuda.Stream or None
+        out       : cp.ndarray float32 or None
+            Pre-allocated output buffer (same size as raw_gpu, flat).
+            When provided the kernel writes directly into this buffer instead
+            of allocating a new array, avoiding CuPy pool growth.
 
         Returns
         -------
@@ -342,12 +346,12 @@ class JungfrauCalibKernel(GPUKernel):
     det_types = ['jungfrau']
     raw_dtype = 'uint16'
 
-    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None):
+    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None, out=None):
         from psana.gpu.gpu_calib import fused_calib_gpu
         import cupy as cp
         ctx = stream if stream is not None else cp.cuda.Stream.null
         with ctx:
-            return fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu)
+            return fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu, out=out)
 
 
 # ---------------------------------------------------------------------------
@@ -381,17 +385,20 @@ class SimpleAreaCalibKernel(GPUKernel):
     ]
     raw_dtype = 'uint16'
 
-    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None):
+    def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None, out=None):
         import cupy as cp
         npixels  = int(raw_gpu.size)
-        # Use mode-0 constants (first npixels elements of the flat arrays).
         peds_m0  = peds_gpu[:npixels]
         gmask_m0 = gmask_gpu[:npixels]
 
         ctx = stream if stream is not None else cp.cuda.Stream.null
         with ctx:
             raw_f32 = raw_gpu.astype(cp.float32).ravel()
-            return (raw_f32 - peds_m0) * gmask_m0
+            result  = (raw_f32 - peds_m0) * gmask_m0
+            if out is not None and out.size >= npixels and out.dtype == cp.float32:
+                out.ravel()[:npixels] = result
+                return out.reshape(raw_gpu.shape)
+            return result.reshape(raw_gpu.shape)
 
 
 # ---------------------------------------------------------------------------

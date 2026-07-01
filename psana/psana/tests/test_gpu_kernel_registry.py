@@ -23,9 +23,6 @@ Run
 
     # Include slow/GPU tests (on a GPU node):
     pytest psana/psana/tests/test_gpu_kernel_registry.py -m slow
-    # or equivalently on a GPU node:
-    PS_TEST_GPU_STREAM_IDS=6,8,9,10,11 pytest \\
-        psana/psana/tests/test_gpu_kernel_registry.py -m slow
 """
 
 import glob
@@ -331,7 +328,9 @@ def test_custom_kernel_in_pipeline():
         det_types = ['jungfrau']
         raw_dtype = 'uint16'
 
-        def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None):
+        def calibrate(self, raw_gpu, peds_gpu, gmask_gpu, stream=None, out=None):
+            # out= is accepted for API compatibility but ignored here since
+            # we multiply the result, which allocates a new array anyway.
             return fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu) * SCALE
 
     custom_reg = GPUKernelRegistry()
@@ -374,6 +373,11 @@ def test_detector_router_in_context():
 
     Verifies that DetectorRouter is wired into GpuEventContext and resolves
     unqualified keys correctly end-to-end through the DataSource integration.
+
+    Note: ctx.get('raw') is NOT tested here because compute_raw=False by
+    default (raw ADC values are not retained unless explicitly requested).
+    The 'raw' key is only present when the DataSource is constructed with
+    an option that enables compute_raw — currently an internal flag only.
     """
     import cupy as cp
 
@@ -391,15 +395,11 @@ def test_detector_router_in_context():
         qua = ctx.get('jungfrau.calib').on_gpu  # qualified
 
         assert cp.array_equal(unq, qua), (
-            'ctx.get("calib") and ctx.get("jungfrau.calib") must be identical'
+            'ctx.get("calib") and ctx.get("jungfrau.calib") must return '
+            'the same array'
         )
-
-        # raw also resolves through the router.
-        raw_unq = ctx.get('raw').on_gpu
-        raw_qua = ctx.get('jungfrau.raw').on_gpu
-        assert cp.array_equal(raw_unq, raw_qua), (
-            'ctx.get("raw") and ctx.get("jungfrau.raw") must be identical'
-        )
+        assert unq.ndim == 3, f'expected (n_segs, nrows, ncols), got {unq.shape}'
+        assert unq.dtype == cp.float32, f'expected float32, got {unq.dtype}'
 
         n_checked += 1
 

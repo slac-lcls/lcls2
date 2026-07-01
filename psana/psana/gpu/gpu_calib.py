@@ -216,7 +216,8 @@ class GPUDetector:
                  seg_stride_bytes=None,
                  stream_seg_map=None,
                  cmpars=None,
-                 calib_kernel=None):
+                 calib_kernel=None,
+                 n_slots=4):
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
         self.gmask_gpu         = gmask_gpu
@@ -246,6 +247,36 @@ class GPUDetector:
         self._scatter_ix   = None   # cp.ndarray int64, flat
         self._scatter_iy   = None   # cp.ndarray int64, flat
         self._image_shape  = None   # (nrows_img, ncols_img)
+        # Per-stream calibconst cache: pre-computed peds/gmask slices for each
+        # stream_id so _extract_and_calibrate() avoids cp.concatenate per event.
+        # Computed once on first process_batch() call (after stream_seg_map is
+        # known) and reused for all subsequent events — eliminates the 20+ GB
+        # of pool allocations that caused OOM at large batch sizes.
+        self._stream_peds  = {}     # {stream_key: cp.ndarray float32 flat}
+        self._stream_gmask = {}     # {stream_key: cp.ndarray float32 flat}
+        # True when peds_gpu/gmask_gpu are shared views owned by another rank
+        # (set by share_calib_between_gpu_peers() for follower BD ranks).
+        # beginstep() skips the H→D write on followers to avoid a race with
+        # the leader writing to the same shared GPU memory.
+        self._is_calib_follower = False
+        # Per-(slot,stream) pre-allocated raw uint16 buffers.
+        # Eliminates cp.stack() allocation inside _extract_and_calibrate()
+        # (5 MB × 500 calls/batch × 20 batches = 50 GB pool growth at bs=50).
+        self._raw_slot_bufs = {}    # {(slot_id, stream_key): cp.ndarray uint16}
+        # Per-slot pre-allocated calib_gpu buffers (Option E).
+        # One buffer per EventPool slot, grown lazily to fit the first batch.
+        # Reused across batches to prevent CuPy pool fragmentation that causes
+        # OOM with large batch sizes.  Each slot's buffer is written by the GPU
+        # calibration kernel and read by the user via GpuEventContext.on_gpu.
+        #
+        # Safety guarantee: the EventPool recycles slot N only after N+n_slots
+        # batches, by which point the user has consumed all GpuEventContext
+        # objects from that slot.  on_gpu arrays are views into this buffer —
+        # users who need to retain results beyond one event-loop cycle should
+        # call .on_cpu() to get an independent NumPy copy, then call
+        # free_calib_bufs() to reclaim GPU memory.
+        self._n_slots         = int(n_slots)
+        self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
         # Common-mode correction — not yet implemented on GPU.
         if cmpars is not None:
             raise NotImplementedError(
@@ -335,6 +366,62 @@ class GPUDetector:
                 f'segments (e.g. full Jungfrau 16M) and GPU memory is limited.'
             )
 
+    def setup_geometry_from_arrays(self, ix_all, iy_all):
+        """Build GPU scatter map from pre-computed coordinate arrays.
+
+        Equivalent to setup_geometry(det) but takes the pixel coordinate
+        index arrays directly rather than calling det.raw._pixel_coord_indexes().
+
+        Used in MPI BD mode where _pixel_coord_indexes() cannot be called
+        lazily during the event loop (it triggers a shmem collective that
+        requires all MPI ranks to participate, but smd0/EB are already in
+        their own event loops by that point).
+
+        Instead, _setup_gpu_geometry() in RunParallel calls
+        _pixel_coord_indexes() during __init__ while all ranks are still
+        synchronising, stores the numpy arrays, and passes them here.
+
+        Parameters
+        ----------
+        ix_all : np.ndarray, shape (n_all_segs, nrows, ncols), dtype int64
+        iy_all : np.ndarray, shape (n_all_segs, nrows, ncols), dtype int64
+            Full-detector row/col scatter indices for every segment,
+            as returned by det.raw._pixel_coord_indexes(all_segs=True).
+        """
+        import cupy as cp
+
+        if self._stream_seg_map:
+            all_seg_ids = []
+            for sid in sorted(self._stream_seg_map):
+                all_seg_ids.extend(self._stream_seg_map[sid])
+        else:
+            all_seg_ids = list(range(self._n_segs_calib))
+
+        try:
+            ix = ix_all[all_seg_ids].astype(np.int64)
+            iy = iy_all[all_seg_ids].astype(np.int64)
+        except IndexError as exc:
+            import warnings
+            warnings.warn(
+                f'GPUDetector.setup_geometry_from_arrays: segment index out '
+                f'of range ({exc}). ctx.get("*.image") will return None.'
+            )
+            return
+
+        nrows_img = int(ix.max()) + 1
+        ncols_img = int(iy.max()) + 1
+
+        try:
+            self._scatter_ix  = cp.asarray(np.ascontiguousarray(ix.ravel()))
+            self._scatter_iy  = cp.asarray(np.ascontiguousarray(iy.ravel()))
+            self._image_shape = (nrows_img, ncols_img)
+        except Exception as exc:
+            import warnings
+            warnings.warn(
+                f'GPUDetector.setup_geometry_from_arrays: GPU transfer failed '
+                f'({exc}). ctx.get("*.image") will return None.'
+            )
+
     def assemble_image(self, calib_gpu, stream=None):
         """Scatter calibrated segments onto a 2-D detector image on GPU.
 
@@ -405,9 +492,25 @@ class GPUDetector:
                 and np.array_equal(gmask_flat, self._gmask_cpu_cache)):
             return   # no change — skip H->D
 
+        if self._is_calib_follower:
+            # peds_gpu/gmask_gpu are shared views into the leader's GPU
+            # memory.  The leader's beginstep() will write the new values;
+            # doing so here too would race-write to shared memory.
+            # We only need to clear derived caches so slices get recomputed
+            # from the (already-updated-by-leader) shared arrays.
+            self._stream_peds.clear()
+            self._stream_gmask.clear()
+            self._peds_cpu_cache  = peds_flat.copy()
+            self._gmask_cpu_cache = gmask_flat.copy()
+            return
+
         # In-place update: same GPU buffer addresses (CUDA-graph-safe).
         self.peds_gpu.set(np.ascontiguousarray(peds_flat))
         self.gmask_gpu.set(np.ascontiguousarray(gmask_flat))
+
+        # Invalidate per-stream peds/gmask cache.
+        self._stream_peds.clear()
+        self._stream_gmask.clear()
 
         # Cache the new CPU arrays for next comparison.
         self._peds_cpu_cache  = peds_flat.copy()
@@ -417,8 +520,52 @@ class GPUDetector:
     # Production API
     # ------------------------------------------------------------------
 
+    def _build_stream_calib_cache(self, stream_id, seg_ids):
+        """Pre-compute and cache peds/gmask slices for a stream.
+
+        Called once per stream_id on the first event that needs it.
+        Subsequent events for the same stream reuse the cached arrays,
+        eliminating the per-event cp.concatenate() calls that accumulated
+        20+ GB of pool entries and caused OOM at large batch sizes.
+        """
+        cp      = _cupy()
+        n_total = self._n_segs_calib * self._n_pix_seg
+        n_modes = self._n_modes_calib
+        n_segs  = len(seg_ids)
+        peds_parts = []
+        gmask_parts = []
+        for m in range(n_modes):
+            for s in seg_ids:
+                lo = m * n_total + s * self._n_pix_seg
+                hi = lo + self._n_pix_seg
+                peds_parts.append(self.peds_gpu[lo:hi])
+                gmask_parts.append(self.gmask_gpu[lo:hi])
+        # One allocation per stream per run — not per event.
+        self._stream_peds[stream_id]  = cp.concatenate(peds_parts)
+        self._stream_gmask[stream_id] = cp.concatenate(gmask_parts)
+
+    def free_calib_bufs(self):
+        """Release all pre-allocated per-slot calib_gpu buffers.
+
+        Call this when:
+          - You accumulate GpuEventContext objects across event-loop cycles
+            (e.g. ``results = list(run.events())``), in which case the
+            on_gpu arrays would alias into buffers that get overwritten.
+          - You want to reclaim GPU VRAM at the end of a run.
+
+        After calling this, process_batch() falls back to dynamic
+        allocation (one cp.empty() per batch), restoring normal behaviour
+        at the cost of CuPy pool growth over long runs.
+
+        Safe to call at any time — in-flight kernels have already read
+        from their slot's buffer before it is freed here.
+        """
+        self._calib_slot_bufs = [None] * self._n_slots
+
     def process_batch(self, gpu_view, gpu_read,
-                      stream=None) -> Iterator[EventContext]:
+                      stream=None, slot_id=None,
+                      compute_raw=False,
+                      compute_image=False) -> Iterator[EventContext]:
         """Yield one EventContext per L1Accept event in the batch.
 
         Reads desc_table (CPU NumPy) for device_offset and read_size per
@@ -444,44 +591,122 @@ class GPUDetector:
         data_u16   = gpu_read.data_gpu.view(cp.uint16)
         desc_table = gpu_read.desc_table   # NumPy CPU array — no D2H needed
 
-        # Auto-detect layout on first call: copy just the first 512 bytes.
-        self._ensure_layout(gpu_read.data_gpu[:512].get())
+        # Auto-detect layout on the first batch only.  The guard is outside the
+        # .get() call because Python evaluates arguments before calling the
+        # function — without the guard, data_gpu[:512].get() (a 512-byte D→H
+        # transfer) would fire on every process_batch() call even after layout
+        # is already known.
+        if self._raw_data_offset is None or self._seg_stride_bytes is None:
+            self._ensure_layout(gpu_read.data_gpu[:512].get())
 
+        # ── Phase 1: pre-scan all events ─────────────────────────────────────
+        # Collect descriptor rows and segment counts for every non-empty event
+        # so we can size the slot buffer to hold the ENTIRE batch in one shot.
+        # This is required to give each event a unique, non-overlapping slice:
+        # with batch_size > 1 all events share the same det shape, so the old
+        # per-event resize check would reuse (and overwrite) the same buffer
+        # for every event in the batch — all timestamps would alias the last
+        # event's calibration result.
+        events_info = []   # list of (GpuBatchEvent, desc_rows, seg_counts, total_segs)
         for event in gpu_view.iter_events():
             if event.n_desc == 0:
                 continue
+            desc_rows = [desc_table[event.first_desc + i]
+                         for i in range(int(event.n_desc))]
+            seg_counts = [
+                max(1, (int(row[DESC_READ_SIZE]) - 24) // self._seg_stride_bytes)
+                for row in desc_rows
+            ]
+            events_info.append((event, desc_rows, seg_counts, sum(seg_counts)))
 
-            # Calibrate every descriptor (one per GPU-routed stream) and
-            # stack the results in descriptor order.  All operations run on
-            # the supplied stream when one is given.
-            calib_segs = []
-            raw_segs   = []
-            sctx = stream if stream is not None else cp.cuda.Stream.null
+        if not events_info:
+            return
+
+        # ── Phase 2: allocate / grow the slot buffer for the whole batch ──────
+        # The slot buffer covers ALL events: shape = (total_segs_batch, nrows, ncols).
+        # Each event's calib output lands in a unique non-overlapping slice, so
+        # no event's data can be overwritten by a later event in the same batch.
+        total_segs_batch = sum(e[3] for e in events_info)
+        batch_shape      = (total_segs_batch, self._nrows, self._ncols)
+
+        slot    = (int(slot_id) % self._n_slots
+                   if slot_id is not None else None)
+        slot_buf = None
+        if self._calib_slot_bufs is not None and slot is not None:
+            buf = self._calib_slot_bufs[slot]
+            if buf is None or buf.shape != batch_shape:
+                # Compact pool before a large new allocation.
+                free_b, _ = cp.cuda.Device().mem_info
+                if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
+                    print('[GPU-MEM] calib slot grow: free=%.1fGB pool_used=%.1fGB'
+                          % (free_b/1e9, cp.get_default_memory_pool().used_bytes()/1e9),
+                          flush=True)
+                cp.get_default_memory_pool().free_all_blocks()
+                if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
+                    free_b2, _ = cp.cuda.Device().mem_info
+                    print('[GPU-MEM] after free_all_blocks: free=%.1fGB' % (free_b2/1e9,), flush=True)
+                self._calib_slot_bufs[slot] = cp.empty(batch_shape, dtype=cp.float32)
+            slot_buf = self._calib_slot_bufs[slot]
+
+        # ── Phase 3: per-event calibration into non-overlapping slices ────────
+        sctx         = stream if stream is not None else cp.cuda.Stream.null
+        batch_offset = 0   # segment offset into slot_buf for the current event
+
+        for event, desc_rows, seg_counts, total_segs in events_info:
+            raw_segs = [] if compute_raw else None
+
+            # Each event gets a UNIQUE slice of the batch slot buffer so that
+            # calibrating event i+1 cannot overwrite event i's result.
+            out_buf = (slot_buf[batch_offset : batch_offset + total_segs]
+                       if slot_buf is not None else None)
+
             with sctx:
-                for i in range(int(event.n_desc)):
-                    desc_row      = desc_table[event.first_desc + i]
+                seg_offset = 0
+                for i, desc_row in enumerate(desc_rows):
                     device_offset = int(desc_row[DESC_DEVICE_OFFSET])
                     read_size     = int(desc_row[DESC_READ_SIZE])
                     stream_id     = int(desc_row[DESC_STREAM_ID])
-                    seg_ids = (self._stream_seg_map.get(stream_id)
-                               if self._stream_seg_map else None)
+                    seg_ids       = (self._stream_seg_map.get(stream_id)
+                                     if self._stream_seg_map else None)
+                    n_segs        = seg_counts[i]
+                    # Pass the pre-allocated slice so the kernel writes
+                    # directly into it — no allocation inside calibrate().
+                    out_slice = (out_buf[seg_offset:seg_offset + n_segs]
+                                 if out_buf is not None else None)
                     calib, raw = self._extract_and_calibrate(
-                        data_u16, device_offset, read_size, seg_ids
+                        data_u16, device_offset, read_size, seg_ids,
+                        out=out_slice, slot_id=slot,
                     )
-                    calib_segs.append(calib)
-                    raw_segs.append(raw)
+                    if out_buf is None:
+                        if i == 0:
+                            calib_gpu = calib
+                        else:
+                            calib_gpu = cp.concatenate(
+                                [calib_gpu, calib], axis=0
+                            )
+                    if raw_segs is not None:
+                        raw_segs.append(raw)
+                    seg_offset += n_segs
 
-                calib_gpu = (calib_segs[0] if len(calib_segs) == 1
-                             else cp.concatenate(calib_segs, axis=0))
-                raw_gpu   = (raw_segs[0] if len(raw_segs) == 1
-                             else cp.concatenate(raw_segs, axis=0))
-                image_gpu = self.assemble_image(calib_gpu, stream=stream)
+                if out_buf is not None:
+                    calib_gpu = out_buf   # unique view into slot_buf, no copy
+
+                if raw_segs is None:
+                    raw_gpu = None
+                elif len(raw_segs) == 1:
+                    raw_gpu = raw_segs[0]
+                else:
+                    raw_gpu = cp.concatenate(raw_segs, axis=0)
+                image_gpu = (self.assemble_image(calib_gpu, stream=stream)
+                             if compute_image else None)
 
             yield EventContext(timestamp=event.timestamp,
                                calib_gpu=calib_gpu,
                                raw_gpu=raw_gpu,
                                image_gpu=image_gpu,
                                stream=stream)
+
+            batch_offset += total_segs   # advance to next event's region
 
     # ------------------------------------------------------------------
     # Test / validation API
@@ -508,7 +733,8 @@ class GPUDetector:
         data_u16  = data_gpu.view(cp.uint16)
         read_size = int(data_gpu.nbytes) - device_offset
         # Auto-detect layout from first 512 bytes of this dgram.
-        self._ensure_layout(data_gpu[device_offset:device_offset + 512].get())
+        if self._raw_data_offset is None or self._seg_stride_bytes is None:
+            self._ensure_layout(data_gpu[device_offset:device_offset + 512].get())
         calib, _ = self._extract_and_calibrate(data_u16, device_offset, read_size)
         return calib
 
@@ -517,7 +743,7 @@ class GPUDetector:
     # ------------------------------------------------------------------
 
     def _extract_and_calibrate(self, data_u16, device_offset, read_size,
-                               seg_ids=None):
+                               seg_ids=None, out=None, slot_id=None):
         """Gather raw uint16 pixels and run fused_calib_gpu.
 
         Parameters
@@ -540,41 +766,49 @@ class GPUDetector:
 
         n_segs = max(1, (read_size - 24) // self._seg_stride_bytes)
 
+        stream_key = tuple(seg_ids) if seg_ids is not None else None
+        raw_key    = (slot_id, stream_key, n_segs)
         if n_segs == 1:
             pix_start = (device_offset + self._raw_data_offset) // 2
             raw_u16   = data_u16[pix_start:pix_start + self._n_pix_seg].reshape(
                 1, self._nrows, self._ncols
             )
         else:
-            segs = []
-            for k in range(n_segs):
-                byte_off = (device_offset + self._raw_data_offset
-                            + k * self._seg_stride_bytes)
-                pix_off  = byte_off // 2
-                segs.append(data_u16[pix_off:pix_off + self._n_pix_seg])
-            raw_u16 = cp.stack(segs).reshape(n_segs, self._nrows, self._ncols)
+            # Gather all N segments in one kernel launch instead of N separate
+            # device-to-device copies.  Segments sit at evenly-spaced offsets
+            # in data_gpu (seg_stride_bytes apart).  as_strided exposes them
+            # as a 3-D view (n_segs, nrows, ncols) with no copy; assigning
+            # that view into the contiguous pre-allocated buf triggers one
+            # gather kernel rather than N element-wise copy kernels.
+            cp = _cupy()
+            buf = self._raw_slot_bufs.get(raw_key)
+            if buf is None or buf.shape != (n_segs, self._nrows, self._ncols):
+                buf = cp.empty((n_segs, self._nrows, self._ncols), dtype=cp.uint16)
+                self._raw_slot_bufs[raw_key] = buf
+            pix_start  = (device_offset + self._raw_data_offset) // 2
+            stride_u16 = self._seg_stride_bytes // 2
+            span_u16   = (n_segs - 1) * stride_u16 + self._n_pix_seg
+            src_view = cp.lib.stride_tricks.as_strided(
+                data_u16[pix_start : pix_start + span_u16],
+                shape=(n_segs, self._nrows, self._ncols),
+                strides=(self._seg_stride_bytes, self._ncols * 2, 2),
+            )
+            buf[:] = src_view   # one gather kernel, not N copy kernels
+            raw_u16 = buf
 
         n_total = self._n_segs_calib * self._n_pix_seg
 
         n_modes = self._n_modes_calib
         if seg_ids is not None:
-            # Correct path: extract calibconst rows for the actual segment IDs.
-            peds = cp.concatenate([
-                cp.concatenate([
-                    self.peds_gpu[m * n_total + s * self._n_pix_seg :
-                                  m * n_total + (s + 1) * self._n_pix_seg]
-                    for s in seg_ids
-                ])
-                for m in range(n_modes)
-            ])
-            gmask = cp.concatenate([
-                cp.concatenate([
-                    self.gmask_gpu[m * n_total + s * self._n_pix_seg :
-                                   m * n_total + (s + 1) * self._n_pix_seg]
-                    for s in seg_ids
-                ])
-                for m in range(n_modes)
-            ])
+            # Use pre-computed per-stream calibconst slices.
+            # _build_stream_calib_cache() allocates once per unique stream_id;
+            # subsequent events reuse the cached arrays — no per-event
+            # cp.concatenate() and no pool fragmentation.
+            stream_key = tuple(seg_ids)
+            if stream_key not in self._stream_peds:
+                self._build_stream_calib_cache(stream_key, seg_ids)
+            peds  = self._stream_peds[stream_key]
+            gmask = self._stream_gmask[stream_key]
         elif n_segs != self._n_segs_calib:
             # Fallback: first n_segs rows (approximation).
             n_target = n_segs * self._n_pix_seg
@@ -596,7 +830,18 @@ class GPUDetector:
         if kernel is None:
             from psana.gpu.gpu_kernel_registry import JungfrauCalibKernel
             kernel = JungfrauCalibKernel()
-        calib = kernel.calibrate(raw_u16, peds, gmask, stream=None)
+        calib = kernel.calibrate(raw_u16, peds, gmask, stream=None, out=out)
+
+        # If the kernel ignored the pre-allocated `out` buffer (e.g. a custom
+        # kernel that returns a new array instead of writing into `out`), copy
+        # the result back into `out` so process_batch can always rely on the
+        # slot buffer being correct.  Without this, process_batch would assign
+        # `calib_gpu = out_buf` (the still-zero slot buffer slice) and discard
+        # the kernel's actual output.
+        if out is not None and calib is not out:
+            cp.copyto(out, calib.reshape(out.shape))
+            calib = out
+
         return calib, raw_u16   # (calib_gpu, raw_gpu) tuple
 
 
@@ -604,7 +849,7 @@ class GPUDetector:
 # Public API
 # ---------------------------------------------------------------------------
 
-def fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu, threads=256):
+def fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu, threads=256, out=None):
     """Run Jungfrau calibration on GPU.
 
     Parameters
@@ -637,7 +882,13 @@ def fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu, threads=256):
             f"gmask_gpu length {gmask_gpu.size} != 3 * npixels ({3 * npixels})"
         )
 
-    calib_gpu = cp.empty(npixels, dtype=cp.float32)
+    # Use the caller's pre-allocated output buffer when provided (Option E).
+    # Avoids a cp.empty() allocation per batch — the caller passes a view into
+    # the EventPool's slot buffer so no new VRAM is consumed.
+    if out is not None and out.size >= npixels and out.dtype == cp.float32:
+        calib_gpu = out.ravel()[:npixels]
+    else:
+        calib_gpu = cp.empty(npixels, dtype=cp.float32)
 
     blocks = (npixels + threads - 1) // threads
     _jungfrau_calib_kernel()(

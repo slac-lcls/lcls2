@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass, field
 from typing import List, Tuple
 
@@ -43,7 +44,21 @@ class PendingBatch:
 
 
 class KvikioGpuReader:
-    def __init__(self, task_size=None):
+    def __init__(self, task_size=None, n_slots=4):
+        """Create a GPU reader with optional pre-allocated per-slot buffers.
+
+        Parameters
+        ----------
+        task_size : int or None
+            KvikIO task size for GDS reads.
+        n_slots : int
+            Number of EventPool slots (must match EventPool depth).
+            One ``data_gpu`` buffer is pre-allocated per slot and grown
+            lazily on the first batch that exceeds the current size.
+            Reusing the same buffer per slot eliminates the per-batch
+            ``cp.empty()`` allocation that causes CuPy pool fragmentation
+            over long runs with large batch sizes.
+        """
         import cupy as cp
         import kvikio
 
@@ -51,6 +66,73 @@ class KvikioGpuReader:
         self.kvikio = kvikio
         self.task_size = task_size
         self._files = {}
+
+        # Detect which I/O path kvikio will use for this run.
+        # GDS (is_gds_available=True)  → NVMe → GPU VRAM direct via DMA
+        # CPU fallback (False)         → NVMe → CPU DRAM → GPU VRAM via cudaMemcpy
+        # GDS requires: local NVMe (not Lustre/GPFS), cuFile driver loaded,
+        # KVIKIO_COMPAT_MODE not set.
+        # On S3DF: /sdf/data/lcls/... is Lustre → GDS unavailable → CPU fallback.
+        try:
+            _dp = kvikio.DriverProperties()
+            self._compat_mode: bool = not _dp.is_gds_available
+        except Exception:
+            self._compat_mode = True   # assume CPU fallback if detection fails
+
+        self.io_path: str = 'CPU-fallback' if self._compat_mode else 'GDS'
+
+        if self._compat_mode:
+            import warnings
+            warnings.warn(
+                'KvikioGpuReader: kvikio is using the CPU-fallback path '
+                '(NVMe → CPU DRAM → GPU VRAM).  True GDS '
+                '(NVMe → GPU VRAM direct) is not available — possible causes: '
+                'Lustre/GPFS filesystem, cuFile driver not loaded, or '
+                'KVIKIO_COMPAT_MODE=1.  Performance will be limited by '
+                'both NVMe read speed AND PCIe CPU→GPU transfer bandwidth.',
+                stacklevel=2,
+            )
+
+        # Bandwidth tracking: accumulated across all issue+wait calls.
+        # Reset via reset_io_stats(); read via io_stats().
+        self._total_bytes_read: int = 0
+        self._total_io_ns:      int = 0
+
+        # Pre-allocated per-slot data buffers (Option D).
+        # _slot_bufs[i] holds the current buffer for slot i.
+        # Grown lazily: only re-allocated when total_nbytes exceeds the
+        # existing buffer size (which happens at most a few times at the
+        # start of a run as batch sizes stabilise).
+        self._slot_bufs: list = [None] * n_slots
+        self._n_slots: int = n_slots
+        self._slot_idx: int = 0     # incremented on every issue_batch() call
+
+    def io_stats(self) -> dict:
+        """Return cumulative I/O statistics since last reset_io_stats().
+
+        Returns
+        -------
+        dict with keys:
+          io_path       : 'GDS' or 'CPU-fallback'
+          compat_mode   : bool (True = CPU fallback)
+          total_bytes   : int   total bytes read
+          total_ns      : int   total wall-ns spent in wait_batch()
+          bandwidth_gbs : float effective bandwidth in GB/s
+        """
+        bw = (self._total_bytes_read / self._total_io_ns
+              if self._total_io_ns > 0 else 0.0)
+        return {
+            'io_path':       self.io_path,
+            'compat_mode':   self._compat_mode,
+            'total_bytes':   self._total_bytes_read,
+            'total_ns':      self._total_io_ns,
+            'bandwidth_gbs': bw,
+        }
+
+    def reset_io_stats(self) -> None:
+        """Reset cumulative I/O statistics."""
+        self._total_bytes_read = 0
+        self._total_io_ns      = 0
 
     def close(self):
         for fh in self._files.values():
@@ -90,7 +172,26 @@ class KvikioGpuReader:
         total_nbytes = int(
             desc_table[-1, DESC_DEVICE_OFFSET] + desc_table[-1, DESC_READ_SIZE]
         )
-        data_gpu = self.cp.empty(total_nbytes, dtype=self.cp.uint8)
+        # Use the pre-allocated per-slot buffer when available.
+        # Only re-allocate when the current buffer is too small (grows lazily).
+        slot = self._slot_idx % self._n_slots
+        self._slot_idx += 1
+        existing = self._slot_bufs[slot]
+        if existing is None or existing.nbytes < total_nbytes:
+            self._slot_bufs[slot] = self.cp.empty(
+                total_nbytes, dtype=self.cp.uint8
+            )
+        data_gpu = self._slot_bufs[slot][:total_nbytes]
+        if os.environ.get('PSANA_GPU_MEM_DEBUG'):
+            try:
+                from psana.gpu.gpu_mpi import log_gpu_mem
+                grew = existing is None or existing.nbytes < total_nbytes
+                log_gpu_mem(
+                    f'issue_batch slot={slot} {total_nbytes/1e6:.0f} MB '
+                    f'{"(grew)" if grew else "(reused)"}'
+                )
+            except Exception:
+                pass
 
         futures = []
         for desc, row in zip(read_descs, desc_table):
@@ -139,6 +240,10 @@ class KvikioGpuReader:
                 data_gpu=pending.data_gpu,
             )
 
+        # Time the I/O wait to track effective bandwidth.
+        import time as _time
+        _t0 = _time.perf_counter_ns()
+
         by_timestamp = {}
         for desc, device_offset, read_size, future in pending.futures:
             nread = int(future.get())
@@ -161,6 +266,12 @@ class KvikioGpuReader:
                     by_timestamp.setdefault(desc.timestamp, {})[desc.stream_id] = (
                         0, digest_bytes(b"")
                     )
+
+        # Accumulate I/O stats: total bytes read and wall-ns spent waiting.
+        _elapsed_ns = _time.perf_counter_ns() - _t0
+        _bytes = sum(read_size for _, _, read_size, _ in pending.futures)
+        self._total_bytes_read += _bytes
+        self._total_io_ns      += _elapsed_ns
 
         return KvikioBatchRead(
             by_timestamp,

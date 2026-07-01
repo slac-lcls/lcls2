@@ -99,6 +99,8 @@ class GpuEvents:
         run,
         smdr_man=None,
         registry=None,
+        setup_geometry=True,
+        prebuilt_geometry=None,
     ):
         self.configs = configs
         self.dm = dm
@@ -107,8 +109,10 @@ class GpuEvents:
         self.shared_state = shared_state
         self.dsparms = dsparms
         self.run = run
-        self.smdr_man = smdr_man
-        self.registry = registry
+        self.smdr_man         = smdr_man
+        self.registry         = registry
+        self._setup_geometry  = setup_geometry
+        self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
 
         self._batch_iter = iter([])
         self._iter = None
@@ -147,9 +151,18 @@ class GpuEvents:
             set(requested_stream_ids) if requested_stream_ids is not None else None
         )
 
+        from psana.gpu.gpu_mpi import log_gpu_mem
+        try:
+            from mpi4py import MPI
+            _rank = MPI.COMM_WORLD.Get_rank()
+        except Exception:
+            _rank = None
+
+        log_gpu_mem('_setup_detectors entry', rank=_rank)
         for det_name in self.gpu_det_names:
             det = self.run.Detector(det_name)
             peds_gpu, gmask_gpu = prep_calib_constants(det)
+            log_gpu_mem(f'after prep_calib_constants ({det_name})', rank=_rank)
             det_shape = det.calibconst["pedestals"][0].shape[1:]
 
             stream_segments = dict(
@@ -193,10 +206,16 @@ class GpuEvents:
                 gmask_gpu=gmask_gpu,
                 stream_seg_map=stream_seg_map or None,
                 calib_kernel=kernel,
+                n_slots=getattr(self.dsparms, 'n_gpu_streams', 4),  # one calib_gpu per slot
             )
             if kernel is not None:
                 kernel.setup(det, gpu_detector)
-            gpu_detector.setup_geometry(det)
+            if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
+                ix_all, iy_all = self._prebuilt_geometry[det_name]
+                gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)
+            elif self._setup_geometry:
+                gpu_detector.setup_geometry(det)
+            log_gpu_mem(f'after setup_geometry ({det_name})', rank=_rank)
 
             opt_batch_sizes.append(optimal_kernel_batch_size(det_shape))
             self.gpu_detectors[det_name] = (det, gpu_detector, cpu_stream_seg_map)
@@ -234,7 +253,27 @@ class GpuEvents:
 
         n_streams = getattr(self.dsparms, "n_gpu_streams", 4)
         self.event_pool = EventPool(n=n_streams)
-        self.gpu_reader = KvikioGpuReader()
+        # KvikioGpuReader: pre-allocate one data_gpu buffer per slot (Option D)
+        self.gpu_reader = KvikioGpuReader(n_slots=n_streams)
+
+        # Report which I/O path kvikio will use for this run.
+        # GDS (compat_mode=False) reads NVMe → GPU VRAM directly (fast).
+        # CPU-fallback (compat_mode=True) reads NVMe → CPU DRAM → GPU VRAM
+        # via cudaMemcpy (slower; common on Lustre/GPFS filesystems like S3DF).
+        import logging as _log
+        _logger = _log.getLogger(__name__)
+        _path = self.gpu_reader.io_path
+        if self.gpu_reader._compat_mode:
+            _logger.warning(
+                'GpuEvents: kvikio I/O path = %s '
+                '(NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). '
+                'True GDS is not available — likely Lustre/GPFS filesystem '
+                'or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM '
+                'directly, bypassing CPU DRAM entirely.',
+                _path,
+            )
+        else:
+            _logger.info('GpuEvents: kvikio I/O path = %s (NVMe → GPU VRAM direct)', _path)
 
     def _next_batch(self):
         if self.smdr_man is None:
@@ -251,6 +290,15 @@ class GpuEvents:
                 return batch_dict, {}, step_dict
             except StopIteration:
                 self._batch_iter = next(self.smdr_man)
+
+    def free_calib_bufs(self):
+        """Release pre-allocated calib_gpu slot buffers for all GPU detectors.
+
+        Delegates to GPUDetector.free_calib_bufs() for each detector.
+        See GPUDetector.free_calib_bufs() for usage guidance.
+        """
+        for det_info in self.gpu_detectors.values():
+            det_info[1].free_calib_bufs()
 
     def _dispatch_transition(self, service, dgrams):
         if service == TransitionId.BeginStep:

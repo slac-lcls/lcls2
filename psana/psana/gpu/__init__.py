@@ -25,15 +25,19 @@ context.py       GPUResult, GpuEventContext         — user-visible API types
 gpu_events.py    GpuEvents                           — integrated RunSerial iterator
 gpu_events_prototype.py gpu_events()                 — standalone prototype iterator
 gpu_calib.py     GPUDetector, fused_calib_gpu, ...  — calibration pipeline
-gpu_stream.py    StreamPool                          — CUDA stream management
+gpu_stream.py    StreamPool, EventPool               — CUDA stream management
 gpu_kvikio_read  KvikioGpuReader, PendingBatch       — GDS read layer
 gpu_batch.py     GpuBatchView                        — GPUBAT1 wire format
 gpudgramlite.py  extract_dgram_info                  — GPU dgram header parse
+gpu_mpi.py       init_gpu_rank, create_gpu_communicators,
+                 verify_gpu_pinning, gpu_error_handler  — MPI + GPU rank setup
 """
 
 # context.py and gpu_stream.py have no heavy psana dependencies — safe to
 # import eagerly.  Keep integrated/prototype event iterators lazy because they
 # import psana reader internals.
+#
+# gpu_mpi.py has no CuPy or heavy psana dependency — always safe to import.
 
 from psana.gpu.context import GPUResult, GpuEventContext
 from psana.gpu.gpu_stream import StreamPool, EventPool
@@ -44,6 +48,14 @@ from psana.gpu.gpu_kernel_registry import (
     default_registry, gpu_kernel_from_file,
 )
 from psana.gpu.gpu_calib import optimal_kernel_batch_size
+from psana.gpu.gpu_mpi import (
+    init_gpu_rank,
+    verify_gpu_pinning,
+    create_gpu_communicators,
+    gpu_error_handler,
+    log_gpu_mem,
+    share_calib_between_gpu_peers,
+)
 
 
 __all__ = [
@@ -64,4 +76,9 @@ __all__ = [
     # Stream management
     'StreamPool',
     'EventPool',
+    # MPI + GPU rank management (no CuPy dependency — safe to import early)
+    'init_gpu_rank',
+    'verify_gpu_pinning',
+    'create_gpu_communicators',
+    'gpu_error_handler',
 ]
