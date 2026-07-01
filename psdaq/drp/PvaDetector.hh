@@ -12,6 +12,7 @@
 #include "spscqueue.hh"
 #include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 namespace Drp {
 
@@ -152,12 +153,18 @@ private:
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
+    using tp_t = std::chrono::time_point<Pds::fast_monotonic_clock>;
+    struct it_t
+    {
+      unsigned index;
+      tp_t     t0;
+    };
     const PvParameters& m_para;
     PvDetector&         m_det;
     Pgp                 m_pgp;
     std::thread         m_readerThread;
     std::thread         m_collectorThread;
-    SPSCQueue<unsigned> m_evtQueue;
+    SPSCQueue<it_t>     m_evtQueue;
     std::atomic<bool>   m_terminate;
     uint64_t            m_nEvents;
     uint64_t            m_nUpdates;
@@ -166,6 +173,7 @@ private:
     uint64_t            m_nTooOld;
     uint64_t            m_nTimedOut;
     int64_t             m_timeDiff;
+    int64_t             m_age;
 };
 
 

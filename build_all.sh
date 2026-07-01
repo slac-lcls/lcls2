@@ -56,6 +56,7 @@ OPTIONS="-Dconda_prefix=$CONDA_PREFIX \
 
 # When building for a release (debug is default)
 #OPTIONS="$OPTIONS -Dbuildtype=release"
+OPTIONS="$OPTIONS -Dbuildtype=debugoptimized"
 
 if [ $build_daq == 1 ]; then
   OPTIONS="$OPTIONS -Dbuild_daq=true"

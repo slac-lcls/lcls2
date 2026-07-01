@@ -98,7 +98,6 @@ def _force_mfx_overrides(exp, kwargs):
     prev_smd_n_events = os.environ.get("PS_SMD_N_EVENTS")
     prev_eb_nodes = os.environ.get("PS_EB_NODES")
     prev_batch_size = kwargs.get("batch_size")
-    batch_size = prev_batch_size if prev_batch_size is not None else 1000
     node_count = _detect_node_count()
     capped_eb_nodes = False
     if node_count > 0:
@@ -116,9 +115,9 @@ def _force_mfx_overrides(exp, kwargs):
                     capped_eb_nodes = True
                 else:
                     os.environ["PS_EB_NODES"] = str(requested_eb_nodes)
-    os.environ["PS_SMD_N_EVENTS"] = "5000"
-    batch_override = batch_size > 10
-    if batch_override:
+    if prev_smd_n_events is None:
+        os.environ["PS_SMD_N_EVENTS"] = "1000"
+    if prev_batch_size is None:
         kwargs["batch_size"] = 1
     should_log = True
     if mode == "mpi":
@@ -128,18 +127,27 @@ def _force_mfx_overrides(exp, kwargs):
             should_log = True
     if should_log:
         logger = utils.get_logger(name="DataSource")
+        smd_n_events_status = (
+            "%s (user)" % prev_smd_n_events
+            if prev_smd_n_events is not None
+            else "%s (default)" % os.environ.get("PS_SMD_N_EVENTS", "unset")
+        )
+        batch_size_status = (
+            "%s (user)" % prev_batch_size
+            if prev_batch_size is not None
+            else "%s (default)" % kwargs.get("batch_size")
+        )
         msg = (
-            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=5000 (was %s)"
+            "MFX overrides: PS_EB_NODES=%s (was %s), PS_SMD_N_EVENTS=%s, batch_size=%s"
             % (
                 os.environ.get("PS_EB_NODES", "1"),
                 prev_eb_nodes if prev_eb_nodes is not None else "unset",
-                prev_smd_n_events if prev_smd_n_events is not None else "unset",
+                smd_n_events_status,
+                batch_size_status,
             )
         )
         if capped_eb_nodes:
             msg += ", capped PS_EB_NODES to detected node count %s" % node_count
-        if batch_override:
-            msg += ", batch_size=1 (was %s)" % (prev_batch_size if prev_batch_size is not None else "unset")
         logger.debug(msg)
 
 

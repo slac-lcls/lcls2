@@ -30,7 +30,6 @@
 #include "psdaq/service/Json2Xtc.hh"
 #include "psdaq/eb/src/TebContributor.hh"
 #include "psalg/utils/SysLog.hh"
-#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psalg/utils/trim.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -338,6 +337,7 @@ void PvMonitor::updated()
         //printf("  PV:  %u.%09u, dT %9ld, ts %18lu, last %18lu\n", timestamp.seconds(), timestamp.nanoseconds(), dT, ts, last_ts);
         //if (dT > 0)  last_ts = ts;
 
+        // Monitor event/PV timestamp difference for offsets
         m_timeDiff = dgram->time.to_ns() - timestamp.to_ns();
 
         int result = _compare(dgram->time, timestamp);
@@ -901,6 +901,9 @@ int PvDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     m_nTimedOut = 0;
     exporter->add("drp_timeout_count", labels, MetricType::Counter,
                   [&](){return m_nTimedOut;});
+    m_age = 0;
+    exporter->add("drp_event_age", labels, MetricType::Gauge,
+                  [&](){return m_age * 1000;});  // Grafana plot is in us
     // @todo: Support multiple PVs
     exporter->add("drp_time_diff", labels, MetricType::Gauge,
                   [&](){ return m_det.pvMonitors()[0]->timeDiff(); });
@@ -989,7 +992,7 @@ void PvDrp::_reader()
             m_nEvents++;
 
             // Pass all events to the Collector to maintain time order
-            m_evtQueue.push(index);
+            m_evtQueue.push({index, fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE)});
 
             // Pass L1s to the PV monitors to add PV data
             if (dgram->service() == TransitionId::L1Accept) {
@@ -1024,20 +1027,23 @@ void PvDrp::_collector()
                     std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
                     1500 };
 
-    unsigned index;
-    bool rc = m_evtQueue.pop(index);
+    struct it_t it;
+    bool rc = m_evtQueue.pop(it);
     while (rc) {
-        auto evtDg = (EbDgram*)pool.pebble[index];
+        auto evtDg = (EbDgram*)pool.pebble[it.index];
         TransitionId::Value transitionId = evtDg->service();
         logging::debug("PvDrp      saw %12s @ %u.%09u (%014lx)",
                        TransitionId::name(transitionId),
                        evtDg->time.seconds(), evtDg->time.nanoseconds(),
                        evtDg->pulseId());
         if (transitionId == TransitionId::L1Accept) {
+            // Time out events based on age measured using a local clock
+            // to avoid skew-related false time outs
+            auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
+            ms_t age{std::chrono::duration_cast<ms_t>(dt)};
             bool timedOut{false};
             for (auto& pvMonitor: m_det.pvMonitors()) {
                 EbDgram* pvDg{nullptr};
-                ms_t age{Eb::latency<ms_t>(evtDg->time)};
                 if (age < tmo) [[likely]] // Not yet timed out and not terminating
                     pvMonitor->pvQueue.popW(pvDg, (tmo-age).count());
                 else         [[unlikely]] // Sample when timed out or terminating
@@ -1060,32 +1066,34 @@ void PvDrp::_collector()
                                    evtDg->time.seconds(), evtDg->time.nanoseconds());
                 }
             }
+            // Monitor event age for timeout issues
+            m_age = age.count();
             if (timedOut) [[unlikely]] {
                 logging::debug("Event timed out!! "
-                               "          @ %u.%09u [0x%08x%04x.%05x], age %ld ms",
+                               "          @ %u.%09u [0x%08x%04x.%05x], latency %ld ms, age %ld ms",
                                evtDg->time.seconds(),  evtDg->time.nanoseconds(),
                                evtDg->time.seconds(), (evtDg->time.nanoseconds()>>16)&0xfffe, evtDg->time.nanoseconds()&0x1ffff,
-                               Eb::latency<ms_t>(evtDg->time));
+                               Eb::latency<ms_t>(evtDg->time), age.count());
                 evtDg->xtc.damage.increase(Damage::TimedOut);
                 ++m_nTimedOut;
             }
         }
         else {
             // Find the transition dgram in the pool
-            EbDgram* trDg = pool.transitionDgrams[index];
+            EbDgram* trDg = pool.transitionDgrams[it.index];
             if (trDg)                   // nullptr can happen during shutdown
                 _handleTransition(*evtDg, *trDg);
         }
 
         // Prepare trigger input data based on the event and send it to the TEB
         // Must be from the same thread in which batches are timed out
-        _sendToTeb(*evtDg, index);
+        _sendToTeb(*evtDg, it.index);
 
         // Time out batches for the TEB
         // Must be from the same thread in which they are processed (_sendToTeb())
-        while (!m_evtQueue.try_pop(index)) {  // Poll
+        while (!m_evtQueue.try_pop(it)) {     // Poll
             if (tebContributor().timeout()) { // After batch is timed out
-                rc = m_evtQueue.popW(index);  // pend
+                rc = m_evtQueue.popW(it);     // pend
                 break;
             }
         }
