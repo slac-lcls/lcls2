@@ -122,34 +122,47 @@ class ts_connector:
         self.xpm_link_disable_all()
 
         d = {}
-        pvnames_rxready = []
         for xpm_num,xpm_port,readout_group in self.xpm_info:
             pvname = self.xpm_base+str(xpm_num)+':'+'LinkGroupMask'+str(xpm_port)
-            pvnames_rxready.append(self.xpm_base+str(xpm_num)+':'+'LinkRxReady'+str(xpm_port))
             if pvname in d:
                 d[pvname] |= (1<<readout_group)
             else:
                 d[pvname] = (1<<readout_group)
+
+        pvnames_rxready = [a.replace('LinkGroupMask','LinkRxReady') for a in d.keys()]
+        pvnames_rxerri  = [a.replace('LinkGroupMask','LinkRxErrI')  for a in d.keys()]
 
         # make sure the XPM links from the detectors are OK
         cnt = 0
         while cnt < 15:
             cnt += 1
             rxready_values = self.ctxt.get(pvnames_rxready)
+            unready_pvs = []
+            print(f'*** rxready {pvnames_rxready} : {rxready_values}')
             for pvname,val in zip(pvnames_rxready,rxready_values):
-                if val==1:  break
-                time.sleep(1)
-            if val==1:  break
-        if val == 1:
-            if cnt > 1:  print('RxLink locked after %u tries' % cnt)
-        else:
+                if val==0:
+                    unready_pvs.append(pvname)
+            if len(unready_pvs)==0:
+                break
+            print(f'*** not ready : {unready_pvs} ***')
+            rxreset_pvs = [a.replace('LinkRxReady','RxLinkReset') for a in unready_pvs]
+            values = [1]*len(rxreset_pvs)
+            self.ctxt.put(rxreset_pvs,values)
+            time.sleep(0.1)
+            values = [0]*len(rxreset_pvs)
+            self.ctxt.put(rxreset_pvs,values)
+            time.sleep(1)
+        if 0 in rxready_values:
             raise ValueError('RxLink not locked! %s' % pvname)
+        else:
+            print('RxLink locked after %u tries' % cnt)
 
-        pv_names = []
-        values = []
-        for name,value in d.items():
-            pv_names.append(name)
-            values.append(value)
+        #  Latch initial error counter values
+        self.pvnames_rxerri = pvnames_rxerri
+        self.values_rxerri  = self.ctxt.get(pvnames_rxerri)
+
+        pv_names = [name  for name,value in d.items()]
+        values   = [value for name,value in d.items()] 
 
         print('*** setting xpm link enables',pv_names,values)
         self.ctxt.put(pv_names,values)
@@ -173,6 +186,16 @@ class ts_connector:
         print('*** resetting l0 count',self.readout_group_mask)
         self.ctxt.put(pvL0Reset,self.readout_group_mask)
 
+    def check_errors(self,header):
+        ctxt = Context('pva')
+        values_rxerri  = ctxt.get(self.pvnames_rxerri)
+        for i,pv in enumerate(self.pvnames_rxerri):
+            v = values_rxerri[i]
+            #  If error counts changed, raise an exception
+            if v != self.values_rxerri[i]:
+                raise RuntimeError(f'ts_connector:check_errors({header}): {pv} errors increased [{v}]')
+        self.values_rxerri = [v for v in values_rxerri]
+        ctxt.close()
 
 def ts_connect(json_connect_info):
 

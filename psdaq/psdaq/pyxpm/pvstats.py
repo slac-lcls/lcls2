@@ -119,6 +119,7 @@ class LinkStatus(object):
         self._pv_rxResetDone  = _addPVI('LinkRxResetDone')
         self._pv_rxRcv        = _addPVI('LinkRxRcv')
         self._pv_rxErr        = _addPVI('LinkRxErr')
+        self._pv_rxErrI       = _addPVI('LinkRxErrI')
         self._pv_rxIsXpm      = _addPVI('LinkRxIsXpm')
         self._pv_remoteLinkId = _addPVI('RemoteLinkId')
 
@@ -134,6 +135,8 @@ class LinkStatus(object):
         v = (u>>5)&0xffff
         updatePv(self._pv_rxErr,(v-self._rxErr)&0xffff,timev)
         self._rxErr = v
+
+        updatePvC(self._pv_rxErrI,v,timev)
 
         v = (u>>21)&0xffffffff
         updatePv(self._pv_rxRcv,(v-self._rxRcv)&0xffffffff,timev)
