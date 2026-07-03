@@ -71,8 +71,8 @@ def jungfrau_connectionInfo(jungfrau_kcu, alloc_json_str):
     connect_info["paddr"] = rxId
 
     time.sleep(0.1)
-    print('**** cpo hack TxPhyPllReset ****')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    print('**** cpo hack RxUserRst ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.RxUserRst()
     time.sleep(0.1)
 
     return connect_info
@@ -210,8 +210,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
             trigEventManager.TriggerEventBuffer[i].MasterEnable.set(1)
 
     time.sleep(0.1)
-    print('**** cpo hack TxPhyPllReset2 ****')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    print('**** cpo hack RxUserRst2 ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.RxUserRst()
     time.sleep(0.1)
 
     return cfg_list
