@@ -276,12 +276,22 @@ def _agg_eps(stats_list):
     return total / max_w if max_w > 0 else 0.0
 
 
+def _bd_rank_count(cpu_stats, gpu_runs):
+    """Return the number of BD ranks represented by the benchmark."""
+    for _, stats in gpu_runs:
+        if stats:
+            return len(stats)
+    if cpu_stats:
+        return len(cpu_stats)
+    return _WORLD_SIZE - 1 - int(os.environ.get('PS_EB_NODES', '1'))
+
+
 def print_report(args, cpu_stats, gpu_runs):
     """
     cpu_stats  : list of per-BD-rank dicts from run_cpu()
     gpu_runs   : list of (batch_size, [per-BD-rank dicts]) from run_gpu()
     """
-    n_bd   = len(cpu_stats)
+    n_bd   = _bd_rank_count(cpu_stats, gpu_runs)
     sep    = '═' * 90
     sep2   = '─' * 90
     ps_eb  = os.environ.get('PS_EB_NODES', '1')
@@ -296,17 +306,20 @@ def print_report(args, cpu_stats, gpu_runs):
 
     # ── CPU baseline ──────────────────────────────────────────────────────
     cpu_agg = _agg_eps(cpu_stats)
-    print(f'\n  ── CPU baseline (numpy calibration, {n_bd} BD rank(s)) ──')
-    print(f'  {sep2}')
-    print(f'  {"Rank":>5}  {"events":>7}  {"mean ms":>9}  {"p95 ms":>8}  {"evt/s":>8}')
-    for s in sorted(cpu_stats, key=lambda x: x['bd_rank']):
-        print(f'  {s["rank"]:>5}  {s["n_events"]:>7}  '
-              f'{s["mean_ms"]:>9.1f}  {s["p95_ms"]:>8.1f}  '
-              f'{s["evt_per_sec"]:>8.0f}')
-    print(f'  {sep2}')
-    total_cpu = sum(s['n_events'] for s in cpu_stats)
-    print(f'  AGGREGATE  {total_cpu:>7}  {"":>9}  {"":>8}  {cpu_agg:>8.0f}  '
-          f'← total_events / max_wall')
+    if cpu_stats:
+        print(f'\n  ── CPU baseline (numpy calibration, {n_bd} BD rank(s)) ──')
+        print(f'  {sep2}')
+        print(f'  {"Rank":>5}  {"events":>7}  {"mean ms":>9}  {"p95 ms":>8}  {"evt/s":>8}')
+        for s in sorted(cpu_stats, key=lambda x: x['bd_rank']):
+            print(f'  {s["rank"]:>5}  {s["n_events"]:>7}  '
+                  f'{s["mean_ms"]:>9.1f}  {s["p95_ms"]:>8.1f}  '
+                  f'{s["evt_per_sec"]:>8.0f}')
+        print(f'  {sep2}')
+        total_cpu = sum(s['n_events'] for s in cpu_stats)
+        print(f'  AGGREGATE  {total_cpu:>7}  {"":>9}  {"":>8}  {cpu_agg:>8.0f}  '
+              f'← total_events / max_wall')
+    else:
+        print(f'\n  ── CPU baseline skipped (--skip-cpu) ──')
 
     # ── GPU runs ──────────────────────────────────────────────────────────
     best_gpu_agg = 0.0
@@ -512,11 +525,6 @@ def main():
 
     # ── Report ─────────────────────────────────────────────────────────────
     if _WORLD_RANK == 0:
-        if args.skip_cpu:
-            cpu_stats = [{'rank': -1, 'bd_rank': 1, 'n_events': 0,
-                          'mean_ms': 0.0, 'p95_ms': 0.0,
-                          'wall_total_ms': 0.0, 'wall_per_evt_ms': 0.0,
-                          'evt_per_sec': 0.0}]
         # Flatten to (bs, stats) pairs for print_report (uses first pd seen)
         gpu_runs = [(bs, stats) for bs, pd, stats in gpu_grid
                     if pd == pool_depths[0]]
@@ -550,9 +558,12 @@ def main():
                 print(row)
             print(f'  {sep2}')
             best = max(gpu_grid, key=lambda x: _agg_eps(x[2]))
+            best_speedup = (
+                _agg_eps(best[2]) / cpu_agg if cpu_agg > 0 else 0.0
+            )
             print(f'  Best: bs={best[0]} pd={best[1]}  '
                   f'{_agg_eps(best[2]):.0f} evt/s  '
-                  f'{_agg_eps(best[2])/cpu_agg:.1f}× over CPU')
+                  f'{best_speedup:.1f}× over CPU')
             print(f'\n{sep}\n')
 
 

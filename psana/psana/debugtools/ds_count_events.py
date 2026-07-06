@@ -20,6 +20,7 @@ Example usage:
 Other options:
     --detectors q_atmopal rix_fim0
     --gpu_det jungfrau
+    --gpu_pool_depth 2
     --gpu_d2h_interval 1000
     --max_events 10000
     --log_level INFO
@@ -51,6 +52,9 @@ def parse_args():
     parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
     parser.add_argument('--gpu_det', default=None,
                         help='GPU detector name for DataSource(gpu_det=...), e.g. jungfrau')
+    parser.add_argument('--gpu_pool_depth', '--n_gpu_streams',
+                        dest='n_gpu_streams', type=int, default=None,
+                        help='GPU EventPool depth / DataSource(n_gpu_streams=...)')
     parser.add_argument('--gpu_d2h_interval', type=int, default=0,
                         help='Call ctx.get("calib").on_cpu every N events in GPU mode (0=never)')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
@@ -93,6 +97,8 @@ def create_datasource(args, rank):
         common_kwargs["skip_calib_load"] = args.skip_calib_load
     if args.gpu_det:
         common_kwargs["gpu_det"] = args.gpu_det
+        if args.n_gpu_streams is not None:
+            common_kwargs["n_gpu_streams"] = args.n_gpu_streams
 
     if args.xtc_files:
         if rank == 0:
