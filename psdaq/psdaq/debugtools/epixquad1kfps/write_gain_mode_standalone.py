@@ -246,6 +246,20 @@ def _parse_args():
         help="optional .npy path for expected raw-view FL mask, shape (4,352,384)",
     )
     parser.add_argument(
+        "--readback-pixel-mask-asic",
+        type=int,
+        default=None,
+        help=(
+            "optional ASIC index to dump with GetPixelBitmap after writing, "
+            "while ASIC enable/IsEn are still true"
+        ),
+    )
+    parser.add_argument(
+        "--readback-pixel-mask-csv",
+        default="/tmp/pixel_mask.csv",
+        help="CSV path for --readback-pixel-mask-asic; default /tmp/pixel_mask.csv",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="print the register-write plan without opening hardware",
@@ -256,7 +270,10 @@ def _parse_args():
         help="leave camera trigger/readout disabled after writing",
     )
     parser.add_argument("--verbose", action="store_true", help="print extra progress")
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.readback_pixel_mask_asic is not None and not (0 <= args.readback_pixel_mask_asic < ASIC_COUNT):
+        parser.error(f"--readback-pixel-mask-asic must be in range 0-{ASIC_COUNT - 1}")
+    return args
 
 
 def _load_modules():
@@ -462,7 +479,32 @@ def _restore_camera_trigger(cbase, state):
         _safe_set(cbase.SystemRegs.TrigEn, state["TrigEn"], "SystemRegs.TrigEn")
 
 
-def _write_gain_mode(cbase, mode, asics, selected, verbose=False):
+def _summarize_pixel_mask_readback(path, selected_for_asic):
+    try:
+        data = np.loadtxt(path, dtype=np.uint16, delimiter=",")
+    except Exception as exc:
+        print(f"Warning: failed reading pixel-mask CSV {path}: {exc}", file=sys.stderr)
+        return
+
+    unique, counts = np.unique(data, return_counts=True)
+    summary = ", ".join(f"{int(value)}:{int(count)}" for value, count in zip(unique, counts))
+    print(f"Pixel-mask readback CSV: shape={data.shape} unique_counts={summary}")
+    for _, row, col in selected_for_asic:
+        if row >= data.shape[0] or col >= data.shape[1]:
+            print(f"  selected row={row} col={col}: outside CSV shape {data.shape}")
+            continue
+        print(f"  selected row={row} col={col}: readback_value={int(data[row, col])}")
+
+
+def _write_gain_mode(
+    cbase,
+    mode,
+    asics,
+    selected,
+    verbose=False,
+    readback_pixel_mask_asic=None,
+    readback_pixel_mask_csv="/tmp/pixel_mask.csv",
+):
     t0 = time.perf_counter()
     for asic in asics:
         saci = cbase.Epix10kaSaci[asic]
@@ -488,6 +530,20 @@ def _write_gain_mode(cbase, mode, asics, selected, verbose=False):
             _safe_set(saci.RowCounter, int(row), f"Epix10kaSaci[{asic}].RowCounter")
             _safe_set(saci.ColCounter, BANK_OFFSETS[bank] | bank_col, f"Epix10kaSaci[{asic}].ColCounter")
             _safe_set(saci.WritePixelData, int(mode.selected_value), f"Epix10kaSaci[{asic}].WritePixelData")
+
+        if readback_pixel_mask_asic is not None:
+            asic = int(readback_pixel_mask_asic)
+            if asic not in asics:
+                raise ValueError(f"readback ASIC {asic} is outside --asics")
+            print(
+                "Dumping ASIC pixel bitmap with GetPixelBitmap "
+                f"for ASIC {asic}: {readback_pixel_mask_csv}"
+            )
+            cbase.Epix10kaSaci[asic].GetPixelBitmap(str(readback_pixel_mask_csv))
+            _summarize_pixel_mask_readback(
+                readback_pixel_mask_csv,
+                [pix for pix in selected if int(pix[0]) == asic],
+            )
     finally:
         for asic in asics:
             saci = cbase.Epix10kaSaci[asic]
@@ -584,7 +640,15 @@ def main():
         # LoadConfig can write trigger fields, so force them off again before
         # touching the ASIC pixel matrix.
         _disable_camera_trigger(cbase)
-        _write_gain_mode(cbase, args.mode, args.asics, selected, verbose=args.verbose)
+        _write_gain_mode(
+            cbase,
+            args.mode,
+            args.asics,
+            selected,
+            verbose=args.verbose,
+            readback_pixel_mask_asic=args.readback_pixel_mask_asic,
+            readback_pixel_mask_csv=args.readback_pixel_mask_csv,
+        )
 
         if not args.leave_trigger_off:
             _restore_camera_trigger(cbase, trigger_state)

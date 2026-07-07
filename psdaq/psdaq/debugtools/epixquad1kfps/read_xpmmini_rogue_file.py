@@ -6,16 +6,26 @@ import argparse
 import os
 import sys
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
 
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+
+from psdaq.configdb.epixquad_layout import (
+    DETECTOR_VIEW_SHAPE,
+    EPIXVIEWER_DECODED_SHAPE,
+    RAW_ASIC_LAYOUT,
+    RAW_SHAPE,
+    detector_view_to_raw,
+    epixviewer_decoded_to_daq_raw,
+)
 
 GAINBIT_MASK = np.uint16(0x4000)
-RAW_VIEW_SHAPE = (4, 352, 384)
-TILED_USABLE_SHAPE = (704, 768)
-DECODED_FULL_SHAPE = (712, 768)
-USABLE_ROWS_PER_BAND = 176
-DECODED_ROWS_PER_BAND = 178
+RAW_VIEW_SHAPE = RAW_SHAPE
+TILED_VIEW_SHAPE = DETECTOR_VIEW_SHAPE
+DECODED_FULL_SHAPE = EPIXVIEWER_DECODED_SHAPE
 
 
 def _parse_vc(value):
@@ -67,13 +77,13 @@ def _parse_args():
     )
     parser.add_argument(
         "--save-prefix",
-        help="optional prefix for saving first decoded raw/gainbit arrays as .npy",
+        help="optional prefix for saving first DAQ raw/gainbit arrays as .npy",
     )
     parser.add_argument(
         "--expected-gainbit",
         type=_parse_expected_gainbit,
         default=None,
-        help="constant expected bit14 value for every decoded pixel, 0 or 1",
+        help="constant expected bit14 value for every DAQ raw pixel, 0 or 1",
     )
     parser.add_argument(
         "--expected-gainbit-map",
@@ -81,8 +91,9 @@ def _parse_args():
         dest="expected_gainbit_map",
         default=None,
         help=(
-            "optional .npy 0/1 expected bit14 map; accepts decoded (712,768), "
-            "usable tiled (704,768), or psana raw-view (4,352,384)"
+            "optional .npy 0/1 expected bit14 map; accepts DAQ raw "
+            "(4,352,384), detector-view tiled (704,768), or ePixViewer "
+            "decoded (712,768)"
         ),
     )
     parser.add_argument(
@@ -141,34 +152,9 @@ def _counter_update(counter, values):
         counter[int(value)] += int(count)
 
 
-def _raw_view_to_tiled(raw):
-    return np.vstack(
-        (
-            np.hstack((raw[3], raw[2])),
-            np.hstack((raw[1], raw[0])),
-        )
-    )
-
-
-def _usable_tiled_to_decoded(usable, decoded_shape):
-    if decoded_shape != DECODED_FULL_SHAPE:
-        raise ValueError(
-            f"usable expected map shape {usable.shape} only maps to decoded shape "
-            f"{DECODED_FULL_SHAPE}, got {decoded_shape}"
-        )
-    decoded = np.zeros(decoded_shape, dtype=bool)
-    for band in range(decoded_shape[0] // DECODED_ROWS_PER_BAND):
-        src0 = band * USABLE_ROWS_PER_BAND
-        dst0 = band * DECODED_ROWS_PER_BAND
-        decoded[dst0 : dst0 + USABLE_ROWS_PER_BAND, :] = usable[
-            src0 : src0 + USABLE_ROWS_PER_BAND, :
-        ]
-    return decoded
-
-
-def _load_expected_gainbit(args, decoded_shape):
+def _load_expected_gainbit(args):
     if args.expected_gainbit is not None:
-        expected = np.full(decoded_shape, args.expected_gainbit, dtype=bool)
+        expected = np.full(RAW_SHAPE, args.expected_gainbit, dtype=bool)
         return expected, f"constant {int(args.expected_gainbit)}"
 
     if not args.expected_gainbit_map:
@@ -179,50 +165,55 @@ def _load_expected_gainbit(args, decoded_shape):
         raise FileNotFoundError(f"Expected gainbit map does not exist: {expected_path}")
 
     expected = np.load(expected_path).astype(bool, copy=False)
-    if expected.shape == decoded_shape:
-        return expected, f"{expected_path} decoded-shape {expected.shape}"
+    if expected.shape == RAW_SHAPE:
+        return expected, f"{expected_path} DAQ raw shape {expected.shape}"
 
-    if expected.shape == TILED_USABLE_SHAPE:
-        decoded = _usable_tiled_to_decoded(expected, decoded_shape)
-        return decoded, f"{expected_path} usable-tiled shape {expected.shape}"
+    if expected.shape == TILED_VIEW_SHAPE:
+        raw = detector_view_to_raw(expected)
+        return raw, f"{expected_path} detector-view tiled shape {expected.shape}"
 
-    if expected.shape == RAW_VIEW_SHAPE:
-        tiled = _raw_view_to_tiled(expected)
-        decoded = _usable_tiled_to_decoded(tiled, decoded_shape)
-        return decoded, f"{expected_path} raw-view shape {expected.shape}"
+    if expected.shape == DECODED_FULL_SHAPE:
+        raw = epixviewer_decoded_to_daq_raw(expected)
+        return raw, f"{expected_path} ePixViewer decoded shape {expected.shape}"
 
     raise ValueError(
         "Expected gainbit map has unsupported shape "
-        f"{expected.shape}; expected {decoded_shape}, {TILED_USABLE_SHAPE}, "
-        f"or {RAW_VIEW_SHAPE}"
+        f"{expected.shape}; expected {RAW_SHAPE}, {TILED_VIEW_SHAPE}, "
+        f"or {DECODED_FULL_SHAPE}"
     )
 
 
-def _decoded_area_masks(shape):
-    usable = np.zeros(shape, dtype=bool)
-    control = np.zeros(shape, dtype=bool)
-    if shape == DECODED_FULL_SHAPE:
-        for band in range(shape[0] // DECODED_ROWS_PER_BAND):
-            row0 = band * DECODED_ROWS_PER_BAND
-            usable[row0 : row0 + USABLE_ROWS_PER_BAND, :] = True
-            control[row0 + USABLE_ROWS_PER_BAND : row0 + DECODED_ROWS_PER_BAND, :] = True
-    else:
-        usable[:, :] = True
+def _raw_area_masks():
+    usable = np.ones(RAW_SHAPE, dtype=bool)
+    control = np.zeros(RAW_SHAPE, dtype=bool)
     return usable, control
 
 
-def _pixel_area_text(row, col, shape):
-    if shape == DECODED_FULL_SHAPE:
-        band = row // DECODED_ROWS_PER_BAND
-        local_row = row % DECODED_ROWS_PER_BAND
-        if local_row < USABLE_ROWS_PER_BAND:
-            usable_row = band * USABLE_ROWS_PER_BAND + local_row
-            return (
-                f"area=usable band={band} local_row={local_row} "
-                f"usable_tiled=({usable_row},{col})"
-            )
-        return f"area=control band={band} local_row={local_row}"
-    return "area=usable"
+def _raw_pixel_area_text(segment, row, col):
+    for layout in RAW_ASIC_LAYOUT:
+        r0, r1 = layout["row_slice"]
+        c0, c1 = layout["col_slice"]
+        if not (r0 <= row < r1 and c0 <= col < c1):
+            continue
+
+        raw_local_row = row - r0
+        raw_local_col = col - c0
+        if layout["operator"] == "identity":
+            bank_row = raw_local_row
+            prog_col = raw_local_col
+        elif layout["operator"] == "rot180":
+            bank_row = (r1 - r0 - 1) - raw_local_row
+            prog_col = (c1 - c0 - 1) - raw_local_col
+        else:
+            raise ValueError(f"unsupported raw-map operator {layout['operator']!r}")
+
+        asic = 4 * int(segment) + int(layout["slot"])
+        return (
+            f"area=usable asic={asic} bank={int(prog_col // 48)} "
+            f"bank_row={int(bank_row)} bank_col={int(prog_col % 48)}"
+        )
+
+    return "area=unmapped"
 
 
 def _print_mismatch_summary(label, occurrences, usable_mask, control_mask, max_pixels):
@@ -252,10 +243,14 @@ def _print_mismatch_summary(label, occurrences, usable_mask, control_mask, max_p
     order = np.argsort(counts)[::-1]
     print(f"  pixels, top {min(max_pixels, unique)} by occurrence:")
     for index in order[:max_pixels]:
-        row = int(coords[index, 0])
-        col = int(coords[index, 1])
+        segment = int(coords[index, 0])
+        row = int(coords[index, 1])
+        col = int(coords[index, 2])
         count = int(counts[index])
-        print(f"    row={row} col={col} occurrences={count} {_pixel_area_text(row, col, occurrences.shape)}")
+        print(
+            f"    segment={segment} row={row} col={col} occurrences={count} "
+            f"{_raw_pixel_area_text(segment, row, col)}"
+        )
 
 
 def main():
@@ -268,10 +263,11 @@ def main():
     cam = cameras.Camera(cameraType=args.camera)
     cam.bitMask = np.uint16(args.bit_mask)
     decoded_shape = (cam.sensorHeight, cam.sensorWidth)
-    expected_gainbit, expected_source = _load_expected_gainbit(args, decoded_shape)
-    usable_mask, control_mask = _decoded_area_masks(decoded_shape)
-    fp_occurrences = np.zeros(decoded_shape, dtype=np.uint32) if expected_gainbit is not None else None
-    fn_occurrences = np.zeros(decoded_shape, dtype=np.uint32) if expected_gainbit is not None else None
+    min_image_payload = 32 + (cam.sensorHeight * cam.sensorWidth * np.dtype(np.uint16).itemsize)
+    expected_gainbit, expected_source = _load_expected_gainbit(args)
+    usable_mask, control_mask = _raw_area_masks()
+    fp_occurrences = np.zeros(RAW_SHAPE, dtype=np.uint32) if expected_gainbit is not None else None
+    fn_occurrences = np.zeros(RAW_SHAPE, dtype=np.uint32) if expected_gainbit is not None else None
 
     file_channels = Counter()
     vc_counts = Counter()
@@ -311,7 +307,6 @@ def main():
                 f"payload_vc={vc} first_bytes={leading}"
             )
 
-        min_image_payload = 32 + (cam.sensorHeight * cam.sensorWidth * np.dtype(np.uint16).itemsize)
         if len(payload) < min_image_payload:
             short_records += 1
             continue
@@ -343,11 +338,12 @@ def main():
                 )
             continue
 
-        gainbit = (image_u16 & GAINBIT_MASK) != 0
-        top2 = (image_u16 >> np.uint16(14)) & np.uint16(0x3)
+        raw_u16 = epixviewer_decoded_to_daq_raw(image_u16)
+        gainbit = (raw_u16 & GAINBIT_MASK) != 0
+        top2 = (raw_u16 >> np.uint16(14)) & np.uint16(0x3)
 
         if first_raw is None:
-            first_raw = image_u16.copy()
+            first_raw = raw_u16.copy()
             first_gainbit = gainbit.copy()
         elif first_gainbit_equal and not np.array_equal(first_gainbit, gainbit):
             first_gainbit_equal = False
@@ -369,7 +365,7 @@ def main():
             np.add(fn_occurrences, false_negative, out=fn_occurrences, casting="unsafe")
 
         line = (
-            f"frame {decoded:04d}: shape={tuple(image_u16.shape)} "
+            f"frame {decoded:04d}: raw_shape={tuple(raw_u16.shape)} "
             f"gainbit_ones={ones} gainbit_fraction={ones / pixels:.6f}"
         )
         if expected_gainbit is not None:
@@ -396,7 +392,8 @@ def main():
     print(f"image_sized_selected_records: {image_sized_records}")
     print(f"decode_errors: {decode_errors}")
     if decoded:
-        print(f"decoded_shape: {tuple(first_raw.shape)}")
+        print(f"decoded_shape: {decoded_shape}")
+        print(f"daq_raw_shape: {tuple(first_raw.shape)}")
         print(f"total_gainbit_ones: {total_gainbit_ones}")
         print(f"total_pixels_checked: {total_pixels}")
         print(f"overall_gainbit_fraction: {total_gainbit_ones / total_pixels:.6f}")
@@ -424,6 +421,13 @@ def main():
                 control_mask,
                 args.fpfn_max_pixels,
             )
+    elif expected_gainbit is not None:
+        print()
+        print("False-positive/false-negative gainbit summary: unavailable")
+        print(f"  expected_source: {expected_source}")
+        print("  no decoded image frames were available")
+        print(f"  minimum image payload for {decoded_shape} uint16 data: {min_image_payload} bytes")
+        print("  FP/FN checks require decoded image frames, not only short packet records")
 
     if args.save_prefix and first_raw is not None:
         raw_path = f"{args.save_prefix}_first_raw_u16.npy"

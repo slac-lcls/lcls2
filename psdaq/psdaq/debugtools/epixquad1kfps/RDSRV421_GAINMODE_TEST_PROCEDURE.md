@@ -165,9 +165,11 @@ python psdaq/psdaq/debugtools/epixquad1kfps/read_xpmmini_rogue_file.py \
   --fpfn-max-pixels 128
 ```
 
-The FP/FN report lists whether mismatched pixels are in the usable image area
-or in the decoded control rows.  Treat control-row mismatches separately from
-configured usable-pixel mismatches.
+The reader converts StreamWriter `.dat` frames from the ePixViewer decoded
+layout to the same DAQ raw `(4,352,384)` layout used by `det.raw.raw(evt)`
+before checking FP/FN pixels.  The FP/FN report prints DAQ raw
+`segment,row,col` plus ASIC/bank coordinates.  ePixViewer-only rows are
+excluded from configured-pixel checks.
 
 If Qt/ePixViewer imports require a display, run the decode with an offscreen Qt
 backend:

@@ -64,44 +64,36 @@ with `top2 = 1`, aside from small detector/readout artifacts.
 
 ## Control Rows
 
-The Rogue/ePixViewer decoded image includes control/calibration rows that are
-not part of the normal psana raw image.
+The Rogue/ePixViewer decoded image includes rows that are not part of the DAQ
+`det.raw.raw(evt)` image.  The DAQ writes four raw segments plus a separate
+segment `aux` array; the StreamWriter `.dat` helper converts the ePixViewer
+decoded image into that same DAQ raw segment order before checking gainbits.
 
 | View | Shape | Contents |
 |---|---:|---|
-| Rogue/ePixViewer decoded image | `(712, 768)` | Usable pixels plus control rows |
-| psana raw tiled view | `(704, 768)` | Usable pixels only |
-| psana raw detector view | `(4, 352, 384)` | Four usable raw segments |
+| Rogue/ePixViewer decoded image | `(712, 768)` | Display-oriented image, including ePixViewer-only rows |
+| psana raw tiled view | `(704, 768)` | Tiled view of the four DAQ raw segments |
+| psana raw detector view | `(4, 352, 384)` | Four DAQ raw segments; this is `det.raw.raw(evt)` |
 | psana segment `aux` | `(4, 384)` per segment | Control/calibration rows |
 
-The control area is rows, not columns.  Treat the decoded `(712,768)` image as
-four 178-row bands.  In each band, local rows `0..175` are usable image rows
-and local rows `176..177` are control rows.
-
-| Decoded row range | Usable rows | Control rows |
-|---|---|---|
-| `0..177` | `0..175` | `176..177` |
-| `178..355` | `178..353` | `354..355` |
-| `356..533` | `356..531` | `532..533` |
-| `534..711` | `534..709` | `710..711` |
-
-Coordinate conversion for decoded Rogue/ePixViewer coordinates:
+The conversion used by `read_xpmmini_rogue_file.py` mirrors the row and column
+reversal in `psdaq/drp/EpixQuad.cc`:
 
 ```python
-band = row // 178
-local_row = row % 178
-
-if local_row in (176, 177):
-    area = "control"
-else:
-    area = "usable"
-    usable_tiled_row = band * 176 + local_row
-    usable_tiled_col = col
+raw[0] = decoded[2:354,   0:384][::-1, ::-1]
+raw[1] = decoded[2:354, 384:768][::-1, ::-1]
+raw[2] = decoded[358:710, 0:384][::-1, ::-1]
+raw[3] = decoded[358:710,384:768][::-1, ::-1]
 ```
 
-For gain-map validation, compare expected maps in the usable psana raw view and
-treat any asserted gainbit in control rows as a control-row false positive, not
-as a configured pixel mismatch.
+The ePixViewer-only decoded rows are `0`, `1`, `354`, `355`, `356`, `357`,
+`710`, and `711`.  These rows are not part of the DAQ raw image and are not
+counted as configured pixels by the current FP/FN checks.
+
+For gain-map validation, compare expected maps in DAQ raw shape
+`(4,352,384)`.  The reader also accepts detector-view tiled `(704,768)` maps
+and ePixViewer decoded `(712,768)` maps, but converts them to DAQ raw before
+the comparison.
 
 ## Write Commands
 
@@ -247,10 +239,11 @@ The expected map may have any of these shapes:
 | `(704,768)` | usable tiled psana raw view |
 | `(712,768)` | full decoded Rogue/ePixViewer view |
 
-The FP/FN summary reports total occurrences, unique pixels, and whether each
-coordinate is in the usable image area or the control area.  Limit the printed
-coordinate list with `--fpfn-max-pixels`; use `--fpfn-max-pixels 0` for counts
-only.
+The FP/FN summary reports total occurrences, unique pixels, DAQ raw
+`segment,row,col`, and ASIC/bank coordinates.  The `.dat` ePixViewer-only rows
+are removed by conversion and are not counted as configured pixels.  Limit the
+printed coordinate list with `--fpfn-max-pixels`; use `--fpfn-max-pixels 0` for
+counts only.
 
 ## Expected Readout Patterns
 
@@ -281,9 +274,10 @@ diagnostic: almost every pixel reports `top2 = 0`.  It confirms the camera is
 not in the earlier auto/map-looking state with about 46% raw bit-14 ones, but
 it does not by itself distinguish FH from FM.
 
-For that FH file, the asserted control-row coordinates were rows `710` and
-`711`, which are the two control rows in the final 178-row decoded band.  They
-should not be counted as usable configured-pixel mismatches.
+The control-row counts in this older FH summary came from the previous
+ePixViewer-layout interpretation.  Re-run with the current reader to get DAQ
+raw segment coordinates and to exclude the ePixViewer-only rows from the
+configured-pixel comparison.
 
 ## Practical Checks
 
