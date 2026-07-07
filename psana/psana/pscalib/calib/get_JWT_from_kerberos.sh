@@ -6,7 +6,7 @@
 # Get a PCDS JWT using your Kerberos token
 # WORKS ON INTERACTIVE NODES ONLY!!!!
 
-source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+#source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
