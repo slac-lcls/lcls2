@@ -104,7 +104,7 @@ def issue_2026_03_16():
 
 
 
-def issue_2026_03_27(subtest='0o7777'):
+def issue_2026_03_27(args):
     """ISSUE: 2026-03-26 3:20PM O'Grady, Paul Christopher
               Dubrovin, Mikhail?; Vincent Esposito <vincent.esposito@stanford.edu>?
               Hi Mikhail, Vincent sees unusual looking images for the jungfrau 1M in xppc00125 run 77 (see attached).
@@ -201,7 +201,7 @@ def issue_2026_03_27(subtest='0o7777'):
         if plot_image: gr.show()
 
 
-def issue_2026_04_01(subtest='0o7777'):
+def issue_2026_04_01(args):
     """ISSUE:
        PROBLEM:
        FIX:
@@ -233,21 +233,21 @@ def issue_2026_04_01(subtest='0o7777'):
     #cfgs = getattr(det, 'config')._seg_configs() # dict for {<segnum>: <psana.container.Container object>}
     cfgs = det.config._seg_configs()
 
-    isubset = 0o7777 if subtest is None else int(subtest)
-    if isubset & 1:
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
+    if isubtest & 1:
         print('cfgs:', cfgs)
         print('type(cfgs):', type(cfgs))
         print('cfgs[0]:', cfgs[0])
         print('dir(cfgs[0]):', dir(cfgs[0]))
         print('cfgs[0].config:', cfgs[0].config)
 
-    if isubset & 2:
+    if isubtest & 2:
         from psana.app.config_dump import dump
         attrlist=[]
         for myobj in cfgs.values():
             dump(myobj, attrlist)
 
-    if isubset & 4:
+    if isubtest & 4:
       for segnum in det.raw._segment_numbers:
         cfg = cfgs.get(segnum, None)
         if cfg is None:
@@ -260,7 +260,7 @@ def issue_2026_04_01(subtest='0o7777'):
       print(ndu.info_ndarr(ueu.cbits_epixuhr(det), '== cbits_epixuhr(det):'))
       print(ndu.info_ndarr(ueu.gains_epixuhr(det), '== gains_epixuhr(det):'))
 
-    if isubset & 8:
+    if isubtest & 8:
         cbits = ueu.cbits_epixuhr(det)
         print(ndu.info_ndarr(ueu.cbits_epixuhr(det), 'cbits_epixuhr(det):'))
         print(ndu.info_ndarr(ueu.gains_epixuhr(det), 'gains_epixuhr(det):'))
@@ -268,7 +268,7 @@ def issue_2026_04_01(subtest='0o7777'):
         print(ueu.info_gain_mode_arrays(gmaps, first=0, last=5, spacer='\n    ', cmt='gain mode arrays:'))
 
 
-def issue_2026_04_10(subtest='0o7777'):
+def issue_2026_04_10(args):
     """ISSUE: Hart, Philip Adam, Apr 10, 2026, at 10:50AM
               O'Grady, Paul Christopher; Dubrovin, Mikhail; Uervirojnangkoorn, Monarin; Siddiqui, Khalid
               Hi, it's a bit hard to demonstrate the pedestal claim clearly since the raw data doesn't match the calib ordering (so I claim) but
@@ -304,17 +304,17 @@ def issue_2026_04_10(subtest='0o7777'):
             print(f'save plot in file: {fname}')
             fig.savefig(fname) #, **kwa)
 
-    isubset = 0o7777 if subtest is None else int(subtest)
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
 
-    exp, run, detname = ('ued1015999', 185, 'epixquad1kfps') if isubset & 16 else\
-                        ('ued1011136', 206, 'epixquad1kfps') if isubset & 32+64 else\
+    exp, run, detname = ('ued1015999', 185, 'epixquad1kfps') if isubtest & 16 else\
+                        ('ued1011136', 206, 'epixquad1kfps') if isubtest & 32+64 else\
                         ('ued1016014',  50, 'epixquad1kfps')
 
     ds = DataSource(exp=exp, run=run, detectors=[detname])
     myrun = next(ds.runs())
     det = myrun.Detector(detname)
 
-    if isubset & 1:
+    if isubtest & 1:
         while True:
             evt = next(myrun.events())
             #det.raw._raw_buf = None
@@ -344,7 +344,7 @@ def issue_2026_04_10(subtest='0o7777'):
         plot_image(rimg, title='raw, image', block_show=False, pos=(10,0), fname='img-phil-raw.png')
         plot_image(cimg.clip(-50, 500), title='calib, clipped', block_show=True, pos=(400,0), fname='img-phil-calib.png')
 
-    if isubset & 2:
+    if isubtest & 2:
         #while True:
             #evt = next(myrun.events())
         for nevt,evt in enumerate(myrun.events()):
@@ -360,16 +360,16 @@ def issue_2026_04_10(subtest='0o7777'):
         #import matplotlib
         #print(matplotlib.get_backend())
         #plot_image(arr, title='det.raw._array', figsize=(8,8), block_show=False, pos=(500,0))
-        if isubset & 4:
+        if isubtest & 4:
           plot_image(ndu.reshape_to_2d(raw), title='raw as 2d', figsize=(4,8), block_show=False, pos=(10,0))
           plot_image(ndu.reshape_to_2d(cal), title='cal as 2d', figsize=(4,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
           plot_image(ndu.reshape_to_2d(cal), title='cal as 2d re-scailed', figsize=(4,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5)
-        if isubset & 8:
+        if isubtest & 8:
           plot_image(det.raw.image(evt, raw), title='det.raw.image(evt,raw)', figsize=(8,8), block_show=False, pos=(10,0))
           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=False, pos=(350,0), vmin=0, vmax=5)
           plot_image(det.raw.image(evt, cal), title='det.raw.image(evt,cal)', figsize=(8,8), block_show=True,  pos=(700,0), vmin=-5, vmax=5, fname='img-my-calib.png')
 
-    if isubset & 16:
+    if isubtest & 16:
             vmin, vmax = 0,20
             evt = next(myrun.events())
             raw = det.raw.raw(evt) & 0x3fff
@@ -379,7 +379,7 @@ def issue_2026_04_10(subtest='0o7777'):
             plot_image(det.raw.image(evt, raw_peds), title='det.raw.image(evt,raw_peds)', figsize=(8,8),\
                        block_show=True, pos=(10,10), vmin=vmin, vmax=vmax, fname='img-my-raw-peds.png')
 
-    if isubset & 32:
+    if isubtest & 32:
         print(ndu.info_ndarr(det.raw._pedestals(), 'det.raw._pedestals()'))
         print(ndu.info_ndarr(det.raw._gain(), 'det.raw._gain()'))
         print('det.raw._calibconst.keys():', det.raw._calibconst.keys())
@@ -405,7 +405,7 @@ def issue_2026_04_10(subtest='0o7777'):
 
         print('a1==a2', a1==a2)
 
-    if isubset & 64:
+    if isubtest & 64:
         #print(ndu.info_ndarr(det.raw._pedestals(), 'det.raw._pedestals()'))
         #print(ndu.info_ndarr(det.raw._gain(), 'det.raw._gain()'))
         print('det.raw._calibconst.keys():', det.raw._calibconst.keys())
@@ -446,13 +446,13 @@ def issue_2026_04_15(args):
     #from time import sleep
 
     events = args.events
-    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
 
-    if isubset & 1: expname, runnum, detname = 'xppc00125', 148, 'jungfrau1M'
-    if isubset & 2: expname, runnum, detname = 'ued1015999', 185, 'epixquad1kfps' # gain mode FL
+    if isubtest & 1: expname, runnum, detname = 'xppc00125', 148, 'jungfrau1M'
+    if isubtest & 2: expname, runnum, detname = 'ued1015999', 185, 'epixquad1kfps' # gain mode FL
 
     amin, amax = None, None
-    if isubset & 1: amin, amax = 0, 15
+    if isubtest & 1: amin, amax = 0, 15
 
     ds = DataSource(exp=expname, run=runnum, **{'max_events':events})
     run = next(ds.runs())
@@ -470,7 +470,7 @@ def issue_2026_04_15(args):
         for nevt,evt in enumerate(run.events()):
             raw = det.raw.raw(evt)
             print(ndu.info_ndarr(raw, '=== evt:%03d raw' % nevt, last=10))
-            #arr = np.array(raw, dtype=np.float32) & 0x7fff - peds[2,:] if isubset & 2 else raw
+            #arr = np.array(raw, dtype=np.float32) & 0x7fff - peds[2,:] if isubtest & 2 else raw
             arr = det.raw.calib(evt)
             #img = ndu.reshape_to_2d(raw)
             img = det.raw.image(evt, arr)
@@ -506,8 +506,8 @@ def issue_2026_05_01(args):
     import psana.detector.NDArrUtils as ndu
 
     events = args.events
-    isubset = 0o7777 if args.subtest is None else int(args.subtest)
-    #expname, runnum, detname = ('ued1015980',   1, 'epixquad1kfps') if isubset & 2 else\
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
+    #expname, runnum, detname = ('ued1015980',   1, 'epixquad1kfps') if isubtest & 2 else\
     #                           ('uedc00106',  329, 'epixquad1kfps')
 
     expname, runnum, detname = 'uedc00106',  329, 'epixquad1kfps'
@@ -526,7 +526,7 @@ def issue_2026_05_01(args):
 
     plot_image = True # True False
     flimg = None
-    if isubset is not None:
+    if isubtest is not None:
         for nevt,evt in enumerate(run.events()):
             raw = det.raw.raw(evt)
             print('==== evt: %03d' % nevt)
@@ -538,9 +538,9 @@ def issue_2026_05_01(args):
             print(ndu.info_ndarr(cal, '  cal'))
 
             if plot_image:
-                imgarr = raw   if isubset == 1 else\
-                         cal   if isubset == 2 else\
-                         cbits if isubset == 4 else\
+                imgarr = raw   if isubtest == 1 else\
+                         cal   if isubtest == 2 else\
+                         cbits if isubtest == 4 else\
                          raw
 
                 #img=det.raw.image(evt, nda=raw)
@@ -592,7 +592,6 @@ def issue_2026_05_04(args):
     print(json.dumps(r.json()))
 
 
-
 def issue_2026_05_05(args):
     """ISSUE: command
               datinfo -k exp=tstx00117,run=333,dir=/sdf/data/lcls/drpsrcf/ffb/tst/tstx00117/xtc -d epixuhr3x2
@@ -608,7 +607,7 @@ def issue_2026_05_05(args):
     import psana.detector.NDArrUtils as ndu
 
     events = args.events
-    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
 
     expname, runnum, detname = 'tstx00117',  333, 'epixuhr3x2'
 
@@ -627,7 +626,7 @@ def issue_2026_05_05(args):
 
     plot_image = True # True False
     flimg = None
-    if isubset is not None:
+    if isubtest is not None:
         for nevt,evt in enumerate(run.events()):
             print('==== evt: %03d' % nevt)
             raw = det.raw.raw(evt)
@@ -636,9 +635,9 @@ def issue_2026_05_05(args):
             print(ndu.info_ndarr(cal, '  cal'))
 
             if plot_image:
-                imgarr = raw   if isubset == 1 else\
-                         cal   if isubset == 2 else\
-                         cbits if isubset == 4 else\
+                imgarr = raw   if isubtest == 1 else\
+                         cal   if isubtest == 2 else\
+                         cbits if isubtest == 4 else\
                          raw
 
                 #img = det.raw.image(evt)
@@ -654,6 +653,189 @@ def issue_2026_05_05(args):
                 flimg.update(img)
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
+
+
+def issue_2026_06_03(args):
+    """ISSUE: testing JWT access to DB
+       PROBLEM:
+       FIX:
+    original example from Murali:
+      /sdf/home/m/mshankar/temp/calibjwt/calibcall.py
+
+    make env CALIB_JWT using:
+      source psana/psana/pscalib/calib/get_JWT_from_s3df.sh
+    or
+      source psana/psana/pscalib/calib/get_JWT_from_kerberos.sh
+    then run this test:
+      ./psana/psana/detector/test_issues_2026.py 11
+    """
+    import os
+    import json
+
+    from requests import Session
+
+    # Get the JWT from the environment
+    jwt = os.environ.get('CALIB_JWT', None)
+    if not jwt:
+        raise Exception('Cannot determine the JWT\n'\
+                        +'Use command: source psana/psana/pscalib/calib/get_JWT_from_s3df.sh')
+
+    session = Session()
+    session.headers.update({'Authorization': 'Bearer ' + jwt })
+
+    print('1. Test getting some calib data using the JWT:')
+    ws_url = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_detnum1234/'
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print('\n2. Test we can edit calib information using the JWT:')
+    ws_url = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/test_edit_privilege'
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print('\n3. Test passing query_string parameters using the JWT')
+    ws_url = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_0001'
+    r = session.get(ws_url, params={'query_string': '{"run": 270, "ctype": "pixel_rms"}'})
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print('\n4. DOES NOT WORK - Test passing query parameters using the JWT')
+    ws_url = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_0001'
+    #r = session.get(ws_url, params={'query': {"run": 270, "ctype": "pixel_rms"}})
+    r = session.get(ws_url, params={'query': {"run": 270, "ctype": "pedestals"}})
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print("\n5. Test getting a list of databases")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/"
+    r = session.get(ws_url);
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print("\nTest getting a list of collections")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/"
+    r = session.get(ws_url);
+    r.raise_for_status()
+    print(json.dumps(r.json()))
+
+    print("\n6. Test access without any paramaters")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print('len of json: %d' % len(r.json()))
+    print(json.dumps(r.json())[:1000])
+
+    print("\n7. Test host")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001"
+    r = session.get(ws_url, params={"host": "psanagpu113"})
+    r.raise_for_status()
+    print('len of json: %d' % len(r.json()))
+    print(json.dumps(r.json())[:1000])
+
+    print("\n8. DOES NOT WORK - Try to pass integer as raw parameter")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001"
+    r = session.get(ws_url, params={"run": 2})
+    r.raise_for_status()
+    print('len of json: %d' % len(r.json()))
+    print(json.dumps(r.json()))
+
+    print("\n9. DOES NOT WORK - Integer to pass run as string")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001"
+    r = session.get(ws_url, params={"run": "2"})
+    r.raise_for_status()
+    print('len of json: %d' % len(r.json()))
+    print(json.dumps(r.json()))
+
+    print("\n10. Test query_string again using the JWT")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001"
+    r = session.get(ws_url, params={"query_string": '{"run": 2}'})
+    r.raise_for_status()
+    print('len of json: %d' % len(r.json()))
+    print(json.dumps(r.json()))
+
+    print('\n11. Test access to documents using the JWT')
+    ws_url = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_cspad_0001/cspad_0001'
+    r = session.get(ws_url, params={'query_string': '{"ctype": "pedestals"}'}) # WORKS
+    #r = session.get(ws_url, params={'query': {"ctype": "pedestals"}})         # DOES NOT WORK
+    r.raise_for_status()
+    print(json.dumps(r.json())[:1000])
+
+
+def issue_2026_07_01(args):
+    """ISSUE: Mona - epixquad1kfps ghost pixels. exp=ued1015980,run=5 (also 6 and 7).
+       PROBLEM:
+       FIX:
+       datinfo -k exp=ued1015980,run=5 -d epixquad1kfps
+    """
+    import numpy as np
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.UtilsEpix10ka as ue
+
+    subtest = args.subtest
+    isubtest = 0o7777 if subtest is None else int(subtest)
+
+    dskwargs={'exp': 'ued1015980', 'run': 5, 'max_events': 100000}
+    ds = DataSource(**dskwargs)
+    run = next(ds.runs())
+    logger.info('\n%s runnum %d %s' % (20*'=', run.runnum, 20*'='))
+    det = run.Detector('epixquad1kfps')
+    flimg = None
+    plot_image = True
+
+    for ievt, evt in enumerate(run.events()):
+        if ievt<10:
+            raw = det.raw.raw(evt)
+            print(info_ndarr(raw, 'ev: %03d raw' % ievt))
+            if det.raw._store_ is None:
+                clb = det.raw.calib(evt)
+            store = det.raw._store_
+
+            if plot_image:
+                igr = ue.grindex_array(raw, gbit=det.raw._data_gain_bitnum)
+                print(info_ndarr(igr,  '    XXX igr:'))
+                print('    XXX igr.sum()', igr.sum(),\
+                      '    max(igr)', np.max(igr),\
+                      '    min(igr)', np.min(igr))
+
+                nda = raw
+                msg = None
+                if isubtest == 0:
+                    msg = 'raw'
+                elif isubtest == 1:
+                    nda = igr
+                    msg = 'gain range index'
+                elif isubtest == 2:
+                    msg = 'peds[0,:] HIGH gain'
+                    nda = store.peds[0,:]
+                elif isubtest == 3:
+                    msg = 'peds HIGH-LOW'
+                    nda = store.peds[0,:] - store.peds[1,:]
+                elif isubtest == 4:
+                    msg = 'gfac[0,:] HIGH gain'
+                    nda = store.gfac[0,:]
+                elif isubtest == 5:
+                    msg = 'gfac HIGH-LOW'
+                    nda = store.gfac[0,:] - store.gfac[1,:]
+                elif isubtest == 6:
+                    msg = 'raw & data_bits'
+                    nda = raw & det.raw._data_bit_mask
+
+                print('    XXX plot %s' % msg)
+                img = det.raw.image(evt, nda=nda)
+
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=10, w_in=14) # , amin=amin, amax=amax)
+                    #gr.plt.ion()
+                title = 'evt %02d test image'%ievt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+    if plot_image: gr.show()
 
 
 def issue_2026_07_08(args):
@@ -677,9 +859,6 @@ def issue_2026_07_08(args):
     print(ndu.info_ndarr(calib_cm, '  calib_cm'))
 
 
-
-
-
 def issue_2026_07_23(args):
     """ISSUE:
               datinfo -k exp=ascdaq123,run=578 -d epixuhr3x2
@@ -694,7 +873,7 @@ def issue_2026_07_23(args):
     import psana.detector.NDArrUtils as ndu
 
     events = args.events
-    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
 
     expname, runnum, detname = 'ascdaq123', 578, 'epixuhr3x2'
 
@@ -709,7 +888,7 @@ def issue_2026_07_23(args):
 
     plot_image = False # True # True False
     flimg = None
-    if isubset is not None:
+    if isubtest is not None:
         for nevt,evt in enumerate(run.events()):
             print('==== evt: %03d' % nevt)
             raw = det.raw.raw(evt)
@@ -718,9 +897,9 @@ def issue_2026_07_23(args):
             print(ndu.info_ndarr(cal, '  cal'))
 
             if plot_image:
-                imgarr = raw   if isubset == 1 else\
-                         cal   if isubset == 2 else\
-                         cbits if isubset == 4 else\
+                imgarr = raw   if isubtest == 1 else\
+                         cal   if isubtest == 2 else\
+                         cbits if isubtest == 4 else\
                          raw
 
                 #img = det.raw.image(evt)
@@ -736,9 +915,6 @@ def issue_2026_07_23(args):
                 flimg.update(img)
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
-
-
-
 
 
 def issue_2026_07_31(args):
@@ -759,8 +935,6 @@ def issue_2026_07_31(args):
     cal = det.raw.calib(evt)
     print(ndu.info_ndarr(cal, '  cal'))
 
-
-        
 #===
 
 def issue_2026_MM_DD(args):
@@ -810,14 +984,15 @@ def selector():
     elif TNAME in ('1',): issue_2026_02_04()
     elif TNAME in ('2',): issue_2026_02_26()
     elif TNAME in ('3',): issue_2026_03_16()
-    elif TNAME in ('4',): issue_2026_03_27(args.subtest)
-    elif TNAME in ('5',): issue_2026_04_01(args.subtest)
-    elif TNAME in ('6',): issue_2026_04_10(args.subtest)
+    elif TNAME in ('4',): issue_2026_03_27(args)
+    elif TNAME in ('5',): issue_2026_04_01(args)
+    elif TNAME in ('6',): issue_2026_04_10(args)
     elif TNAME in ('7',): issue_2026_04_15(args) # various images selected by -s [#]
     elif TNAME in ('8',): issue_2026_05_01(args)
     elif TNAME in ('9',): issue_2026_05_04(args)
     elif TNAME in ('10',):issue_2026_05_05(args)
-
+    elif TNAME in ('11',):issue_2026_06_03(args)
+    elif TNAME in ('12',):issue_2026_07_01(args)
     elif TNAME in ('13',):issue_2026_07_08(args)
     elif TNAME in ('14',):issue_2026_07_23(args)
     elif TNAME in ('15',):issue_2026_07_31(args) # Vincent - jungfrau mask
