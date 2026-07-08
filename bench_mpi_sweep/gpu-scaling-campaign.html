@@ -263,7 +263,7 @@
     <div class="stats">
       <div class="stat pass"><div class="num">bit-exact <small>&times;2</small></div><div class="cap">GPU result identical to CPU on two experiments</div></div>
       <div class="stat accent"><div class="num">0.9 &rarr; 306 <small>Hz</small></div><div class="cap">one process &rarr; 4 nodes, using stock psana MPI</div></div>
-      <div class="stat accent"><div class="num">14&times;</div><div class="cap">from changing the filesystem path. Nothing else.</div></div>
+      <div class="stat accent"><div class="num">14&times;</div><div class="cap">Lustre &rarr; FFB. Known direction; now sized for this workload.</div></div>
       <div class="stat hot"><div class="num">~300 <small>Hz</small></div><div class="cap">the last ceiling: one process called smd0</div></div>
     </div>
   </header>
@@ -281,7 +281,7 @@
         <div class="role"><div class="who">BD ranks</div><div class="as">The waiters</div><p>Fetch the actual data from storage (the pantry) and carry it to the kitchen. You can hire as many as you want.</p></div>
         <div class="role"><div class="who">GPU</div><div class="as">The kitchen</div><p>Enormous. Cooks a full event in 4&thinsp;ms. It spends most of its time waiting for food to arrive.</p></div>
       </div>
-      <p class="punch"><b>The whole campaign in one sentence:</b> the kitchen was never the problem. First the pantry was too far away (storage), and once we fixed that, the single host reading the reservation book became the limit (smd0). Hiring more waiters, expediters, or kitchens does not help a restaurant with one host.</p>
+      <p class="punch"><b>The whole campaign in one sentence:</b> the kitchen was never the problem. Move the pantry closer (FFB, no surprise there) and the limit becomes the single host reading the reservation book (smd0). Hiring more waiters, expediters, or kitchens does not help a restaurant with one host.</p>
     </div>
   </section>
 
@@ -404,7 +404,7 @@ $ python psana/psana/gpu/test_jungfrau_calib.py -e mfx100852324 -r 78  -n 20   <
           <div class="cmd">  <b># identical, plus one flag:</b>
   ... --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101210926/xtc</div>
           <div class="result">1 worker: 36 Hz (30x faster) &middot; scales cleanly to 4 workers &middot; tops out at 210 Hz</div>
-          <div class="verdict"><span class="chip info">ceiling #1: storage</span><span class="arrow">&rarr;</span><span><b>14x from a path change.</b> One node now reaches 78% of the copy path&rsquo;s 270 Hz. But a new ceiling appeared at 210 Hz. Is it the node&rsquo;s hardware, or something all nodes share?</span></div>
+          <div class="verdict"><span class="chip info">ceiling #1: storage</span><span class="arrow">&rarr;</span><span>Faster storage winning is no surprise; the measurement&rsquo;s value is the size (14x for this workload) and the shape: clean 36 Hz/worker scaling to 4 workers, then <b>a new ceiling at 210 Hz that storage cannot explain</b>. Is it the node&rsquo;s hardware, or something all nodes share?</span></div>
         </div>
       </li>
 
@@ -483,8 +483,8 @@ mpirun --bind-to none -n 34 python ... bench_calib.py -n 200 --dir &lt;FFB&gt; -
         <tbody>
           <tr>
             <td><b>Use FFB storage</b></td>
-            <td><span class="chip pass">adopt now</span></td>
-            <td>14x on identical code. It is a directory argument.<span class="why">On Lustre, nothing else we could build matters.</span></td>
+            <td><span class="chip pass">confirmed, quantified</span></td>
+            <td>Known qualitatively; measured at 14x for this workload, 36 Hz per worker.<span class="why">The number matters as a baseline: on Lustre, nothing anyone could build downstream matters.</span></td>
           </tr>
           <tr>
             <td><b>Parallel smd0</b> <span class="why">(the old branch never built this one)</span></td>
@@ -543,8 +543,8 @@ mpirun --bind-to none -n 34 python ... bench_calib.py -n 200 --dir &lt;FFB&gt; -
         <p>Writing speculative code takes days. Catching up to it takes much longer, because every piece must be read, understood, tested, and proven unnecessary before it can be removed, and it tangles into core files along the way. Unwinding this branch meant reverting 21 files and 4,374 lines threaded through psana&rsquo;s core. The replacement that actually works is <b>about 300 lines and two functions</b>, and two days of measurement answered every question the thousands of lines had assumed answers to.</p>
       </div>
       <div class="lessoncard">
-        <h3>4. Complexity hides the cheap win</h3>
-        <p>The single biggest improvement of the entire effort, 14x, cost zero lines of code. A team staring at a sophisticated GPU pipeline does not go looking for a filesystem path, because the sunk complexity <b>points attention at itself</b>. The simplest version of the system is also the one where the real problem is visible.</p>
+        <h3>4. Complexity pulls effort away from the boring factors that dominate</h3>
+        <p>Everyone already knew FFB beats Lustre; that is not a discovery. The telling part is the allocation of effort: thousands of speculative lines went into GPU scheduling and custom I/O, and none into the two factors the measurements rank first, data placement and pipeline serving. Sunk complexity <b>points attention at itself</b>, and the well-known, unglamorous factors get no budget precisely because they are not interesting to build.</p>
       </div>
       <div class="rule">
         <b>The working rule:</b> build the minimum that is provably correct, write down every idea you deliberately did not build next to the measurement that would justify it, then run the measurements. Here the data called back exactly one deferred feature (async readback), rejected the rest, and pointed at one the old branch never thought of (parallel smd0). That is the scorecard for guessing versus measuring.
