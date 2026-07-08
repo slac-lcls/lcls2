@@ -19,9 +19,6 @@ Example usage:
 
 Other options:
     --detectors q_atmopal rix_fim0
-    --gpu_det jungfrau
-    --gpu_pool_depth 2
-    --gpu_d2h_interval 1000
     --max_events 10000
     --log_level INFO
     --dir /sdf/data/lcls/ds/rix/rix100818424/xtc
@@ -50,13 +47,6 @@ def parse_args():
     parser.add_argument('--dir', help='Path to directory containing XTC2 files')
     parser.add_argument('-d', '--detectors', nargs='*', default=[], help='List of detector names')
     parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
-    parser.add_argument('--gpu_det', default=None,
-                        help='GPU detector name for DataSource(gpu_det=...), e.g. jungfrau')
-    parser.add_argument('--gpu_pool_depth', '--n_gpu_streams',
-                        dest='n_gpu_streams', type=int, default=None,
-                        help='GPU EventPool depth / DataSource(n_gpu_streams=...)')
-    parser.add_argument('--gpu_d2h_interval', type=int, default=0,
-                        help='Call ctx.get("calib").on_cpu every N events in GPU mode (0=never)')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
     parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
     parser.add_argument('--print_interval', type=int, default=1000,
@@ -95,10 +85,6 @@ def create_datasource(args, rank):
     )
     if args.skip_calib_load is not None:
         common_kwargs["skip_calib_load"] = args.skip_calib_load
-    if args.gpu_det:
-        common_kwargs["gpu_det"] = args.gpu_det
-        if args.n_gpu_streams is not None:
-            common_kwargs["n_gpu_streams"] = args.n_gpu_streams
 
     if args.xtc_files:
         if rank == 0:
@@ -169,14 +155,7 @@ def main():
     if ds.unique_user_rank():
         print(f"[Rank {rank}] rss_gb after next(ds.runs()) { _rss_gb():.3f}")
 
-    if args.gpu_det and args.debug_detector and rank == 0:
-        print("[INFO] --debug_detector is ignored when --gpu_det is set")
-
-    det = (
-        run.Detector(args.debug_detector)
-        if args.debug_detector and not args.gpu_det
-        else None
-    )
+    det = run.Detector(args.debug_detector) if args.debug_detector else None
     if det and ds.unique_user_rank():
         print(f"[Rank {rank}] rss_gb after run.Detector({args.debug_detector}) { _rss_gb():.3f}")
     if rank == 0 and det:
@@ -206,17 +185,8 @@ def main():
     det_call_count = 0
     det_seg_seconds = 0.0
     det_stack_seconds = 0.0
-    gpu_d2h_count = 0
-    gpu_d2h_seconds = 0.0
     for i_evt, evt in enumerate(run.events()):
-        if args.gpu_det:
-            if args.gpu_d2h_interval > 0 and i_evt % args.gpu_d2h_interval == 0:
-                det_t0 = time.perf_counter()
-                _ = evt.get("calib").on_cpu
-                gpu_d2h_seconds += time.perf_counter() - det_t0
-                gpu_d2h_count += 1
-                det_accessed = True
-        elif det:
+        if det:
             evt._det_raw_timing = {'segments': 0.0, 'stack': 0.0}
         if det and args.debug_detector.lower() == 'epix10ka':
             det_t0 = time.perf_counter()
@@ -274,8 +244,7 @@ def main():
                 rss_gb = _rss_gb()
                 print(
                     f"[Rank {rank}] Event {i_evt}: Rate = {rate:.1f} Hz "
-                    f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB "
-                    f"{det_accessed=} {args.calib=} gpu_det={args.gpu_det} {io_msg}"
+                    f"Interval={interval_time:.2f}s RSS={rss_gb:.2f} GB {det_accessed=} {args.calib=} {io_msg}"
                 )
             ti0 = now
 
@@ -306,8 +275,6 @@ def main():
     det_time_max = comm.reduce(det_call_seconds, op=MPI.MAX, root=0)
     det_seg_max = comm.reduce(det_seg_seconds, op=MPI.MAX, root=0)
     det_stack_max = comm.reduce(det_stack_seconds, op=MPI.MAX, root=0)
-    gpu_d2h_total = comm.reduce(gpu_d2h_count, op=MPI.SUM, root=0)
-    gpu_d2h_time_max = comm.reduce(gpu_d2h_seconds, op=MPI.MAX, root=0)
 
     if rank == 0:
         total = np.sum(recvbuf)
@@ -353,12 +320,6 @@ def main():
                 f"[{args.log_level}] TOTAL_DET calls={int(det_calls_total)} "
                 f"time={det_time_max:.2f}s rate={det_rate:.2f} calls/s{seg_msg}{stack_msg}"
             )
-        if gpu_d2h_total > 0 and gpu_d2h_time_max > 0:
-            gpu_d2h_rate = gpu_d2h_total / gpu_d2h_time_max
-            print(
-                f"[{args.log_level}] TOTAL_GPU_D2H calls={int(gpu_d2h_total)} "
-                f"time={gpu_d2h_time_max:.2f}s rate={gpu_d2h_rate:.2f} calls/s"
-            )
     elif args.show_rank_stats:
         first_bd_rank = n_ebnodes + 1
         last_bd_rank = size - ps_srv_nodes
@@ -382,12 +343,6 @@ def main():
                     f" | DET calls={int(det_call_count)} "
                     f"time={det_call_seconds:.2f}s rate={det_rate:.2f} calls/s"
                     f"{seg_msg}{stack_msg}"
-                )
-            if gpu_d2h_count > 0 and gpu_d2h_seconds > 0:
-                gpu_d2h_rate = gpu_d2h_count / gpu_d2h_seconds
-                msg += (
-                    f" | GPU_D2H calls={int(gpu_d2h_count)} "
-                    f"time={gpu_d2h_seconds:.2f}s rate={gpu_d2h_rate:.2f} calls/s"
                 )
             print(msg)
 

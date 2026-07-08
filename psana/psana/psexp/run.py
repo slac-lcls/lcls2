@@ -140,10 +140,6 @@ class Run(object):
         return self.runnum
 
     def events(self):
-        if getattr(self._evt_iter, "is_gpu_events", False):
-            yield from self._evt_iter
-            return
-        # CPU path (unchanged).
         for dgrams in self._evt_iter:
             if self._handle_transition(dgrams):
                 # EndRun handling here ends the stream
@@ -737,26 +733,15 @@ class RunSerial(Run):
         super(RunSerial, self).__init__(expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams)
         self.configs = configs
         super()._setup_envstore()
-        self._setup_run_calibconst()
-        if self.dsparms.gpu_det:
-            from psana.gpu.gpu_events import GpuEvents
-            self._evt_iter = GpuEvents(configs,
-                                       dm,
-                                       self.dsparms.max_retries,
-                                       self.dsparms.use_smds,
-                                       self.shared_state,
-                                       self.dsparms,
-                                       self,
-                                       smdr_man=smdr_man)
-        else:
-            self._evt_iter = Events(configs,
-                                    dm,
-                                    self.dsparms.max_retries,
-                                    self.dsparms.use_smds,
-                                    self.shared_state,
-                                    smdr_man=smdr_man)
+        self._evt_iter = Events(configs,
+                                dm,
+                                self.dsparms.max_retries,
+                                self.dsparms.use_smds,
+                                self.shared_state,
+                                smdr_man=smdr_man)
         self._smd_iter = None
         self._ts_table = None
+        self._setup_run_calibconst()
 
     @contextmanager
     def build_table(self):

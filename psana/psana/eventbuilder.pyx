@@ -18,19 +18,6 @@ import numpy as np
 from psana import dgram
 from psana.dgramedit import PyDgram
 from psana.psexp import TransitionId
-from psana.dgramlite import SmdInfoLite
-from psana.gpu.gpu_batch import (
-    GPU_BATCH_MAGIC,
-    GPU_BATCH_VERSION,
-    GPU_DESC_FLAG_VALID,
-    GPU_DESC_FMT,
-    GPU_DESC_NBYTES,
-    GPU_EVENT_FMT,
-    GPU_EVENT_NBYTES,
-    GPU_HEADER_FMT,
-    GPU_HEADER_NBYTES,
-)
-import struct
 
 PROFILE_ENV = "PSANA_EB_PROFILE"
 PROFILE_INTERVAL_ENV = "PSANA_EB_PROFILE_INTERVAL"
@@ -178,16 +165,7 @@ cdef class EventBuilder:
     cdef double _profile_time_destinations
     cdef double _profile_time_serialize
 
-    # GPU-Test
-    cdef bint _split_gpu_enabled
-    cdef object _gpu_stream_ids
-    cdef list _smdinfo_lites
-    cdef uint64_t _gpu_stream_mask
-
     def __init__(self, views, configs, *args, **kwargs):
-        # Pop gpu_stream_ids before PyArg_ParseTupleAndKeywords so it does
-        # not count against the 4-slot kwlist.
-        cdef object _gpu_stream_ids_kwarg = kwargs.pop('gpu_stream_ids', None)
         self.nsmds  = len(views)
         self.configs= configs
         self.nevents= 0
@@ -214,53 +192,18 @@ cdef class EventBuilder:
         kwlist[4] = NULL
 
         # NOTE: args must be empty here; we accept kwargs only for these three
-        if PyArg_ParseTupleAndKeywords(
-            args,
-            kwargs,
-            "|Oiii",
-            kwlist,
-            &(self.filter_timestamps_obj),
-            &(self.intg_stream_id),
-            &(self.batch_size),
-            &use_proxy_flag
-        ) is False:
+        if PyArg_ParseTupleAndKeywords(args, kwargs, "|Oiii",
+                                    kwlist,
+                                    &(self.filter_timestamps_obj),
+                                    &(self.intg_stream_id),
+                                    &(self.batch_size),
+                                    &use_proxy_flag) is False:
             raise RuntimeError("Invalid kwargs for EventBuilder (expected: filter_timestamps, intg_stream_id, batch_size)")
 
         self._use_proxy_events = bool(use_proxy_flag)
         self._init_profile()
-        self._init_test_gpu(gpu_stream_ids=_gpu_stream_ids_kwarg)
         self._scratch_pydgrams = [0] * self.nsmds
         self._event_footer = array.array('I', [0] * (self.nsmds + 1))
-
-    cdef void _init_test_gpu(self, gpu_stream_ids=None):
-        """Initialise GPU stream routing.
-
-        Priority:
-          1. gpu_stream_ids kwarg (passed from EventBuilderManager via DsParms)
-          2. PS_TEST_GPU_STREAM_IDS env var (legacy / direct testing)
-        """
-        # All cdef declarations must be at the top in Cython.
-        cdef object ids_src
-        cdef object env_val
-        self._split_gpu_enabled = 0
-        self._gpu_stream_ids = set()
-        ids_src = None
-        if gpu_stream_ids is not None and len(gpu_stream_ids) > 0:
-            ids_src = gpu_stream_ids
-        else:
-            env_val = os.environ.get("PS_TEST_GPU_STREAM_IDS", "")
-            if env_val:
-                ids_src = [int(x.strip()) for x in env_val.split(",") if x.strip()]
-        if ids_src:
-            self._gpu_stream_ids = set(int(x) for x in ids_src)
-            self._split_gpu_enabled = 1
-
-        self._smdinfo_lites = [None] * self.nsmds
-        self._gpu_stream_mask = 0
-        for i in range(self.nsmds):
-            if i in self._gpu_stream_ids:
-                self._gpu_stream_mask |= (1 << i)
-                self._smdinfo_lites[i] = SmdInfoLite(self.configs[i])
 
     cdef void _init_profile(self):
         cdef object env_val = os.environ.get(PROFILE_ENV)
@@ -470,208 +413,6 @@ cdef class EventBuilder:
         footer[len(evt_sizes)] = len(evt_sizes)
         batch.extend(footer[:len(evt_sizes) + 1])
 
-    cdef bytearray _build_gpu_batch(
-        self,
-        bytearray gpu_event_table,
-        bytearray gpu_desc_table,
-    ):
-        cdef bytearray gpu_batch = bytearray()
-
-        cdef uint64_t n_events = len(gpu_event_table) // GPU_EVENT_NBYTES
-        cdef uint64_t n_desc = len(gpu_desc_table) // GPU_DESC_NBYTES
-
-        cdef uint64_t event_table_offset = GPU_HEADER_NBYTES
-        cdef uint64_t desc_table_offset = event_table_offset + len(gpu_event_table)
-        cdef uint64_t total_nbytes = desc_table_offset + len(gpu_desc_table)
-
-        gpu_batch.extend(struct.pack(
-            GPU_HEADER_FMT,
-            GPU_BATCH_MAGIC,
-            GPU_BATCH_VERSION,
-            GPU_HEADER_NBYTES,
-            GPU_EVENT_NBYTES,
-            GPU_DESC_NBYTES,
-            n_events,
-            n_desc,
-            self._gpu_stream_mask,
-            event_table_offset,
-            desc_table_offset,
-            total_nbytes,
-        ))
-
-        gpu_batch.extend(gpu_event_table)
-        gpu_batch.extend(gpu_desc_table)
-
-        return gpu_batch
-
-    cdef _build_fast_batch_gpu_split(self, unsigned target_batch):
-        # This builds cpu_batch, gpu_batch, and step_batch bytearrays directly
-        cdef bytearray cpu_batch = bytearray()
-        cdef bytearray gpu_batch = bytearray()
-        cdef bytearray step_batch = bytearray()
-        cdef bytearray gpu_event_table = bytearray()
-        cdef bytearray gpu_desc_table = bytearray()
-
-        cdef list cpu_evt_sizes = []
-        cdef list step_sizes = []
-
-        cdef array.array int_array_template = array.array('I', [])
-        cdef array.array cpu_footer
-        cdef bytearray cpu_evt
-
-        cdef short service = 0
-        cdef uint64_t timestamp = 0
-        cdef int matched = 0
-        cdef unsigned got = 0        # total events processed (L1Accept + transitions)
-        cdef unsigned got_gpu = 0    # L1Accept-only counter: index in GPU event/desc tables
-        cdef unsigned got_step = 0
-
-        cdef object evt_bytearray
-        cdef Py_ssize_t evt_size = 0
-        cdef Py_ssize_t i
-        cdef Py_ssize_t pydg_size = 0
-        cdef object pydg
-        cdef object pydg_view
-        cdef object smdinfo_lite
-        cdef object smdinfo_result
-        cdef bint found = False
-
-        cdef uint64_t first_desc = 0
-        cdef uint64_t n_desc = 0
-        cdef uint64_t present_gpu_mask = 0
-        cdef uint64_t bd_offset = 0
-        cdef uint64_t bd_size = 0
-
-        cdef double t0 = 0.0
-        cdef double t_footer = 0.0
-
-        # Terminate once we have collected target_batch L1Accept events.
-        # Transitions encountered before or between L1Accepts are bundled into
-        # the same batch so the CPU path sees them in the correct order.
-        while got_gpu < target_batch and self.has_more():
-            if self._profile_enabled:
-                t0 = perf_counter()
-            matched = self._gather_event(self._scratch_pydgrams, &service, &timestamp)
-            if self._profile_enabled:
-                self._profile_time_gather += perf_counter() - t0
-            if matched == 0:
-                break
-            if self._profile_enabled:
-                self._profile_proxy_events += 1
-                t0 = perf_counter()
-
-            # Build transition into cpu_batch and step_batch like in the non-split path
-            if not TransitionId.isEvent(service):
-                evt_bytearray, evt_size = self._event_to_bytearray(self._scratch_pydgrams)
-                if self._profile_enabled:
-                    self._profile_time_serialize += perf_counter() - t0
-
-                cpu_batch.extend(evt_bytearray)
-                cpu_evt_sizes.append(evt_size)
-
-                step_batch.extend(evt_bytearray)
-                step_sizes.append(evt_size)
-
-                got_step += 1
-                got += 1
-
-                # Stop collecting L1Accepts at calibration-boundary transitions.
-                # BeginStep may change pedestals/gains (e.g. gain-mode scan);
-                # EndRun marks the end of data.  Stopping here ensures that all
-                # L1Accepts in this batch come from the same calibration step —
-                # no event is calibrated with constants from a different step.
-                # The GPU path calls beginstep() / flushes EventPool AFTER this
-                # batch is yielded and BEFORE the next batch starts.
-                # Enable/Disable/EndStep do not affect calibration constants and
-                # are intentionally not listed here — the loop continues.
-                if service in (TransitionId.BeginStep, TransitionId.EndRun):
-                    break
-
-                continue
-
-            # For L1Accepts, cpu_batch skips gpu dgrams and marks them as missing in the footer.
-            # GPU batch is built according to the ABI described above.
-            cpu_evt = bytearray()
-            cpu_footer = array.clone(int_array_template, self.nsmds + 1, zero=True)
-            cpu_footer[self.nsmds] = self.nsmds
-            first_desc = len(gpu_desc_table) // GPU_DESC_NBYTES
-            n_desc = 0
-            present_gpu_mask = 0
-            for i in range(self.nsmds):
-                pydg = self._scratch_pydgrams[i]
-                if pydg == 0:
-                    cpu_footer[i] = 0
-                    continue
-                pydg_size = pydg.size()
-                if i in self._gpu_stream_ids:
-                    smdinfo_lite = self._smdinfo_lites[i]
-                    if smdinfo_lite is None:
-                        self._release_pydgram_list(self._scratch_pydgrams)
-                        raise RuntimeError(f"Missing SmdInfoLite for stream {i}")
-                    pydg_view = pydg.as_memoryview()
-                    smdinfo_result = smdinfo_lite.extract(pydg_view)
-                    found = smdinfo_result[0]
-                    bd_offset = smdinfo_result[1]
-                    bd_size = smdinfo_result[2]
-                    if not found:
-                        self._release_pydgram_list(self._scratch_pydgrams)
-                        raise RuntimeError(
-                            f"GPU stream {i} L1 dgram has no smdinfo offset/size "
-                            f"at timestamp {timestamp}"
-                        )
-                    gpu_desc_table.extend(struct.pack(
-                        GPU_DESC_FMT,
-                        got_gpu,                # batch_event_index (L1Accept-only seq idx)
-                        i,                      # stream_id
-                        bd_offset,
-                        bd_size,
-                        pydg_size,              # smd_size
-                        GPU_DESC_FLAG_VALID,
-                        0,                      # reserved
-                    ))
-                    n_desc += 1
-                    present_gpu_mask |= (1 << i)
-                    # Mark gpu dgram size as 0 in cpu batch since it's not included there
-                    cpu_footer[i] = 0
-                else:
-                    cpu_footer[i] = pydg_size
-                    cpu_evt.extend(bytearray(pydg.as_memoryview()))
-                self._release_pydgram(pydg)
-                self._scratch_pydgrams[i] = 0
-
-            cpu_evt.extend(cpu_footer)
-            evt_size = len(cpu_evt)
-            cpu_batch.extend(cpu_evt)
-            cpu_evt_sizes.append(evt_size)
-            gpu_event_table.extend(struct.pack(
-                GPU_EVENT_FMT,
-                got_gpu,            # batch_event_index (L1Accept-only seq idx)
-                timestamp,
-                first_desc,
-                n_desc,
-                present_gpu_mask,
-            ))
-            if self._profile_enabled:
-                self._profile_time_serialize += perf_counter() - t0
-            got += 1
-            got_gpu += 1
-
-        self.nevents = got_gpu   # L1Accept count; used by batches_with_gpu() end-of-data check
-        self.nsteps = got_step
-        if self._profile_enabled:
-            t_footer = perf_counter()
-        self._append_packet_footer(cpu_batch, cpu_evt_sizes)
-        self._append_packet_footer(step_batch, step_sizes)
-        gpu_batch = self._build_gpu_batch(gpu_event_table, gpu_desc_table)
-        if self._profile_enabled:
-            self._profile_time_gen_batch += perf_counter() - t_footer
-
-        return (
-            {0: (cpu_batch, cpu_evt_sizes)},
-            {0: (gpu_batch, [])},
-            {0: (step_batch, step_sizes)},
-        )
-
     cdef tuple _build_fast_batch(self, unsigned target_batch):
         cdef bytearray batch = bytearray()
         cdef bytearray step_batch = bytearray()
@@ -870,7 +611,7 @@ cdef class EventBuilder:
             target_batch = MAX_BATCH_SIZE  # integrating mode ignores user batch_size cap
 
         # Counters
-        cdef unsigned got = 0
+        cdef unsigned got      = 0
         cdef unsigned got_step = 0
 
         # Accumulators
@@ -887,12 +628,6 @@ cdef class EventBuilder:
             and not as_proxy_events
             and filter_timestamps.shape[0] == 0
         ):
-            if self._split_gpu_enabled:
-                batch_result = self._build_fast_batch_gpu_split(target_batch)
-                if self._profile_enabled:
-                    self._profile_after_build(perf_counter() - t_total, self.nevents == 0 and self.nsteps == 0)
-                return batch_result
-
             batch_dict, step_dict = self._build_fast_batch(target_batch)
             if self._profile_enabled:
                 self._profile_after_build(perf_counter() - t_total, self.nevents == 0 and self.nsteps == 0)

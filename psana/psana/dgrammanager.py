@@ -234,9 +234,8 @@ class DgramManager(object):
         xtc_info = []
         det_info_table = {}
 
-        # Collect all stream ids and segment ids for each detector.
-        det_stream_ids_table = {}
-        det_stream_segments_table = {}
+        # collect corresponding stream id for a detector (first found)
+        det_stream_id_table = {}
 
         # loop over the dgrams in the configuration
         # if a detector/drp_class combo exists in two cfg dgrams
@@ -293,45 +292,25 @@ class DgramManager(object):
 
                 det_info_table[det_name] = (dettype, detid)
 
-                stream_ids = det_stream_ids_table.setdefault(det_name, [])
-                if not stream_ids or stream_ids[-1] != i:
-                    stream_ids.append(i)
-                det_stream_segments_table.setdefault(det_name, {})[i] = sorted(
-                    det_dict.keys()
-                )
+                if det_name not in det_stream_id_table:
+                    det_stream_id_table[det_name] = i
 
         # collect only user detectors
         stream_id_to_detnames = {}
         for det_name, _ in det_classes["normal"].keys():
-            for stream_id in det_stream_ids_table.get(det_name, []):
-                if stream_id in stream_id_to_detnames:
-                    if det_name in stream_id_to_detnames[stream_id]:
-                        continue
-                    stream_id_to_detnames[stream_id].append(det_name)
-                else:
-                    stream_id_to_detnames[stream_id] = [det_name]
-
-        for detnames in stream_id_to_detnames.values():
-            detnames.sort()
-
-        for stream_ids in det_stream_ids_table.values():
-            stream_ids.sort()
-
-        for stream_segments in det_stream_segments_table.values():
-            for segment_ids in stream_segments.values():
-                segment_ids.sort()
+            if det_stream_id_table[det_name] in stream_id_to_detnames:
+                if det_name in stream_id_to_detnames[det_stream_id_table[det_name]]:
+                    continue
+                stream_id_to_detnames[det_stream_id_table[det_name]].append(det_name)
+            else:
+                stream_id_to_detnames[det_stream_id_table[det_name]] = [det_name]
 
         # Add products of this function to itself and the consumers
         for config_consumer in [self] + self.config_consumers:
             setattr(config_consumer, "det_classes", det_classes)
             setattr(config_consumer, "xtc_info", xtc_info)
             setattr(config_consumer, "det_info_table", det_info_table)
-            setattr(config_consumer, "det_stream_ids_table", det_stream_ids_table)
-            setattr(
-                config_consumer,
-                "det_stream_segments_table",
-                det_stream_segments_table,
-            )
+            setattr(config_consumer, "det_stream_id_table", det_stream_id_table)
             setattr(config_consumer, "stream_id_to_detnames", stream_id_to_detnames)
 
     def _set_configinfo(self):
