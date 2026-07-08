@@ -3,6 +3,12 @@
 Features removed from the MVP branch. Each entry records what was removed,
 why it was premature, and what benchmark signal would justify bringing it back.
 
+Removal happened in two passes: the slim commit (958878d6e) removed the
+speculative infrastructure from `psana/psana/gpu/`, and a follow-up cleanup
+(8ea55e898) removed the hooks that infrastructure had grown into the core
+event loop, C extensions, and test suite. Entries below marked *(second
+pass)* were removed in the cleanup.
+
 ---
 
 ## AsyncD2HJoiner (`notes/async_d2h_join_size_prototype.md`)
@@ -207,15 +213,77 @@ read for a concrete reason (e.g. CPU calibration overhead in EventManager).
 
 ---
 
+## DataSource(gpu_det=...) event-loop integration *(second pass)*
+
+**What it was:** The psexp-side surface that wired the removed GPU iterator
+into psana2: `gpu_det` / `n_gpu_streams` / `gpu_stream_ids` on `DsParms` and
+`DataSource(...)`, `GpuEvents` dispatch in `run.py` (RunSerial) and
+`mpi_ds.py`, GPUBAT1 byte packing alongside SMD batches in `node.py`,
+`batches_with_gpu()` / 3-tuple `eb.build()` in `eventbuilder_manager.py` and
+`smdreader_manager.py`, GPUBAT1 stream splitting in `eventbuilder.pyx`,
+multi-stream routing tables (`det_stream_ids_table`,
+`det_stream_segments_table`) in `dgrammanager.py`, the GPU SMD-file path in
+`singlefile_ds.py`, `_setup_gpu_geometry()` / shared-calib logging in
+`mpi_ds.py`, and `--gpu_det` driver options in
+`debugtools/ds_count_events.py`.
+
+**Why removed:** It existed only to serve the removed `GpuEvents`/GPUBAT1
+machinery, and after the first pass it referenced deleted modules —
+`mpi_ds.py` broke every MPI DataSource run and `eventbuilder.pyx` broke the
+eventbuilder extension at import time. The MVP deliberately has no DataSource
+integration: the caller uses the standard event loop and two functions.
+
+**Benchmark signal to justify:** Same as GpuEvents — a validated MVP shows
+GPU calib is production-worthy AND the explicit two-function API is shown to
+be a real adoption barrier for users. Any future integration should be
+type-stable (never silently returning CuPy where NumPy is expected).
+
+---
+
+## Dgram.raw_descriptors() raw payload locator *(second pass)*
+
+**What it was:** ~270 lines in `psana/src/dgram.cc` adding a
+`raw_descriptors()` method to Dgram: per-segment file offset/size descriptors
+for L1Accept raw payloads, used to build GPUBAT1 desc tables for direct BD
+reads (KvikIO/GDS path).
+
+**Why removed:** Only consumer was the removed BD pipeline; nothing imported
+it after the first pass. The MVP gets raw data via `det.raw.raw(evt)`.
+
+**Benchmark signal to justify:** Same as KvikioGpuReader — a direct
+BD-offset read path is demonstrated to beat the standard event loop.
+
+---
+
+## SmdInfoExtractIter (`dgramlite.pyx`) *(second pass)*
+
+**What it was:** An embedded C++ `XtcIterator` in `dgramlite.pyx` (plus the
+`xtc_shlib` meson link it required) extracting bigdata offset/size fields
+from SMD dgrams — the CPU-side producer for GPUBAT1 desc tables.
+
+**Why removed:** Unused after the first pass; only the removed BD pipeline
+consumed its output.
+
+**Benchmark signal to justify:** Same as GpuBatchView/GPUBAT1.
+
+---
+
 ## Benchmark and test scripts
 
-**Removed:** `gpu_mpi_benchmark.py`, `gpu_performance_benchmark.py`,
+**Removed (first pass):** `gpu_mpi_benchmark.py`, `gpu_performance_benchmark.py`,
 `gpu_mpi_perf_compare.py`, `bench_wall.py`, `gpu_event_loop_test.py`,
 `gpu_batch_size_test.py`, `test_ipc_sharing.py`, `gpu_jungfrau_calib_example.py`,
 `scripts/` directory.
 
+**Removed (second pass):** the seven `psana/psana/tests/test_gpu_*.py` files
+(~2,700 lines: calib, event_loop, kernel_registry, mpi_transport, multi_rank,
+performance, transition_handling) — they exercised the removed modules, and
+two failed pytest collection by importing them at module level.
+
 **Replaced by:** `test_jungfrau_calib.py` (correctness) and `bench_calib.py`
-(performance) — both to be written as part of the MVP task list.
+(performance). The correctness test passed bit-exact (max_diff 0.0 vs
+`det.raw.calib()`, 20 events, mfx101210926 r387, A100) on 2026-07-07 after
+the second-pass cleanup and a clean meson rebuild.
 
 ---
 
