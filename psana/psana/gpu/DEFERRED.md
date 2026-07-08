@@ -33,6 +33,13 @@ Synchronous `.get()` is fully additive (~15 ms/event, not overlapped). Once
 MVP correctness is confirmed, implement AsyncD2HJoiner. Target: D2H rate
 approaches no-D2H rate (≥80 Hz) for `join_size=32`.
 
+**2026-07-08: trigger condition MET at scale** (job 31049831, 32 BD ranks /
+2 nodes / FFB): sync `.get()` under 32-rank PCIe contention costs 72 ms/event
+(vs 12.5 ms serial) and is ~73% additive — aggregate drops 236 -> 170 Hz
+(-28%). Not hidden by event-wait: ranks' transfers already overlap each other
+on the shared link. AsyncD2HJoiner (or keeping results GPU-resident) is
+justified for any workflow that returns calibrated frames to host.
+
 ---
 
 ## EventPool / StreamPool (`gpu_stream.py`)

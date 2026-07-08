@@ -101,9 +101,17 @@
     smalldata read + batch distribution; EB/BD/GPU/node fan-out cannot
     relieve it. (EB=4 also stranded ~900 events in partial batches at
     stream end — rates still valid, per-rank timed.)
-  - Next levers: PS_SMD_N_EVENTS batch-size tuning (config knob on smd0),
-    then pinned-host H->D staging if per-node rates rise enough for PCIe
-    contention to bind again.
+  - PS_SMD_N_EVENTS sweep (2026-07-08, job 31049831, 32 BD / 2 nodes /
+    FFB): 1000 -> 253.7 Hz, 4000 -> 254.0 Hz, 16000 -> 242.3 Hz. Flat:
+    the smd0 ceiling is not a batching artifact. **All no-code levers are
+    now exhausted; moving past ~300 Hz requires smd0-side parallelism in
+    psana2 itself.**
+  - D2H at scale (same job, 32 BD ranks): --d2h off 236.3 Hz vs on
+    170.0 Hz (-28%). Sync `.get()` costs 72 ms/event under 32-rank PCIe
+    contention (vs 12.5 ms serial) and is ~73% additive — NOT hidden by
+    event-wait, because ranks' transfers already overlap each other on
+    the shared link. **AsyncD2HJoiner trigger condition: MET** (see
+    DEFERRED.md) for any workflow returning calibrated frames to host.
   - Gotcha for reproduction: OpenMPI default core binding silently
     distorts multi-rank rates and refuses >17 procs on a 17-core
     allocation — always `--bind-to none` (attempt-1 logs show the artifact).
@@ -157,10 +165,14 @@
   dataset). Old-branch benchmark comparison on mfx100852324 dropped: no
   FFB copy exists, so it would be Lustre-bound and uninformative.
 
-Remaining, in priority order:
-1. PS_SMD_N_EVENTS sweep (smd0 batch size, config knob) at 32 BD / 2
-   nodes / FFB — the only remaining no-code lever on the smd0 ceiling.
-2. `--d2h` sweep at the best-known config to quantify the AsyncD2HJoiner
-   trigger from DEFERRED.md.
-3. If smd0 stays the wall: profile rank 0 (smalldata parse vs read vs
-   MPI send) before designing anything.
+- 2026-07-08: PS_SMD_N_EVENTS sweep flat (253.7/254.0/242.3 Hz) and D2H
+  sweep (236.3 -> 170.0 Hz with sync .get()) — **measurement campaign
+  complete.** Every DEFERRED.md item now has a data-backed verdict.
+
+Remaining (all beyond pure measurement):
+1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
+   production workflow needs calibrated frames back on host.
+2. smd0 profiling (smalldata parse vs read vs MPI send) — prerequisite
+   for any attempt to move the ~300 Hz central ceiling; this is psana2
+   core work, not GPU-module work.
+3. Pinned-host H->D staging — secondary, only after smd0 ceiling moves.
