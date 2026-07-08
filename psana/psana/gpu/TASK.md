@@ -44,11 +44,28 @@
   - Flags: `-e EXP`, `-r RUN`, `-n N_EVENTS`, `--compare-cpu`, `--d2h`
   - Records: events/sec GPU (no D2H), events/sec GPU (with D2H), events/sec CPU
   - Records: H→D ms/event, kernel ms/event, D→H ms/event
-- [ ] Run benchmark: GPU no-D2H vs GPU with-D2H vs CPU
-- [ ] Measure single-event GPU occupancy on A100 (blocks launched vs saturation point)
+- [x] Run benchmark: GPU no-D2H vs GPU with-D2H vs CPU
+  - 2026-07-07, A100 (sdfampere004), mfx101210926 r387 (32-seg Jungfrau, 16.78M pixels):
+  - Serial single-process, 500 events: GPU 0.9 Hz = CPU 0.9 Hz (1.01x) — the
+    serial event loop costs ~1.1 s/event on /sdf/data Lustre (~30 MB/s effective)
+    and dominates both paths; calibration is 0.4% of wall time. Per-stage:
+    H→D 4.23 ms, kernel 0.32 ms.
+  - Compute-only (10 in-memory events, event-loop I/O excluded):
+    CPU `det.raw.calib()` 30.08 ms/event; GPU H→D+kernel 3.69 ms/event =
+    **8.1x**; with synchronous `.get()` 16.19 ms/event = 1.9x. The ~12.5 ms
+    sync D2H cost reconfirms AsyncD2HJoiner as the top deferred item.
+  - Conclusion: MVP claim holds — calibration itself is 8x faster on GPU;
+    end-to-end rate is bounded by event iteration, not calibration
+    (see DEFERRED.md for the escalation criteria).
+- [x] Measure single-event GPU occupancy on A100 (blocks launched vs saturation point)
   - Expected for Jungfrau 4M: ~9.96M pixels / 256 threads = ~38,900 blocks >> 864 saturation → occupancy > 100%, single event saturates GPU
   - Record this — it is the justification for NOT adding EventPool
+  - 2026-07-07 measured (16.78M-pixel run): 65,536 blocks/event vs 864
+    saturation = **7,585%** — one event over-saturates the A100 ~76x.
+    EventPool remains unjustified.
 - [ ] Record NIC recv bandwidth during GPU run vs CPU run (using `net_bandwidth.py` from the original branch if needed)
+  - Only meaningful in an MPI run where I/O parallelism can approach NIC
+    limits; deferred until the MPI scaling benchmark is run.
 
 ## Documentation
 
@@ -66,6 +83,16 @@
   editable install); installed `cupy-cuda12x` (--user) for the ps_20241122 py3.9 env.
 - 2026-07-07: correctness validation **PASS** — bit-exact vs `det.raw.calib()`,
   50 events, mfx101210926 r387, A100.
+- 2026-07-07: fixed two bugs in `bench_calib.py` from the slim commit —
+  `_is_bd_rank()` skipped the whole benchmark in single-process runs (mpi4py
+  imports fine at world size 1, so rank 0 < 2 short-circuited everything,
+  silent exit 0), and `run_gpu_bench()` referenced `fused_calib_gpu` that was
+  only imported inside `main()` (latent NameError).
+- 2026-07-07: performance benchmark run — compute speedup **8.1x**
+  (30.08 → 3.69 ms/event), occupancy 7,585%, serial event loop identified as
+  the end-to-end bottleneck (~1.1 s/event vs 4.5 ms GPU work). Numbers above.
 
-Remaining: run `bench_calib.py` (GPU vs CPU throughput + per-stage timing) and
-record occupancy + NIC bandwidth numbers.
+Remaining: MPI scaling benchmark (N BD ranks feeding GPUs via `init_gpu_rank()`)
+to find the per-GPU feed rate the standard event loop can sustain — this is the
+measurement that decides whether any DEFERRED I/O feature gets built. Record
+NIC bandwidth during that run.

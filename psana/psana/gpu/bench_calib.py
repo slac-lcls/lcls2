@@ -43,17 +43,26 @@ def _rank():
 
 
 def _is_bd_rank():
-    """True if this is not rank 0 (smd0) or rank 1 (EB) in a 3-rank job."""
+    """True if this rank should run the benchmark body.
+
+    In a >=3-rank MPI job (smd0, EB, BD...) only ranks >= 2 are BD ranks.
+    A single-process run does everything itself, so it is a BD rank even
+    though mpi4py imports fine and reports rank 0 of a size-1 world.
+    """
     try:
         from mpi4py import MPI
-        return MPI.COMM_WORLD.Get_rank() >= 2
+        comm = MPI.COMM_WORLD
+        if comm.Get_size() == 1:
+            return True
+        return comm.Get_rank() >= 2
     except Exception:
-        return True  # single process → treat as BD
+        return True  # no MPI at all → single process → treat as BD
 
 
 def run_gpu_bench(args, det, peds_gpu, gmask_gpu):
     import cupy as cp
     from psana import DataSource
+    from psana.gpu import fused_calib_gpu
 
     kwargs = dict(exp=args.exp, run=args.run)
     if args.dir:
