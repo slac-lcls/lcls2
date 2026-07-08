@@ -336,9 +336,10 @@ python psdaq/psdaq/debugtools/epixquad1kfps/read_xpmmini_rogue_file.py \
   --max-frames 5
 ```
 
-The reader converts the ePixViewer decoded `(712,768)` StreamWriter frames to
-DAQ raw `(4,352,384)`, matching `det.raw.raw(evt)`.  ePixViewer-only rows are
-not part of the raw frame used for gainbit and FP/FN checks.
+The reader decodes StreamWriter payloads directly to DAQ raw `(4,352,384)`,
+matching `det.raw.raw(evt)`, and reports the image-start header offsets it used.
+ePixViewer-only rows are not part of the raw frame used for gainbit and FP/FN
+checks.
 
 If the summary reports only 48-byte records and `decoded_image_frames: 0`, the
 file contains timing/event records but no full ePixQuad image frames.

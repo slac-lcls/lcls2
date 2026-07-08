@@ -64,10 +64,10 @@ with `top2 = 1`, aside from small detector/readout artifacts.
 
 ## Control Rows
 
-The Rogue/ePixViewer decoded image includes rows that are not part of the DAQ
-`det.raw.raw(evt)` image.  The DAQ writes four raw segments plus a separate
-segment `aux` array; the StreamWriter `.dat` helper converts the ePixViewer
-decoded image into that same DAQ raw segment order before checking gainbits.
+The DAQ writes four raw segments plus a separate segment `aux` array.  Rogue
+StreamWriter `.dat` files contain the same camera payload plus one or more
+record headers before the image words.  The `.dat` helper decodes that payload
+directly into the DAQ raw segment order before checking gainbits.
 
 | View | Shape | Contents |
 |---|---:|---|
@@ -76,14 +76,21 @@ decoded image into that same DAQ raw segment order before checking gainbits.
 | psana raw detector view | `(4, 352, 384)` | Four DAQ raw segments; this is `det.raw.raw(evt)` |
 | psana segment `aux` | `(4, 384)` per segment | Control/calibration rows |
 
-The conversion used by `read_xpmmini_rogue_file.py` mirrors the row and column
-reversal in `psdaq/drp/EpixQuad.cc`:
+The image extraction used by `read_xpmmini_rogue_file.py` mirrors the row and
+column reversal in `psdaq/drp/EpixQuad.cc`.  On the rdsrv421 StreamWriter data,
+`1095248` byte image records start after a 20-word header and `1095288` byte
+image records start after a 40-word header:
 
 ```python
-raw[0] = decoded[2:354,   0:384][::-1, ::-1]
-raw[1] = decoded[2:354, 384:768][::-1, ::-1]
-raw[2] = decoded[358:710, 0:384][::-1, ::-1]
-raw[3] = decoded[358:710,384:768][::-1, ::-1]
+for i in range(176):
+    dn_row = 176 + i
+    up_row = 176 - i - 1
+    for segment, row in (
+        (2, up_row), (3, up_row), (2, dn_row), (3, dn_row),
+        (0, up_row), (1, up_row), (0, dn_row), (1, dn_row),
+    ):
+        raw[segment, row] = words[index:index + 384][::-1]
+        index += 384
 ```
 
 The ePixViewer-only decoded rows are `0`, `1`, `354`, `355`, `356`, `357`,

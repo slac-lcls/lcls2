@@ -14,12 +14,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from psdaq.configdb.epixquad_layout import (
+    DAQ_RAW_FRAME_BYTES,
     DETECTOR_VIEW_SHAPE,
     EPIXVIEWER_DECODED_SHAPE,
     RAW_ASIC_LAYOUT,
     RAW_SHAPE,
     detector_view_to_raw,
     epixviewer_decoded_to_daq_raw,
+    rogue_payload_to_daq_raw,
 )
 
 GAINBIT_MASK = np.uint16(0x4000)
@@ -39,6 +41,26 @@ def _parse_expected_gainbit(value):
     if bit not in (0, 1):
         raise argparse.ArgumentTypeError("--expected-gainbit must be 0 or 1")
     return bool(bit)
+
+
+def _parse_status_indices(text, nindices):
+    if str(text).lower() in ("any", "all", "*"):
+        return None
+
+    indices = []
+    for item in str(text).split(","):
+        item = item.strip()
+        if not item:
+            continue
+        index = int(item, 0)
+        if index < 0 or index >= nindices:
+            raise ValueError(
+                f"pixel status index {index} is outside available range 0-{nindices - 1}"
+            )
+        indices.append(index)
+    if not indices:
+        raise ValueError("--pixel-status-indices did not contain any indices")
+    return sorted(set(indices))
 
 
 def _parse_args():
@@ -119,6 +141,22 @@ def _parse_args():
         default=0,
         help="dump header and leading payload bytes for the first N selected records",
     )
+    parser.add_argument(
+        "--pixel-status-npz",
+        default=None,
+        help=(
+            "optional pseudo-pedestal .npz containing pixel_status or bad_mask; "
+            "FP/FN pixels are grouped by whether their status is bad"
+        ),
+    )
+    parser.add_argument(
+        "--pixel-status-indices",
+        default="any",
+        help=(
+            "comma-separated pixel_status gain indices to use, e.g. 0,1 for FH/FM; "
+            "default any marks a pixel bad if any status index is nonzero"
+        ),
+    )
     args = parser.parse_args()
     if args.expected_gainbit is not None and args.expected_gainbit_map:
         parser.error("use only one of --expected-gainbit or --expected-gainbit-map")
@@ -130,7 +168,6 @@ def _parse_args():
 def _load_modules():
     try:
         from psdaq.utils import enable_epix_quad1kfps  # noqa: F401
-        import ePixViewer.Cameras as cameras
         from pyrogue.utilities.fileio import FileReader
     except Exception as exc:
         print("Failed to import Rogue/ePixQuad reader modules.", file=sys.stderr)
@@ -139,7 +176,7 @@ def _load_modules():
         print(f"Import error: {exc!r}", file=sys.stderr)
         raise SystemExit(1) from exc
 
-    return cameras, FileReader
+    return FileReader
 
 
 def _payload_bytes(data):
@@ -183,6 +220,56 @@ def _load_expected_gainbit(args):
     )
 
 
+def _status_source_label(path, key, shape, indices):
+    if indices is None:
+        index_text = "any nonzero status index"
+    else:
+        index_text = "indices " + ",".join(str(index) for index in indices)
+    return f"{path} {key} shape {shape}; {index_text}"
+
+
+def _load_pixel_status_bad_mask(args):
+    if not args.pixel_status_npz:
+        return None, None
+    if not os.path.exists(args.pixel_status_npz):
+        raise FileNotFoundError(f"Pixel-status npz does not exist: {args.pixel_status_npz}")
+
+    with np.load(args.pixel_status_npz, allow_pickle=False) as data:
+        if "pixel_status" in data:
+            key = "pixel_status"
+            status = data[key]
+            bad_values = status != 0
+        elif "bad_mask" in data:
+            key = "bad_mask"
+            status = data[key]
+            bad_values = status.astype(bool, copy=False)
+        else:
+            raise KeyError(
+                f"{args.pixel_status_npz} does not contain pixel_status or bad_mask"
+            )
+
+        if bad_values.shape == RAW_SHAPE:
+            return bad_values.copy(), f"{args.pixel_status_npz} {key} shape {bad_values.shape}"
+
+        if bad_values.ndim == 4 and bad_values.shape[1:] == RAW_SHAPE:
+            indices = _parse_status_indices(args.pixel_status_indices, bad_values.shape[0])
+            if indices is None:
+                bad_mask = np.any(bad_values, axis=0)
+            else:
+                bad_mask = np.any(bad_values[indices], axis=0)
+            return bad_mask.copy(), _status_source_label(
+                args.pixel_status_npz,
+                key,
+                bad_values.shape,
+                indices,
+            )
+
+        raise ValueError(
+            f"{args.pixel_status_npz} {key} has unsupported shape {bad_values.shape}; "
+            f"expected {RAW_SHAPE} or (N,{RAW_SHAPE[0]},{RAW_SHAPE[1]},{RAW_SHAPE[2]})"
+        )
+
+
 def _raw_area_masks():
     usable = np.ones(RAW_SHAPE, dtype=bool)
     control = np.zeros(RAW_SHAPE, dtype=bool)
@@ -216,7 +303,38 @@ def _raw_pixel_area_text(segment, row, col):
     return "area=unmapped"
 
 
-def _print_mismatch_summary(label, occurrences, usable_mask, control_mask, max_pixels):
+def _print_pixel_list(label, coords, counts, max_pixels, status_bad_mask):
+    if not max_pixels or coords.size == 0:
+        return
+
+    order = np.argsort(counts)[::-1]
+    print(f"  {label}, top {min(max_pixels, len(coords))} by occurrence:")
+    for index in order[:max_pixels]:
+        segment = int(coords[index, 0])
+        row = int(coords[index, 1])
+        col = int(coords[index, 2])
+        count = int(counts[index])
+        status_text = ""
+        if status_bad_mask is not None:
+            status_text = (
+                " pixel_status=bad"
+                if status_bad_mask[segment, row, col]
+                else " pixel_status=ok"
+            )
+        print(
+            f"    segment={segment} row={row} col={col} occurrences={count} "
+            f"{_raw_pixel_area_text(segment, row, col)}{status_text}"
+        )
+
+
+def _print_mismatch_summary(
+    label,
+    occurrences,
+    usable_mask,
+    control_mask,
+    max_pixels,
+    status_bad_mask=None,
+):
     total = int(np.sum(occurrences))
     seen = occurrences > 0
     unique = int(np.count_nonzero(seen))
@@ -235,22 +353,48 @@ def _print_mismatch_summary(label, occurrences, usable_mask, control_mask, max_p
     if other_unique or other_occ:
         print(f"  other: occurrences={other_occ} unique_pixels={other_unique}")
 
+    if status_bad_mask is not None:
+        status_bad_seen = seen & status_bad_mask
+        status_ok_seen = seen & ~status_bad_mask
+        status_bad_occ = int(np.sum(occurrences[status_bad_mask]))
+        status_ok_occ = total - status_bad_occ
+        print("  pixel_status:")
+        print(
+            f"    status_bad: occurrences={status_bad_occ} "
+            f"unique_pixels={int(np.count_nonzero(status_bad_seen))}"
+        )
+        print(
+            f"    status_ok: occurrences={status_ok_occ} "
+            f"unique_pixels={int(np.count_nonzero(status_ok_seen))}"
+        )
+
     if not max_pixels or unique == 0:
         return
 
     coords = np.argwhere(seen)
     counts = occurrences[seen]
-    order = np.argsort(counts)[::-1]
-    print(f"  pixels, top {min(max_pixels, unique)} by occurrence:")
-    for index in order[:max_pixels]:
-        segment = int(coords[index, 0])
-        row = int(coords[index, 1])
-        col = int(coords[index, 2])
-        count = int(counts[index])
-        print(
-            f"    segment={segment} row={row} col={col} occurrences={count} "
-            f"{_raw_pixel_area_text(segment, row, col)}"
-        )
+    if status_bad_mask is None:
+        _print_pixel_list("pixels", coords, counts, max_pixels, status_bad_mask)
+        return
+
+    is_status_bad = np.array(
+        [status_bad_mask[int(segment), int(row), int(col)] for segment, row, col in coords],
+        dtype=bool,
+    )
+    _print_pixel_list(
+        "status_bad pixels",
+        coords[is_status_bad],
+        counts[is_status_bad],
+        max_pixels,
+        status_bad_mask,
+    )
+    _print_pixel_list(
+        "status_ok pixels",
+        coords[~is_status_bad],
+        counts[~is_status_bad],
+        max_pixels,
+        status_bad_mask,
+    )
 
 
 def main():
@@ -259,12 +403,11 @@ def main():
         print(f"Data file does not exist: {args.data_file}", file=sys.stderr)
         return 1
 
-    cameras, FileReader = _load_modules()
-    cam = cameras.Camera(cameraType=args.camera)
-    cam.bitMask = np.uint16(args.bit_mask)
-    decoded_shape = (cam.sensorHeight, cam.sensorWidth)
-    min_image_payload = 32 + (cam.sensorHeight * cam.sensorWidth * np.dtype(np.uint16).itemsize)
+    FileReader = _load_modules()
+    decoded_shape = RAW_SHAPE
+    min_image_payload = DAQ_RAW_FRAME_BYTES
     expected_gainbit, expected_source = _load_expected_gainbit(args)
+    pixel_status_bad_mask, pixel_status_source = _load_pixel_status_bad_mask(args)
     usable_mask, control_mask = _raw_area_masks()
     fp_occurrences = np.zeros(RAW_SHAPE, dtype=np.uint32) if expected_gainbit is not None else None
     fn_occurrences = np.zeros(RAW_SHAPE, dtype=np.uint32) if expected_gainbit is not None else None
@@ -272,6 +415,7 @@ def main():
     file_channels = Counter()
     vc_counts = Counter()
     payload_sizes = Counter()
+    image_start_skip_words = Counter()
     decoded = 0
     selected = 0
     decode_errors = 0
@@ -316,29 +460,14 @@ def main():
             continue
 
         try:
-            _, ready, raw_frame = cam.buildImageFrame(currentRawData=[], newRawData=bytearray(payload))
-            if not ready:
-                continue
-            image = cam.descrambleImage(bytearray(raw_frame))
+            raw_u16, skip_words = rogue_payload_to_daq_raw(payload, bit_mask=args.bit_mask)
         except Exception as exc:
             decode_errors += 1
             if not args.quiet_decode_errors and decode_errors <= args.max_decode_error_reports:
                 print(f"Decode error for record {reader.totCount}: {exc}", file=sys.stderr)
             continue
 
-        image_u16 = np.asarray(image, dtype=np.uint16)
-        if image_u16.shape != (cam.sensorHeight, cam.sensorWidth):
-            decode_errors += 1
-            if not args.quiet_decode_errors and decode_errors <= args.max_decode_error_reports:
-                print(
-                    f"Skipping non-image record {reader.totCount}: "
-                    f"decoded shape {tuple(image_u16.shape)} expected "
-                    f"({cam.sensorHeight}, {cam.sensorWidth})",
-                    file=sys.stderr,
-                )
-            continue
-
-        raw_u16 = epixviewer_decoded_to_daq_raw(image_u16)
+        image_start_skip_words[skip_words] += 1
         gainbit = (raw_u16 & GAINBIT_MASK) != 0
         top2 = (raw_u16 >> np.uint16(14)) & np.uint16(0x3)
 
@@ -383,6 +512,10 @@ def main():
     print("Payload sizes:")
     for size, count in sorted(payload_sizes.items()):
         print(f"  {size} bytes: {count}")
+    if image_start_skip_words:
+        print("Image start offsets:")
+        for skip_words, count in sorted(image_start_skip_words.items()):
+            print(f"  {skip_words} uint16 words ({skip_words * 2} bytes): {count}")
 
     print()
     vc_label = "any" if args.vc is None else str(args.vc)
@@ -405,6 +538,8 @@ def main():
             print()
             print("False-positive/false-negative gainbit summary:")
             print(f"  expected_source: {expected_source}")
+            if pixel_status_source is not None:
+                print(f"  pixel_status_source: {pixel_status_source}")
             print("  false_positive means observed gainbit=1 while expected=0")
             print("  false_negative means observed gainbit=0 while expected=1")
             _print_mismatch_summary(
@@ -413,6 +548,7 @@ def main():
                 usable_mask,
                 control_mask,
                 args.fpfn_max_pixels,
+                pixel_status_bad_mask,
             )
             _print_mismatch_summary(
                 "false_negative_pixels",
@@ -420,13 +556,16 @@ def main():
                 usable_mask,
                 control_mask,
                 args.fpfn_max_pixels,
+                pixel_status_bad_mask,
             )
     elif expected_gainbit is not None:
         print()
         print("False-positive/false-negative gainbit summary: unavailable")
         print(f"  expected_source: {expected_source}")
+        if pixel_status_source is not None:
+            print(f"  pixel_status_source: {pixel_status_source}")
         print("  no decoded image frames were available")
-        print(f"  minimum image payload for {decoded_shape} uint16 data: {min_image_payload} bytes")
+        print(f"  minimum DAQ raw image payload content: {min_image_payload} bytes")
         print("  FP/FN checks require decoded image frames, not only short packet records")
 
     if args.save_prefix and first_raw is not None:

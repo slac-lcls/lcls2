@@ -165,11 +165,10 @@ python psdaq/psdaq/debugtools/epixquad1kfps/read_xpmmini_rogue_file.py \
   --fpfn-max-pixels 128
 ```
 
-The reader converts StreamWriter `.dat` frames from the ePixViewer decoded
-layout to the same DAQ raw `(4,352,384)` layout used by `det.raw.raw(evt)`
-before checking FP/FN pixels.  The FP/FN report prints DAQ raw
-`segment,row,col` plus ASIC/bank coordinates.  ePixViewer-only rows are
-excluded from configured-pixel checks.
+The reader decodes StreamWriter `.dat` payloads directly to the same DAQ raw
+`(4,352,384)` layout used by `det.raw.raw(evt)` before checking FP/FN pixels.
+It prints the image-start header offsets used for the selected frames.  The
+FP/FN report prints DAQ raw `segment,row,col` plus ASIC/bank coordinates.
 
 If Qt/ePixViewer imports require a display, run the decode with an offscreen Qt
 backend:

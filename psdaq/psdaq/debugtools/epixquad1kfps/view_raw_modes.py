@@ -14,12 +14,14 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from psdaq.configdb.epixquad_layout import (
+    DAQ_RAW_FRAME_BYTES,
     DETECTOR_VIEW_SHAPE,
     EPIXVIEWER_DECODED_SHAPE,
     RAW_SHAPE,
     detector_view_to_raw,
     epixviewer_decoded_to_daq_raw,
     raw_detector_view,
+    rogue_payload_to_daq_raw,
 )
 
 mpl.rcParams["font.size"] = 8
@@ -303,7 +305,6 @@ def _load_rogue_modules():
         pass
 
     try:
-        import ePixViewer.Cameras as cameras
         from pyrogue.utilities.fileio import FileReader
     except Exception as exc:
         print("Failed to import Rogue/ePixQuad reader modules.", file=sys.stderr)
@@ -312,18 +313,16 @@ def _load_rogue_modules():
         print(f"Import error: {exc!r}", file=sys.stderr)
         raise
 
-    return cameras, FileReader
+    return FileReader
 
 
 def _decode_dat_frames(args):
     if not args.dat_file.exists():
         raise FileNotFoundError(f"Data file does not exist: {args.dat_file}")
 
-    cameras, FileReader = _load_rogue_modules()
-    cam = cameras.Camera(cameraType=args.camera)
-    cam.bitMask = np.uint16(args.bit_mask)
-    decoded_shape = (cam.sensorHeight, cam.sensorWidth)
-    min_image_payload = 32 + (cam.sensorHeight * cam.sensorWidth * np.dtype(np.uint16).itemsize)
+    FileReader = _load_rogue_modules()
+    decoded_shape = RAW_SHAPE
+    min_image_payload = DAQ_RAW_FRAME_BYTES
 
     expected_raw, expected_source = _load_expected_gainbit_raw(args)
     fp_occurrences = np.zeros(RAW_SHAPE, dtype=np.uint32) if expected_raw is not None else None
@@ -332,6 +331,7 @@ def _decode_dat_frames(args):
     file_channels = Counter()
     vc_counts = Counter()
     payload_sizes = Counter()
+    image_start_skip_words = Counter()
     top2_counter = Counter()
     decoded_frames = []
     selected = 0
@@ -362,28 +362,14 @@ def _decode_dat_frames(args):
             continue
 
         try:
-            _, ready, raw_frame = cam.buildImageFrame(currentRawData=[], newRawData=bytearray(payload))
-            if not ready:
-                continue
-            image = cam.descrambleImage(bytearray(raw_frame))
+            raw, skip_words = rogue_payload_to_daq_raw(payload, bit_mask=args.bit_mask)
         except Exception as exc:
             decode_errors += 1
             if decode_errors <= 5:
                 print(f"Decode error for record {reader.totCount}: {exc}", file=sys.stderr)
             continue
 
-        image_u16 = np.asarray(image, dtype=np.uint16)
-        if image_u16.shape != decoded_shape:
-            decode_errors += 1
-            if decode_errors <= 5:
-                print(
-                    f"Skipping non-image record {reader.totCount}: "
-                    f"decoded shape {tuple(image_u16.shape)} expected {decoded_shape}",
-                    file=sys.stderr,
-                )
-            continue
-
-        raw = _decoded_to_raw_detector(image_u16)
+        image_start_skip_words[skip_words] += 1
         top2 = _top2(raw)
         _counter_update(top2_counter, top2)
         if expected_raw is not None:
@@ -423,6 +409,7 @@ def _decode_dat_frames(args):
         "file_channels": file_channels,
         "vc_counts": vc_counts,
         "payload_sizes": payload_sizes,
+        "image_start_skip_words": image_start_skip_words,
         "selected_records": selected,
         "short_records": short_records,
         "image_sized_records": image_sized_records,
@@ -445,6 +432,10 @@ def _print_dat_summary(summary):
     print("top2_bit_counts ((raw >> 14) & 0x3), converted to DAQ raw layout:")
     for value in range(4):
         print(f"  {value}: {summary['top2_counter'].get(value, 0)}")
+    if summary["image_start_skip_words"]:
+        print("image_start_offsets:")
+        for skip_words, count in sorted(summary["image_start_skip_words"].items()):
+            print(f"  {skip_words} uint16 words ({skip_words * 2} bytes): {count}")
     if summary["expected_source"] is not None:
         counts = summary["mismatch_counts"]
         print("FP/FN location summary, DAQ raw layout:")
