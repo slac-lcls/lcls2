@@ -37,6 +37,11 @@
     (bit-exact, not just within atol) on A100, after second-pass cleanup + clean meson rebuild
 - [x] Identify and document any known divergences (e.g. common-mode correction applied by CPU but not GPU)
   - Documented in `test_jungfrau_calib.py` docstring; none observed on the reference run
+- [x] Correctness on a second dataset: mfx100852324 r0078 (the original
+  branch's experiment family; r0077 bigdata is tape-only)
+  - 2026-07-08 (job 31049526): **PASS** — 20 events, 0 mismatches,
+    max_diff_seen=0.000000 (bit-exact), detector name 'jungfrau', same
+    16.78M-pixel geometry. Log: `bench_mpi_sweep/r78_correctness.log`.
 
 ## Performance Benchmarking
 
@@ -89,9 +94,16 @@
     secondary (H->D 16.0 -> 10.6 ms when 32 ranks split across 2 nodes;
     kernel always <1 ms). At mn4 each GPU gets only ~77 Hz of its ~270 Hz
     capacity — GPUs are nowhere near the bottleneck.
-  - Next lever, in order: PS_EB_NODES > 1 (configuration, discriminates
-    EB vs smd0 as the serializer), then pinned-host H->D staging if
-    per-node rates climb enough for PCIe contention to bind again.
+  - PS_EB_NODES sweep (2026-07-08, job 31049525, 32 BD / 2 nodes / FFB):
+    EB=1 -> 226.4 Hz, EB=2 -> 248.7 Hz, EB=4 -> 212.4 Hz. **Flat within
+    allocation-to-allocation noise (~10-15%): smd0 is the serializer,
+    not the EventBuilder.** The ~230-300 Hz central ceiling is rank 0's
+    smalldata read + batch distribution; EB/BD/GPU/node fan-out cannot
+    relieve it. (EB=4 also stranded ~900 events in partial batches at
+    stream end — rates still valid, per-rank timed.)
+  - Next levers: PS_SMD_N_EVENTS batch-size tuning (config knob on smd0),
+    then pinned-host H->D staging if per-node rates rise enough for PCIe
+    contention to bind again.
   - Gotcha for reproduction: OpenMPI default core binding silently
     distorts multi-rank rates and refuses >17 procs on a 17-core
     allocation — always `--bind-to none` (attempt-1 logs show the artifact).
@@ -140,10 +152,15 @@
   central smd0/EB chain at ~300 Hz, not per-node resources. Full campaign
   logs in `bench_mpi_sweep/` (three single-node suffix families + mn2/mn4).
 
+- 2026-07-08: PS_EB_NODES sweep — flat; **smd0 identified as the central
+  serializer** (results above). r0078 correctness PASS bit-exact (second
+  dataset). Old-branch benchmark comparison on mfx100852324 dropped: no
+  FFB copy exists, so it would be Lustre-bound and uninformative.
+
 Remaining, in priority order:
-1. PS_EB_NODES sweep (1/2/4 EB ranks at fixed 32 BD / 2 nodes, FFB) — if
-   rates rise, EB was the serializer; if flat, it is smd0 itself.
-2. Correctness + sweep on mfx100852324 r0078 (r0077 bigdata is tape-only)
-   to compare against the original branch's July dataset.
-3. `--d2h` sweep at the best-known config to quantify the AsyncD2HJoiner
+1. PS_SMD_N_EVENTS sweep (smd0 batch size, config knob) at 32 BD / 2
+   nodes / FFB — the only remaining no-code lever on the smd0 ceiling.
+2. `--d2h` sweep at the best-known config to quantify the AsyncD2HJoiner
    trigger from DEFERRED.md.
+3. If smd0 stays the wall: profile rank 0 (smalldata parse vs read vs
+   MPI send) before designing anything.
