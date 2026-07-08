@@ -15,6 +15,7 @@
     --amber: #8A6A1F;
     --amber-soft: #F5EEDA;
     --bar-track: #E8EAEF;
+    --code-bg: #EEF0F4;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -32,19 +33,20 @@
       --amber: #D9B25C;
       --amber-soft: #33290F;
       --bar-track: #222A38;
+      --code-bg: #10151F;
     }
   }
   :root[data-theme="light"] {
     --paper: #F5F6F8; --surface: #FFFFFF; --ink: #1A2233; --muted: #5A6478;
     --line: #D9DDE5; --accent: #2B59C3; --accent-soft: #E6ECF9;
     --pass: #2E7D46; --pass-soft: #E3F0E7; --hot: #B54823; --hot-soft: #F7E8E2;
-    --amber: #8A6A1F; --amber-soft: #F5EEDA; --bar-track: #E8EAEF;
+    --amber: #8A6A1F; --amber-soft: #F5EEDA; --bar-track: #E8EAEF; --code-bg: #EEF0F4;
   }
   :root[data-theme="dark"] {
     --paper: #10141C; --surface: #171D28; --ink: #E8ECF4; --muted: #97A1B4;
     --line: #2A3242; --accent: #6D93F0; --accent-soft: #1D2A45;
     --pass: #5BBF7E; --pass-soft: #17301F; --hot: #E07B54; --hot-soft: #3A2118;
-    --amber: #D9B25C; --amber-soft: #33290F; --bar-track: #222A38;
+    --amber: #D9B25C; --amber-soft: #33290F; --bar-track: #222A38; --code-bg: #10151F;
   }
 
   * { box-sizing: border-box; }
@@ -98,7 +100,6 @@
 
   /* analogy strip */
   .cast { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; }
-  .cast h3 { margin: 0 0 4px; font-size: 17px; }
   .cast > p { margin: 0 0 16px; font-size: 15px; color: var(--muted); max-width: 68ch; }
   .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
   .role { background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 12px 14px; }
@@ -107,6 +108,24 @@
   .role p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
   .punch { margin: 16px 0 0; font-size: 15px; max-width: 68ch; }
   .punch b { color: var(--accent); }
+
+  /* code blocks */
+  pre.code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13.5px; line-height: 1.55;
+    background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 18px; margin: 0; overflow-x: auto;
+  }
+  pre.code .c { color: var(--muted); }
+  pre.code .k { color: var(--accent); font-weight: 600; }
+  .explain { display: grid; gap: 12px; margin-top: 12px; }
+  .explaincard { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px 20px; }
+  .explaincard h3 { margin: 0 0 6px; font-size: 16.5px; }
+  .explaincard p { margin: 0 0 8px; font-size: 15px; color: var(--muted); max-width: 70ch; }
+  .explaincard p:last-child { margin-bottom: 0; }
+  .explaincard b { color: var(--ink); }
+  .budget { overflow-x: auto; }
+  .budget table { min-width: 480px; }
 
   /* test ladder */
   .ladder { list-style: none; margin: 0; padding: 0; position: relative; }
@@ -131,6 +150,12 @@
     letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
   }
   .card h3 { margin: 4px 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .cmd {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6;
+    background: var(--code-bg); border: 1px solid var(--line); color: var(--muted);
+    border-radius: 4px; padding: 8px 12px; margin: 0 0 8px; overflow-x: auto; white-space: pre;
+  }
+  .cmd b { color: var(--ink); font-weight: 600; }
   .result {
     font-family: ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;
     font-size: 14px; background: var(--paper); border: 1px solid var(--line);
@@ -176,6 +201,7 @@
   }
   td { padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
   tr:last-child td { border-bottom: none; }
+  td.mono { font-size: 13.5px; white-space: nowrap; }
   td .why { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; max-width: 46ch; }
 
   /* over-engineering section */
@@ -261,8 +287,69 @@
 
   <section>
     <div class="section-head">
-      <div class="eyebrow">02 &middot; The ladder</div>
+      <div class="eyebrow">02 &middot; The code under test</div>
+      <h2>The API, how the GPU is used, and what the numbers mean</h2>
+    </div>
+
+    <pre class="code"><span class="k">from</span> psana <span class="k">import</span> DataSource
+<span class="k">from</span> psana.gpu <span class="k">import</span> init_gpu_rank
+init_gpu_rank()                     <span class="c"># pin this MPI rank to a GPU (must run before cupy import)</span>
+<span class="k">import</span> cupy <span class="k">as</span> cp
+<span class="k">from</span> psana.gpu <span class="k">import</span> prep_calib_constants, fused_calib_gpu
+
+ds  = DataSource(exp=<span class="c">'mfx101210926'</span>, run=387, dir=FFB_PATH)
+run = next(ds.runs())
+det = run.Detector(<span class="c">'jungfrau'</span>)
+peds_gpu, gmask_gpu = prep_calib_constants(det)   <span class="c"># once per run: constants go to GPU and stay</span>
+
+<span class="k">for</span> evt <span class="k">in</span> run.events():                        <span class="c"># the completely standard psana loop</span>
+    raw = det.raw.raw(evt)                        <span class="c"># CPU memory: 33.5 MB of uint16</span>
+    <span class="k">if</span> raw <span class="k">is</span> None: <span class="k">continue</span>
+    calib_gpu = fused_calib_gpu(cp.asarray(raw), peds_gpu, gmask_gpu)
+    <span class="c"># calib_gpu: float32, on the GPU. Call .get() only if you need it on the CPU.</span></pre>
+
+    <div class="explain">
+      <div class="explaincard">
+        <h3>What the GPU actually does</h3>
+        <p>One fused kernel, one thread per pixel. Each thread reads its uint16, takes the top 2 bits as the gain mode (00, 01, 11; 10 marks a bad pixel), subtracts the pedestal for that mode, multiplies by the gain mask for that mode, and writes a float32. The pedestal and gain arrays are uploaded once per run and stay resident, so <b>the only thing that crosses to the GPU per event is the 33.5 MB raw frame</b>.</p>
+      </div>
+
+      <div class="explaincard">
+        <h3>Occupancy: why one event fills the GPU 76 times over</h3>
+        <p>One thread per pixel in blocks of 256 means one event launches <b>65,536 blocks</b>. An A100 has 108 SMs (the physical compute units) and each SM can hold 8 of these blocks at a time, so only <b>864 blocks run at once</b>. The other 64,672 wait in line: one event is 76 back-to-back waves of full-GPU work.</p>
+        <p>That is what &ldquo;7,585% occupancy&rdquo; means, and it is the whole argument against the old branch&rsquo;s EventPool: pooling events helps when single pieces of work leave silicon idle. Here a single event already packs the kitchen 76 times over, so scheduling a second event alongside it cooks nothing faster.</p>
+      </div>
+
+      <div class="explaincard">
+        <h3>Where &ldquo;270 events/s per GPU&rdquo; comes from, and why it looks slow</h3>
+        <p>It is measured, and 91% of it is the copy, not the compute. Per event: <b>copy to GPU 3.37 ms + kernel 0.32 ms = 3.69 ms</b>, and 1000&thinsp;/&thinsp;3.69 = 270 events/s.</p>
+        <p>The copy is the suspicious part: 33.5 MB in 3.37 ms is <b>10 GB/s, only ~40% of what the PCIe gen4 link can carry (~25 GB/s)</b>. The cause is not PCIe latency (that is microseconds); it is that we hand CuPy a regular pageable numpy array. CUDA cannot DMA from pageable memory, so it first copies the data into an internal pinned staging buffer, then transfers. That extra memcpy roughly halves the bandwidth, and because everything is synchronous, copy and compute never overlap. So 270 Hz is <b>the ceiling of the naive copy path, not of the GPU</b>:</p>
+        <div class="budget tablewrap" style="margin-top:10px;">
+          <table>
+            <thead><tr><th>Transfer path</th><th>Effective rate</th><th>Events/s per GPU</th></tr></thead>
+            <tbody>
+              <tr><td>Today: pageable memory, synchronous</td><td class="mono">~10 GB/s</td><td class="mono"><b>270</b> (measured)</td></tr>
+              <tr><td>Pinned host buffer, synchronous</td><td class="mono">~25 GB/s</td><td class="mono">~600</td></tr>
+              <tr><td>Pinned + copy/compute overlap</td><td class="mono">~25 GB/s, kernel hidden</td><td class="mono">~745 (PCIe gen4 wire limit)</td></tr>
+              <tr><td>Kernel only, data already on GPU</td><td class="mono">735 GB/s of HBM traffic</td><td class="mono">~3,100</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="explaincard">
+        <h3>Would GPUDirect Storage (GDS) raise the ceiling?</h3>
+        <p>No. GDS does not make PCIe wider; the bytes still cross the same gen4 link into the GPU, so the per-GPU ingest ceiling stays ~745 Hz at this event size. What GDS changes is the <b>route</b>: today data crosses PCIe twice (storage adapter into host RAM, then host RAM into GPU) and burns host RAM bandwidth and CPU on staging. GDS makes it one DMA, storage adapter straight to GPU memory. That helps when the <b>host</b> is the congested resource, which our 32-workers-per-node runs hinted at. Raising the wire ceiling itself takes a different bus: PCIe gen5 doubles it to ~1,500 Hz, NVLink-attached hosts go further.</p>
+        <p>Perspective for prioritizing: every number in this table is per GPU, while the whole pipeline currently delivers ~300 Hz <b>total</b> because of smd0. The copy path is not the binding constraint yet.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">03 &middot; The ladder</div>
       <h2>Nine tests, each verdict chose the next</h2>
+      <p>Each card shows the actual command. MPI runs were sbatch jobs on the ampere partition (account lcls:data, A100 nodes); the sbatch files live in <span class="mono">bench_mpi_sweep/</span>.</p>
     </div>
 
     <ol class="ladder">
@@ -270,7 +357,9 @@
         <div class="card">
           <div class="tag">correctness</div>
           <h3>Is the GPU answer right?</h3>
-          <div class="result">r387: 50 events, max_diff 0.000000 &middot; r78 (second experiment): 20 events, max_diff 0.000000</div>
+          <div class="cmd">$ python psana/psana/gpu/test_jungfrau_calib.py -e mfx101210926 -r 387 -n 50
+$ python psana/psana/gpu/test_jungfrau_calib.py -e mfx100852324 -r 78  -n 20   <b># second experiment</b></div>
+          <div class="result">r387: 50 events, max_diff 0.000000 &middot; r78: 20 events, max_diff 0.000000</div>
           <div class="verdict"><span class="chip pass">pass</span><span class="arrow">&rarr;</span><span>Bit-for-bit identical to the CPU result, on two different experiments. Everything after this is only about speed.</span></div>
         </div>
       </li>
@@ -279,8 +368,10 @@
         <div class="card">
           <div class="tag">compute only, no file reading</div>
           <h3>How fast is the GPU when data is already in memory?</h3>
-          <div class="result">CPU 30.1 ms/event &middot; GPU 3.7 ms/event (8.1x) &middot; one event fills the GPU 76x over</div>
-          <div class="verdict"><span class="arrow">&rarr;</span><span>This sets the yardstick: <b>one A100 can absorb about 270 events/s</b>. It also kills the old branch&rsquo;s EventPool idea: one event already over-fills the GPU, so there is nothing to juggle.</span></div>
+          <div class="cmd">$ python calib_compute_bench.py   <b># 10 events preloaded to RAM; times det.raw.calib(evt) vs</b>
+                                  <b># fused_calib_gpu(cp.asarray(raw)), synchronized every stage</b></div>
+          <div class="result">CPU 30.1 ms/event &middot; GPU 3.69 ms/event (8.1x) &middot; copy 3.37 ms + kernel 0.32 ms</div>
+          <div class="verdict"><span class="arrow">&rarr;</span><span>Sets the yardstick explained in section 02: <b>270 events/s per A100 through the current copy path</b>, and one event fills the GPU 76x over, which kills the old branch&rsquo;s EventPool idea.</span></div>
         </div>
       </li>
 
@@ -288,6 +379,7 @@
         <div class="card">
           <div class="tag">serial, end to end</div>
           <h3>What does one process actually achieve?</h3>
+          <div class="cmd">$ python psana/psana/gpu/bench_calib.py -e mfx101210926 -r 387 -n 500 --compare-cpu</div>
           <div class="result">0.9 Hz, GPU and CPU identical &middot; calibration is 0.4% of the time</div>
           <div class="verdict"><span class="arrow">&rarr;</span><span>99.6% of the time goes to getting data off disk. The problem is <b>delivery, not compute</b>. Next step: psana&rsquo;s built-in MPI parallelism.</span></div>
         </div>
@@ -295,26 +387,34 @@
 
       <li class="step"><span class="dot">3</span>
         <div class="card">
-          <div class="tag">many readers &middot; /sdf/data (lustre)</div>
+          <div class="tag">many readers &middot; /sdf/data (lustre) &middot; sweep.sbatch</div>
           <h3>Do more reader workers fix it?</h3>
+          <div class="cmd">for NBD in 1 2 4 8 16 32:   <b># NBD workers + smd0 + EventBuilder</b>
+  mpirun --bind-to none -n $((NBD+2)) python psana/psana/gpu/bench_calib.py \
+         -e mfx101210926 -r 387 -n 200 --warmup 10</div>
           <div class="result">1 &rarr; 32 workers: 1.2 &rarr; 15 Hz &middot; each worker gets slower as more are added</div>
-          <div class="verdict"><span class="arrow">&rarr;</span><span>Barely. The workers are fighting over something. Prime suspect: the storage they all read from.</span></div>
+          <div class="verdict"><span class="arrow">&rarr;</span><span>Barely. The workers are fighting over something. Prime suspect: the storage they all read from. (Gotcha: OpenMPI&rsquo;s default core binding silently distorted the first attempt; always <span class="mono">--bind-to none</span>.)</span></div>
         </div>
       </li>
 
       <li class="step"><span class="dot">4</span>
         <div class="card">
-          <div class="tag">same test, faster storage (ffb)</div>
+          <div class="tag">same test, faster storage &middot; sweep.sbatch</div>
           <h3>Same code, different filesystem?</h3>
+          <div class="cmd">  <b># identical, plus one flag:</b>
+  ... --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101210926/xtc</div>
           <div class="result">1 worker: 36 Hz (30x faster) &middot; scales cleanly to 4 workers &middot; tops out at 210 Hz</div>
-          <div class="verdict"><span class="chip info">ceiling #1: storage</span><span class="arrow">&rarr;</span><span><b>14x from a path change.</b> One node now reaches 78% of the GPU&rsquo;s appetite. But a new ceiling appeared at 210 Hz. Is it the node&rsquo;s hardware, or something all nodes share?</span></div>
+          <div class="verdict"><span class="chip info">ceiling #1: storage</span><span class="arrow">&rarr;</span><span><b>14x from a path change.</b> One node now reaches 78% of the copy path&rsquo;s 270 Hz. But a new ceiling appeared at 210 Hz. Is it the node&rsquo;s hardware, or something all nodes share?</span></div>
         </div>
       </li>
 
       <li class="step"><span class="dot">5</span>
         <div class="card">
-          <div class="tag">add whole nodes</div>
+          <div class="tag">add whole nodes &middot; multinode.sbatch</div>
           <h3>Does doubling all the hardware double the rate?</h3>
+          <div class="cmd">#SBATCH --nodes=2 --ntasks-per-node=17 --gres=gpu:a100:1    <b># and a 4-node twin</b>
+mpirun --bind-to none -n 34 python ... bench_calib.py -n 200 --dir &lt;FFB&gt;   <b># 32 workers / 2 nodes</b>
+mpirun --bind-to none -n 66 python ... bench_calib.py -n 100 --dir &lt;FFB&gt;   <b># 64 workers / 4 nodes</b></div>
           <div class="result">1 node: 210 Hz &middot; 2 nodes: 258 Hz (+23%) &middot; 4 nodes, 4 GPUs: 306 Hz</div>
           <div class="verdict"><span class="chip info">ceiling #2: shared</span><span class="arrow">&rarr;</span><span>No. Doubling the network cards, buses, and GPUs bought 23%, not 100%. The limit is something <b>every configuration shares</b>: the smd0 + EventBuilder pair at the top.</span></div>
         </div>
@@ -322,8 +422,10 @@
 
       <li class="step"><span class="dot">6</span>
         <div class="card">
-          <div class="tag">add EventBuilders</div>
+          <div class="tag">add EventBuilders &middot; ebsweep.sbatch</div>
           <h3>Is the expediter the bottleneck?</h3>
+          <div class="cmd">for EB in 1 2 4:
+  PS_EB_NODES=$EB mpirun --bind-to none -x PS_EB_NODES -n $((33+EB)) python ... --dir &lt;FFB&gt;</div>
           <div class="result">1 / 2 / 4 EventBuilders: 226 / 249 / 212 Hz. Flat.</div>
           <div class="verdict"><span class="chip amber">eliminated</span><span class="arrow">&rarr;</span><span>Extra EventBuilders change nothing, so the one we had was never busy. It was <b>waiting on smd0</b>, the single process reading the event index.</span></div>
         </div>
@@ -331,8 +433,10 @@
 
       <li class="step"><span class="dot">7</span>
         <div class="card">
-          <div class="tag">smd0 batch size</div>
+          <div class="tag">smd0 batch size &middot; smd0_d2h.sbatch</div>
           <h3>Can a config setting speed up smd0?</h3>
+          <div class="cmd">for N in 1000 4000 16000:   <b># events per smd0 batch; 1000 is the default</b>
+  PS_SMD_N_EVENTS=$N mpirun --bind-to none -x PS_SMD_N_EVENTS -n 34 python ... --dir &lt;FFB&gt;</div>
           <div class="result">batch 1000 / 4000 / 16000: 254 / 254 / 242 Hz. Flat.</div>
           <div class="verdict"><span class="chip hot">ceiling #3: smd0</span><span class="arrow">&rarr;</span><span>No. That was the last free knob. <b>Going past ~300 Hz now requires changing psana2 itself</b> (parallel index reading), and that work starts with profiling, not building.</span></div>
         </div>
@@ -340,9 +444,11 @@
 
       <li class="step"><span class="dot">8</span>
         <div class="card">
-          <div class="tag">copying results back to CPU</div>
+          <div class="tag">copying results back to CPU &middot; smd0_d2h.sbatch</div>
           <h3>Is bringing results back from the GPU free?</h3>
-          <div class="result">without readback: 236 Hz &middot; with: 170 Hz (-28%) &middot; per-copy cost: 12.5 ms alone, 72 ms with 32 workers sharing the bus</div>
+          <div class="cmd">mpirun --bind-to none -n 34 python ... bench_calib.py -n 200 --dir &lt;FFB&gt;          <b># control</b>
+mpirun --bind-to none -n 34 python ... bench_calib.py -n 200 --dir &lt;FFB&gt; --d2h   <b># + .get() per event</b></div>
+          <div class="result">without readback: 236 Hz &middot; with: 170 Hz (-28%) &middot; per-copy: 12.5 ms alone, 72 ms with 32 workers sharing the bus</div>
           <div class="verdict"><span class="chip hot">trigger met</span><span class="arrow">&rarr;</span><span>No. Naive readback costs 28% of throughput, and crowding makes each copy 6x worse. <b>This justifies the one deferred feature the data called back:</b> batched async readback (AsyncD2HJoiner). Keeping results on the GPU stays free.</span></div>
         </div>
       </li>
@@ -351,7 +457,7 @@
 
   <section>
     <div class="section-head">
-      <div class="eyebrow">03 &middot; Throughput</div>
+      <div class="eyebrow">04 &middot; Throughput</div>
       <h2>Event rate by configuration</h2>
     </div>
     <div class="chart">
@@ -361,13 +467,13 @@
       <div class="row"><div class="lbl"><b>32 workers &middot; 1 node</b>FFB &middot; 1 GPU</div><div class="track"><div class="bar" style="width:65.8%"></div><div class="absorb" style="left:84.4%"></div></div><div class="val">210.4 Hz</div></div>
       <div class="row"><div class="lbl"><b>32 workers &middot; 2 nodes</b>FFB &middot; 2 GPUs</div><div class="track"><div class="bar" style="width:80.7%"></div></div><div class="val">258.1 Hz</div></div>
       <div class="row"><div class="lbl"><b>64 workers &middot; 4 nodes</b>FFB &middot; 4 GPUs</div><div class="track"><div class="bar" style="width:95.8%"></div></div><div class="val">306.4 Hz</div></div>
-      <p class="note">Scale 0 to 320 Hz. Dashed line: <span class="absorb-lbl">what one A100 can absorb (~270 Hz)</span>. In the 4-node run the GPUs together receive about a quarter of what they could cook. The pipeline above them is the constraint, not the GPUs.</p>
+      <p class="note">Scale 0 to 320 Hz. Dashed line: <span class="absorb-lbl">what one A100 absorbs through today&rsquo;s copy path (~270 Hz)</span>. In the 4-node run the GPUs together receive about a quarter of what they could take even through that unoptimized path. The pipeline above them is the constraint, not the GPUs.</p>
     </div>
   </section>
 
   <section>
     <div class="section-head">
-      <div class="eyebrow">04 &middot; Verdict ledger</div>
+      <div class="eyebrow">05 &middot; Verdict ledger</div>
       <h2>Every old-branch feature now has evidence</h2>
       <p>The old branch built most of these before measuring anything. The MVP removed them all, then let the data decide which ones to call back.</p>
     </div>
@@ -393,7 +499,7 @@
           <tr>
             <td><b>Pinned-memory upload staging</b></td>
             <td><span class="chip amber">later</span></td>
-            <td>Upload crowding is measurable but secondary.<span class="why">Only matters after the smd0 ceiling moves.</span></td>
+            <td>Would raise the per-GPU ceiling from 270 toward ~745 Hz (section 02).<span class="why">Pointless until the ~300 Hz smd0 ceiling moves out of the way.</span></td>
           </tr>
           <tr>
             <td><b>EventPool / StreamPool</b></td>
@@ -408,7 +514,7 @@
           <tr>
             <td><b>Direct reads, GPUBAT1, raw locators, KvikIO/GDS</b></td>
             <td><span class="chip hot">not justified</span></td>
-            <td>The workers these would speed up are already ~90% idle.<span class="why">Making an idle worker more efficient buys nothing while the host upstream is the limit.</span></td>
+            <td>The workers these would speed up are already ~90% idle.<span class="why">GDS also cannot raise the PCIe ceiling; it removes the host detour (section 02). Irrelevant while smd0 is the limit.</span></td>
           </tr>
         </tbody>
       </table>
@@ -417,7 +523,7 @@
 
   <section>
     <div class="section-head">
-      <div class="eyebrow">05 &middot; The lesson</div>
+      <div class="eyebrow">06 &middot; The lesson</div>
       <h2>Why building ahead of the data is expensive</h2>
       <p>The old branch wrote thousands of lines across pipelines, backends, caches, pools, and custom I/O before running a single controlled measurement. This campaign is the case study in why that pattern is dangerous.</p>
     </div>
@@ -448,7 +554,7 @@
 
   <section>
     <div class="section-head">
-      <div class="eyebrow">06 &middot; Next steps</div>
+      <div class="eyebrow">07 &middot; Next steps</div>
       <h2>Ranked by impact per effort</h2>
     </div>
     <div class="next">
@@ -469,8 +575,8 @@
       </div>
       <div class="nextcard">
         <div class="rank">4 &middot; after step 3</div>
-        <h3>Pinned-memory upload staging</h3>
-        <p>Worth building once per-worker rates rise enough for upload crowding to bind again. Cheap, contained in the GPU module, already sketched in DEFERRED.md.</p>
+        <h3>Pinned-memory upload staging with copy/compute overlap</h3>
+        <p>Raises the per-GPU ingest ceiling from 270 toward ~745 Hz (the PCIe gen4 wire limit; see section 02). Cheap, contained in the GPU module, already sketched in DEFERRED.md. Only worth building once smd0 can feed faster than 270 Hz per GPU.</p>
       </div>
     </div>
   </section>
