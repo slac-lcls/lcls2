@@ -95,17 +95,36 @@
     kernel always <1 ms). At mn4 each GPU gets only ~77 Hz of its ~270 Hz
     capacity — GPUs are nowhere near the bottleneck.
   - PS_EB_NODES sweep (2026-07-08, job 31049525, 32 BD / 2 nodes / FFB):
-    EB=1 -> 226.4 Hz, EB=2 -> 248.7 Hz, EB=4 -> 212.4 Hz. **Flat within
-    allocation-to-allocation noise (~10-15%): smd0 is the serializer,
-    not the EventBuilder.** The ~230-300 Hz central ceiling is rank 0's
-    smalldata read + batch distribution; EB/BD/GPU/node fan-out cannot
-    relieve it. (EB=4 also stranded ~900 events in partial batches at
-    stream end — rates still valid, per-rank timed.)
+    EB=1 -> 226.4 Hz, EB=2 -> 248.7 Hz, EB=4 -> 212.4 Hz. Flat within
+    allocation-to-allocation noise (~10-15%): the EventBuilder is not
+    the serializer. (EB=4 also stranded ~900 events in partial batches
+    at stream end — rates still valid, per-rank timed. The flat result
+    was initially over-read as implicating smd0; corrected below.)
   - PS_SMD_N_EVENTS sweep (2026-07-08, job 31049831, 32 BD / 2 nodes /
-    FFB): 1000 -> 253.7 Hz, 4000 -> 254.0 Hz, 16000 -> 242.3 Hz. Flat:
-    the smd0 ceiling is not a batching artifact. **All no-code levers are
-    now exhausted; moving past ~300 Hz requires smd0-side parallelism in
-    psana2 itself.**
+    FFB): 1000 -> 253.7 Hz, 4000 -> 254.0 Hz, 16000 -> 242.3 Hz. Flat.
+    (Initially read, with the EB sweep, as implicating smd0. WRONG — see
+    the smd0 diary and raw I/O matrix below.)
+  - smd0 diary (2026-07-08, job 31055638, `--smd0-debug`): smd0 read the
+    run's ENTIRE smalldata (297 MB) at 2.2 GB/s in one chunk, then sat
+    19.2 s idle in eb_wait out of a ~32 s event phase. **smd0 exonerated;
+    the parallel-smd0 design is dead.** The pull-based chain means an
+    idle smd0 and a saturated one look identical from outside — only the
+    diary discriminates.
+  - Raw I/O matrix, no psana (2026-07-08, jobs 31058104/31058105, dumb
+    parallel os.pread readers on the same FFB files): 1 node/32 readers
+    7.87 GB/s; random-offset pattern only 8% slower (7.28); 2 nodes same
+    run 12.0 GB/s; 2 nodes on two DIFFERENT runs 4.8+4.8 = 9.6 GB/s.
+    **The true ceiling is aggregate FFB bandwidth available to our jobs
+    (~10-12 GB/s) — not per file set, not access pattern, not psana.**
+    psana achieves 85-90% of raw (7.0 vs 7.9 GB/s single node), so the
+    smd0/EB/BD machinery costs only ~10-15%.
+  - Revised conclusion: the pipeline is storage-bandwidth-bound at every
+    scale tested. Surviving levers, none of them psana code: compression
+    at write time (halves bytes -> ~2x event rate), staging hot runs to
+    node-local NVMe for reprocessing, a facility-level conversation about
+    FFB bandwidth/QoS, and the DRP online path long-term. Dead levers:
+    parallel smd0 (idle), more EBs (flat), locality-aware EB scheduling
+    (no pattern penalty), spreading across runs (B4 showed no gain).
   - D2H at scale (same job, 32 BD ranks): --d2h off 236.3 Hz vs on
     170.0 Hz (-28%). Sync `.get()` costs 72 ms/event under 32-rank PCIe
     contention (vs 12.5 ms serial) and is ~73% additive — NOT hidden by
@@ -160,19 +179,26 @@
   central smd0/EB chain at ~300 Hz, not per-node resources. Full campaign
   logs in `bench_mpi_sweep/` (three single-node suffix families + mn2/mn4).
 
-- 2026-07-08: PS_EB_NODES sweep — flat; **smd0 identified as the central
-  serializer** (results above). r0078 correctness PASS bit-exact (second
-  dataset). Old-branch benchmark comparison on mfx100852324 dropped: no
-  FFB copy exists, so it would be Lustre-bound and uninformative.
+- 2026-07-08: PS_EB_NODES sweep — flat; initially attributed the ceiling
+  to smd0 (WRONG — corrected same day by the smd0 diary + raw I/O matrix:
+  the ceiling is aggregate FFB bandwidth, ~10-12 GB/s; smd0 sits idle).
+  r0078 correctness PASS bit-exact (second dataset). Old-branch benchmark
+  comparison on mfx100852324 dropped: no FFB copy exists, so it would be
+  Lustre-bound and uninformative.
 
 - 2026-07-08: PS_SMD_N_EVENTS sweep flat (253.7/254.0/242.3 Hz) and D2H
   sweep (236.3 -> 170.0 Hz with sync .get()) — **measurement campaign
   complete.** Every DEFERRED.md item now has a data-backed verdict.
 
+- 2026-07-08 (later): smd0 diary + raw I/O matrix (results above) —
+  **ceiling re-attributed from smd0 to aggregate FFB bandwidth**. smd0
+  profiling done (it is idle); parallel-smd0 removed from the roadmap.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.
-2. smd0 profiling (smalldata parse vs read vs MPI send) — prerequisite
-   for any attempt to move the ~300 Hz central ceiling; this is psana2
-   core work, not GPU-module work.
-3. Pinned-host H->D staging — secondary, only after smd0 ceiling moves.
+2. Storage-side levers for the ~10-12 GB/s FFB ceiling — none are psana
+   code: detector-data compression at write time (~2x), node-local NVMe
+   staging for reprocessing, facility conversation on FFB bandwidth/QoS.
+3. Pinned-host H->D staging — secondary, only relevant once per-GPU feed
+   can exceed ~270 Hz (i.e., after the storage ceiling moves).
