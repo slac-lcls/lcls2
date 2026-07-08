@@ -110,21 +110,44 @@
     the parallel-smd0 design is dead.** The pull-based chain means an
     idle smd0 and a saturated one look identical from outside — only the
     diary discriminates.
-  - Raw I/O matrix, no psana (2026-07-08, jobs 31058104/31058105, dumb
-    parallel os.pread readers on the same FFB files): 1 node/32 readers
-    7.87 GB/s; random-offset pattern only 8% slower (7.28); 2 nodes same
-    run 12.0 GB/s; 2 nodes on two DIFFERENT runs 4.8+4.8 = 9.6 GB/s.
-    **The true ceiling is aggregate FFB bandwidth available to our jobs
-    (~10-12 GB/s) — not per file set, not access pattern, not psana.**
-    psana achieves 85-90% of raw (7.0 vs 7.9 GB/s single node), so the
-    smd0/EB/BD machinery costs only ~10-15%.
-  - Revised conclusion: the pipeline is storage-bandwidth-bound at every
-    scale tested. Surviving levers, none of them psana code: compression
-    at write time (halves bytes -> ~2x event rate), staging hot runs to
-    node-local NVMe for reprocessing, a facility-level conversation about
-    FFB bandwidth/QoS, and the DRP online path long-term. Dead levers:
-    parallel smd0 (idle), more EBs (flat), locality-aware EB scheduling
-    (no pattern penalty), spreading across runs (B4 showed no gain).
+  - Raw I/O matrix, no psana (2026-07-08, jobs 31058104/05, 31058810,
+    dumb parallel os.pread readers on the FFB files). Reads are
+    **per-node bandwidth limited at ~7.9 GB/s, and that scales with
+    nodes**:
+
+    | config | nodes | readers/node | GB/s |
+    |---|---:|---:|---:|
+    | B1_1   | 1 | 1  | 0.71 |
+    | B1_8   | 1 | 8  | 2.22 |
+    | B1_32  | 1 | 32 | 7.87 |
+    | B3 (random offsets) | 1 | 32 | 7.28 (-8%) |
+    | B2_2n  | 2 | 16 | 12.0 (6.0/node) |
+    | B5_2x32| 2 | 32 | 15.2 (7.6/node) |
+
+    A node needs ~32 concurrent readers to saturate its ~7.9 GB/s; at
+    16/node it only reaches ~6. Random access costs 8%. Two nodes on the
+    SAME run scale cleanly (15.2 = 2x); B4 (two nodes each on a DIFFERENT
+    run) got only 9.6 total, i.e. worse, which points to shared-backend
+    contention plus minute-to-minute variance on a live production FS.
+  - **Correction to the earlier "aggregate ~10-12 GB/s cap" note (itself
+    an over-attribution): there is no hard aggregate cap in this range.**
+    The limit is per-node (~7.9 GB/s at full concurrency) and scales with
+    node count. Raw 2-node reaches 15.2 GB/s (= ~450 Hz of Jungfrau).
+  - psana vs raw, apples-to-apples by layout: single node psana 7.0 vs
+    raw 7.9 GB/s (89%); 2 nodes at 16 BD/node psana 8.6 vs raw 12.0
+    (72%). So psana leaves the most on the table at multi-node, and it
+    was also running too few BD ranks per node (16, where raw needs 32 to
+    saturate). OPEN: job 31062160 runs psana at 32 BD/node x 2 nodes (64
+    BD) — if it approaches ~450 Hz the multi-node shortfall is just
+    under-concurrency (a config fix); if it stalls near 260 Hz psana has
+    a real multi-node inefficiency worth profiling.
+  - Working conclusion: the pipeline is storage-bandwidth-bound, the
+    bound is per-node and node-scalable, and the standing question is
+    whether psana can be driven to saturate it. Levers, none GPU-module
+    code: run ~32 BD ranks/node, detector compression at write time
+    (~2x), NVMe staging for reprocessing, more nodes, facility FFB QoS.
+    Dead: parallel smd0 (idle), more EBs (flat), locality-aware EB
+    scheduling (no pattern penalty).
   - D2H at scale (same job, 32 BD ranks): --d2h off 236.3 Hz vs on
     170.0 Hz (-28%). Sync `.get()` costs 72 ms/event under 32-rank PCIe
     contention (vs 12.5 ms serial) and is ~73% additive — NOT hidden by
