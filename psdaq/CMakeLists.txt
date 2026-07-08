@@ -1,7 +1,12 @@
-cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.18 FATAL_ERROR)
 
 if (${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.27.0")
   cmake_policy(SET CMP0148 OLD)
+endif()
+
+# This has to be set before project()
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+  set(CMAKE_CUDA_ARCHITECTURES 86)
 endif()
 
 project(psdaq)

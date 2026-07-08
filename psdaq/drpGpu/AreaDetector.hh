@@ -18,10 +18,17 @@ public:
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  void recordGraph(cudaStream_t&         stream,
-                   const unsigned&       index,
-                   const unsigned        panel,
-                   uint16_t const* const data) override;
+//  __device__ void calibrate(float*    const calib,
+//                            uint16_t* const raw,
+//                            unsigned  const count) const;
+  unsigned     rangeOffset() const override { return 14; }
+  unsigned     rangeBits()   const override { return 2; }
+  float const* pedestals_d() const override { return nullptr; }; // @todo: TBD
+  float const* gains_d()     const override { return nullptr; }; // @todo: TBD
+
+//  void recordGraph(cudaStream_t          stream,
+//                   const unsigned&       index,
+//                   uint16_t const* const data) override;
 private:
   unsigned m_nPixels;
 };

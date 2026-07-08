@@ -9,15 +9,17 @@ if cuda_compiler.found()
     #'--verbose',
   ]
 
-  if cuda_base != ''
-    # using CUDA_ROOT
-    cuda_path = cuda_base
-  else
-    # use cuda in conda
-    cuda_path = conda_base
-  endif
+  # If we ever add cuda back to conda we can use this check, but for now just hardcoded
+  #if cuda_base != ''
+  #  # using CUDA_ROOT
+  #  cuda_path = cuda_base
+  #else
+  #  # use cuda in conda
+  #  cuda_path = conda_base
+  #endif
+  cuda_path = '/usr/local/cuda'
 
-  cuda_inc_dir = include_directories([
+cuda_inc_dir = include_directories([
       join_paths(cuda_path, 'targets/x86_64-linux/include'),
       join_paths(cuda_path, 'targets/x86_64-linux/include/cccl/')
     ]
@@ -51,16 +53,19 @@ if cuda_compiler.found()
   lc_dep = lc_proj.get_variable('lc_dep')
   pfpl_proj = subproject('pfpl', default_options: subproj_options)
   pfpl_dep = pfpl_proj.get_variable('pfpl_dep')
+  sleek_proj = subproject('sleek', default_options: subproj_options)
+  sleek_dep = sleek_proj.get_variable('sleek_dep')
 
-  cusz_dep  = cusz_proj.dependency('psz_cu_compile_settings')
-  cuszp_dep = cuszp_proj.dependency('cuSZp_shared')
+  # 6/16/26: Comment these out as they produce lots of warnings
+  #cusz_dep  = cusz_proj.dependency('psz_cu_compile_settings')
+  #cuszp_dep = cuszp_proj.dependency('cuSZp_shared')
 
   drpgpu_inc_dir = include_directories('..')
 
   drpbase_gpu_lib = shared_library('drpbase_gpu',
     [
       'MemPool.cc',
-      'GpuAsyncLib.cc',
+      'gpuUtils.cc',
     ],
     include_directories: [
       drpgpu_inc_dir,
@@ -75,6 +80,7 @@ if cuda_compiler.found()
     dependencies: [
       cuda_dep,
       psalg_utils_dep,
+      xtcdata_dep,
     ],
   )
 
@@ -84,7 +90,7 @@ if cuda_compiler.found()
       'PGPDetectorApp.cc',
       'PGPDetector.cc',
       'Reader.cu',
-      'Collector.cu',
+      'TrgInpGen.cu',
       'Reducer.cu',
       'FileWriter.cc',
     ],
@@ -170,6 +176,26 @@ if cuda_compiler.found()
     ],
   )
 
+  EpixUHRsim_gpu_lib = shared_library('EpixUHRsim_gpu',
+    [
+      'Detector.cc',
+      'SimDetector.cc',
+      'EpixUHRsim.cu',
+      '../drp/AreaDetector.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      python_dep,
+      nlohmann_json_dep,
+    ],
+  )
+
   NoOpReducer_lib = shared_library('NoOpReducer',
     'NoOpReducer.cu',
     include_directories: [drpgpu_inc_dir],
@@ -215,33 +241,64 @@ if cuda_compiler.found()
     ],
   )
 
-  CuSzReducer_lib = shared_library('CuSzReducer',
-    'CuSzReducer.cu',
+  SLEEKReducer_lib = shared_library('SLEEKReducer',
+    'SleekReducer.cu',
     include_directories: [drpgpu_inc_dir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
     dependencies: [
       xtcdata_dep,
-      cusz_dep,
+      sleek_dep,
       psalg_utils_dep,
       nlohmann_json_dep,
     ],
   )
 
-  CuSZpReducer_lib = shared_library('CuSZpReducer',
-    'CuSZpReducer.cu',
-    include_directories: [drpgpu_inc_dir],
-    install: true,
-    install_rpath: libdir_install_rpath,
-    link_with: [],
-    dependencies: [
-      xtcdata_dep,
-      cuszp_dep,
-      psalg_utils_dep,
-      nlohmann_json_dep,
-    ],
-  )
+  # 6/16/26: Comment this out as it produces lots of warnings
+  #CuSzReducer_lib = shared_library('CuSzReducer',
+  #  'CuSzReducer.cu',
+  #  include_directories: [drpgpu_inc_dir],
+  #  install: true,
+  #  install_rpath: libdir_install_rpath,
+  #  link_with: [],
+  #  dependencies: [
+  #    xtcdata_dep,
+  #    cusz_dep,
+  #    psalg_utils_dep,
+  #    nlohmann_json_dep,
+  #  ],
+  #)
+
+  # 6/16/26: Comment this out as it produces lots of warnings
+  #CuSZpReducer_lib = shared_library('CuSZpReducer',
+  #  'CuSZpReducer.cu',
+  #  include_directories: [drpgpu_inc_dir],
+  #  install: true,
+  #  install_rpath: libdir_install_rpath,
+  #  link_with: [],
+  #  dependencies: [
+  #    xtcdata_dep,
+  #    cuszp_dep,
+  #    psalg_utils_dep,
+  #    nlohmann_json_dep,
+  #  ],
+  #)
+
+# 5/19/26: EIP's third party package is not ready for use in the DAQ yet
+#  EipReducer_lib = shared_library('EipReducer',
+#    'EipReducer.cu',
+#    include_directories: [drpgpu_inc_dir],
+#    install: true,
+#    install_rpath: libdir_install_rpath,
+#    link_with: [],
+#    dependencies: [
+#      xtcdata_dep,
+#      eip_dep,
+#      psalg_utils_dep,
+#      nlohmann_json_dep,
+#    ],
+#  )
 
   executable('pgpread_gpu',
     [
@@ -275,12 +332,33 @@ if cuda_compiler.found()
   executable('calibTest',
     [
       'calibTest.cu',
-      'GpuAsyncLib.cc',
+      'gpuUtils.cc',
     ],
     include_directories: [drpgpu_inc_dir],
     dependencies: [
       psalg_utils_dep,
       cuda_dep,
+      threads_dep,
+    ],
+    #install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
+  )
+
+  executable('fileWriteTest_gpu',
+    [
+      'fileWriteTest.cc',
+      'FileWriter.cc',
+      'gpuUtils.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      cufile_dep,
+      threads_dep,
     ],
     #install: true,
     install_rpath: libdir_install_rpath,

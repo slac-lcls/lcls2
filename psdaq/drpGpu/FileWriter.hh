@@ -19,6 +19,7 @@ public:
   ~FileWriter() override;
   static void dumpProperties();
   int registerStream(cudaStream_t);
+  int deregisterStream(cudaStream_t);
   int open(const std::string& fileName) override;
   int close() override;
   void writeEvent(const void* devPtr, size_t size, const XtcData::TimeStamp) override;
@@ -32,12 +33,11 @@ protected:
   XtcData::TimeStamp m_batch_starttime;
   uint8_t*           m_buffer_d;        // device pointer
   off_t              m_fileOffset;
-  off_t              m_bufOffset;
+  size_t             m_bufferSize;
   int                m_fd;
   bool               m_dio;
 private:
   size_t             m_count;
-  size_t             m_bufferSize;
 };
 
 class FileWriterAsync : public FileWriter
@@ -55,7 +55,6 @@ private:
   off_t    m_bufOffset[2];
   size_t   m_index;
   ssize_t  m_bytesWritten;
-  size_t   m_bufferSize;
 };
 
   } // Gpu

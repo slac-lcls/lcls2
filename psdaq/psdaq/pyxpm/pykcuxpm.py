@@ -67,12 +67,10 @@ def main():
     parser.add_argument('-U', action='store_true', help='is UED')
     parser.add_argument('--xvc', default=None, type=int, help='XVC port (2542)')
     args = parser.parse_args()
-#    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
-#                        format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
-    logging.basicConfig(level=logging.WARNING,
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
-    if args.verbose:
-        setVerbose(True)
+#    logging.basicConfig(level=logging.WARNING,
+#                        format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
     # Set base
     base = kcu.DevRoot(

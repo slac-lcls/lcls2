@@ -2,8 +2,9 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/range.hh"
+#include "psdaq/service/EbDgram.hh"     // For TimingHeader
 #include "psdaq/aes-stream-drivers/DmaDest.h"
-#include "psdaq/aes-stream-drivers/GpuAsyncRegs.h"
+#include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
 
 using logging = psalg::SysLog;
 using namespace Pds;
@@ -15,9 +16,9 @@ namespace Drp {
   namespace Gpu {
 
     [[maybe_unused]]
-    static const unsigned GPU_OFFSET      = GPU_ASYNC_CORE_OFFSET;
-    static const size_t   DMA_BUFFER_SIZE = 192*168 * 6 * 2; // ePixUHR = 6 ASICs, 2B/pixel
-
+    static constexpr unsigned GPU_OFFSET       = GPU_ASYNC_CORE_OFFSET;
+    static constexpr size_t   DMA_BUFFER_SIZE  = 64*1024; // Minimum buffer
+    static constexpr unsigned DMA_BUFFER_COUNT = 4;       // Default
   } // Gpu
 } // Drp
 
@@ -29,42 +30,62 @@ static void chkMemory(const void* pointer, unsigned count, size_t size, const ch
   }
 }
 
+
+DataDev::DataDev(const char* path)
+{
+  fd_ = open(path, O_RDWR);
+  if (fd_ < 0) {
+    logging::critical("Error opening %s: %m", path);
+    abort();
+  }
+}
+
+
 MemPoolGpu::MemPoolGpu(Parameters& para) :
   MemPool           (para),
-  m_setMaskBytesDone(0),
+  m_setMaskBytesDone(false),
   m_hostWrtBufsSize (0),
-  m_hostWrtBufs_d   (nullptr),
   m_calibBufsSize   (0),
   m_calibBuffers_d  (nullptr),
   m_reduceBufsSize  (0),
   m_reduceBuffers_d (nullptr)
 {
-  // @todo: Get the DMA size from somewhere - query the device?  No, the device is told below.
-  //        Get it from the command line?  Get it from the GPU::Detector?
-  if (para.kwargs.find("dmaSize") != para.kwargs.end())
-    m_dmaSize = std::stoul(const_cast<Parameters&>(para).kwargs["dmaSize"]);
-  else
-    m_dmaSize = DMA_BUFFER_SIZE;
-  m_dmaSize  = ((m_dmaSize + 0xffff) >> 16) << 16; // Round up to multiple of 64 kB for alignment requirement
-  m_dmaCount = MAX_BUFFERS;             // @todo: Find this out from the f/w
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
-  ////////////////////////////////////////////
-  // Setup GPU
-  ////////////////////////////////////////////
+  // Determine DMA buffer size and round up to units of 64 kB for alignment
+  // The DMA buffer size must include space for the TimingHeader
+  if (para.kwargs.find("dmaBufSize") != para.kwargs.end())
+    m_dmaSize = std::stoul(const_cast<Parameters&>(para).kwargs["dmaBufSize"]);
+  else
+    m_dmaSize = DMA_BUFFER_SIZE;
+  m_dmaSize = ((m_dmaSize >> 16) + (m_dmaSize & 0xffff ? 1 : 0)) << 16;
 
-  if (para.verbose)
-    m_context.listDevices();
+  // Determine DMA buffer count
+  if (para.kwargs.find("dmaBufCount") != para.kwargs.end())
+    m_dmaCount = std::stoul(const_cast<Parameters&>(para).kwargs["dmaBufCount"]);
+  else
+    m_dmaCount = DMA_BUFFER_COUNT;
+  if (m_dmaCount & (m_dmaCount-1)) { // GPU divides by non-powers-of-2 are expensive
+    logging::critical("The number of DMA buffers must be a power of 2; got %u",
+                      m_dmaCount);
+    abort();
+  }
 
+  // Set up GPU
   unsigned gpuId = 0;
   if (para.kwargs.find("gpuId") != para.kwargs.end())
     gpuId = std::stoul(const_cast<Parameters&>(para).kwargs["gpuId"]);
 
+  // Initialize the device context
   if (!m_context.init(gpuId, para.verbose == 0)) {
     logging::critical("CUDA initialize failed");
     abort();
   }
 
+  // Now that we _have_ the device, perhaps we now also need to _set_ it?
+  chkError(cudaSetDevice(m_context.deviceNo()));
+
+  // Check for required device attributes
   struct RequiredExts_t {
     CUdevice_attribute attr;
     const char* name;
@@ -92,98 +113,139 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   logging::info("  Max blocks per multiprocessor: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MAX_BLOCKS_PER_MULTIPROCESSOR));
   logging::info("  Max threads per block: %d\n", m_context.getAttribute(CU_DEVICE_ATTRIBUTE_MAX_THREADS_PER_BLOCK));
 
-  logging::debug("Done with context setup\n");
+  logging::debug("Done with device context setup\n");
 
-  ////////////////////////////////////
-  // Setup memory
-  ////////////////////////////////////
+  // Check for normal DAQ mode (datadev device) or simulator mode (null device)
+  if (para.device != "/dev/null") {
+    m_panel = make_shared<DetPanel>(para.device);
+    logging::info("PGP device '%s' opened", m_panel->name.c_str());
+    const auto fd = m_panel->datadev.fd();
 
-  // Parse the device spec for the list of unit numbers to handle
-  std::vector<int> units;
-  auto under = para.device.find("_", 0);
-  auto base = para.device.substr(0, under+1);
-  getRange(para.device.substr(under+1, para.device.length()), units);
-
-  for (auto unit : units) {
-    std::string device(base + std::to_string(unit));
-    auto& panel = m_panels.emplace_back(device);
-    logging::info("PGP device '%s' opened", device.c_str());
-
-    // Clear out any left-overs from last time
-    int res = gpuRemNvidiaMemory(panel.gpu.fd());
-    if (res < 0)  logging::error("Error in gpuRemNvidiaMemory");
-    logging::debug("Done with gpuRemNvidiaMemory() cleanup");
-
-    ////////////////////////////////////////////////
-    // Create write buffers
-    ////////////////////////////////////////////////
-
-    // Allocate DMA buffers on the GPU
-    // This handles allocating buffers on the device and registering them with the driver.
-    for (unsigned i = 0; i < dmaCount(); ++i) {
-      if (gpuMapFpgaMem(&panel.dmaBuffers[i], panel.gpu.fd(), 0, dmaSize(), 1) != 0) {
-        logging::critical("Failed to allocate DMA buffers of size %zu for %s at number %zd",
-                          dmaSize(), device.c_str(), i);
-        abort();
-      }
-    }
-
-#ifndef HOST_REARMS_DMA
-    ////////////////////////////////////////////////
-    // Map FPGA register space to GPU
-    ////////////////////////////////////////////////
-
-    // Map the GpuAsyncCore FPGA registers
-    // This causes 'operation not permitted' if the process doesn't have sufficient privileges
-    if (gpuMapHostFpgaMem(&panel.swFpgaRegs, panel.gpu.fd(), GPU_OFFSET, 0x100000) < 0) {
-      logging::critical("Failed to map GpuAsyncCore at offset=%d, size = %d", GPU_OFFSET, 0x100000);
-      logging::info("Consider rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
+    // Check for GPUDirect support
+    if (!gpuIsGpuAsyncSupported(fd)) {
+      logging::critical("Firmware or driver does not support GPUAsync!");
       abort();
     }
 
-    // Compute 'write start' register location using the device pointer to GpuAsyncCore
-    panel.hwWriteStart = panel.swFpgaRegs.dptr + 0x300;
+    // Validate buffer count
+    if (m_dmaCount > gpuGetMaxBuffers(fd)) {
+      logging::critical("Too many buffers requested: %d > %d\n",
+                        m_dmaCount, gpuGetMaxBuffers(fd));
+      abort();
+    }
+
+    // Map device control registers to the host
+    m_panel->fpgaRegs = dmaMapRegister(fd, GPU_ASYNC_CORE_OFFSET, GPU_ASYNC_CORE_SIZE);
+    if (!m_panel->fpgaRegs) {
+      logging::critical("Failed to map FPGA registers");
+      abort();
+    }
+
+    // Init a register object
+    m_panel->coreRegs.initialize(false, m_panel->fpgaRegs);
+
+#ifndef HOST_REARMS_DMA
+    // Map the GpuAsyncCore FPGA registers into the CUDA address space to allow the GPU to access them
+    // This causes 'operation not permitted' when the process doesn't have sufficient privileges
+    if ((cuMemHostRegister(m_panel->fpgaRegs, GPU_ASYNC_CORE_SIZE, CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP)) != CUDA_SUCCESS) {
+      logging::critical("cuMemHostRegister failed: %m");
+      logging::info("You may have to run the application as root or consider "
+                    "rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
+      abort();
+    }
 
     logging::debug("Mapped FPGA registers");
-
-    // @todo: For now we complain if the number of DMA buffers in f/w doesn't match MAX_BUFFERS.
-    //        In the future, we should ensure all units have the same value and use that number.
-    auto info1 = readRegister<unsigned>(panel.swFpgaRegs.ptr, GPU_ASYNC_INFO1_REG);
-    auto maxBuffers = GPU_ASYNC_INFO1_MAX_BUFFERS(info1);
-    if (maxBuffers != MAX_BUFFERS) {
-      logging::warning("%s MAX_BUFFERS mismatch: %d vs %d expected",
-                       device.c_str(), maxBuffers, MAX_BUFFERS);
-      if (maxBuffers < MAX_BUFFERS)  abort();
-    }
-
-    for (unsigned i = 0; i < dmaCount(); ++i) {
-      auto dmaBufAddr0 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i));
-      auto dmaBufAddr1 = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_ADDR(i)+4);
-      auto dmaBufSize  = readRegister<uint32_t>(panel.swFpgaRegs.ptr, GPU_ASYNC_WR_SIZE(i));
-      uint64_t dmaBufAddr = ((uint64_t)dmaBufAddr1 << 32) | dmaBufAddr0;
-      logging::debug("DMA buffer[%d] dptr %p, addr %p, size %u",
-                     i, (void*)panel.dmaBuffers[i].dptr, (void*)dmaBufAddr, dmaBufSize);
-    }
 #endif
 
-    logging::debug("Done with device mem alloc for %s\n", device.c_str());
+    // Configure max. FPGA->GPU buffer on the FPGA side
+    m_panel->coreRegs.setRemoteWriteMaxSize(0, m_dmaSize);
+
+    // Get the DMA_AXI_CONFIG_G.DATA_BYTES_C from FPGA
+    const uint32_t dmaHeaderSize = m_panel->coreRegs.dmaDataBytes();
+
+    // Allocate DMA write buffers (FPGA->GPU)
+    auto& dmaBufs_d = m_panel->dmaBuffers_d;
+    chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
+    m_panel->dmaBuffers.resize(m_dmaCount);
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+      uint8_t* dp{nullptr};
+      size_t   sz{dmaHeaderSize + m_dmaSize};
+      chkError(cudaMalloc(&dp,    sz));
+      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
+      chkError(cudaMemset( dp, 0, sz));
+      m_panel->dmaBuffers[i] = dp;
+      chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
+    }
+
+    // Map the GPU's DMA write buffers into the FPGA registers
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+      if (gpuAddNvidiaMemory(fd, 1, (uint64_t)m_panel->dmaBuffers[i], m_dmaSize)) {
+        logging::critical("gpuAddNvidiaMemory failed: %m");
+        abort();
+      }
+      logging::info("DMA buffer[%u] dptr %p, size %u, fpgaRegs[%u] %p",
+                    i, m_panel->dmaBuffers[i], m_dmaSize,
+                    i, (uint8_t*)m_panel->fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
+    }
+
+    logging::debug("Done with device mem alloc for %s\n", para.device.c_str());
+  } else {                              // Simulator mode
+    m_panel = std::make_shared<DetPanel>(para.device);
+    logging::info("NULL PGP device '%s' opened", para.device.c_str());
+
+    uint8_t* ptr{nullptr};
+    size_t regBlkSize{0x600 * sizeof(uint32_t)};
+    chkError(cudaHostAlloc(&ptr,    regBlkSize, cudaHostAllocDefault));
+    chkMemory             ( ptr,    regBlkSize, sizeof(*ptr), "fpgaRegs");
+    chkError(cudaMemset   ( ptr, 0, regBlkSize));
+    m_panel->fpgaRegs = ptr;
+
+    // Init a register object
+    m_panel->coreRegs.initialize(true, m_panel->fpgaRegs);
+
+    // Configure max. FPGA->GPU buffer on the "FPGA" side
+    m_panel->coreRegs.setRemoteWriteMaxSize(0, m_dmaSize);
+
+    m_panel->coreRegs.setDataBytes(32);  // Fake up DMA frame size
+
+    // Get the DMA_AXI_CONFIG_G.DATA_BYTES_C from "FPGA"
+    const uint32_t dmaHeaderSize = m_panel->coreRegs.dmaDataBytes();
+
+    // Allocate "DMA" write buffers on the GPU
+    auto& dmaBufs_d = m_panel->dmaBuffers_d;
+    chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
+    m_panel->dmaBuffers.resize(m_dmaCount);
+    for (unsigned i = 0; i < m_dmaCount; ++i) {
+      uint8_t* dp{nullptr};
+      size_t   sz{dmaHeaderSize + m_dmaSize};
+      chkError(cudaMalloc(&dp,    sz));
+      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
+      chkError(cudaMemset( dp, 0, sz));
+      m_panel->dmaBuffers[i] = dp;
+      chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
+      logging::info("DMA buffer[%u] dptr %p, size %u, fpgaRegs[%u] %p",
+                    i, m_panel->dmaBuffers[i], m_dmaSize,
+                    i, (uint8_t*)m_panel->fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
+    }
+
+    // No need to call setMaskBytes, so fake done
+    m_setMaskBytesDone = true;
   }
+
+  // Stop the FPGA side
+  m_panel->coreRegs.setWriteEnable(0);
+
+  // Configure the buffer counts on the FPGA side
+  m_panel->coreRegs.setWriteCount(m_dmaCount-1);
+
+  // Ensure that timing messages are DMAed to the GPU
+  dmaTgtSet(m_panel->coreRegs, DmaTgt_t::TGT_GPU);
 
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
-  pgpEvents.resize(m_nbuffers); // @todo: Revisit this hack - w/o this have only MAX_BUFFERS buffers
+  pgpEvents.resize(m_nbuffers); // Need 1 per intermediate buffer - w/o this have only dmaCount buffers
 
   // Set up intermediate buffer pointers
-  m_hostWrtBufsVec_h.resize(m_panels.size());
-  m_hostWrtBufsVec_d.resize(m_panels.size());
-  chkError(cudaMalloc(&m_hostWrtBufs_d,    m_panels.size() * sizeof(*m_hostWrtBufs_d)));
-  chkMemory          ( m_hostWrtBufs_d,    m_panels.size(),  sizeof(*m_hostWrtBufs_d), "hostWrtBufs");
-  chkError(cudaMemset( m_hostWrtBufs_d, 0, m_panels.size() * sizeof(*m_hostWrtBufs_d)));
-
-  chkError(cudaMalloc(&m_calibBuffers_d,    nbuffers() * sizeof(*m_calibBuffers_d)));
-  chkMemory          ( m_calibBuffers_d,    nbuffers(),  sizeof(*m_calibBuffers_d), "calibBuffers");
-  chkError(cudaMemset( m_calibBuffers_d, 0, nbuffers() * sizeof(*m_calibBuffers_d)));
-
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));
   chkMemory          ( m_reduceBuffers_d,    nbuffers(),  sizeof(*m_reduceBuffers_d), "reduceBuffers");
   chkError(cudaMemset( m_reduceBuffers_d, 0, nbuffers() * sizeof(*m_reduceBuffers_d)));
@@ -193,48 +255,30 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
 MemPoolGpu::~MemPoolGpu()
 {
-  printf("*** MemPoolGpu dtor 1\n");
-  for (auto& panel : m_panels) {
-    // Free the DMA buffers
-    for (unsigned i = 0; i < dmaCount(); ++i) {
-      gpuUnmapFpgaMem(&panel.dmaBuffers[i]);
-    }
+  // Release the memory held by the driver
+  if ((gpuRemNvidiaMemory(m_panel->datadev.fd())) < 0)
+    logging::error("gpuRemNvidiaMemory failed: %m");
 
-    // Release the memory held by the driver
-    ssize_t rc;
-    if ((rc = gpuRemNvidiaMemory(panel.gpu.fd())) < 0)
-      logging::error("gpuRemNvidiaMemory failed: %zd: %M", rc);
+  // Free the DMA buffers
+  for (unsigned i = 0; i < dmaCount(); ++i) {
+    if (m_panel->dmaBuffers[i])  chkError(cudaFree(m_panel->dmaBuffers[i]));
+    m_panel->dmaBuffers[i] = nullptr;
   }
-  printf("*** MemPoolGpu dtor 2\n");
+  if (m_panel->dmaBuffers_d)  chkError(cudaFree(m_panel->dmaBuffers_d));
+  m_panel->dmaBuffers_d = nullptr;
 
   // Free the intermediate buffers
   destroyReduceBuffers();
   destroyCalibBuffers();
-  for (unsigned i = 0; i < m_panels.size(); ++i) {
-    destroyHostBuffers(i);
-  }
-  printf("*** MemPoolGpu dtor 3\n");
+  destroyHostBuffers();
 
-  chkError(cudaFree(m_hostWrtBufs_d));
-  printf("*** MemPoolGpu dtor 4\n");
-
-  m_panels.clear();
-  printf("*** MemPoolGpu dtor 5\n");
-}
-
-int MemPoolGpu::fd(unsigned unit) const
-{
-  if (unit < m_panels.size())  return m_panels[unit].gpu.fd();
-
-  logging::critical("MemPoolGpu::fd(): unit %u is out of range [0:%zu]",
-                    unit, m_panels.size()-1);
-  abort();
+  m_panel.reset();
 }
 
 int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
 {
   int retval = 0;
-  if (m_setMaskBytesDone == m_panels.size()) {
+  if (m_setMaskBytesDone) {
     logging::debug("%s: earlier setting in effect", __PRETTY_FUNCTION__);
   } else {
     uint8_t mask[DMA_MASK_SIZE];
@@ -247,72 +291,58 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
         dmaAddMaskBytes(mask, dest);
       }
     }
-    for (const auto& panel : m_panels) {
-      if (dmaSetMaskBytes(panel.gpu.fd(), mask)) {
-        retval = 1; // error
-      } else {
-        ++m_setMaskBytesDone;
-      }
+    if (dmaSetMaskBytes(m_panel->datadev.fd(), mask)) {
+      retval = 1; // error
+    } else {
+      m_setMaskBytesDone = true;
     }
   }
   return retval;
 }
 
-void MemPoolGpu::createHostBuffers(unsigned panel, size_t size)
+void MemPoolGpu::createHostBuffers(size_t size)
 {
-  assert(panel < m_hostWrtBufsVec_h.size());
-
-  if (m_hostWrtBufsSize && (size != m_hostWrtBufsSize)) {
-    logging::critical("HostWrtBuf size mismatch for panel %u: %zu vs %zu",
-                      panel, size, m_hostWrtBufsSize);
-    exit(EXIT_FAILURE);
+  if (m_hostWrtBufsSize) {
+    logging::error("Attempt to reallocate HostWrtBuffers");
+    return;
   }
 
   // Allocate buffers for the DMA descriptors, TimingHeaders and TEB input data
   // in pinned memory and make them visible on both the CPU and the GPU
   auto nBufs = nbuffers();
-  chkError(cudaHostAlloc(&m_hostWrtBufsVec_h[panel],    nBufs * size, cudaHostAllocDefault));
-  chkMemory             ( m_hostWrtBufsVec_h[panel],    nBufs,  size, "hostWrtBufs");
-  chkError(cudaMemset   ( m_hostWrtBufsVec_h[panel], 0, nBufs * size)); // Avoid reading stale data on re-Configure
-  chkError(cudaHostGetDevicePointer(&m_hostWrtBufsVec_d[panel], m_hostWrtBufsVec_h[panel], 0));
+  chkError(cudaHostAlloc(&m_hostWrtBufs,    nBufs * size, cudaHostAllocDefault));
+  chkMemory             ( m_hostWrtBufs,    nBufs,  size, "hostWrtBufsVec_h");
+  chkError(cudaMemset   ( m_hostWrtBufs, 0, nBufs * size)); // Avoid reading stale data on re-Configure
 
-  // Insert the dptr to the array of buffers into the panel dptr array
-  chkError(cudaMemcpy(&m_hostWrtBufs_d[panel], &m_hostWrtBufsVec_d[panel],
-                      sizeof(m_hostWrtBufsVec_d[panel]), cudaMemcpyHostToDevice));
+  m_hostWrtBufsSize = size;
 
-  if (!m_hostWrtBufsSize)  m_hostWrtBufsSize = size;
-
-  auto sz = size / sizeof(*m_hostWrtBufsVec_h[panel]);
-  logging::info("Host write buffers for panel %u: %p : %p, size %u * %zu B\n", panel,
-                &m_hostWrtBufsVec_h[panel][0], &m_hostWrtBufsVec_h[panel][(nBufs-1) * sz], nBufs, size);
+  auto sz = size / sizeof(*m_hostWrtBufs);
+  logging::info("Host write buffers: %p : %p, size %u * %zu B\n",
+                &m_hostWrtBufs[0], &m_hostWrtBufs[(nBufs-1) * sz], nBufs, size);
 }
 
-void MemPoolGpu::destroyHostBuffers(unsigned panel)
+void MemPoolGpu::destroyHostBuffers()
 {
   if (m_hostWrtBufsSize) {
-    chkError(cudaFreeHost(m_hostWrtBufsVec_h[panel]));
-    if (m_hostWrtBufsVec_d[panel]) {
-      m_hostWrtBufsVec_d[panel] = nullptr;
-    }
-    m_hostWrtBufsVec_h[panel] = nullptr;
+    chkError(cudaFreeHost(m_hostWrtBufs));
+    m_hostWrtBufs = nullptr;
     m_hostWrtBufsSize = 0;
   }
 }
 
-void MemPoolGpu::createCalibBuffers(unsigned nPanels, unsigned nElements)
+void MemPoolGpu::createCalibBuffers(unsigned nElements)
 {
   if (m_calibBufsSize) {
     logging::error("Attempt to reallocate CalibBuffers");
     return;
   }
 
-  // For a each panel, allocate nBufs buffers of nElements for calibrated data on the GPU
-  // This space is organized so that for each buffer, the panel data is contiguous, i.e.,
-  // calibBuffers[nBufs][nPanels * nElements]
+  // Allocate nBufs buffers of nElements for calibrated data on the GPU
+  // This space is organized as calibBuffers[nBufs][nElements]
   auto nBufs = nbuffers();
-  auto size  = nPanels * nElements * sizeof(*m_calibBuffers_d);
+  auto size  = nElements * sizeof(*m_calibBuffers_d);
   chkError(cudaMalloc(&m_calibBuffers_d,    nBufs * size));
-  chkMemory          ( m_calibBuffers_d,    nBufs,  size, "calibBuffer");
+  chkMemory          ( m_calibBuffers_d,    nBufs,  size, "calibBuffers_d");
   chkError(cudaMemset( m_calibBuffers_d, 0, nBufs * size));
 
   m_calibBufsSize = size;
@@ -342,13 +372,13 @@ void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved)
   nBytes   = sizeof(uint64_t)*((nBytes   + sizeof(uint64_t)-1)/sizeof(uint64_t));
   reserved = sizeof(uint64_t)*((reserved + sizeof(uint64_t)-1)/sizeof(uint64_t));
 
-  // For a each panel, allocate nBufs buffers for reduced data on the GPU,
+  // Allocate nBufs buffers for reduced data on the GPU,
   // reserving space at the front for the datagram header
   uint8_t* reduceBufferBase;
   auto   nBufs = nbuffers();
   size_t size  = (nBytes + reserved) * sizeof(*m_reduceBuffers_d);
   chkError(cudaMalloc(&reduceBufferBase,    nBufs * size));
-  chkMemory          ( reduceBufferBase,    nBufs,  size, "reduceBuffer");
+  chkMemory          ( reduceBufferBase,    nBufs,  size, "reduceBufferBase");
   chkError(cudaMemset( reduceBufferBase, 0, nBufs * size));
   m_reduceBuffers_d = reduceBufferBase + reserved;
 

@@ -215,7 +215,7 @@ public:
             }
             DescData descdata(shapesdata, _namesLookup[namesId]);
             Names& names = descdata.nameindex().names();
-            Data& data = shapesdata.data();
+            //Data& data = shapesdata.data();
 	    printf("Found %d names for namesid 0x%x\n",names.num(),unsigned(namesId));
             for (unsigned i = 0; i < names.num(); i++) {
                 Name& name = names.get(i);
