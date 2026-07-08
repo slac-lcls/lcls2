@@ -1,84 +1,83 @@
 """
-psana.gpu — GPU acceleration for psana2 BD ranks.
+psana.gpu — GPU-accelerated Jungfrau calibration for psana2.
 
-Public API
-----------
+Minimal API
+-----------
     from psana import DataSource
+    from psana.gpu import prep_calib_constants, fused_calib_gpu
+    import cupy as cp
 
-    ds = DataSource(exp='mfx100852324', run=77, gpu_det='jungfrau')
+    ds  = DataSource(exp='mfx101210926', run=387)
     run = next(ds.runs())
+    det = run.Detector('jungfrau')
 
-    for ctx in run.events():
-        calib  = ctx.get('calib').on_gpu            # CuPy, stays on GPU
-        energy = ctx.raw('gmd').energy               # CPU, unchanged
-        n_hit  = int(cp.sum(calib > 5.0))
-        if n_hit > 100:
-            save(ctx.get('jungfrau.calib').on_cpu, energy)
+    peds_gpu, gmask_gpu = prep_calib_constants(det)   # once per run
 
-Standalone prototype
---------------------
-    from psana.gpu.gpu_events_prototype import gpu_events
+    for evt in run.events():
+        raw = det.raw.raw(evt)
+        if raw is None:
+            continue
+        calib_gpu = fused_calib_gpu(cp.asarray(raw), peds_gpu, gmask_gpu)
+        # calib_gpu: CuPy float32, same shape as raw
+        # call .get() only when CPU data is needed
 
-Module map
-----------
-context.py       GPUResult, GpuEventContext         — user-visible API types
-gpu_events.py    GpuEvents                           — integrated RunSerial iterator
-gpu_events_prototype.py gpu_events()                 — standalone prototype iterator
-gpu_calib.py     GPUDetector, fused_calib_gpu, ...  — calibration pipeline
-gpu_stream.py    StreamPool, EventPool               — CUDA stream management
-gpu_kvikio_read  KvikioGpuReader, PendingBatch       — GDS read layer
-gpu_batch.py     GpuBatchView                        — GPUBAT1 wire format
-gpudgramlite.py  extract_dgram_info                  — GPU dgram header parse
-gpu_mpi.py       init_gpu_rank, create_gpu_communicators,
-                 verify_gpu_pinning, gpu_error_handler  — MPI + GPU rank setup
+MPI GPU pinning
+---------------
+Call init_gpu_rank() BEFORE importing cupy in any multi-rank script:
+
+    from psana.gpu import init_gpu_rank
+    gpu_id = init_gpu_rank()    # sets CUDA_VISIBLE_DEVICES from SLURM_LOCALID
+    import cupy as cp
 """
 
-# context.py and gpu_stream.py have no heavy psana dependencies — safe to
-# import eagerly.  Keep integrated/prototype event iterators lazy because they
-# import psana reader internals.
-#
-# gpu_mpi.py has no CuPy or heavy psana dependency — always safe to import.
+import logging as _logging
+import os as _os
+import sys as _sys
 
-from psana.gpu.context import GPUResult, GpuEventContext
-from psana.gpu.gpu_stream import StreamPool, EventPool
-from psana.gpu.detector_router import DetectorRouter
-from psana.gpu.gpu_kernel_registry import (
-    GPUKernel, GPUFileKernel, GPUKernelRegistry,
-    JungfrauCalibKernel, SimpleAreaCalibKernel,
-    default_registry, gpu_kernel_from_file,
-)
-from psana.gpu.gpu_calib import optimal_kernel_batch_size
-from psana.gpu.gpu_mpi import (
-    init_gpu_rank,
-    verify_gpu_pinning,
-    create_gpu_communicators,
-    gpu_error_handler,
-    log_gpu_mem,
-    share_calib_between_gpu_peers,
-)
-
+from psana.gpu.gpu_calib import prep_calib_constants, fused_calib_gpu
 
 __all__ = [
-    # User-facing event result types
-    'GPUResult',
-    'GpuEventContext',
-    # Kernel registry
-    'GPUKernel',
-    'GPUFileKernel',
-    'GPUKernelRegistry',
-    'JungfrauCalibKernel',
-    'SimpleAreaCalibKernel',
-    'default_registry',
-    'gpu_kernel_from_file',
-    'optimal_kernel_batch_size',
-    # Detector routing
-    'DetectorRouter',
-    # Stream management
-    'StreamPool',
-    'EventPool',
-    # MPI + GPU rank management (no CuPy dependency — safe to import early)
-    'init_gpu_rank',
-    'verify_gpu_pinning',
-    'create_gpu_communicators',
-    'gpu_error_handler',
+    "prep_calib_constants",
+    "fused_calib_gpu",
+    "init_gpu_rank",
 ]
+
+_logger = _logging.getLogger(__name__)
+
+
+def init_gpu_rank(local_rank=None, n_gpus=None):
+    """Pin this MPI rank to the correct GPU before importing CuPy.
+
+    Sets CUDA_VISIBLE_DEVICES = local_rank % n_gpus so the subsequent
+    CuPy import sees only one device (device 0).
+
+    Must be called BEFORE any ``import cupy`` in the process.
+
+    Parameters
+    ----------
+    local_rank : int or None  — intra-node rank; reads SLURM_LOCALID if None
+    n_gpus     : int or None  — GPUs on node; reads SLURM_GPUS_ON_NODE if None
+
+    Returns
+    -------
+    gpu_id : int  — physical GPU index selected
+    """
+    if local_rank is None:
+        local_rank = int(_os.environ.get("SLURM_LOCALID", 0))
+    if n_gpus is None:
+        n_gpus = int(_os.environ.get("SLURM_GPUS_ON_NODE", 1))
+
+    gpu_id = local_rank % n_gpus
+    _os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+
+    if "cupy" in _sys.modules:
+        _logger.warning(
+            "init_gpu_rank() called after CuPy was already imported — "
+            "CUDA_VISIBLE_DEVICES set to %d but device binding may be wrong. "
+            "Call init_gpu_rank() before any CuPy import.",
+            gpu_id,
+        )
+    else:
+        _logger.debug("GPU pinning: local_rank=%d n_gpus=%d -> device %d",
+                      local_rank, n_gpus, gpu_id)
+    return gpu_id
