@@ -39,6 +39,9 @@ def parse_args():
     p.add_argument("--warmup",         default=20,    type=int, help="Warmup events")
     p.add_argument("--d2h",            action="store_true", help="Include D->H in timing")
     p.add_argument("--compare-cpu",    action="store_true", help="Also run CPU calib path (serial only)")
+    p.add_argument("--smd0-debug",     action="store_true",
+                   help="DEBUG logging on rank 0 only: emits smd0 per-chunk stats "
+                        "(eb_wait vs work time) to attribute the serving-chain ceiling")
     return p.parse_args()
 
 
@@ -240,6 +243,11 @@ def main():
     kwargs = dict(exp=args.exp, run=args.run, max_events=max_events)
     if args.dir:
         kwargs["dir"] = args.dir
+    if args.smd0_debug and rank == 0:
+        # Rank 0 alone runs at DEBUG so smd0's per-chunk stats (eb_wait vs
+        # work time) are emitted without 33 other ranks flooding stdout and
+        # distorting the timing. DataSource kwargs may differ across ranks.
+        kwargs["log_level"] = "DEBUG"
     ds  = DataSource(**kwargs)
     run = next(ds.runs())
     det = run.Detector(args.det)
