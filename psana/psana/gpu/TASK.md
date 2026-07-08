@@ -63,9 +63,36 @@
   - 2026-07-07 measured (16.78M-pixel run): 65,536 blocks/event vs 864
     saturation = **7,585%** — one event over-saturates the A100 ~76x.
     EventPool remains unjustified.
-- [ ] Record NIC recv bandwidth during GPU run vs CPU run (using `net_bandwidth.py` from the original branch if needed)
-  - Only meaningful in an MPI run where I/O parallelism can approach NIC
-    limits; deferred until the MPI scaling benchmark is run.
+- [x] MPI scaling benchmark: N BD ranks feeding one A100 via `init_gpu_rank()`
+  - 2026-07-08, jobs 31043622 (Lustre) / 31047910 (FFB), single ampere node,
+    `mpirun --bind-to none`, PS_EB_NODES=1, mfx101210926 r387, logs in
+    `bench_mpi_sweep/` at repo root:
+
+    | BD ranks | /sdf/data Lustre | FFB (drpsrcf) | FFB per-rank | FFB H->D ms |
+    |---:|---:|---:|---:|---:|
+    | 1  | 1.2 Hz  | 36.4 Hz  | 36.4 | 4.07 |
+    | 2  | 6.2 Hz  | 68.1 Hz  | 34.0 | 4.03 |
+    | 4  | 3.3 Hz  | 134.0 Hz | 33.5 | 4.10 |
+    | 8  | 6.3 Hz  | 195.0 Hz | 24.4 | 5.53 |
+    | 16 | 9.4 Hz  | 205.1 Hz | 12.8 | 11.01 |
+    | 32 | 15.0 Hz | 210.4 Hz | 6.6  | 15.95 |
+
+  - Storage is the dominant ceiling: identical code/events, 14x aggregate
+    difference. On FFB the standard loop reaches **210 Hz ≈ 7 GB/s = 78%**
+    of the ~270 Hz one-A100 absorption limit with no deferred machinery.
+  - FFB plateau signature: kernel stays <1 ms but mean H->D inflates
+    4 -> 16 ms as ranks multiply — consistent with pageable-memory H2D
+    contention on one PCIe link. Pinned-memory staging (DEFERRED: async
+    H->D overlap) is the indicated next lever, ahead of EB/smd0 work.
+  - Gotcha for reproduction: OpenMPI default core binding silently
+    distorts multi-rank rates and refuses >17 procs on a 17-core
+    allocation — always `--bind-to none` (attempt-1 logs show the artifact).
+- [x] Record NIC recv bandwidth during GPU run vs CPU run
+  - 2026-07-08: sampled /proc/net/dev at 2 s during every sweep config.
+    Finding: bulk storage I/O (~7 GB/s at 210 Hz) is INVISIBLE to netdev
+    byte counters — both Lustre and FFB mounts move data over RDMA/verbs.
+    Only TCP-side chatter (20-60 MB/s on enp225s0) appears. NIC saturation
+    must be assessed via IB counters (/sys/class/infiniband) in future runs.
 
 ## Documentation
 
@@ -92,7 +119,17 @@
   (30.08 → 3.69 ms/event), occupancy 7,585%, serial event loop identified as
   the end-to-end bottleneck (~1.1 s/event vs 4.5 ms GPU work). Numbers above.
 
-Remaining: MPI scaling benchmark (N BD ranks feeding GPUs via `init_gpu_rank()`)
-to find the per-GPU feed rate the standard event loop can sustain — this is the
-measurement that decides whether any DEFERRED I/O feature gets built. Record
-NIC bandwidth during that run.
+- 2026-07-08 (f8ae68984): restructured `bench_calib.py` for MPI — single
+  collective DataSource, max_events-based termination, rank-0 aggregate
+  report. The previous structure deadlocked under mpirun.
+- 2026-07-08: MPI scaling sweep run (results above). Verdict: the standard
+  event loop + FFB storage feeds one A100 at 210 Hz (78% of absorption);
+  /sdf/data Lustre caps the same code at 15 Hz. No deferred I/O feature is
+  justified by these data; the first indicated optimization is pinned-host
+  H->D staging once per-node rates matter.
+
+Remaining: multi-node sweep (2 and 4 nodes, FFB, 1 GPU/node) to separate
+per-node ceilings (PCIe H->D, fs client) from the central smd0/EB ceiling —
+in progress 2026-07-08. Then: correctness + sweep on mfx100852324 (r0078;
+r0077 bigdata is tape-only) to compare against the original branch's July
+dataset, and a `--d2h` sweep to quantify the AsyncD2HJoiner trigger.
