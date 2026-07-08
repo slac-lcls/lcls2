@@ -77,13 +77,21 @@
     | 16 | 9.4 Hz  | 205.1 Hz | 12.8 | 11.01 |
     | 32 | 15.0 Hz | 210.4 Hz | 6.6  | 15.95 |
 
+  - Multi-node sweep (2026-07-08, jobs 31048350/31048352, FFB, 1 GPU/node,
+    ~16 BD ranks/node): 32 ranks / 2 nodes / 2 GPUs -> **258.1 Hz**;
+    64 ranks / 4 nodes / 4 GPUs -> **306.4 Hz**.
   - Storage is the dominant ceiling: identical code/events, 14x aggregate
     difference. On FFB the standard loop reaches **210 Hz ≈ 7 GB/s = 78%**
     of the ~270 Hz one-A100 absorption limit with no deferred machinery.
-  - FFB plateau signature: kernel stays <1 ms but mean H->D inflates
-    4 -> 16 ms as ranks multiply — consistent with pageable-memory H2D
-    contention on one PCIe link. Pinned-memory staging (DEFERRED: async
-    H->D overlap) is the indicated next lever, ahead of EB/smd0 work.
+  - The plateau is **central, not per-node**: doubling nodes gave +23%
+    (not 2x), quadrupling +46%. The single smd0 + single EB serving chain
+    saturates around ~300 Hz. Per-node PCIe H->D contention is real but
+    secondary (H->D 16.0 -> 10.6 ms when 32 ranks split across 2 nodes;
+    kernel always <1 ms). At mn4 each GPU gets only ~77 Hz of its ~270 Hz
+    capacity — GPUs are nowhere near the bottleneck.
+  - Next lever, in order: PS_EB_NODES > 1 (configuration, discriminates
+    EB vs smd0 as the serializer), then pinned-host H->D staging if
+    per-node rates climb enough for PCIe contention to bind again.
   - Gotcha for reproduction: OpenMPI default core binding silently
     distorts multi-rank rates and refuses >17 procs on a 17-core
     allocation — always `--bind-to none` (attempt-1 logs show the artifact).
@@ -128,8 +136,14 @@
   justified by these data; the first indicated optimization is pinned-host
   H->D staging once per-node rates matter.
 
-Remaining: multi-node sweep (2 and 4 nodes, FFB, 1 GPU/node) to separate
-per-node ceilings (PCIe H->D, fs client) from the central smd0/EB ceiling —
-in progress 2026-07-08. Then: correctness + sweep on mfx100852324 (r0078;
-r0077 bigdata is tape-only) to compare against the original branch's July
-dataset, and a `--d2h` sweep to quantify the AsyncD2HJoiner trigger.
+- 2026-07-08: multi-node sweep done (results above). Verdict: ceiling is the
+  central smd0/EB chain at ~300 Hz, not per-node resources. Full campaign
+  logs in `bench_mpi_sweep/` (three single-node suffix families + mn2/mn4).
+
+Remaining, in priority order:
+1. PS_EB_NODES sweep (1/2/4 EB ranks at fixed 32 BD / 2 nodes, FFB) — if
+   rates rise, EB was the serializer; if flat, it is smd0 itself.
+2. Correctness + sweep on mfx100852324 r0078 (r0077 bigdata is tape-only)
+   to compare against the original branch's July dataset.
+3. `--d2h` sweep at the best-known config to quantify the AsyncD2HJoiner
+   trigger from DEFERRED.md.
