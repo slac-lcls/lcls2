@@ -137,17 +137,36 @@
     raw 7.9 GB/s (89%); 2 nodes at 16 BD/node psana 8.6 vs raw 12.0
     (72%). So psana leaves the most on the table at multi-node, and it
     was also running too few BD ranks per node (16, where raw needs 32 to
-    saturate). OPEN: job 31062160 runs psana at 32 BD/node x 2 nodes (64
-    BD) — if it approaches ~450 Hz the multi-node shortfall is just
-    under-concurrency (a config fix); if it stalls near 260 Hz psana has
-    a real multi-node inefficiency worth profiling.
-  - Working conclusion: the pipeline is storage-bandwidth-bound, the
-    bound is per-node and node-scalable, and the standing question is
-    whether psana can be driven to saturate it. Levers, none GPU-module
-    code: run ~32 BD ranks/node, detector compression at write time
-    (~2x), NVMe staging for reprocessing, more nodes, facility FFB QoS.
-    Dead: parallel smd0 (idle), more EBs (flat), locality-aware EB
-    scheduling (no pattern penalty).
+    saturate). RESOLVED below.
+  - psana 32 BD/node x 2 nodes (2026-07-08, job 31062160, 64 BD): **294.9
+    Hz** = 9.9 GB/s. Up from 258 Hz at 16 BD/node (+14%), so more workers
+    per node helps modestly but does NOT reach raw's 15.2 GB/s (~450 Hz)
+    at the same layout. psana attains 65% of raw storage at 2 nodes vs
+    89% at 1 node. **Verdict: the multi-node shortfall is a real psana
+    inefficiency, not just under-concurrency.**
+  - Synthesis (two ceilings, dominating at different scales):
+      * Storage: per-node ~7.9 GB/s (~235 Hz/node), scales with nodes.
+      * psana serving/pipeline: a ~260-306 Hz plateau independent of node
+        count (2 vs 4), BD ranks/node (16 vs 32), EB count, and batch.
+    At 1 node the two nearly coincide (storage 235, psana 210 = storage-
+    bound). Beyond ~1 node the psana plateau (~300 Hz) binds first while
+    storage still has headroom (450+ at 2 nodes). So ~300 Hz IS a psana
+    ceiling at multi-node after all — but NOT smd0 (proven idle), NOT EB
+    count, NOT batch size.
+  - Most likely remaining cause: the per-BD-rank synchronous pipeline
+    (read bigdata -> H2D -> kernel with no overlap; 32 ranks/node contend
+    on one PCIe link, H2D already measured inflating to 16 ms). Ranks
+    cannot consume the extra storage bandwidth a second node exposes.
+    This RAISES the priority of pinned-host + overlapped H2D (previously
+    "later") — it is now the one code lever that could unlock multi-node
+    headroom. Confirm with a BD-rank profile (read vs H2D vs kernel vs
+    MPI-wait) before building.
+  - Levers, updated: (a) pinned + overlapped H2D per BD rank — promoted,
+    the likely multi-node unlock; (b) ~32 BD ranks/node — modest, free;
+    (c) detector compression at write time (~2x); (d) NVMe staging for
+    reprocessing; (e) more nodes; (f) facility FFB QoS. Dead: parallel
+    smd0 (idle), more EBs (flat), locality-aware EB scheduling (no
+    pattern penalty), spreading across runs (B4 worse).
   - D2H at scale (same job, 32 BD ranks): --d2h off 236.3 Hz vs on
     170.0 Hz (-28%). Sync `.get()` costs 72 ms/event under 32-rank PCIe
     contention (vs 12.5 ms serial) and is ~73% additive — NOT hidden by
