@@ -1,0 +1,483 @@
+<title>psana2 GPU MVP — Scaling Measurement Campaign</title>
+<style>
+  :root {
+    --paper: #F5F6F8;
+    --surface: #FFFFFF;
+    --ink: #1A2233;
+    --muted: #5A6478;
+    --line: #D9DDE5;
+    --accent: #2B59C3;
+    --accent-soft: #E6ECF9;
+    --pass: #2E7D46;
+    --pass-soft: #E3F0E7;
+    --hot: #B54823;
+    --hot-soft: #F7E8E2;
+    --amber: #8A6A1F;
+    --amber-soft: #F5EEDA;
+    --bar-track: #E8EAEF;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #10141C;
+      --surface: #171D28;
+      --ink: #E8ECF4;
+      --muted: #97A1B4;
+      --line: #2A3242;
+      --accent: #6D93F0;
+      --accent-soft: #1D2A45;
+      --pass: #5BBF7E;
+      --pass-soft: #17301F;
+      --hot: #E07B54;
+      --hot-soft: #3A2118;
+      --amber: #D9B25C;
+      --amber-soft: #33290F;
+      --bar-track: #222A38;
+    }
+  }
+  :root[data-theme="light"] {
+    --paper: #F5F6F8; --surface: #FFFFFF; --ink: #1A2233; --muted: #5A6478;
+    --line: #D9DDE5; --accent: #2B59C3; --accent-soft: #E6ECF9;
+    --pass: #2E7D46; --pass-soft: #E3F0E7; --hot: #B54823; --hot-soft: #F7E8E2;
+    --amber: #8A6A1F; --amber-soft: #F5EEDA; --bar-track: #E8EAEF;
+  }
+  :root[data-theme="dark"] {
+    --paper: #10141C; --surface: #171D28; --ink: #E8ECF4; --muted: #97A1B4;
+    --line: #2A3242; --accent: #6D93F0; --accent-soft: #1D2A45;
+    --pass: #5BBF7E; --pass-soft: #17301F; --hot: #E07B54; --hot-soft: #3A2118;
+    --amber: #D9B25C; --amber-soft: #33290F; --bar-track: #222A38;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 48px 24px 72px; }
+
+  .mono { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .eyebrow {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 600;
+  }
+  h1 {
+    font-size: clamp(28px, 5vw, 40px); line-height: 1.15; font-weight: 700;
+    letter-spacing: -0.02em; margin: 8px 0 12px; text-wrap: balance;
+  }
+  h2 {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
+    margin: 0 0 6px; text-wrap: balance;
+  }
+  .lede { color: var(--muted); max-width: 62ch; margin: 0; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 20px;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--muted);
+  }
+  .meta b { color: var(--ink); font-weight: 600; }
+
+  section { margin-top: 56px; }
+  .section-head { margin-bottom: 20px; }
+  .section-head p { color: var(--muted); margin: 4px 0 0; max-width: 66ch; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 28px; }
+  .stat {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .stat .num {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;
+    font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.2;
+  }
+  .stat .num small { font-size: 15px; font-weight: 600; color: var(--muted); }
+  .stat .cap { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .stat.pass .num { color: var(--pass); }
+  .stat.accent .num { color: var(--accent); }
+  .stat.hot .num { color: var(--hot); }
+
+  /* analogy strip */
+  .cast { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; }
+  .cast h3 { margin: 0 0 4px; font-size: 17px; }
+  .cast > p { margin: 0 0 16px; font-size: 15px; color: var(--muted); max-width: 68ch; }
+  .roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+  .role { background: var(--paper); border: 1px solid var(--line); border-radius: 5px; padding: 12px 14px; }
+  .role .who { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 700; color: var(--accent); letter-spacing: 0.06em; }
+  .role .as { font-weight: 600; font-size: 14.5px; margin: 2px 0; }
+  .role p { margin: 0; font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+  .punch { margin: 16px 0 0; font-size: 15px; max-width: 68ch; }
+  .punch b { color: var(--accent); }
+
+  /* test ladder */
+  .ladder { list-style: none; margin: 0; padding: 0; position: relative; }
+  .ladder::before {
+    content: ""; position: absolute; left: 15px; top: 8px; bottom: 8px;
+    width: 2px; background: var(--line);
+  }
+  .step { position: relative; padding: 0 0 28px 48px; }
+  .step:last-child { padding-bottom: 0; }
+  .step .dot {
+    position: absolute; left: 4px; top: 2px; width: 24px; height: 24px; border-radius: 50%;
+    background: var(--surface); border: 2px solid var(--accent);
+    color: var(--accent); font-family: ui-monospace, Menlo, monospace;
+    font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 18px 20px;
+  }
+  .card .tag {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted);
+  }
+  .card h3 { margin: 4px 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .result {
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums;
+    font-size: 14px; background: var(--paper); border: 1px solid var(--line);
+    border-radius: 4px; padding: 10px 14px; margin: 0 0 12px; overflow-x: auto; white-space: nowrap;
+  }
+  .verdict {
+    display: flex; gap: 10px; align-items: baseline; font-size: 15px;
+    border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 2px;
+  }
+  .verdict .arrow { color: var(--accent); font-weight: 700; flex: none; }
+  .verdict span:last-child { max-width: 62ch; }
+  .verdict b { color: var(--ink); }
+  .chip {
+    display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 3px; padding: 2px 8px; vertical-align: 1px; white-space: nowrap;
+  }
+  .chip.pass { color: var(--pass); background: var(--pass-soft); }
+  .chip.hot  { color: var(--hot);  background: var(--hot-soft); }
+  .chip.amber{ color: var(--amber); background: var(--amber-soft); }
+  .chip.info { color: var(--accent); background: var(--accent-soft); }
+
+  /* bar chart */
+  .chart { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 22px 22px 16px; }
+  .chart .row { display: grid; grid-template-columns: minmax(150px, 220px) 1fr 72px; gap: 12px; align-items: center; padding: 7px 0; }
+  .chart .lbl { font-size: 13.5px; color: var(--muted); text-align: right; line-height: 1.3; }
+  .chart .lbl b { color: var(--ink); font-weight: 600; display: block; }
+  .chart .track { position: relative; height: 20px; background: var(--bar-track); border-radius: 3px; }
+  .chart .bar { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: var(--accent); min-width: 3px; }
+  .chart .bar.dim { background: var(--hot); opacity: 0.85; }
+  .chart .val { font-family: ui-monospace, Menlo, monospace; font-variant-numeric: tabular-nums; font-size: 14px; font-weight: 700; }
+  .chart .note { font-size: 13px; color: var(--muted); margin: 14px 0 0; max-width: 70ch; }
+  .absorb { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--hot); }
+  .absorb-lbl { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--hot); white-space: nowrap; }
+
+  /* tables */
+  .tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th {
+    text-align: left; font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap;
+  }
+  td { padding: 11px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .why { display: block; color: var(--muted); font-size: 13.5px; margin-top: 2px; max-width: 46ch; }
+
+  /* over-engineering section */
+  .lesson { display: grid; gap: 12px; }
+  .lessoncard {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 6px;
+    padding: 16px 20px;
+  }
+  .lessoncard h3 { margin: 0 0 6px; font-size: 16.5px; }
+  .lessoncard p { margin: 0; font-size: 15px; color: var(--muted); max-width: 70ch; }
+  .lessoncard p b { color: var(--ink); }
+  .lessoncard .ex {
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px;
+    background: var(--hot-soft); color: var(--hot); border-radius: 4px;
+    padding: 8px 12px; margin-top: 10px; display: block; width: fit-content; max-width: 100%;
+  }
+  .rule {
+    border-left: 4px solid var(--accent); background: var(--accent-soft);
+    border-radius: 6px; padding: 14px 18px; font-size: 15px; max-width: 74ch;
+  }
+  .rule b { color: var(--accent); }
+
+  /* next steps */
+  .next { display: grid; gap: 12px; }
+  .nextcard {
+    background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+    border-radius: 6px; padding: 16px 20px;
+  }
+  .nextcard.now { border-left-color: var(--pass); }
+  .nextcard .rank {
+    font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted);
+  }
+  .nextcard h3 { margin: 4px 0 6px; font-size: 17px; }
+  .nextcard p { margin: 0; font-size: 15px; color: var(--muted); max-width: 68ch; }
+  .nextcard p b { color: var(--ink); }
+
+  footer {
+    margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted); line-height: 1.9;
+  }
+  footer b { color: var(--ink); font-weight: 600; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">LCLS-II &middot; psana2 GPU MVP &middot; benchmark campaign</div>
+    <h1>How fast can the psana event loop feed a GPU?</h1>
+    <p class="lede">Nine measurements over two days. Each answered one question, and each answer picked the next experiment. We found three ceilings, moved two of them without writing code, and gave every feature from the old branch a data-backed verdict.</p>
+    <div class="meta">
+      <span>branch <b>features/psana2-gpu-mvp</b></span>
+      <span>data <b>mfx101210926 r387</b> (Jungfrau, 16.78&thinsp;M px, 33.5&thinsp;MB/event)</span>
+      <span>hardware <b>S3DF ampere &middot; A100</b></span>
+      <span>date <b>2026-07-07/08</b></span>
+    </div>
+
+    <div class="stats">
+      <div class="stat pass"><div class="num">bit-exact <small>&times;2</small></div><div class="cap">GPU result identical to CPU on two experiments</div></div>
+      <div class="stat accent"><div class="num">0.9 &rarr; 306 <small>Hz</small></div><div class="cap">one process &rarr; 4 nodes, using stock psana MPI</div></div>
+      <div class="stat accent"><div class="num">14&times;</div><div class="cap">from changing the filesystem path. Nothing else.</div></div>
+      <div class="stat hot"><div class="num">~300 <small>Hz</small></div><div class="cap">the last ceiling: one process called smd0</div></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">01 &middot; The system in one picture</div>
+      <h2>Think of it as a restaurant</h2>
+    </div>
+    <div class="cast">
+      <p>psana&rsquo;s parallel mode is a pipeline of three roles feeding the GPU. The analogy holds up well in every result below.</p>
+      <div class="roles">
+        <div class="role"><div class="who">smd0 (rank 0)</div><div class="as">The host with the reservation book</div><p>One person reads the index of every event and hands out work orders. Everything flows through them.</p></div>
+        <div class="role"><div class="who">EventBuilder</div><div class="as">The expediter</div><p>Matches up the pieces of each event and deals batches out to the waiters.</p></div>
+        <div class="role"><div class="who">BD ranks</div><div class="as">The waiters</div><p>Fetch the actual data from storage (the pantry) and carry it to the kitchen. You can hire as many as you want.</p></div>
+        <div class="role"><div class="who">GPU</div><div class="as">The kitchen</div><p>Enormous. Cooks a full event in 4&thinsp;ms. It spends most of its time waiting for food to arrive.</p></div>
+      </div>
+      <p class="punch"><b>The whole campaign in one sentence:</b> the kitchen was never the problem. First the pantry was too far away (storage), and once we fixed that, the single host reading the reservation book became the limit (smd0). Hiring more waiters, expediters, or kitchens does not help a restaurant with one host.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">02 &middot; The ladder</div>
+      <h2>Nine tests, each verdict chose the next</h2>
+    </div>
+
+    <ol class="ladder">
+      <li class="step"><span class="dot">0</span>
+        <div class="card">
+          <div class="tag">correctness</div>
+          <h3>Is the GPU answer right?</h3>
+          <div class="result">r387: 50 events, max_diff 0.000000 &middot; r78 (second experiment): 20 events, max_diff 0.000000</div>
+          <div class="verdict"><span class="chip pass">pass</span><span class="arrow">&rarr;</span><span>Bit-for-bit identical to the CPU result, on two different experiments. Everything after this is only about speed.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">1</span>
+        <div class="card">
+          <div class="tag">compute only, no file reading</div>
+          <h3>How fast is the GPU when data is already in memory?</h3>
+          <div class="result">CPU 30.1 ms/event &middot; GPU 3.7 ms/event (8.1x) &middot; one event fills the GPU 76x over</div>
+          <div class="verdict"><span class="arrow">&rarr;</span><span>This sets the yardstick: <b>one A100 can absorb about 270 events/s</b>. It also kills the old branch&rsquo;s EventPool idea: one event already over-fills the GPU, so there is nothing to juggle.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">2</span>
+        <div class="card">
+          <div class="tag">serial, end to end</div>
+          <h3>What does one process actually achieve?</h3>
+          <div class="result">0.9 Hz, GPU and CPU identical &middot; calibration is 0.4% of the time</div>
+          <div class="verdict"><span class="arrow">&rarr;</span><span>99.6% of the time goes to getting data off disk. The problem is <b>delivery, not compute</b>. Next step: psana&rsquo;s built-in MPI parallelism.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">3</span>
+        <div class="card">
+          <div class="tag">many readers &middot; /sdf/data (lustre)</div>
+          <h3>Do more reader workers fix it?</h3>
+          <div class="result">1 &rarr; 32 workers: 1.2 &rarr; 15 Hz &middot; each worker gets slower as more are added</div>
+          <div class="verdict"><span class="arrow">&rarr;</span><span>Barely. The workers are fighting over something. Prime suspect: the storage they all read from.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">4</span>
+        <div class="card">
+          <div class="tag">same test, faster storage (ffb)</div>
+          <h3>Same code, different filesystem?</h3>
+          <div class="result">1 worker: 36 Hz (30x faster) &middot; scales cleanly to 4 workers &middot; tops out at 210 Hz</div>
+          <div class="verdict"><span class="chip info">ceiling #1: storage</span><span class="arrow">&rarr;</span><span><b>14x from a path change.</b> One node now reaches 78% of the GPU&rsquo;s appetite. But a new ceiling appeared at 210 Hz. Is it the node&rsquo;s hardware, or something all nodes share?</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">5</span>
+        <div class="card">
+          <div class="tag">add whole nodes</div>
+          <h3>Does doubling all the hardware double the rate?</h3>
+          <div class="result">1 node: 210 Hz &middot; 2 nodes: 258 Hz (+23%) &middot; 4 nodes, 4 GPUs: 306 Hz</div>
+          <div class="verdict"><span class="chip info">ceiling #2: shared</span><span class="arrow">&rarr;</span><span>No. Doubling the network cards, buses, and GPUs bought 23%, not 100%. The limit is something <b>every configuration shares</b>: the smd0 + EventBuilder pair at the top.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">6</span>
+        <div class="card">
+          <div class="tag">add EventBuilders</div>
+          <h3>Is the expediter the bottleneck?</h3>
+          <div class="result">1 / 2 / 4 EventBuilders: 226 / 249 / 212 Hz. Flat.</div>
+          <div class="verdict"><span class="chip amber">eliminated</span><span class="arrow">&rarr;</span><span>Extra EventBuilders change nothing, so the one we had was never busy. It was <b>waiting on smd0</b>, the single process reading the event index.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">7</span>
+        <div class="card">
+          <div class="tag">smd0 batch size</div>
+          <h3>Can a config setting speed up smd0?</h3>
+          <div class="result">batch 1000 / 4000 / 16000: 254 / 254 / 242 Hz. Flat.</div>
+          <div class="verdict"><span class="chip hot">ceiling #3: smd0</span><span class="arrow">&rarr;</span><span>No. That was the last free knob. <b>Going past ~300 Hz now requires changing psana2 itself</b> (parallel index reading), and that work starts with profiling, not building.</span></div>
+        </div>
+      </li>
+
+      <li class="step"><span class="dot">8</span>
+        <div class="card">
+          <div class="tag">copying results back to CPU</div>
+          <h3>Is bringing results back from the GPU free?</h3>
+          <div class="result">without readback: 236 Hz &middot; with: 170 Hz (-28%) &middot; per-copy cost: 12.5 ms alone, 72 ms with 32 workers sharing the bus</div>
+          <div class="verdict"><span class="chip hot">trigger met</span><span class="arrow">&rarr;</span><span>No. Naive readback costs 28% of throughput, and crowding makes each copy 6x worse. <b>This justifies the one deferred feature the data called back:</b> batched async readback (AsyncD2HJoiner). Keeping results on the GPU stays free.</span></div>
+        </div>
+      </li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">03 &middot; Throughput</div>
+      <h2>Event rate by configuration</h2>
+    </div>
+    <div class="chart">
+      <div class="row"><div class="lbl"><b>Serial</b>1 process &middot; Lustre</div><div class="track"><div class="bar dim" style="width:0.4%"></div></div><div class="val">0.9 Hz</div></div>
+      <div class="row"><div class="lbl"><b>32 workers &middot; 1 node</b>Lustre</div><div class="track"><div class="bar dim" style="width:4.7%"></div></div><div class="val">15.0 Hz</div></div>
+      <div class="row"><div class="lbl"><b>8 workers &middot; 1 node</b>FFB &middot; the sweet spot</div><div class="track"><div class="bar" style="width:60.9%"></div></div><div class="val">195.0 Hz</div></div>
+      <div class="row"><div class="lbl"><b>32 workers &middot; 1 node</b>FFB &middot; 1 GPU</div><div class="track"><div class="bar" style="width:65.8%"></div><div class="absorb" style="left:84.4%"></div></div><div class="val">210.4 Hz</div></div>
+      <div class="row"><div class="lbl"><b>32 workers &middot; 2 nodes</b>FFB &middot; 2 GPUs</div><div class="track"><div class="bar" style="width:80.7%"></div></div><div class="val">258.1 Hz</div></div>
+      <div class="row"><div class="lbl"><b>64 workers &middot; 4 nodes</b>FFB &middot; 4 GPUs</div><div class="track"><div class="bar" style="width:95.8%"></div></div><div class="val">306.4 Hz</div></div>
+      <p class="note">Scale 0 to 320 Hz. Dashed line: <span class="absorb-lbl">what one A100 can absorb (~270 Hz)</span>. In the 4-node run the GPUs together receive about a quarter of what they could cook. The pipeline above them is the constraint, not the GPUs.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">04 &middot; Verdict ledger</div>
+      <h2>Every old-branch feature now has evidence</h2>
+      <p>The old branch built most of these before measuring anything. The MVP removed them all, then let the data decide which ones to call back.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Feature</th><th>Verdict</th><th>Evidence</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>Use FFB storage</b></td>
+            <td><span class="chip pass">adopt now</span></td>
+            <td>14x on identical code. It is a directory argument.<span class="why">On Lustre, nothing else we could build matters.</span></td>
+          </tr>
+          <tr>
+            <td><b>Parallel smd0</b> <span class="why">(the old branch never built this one)</span></td>
+            <td><span class="chip info">newly indicated</span></td>
+            <td>Every other kind of fan-out went flat at ~230 to 300 Hz.<span class="why">The only path past the ceiling. Profile rank 0 first, then design.</span></td>
+          </tr>
+          <tr>
+            <td><b>AsyncD2HJoiner</b> (batched readback)</td>
+            <td><span class="chip pass">trigger met</span></td>
+            <td>Naive readback costs 28% of throughput at 32 workers.<span class="why">Build when a real workflow needs frames back on the CPU.</span></td>
+          </tr>
+          <tr>
+            <td><b>Pinned-memory upload staging</b></td>
+            <td><span class="chip amber">later</span></td>
+            <td>Upload crowding is measurable but secondary.<span class="why">Only matters after the smd0 ceiling moves.</span></td>
+          </tr>
+          <tr>
+            <td><b>EventPool / StreamPool</b></td>
+            <td><span class="chip hot">rejected</span></td>
+            <td>One event already fills the GPU 76x over.<span class="why">There is no on-GPU juggling to do.</span></td>
+          </tr>
+          <tr>
+            <td><b>Multiple EventBuilders</b></td>
+            <td><span class="chip hot">no effect</span></td>
+            <td>226 / 249 / 212 Hz for 1 / 2 / 4. Flat.</td>
+          </tr>
+          <tr>
+            <td><b>Direct reads, GPUBAT1, raw locators, KvikIO/GDS</b></td>
+            <td><span class="chip hot">not justified</span></td>
+            <td>The workers these would speed up are already ~90% idle.<span class="why">Making an idle worker more efficient buys nothing while the host upstream is the limit.</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">05 &middot; The lesson</div>
+      <h2>Why building ahead of the data is expensive</h2>
+      <p>The old branch wrote thousands of lines across pipelines, backends, caches, pools, and custom I/O before running a single controlled measurement. This campaign is the case study in why that pattern is dangerous.</p>
+    </div>
+    <div class="lesson">
+      <div class="lessoncard">
+        <h3>1. Guesses get frozen into architecture</h3>
+        <p>Every speculative feature is a bet about where the bottleneck will be. When the bet is wrong, the code does not just sit there harmless: it becomes the frame everyone reasons inside. The old branch bet on GPU-side scheduling and custom I/O. The real bottlenecks turned out to be <b>a directory path</b> and <b>one Python process reading an index</b>. No amount of GPU plumbing could have found or fixed either.</p>
+        <span class="ex">EventPool, built to juggle events on the GPU, measured slower than doing nothing: 60 Hz vs 100 Hz.</span>
+      </div>
+      <div class="lessoncard">
+        <h3>2. Unmeasured code produces numbers that mislead</h3>
+        <p>Complex code invites shortcut benchmarks, and shortcut benchmarks lie. The old branch recorded a kernel time of 0.002 ms, which is physically impossible for 60 MB of data. It was timing the kernel <i>launch</i>, not the kernel. Its headline rates were recorded without noting rank counts or storage. Wrong numbers are worse than no numbers, because they <b>steer the next person&rsquo;s decisions</b> and look exactly like results.</p>
+        <span class="ex">Reported: kernel 0.002 ms. Measured properly: 0.32 ms. A 160x fiction, in the direction that flatters the design.</span>
+      </div>
+      <div class="lessoncard">
+        <h3>3. The cost is asymmetric: fast to write, slow to unwind</h3>
+        <p>Writing speculative code takes days. Catching up to it takes much longer, because every piece must be read, understood, tested, and proven unnecessary before it can be removed, and it tangles into core files along the way. Unwinding this branch meant reverting 21 files and 4,374 lines threaded through psana&rsquo;s core. The replacement that actually works is <b>about 300 lines and two functions</b>, and two days of measurement answered every question the thousands of lines had assumed answers to.</p>
+      </div>
+      <div class="lessoncard">
+        <h3>4. Complexity hides the cheap win</h3>
+        <p>The single biggest improvement of the entire effort, 14x, cost zero lines of code. A team staring at a sophisticated GPU pipeline does not go looking for a filesystem path, because the sunk complexity <b>points attention at itself</b>. The simplest version of the system is also the one where the real problem is visible.</p>
+      </div>
+      <div class="rule">
+        <b>The working rule:</b> build the minimum that is provably correct, write down every idea you deliberately did not build next to the measurement that would justify it, then run the measurements. Here the data called back exactly one deferred feature (async readback), rejected the rest, and pointed at one the old branch never thought of (parallel smd0). That is the scorecard for guessing versus measuring.
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <div class="eyebrow">06 &middot; Next steps</div>
+      <h2>Ranked by impact per effort</h2>
+    </div>
+    <div class="next">
+      <div class="nextcard now">
+        <div class="rank">1 &middot; today &middot; zero code</div>
+        <h3>Run production GPU jobs on FFB, ~8 workers per GPU</h3>
+        <p>That configuration delivers <b>195 Hz per GPU with almost no waste</b> (~34 Hz per worker). Add nodes for aggregate throughput: 306 Hz measured on four. This is deployment guidance, not a project.</p>
+      </div>
+      <div class="nextcard">
+        <div class="rank">2 &middot; small build &middot; +39% when results return to CPU</div>
+        <h3>Keep results on the GPU where possible; build batched readback where not</h3>
+        <p>Downstream GPU analysis pays nothing. Workflows that need frames back on the CPU currently lose 28% to naive copying (236 to 170 Hz). Batched async readback through pinned memory recovers it, and the design note already exists in DEFERRED.md.</p>
+      </div>
+      <div class="nextcard">
+        <div class="rank">3 &middot; psana2 core work &middot; unlocks &gt;300 Hz</div>
+        <h3>Profile smd0, then parallelize the index reading</h3>
+        <p>First measure where rank 0 actually spends its time: parsing, reading, or sending. That decides the design. This is the only remaining lever that moves the ceiling, and until it moves, <b>no downstream optimization can help</b>.</p>
+      </div>
+      <div class="nextcard">
+        <div class="rank">4 &middot; after step 3</div>
+        <h3>Pinned-memory upload staging</h3>
+        <p>Worth building once per-worker rates rise enough for upload crowding to bind again. Cheap, contained in the GPU module, already sketched in DEFERRED.md.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div><b>Reproduce:</b> scripts + logs in <b>bench_mpi_sweep/</b> at the repo root &middot; jobs 31040831, 31043622, 31047910, 31048350, 31048352, 31049525, 31049526, 31049831</div>
+    <div><b>Record:</b> psana/psana/gpu/TASK.md (results), DEFERRED.md (verdicts) &middot; commits f8ae68984 &rarr; 7dea7fe1a on features/psana2-gpu-mvp</div>
+    <div><b>Bench harness:</b> psana/psana/gpu/bench_calib.py &middot; MPI-safe as of f8ae68984</div>
+  </footer>
+</div>
