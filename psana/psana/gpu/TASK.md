@@ -176,6 +176,31 @@
   - Gotcha for reproduction: OpenMPI default core binding silently
     distorts multi-rank rates and refuses >17 procs on a 17-core
     allocation — always `--bind-to none` (attempt-1 logs show the artifact).
+- [~] Establish B-CPU (CPU-only psana, det.raw.calib(), MPI at scale on FFB)
+  - 2026-07-10 (Ralph iter 1): added `--cpu` mode to bench_calib.py — BD ranks
+    run det.raw.calib() on the shared collective DataSource, MPI-capable at the
+    SAME rank layout as the GPU path. Code verified working at 1 and 32 BD ranks.
+  - **BLOCKED on FFB:** the reference run r387 has been PURGED from the FFB
+    rolling buffer. The only FFB-resident run for mfx101210926 is r0215, which
+    is INCOMPLETE (in-progress stream s003, no fetchable Configure/BeginRun
+    dgrams). r387 survives only on /sdf/data Lustre. So the headline
+    B-CPU-on-FFB number (to compare against B-MVP's 210 Hz / 32 BD on FFB)
+    could not be measured. Needs r387 (or another complete run) restaged to
+    FFB — a facility/human decision, not a psana code lever.
+  - Verification numbers on Lustre r387 (job 31260656, sdfampere042,
+    `bench_mpi_sweep/cpu_lustre_bd{1,32}.log`, `cpu_baseline_README.md`):
+
+    | BD ranks | aggregate Hz | per-rank Hz | CPU calib ms/event |
+    |---:|---:|---:|---:|
+    | 1  | 10.1  | 10.06 | 29.75 |
+    | 32 | 106.5 | 3.33  | 54.48 |
+
+    These are Lustre + cache-contaminated (r387 is warm now) — NOT comparable
+    to the FFB B-MVP rows nor to the historical cold-Lustre GPU column.
+  - Robust finding: CPU calib inflates 29.7 -> 54.5 ms/event from 1 -> 32 ranks
+    (32-way core/memory-bandwidth contention). CPU compute ceiling at 32 ranks
+    ~= 32/0.0545 = ~587 Hz, vs the GPU kernel ceiling ~3100 Hz. CPU calib does
+    not scale linearly across cores.
 - [x] Record NIC recv bandwidth during GPU run vs CPU run
   - 2026-07-08: sampled /proc/net/dev at 2 s during every sweep config.
     Finding: bulk storage I/O (~7 GB/s at 210 Hz) is INVISIBLE to netdev

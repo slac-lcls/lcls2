@@ -1,0 +1,12 @@
+### B-CPU Lustre r387, 1 BD rank (3 procs) ###
+[PSANA-INFO RANK:0 1783722336.599427584] RunParallel [MPI-role] rank=0 host=sdfampere042 numa_id=7 numa_size=2
+
+[rank 2] CPU results (55 events, warmup=10):
+  rate:        10.1 Hz
+  CPU calib:   29.748 ms/event
+
+[aggregate] BD ranks: 1   events measured: 55
+  aggregate rate:   10.1 Hz
+  per-rank rate:    10.06 Hz (mean)
+  CPU calib:        29.748 ms/event (mean)
+[1783722343.639259] [sdfampere042:3818239:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5577b4b17d40 was not matched

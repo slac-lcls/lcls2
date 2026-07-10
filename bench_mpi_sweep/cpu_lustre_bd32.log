@@ -1,0 +1,15 @@
+  rate:        2.7 Hz
+  CPU calib:   55.329 ms/event
+
+[rank 18] CPU results (51 events, warmup=10):
+  rate:        3.0 Hz
+  CPU calib:   52.626 ms/event
+
+[rank 24] CPU results (40 events, warmup=10):
+  rate:        2.1 Hz
+  CPU calib:   66.163 ms/event
+
+[aggregate] BD ranks: 32   events measured: 1760
+  aggregate rate:   106.5 Hz
+  per-rank rate:    3.33 Hz (mean)
+  CPU calib:        54.482 ms/event (mean)

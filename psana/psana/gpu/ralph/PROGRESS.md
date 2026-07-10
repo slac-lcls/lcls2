@@ -40,3 +40,52 @@ same layout as the GPU rows. This anchors every future speedup claim.
 **Standing user instructions:**
 - Commit each iteration; push only when the human asks.
 - Never cancel Slurm jobs the loop did not submit.
+
+---
+
+## 2026-07-10 — Iteration 1 (B-CPU tool built; FFB measurement blocked by data purge)
+
+**Task:** establish B-CPU — the CPU-only end-to-end rate at scale on FFB, to
+anchor every GPU speedup claim (the seed's recommended iter-1 task).
+
+**What I did:**
+- Added `--cpu` mode to `bench_calib.py`: BD ranks run `det.raw.calib()` on the
+  SHARED collective DataSource (new `run_cpu_bench_mpi()`), so CPU and GPU are
+  measured at IDENTICAL rank layouts. The pre-existing `run_cpu_bench()` was
+  serial-only (built its own second DataSource — unsafe with server ranks).
+  Skips `init_gpu_rank()`/`prep_calib_constants()` in CPU mode; `--cpu` is one
+  new flag, GPU path untouched. `_report_aggregate` made robust to CPU results.
+- Verified the code works at 1 and 32 BD ranks (mpirun --bind-to none on the
+  ralph-gpu node, job 31260656 / sdfampere042).
+
+**The blocker (why the headline number is missing):**
+- r387 — the reference run behind EVERY B-MVP FFB number — has been PURGED from
+  the FFB rolling buffer. The only FFB-resident run for mfx101210926 is r0215,
+  which is INCOMPLETE (in-progress stream s003, no fetchable Configure/BeginRun
+  dgrams → DataSource fails). r387 exists only on /sdf/data Lustre now.
+- So B-CPU-on-FFB (the apples-to-apples comparison to B-MVP's 210 Hz / 32 BD)
+  could not be measured. This needs r387 (or another complete Jungfrau run)
+  restaged to FFB — a facility action on a live production buffer, not a psana
+  code lever, so I did NOT do it autonomously.
+
+**What I did measure (Lustre r387, verification only — logs cpu_lustre_bd*.log):**
+- 1 BD rank: 10.1 Hz; 32 BD ranks: 106.5 Hz aggregate (3.33 Hz/rank).
+- CPU calib inflates 29.7 → 54.5 ms/event from 1 → 32 ranks (core/mem-bandwidth
+  contention). CPU compute ceiling at 32 ranks ≈ 587 Hz vs GPU kernel ~3100 Hz.
+- These are Lustre + cache-warm, NOT comparable to the FFB B-MVP table nor to
+  the old cold-Lustre GPU column. Recorded only to prove the `--cpu` path works.
+
+**Keep/revert:** KEEP the `--cpu` code — it's the tool the loop needs; it will
+produce the real baseline the moment a complete run is on FFB. Correctness gate
+not triggered (CPU mode calls `det.raw.calib()`, the reference itself; GPU
+numeric path unchanged).
+
+**Recommended next step:** (a) get a complete run onto FFB — either ask the
+human to restage r387, or check whether a currently-active FFB experiment has a
+complete 32-seg Jungfrau run usable as the new reference; then rerun
+`--cpu` and the GPU path at 1/32 BD to fill B-CPU-on-FFB. (b) Failing that, the
+next unblocked code experiment is the BD-rank profile (read vs H2D vs kernel vs
+MPI-wait) that the multi-node plateau investigation still lacks — but that also
+needs FFB data to be meaningful.
+
+BLOCKED: reference run r387 purged from FFB (only incomplete r0215 remains); B-CPU-on-FFB needs a complete Jungfrau run restaged to FFB before it can be measured.

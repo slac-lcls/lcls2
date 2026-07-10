@@ -38,6 +38,10 @@ def parse_args():
     p.add_argument("--dir",            default=None,        help="XTC directory")
     p.add_argument("--warmup",         default=20,    type=int, help="Warmup events")
     p.add_argument("--d2h",            action="store_true", help="Include D->H in timing")
+    p.add_argument("--cpu",            action="store_true",
+                   help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
+                        "collective DataSource (no GPU). MPI-capable — measures B-CPU "
+                        "at the same rank layout as the GPU path.")
     p.add_argument("--compare-cpu",    action="store_true", help="Also run CPU calib path (serial only)")
     p.add_argument("--smd0-debug",     action="store_true",
                    help="DEBUG logging on rank 0 only: emits smd0 per-chunk stats "
@@ -141,6 +145,52 @@ def run_gpu_bench(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     }
 
 
+def run_cpu_bench_mpi(args, run, det_obj, allow_break):
+    """Time the CPU calib path over the shared run.events(). Mirrors
+    run_gpu_bench's loop structure (collective DataSource, warmup, no early
+    break in MPI mode) so B-CPU and B-MVP are measured at IDENTICAL rank
+    layouts. Does NOT create a DataSource — the caller's is shared by all
+    ranks.
+
+    det.raw.calib(evt) does the raw read + pedestal/gain/common-mode on CPU;
+    this is the end-to-end CPU analogue of the GPU path's raw()+H2D+kernel.
+    """
+    calib_times = []
+    warmup_done = False
+    n_measured = 0
+    t_start = None
+
+    for evt in run.events():
+        t0 = time.perf_counter()
+        calib = det_obj.raw.calib(evt)
+        t1 = time.perf_counter()
+        if calib is None:
+            continue
+
+        if not warmup_done:
+            if n_measured >= args.warmup:
+                warmup_done = True
+                t_start = time.perf_counter()
+                calib_times.clear()
+            n_measured += 1
+            continue
+
+        calib_times.append((t1 - t0) * 1e3)
+        n_measured += 1
+
+        if allow_break and len(calib_times) >= args.nevents:
+            break
+
+    t_wall = time.perf_counter() - t_start if t_start else 0
+    n = len(calib_times)
+    return {
+        "n": n,
+        "wall_s": t_wall,
+        "rate_hz": n / t_wall if t_wall > 0 else 0,
+        "calib_ms_mean": np.mean(calib_times) if calib_times else 0,
+    }
+
+
 def run_cpu_bench(args, max_events):
     """Serial-only: creates its own second DataSource, which is safe only
     when there are no server ranks to coordinate with."""
@@ -217,8 +267,11 @@ def _report_aggregate(result, size):
     print(f"\n[aggregate] BD ranks: {len(bd)}   events measured: {n_total}")
     print(f"  aggregate rate:   {agg:.1f} Hz")
     print(f"  per-rank rate:    {agg / len(bd):.2f} Hz (mean)")
-    print(f"  H->D:             {np.mean([r['h2d_ms_mean'] for r in bd]):.3f} ms/event (mean)")
-    print(f"  kernel:           {np.mean([r['kernel_ms_mean'] for r in bd]):.3f} ms/event (mean)")
+    if any("calib_ms_mean" in r for r in bd):
+        print(f"  CPU calib:        {np.mean([r.get('calib_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
+    else:
+        print(f"  H->D:             {np.mean([r.get('h2d_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
+        print(f"  kernel:           {np.mean([r.get('kernel_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
 
 
 def main():
@@ -229,7 +282,7 @@ def main():
 
     from psana.gpu import init_gpu_rank, prep_calib_constants
 
-    if is_bd:
+    if is_bd and not args.cpu:
         init_gpu_rank()
 
     from psana import DataSource
@@ -253,7 +306,13 @@ def main():
     det = run.Detector(args.det)
 
     result = None
-    if is_bd:
+    if is_bd and args.cpu:
+        result = run_cpu_bench_mpi(args, run, det, allow_break=(size == 1))
+        print(f"\n[rank {rank}] CPU results ({result['n']} events, "
+              f"warmup={args.warmup}):")
+        print(f"  rate:        {result['rate_hz']:.1f} Hz")
+        print(f"  CPU calib:   {result['calib_ms_mean']:.3f} ms/event")
+    elif is_bd:
         peds_gpu, gmask_gpu = prep_calib_constants(det)
 
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
