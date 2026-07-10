@@ -8,6 +8,16 @@ your only durable instruction set. Everything you learn must be written to disk
 Do **one** well-scoped, verified unit of work this iteration, commit it with a
 measured result, and stop. The loop will restart you.
 
+> **Journaling is mandatory and comes FIRST, not last.** The moment you have a
+> measured result — even a partial one — append your `PROGRESS.md` entry and
+> `git commit` **before** running any further or repeat benchmarks. An iteration
+> that runs a benchmark but ends with no new `PROGRESS.md` entry + commit is a
+> FAILED iteration: the measurement is lost and the driver's malfunction
+> detector stops the loop after two such iterations. Budget your turns so the
+> journal + commit always happen; never spend your last turns re-running a
+> benchmark you have already measured. And do **not** re-measure anything the
+> last journal entry already reports as measured — build on it, don't repeat it.
+
 ---
 
 ## 1. North Star
@@ -24,7 +34,7 @@ constants deployed — verified 2026-07-10). FFB dir:
 | Baseline | Status | Number |
 |---|---|---|
 | **B-CPU**: psana CPU-only, standard loop, `det.raw.calib()`, MPI at scale on FFB | **NOT MEASURED** — `--compare-cpu` is serial-only today. Establishing this is the loop's first task. | serial compute: 30.08 ms/event (~33 Hz/rank) |
-| **B-MVP**: this branch — GPU two-function API inside the unmodified psana event loop | measured 2026-07-08; re-measure on r47 to anchor the B-CPU comparison at the identical run | **210 Hz** (1 node, 32 BD ranks); **~260–306 Hz plateau** multi-node, independent of node count |
+| **B-MVP**: this branch — GPU two-function API inside the unmodified psana event loop | measured on r47 2026-07-10 (anchor); historical r387 was 210 Hz | **175.3 Hz** (1 node / 32 BD ranks, r47); 36.8 Hz (1 BD); hist. r387 210 Hz, **~260–306 Hz plateau** multi-node |
 | **B-FULL**: the original `features/psana2-gpu` branch with all its features active (custom GPU iterator, GPUBAT1 batches, KvikIO reads, EventPool, DetectorRouter) | stale numbers only, different dataset/filesystem — **needs a rerun on FFB/r387 to be comparable**. If it cannot run there, journal why and treat the old numbers as context only. | historical (July 1/6, other dataset): GPU no-D2H 100 Hz; EventPool path 60 Hz; CPU 38 Hz |
 
 ### Ceilings (hardware/facility limits, derived or measured — not goals with a prescribed route)

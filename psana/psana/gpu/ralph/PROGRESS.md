@@ -107,3 +107,31 @@ r387 FFB numbers (B-MVP 210 Hz, etc.) are historical — same detector and FFB, 
 expect them to reproduce, but treat as unverified on r47 until measured.
 
 `MAX_ITERS` raised to 25.
+
+---
+
+## 2026-07-10 — Iteration 1 (B-MVP established on r47)
+
+**Task:** re-establish B-MVP — the GPU two-function calib rate, end-to-end
+through the psana event loop on r47/FFB, at 1 and 32 BD ranks.
+
+**What I did:**
+- Ran `bench_calib.py -e mfx101572426 -r 47 -n 500 --warmup 10 --dir $FFB` at
+  1 BD rank and at 32 BD ranks (34 procs: smd0 + EB + 32 BD), GPU path.
+- Confirmed geometry: 32-seg Jungfrau, (32, 512, 1024) = 16.78M px, single-event
+  occupancy 7585% (one event saturates the A100).
+
+**Numbers (r47, FFB, A100, `mpirun --bind-to none`):**
+- 1 BD rank: 36.8 Hz (550 events); H->D 4.12 ms, kernel 0.352 ms/event.
+- 32 BD ranks: **175.3 Hz aggregate** (17,600 events); per-rank 5.48 Hz;
+  H->D 11.85 ms, kernel 0.614 ms/event.
+- Kernel time consistent with history (~0.32–0.6 ms/event). Historical r387 was
+  210 Hz @ 32BD; r47 lands in the same ballpark, modestly lower.
+
+**Keep/revert:** KEEP — this is the r47 B-MVP anchor.
+
+**Recommended next step:** B-CPU on r47. The `--cpu` mode already exists in
+`bench_calib.py` (commit edef959b3). Run it at 1 and 32 BD ranks on FFB (same
+command with `--cpu` added, `-n 200` is plenty), journal the aggregate Hz + CPU
+calib ms/event, and commit. That fills the last missing baseline so the GPU
+speedup on r47 can finally be stated.

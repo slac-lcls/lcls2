@@ -1,4 +1,5 @@
 loop.log
 metrics.csv
 last_iter.json
+iter_*.json
 holder_*.log

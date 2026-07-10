@@ -133,6 +133,11 @@ for ((i=1; i<=MAX_ITERS; i++)); do
       --dangerously-skip-permissions < "$PROMPT" > "$LAST_JSON" 2>>"$LOG"
   wall=$(( $(date +%s) - start ))
 
+  # Archive this iteration's JSON before any later iteration overwrites
+  # $LAST_JSON — otherwise a failed run's post-mortem trail (result text,
+  # is_error, error subtype) is destroyed by the next iteration's redirect.
+  cp -f "$LAST_JSON" "$RALPH_DIR/$(printf 'iter_%03d.json' "$i")" 2>/dev/null
+
   python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(d.get('result','(no result text)'))" \
       "$LAST_JSON" >> "$LOG" 2>/dev/null || echo "(could not parse $LAST_JSON)" >> "$LOG"
   record_metrics "$i" "$wall" | tee -a "$LOG"
@@ -140,7 +145,7 @@ for ((i=1; i<=MAX_ITERS; i++)); do
   journal_after=$(wc -l < "$PROGRESS")
   if [ "$journal_after" -le "$journal_before" ]; then
     malfunction=$((malfunction + 1))
-    echo ">>> no journal entry appended (malfunction $malfunction/2)" | tee -a "$LOG"
+    echo ">>> no journal entry appended (malfunction $malfunction/2) — see $(printf 'iter_%03d.json' "$i") for the agent's final output" | tee -a "$LOG"
     if [ "$malfunction" -ge 2 ]; then
       echo ">>> two consecutive iterations without a journal entry — stopping." | tee -a "$LOG"
       break

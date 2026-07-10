@@ -183,9 +183,11 @@
   - **Reference dataset is now mfx101572426 r47 on FFB** (2026-07-10): 32-seg
     Jungfrau (32, 512, 1024) = 16.78M pixels, det `jungfrau`, ~37k events,
     calib constants deployed and verified. FFB dir
-    `/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`. Measure B-CPU **and**
-    re-measure B-MVP on r47 at 1 and 32 BD ranks — the identical run anchors
-    the comparison. The Lustre numbers below were verification-only.
+    `/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`. B-MVP measured on r47
+    2026-07-10: **175.3 Hz @ 32 BD**, 36.8 Hz @ 1 BD (H->D 11.85 ms, kernel
+    0.614 ms/event; historical r387 210 Hz). B-CPU on r47 still to do — run
+    `--cpu` at 1 and 32 BD ranks to complete the anchor pair. The Lustre numbers
+    below were verification-only.
   - Verification numbers on Lustre r387 (job 31260656, sdfampere042,
     `bench_mpi_sweep/cpu_lustre_bd{1,32}.log`, `cpu_baseline_README.md`):
 
