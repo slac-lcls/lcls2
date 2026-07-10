@@ -1,0 +1,33 @@
+== detnames for mfx100852324 r78 ==
+[sdfampere023:1435392] shmem: mmap: an error occurred while determining whether or not /lscratch/ajshack/tmp/ompi.sdfampere023.16955/jf.0/2752577536/shared_mem_cuda_pool.sdfampere023 could be created.
+[sdfampere023:1435392] create_and_attach: unable to create shared memory BTL coordinating structure :: size 134217728 
+detnames: {'feespec', 'epicsinfo', 'MfxDg2BmMon', 'epix100_1', 'triginfo', 'MfxUsbEncoder01', 'epix100_0', 'gasdet', 'pcav', 'MfxDg1BmMon', 'ebeamh', 'jungfrau', 'timing'}
+jungfrau candidate detector: 'jungfrau'
+[sdfampere023:1438382] shmem: mmap: an error occurred while determining whether or not /lscratch/ajshack/tmp/ompi.sdfampere023.16955/jf.0/400359424/shared_mem_cuda_pool.sdfampere023 could be created.
+[sdfampere023:1438382] create_and_attach: unable to create shared memory BTL coordinating structure :: size 134217728 
+peds_gpu shape: (50331648,)  dtype: float32
+gmask_gpu shape: (50331648,)  dtype: float32
+Checking 20 events at atol=0.001 ...
+  evt 0: OK  max_diff=0.000000
+  evt 1: OK  max_diff=0.000000
+  evt 2: OK  max_diff=0.000000
+  evt 3: OK  max_diff=0.000000
+  evt 4: OK  max_diff=0.000000
+  evt 5: OK  max_diff=0.000000
+  evt 6: OK  max_diff=0.000000
+  evt 7: OK  max_diff=0.000000
+  evt 8: OK  max_diff=0.000000
+  evt 9: OK  max_diff=0.000000
+  evt 10: OK  max_diff=0.000000
+  evt 11: OK  max_diff=0.000000
+  evt 12: OK  max_diff=0.000000
+  evt 13: OK  max_diff=0.000000
+  evt 14: OK  max_diff=0.000000
+  evt 15: OK  max_diff=0.000000
+  evt 16: OK  max_diff=0.000000
+  evt 17: OK  max_diff=0.000000
+  evt 18: OK  max_diff=0.000000
+  evt 19: OK  max_diff=0.000000
+
+Result: 20 events checked, 0 skipped, 0 mismatches, max_diff_seen=0.000000
+PASS

@@ -1,0 +1,30 @@
+=== node: sdfampere029 ===
+=== PATH tools ===
+nvidia-smi: /usr/bin/nvidia-smi
+nsys:       not found
+ncu:        not found
+nvprof:     not found
+dcgmi:      /usr/bin/dcgmi
+nvitop:     not found
+=== common install locations ===
+=== nvidia-smi basics ===
+name, driver_version, pcie.link.gen.max, pcie.link.gen.current, pcie.link.width.current
+NVIDIA A100-SXM4-40GB, 535.161.08, 4, 4, 16
+=== dmon sample (PCIe rx/tx MB/s, SM/mem util) 5s ===
+# gpu    pwr  gtemp  mtemp     sm    mem    enc    dec    jpg    ofa  rxpci  txpci 
+# Idx      W      C      C      %      %      %      %      %      %   MB/s   MB/s 
+    0     58     38     37      0      0      0      0      0      0      0      0 
+    0     58     38     37      0      0      0      0      0      0      0      0 
+    0     58     38     37      0      0      0      0      0      0      0      0 
+    0     58     38     37      0      0      0      0      0      0      0      0 
+    0     58     38     37      0      0      0      0      0      0      0      0 
+=== DCGM ===
+/usr/bin/dcgmi
+Error: unable to establish a connection to the specified host: localhost
+Error: Unable to connect to host engine. Host engine connection invalid/disconnected.
+=== IB counters present? ===
+mlx5_0
+=== CUDA events via cupy (overlap-safe timing primitive) ===
+cupy.cuda.Event elapsed: 117.49478149414062 ms  OK
+cupyx.profiler.benchmark: 0.03461120016872883 ms  OK
+pinned memory alloc: OK

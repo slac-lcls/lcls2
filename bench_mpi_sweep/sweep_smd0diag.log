@@ -1,0 +1,208 @@
+[PSANA-DEBUG RANK:0 1783542561.632540416] MPIDataSource RUN W/O PROMETHEUS CLIENT
+[PSANA-DEBUG RANK:0 1783542561.664744960] MPIDataSource smd_files:
+  /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101210926/xtc/smalldata/
+    mfx101210926-r0387-s000-c000.smd.xtc2
+    mfx101210926-r0387-s001-c000.smd.xtc2
+    mfx101210926-r0387-s002-c000.smd.xtc2
+    mfx101210926-r0387-s003-c000.smd.xtc2
+    mfx101210926-r0387-s004-c000.smd.xtc2
+    mfx101210926-r0387-s005-c000.smd.xtc2
+    mfx101210926-r0387-s006-c000.smd.xtc2
+    mfx101210926-r0387-s007-c000.smd.xtc2
+    mfx101210926-r0387-s008-c000.smd.xtc2
+    mfx101210926-r0387-s009-c000.smd.xtc2
+[PSANA-DEBUG RANK:0 1783542561.664982528] MPIDataSource xtc_files:
+  /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101210926/xtc/
+    mfx101210926-r0387-s000-c000.xtc2
+    mfx101210926-r0387-s001-c000.xtc2
+    mfx101210926-r0387-s002-c000.xtc2
+    mfx101210926-r0387-s003-c000.xtc2
+    mfx101210926-r0387-s004-c000.xtc2
+    mfx101210926-r0387-s005-c000.xtc2
+    mfx101210926-r0387-s006-c000.xtc2
+    mfx101210926-r0387-s007-c000.xtc2
+    mfx101210926-r0387-s008-c000.xtc2
+    mfx101210926-r0387-s009-c000.xtc2
+[PSANA-DEBUG RANK:0 1783542561.687883520] MPIDataSource smd0 opened smd_fds: [31 32 33 34 62 63 64 65 66 67]
+[PSANA-DEBUG RANK:0 1783542566.388837888] RunParallel _setup_run_calibconst called expt='mfx101210926' runnum=387
+[PSANA-DEBUG RANK:0 1783542582.291338240] RunParallel received calibconst for 18 detectors total=15.9020s max=jungfrau(15.0817s)
+[PSANA-DEBUG RANK:0 1783542583.111012352] RunParallel Built calibration xtc buffer from pickle size=1.893 GiB time=0.819s
+[PSANA-DEBUG RANK:0 1783542587.318615552] RunParallel shmem leader rank 0 shared calib size=1.893 GiB recv=0.000s populate=0.902s total=4.207s
+[PSANA-DEBUG RANK:0 1783542588.442888448] RunParallel Jungfrau shared calib ready det=jungfrau total=1.093s
+[PSANA-DEBUG RANK:0 1783542592.601765632] RunParallel shared geo det=jungfrau pixel_coords=2.082452s pixel_indexes=2.074694s cached_indexes=0.000000s
+[PSANA-DEBUG RANK:0 1783542592.601962752] RunParallel shared geo setup total=4.158707s
+[PSANA-INFO RANK:0 1783542592.602018304] RunParallel [MPI-role] rank=0 host=sdfampere010 numa_id=6 numa_size=8
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+[PSANA-DEBUG RANK:0 1783542611.844730112] Smd0 SMD0 chunk stats chunk=1
+  eb_wait_s avg=19.22703 min=19.22703 max=19.22703 count=1
+  smd_read_mb avg=297.25 min=297.25 max=297.25 total=297.25
+  smd_read_rate_mb_s avg=2192.93 min=2192.93 max=2192.93 total=2192.93
+  smd0_rate_khz=0.05260
+[PSANA-DEBUG RANK:0 1783542640.153787904] SmdReaderManager Exit - max_events=7392 reached
+
+[rank 30] GPU results (201 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        8.664 ms/event
+  kernel:      0.591 ms/event
+
+[rank 26] GPU results (204 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        7.877 ms/event
+  kernel:      0.602 ms/event
+
+[rank 11] GPU results (277 events, warmup=10, d2h=no):
+  rate:        7.9 Hz
+  H->D:        8.047 ms/event
+  kernel:      0.746 ms/event
+
+[rank 5] GPU results (206 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.057 ms/event
+  kernel:      0.599 ms/event
+
+[rank 20] GPU results (223 events, warmup=10, d2h=no):
+  rate:        6.8 Hz
+  H->D:        8.008 ms/event
+  kernel:      0.608 ms/event
+
+[rank 12] GPU results (198 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.276 ms/event
+  kernel:      0.580 ms/event
+
+[rank 10] GPU results (210 events, warmup=10, d2h=no):
+  rate:        6.7 Hz
+  H->D:        7.631 ms/event
+  kernel:      0.596 ms/event
+
+[rank 7] GPU results (195 events, warmup=10, d2h=no):
+  rate:        6.3 Hz
+  H->D:        9.609 ms/event
+  kernel:      0.607 ms/event
+
+[rank 8] GPU results (219 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        9.444 ms/event
+  kernel:      0.620 ms/event
+
+[rank 9] GPU results (198 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.659 ms/event
+  kernel:      0.587 ms/event
+
+[rank 19] GPU results (226 events, warmup=10, d2h=no):
+
+[rank 4] GPU results (213 events, warmup=10, d2h=no):
+  rate:        6.7 Hz
+  H->D:        7.641 ms/event
+  kernel:      0.595 ms/event
+  rate:        6.9 Hz
+  H->D:        8.796 ms/event
+  kernel:      0.578 ms/event
+
+[rank 31] GPU results (203 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        7.651 ms/event
+  kernel:      0.585 ms/event
+
+[rank 24] GPU results (202 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        8.344 ms/event
+  kernel:      0.540 ms/event
+
+[rank 3] GPU results (204 events, warmup=10, d2h=no):
+  rate:        6.7 Hz
+  H->D:        8.058 ms/event
+  kernel:      0.546 ms/event
+
+[rank 23] GPU results (205 events, warmup=10, d2h=no):
+  rate:        6.7 Hz
+  H->D:        7.592 ms/event
+  kernel:      0.541 ms/event
+
+[rank 2] GPU results (203 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        7.538 ms/event
+  kernel:      0.612 ms/event
+
+[rank 16] GPU results (206 events, warmup=10, d2h=no):
+  rate:        6.7 Hz
+  H->D:        8.084 ms/event
+  kernel:      0.532 ms/event
+
+[rank 29] GPU results (203 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        7.232 ms/event
+  kernel:      0.616 ms/event
+
+[rank 32] GPU results (197 events, warmup=10, d2h=no):
+  rate:        6.4 Hz
+  H->D:        8.194 ms/event
+  kernel:      0.594 ms/event
+
+[rank 17] GPU results (200 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.369 ms/event
+  kernel:      0.565 ms/event
+
+[rank 14] GPU results (207 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        8.098 ms/event
+  kernel:      0.532 ms/event
+
+[rank 18] GPU results (224 events, warmup=10, d2h=no):
+  rate:        6.8 Hz
+  H->D:        8.698 ms/event
+  kernel:      0.585 ms/event
+
+[rank 25] GPU results (209 events, warmup=10, d2h=no):
+  rate:        6.8 Hz
+  H->D:        8.316 ms/event
+  kernel:      0.542 ms/event
+
+[rank 27] GPU results (574 events, warmup=10, d2h=no):
+  rate:        12.9 Hz
+  H->D:        6.667 ms/event
+  kernel:      0.556 ms/event
+
+[rank 13] GPU results (201 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.579 ms/event
+  kernel:      0.591 ms/event
+
+[rank 6] GPU results (209 events, warmup=10, d2h=no):
+  rate:        6.8 Hz
+  H->D:        7.253 ms/event
+  kernel:      0.588 ms/event
+
+[rank 21] GPU results (196 events, warmup=10, d2h=no):
+  rate:        6.4 Hz
+  H->D:        8.583 ms/event
+  kernel:      0.609 ms/event
+
+[rank 15] GPU results (203 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+
+[rank 28] GPU results (224 events, warmup=10, d2h=no):
+  rate:        6.8 Hz
+  H->D:        9.170 ms/event
+  kernel:      0.573 ms/event
+  H->D:        8.424 ms/event
+  kernel:      0.566 ms/event
+
+[rank 22] GPU results (201 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  H->D:        8.138 ms/event
+  kernel:      0.566 ms/event
+
+[rank 33] GPU results (199 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  H->D:        8.184 ms/event
+  kernel:      0.580 ms/event
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   219.1 Hz
+  per-rank rate:    6.85 Hz (mean)
+  H->D:             8.184 ms/event (mean)
+  kernel:           0.585 ms/event (mean)
+[1783542643.690601] [sdfampere010:187953:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x564f32d36040 was not matched

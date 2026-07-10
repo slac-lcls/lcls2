@@ -1,0 +1,29 @@
+[PSANA-INFO RANK:0 1783530131.431448832] RunParallel [MPI-role] rank=0 host=sdfampere011 numa_id=0 numa_size=6
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 3] GPU results (191 events, warmup=10, d2h=no):
+  rate:        0.7 Hz
+  H->D:        6.030 ms/event
+  kernel:      0.531 ms/event
+
+[rank 5] GPU results (251 events, warmup=10, d2h=no):
+  rate:        0.9 Hz
+  H->D:        5.327 ms/event
+  kernel:      0.525 ms/event
+
+[rank 4] GPU results (249 events, warmup=10, d2h=no):
+  rate:        0.9 Hz
+  H->D:        5.558 ms/event
+  kernel:      0.505 ms/event
+
+[rank 2] GPU results (189 events, warmup=10, d2h=no):
+  rate:        0.7 Hz
+  H->D:        6.394 ms/event
+  kernel:      0.533 ms/event
+
+[aggregate] BD ranks: 4   events measured: 880
+  aggregate rate:   3.3 Hz
+  per-rank rate:    0.82 Hz (mean)
+  H->D:             5.827 ms/event (mean)
+  kernel:           0.523 ms/event (mean)
+[1783530406.340105] [sdfampere011:2183171:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5596c587e400 was not matched

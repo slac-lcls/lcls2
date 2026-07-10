@@ -1,0 +1,1088 @@
+1783529700
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479875099551 7264803222    0    0    0     0          0         0 9479875099551 7264803222    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517604863938474 97935473275   14  508    0    14          0 759582861 105519792481384 68527270498    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529702
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479875849891 7264803836    0    0    0     0          0         0 9479875849891 7264803836    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517605052708075 97935498724   14  508    0    14          0 759582930 105519800920579 68527278238    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529704
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479877145203 7264804510    0    0    0     0          0         0 9479877145203 7264804510    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517605194195794 97935518393   14  508    0    14          0 759582993 105519808822188 68527284764    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529706
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479877899363 7264805142    0    0    0     0          0         0 9479877899363 7264805142    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517605419027460 97935547493   14  508    0    14          0 759583038 105519816502437 68527291840    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529708
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479878627713 7264805728    0    0    0     0          0         0 9479878627713 7264805728    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517605701525673 97935584298   14  508    0    14          0 759583103 105519824582897 68527301855    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529710
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479879392017 7264806346    0    0    0     0          0         0 9479879392017 7264806346    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517606281016797 97935656180   14  508    0    14          0 759583159 105519833469464 68527317412    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529712
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479880119705 7264806930    0    0    0     0          0         0 9479880119705 7264806930    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517606669567990 97935705200   14  508    0    14          0 759583218 105519841742766 68527329624    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529714
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479880857864 7264807512    0    0    0     0          0         0 9479880857864 7264807512    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517607097505709 97935759344   14  508    0    14          0 759583281 105519849757184 68527341669    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529716
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479881594960 7264808102    0    0    0     0          0         0 9479881594960 7264808102    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517607493246687 97935810145   14  508    0    14          0 759583328 105519859195256 68527354870    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529719
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479882332457 7264808682    0    0    0     0          0         0 9479882332457 7264808682    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517608024548586 97935877138   14  508    0    14          0 759583399 105519867529659 68527370295    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529721
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479883065281 7264809280    0    0    0     0          0         0 9479883065281 7264809280    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517608501234170 97935937381   14  508    0    14          0 759583461 105519875884765 68527384693    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529723
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479883797550 7264809870    0    0    0     0          0         0 9479883797550 7264809870    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517608955958475 97935995153   14  508    0    14          0 759583535 105519884503749 68527398291    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529725
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479884535047 7264810450    0    0    0     0          0         0 9479884535047 7264810450    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517609309884831 97936040774   14  508    0    14          0 759583589 105519892635697 68527409713    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529727
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479885287199 7264811073    0    0    0     0          0         0 9479885287199 7264811073    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517609387395314 97936053121   14  508    0    14          0 759583647 105519900204077 68527415640    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529729
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479886026020 7264811657    0    0    0     0          0         0 9479886026020 7264811657    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517609578911174 97936078451   14  508    0    14          0 759583703 105519907929131 68527422729    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529731
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479886773164 7264812273    0    0    0     0          0         0 9479886773164 7264812273    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517609736688474 97936099860   14  508    0    14          0 759583766 105519915768554 68527429555    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529733
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479887500190 7264812855    0    0    0     0          0         0 9479887500190 7264812855    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517609894417849 97936121180   14  508    0    14          0 759583821 105519923486087 68527436175    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529735
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479888218871 7264813423    0    0    0     0          0         0 9479888218871 7264813423    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517610041941726 97936141449   14  508    0    14          0 759583880 105519931183930 68527442962    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529737
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479888957692 7264814007    0    0    0     0          0         0 9479888957692 7264814007    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517610158617806 97936157806   14  508    0    14          0 759583929 105519938839061 68527449152    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529739
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479889680345 7264814587    0    0    0     0          0         0 9479889680345 7264814587    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517610400859716 97936188889   14  508    0    14          0 759583990 105519946553708 68527456519    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529741
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479890411387 7264815183    0    0    0     0          0         0 9479890411387 7264815183    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517610652719371 97936221532   14  508    0    14          0 759584053 105519954507594 68527464657    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529743
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479891150208 7264815767    0    0    0     0          0         0 9479891150208 7264815767    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517610940788113 97936258682   14  508    0    14          0 759584119 105519962697611 68527473326    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529745
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479891877896 7264816351    0    0    0     0          0         0 9479891877896 7264816351    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517611239109316 97936297095   14  508    0    14          0 759584183 105519970921106 68527481932    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529748
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479892616055 7264816933    0    0    0     0          0         0 9479892616055 7264816933    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517611499771480 97936331417   14  508    0    14          0 759584231 105519979466403 68527490495    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529750
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479893344049 7264817531    0    0    0     0          0         0 9479893344049 7264817531    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517611593381634 97936345692   14  508    0    14          0 759584296 105519987595249 68527496833    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529752
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479894075656 7264818119    0    0    0     0          0         0 9479894075656 7264818119    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517611835533650 97936376877   14  508    0    14          0 759584346 105519995273865 68527504119    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529754
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479894803083 7264818691    0    0    0     0          0         0 9479894803083 7264818691    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517612094582805 97936410027   14  508    0    14          0 759584405 105520002925572 68527511609    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529756
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479895528785 7264819269    0    0    0     0          0         0 9479895528785 7264819269    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517612319899002 97936439244   14  508    0    14          0 759584463 105520010859433 68527518910    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529758
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479896289769 7264819890    0    0    0     0          0         0 9479896289769 7264819890    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517612545412584 97936468744   14  508    0    14          0 759584516 105520018539244 68527525822    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529760
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479897358770 7264820593    0    0    0     0          0         0 9479897358770 7264820593    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517612753741280 97936496159   14  508    0    14          0 759584578 105520026425623 68527532615    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529762
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479898088311 7264821173    0    0    0     0          0         0 9479898088311 7264821173    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517612938129522 97936521184   14  508    0    14          0 759584646 105520034762946 68527539963    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529764
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479898825407 7264821763    0    0    0     0          0         0 9479898825407 7264821763    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517613127439490 97936546662   14  508    0    14          0 759584708 105520042709396 68527547361    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529766
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479899563566 7264822345    0    0    0     0          0         0 9479899563566 7264822345    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517613338567216 97936574853   14  508    0    14          0 759584767 105520051243711 68527555193    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529768
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479900281184 7264822921    0    0    0     0          0         0 9479900281184 7264822921    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517613570084306 97936605325   14  508    0    14          0 759584819 105520059108965 68527563019    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529770
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479901031054 7264823529    0    0    0     0          0         0 9479901031054 7264823529    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517613779918690 97936633430   14  508    0    14          0 759584878 105520066654872 68527570838    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529772
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479901762453 7264824113    0    0    0     0          0         0 9479901762453 7264824113    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517613884211663 97936648890   14  508    0    14          0 759584939 105520074864407 68527577333    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529775
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479902493852 7264824697    0    0    0     0          0         0 9479902493852 7264824697    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517614126095957 97936680073   14  508    0    14          0 759584990 105520082676923 68527584711    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529777
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479903241419 7264825285    0    0    0     0          0         0 9479903241419 7264825285    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517614351400669 97936709063   14  508    0    14          0 759585048 105520091006132 68527592361    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529779
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479903964072 7264825865    0    0    0     0          0         0 9479903964072 7264825865    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517614559778128 97936736335   14  508    0    14          0 759585094 105520099011193 68527599529    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529781
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479904714604 7264826475    0    0    0     0          0         0 9479904714604 7264826475    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517614785228562 97936765396   14  508    0    14          0 759585164 105520107282628 68527606917    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529783
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479905441176 7264827059    0    0    0     0          0         0 9479905441176 7264827059    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517615002095917 97936793599   14  508    0    14          0 759585233 105520115072112 68527614264    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529785
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479906184370 7264827645    0    0    0     0          0         0 9479906184370 7264827645    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517615212920481 97936821566   14  508    0    14          0 759585293 105520123114849 68527622159    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529787
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479906922128 7264828237    0    0    0     0          0         0 9479906922128 7264828237    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517615428401314 97936850150   14  508    0    14          0 759585348 105520131238847 68527630160    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529789
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479907685787 7264828858    0    0    0     0          0         0 9479907685787 7264828858    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517615663993909 97936880638   14  508    0    14          0 759585403 105520139121396 68527638220    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529791
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479908437118 7264829472    0    0    0     0          0         0 9479908437118 7264829472    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517615887453071 97936910253   14  508    0    14          0 759585467 105520147560921 68527646207    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529793
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479909173552 7264830060    0    0    0     0          0         0 9479909173552 7264830060    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616003033549 97936927144   14  508    0    14          0 759585521 105520155346706 68527653248    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529795
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479909917408 7264830648    0    0    0     0          0         0 9479909917408 7264830648    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616072874864 97936938435   14  508    0    14          0 759585581 105520163189285 68527659884    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529798
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479910653842 7264831236    0    0    0     0          0         0 9479910653842 7264831236    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616213842953 97936958007   14  508    0    14          0 759585637 105520171323899 68527666691    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529800
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479911405716 7264831850    0    0    0     0          0         0 9479911405716 7264831850    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616439607425 97936987230   14  508    0    14          0 759585698 105520179802505 68527674178    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529802
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479912145861 7264832438    0    0    0     0          0         0 9479912145861 7264832438    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616614085974 97937010694   14  508    0    14          0 759585762 105520187494599 68527680953    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529804
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479912887330 7264833030    0    0    0     0          0         0 9479912887330 7264833030    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616771595430 97937032024   14  508    0    14          0 759585830 105520195422425 68527687780    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529806
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479913626151 7264833614    0    0    0     0          0         0 9479913626151 7264833614    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517616946295300 97937055318   14  508    0    14          0 759585891 105520203222611 68527694791    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529808
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479914366296 7264834202    0    0    0     0          0         0 9479914366296 7264834202    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517617053270050 97937071042   14  508    0    14          0 759585945 105520210686634 68527701110    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529810
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479915113797 7264834814    0    0    0     0          0         0 9479915113797 7264834814    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517617220495019 97937093642   14  508    0    14          0 759585997 105520218535106 68527707859    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529812
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479915870579 7264835422    0    0    0     0          0         0 9479915870579 7264835422    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517617430645321 97937121688   14  508    0    14          0 759586061 105520227706694 68527715855    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529814
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479916603703 7264836000    0    0    0     0          0         0 9479916603703 7264836000    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517617622488272 97937147607   14  508    0    14          0 759586111 105520235691999 68527723434    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529816
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479917333778 7264836580    0    0    0     0          0         0 9479917333778 7264836580    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517617811737918 97937173134   14  508    0    14          0 759586172 105520243516854 68527730725    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529819
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479918070212 7264837168    0    0    0     0          0         0 9479918070212 7264837168    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618039331181 97937203282   14  508    0    14          0 759586224 105520251919184 68527738810    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529821
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479919189228 7264837936    0    0    0     0          0         0 9479919189228 7264837936    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618248018330 97937231097   14  508    0    14          0 759586295 105520259964486 68527746660    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529823
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479919912671 7264838520    0    0    0     0          0         0 9479919912671 7264838520    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618324534150 97937243354   14  508    0    14          0 759586366 105520267706461 68527752780    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529825
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479920645133 7264839096    0    0    0     0          0         0 9479920645133 7264839096    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618397637908 97937255128   14  508    0    14          0 759586423 105520275158037 68527758600    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529827
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479921382229 7264839686    0    0    0     0          0         0 9479921382229 7264839686    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618478446524 97937267992   14  508    0    14          0 759586485 105520283319182 68527765052    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529829
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479922112541 7264840276    0    0    0     0          0         0 9479922112541 7264840276    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618550922587 97937279551   14  508    0    14          0 759586534 105520291125616 68527770919    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529831
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479922853614 7264840880    0    0    0     0          0         0 9479922853614 7264840880    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618640889178 97937293072   14  508    0    14          0 759586597 105520298779908 68527776880    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529833
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479923569908 7264841452    0    0    0     0          0         0 9479923569908 7264841452    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618713997314 97937304803   14  508    0    14          0 759586654 105520306227345 68527782853    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529835
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479924305680 7264842038    0    0    0     0          0         0 9479924305680 7264842038    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618787198625 97937316731   14  508    0    14          0 759586709 105520313980613 68527789038    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529837
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479925048874 7264842624    0    0    0     0          0         0 9479925048874 7264842624    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618877198647 97937330364   14  508    0    14          0 759586764 105520321727271 68527795105    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529839
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479925781597 7264843212    0    0    0     0          0         0 9479925781597 7264843212    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517618951086052 97937342149   14  508    0    14          0 759586823 105520329338877 68527801099    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529841
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479926536523 7264843824    0    0    0     0          0         0 9479926536523 7264843824    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619023838264 97937353884   14  508    0    14          0 759586884 105520337271307 68527807262    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529844
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479927269454 7264844416    0    0    0     0          0         0 9479927269454 7264844416    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619113470720 97937367421   14  508    0    14          0 759586963 105520344846472 68527813335    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529846
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479927996881 7264844988    0    0    0     0          0         0 9479927996881 7264844988    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619203552613 97937381019   14  508    0    14          0 759587020 105520352443144 68527819477    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529848
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479928729604 7264845576    0    0    0     0          0         0 9479928729604 7264845576    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619294089586 97937394898   14  508    0    14          0 759587078 105520360078445 68527825938    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529850
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479929479496 7264846184    0    0    0     0          0         0 9479929479496 7264846184    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619383729231 97937408467   14  508    0    14          0 759587137 105520368208720 68527832073    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529852
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479930244895 7264846815    0    0    0     0          0         0 9479930244895 7264846815    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619456868591 97937420120   14  508    0    14          0 759587198 105520376217213 68527838138    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529854
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479930976956 7264847401    0    0    0     0          0         0 9479930976956 7264847401    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619555449868 97937434906   14  508    0    14          0 759587256 105520383841992 68527844730    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529856
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479931724523 7264847989    0    0    0     0          0         0 9479931724523 7264847989    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619704982369 97937455771   14  508    0    14          0 759587308 105520391802483 68527851779    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529858
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479932457246 7264848577    0    0    0     0          0         0 9479932457246 7264848577    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517619846092759 97937475966   14  508    0    14          0 759587365 105520399828156 68527858861    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529860
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479933207093 7264849185    0    0    0     0          0         0 9479933207093 7264849185    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620008888696 97937498674   14  508    0    14          0 759587424 105520408253075 68527866165    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529862
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479933935443 7264849771    0    0    0     0          0         0 9479933935443 7264849771    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620171268198 97937521043   14  508    0    14          0 759587490 105520416156506 68527873163    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529864
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479934682733 7264850359    0    0    0     0          0         0 9479934682733 7264850359    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620319403873 97937541729   14  508    0    14          0 759587551 105520424210998 68527880230    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529866
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479935416118 7264850949    0    0    0     0          0         0 9479935416118 7264850949    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620477016675 97937563599   14  508    0    14          0 759587612 105520432712674 68527887597    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529869
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479936167396 7264851537    0    0    0     0          0         0 9479936167396 7264851537    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620619692913 97937583861   14  508    0    14          0 759587663 105520440789229 68527894605    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529871
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479936913131 7264852155    0    0    0     0          0         0 9479936913131 7264852155    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620705304054 97937597085   14  508    0    14          0 759587728 105520448712747 68527900889    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529873
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479937655209 7264852741    0    0    0     0          0         0 9479937655209 7264852741    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517620896775087 97937622356   14  508    0    14          0 759587784 105520456642579 68527908113    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529875
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479938382897 7264853325    0    0    0     0          0         0 9479938382897 7264853325    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517621121974983 97937651500   14  508    0    14          0 759587833 105520464347987 68527915486    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529877
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479939116021 7264853903    0    0    0     0          0         0 9479939116021 7264853903    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517621347621046 97937680774   14  508    0    14          0 759587894 105520472208149 68527923075    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529879
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479939846758 7264854485    0    0    0     0          0         0 9479939846758 7264854485    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517621572793919 97937710088   14  508    0    14          0 759587955 105520479979090 68527930546    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529881
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479940924229 7264855204    0    0    0     0          0         0 9479940924229 7264855204    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517621812886126 97937741006   14  508    0    14          0 759588025 105520487713324 68527938327    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529883
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479941702747 7264855841    0    0    0     0          0         0 9479941702747 7264855841    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517622056654913 97937773169   14  508    0    14          0 759588095 105520495816898 68527946359    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529885
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479942434808 7264856427    0    0    0     0          0         0 9479942434808 7264856427    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517622300333694 97937805230   14  508    0    14          0 759588155 105520503755348 68527954377    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529887
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479943183037 7264857017    0    0    0     0          0         0 9479943183037 7264857017    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517622542891231 97937836961   14  508    0    14          0 759588205 105520512428924 68527962809    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529890
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479943915270 7264857606    0    0    0     0          0         0 9479943915270 7264857606    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517622778824232 97937868116   14  508    0    14          0 759588263 105520520944058 68527971023    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529892
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479944670393 7264858217    0    0    0     0          0         0 9479944670393 7264858217    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517622872578341 97937882461   14  508    0    14          0 759588324 105520528631355 68527977372    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529894
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479945393708 7264858799    0    0    0     0          0         0 9479945393708 7264858799    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517623013513088 97937902125   14  508    0    14          0 759588381 105520536751577 68527984119    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529896
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479946145648 7264859389    0    0    0     0          0         0 9479946145648 7264859389    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517623222460431 97937929421   14  508    0    14          0 759588436 105520544370101 68527991401    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529898
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479946873336 7264859973    0    0    0     0          0         0 9479946873336 7264859973    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517623447173433 97937958598   14  508    0    14          0 759588497 105520552243303 68527998741    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529900
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479947618175 7264860577    0    0    0     0          0         0 9479947618175 7264860577    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517623655590284 97937985812   14  508    0    14          0 759588548 105520559968211 68528006104    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529902
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479948343877 7264861155    0    0    0     0          0         0 9479948343877 7264861155    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517623863635485 97938013234   14  508    0    14          0 759588616 105520567812488 68528013269    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529904
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479949071111 7264861741    0    0    0     0          0         0 9479949071111 7264861741    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517624064613043 97938039958   14  508    0    14          0 759588681 105520575795201 68528020591    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529906
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479949789792 7264862309    0    0    0     0          0         0 9479949789792 7264862309    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517624290421076 97938069493   14  508    0    14          0 759588738 105520583607557 68528028448    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529908
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479950528613 7264862893    0    0    0     0          0         0 9479950528613 7264862893    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517624500168509 97938097515   14  508    0    14          0 759588791 105520591824268 68528036210    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529910
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479951257945 7264863495    0    0    0     0          0         0 9479951257945 7264863495    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517624737158869 97938128764   14  508    0    14          0 759588847 105520599893877 68528044425    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529912
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479951978158 7264864071    0    0    0     0          0         0 9479951978158 7264864071    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517624951017983 97938157257   14  508    0    14          0 759588910 105520607842984 68528052181    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529914
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479952756388 7264864704    0    0    0     0          0         0 9479952756388 7264864704    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625112337423 97938179668   14  508    0    14          0 759588968 105520615852329 68528059345    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529917
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479953492822 7264865292    0    0    0     0          0         0 9479953492822 7264865292    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625236220371 97938197218   14  508    0    14          0 759589025 105520624142826 68528066132    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529919
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479954253769 7264865898    0    0    0     0          0         0 9479954253769 7264865898    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625326312641 97938210864   14  508    0    14          0 759589082 105520632436084 68528073390    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529921
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479955002935 7264866551    0    0    0     0          0         0 9479955002935 7264866551    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625518115331 97938236194   14  508    0    14          0 759589141 105520640065430 68528080708    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529923
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479955727313 7264867125    0    0    0     0          0         0 9479955727313 7264867125    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625675517898 97938257613   14  508    0    14          0 759589212 105520647699753 68528087246    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529925
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479956454339 7264867707    0    0    0     0          0         0 9479956454339 7264867707    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625816064018 97938277177   14  508    0    14          0 759589278 105520655516200 68528093973    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529927
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479957196871 7264868291    0    0    0     0          0         0 9479957196871 7264868291    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517625973866383 97938298807   14  508    0    14          0 759589328 105520663368511 68528100880    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529929
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479957913165 7264868863    0    0    0     0          0         0 9479957913165 7264868863    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517626114592637 97938318441   14  508    0    14          0 759589387 105520670982090 68528107741    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529931
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479958651913 7264869471    0    0    0     0          0         0 9479958651913 7264869471    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517626281728003 97938341041   14  508    0    14          0 759589442 105520678800965 68528114788    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529933
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479959389618 7264870055    0    0    0     0          0         0 9479959389618 7264870055    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517626473760310 97938366867   14  508    0    14          0 759589499 105520686584260 68528122420    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529935
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479960122613 7264870654    0    0    0     0          0         0 9479960122613 7264870654    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517626671723107 97938393509   14  508    0    14          0 759589557 105520694570821 68528130132    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529937
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479960860772 7264871236    0    0    0     0          0         0 9479960860772 7264871236    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517626838864148 97938416573   14  508    0    14          0 759589606 105520702292725 68528137244    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529939
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479961942248 7264871942    0    0    0     0          0         0 9479961942248 7264871942    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627039461188 97938443709   14  508    0    14          0 759589671 105520710739568 68528144956    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529942
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479962692132 7264872550    0    0    0     0          0         0 9479962692132 7264872550    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627208009258 97938466954   14  508    0    14          0 759589736 105520718697343 68528152131    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529944
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479963424983 7264873140    0    0    0     0          0         0 9479963424983 7264873140    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627368985810 97938489365   14  508    0    14          0 759589805 105520727298077 68528159330    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529946
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479964202711 7264873773    0    0    0     0          0         0 9479964202711 7264873773    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627475802482 97938504993   14  508    0    14          0 759589862 105520734807885 68528165444    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529948
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479964923378 7264874347    0    0    0     0          0         0 9479964923378 7264874347    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627549493483 97938516730   14  508    0    14          0 759589918 105520742953726 68528171628    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529950
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479965666667 7264874959    0    0    0     0          0         0 9479965666667 7264874959    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627724393863 97938540151   14  508    0    14          0 759589976 105520750727772 68528178429    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529952
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479966410685 7264875549    0    0    0     0          0         0 9479966410685 7264875549    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627847504629 97938557667   14  508    0    14          0 759590036 105520758618859 68528184961    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529954
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479967147119 7264876137    0    0    0     0          0         0 9479967147119 7264876137    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517627971442852 97938575044   14  508    0    14          0 759590087 105520766306692 68528191218    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529956
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479967890975 7264876725    0    0    0     0          0         0 9479967890975 7264876725    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517628095431239 97938592865   14  508    0    14          0 759590148 105520774593454 68528197961    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529958
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479968623036 7264877311    0    0    0     0          0         0 9479968623036 7264877311    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517628286904380 97938618103   14  508    0    14          0 759590203 105520782205100 68528204820    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529960
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479969377942 7264877923    0    0    0     0          0         0 9479969377942 7264877923    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517628478440469 97938643397   14  508    0    14          0 759590268 105520790313325 68528211667    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529963
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479970110665 7264878511    0    0    0     0          0         0 9479970110665 7264878511    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517628653264178 97938667185   14  508    0    14          0 759590332 105520798655582 68528219075    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529965
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479970833265 7264879083    0    0    0     0          0         0 9479970833265 7264879083    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517628878618104 97938697112   14  508    0    14          0 759590402 105520806583775 68528226873    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529967
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479971564002 7264879665    0    0    0     0          0         0 9479971564002 7264879665    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629112804076 97938727855   14  508    0    14          0 759590458 105520814669795 68528234902    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529969
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479972300436 7264880253    0    0    0     0          0         0 9479972300436 7264880253    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629328340418 97938756703   14  508    0    14          0 759590509 105520822709360 68528242639    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529971
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479973050972 7264880863    0    0    0     0          0         0 9479973050972 7264880863    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629538596281 97938785018   14  508    0    14          0 759590578 105520830899612 68528250203    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529973
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479973778788 7264881449    0    0    0     0          0         0 9479973778788 7264881449    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629625590090 97938798417   14  508    0    14          0 759590632 105520838514524 68528256287    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529975
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479974531390 7264882041    0    0    0     0          0         0 9479974531390 7264882041    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629698859491 97938810319   14  508    0    14          0 759590692 105520846111513 68528262294    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529977
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479975293468 7264882670    0    0    0     0          0         0 9479975293468 7264882670    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629772600201 97938822250   14  508    0    14          0 759590744 105520854246841 68528268565    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529979
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479976040373 7264883256    0    0    0     0          0         0 9479976040373 7264883256    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629862250193 97938835773   14  508    0    14          0 759590801 105520862389210 68528274741    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+1783529981
+Inter-|   Receive                                                |  Transmit
+ face |bytes    packets errs drop fifo frame compressed multicast|bytes    packets errs drop fifo colls carrier compressed
+    lo: 9479976781122 7264883870    0    0    0     0          0         0 9479976781122 7264883870    0    0    0     0       0          0
+  eno1:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f0:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0
+enp33s0f1: 517629952860180 97938849464   14  508    0    14          0 759590858 105520870090835 68528280905    0    0    0     0       0          0
+  eno2:       0       0    0    0    0     0          0         0        0       0    0    0    0     0       0          0

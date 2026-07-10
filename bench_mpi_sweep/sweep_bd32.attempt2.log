@@ -1,0 +1,169 @@
+[PSANA-INFO RANK:0 1783533000.519420160] RunParallel [MPI-role] rank=0 host=sdfampere035 numa_id=5 numa_size=10
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 33] GPU results (255 events, warmup=10, d2h=no):
+  rate:        0.6 Hz
+  H->D:        7.909 ms/event
+  kernel:      0.652 ms/event
+
+[rank 24] GPU results (125 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        8.317 ms/event
+  kernel:      0.596 ms/event
+
+[rank 14] GPU results (193 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        8.446 ms/event
+  kernel:      0.628 ms/event
+
+[rank 22] GPU results (185 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        6.732 ms/event
+  kernel:      0.556 ms/event
+
+[rank 29] GPU results (166 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        4.154 ms/event
+  kernel:      0.490 ms/event
+
+[rank 4] GPU results (203 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+
+[rank 18] GPU results (318 events, warmup=10, d2h=no):
+  rate:        0.7 Hz
+  H->D:        7.652 ms/event
+  kernel:      0.736 ms/event
+  H->D:        7.590 ms/event
+  kernel:      0.646 ms/event
+
+[rank 17] GPU results (90 events, warmup=10, d2h=no):
+  rate:        0.2 Hz
+  H->D:        8.717 ms/event
+  kernel:      0.630 ms/event
+
+[rank 25] GPU results (196 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        6.619 ms/event
+  kernel:      0.540 ms/event
+
+[rank 2] GPU results (124 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        6.796 ms/event
+  kernel:      0.581 ms/event
+
+[rank 9] GPU results (155 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        8.131 ms/event
+  kernel:      0.608 ms/event
+
+[rank 5] GPU results (163 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        6.676 ms/event
+  kernel:      0.527 ms/event
+
+[rank 15] GPU results (90 events, warmup=10, d2h=no):
+  rate:        0.2 Hz
+  H->D:        9.397 ms/event
+  kernel:      0.600 ms/event
+
+[rank 20] GPU results (203 events, warmup=10, d2h=no):
+  rate:        0.5 Hz
+  H->D:        6.262 ms/event
+  kernel:      0.528 ms/event
+
+[rank 12] GPU results (51 events, warmup=10, d2h=no):
+  rate:        0.1 Hz
+  H->D:        4.567 ms/event
+  kernel:      0.510 ms/event
+
+[rank 21] GPU results (154 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        6.469 ms/event
+  kernel:      0.557 ms/event
+
+[rank 28] GPU results (234 events, warmup=10, d2h=no):
+  rate:        0.5 Hz
+  H->D:        6.310 ms/event
+  kernel:      0.559 ms/event
+
+[rank 27] GPU results (300 events, warmup=10, d2h=no):
+  rate:        0.7 Hz
+  H->D:        5.756 ms/event
+  kernel:      0.504 ms/event
+
+[rank 30] GPU results (471 events, warmup=10, d2h=no):
+  rate:        1.0 Hz
+  H->D:        6.334 ms/event
+  kernel:      0.714 ms/event
+
+[rank 13] GPU results (239 events, warmup=10, d2h=no):
+  rate:        0.5 Hz
+  H->D:        5.510 ms/event
+  kernel:      0.544 ms/event
+
+[rank 32] GPU results (206 events, warmup=10, d2h=no):
+  rate:        0.5 Hz
+  H->D:        5.207 ms/event
+  kernel:      0.526 ms/event
+
+[rank 23] GPU results (207 events, warmup=10, d2h=no):
+  rate:        0.5 Hz
+  H->D:        6.424 ms/event
+  kernel:      0.542 ms/event
+
+[rank 8] GPU results (324 events, warmup=10, d2h=no):
+  rate:        0.7 Hz
+  H->D:        6.498 ms/event
+  kernel:      0.622 ms/event
+
+[rank 3] GPU results (140 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        7.625 ms/event
+  kernel:      0.615 ms/event
+
+[rank 7] GPU results (388 events, warmup=10, d2h=no):
+  rate:        0.8 Hz
+  H->D:        6.267 ms/event
+  kernel:      0.555 ms/event
+
+[rank 6] GPU results (632 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        6.147 ms/event
+  kernel:      0.582 ms/event
+
+[rank 26] GPU results (136 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        6.965 ms/event
+  kernel:      0.548 ms/event
+
+[rank 11] GPU results (187 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        6.455 ms/event
+  kernel:      0.530 ms/event
+
+[rank 31] GPU results (181 events, warmup=10, d2h=no):
+  rate:        0.4 Hz
+  H->D:        5.964 ms/event
+  kernel:      0.576 ms/event
+
+[rank 19] GPU results (446 events, warmup=10, d2h=no):
+  rate:        0.9 Hz
+  H->D:        6.211 ms/event
+  kernel:      0.617 ms/event
+
+[rank 16] GPU results (149 events, warmup=10, d2h=no):
+  rate:        0.3 Hz
+  H->D:        8.841 ms/event
+  kernel:      0.607 ms/event
+
+[rank 10] GPU results (129 events, warmup=10, d2h=no):
+  rate:        0.2 Hz
+  H->D:        8.695 ms/event
+  kernel:      0.641 ms/event
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   15.0 Hz
+  per-rank rate:    0.47 Hz (mean)
+  H->D:             6.864 ms/event (mean)
+  kernel:           0.583 ms/event (mean)
+[1783533601.567339] [sdfampere035:1494217:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x55e6402492c0 was not matched
