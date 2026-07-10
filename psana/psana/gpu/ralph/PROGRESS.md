@@ -135,3 +135,59 @@ through the psana event loop on r47/FFB, at 1 and 32 BD ranks.
 command with `--cpu` added, `-n 200` is plenty), journal the aggregate Hz + CPU
 calib ms/event, and commit. That fills the last missing baseline so the GPU
 speedup on r47 can finally be stated.
+
+---
+
+## 2026-07-10 — Iteration 2 (B-CPU established on r47 — anchor pair complete)
+
+**Task:** the last missing baseline — B-CPU (CPU-only `det.raw.calib()` end-to-end
+through the psana loop) on r47/FFB at 1 and 32 BD ranks, same layout as B-MVP.
+
+**What I did:**
+- Ran `bench_calib.py --cpu -e mfx101572426 -r 47 -n 200 --warmup 10 --dir $FFB`
+  on the `ralph-gpu` node (job 31267701, sdfampere029) at 1 BD rank (3 procs) and
+  32 BD ranks (34 procs), `mpirun --bind-to none --oversubscribe`.
+- Note: `bench_mpi_sweep/ralph_tmp/` had been wiped at iteration start; recreated
+  it + `bench.sh` (harness only, not tracked). 34-proc MPI startup takes ~2 min,
+  so the 32-BD run must be launched in the background, not a foreground 2-min tool
+  call.
+
+**Numbers (r47, FFB, A100 node, `mpirun --bind-to none`):**
+
+| BD ranks | CPU aggregate Hz | per-rank Hz | CPU calib ms/event | log |
+|---:|---:|---:|---:|---|
+| 1  | 22.5 | 22.53 | 31.6  | `bench_mpi_sweep/ralph_tmp/cpu_1bd_r47_164605.log` |
+| 32 | 44.9 | 1.40  | 433.7 | `bench_mpi_sweep/ralph_tmp/cpu_32bd_r47_164919.log` |
+
+**The finding:** CPU calib on the 16.78M-px (32-seg) detector inflates
+**31.6 → 433.7 ms/event (13.7×)** from 1 → 32 ranks — far worse than the Lustre
+r387 verification run (29.7 → 54.5 ms, smaller/warm). 32 cores buy only ~2× the
+aggregate of one rank: `det.raw.calib()` on a 33.5 MB array is memory-bandwidth
+bound and collapses under 32-way contention. CPU compute ceiling at 32 ranks ≈
+32/0.4337 = **~74 Hz**, i.e. the CPU path is compute-bound, not I/O-bound, at
+scale here.
+
+**The anchor pair on r47/FFB (identical run, identical rank layout):**
+
+| | 1 BD | 32 BD |
+|---|---:|---:|
+| B-CPU (aggregate Hz) | 22.5 | 44.9 |
+| B-MVP / GPU (aggregate Hz) | 36.8 | 175.3 |
+| **GPU speedup** | **1.6×** | **3.9×** |
+
+The GPU advantage *widens* with scale (1.6× → 3.9×) precisely because the CPU
+path stops scaling while the GPU kernel (0.32–0.6 ms) has 76× headroom. The GPU
+path's own 32-BD bottleneck is H2D (11.85 ms/event under 32-rank PCIe
+contention), not compute — the standing open question.
+
+**Keep/revert:** KEEP — records the last baseline. Correctness gate not triggered
+(CPU mode *is* the `det.raw.calib()` reference; GPU numeric path untouched).
+
+**Recommended next step:** all three §1 baselines that can be measured on r47 are
+now established (B-CPU, B-MVP; B-FULL still needs a worktree rerun). The next
+unblocked experiment is the one the multi-node plateau investigation still lacks:
+a **BD-rank profile of the GPU path** (read vs H2D vs kernel vs MPI-wait split)
+at 32 BD, using CUDA events + `nvidia-smi dmon` PCIe counters (§6/§8), to confirm
+whether the 11.85 ms H2D-under-contention is the true 32-rank ceiling. If it is,
+the first lever to try is pinned-memory + async H2D on the BD rank (overlap-safe
+timing per §6).

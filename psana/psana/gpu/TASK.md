@@ -176,7 +176,7 @@
   - Gotcha for reproduction: OpenMPI default core binding silently
     distorts multi-rank rates and refuses >17 procs on a 17-core
     allocation — always `--bind-to none` (attempt-1 logs show the artifact).
-- [~] Establish B-CPU (CPU-only psana, det.raw.calib(), MPI at scale on FFB)
+- [x] Establish B-CPU (CPU-only psana, det.raw.calib(), MPI at scale on FFB)
   - 2026-07-10 (Ralph iter 1): added `--cpu` mode to bench_calib.py — BD ranks
     run det.raw.calib() on the shared collective DataSource, MPI-capable at the
     SAME rank layout as the GPU path. Code verified working at 1 and 32 BD ranks.
@@ -185,9 +185,23 @@
     calib constants deployed and verified. FFB dir
     `/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`. B-MVP measured on r47
     2026-07-10: **175.3 Hz @ 32 BD**, 36.8 Hz @ 1 BD (H->D 11.85 ms, kernel
-    0.614 ms/event; historical r387 210 Hz). B-CPU on r47 still to do — run
-    `--cpu` at 1 and 32 BD ranks to complete the anchor pair. The Lustre numbers
-    below were verification-only.
+    0.614 ms/event; historical r387 210 Hz).
+  - **B-CPU on r47/FFB measured 2026-07-10 (Ralph iter 2)** — anchor pair now
+    complete. Job 31267701 (sdfampere029), `--cpu -n 200 --warmup 10`,
+    `mpirun --bind-to none`; logs `bench_mpi_sweep/cpu_ffb_r47_bd{1,32}.log`:
+
+    | BD ranks | CPU agg Hz | per-rank Hz | CPU calib ms/event | B-MVP GPU agg Hz | GPU speedup |
+    |---:|---:|---:|---:|---:|---:|
+    | 1  | 22.5 | 22.53 | 31.6  | 36.8  | 1.6× |
+    | 32 | 44.9 | 1.40  | 433.7 | 175.3 | 3.9× |
+
+    CPU calib inflates **31.6 -> 433.7 ms/event (13.7×)** from 1 -> 32 ranks on the
+    16.78M-px detector: `det.raw.calib()` on a 33.5 MB array is memory-bandwidth
+    bound and collapses under 32-way contention, so 32 cores buy only ~2× the
+    aggregate. CPU compute ceiling at 32 ranks ≈ 32/0.4337 = ~74 Hz — the CPU path
+    is compute-bound, not I/O-bound, at scale on this detector. GPU advantage
+    widens 1.6× -> 3.9× with scale because the kernel (0.32–0.6 ms) has 76×
+    headroom while the CPU stops scaling.
   - Verification numbers on Lustre r387 (job 31260656, sdfampere042,
     `bench_mpi_sweep/cpu_lustre_bd{1,32}.log`, `cpu_baseline_README.md`):
 
