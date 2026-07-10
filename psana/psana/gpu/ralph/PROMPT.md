@@ -14,15 +14,17 @@ measured result, and stop. The loop will restart you.
 
 One metric: **calibrated Jungfrau events/second per A100**, measured end-to-end
 through the psana event loop on the fast-feedback filesystem (FFB), on the
-reference dataset (mfx101210926 r387: 32-segment Jungfrau, 16.78M pixels,
-33.5 MB raw/event).
+reference dataset (**mfx101572426 r47**: 32-segment Jungfrau (32, 512, 1024) =
+16.78M pixels, 33.5 MB raw/event; det name `jungfrau`, ~37k events on FFB, calib
+constants deployed — verified 2026-07-10). FFB dir:
+`/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`.
 
 ### Baselines (the starting positions)
 
 | Baseline | Status | Number |
 |---|---|---|
 | **B-CPU**: psana CPU-only, standard loop, `det.raw.calib()`, MPI at scale on FFB | **NOT MEASURED** — `--compare-cpu` is serial-only today. Establishing this is the loop's first task. | serial compute: 30.08 ms/event (~33 Hz/rank) |
-| **B-MVP**: this branch — GPU two-function API inside the unmodified psana event loop | measured 2026-07-08 | **210 Hz** (1 node, 32 BD ranks); **~260–306 Hz plateau** multi-node, independent of node count |
+| **B-MVP**: this branch — GPU two-function API inside the unmodified psana event loop | measured 2026-07-08; re-measure on r47 to anchor the B-CPU comparison at the identical run | **210 Hz** (1 node, 32 BD ranks); **~260–306 Hz plateau** multi-node, independent of node count |
 | **B-FULL**: the original `features/psana2-gpu` branch with all its features active (custom GPU iterator, GPUBAT1 batches, KvikIO reads, EventPool, DetectorRouter) | stale numbers only, different dataset/filesystem — **needs a rerun on FFB/r387 to be comparable**. If it cannot run there, journal why and treat the old numbers as context only. | historical (July 1/6, other dataset): GPU no-D2H 100 Hz; EventPool path 60 Hz; CPU 38 Hz |
 
 ### Ceilings (hardware/facility limits, derived or measured — not goals with a prescribed route)
@@ -220,14 +222,15 @@ source setup_env.sh    # conda ps_20241122 (py3.9) + PYTHONPATH=install/...
   templates in `bench_mpi_sweep/`.
 - **Correctness gate:**
   ```bash
-  python psana/psana/gpu/test_jungfrau_calib.py -e mfx101210926 -r 387 -n 20
+  python psana/psana/gpu/test_jungfrau_calib.py -e mfx101572426 -r 47 -n 20 \
+      --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
   ```
 - **Benchmark** (N BD ranks needs N+2 procs: smd0 + EB + N):
   ```bash
-  FFB=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101210926/xtc
+  FFB=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
   mpirun --bind-to none -x PS_EB_NODES -n 34 \
       python psana/psana/gpu/bench_calib.py \
-      -e mfx101210926 -r 387 -n 100 --warmup 10 --dir $FFB
+      -e mfx101572426 -r 47 -n 500 --warmup 10 --dir $FFB
   ```
   Rank 0 prints the aggregate. Flags: `--d2h`, `--compare-cpu` (serial-only
   today), `--smd0-debug`. `-n` is per-BD-rank.

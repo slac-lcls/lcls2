@@ -6,7 +6,8 @@ for N events on a real run.
 
 Usage (single process, no MPI needed):
     python psana/psana/gpu/test_jungfrau_calib.py \\
-        -e mfx101210926 -r 387 -n 50
+        -e mfx101572426 -r 47 -n 50 \\
+        --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
 
 Pass criterion: zero pixel mismatches at atol=1e-3 across all tested events.
 

@@ -25,7 +25,7 @@ set +u
 source "$ROOT/setup_env.sh"
 set -u
 
-MAX_ITERS="${MAX_ITERS:-10}"
+MAX_ITERS="${MAX_ITERS:-25}"
 MODEL="${MODEL:-opus}"
 BLOCKED_SLEEP="${BLOCKED_SLEEP:-900}"     # wait after a BLOCKED: iteration
 ALLOC_WAIT_MAX="${ALLOC_WAIT_MAX:-7200}"  # max seconds to wait for holder

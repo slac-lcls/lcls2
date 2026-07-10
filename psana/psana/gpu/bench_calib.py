@@ -6,14 +6,16 @@ path compared to the CPU baseline.
 
 Usage (MPI: 1 smd0 + 1 EB + N BD ranks, all sharing the visible GPU(s)):
     mpirun -n <N+2> python psana/psana/gpu/bench_calib.py \\
-        -e mfx101210926 -r 387 -n 200 --warmup 10
+        -e mfx101572426 -r 47 -n 200 --warmup 10 \\
+        --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
 
     -n is the per-BD-rank event target. Rank 0 prints an aggregate rate
     (sum of BD-rank rates) at the end. --compare-cpu is serial-only.
 
 Usage (single process, no MPI ranks):
     python psana/psana/gpu/bench_calib.py \\
-        -e mfx101210926 -r 387 -n 500 --compare-cpu
+        -e mfx101572426 -r 47 -n 500 --compare-cpu \\
+        --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
 
 Notes on MPI structure: all ranks must construct the SAME DataSource and
 iterate run.events() — smd0/EB ranks do their serving inside that loop and

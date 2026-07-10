@@ -7,7 +7,7 @@ Minimal API
     from psana.gpu import prep_calib_constants, fused_calib_gpu
     import cupy as cp
 
-    ds  = DataSource(exp='mfx101210926', run=387)
+    ds  = DataSource(exp='mfx101572426', run=47)
     run = next(ds.runs())
     det = run.Detector('jungfrau')
 

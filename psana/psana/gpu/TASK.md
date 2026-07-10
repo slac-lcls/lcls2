@@ -180,13 +180,12 @@
   - 2026-07-10 (Ralph iter 1): added `--cpu` mode to bench_calib.py — BD ranks
     run det.raw.calib() on the shared collective DataSource, MPI-capable at the
     SAME rank layout as the GPU path. Code verified working at 1 and 32 BD ranks.
-  - **BLOCKED on FFB:** the reference run r387 has been PURGED from the FFB
-    rolling buffer. The only FFB-resident run for mfx101210926 is r0215, which
-    is INCOMPLETE (in-progress stream s003, no fetchable Configure/BeginRun
-    dgrams). r387 survives only on /sdf/data Lustre. So the headline
-    B-CPU-on-FFB number (to compare against B-MVP's 210 Hz / 32 BD on FFB)
-    could not be measured. Needs r387 (or another complete run) restaged to
-    FFB — a facility/human decision, not a psana code lever.
+  - **Reference dataset is now mfx101572426 r47 on FFB** (2026-07-10): 32-seg
+    Jungfrau (32, 512, 1024) = 16.78M pixels, det `jungfrau`, ~37k events,
+    calib constants deployed and verified. FFB dir
+    `/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`. Measure B-CPU **and**
+    re-measure B-MVP on r47 at 1 and 32 BD ranks — the identical run anchors
+    the comparison. The Lustre numbers below were verification-only.
   - Verification numbers on Lustre r387 (job 31260656, sdfampere042,
     `bench_mpi_sweep/cpu_lustre_bd{1,32}.log`, `cpu_baseline_README.md`):
 

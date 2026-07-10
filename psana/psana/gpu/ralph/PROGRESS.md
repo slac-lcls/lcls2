@@ -89,3 +89,21 @@ MPI-wait) that the multi-node plateau investigation still lacks — but that als
 needs FFB data to be meaningful.
 
 BLOCKED: reference run r387 purged from FFB (only incomplete r0215 remains); B-CPU-on-FFB needs a complete Jungfrau run restaged to FFB before it can be measured.
+
+---
+
+## 2026-07-10 — Operator note (human-directed, between iterations)
+
+Reference dataset set to **mfx101572426 r47** on FFB
+(`/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc`). Verified 2026-07-10: det
+`jungfrau`, shape (32, 512, 1024) = 16.78M px, `det.raw.calib()` returns float32
+with constants deployed; ~37k events → full headroom for `-n 500` at 32 BD ranks.
+PROMPT.md, TASK.md, and the code docstrings now point here.
+
+The iteration-1 blocker is **resolved** — do not re-flag it. Next task:
+re-measure **B-MVP (GPU)** and measure **B-CPU** on r47 at 1 and 32 BD ranks on
+FFB. These become the anchor pair (identical run, identical rank layout). The old
+r387 FFB numbers (B-MVP 210 Hz, etc.) are historical — same detector and FFB, so
+expect them to reproduce, but treat as unverified on r47 until measured.
+
+`MAX_ITERS` raised to 25.
