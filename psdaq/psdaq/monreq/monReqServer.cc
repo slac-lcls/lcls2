@@ -28,6 +28,7 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 #include <mutex>
+#include <unordered_map>
 #include <sys/prctl.h>
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -212,19 +213,15 @@ namespace Pds {
       }
       while (++ctrb != last);
 
-      // Save the event builder's datagram pointer after the destination datagram
+      // Save the event builder's datagram pointer in an unordered_map
       // so that it can be retrieved by _deleteDatagram()
       if (dg->isEvent())
       {
-        size_t osz = sizeof(*odg) + odg->xtc.sizeofPayload();
-        if (osz + sizeof(dg) <= bSz)
-          *(Dgram**)((uint8_t*)(odg) + osz) = dg;
-        else [[unlikely]]
-        {
-          logging::critical("_copyDatagram: No space after datagram for metadata;"
-                            "increase buffer size by >= %zu Bytes", sizeof(dg));
-          abort();
-        }
+        if ((_dgMap.find(odg) == _dgMap.end()) || _dgMap.at(odg) == nullptr) [[likely]]
+          _dgMap[odg] = dg;             // Insert new entry or overwrite existing one
+        else
+          logging::error("_copyDatagram: _dgMap[%p] is not free: idx %u, dg %p, ts %u.%09u, svc %s",
+                         odg, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
 
         _bufPrcMetric.start(idx);       // Measure time until buffer is released by client
         _bufCpyMetric.accumulate(idx);  // Measure time since buffer was passed to server
@@ -237,15 +234,22 @@ namespace Pds {
       if (_bufCpyMetric.count() == 0) [[unlikely]]
       {
         // Don't try to dereference a stale appDg as its pointer may not be in the current address space
-        logging::info("_deleteDatagram: Ignoring on startup: dg %p", appDg); //, ts %u.%09u, svc %s",
+        logging::debug("_deleteDatagram: Ignoring on startup: dg %p", appDg); //, ts %u.%09u, svc %s",
                       //appDg, appDg->time.seconds(), appDg->time.nanoseconds(),
                       //TransitionId::name(appDg->service()));
         return;
       }
 
+      // Sanity check
+      if (_dgMap.find(appDg) == _dgMap.end()) [[unlikely]]
+      {
+        logging::info("_deleteDatagram: dg not in map: %p, ts %u.%09u, svc %s\n",
+                       appDg, appDg->time.seconds(), appDg->time.nanoseconds(), TransitionId::name(appDg->service()));
+        return;
+      }
+
       // Retrieve the event builder's datagram and extract the buffer index
-      size_t dgSz = sizeof(*appDg) + appDg->xtc.sizeofPayload();
-      Dgram* dg = *(Dgram**)((uint8_t*)appDg + dgSz);
+      Dgram* dg = _dgMap[appDg];
       unsigned idx = dg->xtc.src.value();
 
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
@@ -287,6 +291,10 @@ namespace Pds {
         }
       }
       //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
+
+      // Release map slot
+      // appDg shmem buffer pointers are fixed at startup
+      _dgMap[appDg] = nullptr;          // Avoid allocating/freeing
     }
 
     virtual void _requestDatagram()     // Not called for transitions
@@ -295,7 +303,7 @@ namespace Pds {
       unsigned idx;
       if (_bufFreeList.pop(idx)) [[unlikely]]
       {
-        logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
+        logging::error("_requestDatagram: No free buffers available");
         return;
       }
       //printf("_requestDatagram: pop idx %u, cnt = %zu\n", idx, _bufFreeList.count());
@@ -344,16 +352,17 @@ namespace Pds {
     }
 
   private:
-    std::vector<EbLfCltLink*>&     _mrqLinks;
-    uint64_t&                      _requestCount;
-    FifoMT<unsigned, std::mutex>   _bufFreeList;
-    std::shared_ptr<PromHistogram> _bufUseCnts;
-    std::atomic<uint64_t>&         _prcBufCount;
-    MyMetric&                      _bufCpyMetric;
-    MyMetric&                      _bufPrcMetric;
-    MyMetric&                      _monTrgMetric;
-    MyMetric&                      _appPrcMetric;
-    const MebParams&               _prms;
+    std::vector<EbLfCltLink*>&         _mrqLinks;
+    uint64_t&                          _requestCount;
+    FifoMT<unsigned, std::mutex>       _bufFreeList;
+    std::unordered_map<Dgram*, Dgram*> _dgMap;
+    std::shared_ptr<PromHistogram>     _bufUseCnts;
+    std::atomic<uint64_t>&             _prcBufCount;
+    MyMetric&                          _bufCpyMetric;
+    MyMetric&                          _bufPrcMetric;
+    MyMetric&                          _monTrgMetric;
+    MyMetric&                          _appPrcMetric;
+    const MebParams&                   _prms;
   };
 
 
