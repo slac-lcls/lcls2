@@ -386,10 +386,12 @@ void XtcMonitorServer::routine()
           if (mq_send(_requestQueue, (const char*)&msg, sizeof(msg), 0))
             perror("Writing to requestQ");
           else {
-            _requestDatagram();
 #ifdef DBUG2
             printf("*** receiveEv  got  idx %d\n", msg.bufferIndex());
 #endif
+            Dgram* dg = (Dgram*)(_myShm+_sizeOfBuffers*msg.bufferIndex());
+            _deleteDatagram(dg);
+            _requestDatagram();
           }
         }
       }
@@ -406,7 +408,6 @@ void XtcMonitorServer::routine()
           perror("mq_receive");
 
         _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex(), _sizeOfBuffers);
-        _deleteDatagram(m.dg());
 
         if (m.msg().serial()) {
           //
