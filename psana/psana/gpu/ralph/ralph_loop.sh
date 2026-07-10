@@ -19,8 +19,11 @@ ROOT="$(cd "$RALPH_DIR/../../../.." && pwd)"
 cd "$ROOT"
 
 # Child claude processes inherit this environment (conda ps_20241122,
-# PYTHONPATH -> install tree).
+# PYTHONPATH -> install tree). Conda's activate/deactivate hooks reference
+# unset variables, so nounset must be off while sourcing.
+set +u
 source "$ROOT/setup_env.sh"
+set -u
 
 MAX_ITERS="${MAX_ITERS:-10}"
 MODEL="${MODEL:-opus}"
