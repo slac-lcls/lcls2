@@ -410,3 +410,87 @@ storage I/O, it points to per-BD-rank async prefetch. Second, if a clean window
 is available, repeat the 8/16/32 sweep *alongside a concurrent raw `os.pread`
 reader control* to nail down whether the ~2.8 GB/s plateau is per-rank
 serialization or a currently-throttled shared FS.
+
+---
+
+## 2026-07-10 — Iteration 6 (read-bucket decomposition — det.raw.raw is CPU-bound, NOT storage I/O; the redundant final .copy() is its single largest cost)
+
+**Task:** the decisive experiment both iter 3 and iter 5 recommended — settle
+whether `det.raw.raw(evt)`'s read bucket (119 ms/event @ 32 BD, iter 3; 31% of
+wall, 15x its 1-BD cost) is **lazy bigdata storage I/O** or **in-process CPU
+deserialize/reshape**. That one answer reclassifies 31% of the per-event wall
+and picks the lever (async prefetch vs a lighter accessor).
+
+**What I did:**
+- Added a `--profile-read` mode to `bench_calib.py` (`run_gpu_bench_profile_read`).
+  Per event it answers the question two independent ways:
+  1. **Internal breakdown** of `det.raw.raw` via the `evt._det_raw_timing` hook
+     already present in `AreaDetectorRaw.raw` (commit 12c77b8aa): `seg`
+     (`_segments` dict lookup) / `stack` (the per-segment `segs[id].raw`
+     deserialize + `np.copyto` memcpy loop) / `copy` (residual = final
+     `reshape_to_3d` + `arr.copy()`).
+  2. A **second, un-instrumented `det.raw.raw(evt)` on the same event** (`read2`):
+     `read2 << read1` ⇒ one-time-per-event cost = lazy storage I/O / first-touch
+     page-in (bytes resident 2nd time) ⇒ storage-bound; `read2 ≈ read1` ⇒ cost
+     repeats every call = pure CPU memcpy/deserialize ⇒ CPU-bound.
+  Kept the established `run_gpu_bench` / `run_gpu_bench_profile` loops
+  byte-identical (new function). GPU numeric path untouched → correctness gate
+  not triggered.
+- Ran 1 BD (`-n 300`) and 32 BD (`-n 150`) on r47/FFB, `ralph-gpu` node
+  (job 31267701, sdfampere029), `mpirun --bind-to none --oversubscribe`.
+
+**Numbers (r47, FFB, A100, ms/event; logs `bench_mpi_sweep/ralph_tmp/profread_{1,32}bd_174837.log`, driver `profread_driver_174837.log`):**
+
+| bucket | 1 BD | 32 BD |
+|---|---:|---:|
+| wait (gen advance = read+EB/MPI) | 13.21 | 264.43 |
+| **read1** (det.raw.raw 1st call) | **9.19** | **154.20** |
+|   seg (_segments dict lookup) | 0.008 | 0.14 |
+|   stack (per-seg .raw deserialize + copyto memcpy) | 4.18 | 64.54 |
+|   copy (reshape + final .copy()) | 5.00 | 89.53 |
+| **read2** (2nd det.raw.raw, same evt) | **9.01** | **152.67** |
+| H->D | 3.90 | 53.79 |
+| kernel | 0.32 | 2.49 |
+| aggregate Hz | 28.1 | 51.2 |
+
+(The 32-BD run landed in a slow FFB window — 51 Hz agg vs iter 3's 82 Hz. The
+absolute rate is FS-window-dependent as documented; the **relative breakdown**
+and the **read1≈read2 equality** are speed-independent and are the finding.)
+
+**The finding (settles the open question):**
+1. **det.raw.raw is CPU-bound, NOT storage I/O.** `read2 ≈ read1` at BOTH scales
+   — 9.01/9.19 = 98% at 1 BD, 152.7/154.2 = 99% at 32 BD. The cost repeats
+   identically on a second call to the same event, so the dgram bytes are already
+   resident (read during the generator-advance `wait` bucket / page cache); the
+   read bucket is pure in-process CPU memcpy/deserialize each call. This
+   **reclassifies iter 3's 31%-of-wall read bucket from storage to CPU** and
+   means the lever is a lighter accessor, NOT per-BD async prefetch of that
+   bucket.
+2. **The single largest component of det.raw.raw is the final `.copy()`, and it
+   is pure waste for the GPU path.** At 32 BD `copy` = 89.5 ms > `stack` = 64.5 ms
+   (`seg` ≈ 0). That `copy` is a full 33.5 MB host→host memcpy that exists only to
+   avoid view-aliasing across events — but the GPU path calls `cp.asarray(raw)`
+   immediately, copying host→device before the next event, so the extra host copy
+   is redundant. `det.raw.raw(evt, copy=False)` (the flag already added in commit
+   ecf74b87f) eliminates it. Expected payoff: `copy` is 58% of read at 32 BD
+   (54% at 1 BD) and ~14% of per-event wall at both scales → up to ~+14–16%
+   throughput on its own, **plus** relief of host DRAM-bandwidth contention that
+   `stack` (another 33.5 MB memcpy) and `H->D` (33.5 MB to device) also fight for
+   — read1's 16.8x super-linear scaling (9.2→154 ms across 32 ranks) is the
+   signature of that shared-DRAM contention, since the work is pure repeatable
+   CPU, so cutting one of the two host memcpys should help more than the naive 14%.
+
+**Keep/revert:** KEEP `--profile-read` (`run_gpu_bench_profile_read`) — it's the
+tool that settled I/O-vs-CPU and it will measure the copy=False before/after.
+Correctness gate not triggered (instrumentation only; GPU numeric path
+byte-identical).
+
+**Recommended next step:** implement the clean single-variable change this points
+to — pass `copy=False` to `det.raw.raw` in the GPU bench path (it is consumed
+immediately by `cp.asarray`, so no view-aliasing hazard). Measure before/after at
+1 BD and 32 BD on FFB with `--profile-read` (watch `copy`→~0 and whether `stack`
+/`H->D` also drop from reduced DRAM contention), and **run the correctness gate**
+(`test_jungfrau_calib.py`, max_diff 0.0) since the numeric input path changes.
+Keep only if the aggregate Hz moves; revert + journal if the freed host copy is
+masked by the `wait` bucket. If it lands, the same `copy=False` belongs in the
+public two-function API's expected usage.

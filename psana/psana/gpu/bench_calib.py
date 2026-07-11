@@ -44,6 +44,14 @@ def parse_args():
                    help="GPU path with per-event WALL-time attribution: buckets "
                         "wait (generator advance = bigdata read + EB/MPI) / read / "
                         "h2d / kernel, to attribute the 32-BD ceiling.")
+    p.add_argument("--profile-read",   action="store_true",
+                   help="Decompose the `read` (det.raw.raw) bucket to settle "
+                        "storage-I/O vs in-process CPU. Splits det.raw.raw into "
+                        "segments (dict lookup) / stack (per-seg .raw deserialize "
+                        "+ copyto memcpy) / copy (final reshape+.copy()), and times "
+                        "a SECOND det.raw.raw on the same event: read2<<read1 means "
+                        "one-time cost (lazy I/O / first-touch page-in); read2~=read1 "
+                        "means repeatable CPU memcpy/deserialize.")
     p.add_argument("--cpu",            action="store_true",
                    help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
                         "collective DataSource (no GPU). MPI-capable — measures B-CPU "
@@ -235,6 +243,130 @@ def run_gpu_bench_profile(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     }
 
 
+def run_gpu_bench_profile_read(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
+    """Decompose the `read` (det.raw.raw) bucket to settle storage-I/O vs CPU.
+
+    iter 3 measured det.raw.raw = 119 ms/event @ 32 BD (31% of wall, 15x its
+    1-BD cost). iter 5's recommended decisive experiment: is that lazy bigdata
+    I/O (storage) or in-process CPU deserialize/reshape? This mode answers it two
+    independent ways per event:
+
+    1. Internal breakdown via the `evt._det_raw_timing` hook that already exists
+       in AreaDetectorRaw.raw:
+         seg   = self._segments(evt) dict lookup (should be ~0)
+         stack = the per-segment `segs[id].raw` deserialize + np.copyto memcpy loop
+         copy  = residual (read1 - seg - stack) = final reshape_to_3d + arr.copy()
+       stack is where both the lazy per-segment deserialize AND the 33.5 MB stack
+       memcpy live; copy is the second 33.5 MB host memcpy the GPU path doesn't need.
+
+    2. A SECOND det.raw.raw(evt) on the same event (read2), UN-instrumented:
+         read2 << read1  -> the expensive part is one-time-per-event: lazy storage
+                            I/O or first-touch page-in of the dgram bytes (bytes are
+                            resident/cached the second time) -> STORAGE-bound.
+         read2 ~= read1  -> the cost repeats every call: pure CPU memcpy/deserialize
+                            -> CPU-bound (its super-linear scaling w/ rank count is
+                            then host memory-bandwidth contention, not the FS).
+
+    Uses the same intra-event syncs as run_gpu_bench (synchronous path). GPU
+    numeric path byte-identical -> correctness gate not triggered.
+    """
+    import cupy as cp
+    from psana.gpu import fused_calib_gpu
+
+    wait_t, read1_t, seg_t, stack_t, copy_t, read2_t, h2d_t, kernel_t = \
+        [], [], [], [], [], [], [], []
+    warmup_done = False
+    n_measured = 0
+    t_start = None
+    t_prev_end = None
+
+    events = run.events()
+    while True:
+        t_wait0 = time.perf_counter()
+        try:
+            evt = next(events)
+        except StopIteration:
+            break
+        t_got = time.perf_counter()
+        wait = (t_got - t_prev_end) * 1e3 if t_prev_end is not None \
+            else (t_got - t_wait0) * 1e3
+
+        # read1: instrumented det.raw.raw (the hook splits segments vs stack)
+        hook = {'segments': 0.0, 'stack': 0.0}
+        evt._det_raw_timing = hook
+        t0 = time.perf_counter()
+        raw = det_obj.raw.raw(evt)
+        t1 = time.perf_counter()
+        try:
+            del evt._det_raw_timing
+        except AttributeError:
+            pass
+        if raw is None:
+            t_prev_end = time.perf_counter()
+            continue
+
+        # read2: second, un-instrumented det.raw.raw on the SAME event
+        t1b = time.perf_counter()
+        raw2 = det_obj.raw.raw(evt)
+        t1c = time.perf_counter()
+
+        read1 = (t1 - t0) * 1e3
+        seg = hook['segments'] * 1e3
+        stack = hook['stack'] * 1e3
+        copy = read1 - seg - stack            # reshape_to_3d + arr.copy()
+        read2 = (t1c - t1b) * 1e3
+
+        raw_gpu = cp.asarray(raw)
+        cp.cuda.Device().synchronize()
+        t2 = time.perf_counter()
+
+        calib_gpu = fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu)
+        cp.cuda.Device().synchronize()
+        t3 = time.perf_counter()
+
+        if not warmup_done:
+            if n_measured >= args.warmup:
+                warmup_done = True
+                t_start = time.perf_counter()
+                for lst in (wait_t, read1_t, seg_t, stack_t, copy_t,
+                            read2_t, h2d_t, kernel_t):
+                    lst.clear()
+            n_measured += 1
+            t_prev_end = time.perf_counter()
+            continue
+
+        wait_t.append(wait)
+        read1_t.append(read1)
+        seg_t.append(seg)
+        stack_t.append(stack)
+        copy_t.append(copy)
+        read2_t.append(read2)
+        h2d_t.append((t2 - t1c) * 1e3)
+        kernel_t.append((t3 - t2) * 1e3)
+        n_measured += 1
+        t_prev_end = time.perf_counter()
+
+        if allow_break and len(read1_t) >= args.nevents:
+            break
+
+    t_wall = time.perf_counter() - t_start if t_start else 0
+    n = len(read1_t)
+    m = lambda x: float(np.mean(x)) if x else 0.0
+    return {
+        "n": n,
+        "wall_s": t_wall,
+        "rate_hz": n / t_wall if t_wall > 0 else 0,
+        "wait_ms_mean": m(wait_t),
+        "read1_ms_mean": m(read1_t),
+        "seg_ms_mean": m(seg_t),
+        "stack_ms_mean": m(stack_t),
+        "copy_ms_mean": m(copy_t),
+        "read2_ms_mean": m(read2_t),
+        "h2d_ms_mean": m(h2d_t),
+        "kernel_ms_mean": m(kernel_t),
+    }
+
+
 def run_cpu_bench_mpi(args, run, det_obj, allow_break):
     """Time the CPU calib path over the shared run.events(). Mirrors
     run_gpu_bench's loop structure (collective DataSource, warmup, no early
@@ -359,6 +491,18 @@ def _report_aggregate(result, size):
     print(f"  per-rank rate:    {agg / len(bd):.2f} Hz (mean)")
     if any("calib_ms_mean" in r for r in bd):
         print(f"  CPU calib:        {np.mean([r.get('calib_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
+    elif any("read2_ms_mean" in r for r in bd):
+        g = lambda k: np.mean([r.get(k, 0) for r in bd])
+        per_rank_wall = 1000.0 * len(bd) / agg
+        print(f"  wait:             {g('wait_ms_mean'):.3f} ms/event (gen advance = bigdata read + EB/MPI)")
+        print(f"  read1:            {g('read1_ms_mean'):.3f} ms/event (det.raw.raw 1st call)")
+        print(f"    seg:            {g('seg_ms_mean'):.3f} ms/event (_segments dict lookup)")
+        print(f"    stack:          {g('stack_ms_mean'):.3f} ms/event (per-seg .raw deserialize + copyto)")
+        print(f"    copy:           {g('copy_ms_mean'):.3f} ms/event (reshape + final .copy())")
+        print(f"  read2:            {g('read2_ms_mean'):.3f} ms/event (2nd call same evt: <<read1=>I/O, ~=read1=>CPU)")
+        print(f"  H->D:             {g('h2d_ms_mean'):.3f} ms/event")
+        print(f"  kernel:           {g('kernel_ms_mean'):.3f} ms/event")
+        print(f"  (per-rank wall:   {per_rank_wall:.3f} ms/event)")
     elif any("wait_ms_mean" in r for r in bd):
         wait = np.mean([r.get('wait_ms_mean', 0) for r in bd])
         read = np.mean([r.get('read_ms_mean', 0) for r in bd])
@@ -420,7 +564,10 @@ def main():
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
             _print_occupancy(rank, peds_gpu)
 
-        if args.profile:
+        if args.profile_read:
+            result = run_gpu_bench_profile_read(args, run, det, peds_gpu, gmask_gpu,
+                                                allow_break=(size == 1))
+        elif args.profile:
             result = run_gpu_bench_profile(args, run, det, peds_gpu, gmask_gpu,
                                            allow_break=(size == 1))
         else:
@@ -430,7 +577,22 @@ def main():
         print(f"\n[rank {rank}] GPU results ({result['n']} events, "
               f"warmup={args.warmup}, d2h={'yes' if args.d2h else 'no'}):")
         print(f"  rate:        {result['rate_hz']:.1f} Hz")
-        if args.profile:
+        if args.profile_read:
+            print(f"  wait:        {result['wait_ms_mean']:.3f} ms/event "
+                  f"(gen advance = bigdata read + EB/MPI)")
+            print(f"  read1:       {result['read1_ms_mean']:.3f} ms/event "
+                  f"(det.raw.raw, 1st call = seg+stack+copy)")
+            print(f"    seg:       {result['seg_ms_mean']:.3f} ms/event "
+                  f"(_segments dict lookup)")
+            print(f"    stack:     {result['stack_ms_mean']:.3f} ms/event "
+                  f"(per-seg .raw deserialize + copyto memcpy)")
+            print(f"    copy:      {result['copy_ms_mean']:.3f} ms/event "
+                  f"(reshape + final .copy())")
+            print(f"  read2:       {result['read2_ms_mean']:.3f} ms/event "
+                  f"(2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)")
+            print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event")
+            print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event")
+        elif args.profile:
             tot = (result['wait_ms_mean'] + result['read_ms_mean']
                    + result['h2d_ms_mean'] + result['kernel_ms_mean'])
             print(f"  wait:        {result['wait_ms_mean']:.3f} ms/event "

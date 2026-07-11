@@ -306,6 +306,25 @@
     not a facility bandwidth wall. Lever = concurrency/latency-hiding (more BD
     ranks, async prefetch, read batching), not more storage bandwidth.
     Logs: `bench_mpi_sweep/ralph_tmp/prof_ib_32bd_r47_*.log`, `ib_32bd_r47_*.log`.
+- [x] Decompose the `read` (`det.raw.raw`) bucket: storage I/O vs in-process CPU
+  - 2026-07-10 (iter 6): `--profile-read` mode splits `det.raw.raw` into seg /
+    stack (per-seg `.raw` deserialize + copyto memcpy) / copy (reshape + final
+    `arr.copy()`), and times a 2nd `det.raw.raw` on the same event. **Verdict:
+    the read bucket is CPU-bound, NOT storage I/O** — `read2 ≈ read1` at both
+    scales (98% @ 1 BD, 99% @ 32 BD), so the cost repeats every call = pure
+    in-process CPU memcpy/deserialize; the dgram bytes are already resident from
+    the generator-advance `wait` bucket. This reclassifies iter 3's 31%-of-wall
+    read bucket from storage to CPU.
+  - Internal split (ms/event): 1 BD read1 9.19 = seg 0.008 + stack 4.18 + **copy
+    5.00**; 32 BD read1 154.2 = seg 0.14 + stack 64.5 + **copy 89.5**. The final
+    `.copy()` is the single largest component and is **redundant for the GPU
+    path** (`cp.asarray(raw)` copies host→device immediately after, so the extra
+    33.5 MB host copy is pure waste). `det.raw.raw(evt, copy=False)` (flag from
+    commit ecf74b87f) removes it: copy = 58% of read @ 32 BD, ~14% of per-event
+    wall → expected ~+14–16% throughput plus DRAM-contention relief. read1's
+    16.8× super-linear scaling (9.2→154 ms over 32 ranks) is host-memory-BW
+    contention, not the FS (work is pure repeatable CPU). NEXT: land copy=False
+    behind the gate. Logs: `bench_mpi_sweep/ralph_tmp/profread_{1,32}bd_174837.log`.
 
 ## Documentation
 
