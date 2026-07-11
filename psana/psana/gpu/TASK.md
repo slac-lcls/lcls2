@@ -325,6 +325,26 @@
     16.8× super-linear scaling (9.2→154 ms over 32 ranks) is host-memory-BW
     contention, not the FS (work is pure repeatable CPU). NEXT: land copy=False
     behind the gate. Logs: `bench_mpi_sweep/ralph_tmp/profread_{1,32}bd_174837.log`.
+- [x] Land `copy=False` on the GPU path — the first landed throughput win
+  - 2026-07-10 (iter 7): promoted `det.raw.raw(evt, copy=False)` to the DEFAULT
+    of the GPU bench path (`run_gpu_bench`); `--copy-true` restores the old
+    baseline for A/B. Interleaved copy=True vs copy=False back-to-back (2 brackets
+    each, to control for FFB minute-to-minute variance):
+
+    | config | copy=True (Hz) | copy=False (Hz) | gain |
+    |---|---|---|---|
+    | 1 BD  | 39.8, 42.7 → 41.3 | 53.6, 54.6 → 54.1 | **+31%** |
+    | 32 BD | 82.6, 86.7 → 84.7 | 107.6, 112.2 → 109.9 | **+30%** |
+
+    The measured **+30% at both scales** exceeds iter 6's naive +14% prediction,
+    confirming the DRAM-bandwidth-contention hypothesis: eliminating one of the
+    two 33.5 MB host memcpys also speeds the remaining `stack` memcpy + H2D that
+    fight for the same host DRAM bus. Correctness: **bit-exact, max_diff 0.0** —
+    the standard gate now defaults to copy=False so it guards the real GPU path.
+    Logs: `bench_mpi_sweep/ralph_tmp/cf_{1bd,32bd}_copy{True,False}_{a,b}_175942.log`,
+    driver `cf_driver_175942.log`. This is the FIRST code change on the branch to
+    move the throughput number. NEXT: `stack` (64.5 ms @32BD) is now the largest
+    read component — its per-seg deserialize + copyto is the next CPU lever.
 
 ## Documentation
 

@@ -34,6 +34,11 @@ def parse_args():
     p.add_argument("--det",           default="jungfrau", help="Detector name")
     p.add_argument("--atol",          default=1e-3,  type=float, help="Absolute tolerance")
     p.add_argument("--dir",           default=None,  help="XTC directory (optional)")
+    p.add_argument("--copy-true",     action="store_true",
+                   help="Restore det.raw.raw(evt, copy=True). This gate now "
+                        "DEFAULTS to copy=False to match the promoted GPU bench "
+                        "path (iter 7), so the bit-exact check covers the "
+                        "view-into-_raw_buf input the GPU path actually consumes.")
     return p.parse_args()
 
 
@@ -69,7 +74,7 @@ def main():
         if checked >= args.nevents:
             break
 
-        raw = det.raw.raw(evt)
+        raw = det.raw.raw(evt, copy=args.copy_true)
         if raw is None:
             skipped += 1
             continue

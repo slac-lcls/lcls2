@@ -52,6 +52,15 @@ def parse_args():
                         "a SECOND det.raw.raw on the same event: read2<<read1 means "
                         "one-time cost (lazy I/O / first-touch page-in); read2~=read1 "
                         "means repeatable CPU memcpy/deserialize.")
+    p.add_argument("--copy-true",      action="store_true",
+                   help="GPU path only: restore det.raw.raw's default copy=True "
+                        "(the pre-iter-7 baseline). The GPU path now DEFAULTS to "
+                        "copy=False, which skips det.raw.raw's final 33.5 MB host->host "
+                        ".copy() (iter 6: 58%% of the read bucket @32BD) — measured "
+                        "+30%% @1BD and @32BD, bit-exact (iter 7). Safe because "
+                        "cp.asarray(raw) copies host->device immediately, before the "
+                        "reused _raw_buf is overwritten by the next event. Use this "
+                        "flag only to reproduce the old A/B baseline.")
     p.add_argument("--cpu",            action="store_true",
                    help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
                         "collective DataSource (no GPU). MPI-capable — measures B-CPU "
@@ -108,8 +117,9 @@ def run_gpu_bench(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     n_measured = 0
     t_start = None
 
+    copy_raw = getattr(args, "copy_true", False)  # GPU path defaults to copy=False (iter 7)
     for evt in run.events():
-        raw = det_obj.raw.raw(evt)
+        raw = det_obj.raw.raw(evt, copy=copy_raw)
         if raw is None:
             continue
 

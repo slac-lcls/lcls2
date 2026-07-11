@@ -494,3 +494,58 @@ immediately by `cp.asarray`, so no view-aliasing hazard). Measure before/after a
 Keep only if the aggregate Hz moves; revert + journal if the freed host copy is
 masked by the `wait` bucket. If it lands, the same `copy=False` belongs in the
 public two-function API's expected usage.
+
+---
+
+## 2026-07-10 — Iteration 7 (land copy=False — the first landed throughput win: +30% @ 1 BD and @ 32 BD, bit-exact)
+
+**Task:** implement the single-variable change iter 6 pointed to — pass
+`copy=False` to `det.raw.raw` in the GPU path (it is consumed immediately by
+`cp.asarray`, so no view-aliasing hazard) — measure before/after at 1 and 32 BD
+on FFB, and run the correctness gate since the numeric input path changes.
+
+**What I did:**
+- Wired the toggle into the byte-identical B-MVP loop `run_gpu_bench` (line 112)
+  and **promoted `copy=False` to the DEFAULT** of the GPU path;
+  `--copy-true` restores the pre-iter-7 baseline for A/B. Added the matching
+  `--copy-true` to `test_jungfrau_calib.py` and flipped its default to
+  `copy=False` so the standard gate now guards the real GPU path.
+- Measured before/after by **interleaving** copy=True/copy=False back-to-back,
+  2 brackets each, to control for FFB's documented minute-to-minute variance
+  (`bench_mpi_sweep/ralph_tmp/copyfalse_driver.sh`). `ralph-gpu` node
+  (job 31267701, sdfampere029), `mpirun --bind-to none --oversubscribe`, r47/FFB.
+
+**Numbers (r47, FFB, A100, aggregate Hz; logs `bench_mpi_sweep/ralph_tmp/cf_*_175942.log`, driver `cf_driver_175942.log`):**
+
+| config | copy=True | copy=False | gain |
+|---|---|---|---|
+| 1 BD  | 39.8, 42.7 → **41.3** | 53.6, 54.6 → **54.1** | **+31%** |
+| 32 BD | 82.6, 86.7 → **84.7** | 107.6, 112.2 → **109.9** | **+30%** |
+
+Both brackets agree and the copy=False runs are uniformly higher than the
+copy=True runs measured seconds earlier — the effect is not an FFB-window
+artifact. (Absolute rates are in a slow FFB window vs the 175 Hz anchor; the
++30% relative is the robust, speed-independent result.)
+
+**Correctness gate:** `test_jungfrau_calib.py -e mfx101572426 -r 47 -n 20`
+(now defaulting to copy=False) → **20/20 OK, max_diff 0.0** (also verified
+explicitly with the flag earlier in the iteration). Bit-exact.
+
+**The finding:** the measured **+30% at both scales exceeds iter 6's naive +14%
+prediction**, confirming the DRAM-bandwidth-contention hypothesis: the final
+`.copy()` is a 33.5 MB host→host memcpy that not only wastes its own time but
+also contends for the host DRAM bus with `stack` (another 33.5 MB memcpy) and
+`H->D`; removing it speeds those too. This is the **first code change on the
+branch to move the throughput number** — every prior iteration measured/attributed.
+
+**Keep/revert:** KEEP — number moved +30%, bit-exact. Promoted to default.
+
+**Recommended next step:** with `copy` eliminated, `stack` (per-seg `.raw`
+deserialize + `np.copyto` memcpy) is now the largest read component (64.5 ms
+@ 32 BD, iter 6). It is a second 33.5 MB host memcpy into `_raw_buf`. The next
+single-variable experiment: can the GPU path skip the host `stack` entirely by
+copying each segment's `.raw` **directly host→device** (per-segment
+`cp.asarray` into a pre-allocated device buffer), removing the last host-side
+33.5 MB memcpy before H2D? Measure with `--profile-read` (watch `stack`→0) at
+1/32 BD, gate bit-exact. Also worth doing: propagate the `copy=False` guidance
+into the public two-function API's usage docstring (`__init__.py`).
