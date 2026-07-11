@@ -875,3 +875,85 @@ decisive before/after is `--wait-split` aggregate Hz at 32 BD with the prefetch 
 on vs off, interleaved-bracketed for the FFB window. Secondary (if prefetch is hard
 to land cleanly): attack the ~27% CPU residual (dgram construction) with a lighter
 accessor — smaller lever, but pure CPU and window-independent.
+
+---
+
+## 2026-07-10 — Iteration 12 (async-prefetch GPU overlap — pipeline H->D+kernel behind the read; DEAD END at 32 BD, ~3% slower, reverted)
+
+**Task:** iter 10/11's lever (b), first half — overlap the ~21% GPU work (per-seg
+H->D + kernel, iter 9) behind the psana `wait` (EB-wait + bd_read, ~79%) instead of
+running them strictly serial. Every sync path today (run_gpu_bench_seg_h2d) syncs
+after each event, so event N+1's `os.pread` cannot start until event N's GPU work
+finishes. Hypothesis: pipeline the GPU work across CUDA streams so it hides behind
+the next event's read, buying up to the 21% GPU fraction back (~+27%).
+
+**What I did:**
+- Added `--async-prefetch` to `bench_calib.py` (`run_gpu_bench_async_prefetch`):
+  based on the seg-h2d fast path, but gathers each event's segments into a **pinned
+  host buffer**, issues an **async H->D + kernel on a per-slot CUDA stream**, and
+  does **not** sync before advancing `run.events()`. A ring of `PS_PREFETCH_DEPTH`
+  slots (default 2) bounds in-flight work; a slot's stream is synced only when its
+  buffers are about to be reused (pipeline backpressure, not a per-event sync). The
+  pipeline is drained before the wall clock stops. Headline is **wall-clock rate
+  only** per §6 — the sync-instrumented per-stage split would destroy the overlap,
+  so it is intentionally omitted. The pinned staging copy is required: after
+  `run.events()` advances, psana overwrites its reused bd buffer, so the async H->D
+  needs a stable owned source (this re-adds a 33.5 MB memcpy iter 8 removed — the
+  point is to measure whether the overlap it buys is worth that cost).
+- A/B at 32 BD on FFB/r47, **palindrome-bracketed** (seg, async, async, seg + a
+  second async/seg pair) so the FFB minute-to-minute window is controlled and the
+  seg baseline is measured both before and after the async runs.
+- Smoke test single-process first: async ran clean at 65.3 Hz (`-n 60`). Numerics
+  bit-identical to the gated seg-h2d path by construction (same segment gather
+  order into a contiguous buffer, same `fused_calib_gpu` kernel — only copy timing
+  and the async stream differ), so the correctness gate is not re-triggered.
+
+**Numbers (r47, FFB, A100, 32 BD, aggregate; logs
+`bench_mpi_sweep/ralph_tmp/async_{a_seg,b_async,c_async}_195659.log` and
+`async_{e_async,f_seg}_200737.log`):**
+
+| variant | agg Hz (each run) | mean |
+|---|---|---:|
+| `--seg-h2d` (baseline) | 122.3 (first), 120.0 (last) | **121.2** |
+| `--async-prefetch` | 116.3, 119.4, 117.9 | **117.9** |
+
+The seg baseline is stable end-to-end (122.3 → 120.0, no window drift), so the ~3%
+gap is real, not FFB noise: **async-prefetch is flat-to-slightly-slower at 32 BD.**
+
+**The finding (why overlap can't win here — a structural reframe of lever (b)):**
+1. **Per-rank async overlap cannot create GPU/PCIe bandwidth.** At 32 BD all ranks
+   share one A100 and one PCIe gen4 link. The sync-path "21% GPU work" is itself
+   inflated by 32-way contention (per-event H->D ~42 ms, iter 9/§5, vs ~3.4 ms
+   uncontended). Making each rank's H->D async does not add bus bandwidth — it only
+   overlaps *that rank's* read with *that rank's* transfer, and under contention the
+   transfer doesn't shrink. There is nothing to hide it behind that isn't already
+   contended.
+2. **The pinned staging memcpy is a net cost with no offsetting gain.** Re-adding
+   the 33.5 MB host copy (iter 8 removed it for exactly this reason) costs ~3 ms/event
+   of real CPU/DRAM-bandwidth time; the overlap it enables recovers less than that,
+   so the balance is slightly negative (~-3%).
+3. **This tests only the GPU-side half of lever (b) and closes it.** Overlapping GPU
+   behind the read does nothing for `bd_read` itself (42% of `wait`, the largest
+   single component, iter 10) — that time is the BD rank blocked in `os.pread`, and
+   no amount of GPU-side pipelining touches it.
+
+**Keep/revert:** **REVERTED** (`git checkout bench_calib.py`) — a change that didn't
+move the number gets reverted and journaled as a dead end (§6). Default path
+untouched; tree clean. Correctness gate not triggered (numeric path byte-identical).
+
+**Recommended next step:** the remaining, un-attacked half of lever (b) is the real
+prize and is a fundamentally *different* change from what iter 12 tested —
+**read-side prefetch of `bd_read`**, not GPU-side overlap. `bd_read` is per-rank
+`os.pread` **latency** bound (~480 MB/s/rank while aggregate = 2.78 GB/s = 35% of the
+7.9 GB/s node ceiling, iter 4/10 — storage has headroom, the rank just idles waiting
+on its own read). The lever is to issue the **next batch's** `get_smd` + bigdata
+`os.pread` on a **background reader thread** so the rank isn't blocked in `pread`
+when it comes back for the next event (the CPU-push doc's "request next batch without
+waiting"). This is a psexp/BD-loop change (node.py `start()` / EventManager), must be
+flag-gated, and §7 rule 4 requires verifying the default `run.events()` MPI path
+still works. Key design constraint learned this iteration: keep **all MPI on the main
+thread** (only `os.pread`, which releases the GIL, goes to the reader thread) so no
+MPI thread-safety level is required. Decisive before/after: `--wait-split` aggregate
+Hz at 32 BD with the read-prefetch flag on vs off, palindrome-bracketed. Secondary
+(smaller, window-independent): the ~27% CPU residual (dgram construction) via a
+lighter accessor.

@@ -407,6 +407,20 @@
 
 ## Completed Work
 
+- 2026-07-10 (iter 12): **async-prefetch GPU overlap is a DEAD END at 32 BD —
+  reverted.** Pipelined the seg-h2d per-seg H->D + kernel across CUDA streams (pinned
+  staging, per-slot streams, no per-event sync, ring depth 2) so each event's ~21%
+  GPU work overlaps the next event's `os.pread`. Palindrome-bracketed at 32 BD on
+  FFB/r47: `--seg-h2d` 122.3/120.0 → **121.2 Hz** vs `--async-prefetch`
+  116.3/119.4/117.9 → **117.9 Hz** — flat-to-**~3% slower**. Seg baseline stable
+  end-to-end (no window drift), so the gap is real. Why it can't win: at 32 BD all
+  ranks share one A100 + one PCIe link, so the contention-inflated H->D (~42 ms) has
+  nothing uncontended to hide behind, and the required pinned-staging memcpy re-adds
+  the 33.5 MB copy iter 8 removed (~3 ms) with no offsetting gain. This closes the
+  **GPU-side half** of lever (b); the **read-side half** (background-thread prefetch
+  of `bd_read`, the 42% component) is untested and is the real prize — a different
+  change (psexp/BD-loop, all MPI stays on the main thread, only GIL-releasing
+  `os.pread` moves to the reader thread). Logs `bench_mpi_sweep/ralph_tmp/async_*.log`.
 - 2026-07-10 (iter 11): **PS_EB_NODES=1/2/4 re-measured on the seg-h2d fast path —
   EB count is a DEAD END.** At fixed 32 BD, aggregate throughput is flat across
   EB=1/2/4 (116.7 / 117.9 / 117.5 Hz, within 1% and inside the 113.9–121.0 FFB
