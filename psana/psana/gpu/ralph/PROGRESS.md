@@ -1230,3 +1230,84 @@ whether `eb_wait` — now ~30% of counted delivery with a single EB serving 32 B
 becomes the multi-node ceiling, which would put PS_EB_NODES>1 in a genuinely different
 regime than iter 11's single-node flat result. Second choice remains the real
 double-buffered read-prefetch (zero-net-I/O), but iters 12-14 leaned CAUTION on it.
+
+---
+
+## 2026-07-10 — Iteration 16 (multi-node re-measure on r47 AFTER the two per-rank wins — the ~300 Hz plateau HELD at 284 Hz; multi-node ceiling is bd_read/storage-bound, eb_wait is negligible — REFUTES the "single EB serving 64 BD becomes the ceiling" hypothesis)
+
+**Task:** iter 15's recommended lever — re-measure the multi-node plateau on the r47
+reference. The historical 2-node/64-BD number (~295 Hz on r387, now purged) was measured
+BEFORE copy=False (+30%) + seg-h2d (+32%) landed — the two wins that lifted single-node
+32-BD from 210 → 337 Hz (+~70%). Open question: did those per-rank wins move the multi-node
+plateau, and does eb_wait (a single EB serving 64 BD) become the new ceiling? One variable:
+node count (single→two nodes at 32 BD/node), same r47 window.
+
+**What I did:**
+- Added `bench_mpi_sweep/mn2x32_r47.sbatch`: 2 nodes × 33 tasks = 66 ranks (smd0 + 1 EB +
+  64 BD). Designed to run single-node (34-rank) and two-node (66-rank) configs WITHIN THE
+  SAME allocation, bracketed single/multi/single, to control the window/cache regime (the
+  dominant run-to-run confound, iters 13-14). `--wait-split` (bit-exact additive
+  instrumentation, iter 15) for the eb_wait/bd_read attribution.
+- Submitted job 31291349 (sdfampere001,003), r47/FFB, `-n 200 --warmup 10`.
+- **The single-node bracket configs FAILED** (exit 213, "Out of resource"): SLURM allocated
+  exactly 33 slots/node, and the single-node layout needs 34 ranks (smd0+EB+32 BD) on one
+  node. `mpirun -H node:34` can't map 34 onto 33 slots. The two-node config (33/node, maps
+  exactly) succeeded — that is the headline. Fix for a follow-up: add `--oversubscribe` to
+  the single-node lines.
+
+**Numbers (r47, FFB, A100, 2 nodes × 32 BD = 64 BD ranks, aggregate; log
+`bench_mpi_sweep/sweep_mn2x32_r47.log`, job 31291349, wall 142s):**
+
+| metric | 2-node / 64 BD (this iter) | single-node / 32 BD (iter 15, same day) | historical 2-node (r387, pre-wins) |
+|---|---:|---:|---:|
+| **aggregate rate** | **284.4 Hz** | 337.2 Hz | ~295 Hz |
+| per-rank rate | 4.44 Hz | ~10.5 Hz | — |
+| per-rank wall | 225.0 ms/event | ~95 ms/event | — |
+| wait (gen advance) | 218.1 | — | — |
+| &nbsp;&nbsp;eb_wait | **9.15** | ~28 | — |
+| &nbsp;&nbsp;bd_read (os.pread FFB) | **133.1** | 43.6 | — |
+| H→D | 8.11 | ~23 | — |
+| kernel | 0.65 | ~1.0 | — |
+
+**Findings:**
+1. **The multi-node plateau HELD — it did NOT move with the per-rank wins.** 284 Hz now vs
+   ~295 Hz historical (within window variance), despite copy=False + seg-h2d lifting
+   single-node 32-BD by +70% (210 → 337 Hz). The two host-memcpy eliminations that dominate
+   the single-node win do NOT transfer to the multi-node aggregate. The §1 open question —
+   "psana plateaus ~300 Hz while raw storage allows ~450+ Hz at 2 nodes" — **survives the
+   per-rank optimization campaign intact.**
+2. **The multi-node ceiling is bd_read/STORAGE-bound, NOT the serving chain.** bd_read =
+   133 ms/event = **59% of the 225 ms per-rank wall**; eb_wait = **9.15 ms = 4%**. A single
+   EB serving 64 BD is NOT the bottleneck — this **REFUTES iter 15's hypothesis** that
+   eb_wait becomes the multi-node ceiling and puts PS_EB_NODES>1 back to a dead end at this
+   layout (consistent with iter 11's single-node flat PS_EB_NODES result, for the right
+   reason now: EB simply isn't where the time goes).
+3. **bd_read is where the multi-node inflation lives**, but the magnitude vs single-node
+   (43.6 → 133 ms, 3x) is CONFOUNDED by window/cache state — iters 13-14 showed bd_read
+   swings 4-5x cold-vs-warm, and the single-node 43.6 (iter 15) was a different node/time.
+   I could NOT get a same-window single-node number this iter because the bracket configs
+   failed to launch. So the 3x is NOT cleanly attributable to multi-node storage contention
+   vs a colder window. What IS clean: at THIS window, at 64 BD on 2 nodes, storage read is
+   59% of the wall. Aggregate read demand = 284 Hz × 33.5 MB = 9.5 GB/s across 2 nodes =
+   4.76 GB/s/node = ~60% of the 7.9 GB/s/node FFB ceiling (TASK.md) — bandwidth-limited but
+   not fully storage-saturated, consistent with iter 5's per-rank pipeline being
+   serialization-bound (plateau ~16 BD/node), not latency-bound.
+
+**Keep/revert:** KEEP `mn2x32_r47.sbatch` (the r47 multi-node template; the old mn2x32.sbatch
+pointed at purged r387). No numeric path touched (only `--wait-split`, already bit-exact per
+iter 15) — correctness gate not triggered. No throughput change landed; this iteration buys
+the post-wins multi-node anchor (284 Hz) + the attribution that kills the eb_wait-ceiling
+hypothesis.
+
+**Recommended next step:** the multi-node ceiling is now attributed to bd_read
+(storage/read serialization), not the serving chain — but the single-node vs multi-node
+per-rank bd_read comparison is confounded by window state. Two clean follow-ups, in order:
+(a) **get the same-window single-node number** — resubmit mn2x32_r47.sbatch with
+`--oversubscribe` on the single-node lines so the bracket lands, giving an in-allocation
+32-BD→64-BD scaling ratio that isolates node-count from window; if that ratio is ≈1x
+(negative scaling) the storage-contention story is confirmed, if ≈2x the plateau is a
+per-node saturation the historical number just under-sampled. (b) If read is confirmed the
+multi-node wall, the lever is **per-node reader concurrency vs FFB saturation** — iter 5
+found the per-node pipeline plateaus ~16 BD; test whether fewer-but-fatter readers or a
+node-local staging tier (DEFERRED/TASK item 2, the 585 Hz warm baseline hint from iter 13)
+lifts the per-node storage ceiling. Prefetch stays CAUTION (iters 12-14).

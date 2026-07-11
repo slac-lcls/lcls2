@@ -1,0 +1,21 @@
+/sdf/scratch/users/a/ajshack/lcls2
+[PSANA-INFO RANK:0 1783727896.107999232] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=3
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 2] GPU results (550 events, warmup=10, d2h=no):
+  rate:        41.4 Hz
+  wait:        12.002 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        7.931 ms/event (det.raw.raw array-locate)
+  H->D:        3.915 ms/event
+  kernel:      0.316 ms/event
+  sum:         24.164 ms/event  (vs 24.168 ms/event wall)
+
+[aggregate] BD ranks: 1   events measured: 550
+  aggregate rate:   41.4 Hz
+  per-rank rate:    41.38 Hz (mean)
+  wait:             12.002 ms/event (gen advance = bigdata read + EB/MPI)
+  read:             7.931 ms/event (det.raw.raw array-locate)
+  H->D:             3.915 ms/event
+  kernel:           0.316 ms/event
+  sum:              24.164 ms/event  (vs 24.168 ms/event per-rank wall)
+[1783727913.603739] [sdfampere029:3385701:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5652c9d7bac0 was not matched

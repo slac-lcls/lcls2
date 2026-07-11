@@ -1,0 +1,11 @@
+=== 20:40:50 a_seg (flags='--seg-h2d' cap=640) -> bench_mpi_sweep/ralph_tmp/probecap_a_seg_204050.log ===
+  aggregate rate:   118.9 Hz
+=== 20:43:24 b_probe (flags='--reader-probe' cap=640) -> bench_mpi_sweep/ralph_tmp/probecap_b_probe_204050.log ===
+  aggregate rate:   46.2 Hz
+  reader-probe:     7530 MB/s aggregate background read (235 MB/s/rank mean over 32 ranks)
+=== 20:47:38 c_probe (flags='--reader-probe' cap=640) -> bench_mpi_sweep/ralph_tmp/probecap_c_probe_204050.log ===
+  aggregate rate:   43.8 Hz
+  reader-probe:     7729 MB/s aggregate background read (242 MB/s/rank mean over 32 ranks)
+=== 20:51:59 d_seg (flags='--seg-h2d' cap=640) -> bench_mpi_sweep/ralph_tmp/probecap_d_seg_204050.log ===
+  aggregate rate:   123.1 Hz
+=== DONE 204050 ===

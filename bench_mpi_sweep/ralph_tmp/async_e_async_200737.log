@@ -1,0 +1,137 @@
+[PSANA-INFO RANK:0 1783739313.786195456] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 21] GPU results (157 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 6] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 27] GPU results (166 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 33] GPU results (214 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 7] GPU results (157 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 2] GPU results (162 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 28] GPU results (164 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 5] GPU results (161 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 19] GPU results (163 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 20] GPU results (164 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 13] GPU results (159 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 14] GPU results (168 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 9] GPU results (174 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 16] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 32] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 26] GPU results (163 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 10] GPU results (164 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 31] GPU results (162 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 15] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 4] GPU results (161 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 18] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 25] GPU results (158 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 29] GPU results (164 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 12] GPU results (183 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 23] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 8] GPU results (179 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 30] GPU results (158 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 3] GPU results (159 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 24] GPU results (154 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 17] GPU results (154 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 22] GPU results (156 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[rank 11] GPU results (156 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  (async-prefetch pipelined; depth=2, wall-clock rate only per §6 — H->D/kernel not split)
+
+[aggregate] BD ranks: 32   events measured: 5280
+  aggregate rate:   117.9 Hz
+  per-rank rate:    3.68 Hz (mean)
+  H->D:             0.000 ms/event (mean)
+  kernel:           0.000 ms/event (mean)
+[1783739389.760201] [sdfampere029:550474:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x557d429d54c0 was not matched

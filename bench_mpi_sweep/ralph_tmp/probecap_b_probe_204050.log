@@ -1,0 +1,202 @@
+[PSANA-INFO RANK:0 1783741462.672626432] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 33] GPU results (201 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        143.630 ms/event
+  kernel:      7.481 ms/event
+  reader-probe:240 MB/s background read (this rank)
+
+[rank 25] GPU results (201 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        141.791 ms/event
+  kernel:      4.495 ms/event
+  reader-probe:241 MB/s background read (this rank)
+
+[rank 15] GPU results (196 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        146.352 ms/event
+  kernel:      4.875 ms/event
+  reader-probe:229 MB/s background read (this rank)
+
+[rank 18] GPU results (201 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        137.677 ms/event
+  kernel:      5.359 ms/event
+  reader-probe:244 MB/s background read (this rank)
+
+[rank 24] GPU results (198 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        141.943 ms/event
+  kernel:      6.650 ms/event
+  reader-probe:244 MB/s background read (this rank)
+
+[rank 5] GPU results (205 events, warmup=10, d2h=no):
+  rate:        1.4 Hz
+  H->D:        133.741 ms/event
+  kernel:      5.470 ms/event
+  reader-probe:257 MB/s background read (this rank)
+
+[rank 21] GPU results (222 events, warmup=10, d2h=no):
+  rate:        1.4 Hz
+  H->D:        138.028 ms/event
+  kernel:      5.599 ms/event
+  reader-probe:187 MB/s background read (this rank)
+
+[rank 30] GPU results (212 events, warmup=10, d2h=no):
+  rate:        1.4 Hz
+  H->D:        138.241 ms/event
+  kernel:      4.950 ms/event
+  reader-probe:240 MB/s background read (this rank)
+
+[rank 16] GPU results (200 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        142.519 ms/event
+  kernel:      4.922 ms/event
+  reader-probe:238 MB/s background read (this rank)
+
+[rank 4] GPU results (194 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        152.958 ms/event
+  kernel:      6.174 ms/event
+  reader-probe:242 MB/s background read (this rank)
+
+[rank 27] GPU results (201 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        147.517 ms/event
+  kernel:      4.312 ms/event
+  reader-probe:242 MB/s background read (this rank)
+
+[rank 10] GPU results (198 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        141.809 ms/event
+  kernel:      5.929 ms/event
+  reader-probe:242 MB/s background read (this rank)
+
+[rank 6] GPU results (198 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        151.636 ms/event
+  kernel:      5.226 ms/event
+  reader-probe:242 MB/s background read (this rank)
+
+[rank 29] GPU results (198 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        141.313 ms/event
+  kernel:      5.827 ms/event
+  reader-probe:221 MB/s background read (this rank)
+
+[rank 11] GPU results (196 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        140.926 ms/event
+  kernel:      5.268 ms/event
+  reader-probe:250 MB/s background read (this rank)
+
+[rank 12] GPU results (199 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        141.228 ms/event
+  kernel:      4.668 ms/event
+  reader-probe:254 MB/s background read (this rank)
+
+[rank 17] GPU results (200 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        149.973 ms/event
+  kernel:      4.299 ms/event
+  reader-probe:245 MB/s background read (this rank)
+
+[rank 28] GPU results (195 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+
+[rank 14] GPU results (190 events, warmup=10, d2h=no):
+  H->D:        141.176 ms/event
+  kernel:      4.230 ms/event
+  reader-probe:190 MB/s background read (this rank)
+  rate:        1.3 Hz
+  H->D:        147.034 ms/event
+  kernel:      4.811 ms/event
+  reader-probe:185 MB/s background read (this rank)
+
+[rank 31] GPU results (192 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        145.595 ms/event
+  kernel:      6.837 ms/event
+  reader-probe:240 MB/s background read (this rank)
+
+[rank 13] GPU results (199 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        143.545 ms/event
+  kernel:      4.878 ms/event
+  reader-probe:238 MB/s background read (this rank)
+
+[rank 7] GPU results (198 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        145.857 ms/event
+  kernel:      5.217 ms/event
+  reader-probe:183 MB/s background read (this rank)
+
+[rank 8] GPU results (200 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        139.644 ms/event
+  kernel:      4.014 ms/event
+  reader-probe:235 MB/s background read (this rank)
+
+[rank 2] GPU results (201 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        140.239 ms/event
+  kernel:      5.881 ms/event
+  reader-probe:236 MB/s background read (this rank)
+
+[rank 22] GPU results (205 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        142.689 ms/event
+  kernel:      4.348 ms/event
+  reader-probe:222 MB/s background read (this rank)
+
+[rank 20] GPU results (206 events, warmup=10, d2h=no):
+  rate:        1.4 Hz
+  H->D:        133.525 ms/event
+  kernel:      6.199 ms/event
+  reader-probe:253 MB/s background read (this rank)
+
+[rank 3] GPU results (207 events, warmup=10, d2h=no):
+  rate:        1.4 Hz
+  H->D:        139.907 ms/event
+  kernel:      4.252 ms/event
+  reader-probe:257 MB/s background read (this rank)
+
+[rank 19] GPU results (197 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        138.540 ms/event
+  kernel:      5.969 ms/event
+  reader-probe:254 MB/s background read (this rank)
+
+[rank 26] GPU results (200 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        143.521 ms/event
+  kernel:      4.498 ms/event
+  reader-probe:254 MB/s background read (this rank)
+
+[rank 23] GPU results (838 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  H->D:        40.725 ms/event
+  kernel:      1.402 ms/event
+  reader-probe:248 MB/s background read (this rank)
+
+[rank 32] GPU results (203 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        139.792 ms/event
+  kernel:      6.433 ms/event
+  reader-probe:242 MB/s background read (this rank)
+
+[rank 9] GPU results (189 events, warmup=10, d2h=no):
+  rate:        1.3 Hz
+  H->D:        148.168 ms/event
+  kernel:      4.100 ms/event
+  reader-probe:233 MB/s background read (this rank)
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   46.2 Hz
+  per-rank rate:    1.45 Hz (mean)
+  H->D:             139.414 ms/event (mean)
+  kernel:           5.143 ms/event (mean)
+  reader-probe:     7530 MB/s aggregate background read (235 MB/s/rank mean over 32 ranks)
+[1783741653.720707] [sdfampere029:798236:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5558ea8bb040 was not matched

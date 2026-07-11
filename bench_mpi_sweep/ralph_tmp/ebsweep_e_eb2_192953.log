@@ -1,0 +1,301 @@
+[PSANA-INFO RANK:0 1783737664.346647040] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=35
+
+[rank 17] GPU results (179 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  wait:        213.380 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.923 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.584 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        53.742 ms/event (per-seg host->device, no host stack)
+  kernel:      2.068 ms/event
+  sum:         269.190 ms/event  (vs 270.526 ms/event wall; bd_events=227)
+
+[rank 26] GPU results (221 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        194.788 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   65.217 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   80.519 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        51.236 ms/event (per-seg host->device, no host stack)
+  kernel:      1.667 ms/event
+  sum:         247.692 ms/event  (vs 249.693 ms/event wall; bd_events=274)
+
+[rank 20] GPU results (172 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        223.258 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   72.533 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.424 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        55.966 ms/event (per-seg host->device, no host stack)
+  kernel:      2.067 ms/event
+  sum:         281.290 ms/event  (vs 283.415 ms/event wall; bd_events=221)
+
+[rank 33] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        222.112 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.715 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.502 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.607 ms/event (per-seg host->device, no host stack)
+  kernel:      2.708 ms/event
+  sum:         279.426 ms/event  (vs 281.779 ms/event wall; bd_events=218)
+
+[rank 34] GPU results (166 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        224.470 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   66.971 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   93.718 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        57.667 ms/event (per-seg host->device, no host stack)
+  kernel:      3.257 ms/event
+  sum:         285.394 ms/event  (vs 286.794 ms/event wall; bd_events=214)
+
+[rank 16] GPU results (178 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  wait:        215.108 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   68.818 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   87.715 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.378 ms/event (per-seg host->device, no host stack)
+  kernel:      1.770 ms/event
+  sum:         271.256 ms/event  (vs 273.617 ms/event wall; bd_events=227)
+
+[rank 11] GPU results (176 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        217.638 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   73.984 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   84.238 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.923 ms/event (per-seg host->device, no host stack)
+  kernel:      2.493 ms/event
+  sum:         275.054 ms/event  (vs 276.557 ms/event wall; bd_events=225)
+
+[rank 5] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        223.949 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.238 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   90.289 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        58.378 ms/event (per-seg host->device, no host stack)
+  kernel:      1.905 ms/event
+  sum:         284.232 ms/event  (vs 285.576 ms/event wall; bd_events=219)
+
+[rank 14] GPU results (167 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        226.509 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.403 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   91.841 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        58.799 ms/event (per-seg host->device, no host stack)
+  kernel:      1.757 ms/event
+  sum:         287.066 ms/event  (vs 288.950 ms/event wall; bd_events=215)
+
+[rank 3] GPU results (173 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        225.337 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.520 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   92.045 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.544 ms/event (per-seg host->device, no host stack)
+  kernel:      2.075 ms/event
+  sum:         281.956 ms/event  (vs 284.282 ms/event wall; bd_events=222)
+
+[rank 10] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        218.312 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   68.880 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   88.123 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        58.732 ms/event (per-seg host->device, no host stack)
+  kernel:      2.035 ms/event
+  sum:         279.079 ms/event  (vs 279.964 ms/event wall; bd_events=218)
+
+[rank 19] GPU results (175 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        221.895 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   77.896 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   84.157 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.232 ms/event (per-seg host->device, no host stack)
+  kernel:      1.703 ms/event
+  sum:         277.830 ms/event  (vs 279.502 ms/event wall; bd_events=224)
+
+[rank 12] GPU results (174 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        223.142 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   76.359 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.334 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.258 ms/event (per-seg host->device, no host stack)
+  kernel:      2.660 ms/event
+  sum:         280.059 ms/event  (vs 280.565 ms/event wall; bd_events=223)
+
+[rank 32] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        219.814 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   73.365 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.965 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        56.990 ms/event (per-seg host->device, no host stack)
+  kernel:      2.300 ms/event
+  sum:         279.105 ms/event  (vs 280.675 ms/event wall; bd_events=218)
+
+[rank 7] GPU results (170 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        219.303 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   74.042 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.480 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        52.695 ms/event (per-seg host->device, no host stack)
+  kernel:      1.368 ms/event
+  sum:         273.366 ms/event  (vs 275.273 ms/event wall; bd_events=217)
+
+[rank 8] GPU results (168 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        222.148 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   73.166 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   88.245 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        54.077 ms/event (per-seg host->device, no host stack)
+  kernel:      2.390 ms/event
+  sum:         278.615 ms/event  (vs 280.186 ms/event wall; bd_events=215)
+
+[rank 24] GPU results (169 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        224.539 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.327 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   90.672 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        57.608 ms/event (per-seg host->device, no host stack)
+  kernel:      1.359 ms/event
+  sum:         283.506 ms/event  (vs 285.752 ms/event wall; bd_events=218)
+
+[rank 21] GPU results (176 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        215.594 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   72.913 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   83.123 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        57.441 ms/event (per-seg host->device, no host stack)
+  kernel:      1.882 ms/event
+  sum:         274.917 ms/event  (vs 276.567 ms/event wall; bd_events=225)
+
+[rank 27] GPU results (180 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        216.818 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.161 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.975 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        63.052 ms/event (per-seg host->device, no host stack)
+  kernel:      1.883 ms/event
+  sum:         281.753 ms/event  (vs 282.924 ms/event wall; bd_events=231)
+
+[rank 15] GPU results (318 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        139.371 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   49.303 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   60.547 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        38.039 ms/event (per-seg host->device, no host stack)
+  kernel:      1.372 ms/event
+  sum:         178.782 ms/event  (vs 179.768 ms/event wall; bd_events=373)
+
+[rank 22] GPU results (174 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        222.393 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   72.097 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.502 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        56.747 ms/event (per-seg host->device, no host stack)
+  kernel:      2.027 ms/event
+  sum:         281.168 ms/event  (vs 283.427 ms/event wall; bd_events=223)
+
+[rank 25] GPU results (162 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        233.671 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   72.230 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   95.068 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        60.011 ms/event (per-seg host->device, no host stack)
+  kernel:      1.980 ms/event
+  sum:         295.661 ms/event  (vs 297.712 ms/event wall; bd_events=211)
+
+[rank 9] GPU results (172 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+
+[rank 31] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        225.276 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   71.902 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.520 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        61.227 ms/event (per-seg host->device, no host stack)
+  kernel:      2.191 ms/event
+  sum:         288.695 ms/event  (vs 290.885 ms/event wall; bd_events=213)
+
+[rank 30] GPU results (177 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        215.591 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   68.011 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.159 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        56.200 ms/event (per-seg host->device, no host stack)
+  kernel:      2.758 ms/event
+  sum:         274.549 ms/event  (vs 276.089 ms/event wall; bd_events=226)
+
+[rank 29] GPU results (177 events, warmup=10, d2h=no):
+  rate:        3.6 Hz
+  wait:        218.053 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   70.829 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   86.828 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        56.738 ms/event (per-seg host->device, no host stack)
+  kernel:      1.751 ms/event
+  sum:         276.541 ms/event  (vs 278.046 ms/event wall; bd_events=226)
+  wait:        222.046 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   71.108 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.179 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        58.256 ms/event (per-seg host->device, no host stack)
+  kernel:      1.919 ms/event
+  sum:         282.221 ms/event  (vs 283.467 ms/event wall; bd_events=221)
+
+[rank 6] GPU results (167 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        226.091 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   72.793 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   88.934 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        53.989 ms/event (per-seg host->device, no host stack)
+  kernel:      1.903 ms/event
+  sum:         281.983 ms/event  (vs 283.634 ms/event wall; bd_events=215)
+
+[rank 23] GPU results (167 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        228.292 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   71.342 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   92.166 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        59.447 ms/event (per-seg host->device, no host stack)
+  kernel:      2.600 ms/event
+  sum:         290.339 ms/event  (vs 293.501 ms/event wall; bd_events=216)
+
+[rank 18] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        230.166 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   73.439 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   91.645 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        59.060 ms/event (per-seg host->device, no host stack)
+  kernel:      2.136 ms/event
+  sum:         291.362 ms/event  (vs 293.496 ms/event wall; bd_events=214)
+
+[rank 28] GPU results (163 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        230.485 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   73.964 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   89.961 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        61.632 ms/event (per-seg host->device, no host stack)
+  kernel:      2.161 ms/event
+  sum:         294.277 ms/event  (vs 295.902 ms/event wall; bd_events=212)
+
+[rank 13] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        222.787 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   68.500 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   92.688 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        56.678 ms/event (per-seg host->device, no host stack)
+  kernel:      2.080 ms/event
+  sum:         281.546 ms/event  (vs 283.672 ms/event wall; bd_events=212)
+
+[rank 4] GPU results (165 events, warmup=10, d2h=no):
+  rate:        3.4 Hz
+  wait:        232.721 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   75.359 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   91.196 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        58.426 ms/event (per-seg host->device, no host stack)
+  kernel:      2.232 ms/event
+  sum:         293.378 ms/event  (vs 295.530 ms/event wall; bd_events=214)
+
+[aggregate] BD ranks: 32   events measured: 5661
+  aggregate rate:   115.4 Hz
+  per-rank rate:    3.61 Hz (mean)
+  wait:             219.221 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:        70.885 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:        87.761 ms/event (os.pread bigdata xtc off FFB)
+    (eb_wait+bd_read: 158.645 ms/event vs wait 219.221)
+  H->D:             56.243 ms/event
+  kernel:           2.077 ms/event
+  sum:              277.540 ms/event  (vs 277.279 ms/event per-rank wall)
+[1783737745.811851] [sdfampere029:358714:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x563889aebe00 was not matched

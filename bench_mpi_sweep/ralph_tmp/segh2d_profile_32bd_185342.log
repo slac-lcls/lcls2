@@ -1,0 +1,236 @@
+[PSANA-INFO RANK:0 1783734883.628912384] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 21] GPU results (216 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        176.753 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        45.788 ms/event (per-seg host->device, no host stack)
+  kernel:      1.703 ms/event
+  sum:         224.244 ms/event  (vs 225.276 ms/event wall)
+
+[rank 12] GPU results (220 events, warmup=10, d2h=no):
+  rate:        4.5 Hz
+  wait:        176.841 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        42.369 ms/event (per-seg host->device, no host stack)
+  kernel:      1.599 ms/event
+  sum:         220.808 ms/event  (vs 222.607 ms/event wall)
+
+[rank 16] GPU results (214 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        174.774 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        46.285 ms/event (per-seg host->device, no host stack)
+  kernel:      2.236 ms/event
+  sum:         223.295 ms/event  (vs 224.856 ms/event wall)
+
+[rank 25] GPU results (230 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        182.081 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.333 ms/event (per-seg host->device, no host stack)
+  kernel:      1.530 ms/event
+  sum:         230.944 ms/event  (vs 232.231 ms/event wall)
+
+[rank 23] GPU results (224 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        183.132 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        46.521 ms/event (per-seg host->device, no host stack)
+  kernel:      2.192 ms/event
+  sum:         231.845 ms/event  (vs 233.204 ms/event wall)
+
+[rank 18] GPU results (215 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        186.800 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        45.750 ms/event (per-seg host->device, no host stack)
+  kernel:      1.818 ms/event
+  sum:         234.368 ms/event  (vs 235.868 ms/event wall)
+
+[rank 13] GPU results (466 events, warmup=10, d2h=no):
+  rate:        8.0 Hz
+  wait:        95.919 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        27.011 ms/event (per-seg host->device, no host stack)
+  kernel:      1.055 ms/event
+  sum:         123.985 ms/event  (vs 124.779 ms/event wall)
+
+[rank 8] GPU results (220 events, warmup=10, d2h=no):
+  rate:        4.6 Hz
+  wait:        171.796 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        40.749 ms/event (per-seg host->device, no host stack)
+  kernel:      1.713 ms/event
+  sum:         214.258 ms/event  (vs 215.147 ms/event wall)
+
+[rank 6] GPU results (209 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        179.940 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        45.472 ms/event (per-seg host->device, no host stack)
+  kernel:      2.450 ms/event
+  sum:         227.862 ms/event  (vs 229.858 ms/event wall)
+
+[rank 28] GPU results (204 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        185.386 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        46.419 ms/event (per-seg host->device, no host stack)
+  kernel:      2.161 ms/event
+  sum:         233.966 ms/event  (vs 235.223 ms/event wall)
+
+[rank 26] GPU results (202 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        188.064 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        48.325 ms/event (per-seg host->device, no host stack)
+  kernel:      1.987 ms/event
+  sum:         238.376 ms/event  (vs 239.164 ms/event wall)
+
+[rank 3] GPU results (218 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        183.662 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        44.421 ms/event (per-seg host->device, no host stack)
+  kernel:      2.375 ms/event
+  sum:         230.458 ms/event  (vs 232.275 ms/event wall)
+
+[rank 15] GPU results (202 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        183.926 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.907 ms/event (per-seg host->device, no host stack)
+  kernel:      2.148 ms/event
+  sum:         233.981 ms/event  (vs 235.793 ms/event wall)
+
+[rank 10] GPU results (212 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        191.756 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        49.783 ms/event (per-seg host->device, no host stack)
+  kernel:      1.397 ms/event
+  sum:         242.936 ms/event  (vs 246.204 ms/event wall)
+
+[rank 7] GPU results (203 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        192.328 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.292 ms/event (per-seg host->device, no host stack)
+  kernel:      1.775 ms/event
+  sum:         241.395 ms/event  (vs 243.569 ms/event wall)
+
+[rank 4] GPU results (204 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        184.406 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        45.271 ms/event (per-seg host->device, no host stack)
+  kernel:      2.048 ms/event
+  sum:         231.724 ms/event  (vs 233.217 ms/event wall)
+
+[rank 11] GPU results (196 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        192.660 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        48.761 ms/event (per-seg host->device, no host stack)
+  kernel:      2.269 ms/event
+  sum:         243.690 ms/event  (vs 245.583 ms/event wall)
+
+[rank 24] GPU results (212 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        181.399 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        42.747 ms/event (per-seg host->device, no host stack)
+  kernel:      1.240 ms/event
+  sum:         225.386 ms/event  (vs 226.543 ms/event wall)
+
+[rank 31] GPU results (260 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  wait:        161.673 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        44.138 ms/event (per-seg host->device, no host stack)
+  kernel:      1.994 ms/event
+  sum:         207.805 ms/event  (vs 208.298 ms/event wall)
+
+[rank 20] GPU results (215 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        181.062 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        43.191 ms/event (per-seg host->device, no host stack)
+  kernel:      1.616 ms/event
+  sum:         225.868 ms/event  (vs 226.706 ms/event wall)
+
+[rank 29] GPU results (211 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        183.798 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        43.826 ms/event (per-seg host->device, no host stack)
+  kernel:      1.603 ms/event
+  sum:         229.227 ms/event  (vs 230.895 ms/event wall)
+
+[rank 27] GPU results (218 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        179.553 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        44.599 ms/event (per-seg host->device, no host stack)
+  kernel:      1.941 ms/event
+  sum:         226.093 ms/event  (vs 226.911 ms/event wall)
+
+[rank 2] GPU results (204 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        188.141 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        46.284 ms/event (per-seg host->device, no host stack)
+  kernel:      2.019 ms/event
+  sum:         236.444 ms/event  (vs 237.854 ms/event wall)
+
+[rank 9] GPU results (204 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        185.418 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        48.733 ms/event (per-seg host->device, no host stack)
+  kernel:      1.456 ms/event
+  sum:         235.606 ms/event  (vs 237.314 ms/event wall)
+
+[rank 17] GPU results (200 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        187.437 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.718 ms/event (per-seg host->device, no host stack)
+  kernel:      2.042 ms/event
+  sum:         237.197 ms/event  (vs 238.269 ms/event wall)
+
+[rank 33] GPU results (197 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        195.055 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.026 ms/event (per-seg host->device, no host stack)
+  kernel:      2.343 ms/event
+  sum:         244.424 ms/event  (vs 245.756 ms/event wall)
+
+[rank 30] GPU results (196 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        192.375 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.115 ms/event (per-seg host->device, no host stack)
+  kernel:      1.567 ms/event
+  sum:         241.057 ms/event  (vs 243.161 ms/event wall)
+
+[rank 22] GPU results (214 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        178.654 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        44.241 ms/event (per-seg host->device, no host stack)
+  kernel:      1.436 ms/event
+  sum:         224.331 ms/event  (vs 226.496 ms/event wall)
+
+[rank 19] GPU results (234 events, warmup=10, d2h=no):
+  rate:        4.4 Hz
+  wait:        179.199 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        46.414 ms/event (per-seg host->device, no host stack)
+  kernel:      1.738 ms/event
+  sum:         227.352 ms/event  (vs 228.588 ms/event wall)
+
+[rank 5] GPU results (202 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        184.793 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        47.567 ms/event (per-seg host->device, no host stack)
+  kernel:      2.280 ms/event
+  sum:         234.640 ms/event  (vs 236.183 ms/event wall)
+
+[rank 14] GPU results (220 events, warmup=10, d2h=no):
+  rate:        4.5 Hz
+  wait:        175.281 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        44.194 ms/event (per-seg host->device, no host stack)
+  kernel:      1.380 ms/event
+  sum:         220.855 ms/event  (vs 221.937 ms/event wall)
+
+[rank 32] GPU results (198 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        191.812 ms/event (gen advance = bigdata read + EB/MPI)
+  H->D:        48.662 ms/event (per-seg host->device, no host stack)
+  kernel:      1.842 ms/event
+  sum:         242.317 ms/event  (vs 245.065 ms/event wall)
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   141.5 Hz
+  per-rank rate:    4.42 Hz (mean)
+  wait:             180.496 ms/event (gen advance = bigdata read + EB/MPI)
+  read:             0.000 ms/event (det.raw.raw array-locate)
+  H->D:             45.372 ms/event
+  kernel:           1.842 ms/event
+  sum:              227.711 ms/event  (vs 226.146 ms/event per-rank wall)
+[1783734964.346002] [sdfampere029:38538:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5567809524c0 was not matched

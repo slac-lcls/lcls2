@@ -1,0 +1,23 @@
+[PSANA-INFO RANK:0 1783735791.711090176] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=3
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 2] GPU results (110 events, warmup=10, d2h=no):
+  rate:        73.4 Hz
+  wait:        9.784 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   0.047 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   8.145 ms/event (os.pread bigdata xtc off FFB)
+  H->D:        3.491 ms/event (per-seg host->device, no host stack)
+  kernel:      0.320 ms/event
+  sum:         13.596 ms/event  (vs 13.623 ms/event wall; bd_events=111)
+
+[aggregate] BD ranks: 1   events measured: 110
+  aggregate rate:   73.4 Hz
+  per-rank rate:    73.41 Hz (mean)
+  wait:             9.784 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:        0.047 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:        8.145 ms/event (os.pread bigdata xtc off FFB)
+    (eb_wait+bd_read: 8.192 ms/event vs wait 9.784)
+  H->D:             3.491 ms/event
+  kernel:           0.320 ms/event
+  sum:              13.596 ms/event  (vs 13.623 ms/event per-rank wall)
+[1783735796.280826] [sdfampere029:148121:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5596c493a640 was not matched

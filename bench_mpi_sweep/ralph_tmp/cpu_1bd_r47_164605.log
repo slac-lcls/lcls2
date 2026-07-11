@@ -1,0 +1,12 @@
+/sdf/scratch/users/a/ajshack/lcls2
+[PSANA-INFO RANK:0 1783727197.002380800] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=3
+
+[rank 2] CPU results (220 events, warmup=10):
+  rate:        22.5 Hz
+  CPU calib:   31.589 ms/event
+
+[aggregate] BD ranks: 1   events measured: 220
+  aggregate rate:   22.5 Hz
+  per-rank rate:    22.53 Hz (mean)
+  CPU calib:        31.589 ms/event (mean)
+[1783727207.860975] [sdfampere029:3303551:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x559b088e8680 was not matched

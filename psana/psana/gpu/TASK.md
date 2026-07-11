@@ -144,6 +144,20 @@
     at the same layout. psana attains 65% of raw storage at 2 nodes vs
     89% at 1 node. **Verdict: the multi-node shortfall is a real psana
     inefficiency, not just under-concurrency.**
+  - **RE-MEASURED post-wins on r47 (2026-07-10, iter 16, job 31291349, 64
+    BD, log `bench_mpi_sweep/sweep_mn2x32_r47.log`): 284.4 Hz** — the
+    plateau HELD. Despite copy=False + seg-h2d lifting single-node 32-BD
+    +70% (210 -> 337 Hz), the 2-node aggregate is unchanged (~295 -> 284,
+    window variance). `--wait-split` attribution at 64 BD: bd_read 133.1
+    ms/event (59% of the 225 ms/rank wall), eb_wait only 9.15 ms (4%),
+    H->D 8.1, kernel 0.65. So the multi-node ceiling is **bd_read/storage-
+    read-bound, NOT the EB serving chain** — refutes the "single EB serving
+    64 BD becomes the ceiling" hypothesis; PS_EB_NODES>1 stays a dead end.
+    Aggregate read demand 9.5 GB/s / 2 nodes = 4.76 GB/s/node = ~60% of the
+    7.9 GB/s/node FFB ceiling. (Same-window single-node control was lost:
+    the 34-rank bracket configs failed to launch on 33 slots/node — needs
+    --oversubscribe to retry, so the 3x bd_read growth vs iter-15's 43.6 ms
+    single-node is confounded by cold/warm window state.)
   - Synthesis (two ceilings, dominating at different scales):
       * Storage: per-node ~7.9 GB/s (~235 Hz/node), scales with nodes.
       * psana serving/pipeline: a ~260-306 Hz plateau independent of node

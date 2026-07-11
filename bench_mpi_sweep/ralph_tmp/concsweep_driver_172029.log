@@ -1,0 +1,206 @@
+/sdf/scratch/users/a/ajshack/lcls2
+### BD=8 NPROC=10 17:20:32
+  H->D:        17.450 ms/event
+  kernel:      0.763 ms/event
+  H->D:        17.838 ms/event
+  kernel:      0.743 ms/event
+  H->D:        17.441 ms/event
+  kernel:      0.717 ms/event
+  H->D:        12.229 ms/event
+  kernel:      0.677 ms/event
+  H->D:        13.951 ms/event
+  kernel:      0.726 ms/event
+  H->D:        14.429 ms/event
+  kernel:      0.725 ms/event
+  H->D:        20.919 ms/event
+  kernel:      0.884 ms/event
+  H->D:        22.026 ms/event
+  kernel:      1.002 ms/event
+[aggregate] BD ranks: 8   events measured: 880
+  aggregate rate:   66.8 Hz
+  H->D:             17.035 ms/event (mean)
+  kernel:           0.780 ms/event (mean)
+
+### BD=16 NPROC=18 17:21:25
+  H->D:        26.113 ms/event
+  kernel:      1.065 ms/event
+  H->D:        24.385 ms/event
+  kernel:      1.062 ms/event
+  H->D:        24.612 ms/event
+  kernel:      1.664 ms/event
+  H->D:        25.473 ms/event
+  kernel:      1.213 ms/event
+  H->D:        25.244 ms/event
+  kernel:      1.275 ms/event
+  H->D:        24.234 ms/event
+  kernel:      1.394 ms/event
+  H->D:        17.711 ms/event
+  kernel:      1.075 ms/event
+  H->D:        26.910 ms/event
+  kernel:      1.119 ms/event
+  H->D:        26.832 ms/event
+  kernel:      1.403 ms/event
+  H->D:        25.296 ms/event
+  kernel:      1.334 ms/event
+  H->D:        26.344 ms/event
+  kernel:      1.199 ms/event
+  H->D:        21.552 ms/event
+  kernel:      1.143 ms/event
+  H->D:        28.158 ms/event
+  kernel:      1.190 ms/event
+  H->D:        25.934 ms/event
+  kernel:      1.090 ms/event
+  H->D:        23.955 ms/event
+  kernel:      1.316 ms/event
+  H->D:        21.445 ms/event
+  kernel:      1.067 ms/event
+[aggregate] BD ranks: 16   events measured: 1760
+  aggregate rate:   83.9 Hz
+  H->D:             24.637 ms/event (mean)
+  kernel:           1.225 ms/event (mean)
+
+### BD=32 NPROC=34 17:22:42
+  H->D:        51.458 ms/event
+  kernel:      2.603 ms/event
+  H->D:        48.249 ms/event
+  kernel:      3.172 ms/event
+  H->D:        30.220 ms/event
+  kernel:      1.438 ms/event
+  H->D:        40.820 ms/event
+  kernel:      1.830 ms/event
+  H->D:        29.601 ms/event
+  H->D:        55.819 ms/event
+  kernel:      4.288 ms/event
+  kernel:      1.664 ms/event
+  H->D:        26.325 ms/event
+  kernel:      1.415 ms/event
+  H->D:        52.747 ms/event
+  kernel:      1.816 ms/event
+  H->D:        55.006 ms/event
+  kernel:      4.097 ms/event
+  H->D:        30.939 ms/event
+  kernel:      2.078 ms/event
+  H->D:        13.508 ms/event
+  kernel:      0.662 ms/event
+  H->D:        39.466 ms/event
+  kernel:      1.556 ms/event
+  H->D:        34.221 ms/event
+  kernel:      1.446 ms/event
+  H->D:        52.249 ms/event
+  kernel:      2.852 ms/event
+  H->D:        50.474 ms/event
+  kernel:      2.419 ms/event
+  H->D:        57.865 ms/event
+  kernel:      2.454 ms/event
+  H->D:        52.354 ms/event
+  kernel:      2.551 ms/event
+  H->D:        45.784 ms/event
+  kernel:      2.613 ms/event
+  H->D:        54.080 ms/event
+  kernel:      2.301 ms/event
+  H->D:        46.027 ms/event
+  kernel:      2.192 ms/event
+  H->D:        50.574 ms/event
+  kernel:      2.546 ms/event
+  H->D:        50.355 ms/event
+  kernel:      2.055 ms/event
+  H->D:        43.926 ms/event
+  kernel:      2.892 ms/event
+  H->D:        53.484 ms/event
+  kernel:      5.407 ms/event
+  H->D:        59.165 ms/event
+  kernel:      4.341 ms/event
+  H->D:        54.970 ms/event
+  kernel:      1.740 ms/event
+  H->D:        53.037 ms/event
+  kernel:      2.650 ms/event
+  H->D:        46.761 ms/event
+  kernel:      1.726 ms/event
+  H->D:        47.166 ms/event
+  kernel:      1.272 ms/event
+  H->D:        51.475 ms/event
+  kernel:      1.827 ms/event
+  H->D:        38.078 ms/event
+  kernel:      2.065 ms/event
+  H->D:        41.382 ms/event
+  kernel:      2.056 ms/event
+[aggregate] BD ranks: 32   events measured: 3520
+  aggregate rate:   84.9 Hz
+  H->D:             45.550 ms/event (mean)
+  kernel:           2.376 ms/event (mean)
+
+### BD=48 NPROC=50 17:25:04
+
+### BD=64 NPROC=66 17:27:24
+
+### BD=32 NPROC=34 17:30:55
+  H->D:        46.966 ms/event
+  kernel:      1.742 ms/event
+  H->D:        50.453 ms/event
+  kernel:      3.032 ms/event
+  H->D:        47.532 ms/event
+  kernel:      2.462 ms/event
+  H->D:        31.811 ms/event
+  kernel:      1.427 ms/event
+  H->D:        32.389 ms/event
+  kernel:      1.262 ms/event
+  H->D:        41.113 ms/event
+  kernel:      1.810 ms/event
+  H->D:        40.408 ms/event
+  kernel:      1.580 ms/event
+  H->D:        26.047 ms/event
+  kernel:      1.279 ms/event
+  H->D:        39.667 ms/event
+  kernel:      2.339 ms/event
+  H->D:        37.607 ms/event
+  kernel:      1.663 ms/event
+  H->D:        44.032 ms/event
+  kernel:      2.460 ms/event
+  H->D:        37.773 ms/event
+  kernel:      1.521 ms/event
+  H->D:        50.883 ms/event
+  kernel:      2.676 ms/event
+  H->D:        43.293 ms/event
+  kernel:      3.391 ms/event
+  H->D:        36.779 ms/event
+  kernel:      1.666 ms/event
+  H->D:        50.516 ms/event
+  kernel:      3.130 ms/event
+  H->D:        41.291 ms/event
+  kernel:      1.707 ms/event
+  H->D:        35.794 ms/event
+  kernel:      1.852 ms/event
+  H->D:        41.494 ms/event
+  kernel:      2.176 ms/event
+  H->D:        54.135 ms/event
+  kernel:      2.724 ms/event
+  H->D:        50.896 ms/event
+  kernel:      1.655 ms/event
+  H->D:        39.230 ms/event
+  kernel:      1.405 ms/event
+  H->D:        33.367 ms/event
+  kernel:      1.594 ms/event
+  H->D:        38.351 ms/event
+  kernel:      1.799 ms/event
+  H->D:        37.573 ms/event
+  kernel:      2.449 ms/event
+  H->D:        46.106 ms/event
+  kernel:      2.413 ms/event
+  H->D:        30.700 ms/event
+  kernel:      1.676 ms/event
+  H->D:        46.494 ms/event
+  kernel:      1.587 ms/event
+  H->D:        45.077 ms/event
+  kernel:      2.046 ms/event
+  H->D:        29.376 ms/event
+  kernel:      1.371 ms/event
+  H->D:        45.363 ms/event
+  kernel:      1.367 ms/event
+  H->D:        41.110 ms/event
+  kernel:      1.409 ms/event
+[aggregate] BD ranks: 32   events measured: 3520
+  aggregate rate:   39.9 Hz
+  H->D:             41.051 ms/event (mean)
+  kernel:           1.958 ms/event (mean)
+
+SWEEP_DONE 17:33:51

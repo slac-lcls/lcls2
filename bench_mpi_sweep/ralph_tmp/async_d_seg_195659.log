@@ -1,0 +1,2 @@
+[PSANA-INFO RANK:0 1783739137.736796416] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%

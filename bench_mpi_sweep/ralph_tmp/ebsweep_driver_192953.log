@@ -1,0 +1,13 @@
+=== 19:30:01 run a_eb1: PS_EB_NODES=1 NPROC=34 ===
+  a_eb1 ->   aggregate rate:   117.9 Hz |     eb_wait:        63.733 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 154.350 ms/event vs wait 212.124)
+=== 19:32:56 run b_eb2: PS_EB_NODES=2 NPROC=35 ===
+  b_eb2 ->   aggregate rate:   120.3 Hz |     eb_wait:        72.996 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 158.535 ms/event vs wait 218.584)
+=== 19:35:21 run c_eb4: PS_EB_NODES=4 NPROC=37 ===
+  c_eb4 ->   aggregate rate:   121.0 Hz |     eb_wait:        75.423 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 155.690 ms/event vs wait 217.967)
+=== 19:37:38 run d_eb4: PS_EB_NODES=4 NPROC=37 ===
+  d_eb4 ->   aggregate rate:   113.9 Hz |     eb_wait:        82.312 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 166.664 ms/event vs wait 232.312)
+=== 19:39:59 run e_eb2: PS_EB_NODES=2 NPROC=35 ===
+  e_eb2 ->   aggregate rate:   115.4 Hz |     eb_wait:        70.885 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 158.645 ms/event vs wait 219.221)
+=== 19:42:30 run f_eb1: PS_EB_NODES=1 NPROC=34 ===
+  f_eb1 ->   aggregate rate:   115.4 Hz |     eb_wait:        68.961 ms/event (BD blocked on EB batch: Probe+Irecv) |     (eb_wait+bd_read: 158.275 ms/event vs wait 217.426)
+=== 19:45:02 DONE ===

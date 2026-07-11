@@ -1,0 +1,329 @@
+/sdf/scratch/users/a/ajshack/lcls2
+### BD=1 NPROC=3 17:48:40
+--- BD=1 result ---
+  rate:        28.1 Hz
+  wait:        13.208 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       9.185 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.008 ms/event (_segments dict lookup)
+    stack:     4.176 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      5.001 ms/event (reshape + final .copy())
+  read2:       9.014 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        3.902 ms/event
+  kernel:      0.321 ms/event
+[aggregate] BD ranks: 1   events measured: 330
+  aggregate rate:   28.1 Hz
+  per-rank rate:    28.06 Hz (mean)
+  wait:             13.208 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:            9.185 ms/event (det.raw.raw 1st call)
+    seg:            0.008 ms/event (_segments dict lookup)
+    stack:          4.176 ms/event (per-seg .raw deserialize + copyto)
+    copy:           5.001 ms/event (reshape + final .copy())
+  read2:            9.014 ms/event (2nd call same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:             3.902 ms/event
+  kernel:           0.321 ms/event
+  (per-rank wall:   35.640 ms/event)
+
+### BD=32 NPROC=34 17:49:23
+--- BD=32 result ---
+  rate:        1.5 Hz
+  wait:        269.621 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       158.211 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.244 ms/event (_segments dict lookup)
+    stack:     67.548 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      90.418 ms/event (reshape + final .copy())
+  read2:       158.702 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        57.786 ms/event
+  kernel:      2.504 ms/event
+  rate:        1.4 Hz
+  wait:        297.540 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       174.585 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.062 ms/event (_segments dict lookup)
+    stack:     75.681 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      98.842 ms/event (reshape + final .copy())
+  read2:       173.660 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        60.650 ms/event
+  kernel:      2.361 ms/event
+  rate:        1.6 Hz
+  wait:        268.726 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       144.544 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.188 ms/event (_segments dict lookup)
+    stack:     60.995 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      83.360 ms/event (reshape + final .copy())
+  read2:       148.554 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        55.126 ms/event
+  kernel:      2.148 ms/event
+  rate:        1.5 Hz
+  wait:        285.956 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       165.985 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.147 ms/event (_segments dict lookup)
+    stack:     68.938 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      96.900 ms/event (reshape + final .copy())
+  read2:       163.928 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        57.611 ms/event
+  kernel:      2.598 ms/event
+  rate:        1.6 Hz
+  wait:        259.855 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       154.256 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.344 ms/event (_segments dict lookup)
+    stack:     63.583 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      90.329 ms/event (reshape + final .copy())
+  read2:       155.399 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        52.167 ms/event
+  kernel:      2.101 ms/event
+  rate:        1.7 Hz
+  wait:        258.008 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       145.419 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.054 ms/event (_segments dict lookup)
+    stack:     60.183 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      85.181 ms/event (reshape + final .copy())
+  read2:       147.719 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.367 ms/event
+  kernel:      2.233 ms/event
+  rate:        1.6 Hz
+  wait:        267.450 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       156.217 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.136 ms/event (_segments dict lookup)
+    stack:     65.267 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      90.814 ms/event (reshape + final .copy())
+  read2:       158.351 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        56.795 ms/event
+  kernel:      3.592 ms/event
+  rate:        1.5 Hz
+  wait:        265.129 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       160.913 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.141 ms/event (_segments dict lookup)
+    stack:     67.375 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      93.398 ms/event (reshape + final .copy())
+  read2:       161.633 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        59.453 ms/event
+  kernel:      1.715 ms/event
+  rate:        1.5 Hz
+  wait:        278.188 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       162.597 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.053 ms/event (_segments dict lookup)
+    stack:     70.219 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      92.325 ms/event (reshape + final .copy())
+  read2:       164.004 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        57.042 ms/event
+  kernel:      3.240 ms/event
+  rate:        1.8 Hz
+  wait:        226.959 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       137.192 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.058 ms/event (_segments dict lookup)
+    stack:     58.010 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      79.124 ms/event (reshape + final .copy())
+  read2:       133.167 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        45.561 ms/event
+  kernel:      1.966 ms/event
+  rate:        1.5 Hz
+  wait:        286.969 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       155.784 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.064 ms/event (_segments dict lookup)
+    stack:     65.970 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      89.751 ms/event (reshape + final .copy())
+  read2:       156.036 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        55.409 ms/event
+  kernel:      2.375 ms/event
+  rate:        1.5 Hz
+  wait:        268.116 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       173.538 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.059 ms/event (_segments dict lookup)
+    stack:     70.418 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      103.061 ms/event (reshape + final .copy())
+  read2:       169.638 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        59.269 ms/event
+  kernel:      1.987 ms/event
+  rate:        1.5 Hz
+  wait:        268.667 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       163.778 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.222 ms/event (_segments dict lookup)
+    stack:     69.955 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      93.601 ms/event (reshape + final .copy())
+  read2:       154.102 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        56.086 ms/event
+  kernel:      2.604 ms/event
+  rate:        1.4 Hz
+  wait:        298.078 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       171.499 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.233 ms/event (_segments dict lookup)
+    stack:     72.795 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      98.471 ms/event (reshape + final .copy())
+  read2:       162.876 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        57.154 ms/event
+  kernel:      2.970 ms/event
+  rate:        1.8 Hz
+  wait:        232.040 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       140.778 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.070 ms/event (_segments dict lookup)
+    stack:     60.169 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      80.539 ms/event (reshape + final .copy())
+  read2:       137.853 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        48.033 ms/event
+  kernel:      2.962 ms/event
+  rate:        1.9 Hz
+  wait:        231.295 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       122.979 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.129 ms/event (_segments dict lookup)
+    stack:     51.113 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      71.737 ms/event (reshape + final .copy())
+  read2:       122.924 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        42.944 ms/event
+  kernel:      2.126 ms/event
+  rate:        1.7 Hz
+  wait:        261.655 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       140.534 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.071 ms/event (_segments dict lookup)
+    stack:     55.930 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      84.533 ms/event (reshape + final .copy())
+  read2:       140.436 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.253 ms/event
+  kernel:      1.719 ms/event
+  rate:        1.6 Hz
+  wait:        253.534 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       148.481 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.190 ms/event (_segments dict lookup)
+    stack:     64.036 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      84.254 ms/event (reshape + final .copy())
+  read2:       146.009 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        53.276 ms/event
+  kernel:      2.919 ms/event
+  rate:        1.7 Hz
+  wait:        253.452 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       144.470 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.058 ms/event (_segments dict lookup)
+    stack:     59.053 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      85.359 ms/event (reshape + final .copy())
+  read2:       143.934 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.807 ms/event
+  kernel:      2.179 ms/event
+  rate:        1.6 Hz
+  wait:        256.137 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       154.511 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.292 ms/event (_segments dict lookup)
+    stack:     63.734 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      90.486 ms/event (reshape + final .copy())
+  read2:       157.219 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.636 ms/event
+  kernel:      2.997 ms/event
+  rate:        1.7 Hz
+  wait:        251.773 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       135.944 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.174 ms/event (_segments dict lookup)
+    stack:     61.628 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      74.142 ms/event (reshape + final .copy())
+  read2:       136.937 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        53.301 ms/event
+  kernel:      2.477 ms/event
+  rate:        1.6 Hz
+  wait:        261.506 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       158.338 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.229 ms/event (_segments dict lookup)
+    stack:     65.137 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      92.972 ms/event (reshape + final .copy())
+  read2:       163.965 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        56.939 ms/event
+  kernel:      2.511 ms/event
+  rate:        1.6 Hz
+  wait:        261.985 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       157.916 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.232 ms/event (_segments dict lookup)
+    stack:     66.299 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      91.384 ms/event (reshape + final .copy())
+  read2:       151.752 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        53.591 ms/event
+  kernel:      2.077 ms/event
+  rate:        1.4 Hz
+  wait:        295.608 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       181.531 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.059 ms/event (_segments dict lookup)
+    stack:     74.479 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      106.993 ms/event (reshape + final .copy())
+  read2:       180.897 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        62.462 ms/event
+  kernel:      2.879 ms/event
+  rate:        1.6 Hz
+  wait:        259.660 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       152.933 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.259 ms/event (_segments dict lookup)
+    stack:     62.280 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      90.394 ms/event (reshape + final .copy())
+  read2:       145.392 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        49.828 ms/event
+  kernel:      2.594 ms/event
+  rate:        1.8 Hz
+  wait:        237.505 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       136.917 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.133 ms/event (_segments dict lookup)
+    stack:     56.918 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      79.866 ms/event (reshape + final .copy())
+  read2:       132.553 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        46.574 ms/event
+  kernel:      1.888 ms/event
+  rate:        1.7 Hz
+  wait:        257.841 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       143.171 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.058 ms/event (_segments dict lookup)
+    stack:     58.782 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      84.331 ms/event (reshape + final .copy())
+  read2:       141.138 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        51.555 ms/event
+  kernel:      2.443 ms/event
+  rate:        1.4 Hz
+  wait:        289.859 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       174.730 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.057 ms/event (_segments dict lookup)
+    stack:     74.288 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      100.385 ms/event (reshape + final .copy())
+  read2:       174.309 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        60.810 ms/event
+  kernel:      2.750 ms/event
+  rate:        1.6 Hz
+  wait:        265.434 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       150.594 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.069 ms/event (_segments dict lookup)
+    stack:     63.039 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      87.486 ms/event (reshape + final .copy())
+  read2:       150.928 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.913 ms/event
+  kernel:      2.816 ms/event
+  rate:        1.6 Hz
+  wait:        256.491 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       154.662 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.061 ms/event (_segments dict lookup)
+    stack:     65.430 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      89.171 ms/event (reshape + final .copy())
+  read2:       150.270 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        53.688 ms/event
+  kernel:      2.421 ms/event
+  rate:        1.7 Hz
+  wait:        253.502 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       148.507 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.066 ms/event (_segments dict lookup)
+    stack:     61.204 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      87.236 ms/event (reshape + final .copy())
+  read2:       146.045 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        50.734 ms/event
+  kernel:      2.300 ms/event
+  rate:        1.5 Hz
+  wait:        283.293 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       162.860 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.162 ms/event (_segments dict lookup)
+    stack:     64.692 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      98.005 ms/event (reshape + final .copy())
+  read2:       155.193 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        54.502 ms/event
+  kernel:      3.250 ms/event
+[aggregate] BD ranks: 32   events measured: 5280
+  aggregate rate:   51.2 Hz
+  per-rank rate:    1.60 Hz (mean)
+  wait:             264.432 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:            154.199 ms/event (det.raw.raw 1st call)
+    seg:            0.137 ms/event (_segments dict lookup)
+    stack:          64.536 ms/event (per-seg .raw deserialize + copyto)
+    copy:           89.527 ms/event (reshape + final .copy())
+  read2:            152.673 ms/event (2nd call same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:             53.791 ms/event
+  kernel:           2.491 ms/event
+  (per-rank wall:   624.948 ms/event)
+
+PROFREAD_DONE 17:52:39

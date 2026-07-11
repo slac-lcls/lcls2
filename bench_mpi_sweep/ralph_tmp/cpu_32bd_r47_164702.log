@@ -1,0 +1,7 @@
+/sdf/scratch/users/a/ajshack/lcls2
+[PSANA-INFO RANK:0 1783727274.840947456] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+srun: forcing job termination
+srun: forcing job termination
+srun: Job step aborted: Waiting up to 32 seconds for job step to finish.
+slurmstepd: error: *** STEP 31267701.1 ON sdfampere029 CANCELLED AT 2026-07-10T16:48:53 ***
+srun: error: sdfampere029: task 0: Killed

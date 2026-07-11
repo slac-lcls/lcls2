@@ -1,0 +1,136 @@
+/sdf/scratch/users/a/ajshack/lcls2
+[PSANA-INFO RANK:0 1783727414.363666176] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+
+[rank 28] CPU results (220 events, warmup=10):
+  rate:        1.4 Hz
+  CPU calib:   419.679 ms/event
+
+[rank 25] CPU results (260 events, warmup=10):
+  rate:        1.7 Hz
+  CPU calib:   358.608 ms/event
+
+[rank 26] CPU results (246 events, warmup=10):
+  rate:        1.6 Hz
+  CPU calib:   382.134 ms/event
+
+[rank 33] CPU results (219 events, warmup=10):
+  rate:        1.4 Hz
+  CPU calib:   430.309 ms/event
+
+[rank 19] CPU results (280 events, warmup=10):
+  rate:        1.8 Hz
+  CPU calib:   332.587 ms/event
+
+[rank 24] CPU results (195 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   489.649 ms/event
+
+[rank 8] CPU results (202 events, warmup=10):
+  rate:        1.3 Hz
+  CPU calib:   462.675 ms/event
+
+[rank 22] CPU results (182 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   523.084 ms/event
+
+[rank 7] CPU results (234 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   400.022 ms/event
+
+[rank 32] CPU results (222 events, warmup=10):
+  rate:        1.4 Hz
+  CPU calib:   423.470 ms/event
+
+[rank 16] CPU results (247 events, warmup=10):
+  rate:        1.6 Hz
+  CPU calib:   381.146 ms/event
+
+[rank 20] CPU results (232 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   400.147 ms/event
+
+[rank 21] CPU results (204 events, warmup=10):
+  rate:        1.3 Hz
+  CPU calib:   473.258 ms/event
+
+[rank 29] CPU results (197 events, warmup=10):
+  rate:        1.3 Hz
+  CPU calib:   487.491 ms/event
+
+[rank 13] CPU results (239 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   386.932 ms/event
+
+[rank 27] CPU results (230 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   413.993 ms/event
+
+[rank 14] CPU results (258 events, warmup=10):
+  rate:        1.6 Hz
+  CPU calib:   357.698 ms/event
+
+[rank 4] CPU results (193 events, warmup=10):
+
+[rank 31] CPU results (221 events, warmup=10):
+  rate:        1.4 Hz
+  rate:        1.2 Hz
+  CPU calib:   486.567 ms/event
+  CPU calib:   424.030 ms/event
+
+[rank 11] CPU results (252 events, warmup=10):
+  rate:        1.6 Hz
+  CPU calib:   359.315 ms/event
+
+[rank 18] CPU results (207 events, warmup=10):
+  rate:        1.3 Hz
+  CPU calib:   458.357 ms/event
+
+[rank 12] CPU results (236 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   395.833 ms/event
+
+[rank 2] CPU results (229 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   409.183 ms/event
+
+[rank 6] CPU results (215 events, warmup=10):
+  rate:        1.4 Hz
+  CPU calib:   435.745 ms/event
+
+[rank 5] CPU results (196 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   479.450 ms/event
+
+[rank 17] CPU results (236 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   404.360 ms/event
+
+[rank 23] CPU results (240 events, warmup=10):
+  rate:        1.5 Hz
+  CPU calib:   387.941 ms/event
+
+[rank 10] CPU results (189 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   512.739 ms/event
+
+[rank 30] CPU results (200 events, warmup=10):
+  rate:        1.3 Hz
+  CPU calib:   475.525 ms/event
+
+[rank 9] CPU results (191 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   494.287 ms/event
+
+[rank 3] CPU results (176 events, warmup=10):
+  rate:        1.1 Hz
+  CPU calib:   537.319 ms/event
+
+[rank 15] CPU results (192 events, warmup=10):
+  rate:        1.2 Hz
+  CPU calib:   494.917 ms/event
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   44.9 Hz
+  per-rank rate:    1.40 Hz (mean)
+  CPU calib:        433.702 ms/event (mean)
+[1783727580.917973] [sdfampere029:3327630:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x55aa6bd17580 was not matched

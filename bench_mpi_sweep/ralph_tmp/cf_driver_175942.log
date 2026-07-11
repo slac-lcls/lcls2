@@ -1,0 +1,19 @@
+#### 1 BD (3 procs), interleaved x2 ####
+=== 1bd_copyTrue_a (nprocs=3, n=500, flags='') @ 17:59:43 ===
+    -> aggregate 39.8 Hz  (bench_mpi_sweep/ralph_tmp/cf_1bd_copyTrue_a_175942.log)
+=== 1bd_copyFalse_a (nprocs=3, n=500, flags='--copy-false') @ 18:00:33 ===
+    -> aggregate 53.6 Hz  (bench_mpi_sweep/ralph_tmp/cf_1bd_copyFalse_a_175942.log)
+=== 1bd_copyTrue_b (nprocs=3, n=500, flags='') @ 18:01:18 ===
+    -> aggregate 42.7 Hz  (bench_mpi_sweep/ralph_tmp/cf_1bd_copyTrue_b_175942.log)
+=== 1bd_copyFalse_b (nprocs=3, n=500, flags='--copy-false') @ 18:02:07 ===
+    -> aggregate 54.6 Hz  (bench_mpi_sweep/ralph_tmp/cf_1bd_copyFalse_b_175942.log)
+#### 32 BD (34 procs), interleaved x2 ####
+=== 32bd_copyTrue_a (nprocs=34, n=200, flags='') @ 18:02:52 ===
+    -> aggregate 82.6 Hz  (bench_mpi_sweep/ralph_tmp/cf_32bd_copyTrue_a_175942.log)
+=== 32bd_copyFalse_a (nprocs=34, n=200, flags='--copy-false') @ 18:05:51 ===
+    -> aggregate 107.6 Hz  (bench_mpi_sweep/ralph_tmp/cf_32bd_copyFalse_a_175942.log)
+=== 32bd_copyTrue_b (nprocs=34, n=200, flags='') @ 18:08:37 ===
+    -> aggregate 86.7 Hz  (bench_mpi_sweep/ralph_tmp/cf_32bd_copyTrue_b_175942.log)
+=== 32bd_copyFalse_b (nprocs=34, n=200, flags='--copy-false') @ 18:11:33 ===
+    -> aggregate 112.2 Hz  (bench_mpi_sweep/ralph_tmp/cf_32bd_copyFalse_b_175942.log)
+#### DONE @ 18:14:10 ####

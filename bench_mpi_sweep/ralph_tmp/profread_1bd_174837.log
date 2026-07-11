@@ -1,0 +1,27 @@
+[PSANA-INFO RANK:0 1783730948.015176192] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=3
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 2] GPU results (330 events, warmup=10, d2h=no):
+  rate:        28.1 Hz
+  wait:        13.208 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:       9.185 ms/event (det.raw.raw, 1st call = seg+stack+copy)
+    seg:       0.008 ms/event (_segments dict lookup)
+    stack:     4.176 ms/event (per-seg .raw deserialize + copyto memcpy)
+    copy:      5.001 ms/event (reshape + final .copy())
+  read2:       9.014 ms/event (2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:        3.902 ms/event
+  kernel:      0.321 ms/event
+
+[aggregate] BD ranks: 1   events measured: 330
+  aggregate rate:   28.1 Hz
+  per-rank rate:    28.06 Hz (mean)
+  wait:             13.208 ms/event (gen advance = bigdata read + EB/MPI)
+  read1:            9.185 ms/event (det.raw.raw 1st call)
+    seg:            0.008 ms/event (_segments dict lookup)
+    stack:          4.176 ms/event (per-seg .raw deserialize + copyto)
+    copy:           5.001 ms/event (reshape + final .copy())
+  read2:            9.014 ms/event (2nd call same evt: <<read1=>I/O, ~=read1=>CPU)
+  H->D:             3.902 ms/event
+  kernel:           0.321 ms/event
+  (per-rank wall:   35.640 ms/event)
+[1783730963.015528] [sdfampere029:3775816:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x55a998f72f80 was not matched

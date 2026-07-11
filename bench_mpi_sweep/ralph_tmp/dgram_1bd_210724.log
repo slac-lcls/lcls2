@@ -1,0 +1,92 @@
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+A requested component was not found, or was unable to be opened.  This
+means that this component is either not installed or is unable to be
+used on your system (e.g., sometimes this means that shared libraries
+that the component requires are unable to be found/loaded).  Note that
+PMIx stopped checking at the first component that it did not find.
+
+Host:      sdfampere029
+Framework: psec
+Component: munge
+--------------------------------------------------------------------------
+[PSANA-INFO RANK:0 1783742881.656307456] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=2
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 2] GPU results (88 events, warmup=10, d2h=no):
+  rate:        69.6 Hz
+  wait:        10.447 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   0.071 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   8.586 ms/event (os.pread bigdata xtc off FFB)
+    residual:  1.790 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     9.545 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.278 ms/event (per-batch offset/size array build)
+  H->D:        3.548 ms/event (per-seg host->device, no host stack)
+  kernel:      0.339 ms/event
+  sum:         14.335 ms/event  (vs 14.371 ms/event wall; bd_events=89)
+
+[aggregate] BD ranks: 1   events measured: 88
+  aggregate rate:   69.6 Hz
+  per-rank rate:    69.58 Hz (mean)
+  wait:             10.447 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:        0.071 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:        8.586 ms/event (os.pread bigdata xtc off FFB)
+    (eb_wait+bd_read: 8.657 ms/event vs wait 10.447)
+  H->D:             3.548 ms/event
+  kernel:           0.339 ms/event
+  sum:              14.335 ms/event  (vs 14.371 ms/event per-rank wall)
+[1783742886.156444] [sdfampere029:960975:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5601c614b980 was not matched

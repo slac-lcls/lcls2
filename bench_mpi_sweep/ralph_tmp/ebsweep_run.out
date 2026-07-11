@@ -1,0 +1,14 @@
+/sdf/scratch/users/a/ajshack/lcls2
+=== PS_EB_NODES=1  (34 procs, 32 BD)  pass 1 ===
+  eb=1 pass=1 done
+=== PS_EB_NODES=2  (35 procs, 32 BD)  pass 1 ===
+  eb=2 pass=1 done
+=== PS_EB_NODES=4  (37 procs, 32 BD)  pass 1 ===
+  eb=4 pass=1 done
+=== PS_EB_NODES=1  (34 procs, 32 BD)  pass 2 ===
+  eb=1 pass=2 done
+=== PS_EB_NODES=2  (35 procs, 32 BD)  pass 2 ===
+  eb=2 pass=2 done
+=== PS_EB_NODES=4  (37 procs, 32 BD)  pass 2 ===
+  eb=4 pass=2 done
+ALL DONE TS=191655
