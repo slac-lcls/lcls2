@@ -1,0 +1,269 @@
+/sdf/scratch/users/a/ajshack/lcls2
+[PSANA-INFO RANK:0 1783728003.588961792] RunParallel [MPI-role] rank=0 host=sdfampere029 numa_id=0 numa_size=34
+[rank 2] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 24] GPU results (188 events, warmup=10, d2h=no):
+  rate:        2.3 Hz
+  wait:        264.163 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        126.855 ms/event (det.raw.raw array-locate)
+  H->D:        49.203 ms/event
+  kernel:      2.534 ms/event
+  sum:         442.756 ms/event  (vs 443.195 ms/event wall)
+
+[rank 26] GPU results (206 events, warmup=10, d2h=no):
+[rank 20] GPU results (219 events, warmup=10, d2h=no):
+  rate:        2.7 Hz
+  wait:        219.509 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        115.029 ms/event (det.raw.raw array-locate)
+  H->D:        38.804 ms/event
+  kernel:      2.409 ms/event
+  sum:         375.751 ms/event  (vs 375.908 ms/event wall)
+
+  rate:        2.4 Hz
+  wait:        243.833 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        125.272 ms/event (det.raw.raw array-locate)
+  H->D:        45.448 ms/event
+  kernel:      2.222 ms/event
+  sum:         416.776 ms/event  (vs 417.131 ms/event wall)
+
+[rank 15] GPU results (270 events, warmup=10, d2h=no):
+  rate:        3.1 Hz
+  wait:        198.288 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        87.785 ms/event (det.raw.raw array-locate)
+  H->D:        34.338 ms/event
+  kernel:      1.718 ms/event
+  sum:         322.129 ms/event  (vs 322.364 ms/event wall)
+
+[rank 10] GPU results (209 events, warmup=10, d2h=no):
+  rate:        2.5 Hz
+  wait:        229.361 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        120.046 ms/event (det.raw.raw array-locate)
+  H->D:        44.663 ms/event
+  kernel:      2.617 ms/event
+  sum:         396.687 ms/event  (vs 397.193 ms/event wall)
+
+[rank 27] GPU results (213 events, warmup=10, d2h=no):
+  rate:        2.5 Hz
+  wait:        233.952 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        115.895 ms/event (det.raw.raw array-locate)
+  H->D:        43.923 ms/event
+  kernel:      2.133 ms/event
+  sum:         395.903 ms/event  (vs 396.064 ms/event wall)
+
+[rank 33] GPU results (256 events, warmup=10, d2h=no):
+  rate:        2.8 Hz
+  wait:        216.276 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        99.950 ms/event (det.raw.raw array-locate)
+  H->D:        41.593 ms/event
+  kernel:      1.428 ms/event
+  sum:         359.247 ms/event  (vs 359.491 ms/event wall)
+
+[rank 22] GPU results (185 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        254.758 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        140.810 ms/event (det.raw.raw array-locate)
+  H->D:        50.706 ms/event
+  kernel:      2.674 ms/event
+  sum:         448.948 ms/event  (vs 450.243 ms/event wall)
+
+[rank 18] GPU results (230 events, warmup=10, d2h=no):
+  rate:        2.8 Hz
+  wait:        204.726 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        109.511 ms/event (det.raw.raw array-locate)
+  H->D:        38.356 ms/event
+  kernel:      2.982 ms/event
+  sum:         355.576 ms/event  (vs 355.710 ms/event wall)
+
+[rank 3] GPU results (246 events, warmup=10, d2h=no):
+  rate:        2.9 Hz
+  wait:        203.894 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        100.301 ms/event (det.raw.raw array-locate)
+  H->D:        36.679 ms/event
+  kernel:      2.095 ms/event
+  sum:         342.969 ms/event  (vs 343.201 ms/event wall)
+
+[rank 29] GPU results (192 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        257.491 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        140.036 ms/event (det.raw.raw array-locate)
+  H->D:        49.852 ms/event
+  kernel:      2.794 ms/event
+  sum:         450.173 ms/event  (vs 450.604 ms/event wall)
+
+[rank 6] GPU results (193 events, warmup=10, d2h=no):
+  rate:        2.3 Hz
+  wait:        247.500 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        134.624 ms/event (det.raw.raw array-locate)
+  H->D:        45.229 ms/event
+  kernel:      2.762 ms/event
+  sum:         430.115 ms/event  (vs 430.630 ms/event wall)
+
+[rank 21] GPU results (209 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        240.252 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        121.728 ms/event (det.raw.raw array-locate)
+  H->D:        43.555 ms/event
+  kernel:      2.992 ms/event
+  sum:         408.527 ms/event  (vs 408.842 ms/event wall)
+
+[rank 32] GPU results (389 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        142.130 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        72.244 ms/event (det.raw.raw array-locate)
+  H->D:        27.706 ms/event
+  kernel:      1.567 ms/event
+  sum:         243.648 ms/event  (vs 243.851 ms/event wall)
+
+[rank 19] GPU results (179 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        264.045 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        140.078 ms/event (det.raw.raw array-locate)
+  H->D:        53.523 ms/event
+  kernel:      2.423 ms/event
+  sum:         460.069 ms/event  (vs 460.336 ms/event wall)
+
+[rank 11] GPU results (231 events, warmup=10, d2h=no):
+  rate:        2.7 Hz
+  wait:        211.767 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        113.782 ms/event (det.raw.raw array-locate)
+  H->D:        40.251 ms/event
+  kernel:      1.828 ms/event
+  sum:         367.628 ms/event  (vs 368.235 ms/event wall)
+
+[rank 8] GPU results (189 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        250.662 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        147.235 ms/event (det.raw.raw array-locate)
+  H->D:        53.204 ms/event
+  kernel:      2.069 ms/event
+  sum:         453.171 ms/event  (vs 454.363 ms/event wall)
+
+[rank 30] GPU results (221 events, warmup=10, d2h=no):
+  rate:        2.6 Hz
+  wait:        221.366 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        113.641 ms/event (det.raw.raw array-locate)
+  H->D:        40.207 ms/event
+  kernel:      1.669 ms/event
+  sum:         376.883 ms/event  (vs 377.960 ms/event wall)
+
+[rank 9] GPU results (191 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        263.701 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        136.456 ms/event (det.raw.raw array-locate)
+  H->D:        49.857 ms/event
+  kernel:      2.196 ms/event
+  sum:         452.211 ms/event  (vs 452.863 ms/event wall)
+
+[rank 5] GPU results (196 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        242.597 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        128.156 ms/event (det.raw.raw array-locate)
+  H->D:        47.796 ms/event
+  kernel:      2.749 ms/event
+  sum:         421.297 ms/event  (vs 421.633 ms/event wall)
+
+[rank 13] GPU results (170 events, warmup=10, d2h=no):
+  rate:        2.0 Hz
+  wait:        293.099 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        141.856 ms/event (det.raw.raw array-locate)
+  H->D:        52.869 ms/event
+  kernel:      2.407 ms/event
+  sum:         490.232 ms/event  (vs 491.009 ms/event wall)
+
+[rank 4] GPU results (318 events, warmup=10, d2h=no):
+  rate:        3.5 Hz
+  wait:        172.035 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        83.258 ms/event (det.raw.raw array-locate)
+  H->D:        32.056 ms/event
+  kernel:      1.561 ms/event
+  sum:         288.909 ms/event  (vs 289.476 ms/event wall)
+
+[rank 25] GPU results (182 events, warmup=10, d2h=no):
+  rate:        2.2 Hz
+  wait:        259.038 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        141.325 ms/event (det.raw.raw array-locate)
+  H->D:        53.058 ms/event
+  kernel:      3.380 ms/event
+  sum:         456.801 ms/event  (vs 457.209 ms/event wall)
+
+[rank 7] GPU results (230 events, warmup=10, d2h=no):
+  rate:        2.7 Hz
+  wait:        212.632 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        109.829 ms/event (det.raw.raw array-locate)
+  H->D:        39.701 ms/event
+  kernel:      1.484 ms/event
+  sum:         363.646 ms/event  (vs 363.826 ms/event wall)
+
+[rank 23] GPU results (199 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        244.541 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        128.893 ms/event (det.raw.raw array-locate)
+  H->D:        46.023 ms/event
+  kernel:      2.784 ms/event
+  sum:         422.241 ms/event  (vs 422.422 ms/event wall)
+
+[rank 12] GPU results (300 events, warmup=10, d2h=no):
+  rate:        3.3 Hz
+  wait:        180.512 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        88.356 ms/event (det.raw.raw array-locate)
+  H->D:        35.229 ms/event
+  kernel:      1.466 ms/event
+  sum:         305.563 ms/event  (vs 305.784 ms/event wall)
+
+[rank 14] GPU results (201 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        246.627 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        119.024 ms/event (det.raw.raw array-locate)
+  H->D:        44.192 ms/event
+  kernel:      2.651 ms/event
+  sum:         412.494 ms/event  (vs 413.226 ms/event wall)
+
+[rank 28] GPU results (203 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        239.634 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        123.723 ms/event (det.raw.raw array-locate)
+  H->D:        43.794 ms/event
+  kernel:      3.074 ms/event
+  sum:         410.225 ms/event  (vs 410.477 ms/event wall)
+
+[rank 31] GPU results (201 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        245.307 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        127.795 ms/event (det.raw.raw array-locate)
+  H->D:        46.212 ms/event
+  kernel:      2.813 ms/event
+  sum:         422.128 ms/event  (vs 422.347 ms/event wall)
+
+[rank 17] GPU results (203 events, warmup=10, d2h=no):
+  rate:        2.4 Hz
+  wait:        250.359 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        121.854 ms/event (det.raw.raw array-locate)
+  H->D:        42.726 ms/event
+  kernel:      1.924 ms/event
+  sum:         416.864 ms/event  (vs 417.102 ms/event wall)
+
+[rank 2] GPU results (193 events, warmup=10, d2h=no):
+  rate:        2.3 Hz
+  wait:        250.654 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        131.261 ms/event (det.raw.raw array-locate)
+  H->D:        47.030 ms/event
+  kernel:      2.753 ms/event
+  sum:         431.698 ms/event  (vs 432.053 ms/event wall)
+
+[rank 16] GPU results (228 events, warmup=10, d2h=no):
+  rate:        2.7 Hz
+  wait:        214.396 ms/event (gen advance = bigdata read + EB/MPI)
+  read:        111.012 ms/event (det.raw.raw array-locate)
+  H->D:        37.499 ms/event
+  kernel:      2.400 ms/event
+  sum:         365.307 ms/event  (vs 365.540 ms/event wall)
+
+[aggregate] BD ranks: 32   events measured: 7040
+  aggregate rate:   82.3 Hz
+  per-rank rate:    2.57 Hz (mean)
+  wait:             231.847 ms/event (gen advance = bigdata read + EB/MPI)
+  read:             119.301 ms/event (det.raw.raw array-locate)
+  H->D:             43.603 ms/event
+  kernel:           2.330 ms/event
+  sum:              397.080 ms/event  (vs 388.703 ms/event per-rank wall)
+[1783728124.743902] [sdfampere029:3395157:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x5646b0f6cb00 was not matched

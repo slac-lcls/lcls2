@@ -191,3 +191,74 @@ at 32 BD, using CUDA events + `nvidia-smi dmon` PCIe counters (§6/§8), to conf
 whether the 11.85 ms H2D-under-contention is the true 32-rank ceiling. If it is,
 the first lever to try is pinned-memory + async H2D on the BD rank (overlap-safe
 timing per §6).
+
+---
+
+## 2026-07-10 — Iteration 3 (BD-rank profile — H2D is NOT the 32-BD ceiling; psana data delivery is)
+
+**Task:** the recommended experiment — attribute the 32-BD per-event wall time
+(read vs H2D vs kernel vs generator/MPI wait), to test the standing hypothesis
+that per-rank H2D-under-contention is the multi-node ceiling and that pinned+async
+H2D is the unlock.
+
+**What I did:**
+- Added a `--profile` mode to `bench_calib.py` (`run_gpu_bench_profile`) that
+  buckets each event's WALL time into **wait** (time to advance `run.events()` =
+  bigdata read + EB/MPI serving), **read** (`det.raw.raw(evt)`), **H2D**, and
+  **kernel**. Kept separate from the established `run_gpu_bench` loop so the
+  B-MVP timing path stays byte-identical; the buckets sum to wall (the sanity
+  check). GPU numeric path untouched → correctness gate not triggered.
+- Ran at 1 BD (`-n 500`) and 32 BD (`-n 200`) on r47/FFB, `ralph-gpu` node
+  (job 31267701, sdfampere029), `mpirun --bind-to none`. Ran `nvidia-smi dmon
+  -s put` alongside the 32-BD run to observe PCIe rx (§8).
+
+**Numbers (r47, FFB, A100, ms/event):**
+
+| bucket | 1 BD | 32 BD | share @32BD |
+|---|---:|---:|---:|
+| wait (gen advance = read+EB/MPI) | 12.0 | 231.8 | 60% |
+| read (`det.raw.raw`) | 7.9 | 119.3 | 31% |
+| H->D | 3.9 | 43.6 | 11% |
+| kernel | 0.32 | 2.3 | 0.6% |
+| **wall/event** | 24.2 | 388.7 | |
+| aggregate Hz | 41.4 | 82.3 | |
+
+Logs: `bench_mpi_sweep/prof_ffb_r47_bd1.log`,
+`bench_mpi_sweep/prof_ffb_r47_bd32.log`,
+`bench_mpi_sweep/prof_ffb_r47_bd32_dmon.log` (sum ≈ wall in every rank block →
+attribution trustworthy). dmon active window: **rxpci sustained ~3.7 GB/s (~15%
+of the 25 GB/s gen4 wire)**, SM ~16% — the GPU and its PCIe link are both largely
+idle.
+
+**The finding (overturns the standing hypothesis):**
+- At 32 BD, GPU-side work (H2D + kernel) is only **~12%** of per-event wall.
+  psana bigdata delivery (wait + read) is **~91%**. So the per-rank H2D — long
+  named in TASK.md as "the leading suspect" and the reason pinned+async H2D was
+  "promoted to the one multi-node unlock" — is NOT the ceiling. Even driving H2D
+  to zero would cut per-event wall 389 → ~345 ms = **at most +13%**. dmon
+  independently confirms it: PCIe rx sits at ~15% of the wire, not saturated.
+- The real ceiling is the **psana data-delivery path**: `det.raw.raw(evt)`
+  itself costs 119 ms at 32 ranks (15× its 1-BD cost), and the generator advance
+  (EB batch serving + bigdata read + MPI) costs 232 ms. Both scale far worse
+  with rank count than H2D does.
+- Caveat on the absolute rate: this run measured 82.3 Hz @ 32 BD vs the anchor's
+  175.3 Hz — the FFB "minute-to-minute variance on a live production FS" already
+  documented in TASK.md, and/or the shorter `-n 200`. The **relative breakdown**
+  is the robust result and is speed-independent: at the faster 175 Hz moment H2D
+  was 11.85 ms of 182 ms/event = 6.5% (an even smaller share), so H2D is a minor
+  contributor at both speeds. The proportions, not the 82 Hz, are the finding.
+
+**Keep/revert:** KEEP the `--profile` mode — it's the attribution tool the plateau
+investigation lacked, and it settled the question. Correctness gate not triggered
+(instrumentation only; numeric path byte-identical).
+
+**Recommended next step:** the lever priority is now inverted — **de-prioritize
+pinned+async H2D** (≤13% ceiling, proven). The next experiment must split the
+`wait` bucket into **storage-read vs EB/MPI-wait** on a BD rank (timestamped
+instrumentation or py-spy per §8), because that decides which psana lever moves
+the 351 ms/event delivery cost: if it's storage-read, the levers are more BD
+ranks/node + write-time compression (§ TASK.md levers a–f); if it's EB/MPI-wait,
+it points back into the EB→BD serving chain (a psexp change, in scope per §3/§7).
+Also worth one cheap check: whether `det.raw.raw(evt)`'s 119 ms is lazy bigdata
+I/O (storage) or in-process deserialization/reshape (CPU) — that alone reclassifies
+31% of the wall.

@@ -153,16 +153,17 @@
     storage still has headroom (450+ at 2 nodes). So ~300 Hz IS a psana
     ceiling at multi-node after all — but NOT smd0 (proven idle), NOT EB
     count, NOT batch size.
-  - Most likely remaining cause: the per-BD-rank synchronous pipeline
-    (read bigdata -> H2D -> kernel with no overlap; 32 ranks/node contend
-    on one PCIe link, H2D already measured inflating to 16 ms). Ranks
-    cannot consume the extra storage bandwidth a second node exposes.
-    This RAISES the priority of pinned-host + overlapped H2D (previously
-    "later") — it is now the one code lever that could unlock multi-node
-    headroom. Confirm with a BD-rank profile (read vs H2D vs kernel vs
-    MPI-wait) before building.
-  - Levers, updated: (a) pinned + overlapped H2D per BD rank — promoted,
-    the likely multi-node unlock; (b) ~32 BD ranks/node — modest, free;
+  - ~~Most likely remaining cause: the per-BD-rank synchronous pipeline
+    (read bigdata -> H2D -> kernel with no overlap; ... H2D ... inflating to
+    16 ms) ... RAISES the priority of pinned-host + overlapped H2D ... the one
+    code lever that could unlock multi-node headroom.~~ **REFUTED 2026-07-10 by
+    the BD-rank profile (iter 3, below):** H2D+kernel are only ~12% of per-event
+    wall at 32 BD; pinned+async H2D gains ≤13%. The suspect was wrong — the
+    bottleneck is the read/serving path (`det.raw.raw` 119 ms + gen-advance
+    232 ms of a 389 ms event). See the `--profile` row further down.
+  - Levers, updated (H2D priority CORRECTED by iter-3 profile — see below):
+    (a) ~~pinned + overlapped H2D per BD rank — promoted, the likely multi-node
+    unlock~~ DE-PRIORITIZED (≤13% ceiling, proven); (b) ~32 BD ranks/node — modest, free;
     (c) detector compression at write time (~2x); (d) NVMe staging for
     reprocessing; (e) more nodes; (f) facility FFB QoS. Dead: parallel
     smd0 (idle), more EBs (flat), locality-aware EB scheduling (no
@@ -216,6 +217,40 @@
     (32-way core/memory-bandwidth contention). CPU compute ceiling at 32 ranks
     ~= 32/0.0545 = ~587 Hz, vs the GPU kernel ceiling ~3100 Hz. CPU calib does
     not scale linearly across cores.
+- [x] BD-rank profile of the GPU path — attribute the 32-BD per-event wall time
+  - 2026-07-10 (Ralph iter 3): added `--profile` mode to `bench_calib.py`
+    (`run_gpu_bench_profile`) bucketing each event's WALL time into wait (gen
+    advance = bigdata read + EB/MPI serving), read (`det.raw.raw`), H2D, kernel.
+    Job 31267701 (sdfampere029), r47/FFB, `mpirun --bind-to none`; logs
+    `bench_mpi_sweep/prof_ffb_r47_bd{1,32}.log` + `..._bd32_dmon.log`.
+
+    | bucket (ms/event) | 1 BD | 32 BD | share @32BD |
+    |---|---:|---:|---:|
+    | wait (gen advance = read+EB/MPI) | 12.0 | 231.8 | 60% |
+    | read (`det.raw.raw`) | 7.9 | 119.3 | 31% |
+    | H->D | 3.9 | 43.6 | 11% |
+    | kernel | 0.32 | 2.3 | 0.6% |
+    | wall/event | 24.2 | 388.7 | |
+    | aggregate Hz | 41.4 | 82.3 | |
+
+    (sum of buckets ≈ wall in every rank block → attribution trustworthy.)
+  - **Finding — overturns the standing H2D hypothesis:** at 32 BD, GPU-side work
+    (H2D + kernel) is only **~12%** of per-event wall; psana bigdata delivery
+    (wait + read) is **~91%**. Driving H2D to zero would gain **at most +13%**.
+    `nvidia-smi dmon` during the run: rxpci sustained **~3.7 GB/s (~15% of the
+    25 GB/s gen4 wire)**, SM ~16% — GPU and PCIe link both largely idle. So the
+    per-rank H2D-under-contention (11.85→16 ms) named above as "the leading
+    suspect" / the reason pinned+async H2D was "promoted to the multi-node
+    unlock" is **NOT the ceiling**. Lever priority inverts: de-prioritize
+    pinned+async H2D; the target is the read/serving path.
+  - Robustness: this run's absolute 82.3 Hz @ 32 BD is below the 175.3 Hz anchor
+    (FFB live-FS variance and/or `-n 200`), but the breakdown is speed-independent
+    — at the 175 Hz moment H2D was 11.85 of 182 ms/event = 6.5%, an even smaller
+    share. The proportions, not the absolute Hz, are the result.
+  - Open question (next): split the 232 ms `wait` into storage-read vs EB/MPI-wait,
+    and classify `det.raw.raw`'s 119 ms as lazy bigdata I/O vs in-process
+    deserialization — this decides which psana lever moves the 351 ms/event
+    delivery cost.
 - [x] Record NIC recv bandwidth during GPU run vs CPU run
   - 2026-07-08: sampled /proc/net/dev at 2 s during every sweep config.
     Finding: bulk storage I/O (~7 GB/s at 210 Hz) is INVISIBLE to netdev
