@@ -46,6 +46,7 @@ public:
                    std::map<std::string, std::string>& labels);
   void start();
   void freeDma(PGPEvent*);
+  void flush();
 public:
   auto& pool()         const { return m_pool; }
   auto& readerQueues() const { return m_readerQueues; }

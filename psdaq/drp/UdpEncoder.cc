@@ -810,7 +810,7 @@ std::string UdpDrp::connect(const json& msg, size_t id)
 
     // Configure interpolation based on slowGroup.
     if (m_para.kwargs.find("encTprAlias") != m_para.kwargs.end()) {
-      std::string encTprAlias = const_cast<UdpParameters&>(m_para).kwargs["encTprAlias"];
+        std::string encTprAlias = m_para.kwargs.at("encTprAlias");
         for (auto it : msg["body"]["tpr"].items()) {
             const_cast<UdpParameters&>(m_para).interpolating = true;
             const_cast<UdpParameters&>(m_para).slowGroup = it.value()["det_info"]["readout"];
@@ -915,8 +915,8 @@ void UdpDrp::_worker()
 
     m_terminate.store(false, std::memory_order_release);
 
-    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()             ?
-                    std::stoul(const_cast<UdpParameters&>(m_para).kwargs["match_tmo_ms"]) :
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
+                    std::stoul(m_para.kwargs.at("match_tmo_ms"))              :
                     1500 };
 
     const ms_t no_tmo{ 0 };
@@ -1200,16 +1200,30 @@ UdpApp::~UdpApp()
 
 void UdpApp::_disconnect()
 {
-    m_drp->disconnect();
-    m_det->disconnect();
+    if (m_drp)
+        m_drp->disconnect();
+    if (m_det)
+        m_det->disconnect();
 }
 
 void UdpApp::_unconfigure()
 {
-    m_drp->pool.shutdown();  // Release Tr buffer pool
-    m_drp->unconfigure();
-    m_det->unconfigure();
+    if (m_drp) {
+        m_drp->pool.shutdown();  // Release Tr buffer pool
+        m_drp->unconfigure();
+    }
+    if (m_det)
+        m_det->unconfigure();
     m_unconfigure = false;
+}
+
+std::string UdpApp::_endrun(const json& phase1Info)
+{
+    std::string errorMsg = m_drp->endrun(phase1Info);
+    if (!errorMsg.empty()) {
+        logging::error("%s", errorMsg.c_str());
+    }
+    return errorMsg;
 }
 
 json UdpApp::connectionInfo(const json& msg)
@@ -1234,7 +1248,7 @@ void UdpApp::connectionShutdown()
 
 void UdpApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
-    json body = json({});
+    json body({});
     body["err_info"] = errorMsg;
     json answer = createMsg(which, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -1242,6 +1256,8 @@ void UdpApp::_error(const std::string& which, const json& msg, const std::string
 
 void UdpApp::handleConnect(const json& msg)
 {
+    m_lastKey = msg["header"]["key"];
+
     std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error(("DrpBase::connect: " + errorMsg).c_str());
@@ -1264,7 +1280,7 @@ void UdpApp::handleConnect(const json& msg)
         }
     }
 
-    json body = json({});
+    json body({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -1278,7 +1294,7 @@ void UdpApp::handleDisconnect(const json& msg)
 
     _disconnect();
 
-    json body = json({});
+    json body({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -1298,10 +1314,11 @@ void UdpApp::handlePhase1(const json& msg)
         }
     }
 
-    json body = json({});
+    json body({});
 
     if (key == "configure") {
-        if (m_unconfigure) {
+        // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+        if (m_unconfigure || (m_lastKey == key)) {
             _unconfigure();
         }
 
@@ -1310,32 +1327,37 @@ void UdpApp::handlePhase1(const json& msg)
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Failed transition phase 1";
+            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
         }
-
-        // Next, configure the DRP
-        std::string errorMsg = m_drp->configure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
+        else {
+            // Next, configure the DRP
+            std::string errorMsg = m_drp->configure(msg);
+            if (!errorMsg.empty()) {
+                errorMsg = "Phase 1 error: " + errorMsg;
+                body["err_info"] = errorMsg;
+                logging::error("%s", errorMsg.c_str());
+            }
+            else {
+                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+            }
         }
-
-        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {
+        // Do EndRun when BeginRun is being retried
+        if (m_lastKey == key) {
+            _endrun(phase1Info);        // Ignore possible error
+        }
+
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
-            body["err_info"] = errorMsg;
+            body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
@@ -1343,10 +1365,9 @@ void UdpApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp->endrun(phase1Info);
+        std::string errorMsg = _endrun(phase1Info);
         if (!errorMsg.empty()) {
-            body["err_info"] = errorMsg;
-            logging::error("%s", errorMsg.c_str());
+            body["err_info"] = "Phase 1 error: " + errorMsg;
         }
     }
     else if (key == "enable") {
@@ -1369,6 +1390,7 @@ void UdpApp::handlePhase1(const json& msg)
         m_det->reset(); // needed?
         logging::debug("handlePhase1 enable complete");
     }
+    m_lastKey = key;
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

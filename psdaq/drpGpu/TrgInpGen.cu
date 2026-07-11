@@ -390,6 +390,10 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
     perror("prctl");
   }
 
+  // If triggers had been left running, they will have been stopped during Allocate
+  // Flush anything that accumulated
+  m_reader->flush();
+
   const auto     hostWrtBufs    = m_pool.hostWrtBufs(); // When no error, hdrs in all are the same
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;

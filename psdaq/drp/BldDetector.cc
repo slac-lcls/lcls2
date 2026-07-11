@@ -231,7 +231,7 @@ BldFactory::BldFactory(const char* name,
         throw std::string("BLD name ")+name+" not recognized";
     }
     unsigned payloadSize = _varLenArr ? 0 : getVarDefSize(_varDef,_arraySizes);
-    
+
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
@@ -1149,15 +1149,28 @@ BldApp::~BldApp()
 
 void BldApp::_disconnect()
 {
-    m_drp->disconnect();
-    m_det->shutdown();
+    if (m_drp)
+        m_drp->disconnect();
+    if (m_det)
+        m_det->shutdown();
 }
 
 void BldApp::_unconfigure()
 {
-    m_drp->pool.shutdown();  // Release Tr buffer pool
-    m_drp->unconfigure();
+    if (m_drp) {
+        m_drp->pool.shutdown();  // Release Tr buffer pool
+        m_drp->unconfigure();
+    }
     m_unconfigure = false;
+}
+
+std::string BldApp::_endrun(const json& phase1Info)
+{
+    std::string errorMsg = m_drp->endrun(phase1Info);
+    if (!errorMsg.empty()) {
+        logging::error("%s", errorMsg.c_str());
+    }
+    return errorMsg;
 }
 
 json BldApp::connectionInfo(const json& msg)
@@ -1182,7 +1195,7 @@ void BldApp::connectionShutdown()
 
 void BldApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
-    json body = json({});
+    json body({});
     body["err_info"] = errorMsg;
     json answer = createMsg(which, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -1190,6 +1203,8 @@ void BldApp::_error(const std::string& which, const json& msg, const std::string
 
 void BldApp::handleConnect(const json& msg)
 {
+    m_lastKey = msg["header"]["key"];
+
     std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in BldApp::handleConnect");
@@ -1218,7 +1233,7 @@ void BldApp::handleConnect(const json& msg)
     m_det->nodeId = m_drp->nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    json body = json({});
+    json body({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -1232,7 +1247,7 @@ void BldApp::handleDisconnect(const json& msg)
 
     _disconnect();
 
-    json body = json({});
+    json body({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -1252,10 +1267,11 @@ void BldApp::handlePhase1(const json& msg)
         }
     }
 
-    json body = json({});
+    json body({});
 
     if (key == "configure") {
-        if (m_unconfigure) {
+        // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+        if (m_unconfigure || (m_lastKey == key)) {
             _unconfigure();
         }
 
@@ -1264,44 +1280,47 @@ void BldApp::handlePhase1(const json& msg)
         unsigned error = m_det->configure(config_alias, xtc, bufEnd);
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::configure";
+            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
         }
-
-        // Next, configure the DRP
-        std::string errorMsg = m_drp->configure(msg);
-        if (!errorMsg.empty()) {
-            errorMsg = "Phase 1 error: " + errorMsg;
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
+        else {
+            // Next, configure the DRP
+            std::string errorMsg = m_drp->configure(msg);
+            if (!errorMsg.empty()) {
+                errorMsg = "Phase 1 error: " + errorMsg;
+                body["err_info"] = errorMsg;
+                logging::error("%s", errorMsg.c_str());
+            }
+            else {
+                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+            }
         }
-
-        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {
+        // Do EndRun when BeginRun is being retried
+        if (m_lastKey == key) {
+            _endrun(phase1Info);        // Ignore possible error
+        }
+
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
+            body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
         }
-
-        m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        else {
+            m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        }
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp->endrun(phase1Info);
+        std::string errorMsg = _endrun(phase1Info);
         if (!errorMsg.empty()) {
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
+            body["err_info"] = "Phase 1 error: " + errorMsg;
         }
     }
     else if (key == "enable") {
@@ -1323,6 +1342,7 @@ void BldApp::handlePhase1(const json& msg)
         }
         logging::info("handlePhase1 enable complete");
     }
+    m_lastKey = key;
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

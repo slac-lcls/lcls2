@@ -28,6 +28,7 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 #include <mutex>
+#include <unordered_map>
 #include <sys/prctl.h>
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -212,19 +213,15 @@ namespace Pds {
       }
       while (++ctrb != last);
 
-      // Save the event builder's datagram pointer after the destination datagram
+      // Save the event builder's datagram pointer in an unordered_map
       // so that it can be retrieved by _deleteDatagram()
       if (dg->isEvent())
       {
-        size_t osz = sizeof(*odg) + odg->xtc.sizeofPayload();
-        if (osz + sizeof(dg) <= bSz)
-          *(Dgram**)((uint8_t*)(odg) + osz) = dg;
-        else [[unlikely]]
-        {
-          logging::critical("_copyDatagram: No space after datagram for metadata;"
-                            "increase buffer size by >= %zu Bytes", sizeof(dg));
-          abort();
-        }
+        if ((_dgMap.find(odg) == _dgMap.end()) || _dgMap.at(odg) == nullptr) [[likely]]
+          _dgMap[odg] = dg;             // Insert new entry or overwrite existing one
+        else
+          logging::error("_copyDatagram: _dgMap[%p] is not free: idx %u, dg %p, ts %u.%09u, svc %s",
+                         odg, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
 
         _bufPrcMetric.start(idx);       // Measure time until buffer is released by client
         _bufCpyMetric.accumulate(idx);  // Measure time since buffer was passed to server
@@ -237,15 +234,22 @@ namespace Pds {
       if (_bufCpyMetric.count() == 0) [[unlikely]]
       {
         // Don't try to dereference a stale appDg as its pointer may not be in the current address space
-        logging::info("_deleteDatagram: Ignoring on startup: dg %p", appDg); //, ts %u.%09u, svc %s",
+        logging::debug("_deleteDatagram: Ignoring on startup: dg %p", appDg); //, ts %u.%09u, svc %s",
                       //appDg, appDg->time.seconds(), appDg->time.nanoseconds(),
                       //TransitionId::name(appDg->service()));
         return;
       }
 
+      // Sanity check
+      if (_dgMap.find(appDg) == _dgMap.end()) [[unlikely]]
+      {
+        logging::info("_deleteDatagram: dg not in map: %p, ts %u.%09u, svc %s\n",
+                       appDg, appDg->time.seconds(), appDg->time.nanoseconds(), TransitionId::name(appDg->service()));
+        return;
+      }
+
       // Retrieve the event builder's datagram and extract the buffer index
-      size_t dgSz = sizeof(*appDg) + appDg->xtc.sizeofPayload();
-      Dgram* dg = *(Dgram**)((uint8_t*)appDg + dgSz);
+      Dgram* dg = _dgMap[appDg];
       unsigned idx = dg->xtc.src.value();
 
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
@@ -287,6 +291,10 @@ namespace Pds {
         }
       }
       //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
+
+      // Release map slot
+      // appDg shmem buffer pointers are fixed at startup
+      _dgMap[appDg] = nullptr;          // Avoid allocating/freeing
     }
 
     virtual void _requestDatagram()     // Not called for transitions
@@ -295,7 +303,7 @@ namespace Pds {
       unsigned idx;
       if (_bufFreeList.pop(idx)) [[unlikely]]
       {
-        logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
+        logging::error("_requestDatagram: No free buffers available");
         return;
       }
       //printf("_requestDatagram: pop idx %u, cnt = %zu\n", idx, _bufFreeList.count());
@@ -344,23 +352,24 @@ namespace Pds {
     }
 
   private:
-    std::vector<EbLfCltLink*>&     _mrqLinks;
-    uint64_t&                      _requestCount;
-    FifoMT<unsigned, std::mutex>   _bufFreeList;
-    std::shared_ptr<PromHistogram> _bufUseCnts;
-    std::atomic<uint64_t>&         _prcBufCount;
-    MyMetric&                      _bufCpyMetric;
-    MyMetric&                      _bufPrcMetric;
-    MyMetric&                      _monTrgMetric;
-    MyMetric&                      _appPrcMetric;
-    const MebParams&               _prms;
+    std::vector<EbLfCltLink*>&         _mrqLinks;
+    uint64_t&                          _requestCount;
+    FifoMT<unsigned, std::mutex>       _bufFreeList;
+    std::unordered_map<Dgram*, Dgram*> _dgMap;
+    std::shared_ptr<PromHistogram>     _bufUseCnts;
+    std::atomic<uint64_t>&             _prcBufCount;
+    MyMetric&                          _bufCpyMetric;
+    MyMetric&                          _bufPrcMetric;
+    MyMetric&                          _monTrgMetric;
+    MyMetric&                          _appPrcMetric;
+    const MebParams&                   _prms;
   };
 
 
   class Meb : public EbAppBase
   {
   public:
-    Meb(const MebParams& prms, ZmqContext& context);
+    Meb(MebParams& prms, ZmqContext& context);
   public:
     int  resetCounters();
     int  connect(const std::shared_ptr<MetricExporter>);
@@ -409,8 +418,7 @@ static json createPulseIdMsg(uint64_t pulseId)
   return msg;
 }
 
-Meb::Meb(const MebParams&        prms,
-         ZmqContext&             context) :
+Meb::Meb(MebParams& prms, ZmqContext& context) :
   EbAppBase    (prms, "MEB"),
   _pidPrv      (0),
   _latPid      (0),
@@ -769,6 +777,7 @@ public:                                 // For CollectionApp
 private:
   std::string
        _error(const json& msg, const std::string& errorMsg);
+  void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
@@ -781,6 +790,7 @@ private:
   std::unique_ptr<Meb>                 _meb;
   std::thread                          _appThread;
   bool                                 _unconfigFlag;
+  std::string                          _lastKey;
 };
 
 MebApp::MebApp(MebParams& prms) :
@@ -788,7 +798,7 @@ MebApp::MebApp(MebParams& prms) :
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _exposer     (createExposer(prms.prometheusDir, getHostname())),
-  _meb         (std::make_unique<Meb>(_prms, context())),
+  _meb         (std::make_unique<Meb>(prms, context())),
   _unconfigFlag(false)
 {
   logging::info("Ready for transitions");
@@ -804,7 +814,7 @@ MebApp::~MebApp()
 std::string MebApp::_error(const json&        msg,
                            const std::string& errorMsg)
 {
-  json body = json({});
+  json body({});
   const std::string& key = msg["header"]["key"];
   body["err_info"] = errorMsg;
   logging::error("%s", errorMsg.c_str());
@@ -841,6 +851,8 @@ void MebApp::connectionShutdown()
 
 void MebApp::handleConnect(const json &msg)
 {
+  _lastKey = msg["header"]["key"];
+
   // If the exporter already exists, replace it so that previous metrics are deleted
   if (_exposer)
   {
@@ -848,7 +860,7 @@ void MebApp::handleConnect(const json &msg)
     _exposer->RegisterCollectable(_exporter);
   }
 
-  json body = json({});
+  json body({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
@@ -865,6 +877,12 @@ void MebApp::handleConnect(const json &msg)
 
   // Reply to collection with transition status
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+void MebApp::_disconnect()
+{
+  if (_meb)
+    _meb->disconnect();
 }
 
 int MebApp::_configure(const json &msg)
@@ -886,20 +904,23 @@ void MebApp::_unconfigure()
   lRunning = 0;
   if (_appThread.joinable())  _appThread.join();
 
-  _meb->unconfigure();
+  if (_meb)
+    _meb->unconfigure();
 
   _unconfigFlag = false;
 }
 
 void MebApp::handlePhase1(const json& msg)
 {
-  json        body = json({});
+  json        body({});
   std::string key  = msg["header"]["key"];
 
   if (key == "configure")
   {
     // Handle a "queued" Unconfigure, if any
-    if (_unconfigFlag)  _unconfigure();
+    // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+    if (_unconfigFlag || (_lastKey == key))
+      _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -921,6 +942,7 @@ void MebApp::handlePhase1(const json& msg)
   {
     _meb->resetCounters();              // Same time as DRPs
   }
+  _lastKey = key;
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -931,12 +953,12 @@ void MebApp::handleDisconnect(const json &msg)
   // Carry out the queued Unconfigure, if there was one
   if (_unconfigFlag)  _unconfigure();
 
-  _meb->disconnect();
+  _disconnect();
 
   if (_exporter)  _exporter.reset();
 
   // Reply to collection with connect status
-  json body = json({});
+  json body({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -945,7 +967,7 @@ void MebApp::handleReset(const json &msg)
   unsubscribePartition();               // ZMQ_UNSUBSCRIBE
 
   _unconfigure();
-  _meb->disconnect();
+  _disconnect();
   if (_exporter)  _exporter.reset();
   connectionShutdown();
 }

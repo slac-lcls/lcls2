@@ -195,6 +195,7 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -204,6 +205,7 @@ private:
     std::unique_ptr<Detector> m_det;
     std::unique_ptr<BldDrp>   m_drp;
     bool                      m_unconfigure;
+    std::string               m_lastKey;
 };
 
 }

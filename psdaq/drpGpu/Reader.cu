@@ -41,7 +41,7 @@ Reader::Reader(const Parameters&                  para,
 {
   // Establish the number of Reader graphs to use
   if (para.kwargs.find("nReaders") != para.kwargs.end())
-    m_nReaders = std::stoul(const_cast<Parameters&>(para).kwargs["nReaders"]);
+    m_nReaders = std::stoul(para.kwargs.at("nReaders"));
   else
     m_nReaders = 1;
   if ((m_nReaders == 0) || (m_nReaders * (m_pool.dmaCount()/m_nReaders)) != m_pool.dmaCount()) {
@@ -656,6 +656,18 @@ void Reader::freeDma(PGPEvent* event)
   DmaBuffer* buffer = &event->buffers[lane];
   event->mask = 0;
   m_pebbleQueue.h->push(buffer->index);
-  m_pool.freeDma(1, nullptr);
+  //m_pool.freeDma(1, nullptr); // This doesn't do anything
   //printf("*** Reader::freeDma: pblIdx %u, hd %u, tl %u, occ %u\n", buffer->index, m_pebbleQueue.h->head(), m_pebbleQueue.h->tail(), m_pebbleQueue.h->occupancy());
 }
+
+void Reader::flush()
+{
+  // Free buffers associated with the DMAs
+  for (auto& event : m_pool.pgpEvents) {
+    if (event.mask)  freeDma(&event);   // Leaves event mask = 0
+  }
+
+  // Free any in-use pebble buffers
+  m_pool.flushPebble();
+}
+

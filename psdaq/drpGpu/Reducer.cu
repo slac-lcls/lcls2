@@ -279,7 +279,7 @@ bool Reducer::_setupAlgos(Detector& det)
     logging::error("Missing required kwarg 'reducer'");
     return false;
   }
-  reducer = const_cast<Parameters&>(m_para).kwargs["reducer"];
+  reducer = m_para.kwargs.at("reducer");
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_algos[i])  delete m_algos[i]; // If the object exists, delete it

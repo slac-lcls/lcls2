@@ -45,7 +45,7 @@ NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
 {
   if (para.detType == "epixuhrsim") {
     if (para.kwargs.find("sim_l1_verify") != para.kwargs.end()) {
-      if (std::stoul(const_cast<Parameters&>(para).kwargs["sim_l1_verify"])) {
+      if (std::stoul(para.kwargs.at("sim_l1_verify"))) {
         m_refBufs_d = det.gpuDetector()->referenceBuffers();
         m_refBufCnt = det.gpuDetector()->referenceBufCnt();
       }

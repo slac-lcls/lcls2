@@ -153,10 +153,10 @@ void MemPool::_initialize(const Parameters& para)
     // be RDMAed from to the MEB
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
-                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufSize"]);
+                      : std::stoul(para.kwargs.at("pebbleBufSize"));
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
                       ? m_nDmaBuffers
-                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
+                      : std::stoul(para.kwargs.at("pebbleBufCount"));
     if (m_nbuffers < m_nDmaBuffers) {
         logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
                           m_nbuffers, m_nDmaBuffers);
@@ -1181,7 +1181,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
+    m_tebContributor   = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -1192,7 +1192,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
-    m_mebContributor = std::make_unique<MebContributor>(m_mPrms);
+    m_mebContributor   = std::make_unique<MebContributor>(m_mPrms);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1232,9 +1232,12 @@ void DrpBase::shutdown()
     // there won't be a Disconnect transition, so disconnect() here
     disconnect();                       // Does no harm if already done
 
-    m_tebContributor->shutdown();
-    m_mebContributor->shutdown();
-    m_tebReceiver->shutdown();
+    if (m_tebContributor)
+        m_tebContributor->shutdown();
+    if (m_mebContributor)
+        m_mebContributor->shutdown();
+    if (m_tebReceiver)
+        m_tebReceiver->shutdown();
 }
 
 json DrpBase::connectionInfo(const std::string& ip)
@@ -1498,11 +1501,14 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
 
 void DrpBase::unconfigure()
 {
-    m_tebContributor->unconfigure();
+    if (m_tebContributor)
+        m_tebContributor->unconfigure();
     if (m_mPrms.addrs.size() != 0) {
-        m_mebContributor->unconfigure();
+        if (m_mebContributor)
+            m_mebContributor->unconfigure();
     }
-    m_tebReceiver->unconfigure();
+    if (m_tebReceiver)
+        m_tebReceiver->unconfigure();
 }
 
 void DrpBase::disconnect()
@@ -1511,11 +1517,14 @@ void DrpBase::disconnect()
     // there won't be an Unconfigure transition, so unconfigure() here
     unconfigure();                      // Does no harm if already done
 
-    m_tebContributor->disconnect();
+    if (m_tebContributor)
+        m_tebContributor->disconnect();
     if (m_mPrms.addrs.size() != 0) {
-        m_mebContributor->disconnect();
+        if (m_mebContributor)
+            m_mebContributor->disconnect();
     }
-    m_tebReceiver->disconnect();
+    if (m_tebReceiver)
+        m_tebReceiver->disconnect();
 
     if (m_exporter) {
         m_exporter.reset();
@@ -1816,7 +1825,7 @@ static json createChunkRequestMsg()
     return msg;
 }
 
-std::vector<XtcData::VarDef>& Drp::Detector::rawDef() { 
+std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
     logging::error("Attempt to cube Detector without rawDef overriden");
     abort();
 }
@@ -1824,7 +1833,7 @@ std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
 //
 //  This is generic but without calibration
 //
-void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex,
                               double* dst, DescData& rawData)
 {
     NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
@@ -1835,7 +1844,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
 #define ADD_VALUE(T) {                                           \
             double v = double(rawData.get_value<T>(valueIndex)); \
             *dst += v;                                           \
-            printf("[%s][%p] %f %f \n",name.name(),dst,*dst,v); \ 
+            printf("[%s][%p] %f %f \n",name.name(),dst,*dst,v); \
         break; }
         */
 #define ADD_VALUE(T) {                                           \
