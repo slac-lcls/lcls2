@@ -254,6 +254,37 @@
     7.9 with more ranks it is latency-bound (unlock = concurrency/async
     prefetch); if it plateaus well below, it is a per-rank CPU/serialization
     limit (points at `det.raw.raw` deserialization or the EB->BD path).
+- [x] BD-per-node concurrency sweep (GPU path, 1 node/FFB/r47) — ANSWERS the above
+  - 2026-07-10 (Ralph iter 5): `bench_calib.py` GPU path at BD = 8/16/32/48/64,
+    `mpirun --bind-to none --oversubscribe -n 100`, job 31267701 (sdfampere029).
+    Logs `bench_mpi_sweep/ralph_tmp/conc_*_172029_*.log`, summary
+    `conc_summary_172029.log`. Read BW = agg Hz × 33.5 MB/event.
+
+    | BD ranks | aggregate Hz | aggregate read GB/s |
+    |---:|---:|---:|
+    | 8  | 66.8 | 2.24 |
+    | 16 | 83.9 | 2.81 |
+    | 32 | 84.9 | 2.84 |
+    | 48 | OOM  | — |
+    | 64 | OOM  | — |
+    | 32 (bracket, +13 min) | 39.9 | 1.34 |
+
+  - **Verdict = per-rank SERIALIZATION, not latency-bound.** Aggregate read BW
+    rises 8→16 (+26%) then is FLAT 16→32 (+1%), plateauing at ~2.8 GB/s = 35%
+    of the 7.9 GB/s per-node storage ceiling. It does NOT climb toward 7.9 as
+    ranks rise, so more BD ranks / more in-flight reads is NOT the unlock; the
+    wall is per-rank CPU work in the serving/deserialize chain (`det.raw.raw` +
+    EB→BD). Confound: end-bracket 32 dropped to 39.9 Hz (FFB window degraded ~2×
+    over the sweep) — the plateau *level* is FS-window dependent, but 16 and 32
+    were measured back-to-back (both ~84) so the rank-count flatness is robust.
+  - **NEW hard ceiling: single-A100 GPU path OOMs at 48 BD ranks.** Each BD rank
+    = own CUDA context (~0.3–0.6 GB) + replicated calib constants (peds+gmask ≈
+    384 MB) + 201 MB working buffer; 48 ranks exhaust the 40 GB A100
+    (`OutOfMemoryError: allocating 201,326,592 bytes`; 48 and 64 both abort).
+    So ~32 BD ranks/A100 is the practical single-GPU concurrency ceiling. This
+    MEETS the DEFERRED `share_calib_between_gpu_peers` (CUDA-IPC) trigger — but
+    per the serialization verdict, IPC sharing buys memory headroom, not
+    throughput.
 - [x] Record NIC recv bandwidth during GPU run vs CPU run
   - 2026-07-08: sampled /proc/net/dev at 2 s during every sweep config.
     Finding: bulk storage I/O (~7 GB/s at 210 Hz) is INVISIBLE to netdev

@@ -329,3 +329,84 @@ concurrency / async prefetch (a psexp or BD-loop change, in scope per §3/§7); 
 it plateaus well below 7.9, it is a per-rank CPU/serialization limit in the
 serving chain (points at `det.raw.raw` deserialization or the EB→BD path). No new
 tooling required — this is the decisive next measurement.
+
+---
+
+## 2026-07-10 — Iteration 5 (BD-per-node concurrency sweep — pipeline plateaus at ~16 BD, well below storage; and a hard A100-memory ceiling at ~48 BD)
+
+**Task:** the recommended decisive measurement — a BD-ranks-per-node concurrency
+sweep at fixed 1 node/FFB (GPU path) to separate **latency-bound** (aggregate
+read GB/s climbs toward the 7.9 GB/s per-node storage ceiling as ranks rise →
+unlock is more concurrency / async prefetch) from a **per-rank serialization
+limit** (plateaus well below 7.9 → the serving/deserialize path is the wall).
+
+**What I did:**
+- Added `bench_mpi_sweep/ralph_tmp/concsweep.sh` (not tracked): runs the GPU
+  `bench_calib.py` at BD = 8/16/32/48/64 on the `ralph-gpu` node (job 31267701,
+  sdfampere029), `mpirun --bind-to none --oversubscribe`, `-n 100 --warmup 10`,
+  r47/FFB. The node has 112 allocated CPUs, so even 64 BD (66 procs) map to real
+  cores — no oversubscription artifacts. Bracketed by re-running 32 BD last to
+  gauge FFB minute-to-minute variance. Derived aggregate read BW = agg Hz ×
+  33.5 MB/event.
+  - (First launch failed instantly — I dropped `--oversubscribe`, so PRRTE saw
+    only the 1-slot srun step. Re-added it; the established recipe is
+    `--bind-to none --oversubscribe`.)
+
+**Numbers (r47, FFB, A100, `bench_mpi_sweep/ralph_tmp/conc_*_172029_*.log`,
+summary `conc_summary_172029.log`):**
+
+| BD ranks | aggregate Hz | aggregate read GB/s | note |
+|---:|---:|---:|---|
+| 8  | 66.8 | 2.24 | |
+| 16 | 83.9 | 2.81 | |
+| 32 | 84.9 | 2.84 | |
+| 48 | **OOM** | — | A100 40 GB exhausted (`OutOfMemoryError: allocating 201,326,592 bytes`) |
+| 64 | **OOM** | — | same |
+| 32 (bracket, +13 min) | 39.9 | 1.34 | FFB window degraded ~2× over the sweep |
+
+**Finding 1 — the pipeline saturates at ~16 BD, far below the storage ceiling.**
+Aggregate read bandwidth climbs 8→16 BD (+26%, 2.24→2.81 GB/s) but is FLAT
+16→32 BD (+1%, 2.81→2.84). It plateaus at **~2.8 GB/s = 35% of the 7.9 GB/s
+per-node storage ceiling** — it does NOT climb toward 7.9 as ranks rise. Per the
+decision rule this is the **per-rank serialization** verdict, not latency-bound:
+adding outstanding reads past ~16/node buys nothing, so the wall is per-rank CPU
+work in the serving/deserialize chain (`det.raw.raw` + EB→BD), not too-few
+in-flight reads. **The unlock is therefore NOT more BD ranks / more concurrency;
+it is making each rank's serving path cheaper.**
+- Confound (honest): the end-bracket 32 BD fell to 39.9 Hz (1.34 GB/s), i.e. the
+  live FFB window degraded ~2× across the 13-min sweep. So the plateau *level* is
+  FS-window-dependent. But 16 BD and 32 BD were measured back-to-back (17:21 /
+  17:22, both ~84 Hz) — the rank-count flatness *within a stable window* is the
+  robust signal and is what the verdict rests on. Fully separating "per-rank
+  serialization" from "shared FS currently throttled to ~2.8 GB/s" would need a
+  concurrent raw `os.pread` reader control in the SAME window (the TASK.md raw
+  matrix hit 7.9 GB/s at 32 readers, but on a different day/window).
+
+**Finding 2 — NEW hard ceiling: the single-A100 GPU path OOMs at 48 BD ranks.**
+Each BD rank is an independent process with its own CUDA context (~0.3–0.6 GB)
+AND its own replicated calib constants (`peds_gpu + gmask_gpu ≈ 384 MB` for the
+32-seg detector) plus a 201 MB working allocation. At 48 ranks this exhausts the
+40 GB A100 (both 48 and 64 aborted at init/early events). So **~32 BD ranks/A100
+is the practical MVP concurrency ceiling** on a single GPU — you cannot chase
+storage bandwidth by piling on ranks without shrinking per-rank GPU footprint.
+This is exactly the trigger the DEFERRED `share_calib_between_gpu_peers` (CUDA-IPC
+calib sharing) entry names ("multiple BD ranks on same GPU AND OOM from duplicate
+calib buffers") — now MET; I marked it in DEFERRED.md. **But** given Finding 1
+(concurrency past ~16 BD does not raise throughput), IPC sharing would buy memory
+headroom, NOT throughput — so it is justified for enabling denser packing / more
+GPUs-per-node topologies, not as the throughput lever.
+
+**Keep/revert:** KEEP `concsweep.sh` in ralph_tmp (the concurrency-sweep tool).
+Correctness gate not triggered (benchmark harness + GPU numeric path byte-identical).
+
+**Recommended next step:** Finding 1 points squarely at **per-rank serialization
+in the read/deserialize path**. The decisive next experiment: determine whether
+`det.raw.raw(evt)`'s ~119 ms @32BD (iter 3, 31% of wall) is **storage I/O** or
+**in-process CPU deserialization/reshape** — instrument inside `det.raw.raw` on a
+single BD rank (or compare it against a bare `os.pread` of the same dgram bytes).
+If CPU-bound deserialize/reshape, the lever is a lighter raw accessor or moving
+the reshape off the hot path (a psana-side change, in scope §3/§7); if it is lazy
+storage I/O, it points to per-BD-rank async prefetch. Second, if a clean window
+is available, repeat the 8/16/32 sweep *alongside a concurrent raw `os.pread`
+reader control* to nail down whether the ~2.8 GB/s plateau is per-rank
+serialization or a currently-throttled shared FS.

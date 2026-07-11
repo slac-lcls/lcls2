@@ -184,6 +184,16 @@ GPU AND OOM errors or measurable memory pressure from duplicate calibration
 buffers. Memory per BD rank for Jungfrau 4M: `peds_gpu + gmask_gpu ≈ 400 MB`.
 On a 40 GB A100 with 2 BD ranks: 800 MB — not a problem. Revisit if N_BD > 4.
 
+**2026-07-10 (Ralph iter 5): trigger MET.** The BD-per-node concurrency sweep
+(TASK.md) OOMs the 40 GB A100 at **48 BD ranks** (`OutOfMemoryError: allocating
+201,326,592 bytes`; 48 and 64 both abort), whereas 32 BD fits. Each rank
+replicates `peds_gpu + gmask_gpu ≈ 384 MB` on the 32-seg detector plus its own
+CUDA context — the duplicate-buffer memory pressure is now real and caps
+single-A100 concurrency at ~32 BD. **Caveat before building:** the same sweep
+showed throughput is FLAT 16→32 BD (per-rank serialization, not concurrency,
+is the wall), so IPC sharing would buy memory headroom / denser packing, NOT
+throughput. Justified for topologies needing >32 BD/GPU; not a throughput lever.
+
 ---
 
 ## gpudgramlite.py / cuda/gpudgramlite.cuh
