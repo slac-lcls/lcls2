@@ -469,6 +469,22 @@
   smd0/EB per-batch serial production upstream of the handoff, which more EB *ranks*
   don't relieve. Lever redirects to bd_read (~82–90 ms, largest wait component) via
   async prefetch. Logs `bench_mpi_sweep/ralph_tmp/ebsweep_*_192953.log`.
+- 2026-07-10 (iter 15): **dgram-construction directly counted — the "27% CPU residual =
+  dgram construction" hypothesis is REFUTED.** Added additive-only `total_dgram_ns`/
+  `total_smdparse_ns` counters on the persistent `dm` (`run.bd_node.dm`; EventManagers are
+  transient) timing `_get_next_dgrams` (per-event `dgram.Dgram()`) and `_get_offset_and_size`
+  (per-batch array build); plumbed into `--wait-split`. Counted with the SAME `bd_events`
+  denominator as bd_read/eb_wait (so ratios are normalization-robust): dgram = **1.07 ms
+  @1BD → 4.13 ms @32BD (32-rank mean)** = **~5% of counted delivery, ~4% of the ~95 ms
+  wall**, and grows only **3.9x** across 32 ranks (nearly flat per-rank = pure CPU,
+  minimally contention-sensitive). iter 10's "27% residual = dgram" was a **subtractive
+  artifact**: the residual `wait − eb_wait − bd_read` mixes denominators (`wait` over
+  measured-L1 `n`; eb_wait/bd_read over node `bd_events > n`), inflating the leftover. The
+  super-linear 32-BD delivery cost lives in bd_read (storage/cache contention) + eb_wait
+  (single EB / 32 ranks), NOT dgram. **Verdict: the lighter-dgram-accessor lever is dead
+  (ceiling ≤~4%).** Bit-exact (20/20 max_diff 0.0), default MPI path verified. Logs
+  `bench_mpi_sweep/ralph_tmp/dgram2_1bd_210*.log`, `dgram_32bd_211018.log`. NOTE:
+  `event_manager.py` edits require source→`install/` sync (same as node.py).
 - 2026-07-10 (iter 10): **`wait`-bucket split — no single culprit.** At 32 BD the
   79%-of-wall delivery `wait` (166.7 ms/event) splits **42% bd_read (69.6 ms,
   os.pread off FFB) / 31% eb_wait (51.5 ms, blocked on the EB batch handoff) / 27%

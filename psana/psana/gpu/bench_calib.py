@@ -511,9 +511,12 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
 
     def _snap():
         if bd_node is None:
-            return (0, 0, 0)
+            return (0, 0, 0, 0, 0)
+        dm = getattr(bd_node, "dm", None)
+        dgram_ns = getattr(dm, "total_dgram_ns", 0) if dm is not None else 0
+        smdparse_ns = getattr(dm, "total_smdparse_ns", 0) if dm is not None else 0
         return (bd_node.total_eb_wait_ns, bd_node.total_bd_read_ns,
-                bd_node.total_events)
+                bd_node.total_events, dgram_ns, smdparse_ns)
 
     wait_times, h2d_times, kernel_times = [], [], []
     warmup_done = False
@@ -579,6 +582,8 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
     d_eb_wait_ns = snap1[0] - snap0[0]
     d_bd_read_ns = snap1[1] - snap0[1]
     d_events = snap1[2] - snap0[2]
+    d_dgram_ns = snap1[3] - snap0[3]
+    d_smdparse_ns = snap1[4] - snap0[4]
     # ms/event over the measured window (bd_node counts every event the rank
     # advanced past, incl. skipped transitions; use its own event delta).
     ev = d_events if d_events > 0 else max(n, 1)
@@ -591,6 +596,8 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
         "kernel_ms_mean": np.mean(kernel_times) if kernel_times else 0,
         "eb_wait_ms_mean": (d_eb_wait_ns / 1e6) / ev,
         "bd_read_ms_mean": (d_bd_read_ns / 1e6) / ev,
+        "dgram_ms_mean": (d_dgram_ns / 1e6) / ev,
+        "smdparse_ms_mean": (d_smdparse_ns / 1e6) / ev,
         "bd_events": int(d_events),
     }
 
@@ -1068,6 +1075,14 @@ def main():
                   f"(BD blocked on EB batch: Probe+Irecv)")
             print(f"    bd_read:   {result['bd_read_ms_mean']:.3f} ms/event "
                   f"(os.pread bigdata xtc off FFB)")
+            _resid = (result['wait_ms_mean'] - result['eb_wait_ms_mean']
+                      - result['bd_read_ms_mean'])
+            print(f"    residual:  {_resid:.3f} ms/event "
+                  f"(wait - eb_wait - bd_read; CPU construction)")
+            print(f"      dgram:     {result['dgram_ms_mean']:.3f} ms/event "
+                  f"(per-event dgram.Dgram() construction)")
+            print(f"      smdparse:  {result['smdparse_ms_mean']:.3f} ms/event "
+                  f"(per-batch offset/size array build)")
             print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event "
                   f"(per-seg host->device, no host stack)")
             print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event")

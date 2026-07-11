@@ -63,7 +63,19 @@ class EventManager(object):
         # Each chunk must fit in BD_CHUNKSIZE and we only fill bd buffers
         # when bd_offset reaches the size of buffer.
         self.BD_CHUNKSIZE = int(os.environ.get("PS_BD_CHUNKSIZE", 0x1000000))
+        # Cumulative CPU-residual attribution (additive-only, read by benchmarks
+        # via run.bd_node.dm; does not affect the default path). EventManagers are
+        # transient (one per batch), so the counters live on the persistent dm.
+        # smdparse = building the per-batch offset/size arrays from the smd chunk;
+        # dgram = per-event dgram.Dgram() construction in _get_next_dgrams. These
+        # attribute the wait-split "residual" (wait - eb_wait - bd_read) directly
+        # instead of by subtraction.
+        if not hasattr(self.dm, "total_dgram_ns"):
+            self.dm.total_dgram_ns = 0
+            self.dm.total_smdparse_ns = 0
+        _t0 = time.monotonic()
         self._get_offset_and_size()
+        self.dm.total_smdparse_ns += int((time.monotonic() - _t0) * 1e9)
         if self.dm.n_files > 0:
             self._init_bd_chunks()
 
@@ -344,6 +356,20 @@ class EventManager(object):
         )
 
     def _get_next_dgrams(self):
+        # Time the per-event dgram construction (additive-only; see __init__).
+        # _get_next_dgrams lazily triggers a bigdata os.pread via _fill_bd_chunk
+        # when a bd buffer is exhausted, so subtract the read time that accrues
+        # inside the call (already counted in bd_read) to leave PURE dgram CPU.
+        _t0 = time.monotonic()
+        _r0 = self._bd_read_time
+        try:
+            return self._get_next_dgrams_impl()
+        finally:
+            _dt = time.monotonic() - _t0
+            _dr = self._bd_read_time - _r0
+            self.dm.total_dgram_ns += int((_dt - _dr) * 1e9)
+
+    def _get_next_dgrams_impl(self):
         """Generate bd evt for different cases:
         1) No bigdata or Transition Event
             create dgrams from smd_view

@@ -1143,3 +1143,90 @@ faithful prefetch test is ever still wanted, it requires the *real* double-buffe
 (reads the main loop's own next batch, adding zero net bytes) — which is exactly the psexp
 surgery the probes were meant to de-risk and could not; do it only as a deliberate, flag-
 gated, default-`run.events()`-verified change, not another probe.
+
+---
+
+## 2026-07-10 — Iteration 15 (direct dgram-construction attribution — the "27% CPU residual = dgram construction" hypothesis is REFUTED: dgram is only ~4-5% of delivery, nearly flat per-rank)
+
+**Task:** iter 14's recommended pivot — attack the **window-independent ~27% CPU
+residual** (iter 10's wait-split: read 42% / EB-wait 31% / CPU 27%), which iter 10
+labeled "dgram construction + generator plumbing." Per the loop's discipline (attribute
+before building — iters 0-4 mis-attributed the multi-node ceiling four times by skipping
+exactly this step), I did NOT jump to a "lighter dgram accessor"; I first measured
+directly how much of the residual is actually `dgram.Dgram()` construction.
+
+**What I did:**
+- Added **additive-only** cumulative counters on the persistent DgramManager (`dm`,
+  reachable as `run.bd_node.dm`; EventManagers are transient/per-batch so the counters
+  can't live on them): `total_dgram_ns` (time in `_get_next_dgrams`, the per-event
+  `dgram.Dgram()` construction) and `total_smdparse_ns` (time in `_get_offset_and_size`,
+  the per-batch offset/size-array build). Split `_get_next_dgrams` into a timing wrapper
+  + `_get_next_dgrams_impl`. Plumbed both into `--wait-split` in `bench_calib.py`
+  (new `dgram`/`smdparse`/`residual` report lines). No behavior change to the default
+  path; numeric path byte-identical.
+- **One instrumentation confound found + fixed mid-iteration:** `_get_next_dgrams`
+  lazily triggers a bigdata `os.pread` via `_fill_bd_chunk` when a bd buffer is
+  exhausted, so the naive dgram timer double-counted `bd_read` (first pass: dgram=9.55 ms
+  > bd_read=8.59 ms @1BD, impossible for "pure CPU"). Fixed by subtracting the
+  `_bd_read_time` delta that accrues inside the call, leaving pure dgram CPU.
+- Synced source `event_manager.py` → `install/` (psana imports from install, not source;
+  same gotcha iter 10 documented for node.py), dropped the stale pyc.
+- Ran `--wait-split` at 1 BD (`-n 80`) and 32 BD (`-n 200`) on r47/FFB, `ralph-gpu` node
+  (job 31267701, sdfampere029), `mpirun --bind-to none --oversubscribe`.
+
+**Correctness gate:** `test_jungfrau_calib.py -e mfx101572426 -r 47 -n 20` (default path,
+exercises the edited `event_manager.py`) → **20/20 OK, max_diff 0.0**. Default psana MPI
+event loop verified working (§7 rule 4). Bit-exact.
+
+**Numbers (r47, FFB, A100, per-event ms; logs
+`bench_mpi_sweep/ralph_tmp/dgram2_1bd_210*.log`, `dgram_32bd_211018.log`):**
+
+| counter (same `bd_events` denominator) | 1 BD (70.0 Hz) | 32 BD (337.2 Hz agg, ~10.5 Hz/rank) | 1→32 growth |
+|---|---:|---:|---:|
+| eb_wait (blocked on EB) | 0.055 | ~28 (26–33) | ~500x |
+| bd_read (os.pread) | 8.57 | 43.6 (32-rank mean) | 5.1x |
+| **dgram** (`dgram.Dgram()` construction) | **1.07** | **4.13** (32-rank mean) | **3.9x** |
+| smdparse (per-batch array build) | 0.29 | ~1.3 | 4.5x |
+| H->D (per-seg) | 3.49 | ~23 | |
+| kernel | 0.34 | ~1.0 | |
+| per-rank wall | 14.3 | ~95–142 | |
+
+dgram as a share of the four directly-counted delivery components (all sharing the
+`bd_events` denominator, so the ratio is normalization-robust):
+**11% @1BD → ~5% @32BD**; as a share of per-rank wall, **~7.5% @1BD → ~4% @32BD**.
+Consistent across all 32 ranks (dgram 2.4–6.0 ms, mean 4.13; bd_read mean 43.6).
+
+**The finding (refutes iter-10/14's residual hypothesis):**
+1. **dgram construction is NOT the residual's driver — it is ~4-5% of delivery, ~4% of
+   wall.** iter 10's "27% CPU residual = dgram construction" was a **subtractive artifact**:
+   the residual `wait − eb_wait − bd_read` mixes denominators — `wait` is averaged over
+   measured L1 events (`n`) while `eb_wait`/`bd_read` are normalized by the node's own
+   `bd_events` (which includes skipped transitions, `bd_events > n`), so `eb_wait`/`bd_read`
+   are understated and the leftover "residual" is inflated. Counted **directly** with the
+   same denominator as bd_read, dgram construction is small.
+2. **dgram is nearly flat per-rank (3.9x for 32x ranks) — it is pure CPU, minimally
+   contention-sensitive**, exactly as expected for in-process object construction. The
+   super-linear inflation that makes 32-BD delivery expensive lives in `bd_read`
+   (storage/cache contention) and `eb_wait` (single EB serving 32 ranks), NOT in dgram
+   construction. A "lighter dgram accessor" would shave only the flat ~4 ms.
+3. **Therefore the lighter-dgram-accessor lever iter 14 recommended is DEAD** — its ceiling
+   is ≤~4% and it does nothing for the contention-driven buckets that dominate the wall.
+
+**Keep/revert:** KEEP the `total_dgram_ns`/`total_smdparse_ns` counters + `--wait-split`
+reporting — additive-only attribution tooling that settled the question, bit-exact,
+default path verified. No throughput change this iteration (pure attribution that closes
+a lever).
+
+**Recommended next step:** the single-node per-rank optimization search is now **largely
+exhausted** — the two landed wins (copy=False +30%, seg-h2d +32%) removed the two host
+memcpys, and every remaining per-rank bucket is either shared-resource contention
+(bd_read, eb_wait — grow super-linearly, not per-rank CPU) or small-and-flat (dgram ~4%,
+kernel ~1%). The two dominant buckets can't be shrunk by per-rank code; they need a
+structural change. The highest-leverage **unmeasured** direction is **multi-node re-measure**:
+the branch's original §1 open question was the ~300 Hz multi-node plateau, measured
+*before* copy=False + seg-h2d landed (+~70% combined per-rank). Re-run the 2-node/64-rank
+layout (`bench_mpi_sweep/mn2x32.sbatch`) to see (i) whether the plateau moved and (ii)
+whether `eb_wait` — now ~30% of counted delivery with a single EB serving 32 BD/node —
+becomes the multi-node ceiling, which would put PS_EB_NODES>1 in a genuinely different
+regime than iter 11's single-node flat result. Second choice remains the real
+double-buffered read-prefetch (zero-net-I/O), but iters 12-14 leaned CAUTION on it.
