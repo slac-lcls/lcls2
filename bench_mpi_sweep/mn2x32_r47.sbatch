@@ -37,7 +37,7 @@ BENCH="python psana/psana/gpu/bench_calib.py -e mfx101572426 -r 47 -n 200 --warm
 
 # --- A: single-node 32 BD (34 ranks on N0), bracket start ---
 T0=$(date +%s)
-mpirun --bind-to none -x PS_EB_NODES -H ${N0}:34 -n 34 ${BENCH} > ${OUTDIR}/sweep_sn32_r47_a.log 2>&1
+mpirun --bind-to none -x PS_EB_NODES --oversubscribe -H ${N0}:34 -n 34 ${BENCH} > ${OUTDIR}/sweep_sn32_r47_a.log 2>&1
 RCA=$?; TA=$(date +%s)
 echo "=== CONFIG MARKER: CFG=sn32_a exit=${RCA} wall=$((TA-T0)) ==="
 
@@ -47,7 +47,7 @@ RCB=$?; TB=$(date +%s)
 echo "=== CONFIG MARKER: CFG=mn2x32 exit=${RCB} wall=$((TB-TA)) ==="
 
 # --- C: single-node 32 BD (34 ranks on N0), bracket end ---
-mpirun --bind-to none -x PS_EB_NODES -H ${N0}:34 -n 34 ${BENCH} > ${OUTDIR}/sweep_sn32_r47_c.log 2>&1
+mpirun --bind-to none -x PS_EB_NODES --oversubscribe -H ${N0}:34 -n 34 ${BENCH} > ${OUTDIR}/sweep_sn32_r47_c.log 2>&1
 RCC=$?; TC=$(date +%s)
 echo "=== CONFIG MARKER: CFG=sn32_c exit=${RCC} wall=$((TC-TB)) ==="
 

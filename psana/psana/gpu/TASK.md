@@ -154,10 +154,22 @@
     read-bound, NOT the EB serving chain** — refutes the "single EB serving
     64 BD becomes the ceiling" hypothesis; PS_EB_NODES>1 stays a dead end.
     Aggregate read demand 9.5 GB/s / 2 nodes = 4.76 GB/s/node = ~60% of the
-    7.9 GB/s/node FFB ceiling. (Same-window single-node control was lost:
-    the 34-rank bracket configs failed to launch on 33 slots/node — needs
-    --oversubscribe to retry, so the 3x bd_read growth vs iter-15's 43.6 ms
-    single-node is confounded by cold/warm window state.)
+    7.9 GB/s/node FFB ceiling.
+  - **Same-window bracket (2026-07-10, iter 16 addendum, job 31291618,
+    --oversubscribe fix; single/multi/single in ONE allocation):** single
+    32-BD 189.0 / 174.4 Hz (mean 181.7), two-node 64-BD 291.6 Hz. **Clean
+    scaling 291.6/181.7 = 1.60x for 2x nodes = 80% per-node efficiency** —
+    sub-linear plateau CONFIRMED in a single window (not an artifact).
+    Attribution single→multi: **bd_read FLAT (132 → 127 ms) — storage read
+    scales cleanly per-node** (the earlier 43.6→133 "3x" was purely cold/warm
+    window state, iters 13-14). The scaling loss is in **eb_wait (5.4 → 11.2,
+    2.1x) + wait-residual (39.6 → 74.4, 1.9x)** — coordination/serving
+    overhead in the wait path (dgram/generator/smd0-EB cross-node roundtrip),
+    NOT storage and NOT the eb_wait batch-block specifically. Residual carries
+    the iter-15 denominator caveat but its doubling is a real relative signal.
+    Next: plumb dgram/smdparse counters into the multi-node aggregate report
+    (currently only eb_wait/bd_read surface there) to split residual =
+    dgram-plumbing vs pure smd0/EB coordination latency.
   - Synthesis (two ceilings, dominating at different scales):
       * Storage: per-node ~7.9 GB/s (~235 Hz/node), scales with nodes.
       * psana serving/pipeline: a ~260-306 Hz plateau independent of node

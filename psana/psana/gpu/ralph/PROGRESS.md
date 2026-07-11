@@ -1311,3 +1311,61 @@ multi-node wall, the lever is **per-node reader concurrency vs FFB saturation** 
 found the per-node pipeline plateaus ~16 BD; test whether fewer-but-fatter readers or a
 node-local staging tier (DEFERRED/TASK item 2, the 585 Hz warm baseline hint from iter 13)
 lifts the per-node storage ceiling. Prefetch stays CAUTION (iters 12-14).
+
+### Iteration 16 addendum — same-window bracket LANDED (job 31291618, --oversubscribe fix), scaling ratio isolated from window
+
+The `--oversubscribe` fix made the single-node bracket configs launch, so the full
+single/multi/single bracket ran in ONE allocation (sdfampere001,028) — window/cache held
+constant across all three. This is the clean scaling number the primary run couldn't give.
+
+**Same-window bracket (r47, FFB, A100; logs `bench_mpi_sweep/sweep_sn32_r47_a.log`,
+`sweep_mn2x32_r47.log`, `sweep_sn32_r47_c.log`; job 31291618):**
+
+| config | agg Hz | bd_read ms | eb_wait ms | wait-residual ms | per-rank wall ms |
+|---|---:|---:|---:|---:|---:|
+| A single 32-BD (start) | 189.0 | 128.3 | 4.22 | 37.5 | 169.3 |
+| B **two-node 64-BD** | **291.6** | 126.8 | 11.17 | 74.4 | 219.5 |
+| C single 32-BD (end) | 174.4 | 135.8 | 6.63 | 41.6 | 183.5 |
+
+single-node mean (A,C) **181.7 Hz** (bracket drift 189→174 = −7.7%, tolerable).
+
+**Clean scaling: 291.6 / 181.7 = 1.60x for 2x nodes → per-node efficiency 80%** (145.8
+Hz/node at 2 nodes vs 181.7 Hz/node at 1). Still sub-linear — the plateau is real — but
+measured in a single window, so it is NOT a window artifact.
+
+**What this CORRECTS in the primary entry above:**
+1. **bd_read is FLAT single→multi (132 → 127 ms), NOT the 3x I flagged as
+   window-confounded.** Confirmed: the 43.6 (iter 15, warm) → 133 (cold) swing was ENTIRELY
+   cold/warm window state, exactly the iters-13/14 4-5x bd_read regime effect. **Storage read
+   scales cleanly per-node** (2 nodes = 2x readers each at the same ~127 ms/event); FFB's
+   per-node 7.9 GB/s bandwidth genuinely adds with nodes. So bd_read is the LARGEST bucket
+   (58% of wall) but it is a WELL-SCALING cost — it is **not** what limits scaling to 1.6x.
+2. **The sub-linear scaling (the 20% per-node loss) lives in eb_wait + the wait-residual,
+   both of which ~DOUBLE while bd_read stays flat:** eb_wait 5.4 (A/C mean) → 11.2 (2.1x),
+   wait-residual 39.6 → 74.4 (1.9x). eb_wait is small in absolute terms (5% of wall); the
+   residual is the bigger mover (~74 ms = 34% of the multi-node wall). The residual =
+   `wait − eb_wait − bd_read` = dgram construction + generator plumbing + smd0/EB
+   coordination roundtrip NOT captured by eb_wait. CAVEAT: the residual carries iter 15's
+   denominator mismatch (wait normalized by `n`, eb_wait/bd_read by `bd_events > n`), so its
+   absolute size is inflated — but it DOUBLING single→multi (same instrumentation both
+   sides) is a real relative signal of growing per-rank coordination cost at 2 nodes.
+
+**Refined verdict:** the multi-node ceiling is NOT storage (bd_read scales per-node) and NOT
+the EB batch wait (eb_wait tiny). The scaling loss is **coordination/serving overhead in the
+wait path (residual + eb_wait roughly double at 2 nodes)** — the smd0 (single rank 0) → EB →
+64-BD-across-2-nodes cross-node request/serve roundtrip. This is the same "serving chain"
+suspect the campaign raised, now localized to the wait-residual (dgram/generator/coordination),
+NOT to eb_wait or bd_read specifically.
+
+**Refined next step:** attribute the wait-residual at multi-node directly, the way iter 15
+attributed it at single-node. iter 15's `total_dgram_ns`/`total_smdparse_ns` counters + the
+`--wait-split` `dgram`/`smdparse`/`residual` lines already exist — but the current multi-node
+`--wait-split` path reports only eb_wait/bd_read (the `run_gpu_bench_wait_split` aggregate
+branch, lines ~949-964, doesn't surface dgram/smdparse). Plumb the dgram/smdparse counters
+into the multi-node aggregate report and re-run the bracket: if dgram/smdparse stay flat
+single→multi (iter 15 showed dgram ~4 ms, near-flat) then the doubling residual is pure
+smd0/EB cross-node COORDINATION latency — which points the lever at smd0/EB rank placement or
+the request/serve protocol (a genuinely different, structural change), not per-rank code. If
+instead dgram/smdparse grow, the generator plumbing is contention-sensitive after all. Either
+way this is the one attribution still missing to close the multi-node plateau question. Fix
+the sbatch permanently by keeping the --oversubscribe single-node bracket (done).
