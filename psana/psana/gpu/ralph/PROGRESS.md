@@ -549,3 +549,80 @@ copying each segment's `.raw` **directly host→device** (per-segment
 33.5 MB memcpy before H2D? Measure with `--profile-read` (watch `stack`→0) at
 1/32 BD, gate bit-exact. Also worth doing: propagate the `copy=False` guidance
 into the public two-function API's usage docstring (`__init__.py`).
+
+---
+
+## 2026-07-10 — Iteration 8 (per-segment H2D — skip the host `stack` memcpy: +38% @1BD, +32% @32BD, bit-exact)
+
+**Task:** the single-variable change iter 7 pointed to — after `copy=False`
+landed, the host `stack` (per-seg `.raw` deserialize + `np.copyto` into the
+contiguous `_raw_buf`, 64.5 ms/event @32BD, iter 6) is the largest remaining
+read component. Can the GPU path skip it by copying each segment's `.raw`
+**directly host→device** into a pre-allocated device buffer, removing the last
+host-side 33.5 MB memcpy before H2D?
+
+**What I did:**
+- Added `run_gpu_bench_seg_h2d` + `--seg-h2d` to `bench_calib.py`. Instead of
+  `raw = det.raw.raw(evt, copy=False); cp.asarray(raw)` (host stack loop → one
+  33.5 MB H2D of `_raw_buf`), it does `segs = det.raw._segments(evt); for idx,sid:
+  raw_gpu_buf[idx].set(segs[sid].raw)` — 32× per-seg 1 MB H2Ds straight into a
+  device buffer, no host stack. `run_gpu_bench` (the B-MVP anchor loop) left
+  byte-identical. Synchronous (device sync after the transfer loop) → wall-clock
+  rate is a valid headline, no overlap-timing trap (§6).
+- Gated with a new `--seg-h2d` mode in `test_jungfrau_calib.py` that builds the
+  device buffer the same per-seg way and compares against `det.raw.calib`.
+- **One bug found + fixed before any perf number:** each segment's `.raw` is
+  shape `(1, 512, 1024)`, so the naive buffer became `(32, 1, 512, 1024)`. The
+  kernel ravels so the *data* was correct, but `fused_calib_gpu` reshapes to that
+  4-D shape and the correctness comparison broadcast → 20/20 MISMATCH,
+  max_diff 40277. Fix: reshape the buffer to `(-1, 512, 1024)` (the `reshape_to_3d`
+  equivalent) so it matches `det.raw.raw`'s shape. After the fix, bit-exact.
+- Measured A/B by interleaving baseline (default `copy=False`, one big H2D) vs
+  `--seg-h2d` back-to-back, 2 brackets each, to control for FFB minute-to-minute
+  variance (iter-7 method). `ralph-gpu` node (job 31267701, sdfampere029),
+  `mpirun --bind-to none --oversubscribe`, r47/FFB. Driver
+  `bench_mpi_sweep/ralph_tmp/segh2d_driver.sh`.
+
+**Correctness gate:** `test_jungfrau_calib.py --seg-h2d -e mfx101572426 -r 47
+-n 20` → **20/20 OK, max_diff 0.0**. Bit-exact.
+
+**Numbers (r47, FFB, A100, aggregate Hz; logs `bench_mpi_sweep/ralph_tmp/segh2d_{1bd,32bd}_{base,seg}_{a,b}_183300.log`):**
+
+| config | baseline copy=False (Hz) | --seg-h2d (Hz) | gain |
+|---|---|---|---|
+| 1 BD  | 52.0, 54.2 → **53.1** | 72.7, 74.0 → **73.4** | **+38%** |
+| 32 BD | 115.9, 113.6 → **114.8** | 141.0, 162.8 → **151.9** | **+32%** |
+
+Every `--seg-h2d` bracket is uniformly higher than both baseline brackets
+measured seconds earlier — the effect is not an FFB-window artifact. (Absolute
+rates are in a faster FFB window than iter 7's; the +32–38% relative is the
+robust, speed-independent result.)
+
+**The finding:** in the anchor `run_gpu_bench` loop the host `stack` memcpy is
+*untimed* (it happens inside `det.raw.raw`, before the H→D timer), so it inflated
+wall silently. seg-h2d folds the whole raw ingestion into the H→D bucket, and the
+combined cost is *lower* than the baseline's stack + separate H2D: at 1 BD the
+seg-h2d H→D bucket is **3.50 ms** vs the baseline's H2D-only 4.11 ms **plus** its
+untimed ~5 ms stack; at 32 BD seg-h2d H→D **~46 ms** replaces the baseline's
+stack (64.5 ms, iter 6) + H2D (~44 ms) ≈ 108 ms. Eliminating the second 33.5 MB
+host memcpy (after iter 7 killed the first, the `.copy()`) is the win — same
+DRAM-bandwidth-contention mechanism, now the last host memcpy on the path is gone.
+This is the **second landed throughput win** on the branch.
+
+**Keep/revert:** KEEP — number moved +32–38% at both scales, bit-exact. Kept as
+the opt-in `--seg-h2d` variant (a structurally different ingestion loop, unlike
+iter 7's one-line flag on the same loop), not promoted into the byte-identical
+B-MVP anchor.
+
+**Recommended next step:** (a) **promote seg-h2d to the default GPU ingestion
+pattern** — make it the bench default (retiring the `det.raw.raw`+`cp.asarray`
+route to an opt-in baseline) and document per-segment H2D as the recommended way
+to feed `fused_calib_gpu` in the public two-function API usage (`__init__.py`),
+since both landed wins (copy=False, seg-h2d) are about *not building a contiguous
+host copy the GPU immediately re-copies*. (b) With both host memcpys now gone,
+re-profile the 32-BD wall: the read/`stack` bucket should have collapsed, so
+re-run `--profile` to see the new largest bucket — likely `wait` (generator-advance
+= bigdata read + EB/MPI serving), which iter 3 measured at 60% of wall and no
+landed change has touched. That points back at the psana serving chain (a psexp
+change, in scope §3/§7) as the next frontier now the per-rank CPU memcpy has been
+halved twice.

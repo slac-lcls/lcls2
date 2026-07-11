@@ -345,6 +345,35 @@
     driver `cf_driver_175942.log`. This is the FIRST code change on the branch to
     move the throughput number. NEXT: `stack` (64.5 ms @32BD) is now the largest
     read component — its per-seg deserialize + copyto is the next CPU lever.
+- [x] Per-segment H2D — skip the host `stack` memcpy (2nd landed throughput win)
+  - 2026-07-10 (iter 8): added `run_gpu_bench_seg_h2d` + `--seg-h2d` to
+    `bench_calib.py`. Instead of `det.raw.raw(evt,copy=False)` (host `stack`
+    np.copyto into contiguous `_raw_buf`) + one big `cp.asarray` H2D, it copies
+    each segment's `.raw` DIRECTLY host→device (`raw_gpu_buf[idx].set(segs[sid].raw)`,
+    32× per-seg 1 MB H2Ds) into a pre-allocated device buffer — no host stack.
+    Bit-exact via `test_jungfrau_calib.py --seg-h2d` (20/20 OK, max_diff 0.0).
+    Bug fixed first: per-seg `.raw` is `(1,512,1024)`, so the buffer must be
+    reshaped `(-1,512,1024)` to match `det.raw.raw`'s shape (else 4-D broadcast
+    → all-pixel mismatch). Interleaved A/B, job 31267701 (sdfampere029),
+    `mpirun --bind-to none --oversubscribe`, r47/FFB:
+
+    | config | baseline copy=False (Hz) | --seg-h2d (Hz) | gain |
+    |---|---|---|---|
+    | 1 BD  | 52.0, 54.2 → 53.1  | 72.7, 74.0 → 73.4   | **+38%** |
+    | 32 BD | 115.9, 113.6 → 114.8 | 141.0, 162.8 → 151.9 | **+32%** |
+
+    Every seg-h2d bracket exceeds both baseline brackets measured seconds earlier
+    (not an FFB-window artifact). Mechanism: the host `stack` memcpy is UNTIMED in
+    the anchor loop (inside det.raw.raw, before the H→D timer) yet inflates wall;
+    seg-h2d folds ingestion into H→D and its combined cost (1 BD 3.50 ms; 32 BD
+    ~46 ms) is far below baseline's stack (64.5 ms @32BD) + H2D (~44 ms) ≈ 108 ms.
+    After iter 7 killed the first 33.5 MB host memcpy (`.copy()`), this kills the
+    second (`stack`) — same DRAM-bandwidth-contention mechanism, no host memcpy
+    left on the raw→GPU path. Kept as opt-in `--seg-h2d` (structurally different
+    loop). Logs: `bench_mpi_sweep/ralph_tmp/segh2d_{1bd,32bd}_{base,seg}_{a,b}_183300.log`,
+    driver `segh2d_driver.sh`. NEXT: promote seg-h2d to the default GPU ingestion
+    pattern + public-API docs, then re-`--profile` (read/stack bucket collapsed →
+    `wait`/serving is likely the new largest bucket).
 
 ## Documentation
 

@@ -61,6 +61,16 @@ def parse_args():
                         "cp.asarray(raw) copies host->device immediately, before the "
                         "reused _raw_buf is overwritten by the next event. Use this "
                         "flag only to reproduce the old A/B baseline.")
+    p.add_argument("--seg-h2d",        action="store_true",
+                   help="GPU path variant: copy each segment's .raw DIRECTLY "
+                        "host->device into a pre-allocated device buffer, skipping "
+                        "det.raw.raw's host-side `stack` memcpy (per-seg np.copyto "
+                        "into the contiguous _raw_buf — 64.5 ms/event @32BD, iter 6, "
+                        "the largest read component after copy=False landed). Trades "
+                        "one 33.5 MB host memcpy + one big H2D for 32x 1 MB per-seg "
+                        "H2Ds with no host stack. Bit-identical numerics (same segment "
+                        "order + pixel layout); gate with test_jungfrau_calib.py "
+                        "--seg-h2d.")
     p.add_argument("--cpu",            action="store_true",
                    help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
                         "collective DataSource (no GPU). MPI-capable — measures B-CPU "
@@ -131,6 +141,103 @@ def run_gpu_bench(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
 
         # Kernel
         calib_gpu = fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu)
+        cp.cuda.Device().synchronize()
+        t2 = time.perf_counter()
+
+        # D->H (optional)
+        if args.d2h:
+            _ = calib_gpu.get()
+            t3 = time.perf_counter()
+        else:
+            t3 = t2
+
+        if not warmup_done:
+            if n_measured >= args.warmup:
+                warmup_done = True
+                t_start = time.perf_counter()
+                h2d_times.clear(); kernel_times.clear(); d2h_times.clear()
+            n_measured += 1
+            continue
+
+        h2d_times.append((t1 - t0) * 1e3)
+        kernel_times.append((t2 - t1) * 1e3)
+        d2h_times.append((t3 - t2) * 1e3)
+        n_measured += 1
+
+        if allow_break and len(h2d_times) >= args.nevents:
+            break
+
+    t_wall = time.perf_counter() - t_start if t_start else 0
+    n = len(h2d_times)
+    return {
+        "n": n,
+        "wall_s": t_wall,
+        "rate_hz": n / t_wall if t_wall > 0 else 0,
+        "h2d_ms_mean": np.mean(h2d_times) if h2d_times else 0,
+        "kernel_ms_mean": np.mean(kernel_times) if kernel_times else 0,
+        "d2h_ms_mean": np.mean(d2h_times) if d2h_times else 0,
+    }
+
+
+def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
+    """GPU path variant: skip det.raw.raw's host `stack` memcpy by copying each
+    segment's .raw DIRECTLY host->device into a pre-allocated device buffer.
+
+    The established path (run_gpu_bench) is:
+        raw     = det.raw.raw(evt, copy=False)   # host `stack` np.copyto loop
+        raw_gpu = cp.asarray(raw)                # one 33.5 MB H2D of _raw_buf
+    After iter 7 landed copy=False, the host `stack` (per-seg deserialize +
+    np.copyto into the contiguous _raw_buf, 64.5 ms/event @32BD, iter 6) is the
+    largest remaining read component. This variant removes it entirely:
+        segs = det.raw._segments(evt)            # {seg_id: seg_obj}
+        for idx, sid: raw_gpu_buf[idx].set(segs[sid].raw)   # 32x per-seg H2D
+    trading one host memcpy + one big H2D for 32x 1 MB per-seg H2Ds with no host
+    stack. Numerics are bit-identical: same segment order (_segment_numbers),
+    same per-seg row-major pixel layout, and fused_calib_gpu ravels the buffer
+    exactly as it ravels cp.asarray(raw). The single `stack`+`h2d` cost is folded
+    into the reported H->D bucket here (that IS the point — compare it against the
+    baseline's stack(iter6) + H->D).
+
+    Synchronous (device sync after the per-seg transfer loop), so the wall-clock
+    rate is a valid headline — no overlap is introduced, so the sync-timing trap
+    (PROMPT.md §6) does not apply.
+    """
+    import cupy as cp
+    from psana.gpu import fused_calib_gpu
+
+    raw_det = det_obj.raw
+    seg_nums = raw_det._segment_numbers
+
+    h2d_times, kernel_times, d2h_times = [], [], []
+    warmup_done = False
+    n_measured = 0
+    t_start = None
+    raw_gpu_buf = None
+    raw_gpu_3d = None
+
+    for evt in run.events():
+        segs = raw_det._segments(evt)
+        if segs is None:
+            continue
+
+        # H->D: per-segment host->device straight into the device buffer.
+        t0 = time.perf_counter()
+        if raw_gpu_buf is None:
+            s0 = segs[seg_nums[0]].raw
+            # per-seg raw is (1, 512, 1024); buffer is (n_seg, *seg_shape) and a
+            # reshape_to_3d view (n_seg, 512, 1024) matches det.raw.raw's shape.
+            raw_gpu_buf = cp.empty((len(seg_nums),) + s0.shape, dtype=s0.dtype)
+            raw_gpu_3d = raw_gpu_buf.reshape(-1, s0.shape[-2], s0.shape[-1])
+        for idx, sid in enumerate(seg_nums):
+            # ascontiguousarray is a no-op (no copy) when the segment view is
+            # already C-contiguous — it only guards .set() against a stray
+            # non-contiguous segment, without adding cost in the common case.
+            raw_gpu_buf[idx].set(np.ascontiguousarray(segs[sid].raw))
+        cp.cuda.Device().synchronize()
+        t1 = time.perf_counter()
+
+        # Kernel
+        calib_gpu = fused_calib_gpu(raw_gpu_3d, peds_gpu, gmask_gpu)
         cp.cuda.Device().synchronize()
         t2 = time.perf_counter()
 
@@ -574,7 +681,10 @@ def main():
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
             _print_occupancy(rank, peds_gpu)
 
-        if args.profile_read:
+        if args.seg_h2d:
+            result = run_gpu_bench_seg_h2d(args, run, det, peds_gpu, gmask_gpu,
+                                           allow_break=(size == 1))
+        elif args.profile_read:
             result = run_gpu_bench_profile_read(args, run, det, peds_gpu, gmask_gpu,
                                                 allow_break=(size == 1))
         elif args.profile:

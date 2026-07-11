@@ -39,6 +39,11 @@ def parse_args():
                         "DEFAULTS to copy=False to match the promoted GPU bench "
                         "path (iter 7), so the bit-exact check covers the "
                         "view-into-_raw_buf input the GPU path actually consumes.")
+    p.add_argument("--seg-h2d",       action="store_true",
+                   help="Gate the bench --seg-h2d variant: build the device raw "
+                        "buffer by copying each segment's .raw directly host->device "
+                        "(per-seg .set()), skipping det.raw.raw's host stack memcpy, "
+                        "then compare fused_calib_gpu against det.raw.calib bit-for-bit.")
     return p.parse_args()
 
 
@@ -74,10 +79,27 @@ def main():
         if checked >= args.nevents:
             break
 
-        raw = det.raw.raw(evt, copy=args.copy_true)
-        if raw is None:
-            skipped += 1
-            continue
+        if args.seg_h2d:
+            # Mirror the bench --seg-h2d transfer route: per-segment host->device
+            # into a device buffer, no host stack. Must be bit-identical to the
+            # cp.asarray(det.raw.raw) route.
+            raw_det = det.raw
+            seg_nums = raw_det._segment_numbers
+            segs = raw_det._segments(evt)
+            if segs is None:
+                skipped += 1
+                continue
+            s0 = segs[seg_nums[0]].raw
+            buf = cp.empty((len(seg_nums),) + s0.shape, dtype=s0.dtype)
+            for idx, sid in enumerate(seg_nums):
+                buf[idx].set(np.ascontiguousarray(segs[sid].raw))
+            raw_gpu = buf.reshape(-1, s0.shape[-2], s0.shape[-1])
+        else:
+            raw = det.raw.raw(evt, copy=args.copy_true)
+            if raw is None:
+                skipped += 1
+                continue
+            raw_gpu = cp.asarray(raw)
 
         cpu_ref = det.raw.calib(evt)
         if cpu_ref is None:
@@ -85,7 +107,7 @@ def main():
             continue
         cpu_ref = cpu_ref.astype(np.float32)
 
-        gpu_out = fused_calib_gpu(cp.asarray(raw), peds_gpu, gmask_gpu).get()
+        gpu_out = fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu).get()
 
         diff = np.abs(cpu_ref - gpu_out)
         max_diff = float(diff.max())
