@@ -407,6 +407,17 @@
 
 ## Completed Work
 
+- 2026-07-10 (iter 11): **PS_EB_NODES=1/2/4 re-measured on the seg-h2d fast path —
+  EB count is a DEAD END.** At fixed 32 BD, aggregate throughput is flat across
+  EB=1/2/4 (116.7 / 117.9 / 117.5 Hz, within 1% and inside the 113.9–121.0 FFB
+  run-to-run spread) and eb_wait does NOT shrink with more EB ranks (66.3 → 72.0 →
+  78.9 ms, if anything up). Palindrome-bracketed (1,2,4,4,2,1) to control FFB window
+  drift. **Resolves iter 10's stale-flag: the iter-0 "flat PS_EB_NODES" result HOLDS
+  even after the iter-7/8 memcpy removals** — the 51–79 ms eb_wait is not an
+  EB-parallelism bottleneck (2/4 EB ranks serve 32 BD ranks no faster); it is the
+  smd0/EB per-batch serial production upstream of the handoff, which more EB *ranks*
+  don't relieve. Lever redirects to bd_read (~82–90 ms, largest wait component) via
+  async prefetch. Logs `bench_mpi_sweep/ralph_tmp/ebsweep_*_192953.log`.
 - 2026-07-10 (iter 10): **`wait`-bucket split — no single culprit.** At 32 BD the
   79%-of-wall delivery `wait` (166.7 ms/event) splits **42% bd_read (69.6 ms,
   os.pread off FFB) / 31% eb_wait (51.5 ms, blocked on the EB batch handoff) / 27%
@@ -414,8 +425,9 @@
   = 481 MB/s ≈ iter-4 single-stream 490 MB/s → read-side is per-rank
   latency/serialization (bandwidth still below ceiling), lever is overlap/prefetch.
   eb_wait went 0.05 ms @1BD → 51.5 ms @32BD: the single EB rank is now a real
-  serialization point — **the iter-0 "flat PS_EB_NODES" result is STALE (predates
-  the iter-7/8 memcpy removals) and must be re-measured.** Tooling: additive-only
+  serialization point — flagged the iter-0 "flat PS_EB_NODES" result as possibly
+  stale (predating the iter-7/8 memcpy removals); **iter 11 re-measured it and it
+  HOLDS — EB count is not the lever (see iter-11 entry above).** Tooling: additive-only
   cumulative counters on `BigDataNode` (`node.py`) + `--wait-split` in
   `bench_calib.py`. Logs `bench_mpi_sweep/ralph_tmp/waitsplit_{1bd,32bd}_190923.log`.
   NOTE: `node.py` edits require syncing source→`install/` (psana imports from

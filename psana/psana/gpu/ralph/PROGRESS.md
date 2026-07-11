@@ -795,3 +795,83 @@ H->D+kernel run (the CPU-push doc's "request next batch without waiting"), overl
 the 69.6 ms read (34% of wall) behind the 45 ms of GPU work. This is a psexp/BD-loop
 change — flag-gated, verify default `run.events()` still works (§7 rule 4). Do (a)
 first: it is one env var and settles 31% of the wall before any code is written.
+
+---
+
+## 2026-07-10 — Iteration 11 (re-measure PS_EB_NODES=1/2/4 on the seg-h2d fast path — EB *count* is a dead end; more EB ranks does not reduce eb_wait or raise throughput)
+
+**Task:** iter 10's recommended step (a), the cheapest possible experiment (an env
+var, no code) — re-measure `PS_EB_NODES=1/2/4` at fixed 32 BD on the seg-h2d fast
+path with `--wait-split`, to test whether the 51.5 ms eb_wait (iter 10, 31% of the
+delivery `wait`) shrinks with more EB ranks. iter 10 flagged the iter-0 "flat
+PS_EB_NODES" result as **stale** (it predates the iter-7/8 memcpy removals, after
+which BD ranks cycle far faster and now block 31% of `wait` on the EB handoff), so
+it must be re-measured before any serving-chain code is written.
+
+**What I did:**
+- Added `bench_mpi_sweep/ralph_tmp/ebsweep.sh` (not tracked): runs the seg-h2d
+  `--wait-split` benchmark at PS_EB_NODES=1/2/4, fixed 32 BD (NPROC = 1 smd0 +
+  EB + 32), `-n 200 --warmup 10`, r47/FFB, `mpirun --bind-to none --oversubscribe
+  -x PS_EB_NODES`. Ran as a **palindrome bracket (1,2,4,4,2,1)** so FFB
+  minute-to-minute window drift is symmetric across the sweep and the EB-count
+  effect is separable from it. `ralph-gpu` node (job 31267701, sdfampere029).
+- No code change — pure env-var sweep. Correctness gate not triggered (numeric
+  path byte-identical to the already-gated iter-8/9/10 seg-h2d variant).
+
+**Numbers (r47, FFB, A100, 32 BD, aggregate; logs
+`bench_mpi_sweep/ralph_tmp/ebsweep_{a_eb1,b_eb2,c_eb4,d_eb4,e_eb2,f_eb1}_192953.log`,
+driver `ebsweep_driver_192953.log`):**
+
+| PS_EB_NODES | agg Hz (2 brackets → mean) | eb_wait ms | bd_read ms |
+|---:|---|---:|---:|
+| 1 | 117.9, 115.4 → **116.7** | 63.7, 69.0 → **66.3** | 90.6, 89.3 → **90.0** |
+| 2 | 120.3, 115.4 → **117.9** | 73.0, 70.9 → **72.0** | 85.5, 87.8 → **86.7** |
+| 4 | 121.0, 113.9 → **117.5** | 75.4, 82.3 → **78.9** | 80.3, 84.4 → **82.4** |
+
+(This was a slower FFB window than iter 10's 158 Hz — absolute rates sit ~117 Hz —
+but the EB-count comparison is internally bracketed and window-controlled; run-to-run
+spread across all 6 was 113.9–121.0 Hz.)
+
+**The finding (EB count is a dead end — the iter-0 flat result HOLDS on the fast path):**
+1. **Aggregate throughput is flat across EB=1/2/4** (116.7 / 117.9 / 117.5 Hz — all
+   within 1%, well inside the 113.9–121.0 run-to-run FFB spread). More EB ranks buys
+   no throughput.
+2. **eb_wait does NOT shrink with more EB ranks — it drifts slightly *up*** (66.3 →
+   72.0 → 78.9 ms). Adding EB ranks (which partition the smd stream so each EB serves
+   fewer BD ranks) does not reduce the time a BD rank blocks on the batch handoff. So
+   the 51–79 ms eb_wait is **not an EB-parallelism/EB-count bottleneck** — iter 10's
+   worry that "the single EB rank serving 32 BD ranks is the serialization point" is
+   **refuted**: 2 and 4 EB ranks serve the same 32 BD ranks no faster. The iter-0
+   "flat PS_EB_NODES" result **reproduces even on the seg-h2d fast path**; it was
+   NOT stale after all.
+3. bd_read drifts down mildly (90.0 → 86.7 → 82.4) but this is `os.pread`, which is
+   independent of EB count — it tracks the FFB window getting slightly faster mid-sweep
+   (the c_eb4 run caught a faster window), not an EB effect. The palindrome bracket
+   makes this visible: EB=1 was measured both first (117.9) and last (115.4).
+
+Interpretation: eb_wait being large *and* insensitive to EB count means BD ranks are
+blocked not because one EB can't fan out fast enough, but because the pipeline
+*upstream of the handoff* (smd0 small-data distribution + EB per-batch serial work)
+can't produce the next batch before the BD rank — now memcpy-light and fast — comes
+back asking for it. Throwing more EB ranks at it doesn't help because each EB still
+does the same serial per-batch work and smd0 is a single distributor. The real lever
+is **bd_read** (the largest single component, ~82–90 ms, per-rank read latency at
+~480 MB/s under 32-way contention, iter 4/10) via async prefetch/overlap — not EB
+count.
+
+**Keep/revert:** No code change to keep or revert — this is a clean env-var
+measurement that **closes lever (a) as a dead end** (a successful iteration per §6).
+Correctness gate not triggered (numeric path byte-identical). The stale-flag on the
+iter-0 PS_EB_NODES result is resolved: re-measured, it holds.
+
+**Recommended next step:** with EB count ruled out, go to iter 10's lever (b) — the
+only remaining large, un-attacked wait component: **per-BD async prefetch of bd_read**
+(~82–90 ms, ~40% of wall). Overlap the next event's `get_smd` + bigdata `os.pread`
+with the current event's per-seg H->D + kernel (the CPU-push doc's "request next
+batch without waiting"), so the ~45 ms of GPU work hides behind the read instead of
+running after it. This is a psexp/BD-loop change — flag-gated, and §7 rule 4 requires
+verifying the default `run.events()` MPI path still works before committing. The
+decisive before/after is `--wait-split` aggregate Hz at 32 BD with the prefetch flag
+on vs off, interleaved-bracketed for the FFB window. Secondary (if prefetch is hard
+to land cleanly): attack the ~27% CPU residual (dgram construction) with a lighter
+accessor — smaller lever, but pure CPU and window-independent.
