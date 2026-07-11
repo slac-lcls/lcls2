@@ -1250,6 +1250,15 @@ class BigDataNode(object):
         self._last_bd_wait_time_ns = 0
         self._last_bd_proc_events = 0
         self._last_bd_proc_time_ns = 0
+        # Cumulative delivery-time attribution (additive-only, read by
+        # benchmarks via run.bd_node; does not affect the default path).
+        # eb_wait = time blocked on the EB batch handoff (Probe+Irecv);
+        # bd_read = os.pread of bigdata xtc off the filesystem;
+        # these split the benchmark `wait` bucket into serving-side vs read-side.
+        self.total_eb_wait_ns = 0
+        self.total_bd_read_ns = 0
+        self.total_events = 0
+        self.total_batches = 0
 
     def start(self):
         def on_batch_end(payload):
@@ -1258,6 +1267,9 @@ class BigDataNode(object):
             self._last_bd_read_time_ns = int(read_time * 1e9)
             self._last_bd_proc_events = int(event_count)
             self._last_bd_proc_time_ns = int(elapsed * 1e9)
+            self.total_bd_read_ns += int(read_time * 1e9)
+            self.total_events += int(event_count)
+            self.total_batches += 1
             if elapsed > 0 and event_count > 0:
                 pass
 
@@ -1288,6 +1300,11 @@ class BigDataNode(object):
             self.logger.debug(
                 f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
             )
+            # st_probe spans the TRUE block point: Probe blocks until the EB
+            # has a batch ready, which the existing st_req/en_req timer (Irecv
+            # only) misses. Kept separate so the default _last_bd_wait_time_ns
+            # / wait_gauge semantics are unchanged.
+            st_probe = time.monotonic()
             info = MPI.Status()
             bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
             count = info.Get_elements(MPI.BYTE)
@@ -1302,6 +1319,7 @@ class BigDataNode(object):
             wait_time = en_req - st_req
             self._last_bd_wait_time_ns = int(wait_time * 1e9)
             self.wait_gauge.set(wait_time)
+            self.total_eb_wait_ns += int((en_req - st_probe) * 1e9)
             return chunk
 
         dgrams_iter = Events(self.configs,

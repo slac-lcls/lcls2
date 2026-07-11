@@ -698,3 +698,100 @@ the multi-node ceiling four times by skipping exactly this step.
 the current event's H->D+kernel (the CPU-push doc's "request next batch without
 waiting"); if serving-side, EB→BD dispatch batching/parallelism. Either is a
 psexp change — flag-gated, verify default `run.events()` still works (§7 rule 4).
+
+---
+
+## 2026-07-10 — Iteration 10 (split the `wait` bucket: read-side 42% / EB-wait 31% / CPU residual 27% — neither dominates alone)
+
+**Task:** iter 9's recommended step (a) — split the `wait` bucket (79% of the
+32-BD wall, the named frontier) into **EB-wait** (BD blocked on the EB batch
+handoff, serving-side) vs **bd-read** (`os.pread` of bigdata xtc off FFB,
+read-side). The explicit guardrail: do NOT build a serving-chain change before
+this split (iter 0-4 mis-attributed the multi-node ceiling four times by skipping
+exactly this measurement).
+
+**What I did:**
+- Found both phases are *already individually timed inside psana*: the `get_smd`
+  closure in `BigDataNode` (`node.py`) blocks on the EB batch (Probe→Irecv), and
+  `EventManager._read` (`event_manager.py`) is the `os.pread`. Added **additive-only**
+  cumulative counters on `BigDataNode` (`total_eb_wait_ns`, `total_bd_read_ns`,
+  `total_events`, `total_batches`) — EB-wait timed across the TRUE block point
+  (a new `st_probe` spanning Probe+Irecv; the pre-existing `_last_bd_wait_time_ns`
+  timed only Irecv and is left untouched), bd-read accumulated from the existing
+  `on_batch_end` `read_time`. No behavior change to the default path.
+- Added `--wait-split` to `bench_calib.py` (`run_gpu_bench_wait_split`): the iter-8
+  seg-h2d fast path with the wait/h2d/kernel bucketing, snapshotting
+  `run.bd_node`'s counters at the warmup boundary and at the end so the split
+  covers the measured window only (excludes smd0/EB startup + warmup).
+- **Install-tree gotcha (important for future iters):** psana imports from
+  `install/lib/python3.9/site-packages/psana/`, NOT the `psana/psana/` source. A
+  pure-Python edit to `psana/psana/gpu/` takes effect because `bench_calib.py` is
+  run by path, but an edit to `psana/psana/psexp/node.py` does NOT until synced.
+  First 1-BD run AttributeError'd (`bd_node` had no `total_eb_wait_ns`) → verified
+  the installed node.py differs from source ONLY by my additions → `cp`'d source
+  node.py into the install tree (equivalent to what `meson install` does for a .py
+  file; no rebuild needed) and dropped its stale pyc. Source edit is the committed
+  durable artifact; a future `./build_all.sh` reproduces it.
+
+**Correctness gate:** `test_jungfrau_calib.py` (default path, also exercises the
+edited node.py) **20/20 OK max_diff 0.0**, and `--seg-h2d` **20/20 OK max_diff
+0.0**. Default psana MPI event loop verified working (§7 rule 4).
+
+**Numbers (r47, FFB, A100, per-rank ms/event; logs
+`bench_mpi_sweep/ralph_tmp/waitsplit_{1bd,32bd}_190923.log`):**
+
+| bucket | 1 BD (73.4 Hz) | 32 BD (158.4 Hz agg, 4.95 Hz/rank) | share of wait @32BD |
+|---|---:|---:|---:|
+| **wait** (gen advance) | 9.78 | **166.7** | 100% |
+| &nbsp;&nbsp;eb_wait (blocked on EB: Probe+Irecv) | 0.05 | **51.5** | **31%** |
+| &nbsp;&nbsp;bd_read (os.pread bigdata off FFB) | 8.15 | **69.6** | **42%** |
+| &nbsp;&nbsp;residual (dgram construction + generator plumbing, CPU) | ~1.6 | **~45.5** | **27%** |
+| H->D (per-seg) | 3.49 | 42.8 | |
+| kernel | 0.32 | 1.94 | |
+
+(Fast FFB window: 158 Hz agg = 5.3 GB/s = 67% of the 7.9 GB/s per-node ceiling,
+vs iter 9's 141 Hz. The **split proportions**, not the absolute rate, are the
+finding; sum overshoots wall by ~4.7% because the counter-based eb_wait/bd_read
+use the node's own event delta while `wait` is perf_counter gaps — directional,
+not exact.)
+
+**The finding (the split iter 9 asked for — and it overturns "one clean culprit"):**
+The delivery `wait` is NOT dominated by a single phase. At 32 BD it splits roughly
+**42% storage read / 31% blocked-on-EB / 27% CPU construction residual**:
+1. **bd_read = 69.6 ms/event (read-side, the single largest).** Per-rank effective
+   read = 33.5 MB / 69.6 ms = **481 MB/s**, ~identical to iter 4's 490 MB/s
+   single-stream cold read. So each rank reads at single-stream speed with 32-way
+   contention/queuing folded in — read-side is **per-rank latency/serialization**,
+   consistent with iter 4/5 (aggregate BW below the storage ceiling). The lever is
+   overlap/prefetch, not more bandwidth.
+2. **eb_wait = 51.5 ms/event (serving-side, a close second).** Direct evidence the
+   single EB rank (PS_EB_NODES=1) serving 32 BD ranks is a real serialization point
+   — 0.05 ms at 1 BD → 51.5 ms at 32 BD. iter 0 recorded "NOT EventBuilder count
+   (flat across PS_EB_NODES=1/2/4)", but that predates iter 7/8: with both host
+   memcpys gone the BD ranks cycle far faster and now spend 31% of `wait` blocked on
+   the EB. **The old flat PS_EB_NODES result is stale and must be re-measured.**
+3. **residual ~45.5 ms/event (27%, CPU).** Time inside the generator advance NOT in
+   Probe/Irecv nor pread — per-event `dgram.Dgram(...)` construction in
+   `EventManager._get_next_dgrams` + Python plumbing. A lighter accessor could
+   trim it but it is the smallest of the three.
+
+**Keep/revert:** KEEP the node.py counters (additive-only instrumentation,
+default path bit-exact + verified working) and `--wait-split`. No throughput
+change this iteration — pure attribution that redirects the search. The old
+single-culprit framings ("H2D is the ceiling"; "wait = one thing") are both now
+refuted by direct measurement.
+
+**Recommended next step:** two levers are now *quantified and roughly equal*; pick
+by cheapest decisive test first.
+(a) **Re-measure PS_EB_NODES=1/2/4 at 32 BD on the seg-h2d fast path** with
+`--wait-split`. This is the cheapest possible experiment (an env var, no code) and
+it directly tests whether the 51.5 ms eb_wait shrinks with more EB ranks — the
+iter-0 flat result is stale (pre-memcpy-removal). If eb_wait drops and aggregate Hz
+rises, more EB ranks is a landed win with zero code risk; if flat, the EB serial
+work per batch (not EB *count*) is the wall and points into EB→BD dispatch.
+(b) In parallel/after: attack bd_read (42%) with per-BD **async prefetch** — issue
+the next batch's `get_smd` + `_fill_bd_chunk` read while the current event's
+H->D+kernel run (the CPU-push doc's "request next batch without waiting"), overlapping
+the 69.6 ms read (34% of wall) behind the 45 ms of GPU work. This is a psexp/BD-loop
+change — flag-gated, verify default `run.events()` still works (§7 rule 4). Do (a)
+first: it is one env var and settles 31% of the wall before any code is written.

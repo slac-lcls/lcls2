@@ -407,6 +407,19 @@
 
 ## Completed Work
 
+- 2026-07-10 (iter 10): **`wait`-bucket split — no single culprit.** At 32 BD the
+  79%-of-wall delivery `wait` (166.7 ms/event) splits **42% bd_read (69.6 ms,
+  os.pread off FFB) / 31% eb_wait (51.5 ms, blocked on the EB batch handoff) / 27%
+  CPU residual (~45.5 ms, dgram construction + generator plumbing)**. Per-rank read
+  = 481 MB/s ≈ iter-4 single-stream 490 MB/s → read-side is per-rank
+  latency/serialization (bandwidth still below ceiling), lever is overlap/prefetch.
+  eb_wait went 0.05 ms @1BD → 51.5 ms @32BD: the single EB rank is now a real
+  serialization point — **the iter-0 "flat PS_EB_NODES" result is STALE (predates
+  the iter-7/8 memcpy removals) and must be re-measured.** Tooling: additive-only
+  cumulative counters on `BigDataNode` (`node.py`) + `--wait-split` in
+  `bench_calib.py`. Logs `bench_mpi_sweep/ralph_tmp/waitsplit_{1bd,32bd}_190923.log`.
+  NOTE: `node.py` edits require syncing source→`install/` (psana imports from
+  install, not source) — pure-Python `cp` or `./build_all.sh`.
 - 2026-07-07 (958878d6e): slimmed `psana/psana/gpu/` to the two-function MVP;
   wrote DEFERRED.md / PLANNING.md / TASK.md, `test_jungfrau_calib.py`, `bench_calib.py`.
 - 2026-07-07 (8ea55e898): second-pass cleanup — reverted all GPU-era residue
