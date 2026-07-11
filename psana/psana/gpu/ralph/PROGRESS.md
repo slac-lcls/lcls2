@@ -262,3 +262,70 @@ it points back into the EB→BD serving chain (a psexp change, in scope per §3/
 Also worth one cheap check: whether `det.raw.raw(evt)`'s 119 ms is lazy bigdata
 I/O (storage) or in-process deserialization/reshape (CPU) — that alone reclassifies
 31% of the wall.
+
+---
+
+## 2026-07-10 — Iteration 4 (storage-vs-serving fork: the IB-counter probe is invalid here — FFB is WekaFS; bandwidth is NOT the ceiling)
+
+**Task:** the recommended experiment — decide whether iter 3's 91%-of-wall
+delivery cost (wait + read) is **storage-bound** or **psana-serving-bound**. The
+plan was §8's endorsed direct probe: measure FFB bytes delivered to the node via
+IB `port_rcv_data` counters during a 32-BD run and compare to the 7.9 GB/s
+per-node storage ceiling.
+
+**What I did:**
+- Added `bench_mpi_sweep/ralph_tmp/ib_sampler.sh` (1 Hz sampler of every
+  `/sys/class/infiniband/*/ports/*/counters/port_rcv_data`, words×4 = bytes).
+- **Validated the probe first** (the step that saved the iteration): a controlled
+  2.1 GB direct read of an FFB xtc2 file (`dd iflag=direct`) → IB counter delta =
+  **0 bytes**. Then confirmed the mount type: FFB is **WekaFS**
+  (`type wekafs`, `_netdev`, with `/opt/weka/.../huge` hugepage + DPDK userspace
+  agent containers), NOT Lustre.
+- Ran the 32-BD `--profile` benchmark on r47/FFB (`ralph-gpu` node, job 31267701,
+  sdfampere029, `mpirun --bind-to none`, `-n 200`) with the IB sampler alongside
+  (131 samples). Also probed `weka stats realtime` as the correct replacement.
+
+**Numbers (r47, FFB, A100):**
+- IB `port_rcv_data` over the **entire** 32-BD run (~236 GB read from FFB across
+  131 samples): **delta = 0, max 0.000 GB/s**. The kernel IB counters are blind
+  to WekaFS traffic — Weka's DPDK userspace client bypasses kernel IB verbs.
+- Benchmark reproduced iter 3's breakdown almost exactly (robustness check):
+  **aggregate 83.1 Hz @ 32 BD** (iter 3: 82.3), wait 235.1 / read 117.3 /
+  H2D 43.3 / kernel 2.3 ms; sum ≈ wall. Log:
+  `bench_mpi_sweep/ralph_tmp/prof_ib_32bd_r47_*.log`,
+  `bench_mpi_sweep/ralph_tmp/ib_32bd_r47_*.log`.
+- Single-stream cold direct read from FFB = **490 MB/s** (one data point).
+- `weka stats realtime` requires cluster auth (`weka user login`) — the correct
+  userspace probe is **blocked on credentials** (a facility/human decision).
+
+**The finding (two results):**
+1. **The IB-counter storage probe is dead on this facility.** §8 and TASK.md say
+   IB counters are "the ONLY way to observe FFB/Lustre traffic." That was premised
+   on Lustre/RDMA-verbs. FFB here is WekaFS/DPDK-userspace and moves every byte
+   outside the kernel verbs stack → `port_rcv_data` never moves (validated: 2.1 GB
+   read → 0, and a full 236 GB run → 0). Corrected in TASK.md. The only direct
+   Weka throughput probe (`weka stats`) needs cluster login we don't have.
+2. **Storage BANDWIDTH is not the binding constraint at 32 BD.** Achieved psana
+   read bandwidth = 83.1 Hz × 33.5 MB = **2.78 GB/s = 35% of the 7.9 GB/s per-node
+   ceiling**. The link sits ~65% idle *while the pipeline is slow*. So iter 3's
+   "delivery = 91% of wall" is a **latency/serialization** limit in psana's
+   serving chain, not a facility storage-bandwidth wall. (Cross-check: at the fast
+   175 Hz anchor it would be 5.9 GB/s = 75% of ceiling — still not saturated.)
+   The lever is therefore **concurrency / latency-hiding** — more BD ranks per
+   node, async/prefetch bigdata read, or read batching — NOT more storage
+   bandwidth.
+
+**Keep/revert:** KEEP `ib_sampler.sh` in ralph_tmp but it is now **documented dead
+for this FS** — do not use IB counters for FFB traffic here. Correctness gate not
+triggered (measurement/instrumentation only; GPU numeric path byte-identical).
+
+**Recommended next step:** with bandwidth ruled out and both direct storage probes
+(IB dead, Weka-stats blocked), the clean single-variable way to separate
+latency-bound from serialization-bound is a **BD-ranks-per-node concurrency sweep**
+at fixed 1 node/FFB (e.g. 8/16/32/48/64 BD; needs `--oversubscribe`), reading
+aggregate Hz → aggregate GB/s each point. If aggregate read GB/s climbs toward
+7.9 as ranks rise, the delivery cost is latency-bound and the unlock is more
+concurrency / async prefetch (a psexp or BD-loop change, in scope per §3/§7); if
+it plateaus well below 7.9, it is a per-rank CPU/serialization limit in the
+serving chain (points at `det.raw.raw` deserialization or the EB→BD path). No new
+tooling required — this is the decisive next measurement.

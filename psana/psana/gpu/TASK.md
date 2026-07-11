@@ -247,16 +247,34 @@
     (FFB live-FS variance and/or `-n 200`), but the breakdown is speed-independent
     — at the 175 Hz moment H2D was 11.85 of 182 ms/event = 6.5%, an even smaller
     share. The proportions, not the absolute Hz, are the result.
-  - Open question (next): split the 232 ms `wait` into storage-read vs EB/MPI-wait,
-    and classify `det.raw.raw`'s 119 ms as lazy bigdata I/O vs in-process
-    deserialization — this decides which psana lever moves the 351 ms/event
-    delivery cost.
+  - Open question (next): the delivery cost is a latency/serialization limit,
+    NOT storage bandwidth (iter 4: 2.78 GB/s achieved = 35% of the 7.9 GB/s
+    ceiling). The decisive next measurement is a BD-ranks-per-node concurrency
+    sweep (8/16/32/48/64 BD, 1 node/FFB): if achieved read GB/s climbs toward
+    7.9 with more ranks it is latency-bound (unlock = concurrency/async
+    prefetch); if it plateaus well below, it is a per-rank CPU/serialization
+    limit (points at `det.raw.raw` deserialization or the EB->BD path).
 - [x] Record NIC recv bandwidth during GPU run vs CPU run
   - 2026-07-08: sampled /proc/net/dev at 2 s during every sweep config.
     Finding: bulk storage I/O (~7 GB/s at 210 Hz) is INVISIBLE to netdev
-    byte counters — both Lustre and FFB mounts move data over RDMA/verbs.
-    Only TCP-side chatter (20-60 MB/s on enp225s0) appears. NIC saturation
-    must be assessed via IB counters (/sys/class/infiniband) in future runs.
+    byte counters. Only TCP-side chatter (20-60 MB/s on enp225s0) appears.
+  - 2026-07-10 (iter 4) CORRECTION: IB counters are ALSO blind to FFB here.
+    FFB is **WekaFS** (`type wekafs`, DPDK userspace client via /opt/weka
+    hugepages), NOT Lustre — it bypasses the kernel IB verbs stack entirely.
+    Validated: a 2.1 GB `dd iflag=direct` read of an FFB xtc2 → IB
+    `port_rcv_data` delta = 0; a full 32-BD run (~236 GB read, 131 samples)
+    → delta = 0. So `/sys/class/infiniband` is NOT a usable FFB-traffic probe
+    on this facility. The only direct Weka throughput probe (`weka stats
+    realtime`) requires cluster login (`weka user login`) we don't have.
+    To gauge storage load without a counter: aggregate Hz × 33.5 MB = achieved
+    read GB/s, compared to the 7.9 GB/s node ceiling.
+  - 2026-07-10 (iter 4): storage BANDWIDTH is not the 32-BD ceiling. Achieved
+    read BW at 32 BD = 83.1 Hz × 33.5 MB = **2.78 GB/s = 35% of 7.9 GB/s**
+    (link ~65% idle while the pipeline is slow). Iter 3's "delivery = 91% of
+    wall" is therefore a latency/serialization limit in psana's serving chain,
+    not a facility bandwidth wall. Lever = concurrency/latency-hiding (more BD
+    ranks, async prefetch, read batching), not more storage bandwidth.
+    Logs: `bench_mpi_sweep/ralph_tmp/prof_ib_32bd_r47_*.log`, `ib_32bd_r47_*.log`.
 
 ## Documentation
 
