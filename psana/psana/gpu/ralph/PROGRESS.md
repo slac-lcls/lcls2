@@ -1052,3 +1052,94 @@ construction, iter 10) via a lighter accessor — pure CPU, window-independent, 
 threading contention. Secondary observation worth a look: the 585 Hz warm baseline
 means a node-local NVMe/page-cache staging tier for reprocessing could itself be a
 4-5x lever (DEFERRED/TASK item 2), independent of prefetch.
+
+---
+
+## 2026-07-10 — Iteration 14 (rate-capped reader probe in a COLD window — the cap didn't bind, the reader saturated FFB storage and still crushed the loop −63%; the probe cannot faithfully model prefetch because it adds NET I/O)
+
+**Task:** iter 13's recommended lever — settle the two confounds it left open before any
+core-psexp prefetch surgery. iter 13's `--reader-probe` halved the 32-BD loop (−50%) but
+(a) ran cache-WARM (585 Hz baseline, off the cold regime prefetch is posed in) and (b) the
+reader pulled ~1115 MB/s/rank = 1.75x a *faithful* prefetch load. iter 13 proposed a rate
+cap `PS_READER_PROBE_MBPS≈640` (= 33.5 MB/event × ~19 Hz/rank) to make the reader faithful,
+re-run cold. One variable this iteration: the rate cap.
+
+**What I did:**
+- Added `PS_READER_PROBE_MBPS` to `_start_reader_probe` (bench_calib.py): the background
+  reader throttles to a per-rank MB/s ceiling by sleeping when its cumulative rate exceeds
+  the cap. Benchmark-only, numeric path byte-identical (only the probe thread's sleep
+  changes) — correctness gate not triggered. Default (unset) = uncapped, iter-13 behavior.
+- 32-BD palindrome bracket (seg / capped-probe / capped-probe / seg), cap=640, `-n 200
+  --warmup 10`, r47/FFB, ralph-gpu node (job 31267701, sdfampere029), `-x PS_READER_PROBE_MBPS`.
+
+**Numbers (r47, FFB, A100, 32 BD, aggregate; logs
+`bench_mpi_sweep/ralph_tmp/probecap_{a_seg,b_probe,c_probe,d_seg}_204050.log`,
+driver `probecap_driver_204046.log`):**
+
+| run | variant | agg Hz | reader bw (capped @640) |
+|---|---|---:|---|
+| a_seg (first) | seg-h2d baseline | **118.9** | — |
+| b_probe | seg-h2d + capped bg reader | **46.2** | 7530 MB/s agg (235 MB/s/rank) |
+| c_probe | seg-h2d + capped bg reader | **43.8** | 7729 MB/s agg (242 MB/s/rank) |
+| d_seg (last) | seg-h2d baseline | **123.1** | — |
+
+baseline mean **121.0 Hz** (palindrome tight: 118.9→123.1, +3.5%); probe mean **45.0 Hz**
+→ **−63%**. The bracket held the window, so the drop is the reader's effect.
+
+**Three findings:**
+1. **The window is COLD today (baseline 121 Hz).** That is squarely the iter-10/11/12 cold
+   band (117–158 Hz), NOT iter 13's warm 585 Hz — so confound (i) is *settled by luck of
+   the window*: we ARE in the cold regime the prefetch question was posed in. bd_read
+   latency is present.
+2. **The cap did NOT bind — the reader was STORAGE-limited.** Intent was 640 MB/s/rank but
+   the reader delivered only ~238 MB/s/rank (7.5–7.7 GB/s aggregate ≈ the 7.9 GB/s FFB
+   ceiling, iter-4 raw-read matrix). 32 ranks × 640 = 20 GB/s ≫ 7.9, so storage — not the
+   cap — throttled the reader. In the WARM iter-13 window the reader hit 35 GB/s (cache/
+   memory-bandwidth bound, storage irrelevant); COLD, it hits the storage wall instead.
+3. **A storage-saturating reader still crushes the loop −63%,** worse than iter-13's warm
+   −50%. In the cold regime the shared bottleneck is FFB storage bandwidth, and the reader
+   wins the contention (grabs 7.6 of the ~9 GB/s the pipe delivered, starving the main loop
+   from 4.05 → 1.5 GB/s).
+
+**The decisive interpretation — the probe cannot faithfully model read-prefetch, and this
+is now the SECOND methodology confound it has hit:**
+- The probe reads **net-additional** bytes (different, monotonically-advancing offsets, by
+  design so reads stay cold). A **real** read-prefetch reads the *same* bytes the main loop
+  would read next, just **earlier** — it shifts existing I/O in time, it does **not** add
+  net storage demand. So in a storage-bound cold regime the probe **double-counts I/O** and
+  **overstates** a real prefetch's contention. The −63% is an upper bound inflated by
+  duplicated reads, not a faithful prefetch cost.
+- The 640 cap was also **mis-parameterized for the cold regime**: 640 MB/s/rank models a
+  19 Hz/rank (WARM) consumption. The COLD loop consumes only 121/32 = **3.8 Hz/rank =
+  ~127 MB/s/rank**, so a faithful cold prefetch reads ~5x *less* than even the storage-
+  limited 238 the probe delivered. The cap can only be set right once you know the regime's
+  consumption rate — which is the very thing that varies run-to-run here.
+
+**Where this leaves the prefetch decision (honest verdict): the probe methodology is
+exhausted.** Two de-risking iterations (13 warm-cache, 14 net-additional-I/O + mis-set cap)
+have each surfaced a methodology confound instead of a clean GO/NO-GO. A concurrency probe
+that reads *different* data structurally cannot model a prefetch that reads the *same* data
+earlier. Compounding the doubt with plain arithmetic: the cold main loop already pulls
+4.05 GB/s = 51% of the 7.9 GB/s FFB ceiling, and iter 5 found the per-rank pipeline
+**serialization-bound, not latency-bound** (plateau ~16 BD / 2.8 GB/s). Prefetch helps only
+a latency-bound reader; a bandwidth/serialization-bound one near half the storage ceiling
+has limited headroom to overlap into. Evidence continues to lean **CAUTION, not GO** on
+building the core-psexp double-buffered reader.
+
+**Keep/revert:** KEEP `PS_READER_PROBE_MBPS` (small, correct, benchmark-only, numeric path
+byte-identical — correctness gate not triggered). No throughput change landed; this
+iteration buys a cold-regime measurement + the methodology verdict that the probe cannot
+settle prefetch.
+
+**Recommended next step:** **stop probing prefetch and pivot to the window-independent
+lever.** The read-prefetch lever has now cost two probe iterations without a clean signal,
+and both the net-additional-I/O flaw and the storage-ceiling/serialization arithmetic argue
+its upside is bounded. The remaining un-attacked lever is the **~27% CPU residual — dgram
+construction** (iter 10's wait-split: read 42% / EB-wait 31% / CPU 27%). It is pure host
+CPU: no storage contention, no threading confound, no warm/cold window dependence — so a
+before/after is clean and repeatable regardless of which window the loop lands in. Attack it
+with a lighter `det.raw._segments`/dgram accessor path and measure at 1 + 32 BD. If a
+faithful prefetch test is ever still wanted, it requires the *real* double-buffered reader
+(reads the main loop's own next batch, adding zero net bytes) — which is exactly the psexp
+surgery the probes were meant to de-risk and could not; do it only as a deliberate, flag-
+gated, default-`run.events()`-verified change, not another probe.

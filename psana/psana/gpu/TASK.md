@@ -421,6 +421,25 @@
   of `bd_read`, the 42% component) is untested and is the real prize — a different
   change (psexp/BD-loop, all MPI stays on the main thread, only GIL-releasing
   `os.pread` moves to the reader thread). Logs `bench_mpi_sweep/ralph_tmp/async_*.log`.
+- 2026-07-10 (iter 14): **Rate-capped reader probe in a COLD window — the cap didn't
+  bind, the reader saturated FFB storage and still crushed the loop −63%; the probe
+  cannot faithfully model prefetch.** Added `PS_READER_PROBE_MBPS` (throttles the
+  background reader; benchmark-only, numeric path byte-identical). 32 BD palindrome
+  bracket cap=640: baseline mean **121.0 Hz** (COLD — the iter-10/11/12 117–158 band,
+  NOT iter-13's warm 585, palindrome tight 118.9→123.1), probe mean **45.0 Hz = −63%**.
+  Cap did NOT bind: reader delivered only ~238 MB/s/rank (7.5–7.7 GB/s agg ≈ 7.9 GB/s
+  FFB ceiling) because 32×640 = 20 GB/s ≫ ceiling — COLD, the reader hits the STORAGE
+  wall (WARM iter-13 hit 35 GB/s memory-bw). **Verdict — probe methodology exhausted
+  (2nd confound):** the probe reads NET-ADDITIONAL bytes (different offsets), but a real
+  prefetch reads the SAME bytes earlier (zero net I/O), so in a storage-bound cold regime
+  the probe double-counts I/O and OVERSTATES prefetch contention; and the 640 cap models
+  a 19 Hz/rank warm consumption while the cold loop consumes only 3.8 Hz/rank = ~127
+  MB/s/rank (5x lower). With the cold loop already at 4.05 GB/s = 51% of the storage
+  ceiling and iter-5's per-rank serialization (not latency) bound, prefetch upside is
+  bounded → CAUTION not GO. Logs `bench_mpi_sweep/ralph_tmp/probecap_*_204050.log`.
+  Next: pivot to the window-independent ~27% CPU residual (dgram construction, iter 10),
+  free of storage/threading/window confounds; build the real double-buffered reader only
+  as deliberate flag-gated psexp surgery, not another probe.
 - 2026-07-10 (iter 13): **Concurrency-headroom probe for read-side prefetch — a full
   background reader thread HALVES the main GPU-feed loop.** New `--reader-probe` in
   `bench_calib.py` runs the gated seg-h2d path + one background `os.pread` daemon

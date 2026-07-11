@@ -239,15 +239,36 @@ def _start_reader_probe(args, rank):
     CHUNK = 16 << 20
     span = max(1, fsize - CHUNK)
 
+    # Optional per-rank rate cap (MB/s). Set PS_READER_PROBE_MBPS to make the probe
+    # mimic a *faithful* read-prefetch load rather than running full-tilt. A real
+    # prefetch reader only needs to stay one event ahead: 33.5 MB/event x ~19 Hz/rank
+    # = ~640 MB/s/rank at 32 BD. Iter 13's uncapped reader pulled ~1115 MB/s/rank
+    # (1.75x that), so its -50% overstated the contention a faithful prefetch imposes.
+    # Capping isolates the contention question from the over-read confound.
+    try:
+        cap_mbps = float(os.environ.get("PS_READER_PROBE_MBPS", "0") or "0")
+    except ValueError:
+        cap_mbps = 0.0
+    cap_bps = cap_mbps * 1e6 if cap_mbps > 0 else 0.0
+
     def _loop():
         # stagger start offsets so co-located ranks on the same file don't lock-step
         off = (rank * CHUNK * 7) % span
+        t0 = time.perf_counter()
+        read_bytes = 0
         while not stop.is_set():
             n = os.pread(fd, CHUNK, off)
             stats["bytes"] += len(n)
+            read_bytes += len(n)
             off += CHUNK
             if off + CHUNK >= fsize:
                 off = 0
+            if cap_bps:
+                # sleep until this rank's cumulative rate falls back to the cap
+                target = t0 + read_bytes / cap_bps
+                dt = target - time.perf_counter()
+                if dt > 0:
+                    stop.wait(dt)
 
     t = threading.Thread(target=_loop, daemon=True, name="reader-probe")
     t.start()
