@@ -276,6 +276,97 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     }
 
 
+def run_gpu_bench_seg_h2d_profile(args, run, det_obj, peds_gpu, gmask_gpu,
+                                  allow_break):
+    """Like run_gpu_bench_seg_h2d, but buckets per-event WALL time into
+    wait / h2d / kernel so the post-iter-8 ceiling can be attributed.
+
+    Both landed host memcpys (iter 7 copy=False, iter 8 seg-h2d) are gone here,
+    so this measures the seg-h2d fast path itself. The critical bucket is `wait`
+    = time to advance run.events() to the next event, which in psana2 folds the
+    bigdata read + EB/MPI serving; iter 8 predicted it is now the largest bucket.
+    `h2d` here is the per-seg host->device loop (the only remaining host->device
+    ingestion). wait + h2d + kernel should sum to ~wall.
+
+    Synchronous (device sync after the transfer loop and after the kernel), so
+    the wall rate is a valid headline — no overlap, so §6's sync-timing trap
+    does not apply.
+    """
+    import cupy as cp
+    from psana.gpu import fused_calib_gpu
+
+    raw_det = det_obj.raw
+    seg_nums = raw_det._segment_numbers
+
+    wait_times, h2d_times, kernel_times = [], [], []
+    warmup_done = False
+    n_measured = 0
+    t_start = None
+    t_prev_end = None
+    raw_gpu_buf = None
+    raw_gpu_3d = None
+
+    events = run.events()
+    while True:
+        t_wait0 = time.perf_counter()
+        try:
+            evt = next(events)
+        except StopIteration:
+            break
+        t_got = time.perf_counter()
+        wait = (t_got - t_prev_end) * 1e3 if t_prev_end is not None \
+            else (t_got - t_wait0) * 1e3
+
+        segs = raw_det._segments(evt)
+        if segs is None:
+            t_prev_end = time.perf_counter()
+            continue
+
+        # H->D: per-segment host->device straight into the device buffer.
+        t0 = time.perf_counter()
+        if raw_gpu_buf is None:
+            s0 = segs[seg_nums[0]].raw
+            raw_gpu_buf = cp.empty((len(seg_nums),) + s0.shape, dtype=s0.dtype)
+            raw_gpu_3d = raw_gpu_buf.reshape(-1, s0.shape[-2], s0.shape[-1])
+        for idx, sid in enumerate(seg_nums):
+            raw_gpu_buf[idx].set(np.ascontiguousarray(segs[sid].raw))
+        cp.cuda.Device().synchronize()
+        t1 = time.perf_counter()
+
+        calib_gpu = fused_calib_gpu(raw_gpu_3d, peds_gpu, gmask_gpu)
+        cp.cuda.Device().synchronize()
+        t2 = time.perf_counter()
+
+        if not warmup_done:
+            if n_measured >= args.warmup:
+                warmup_done = True
+                t_start = time.perf_counter()
+                wait_times.clear(); h2d_times.clear(); kernel_times.clear()
+            n_measured += 1
+            t_prev_end = time.perf_counter()
+            continue
+
+        wait_times.append(wait)
+        h2d_times.append((t1 - t0) * 1e3)
+        kernel_times.append((t2 - t1) * 1e3)
+        n_measured += 1
+        t_prev_end = time.perf_counter()
+
+        if allow_break and len(h2d_times) >= args.nevents:
+            break
+
+    t_wall = time.perf_counter() - t_start if t_start else 0
+    n = len(h2d_times)
+    return {
+        "n": n,
+        "wall_s": t_wall,
+        "rate_hz": n / t_wall if t_wall > 0 else 0,
+        "wait_ms_mean": np.mean(wait_times) if wait_times else 0,
+        "h2d_ms_mean": np.mean(h2d_times) if h2d_times else 0,
+        "kernel_ms_mean": np.mean(kernel_times) if kernel_times else 0,
+    }
+
+
 def run_gpu_bench_profile(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     """Like run_gpu_bench, but also buckets the per-event WALL time into
     wait / read / h2d / kernel so the 32-BD ceiling can be attributed.
@@ -681,7 +772,10 @@ def main():
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
             _print_occupancy(rank, peds_gpu)
 
-        if args.seg_h2d:
+        if args.seg_h2d and args.profile:
+            result = run_gpu_bench_seg_h2d_profile(args, run, det, peds_gpu,
+                                                   gmask_gpu, allow_break=(size == 1))
+        elif args.seg_h2d:
             result = run_gpu_bench_seg_h2d(args, run, det, peds_gpu, gmask_gpu,
                                            allow_break=(size == 1))
         elif args.profile_read:
@@ -712,6 +806,16 @@ def main():
                   f"(2nd det.raw.raw, same evt: <<read1=>I/O, ~=read1=>CPU)")
             print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event")
             print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event")
+        elif args.seg_h2d and args.profile:
+            tot = (result['wait_ms_mean'] + result['h2d_ms_mean']
+                   + result['kernel_ms_mean'])
+            print(f"  wait:        {result['wait_ms_mean']:.3f} ms/event "
+                  f"(gen advance = bigdata read + EB/MPI)")
+            print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event "
+                  f"(per-seg host->device, no host stack)")
+            print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event")
+            print(f"  sum:         {tot:.3f} ms/event  "
+                  f"(vs {1000.0/result['rate_hz']:.3f} ms/event wall)")
         elif args.profile:
             tot = (result['wait_ms_mean'] + result['read_ms_mean']
                    + result['h2d_ms_mean'] + result['kernel_ms_mean'])

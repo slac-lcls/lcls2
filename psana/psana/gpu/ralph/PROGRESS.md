@@ -626,3 +626,75 @@ re-run `--profile` to see the new largest bucket — likely `wait` (generator-ad
 landed change has touched. That points back at the psana serving chain (a psexp
 change, in scope §3/§7) as the next frontier now the per-rank CPU memcpy has been
 halved twice.
+
+---
+
+## 2026-07-10 — Iteration 9 (re-profile the wall after both host memcpys are gone: `wait` is now 79% @32BD — psana serving chain is the frontier)
+
+**Task:** the measurement iter 8 pointed to as next-step (b). Both landed wins
+(iter 7 copy=False, iter 8 seg-h2d) removed the two host-side 33.5 MB memcpys on
+the GPU ingestion path. The existing `--profile` mode only instruments the *old*
+`det.raw.raw`+`cp.asarray` loop, so it could not attribute the seg-h2d fast path.
+Re-profile the seg-h2d wall at 1 and 32 BD to find the new largest bucket — iter 8
+predicted `wait` (generator advance = bigdata read + EB/MPI serving) now dominates.
+
+**What I did:**
+- Added `run_gpu_bench_seg_h2d_profile` + routed `--seg-h2d --profile` to it in
+  `bench_calib.py`. It is the iter-8 seg-h2d loop with the `wait` bucket added
+  (time to advance `run.events()` to the next event, measured `next(events)` gap
+  the same way `run_gpu_bench_profile` does), bucketing wall into
+  wait / h2d(per-seg) / kernel. The numeric path (`fused_calib_gpu`, per-seg
+  ingestion) is byte-identical to the already-gated iter-8 variant — only timing
+  instrumentation was added. Synchronous, so the wall rate is a valid headline
+  (§6 trap does not apply).
+- Measured at 1 BD (smoke, `-n 60`) and 32 BD (`-n 200`, 7040 events) on the
+  `ralph-gpu` node (job 31267701, sdfampere029), `mpirun --bind-to none
+  --oversubscribe`, r47/FFB.
+
+**Correctness gate:** `test_jungfrau_calib.py --seg-h2d -e mfx101572426 -r 47
+-n 20` → **20/20 OK, max_diff 0.0**. Bit-exact (numeric path unchanged).
+
+**Numbers (r47, FFB, A100, per-rank ms/event; logs
+`bench_mpi_sweep/ralph_tmp/segh2d_profile_32bd_185342.log` @32BD, 1-BD from the
+smoke run in-iteration):**
+
+| bucket | 1 BD (72.5 Hz) | 32 BD (141.5 Hz agg, 4.42 Hz/rank) |
+|---|---|---|
+| **wait** (gen advance = bigdata read + EB/MPI) | 9.96 ms (72%) | **180.5 ms (79%)** |
+| H->D (per-seg host->device) | 3.49 ms (25%) | 45.4 ms (20%) |
+| kernel | 0.32 ms (2%) | 1.84 ms (1%) |
+| sum vs wall | 13.77 / 13.80 | 227.7 / 226.1 |
+
+Attribution closes to <1% at both scales — nothing unattributed.
+
+**The finding:** iter 8's prediction is **confirmed**. With both host memcpys gone,
+`wait` is the dominant bucket at both scales and inflates hardest under contention:
+9.96 ms @1BD → **180.5 ms @32BD** (18x for 32x the ranks), while H->D inflates
+3.49 → 45.4 ms (13x) and kernel stays negligible (0.32 → 1.84 ms). This is the same
+per-rank serialization iter 5 found (pipeline plateaus ~16 BD) and iter 3's ~60%
+`wait` share — now grown to 79% precisely because the two memcpy buckets it competed
+with have been removed. The GPU-side work (H->D + kernel) is only 21% of the 32-BD
+wall; **four fifths of the time a BD rank spends per event is waiting for psana to
+deliver the next event's bigdata** (read + EB/MPI serving), not moving or computing
+data. iter 4 already ruled out raw FFB bandwidth as this ceiling (2.78 GB/s = 35% of
+7.9), so `wait` is serving-chain/serialization latency, not storage throughput.
+
+**Keep/revert:** KEEP the profiling variant (measurement tool, no numeric-path
+change, bit-exact). No throughput change this iteration — it is a pure attribution
+that redirects the search.
+
+**Recommended next step:** the frontier is now unambiguously the psana serving
+chain (`wait`), which is in scope (§3/§7: psexp changes behind a flag). Two
+single-variable experiments, in order of leverage:
+(a) **Attribute `wait` itself** — split the 180 ms @32BD into "BD blocked waiting
+for EB to hand it a batch" vs "BD reading its bigdata xtc off FFB once handed a
+batch". Instrument the BD side of the EB→BD handoff (timestamp when the batch
+descriptor arrives vs when the xtc bytes finish reading), or use `--smd0-debug`
++ an EB-side diary. This tells us whether the fix is serving-side (EB/dispatch
+parallelism) or read-side (per-rank xtc read latency under 32-way contention).
+Do NOT build a serving-chain change before this split — iter 0-4 mis-attributed
+the multi-node ceiling four times by skipping exactly this step.
+(b) Only after (a): if read-side, prefetch/overlap the next event's xtc read with
+the current event's H->D+kernel (the CPU-push doc's "request next batch without
+waiting"); if serving-side, EB→BD dispatch batching/parallelism. Either is a
+psexp change — flag-gated, verify default `run.events()` still works (§7 rule 4).

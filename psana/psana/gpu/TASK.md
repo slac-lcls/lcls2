@@ -374,6 +374,31 @@
     driver `segh2d_driver.sh`. NEXT: promote seg-h2d to the default GPU ingestion
     pattern + public-API docs, then re-`--profile` (read/stack bucket collapsed →
     `wait`/serving is likely the new largest bucket).
+- [x] Re-profile the wall after both host memcpys are gone (measurement)
+  - 2026-07-10 (iter 9): added `run_gpu_bench_seg_h2d_profile` + `--seg-h2d
+    --profile` to `bench_calib.py` — the iter-8 seg-h2d loop with the `wait`
+    bucket added (numeric path byte-identical; bit-exact 20/20, max_diff 0.0).
+    Buckets wall into wait / h2d(per-seg) / kernel. Job 31267701 (sdfampere029),
+    `mpirun --bind-to none --oversubscribe`, r47/FFB. Per-rank ms/event:
+
+    | bucket | 1 BD (72.5 Hz) | 32 BD (141.5 Hz agg) |
+    |---|---|---|
+    | **wait** (gen advance = read + EB/MPI) | 9.96 ms (72%) | **180.5 ms (79%)** |
+    | H->D (per-seg) | 3.49 ms (25%) | 45.4 ms (20%) |
+    | kernel | 0.32 ms (2%) | 1.84 ms (1%) |
+    | sum / wall | 13.77 / 13.80 | 227.7 / 226.1 |
+
+    Attribution closes <1% at both scales. iter 8's prediction CONFIRMED: with
+    both host memcpys gone, `wait` (psana generator advance = bigdata read +
+    EB/MPI serving) is the dominant bucket and inflates hardest under contention
+    (9.96→180.5 ms, 18x for 32x ranks; H->D 13x, kernel negligible). GPU-side
+    work is only 21% of the 32-BD wall. Consistent with iter 3 (~60% wait then)
+    and iter 5 (per-rank serialization plateau ~16 BD); iter 4 already ruled out
+    raw FFB bandwidth as this ceiling. Log:
+    `bench_mpi_sweep/ralph_tmp/segh2d_profile_32bd_185342.log`. NEXT: split `wait`
+    into EB-handoff-blocked vs xtc-read-blocked before building any serving-chain
+    change (do NOT skip this — the multi-node ceiling was mis-attributed 4x by
+    skipping exactly this step).
 
 ## Documentation
 
