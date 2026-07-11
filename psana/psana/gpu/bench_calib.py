@@ -81,6 +81,22 @@ def parse_args():
                         "over the measured window only. Decides whether the serving-chain "
                         "frontier is serving-side (EB dispatch) or read-side (per-rank "
                         "xtc read under contention).")
+    p.add_argument("--reader-probe",   action="store_true",
+                   help="Concurrency-headroom probe for read-side prefetch (iter 13). "
+                        "Runs the seg-h2d fast path, but ALSO spawns one background "
+                        "daemon thread per BD rank that continuously os.pread's the "
+                        "rank's bigdata xtc off FFB (16 MB chunks, advancing offset so "
+                        "reads stay cold). Tests iter 12's open question: at 32 BD on a "
+                        "fully-loaded node, does a background reader thread (GIL-released "
+                        "in pread) overlap with the main-thread GPU work, or does it steal "
+                        "the main loop's time? A GO signal (main rate ~unchanged with an "
+                        "EXTRA full reader running) means real read-side prefetch — which "
+                        "adds NO extra IO, only time-shifts existing reads — has room to "
+                        "overlap bd_read (42%% of wall, iter 10) behind GPU work. NOTE this "
+                        "is a CONSERVATIVE probe: it reads EXTRA bytes a real prefetch "
+                        "would not, so it over-states cost. Reports the reader's achieved "
+                        "MB/s so an IO-bandwidth limit is distinguishable from GIL/CPU "
+                        "contention.")
     p.add_argument("--cpu",            action="store_true",
                    help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
                         "collective DataSource (no GPU). MPI-capable — measures B-CPU "
@@ -189,6 +205,55 @@ def run_gpu_bench(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     }
 
 
+def _start_reader_probe(args, rank):
+    """Spawn a background daemon thread that continuously os.pread's this rank's
+    bigdata xtc off FFB — the concurrency-headroom probe for read-side prefetch.
+
+    The reader only calls os.pread (which releases the GIL), exactly the operation
+    a real read-prefetch reader thread would run. Offset advances monotonically
+    across the (200+ GB) file so reads stay cold (never re-hit page cache), and
+    ranks fan out across the big streams round-robin so aggregate probe IO mirrors
+    the real per-rank read distribution.
+
+    Returns (stop_event, stats_dict, fd) or None if no bigdata file is found.
+    stats_dict['bytes'] is the running total the caller snapshots at the warmup
+    boundary and at the end to attribute bandwidth to the measured window only.
+    """
+    import glob
+    import threading
+
+    xdir = args.dir
+    if not xdir:
+        return None
+    files = sorted(glob.glob(os.path.join(xdir, f"*r{args.run:04d}*.xtc2")))
+    # bigdata streams only (exclude smalldata), and only the large streams that
+    # actually carry detector payload (>1 GB) so the reader hits real storage.
+    files = [f for f in files if ".smd." not in f and os.path.getsize(f) > (1 << 30)]
+    if not files:
+        return None
+    fn = files[rank % len(files)]
+    fd = os.open(fn, os.O_RDONLY)
+    fsize = os.fstat(fd).st_size
+    stop = threading.Event()
+    stats = {"bytes": 0}
+    CHUNK = 16 << 20
+    span = max(1, fsize - CHUNK)
+
+    def _loop():
+        # stagger start offsets so co-located ranks on the same file don't lock-step
+        off = (rank * CHUNK * 7) % span
+        while not stop.is_set():
+            n = os.pread(fd, CHUNK, off)
+            stats["bytes"] += len(n)
+            off += CHUNK
+            if off + CHUNK >= fsize:
+                off = 0
+
+    t = threading.Thread(target=_loop, daemon=True, name="reader-probe")
+    t.start()
+    return stop, stats, fd
+
+
 def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     """GPU path variant: skip det.raw.raw's host `stack` memcpy by copying each
     segment's .raw DIRECTLY host->device into a pre-allocated device buffer.
@@ -224,6 +289,12 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     t_start = None
     raw_gpu_buf = None
     raw_gpu_3d = None
+
+    # Concurrency-headroom probe: background os.pread load on this rank's bigdata.
+    probe = None
+    reader_bytes_at_start = 0
+    if getattr(args, "reader_probe", False):
+        probe = _start_reader_probe(args, _rank())
 
     for evt in run.events():
         segs = raw_det._segments(evt)
@@ -262,6 +333,8 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
             if n_measured >= args.warmup:
                 warmup_done = True
                 t_start = time.perf_counter()
+                if probe is not None:
+                    reader_bytes_at_start = probe[1]["bytes"]
                 h2d_times.clear(); kernel_times.clear(); d2h_times.clear()
             n_measured += 1
             continue
@@ -275,6 +348,19 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
             break
 
     t_wall = time.perf_counter() - t_start if t_start else 0
+
+    reader_mbps = 0.0
+    if probe is not None:
+        stop, stats, fd = probe
+        reader_bytes = stats["bytes"] - reader_bytes_at_start
+        stop.set()
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        if t_wall > 0:
+            reader_mbps = (reader_bytes / 1e6) / t_wall
+
     n = len(h2d_times)
     return {
         "n": n,
@@ -283,6 +369,7 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
         "h2d_ms_mean": np.mean(h2d_times) if h2d_times else 0,
         "kernel_ms_mean": np.mean(kernel_times) if kernel_times else 0,
         "d2h_ms_mean": np.mean(d2h_times) if d2h_times else 0,
+        "reader_mbps": reader_mbps,
     }
 
 
@@ -862,6 +949,10 @@ def _report_aggregate(result, size):
     else:
         print(f"  H->D:             {np.mean([r.get('h2d_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
         print(f"  kernel:           {np.mean([r.get('kernel_ms_mean', 0) for r in bd]):.3f} ms/event (mean)")
+        if any(r.get("reader_mbps") for r in bd):
+            rmb = [r.get("reader_mbps", 0) for r in bd]
+            print(f"  reader-probe:     {np.sum(rmb):.0f} MB/s aggregate background read "
+                  f"({np.mean(rmb):.0f} MB/s/rank mean over {len(bd)} ranks)")
 
 
 def main():
@@ -914,7 +1005,9 @@ def main():
         elif args.seg_h2d and args.profile:
             result = run_gpu_bench_seg_h2d_profile(args, run, det, peds_gpu,
                                                    gmask_gpu, allow_break=(size == 1))
-        elif args.seg_h2d:
+        elif args.seg_h2d or args.reader_probe:
+            # --reader-probe runs the seg-h2d fast path (the baseline it compares
+            # against) with a background reader thread; see _start_reader_probe.
             result = run_gpu_bench_seg_h2d(args, run, det, peds_gpu, gmask_gpu,
                                            allow_break=(size == 1))
         elif args.profile_read:
@@ -984,6 +1077,8 @@ def main():
         else:
             print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event")
             print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event")
+        if result.get("reader_mbps"):
+            print(f"  reader-probe:{result['reader_mbps']:.0f} MB/s background read (this rank)")
         if args.d2h:
             print(f"  D->H:        {result['d2h_ms_mean']:.3f} ms/event")
 

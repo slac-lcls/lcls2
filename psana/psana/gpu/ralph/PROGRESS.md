@@ -957,3 +957,98 @@ MPI thread-safety level is required. Decisive before/after: `--wait-split` aggre
 Hz at 32 BD with the read-prefetch flag on vs off, palindrome-bracketed. Secondary
 (smaller, window-independent): the ~27% CPU residual (dgram construction) via a
 lighter accessor.
+
+---
+
+## 2026-07-10 — Iteration 13 (concurrency-headroom probe for read-side prefetch — a full background reader thread HALVES the main loop; contention is real, so a prefetch reader cannot run free)
+
+**Task:** iter 12's recommended lever (b), de-risked BEFORE the core psexp surgery
+it needs. The open question iter 12 raised against read-side prefetch: at 32 BD on
+a fully-loaded node (34 procs), is there real CPU/GIL/IO concurrency headroom for a
+background reader thread to overlap `os.pread` (bd_read, 42% of wall, iter 10)
+behind main-thread GPU work — or is there, as iter 12 argued, "nothing to hide it
+behind that isn't already contended"? Building the batch/chunk double-buffered
+reader into core `EventManager`/`node.py` is a large, delicate change (and §7 rule 4
+warns breaking default psana is the one unrecoverable mistake), so I measured the
+concurrency headroom first with a benchmark-only probe — cheapest decisive test.
+
+**What I did:**
+- Added `--reader-probe` to `bench_calib.py` (`_start_reader_probe`): runs the
+  gated seg-h2d fast path UNCHANGED, but ALSO spawns one background daemon thread
+  per BD rank that continuously `os.pread`s the rank's bigdata xtc off FFB (16 MB
+  chunks, offset advancing monotonically across the 200+ GB stream so reads don't
+  trivially re-hit cache; ranks fan across the big streams round-robin). The reader
+  does ONLY `os.pread` — the exact GIL-releasing op a real prefetch reader would run.
+  Reports the reader's achieved MB/s (snapshotted over the measured window) so an
+  IO-bandwidth limit is distinguishable from GIL/CPU contention. Benchmark-only —
+  **zero psexp change**, numeric path byte-identical to the already-gated seg-h2d
+  variant, so the correctness gate is not re-triggered. Default path untouched.
+- Palindrome bracket at 32 BD (seg, probe, probe, seg) to control FFB window drift,
+  `-n 200 --warmup 10`, r47/FFB, ralph-gpu node (job 31267701, sdfampere029).
+
+**Numbers (r47, FFB, A100, 32 BD, aggregate; logs
+`bench_mpi_sweep/ralph_tmp/probe_{a_seg,b_probe,c_probe,d_seg}_202607.log`,
+driver `probe_driver_202607.log`):**
+
+| run | variant | agg Hz | reader bw |
+|---|---|---:|---|
+| a_seg (first) | seg-h2d baseline | **615.4** | — |
+| b_probe | seg-h2d + bg reader | **284.9** | 35.98 GB/s agg (1124 MB/s/rank) |
+| c_probe | seg-h2d + bg reader | **300.2** | 35.38 GB/s agg (1106 MB/s/rank) |
+| d_seg (last) | seg-h2d baseline | **553.7** | — |
+
+baseline mean **584.6 Hz**; probe mean **292.6 Hz** → **−50%**. The bracket held the
+window (baseline drifted only 615→553, ~10%) while the probe sat at ~293 well below
+BOTH baseline ends, so the halving is the reader's effect, NOT window drift.
+
+**Two findings — one solid, one a caveat that bounds the claim:**
+1. **A full concurrent reader thread halves the GPU-feed loop (−50%).** Even though
+   the reader only does GIL-releasing `os.pread`, running it alongside the main loop
+   cut aggregate throughput in half. Concurrency contention between a background
+   reader and the main GPU-feed path is **real and material** — this directly
+   supports iter 12's "already contended" skepticism. A prefetch reader thread
+   therefore **cannot run free**; whatever it reads, it competes with the main loop
+   for memory bandwidth / CPU / cache, and that cost is not negligible. The reader
+   pulled **35+ GB/s aggregate — far above the 7.9 GB/s FFB storage ceiling** — so it
+   was cache/readahead + memory-bandwidth bound, i.e. the contention it created was
+   CPU/memory-bandwidth, not storage. (It ran ~1.75x a *faithful* prefetch load:
+   1115 vs the ~640 MB/s/rank a real prefetch needs = 33.5 MB/event × 19 Hz/rank —
+   so scale the −50% down somewhat, but the sign and materiality stand.)
+2. **CAVEAT — today's window is cache-WARM, off the regime the prefetch question was
+   posed in.** The seg-h2d baseline ran at **585 Hz, 4–5x the iter-10/11/12 cold
+   numbers (117–158 Hz)** — per-rank wall collapsed 202 → 52 ms/event with NO code
+   change since iter 10, so it is a warm-cache artifact (every run re-reads the same
+   first ~7,040 events of r47, warmed across today's 12 iterations; consistent with
+   iter-0 "filesystem/window dominates, 15 vs 210 Hz"). In a warm window bd_read
+   latency is already small, so there is little read latency to hide — prefetch's
+   premise (bd_read = 42% of a COLD wall) doesn't hold right now. So this probe does
+   NOT cleanly return GO/NO-GO for the cold-regime prefetch; what it DOES establish
+   is the contention floor (finding 1), which is regime-independent and cautionary.
+
+**Interpretation for the prefetch decision:** the evidence leans **caution, not GO**.
+For read-side prefetch to pay it needs BOTH (i) a cold regime where bd_read latency
+actually exists to hide, AND (ii) the reader not to over-contend for CPU/memory
+bandwidth with the main loop. Finding 1 shows (ii) is a real tax (a concurrent
+reader measurably slows the loop); the warm window prevented testing (i) today. This
+is exactly the "already contended" failure mode iter 12 predicted, now with a number
+on it. Building the full core-psexp double-buffered reader before (i) is confirmed in
+a cold window risks paying the surgery cost for a lever the contention tax may eat.
+
+**Keep/revert:** KEEP `--reader-probe` — a reusable benchmark-only concurrency probe,
+zero psexp risk, numeric path byte-identical (correctness gate not triggered). No
+throughput change landed; this iteration buys a measured contention floor + a
+regime caveat that redirect the expensive surgery.
+
+**Recommended next step:** settle confound (i) cheaply before any psexp surgery —
+re-run the `--reader-probe` palindrome bracket **in a cold window** (either after a
+cache-drop, or add a rate-cap `PS_READER_PROBE_MBPS≈640` so the reader mimics a
+faithful prefetch load rather than running full-tilt at 1115 MB/s/rank). If, cold and
+rate-capped, the reader does NOT halve the loop AND the baseline is back at ~117-158
+Hz (bd_read latency present), that is the GO signal to build the real double-buffered
+reader in `EventManager`/`node.py` (chunk-level, MPI on main thread, flag-gated,
+verify default `run.events()`). If it still contends heavily even rate-capped, the
+prefetch lever is dead and the search should turn to the ~27% CPU residual (dgram
+construction, iter 10) via a lighter accessor — pure CPU, window-independent, no
+threading contention. Secondary observation worth a look: the 585 Hz warm baseline
+means a node-local NVMe/page-cache staging tier for reprocessing could itself be a
+4-5x lever (DEFERRED/TASK item 2), independent of prefetch.

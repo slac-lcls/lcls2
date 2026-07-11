@@ -421,6 +421,24 @@
   of `bd_read`, the 42% component) is untested and is the real prize — a different
   change (psexp/BD-loop, all MPI stays on the main thread, only GIL-releasing
   `os.pread` moves to the reader thread). Logs `bench_mpi_sweep/ralph_tmp/async_*.log`.
+- 2026-07-10 (iter 13): **Concurrency-headroom probe for read-side prefetch — a full
+  background reader thread HALVES the main GPU-feed loop.** New `--reader-probe` in
+  `bench_calib.py` runs the gated seg-h2d path + one background `os.pread` daemon
+  thread per BD rank (benchmark-only, zero psexp change, numeric path byte-identical).
+  32 BD palindrome bracket (seg,probe,probe,seg): baseline mean **584.6 Hz**, probe
+  mean **292.6 Hz = −50%**; bracket held the window (baseline 615→553, ~10%) so the
+  halving is the reader's effect. Reader pulled **35+ GB/s aggregate (>7.9 GB/s
+  storage ceiling)** → cache/memory-bandwidth bound, so the contention it created is
+  CPU/memory-bandwidth, not storage. **Finding 1 (solid, regime-independent):** a
+  concurrent reader thread contends materially with the main loop — supports iter 12's
+  "already contended" skepticism; a prefetch reader cannot run free. **Caveat (bounds
+  the claim):** today's window is cache-WARM — seg-h2d baseline 585 Hz is 4–5x the
+  iter-10/11/12 cold 117–158 Hz (per-rank wall 202→52 ms, NO code change → warm-cache
+  artifact of re-reading the same ~7,040 events), so bd_read latency is small right
+  now and the cold-regime prefetch premise couldn't be tested. Evidence leans
+  CAUTION not GO. Logs `bench_mpi_sweep/ralph_tmp/probe_*_202607.log`. Next: re-run
+  cold and rate-capped (`PS_READER_PROBE_MBPS≈640`, a faithful prefetch load) before
+  building the core-psexp double-buffered reader.
 - 2026-07-10 (iter 11): **PS_EB_NODES=1/2/4 re-measured on the seg-h2d fast path —
   EB count is a DEAD END.** At fixed 32 BD, aggregate throughput is flat across
   EB=1/2/4 (116.7 / 117.9 / 117.5 Hz, within 1% and inside the 113.9–121.0 FFB
