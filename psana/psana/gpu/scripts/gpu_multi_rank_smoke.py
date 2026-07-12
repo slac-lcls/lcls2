@@ -1,5 +1,4 @@
-"""
-test_gpu_multi_rank.py — Multi-GPU MPI test for psana2 GPU BD ranks.
+"""Manual multi-GPU MPI smoke check for psana2 GPU BD ranks.
 
 Exercises the full psana2 MPI pipeline (SMD0 → EB → GPU BD ranks) with two
 GPU BD ranks, each pinned to a different A100 on the same node.
@@ -29,7 +28,7 @@ Run
 From a GPU node (after salloc) or via the Slurm launcher:
 
     # Two BD GPUs:
-    PS_EB_NODES=1 mpirun -n 4 python psana/psana/tests/test_gpu_multi_rank.py
+    bash psana/psana/gpu/scripts/run_multi_gpu_test.sh
 
     # Via Slurm launcher (from ~/lcls2 on a login node):
     sh psana/psana/gpu/scripts/run_multi_gpu_test.sh

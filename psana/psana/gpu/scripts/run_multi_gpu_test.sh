@@ -27,7 +27,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
-TEST_SCRIPT="${SCRIPT_DIR}/../../tests/test_gpu_multi_rank.py"
+TEST_SCRIPT="${SCRIPT_DIR}/gpu_multi_rank_smoke.py"
 
 N_GPUS_PER_NODE="${N_GPUS_PER_NODE:-2}"
 PS_EB_NODES_VAL="${PS_EB_NODES:-1}"

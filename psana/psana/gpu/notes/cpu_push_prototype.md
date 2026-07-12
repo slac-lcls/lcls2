@@ -377,10 +377,10 @@ Useful files:
 - `psana/psana/gpu/gpu_compare.py`
   - prototype validation helpers for split/no-split and GPU/CPU raw
     comparison.
-- `psana/psana/tests/test_gpu_multi_rank.py`
-  - MPI GPU test/driver.
-- `psana/psana/tests/test_gpu_mpi_transport.py`
-  - GPU MPI transport test coverage.
+- `psana/psana/gpu/scripts/gpu_multi_rank_smoke.py`
+  - explicitly launched MPI/GPU smoke driver; not collected by pytest.
+- `psana/psana/tests/gpu/`
+  - compact CPU-only unit coverage and one pixel-exact GPU/data acceptance test.
 
 Build-related files:
 
