@@ -99,8 +99,8 @@ class DetectorRouter:
         det_name          : str  — e.g. 'jungfrau'
         gpu_seg_ids       : list[int]  — calibconst row indices for the GPU
                             segments in the same order as GPUDetector outputs
-                            them (i.e. stream_id ascending, seg_id ascending
-                            within each stream).
+                            them (i.e. stream_id ascending, L1Accept child-XTC
+                            order within each stream).
         cpu_seg_ids       : list[int]  — calibconst row indices for the CPU
                             segments, in the sorted order that
                             det.raw.calib(evt) returns them.

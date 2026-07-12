@@ -76,8 +76,9 @@ class EventPool:
 
     While batch N's calibration kernel runs on stream[N % n], batch N+1's
     GDS reads and CPU work proceed concurrently.  Results from batch N are
-    returned (and its stream synchronised) when slot N % n is recycled for
-    batch N + n, guaranteeing they are ready to yield to the user.
+    retired (and its stream synchronised) before slot N % n is recycled for
+    batch N + n.  The caller yields the retired result before submitting the
+    replacement because calibrated arrays alias reusable per-slot buffers.
 
     Timeline with n=2 (two batches overlapping)
     -------------------------------------------
@@ -86,10 +87,9 @@ class EventPool:
                        nothing to return yet (slot was empty)
     Batch 1: submit → launch calib on stream_1 (non-blocking)
                        store (results_1, evts_1) in slot 1
-                       return slot 0: sync stream_0, yield results_0
-    Batch 2: submit → launch calib on stream_0 (recycled)
-                       store (results_2, evts_2) in slot 0
-                       return slot 1: sync stream_1, yield results_1
+    Batch 2: retire_next → sync stream_0, yield results_0
+             submit     → launch calib on stream_0 (now safe to recycle)
+                          store (results_2, evts_2) in slot 0
     flush() → sync remaining slots in order, yield results
 
     Benefit
@@ -123,13 +123,35 @@ class EventPool:
     # Main interface
     # ------------------------------------------------------------------
 
-    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
-        """Launch calibration for this batch and return old results if ready.
+    @property
+    def next_slot_id(self) -> int:
+        """Slot that the next submitted batch will occupy."""
+        return self._write_idx % self._n
 
-        Calibration kernels are queued on the slot's stream WITHOUT calling
-        synchronize() first — this allows the new kernel to overlap with work
-        on other streams.  The slot that is being recycled (n batches old) is
-        synchronised here before its results are returned.
+    def retire_next(self):
+        """Synchronise and remove the batch occupying the next write slot.
+
+        The returned arrays remain valid only until the caller submits the
+        replacement batch into this slot.  GpuEvents therefore yields them
+        before calling :meth:`submit`.
+        """
+        slot = self.next_slot_id
+        old = self._slots[slot]
+        if old is None:
+            return None
+
+        old_results, old_evts, old_stream = old
+        old_stream.synchronize()
+        self._slots[slot] = None
+        return old_results, old_evts
+
+    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
+        """Launch calibration into the already-retired next slot.
+
+        Calibration kernels are queued without a host synchronisation, so
+        work in other slots can overlap.  Call :meth:`retire_next` before this
+        method to make both the calibrated-output and raw-input slot safe to
+        reuse.
 
         Parameters
         ----------
@@ -140,10 +162,13 @@ class EventPool:
 
         Returns
         -------
-        (gpu_results_by_ts: dict, cpu_evts: list) from n batches ago, or None.
+        None.  Retired results are returned by :meth:`retire_next`.
         """
-        slot    = self._write_idx % self._n
-        old     = self._slots[slot]
+        slot    = self.next_slot_id
+        if self._slots[slot] is not None:
+            raise RuntimeError(
+                f"EventPool slot {slot} was submitted without retire_next()"
+            )
         stream  = self._streams[slot]    # ← no synchronize() here
 
         # Launch calibration on this slot's stream (non-blocking).
@@ -170,11 +195,6 @@ class EventPool:
         self._slots[slot] = (gpu_results_by_ts, list(cpu_evts), stream)
         self._write_idx += 1
 
-        # Return the recycled slot's results, synchronised.
-        if old is not None:
-            old_results, old_evts, old_stream = old
-            old_stream.synchronize()    # wait for old batch's kernel
-            return old_results, old_evts
         return None
 
     def flush(self):

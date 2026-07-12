@@ -328,8 +328,8 @@ class GPUDetector:
             return
 
         # Build the ordered list of segment IDs in the same order that
-        # process_batch() concatenates segments (stream_id ascending,
-        # then seg_id ascending within each stream).
+        # process_batch() concatenates segments (stream_id ascending, then
+        # L1Accept child-XTC order within each stream).
         if self._stream_seg_map:
             all_seg_ids = []
             for sid in sorted(self._stream_seg_map):
@@ -675,7 +675,7 @@ class GPUDetector:
                                  if out_buf is not None else None)
                     calib, raw = self._extract_and_calibrate(
                         data_u16, device_offset, read_size, seg_ids,
-                        out=out_slice, slot_id=slot,
+                        out=out_slice, slot_id=slot, stream=stream,
                     )
                     if out_buf is None:
                         if i == 0:
@@ -743,7 +743,8 @@ class GPUDetector:
     # ------------------------------------------------------------------
 
     def _extract_and_calibrate(self, data_u16, device_offset, read_size,
-                               seg_ids=None, out=None, slot_id=None):
+                               seg_ids=None, out=None, slot_id=None,
+                               stream=None):
         """Gather raw uint16 pixels and run fused_calib_gpu.
 
         Parameters
@@ -753,12 +754,15 @@ class GPUDetector:
         read_size     : size in bytes of this dgram
         seg_ids       : list of int or None
             Calibconst row indices for this stream's physical segments, in
-            the same order as the child XTCs in the bigdata dgram (i.e.
-            ascending by segment ID).  When provided, the calibration
+            the same order as the child XTCs in the bigdata dgram.  When
+            provided, the calibration
             constants are pulled from the correct rows rather than naively
             using rows 0..n_segs-1.  Build this list with
             build_stream_seg_map().  None falls back to the first-N
             approximation (incorrect for mixed-segment detectors).
+        stream        : cp.cuda.Stream or None
+            Stream on which the raw gather and calibration must execute in
+            order.  Passing None uses CuPy's default stream.
 
         _ensure_layout() must have been called before this method.
         """
@@ -830,7 +834,9 @@ class GPUDetector:
         if kernel is None:
             from psana.gpu.gpu_kernel_registry import JungfrauCalibKernel
             kernel = JungfrauCalibKernel()
-        calib = kernel.calibrate(raw_u16, peds, gmask, stream=None, out=out)
+        calib = kernel.calibrate(
+            raw_u16, peds, gmask, stream=stream, out=out
+        )
 
         # If the kernel ignored the pre-allocated `out` buffer (e.g. a custom
         # kernel that returns a new array instead of writing into `out`), copy
@@ -980,14 +986,32 @@ def prep_calib_constants(det):
     return cp.asarray(peds_flat), cp.asarray(gmask_flat)
 
 
+def _segment_ids_in_l1_order(dgram, det_name):
+    """Return detector segment IDs in XTC traversal order for one event.
+
+    ``dgram.cc`` walks ShapesData records in payload order and inserts a
+    detector dictionary entry the first time it encounters each segment.
+    Python dictionaries preserve that insertion order, so the keys give the
+    child-XTC order needed by the GPU's fixed-stride raw-pixel gather.
+
+    Segment identity itself still comes from Configure: dgram.cc joins each
+    event ShapesData NamesId to its Configure Names record before inserting
+    the corresponding ``Names.segment()`` key.
+    """
+    detector_data = getattr(dgram, det_name, None)
+    if detector_data is None:
+        return []
+    return [int(segment_id) for segment_id in detector_data.keys()]
+
+
 def build_stream_seg_map(stream_bd_files, det_name='jungfrau'):
     """Build the segment-ID map for GPU-routed bigdata streams.
 
-    Opens each bigdata file as a standalone psana DataSource to read the
-    detector's segment IDs from the first event.  The resulting map tells
-    GPUDetector which calibconst rows correspond to each physical stream,
-    so calibration uses the correct pedestals/gains rather than the
-    first-N approximation.
+    Opens each detector-bearing bigdata stream and reads its first L1Accept.
+    The event ShapesData records are joined to Configure by psana's normal
+    dgram parser, yielding physical segment IDs in actual child-XTC order.
+    The resulting map tells GPUDetector which calibconst row belongs to each
+    strided raw-panel position.
 
     Parameters
     ----------
@@ -1000,37 +1024,57 @@ def build_stream_seg_map(stream_bd_files, det_name='jungfrau'):
     Returns
     -------
     dict {stream_id: List[int]}
-        Sorted segment IDs for each stream, in the same order as the child
-        XTCs in the bigdata dgram (ascending by segment ID).
-        These IDs are direct calibconst row indices.
+        Segment IDs for each stream in L1Accept child-XTC order.  These IDs
+        are direct calibconst row indices; they are intentionally not sorted.
 
     Example
     -------
     >>> seg_map = build_stream_seg_map({6: '/path/to/s006.xtc2',
     ...                                 8: '/path/to/s008.xtc2'})
-    >>> # seg_map = {6: [0,1,2,3,7], 8: [5,9,13,17,21,25,29]}
+    >>> # seg_map = {6: [3,7,0,1,2], 8: [17,13,9,5,29,25,21]}
     """
-    import psana
+    from psana.dgrammanager import DgramManager
+    from psana.psexp.transitionid import TransitionId
+
     seg_map = {}
     for stream_id, bd_file in stream_bd_files.items():
+        dm = None
         try:
-            ds  = psana.DataSource(files=bd_file)
-            run = next(ds.runs())
-            for evt in run.events():
-                for dg in evt._dgrams:
-                    if dg is not None and hasattr(dg, det_name):
-                        seg_map[stream_id] = sorted(
-                            getattr(dg, det_name).keys()
-                        )
-                        break
-                if stream_id in seg_map:
+            dm = DgramManager([str(bd_file)])
+
+            # Do not scan non-detector streams to EOF.  Configure is enough
+            # to determine whether this stream can contain the detector.
+            carries_detector = any(
+                hasattr(getattr(config, 'software', None), det_name)
+                for config in dm.configs
+            )
+            if not carries_detector:
+                continue
+
+            for dgrams in dm:
+                dg = dgrams[0] if dgrams else None
+                if dg is None or not TransitionId.isEvent(dg.service()):
+                    continue
+                segment_ids = _segment_ids_in_l1_order(dg, det_name)
+                if segment_ids:
+                    seg_map[int(stream_id)] = segment_ids
                     break
+
+            if int(stream_id) not in seg_map:
+                import warnings
+                warnings.warn(
+                    f"build_stream_seg_map: stream {stream_id} Configure "
+                    f"contains {det_name!r}, but no detector L1Accept was found"
+                )
         except Exception as exc:
             import warnings
             warnings.warn(
                 f"build_stream_seg_map: could not read stream {stream_id} "
-                f"({bd_file}): {exc}.  Falling back to first-N approximation."
+                f"({bd_file}): {exc}"
             )
+        finally:
+            if dm is not None:
+                dm.close()
     return seg_map
 
 

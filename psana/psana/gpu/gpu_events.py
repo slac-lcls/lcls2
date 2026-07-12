@@ -6,6 +6,7 @@ from psana.gpu.gpu_batch import GpuBatchView
 from psana.gpu.gpu_calib import (
     GPUDetector,
     _compute_calib_constants_cpu,
+    build_stream_seg_map,
     optimal_kernel_batch_size,
     prep_calib_constants,
 )
@@ -188,10 +189,35 @@ class GpuEvents:
                     f"gpu_det={det_name!r} did not resolve to any stream ids"
                 )
 
-            stream_seg_map = {
-                stream_id: sorted(stream_segments.get(stream_id, []))
+            # Configure identifies which physical segments belong to each
+            # stream, but its dictionary order is not necessarily the order
+            # of ShapesData children in L1Accept.  The fixed-stride GPU gather
+            # preserves L1 child order, so discover that order from the first
+            # detector event in each routed bigdata stream.
+            xtc_files = getattr(self.dm, "xtc_files", None)
+            if xtc_files is None:
+                xtc_files = getattr(self.dsparms, "xtc_files", [])
+            stream_files = {
+                stream_id: xtc_files[stream_id]
                 for stream_id in gpu_stream_ids
+                if stream_id < len(xtc_files)
             }
+            stream_seg_map = build_stream_seg_map(stream_files, det_name)
+
+            for stream_id in gpu_stream_ids:
+                segment_ids = stream_seg_map.get(stream_id)
+                if not segment_ids:
+                    raise RuntimeError(
+                        f"gpu_det={det_name!r} could not determine L1Accept "
+                        f"segment order for stream {stream_id}"
+                    )
+                configured = set(stream_segments.get(stream_id, []))
+                if configured and set(segment_ids) != configured:
+                    raise RuntimeError(
+                        f"gpu_det={det_name!r} stream {stream_id} segment "
+                        f"mismatch: Configure={sorted(configured)} "
+                        f"L1Accept={segment_ids}"
+                    )
             cpu_stream_seg_map = {
                 stream_id: sorted(segment_ids)
                 for stream_id, segment_ids in stream_segments.items()
@@ -382,10 +408,19 @@ class GpuEvents:
                 for gpu_batch, _ in gpu_batch_dict.values():
                     gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if gpu_view.has_work:
+                        # Retire the batch occupying the next slot before
+                        # KvikIO overwrites that slot's raw input buffer.  Its
+                        # calibrated output aliases the same logical slot, so
+                        # yield it before submitting the replacement batch.
+                        ready = self.event_pool.retire_next()
+                        slot_id = self.event_pool.next_slot_id
                         gpu_pending = (
                             gpu_view,
-                            self.gpu_reader.issue_batch(gpu_view, self.dm),
+                            self.gpu_reader.issue_batch(
+                                gpu_view, self.dm, slot_id=slot_id
+                            ),
                         )
+                        yield from self._yield_ready(ready)
 
                 stop_after = False
                 cpu_evts = []
@@ -421,13 +456,12 @@ class GpuEvents:
                 if gpu_pending is not None:
                     gpu_view, pending = gpu_pending
                     gpu_read = self.gpu_reader.wait_batch(pending)
-                    ready = self.event_pool.submit(
+                    self.event_pool.submit(
                         gpu_view,
                         gpu_read,
                         cpu_evts,
                         self.gpu_detectors,
                     )
-                    yield from self._yield_ready(ready)
                 else:
                     for evt in cpu_evts:
                         yield self._make_context(evt, {})

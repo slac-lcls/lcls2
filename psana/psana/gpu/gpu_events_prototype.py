@@ -261,11 +261,25 @@ def _setup_gpu_detector(
                 if _cfgs and _cfgs[0] is not None:
                     cfg = _cfgs[0]
                     if hasattr(cfg, det_name):
-                        seg_ids = sorted(getattr(cfg, det_name).keys())
                         gpu_ids_discovered.append(i)
-                        stream_seg_map[i] = seg_ids
             except Exception:
                 pass
+
+        # Configure discovers detector-bearing streams, but only L1Accept
+        # establishes the child-XTC order consumed by the strided GPU gather.
+        bd_map = {
+            i: xtc_files[i]
+            for i in gpu_ids_discovered
+            if i < len(xtc_files)
+        }
+        stream_seg_map = build_stream_seg_map(bd_map, det_name)
+
+        missing_order = sorted(set(gpu_ids_discovered) - set(stream_seg_map))
+        if missing_order:
+            raise RuntimeError(
+                f"could not determine L1Accept segment order for "
+                f"{det_name!r} streams {missing_order}"
+            )
 
     # Look up calibration kernel from registry.
     reg    = registry if registry is not None else default_registry()
@@ -570,7 +584,25 @@ def gpu_events(
                 for gpu_batch, _ in gpu_batch_dict.values():
                     gv = GpuBatchView(gpu_batch, validate=True)
                     if gv.has_work:
-                        gpu_pending = (gv, gpu_reader.issue_batch(gv, bd_dm))
+                        old = event_pool.retire_next()
+                        slot_id = event_pool.next_slot_id
+                        gpu_pending = (
+                            gv,
+                            gpu_reader.issue_batch(
+                                gv, bd_dm, slot_id=slot_id
+                            ),
+                        )
+                        if old is not None:
+                            old_results, old_evts = old
+                            for evt in old_evts:
+                                gpu_res = _apply_full_routing(
+                                    old_results.get(evt.timestamp, {}),
+                                    evt, gpu_detectors, router)
+                                yield GpuEventContext(
+                                    evt=evt, gpu_results=gpu_res,
+                                    cpu_dets=cpu_dets, stream=None,
+                                    router=router,
+                                )
 
                 # --------------------------------------------------------
                 # CPU EventManager — runs while GDS reads are in-flight.
@@ -602,25 +634,14 @@ def gpu_events(
                         break
 
                 # --------------------------------------------------------
-                # Wait for GDS reads; submit to EventPool (non-blocking
-                # kernel launch).  EventPool returns synced results from
-                # n_streams batches ago — those are ready to yield now.
+                # Wait for GDS reads and submit to the slot retired above.
+                # Calibration remains non-blocking and may overlap work in
+                # the other EventPool slots.
                 # --------------------------------------------------------
                 if gpu_pending is not None:
                     gv, pending = gpu_pending
                     gpu_read    = gpu_reader.wait_batch(pending)
-                    old = event_pool.submit(gv, gpu_read, cpu_evts,
-                                            gpu_detectors)
-                    if old is not None:
-                        old_results, old_evts = old
-                        for evt in old_evts:
-                            gpu_res = _apply_full_routing(
-                                old_results.get(evt.timestamp, {}),
-                                evt, gpu_detectors, router)
-                            yield GpuEventContext(
-                                evt=evt, gpu_results=gpu_res,
-                                cpu_dets=cpu_dets, stream=None, router=router,
-                            )
+                    event_pool.submit(gv, gpu_read, cpu_evts, gpu_detectors)
                 else:
                     # Transition-only batch: no GPU work, yield CPU events now.
                     for evt in cpu_evts:

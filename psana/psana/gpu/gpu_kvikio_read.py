@@ -139,7 +139,7 @@ class KvikioGpuReader:
             fh.close()
         self._files.clear()
 
-    def issue_batch(self, gpu_view, bd_dm) -> "PendingBatch":
+    def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
 
         All KvikIO pread() calls are issued immediately and return futures.
@@ -150,6 +150,9 @@ class KvikioGpuReader:
         ----------
         gpu_view : GpuBatchView describing the batch
         bd_dm    : DgramManager holding bigdata file descriptors
+        slot_id  : int or None
+            Explicit reusable-buffer slot coordinated with EventPool.  When
+            None, use this reader's internal round-robin order.
 
         Returns
         -------
@@ -174,7 +177,8 @@ class KvikioGpuReader:
         )
         # Use the pre-allocated per-slot buffer when available.
         # Only re-allocate when the current buffer is too small (grows lazily).
-        slot = self._slot_idx % self._n_slots
+        slot = (self._slot_idx % self._n_slots
+                if slot_id is None else int(slot_id) % self._n_slots)
         self._slot_idx += 1
         existing = self._slot_bufs[slot]
         if existing is None or existing.nbytes < total_nbytes:
