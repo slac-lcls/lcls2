@@ -1369,3 +1369,46 @@ the request/serve protocol (a genuinely different, structural change), not per-r
 instead dgram/smdparse grow, the generator plumbing is contention-sensitive after all. Either
 way this is the one attribution still missing to close the multi-node plateau question. Fix
 the sbatch permanently by keeping the --oversubscribe single-node bracket (done).
+
+## 2026-07-10 — Iteration 17 (multi-node wait-residual attribution — dgram/smdparse plumbed into the aggregate report; both stay FLAT single→multi, so the doubling residual is pure smd0/EB cross-node coordination, NOT generator plumbing)
+
+**Task:** the iter-16 addendum's one missing attribution — surface dgram/smdparse in the
+multi-node `--wait-split` aggregate and re-run the same-window bracket to split the doubling
+wait-residual into dgram/generator plumbing vs pure smd0/EB coordination latency.
+
+**Change landed (pure-Python, numeric path untouched, syntax-checked):** the
+`run_gpu_bench_wait_split` aggregate branch in `bench_calib.py` (the multi-node
+`eb_wait_ms_mean` case, ~line 949) now prints `residual`/`dgram`/`smdparse` mirroring the
+single-node format. The result dict already carried `dgram_ms_mean`/`smdparse_ms_mean`; only
+the print path in the aggregate branch was missing.
+
+**Measurement:** same-window `--oversubscribe` bracket sn32_a → mn2x32 → sn32_c, job 31292257
+(sdfampere[026-027], all three exit=0), `-n 200 --warmup 10 --wait-split` on r47. Logs:
+`bench_mpi_sweep/sweep_sn32_r47_a.log`, `sweep_mn2x32_r47.log`, `sweep_sn32_r47_c.log`;
+driver `bench_mpi_sweep/slurm-31292257.out`.
+
+| metric (ms/event, aggregate) | single-node 32 BD (mean a,c) | 2-node 64 BD (mn2x32) | multi/single |
+|---|---|---|---|
+| aggregate rate | ~173.5 Hz (176.5 / 170.5) | 288.7 Hz | 1.66x |
+| wait | 182.8 | 217.0 | 1.19x |
+| eb_wait | 6.36 | 12.87 | 2.02x |
+| bd_read | 136.2 | 126.8 | 0.93x (flat) |
+| residual | 40.2 | 77.3 | 1.92x |
+| dgram | 2.05 | 1.93 | 0.94x (flat) |
+| smdparse | 0.60 | 0.75 | +0.15 ms abs |
+
+**Verdict — the iter-16 fork is RESOLVED.** dgram and smdparse are FLAT single→multi (dgram
+2.05→1.93, smdparse 0.60→0.75; combined ~2.65→2.68 ms, essentially unchanged). The residual
+nearly doubles (40.2→77.3, +37 ms) yet dgram/smdparse contribute ≈0 of that growth. So the
+doubling wait-residual is NOT dgram construction or generator plumbing — it is the
+residual-minus-dgram bucket (`wait − eb_wait − bd_read − dgram − smdparse`), i.e. **pure
+smd0/EB cross-node coordination latency**. eb_wait doubling (2.02x) points the same way;
+bd_read flat (0.93x) reconfirms storage scales per-node. 2-node scaling holds at 1.66x (83%
+per-node efficiency), consistent with iter-16's 1.60x.
+
+**Next lever:** the plumbing has now excluded per-rank code (dgram/generator) as the
+multi-node scaling loss — both flat. The growth lives entirely in the smd0(rank 0)→EB→64-BD-
+across-2-nodes request/serve roundtrip (eb_wait + coordination residual, each ~2x). The
+remaining lever is structural: smd0/EB rank placement across nodes, or the request/serve
+protocol itself — not per-rank numerics. This is the boundary where the per-rank-optimization
+campaign meets a distributed-coordination one.
