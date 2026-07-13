@@ -1,163 +1,70 @@
-# psana2 GPU CPU-Push Prototype
+# psana2 GPU CPU-Push Model
 
-This note summarizes the current `features/psana2-gpu` CPU-push prototype.
-It was updated after the GPU path was wired into normal psana event iteration.
+This note describes the integrated CPU-push implementation on
+`features/psana2-gpu`. It is a current-state summary, not a record of the
+removed standalone prototypes.
 
-The current branch keeps Smd0 unchanged, splits CPU and GPU detector work in
-EventBuilder, sends a CPU-readable SMD batch plus a GPU-friendly descriptor
-batch to BD ranks, reads full bigdata dgrams into GPU memory with KvikIO, and
-uses CPU-built metadata tables to locate Jungfrau raw payloads. The GPU does
-not parse Dgram/XTC headers to find raw payload offsets in the current path.
+The GPU path currently supports uncompressed Jungfrau data. Smd0 remains
+unchanged, EventBuilder splits CPU and GPU work for the same event range, and a
+CPU BigData (BD) process schedules KvikIO reads and calibration on its assigned
+GPU. Results remain on the GPU unless the user explicitly requests a CPU copy.
 
-## Current CPU-Push Direction
-
-Agreed model:
-
-- Smd0 stays unchanged.
-- EventBuilder creates coherent `cpu_smd_batch` and `gpu_smd_batch` for the
-  same event range.
-- A CPU BD process schedules work onto a GPU. Multiple BD ranks can share one
-  GPU, so GPU assignment, queueing, memory ownership, and backpressure must be
-  explicit.
-- After a BD has finished CPU work for a batch and scheduled GPU work, it can
-  request the next CPU/GPU SMD batch from EB without waiting for GPU result
-  D2H.
-- GPU results stay on GPU by default. CPU join / D2H should happen only at a
-  configured interval or by explicit user request such as `.on_cpu`.
-- The current MPI path exists. The active work is performance, scheduling, and
-  join/D2H behavior, especially when multiple BD ranks share one GPU.
-
-Design implications:
-
-- `cpu_smd_batch` and `gpu_smd_batch` need shared event identity. The current
-  implementation uses timestamp and batch event index.
-- BD-side GPU buffers must remain valid until the associated KvikIO reads,
-  kernels, and any requested D2H/join have completed.
-- For multiple BDs sharing one GPU, the scheduling model must define GPU
-  ownership, CUDA stream allocation, queue ownership, memory limits, and
-  fairness/backpressure between BD ranks.
-- Mixed CPU/GPU routing for the same large detector should be avoided in the
-  performance path. The current `DetectorRouter` can bridge partial routing for
-  correctness/debug, but it may copy CPU-calibrated segments back to GPU.
-
-## Current Integrated Flow
-
-User-facing entry point:
+## User Interface
 
 ```python
 from psana import DataSource
 
 ds = DataSource(
-    exp="mfx101210926",
-    run=88,
-    dir="/path/to/xtc",
+    exp="mfx100848724",
+    run=51,
     gpu_det="jungfrau",
-    batch_size=1,
+    batch_size=5,
+    n_gpu_streams=2,
 )
 run = next(ds.runs())
 
 for ctx in run.events():
     calib_gpu = ctx.get("calib").on_gpu
-    # calib_cpu = ctx.get("calib").on_cpu  # explicit D2H
+    # calib_cpu = ctx.get("calib").on_cpu  # explicit synchronous D2H
+    # energy = ctx.raw("gmd").energy       # normal CPU detector access
 ```
 
-Current high-level path:
+`ctx.get("calib").on_gpu` is a CuPy view into a reusable EventPool slot. It
+must be consumed before that slot is recycled. `.on_cpu` returns an independent
+NumPy copy.
+
+## Integrated Flow
 
 ```text
 Smd0
-  unchanged SMD chunk production
+  produces normal SMD chunks
 
 EventBuilder
-  builds cpu_smd_batch
-  builds gpu_smd_batch in GPUBAT1 ABI
-  sends both batches to BD
+  aligns events and transitions
+  builds a CPU-readable SMD batch
+  builds a GPUBAT1 descriptor batch for GPU-routed streams
+  sends CPU, GPU, and step batches to BD
 
 BD / GpuEvents
-  issues KvikIO reads for gpu_smd_batch descriptors
-  builds CPU Event objects from cpu_smd_batch through EventManager
-  waits for GPU reads
-  launches GPU detector work
-  joins GPU results to CPU event context by timestamp
+  issues KvikIO reads for the GPUBAT1 descriptors
+  builds normal CPU Event objects through EventManager
+  waits for the KvikIO futures
+  launches Jungfrau raw gathering and calibration
+  joins CPU events and GPU results by timestamp
+  yields GpuEventContext objects
 ```
 
-The original standalone prototype/debug driver has been removed. The
-integrated path is:
+The same `GpuEvents` implementation is used by both execution modes:
 
-- Serial: `RunSerial` uses `GpuEvents` when `DataSource(..., gpu_det=...)` is
-  set.
-- MPI: BD ranks in `RunParallel.events()` delegate to the MPI-aware GPU event
-  path. This wraps `BigDataNode.start_gpu()` batches into the same `GpuEvents`
-  class used by the serial path.
+- `RunSerial` uses it directly when `DataSource(..., gpu_det=...)` is set.
+- MPI BD ranks use `RunParallel._gpu_events_mpi()` and
+  `BigDataNode.start_gpu()` as the batch source.
 
-## EventBuilder Side
+Smd0, EventBuilder, and service ranks do not need CUDA contexts.
 
-Changed files:
+## EventBuilder Split and Batch ABI
 
-- `psana/psana/eventbuilder.pyx`
-- `psana/psana/psexp/eventbuilder_manager.py`
-- `psana/psana/dgramlite.pyx`
-- `psana/psana/gpu/gpu_batch.py`
-
-What changed:
-
-- `eventbuilder.pyx` adds `_build_fast_batch_gpu_split()`.
-- GPU splitting is enabled when EventBuilder receives `gpu_stream_ids` from
-  `EventBuilderManager` / `DsParms`.
-- `PS_TEST_GPU_STREAM_IDS` still exists as a legacy/direct-test fallback, but
-  it is not the preferred integrated route.
-- The split path builds:
-
-```text
-cpu_batch:
-  normal SMD batch with GPU stream dgrams omitted
-  PacketFooter entries for GPU streams set to 0
-
-gpu_batch:
-  fixed-width GPU batch ABI for GPU detector streams
-
-step_batch:
-  transition/step handling as in the non-GPU path
-```
-
-- `eventbuilder_manager.py` passes `gpu_stream_ids` into EventBuilder and adds
-  `batches_with_gpu()`, which normalizes the output to:
-
-```text
-cpu_batch_dict, gpu_batch_dict, step_dict
-```
-
-- `dgramlite.pyx` adds `SmdInfoLite` / `SmdInfoLiteReader`. This is a CPU-side
-  lightweight reader used by the fast EventBuilder path for:
-
-```text
-smdinfo.offsetAlg.intOffset
-smdinfo.offsetAlg.intDgramSize
-```
-
-- `gpu_batch.py` defines the GPU batch ABI:
-
-```text
-[GpuBatchHeader][GpuEventTable][GpuDescTable]
-```
-
-The `GpuDescTable` gives BD/GPU code enough information to read bigdata dgrams:
-
-```text
-batch_event_index, stream_id, bd_offset, bd_size, smd_size, flags, reserved
-```
-
-## Stream Discovery
-
-Changed files:
-
-- `psana/psana/dgrammanager.py`
-- `psana/psana/psexp/mpi_ds.py`
-- `psana/psana/gpu/gpu_events.py`
-
-Current behavior:
-
-- `DgramManager` inspects Configure dgrams and builds detector-to-stream
-  metadata:
+`DgramManager` derives detector routing metadata from Configure:
 
 ```text
 det_stream_ids_table:
@@ -165,361 +72,217 @@ det_stream_ids_table:
 
 det_stream_segments_table:
   det_name -> {stream_id: [segment_id, ...]}
-
-stream_id_to_detnames:
-  stream_id -> [det_name, ...]
 ```
 
-- These tables are copied to config consumers, including `dsparms`.
-- In MPI setup, when `gpu_det` is set, `MPIDataSource` derives
-  `dsparms.gpu_stream_ids` from those Configure-derived tables on all ranks,
-  including EB ranks. This is what enables EventBuilder GPU splitting in the
-  integrated path.
-- `GpuEvents._setup_detectors()` also uses these tables to decide which streams
-  and segments belong to the GPU detector and which, if any, remain CPU-routed.
+Here `stream_id` indexes psana's stream/file list, while `segment_id` is the
+physical detector segment from Configure. An event ShapesData `names_id` links
+the event payload back to its Configure Names record.
 
-Important distinction:
+For normal integrated use, `gpu_det="jungfrau"` selects streams through these
+Configure-derived tables. `PS_TEST_GPU_STREAM_IDS` remains only as a legacy
+direct-test override.
+
+EventBuilder's GPU split produces:
 
 ```text
-stream_id is an index into psana's stream/file list.
-segment_id is detector segment identity from Configure metadata.
-names_id links event-time ShapesData/Data to Configure Names.
+cpu_batch:
+  normal SMD event data with GPU stream dgrams omitted
+
+gpu_batch:
+  [GpuBatchHeader][GpuEventTable][GpuDescTable]
+
+step_batch:
+  transitions required by the BD event loop
 ```
 
-For a normal `DataSource(..., gpu_det="jungfrau")` run, stream selection should
-come from Configure metadata through `DgramManager`, not from
-`PS_TEST_GPU_STREAM_IDS`.
+Each GPU descriptor contains the event identity, stream ID, bigdata file
+offset, and dgram size. Timestamp plus batch event index keep the CPU and GPU
+batches coherent.
 
-## BigData / GPU Read Path
+## Segment Identity and Ordering
 
-Changed files:
+Configure identifies which physical segments belong to a stream, but its
+dictionary order is not assumed to match the child-XTC order in L1Accept. The
+fixed-stride GPU gather preserves L1Accept order, so calibration constants must
+use that same order.
 
-- `psana/psana/gpu/gpu_events.py`
-- `psana/psana/gpu/gpu_kvikio_read.py`
-- `psana/psana/psexp/node.py`
-- `psana/psana/psexp/mpi_ds.py`
+During GPU detector setup, on CPU:
 
-What changed:
+1. `build_stream_seg_map()` opens each detector-bearing bigdata stream.
+2. It scans to the first L1Accept containing Jungfrau data.
+3. Psana joins each ShapesData `names_id` to Configure and exposes physical
+   segment IDs in XTC traversal order.
+4. The resulting ordered segment list is checked against Configure membership.
+5. That order is treated as fixed for the run.
 
-- `BigDataNode.start_gpu()` yields one `(smd_batch, gpubat1_bytes)` pair per
-  EB batch for GPU BD ranks.
-- `RunParallel._gpu_events_mpi()` adapts those MPI batches into the interface
-  expected by `GpuEvents`.
-- `GpuEvents` handles both serial and MPI GPU event iteration.
-- For each batch, `GpuEvents`:
-  - receives `cpu_batch_dict`, `gpu_batch_dict`, and `step_dict`;
-  - issues KvikIO reads from `GpuBatchView` descriptors;
-  - builds CPU `Event` objects from `cpu_batch_dict` through normal
-    `EventManager`;
-  - waits for KvikIO futures;
-  - submits GPU data and CPU events into `EventPool`;
-  - yields `GpuEventContext` objects when GPU results and CPU events are ready.
-
-`KvikioGpuReader` details:
-
-- `issue_batch()` converts `GpuBatchView.iter_read_descs()` into a CPU
-  descriptor table consumed by `GPUDetector`.
-- It allocates or reuses a per-slot `data_gpu` byte buffer.
-- It issues one KvikIO `pread()` future per descriptor.
-- `wait_batch()` calls `future.get()` for all reads and returns a
-  `KvikioBatchRead`.
-- On S3DF filesystems where true GDS is unavailable, KvikIO normally uses the
-  CPU-fallback path:
+For example:
 
 ```text
-filesystem -> CPU DRAM -> GPU VRAM
+L1Accept raw order:          [17, 13, 9, 5]
+per-stream pedestal order:   [17, 13, 9, 5]
+per-stream gain/mask order:  [17, 13, 9, 5]
+calibrated output order:     [17, 13, 9, 5]
+geometry index order:        [17, 13, 9, 5]
 ```
 
-Current assumption: KvikIO reads all bigdata dgrams described by one EB batch
-into one `data_gpu` buffer on the assigned GPU. If one CPU BD rank later drives
-more than one GPU, this batch will need an additional partitioning step. That
-split could be by event range, stream id, total read bytes, or another
-scheduling policy, but each GPU should receive only the descriptor subset and
-`data_gpu` allocation it owns.
+The output is correctly associated with physical segment IDs but is not
+numerically sorted by segment ID.
 
-## GPU Assignment / MPI
+## BigData Read, Raw Gather, and Calibration
 
-Changed files:
+`KvikioGpuReader` creates one reusable `data_gpu` byte buffer per EventPool
+slot. All selected bigdata dgrams for the GPU batch are packed into that buffer
+at descriptor-specific `device_offset` values. It issues one KvikIO `pread()`
+future per descriptor.
 
-- `psana/psana/gpu/gpu_mpi.py`
-- `psana/psana/psexp/mpi_ds.py`
+The GPU does not parse the XTC tree. On the first batch, `GPUDetector` copies a
+small sample to CPU and detects the fixed raw payload offset and segment stride.
+For each stream dgram:
+
+- A single-segment raw array is a view into `data_gpu`.
+- For multiple segments, `as_strided()` creates a no-copy view that skips XTC
+  header gaps, and `buf[:] = src_view` performs one device-to-device compaction
+  into a reusable contiguous raw buffer.
+- This compaction preserves L1Accept panel order; it does not permute panels by
+  segment ID.
+- The stream's pedestal and gain-mask arrays are copied into that order once
+  and cached.
+- `fused_calib_gpu()` calibrates one stream dgram and writes directly into its
+  slice of the preallocated batch output buffer.
+
+The Jungfrau kernel computes, per pixel:
+
+```text
+(raw ADC - pedestal - pixel_offset) * (1 / pixel_gain) * mask
+```
+
+with the pedestal and gain factor selected from the raw pixel's Jungfrau gain
+bits. Common-mode correction is not implemented on the GPU path.
+
+Geometry indices are selected in the same stream/segment order. `GPUDetector`
+can assemble an image when requested, although the normal EventPool path
+currently produces calibrated panel stacks.
+
+## Buffer Ownership and EventPool Lifetime
+
+The active GPU buffers are:
+
+| Buffer | Owner and lifetime |
+|---|---|
+| KvikIO `data_gpu` | One per EventPool slot; grows to the largest batch read |
+| Contiguous raw gather | Cached per slot and stream segment layout |
+| Calibration output | One whole-batch buffer per slot; events receive slices |
+| Full pedestal/gain-mask | One detector-wide set, normally run lifetime |
+| Reordered stream constants | Cached per unique L1Accept segment order |
+| Geometry arrays | Detector/run lifetime when geometry is enabled |
+
+`EventPool` owns one non-blocking CUDA stream per slot. Before a slot is reused,
+it synchronizes the old stream and yields every result from the retired batch.
+Only after those contexts have been consumed does it submit new calibration
+work into that slot.
+
+This bounds the number of in-flight batches, but not GPU memory by bytes. The
+buffers generally grow to their largest observed size and do not shrink during
+normal iteration.
+
+## Transitions
+
+Transition handling preserves calibration and buffer lifetime:
+
+- `BeginStep` drains pending GPU work before calibration constants change.
+- Updated constants are written in place; reordered stream caches are cleared
+  and rebuilt on demand.
+- `EndRun` drains remaining results exactly once and terminates the GPU loop.
+- `Enable`, `Disable`, and `EndStep` do not force an unnecessary drain.
+- KvikIO file handles are closed when iteration exits.
+
+## MPI GPU Assignment
+
+GPU pinning is performed for MPI BD ranks before CuPy import. A BD rank selects
+a physical GPU from its BD-local placement and `SLURM_GPUS_ON_NODE`; non-BD
+ranks clear GPU visibility.
+
+Multiple BD ranks may share one physical GPU. BD peers on the same GPU can
+share read-only detector calibration buffers through CUDA IPC, avoiding one
+full constant allocation per follower rank. Event read, raw gather, and output
+slot buffers remain owned by each BD process.
+
+Mixed CPU/GPU routing of one large detector remains available through
+`DetectorRouter` as a correctness/debug bridge. It can copy CPU-calibrated
+segments back to GPU and is not the preferred performance path.
+
+## D2H and Backpressure Status
 
 Current behavior:
 
-- GPU pinning is performed for BD ranks before CuPy import.
-- Non-BD ranks in a GPU job clear `CUDA_VISIBLE_DEVICES` so Smd0/EB/SRV ranks
-  do not accidentally create CUDA contexts.
-- BD GPU assignment uses BD-local rank modulo `SLURM_GPUS_ON_NODE`.
-- Multiple BD ranks can therefore share one physical GPU.
-- `share_calib_between_gpu_peers()` supports CUDA IPC sharing for BD ranks that
-  are peers on the same GPU.
+- GPU results remain on device by default.
+- `.on_cpu` performs a synchronous copy for one result.
+- Debug tooling can sample D2H at a configured event interval.
+- EventPool depth bounds batches within one BD process.
 
-Useful debug signal:
+Not yet implemented:
 
-```text
-[GPU-PIN] rank=... bd_rank=... bd_local_rank=... n_gpus=... gpu_id=...
-```
+- Asynchronous grouped D2H/join with pinned host slots.
+- A completion token that prevents GPU slot reuse while asynchronous D2H is
+  still reading the calibrated output.
+- A byte-based GPU memory budget or high/low watermarks.
+- Fair cross-BD backpressure when multiple BD processes share one GPU.
 
-## GPU Event Join / D2H
+Any asynchronous D2H implementation must extend slot ownership through D2H
+completion. Synchronizing only the calibration stream is not sufficient if a
+separate D2H stream still reads the slot.
 
-Changed files:
+## Current Limitations and Next Optimizations
 
-- `psana/psana/gpu/gpu_events.py`
-- `psana/psana/gpu/gpu_stream.py`
-- `psana/psana/gpu/context.py`
-- `psana/psana/gpu/detector_router.py`
+- Integrated calibration supports Jungfrau only.
+- Raw extraction assumes uncompressed, fixed-stride segment payloads.
+- L1Accept segment order is discovered once per stream and assumed stable for
+  the configured run.
+- Common-mode correction is not implemented.
+- True GDS depends on filesystem and driver support; otherwise KvikIO uses
+  `filesystem -> CPU DRAM -> GPU VRAM` compatibility mode.
+- One BD process currently drives one assigned GPU.
 
-Current behavior:
+A useful future kernel optimization is to read the strided raw payload and
+apply segment mapping and calibration in one launch. That would eliminate the
+contiguous raw gather buffer and its device-to-device copy. It may also allow
+the kernel to use canonical detector constants plus a small segment map instead
+of retaining reordered per-stream constant copies.
 
-- `EventPool` keeps multiple GPU batches in flight. The depth is controlled by
-  `dsparms.n_gpu_streams` / `gpu_pool_depth` in debug tooling.
-- `GpuEvents` joins GPU results to CPU events by timestamp when an EventPool
-  slot is recycled or flushed:
+## Validation and Tools
 
-```text
-CPU Event timestamp -> gpu_results_by_ts[timestamp]
-```
-
-- The joined user object is `GpuEventContext`.
-- `ctx.get("calib").on_gpu` returns the CuPy result already resident on the
-  GPU.
-- `ctx.get("calib").on_cpu` is the point where D2H happens for that result.
-- Current benchmark/debug code also supports interval-based D2H testing. The
-  longer-term design target is an asynchronous D2H join-size path that can copy
-  groups of GPU results without forcing every event to synchronize with the
-  CPU.
-
-Known inefficient fallback:
-
-- `DetectorRouter` supports partial detector routing, where some segments for
-  a large detector are GPU-routed and remaining segments are CPU-routed.
-- For partial routing, `DetectorRouter.compute_cpu_calib()` computes the CPU
-  segments on the host, then `DetectorRouter.assemble_full_calib()` copies
-  those CPU-calibrated segments back to the GPU with:
-
-```python
-cpu_gpu = cp.asarray(cpu_calib.astype(np.float32))
-```
-
-- This is intentionally a correctness bridge, not the desired performance path.
-  For Jungfrau, one calibrated segment is:
-
-```text
-512 * 1024 * 4 bytes = 2 MiB
-```
-
-  so leaving 13 segments on CPU would require roughly `26 MiB/event` of H2D
-  traffic just to assemble a full GPU result.
-- Preferred production behavior is to route all streams/segments for a GPU
-  detector to the GPU. CPU-only detectors should remain on CPU, but mixed
-  CPU/GPU routing for the same large detector should be avoided unless it is
-  explicitly requested for fallback/debug.
-
-## Historical Raw Metadata Handling
-
-The first standalone implementation used `gpu_raw_offset_cache.py` and
-`gpu_jungfrau.py`. Those modules were removed after raw extraction moved into
-the integrated `GpuEvents`/`GPUDetector` path. The description below is kept
-as design history.
-
-Changed files:
-
-- `psana/psana/gpu/gpu_raw_offset_cache.py`
-- `psana/psana/gpu/gpu_jungfrau.py`
-- `psana/src/dgram.cc`
-
-What changed:
-
-- `gpu_raw_offset_cache.py` reads one representative bigdata dgram per GPU
-  stream, creates a normal `dgram.Dgram`, calls `dgram.raw_descriptors()`, and
-  caches dgram-relative raw payload offsets.
-- `dgram.cc` exposes `raw_descriptors()` for lazy targeted L1Accept raw
-  payload descriptors. This method reuses the Configure dgram's internal
-  `NamesLookup` and `DescData`; it does not require a separate public
-  Configure names table API.
-- `gpu_jungfrau.py`:
-  - prepares the Jungfrau raw output layout;
-  - builds a CPU raw locator table from the KvikIO descriptor table and raw
-    offset cache;
-  - copies the locator table to GPU;
-  - launches a RawKernel that copies raw payload bytes into the assembled
-    output array.
-
-The metadata split is:
-
-```text
-Selected GPU stream ids:
-  stream routing indexes from Configure-derived dsparms.gpu_stream_ids
-
-Raw offset cache:
-  (stream_id, names_id_value) -> dgram-relative raw payload offset,
-                                 segment identity, actual raw shape, dtype size
-
-GPU locator table:
-  read descriptor + raw offset cache -> device raw payload offset
-```
-
-Key point: the GPU kernel does not parse Dgram/XTC headers in the current path.
-It consumes `data_gpu` plus a CPU-built locator table.
-
-## Debug and Performance Tools
-
-Useful files:
-
-- `psana/psana/debugtools/ds_count_events.py`
-  - current lightweight CPU/GPU event-counting and timing driver; supports
-    `gpu_det`, `gpu_pool_depth`, and D2H interval testing.
-- `psana/psana/debugtools/net_bandwidth.py`
-  - node-level NIC/read-bandwidth helper used during CPU/GPU read benchmarks.
-- `psana/psana/gpu/gpu_mpi_perf_compare.py`
-  - MPI GPU performance comparison driver.
-- `psana/psana/gpu/gpu_performance_benchmark.py`
-  - GPU performance benchmark helper.
-- `psana/psana/gpu/scripts/gpu_multi_rank_smoke.py`
-  - explicitly launched MPI/GPU smoke driver; not collected by pytest.
-- `psana/psana/tests/gpu/`
-  - compact CPU-only unit coverage and one pixel-exact GPU/data acceptance test.
-
-Build-related files:
-
-- `psana/meson.build`
-  - updated as needed for Cython extension inputs.
-
-## Example Tables
-
-The examples below came from early prototype runs with explicit debug stream
-selection:
+The automated suite intentionally has two layers:
 
 ```bash
-PS_TEST_GPU_STREAM_IDS=0,6,7,8,9
+python -m pytest -q psana/psana/tests/gpu/unit
+python -m pytest -q -m slow \
+  psana/psana/tests/gpu/integration/test_pixel_exact.py
 ```
 
-They are representative examples for understanding the tables. For normal
-integrated usage, prefer:
+The pixel-exact acceptance test uses public Lysozyme Jungfrau data,
+`mfx100848724` run 51. It compares CPU and GPU float32 calibration by timestamp
+for single-event and batched slot-reuse modes.
 
-```python
-DataSource(..., gpu_det="jungfrau")
-```
+Useful performance/debug entry points are:
 
-so stream ids are discovered from Configure metadata.
+- `psana/psana/debugtools/ds_count_events.py`
+- `psana/psana/gpu/gpu_mpi_perf_compare.py`
+- `psana/psana/gpu/gpu_performance_benchmark.py`
+- `psana/psana/gpu/scripts/gpu_multi_rank_smoke.py`
 
-### GPU Batch Desc Rows
+## Active Source Map
 
-These rows come from `GpuBatchView.iter_read_descs()`. They are produced from
-`GpuDescTable` and include the bigdata file offset and size for each GPU stream.
+- `eventbuilder.pyx`, `eventbuilder_manager.py`: CPU/GPU batch split.
+- `gpu_batch.py`: GPUBAT1 ABI and descriptor views.
+- `gpu_events.py`: serial/MPI batch orchestration and timestamp join.
+- `gpu_kvikio_read.py`: per-slot bigdata reads and descriptor table.
+- `gpu_calib.py`, `cuda/fused_calib.cuh`: ordering, raw gathering, constants,
+  geometry, and Jungfrau calibration.
+- `gpu_stream.py`: reusable CUDA streams and slot lifetime.
+- `context.py`: user-facing GPU result/context wrappers.
+- `gpu_mpi.py`: GPU pinning, CUDA IPC calibration sharing, and fatal-error
+  handling.
 
-Columns:
-
-```text
-batch_event_index, timestamp, stream_id, bd_offset, bd_size, smd_size, flags
-```
-
-Example:
-
-```text
-(0, 4801813440799607242, 0, 152046, 7340630, 76, 1)
-(0, 4801813440799607242, 6, 109858, 5243314, 76, 1)
-(0, 4801813440799607242, 7, 140624, 6291972, 76, 1)
-(0, 4801813440799607242, 8, 152046, 7340630, 76, 1)
-(0, 4801813440799607242, 9, 152046, 7340630, 76, 1)
-```
-
-### KvikIO Read Descriptor Table
-
-`gpu_kvikio_read.py` converts the GPU batch descriptors into a CPU table used
-to schedule KvikIO reads. `device_offset` is the offset into the contiguous
-`data_gpu` byte buffer where that bigdata dgram is read.
-
-Columns:
-
-```text
-event_index, stream_id, timestamp, file_offset, read_size, device_offset
-```
-
-Example:
-
-```text
-(0, 0, 4801813440799607242, 152046, 7340630, 0)
-(0, 6, 4801813440799607242, 109858, 5243314, 7340630)
-(0, 7, 4801813440799607242, 140624, 6291972, 12583944)
-(0, 8, 4801813440799607242, 152046, 7340630, 18875916)
-(0, 9, 4801813440799607242, 152046, 7340630, 26216546)
-```
-
-### Raw Offset Cache
-
-This table comes from one representative bigdata dgram per GPU stream through
-`dgram.raw_descriptors()`. `raw_rel_offset` is relative to the start of that
-bigdata dgram. `dim0`, `dim1`, `dim2`, and `dtype_size` are derived from the
-actual event-time raw descriptor shape and field byte size. `segment` comes
-from the Configure `Names` joined through the event `ShapesData` names id.
-
-Columns:
-
-```text
-stream_id, names_id_value, segment, raw_rel_offset, raw_nbytes,
-dim0, dim1, dim2, dtype_size, expected_bd_size
-```
-
-Example:
-
-```text
-(0, 10, 18, 80, 1048576, 1, 512, 1024, 2, 7340630)
-(0, 11, 14, 1048738, 1048576, 1, 512, 1024, 2, 7340630)
-(0, 12, 10, 2097396, 1048576, 1, 512, 1024, 2, 7340630)
-(0, 13, 6, 3146054, 1048576, 1, 512, 1024, 2, 7340630)
-(0, 14, 30, 4194712, 1048576, 1, 512, 1024, 2, 7340630)
-(0, 15, 26, 5243370, 1048576, 1, 512, 1024, 2, 7340630)
-```
-
-### What Is Sent To GPU
-
-Two GPU buffers matter in the current raw path:
-
-```text
-data_gpu:
-  contiguous byte buffer containing full bigdata dgrams read by KvikIO
-
-loc_gpu:
-  CPU-built raw locator table copied to GPU
-```
-
-The locator table is built from:
-
-```text
-KvikIO desc table + raw offset cache
-```
-
-The key computation is:
-
-```text
-raw_device_offset = device_offset + raw_rel_offset
-```
-
-Columns:
-
-```text
-desc_index, raw_row_index, event_index, stream_id, timestamp,
-names_id_value, segment, raw_device_offset, raw_nbytes,
-dim0, dim1, dim2, dtype_size, status
-```
-
-Example:
-
-```text
-(0, 0, 0, 0, 4801813440799607242, 10, 18, 80, 1048576, 1, 512, 1024, 2, 1)
-(0, 1, 0, 0, 4801813440799607242, 11, 14, 1048738, 1048576, 1, 512, 1024, 2, 1)
-(0, 2, 0, 0, 4801813440799607242, 12, 10, 2097396, 1048576, 1, 512, 1024, 2, 1)
-(0, 3, 0, 0, 4801813440799607242, 13, 6, 3146054, 1048576, 1, 512, 1024, 2, 1)
-(0, 4, 0, 0, 4801813440799607242, 14, 30, 4194712, 1048576, 1, 512, 1024, 2, 1)
-(0, 5, 0, 0, 4801813440799607242, 15, 26, 5243370, 1048576, 1, 512, 1024, 2, 1)
-```
-
-The removed RawKernel in `gpu_jungfrau.py` consumed `data_gpu` and `loc_gpu`.
-It did not parse Dgram/XTC headers. It only copied:
-
-```text
-data_gpu[raw_device_offset : raw_device_offset + raw_nbytes]
-```
-
-into the assembled Jungfrau raw output array.
+The removed standalone raw-locator path (`gpu_raw_offset_cache.py`,
+`gpu_jungfrau.py`, and its `loc_gpu` table) is not part of the integrated
+implementation.
