@@ -571,6 +571,28 @@
   **ceiling re-attributed from smd0 to aggregate FFB bandwidth**. smd0
   profiling done (it is idle); parallel-smd0 removed from the roadmap.
 
+- 2026-07-13 (iters 18/20): **node-local EB placement (`PS_EB_NODE_LOCAL`) is a
+  confirmed, compounding multi-node lever.** One EB rank per node instead of a
+  single EB (on N0) serving all BD ranks. 2-node (iter-18, job 31543609):
+  colocate 328.4 Hz vs 301.0 default mean, +9.1% aggregate. **3-node clean
+  in-window bracket (iter-20, job 31574438, `bench_mpi_sweep/enl3v2_*.log`):**
+  sn_a=193.0 Hz (32 BD, 1 node) / colocate=444.0 Hz (95 BD) / default=338.3 Hz
+  (97 BD) — colocate **+31.3% aggregate, +33.8% per-rank**, and the gap *widens*
+  with node count. In-window per-node efficiency: colocate 2.30× on 3 nodes
+  (77%) vs default 1.75× (58%); default collapses 83%→58% (2n→3n) while colocate
+  holds 90%→77%. Mechanism is **eb_wait**: a single EB serving 96 BDs serializes
+  (eb_wait 70.1 ms) vs 26.3 ms with one EB/node; residual follows (136.2 vs
+  85.8); **bd_read flat** (95.1 vs 95.4 — storage scales per-node, re-confirmed).
+  This directly measures the "one EB rank saturating" loss the iters-16/18
+  attribution predicted. Clean 4-node point remains structurally unreachable
+  in-loop (parent assoc `lcls:_regular_@ampere` GrpTRES node=4 shared LCLS-wide;
+  preemptable branch escapes the cap but preempts multi-node MPI jobs mid-run).
+  Correctness: gated when PS_EB_NODE_LOCAL landed (iter-18); no numeric-path
+  change since. NEXT: promote to documented opt-in multi-node GPU launch flag
+  (NOT a silent psana-wide default — shared EB/BD dispatch, rule 4); residual per-
+  node loss at 3n points at intra-node EB serialization (2nd EB/node) as the next
+  lever.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.

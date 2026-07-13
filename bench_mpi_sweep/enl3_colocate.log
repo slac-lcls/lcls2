@@ -1,0 +1,12 @@
+[PSANA-INFO RANK:1 1783984662.015074560] Communicators [MPI-role] Non-marching EB/BD colocated mode enabled on host sdfampere023
+--------------------------------------------------------------------------
+PRTE has lost communication with a remote daemon.
+
+  HNP daemon   : [prterun-sdfampere023-1388358@0,0] on node sdfampere023
+  Remote daemon: [prterun-sdfampere023-1388358@0,2] on node sdfampere042
+
+This is usually due to either a failure of the TCP network
+connection to the node, or possibly an internal failure of
+the daemon itself. We cannot recover from this failure, and
+therefore will terminate the job.
+--------------------------------------------------------------------------

@@ -1598,3 +1598,72 @@ prefer `--account=lcls:default --qos=preemptable` whenever the job needs ≥3 no
 or the regular branch is congested; keep short walls so preemption stays cheap.
 
 BLOCKED: job 31573442 in flight (4n bracket; job 31573443 3n bracket right behind it, both preemptable-QOS) — collect both on next iteration
+
+## 2026-07-13 — Iteration 20 (node-local EB COMPOUNDS at 3 nodes: clean in-window bracket, +31% and widening)
+
+**Task:** recover the iter-19 hand-off (collect the 3n/4n default-vs-colocate
+brackets, jobs 31573442/31573443) and settle the compounding question.
+
+**The hand-off jobs were unrecoverable as-is — both failed the same two ways.**
+Inspecting the requeued-PENDING jobs and their populated logs (they had *run*,
+been preempted, and been auto-requeued by the preemptable QOS):
+1. **sn control never mapped.** It asked `-H N0:34 -n 34` on a 33-slot/node
+   allocation with no `--oversubscribe` → exit 213 "Out of resource". So the
+   in-window single-node normalization iter-19 explicitly wanted was absent from
+   every prior 3n/4n run.
+2. **colocate (phase 3 of 4) was preempted ~6 min in** → "PRTE lost
+   communication with a remote daemon", no aggregate, DONE marker never printed.
+   The default numbers that *did* land (3n 274.9 Hz / 4n 294.4 Hz, from
+   `enl3_default.log`/`enl4_default.log`) came from that degraded, uncontrolled
+   window with bd_read inflated to ~160 ms — not a valid scaling curve.
+
+Cancelled the flawed requeued jobs (31573442/31573443, mine). Built
+`bench_mpi_sweep/eb_node_local_3n_v2.sbatch` with two **infra-only** fixes (the
+science variable, default-vs-colocate, unchanged): `--oversubscribe` on the sn
+control, and front-loaded phases sn_a → **colocate** → default (fragile phase
+early, trailing sn_c dropped, `-n` 150→120) to land everything inside the ~6 min
+preemption window. Submitted preemptable job **31574438**; blocked on it
+in-iteration (rule 8). All three phases exit=0, total wall 338 s — clean.
+
+**Results — clean, single-allocation, in-window (`bench_mpi_sweep/enl3v2_*.log`,
+driver `slurm-31574438.out`):**
+
+| config       | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|--------------|----|-------------|-------------|-----------|-----------|-------------|
+| sn_a (1 node)| 32 | 193.0       | 6.03        | 3.5       | 136.5     | 40.4        |
+| mn3_colocate | 95 | **444.0**   | **4.67**    | 26.3      | 95.4      | 85.8        |
+| mn3_default  | 97 | 338.3       | 3.49        | 70.1      | 95.1      | 136.2       |
+
+**Verdict — node-local EB placement COMPOUNDS, decisively.** Colocate beats
+default by **+31.3% aggregate / +33.8% per-rank** at 3 nodes, up from +9.1% at
+2 nodes (iter-18) — the advantage *widens* with node count. In-window per-node
+efficiency (against the same-allocation sn_a=193.0): colocate 444.0/193.0 =
+**2.30× on 3 nodes (77%)**; default 338.3/193.0 = 1.75× (58%). So default's
+per-node efficiency collapses 83% (2n) → 58% (3n) while colocate degrades far
+more gently 90% → 77%.
+
+**Attribution is now unambiguous and confirms the iter-18 hypothesis exactly.**
+The differentiator is **eb_wait**: 70.1 ms (default) vs 26.3 ms (colocate). A
+single EB rank serving 96 BDs across 3 nodes serializes hard (eb_wait 3.5→70 ms
+as BDs go 32→96); one EB per node (~32 BD each) holds eb_wait to 26 ms. The
+coordination residual follows (136.2 vs 85.8). **bd_read is flat** (95.1 vs 95.4)
+— storage scales per-node cleanly, re-confirmed a fourth time. The remaining
+loss lever the iters-16/18 attribution named — "one EB rank saturating" — is now
+directly measured as the dominant multi-node bottleneck, and node-local
+placement is its fix.
+
+**Keep/revert:** KEEP. `PS_EB_NODE_LOCAL` (landed iter-18, correctness-gated
+there; no numeric-path change this iteration so the gate was not re-triggered) is
+a confirmed, compounding multi-node lever. Recorded in TASK.md.
+
+**Recommended next step:** promote `PS_EB_NODE_LOCAL` from experiment to the
+documented, recommended setting for multi-node GPU calibration — but as an
+*opt-in flag*, NOT a silent psana-wide default: the placement change touches the
+shared EB/BD dispatch and flipping it for all (incl. non-GPU) psana users is a
+large blast radius that rule 4 says must be guarded and default-verified. So next
+iteration: (a) document PS_EB_NODE_LOCAL=1 as the standard multi-node GPU launch
+flag in the run recipe / DEFERRED graduation note, and (b) if a still-larger point
+is wanted, the residual per-node loss at 3n (77%, i.e. colocate eb_wait still 26
+ms and residual 85.8) points at *intra-node* EB serialization — a second EB per
+node or fatter serve batches — as the next lever, testable at 2–3 nodes without
+needing the structurally-unreachable clean 4-node point.

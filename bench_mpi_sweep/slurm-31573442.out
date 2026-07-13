@@ -1,0 +1,1822 @@
++ cd /sdf/scratch/users/a/ajshack/lcls2
++ source setup_env.sh
+++ unset LD_LIBRARY_PATH
+++ unset PYTHONPATH
+++ unset DAQ_CONDA_PREFIX
+++ unset DAQ_CONDA_DEFAULT_ENV
+++ unset DAQ_TESTRELDIR
+++ unset AMI_CONDA_PREFIX
+++ unset AMI_CONDA_DEFAULT_ENV
+++ unset AMI_TESTRELDIR
+++ '[' -d /cds/sw/ ']'
+++ '[' -d /sdf/group/lcls/ ']'
+++ source /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/etc/profile.d/conda.sh
++++ export CONDA_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda
++++ CONDA_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python
++++ CONDA_PYTHON_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python
++++ '[' -z '' ']'
++++ export CONDA_SHLVL=0
++++ CONDA_SHLVL=0
++++ '[' -n '' ']'
++++++ dirname /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda
+++++ dirname /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin
++++ PATH=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
++++ export PATH
++++ '[' -z '' ']'
++++ PS1=
+++ export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+++ CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+++ export DIR_PSDM=/sdf/group/lcls/ds/ana/
+++ DIR_PSDM=/sdf/group/lcls/ds/ana/
+++ export SIT_PSDM_DATA=/sdf/data/lcls/ds/
+++ SIT_PSDM_DATA=/sdf/data/lcls/ds/
+++ conda activate ps_20241122
+++ local cmd=activate
+++ case "$cmd" in
+++ __conda_activate activate ps_20241122
+++ '[' -n '' ']'
+++ local ask_conda
++++ PS1=
++++ __conda_exe shell.posix activate ps_20241122
++++ /sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda shell.posix activate ps_20241122
+++ ask_conda='PS1='\''(ps_20241122) '\''
+export PATH='\''/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'\''
+export CONDA_PREFIX='\''/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''ps_20241122'\''
+export CONDA_PROMPT_MODIFIER='\''(ps_20241122) '\''
+export CONDA_EXE='\''/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python'\''
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-binutils_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gcc_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gfortran_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gxx_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/epics-base_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libarrow_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libglib_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libxml2_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/openmpi_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/pyepics_activate.sh"'
+++ eval 'PS1='\''(ps_20241122) '\''
+export PATH='\''/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin'\''
+export CONDA_PREFIX='\''/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122'\''
+export CONDA_SHLVL='\''1'\''
+export CONDA_DEFAULT_ENV='\''ps_20241122'\''
+export CONDA_PROMPT_MODIFIER='\''(ps_20241122) '\''
+export CONDA_EXE='\''/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda'\''
+export _CE_M='\'''\''
+export _CE_CONDA='\'''\''
+export CONDA_PYTHON_EXE='\''/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python'\''
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-binutils_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gcc_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gfortran_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gxx_linux-64.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/epics-base_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libarrow_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libglib_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libxml2_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/openmpi_activate.sh"
+. "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/pyepics_activate.sh"'
++++ PS1='(ps_20241122) '
++++ export PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
++++ PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
++++ export CONDA_PREFIX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122
++++ CONDA_PREFIX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122
++++ export CONDA_SHLVL=1
++++ CONDA_SHLVL=1
++++ export CONDA_DEFAULT_ENV=ps_20241122
++++ CONDA_DEFAULT_ENV=ps_20241122
++++ export 'CONDA_PROMPT_MODIFIER=(ps_20241122) '
++++ CONDA_PROMPT_MODIFIER='(ps_20241122) '
++++ export CONDA_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda
++++ CONDA_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python
++++ CONDA_PYTHON_EXE=/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/bin/python
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-binutils_linux-64.sh
+++++ '[' 0 = 1 ']'
+++++ '[' 0 = 1 ']'
+++++ _tc_activation activate x86_64-conda-linux-gnu- addr2line ar as c++filt elfedit gprof ld nm objcopy objdump ranlib readelf size strings strip dwp ld.gold
+++++ local act_nature=activate
+++++ shift
+++++ local tc_prefix=x86_64-conda-linux-gnu-
+++++ shift
+++++ local thing
+++++ local newval
+++++ local from
+++++ local to
+++++ local pass
+++++ '[' activate = activate ']'
+++++ from=
+++++ to=CONDA_BACKUP_
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold ']'
+++++ '[' check = apply ']'
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line ']'
+++++ '[' apply = apply ']'
++++++ echo addr2line
++++++ tr a-z+-. A-ZX__
+++++ thing=ADDR2LINE
+++++ eval 'oldval=$ADDR2LINE'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_ADDR2LINE
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line ']'
+++++ eval export ''\''ADDR2LINE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line'\'''
++++++ export ADDR2LINE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line
++++++ ADDR2LINE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-addr2line
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar ']'
+++++ '[' apply = apply ']'
++++++ echo ar
++++++ tr a-z+-. A-ZX__
+++++ thing=AR
+++++ eval 'oldval=$AR'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_AR
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar ']'
+++++ eval export ''\''AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar'\'''
++++++ export AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar
++++++ AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as ']'
+++++ '[' apply = apply ']'
++++++ echo as
++++++ tr a-z+-. A-ZX__
+++++ thing=AS
+++++ eval 'oldval=$AS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_AS
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as ']'
+++++ eval export ''\''AS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as'\'''
++++++ export AS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as
++++++ AS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-as
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt ']'
+++++ '[' apply = apply ']'
++++++ echo c++filt
++++++ tr a-z+-. A-ZX__
+++++ thing=CXXFILT
+++++ eval 'oldval=$CXXFILT'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CXXFILT
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt ']'
+++++ eval export ''\''CXXFILT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt'\'''
++++++ export CXXFILT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt
++++++ CXXFILT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++filt
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit ']'
+++++ '[' apply = apply ']'
++++++ echo elfedit
++++++ tr a-z+-. A-ZX__
+++++ thing=ELFEDIT
+++++ eval 'oldval=$ELFEDIT'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_ELFEDIT
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit ']'
+++++ eval export ''\''ELFEDIT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit'\'''
++++++ export ELFEDIT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit
++++++ ELFEDIT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-elfedit
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof ']'
+++++ '[' apply = apply ']'
++++++ echo gprof
++++++ tr a-z+-. A-ZX__
+++++ thing=GPROF
+++++ eval 'oldval=$GPROF'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GPROF
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof ']'
+++++ eval export ''\''GPROF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof'\'''
++++++ export GPROF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof
++++++ GPROF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gprof
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld ']'
+++++ '[' apply = apply ']'
++++++ echo ld
++++++ tr a-z+-. A-ZX__
+++++ thing=LD
+++++ eval 'oldval=$LD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_LD
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld ']'
+++++ eval export ''\''LD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld'\'''
++++++ export LD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld
++++++ LD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm ']'
+++++ '[' apply = apply ']'
++++++ echo nm
++++++ tr a-z+-. A-ZX__
+++++ thing=NM
+++++ eval 'oldval=$NM'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_NM
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm ']'
+++++ eval export ''\''NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm'\'''
++++++ export NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm
++++++ NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-nm
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy ']'
+++++ '[' apply = apply ']'
++++++ echo objcopy
++++++ tr a-z+-. A-ZX__
+++++ thing=OBJCOPY
+++++ eval 'oldval=$OBJCOPY'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_OBJCOPY
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy ']'
+++++ eval export ''\''OBJCOPY=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy'\'''
++++++ export OBJCOPY=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy
++++++ OBJCOPY=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objcopy
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump ']'
+++++ '[' apply = apply ']'
++++++ echo objdump
++++++ tr a-z+-. A-ZX__
+++++ thing=OBJDUMP
+++++ eval 'oldval=$OBJDUMP'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_OBJDUMP
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump ']'
+++++ eval export ''\''OBJDUMP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump'\'''
++++++ export OBJDUMP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump
++++++ OBJDUMP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-objdump
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib ']'
+++++ '[' apply = apply ']'
++++++ echo ranlib
++++++ tr a-z+-. A-ZX__
+++++ thing=RANLIB
+++++ eval 'oldval=$RANLIB'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_RANLIB
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib ']'
+++++ eval export ''\''RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib'\'''
++++++ export RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib
++++++ RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf ']'
+++++ '[' apply = apply ']'
++++++ echo readelf
++++++ tr a-z+-. A-ZX__
+++++ thing=READELF
+++++ eval 'oldval=$READELF'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_READELF
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf ']'
+++++ eval export ''\''READELF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf'\'''
++++++ export READELF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf
++++++ READELF=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-readelf
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size ']'
+++++ '[' apply = apply ']'
++++++ echo size
++++++ tr a-z+-. A-ZX__
+++++ thing=SIZE
+++++ eval 'oldval=$SIZE'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_SIZE
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size ']'
+++++ eval export ''\''SIZE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size'\'''
++++++ export SIZE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size
++++++ SIZE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-size
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings ']'
+++++ '[' apply = apply ']'
++++++ echo strings
++++++ tr a-z+-. A-ZX__
+++++ thing=STRINGS
+++++ eval 'oldval=$STRINGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_STRINGS
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings ']'
+++++ eval export ''\''STRINGS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings'\'''
++++++ export STRINGS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings
++++++ STRINGS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strings
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip ']'
+++++ '[' apply = apply ']'
++++++ echo strip
++++++ tr a-z+-. A-ZX__
+++++ thing=STRIP
+++++ eval 'oldval=$STRIP'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_STRIP
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip ']'
+++++ eval export ''\''STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip'\'''
++++++ export STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip
++++++ STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp ']'
+++++ '[' apply = apply ']'
++++++ echo dwp
++++++ tr a-z+-. A-ZX__
+++++ thing=DWP
+++++ eval 'oldval=$DWP'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DWP
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp ']'
+++++ eval export ''\''DWP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp'\'''
++++++ export DWP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp
++++++ DWP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-dwp
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold ']'
+++++ '[' apply = apply ']'
++++++ echo ld.gold
++++++ tr a-z+-. A-ZX__
+++++ thing=LD_GOLD
+++++ eval 'oldval=$LD_GOLD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_LD_GOLD
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold ']'
+++++ eval export ''\''LD_GOLD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold'\'''
++++++ export LD_GOLD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold
++++++ LD_GOLD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld.gold
+++++ return 0
+++++ '[' 0 -ne 0 ']'
+++++ '[' 0 = 1 ']'
+++++ '[' 0 = 1 ']'
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gcc_linux-64.sh
+++++ '[' 0 = 1 ']'
+++++ '[' 0 = 1 ']'
+++++ CFLAGS_USED='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ DEBUG_CFLAGS_USED='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ CPPFLAGS_USED='-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ DEBUG_CPPFLAGS_USED='-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ LDFLAGS_USED='-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
+++++ CMAKE_PREFIX_PATH_USED=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
+++++ '[' 0 = 1 ']'
+++++ _CONDA_PYTHON_SYSCONFIGDATA_NAME_USED=_sysconfigdata_x86_64_conda_cos6_linux_gnu
+++++ '[' -n _sysconfigdata_x86_64_conda_cos6_linux_gnu ']'
+++++ '[' -n '' ']'
+++++ _CMAKE_ARGS='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar'
+++++ _CMAKE_ARGS='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib'
+++++ _CMAKE_ARGS='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip'
+++++ _CMAKE_ARGS='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
+++++ _MESON_ARGS=-Dbuildtype=release
+++++ '[' 0 = 1 ']'
+++++ '[' '' = 1 ']'
+++++ _tc_activation activate x86_64-conda-linux-gnu- HOST,x86_64-conda-linux-gnu BUILD,x86_64-conda-linux-gnu CONDA_TOOLCHAIN_HOST,x86_64-conda-linux-gnu CONDA_TOOLCHAIN_BUILD,x86_64-conda-linux-gnu CC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc cpp gcc gcc-ar gcc-nm gcc-ranlib 'CPPFLAGS,-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'LDFLAGS,-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib' 'DEBUG_CPPFLAGS,-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'DEBUG_CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' CMAKE_PREFIX_PATH,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr _CONDA_PYTHON_SYSCONFIGDATA_NAME,_sysconfigdata_x86_64_conda_cos6_linux_gnu CONDA_BUILD_SYSROOT,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot CONDA_BUILD_CROSS_COMPILATION, CC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc build_alias,x86_64-conda-linux-gnu host_alias,x86_64-conda-linux-gnu MESON_ARGS,-Dbuildtype=release 'CMAKE_ARGS,-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
+++++ local act_nature=activate
+++++ shift
+++++ local tc_prefix=x86_64-conda-linux-gnu-
+++++ shift
+++++ local thing
+++++ local newval
+++++ local from
+++++ local to
+++++ local pass
+++++ '[' activate = activate ']'
+++++ from=
+++++ to=CONDA_BACKUP_
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo HOST,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo HOST,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=HOST
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=BUILD
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_TOOLCHAIN_HOST,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo CONDA_TOOLCHAIN_HOST,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_TOOLCHAIN_HOST
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_TOOLCHAIN_BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo CONDA_TOOLCHAIN_BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_TOOLCHAIN_BUILD
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ echo CC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CC
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp
++++++ echo cpp
++++++ tr a-z+- A-ZX_
+++++ thing=CPP
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc
++++++ echo gcc
++++++ tr a-z+- A-ZX_
+++++ thing=GCC
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar
++++++ echo gcc-ar
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_AR
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm
++++++ echo gcc-nm
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_NM
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib
++++++ echo gcc-ranlib
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_RANLIB
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CPPFLAGS,-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CPPFLAGS,-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CPPFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'LDFLAGS,-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ echo 'LDFLAGS,-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=LDFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CPPFLAGS,-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CPPFLAGS,-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CPPFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CMAKE_PREFIX_PATH,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ echo CMAKE_PREFIX_PATH,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CMAKE_PREFIX_PATH
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo _CONDA_PYTHON_SYSCONFIGDATA_NAME,_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ echo _CONDA_PYTHON_SYSCONFIGDATA_NAME,_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=_CONDA_PYTHON_SYSCONFIGDATA_NAME
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_BUILD_SYSROOT,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ echo CONDA_BUILD_SYSROOT,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_BUILD_SYSROOT
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_BUILD_CROSS_COMPILATION,
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=
++++++ echo CONDA_BUILD_CROSS_COMPILATION,
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_BUILD_CROSS_COMPILATION
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ echo CC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CC_FOR_BUILD
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo build_alias,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo build_alias,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=build_alias
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo host_alias,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo host_alias,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=host_alias
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo MESON_ARGS,-Dbuildtype=release
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=-Dbuildtype=release
++++++ echo MESON_ARGS,-Dbuildtype=release
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=MESON_ARGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CMAKE_ARGS,-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ echo 'CMAKE_ARGS,-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CMAKE_ARGS
+++++ '[' check = apply ']'
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo HOST,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo HOST,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=HOST
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$HOST'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_HOST
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''HOST=x86_64-conda-linux-gnu'\'''
++++++ export HOST=x86_64-conda-linux-gnu
++++++ HOST=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=BUILD
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$BUILD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_BUILD
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''BUILD=x86_64-conda-linux-gnu'\'''
++++++ export BUILD=x86_64-conda-linux-gnu
++++++ BUILD=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_TOOLCHAIN_HOST,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo CONDA_TOOLCHAIN_HOST,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_TOOLCHAIN_HOST
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CONDA_TOOLCHAIN_HOST'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CONDA_TOOLCHAIN_HOST
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''CONDA_TOOLCHAIN_HOST=x86_64-conda-linux-gnu'\'''
++++++ export CONDA_TOOLCHAIN_HOST=x86_64-conda-linux-gnu
++++++ CONDA_TOOLCHAIN_HOST=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_TOOLCHAIN_BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo CONDA_TOOLCHAIN_BUILD,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_TOOLCHAIN_BUILD
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CONDA_TOOLCHAIN_BUILD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CONDA_TOOLCHAIN_BUILD
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''CONDA_TOOLCHAIN_BUILD=x86_64-conda-linux-gnu'\'''
++++++ export CONDA_TOOLCHAIN_BUILD=x86_64-conda-linux-gnu
++++++ CONDA_TOOLCHAIN_BUILD=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ echo CC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CC
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CC'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CC
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc ']'
+++++ eval export ''\''CC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc'\'''
++++++ export CC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ CC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp
++++++ echo cpp
++++++ tr a-z+- A-ZX_
+++++ thing=CPP
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp ']'
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CPP'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CPP
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp ']'
+++++ eval export ''\''CPP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp'\'''
++++++ export CPP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp
++++++ CPP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cpp
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc
++++++ echo gcc
++++++ tr a-z+- A-ZX_
+++++ thing=GCC
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc ']'
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$GCC'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GCC
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc ']'
+++++ eval export ''\''GCC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc'\'''
++++++ export GCC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc
++++++ GCC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar
++++++ echo gcc-ar
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_AR
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar ']'
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$GCC_AR'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GCC_AR
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar ']'
+++++ eval export ''\''GCC_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar'\'''
++++++ export GCC_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar
++++++ GCC_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm
++++++ echo gcc-nm
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_NM
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm ']'
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$GCC_NM'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GCC_NM
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm ']'
+++++ eval export ''\''GCC_NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm'\'''
++++++ export GCC_NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm
++++++ GCC_NM=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-nm
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib
++++++ echo gcc-ranlib
++++++ tr a-z+- A-ZX_
+++++ thing=GCC_RANLIB
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib ']'
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$GCC_RANLIB'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GCC_RANLIB
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib ']'
+++++ eval export ''\''GCC_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib'\'''
++++++ export GCC_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib
++++++ GCC_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CPPFLAGS,-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CPPFLAGS,-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CPPFLAGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CPPFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CPPFLAGS
+++++ '[' -n '-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''CPPFLAGS=-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'CPPFLAGS=-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ CPPFLAGS='-DNDEBUG -D_FORTIFY_SOURCE=2 -O2 -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CFLAGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''CFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'CFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ CFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'LDFLAGS,-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ echo 'LDFLAGS,-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=LDFLAGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$LDFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_LDFLAGS
+++++ '[' -n '-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib' ']'
+++++ eval export ''\''LDFLAGS=-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'\'''
++++++ export 'LDFLAGS=-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
++++++ LDFLAGS='-Wl,-O2 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now -Wl,--disable-new-dtags -Wl,--gc-sections -Wl,--allow-shlib-undefined -Wl,-rpath,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -Wl,-rpath-link,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib -L/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CPPFLAGS,-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CPPFLAGS,-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CPPFLAGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$DEBUG_CPPFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DEBUG_CPPFLAGS
+++++ '[' -n '-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''DEBUG_CPPFLAGS=-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'DEBUG_CPPFLAGS=-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ DEBUG_CPPFLAGS='-D_DEBUG -D_FORTIFY_SOURCE=2 -Og -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CFLAGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$DEBUG_CFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DEBUG_CFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''DEBUG_CFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'DEBUG_CFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ DEBUG_CFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CMAKE_PREFIX_PATH,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ echo CMAKE_PREFIX_PATH,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CMAKE_PREFIX_PATH
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CMAKE_PREFIX_PATH'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CMAKE_PREFIX_PATH
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr ']'
+++++ eval export ''\''CMAKE_PREFIX_PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr'\'''
++++++ export CMAKE_PREFIX_PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
++++++ CMAKE_PREFIX_PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot/usr
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo _CONDA_PYTHON_SYSCONFIGDATA_NAME,_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ echo _CONDA_PYTHON_SYSCONFIGDATA_NAME,_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=_CONDA_PYTHON_SYSCONFIGDATA_NAME
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$_CONDA_PYTHON_SYSCONFIGDATA_NAME'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP__CONDA_PYTHON_SYSCONFIGDATA_NAME
+++++ '[' -n _sysconfigdata_x86_64_conda_cos6_linux_gnu ']'
+++++ eval export ''\''_CONDA_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_x86_64_conda_cos6_linux_gnu'\'''
++++++ export _CONDA_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_x86_64_conda_cos6_linux_gnu
++++++ _CONDA_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata_x86_64_conda_cos6_linux_gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_BUILD_SYSROOT,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ echo CONDA_BUILD_SYSROOT,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_BUILD_SYSROOT
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CONDA_BUILD_SYSROOT'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CONDA_BUILD_SYSROOT
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot ']'
+++++ eval export ''\''CONDA_BUILD_SYSROOT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot'\'''
++++++ export CONDA_BUILD_SYSROOT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
++++++ CONDA_BUILD_SYSROOT=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/x86_64-conda-linux-gnu/sysroot
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CONDA_BUILD_CROSS_COMPILATION,
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=
++++++ echo CONDA_BUILD_CROSS_COMPILATION,
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CONDA_BUILD_CROSS_COMPILATION
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CONDA_BUILD_CROSS_COMPILATION'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CONDA_BUILD_CROSS_COMPILATION
+++++ '[' -n '' ']'
+++++ eval unset '${from}${thing}'
++++++ unset CONDA_BUILD_CROSS_COMPILATION
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ echo CC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CC_FOR_BUILD
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CC_FOR_BUILD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CC_FOR_BUILD
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc ']'
+++++ eval export ''\''CC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc'\'''
++++++ export CC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
++++++ CC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-cc
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo build_alias,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo build_alias,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=build_alias
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$build_alias'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_build_alias
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''build_alias=x86_64-conda-linux-gnu'\'''
++++++ export build_alias=x86_64-conda-linux-gnu
++++++ build_alias=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo host_alias,x86_64-conda-linux-gnu
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=x86_64-conda-linux-gnu
++++++ echo host_alias,x86_64-conda-linux-gnu
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=host_alias
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$host_alias'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_host_alias
+++++ '[' -n x86_64-conda-linux-gnu ']'
+++++ eval export ''\''host_alias=x86_64-conda-linux-gnu'\'''
++++++ export host_alias=x86_64-conda-linux-gnu
++++++ host_alias=x86_64-conda-linux-gnu
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo MESON_ARGS,-Dbuildtype=release
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=-Dbuildtype=release
++++++ echo MESON_ARGS,-Dbuildtype=release
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=MESON_ARGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$MESON_ARGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_MESON_ARGS
+++++ '[' -n -Dbuildtype=release ']'
+++++ eval export ''\''MESON_ARGS=-Dbuildtype=release'\'''
++++++ export MESON_ARGS=-Dbuildtype=release
++++++ MESON_ARGS=-Dbuildtype=release
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CMAKE_ARGS,-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ echo 'CMAKE_ARGS,-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CMAKE_ARGS
+++++ '[' apply = apply ']'
+++++ eval 'oldval=$CMAKE_ARGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CMAKE_ARGS
+++++ '[' -n '-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release' ']'
+++++ eval export ''\''CMAKE_ARGS=-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'\'''
++++++ export 'CMAKE_ARGS=-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
++++++ CMAKE_ARGS='-DCMAKE_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ar -DCMAKE_CXX_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_C_COMPILER_AR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ar -DCMAKE_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ranlib -DCMAKE_CXX_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_C_COMPILER_RANLIB=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gcc-ranlib -DCMAKE_LINKER=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-ld -DCMAKE_STRIP=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-strip -DCMAKE_BUILD_TYPE=Release'
+++++ return 0
+++++ unset _CMAKE_ARGS
+++++ '[' '' = 1 ']'
+++++ '[' 0 -ne 0 ']'
+++++ '[' 0 = 1 ']'
+++++ '[' -n '' ']'
+++++ '[' 0 = 1 ']'
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gfortran_linux-64.sh
+++++ '[' 0 = 1 ']'
+++++ FFLAGS_USED='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ '[' 0 = 1 ']'
+++++ _tc_activation activate x86_64-conda-linux-gnu- gfortran f95 FC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran 'FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'DEBUG_FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe' 'DEBUG_FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
+++++ local act_nature=activate
+++++ shift
+++++ local tc_prefix=x86_64-conda-linux-gnu-
+++++ shift
+++++ local thing
+++++ local newval
+++++ local from
+++++ local to
+++++ local pass
+++++ '[' activate = activate ']'
+++++ from=
+++++ to=CONDA_BACKUP_
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95 ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo FC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo FC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FC_FOR_BUILD
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FORTRANFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ echo 'DEBUG_FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_FFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ echo 'DEBUG_FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_FORTRANFLAGS
+++++ '[' check = apply ']'
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ '[' apply = apply ']'
++++++ echo gfortran
++++++ tr a-z+- A-ZX_
+++++ thing=GFORTRAN
+++++ eval 'oldval=$GFORTRAN'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GFORTRAN
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ eval export ''\''GFORTRAN=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran'\'''
++++++ export GFORTRAN=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ GFORTRAN=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95 ']'
+++++ '[' apply = apply ']'
++++++ echo f95
++++++ tr a-z+- A-ZX_
+++++ thing=F95
+++++ eval 'oldval=$F95'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_F95
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95 ']'
+++++ eval export ''\''F95=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95'\'''
++++++ export F95=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95
++++++ F95=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-f95
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo FC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo FC_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FC_FOR_BUILD
+++++ '[' apply = apply ']'
++++++ echo FC_FOR_BUILD
++++++ tr a-z+- A-ZX_
+++++ thing=FC_FOR_BUILD
+++++ eval 'oldval=$FC_FOR_BUILD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_FC_FOR_BUILD
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ eval export ''\''FC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran'\'''
++++++ export FC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ FC_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FFLAGS
+++++ '[' apply = apply ']'
++++++ echo FFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=FFLAGS
+++++ eval 'oldval=$FFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_FFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''FFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'FFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ FFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FORTRANFLAGS
+++++ '[' apply = apply ']'
++++++ echo FORTRANFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=FORTRANFLAGS
+++++ eval 'oldval=$FORTRANFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_FORTRANFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''FORTRANFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'FORTRANFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ FORTRANFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ echo 'DEBUG_FFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_FFLAGS
+++++ '[' apply = apply ']'
++++++ echo DEBUG_FFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=DEBUG_FFLAGS
+++++ eval 'oldval=$DEBUG_FFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DEBUG_FFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe' ']'
+++++ eval export ''\''DEBUG_FFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'\'''
++++++ export 'DEBUG_FFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ DEBUG_FFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ echo 'DEBUG_FORTRANFLAGS,-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_FORTRANFLAGS
+++++ '[' apply = apply ']'
++++++ echo DEBUG_FORTRANFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=DEBUG_FORTRANFLAGS
+++++ eval 'oldval=$DEBUG_FORTRANFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DEBUG_FORTRANFLAGS
+++++ '[' -n '-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe' ']'
+++++ eval export ''\''DEBUG_FORTRANFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'\'''
++++++ export 'DEBUG_FORTRANFLAGS=-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
++++++ DEBUG_FORTRANFLAGS='-march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -I/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fcheck=all -fbacktrace -fimplicit-none -fvar-tracking-assignments -ffunction-sections -pipe'
+++++ return 0
+++++ _tc_activation activate x86_64-conda-linux-gnu- FC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran F77,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran F90,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ local act_nature=activate
+++++ shift
+++++ local tc_prefix=x86_64-conda-linux-gnu-
+++++ shift
+++++ local thing
+++++ local newval
+++++ local from
+++++ local to
+++++ local pass
+++++ '[' activate = activate ']'
+++++ from=
+++++ to=CONDA_BACKUP_
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo FC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo FC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FC
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo F77,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo F77,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=F77
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo F90,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo F90,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=F90
+++++ '[' check = apply ']'
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo FC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo FC,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=FC
+++++ '[' apply = apply ']'
++++++ echo FC
++++++ tr a-z+- A-ZX_
+++++ thing=FC
+++++ eval 'oldval=$FC'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_FC
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ eval export ''\''FC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran'\'''
++++++ export FC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ FC=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo F77,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo F77,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=F77
+++++ '[' apply = apply ']'
++++++ echo F77
++++++ tr a-z+- A-ZX_
+++++ thing=F77
+++++ eval 'oldval=$F77'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_F77
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ eval export ''\''F77=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran'\'''
++++++ export F77=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ F77=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo F90,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ echo F90,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=F90
+++++ '[' apply = apply ']'
++++++ echo F90
++++++ tr a-z+- A-ZX_
+++++ thing=F90
+++++ eval 'oldval=$F90'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_F90
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran ']'
+++++ eval export ''\''F90=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran'\'''
++++++ export F90=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
++++++ F90=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-gfortran
+++++ return 0
+++++ '[' 0 -ne 0 ']'
+++++ '[' 0 = 1 ']'
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/activate-gxx_linux-64.sh
+++++ '[' 0 = 1 ']'
+++++ '[' 0 = 1 ']'
+++++ CXXFLAGS_USED='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ DEBUG_CXXFLAGS_USED='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ '[' 0 = 1 ']'
+++++ _tc_activation activate x86_64-conda-linux-gnu- CXX,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++ g++ 'CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' 'DEBUG_CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' CXX_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
+++++ local act_nature=activate
+++++ shift
+++++ local tc_prefix=x86_64-conda-linux-gnu-
+++++ shift
+++++ local thing
+++++ local newval
+++++ local from
+++++ local to
+++++ local pass
+++++ '[' activate = activate ']'
+++++ from=
+++++ to=CONDA_BACKUP_
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CXX,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ echo CXX,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXX
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++ ']'
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXXFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CXXFLAGS
+++++ '[' check = apply ']'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CXX_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ echo CXX_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXX_FOR_BUILD
+++++ '[' check = apply ']'
+++++ for pass in check apply
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CXX,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ echo CXX,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXX
+++++ '[' apply = apply ']'
++++++ echo CXX
++++++ tr a-z+- A-ZX_
+++++ thing=CXX
+++++ eval 'oldval=$CXX'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CXX
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++ ']'
+++++ eval export ''\''CXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++'\'''
++++++ export CXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ CXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
+++++ for thing in "$@"
+++++ case "${thing}" in
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++
+++++ '[' '!' -x /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++ ']'
+++++ '[' apply = apply ']'
++++++ echo g++
++++++ tr a-z+- A-ZX_
+++++ thing=GXX
+++++ eval 'oldval=$GXX'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_GXX
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++ ']'
+++++ eval export ''\''GXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++'\'''
++++++ export GXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++
++++++ GXX=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-g++
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXXFLAGS
+++++ '[' apply = apply ']'
++++++ echo CXXFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=CXXFLAGS
+++++ eval 'oldval=$CXXFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CXXFLAGS
+++++ '[' -n '-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''CXXFLAGS=-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'CXXFLAGS=-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ CXXFLAGS='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-strong -fno-plt -O2 -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo 'DEBUG_CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ echo 'DEBUG_CXXFLAGS,-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=DEBUG_CXXFLAGS
+++++ '[' apply = apply ']'
++++++ echo DEBUG_CXXFLAGS
++++++ tr a-z+- A-ZX_
+++++ thing=DEBUG_CXXFLAGS
+++++ eval 'oldval=$DEBUG_CXXFLAGS'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_DEBUG_CXXFLAGS
+++++ '[' -n '-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include' ']'
+++++ eval export ''\''DEBUG_CXXFLAGS=-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'\'''
++++++ export 'DEBUG_CXXFLAGS=-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
++++++ DEBUG_CXXFLAGS='-fvisibility-inlines-hidden -fmessage-length=0 -march=nocona -mtune=haswell -ftree-vectorize -fPIC -fstack-protector-all -fno-plt -Og -g -Wall -Wextra -fvar-tracking-assignments -ffunction-sections -pipe -isystem /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include'
+++++ for thing in "$@"
+++++ case "${thing}" in
++++++ echo CXX_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^[^\,]*\,\(.*\),\1,'
+++++ newval=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ echo CXX_FOR_BUILD,/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ sed 's,^\([^\,]*\)\,.*,\1,'
+++++ thing=CXX_FOR_BUILD
+++++ '[' apply = apply ']'
++++++ echo CXX_FOR_BUILD
++++++ tr a-z+- A-ZX_
+++++ thing=CXX_FOR_BUILD
+++++ eval 'oldval=$CXX_FOR_BUILD'
++++++ oldval=
+++++ '[' -n '' ']'
+++++ eval unset '${to}${thing}'
++++++ unset CONDA_BACKUP_CXX_FOR_BUILD
+++++ '[' -n /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++ ']'
+++++ eval export ''\''CXX_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++'\'''
++++++ export CXX_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
++++++ CXX_FOR_BUILD=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/x86_64-conda-linux-gnu-c++
+++++ return 0
+++++ '[' 0 -ne 0 ']'
+++++ '[' 0 = 1 ']'
+++++ '[' 0 = 1 ']'
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/epics-base_activate.sh
+++++ export EPICS_BASE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics
+++++ EPICS_BASE=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics
+++++ export EPICS_HOST_ARCH=linux-x86_64
+++++ EPICS_HOST_ARCH=linux-x86_64
+++++ export EPICS_BASE_HOST_BIN=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64
+++++ EPICS_BASE_HOST_BIN=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64
+++++ export EPICS_BASE_VERSION=7.0.7.0
+++++ EPICS_BASE_VERSION=7.0.7.0
+++++ export PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+++++ PATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libarrow_activate.sh
+++++ _la_log 'Beginning libarrow activation.'
+++++ '[' '' = 1 ']'
+++++ _la_gdb_prefix=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/gdb/auto-load
+++++ '[' '!' -w /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/gdb/auto-load ']'
+++++ _la_log 'No rights to modify $_la_gdb_prefix, cannot create symlink!'
+++++ '[' '' = 1 ']'
+++++ _la_log 'Unless you plan to use the GDB debugger with libarrow, this warning can be safely ignored.'
+++++ '[' '' = 1 ']'
+++++ return
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libglib_activate.sh
+++++ export GSETTINGS_SCHEMA_DIR_CONDA_BACKUP=
+++++ GSETTINGS_SCHEMA_DIR_CONDA_BACKUP=
+++++ export GSETTINGS_SCHEMA_DIR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/glib-2.0/schemas
+++++ GSETTINGS_SCHEMA_DIR=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/glib-2.0/schemas
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/libxml2_activate.sh
+++++ test -n ''
+++++ xml_catalog_files_libxml2=
+++++ XML_CATALOG_FILES=
+++++ conda_catalog_files=
+++++ ifs_libxml2=' 	
+'
+++++ IFS=' '
+++++ rem=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122
+++++ for pre in ${rem}
+++++ test '' = /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122
+++++ conda_catalog_files=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122
+++++ rem=
+++++ IFS=' 	
+'
+++++ conda_catalog_files='file:///sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/xml/catalog file:///etc/xml/catalog'
+++++ export 'XML_CATALOG_FILES=file:///sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/xml/catalog file:///etc/xml/catalog'
+++++ XML_CATALOG_FILES='file:///sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/xml/catalog file:///etc/xml/catalog'
+++++ unset conda_catalog_files ifs_libxml2 rem
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/openmpi_activate.sh
+++++ '[' '' = 1 ']'
++++ . /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/etc/conda/activate.d/pyepics_activate.sh
+++++ export PYEPICS_LIBCA=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/lib/linux-x86_64/libca.so
+++++ PYEPICS_LIBCA=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/lib/linux-x86_64/libca.so
+++ __conda_hashr
+++ '[' -n '' ']'
+++ '[' -n '' ']'
+++ hash -r
+++ AUTH_FILE=/sdf/group/lcls/ds/ana//sw/conda2/auth.sh
+++ '[' -f /sdf/group/lcls/ds/ana//sw/conda2/auth.sh ']'
+++ source /sdf/group/lcls/ds/ana//sw/conda2/auth.sh
++++ export CONFIGDB_AUTH=pcds
++++ CONFIGDB_AUTH=pcds
++++ export 'BOS_AUTH=pxc***'
++++ BOS_AUTH='pxc***'
++++ export CALIBDB_AUTH=pcds
++++ CALIBDB_AUTH=pcds
+++ export CUDA_ROOT=/usr/local/cuda
+++ CUDA_ROOT=/usr/local/cuda
+++ '[' -h /usr/local/cuda ']'
+++ '[' -n '4.4.20(1)-release' ']'
+++ SCRIPT_SOURCE=setup_env.sh
++++++ readlink -f setup_env.sh
+++++ dirname /sdf/scratch/users/a/ajshack/lcls2/setup_env.sh
++++ cd /sdf/scratch/users/a/ajshack/lcls2
++++ pwd
+++ RELDIR=/sdf/scratch/users/a/ajshack/lcls2
+++ export PATH=/sdf/scratch/users/a/ajshack/lcls2/install/bin:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+++ PATH=/sdf/scratch/users/a/ajshack/lcls2/install/bin:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/epics/bin/linux-x86_64:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin:/sdf/group/lcls/ds/ana/sw/conda2-v4/inst/condabin:/sdf/home/a/ajshack/.opencode/bin:/sdf/home/a/ajshack/.pixi/bin:/sdf/home/a/ajshack/nodejs/bin:/sdf/home/a/ajshack/.local/bin:/sdf/home/a/ajshack/bin:/opt/slurm/slurm-curr/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
+++ echo /sdf/scratch/users/a/ajshack/lcls2
+/sdf/scratch/users/a/ajshack/lcls2
++++ python -c 'import sys; print(str(sys.version_info.major)+'\''.'\''+str(sys.version_info.minor))'
+++ pyver=3.9
+++ export PYTHONPATH=/sdf/scratch/users/a/ajshack/lcls2/install/lib/python3.9/site-packages
+++ PYTHONPATH=/sdf/scratch/users/a/ajshack/lcls2/install/lib/python3.9/site-packages
+++ export TESTRELDIR=/sdf/scratch/users/a/ajshack/lcls2/install
+++ TESTRELDIR=/sdf/scratch/users/a/ajshack/lcls2/install
+++ '[' -n '' ']'
+++ export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1
+++ PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1
+++ export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL=none
+++ PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL=none
+++ export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1
+++ DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1
+++ export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL=none
+++ DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL=none
+++ export OPENBLAS_NUM_THREADS=1
+++ OPENBLAS_NUM_THREADS=1
+++ export OMP_NUM_THREADS=1
+++ OMP_NUM_THREADS=1
+++ export NUMEXPR_NUM_THREADS=1
+++ NUMEXPR_NUM_THREADS=1
+++ export HDF5_USE_FILE_LOCKING=FALSE
+++ HDF5_USE_FILE_LOCKING=FALSE
+++ export RDMAV_FORK_SAFE=1
+++ RDMAV_FORK_SAFE=1
+++ export RDMAV_HUGEPAGES_SAFE=1
+++ RDMAV_HUGEPAGES_SAFE=1
+++ export JUPYTERLAB_WORKSPACES_DIR=/sdf/home/a/ajshack
+++ JUPYTERLAB_WORKSPACES_DIR=/sdf/home/a/ajshack
+++ export MANPATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/man:/opt/slurm/slurm-curr/share/man:/usr/share/lmod/lmod/share/man::
+++ MANPATH=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/share/man:/opt/slurm/slurm-curr/share/man:/usr/share/lmod/lmod/share/man::
++++ python3 -c '
+import importlib.util, os
+dirs = []
+for pkg in ('\''nvidia.cuda_nvrtc'\'', '\''nvidia.cuda_runtime'\''):
+    spec = importlib.util.find_spec(pkg)
+    if spec and spec.submodule_search_locations:
+        d = os.path.join(list(spec.submodule_search_locations)[0], '\''lib'\'')
+        if os.path.isdir(d):
+            dirs.append(d)
+print('\'':'\''.join(dirs))
+'
+++ _cuda_libs=/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_nvrtc/lib:/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_runtime/lib
+++ '[' -n /sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_nvrtc/lib:/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_runtime/lib ']'
+++ export LD_LIBRARY_PATH=/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_nvrtc/lib:/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_runtime/lib
+++ LD_LIBRARY_PATH=/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_nvrtc/lib:/sdf/home/a/ajshack/.local/lib/python3.9/site-packages/nvidia/cuda_runtime/lib
+++ unset _cuda_libs
++ export PS_EB_NODES=1
++ PS_EB_NODES=1
++ OUTDIR=/sdf/scratch/users/a/ajshack/lcls2/bench_mpi_sweep
++ FFB=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
++ NODES=($(scontrol show hostnames "$SLURM_JOB_NODELIST"))
+++ scontrol show hostnames 'sdfampere[023,026,028,042]'
++ N0=sdfampere023
++ N1=sdfampere026
++ N2=sdfampere028
++ N3=sdfampere042
++ echo '=== NODES: N0=sdfampere023 N1=sdfampere026 N2=sdfampere028 N3=sdfampere042 ==='
+=== NODES: N0=sdfampere023 N1=sdfampere026 N2=sdfampere028 N3=sdfampere042 ===
++ BENCH='python psana/psana/gpu/bench_calib.py -e mfx101572426 -r 47 -n 150 --warmup 10 --wait-split --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc'
+++ date +%s
++ T0=1783984476
++ mpirun --bind-to none -x PS_EB_NODES -H sdfampere023:34 -n 34 python psana/psana/gpu/bench_calib.py -e mfx101572426 -r 47 -n 150 --warmup 10 --wait-split --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
++ RCA=213
+++ date +%s
++ TA=1783984476
++ echo '=== CONFIG MARKER: CFG=sn_a exit=213 wall=0 ==='
+=== CONFIG MARKER: CFG=sn_a exit=213 wall=0 ===
++ mpirun --bind-to none -x PS_EB_NODES -H sdfampere023:33,sdfampere026:33,sdfampere028:33,sdfampere042:33 -n 132 python psana/psana/gpu/bench_calib.py -e mfx101572426 -r 47 -n 150 --warmup 10 --wait-split --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
++ RCB=0
+++ date +%s
++ TB=1783984649
++ echo '=== CONFIG MARKER: CFG=mn4_default exit=0 wall=173 ==='
+=== CONFIG MARKER: CFG=mn4_default exit=0 wall=173 ===
++ env PS_EB_NODE_LOCAL=1 mpirun --bind-to none -x PS_EB_NODES -x PS_EB_NODE_LOCAL -H sdfampere023:33,sdfampere026:33,sdfampere028:33,sdfampere042:33 -n 132 python psana/psana/gpu/bench_calib.py -e mfx101572426 -r 47 -n 150 --warmup 10 --wait-split --dir /sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
+slurmstepd: error: *** JOB 31573442 ON sdfampere023 CANCELLED AT 2026-07-13T16:18:22 DUE TO JOB REQUEUE ***
