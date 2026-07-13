@@ -255,6 +255,53 @@ mpirun -n 3 python psana/psana/gpu/bench_calib.py \
 
 ---
 
+## Multi-node launch: `PS_EB_NODE_LOCAL=1` (recommended for ≥2 nodes)
+
+For any GPU calibration run spanning **more than one compute node**, set
+`PS_EB_NODE_LOCAL=1`. It places **one EventBuilder rank per physical node**
+(each serving only that node's BD ranks) instead of the default single global
+EB (on N0) that serves every BD rank across all nodes.
+
+This is an **opt-in flag, default off.** Unset (or `0`) leaves the standard
+psana MPI event loop completely unchanged — the placement change is gated
+entirely behind this env var (`_ensure_local_eb_nodes` in `datasource.py`;
+`colocate_non_marching` in `psexp/node.py`). It is safe for non-GPU psana runs
+too but is only *measured* for the GPU calib path; leave it off for the default
+path unless you have a reason.
+
+**Why — measured (loop iterations 18 & 20, r47 on FFB, A100):** the multi-node
+throughput plateau is caused by a single EB rank serializing as it serves more
+BD ranks (`eb_wait` climbs 3.5 → 70 ms as BDs go 32 → 96). One EB per node holds
+`eb_wait` down and the win **compounds with node count**:
+
+| nodes | default agg Hz | node-local agg Hz | gain | node-local per-node eff |
+|------:|---------------:|------------------:|-----:|------------------------:|
+| 2     | 301.0          | 328.4             | +9.1%  | 90% |
+| 3     | 338.3          | 444.0             | +31.3% | 77% |
+
+`bd_read` is flat across placements (storage scales per-node); the entire
+differential is EB serving latency. See `TASK.md` (2026-07-13 entry) and
+`ralph/PROGRESS.md` iters 18/20 for full attribution.
+
+```bash
+# Multi-node GPU calib launch (sbatch): one EB per node, colocated with BDs.
+# Template: bench_mpi_sweep/eb_node_local_3n_v2.sbatch
+export PS_EB_NODE_LOCAL=1        # overrides PS_EB_NODES -> node count automatically
+FFB=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
+mpirun --bind-to none -x PS_EB_NODE_LOCAL \
+    python psana/psana/gpu/bench_calib.py \
+    -e mfx101572426 -r 47 -n 500 --warmup 10 --dir $FFB
+```
+
+Do **not** set `PS_EB_NODES` by hand alongside `PS_EB_NODE_LOCAL` — the flag
+derives the EB count from the node count and overrides `PS_EB_NODES`.
+
+Residual per-node loss at 3 nodes (77% eff, `eb_wait` still 26 ms) points at
+*intra-node* EB serialization as the next lever (a second EB per node, or fatter
+serve batches) — not yet measured.
+
+---
+
 ## Environment Setup
 
 - Compute: `sdfampere` nodes (NVIDIA A100 40 GB, 108 SMs)

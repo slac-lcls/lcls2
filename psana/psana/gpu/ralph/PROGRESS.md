@@ -1667,3 +1667,55 @@ is wanted, the residual per-node loss at 3n (77%, i.e. colocate eb_wait still 26
 ms and residual 85.8) points at *intra-node* EB serialization — a second EB per
 node or fatter serve batches — as the next lever, testable at 2–3 nodes without
 needing the structurally-unreachable clean 4-node point.
+
+## 2026-07-13 — Iteration 21 (graduate PS_EB_NODE_LOCAL: documented as the standard multi-node GPU launch flag)
+
+**Task:** execute iter-20's explicit first recommendation (a) — promote the
+now-confirmed, compounding `PS_EB_NODE_LOCAL` win from loop experiment to a
+documented, discoverable opt-in launch flag. No new number this iteration by
+design: the compounding verdict is already measured (iters 18/20, clean
+in-window brackets); the remaining gap was that a user launching a multi-node
+GPU calib run had no recipe telling them to set the flag. One well-scoped unit:
+close that gap. The separate intra-node "2nd EB per node / fatter serve batch"
+lever is left for a future iteration (one variable — do not bundle a fresh
+fragile multi-node experiment into a documentation graduation).
+
+**What changed (docs only — numeric path untouched, so no correctness gate per
+rule 3; flag is default-off so standard psana is unchanged per rule 4):**
+1. `psana/psana/gpu/PLANNING.md` — new "Multi-node launch: `PS_EB_NODE_LOCAL=1`"
+   section between Development Commands and Environment Setup. States: use it for
+   ≥2 nodes; it is opt-in/default-off (gated by `_ensure_local_eb_nodes` in
+   datasource.py + `colocate_non_marching` in psexp/node.py — verified by code
+   inspection that unset/`0` leaves the default event loop unchanged); the
+   measured 2n/3n gain table (+9.1% / +31.3%); the mechanism (single-EB `eb_wait`
+   serialization, `bd_read` flat); the launch snippet + sbatch template pointer
+   (`bench_mpi_sweep/eb_node_local_3n_v2.sbatch`); the "don't hand-set
+   PS_EB_NODES alongside it" caveat; and the named next lever (intra-node EB
+   serialization) as not-yet-measured.
+2. Memory `lcls2-gpu-run-setup.md` — one-line pointer so the flag is discoverable
+   from the run recipe, not only buried in TASK.md/PROGRESS.md.
+
+TASK.md already carries the full measured record (2026-07-13 entry, iters 18/20)
+and its NEXT line already names this graduation — no TASK.md edit needed; this
+iteration makes that graduation real in the user-facing planning doc.
+
+**Keep/revert:** KEEP (documentation of a confirmed, kept feature). Nothing to
+revert. No job submitted (no allocation spent) — the measurement backing this
+was collected in iters 18/20.
+
+**Recommended next step:** the intra-node EB serialization lever is now the sole
+remaining code-side multi-node throughput idea. At 3 nodes node-local still shows
+`eb_wait` 26 ms and 77% per-node efficiency, so one EB per node has not fully
+removed EB serialization. Test **2 EB per node** (each serving ~15 BD instead of
+~32) behind a new opt-in `PS_EB_PER_NODE=2` — a localized change to the colocate
+split in `psexp/node.py` (sub-split each node's shared comm by `node_rank %
+PS_EB_PER_NODE`; the `_init_smd_comm` eb-detection already generalizes since each
+sub-comm's rank-0 self-reports as an EB). Correctness-gate it, then a clean
+2-node in-window bracket (1 vs 2 EB/node) on preemptable QOS — 2 nodes is the
+least preemption-fragile scale (iter-20 lesson: front-load fragile phases, keep
+the wall <6 min). Watch the tradeoff: a 2nd EB per node consumes a BD slot, so
+per-rank `eb_wait` must fall enough to beat the lost BD; report aggregate + per-
+rank both. If `eb_wait` does NOT fall (i.e. the 26 ms is cross-node smd0/EB
+coordination, not intra-node BD-per-EB count — iter-17 leaned this way), that
+closes the code-side multi-node levers and the loop is near LOOP DONE pending the
+storage-side facility levers.
