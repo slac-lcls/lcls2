@@ -128,6 +128,15 @@ geometry index order:        [17, 13, 9, 5]
 The output is correctly associated with physical segment IDs but is not
 numerically sorted by segment ID.
 
+**Optimization note:** Multi-segment events still incur the device-to-device
+`buf[:] = src_view` compaction described below. A future fused strided
+calibration kernel could read panels directly from `data_gpu`, use the small
+per-stream segment map to select canonical pedestal/gain-mask rows, and write
+calibrated output directly into the event slot. This would remove the
+contiguous raw buffer and its GPU-to-GPU copy. If canonical segment ordering is
+needed, the same kernel could apply that permutation while writing output,
+rather than adding another per-event copy.
+
 ## BigData Read, Raw Gather, and Calibration
 
 `KvikioGpuReader` creates one reusable `data_gpu` byte buffer per EventPool
@@ -242,12 +251,6 @@ separate D2H stream still reads the slot.
 - True GDS depends on filesystem and driver support; otherwise KvikIO uses
   `filesystem -> CPU DRAM -> GPU VRAM` compatibility mode.
 - One BD process currently drives one assigned GPU.
-
-A useful future kernel optimization is to read the strided raw payload and
-apply segment mapping and calibration in one launch. That would eliminate the
-contiguous raw gather buffer and its device-to-device copy. It may also allow
-the kernel to use canonical detector constants plus a small segment map instead
-of retaining reordered per-stream constant copies.
 
 ## Validation and Tools
 
