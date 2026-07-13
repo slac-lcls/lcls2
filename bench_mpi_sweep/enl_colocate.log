@@ -1,0 +1,776 @@
+[PSANA-INFO RANK:1 1783966994.518335232] Communicators [MPI-role] Non-marching EB/BD colocated mode enabled on host sdfampere010
+[PSANA-INFO RANK:33 1783967038.312619520] RunParallel [MPI-role] rank=33 host=sdfampere029 numa_id=0 numa_size=20
+[PSANA-INFO RANK:0 1783967039.053313536] RunParallel [MPI-role] rank=0 host=sdfampere010 numa_id=6 numa_size=9
+[rank 3] npixels=16,777,216  blocks/event=65,536  saturation=864  occupancy=7585%
+
+[rank 27] GPU results (159 events, warmup=10, d2h=no):
+  rate:        4.9 Hz
+  wait:        194.807 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.861 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   112.804 ms/event (os.pread bigdata xtc off FFB)
+    residual:  68.143 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.835 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.631 ms/event (per-batch offset/size array build)
+  H->D:        6.352 ms/event (per-seg host->device, no host stack)
+  kernel:      0.649 ms/event
+  sum:         201.808 ms/event  (vs 202.066 ms/event wall; bd_events=239)
+
+[rank 19] GPU results (167 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        173.066 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.496 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   107.879 ms/event (os.pread bigdata xtc off FFB)
+    residual:  52.691 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.564 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.539 ms/event (per-batch offset/size array build)
+  H->D:        6.211 ms/event (per-seg host->device, no host stack)
+  kernel:      0.577 ms/event
+  sum:         179.854 ms/event  (vs 180.154 ms/event wall; bd_events=236)
+
+[rank 13] GPU results (169 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+
+[rank 22] GPU results (141 events, warmup=10, d2h=no):
+  rate:        4.6 Hz
+  wait:        208.241 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   14.863 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   122.546 ms/event (os.pread bigdata xtc off FFB)
+    residual:  70.833 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.741 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.630 ms/event (per-batch offset/size array build)
+  H->D:        6.222 ms/event (per-seg host->device, no host stack)
+  kernel:      0.655 ms/event
+  sum:         215.118 ms/event  (vs 215.595 ms/event wall; bd_events=210)
+  wait:        171.825 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.122 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   107.786 ms/event (os.pread bigdata xtc off FFB)
+    residual:  51.916 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.614 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.528 ms/event (per-batch offset/size array build)
+  H->D:        5.561 ms/event (per-seg host->device, no host stack)
+  kernel:      0.587 ms/event
+  sum:         177.973 ms/event  (vs 178.233 ms/event wall; bd_events=238)
+
+[rank 25] GPU results (168 events, warmup=10, d2h=no):
+  rate:        5.3 Hz
+  wait:        183.480 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.317 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   107.789 ms/event (os.pread bigdata xtc off FFB)
+    residual:  62.374 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.801 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.683 ms/event (per-batch offset/size array build)
+  H->D:        5.733 ms/event (per-seg host->device, no host stack)
+  kernel:      0.644 ms/event
+  sum:         189.857 ms/event  (vs 190.076 ms/event wall; bd_events=248)
+
+[rank 18] GPU results (228 events, warmup=10, d2h=no):
+  rate:        6.4 Hz
+  wait:        145.695 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   11.402 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   91.951 ms/event (os.pread bigdata xtc off FFB)
+    residual:  42.341 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.848 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.545 ms/event (per-batch offset/size array build)
+  H->D:        8.495 ms/event (per-seg host->device, no host stack)
+  kernel:      0.597 ms/event
+  sum:         154.787 ms/event  (vs 155.102 ms/event wall; bd_events=312)
+
+[rank 30] GPU results (163 events, warmup=10, d2h=no):
+  rate:        5.4 Hz
+  wait:        178.172 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.218 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   109.882 ms/event (os.pread bigdata xtc off FFB)
+    residual:  55.073 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.543 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.534 ms/event (per-batch offset/size array build)
+  H->D:        5.979 ms/event (per-seg host->device, no host stack)
+  kernel:      0.594 ms/event
+  sum:         184.746 ms/event  (vs 185.073 ms/event wall; bd_events=232)
+
+[rank 3] GPU results (146 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  wait:        202.143 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.735 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   121.067 ms/event (os.pread bigdata xtc off FFB)
+    residual:  68.341 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.236 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.955 ms/event (per-batch offset/size array build)
+  H->D:        5.753 ms/event (per-seg host->device, no host stack)
+  kernel:      0.806 ms/event
+  sum:         208.701 ms/event  (vs 209.224 ms/event wall; bd_events=215)
+
+[rank 10] GPU results (175 events, warmup=10, d2h=no):
+  rate:        5.8 Hz
+  wait:        167.307 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.047 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   104.859 ms/event (os.pread bigdata xtc off FFB)
+    residual:  49.401 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.562 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.526 ms/event (per-batch offset/size array build)
+  H->D:        5.495 ms/event (per-seg host->device, no host stack)
+  kernel:      0.637 ms/event
+  sum:         173.440 ms/event  (vs 173.882 ms/event wall; bd_events=244)
+
+[rank 31] GPU results (163 events, warmup=10, d2h=no):
+  rate:        5.4 Hz
+  wait:        177.110 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.477 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   109.284 ms/event (os.pread bigdata xtc off FFB)
+    residual:  54.349 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.625 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.552 ms/event (per-batch offset/size array build)
+  H->D:        6.264 ms/event (per-seg host->device, no host stack)
+  kernel:      0.568 ms/event
+  sum:         183.942 ms/event  (vs 184.221 ms/event wall; bd_events=231)
+
+[rank 16] GPU results (230 events, warmup=10, d2h=no):
+  rate:        6.5 Hz
+  wait:        142.488 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   11.542 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   90.553 ms/event (os.pread bigdata xtc off FFB)
+    residual:  40.393 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.606 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.551 ms/event (per-batch offset/size array build)
+  H->D:        9.796 ms/event (per-seg host->device, no host stack)
+  kernel:      0.579 ms/event
+  sum:         152.863 ms/event  (vs 153.353 ms/event wall; bd_events=313)
+
+[rank 28] GPU results (196 events, warmup=10, d2h=no):
+  rate:        5.9 Hz
+  wait:        162.130 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.859 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   98.922 ms/event (os.pread bigdata xtc off FFB)
+    residual:  50.349 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.547 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.551 ms/event (per-batch offset/size array build)
+  H->D:        7.789 ms/event (per-seg host->device, no host stack)
+  kernel:      0.576 ms/event
+  sum:         170.495 ms/event  (vs 170.918 ms/event wall; bd_events=278)
+
+[rank 7] GPU results (161 events, warmup=10, d2h=no):
+  rate:        5.4 Hz
+  wait:        180.417 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.208 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   110.985 ms/event (os.pread bigdata xtc off FFB)
+    residual:  56.223 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.589 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.576 ms/event (per-batch offset/size array build)
+  H->D:        5.605 ms/event (per-seg host->device, no host stack)
+  kernel:      0.572 ms/event
+  sum:         186.594 ms/event  (vs 186.897 ms/event wall; bd_events=230)
+
+[rank 32] GPU results (145 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  wait:        202.955 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.968 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   121.066 ms/event (os.pread bigdata xtc off FFB)
+    residual:  67.921 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.766 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.736 ms/event (per-batch offset/size array build)
+  H->D:        6.048 ms/event (per-seg host->device, no host stack)
+  kernel:      0.566 ms/event
+  sum:         209.568 ms/event  (vs 210.092 ms/event wall; bd_events=214)
+
+[rank 8] GPU results (158 events, warmup=10, d2h=no):
+  rate:        5.2 Hz
+  wait:        185.359 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.774 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   113.933 ms/event (os.pread bigdata xtc off FFB)
+    residual:  58.652 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.550 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.551 ms/event (per-batch offset/size array build)
+  H->D:        6.226 ms/event (per-seg host->device, no host stack)
+  kernel:      0.561 ms/event
+  sum:         192.146 ms/event  (vs 192.648 ms/event wall; bd_events=227)
+
+[rank 9] GPU results (135 events, warmup=10, d2h=no):
+  rate:        4.5 Hz
+  wait:        214.688 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   15.428 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   123.887 ms/event (os.pread bigdata xtc off FFB)
+    residual:  75.374 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.888 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.879 ms/event (per-batch offset/size array build)
+  H->D:        6.596 ms/event (per-seg host->device, no host stack)
+  kernel:      0.880 ms/event
+  sum:         222.165 ms/event  (vs 222.720 ms/event wall; bd_events=204)
+
+[rank 4] GPU results (233 events, warmup=10, d2h=no):
+  rate:        6.6 Hz
+  wait:        142.925 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   10.978 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   91.019 ms/event (os.pread bigdata xtc off FFB)
+    residual:  40.928 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.752 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.547 ms/event (per-batch offset/size array build)
+  H->D:        8.014 ms/event (per-seg host->device, no host stack)
+  kernel:      0.632 ms/event
+  sum:         151.570 ms/event  (vs 151.831 ms/event wall; bd_events=317)
+
+[rank 14] GPU results (170 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        172.686 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.283 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   108.255 ms/event (os.pread bigdata xtc off FFB)
+    residual:  52.148 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.602 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.533 ms/event (per-batch offset/size array build)
+  H->D:        5.548 ms/event (per-seg host->device, no host stack)
+  kernel:      0.566 ms/event
+  sum:         178.801 ms/event  (vs 179.128 ms/event wall; bd_events=239)
+
+[rank 23] GPU results (180 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        172.541 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.770 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   104.016 ms/event (os.pread bigdata xtc off FFB)
+    residual:  54.756 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.583 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.549 ms/event (per-batch offset/size array build)
+  H->D:        4.919 ms/event (per-seg host->device, no host stack)
+  kernel:      0.552 ms/event
+  sum:         178.012 ms/event  (vs 178.137 ms/event wall; bd_events=258)
+
+[rank 24] GPU results (188 events, warmup=10, d2h=no):
+  rate:        5.7 Hz
+  wait:        168.286 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.111 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   102.527 ms/event (os.pread bigdata xtc off FFB)
+    residual:  52.647 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.631 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.580 ms/event (per-batch offset/size array build)
+  H->D:        6.524 ms/event (per-seg host->device, no host stack)
+  kernel:      0.564 ms/event
+  sum:         175.374 ms/event  (vs 175.463 ms/event wall; bd_events=267)
+
+[rank 5] GPU results (150 events, warmup=10, d2h=no):
+  rate:        4.9 Hz
+  wait:        195.385 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.767 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   118.128 ms/event (os.pread bigdata xtc off FFB)
+    residual:  64.490 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.005 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.770 ms/event (per-batch offset/size array build)
+  H->D:        6.566 ms/event (per-seg host->device, no host stack)
+  kernel:      0.604 ms/event
+  sum:         202.555 ms/event  (vs 202.954 ms/event wall; bd_events=219)
+
+[rank 6] GPU results (170 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        172.187 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.222 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   107.976 ms/event (os.pread bigdata xtc off FFB)
+    residual:  50.988 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.550 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.595 ms/event (per-batch offset/size array build)
+  H->D:        5.326 ms/event (per-seg host->device, no host stack)
+  kernel:      0.607 ms/event
+  sum:         178.120 ms/event  (vs 178.235 ms/event wall; bd_events=237)
+
+[rank 15] GPU results (148 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  wait:        198.715 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.890 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   120.014 ms/event (os.pread bigdata xtc off FFB)
+    residual:  64.811 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.783 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.697 ms/event (per-batch offset/size array build)
+  H->D:        6.811 ms/event (per-seg host->device, no host stack)
+  kernel:      0.834 ms/event
+  sum:         206.360 ms/event  (vs 206.514 ms/event wall; bd_events=215)
+
+[rank 11] GPU results (312 events, warmup=10, d2h=no):
+  rate:        8.3 Hz
+  wait:        110.888 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   9.068 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   75.732 ms/event (os.pread bigdata xtc off FFB)
+    residual:  26.088 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.611 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.505 ms/event (per-batch offset/size array build)
+  H->D:        9.571 ms/event (per-seg host->device, no host stack)
+  kernel:      0.550 ms/event
+  sum:         121.009 ms/event  (vs 121.144 ms/event wall; bd_events=395)
+
+[rank 21] GPU results (159 events, warmup=10, d2h=no):
+  rate:        5.0 Hz
+  wait:        192.546 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.248 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   113.736 ms/event (os.pread bigdata xtc off FFB)
+    residual:  65.562 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.745 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.792 ms/event (per-batch offset/size array build)
+  H->D:        5.877 ms/event (per-seg host->device, no host stack)
+  kernel:      0.744 ms/event
+  sum:         199.167 ms/event  (vs 199.347 ms/event wall; bd_events=236)
+
+[rank 29] GPU results (173 events, warmup=10, d2h=no):
+  rate:        5.6 Hz
+  wait:        173.359 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.742 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   105.490 ms/event (os.pread bigdata xtc off FFB)
+    residual:  55.127 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.540 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.545 ms/event (per-batch offset/size array build)
+  H->D:        5.827 ms/event (per-seg host->device, no host stack)
+  kernel:      0.566 ms/event
+  sum:         179.753 ms/event  (vs 179.844 ms/event wall; bd_events=249)
+
+[rank 20] GPU results (160 events, warmup=10, d2h=no):
+  rate:        5.3 Hz
+  wait:        180.832 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.173 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   112.426 ms/event (os.pread bigdata xtc off FFB)
+    residual:  55.233 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.657 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.573 ms/event (per-batch offset/size array build)
+  H->D:        6.278 ms/event (per-seg host->device, no host stack)
+  kernel:      0.553 ms/event
+  sum:         187.662 ms/event  (vs 187.962 ms/event wall; bd_events=226)
+
+[rank 26] GPU results (163 events, warmup=10, d2h=no):
+  rate:        5.4 Hz
+  wait:        177.428 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   12.017 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   111.360 ms/event (os.pread bigdata xtc off FFB)
+    residual:  54.051 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.583 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.566 ms/event (per-batch offset/size array build)
+  H->D:        6.470 ms/event (per-seg host->device, no host stack)
+  kernel:      0.577 ms/event
+  sum:         184.476 ms/event  (vs 184.720 ms/event wall; bd_events=230)
+
+[rank 2] GPU results (425 events, warmup=10, d2h=no):
+  rate:        10.4 Hz
+  wait:        87.306 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   6.749 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   63.274 ms/event (os.pread bigdata xtc off FFB)
+    residual:  17.284 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.601 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.564 ms/event (per-batch offset/size array build)
+  H->D:        7.701 ms/event (per-seg host->device, no host stack)
+  kernel:      0.581 ms/event
+  sum:         95.588 ms/event  (vs 95.724 ms/event wall; bd_events=509)
+
+[rank 17] GPU results (180 events, warmup=10, d2h=no):
+  rate:        5.3 Hz
+  wait:        178.749 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.220 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   107.565 ms/event (os.pread bigdata xtc off FFB)
+    residual:  57.964 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.688 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.571 ms/event (per-batch offset/size array build)
+  H->D:        8.572 ms/event (per-seg host->device, no host stack)
+  kernel:      0.658 ms/event
+  sum:         187.979 ms/event  (vs 188.245 ms/event wall; bd_events=260)
+
+[rank 12] GPU results (144 events, warmup=10, d2h=no):
+  rate:        4.8 Hz
+  wait:        202.627 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   13.699 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   121.826 ms/event (os.pread bigdata xtc off FFB)
+    residual:  67.103 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.741 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.611 ms/event (per-batch offset/size array build)
+  H->D:        6.011 ms/event (per-seg host->device, no host stack)
+  kernel:      0.678 ms/event
+  sum:         209.316 ms/event  (vs 209.440 ms/event wall; bd_events=211)
+
+[rank 47] GPU results (92 events, warmup=10, d2h=no):
+  rate:        3.9 Hz
+  wait:        241.570 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   17.494 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   133.855 ms/event (os.pread bigdata xtc off FFB)
+    residual:  90.221 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.405 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.916 ms/event (per-batch offset/size array build)
+  H->D:        14.239 ms/event (per-seg host->device, no host stack)
+  kernel:      0.815 ms/event
+  sum:         256.624 ms/event  (vs 257.561 ms/event wall; bd_events=144)
+
+[rank 53] GPU results (117 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  wait:        245.158 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   27.178 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   119.820 ms/event (os.pread bigdata xtc off FFB)
+    residual:  98.160 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.488 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.854 ms/event (per-batch offset/size array build)
+  H->D:        13.806 ms/event (per-seg host->device, no host stack)
+  kernel:      0.686 ms/event
+  sum:         259.650 ms/event  (vs 260.522 ms/event wall; bd_events=190)
+
+[rank 52] GPU results (98 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        233.530 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   16.563 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   132.219 ms/event (os.pread bigdata xtc off FFB)
+    residual:  84.748 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.474 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.793 ms/event (per-batch offset/size array build)
+  H->D:        13.030 ms/event (per-seg host->device, no host stack)
+  kernel:      0.667 ms/event
+  sum:         247.228 ms/event  (vs 248.173 ms/event wall; bd_events=151)
+
+[rank 37] GPU results (146 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        222.414 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   23.389 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   117.483 ms/event (os.pread bigdata xtc off FFB)
+    residual:  81.542 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.976 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  1.126 ms/event (per-batch offset/size array build)
+  H->D:        10.349 ms/event (per-seg host->device, no host stack)
+  kernel:      1.501 ms/event
+  sum:         234.264 ms/event  (vs 235.295 ms/event wall; bd_events=224)
+
+[rank 34] GPU results (485 events, warmup=10, d2h=no):
+  rate:        10.9 Hz
+  wait:        83.090 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   9.734 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   56.943 ms/event (os.pread bigdata xtc off FFB)
+    residual:  16.412 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.604 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.578 ms/event (per-batch offset/size array build)
+  H->D:        8.352 ms/event (per-seg host->device, no host stack)
+  kernel:      0.532 ms/event
+  sum:         91.974 ms/event  (vs 92.127 ms/event wall; bd_events=579)
+
+[rank 40] GPU results (121 events, warmup=10, d2h=no):
+  rate:        3.9 Hz
+  wait:        246.414 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   26.560 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   122.544 ms/event (os.pread bigdata xtc off FFB)
+    residual:  97.310 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.163 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.847 ms/event (per-batch offset/size array build)
+  H->D:        11.305 ms/event (per-seg host->device, no host stack)
+  kernel:      1.086 ms/event
+  sum:         258.805 ms/event  (vs 259.455 ms/event wall; bd_events=195)
+
+[rank 38] GPU results (104 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        222.011 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   15.975 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   128.423 ms/event (os.pread bigdata xtc off FFB)
+    residual:  77.612 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.239 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.922 ms/event (per-batch offset/size array build)
+  H->D:        8.693 ms/event (per-seg host->device, no host stack)
+  kernel:      0.932 ms/event
+  sum:         231.635 ms/event  (vs 232.912 ms/event wall; bd_events=157)
+
+[rank 50] GPU results (129 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        222.304 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   27.549 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   111.317 ms/event (os.pread bigdata xtc off FFB)
+    residual:  83.438 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.969 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.780 ms/event (per-batch offset/size array build)
+  H->D:        9.008 ms/event (per-seg host->device, no host stack)
+  kernel:      0.711 ms/event
+  sum:         232.023 ms/event  (vs 232.947 ms/event wall; bd_events=202)
+
+[rank 49] GPU results (96 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        232.311 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.055 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   130.576 ms/event (os.pread bigdata xtc off FFB)
+    residual:  83.680 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.299 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.890 ms/event (per-batch offset/size array build)
+  H->D:        11.339 ms/event (per-seg host->device, no host stack)
+  kernel:      0.635 ms/event
+  sum:         244.285 ms/event  (vs 246.003 ms/event wall; bd_events=148)
+
+[rank 45] GPU results (149 events, warmup=10, d2h=no):
+  rate:        4.6 Hz
+  wait:        204.201 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   24.668 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   108.405 ms/event (os.pread bigdata xtc off FFB)
+    residual:  71.128 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.923 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.689 ms/event (per-batch offset/size array build)
+  H->D:        10.952 ms/event (per-seg host->device, no host stack)
+  kernel:      0.750 ms/event
+  sum:         215.904 ms/event  (vs 216.507 ms/event wall; bd_events=224)
+
+[rank 43] GPU results (384 events, warmup=10, d2h=no):
+  rate:        9.1 Hz
+  wait:        98.825 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   11.218 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   65.378 ms/event (os.pread bigdata xtc off FFB)
+    residual:  22.230 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.867 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.568 ms/event (per-batch offset/size array build)
+  H->D:        9.811 ms/event (per-seg host->device, no host stack)
+  kernel:      0.612 ms/event
+  sum:         109.248 ms/event  (vs 109.682 ms/event wall; bd_events=477)
+
+[rank 51] GPU results (143 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        223.830 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   23.465 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   117.743 ms/event (os.pread bigdata xtc off FFB)
+    residual:  82.622 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.414 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.916 ms/event (per-batch offset/size array build)
+  H->D:        10.301 ms/event (per-seg host->device, no host stack)
+  kernel:      0.747 ms/event
+  sum:         234.877 ms/event  (vs 235.322 ms/event wall; bd_events=220)
+
+[rank 39] GPU results (208 events, warmup=10, d2h=no):
+  rate:        5.7 Hz
+  wait:        164.272 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   17.821 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   94.380 ms/event (os.pread bigdata xtc off FFB)
+    residual:  52.071 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.049 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.661 ms/event (per-batch offset/size array build)
+  H->D:        11.198 ms/event (per-seg host->device, no host stack)
+  kernel:      0.602 ms/event
+  sum:         176.072 ms/event  (vs 176.662 ms/event wall; bd_events=296)
+
+[rank 61] GPU results (98 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        231.498 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   17.321 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   130.373 ms/event (os.pread bigdata xtc off FFB)
+    residual:  83.804 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.887 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.911 ms/event (per-batch offset/size array build)
+  H->D:        12.550 ms/event (per-seg host->device, no host stack)
+  kernel:      0.663 ms/event
+  sum:         244.711 ms/event  (vs 245.471 ms/event wall; bd_events=150)
+
+[rank 62] GPU results (158 events, warmup=10, d2h=no):
+  rate:        4.6 Hz
+  wait:        202.540 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   23.871 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   108.264 ms/event (os.pread bigdata xtc off FFB)
+    residual:  70.405 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.264 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.870 ms/event (per-batch offset/size array build)
+  H->D:        14.168 ms/event (per-seg host->device, no host stack)
+  kernel:      0.634 ms/event
+  sum:         217.342 ms/event  (vs 218.298 ms/event wall; bd_events=236)
+
+[rank 46] GPU results (93 events, warmup=10, d2h=no):
+  rate:        3.9 Hz
+  wait:        238.710 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.432 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   132.545 ms/event (os.pread bigdata xtc off FFB)
+    residual:  87.734 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.513 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.809 ms/event (per-batch offset/size array build)
+  H->D:        12.769 ms/event (per-seg host->device, no host stack)
+  kernel:      0.929 ms/event
+  sum:         252.407 ms/event  (vs 254.690 ms/event wall; bd_events=145)
+
+[rank 42] GPU results (131 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        234.159 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   24.684 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   120.156 ms/event (os.pread bigdata xtc off FFB)
+    residual:  89.319 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.915 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  1.191 ms/event (per-batch offset/size array build)
+  H->D:        11.448 ms/event (per-seg host->device, no host stack)
+  kernel:      1.053 ms/event
+  sum:         246.659 ms/event  (vs 247.607 ms/event wall; bd_events=206)
+
+[rank 57] GPU results (139 events, warmup=10, d2h=no):
+  rate:        4.3 Hz
+  wait:        220.360 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   26.337 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   113.123 ms/event (os.pread bigdata xtc off FFB)
+    residual:  80.901 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.309 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.812 ms/event (per-batch offset/size array build)
+  H->D:        12.507 ms/event (per-seg host->device, no host stack)
+  kernel:      0.622 ms/event
+  sum:         233.489 ms/event  (vs 234.177 ms/event wall; bd_events=214)
+
+[rank 44] GPU results (366 events, warmup=10, d2h=no):
+  rate:        8.9 Hz
+  wait:        101.028 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   11.773 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   65.873 ms/event (os.pread bigdata xtc off FFB)
+    residual:  23.382 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.727 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.591 ms/event (per-batch offset/size array build)
+  H->D:        10.202 ms/event (per-seg host->device, no host stack)
+  kernel:      0.656 ms/event
+  sum:         111.886 ms/event  (vs 112.302 ms/event wall; bd_events=459)
+
+[rank 58] GPU results (86 events, warmup=10, d2h=no):
+  rate:        3.7 Hz
+  wait:        256.237 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   19.134 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   137.774 ms/event (os.pread bigdata xtc off FFB)
+    residual:  99.330 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.522 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.905 ms/event (per-batch offset/size array build)
+  H->D:        12.647 ms/event (per-seg host->device, no host stack)
+  kernel:      0.659 ms/event
+  sum:         269.543 ms/event  (vs 271.195 ms/event wall; bd_events=138)
+
+[rank 54] GPU results (96 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        233.196 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   16.707 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   132.067 ms/event (os.pread bigdata xtc off FFB)
+    residual:  84.421 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.452 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  1.151 ms/event (per-batch offset/size array build)
+  H->D:        13.486 ms/event (per-seg host->device, no host stack)
+  kernel:      0.661 ms/event
+  sum:         247.343 ms/event  (vs 248.465 ms/event wall; bd_events=148)
+
+[rank 60] GPU results (248 events, warmup=10, d2h=no):
+  rate:        6.4 Hz
+  wait:        144.597 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   17.055 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   85.217 ms/event (os.pread bigdata xtc off FFB)
+    residual:  42.325 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.841 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.745 ms/event (per-batch offset/size array build)
+  H->D:        11.245 ms/event (per-seg host->device, no host stack)
+  kernel:      0.822 ms/event
+  sum:         156.664 ms/event  (vs 156.912 ms/event wall; bd_events=339)
+
+[rank 36] GPU results (96 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        233.610 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   17.170 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   131.194 ms/event (os.pread bigdata xtc off FFB)
+    residual:  85.246 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.636 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.921 ms/event (per-batch offset/size array build)
+  H->D:        14.168 ms/event (per-seg host->device, no host stack)
+  kernel:      0.641 ms/event
+  sum:         248.419 ms/event  (vs 249.391 ms/event wall; bd_events=148)
+
+[rank 59] GPU results (90 events, warmup=10, d2h=no):
+  rate:        3.9 Hz
+  wait:        242.598 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   21.022 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   131.088 ms/event (os.pread bigdata xtc off FFB)
+    residual:  90.488 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.426 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.849 ms/event (per-batch offset/size array build)
+  H->D:        14.225 ms/event (per-seg host->device, no host stack)
+  kernel:      0.662 ms/event
+  sum:         257.486 ms/event  (vs 259.422 ms/event wall; bd_events=142)
+
+[rank 64] GPU results (98 events, warmup=10, d2h=no):
+  rate:        4.1 Hz
+  wait:        229.085 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.963 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   128.736 ms/event (os.pread bigdata xtc off FFB)
+    residual:  81.385 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.266 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.926 ms/event (per-batch offset/size array build)
+  H->D:        13.204 ms/event (per-seg host->device, no host stack)
+  kernel:      0.694 ms/event
+  sum:         242.983 ms/event  (vs 244.066 ms/event wall; bd_events=150)
+
+[rank 55] GPU results (141 events, warmup=10, d2h=no):
+  rate:        4.2 Hz
+  wait:        221.490 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   25.607 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   114.500 ms/event (os.pread bigdata xtc off FFB)
+    residual:  81.383 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.295 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.787 ms/event (per-batch offset/size array build)
+  H->D:        15.166 ms/event (per-seg host->device, no host stack)
+  kernel:      0.623 ms/event
+  sum:         237.278 ms/event  (vs 238.726 ms/event wall; bd_events=218)
+
+[rank 56] GPU results (94 events, warmup=10, d2h=no):
+  rate:        3.9 Hz
+  wait:        238.201 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.027 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   133.371 ms/event (os.pread bigdata xtc off FFB)
+    residual:  86.802 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.400 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.884 ms/event (per-batch offset/size array build)
+  H->D:        12.575 ms/event (per-seg host->device, no host stack)
+  kernel:      0.667 ms/event
+  sum:         251.443 ms/event  (vs 253.244 ms/event wall; bd_events=146)
+
+[rank 65] GPU results (88 events, warmup=10, d2h=no):
+  rate:        3.8 Hz
+  wait:        245.049 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.932 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   134.007 ms/event (os.pread bigdata xtc off FFB)
+    residual:  92.110 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.523 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.926 ms/event (per-batch offset/size array build)
+  H->D:        14.039 ms/event (per-seg host->device, no host stack)
+  kernel:      0.712 ms/event
+  sum:         259.800 ms/event  (vs 260.967 ms/event wall; bd_events=139)
+
+[rank 48] GPU results (95 events, warmup=10, d2h=no):
+  rate:        4.0 Hz
+  wait:        235.367 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   18.486 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   130.515 ms/event (os.pread bigdata xtc off FFB)
+    residual:  86.366 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.597 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.982 ms/event (per-batch offset/size array build)
+  H->D:        13.890 ms/event (per-seg host->device, no host stack)
+  kernel:      0.654 ms/event
+  sum:         249.911 ms/event  (vs 250.556 ms/event wall; bd_events=147)
+
+[rank 63] GPU results (168 events, warmup=10, d2h=no):
+  rate:        4.9 Hz
+  wait:        191.824 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   23.471 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   104.963 ms/event (os.pread bigdata xtc off FFB)
+    residual:  63.389 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.931 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.672 ms/event (per-batch offset/size array build)
+  H->D:        11.091 ms/event (per-seg host->device, no host stack)
+  kernel:      0.581 ms/event
+  sum:         203.495 ms/event  (vs 204.027 ms/event wall; bd_events=245)
+
+[rank 41] GPU results (169 events, warmup=10, d2h=no):
+  rate:        4.7 Hz
+  wait:        198.360 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   19.173 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   108.026 ms/event (os.pread bigdata xtc off FFB)
+    residual:  71.161 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     1.940 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.829 ms/event (per-batch offset/size array build)
+  H->D:        10.705 ms/event (per-seg host->device, no host stack)
+  kernel:      1.343 ms/event
+  sum:         210.408 ms/event  (vs 210.803 ms/event wall; bd_events=256)
+
+[rank 35] GPU results (186 events, warmup=10, d2h=no):
+  rate:        5.1 Hz
+  wait:        185.017 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:   20.010 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:   101.674 ms/event (os.pread bigdata xtc off FFB)
+    residual:  63.333 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:     2.167 ms/event (per-event dgram.Dgram() construction)
+      smdparse:  0.879 ms/event (per-batch offset/size array build)
+  H->D:        11.901 ms/event (per-seg host->device, no host stack)
+  kernel:      0.614 ms/event
+  sum:         197.532 ms/event  (vs 197.909 ms/event wall; bd_events=274)
+
+[aggregate] BD ranks: 63   events measured: 10571
+  aggregate rate:   328.4 Hz
+  per-rank rate:    5.21 Hz (mean)
+  wait:             192.686 ms/event (gen advance = EB-wait + bd-read)
+    eb_wait:        16.351 ms/event (BD blocked on EB batch: Probe+Irecv)
+    bd_read:        111.128 ms/event (os.pread bigdata xtc off FFB)
+    residual:       65.207 ms/event (wait - eb_wait - bd_read; CPU construction)
+      dgram:        1.966 ms/event (per-event dgram.Dgram() construction)
+      smdparse:     0.732 ms/event (per-batch offset/size array build)
+    (eb_wait+bd_read: 127.479 ms/event vs wait 192.686)
+  H->D:             9.341 ms/event
+  kernel:           0.690 ms/event
+  sum:              202.717 ms/event  (vs 191.810 ms/event per-rank wall)
+[1783967091.032709] [sdfampere010:2172953:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x564fc5ffc440 was not matched
+[1783967091.032733] [sdfampere010:2172953:0]       tag_match.c:62   UCX  WARN  unexpected tag-receive descriptor 0x7f0ebadbf9d2 was not matched

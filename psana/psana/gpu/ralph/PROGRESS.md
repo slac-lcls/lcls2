@@ -1474,3 +1474,40 @@ serialization, not the cross-node hop; next lever is a second EB per node or a f
 batch. If the job did not land (still PENDING / launch error), resubmit as-is.
 
 BLOCKED: job 31541312 in flight (PENDING, multi-node queue) — collect on next iteration
+
+## 2026-07-13 — Iteration 18 addendum (2-node bracket COLLECTED — node-local EB placement WINS: +9% aggregate, residual −14%, hypothesis confirmed)
+
+**Recovery of the queued bracket.** Job 31541312 never started — it sat PENDING on
+`AssocGrpNodeLimit` (the `lcls:data@ampere` association's shared GrpNodes=4 /
+GrpTRES cap, which counts all account members' jobs, and which the scheduler also
+reports transiently while re-evaluating). It was cancelled and the identical
+`bench_mpi_sweep/eb_node_local.sbatch` resubmitted as job **31543609**, which ran on
+sdfampere[010,029]: all three configs exit=0, ~117 s wall each, `-n 150 --warmup 10
+--wait-split`, same allocation/window. Driver log `bench_mpi_sweep/slurm-31543609.out`.
+
+**Results (per-config `--wait-split` aggregates):**
+
+| config    | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|-----------|----|-------------|-------------|------------|------------|-------------|
+| default_a | 64 | 307.6       | 4.81        | 9.9        | 125.2      | 75.9        |
+| colocate  | 63 | **328.4**   | **5.21**    | 16.4       | **111.1**  | **65.2**    |
+| default_c | 64 | 294.4       | 4.60        | 16.9       | 125.6      | 76.5        |
+
+**Verdict — the iter-18 hypothesis is CONFIRMED at 2 nodes.** Colocate beats the
+default bracket mean (301.0 Hz) by **+9.1% aggregate** and **+10.7% per-rank**,
+clearing the ~1.5% BD-count penalty (63 vs 64) with room to spare. The win lands
+exactly where the iters-16/17 attribution said it should: the coordination
+residual drops 76.2 → 65.2 ms/event (−14%) and bd_read drops 125.4 → 111.1
+(−11%, node-1 BDs no longer contending with cross-node serve traffic). eb_wait is
+bracket-noisy (default_a 9.9 vs default_c 16.9 straddle colocate's 16.4) and
+carries no signal this run. Against iter-16's cross-window single-node 181.7 Hz,
+colocate's 328.4 implies ~1.81x node scaling (~90% per-node efficiency) vs the
+default's 1.66x — a partial, not full, recovery of the plateau, consistent with
+the remaining loss being intra-EB serialization (one EB rank per node serving 32
+BDs).
+
+**Keep/next:** node-local EB placement is a real multi-node lever. Next iteration:
+make `PS_EB_NODE_LOCAL=1` the multi-node benchmark default, add an in-window
+single-node control to pin the true scaling ratio, and re-run at 4 nodes to
+confirm the win compounds; if per-node efficiency still trails ~90%, the next
+lever is EB-side concurrency (second EB per node or fatter serve batches).
