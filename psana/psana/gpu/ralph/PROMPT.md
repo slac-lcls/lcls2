@@ -208,6 +208,22 @@ For any overlapped/async variant:
    Don't spin. The journal entry's final line must start with `BLOCKED: `
    followed by a one-line reason — the loop driver keys off this to wait
    before starting the next iteration instead of proceeding immediately.
+8. **Iterations are synchronous and stateless — never leave a job in flight
+   across the boundary.** Each iteration is a fresh process with no memory of
+   the last and no way to receive a notification an earlier iteration set up:
+   a background monitor, a scheduled wakeup, or an async sbatch you plan to be
+   "notified" about all die the instant your turn ends. So for any job you
+   submit, **block on it inside the same iteration** — `sbatch --wait ...`, or
+   a single `while squeue -j <ID> -h -o %A | grep -q .; do sleep 15; done`
+   call (the agent burns zero tokens while one Bash call blocks) — then collect
+   the logs, journal the result, and commit before ending the turn. Long
+   iterations are fine; the driver tolerates them. Cap the wait (~25 min); if
+   it expires or the job is still queued, record the job-id and its sbatch/log
+   paths in `PROGRESS.md` and make the final line `BLOCKED: job <ID> in flight
+   — collect on next iteration`, so the next fresh agent recovers it
+   deterministically (rule 7). Never end a turn with a job you launched still
+   running and unrecorded — that is a lost iteration and trips the malfunction
+   guard.
 
 ---
 
