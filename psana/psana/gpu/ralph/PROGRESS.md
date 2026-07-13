@@ -1562,3 +1562,39 @@ Note for the human: raising the `lcls:data` GrpNodes cap (or briefly releasing
 ralph-gpu) is the only way to measure the clean 4-node point.
 
 BLOCKED: job 31548860 in flight (PENDING, AssocGrpNodeLimit shared-cap congestion) — collect on next iteration
+
+## 2026-07-13 — Iteration 19 addendum (true blocker found: LCLS-wide parent-assoc node cap; both brackets resubmitted preemptable — the 4-node point is back on the table)
+
+**Root cause of the stall — corrects this iteration's "transient congestion" read.**
+Job 31548860 sat on `AssocGrpNodeLimit` for ~4 h even after ralph-gpu was released
+and `lcls:data@ampere` usage dropped to 1 node. `scontrol show assoc_mgr` shows why:
+assoc limits are hierarchical, and the binding cap is the PARENT association
+`lcls:_regular_@ampere` — **GrpTRES node=4 shared across ALL regular-branch LCLS
+accounts on ampere**, with 3 nodes in use LCLS-wide. A 3-node job needs LCLS-wide
+usage ≤1 node; the clean 4-node point needs it at exactly 0. Neither is a realistic
+daytime window, and the 4× measurement was structurally unreachable through the
+regular branch regardless of the ralph-gpu holder.
+
+**Escape hatch: the preemptable branch has no node cap.** The `lcls:default@ampere`
+association hangs under `lcls:_preemptable_@ampere` (a sibling hierarchy, all
+GrpTRES=N). Submitting with `--account=lcls:default --qos=preemptable` bypasses the
+node=4 wall entirely; the cost is preemption risk, acceptable for ~10-minute
+brackets (resubmit on preempt). Both brackets went in back-to-back:
+- **job 31573442** — `eb_node_local_4n.sbatch` (sn_a → mn4_default 130 BD →
+  mn4_colocate 127 BD/4 EBs → sn_c), the clean 4× compounding point this iteration
+  had written off.
+- **job 31573443** — `eb_node_local_3n.sbatch` (sn32_a → mn3_default 97 BD →
+  mn3_colocate 96 BD/3 EBs → sn32_c), unchanged science, new association.
+31548860 (regular-branch 3n) cancelled — superseded by 31573443.
+
+**Next iteration: collect BOTH.** Logs: `enl4_sn_a/enl4_default/enl4_colocate/
+enl4_sn_c.log` (driver `slurm-31573442.out`) and `enl3_sn_a/enl3_default/
+enl3_colocate/enl3_sn_c.log` (driver `slurm-31573443.out`). Together with iter-18's
+2-node bracket this yields the full 1/2/3/4-node scaling curve for default vs
+node-local EB placement — compute per-node efficiency at each point against the
+in-window sn controls; the compounding verdict and the PS_EB_NODE_LOCAL default/
+TASK.md decision follow the iter-19 criteria above. For future multi-node jobs:
+prefer `--account=lcls:default --qos=preemptable` whenever the job needs ≥3 nodes
+or the regular branch is congested; keep short walls so preemption stays cheap.
+
+BLOCKED: job 31573442 in flight (4n bracket; job 31573443 3n bracket right behind it, both preemptable-QOS) — collect both on next iteration
