@@ -1511,3 +1511,54 @@ make `PS_EB_NODE_LOCAL=1` the multi-node benchmark default, add an in-window
 single-node control to pin the true scaling ratio, and re-run at 4 nodes to
 confirm the win compounds; if per-node efficiency still trails ~90%, the next
 lever is EB-side concurrency (second EB per node or fatter serve batches).
+
+## 2026-07-13 — Iteration 19 (node-local EB at scale: 4-node infeasible in-loop, 3-node compounding bracket queued)
+
+**Task:** iter-18's recommended next step — confirm node-local EB placement
+(`PS_EB_NODE_LOCAL`) compounds beyond 2 nodes, with an *in-window* single-node
+control so per-node efficiency is measured against the same cache regime instead
+of iter-16's cross-window 181.7 Hz anchor. One variable: default modulo (single
+EB on N0) vs colocate (one EB/node) at fixed node count; bracketed sn/mn/sn.
+
+**Structural finding — 4 nodes cannot run through this loop.** Built and submitted
+the 4-node bracket (`bench_mpi_sweep/eb_node_local_4n.sbatch`, job **31548195**,
+sn32 → mn4_default(130 BD) → mn4_colocate(127 BD, 4 EBs) → sn32). It sat on
+`AssocGrpNodeLimit` for the full in-iteration wait and cannot clear: the driver's
+`ralph-gpu` allocation permanently holds 1 node, the `lcls:data` association cap
+is `GrpNodes=4`, so a 4-node job needs 1+4 = 5 > 4 and is rejected for as long as
+ralph-gpu is up. Rule 6/§8 forbid cancelling ralph-gpu, so the clean 4× point is
+not reachable from inside the loop. `scontrol show job 31548195`:
+`Reason=AssocGrpNodeLimit ReqTRES=…,node=4`. Cancelled it (mine).
+
+**Pivot to 3 nodes — the largest run the loop can schedule (1 ralph + 3 = 4, at
+the cap) and still a valid compounding test at 3×.** Built
+`bench_mpi_sweep/eb_node_local_3n.sbatch` (kept the 4n template for when the loop
+can spare the node budget): sn32 → mn3_default(97 BD, 1 EB) → mn3_colocate(96 BD,
+3 EBs) → sn32, all `-n 150 --warmup 10 --wait-split`, r47/FFB, same allocation.
+Submitted job **31548860**.
+
+**Blocked on shared-cap congestion, not the ralph arithmetic.** 3 nodes is exactly
+at the cap, yet it too sits on `AssocGrpNodeLimit` — so other `lcls:data` members
+are currently consuming the shared GrpNodes budget, not just ralph-gpu. This is
+transient congestion (unlike the 4-node structural wall): the job will schedule
+when the account frees, so it is left in flight for driver-side recovery (rule 8)
+rather than resubmitted. Logs to collect once it runs: `enl3_sn_a.log`,
+`enl3_default.log`, `enl3_colocate.log`, `enl3_sn_c.log`; driver
+`bench_mpi_sweep/slurm-31548860.out`.
+
+**Keep/revert:** KEEP both sbatch templates (no numeric-path change; correctness
+gate not triggered). No throughput number this iteration — the measurement is
+queued.
+
+**Recommended next step:** collect job 31548860 (rule 7 recovery). Parse the four
+aggregate blocks; compute mn3_colocate vs mn3_default and each against the sn
+control mean → per-node efficiency at 3×. If colocate holds ~90% per-node eff
+while default degrades below its 2-node 83%, and colocate residual/bd_read stay
+depressed → node-local EB compounds; make `PS_EB_NODE_LOCAL=1` the multi-node
+default and record in TASK.md. If colocate's per-node efficiency has fallen back
+toward default → the win does not compound and the remaining lever is intra-EB
+serialization (second EB per node / fatter serve batch), not the cross-node hop.
+Note for the human: raising the `lcls:data` GrpNodes cap (or briefly releasing
+ralph-gpu) is the only way to measure the clean 4-node point.
+
+BLOCKED: job 31548860 in flight (PENDING, AssocGrpNodeLimit shared-cap congestion) — collect on next iteration
