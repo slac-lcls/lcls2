@@ -10,7 +10,6 @@ from psana.gpu.gpu_calib import (
     optimal_kernel_batch_size,
     prep_calib_constants,
 )
-from psana.gpu.gpu_kernel_registry import default_registry
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_stream import EventPool
 from psana.psexp import TransitionId
@@ -99,7 +98,6 @@ class GpuEvents:
         dsparms,
         run,
         smdr_man=None,
-        registry=None,
         setup_geometry=True,
         prebuilt_geometry=None,
     ):
@@ -111,7 +109,6 @@ class GpuEvents:
         self.dsparms = dsparms
         self.run = run
         self.smdr_man         = smdr_man
-        self.registry         = registry
         self._setup_geometry  = setup_geometry
         self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
 
@@ -144,7 +141,6 @@ class GpuEvents:
         return list(gpu_det)
 
     def _setup_detectors(self):
-        reg = self.registry if self.registry is not None else default_registry()
         all_gpu_stream_ids = set()
         opt_batch_sizes = []
         requested_stream_ids = getattr(self.dsparms, "gpu_stream_ids", None)
@@ -162,6 +158,12 @@ class GpuEvents:
         log_gpu_mem('_setup_detectors entry', rank=_rank)
         for det_name in self.gpu_det_names:
             det = self.run.Detector(det_name)
+            det_type = getattr(det, '_dettype', None)
+            if det_type != 'jungfrau':
+                raise NotImplementedError(
+                    f"gpu_det={det_name!r} has detector type {det_type!r}; "
+                    "the integrated GPU path currently supports only Jungfrau"
+                )
             peds_gpu, gmask_gpu = prep_calib_constants(det)
             log_gpu_mem(f'after prep_calib_constants ({det_name})', rank=_rank)
             det_shape = det.calibconst["pedestals"][0].shape[1:]
@@ -225,17 +227,13 @@ class GpuEvents:
             }
             all_gpu_stream_ids.update(gpu_stream_ids)
 
-            kernel = reg.get(det_name, "calib")
             gpu_detector = GPUDetector(
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
                 stream_seg_map=stream_seg_map or None,
-                calib_kernel=kernel,
                 n_slots=getattr(self.dsparms, 'n_gpu_streams', 4),  # one calib_gpu per slot
             )
-            if kernel is not None:
-                kernel.setup(det, gpu_detector)
             if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
                 ix_all, iy_all = self._prebuilt_geometry[det_name]
                 gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)

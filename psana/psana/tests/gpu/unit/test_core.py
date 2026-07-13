@@ -6,14 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
+import psana.gpu.gpu_events as gpu_events_module
 from psana.gpu.detector_router import DetectorRouter
 from psana.gpu.gpu_calib import _segment_ids_in_l1_order
-from psana.gpu.gpu_kernel_registry import (
-    JungfrauCalibKernel,
-    SimpleAreaCalibKernel,
-    default_registry,
-)
+from psana.gpu.gpu_events import GpuEvents
 from psana.gpu.gpu_stream import EventPool
+from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 
 
@@ -24,15 +22,9 @@ def test_public_gpu_api_is_minimal():
     internal_names = {
         "DetectorRouter",
         "EventPool",
-        "GPUFileKernel",
-        "GPUKernel",
         "GPUKernelRegistry",
-        "JungfrauCalibKernel",
-        "SimpleAreaCalibKernel",
         "create_gpu_communicators",
-        "default_registry",
         "gpu_error_handler",
-        "gpu_kernel_from_file",
         "log_gpu_mem",
         "optimal_kernel_batch_size",
         "share_calib_between_gpu_peers",
@@ -80,6 +72,49 @@ class _FakeDetector:
         return iter(())
 
 
+class _FakeFlushPool:
+    def __init__(self, log, pending=()):
+        self.log = log
+        self.pending = list(pending)
+        self.flush_calls = 0
+        self.yield_count = 0
+
+    def flush(self):
+        self.flush_calls += 1
+        self.log.append("flush")
+        pending, self.pending = self.pending, []
+        for item in pending:
+            self.yield_count += 1
+            yield item
+
+
+@pytest.fixture
+def fake_transition_decode(monkeypatch):
+    monkeypatch.setattr(
+        gpu_events_module,
+        "_iter_step_events",
+        lambda transition_batch, configs: iter(transition_batch),
+    )
+
+
+def _transition_batch(*services):
+    transitions = [(service, [service]) for service in services]
+    return {0: (transitions, None)}
+
+
+def _new_gpu_events(log, pending=()):
+    events = GpuEvents.__new__(GpuEvents)
+    events.configs = []
+    events.event_pool = _FakeFlushPool(log, pending=pending)
+    events.gpu_detectors = {}
+    events.router = None
+    events.cpu_dets = {}
+    events.run = SimpleNamespace(
+        _handle_transition=lambda dgrams: log.append(("transition", dgrams[0]))
+    )
+    return events
+
+
 def test_event_pool_retires_slot_before_reuse(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
@@ -100,6 +135,95 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     assert pool._streams[0].synchronize_calls == 1
 
     pool.submit(None, None, ["event-1"], detectors)
+
+
+def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
+    events.gpu_detectors = {
+        "jungfrau": (
+            object(),
+            SimpleNamespace(
+                beginstep=lambda peds, gmask: log.append(
+                    ("beginstep", peds, gmask)
+                )
+            ),
+        )
+    }
+
+    def fake_constants(det):
+        log.append("constants")
+        return "peds", "gmask"
+
+    monkeypatch.setattr(
+        gpu_events_module, "_compute_calib_constants_cpu", fake_constants
+    )
+
+    step_dict = _transition_batch(
+        TransitionId.Enable,
+        TransitionId.BeginStep,
+        TransitionId.Disable,
+    )
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [
+        "flush",
+        ("transition", TransitionId.Enable),
+        "constants",
+        ("beginstep", "peds", "gmask"),
+        ("transition", TransitionId.BeginStep),
+        ("transition", TransitionId.Disable),
+    ]
+
+
+def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
+    step_dict = _transition_batch(
+        TransitionId.Enable,
+        TransitionId.Disable,
+        TransitionId.EndStep,
+    )
+
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [
+        ("transition", TransitionId.Enable),
+        ("transition", TransitionId.Disable),
+        ("transition", TransitionId.EndStep),
+    ]
+    assert events.event_pool.flush_calls == 0
+
+
+def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
+    log = []
+    timestamp = 123
+    gpu_result = object()
+    cpu_evt = SimpleNamespace(timestamp=timestamp)
+    events = _new_gpu_events(
+        log,
+        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [cpu_evt])],
+    )
+    events.gpu_reader = SimpleNamespace(close=lambda: log.append("close"))
+
+    request_count = 0
+
+    def next_batch():
+        nonlocal request_count
+        request_count += 1
+        if request_count > 1:
+            raise AssertionError("GpuEvents requested a batch after EndRun")
+        return {}, {}, _transition_batch(TransitionId.EndRun)
+
+    events._next_batch = next_batch
+
+    results = list(events._events())
+
+    assert request_count == 1
+    assert len(results) == 1
+    assert results[0].timestamp == timestamp
+    assert results[0].get("jungfrau.calib").on_gpu is gpu_result
+    assert events.event_pool.yield_count == 1
+    assert ("transition", TransitionId.EndRun) in log
+    assert log[-1] == "close"
 
 
 def _pack_transport(smd_bytes, gpu_bytes):
@@ -161,12 +285,7 @@ def test_gpu_io_error_aborts_mpi_job():
     assert abort_calls == [1]
 
 
-def test_default_kernel_and_result_routing():
-    registry = default_registry()
-    assert isinstance(registry.get("jungfrau", "calib"), JungfrauCalibKernel)
-    assert isinstance(registry.get("epix100", "calib"), SimpleAreaCalibKernel)
-    assert registry.get("unknown", "calib") is None
-
+def test_default_result_routing():
     router = DetectorRouter()
     router.register_gpu("jungfrau")
     assert router.resolve_key("calib") == "jungfrau.calib"

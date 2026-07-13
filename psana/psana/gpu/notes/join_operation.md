@@ -1,6 +1,6 @@
 # Join Operation — Combining CPU and GPU Results at Event Checkpoints
 
-**Branch:** `features/psana2-gpu`  
+**Branch:** `features/psana2-gpu`
 **Status:** Design proposal — **NOT YET IMPLEMENTED**
 
 > **Current constraint:** GPU results (`ctx.get('calib').on_gpu`) are views into
@@ -136,31 +136,31 @@ Any collective on `bd_comm` requires EB to participate, but EB is in
 `eb_node.start()` during the event loop — calling a collective there deadlocks.
 
 The safe communicator is a **BD-workers-only** communicator that excludes EB.
-`create_gpu_communicators()` in `gpu_mpi.py` provides the building blocks:
+That communicator does not exist in the integrated GPU path today; it must be
+created as part of a future `join()` implementation:
 
 ```python
-# gpu_mpi.py — called in share_calib_between_gpu_peers():
-comms = create_gpu_communicators(comm, bd_ranks)
-# comms.bd_comm   — BD ranks + EB (rank 0 = EB, ranks 1..N = BD workers)
-#                   NOT safe for user collectives (EB is in start(), deadlocks)
-# comms.node_comm — intra-node COMM_TYPE_SHARED (for GPU P2P / NCCL)
+# Future setup in _gpu_events_mpi():
+bd_workers = bd_comm.Get_group().Exclude([0])
+bd_workers_comm = bd_comm.Create_group(bd_workers)
+# bd_workers_comm excludes EB and is safe for worker collectives.
 ```
 
-Note: `create_gpu_communicators()` is currently called only inside
-`share_calib_between_gpu_peers()` for CUDA IPC.  It is **not** called in
-`_gpu_events_mpi()`.  For `join()`, a new BD-workers-only sub-communicator
-(excluding EB) would need to be created and exposed — this is step 1 of the
-implementation plan below.
+The existing CUDA IPC calibration sharing uses point-to-point communication
+between GPU peers and does not require a sub-communicator. For `join()`, the
+new BD-workers-only communicator would need to be exposed to the event context
+or run object; this is step 1 of the implementation plan below.
 
 A `join()` call inside the BD rank's event loop would use a BD-workers-only
-communicator for MPI AllReduce or `comms.node_comm` + NCCL for GPU operations.
+communicator for MPI AllReduce. A future NCCL implementation may additionally
+need a node-local communicator.
 
 ### Two reduction backends
 
 | Backend | Path | When to use |
 |---|---|---|
 | **MPI AllReduce** | GPU → CPU DRAM → MPI → CPU DRAM → GPU | Small arrays, heterogeneous CPU/GPU results, Lustre filesystem (no GPUDirect MPI) |
-| **NCCL AllReduce** | GPU VRAM → (NVLink/PCIe) → GPU VRAM | Large GPU arrays, homogeneous result types, `comms.bd_comm` available as NCCL communicator |
+| **NCCL AllReduce** | GPU VRAM → (NVLink/PCIe) → GPU VRAM | Large GPU arrays, homogeneous result types, NCCL communicator available |
 
 S3DF does not yet have NCCL communicators wired into psana2; the MPI path is
 the immediate option.
@@ -416,10 +416,9 @@ batches and will block the other rank at the collective.
 `bd_comm` includes EB (bd_rank=0) which is in `eb_node.start()` during
 the event loop.  Any collective on `bd_comm` involving EB deadlocks.
 
-The `join()` collective must use a **BD-workers-only communicator** that
-was built with `MPI_Comm_create_group` (non-collective for EB).
-`create_gpu_communicators()` already creates this; the challenge is
-making it accessible inside the user's event loop.
+The `join()` collective must use a **BD-workers-only communicator** built with
+`MPI_Comm_create_group` (non-collective for EB). The communicator must be
+created and made accessible inside the user's event loop.
 
 **Options:**
 1. Expose `run.bd_workers_comm` as a public attribute set during `RunParallel.__init__()`.
@@ -442,8 +441,7 @@ Total: ~26 ms per checkpoint call.  For checkpoints every 1000 events at
 ~100 evt/s, this is called every ~10 seconds — negligible.
 
 For more frequent checkpoints or larger arrays, NCCL AllReduce (GPU-direct)
-would be preferable.  `create_gpu_communicators()` already reserves
-`bd_comm` "for XPCS AllReduce via NCCL" but NCCL is not yet wired in.
+would be preferable, but an NCCL communicator is not yet wired in.
 
 ### 4. Shape and dtype constraints on cpu_result
 
@@ -492,7 +490,7 @@ assume all BD ranks in the `bd_workers_comm` are GPU BD ranks.
 | 1. Create and expose `bd_workers_comm` | Build a BD-workers-only sub-communicator (excludes EB) in `_gpu_events_mpi()` using `bd_comm.Create_group()`; expose as `run.bd_workers_comm` or `ctx._bd_workers_comm` | Low |
 | 2. `ctx.join(partial, op='sum')` method | Add to `GpuEventContext`; implements MPI AllReduce via D→H→MPI→H→D | Low-Medium |
 | 3. `run.join(partial, op='sum')` alternative | Add to `RunParallel` for consistency with CPU path | Low |
-| 4. NCCL AllReduce backend | Wire `nccl_comm` into `create_gpu_communicators()`; `ctx.join(..., backend='nccl')` | High |
+| 4. NCCL AllReduce backend | Create an NCCL communicator; add `ctx.join(..., backend='nccl')` | High |
 | 5. Streaming join (non-blocking) | Submit AllReduce non-blocking; collect at next checkpoint | Medium |
 
 Step 2 is the minimum viable implementation.  Steps 4–5 are optimisations.
@@ -516,9 +514,8 @@ Step 2 is the minimum viable implementation.  Steps 4–5 are optimisations.
    *Synchronous is simpler to implement and reason about; async is better
    for overlapping computation with communication.*
 
-4. **NCCL for GPU AllReduce?**  The `create_gpu_communicators()` function
-   already reserves `bd_comm` "for XPCS AllReduce via NCCL" but NCCL is
-   not yet wired in.  For the MFX Jungfrau 64 MB array, the MPI path costs
+4. **NCCL for GPU AllReduce?**  An NCCL communicator is not yet wired in.
+   For the MFX Jungfrau 64 MB array, the MPI path costs
    ~26 ms (D→H→MPI→H→D).  Is this acceptable, or should NCCL be prioritised?
 
 5. **How is `bd_comm` exposed to the user?**  Options:

@@ -3,8 +3,8 @@
 The automated suite intentionally has two layers:
 
 - `unit/test_core.py` contains fast, CPU-only invariants for metadata order,
-  reusable-buffer lifetime, MPI batch unpacking, GPU-rank selection, fatal I/O
-  handling, and default result routing.
+  reusable-buffer and transition lifetime, MPI batch unpacking, GPU-rank
+  selection, fatal I/O handling, and default result routing.
 - `integration/test_pixel_exact.py` is the single GPU/data acceptance test. It
   compares the integrated `DataSource(gpu_det=...)` result with normal psana
   calibration for the same timestamps and covers single-event and batched slot

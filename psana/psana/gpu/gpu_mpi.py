@@ -1,16 +1,16 @@
 """
 gpu_mpi.py — MPI + GPU rank management for psana2 GPU BD ranks.
 
-Handles three MPI-specific requirements that must be satisfied before any
-GPU kernel work can begin on a BD rank:
+Handles MPI-specific requirements that must be satisfied before GPU work can
+begin on a BD rank:
 
   1. GPU pinning  — CUDA_VISIBLE_DEVICES must be set from SLURM_LOCALID
                     BEFORE any CuPy import.  Wrong ordering causes rank N to
                     silently use the wrong device, producing incorrect results
                     or CUDA errors that are very hard to trace.
 
-  2. Communicators — bd_comm (BD-only, for XPCS AllReduce via NCCL) and
-                    node_comm (intra-node P2P / shared-memory operations).
+  2. Shared calibration — BD ranks assigned to the same physical GPU can
+                          share read-only calibration buffers through CUDA IPC.
 
   3. Error handling — unhandled GPU exceptions on a BD rank cause EB ranks to
                     hang waiting for a receive that will never arrive.
@@ -45,7 +45,6 @@ Pinning, and Communicator Setup).
 import logging
 import os
 import sys
-import types
 
 logger = logging.getLogger(__name__)
 
@@ -341,104 +340,8 @@ def init_gpu_rank(local_rank=None, n_gpus=None):
     return gpu_id
 
 
-def verify_gpu_pinning(comm):
-    """Print each rank's GPU device name to stdout, gathered at rank 0.
-
-    Call once after ``init_gpu_rank()`` and ``import cupy`` to confirm that
-    each MPI rank is on the expected device.  Remove (or gate behind a debug
-    flag) before production use.
-
-    Parameters
-    ----------
-    comm : mpi4py.MPI.Comm
-        MPI communicator (e.g. ``MPI.COMM_WORLD`` or ``psana_comm``).
-    """
-    try:
-        import cupy as cp
-        rank      = comm.Get_rank()
-        node      = os.environ.get('SLURMD_NODENAME', 'unknown')
-        local_rank = int(os.environ.get('SLURM_LOCALID', 0))
-        gpu_id    = os.environ.get('CUDA_VISIBLE_DEVICES', '?')
-        dev_name  = cp.cuda.Device(0).name   # always 0 after pinning
-
-        msg = (
-            f'rank {rank}: node={node} local_rank={local_rank} '
-            f'CUDA_VISIBLE_DEVICES={gpu_id} device={dev_name}'
-        )
-        all_msgs = comm.gather(msg, root=0)
-        if rank == 0 and all_msgs:
-            print('\n=== GPU pinning verification ===', flush=True)
-            for m in sorted(all_msgs):
-                print(m, flush=True)
-        comm.Barrier()
-    except Exception as exc:
-        logger.debug('verify_gpu_pinning failed: %s', exc)
-
-
 # ---------------------------------------------------------------------------
-# 2. Sub-communicators
-# ---------------------------------------------------------------------------
-
-def create_gpu_communicators(comm, bd_ranks):
-    """Create sub-communicators needed by GPU BD ranks.
-
-    Two communicators are built:
-
-    **bd_comm** — spans all BD ranks.  Used for XPCS cross-GPU AllReduce via
-    NCCL.  ``MPI.COMM_NULL`` on non-BD ranks.
-
-    **node_comm** (``MPI.COMM_TYPE_SHARED``) — spans all ranks on the same
-    physical node.  Used for intra-node GPU P2P transfers and shared-memory
-    operations.
-
-    All ranks in *comm* must call this function collectively.
-
-    Parameters
-    ----------
-    comm : mpi4py.MPI.Comm
-        Global psana communicator (``MPI.COMM_WORLD`` or ``psana_comm``).
-    bd_ranks : list[int]
-        World ranks of all BD processes.
-
-    Returns
-    -------
-    types.SimpleNamespace with fields:
-        bd_comm   — BD-only communicator (``MPI.COMM_NULL`` on non-BD ranks)
-        bd_rank   — rank within bd_comm  (-1 on non-BD ranks)
-        node_comm — node-local communicator
-        node_rank — rank within node_comm
-        is_bd     — True if this rank is a BD rank
-    """
-    from mpi4py import MPI
-
-    world_rank = comm.Get_rank()
-    is_bd      = world_rank in bd_ranks
-
-    # BD-only communicator.
-    bd_group = comm.Get_group().Incl(list(bd_ranks))
-    bd_comm  = comm.Create_group(bd_group)
-    bd_rank  = bd_comm.Get_rank() if is_bd else -1
-
-    # Node-local communicator (processes sharing host memory / NVLink domain).
-    node_comm = comm.Split_type(MPI.COMM_TYPE_SHARED)
-    node_rank = node_comm.Get_rank()
-
-    logger.debug(
-        'GPU communicators: world_rank=%d is_bd=%s bd_rank=%d node_rank=%d',
-        world_rank, is_bd, bd_rank, node_rank,
-    )
-
-    return types.SimpleNamespace(
-        bd_comm=bd_comm,
-        bd_rank=bd_rank,
-        node_comm=node_comm,
-        node_rank=node_rank,
-        is_bd=is_bd,
-    )
-
-
-# ---------------------------------------------------------------------------
-# 3. Error handling
+# Error handling
 # ---------------------------------------------------------------------------
 
 class gpu_error_handler:

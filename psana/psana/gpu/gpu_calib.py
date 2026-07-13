@@ -190,7 +190,7 @@ class EventContext:
 
 
 class GPUDetector:
-    """Per-event GPU calibration for an uncompressed area detector.
+    """Per-event GPU calibration for an uncompressed Jungfrau detector.
 
     Handles both single-segment test fixtures and multi-segment real bigdata
     dgrams.  The XTC header overhead (raw_data_offset) and per-segment stride
@@ -216,7 +216,6 @@ class GPUDetector:
                  seg_stride_bytes=None,
                  stream_seg_map=None,
                  cmpars=None,
-                 calib_kernel=None,
                  n_slots=4):
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
@@ -236,10 +235,6 @@ class GPUDetector:
         self._n_modes_calib    = (int(peds_gpu.size) // n_pix_total
                                   if peds_gpu is not None and n_pix_total > 0
                                   else 3)
-        # Calibration kernel — dispatched via GPUKernelRegistry.
-        # Default: None resolved lazily to JungfrauCalibKernel on first use
-        # (backward compat); callers should pass an explicit kernel.
-        self._calib_kernel     = calib_kernel   # type: GPUKernel | None
         # CPU-side cache for beginstep() change detection.
         self._peds_cpu_cache   = None
         self._gmask_cpu_cache  = None
@@ -827,25 +822,7 @@ class GPUDetector:
             peds  = self.peds_gpu
             gmask = self.gmask_gpu
 
-        # Dispatch to the registered calibration kernel.
-        # Lazy default: JungfrauCalibKernel (backward compatibility).
-        kernel = self._calib_kernel
-        if kernel is None:
-            from psana.gpu.gpu_kernel_registry import JungfrauCalibKernel
-            kernel = JungfrauCalibKernel()
-        calib = kernel.calibrate(
-            raw_u16, peds, gmask, stream=stream, out=out
-        )
-
-        # If the kernel ignored the pre-allocated `out` buffer (e.g. a custom
-        # kernel that returns a new array instead of writing into `out`), copy
-        # the result back into `out` so process_batch can always rely on the
-        # slot buffer being correct.  Without this, process_batch would assign
-        # `calib_gpu = out_buf` (the still-zero slot buffer slice) and discard
-        # the kernel's actual output.
-        if out is not None and calib is not out:
-            cp.copyto(out, calib.reshape(out.shape))
-            calib = out
+        calib = fused_calib_gpu(raw_u16, peds, gmask, out=out)
 
         return calib, raw_u16   # (calib_gpu, raw_gpu) tuple
 
