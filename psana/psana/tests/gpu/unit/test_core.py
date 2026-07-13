@@ -17,6 +17,30 @@ from psana.gpu.gpu_stream import EventPool
 from psana.psexp.packet_footer import PacketFooter
 
 
+def test_public_gpu_api_is_minimal():
+    import psana.gpu as gpu
+
+    assert gpu.__all__ == ["GPUResult", "GpuEventContext", "init_gpu_rank"]
+    internal_names = {
+        "DetectorRouter",
+        "EventPool",
+        "GPUFileKernel",
+        "GPUKernel",
+        "GPUKernelRegistry",
+        "JungfrauCalibKernel",
+        "SimpleAreaCalibKernel",
+        "create_gpu_communicators",
+        "default_registry",
+        "gpu_error_handler",
+        "gpu_kernel_from_file",
+        "log_gpu_mem",
+        "optimal_kernel_batch_size",
+        "share_calib_between_gpu_peers",
+        "verify_gpu_pinning",
+    }
+    assert internal_names.isdisjoint(vars(gpu))
+
+
 def test_segment_ids_preserve_l1_child_order():
     dgram = SimpleNamespace(
         jungfrau={

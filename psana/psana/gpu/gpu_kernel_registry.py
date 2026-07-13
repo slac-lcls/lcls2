@@ -41,7 +41,7 @@ default_registry()
 
 Custom kernel example
 ---------------------
-    from psana.gpu import GPUKernel, GPUKernelRegistry
+    from psana.gpu.gpu_kernel_registry import GPUKernel, GPUKernelRegistry
 
     class MyEpix10kKernel(GPUKernel):
         name      = 'calib'
@@ -258,7 +258,10 @@ def gpu_kernel_from_file(cuda_file, func_name, det_types,
     -------
     .. code-block:: python
 
-        from psana.gpu import GPUKernelRegistry, gpu_kernel_from_file
+        from psana.gpu.gpu_kernel_registry import (
+            GPUKernelRegistry,
+            gpu_kernel_from_file,
+        )
 
         kernel = gpu_kernel_from_file(
             '/path/to/my_epix10k_calib.cu',
