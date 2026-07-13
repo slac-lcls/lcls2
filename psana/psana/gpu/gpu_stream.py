@@ -1,74 +1,4 @@
-"""
-gpu_stream.py — StreamPool for CUDA stream management.
-
-All GPU operations in the prototype default to CuPy's default CUDA stream
-(stream 0).  This is convenient but causes two problems at scale:
-
-  1. Serialisation when multiple MPI ranks share one GPU — the default stream
-     is shared across CUDA contexts; non-blocking streams are rank-private.
-  2. No overlap between H→D transfers and compute — different work must be on
-     different streams to run concurrently on separate hardware engines.
-
-StreamPool pre-allocates a fixed set of non-blocking streams and round-robins
-through them.  acquire() synchronises the selected slot before returning it,
-ensuring no prior work on that stream is still in flight.
-
-Usage
------
-    pool   = StreamPool(size=2)       # two streams: compute + prefetch
-    stream = pool.acquire()           # synchronises previous work on this slot
-    with stream:
-        calib = fused_calib_gpu(raw_gpu, peds_gpu, gmask_gpu)
-    # ... other work on CPU or a different stream ...
-    # calib is safe to read after stream.synchronize() or pool.acquire() on
-    # the same slot.
-
-Guide reference: §7 (CUDA Streams and the StreamPool) and §9 (Multiple Ranks
-on One GPU — stream isolation).
-"""
-
-
-class StreamPool:
-    """Reusable pool of non-blocking CUDA/HIP streams.
-
-    Parameters
-    ----------
-    size : int
-        Number of streams to pre-allocate.  2 is optimal for a simple
-        compute/prefetch ping-pong (S3DF benchmark: 2 streams beat 4 for
-        ePix10k calibration — kernels too short for additional overlap).
-        4 is appropriate when using EventPool with N events in flight.
-    """
-
-    def __init__(self, size: int = 4):
-        import cupy as cp
-        self._streams = [cp.cuda.Stream(non_blocking=True)
-                         for _ in range(size)]
-        self._idx = 0
-
-    def acquire(self):
-        """Return the next stream from the pool.
-
-        Synchronises the selected stream before returning it to ensure any
-        previously submitted work on this slot has completed.  The caller
-        can then submit new work without worrying about ordering.
-
-        Returns
-        -------
-        cp.cuda.Stream
-        """
-        stream = self._streams[self._idx % len(self._streams)]
-        stream.synchronize()   # wait for previous work on this slot
-        self._idx += 1
-        return stream
-
-    def synchronize_all(self):
-        """Block until all streams in the pool have completed their work."""
-        for s in self._streams:
-            s.synchronize()
-
-    def __len__(self) -> int:
-        return len(self._streams)
+"""Reusable CUDA stream slots for the integrated GPU event path."""
 
 
 class EventPool:
@@ -156,7 +86,7 @@ class EventPool:
         Parameters
         ----------
         gv            : GpuBatchView
-        gpu_read      : KvikioBatchRead (data_gpu populated, compute_digest=False)
+        gpu_read      : KvikioBatchRead with ``data_gpu`` populated
         cpu_evts      : list of psana2 Event objects for this batch
         gpu_detectors : dict  {det_name: (psana_det, GPUDetector)}
 

@@ -15,32 +15,25 @@ Public API
         if n_hit > 100:
             save(ctx.get('jungfrau.calib').on_cpu, energy)
 
-Standalone prototype
---------------------
-    from psana.gpu.gpu_events_prototype import gpu_events
-
 Module map
 ----------
 context.py       GPUResult, GpuEventContext         — user-visible API types
 gpu_events.py    GpuEvents                           — integrated RunSerial iterator
-gpu_events_prototype.py gpu_events()                 — standalone prototype iterator
 gpu_calib.py     GPUDetector, fused_calib_gpu, ...  — calibration pipeline
-gpu_stream.py    StreamPool, EventPool               — CUDA stream management
+gpu_stream.py    EventPool                           — CUDA stream management
 gpu_kvikio_read  KvikioGpuReader, PendingBatch       — GDS read layer
 gpu_batch.py     GpuBatchView                        — GPUBAT1 wire format
-gpudgramlite.py  extract_dgram_info                  — GPU dgram header parse
 gpu_mpi.py       init_gpu_rank, create_gpu_communicators,
                  verify_gpu_pinning, gpu_error_handler  — MPI + GPU rank setup
 """
 
-# context.py and gpu_stream.py have no heavy psana dependencies — safe to
-# import eagerly.  Keep integrated/prototype event iterators lazy because they
-# import psana reader internals.
+# context.py and gpu_stream.py have no heavy psana dependencies and are safe to
+# import eagerly.  The integrated event iterator remains internal to Run.
 #
 # gpu_mpi.py has no CuPy or heavy psana dependency — always safe to import.
 
 from psana.gpu.context import GPUResult, GpuEventContext
-from psana.gpu.gpu_stream import StreamPool, EventPool
+from psana.gpu.gpu_stream import EventPool
 from psana.gpu.detector_router import DetectorRouter
 from psana.gpu.gpu_kernel_registry import (
     GPUKernel, GPUFileKernel, GPUKernelRegistry,
@@ -74,7 +67,6 @@ __all__ = [
     # Detector routing
     'DetectorRouter',
     # Stream management
-    'StreamPool',
     'EventPool',
     # MPI + GPU rank management (no CuPy dependency — safe to import early)
     'init_gpu_rank',

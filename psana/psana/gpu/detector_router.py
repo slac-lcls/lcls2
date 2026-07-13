@@ -25,8 +25,8 @@ import numpy as np
 class DetectorRouter:
     """Tracks GPU-routed and CPU-only detectors for a run.
 
-    Created once per run inside gpu_events() and attached to every
-    GpuEventContext so that unqualified keys can be resolved without
+    Created once per GPU-enabled run and attached to every GpuEventContext so
+    that unqualified keys can be resolved without
     the user repeating the detector name, and so that GPU + CPU detector
     segments can be combined into a complete calibrated array.
 

@@ -3,7 +3,7 @@ psana/gpu/context.py — Generic per-event GPU result types.
 
 These are the user-visible API objects from the implementation guide §1a/§6:
 
-    for ctx in run.events():                  # or gpu_events(...)
+    for ctx in run.events():
         calib  = ctx.get('jungfrau.calib')    # → GPUResult
         energy = ctx.raw('gmd').energy        # → CPU detector (unchanged)
         peaks  = ctx.get('jungfrau.peaks')    # → GPUResult (future)
@@ -14,7 +14,7 @@ GPUResult
     decides when to pay the PCIe cost (e.g. only for confirmed hits).
 
 GpuEventContext
-    Per-event container returned by gpu_events().  Holds:
+    Per-event container returned by ``DataSource(gpu_det=...)``.  Holds:
       - GPU results keyed by 'det_name.result_type'  (ctx.get)
       - A reference to the CPU Event for scalar/waveform detectors  (ctx.raw)
 
@@ -83,9 +83,8 @@ class GPUResult:
 class GpuEventContext:
     """Per-event context combining GPU results with CPU detector access.
 
-    This is the object the user receives in the ``for ctx in gpu_events(...)``
-    loop.  It mirrors the psana2 EventContext described in §6 of the
-    implementation guide, providing:
+    This is the object the user receives from ``run.events()`` when the
+    DataSource has ``gpu_det`` enabled.  It provides:
 
       ctx.get('det.result')  → GPUResult   (calibrated array on GPU)
       ctx.raw('det')         → any          (CPU detector, unchanged API)
@@ -93,7 +92,7 @@ class GpuEventContext:
       ctx.service()          → int          (TransitionId, forwarded from evt)
 
     The key format for ctx.get() is ``'det_name.result_type'``, e.g.:
-        'jungfrau.calib'   calibrated float32 image (prototype: working)
+        'jungfrau.calib'   calibrated float32 panel stack
         'jungfrau.peaks'   hit-finder peak list     (future: §9)
         'epix.calib'       ePix calibrated image     (future: §5)
 
@@ -149,8 +148,7 @@ class GpuEventContext:
                 ctx.get('jungfrau.calib')   — used as-is
 
         The unqualified form only works when a DetectorRouter was provided at
-        construction time (which gpu_events() and DataSource(gpu_det=) do
-        automatically).
+        construction time (which DataSource(gpu_det=) does automatically).
 
         The GPUResult is constructed lazily and cached.
 

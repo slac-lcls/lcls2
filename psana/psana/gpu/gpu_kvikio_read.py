@@ -1,14 +1,12 @@
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import List, Tuple
 
 import numpy as np
 
-from psana.gpu.gpu_compare import digest_bytes
 
-
-# Device-side descriptor table columns.  This table is intentionally plain uint64
-# so it can be copied to the GPU as-is and later consumed by kernels.
+# Descriptor-table columns shared by the reader and GPUDetector.  The table
+# stays in CPU memory; only the raw XTC byte buffer is transferred to the GPU.
 DESC_EVENT_INDEX = 0
 DESC_STREAM_ID = 1
 DESC_TIMESTAMP = 2
@@ -20,10 +18,7 @@ DESC_NCOLS = 6
 
 @dataclass
 class KvikioBatchRead:
-    by_timestamp: dict
-    read_descs: tuple
     desc_table: np.ndarray
-    desc_table_gpu: object = None
     data_gpu: object = None
 
 
@@ -35,12 +30,9 @@ class PendingBatch:
     once the caller has done other work (e.g. CPU EventManager path) to collect
     the completed reads.
     """
-    gpu_view: object            # GpuBatchView — needed by wait_batch callers
-    read_descs: tuple
     desc_table: np.ndarray
-    desc_table_gpu: object      # cp.ndarray uint64
     data_gpu: object            # cp.ndarray uint8  (reads landing here)
-    futures: List[Tuple]        # [(desc, device_offset, read_size, kvikio_future)]
+    futures: List[Tuple]        # [(desc, read_size, kvikio_future)]
 
 
 class KvikioGpuReader:
@@ -163,15 +155,11 @@ class KvikioGpuReader:
 
         if not read_descs:
             return PendingBatch(
-                gpu_view=gpu_view,
-                read_descs=read_descs,
                 desc_table=desc_table,
-                desc_table_gpu=self.cp.empty((0, DESC_NCOLS), dtype=self.cp.uint64),
                 data_gpu=self.cp.empty(0, dtype=self.cp.uint8),
                 futures=[],
             )
 
-        desc_table_gpu = self.cp.asarray(desc_table)
         total_nbytes = int(
             desc_table[-1, DESC_DEVICE_OFFSET] + desc_table[-1, DESC_READ_SIZE]
         )
@@ -211,36 +199,28 @@ class KvikioGpuReader:
                 file_offset=int(row[DESC_FILE_OFFSET]),
                 task_size=self.task_size,
             )
-            futures.append((desc, device_offset, read_size, future))
+            futures.append((desc, read_size, future))
 
         return PendingBatch(
-            gpu_view=gpu_view,
-            read_descs=read_descs,
             desc_table=desc_table,
-            desc_table_gpu=desc_table_gpu,
             data_gpu=data_gpu,
             futures=futures,
         )
 
-    def wait_batch(self, pending: "PendingBatch",
-                   compute_digest: bool = False) -> KvikioBatchRead:
+    def wait_batch(self, pending: "PendingBatch") -> KvikioBatchRead:
         """Wait for in-flight reads from issue_batch() and return a KvikioBatchRead.
 
         Parameters
         ----------
-        pending        : PendingBatch returned by issue_batch()
-        compute_digest : bool, default False
-            When True perform a D2H copy per descriptor and record digests in
-            by_timestamp.  Only needed by --compare-nosplit validation mode.
+        pending : PendingBatch returned by issue_batch()
 
         Returns
         -------
-        KvikioBatchRead with data_gpu and desc_table_gpu populated.
+        KvikioBatchRead with the CPU descriptor table and GPU data populated.
         """
         if not pending.futures:
             return KvikioBatchRead(
-                {}, pending.read_descs, pending.desc_table,
-                desc_table_gpu=pending.desc_table_gpu,
+                pending.desc_table,
                 data_gpu=pending.data_gpu,
             )
 
@@ -248,8 +228,7 @@ class KvikioGpuReader:
         import time as _time
         _t0 = _time.perf_counter_ns()
 
-        by_timestamp = {}
-        for desc, device_offset, read_size, future in pending.futures:
+        for desc, read_size, future in pending.futures:
             nread = int(future.get())
             if nread != read_size:
                 raise RuntimeError(
@@ -257,43 +236,16 @@ class KvikioGpuReader:
                     f"stream={desc.stream_id} offset={desc.offset} "
                     f"asked={read_size} got={nread}"
                 )
-            if compute_digest:
-                host = pending.data_gpu[device_offset:device_offset + read_size].get()
-                by_timestamp.setdefault(desc.timestamp, {})[desc.stream_id] = (
-                    read_size, digest_bytes(host)
-                )
-
-        # Fill zero-size entries for compute_digest mode.
-        if compute_digest:
-            for desc, row in zip(pending.read_descs, pending.desc_table):
-                if int(row[DESC_READ_SIZE]) == 0:
-                    by_timestamp.setdefault(desc.timestamp, {})[desc.stream_id] = (
-                        0, digest_bytes(b"")
-                    )
-
         # Accumulate I/O stats: total bytes read and wall-ns spent waiting.
         _elapsed_ns = _time.perf_counter_ns() - _t0
-        _bytes = sum(read_size for _, _, read_size, _ in pending.futures)
+        _bytes = sum(read_size for _, read_size, _ in pending.futures)
         self._total_bytes_read += _bytes
         self._total_io_ns      += _elapsed_ns
 
         return KvikioBatchRead(
-            by_timestamp,
-            pending.read_descs,
             pending.desc_table,
-            desc_table_gpu=pending.desc_table_gpu,
             data_gpu=pending.data_gpu,
         )
-
-    def read_batch(self, gpu_view, bd_dm,
-                   compute_digest: bool = False) -> KvikioBatchRead:
-        """Issue and immediately wait for all GDS reads (sequential convenience).
-
-        Equivalent to ``wait_batch(issue_batch(gpu_view, bd_dm), compute_digest)``.
-        Use issue_batch() + wait_batch() directly when you want to overlap reads
-        with other work (CPU EventManager path, prior-batch computation, etc.).
-        """
-        return self.wait_batch(self.issue_batch(gpu_view, bd_dm), compute_digest)
 
     def _file_for_stream(self, bd_dm, stream_id):
         cu_file = self._files.get(stream_id)

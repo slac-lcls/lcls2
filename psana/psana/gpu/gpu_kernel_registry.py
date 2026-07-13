@@ -37,13 +37,11 @@ SimpleAreaCalibKernel   — Single-gain-mode: (raw − peds) × gmask
 
 default_registry()
     Returns (and caches) a GPUKernelRegistry pre-loaded with the two
-    built-in kernels above.  Used by DataSource(gpu_det=...) and the
-    standalone prototype unless the caller passes an explicit registry.
+    built-in kernels above.  Used by DataSource(gpu_det=...).
 
 Custom kernel example
 ---------------------
     from psana.gpu import GPUKernel, GPUKernelRegistry
-    from psana.gpu.gpu_events_prototype import gpu_events
 
     class MyEpix10kKernel(GPUKernel):
         name      = 'calib'
@@ -56,9 +54,6 @@ Custom kernel example
 
     reg = GPUKernelRegistry()
     reg.register(MyEpix10kKernel())
-
-    for ctx in gpu_events(smd_glob, gpu_det='epix10k', registry=reg):
-        calib = ctx.get('epix10k.calib').on_gpu
 
 Guide reference: §4b.
 """
@@ -264,7 +259,6 @@ def gpu_kernel_from_file(cuda_file, func_name, det_types,
     .. code-block:: python
 
         from psana.gpu import GPUKernelRegistry, gpu_kernel_from_file
-        from psana.gpu.gpu_events_prototype import gpu_events
 
         kernel = gpu_kernel_from_file(
             '/path/to/my_epix10k_calib.cu',
@@ -273,9 +267,6 @@ def gpu_kernel_from_file(cuda_file, func_name, det_types,
         )
         reg = GPUKernelRegistry()
         reg.register(kernel)
-
-        for ctx in gpu_events(smd_glob, gpu_det='epix10k', registry=reg):
-            calib = ctx.get('calib').on_gpu
     """
     from pathlib import Path as _Path
     import inspect
@@ -481,9 +472,8 @@ def default_registry() -> GPUKernelRegistry:
       SimpleAreaCalibKernel → det_types 'epix100', 'epix100a', 'epixhr',
                                         'cspad', 'cspad2x2', 'generic_area'
 
-    The registry is a module-level singleton; it is used automatically by
-    DataSource(gpu_det=...) and the standalone prototype unless the caller
-    passes an explicit registry parameter.
+    The registry is a module-level singleton used automatically by
+    DataSource(gpu_det=...).
     """
     reg = GPUKernelRegistry()
     reg.register(JungfrauCalibKernel())

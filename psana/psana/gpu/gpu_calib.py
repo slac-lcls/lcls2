@@ -578,14 +578,13 @@ class GPUDetector:
         Parameters
         ----------
         gpu_view : GpuBatchView
-        gpu_read : KvikioBatchRead  (compute_digest=False; data_gpu populated)
+        gpu_read : KvikioBatchRead with ``data_gpu`` populated
         stream   : cp.cuda.Stream or None
             CUDA stream on which to run calibration kernels.  When None the
-            CuPy default stream is used.  Pass a stream from StreamPool to
-            enable parallel execution with other GPU work (e.g. H→D prefetch
-            for the next batch) and to avoid default-stream serialisation when
-            multiple MPI ranks share a GPU.  The yielded EventContext stores
-            the stream so the caller can synchronise before reading results.
+            CuPy default stream is used.  EventPool supplies a non-blocking
+            stream to overlap batches and avoid default-stream serialisation.
+            The yielded EventContext stores the stream so the caller can
+            synchronise before reading results.
         """
         cp         = _cupy()
         data_u16   = gpu_read.data_gpu.view(cp.uint16)

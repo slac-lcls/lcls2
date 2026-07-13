@@ -80,8 +80,8 @@ BD / GpuEvents
   joins GPU results to CPU event context by timestamp
 ```
 
-`gpu_bd_read.py` still exists as a prototype/debug driver, but it is no longer
-the only path. The integrated path is:
+The original standalone prototype/debug driver has been removed. The
+integrated path is:
 
 - Serial: `RunSerial` uses `GpuEvents` when `DataSource(..., gpu_det=...)` is
   set.
@@ -218,7 +218,7 @@ What changed:
 `KvikioGpuReader` details:
 
 - `issue_batch()` converts `GpuBatchView.iter_read_descs()` into a CPU
-  descriptor table and copies it to `desc_table_gpu`.
+  descriptor table consumed by `GPUDetector`.
 - It allocates or reuses a per-slot `data_gpu` byte buffer.
 - It issues one KvikIO `pread()` future per descriptor.
 - `wait_batch()` calls `future.get()` for all reads and returns a
@@ -230,13 +230,12 @@ What changed:
 filesystem -> CPU DRAM -> GPU VRAM
 ```
 
-Current assumption: the whole GPU descriptor batch for one EB batch is copied
-to one GPU as `desc_table_gpu`, and KvikIO reads all described bigdata dgrams
-into one `data_gpu` buffer on that GPU. If one CPU BD rank later drives more
-than one GPU, this batch will need an additional partitioning step. That split
-could be by event range, stream id, total read bytes, or another scheduling
-policy, but each GPU should receive only the descriptor subset and `data_gpu`
-allocation it owns.
+Current assumption: KvikIO reads all bigdata dgrams described by one EB batch
+into one `data_gpu` buffer on the assigned GPU. If one CPU BD rank later drives
+more than one GPU, this batch will need an additional partitioning step. That
+split could be by event range, stream id, total read bytes, or another
+scheduling policy, but each GPU should receive only the descriptor subset and
+`data_gpu` allocation it owns.
 
 ## GPU Assignment / MPI
 
@@ -316,7 +315,12 @@ cpu_gpu = cp.asarray(cpu_calib.astype(np.float32))
   CPU/GPU routing for the same large detector should be avoided unless it is
   explicitly requested for fallback/debug.
 
-## Raw Metadata Handling
+## Historical Raw Metadata Handling
+
+The first standalone implementation used `gpu_raw_offset_cache.py` and
+`gpu_jungfrau.py`. Those modules were removed after raw extraction moved into
+the integrated `GpuEvents`/`GPUDetector` path. The description below is kept
+as design history.
 
 Changed files:
 
@@ -358,13 +362,10 @@ GPU locator table:
 Key point: the GPU kernel does not parse Dgram/XTC headers in the current path.
 It consumes `data_gpu` plus a CPU-built locator table.
 
-## Prototype / Debug Tools
+## Debug and Performance Tools
 
 Useful files:
 
-- `psana/psana/gpu/gpu_bd_read.py`
-  - standalone prototype/debug driver for split batches, KvikIO reads, raw
-    offset cache bootstrapping, and split/no-split comparison.
 - `psana/psana/debugtools/ds_count_events.py`
   - current lightweight CPU/GPU event-counting and timing driver; supports
     `gpu_det`, `gpu_pool_depth`, and D2H interval testing.
@@ -374,9 +375,6 @@ Useful files:
   - MPI GPU performance comparison driver.
 - `psana/psana/gpu/gpu_performance_benchmark.py`
   - GPU performance benchmark helper.
-- `psana/psana/gpu/gpu_compare.py`
-  - prototype validation helpers for split/no-split and GPU/CPU raw
-    comparison.
 - `psana/psana/gpu/scripts/gpu_multi_rank_smoke.py`
   - explicitly launched MPI/GPU smoke driver; not collected by pytest.
 - `psana/psana/tests/gpu/`
@@ -517,8 +515,8 @@ Example:
 (0, 5, 0, 0, 4801813440799607242, 15, 26, 5243370, 1048576, 1, 512, 1024, 2, 1)
 ```
 
-The RawKernel in `gpu_jungfrau.py` consumes `data_gpu` and `loc_gpu`. It does
-not parse Dgram/XTC headers. It only copies:
+The removed RawKernel in `gpu_jungfrau.py` consumed `data_gpu` and `loc_gpu`.
+It did not parse Dgram/XTC headers. It only copied:
 
 ```text
 data_gpu[raw_device_offset : raw_device_offset + raw_nbytes]
