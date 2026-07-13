@@ -7,7 +7,10 @@
 # iteration cap, or after two consecutive iterations that fail to append a
 # journal entry (malfunction detector — a well-behaved iteration ALWAYS
 # journals, even when blocked). A journal entry ending in `BLOCKED: ...`
-# makes the driver wait before the next iteration instead of proceeding.
+# makes the driver wait before the next iteration instead of proceeding;
+# if that line names a slurm job (`BLOCKED: job <ID> ...`), the driver polls
+# squeue until the job leaves the queue, so waiting out a congested queue
+# costs zero agent iterations.
 #
 # Run from anywhere, ideally inside tmux on an SDF login node:
 #   tmux new -s ralph
@@ -27,7 +30,8 @@ set -u
 
 MAX_ITERS="${MAX_ITERS:-25}"
 MODEL="${MODEL:-opus}"
-BLOCKED_SLEEP="${BLOCKED_SLEEP:-900}"     # wait after a BLOCKED: iteration
+BLOCKED_SLEEP="${BLOCKED_SLEEP:-900}"     # wait after a BLOCKED: iteration (no job ID)
+BLOCKED_WAIT_MAX="${BLOCKED_WAIT_MAX:-14400}"  # max wait for a BLOCKED: job <ID> to clear
 ALLOC_WAIT_MAX="${ALLOC_WAIT_MAX:-7200}"  # max seconds to wait for holder
 HOLDER_NAME="ralph-gpu"
 
@@ -154,8 +158,28 @@ for ((i=1; i<=MAX_ITERS; i++)); do
     malfunction=0
     git --no-pager log --oneline -1 | tee -a "$LOG"
     if last_journal_line | grep -q '^BLOCKED:'; then
-      echo ">>> iteration blocked — sleeping ${BLOCKED_SLEEP}s before retry" | tee -a "$LOG"
-      sleep "$BLOCKED_SLEEP"
+      # Rule 8 hand-off: if the blocker is a slurm job, wait for THAT job to
+      # leave the queue in driver-side bash instead of burning a full agent
+      # iteration every BLOCKED_SLEEP just to rediscover it is still pending.
+      blocked_job=$(last_journal_line | grep -oE 'job [0-9]+' | head -1 | awk '{print $2}')
+      if [ -n "$blocked_job" ]; then
+        echo ">>> iteration blocked on job $blocked_job — polling until it leaves the queue" | tee -a "$LOG"
+        bwaited=0
+        while squeue -j "$blocked_job" -h -o %A 2>/dev/null | grep -q .; do
+          sleep 60
+          bwaited=$((bwaited + 60))
+          if [ "$bwaited" -ge "$BLOCKED_WAIT_MAX" ]; then
+            echo ">>> job $blocked_job still in queue after ${BLOCKED_WAIT_MAX}s — proceeding anyway" | tee -a "$LOG"
+            break
+          fi
+        done
+        if [ "$bwaited" -lt "$BLOCKED_WAIT_MAX" ]; then
+          echo ">>> job $blocked_job left the queue (waited ${bwaited}s) — next iteration collects it" | tee -a "$LOG"
+        fi
+      else
+        echo ">>> iteration blocked — sleeping ${BLOCKED_SLEEP}s before retry" | tee -a "$LOG"
+        sleep "$BLOCKED_SLEEP"
+      fi
     fi
   fi
 done

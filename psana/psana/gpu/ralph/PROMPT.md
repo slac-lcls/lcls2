@@ -223,7 +223,11 @@ For any overlapped/async variant:
    — collect on next iteration`, so the next fresh agent recovers it
    deterministically (rule 7). Never end a turn with a job you launched still
    running and unrecorded — that is a lost iteration and trips the malfunction
-   guard.
+   guard. The driver parses the job ID out of a final `BLOCKED: job <ID> ...`
+   line and polls squeue driver-side until that job leaves the queue before
+   launching the next iteration — so the recovering agent finds the job
+   already finished and only has to collect it, and waiting out a congested
+   queue costs zero agent tokens.
 
 ---
 
