@@ -993,18 +993,21 @@ def main():
     args = parse_args()
     rank = _rank()
     size = _world_size()
+    # Provisional (rank-arithmetic) role, used only to size the global event
+    # budget. The authoritative role comes from psana AFTER DataSource
+    # construction (below): rank arithmetic assumes contiguous low-rank EBs,
+    # which is FALSE under PS_EB_NODE_LOCAL where each physical node's EB is
+    # the lowest bd-rank on that node (world ranks scattered by placement).
     is_bd = _is_bd_rank()
 
     from psana.gpu import init_gpu_rank, prep_calib_constants
-
-    if is_bd and not args.cpu:
-        init_gpu_rank()
-
     from psana import DataSource
 
     # Global event budget: in MPI mode the stream must end on its own
     # (see module docstring), so size it to feed every BD rank its warmup
-    # + measurement quota, with 10% slack for skipped/None events.
+    # + measurement quota, with 10% slack for skipped/None events. Uses the
+    # provisional BD count as an upper bound (colocate has one fewer BD per
+    # node, so this slightly over-budgets — harmless, the stream still ends).
     n_bd = max(1, size - 1 - _n_eb()) if size > 1 else 1
     max_events = int(1.1 * (args.warmup + args.nevents) * n_bd)
 
@@ -1017,6 +1020,24 @@ def main():
         # distorting the timing. DataSource kwargs may differ across ranks.
         kwargs["log_level"] = "DEBUG"
     ds  = DataSource(**kwargs)
+
+    # Authoritative MPI role: mpi_ds.nodetype is set to comms.node_type()
+    # during DataSource construction and is correct under BOTH default modulo
+    # placement AND PS_EB_NODE_LOCAL node-local colocation. Refine is_bd from
+    # it so real EB ranks (not contiguous under colocate) serve instead of
+    # running the benchmark body. Falls back to the arithmetic guess if the
+    # global is unavailable (e.g. single-process / non-MPI DataSource).
+    if size > 1:
+        try:
+            from psana.psexp import mpi_ds as _mpi_ds
+            if _mpi_ds.nodetype is not None:
+                is_bd = (_mpi_ds.nodetype == "bd")
+        except Exception:
+            pass
+
+    if is_bd and not args.cpu:
+        init_gpu_rank()
+
     run = next(ds.runs())
     det = run.Detector(args.det)
 

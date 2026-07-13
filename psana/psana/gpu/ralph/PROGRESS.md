@@ -1412,3 +1412,65 @@ across-2-nodes request/serve roundtrip (eb_wait + coordination residual, each ~2
 remaining lever is structural: smd0/EB rank placement across nodes, or the request/serve
 protocol itself — not per-rank numerics. This is the boundary where the per-rank-optimization
 campaign meets a distributed-coordination one.
+
+## 2026-07-13 — Iteration 18 (structural lever: PS_EB_NODE_LOCAL node-local EB placement — bench role-detection fixed and validated both modes single-node; 2-node bracket queued)
+
+**Task:** act on the iters-16/17 verdict. The 2x-node scaling loss (1.60–1.66x,
+~80% per-node efficiency) is structural smd0/EB cross-node coordination — eb_wait ~2x and
+the wait-residual ~2x while bd_read/dgram/smdparse stay flat. The default rank placement
+(`color = bd_main_rank % PS_EB_NODES`, node.py:189) puts the single EB on node 0, so every
+node-1 BD rank crosses the network to it each batch. That cross-node hop IS the coordination
+residual. This iteration tests the direct structural fix.
+
+**Discovery — the lever already exists behind a flag, and had never been exercised.**
+`node.py` has a `colocate_non_marching` mode (env `PS_EB_NODE_LOCAL`, node.py:159/178) that
+splits `bd_main` by `MPI.COMM_TYPE_SHARED` instead of by modulo — giving **each physical
+node its own EB serving only its node-local BD ranks**, and an smd_comm of `[smd0] +
+per-node-EBs` (node.py:330–342). Every multi-node number in this campaign was measured with
+the default modulo placement (single cross-node EB); the node-local mode is exactly the
+"smd0/EB rank placement" structural change the iter-17 next-step called for.
+
+**Blocker in the harness, now fixed (bench_calib.py only — NOT psexp; the numeric path is
+untouched, so the correctness gate is not triggered).** `bench_calib._is_bd_rank()` decided
+BD-ness by rank arithmetic (`rank >= 1 + PS_EB_NODES`), which assumes contiguous low-rank
+EBs. Under `PS_EB_NODE_LOCAL` the EBs are the lowest bd-rank on each node — world ranks 1 and
+33 for the `-H N0:33,N1:33` layout — so arithmetic would mis-serve rank 33. Fix: `main()` now
+reads the authoritative role from `psana.psexp.mpi_ds.nodetype` (set to `comms.node_type()`
+during DataSource construction, correct in BOTH modes) and refines `is_bd` from it;
+`init_gpu_rank()` moved to just after DataSource so it keys off the real role. `_report_
+aggregate` already filters by `r.get("n")`, so once real EBs return `result=None` the
+aggregate is correct with no further change.
+
+**Validated single-node, both modes (ralph-gpu 31540560, sdfampere001, r47, FFB, `-n 60`):**
+- default (`PS_EB_NODES=1`): runs clean, per-rank ~2.8 Hz (cold window), default path intact.
+- colocate (`PS_EB_NODE_LOCAL=1`): "Non-marching EB/BD colocated mode enabled" logged;
+  **aggregate BD ranks: 32** (role-detection fix correctly excludes the node-local EB, world
+  rank 1), aggregate 109.6 Hz. Single-node colocate ≡ default (1 node → 1 EB), so this is a
+  smoke test of the plumbing, not the lever — the lever only bites at ≥2 nodes.
+
+**2-node bracket QUEUED — this is the actual measurement, not yet collected.** Submitted
+`bench_mpi_sweep/eb_node_local.sbatch` (job **31541312**): bracketed default_a → colocate →
+default_c, all 2-node/66-rank (`-H N0:33,N1:33`), `-n 150 --warmup 10 --wait-split`, same
+allocation/window. Colocate yields 63 BD ranks (2 EBs) vs default 64 BD (1 EB) — a ~1.5%
+BD-count penalty a real placement win must clear. HYPOTHESIS: if node-local EBs remove the
+cross-node serve hop, colocate's eb_wait + wait-residual drop toward their single-node values
+and aggregate Hz rises above the default bracket mean; if they don't move, the residual is
+not the cross-node hop but intra-EB serialization (one EB rank saturating), redirecting the
+lever to EB-side concurrency. The ampere multi-node queue was congested; the job stayed
+PENDING through the ~25-min in-iteration wait cap.
+
+Logs (to collect): `bench_mpi_sweep/enl_default_a.log`, `enl_colocate.log`, `enl_default_c.log`;
+driver `bench_mpi_sweep/slurm-31541312.out`.
+
+**Keep/revert:** KEEP the bench_calib.py role-detection fix — it is the prerequisite for
+measuring any non-contiguous-EB placement mode and is validated correct in both modes.
+
+**Recommended next step:** collect job 31541312 (rule 7 recovery). Parse the three aggregate
+blocks; compute colocate vs mean(default_a, default_c). Read `eb_wait` / `residual` in the
+`--wait-split` aggregate for each. If colocate lifts aggregate Hz and shrinks eb_wait/
+residual → node-local EB placement is the plateau lever; make it the multi-node default and
+re-run at 4 nodes to confirm it scales. If flat/worse → the coordination cost is intra-EB
+serialization, not the cross-node hop; next lever is a second EB per node or a fatter serve
+batch. If the job did not land (still PENDING / launch error), resubmit as-is.
+
+BLOCKED: job 31541312 in flight (PENDING, multi-node queue) — collect on next iteration
