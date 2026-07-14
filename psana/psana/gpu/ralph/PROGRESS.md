@@ -1904,3 +1904,78 @@ cross-node EB coordination, which could move the crossover)? A 3-node
 knee, graduate it into PLANNING.md alongside PS_EB_NODE_LOCAL as the documented
 multi-node GPU launch recipe — at which point the code-side multi-node levers are
 characterized and the loop is near LOOP DONE pending storage-side facility levers.
+
+---
+
+## 2026-07-13 — Iteration 24 (the PS_EB_PER_NODE knee SHIFTS UP at 3 nodes — 3 EB/node wins, the 2-node =2 optimum does NOT hold; order-confound flagged, reversed-order confirm next)
+
+**One variable:** EBs per node (PS_EB_PER_NODE ∈ {1,2,3}) at fixed 3 nodes,
+node-local colocation — the iter-23 recommended step. iter-22/23 found the knee
+is 2 at 2 nodes (2 EB beats 1 by +23%; 3/4 EB regress −18%). Two open questions:
+(a) does the =2 optimum COMPOUND at 3 nodes the way node-local placement did
+(iter-20: +9%@2n → +31%@3n), and (b) is the knee still 2 at 3 nodes or does more
+cross-node coordination shift it? This bracket answers both in one window.
+
+**Setup verified before submit:** node.py + datasource.py both `diff`-identical
+source-vs-install (the iter-22 non-editable-install gotcha). k=1 → node_count·1 =
+one EB/node = exactly iter-20's node-local `colocate` baseline, so the k=1 row is
+the same thing the 2-node +23% lead was measured over. No code change this
+iteration (measurement only); no C rebuild (pure-py).
+
+**Clean 3-node in-window bracket, job 31588126 (all three exit=0), nodes
+sdfampere001/018/042, `bench_mpi_sweep/epn3n_{2eb,1eb,3eb}.log`, driver
+`slurm-31588126.out`, n=100/rank warmup=10 --wait-split. Phase order 2eb → 1eb →
+3eb:**
+
+| config              | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|---------------------|----|-------------|-------------|-----------|-----------|-------------|
+| mn3_2eb (2 EB/node) | 91 | 411.5       | 4.52        | 23.98     | 89.63     | 63.31       |
+| mn3_1eb (1 EB/node) | 95 | 419.5       | 4.42        | 29.86     | 94.17     | 98.96       |
+| mn3_3eb (3 EB/node) | 89 | **553.3**   | **6.22**    | 9.97      | 103.81    | 34.16       |
+
+**Verdict — the knee SHIFTS UP at 3 nodes and the lever DOES compound, but not at
+=2. The 2-node hero (=2) collapses to a tie with =1 (411.5 vs 419.5, per-rank
+4.52 vs 4.42 — the +23% 2-node lead of 2eb over 1eb has VANISHED), while =3 wins
+decisively: 553.3 Hz, +34% per-rank over both (6.22 vs ~4.5).** This is a genuine
+reversal of iter-23's 2-node result, where 3 EB REGRESSED −18%.
+
+**Mechanism (coherent):** `eb_wait` falls monotonically with more EBs (29.86 →
+23.98 → 9.97 ms) — same direction as 2 nodes. But at 3 nodes the *magnitude* of
+eb_wait at 1–2 EB is much larger than at 2 nodes (iter-23 2n: 1eb≈21, 2eb≈10 ms;
+here 3n: 1eb≈30, 2eb≈24 ms), because the single smd0 now feeds MORE node-local
+EBs (6 EBs @3n·2eb vs 4 @2n·2eb) and each EB waits longer on its smd batch. So at
+3 nodes eb_wait is STILL the binding term at 2 EB (24 ms), and pushing to 3 EB
+(each serving ~10 BDs) drains it to ~10 ms — the crossover that happened between
+1 and 2 EB at 2 nodes now happens between 2 and 3 EB at 3 nodes. **More node count
+→ more smd0→EB serving pressure → the eb_wait-vs-BD-slot crossover moves right.**
+This is exactly the "more cross-node coordination could shift the knee" hypothesis
+iter-23 raised, confirmed in the direction it feared.
+
+**HONEST CAVEAT — order/window confound (why this is not yet graduated).** The
+winner (3eb) was the LAST of three sequential phases (~6.5 min total), and FFB
+window state drifts within an allocation (iters 20/23 both stress this). A pure
+warming artifact would inflate the last phase. Two things argue the reversal is
+real, not just warming: (1) `eb_wait` ordering (30→24→10) is monotone in EB count
+and matches the mechanism model, independent of window; (2) `residual` is NON-
+monotone across phases (63 → 99 → 34 for phase 1→2→3) — the middle phase (1eb) is
+the WORST, so simple "later phase = warmer = better" does not hold. But bd_read is
+actually HIGHEST for the 3eb winner (103.8 vs 89.6), so 3eb's win rides entirely
+on eb_wait + residual, the two buckets most sensitive to both the lever AND the
+window. A single order-confounded bracket is not enough to overturn a clean
+2-node knee and graduate =3. **Per the project's "a wrong number is worse than no
+number" discipline, this needs a reversed-order confirm before it lands in
+PLANNING.md.**
+
+**Keep/revert:** KEEP the feature (unchanged; opt-in, default-off, already
+correctness-gated bit-exact in iter-22). Do NOT yet change the recommended
+default — iter-23's "PS_EB_PER_NODE=2 at 2 nodes" still stands; the =3-at-3-nodes
+claim is PENDING the reversed-order confirm. TASK.md updated with the provisional
+3-node bracket and the confound flag.
+
+**Recommended next step:** reversed-order confirm bracket at 3 nodes — run 3eb
+FIRST (coldest window), then 2eb, then 1eb. If 3eb still wins when it is the cold
+first phase, the knee-shift-to-3 is real and =3 graduates as the 3-node GPU
+default (with a documented "knee grows with node count" note in PLANNING.md). If
+3eb's lead collapses when run cold, the reversal was a warming artifact and =2
+holds. Either way the code-side multi-node levers are then fully characterized
+and the loop is near LOOP DONE pending storage-side facility levers.
