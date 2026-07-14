@@ -1,3 +1,7 @@
+import math
+
+import numpy as np
+
 from psana import dgram
 from psana.event import Event
 from psana.gpu.context import GpuEventContext
@@ -78,6 +82,222 @@ def _iter_step_events(batch_bytes, configs):
         yield service, dgrams
 
 
+class _PendingD2H:
+    """Token held by GPUResult while its async D→H is in-flight.
+
+    Created by _D2hPipeline._flush_chunk() immediately after issuing
+    cudaMemcpyAsync.  GPUResult.on_cpu calls .get() to wait for the
+    transfer and retrieve the host copy.
+
+    Reference-counts the parent _PinnedSlot so the slot is not reused
+    until every event in the chunk has called on_cpu (or been GC'd).
+    """
+
+    __slots__ = ('_pslot', '_row', '_n_segs')
+
+    def __init__(self, pslot, row: int, n_segs: int):
+        self._pslot  = pslot
+        self._row    = row
+        self._n_segs = n_segs
+
+    def get(self) -> np.ndarray:
+        """Block until D→H complete; return numpy copy; release slot ref."""
+        self._pslot.done_event.synchronize()
+        data = self._pslot.arr[self._row, :self._n_segs].copy()
+        self._pslot.dec_ref()
+        self._pslot = None
+        return data
+
+    def __del__(self):
+        # Safety: if the user never calls on_cpu, release the ref anyway.
+        if self._pslot is not None:
+            self._pslot.dec_ref()
+            self._pslot = None
+
+
+class _PinnedSlot:
+    """One pre-allocated page-locked host buffer for one D→H chunk.
+
+    Pre-allocated during _D2hPipeline.__init__ so that cudaMallocHost
+    page-lock latency does not appear in the event loop timing.
+
+    Reference-counted: claim(n) marks n events in-flight; dec_ref()
+    releases one; when the count reaches 0 the slot is free for reuse.
+    """
+
+    def __init__(self, max_segs: int, nrows: int, ncols: int, chunk_size: int):
+        import cupy as cp
+        nbytes = chunk_size * max_segs * nrows * ncols * 4  # float32
+        self._mem       = cp.cuda.alloc_pinned_memory(nbytes)
+        self.arr        = np.frombuffer(
+            self._mem, dtype=np.float32,
+            count=chunk_size * max_segs * nrows * ncols,
+        ).reshape(chunk_size, max_segs, nrows, ncols)
+        self.done_event = cp.cuda.Event(disable_timing=True)
+        self.in_use     = False
+        self._refs      = 0
+
+    def claim(self, n: int):
+        """Mark n events as in-flight on this slot."""
+        self.in_use = True
+        self._refs  = n
+
+    def dec_ref(self):
+        """Release one event reference; mark free when all events done."""
+        self._refs -= 1
+        if self._refs <= 0:
+            self._refs  = 0
+            self.in_use = False
+
+
+class _D2hPipeline:
+    """Internal GpuEvents D→H pipeline (not user-facing).
+
+    Issues async D→H from EventPool slot views to pinned host memory,
+    then yields contexts IMMEDIATELY — before the transfer completes.
+    GPUResult.on_cpu waits for the CUDA done-event lazily at the call
+    site, so the generator stays thin and D→H overlaps with whatever
+    work the user does between receiving a context and calling on_cpu.
+
+    Activated by DataSource(gpu_d2h_chunk_size=N).  N=0 (default)
+    bypasses the pipeline; on_cpu then triggers a blocking D→H on first
+    access (existing behaviour).
+    """
+
+    def __init__(self, det_key: str, chunk_size: int):
+        self._key        = det_key
+        self._chunk_size = chunk_size
+        self._max_inflight = 2   # pinned slots; 2 lets one transfer while next fills
+
+        # Lazy: shape not known until first event.
+        self._pinned_pool: list  = []
+        self._d2h_stream         = None
+        self._n_segs: int | None = None
+        self._nrows:  int | None = None
+        self._ncols:  int | None = None
+
+        # Accumulator for the current in-progress chunk.
+        self._chunk_buf: list = []   # list of (ctx, lease, arr)
+
+    def add(self, ctx) -> list:
+        """Add one context.  Returns list of contexts ready to yield.
+
+        Contexts are returned immediately once their D→H has been
+        *issued* (not waited for).  The caller yields them; the user
+        completes the sync lazily via GPUResult.on_cpu.
+        """
+        arr   = ctx._gpu_results.get(self._key)
+        lease = ctx._leases.get(self._key)
+
+        if arr is None:
+            return [ctx]   # no GPU data for this key — pass through
+
+        if self._n_segs is None:
+            self._init(arr)
+
+        self._chunk_buf.append((ctx, lease, arr))
+
+        if len(self._chunk_buf) >= self._chunk_size:
+            return self._flush_chunk()
+        return []
+
+    def flush(self) -> list:
+        """Issue D→H for any partial chunk; return all buffered contexts.
+
+        Called at EndRun, BeginStep, and end of each batch so no event
+        is stranded in _chunk_buf indefinitely.
+        """
+        if self._chunk_buf:
+            return self._flush_chunk()
+        return []
+
+    # ------------------------------------------------------------------ #
+    # Internal helpers                                                     #
+    # ------------------------------------------------------------------ #
+
+    def _init(self, arr):
+        import cupy as cp
+        self._n_segs = int(arr.shape[0])
+        self._nrows  = int(arr.shape[1])
+        self._ncols  = int(arr.shape[2])
+        for _ in range(self._max_inflight):
+            self._pinned_pool.append(
+                _PinnedSlot(self._n_segs, self._nrows, self._ncols,
+                            self._chunk_size)
+            )
+        self._d2h_stream = cp.cuda.Stream(non_blocking=True)
+
+    def _get_free_slot(self) -> '_PinnedSlot':
+        """Return a free pinned slot.
+
+        A slot is free when its reference count drops to 0 (all events
+        in the previous chunk have called on_cpu).  If all slots are
+        still in use, wait on the oldest done_event and force-reclaim —
+        this is a safety fallback; with typical sequential on_cpu usage
+        a slot is always free before the next chunk needs it.
+        """
+        for slot in self._pinned_pool:
+            if not slot.in_use:
+                return slot
+        # All busy — wait for done_event on pool[0] then force-reclaim.
+        slot = self._pinned_pool[0]
+        slot.done_event.synchronize()
+        slot.in_use = True
+        slot._refs  = 0
+        # Rotate so next call picks a different slot (FIFO fairness).
+        self._pinned_pool = self._pinned_pool[1:] + [self._pinned_pool[0]]
+        return slot
+
+    def _flush_chunk(self) -> list:
+        """Issue async D→H for the current chunk; attach _pending_d2h;
+        return all events immediately."""
+        import cupy as cp
+        from psana.gpu.context import GPUResult
+
+        chunk           = self._chunk_buf
+        self._chunk_buf = []
+        n_evts          = len(chunk)
+
+        pslot      = self._get_free_slot()
+        pslot.claim(n_evts)
+        stream     = self._d2h_stream
+        row_nbytes = self._n_segs * self._nrows * self._ncols * 4
+        dst_base   = pslot.arr.ctypes.data
+        leases_out = []
+
+        for i, (ctx, lease, arr) in enumerate(chunk):
+            if lease is not None and lease.calib_done is not None:
+                stream.wait_event(lease.calib_done)
+            cp.cuda.runtime.memcpyAsync(
+                dst_base + i * row_nbytes,
+                arr.data.ptr,
+                arr.nbytes,
+                cp.cuda.runtime.memcpyDeviceToHost,
+                stream.ptr,
+            )
+            if lease is not None:
+                leases_out.append(lease)
+
+        # Record done_event and register on leases.
+        pslot.done_event.record(stream)
+        for lease in leases_out:
+            lease.register_d2h_done(pslot.done_event)
+
+        # Attach _pending_d2h to each GPUResult and yield immediately.
+        key     = self._key
+        results = []
+        for i, (ctx, lease, arr) in enumerate(chunk):
+            # Ensure GPUResult is cached so we can attach pending_d2h.
+            if key not in ctx._cache:
+                ctx._cache[key] = GPUResult(
+                    ctx._gpu_results.get(key), stream=None,
+                    lease=ctx._leases.get(key),
+                )
+            ctx._cache[key]._pending_d2h = _PendingD2H(pslot, i, self._n_segs)
+            results.append(ctx)
+        return results
+
+
 class GpuEvents:
     """GPU-aware event iterator for the existing serial psana read path.
 
@@ -108,6 +328,7 @@ class GpuEvents:
         self.shared_state = shared_state
         self.dsparms = dsparms
         self.run = run
+        self._d2h_pipelines: dict = {}   # populated at end of __init__
         self.smdr_man         = smdr_man
         self._setup_geometry  = setup_geometry
         self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
@@ -280,6 +501,23 @@ class GpuEvents:
         # KvikioGpuReader: pre-allocate one data_gpu buffer per slot (Option D)
         self.gpu_reader = KvikioGpuReader(n_slots=n_streams)
 
+        # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
+        # Transfers calibrated results to pinned host memory in chunks so that
+        # ctx.get('det.calib').on_cpu returns immediately without triggering
+        # an additional synchronous D→H at the user's call site.
+        chunk_size = getattr(self.dsparms, 'gpu_d2h_chunk_size', 0) or 0
+        if chunk_size > 0 and self.gpu_det_names:
+            # One pipeline per GPU detector key.
+            self._d2h_pipelines = {
+                f'{det_name}.calib': _D2hPipeline(
+                    det_key=f'{det_name}.calib',
+                    chunk_size=chunk_size,
+                )
+                for det_name in self.gpu_det_names
+            }
+        else:
+            self._d2h_pipelines = {}
+
         # Report which I/O path kvikio will use for this run.
         # GDS (compat_mode=False) reads NVMe → GPU VRAM directly (fast).
         # CPU-fallback (compat_mode=True) reads NVMe → CPU DRAM → GPU VRAM
@@ -357,38 +595,69 @@ class GpuEvents:
 
         return end_run_seen
 
-    def _make_context(self, evt, gpu_results):
-        gpu_results = _apply_full_routing(
-            gpu_results,
-            evt,
-            self.gpu_detectors,
-            self.router,
-        )
+    def _make_context(self, evt, gpu_results, leases=None):
         return GpuEventContext(
             evt=evt,
             gpu_results=gpu_results,
             cpu_dets=self.cpu_dets,
             stream=None,
             router=self.router,
+            leases=leases,
         )
+
+    def _push_context(self, ctx):
+        """Feed one context through D→H pipelines; yield when ready."""
+        if not self._d2h_pipelines:
+            yield ctx
+            return
+        # Feed through every active pipeline (one per det key).
+        # A context is only yielded once ALL pipelines have finished with it.
+        # For the common single-detector case this is a single iteration.
+        ready = [ctx]
+        for pipe in self._d2h_pipelines.values():
+            next_ready = []
+            for c in ready:
+                next_ready.extend(pipe.add(c))
+            ready = next_ready
+        yield from ready
 
     def _yield_ready(self, ready):
         if ready is None:
             return
-        gpu_results_by_ts, cpu_evts = ready
+        gpu_results_by_ts, cpu_evts, leases_by_ts = ready
         for evt in cpu_evts:
-            yield self._make_context(
+            ctx = self._make_context(
                 evt,
                 gpu_results_by_ts.get(evt.timestamp, {}),
+                leases=leases_by_ts.get(evt.timestamp, {}),
             )
+            yield from self._push_context(ctx)
+        # Flush any partial D→H chunk at the batch boundary so events are
+        # never stranded in _chunk_buf when batch_size % chunk_size != 0.
+        yield from self._flush_d2h_pipelines()
+
+    def _flush_d2h_pipelines(self):
+        """Flush partial D→H chunks at EndRun, BeginStep, or end of pool drain.
+
+        With the lazy-sync design, all events have already been yielded;
+        this only handles events still buffered in _chunk_buf (partial
+        chunk not yet flushed because it didn't reach chunk_size).
+        """
+        if not self._d2h_pipelines:
+            return
+        for pipe in self._d2h_pipelines.values():
+            yield from pipe.flush()
 
     def _flush_event_pool(self):
-        for gpu_results_by_ts, cpu_evts in self.event_pool.flush():
+        for gpu_results_by_ts, cpu_evts, leases_by_ts in self.event_pool.flush():
             for evt in cpu_evts:
-                yield self._make_context(
+                ctx = self._make_context(
                     evt,
                     gpu_results_by_ts.get(evt.timestamp, {}),
+                    leases=leases_by_ts.get(evt.timestamp, {}),
                 )
+                yield from self._push_context(ctx)
+        yield from self._flush_d2h_pipelines()
 
     def _events(self):
         n_events = 0

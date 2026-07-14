@@ -60,6 +60,7 @@ class DsParms:
     # yields GpuEventContext objects instead of Event objects.
     gpu_det: object = None          # str | list[str] | None
     n_gpu_streams: int = 4          # EventPool depth; 4 concurrent streams optimal for NVMe io_depth
+    gpu_d2h_chunk_size: int = 0     # GpuEvents internal D2H chunk; 0 = disabled (lazy per-call)
     # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
     # already parsed by DgramManager.  Forwarded to EventBuilder so it can
     # split those streams into GPUBAT1 without relying on PS_TEST_GPU_STREAM_IDS.
@@ -206,8 +207,9 @@ class DataSourceBase(abc.ABC):
         self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
         self.cached_detectors = kwargs.get("cached_detectors", [])
         # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau', ...)
-        self.gpu_det       = kwargs.get("gpu_det",        None)
-        self.n_gpu_streams = kwargs.get("n_gpu_streams",  4)
+        self.gpu_det            = kwargs.get("gpu_det",            None)
+        self.n_gpu_streams      = kwargs.get("n_gpu_streams",      4)
+        self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
@@ -255,7 +257,7 @@ class DataSourceBase(abc.ABC):
             "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
             "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
             "log_level", "log_file", 'auto_tune',
-            "gpu_det", "n_gpu_streams",
+            "gpu_det", "n_gpu_streams", "gpu_d2h_chunk_size",
         }
         for k in kwargs:
             if k not in known_keys:
