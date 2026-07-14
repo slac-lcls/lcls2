@@ -630,25 +630,25 @@
   +9%→+31% from 2n→3n), and is the knee still 2 there or does more node count
   shift it? A 3-node 1-vs-2-vs-3 EB bracket answers both.
 
-- 2026-07-13 (iter 24, PROVISIONAL — order-confounded, confirm pending): **the
-  PS_EB_PER_NODE knee SHIFTS UP at 3 nodes — 3 EB/node wins, the 2-node =2
-  optimum does NOT hold.** Clean 3-node in-window bracket (job 31588126, all
-  exit=0, `bench_mpi_sweep/epn3n_{2eb,1eb,3eb}.log`, phase order 2eb→1eb→3eb):
-  mn3_2eb=411.5 Hz (91 BD, per-rank 4.52) / mn3_1eb=419.5 Hz (95 BD, 4.42) /
-  mn3_3eb=**553.3 Hz** (89 BD, **6.22**). The +23% 2-node lead of 2eb over 1eb
-  VANISHES at 3 nodes (411.5 vs 419.5, a tie); =3 wins by +34% per-rank over
-  both. Mechanism: eb_wait falls monotonically (29.86→23.98→9.97 ms) as at 2
-  nodes, but its magnitude at 1–2 EB is larger at 3n (one smd0 feeds MORE
-  node-local EBs), so eb_wait is STILL binding at 2 EB and the crossover moves
-  from 1→2 EB (@2n) to 2→3 EB (@3n): more node count → more smd0→EB serving
-  pressure → knee grows. **CAVEAT: the winner (3eb) was the LAST sequential
-  phase → order/window confound. eb_wait ordering is monotone (window-independent
-  support) and residual is non-monotone across phases (63→99→34, argues against
-  pure warming), but bd_read is HIGHEST for the 3eb winner, so the win rides on
-  the window-sensitive eb_wait+residual buckets. NOT graduated — the =2-at-2n
-  default (iter-23) still stands.** NEXT: reversed-order confirm (3eb FIRST/cold,
-  then 2eb, 1eb); if 3eb still wins cold, graduate =3 as the 3-node default with
-  a "knee grows with node count" note.
+- 2026-07-13 (iter 24, CONFIRMED — reversed-order control passed): **the
+  PS_EB_PER_NODE knee GROWS with node count — 3 EB/node wins at 3 nodes; the
+  2-node =2 optimum is the knee *at 2 nodes*, not a fixed constant.** Two 3-node
+  in-window brackets, both all exit=0, order-robust:
+  · forward (2→1→3, job 31588126, `epn3n_*.log`): mn3_2eb=411.5 / mn3_1eb=419.5 /
+    mn3_3eb=**553.3** Hz (89 BD, 6.22/rank) — 3eb wins as the last (warm) phase.
+  · reversed (3→2→1, job 31589010, `epn3nrev_*.log`): mn3_3eb=**802.5** Hz (89
+    BD, **9.02**/rank) / mn3_2eb=648.3 (7.28) / mn3_1eb=622.9 (6.56) — 3eb wins as
+    the COLD first phase, +23.8% agg / +23.8% per-rank over 2eb, +28.8% over 1eb.
+  The ordering `3 > 2 > 1` is identical in both brackets → robust to phase order,
+  order-confound discharged. eb_wait monotone in k (reversed: 25.19→13.97→8.94 ms).
+  **Mechanism:** one smd0 feeds all node-local EBs, so more nodes = more EBs
+  contending for smd batches = larger eb_wait at low k = crossover moves to higher
+  k. **Emergent rule: knee ≈ node_count (2@2n, ≥3@3n).** GRADUATED into PLANNING.md
+  ("Multi-node launch" → `PS_EB_PER_NODE` subsection: scale k with node count,
+  start at k=node_count, do NOT exceed the knee — −18% past it at 2n). iter-23's
+  2-node =2 entry stands (it is the knee at 2 nodes). NEXT: k=4 @ 3n to pin whether
+  the 3-node knee is exactly 3 or higher; a 4-node k∈{2,3,4} bracket to test the
+  knee≈node_count rule as a law.
 
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a

@@ -1979,3 +1979,55 @@ default (with a documented "knee grows with node count" note in PLANNING.md). If
 3eb's lead collapses when run cold, the reversal was a warming artifact and =2
 holds. Either way the code-side multi-node levers are then fully characterized
 and the loop is near LOOP DONE pending storage-side facility levers.
+
+### Iteration 24 addendum — reversed-order confirm: the knee-shift is REAL (3 EB wins cold-first), graduated into PLANNING.md
+
+The reversed-order control (job 31589010, nodes sdfampere018/020/023, all three
+exit=0, `bench_mpi_sweep/epn3nrev_{3eb,2eb,1eb}.log`) runs the same three configs
+with **3eb as the COLD first phase**, then 2eb, then 1eb:
+
+| config (phase order 3→2→1) | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|----------------------------|----|-------------|-------------|-----------|-----------|-------------|
+| mn3_3eb (cold first phase) | 89 | **802.5**   | **9.02**    | 8.94      | 61.16     | 30.04       |
+| mn3_2eb                    | 89 | 648.3       | 7.28        | 13.97     | 65.57     | 46.02       |
+| mn3_1eb (last phase)       | 95 | 622.9       | 6.56        | 25.19     | 73.04     | 63.02       |
+
+**Verdict — the reversal is REAL, not a warming artifact. 3 EB/node wins even
+when it is the coldest first phase: 802.5 Hz, +23.8% aggregate over 2eb (648.3)
+and +28.8% over 1eb (622.9), +23.8% per-rank (9.02 vs 7.28).** The ordering
+`3eb > 2eb > 1eb` is now identical in BOTH the forward (2→1→3) and reversed
+(3→2→1) brackets, so it is robust to phase order — the order-confound flagged in
+the primary entry is DISCHARGED. This whole reversed window is warmer than the
+forward one (every config faster: 3eb 802 vs 553, 2eb 648 vs 411, 1eb 623 vs 419),
+which is exactly why in-window ordering — not cross-window absolute rates — is the
+valid comparison. The reversed bracket also restores the small 2eb>1eb edge (648
+vs 623) that the forward bracket's cold-first-phase penalty on 2eb had masked, so
+the true monotone 3-node ordering is `3 > 2 > 1`, matching the monotone eb_wait
+(25.19 → 13.97 → 8.94 ms).
+
+**So the PS_EB_PER_NODE knee GROWS with node count: 2 @ 2 nodes (iter-23), ≥3 @ 3
+nodes (this iter). Mechanism confirmed: one smd0 feeds all node-local EBs, so more
+nodes = more EBs contending for smd batches = larger eb_wait at low k = the
+crossover moves to higher k. The clean emergent rule so far is knee ≈ node_count.**
+This is the compounding answer iter-23 asked for — the lever does compound with
+node count, but the *optimal setting* is node-count-dependent, not a fixed =2.
+
+**Keep/graduate:** the feature was already KEPT (opt-in, default-off, bit-exact
+correctness-gated in iter-22). This iteration GRADUATES the node-count-dependent
+knee into `PLANNING.md` — new `PS_EB_PER_NODE` subsection under "Multi-node
+launch" with the measured 2n/3n knee table, the "scale k with node count / start
+at k=node_count" guidance, the "do not exceed the knee (−18% past it)" warning,
+and a pointer to the `eb_per_node_3n.sbatch` template. TASK.md updated to mark the
+iter-24 result CONFIRMED (was PROVISIONAL). iter-23's `PS_EB_PER_NODE=2 at 2
+nodes` TASK entry is unchanged and correct — it is the knee *at 2 nodes*; the
+graduation just generalizes it to k≈node_count.
+
+**Recommended next step:** the knee at 3 nodes is bounded only as `≥3` — the
+{1,2,3} bracket did not test k=4 @ 3n, so whether the 3-node optimum is exactly 3
+or higher is open. And the emergent `knee ≈ node_count` rule wants a 4-node point
+(does k=4 win at 4 nodes?) to become a law rather than a two-point line. A single
+3-node k∈{3,4,5} bracket pins the 3-node knee; a 4-node k∈{2,3,4} bracket tests
+the rule. Once the knee's functional form is pinned, the code-side multi-node
+levers (node-local EB placement + intra-node EB fan-out) are fully characterized
+and the loop is at LOOP DONE pending storage-side facility levers (the ~10–12
+GB/s FFB ceiling, none of which are psana code — TASK.md "Remaining" items 1–3).
