@@ -170,7 +170,7 @@ bool XtcMonitorServer::_send(Dgram* dg)
   if (r>0)
     ;
   else {
-    if (r<0) ; // perror("Error reading input event queue");
+    if (r<0) ; // perror("Error reading request event queue");
     for(unsigned i=0; i<_numberOfEvQueues; i++) {
       unsigned iq = (i+_nsteals)%_numberOfEvQueues; // fairness
       r=mq_receive(_myOutputEvQueue[iq], (char*)&msg, sizeof(msg), NULL);
@@ -185,7 +185,7 @@ bool XtcMonitorServer::_send(Dgram* dg)
     _msgDest[msg.bufferIndex()]=-1;
     ShMsg m(msg, dg);
     if (mq_send(_shuffleQueue, (const char*)&m, sizeof(m), 0)) {
-      perror("ShuffleQ timed out\n");
+      perror("Error sending on ShuffleQ");
       _deleteDatagram(dg);
     }
   }
@@ -389,8 +389,6 @@ void XtcMonitorServer::routine()
 #ifdef DBUG2
             printf("*** receiveEv  got  idx %d\n", msg.bufferIndex());
 #endif
-            Dgram* dg = (Dgram*)(_myShm+_sizeOfBuffers*msg.bufferIndex());
-            _deleteDatagram(dg);
             _requestDatagram();
           }
         }
@@ -408,6 +406,7 @@ void XtcMonitorServer::routine()
           perror("mq_receive");
 
         _copyDatagram(m.dg(),_myShm+_sizeOfBuffers*m.msg().bufferIndex(), _sizeOfBuffers);
+        _deleteDatagram(m.dg());
 
         if (m.msg().serial()) {
           //
