@@ -28,7 +28,6 @@
 #include <climits>                      // For HOST_NAME_MAX
 #include <chrono>
 #include <mutex>
-#include <unordered_map>
 #include <sys/prctl.h>
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
@@ -133,7 +132,6 @@ namespace Pds {
                        uint64_t&                      requestCount,
                        std::shared_ptr<PromHistogram> bufUseCnts,
                        std::atomic<uint64_t>&         prcBufCount,
-                       MyMetric&                      bufCpyMetric,
                        MyMetric&                      bufPrcMetric,
                        MyMetric&                      monTrgMetric,
                        MyMetric&                      appPrcMetric,
@@ -147,7 +145,6 @@ namespace Pds {
       _bufFreeList (prms.numEvBuffers),
       _bufUseCnts  (bufUseCnts),
       _prcBufCount (prcBufCount),
-      _bufCpyMetric(bufCpyMetric),
       _bufPrcMetric(bufPrcMetric),
       _monTrgMetric(monTrgMetric),
       _appPrcMetric(appPrcMetric),
@@ -206,61 +203,29 @@ namespace Pds {
         {
           logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu",
                             bSz, oSz, iExt);
-          throw "Buffer too small";
+          abort();
         }
         buf = (char*)odg->xtc.alloc(iExt, bufEnd);
         memcpy(buf, &idg->xtc, iExt);
       }
       while (++ctrb != last);
-
-      // Save the event builder's datagram pointer in an unordered_map
-      // so that it can be retrieved by _deleteDatagram()
-      if (dg->isEvent())
-      {
-        if ((_dgMap.find(odg) == _dgMap.end()) || _dgMap.at(odg) == nullptr) [[likely]]
-          _dgMap[odg] = dg;             // Insert new entry or overwrite existing one
-        else
-          logging::error("_copyDatagram: _dgMap[%p] is not free: idx %u, dg %p, ts %u.%09u, svc %s",
-                         odg, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
-
-        _bufPrcMetric.start(idx);       // Measure time until buffer is released by client
-        _bufCpyMetric.accumulate(idx);  // Measure time since buffer was passed to server
-      }
     }
 
-    virtual void _deleteDatagram(Dgram* appDg) // Not called for transitions
+    virtual void _deleteDatagram(Dgram* dg) // Not called for transitions
     {
-      // Ignore stale appDgs
-      if (_bufCpyMetric.count() == 0) [[unlikely]]
-      {
-        // Don't try to dereference a stale appDg as its pointer may not be in the current address space
-        logging::debug("_deleteDatagram: Ignoring on startup: dg %p", appDg); //, ts %u.%09u, svc %s",
-                      //appDg, appDg->time.seconds(), appDg->time.nanoseconds(),
-                      //TransitionId::name(appDg->service()));
-        return;
-      }
+      // NB: dg is the event builder's datagram, not the application's datagram
 
-      // Sanity check
-      if (_dgMap.find(appDg) == _dgMap.end()) [[unlikely]]
-      {
-        logging::info("_deleteDatagram: dg not in map: %p, ts %u.%09u, svc %s\n",
-                       appDg, appDg->time.seconds(), appDg->time.nanoseconds(), TransitionId::name(appDg->service()));
-        return;
-      }
-
-      // Retrieve the event builder's datagram and extract the buffer index
-      Dgram* dg = _dgMap[appDg];
       unsigned idx = dg->xtc.src.value();
 
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
         logging::debug("_deleteDatagram:  idx %2u, dg %p, ts %u.%09u, svc %s",
-                       idx, appDg, appDg->time.seconds(), appDg->time.nanoseconds(),
-                       TransitionId::name(appDg->service()));
+                       idx, dg, dg->time.seconds(), dg->time.nanoseconds(),
+                       TransitionId::name(dg->service()));
 
       // Sanity checks
       if (idx >= _bufFreeList.size()) [[unlikely]]
       {
-        logging::error("deleteDatagram: Ignoring out-of-bounds buffer index %u (>= %u)",
+        logging::error("deleteDatagram: Ignoring dg with out-of-bounds buffer index %u (>= %u)",
                        idx, _bufFreeList.size() - 1);
         return;
       }
@@ -278,7 +243,7 @@ namespace Pds {
       _appPrcMetric.start(idx);         // Measure time until buffer is requested again
       _bufPrcMetric.accumulate(idx);    // Measure time since buffer was passed to client
 
-      // Free the event builder datagram
+      // Free the event builder datagram _before_ releasing its buffer index
       Pool::free((void*)dg);            // Transition buffers are freed in Meb::process()
 
       // Release the buffer index
@@ -291,10 +256,6 @@ namespace Pds {
         }
       }
       //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
-
-      // Release map slot
-      // appDg shmem buffer pointers are fixed at startup
-      _dgMap[appDg] = nullptr;          // Avoid allocating/freeing
     }
 
     virtual void _requestDatagram()     // Not called for transitions
@@ -325,13 +286,13 @@ namespace Pds {
       int rc = _mrqLinks[iTeb]->EbLfLink::post(data);
       if (rc) [[unlikely]]
       {
-        logging::error("%s:\n  Unable to post request to TEB %u: rc %d, idx %u (%08x)",
-                       __PRETTY_FUNCTION__, iTeb, rc, idx, data);
+        logging::error("_requestDatagram: Unable to post request to TEB %u: rc %d, idx %u (%08x)",
+                       iTeb, rc, idx, data);
 
         // Don't leak buffers - Revisit: XtcMonServer leaks in this case
         if (_bufFreeList.push(idx))
         {
-          logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
+          logging::error("_requestDatagram: _bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
           for (unsigned i = 0; i < _bufFreeList.size(); ++i)
           {
             fprintf(stderr, "Free list entry %u: %u\n", i, _bufFreeList.peek(i));
@@ -352,17 +313,15 @@ namespace Pds {
     }
 
   private:
-    std::vector<EbLfCltLink*>&         _mrqLinks;
-    uint64_t&                          _requestCount;
-    FifoMT<unsigned, std::mutex>       _bufFreeList;
-    std::unordered_map<Dgram*, Dgram*> _dgMap;
-    std::shared_ptr<PromHistogram>     _bufUseCnts;
-    std::atomic<uint64_t>&             _prcBufCount;
-    MyMetric&                          _bufCpyMetric;
-    MyMetric&                          _bufPrcMetric;
-    MyMetric&                          _monTrgMetric;
-    MyMetric&                          _appPrcMetric;
-    const MebParams&                   _prms;
+    std::vector<EbLfCltLink*>&     _mrqLinks;
+    uint64_t&                      _requestCount;
+    FifoMT<unsigned, std::mutex>   _bufFreeList;
+    std::shared_ptr<PromHistogram> _bufUseCnts;
+    std::atomic<uint64_t>&         _prcBufCount;
+    MyMetric&                      _bufPrcMetric;
+    MyMetric&                      _monTrgMetric;
+    MyMetric&                      _appPrcMetric;
+    const MebParams&               _prms;
   };
 
 
@@ -396,7 +355,6 @@ namespace Pds {
     uint64_t                            _requestCount;
     std::atomic<uint64_t>               _prcBufCount;
     std::shared_ptr<PromHistogram>      _bufUseCnts;
-    MyMetric                            _bufCpyMetric;
     MyMetric                            _bufPrcMetric;
     MyMetric                            _monTrgMetric;
     MyMetric                            _appPrcMetric;
@@ -429,7 +387,6 @@ Meb::Meb(const MebParams&        prms,
   _splitCount  (0),
   _requestCount(0),
   _prcBufCount (0),
-  _bufCpyMetric(prms.numEvBuffers),
   _bufPrcMetric(prms.numEvBuffers),
   _monTrgMetric(prms.numEvBuffers),
   _appPrcMetric(prms.numEvBuffers),
@@ -503,11 +460,6 @@ int Meb::_setupMetrics(const MetricExporter_t exporter)
   exporter->add("MRQ_TxPdg",  labels, MetricType::Gauge,   [&](){ return _mrqTransport.posting(); });
   exporter->add("MRQ_BufCt",  labels, MetricType::Gauge,   [&](){ return _apps ? _apps->bufListCount() : 0; });
   exporter->add("MEB_PrcCt",  labels, MetricType::Gauge,   [&](){ return _prcBufCount.load(); });
-  exporter->add("MEB_CpyTmC", labels, MetricType::Gauge,   [&](){ return _bufCpyMetric.count();   });
-  exporter->add("MEB_CpyTm",  labels, MetricType::Gauge,   [&](){ return _bufCpyMetric.sample();  });
-  exporter->add("MEB_CpyTmm", labels, MetricType::Gauge,   [&](){ return _bufCpyMetric.minimum(); });
-  exporter->add("MEB_CpyTmM", labels, MetricType::Gauge,   [&](){ return _bufCpyMetric.maximum(); });
-  exporter->add("MEB_CpyTmA", labels, MetricType::Gauge,   [&](){ return _bufCpyMetric.average(); });
   exporter->add("MEB_PrcTmC", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.count();   });
   exporter->add("MEB_PrcTm",  labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.sample();  });
   exporter->add("MEB_PrcTmm", labels, MetricType::Gauge,   [&](){ return _bufPrcMetric.minimum(); });
@@ -573,8 +525,7 @@ int Meb::configure()
 
   _apps = std::make_unique<MyXtcMonitorServer>(_mrqLinks, _requestCount,
                                                _bufUseCnts, _prcBufCount,
-                                               _bufCpyMetric, _bufPrcMetric,
-                                               _monTrgMetric, _appPrcMetric,
+                                               _bufPrcMetric, _monTrgMetric, _appPrcMetric,
                                                _prms);
 
   _apps->distribute(_prms.ldist);
@@ -610,12 +561,12 @@ void Meb::run()
       else if (rc == -FI_ENOTCONN)
       {
         logging::critical("MEB thread lost connection with a DRP");
-        throw "Receiver thread lost connection with a DRP";
+        abort();
       }
       else if (rc == rcPrv)
       {
         logging::critical("MEB thread aborting on repeating fatal error");
-        throw "Repeating fatal error";
+        abort();
       }
     }
     rcPrv = rc;
@@ -661,7 +612,7 @@ void Meb::process(EbEvent* event)
                         __PRETTY_FUNCTION__, pid);
       // return, if we knew this PID had been fixed up before
     }
-    throw "Pulse ID did not advance";   // Can't recover from non-spit events
+    abort();                            // Can't recover from non-spit events
   }
   _pidPrv = pid;
 
@@ -726,7 +677,7 @@ void Meb::process(EbEvent* event)
   if (dg->service() == TransitionId::L1Accept)
   {
     ++_prcBufCount;    // Number of buffers being processed by the XtcMonitorServer & Client; decremented in _deleteDatagram
-    _bufCpyMetric.start(idx);           // Measure time until buffer is copied by server
+    _bufPrcMetric.start(idx);           // Measure time until buffer is processed by server
     _monTrgMetric.accumulate(idx);      // Measure time since buffer was requested
 
     int env = dg->env & _prms.rogs;
