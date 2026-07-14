@@ -1719,3 +1719,73 @@ rank both. If `eb_wait` does NOT fall (i.e. the 26 ms is cross-node smd0/EB
 coordination, not intra-node BD-per-EB count — iter-17 leaned this way), that
 closes the code-side multi-node levers and the loop is near LOOP DONE pending the
 storage-side facility levers.
+
+## 2026-07-13 — Iteration 22 (implement PS_EB_PER_NODE — intra-node EB fan-out; segfault found+fixed, single-node functional-clean, multi-node scaling bracket next)
+
+**Task:** execute iter-21's named next lever — the residual per-node EB
+serialization that one-EB-per-node colocation still leaves at scale (measured
+eb_wait 26 ms @3n, 77% per-node efficiency). Implement an opt-in **`PS_EB_PER_NODE`**
+that places multiple EBs per compute node, each serving a fraction of that node's
+BD ranks, so the hypothesis "26 ms is intra-node BDs-per-EB count (fixable) vs
+cross-node smd0/EB coordination (not fixable by more EBs/node — iter-17 leaned
+this way)" becomes directly testable. One variable.
+
+**Implementation (guarded, default-off — inert unless PS_EB_NODE_LOCAL=1 AND
+PS_EB_PER_NODE>1):**
+1. `psexp/node.py` — in colocate mode, after the per-node `Split_type(SHARED)`,
+   sub-split each node's shared comm by `node_local_rank % eb_per_node`. Each
+   sub-comm's rank-0 becomes an EB (existing `bd_rank==0 -> "eb"` generalizes),
+   so a 32-rank node with `PS_EB_PER_NODE=2` yields 2 EBs of ~15 BDs each instead
+   of 1 EB of 31. Also set `n_smd_nodes = len(smd_worlds)-1` in the colocate
+   `_init_smd_comm` branch so smd0's request/serve/missing-step/kill loops count
+   the *actually-detected* EB set (now > PS_EB_NODES=node_count).
+2. `datasource.py::_ensure_local_eb_nodes` — override PS_EB_NODES to
+   `node_count * eb_per_node` (was `node_count`).
+
+**Non-editable install gotcha (cost 2 wasted runs — recorded for next iter):**
+runtime imports psana from `install/lib/python3.9/site-packages/`, NOT the source
+tree. A source-only edit to `psexp/node.py` is silently ignored (the first
+functional run printed the OLD role message with no `eb_per_node=` suffix). psexp
+is pure-Python so no C rebuild is needed — but the edited file must be synced into
+`install/`. Verified `diff install/... source/...` showed ONLY my edits, then
+`cp`'d node.py + datasource.py into install (equivalent to `meson install` for a
+.py file). Only `psana/psana/gpu/` is import-live without this step.
+
+**Segfault found and fixed (the substantive result of this iteration).** First
+2-EB run: topology formed correctly (`eb_per_node=2` role line present) but smd0
+(rank 0) **segfaulted (signal 11) inside the `smdreader` C extension**
+(`repack_parallel`), exit 139. Root cause: `smdreader.pyx:104/142` allocates
+`send_bufs = malloc(n_eb_nodes * sizeof(Buffer))` where `n_eb_nodes =
+int(getenv('PS_EB_NODES','1'))`. With 2 EB/node the requesting EB's `eb_node_id`
+(its smd_rank, 1..2*node_count) indexed past the buffer array -> OOB write ->
+segfault. Fix is the datasource.py change above: making PS_EB_NODES reflect the
+*total* EB count sizes the C send-buf array correctly, no C rebuild required.
+
+**Verification (ralph-gpu 31583622, single node, cold FFB window — see log paths):**
+- Correctness gate: **PASS**, bit-exact max_diff=0.000000, 20 events (numeric path
+  untouched; run per protocol for a psexp change).
+- 2-EB after fix: **exit 0, 31 BD ranks** (2 EBs took 2 of 33 non-smd0 slots),
+  aggregate 100.1 Hz — clean, no crash. Log `ralph/eb_per_node_sn.log` +
+  `_verify2eb.sh` output.
+- Default path (flags off): **exit 0, 32 BD ranks**, 104.0 Hz — unbroken (rule 4).
+- Window note: this window is COLD (default 104 Hz vs ~175 Hz warm baseline;
+  earlier 240s-capped runs hit exit 124 timeout from slowness, not breakage), so
+  the single-node 100 vs 104 Hz is NOT a lever measurement — single node is
+  storage-bound with tiny eb_wait, exactly where 2 EB/node is NOT expected to help
+  (it costs one BD slot). The lever must be tested at multi-node where eb_wait
+  grows. That clean 2-node bracket (1 EB/node vs 2 EB/node) is this iteration's
+  next action.
+
+**Keep/revert:** KEEP the implementation — opt-in, default-off, correctness-gated,
+default-path-verified, segfault fixed, 2-EB topology functionally clean. The
+*scaling verdict* (does eb_wait actually fall) is not yet measured; that decides
+whether PS_EB_PER_NODE graduates or is documented as a tried-but-flat lever.
+
+**Recommended next step:** run the 2-node in-window bracket sn_a(1 node) /
+mn2_1eb(PS_EB_NODE_LOCAL=1) / mn2_2eb(+PS_EB_PER_NODE=2) on preemptable QOS
+(front-load fragile phases, wall <6 min per iter-20). Compare aggregate AND
+per-rank (a 2nd EB costs a BD slot, so per-rank eb_wait must fall enough to beat
+the lost BD). If eb_wait drops and aggregate rises -> intra-node lever confirmed,
+graduate it. If eb_wait is FLAT -> the 26 ms is cross-node smd0/EB coordination
+(iter-17), this closes the code-side multi-node levers, and the loop is at LOOP
+DONE pending storage-side facility levers.

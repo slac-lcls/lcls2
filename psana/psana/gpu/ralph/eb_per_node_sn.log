@@ -1,0 +1,10 @@
+################ DEFAULT ################
+[mpirun exit 124]
+################ COLOCATE_1EB ################
+[PSANA-INFO RANK:1 1783991876.286176512] Communicators [MPI-role] Non-marching EB/BD colocated mode enabled on host sdfampere033 (eb_per_node=1)
+[mpirun exit 124]
+################ COLOCATE_2EB ################
+[PSANA-INFO RANK:1 1783992120.541311488] Communicators [MPI-role] Non-marching EB/BD colocated mode enabled on host sdfampere033 (eb_per_node=2)
+ 0  /sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/lib/python3.9/site-packages/mpi4py/../../.././libucs.so.0(ucs_handle_error+0x2fd) [0x7feccc50bc1d]
+[mpirun exit 139]
+ALL DONE 18:23:18

@@ -67,7 +67,15 @@ def _ensure_local_eb_nodes():
     node_count = _detect_node_count()
     if node_count <= 0:
         return
-    desired = str(node_count)
+    # PS_EB_PER_NODE places multiple EBs on each compute node (default 1). The
+    # total EB count must be reflected in PS_EB_NODES because the SmdReader C
+    # extension sizes its per-EB send buffers from that env var; under-counting
+    # segfaults smd0 when a higher-numbered EB requests data.
+    try:
+        eb_per_node = max(1, int(os.environ.get("PS_EB_PER_NODE", "1")))
+    except ValueError:
+        eb_per_node = 1
+    desired = str(node_count * eb_per_node)
     current = os.environ.get("PS_EB_NODES", "1")
     if current == desired:
         return
@@ -83,7 +91,8 @@ def _ensure_local_eb_nodes():
     if should_log:
         prev = current if current is not None else "unset"
         logger.info(
-            "PS_EB_NODE_LOCAL requires one EB per compute node; overriding PS_EB_NODES %s -> %s",
+            "PS_EB_NODE_LOCAL places %s EB(s) per compute node; overriding PS_EB_NODES %s -> %s",
+            eb_per_node,
             prev,
             os.environ.get("PS_EB_NODES", "1"),
         )

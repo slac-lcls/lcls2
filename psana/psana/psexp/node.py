@@ -162,6 +162,11 @@ class Communicators(object):
             "yes",
             "on",
         )
+        # Intra-node EB fan-out (only honored in colocate mode). >1 places
+        # multiple EBs per compute node, each serving a fraction of that node's
+        # BD ranks — targets the residual per-node eb_wait serialization that
+        # one-EB-per-node colocation still leaves at scale.
+        self.eb_per_node = max(1, int(os.environ.get("PS_EB_PER_NODE", "1")))
 
         self.bd_main_group = self.psana_group.Excl([0])
         self._bd_only_group = None
@@ -180,9 +185,20 @@ class Communicators(object):
                 node_comm = self.bd_main_comm.Split_type(
                     MPI.COMM_TYPE_SHARED, self.bd_main_rank, info
                 )
+                if self.eb_per_node > 1:
+                    # Sub-split each node's shared comm into eb_per_node groups
+                    # by node-local rank modulo. Each group's rank-0 becomes an
+                    # EB (bd_rank == 0 below) serving only that group's BD ranks,
+                    # so a 32-rank node with eb_per_node=2 yields 2 EBs of ~15
+                    # BDs each instead of 1 EB of 31.
+                    node_local_rank = node_comm.Get_rank()
+                    node_comm = node_comm.Split(
+                        node_local_rank % self.eb_per_node, node_local_rank
+                    )
                 if self.bd_main_rank == 0:
                     self.logger.info(
-                        f'[MPI-role] Non-marching EB/BD colocated mode enabled on host {self.hostname}'
+                        f'[MPI-role] Non-marching EB/BD colocated mode enabled '
+                        f'on host {self.hostname} (eb_per_node={self.eb_per_node})'
                     )
                 self.bd_comm = node_comm
             else:
@@ -340,6 +356,11 @@ class Communicators(object):
             else:
                 smd_worlds = None
             smd_worlds = self.comm.bcast(smd_worlds, root=0)
+            # The detected EB set is authoritative: with eb_per_node>1 the true
+            # EB count exceeds PS_EB_NODES (=node_count). smd0's request/serve,
+            # missing-step, and kill loops iterate n_smd_nodes, so align it with
+            # the number of EBs actually connected to smd_comm.
+            self.n_smd_nodes = len(smd_worlds) - 1
         else:
             count = min(ps_eb_nodes + 1, self.psana_group.Get_size())
             smd_worlds = list(range(count))
