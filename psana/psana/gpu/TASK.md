@@ -612,6 +612,24 @@
   NEXT: confirm the single-window number; sweep PS_EB_PER_NODE=1/2/3 for a knee;
   test whether it COMPOUNDS at 3 nodes like node-local placement did.
 
+- 2026-07-13 (iter 23): **PS_EB_PER_NODE knee is at 2 — 2 EB/node is the sweet
+  spot at 2 nodes; 3 and 4 EB both REGRESS.** Clean 2-node in-window knee bracket
+  (job 31587292, all exit=0, `bench_mpi_sweep/epnknee_{3eb,2eb,4eb}.log`):
+  mn2_2eb=**502.9 Hz** (61 BD, per-rank 8.24) / mn2_3eb=414.1 Hz (59 BD, 7.02) /
+  mn2_4eb=414.1 Hz (57 BD, 7.27). The in-window 2eb (502.9) reproduces iter-22's
+  504.9 Hz to <0.4% — DOUBLES as the confirm bracket (recommended step a) and
+  bounds window-to-window noise as small. **Mechanism:** eb_wait falls
+  MONOTONICALLY with more EBs (10.06 → 4.29 → 3.64 ms) exactly as the
+  BDs-per-EB-serialization model predicts — but aggregate PEAKS at 2 EB and drops
+  −17.7% at 3/4. Past 2 EB, eb_wait is no longer the binding term (already ~4 ms);
+  further fan-out only sacrifices BD-reader slots (61→59→57) and inflates bd_read
+  (77.4 → 102.7 → 113.4 ms), so per-rank rate falls despite the smaller eb_wait.
+  So the lever is a genuine optimum, not monotone: **graduate PS_EB_PER_NODE=2 as
+  the recommended 2-node GPU default (with PS_EB_NODE_LOCAL=1); do NOT go higher.**
+  NEXT: does the =2 optimum COMPOUND at 3 nodes (iter-20 node-local widened
+  +9%→+31% from 2n→3n), and is the knee still 2 there or does more node count
+  shift it? A 3-node 1-vs-2-vs-3 EB bracket answers both.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.

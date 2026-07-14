@@ -1846,3 +1846,61 @@ widens with node count. The code-side multi-node ceiling is NOT closed — this
 lever just reopened it. If (b) finds a knee and (c) finds no compounding, then
 graduate PS_EB_PER_NODE=2 as the recommended multi-node GPU default (alongside
 PS_EB_NODE_LOCAL) and the loop is near LOOP DONE pending storage-side levers.
+
+### Iteration 23 — PS_EB_PER_NODE knee is at 2 (3/4 EB regress −18%): graduate 2 as the 2-node default
+
+**One variable:** EBs per node (PS_EB_PER_NODE ∈ {2,3,4}) at fixed 2 nodes,
+node-local colocation. iter-22 measured 2 EB/node beats 1 by +23% aggregate at 2
+nodes with eb_wait −18%; the graduation-decision question it left open is whether
+2 is the sweet spot or 3/4 keeps helping (each EB then serves fewer BDs → even
+lower eb_wait). This iteration answers it directly.
+
+**Setup verified before submit:** node.py + datasource.py both already synced into
+`install/` (the iter-22 non-editable-install gotcha — a source-only edit is
+silently ignored by the runtime). `diff` source-vs-install identical for both.
+Feature handles k=3/4: `_ensure_local_eb_nodes` sets PS_EB_NODES=node_count*k=6/8,
+sizing the SmdReader C send-buf array so no OOB segfault. No C rebuild (pure-py).
+
+**Clean 2-node in-window bracket, job 31587292 (all three exit=0),
+`bench_mpi_sweep/epnknee_{3eb,2eb,4eb}.log`, driver `slurm-31587292.out`,
+nodes sdfampere002/028, n=100/rank warmup=10 --wait-split:**
+
+| config              | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|---------------------|----|-------------|-------------|-----------|-----------|-------------|
+| mn2_2eb (2 EB/node) | 61 | **502.9**   | **8.24**    | 10.06     | 77.4      | 30.9        |
+| mn2_3eb (3 EB/node) | 59 | 414.1       | 7.02        | 4.29      | 102.7     | 24.5        |
+| mn2_4eb (4 EB/node) | 57 | 414.1       | 7.27        | 3.64      | 113.4     | 12.3        |
+
+**Verdict — the knee is at 2 EB/node. It is a genuine optimum, not a monotone
+lever.** 2 EB = 502.9 Hz is the peak; 3 and 4 EB both fall to 414.1 Hz (−17.7%).
+The mechanism is clean and slightly counter-intuitive: **eb_wait falls
+MONOTONICALLY with more EBs (10.06 → 4.29 → 3.64 ms)** — exactly what the
+"one-EB-serving-~32-BDs is a serialization point" model (iters 20/21/22)
+predicts, and it keeps paying off past 2. **But aggregate peaks at 2 anyway,**
+because past 2 EB eb_wait is no longer the binding term (already down to ~4 ms):
+the marginal EB now only *costs* — it removes a BD-reader slot (61→59→57) and
+bd_read inflates (77.4 → 102.7 → 113.4 ms/event), so per-rank rate drops (8.24 →
+7.02 → 7.27) despite the smaller wait. Net: you trade away storage-read
+concurrency for an eb_wait reduction you no longer need. 2 EB/node sits right at
+the crossover.
+
+**Reproducibility bonus:** the in-window 2eb here (502.9 Hz) matches iter-22's
+504.9 Hz to <0.4%. That satisfies recommended-step (a) — the single-window
+number is confirmed and window-to-window noise on the aggregate/per-rank headline
+is small. (bd_read/residual remain the noisy buckets, but the aggregate and
+per-rank verdicts are solid.)
+
+**Keep/revert:** KEEP the feature; recommend **PS_EB_PER_NODE=2** as the 2-node
+GPU default (paired with PS_EB_NODE_LOCAL=1). Do NOT set it higher — 3/4 regress.
+No code change this iteration (measurement only); TASK.md updated with the knee.
+Correctness untouched (no numeric-path edit; gate was run bit-exact in iter-22 for
+the same code).
+
+**Recommended next step:** does the =2 optimum COMPOUND at 3 nodes the way
+node-local placement did (iter-20: node-local widened +9%@2n → +31%@3n)? And is
+the knee still 2 at 3 nodes or does higher node count shift it (more nodes = more
+cross-node EB coordination, which could move the crossover)? A 3-node
+1-vs-2-vs-3 EB bracket answers both in one window. If =2 compounds and stays the
+knee, graduate it into PLANNING.md alongside PS_EB_NODE_LOCAL as the documented
+multi-node GPU launch recipe — at which point the code-side multi-node levers are
+characterized and the loop is near LOOP DONE pending storage-side facility levers.
