@@ -1789,3 +1789,60 @@ the lost BD). If eb_wait drops and aggregate rises -> intra-node lever confirmed
 graduate it. If eb_wait is FLAT -> the 26 ms is cross-node smd0/EB coordination
 (iter-17), this closes the code-side multi-node levers, and the loop is at LOOP
 DONE pending storage-side facility levers.
+
+### Iteration 22 addendum — 2-node bracket COLLECTED: PS_EB_PER_NODE=2 WINS (+23% aggregate / +27% per-rank, eb_wait −18%)
+
+Two benchmark starved-rank bugs blocked the first two 2-node brackets (jobs
+31585830, 31586227) — both MPI_Aborted mid-run so no rank-0 aggregate survived,
+and neither exposed a defect in the PS_EB_PER_NODE feature itself (the topology
+formed and calib ran in every attempt):
+1. `bench_calib.py:585` (`run_gpu_bench_wait_split`): `snap0 = (0,0,0)` was a
+   3-tuple but `_snap()` returns 5 — a rank starved below `warmup` events never
+   ran `snap0 = _snap()`, so `snap1[3]` → IndexError. Fixed: `snap0 = (0,0,0,0,0)`.
+2. `bench_calib.py:1121`: the per-rank breakdown divides `1000.0/rate_hz`; a
+   0-event rank has rate_hz=0 → ZeroDivisionError. Fixed: skip the per-rank
+   breakdown when `n==0 or rate_hz<=0` (the rank-0 aggregate already filters to
+   `n>0` ranks). Both are `psana/psana/gpu/` tooling fixes (import-live, no
+   install sync, byte-identical numerics for non-starved ranks); starvation is
+   intrinsic to 60+ BD ranks sharing one max_events budget, not to this feature.
+
+**Clean in-window bracket, job 31586774 (all three exit=0), `bench_mpi_sweep/
+epn2n_{sn_a,2eb,1eb}.log`, driver `slurm-31586774.out`:**
+
+| config              | BD | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|---------------------|----|-------------|-------------|-----------|-----------|-------------|
+| sn_a (1 node)       | 32 | 221.1       | 6.91        | 6.88      | 103.3     | 32.2        |
+| mn2_2eb (2 EB/node) | 61 | **504.9**   | **8.28**    | 17.39     | 72.0      | 24.1        |
+| mn2_1eb (1 EB/node) | 63 | 410.6       | 6.52        | 21.16     | 88.8      | 55.5        |
+
+**Verdict — PS_EB_PER_NODE=2 is a real multi-node lever. 2 EB/node beats 1 EB/node
+by +23.0% aggregate (504.9 vs 410.6) and +27.0% per-rank (8.28 vs 6.52) — while
+using FEWER BD ranks (61 vs 63, since the 2nd EB costs a slot). The strong form:
+fewer workers, more throughput.** eb_wait fell −17.8% (21.16→17.39 ms), exactly
+the direction the "intra-node BDs-per-EB serialization" hypothesis (iters 20/21)
+predicted and against iter-17's "the 26 ms is pure cross-node coordination, not
+fixable by more EBs/node" pessimism — that pessimism is REFUTED at 2 nodes.
+
+Notably the eb_wait drop (−3.8 ms) is smaller than the total per-event wall
+improvement: residual also collapsed (55.5→24.1 ms) and bd_read fell (88.8→72.0).
+Coherent mechanism: one EB serving ~32 BDs doesn't just make them wait on batches
+(eb_wait) — it bunches their reads + dgram construction into contended bursts,
+inflating bd_read and residual too. Splitting to 2 EB/node de-bunches the whole
+downstream chain, so all three buckets drop together. (Caveat: single bracket;
+residual is the noisiest bucket window-to-window, so the headline claim rests on
+the aggregate/per-rank/eb_wait trio, which all move consistently.)
+
+**Keep/revert:** KEEP — decisively. Opt-in, default-off, correctness-gated
+(bit-exact), default-path-verified, and now measured to compound the
+PS_EB_NODE_LOCAL win at 2 nodes. Recorded in TASK.md.
+
+**Recommended next step:** (a) a confirm bracket to firm up the single-window
+number (rerun 1eb-vs-2eb, ideally back-to-back twice, to bound the residual
+noise); (b) does it keep helping at PS_EB_PER_NODE=3/4 (each EB serving ~10/8 BD)
+or is there a knee? test 1-vs-2-vs-3 EB/node at 2 nodes; (c) does it COMPOUND at
+3 nodes like node-local placement did (iter-20: node-local widened +9%→+31% from
+2n→3n)? A 3-node 1-vs-2-EB bracket would show whether the intra-node lever also
+widens with node count. The code-side multi-node ceiling is NOT closed — this
+lever just reopened it. If (b) finds a knee and (c) finds no compounding, then
+graduate PS_EB_PER_NODE=2 as the recommended multi-node GPU default (alongside
+PS_EB_NODE_LOCAL) and the loop is near LOOP DONE pending storage-side levers.

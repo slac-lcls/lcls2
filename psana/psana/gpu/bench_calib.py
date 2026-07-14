@@ -525,7 +525,11 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
     t_prev_end = None
     raw_gpu_buf = None
     raw_gpu_3d = None
-    snap0 = (0, 0, 0)
+    # Must match _snap()'s width (eb_wait, bd_read, events, dgram, smdparse):
+    # a rank starved below `warmup` events never runs `snap0 = _snap()` and
+    # would otherwise keep a short tuple, so snap1[3]/snap1[4] -> IndexError
+    # -> MPI_Abort. Seen at 62 BD ranks / cold window (job 31585830).
+    snap0 = (0, 0, 0, 0, 0)
 
     events = run.events()
     while True:
@@ -1078,7 +1082,14 @@ def main():
         print(f"\n[rank {rank}] GPU results ({result['n']} events, "
               f"warmup={args.warmup}, d2h={'yes' if args.d2h else 'no'}):")
         print(f"  rate:        {result['rate_hz']:.1f} Hz")
-        if args.profile_read:
+        if result['n'] == 0 or result.get('rate_hz', 0) <= 0:
+            # Starved rank: fewer than `warmup` events reached this BD before the
+            # stream ended (common at 60+ BD ranks sharing a fixed max_events).
+            # Its per-event breakdown divides by rate_hz -> ZeroDivisionError and
+            # MPI_Abort. Skip it; the rank-0 aggregate already filters to ranks
+            # with measurements. Seen at 62/64 BD, warm window (job 31586227).
+            print(f"  (rank starved: no measured events; excluded from breakdown)")
+        elif args.profile_read:
             print(f"  wait:        {result['wait_ms_mean']:.3f} ms/event "
                   f"(gen advance = bigdata read + EB/MPI)")
             print(f"  read1:       {result['read1_ms_mean']:.3f} ms/event "

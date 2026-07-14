@@ -593,6 +593,25 @@
   node loss at 3n points at intra-node EB serialization (2nd EB/node) as the next
   lever.
 
+- 2026-07-13 (iter 22): **intra-node EB fan-out (`PS_EB_PER_NODE`) is a confirmed
+  multi-node lever that COMPOUNDS the node-local win.** New opt-in (default-off,
+  gated behind PS_EB_NODE_LOCAL): sub-splits each node's shared comm into
+  `PS_EB_PER_NODE` groups, each with its own EB serving ~1/N of the node's BDs
+  (node.py); `_ensure_local_eb_nodes` sizes PS_EB_NODES to node_count*eb_per_node
+  so the SmdReader C send-buf array (sized from that env var) doesn't OOB-segfault
+  smd0. **Clean 2-node in-window bracket (job 31586774, `bench_mpi_sweep/epn2n_*.log`):**
+  sn_a=221.1 Hz (32 BD) / **mn2_2eb=504.9 Hz (61 BD)** / mn2_1eb=410.6 Hz (63 BD).
+  2 EB/node beats 1 EB/node **+23.0% aggregate, +27.0% per-rank (8.28 vs 6.52 Hz)
+  using FEWER BD ranks**, with eb_wait −17.8% (21.16→17.39 ms) — REFUTES iter-17's
+  "the residual eb_wait is pure cross-node coordination, not fixable by more
+  EBs/node." residual (55.5→24.1) and bd_read (88.8→72.0) also drop: one EB/32-BD
+  bunches reads+construction into contended bursts; splitting de-bunches the whole
+  chain. Correctness gate PASS bit-exact (numeric path untouched); default MPI path
+  (flags off) verified unbroken (32 BD, exit 0). Two starved-rank benchmark bugs
+  fixed en route (bench_calib.py snap0 tuple width; per-rank 0-event ZeroDivision).
+  NEXT: confirm the single-window number; sweep PS_EB_PER_NODE=1/2/3 for a knee;
+  test whether it COMPOUNDS at 3 nodes like node-local placement did.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.
