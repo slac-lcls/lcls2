@@ -64,6 +64,19 @@ def _bar(val, max_val, width=36):
     return '█' * filled + '░' * (width - filled)
 
 
+def _flush_gpu_pool():
+    """Force GC then release all cached CuPy pool blocks."""
+    import gc
+    gc.collect()
+    try:
+        import cupy as cp
+        cp.cuda.Device().synchronize()
+        cp.get_default_memory_pool().free_all_blocks()
+        cp.get_default_pinned_memory_pool().free_all_blocks()
+    except Exception:
+        pass
+
+
 # ---------------------------------------------------------------------------
 # CPU path: numpy calibration on BD ranks
 # ---------------------------------------------------------------------------
@@ -124,14 +137,13 @@ def run_cpu(exp, run, xtc_dir, det_name, n_warmup, n_events):
     ) else 0.0
     cnt = len(evt_ms)
     return {
-        'rank':            _WORLD_RANK,
-        'bd_rank':         bd_rank,
-        'n_events':        cnt,
-        'mean_ms':         float(np.mean(evt_ms))           if evt_ms else 0.0,
-        'p95_ms':          float(np.percentile(evt_ms, 95)) if evt_ms else 0.0,
-        'wall_total_ms':   wall_ms,
-        'wall_per_evt_ms': wall_ms / cnt if cnt > 0 else 0.0,
-        'evt_per_sec':     cnt / (wall_ms / 1000.0) if wall_ms > 0 else 0.0,
+        'rank':          _WORLD_RANK,
+        'bd_rank':       bd_rank,
+        'n_events':      cnt,
+        'mean_ms':       float(np.mean(evt_ms))           if evt_ms else 0.0,
+        'p95_ms':        float(np.percentile(evt_ms, 95)) if evt_ms else 0.0,
+        'wall_total_ms': wall_ms,
+        'evt_per_sec':   cnt / (wall_ms / 1000.0) if wall_ms > 0 else 0.0,
     }
 
 
@@ -140,28 +152,17 @@ def run_cpu(exp, run, xtc_dir, det_name, n_warmup, n_events):
 # ---------------------------------------------------------------------------
 
 def run_gpu(exp, run, xtc_dir, det_name,
-            batch_size, n_gpu_streams, n_warmup, n_events):
+            batch_size, n_gpu_streams, n_warmup, n_events,
+            d2h_chunk_size=0):
     """Time BD-rank GPU calibration via the MPI GPU path.
 
-    Each BD rank receives its share of events from EB as GPUBAT1 stubs, issues
-    GDS reads directly to GPU VRAM, and calibrates via fused_calib_gpu().
+    d2h_chunk_size=0  → call .on_gpu  (no D→H, ceiling throughput)
+    d2h_chunk_size=N  → activate _D2hPipeline; call .on_cpu (pre-done D→H)
     """
     from psana.psexp.mpi_ds import MPIDataSource
     from psana.psexp.node import Communicators
 
-    # Force Python GC then release all cached CuPy pool blocks.
-    # After run_cpu(), RunParallel objects with calibconst GPU arrays may
-    # still be referenced by Python's cycle collector.  gc.collect() frees
-    # those first so that free_all_blocks() can reclaim the underlying VRAM.
-    import gc
-    gc.collect()
-    try:
-        import cupy as cp
-        cp.get_default_memory_pool().free_all_blocks()
-        cp.get_default_pinned_memory_pool().free_all_blocks()
-    except Exception:
-        pass
-
+    _flush_gpu_pool()
     comms = Communicators()
     ds    = MPIDataSource(
         comms,
@@ -171,6 +172,7 @@ def run_gpu(exp, run, xtc_dir, det_name,
         gpu_det=det_name,
         batch_size=batch_size,
         n_gpu_streams=n_gpu_streams,
+        gpu_d2h_chunk_size=d2h_chunk_size,
         max_events=n_warmup + n_events,
     )
 
@@ -198,29 +200,19 @@ def run_gpu(exp, run, xtc_dir, det_name,
     except Exception:
         io_path = 'unknown'
 
-    # Bandwidth tracking: accumulate GDS (or CPU fallback) I/O bytes+time.
-    # We instrument wait_batch() in KvikioGpuReader; here we collect totals
-    # from the gpu_reader after the loop via the run's _evt_iter (serial path)
-    # or directly from a per-rank tracker inserted into GpuEvents (MPI path).
-    io_bw_gbs = 0.0
-
     for r in ds.runs():
         for ctx in r.events():
             if n == n_warmup:
                 wall_t_start = time.perf_counter()
-            t0 = time.perf_counter()
-            _  = ctx.get(det_name + '.calib').on_gpu    # EventPool result
+            t0  = time.perf_counter()
+            res = ctx.get(det_name + '.calib')
+            _   = res.on_cpu if d2h_chunk_size > 0 else res.on_gpu
             dt = (time.perf_counter() - t0) * 1000.0
             n += 1
             if n > n_warmup:
                 hot_ms.append(dt)
             if n == n_warmup + n_events:
                 wall_t_end = time.perf_counter()
-
-        # Serial path: gpu_reader accessible via _evt_iter.
-        _gpu_ev = getattr(r, '_evt_iter', None)
-        if _gpu_ev is not None and hasattr(_gpu_ev, 'gpu_reader'):
-            io_bw_gbs = _gpu_ev.gpu_reader.io_stats()['bandwidth_gbs']
 
     if wall_t_start is not None and wall_t_end is None:
         wall_t_end = time.perf_counter()
@@ -229,38 +221,19 @@ def run_gpu(exp, run, xtc_dir, det_name,
         wall_t_end and wall_t_start
     ) else 0.0
     cnt = len(hot_ms)
-    result = {
+    del ds, comms
+    _flush_gpu_pool()
+    return {
         'rank':            _WORLD_RANK,
         'bd_rank':         bd_rank,
         'phys_gpu':        phys_gpu,
         'n_events':        cnt,
-        'hot_mean_ms':     float(np.mean(hot_ms))           if hot_ms else 0.0,
-        'hot_p95_ms':      float(np.percentile(hot_ms, 95)) if hot_ms else 0.0,
+        'hot_mean_ms':     float(np.mean(hot_ms)) if hot_ms else 0.0,
         'wall_total_ms':   wall_ms,
         'wall_per_evt_ms': wall_ms / cnt if cnt > 0 else 0.0,
         'evt_per_sec':     cnt / (wall_ms / 1000.0) if wall_ms > 0 else 0.0,
         'io_path':         io_path,
-        'io_bw_gbs':       io_bw_gbs,
     }
-
-    # Explicit cleanup: destroy the DataSource and all GPU objects it holds,
-    # then flush the CuPy pool back to the CUDA driver.  Without this, the
-    # Bug 1 fix (batch-sized calib_slot_bufs) causes each run's buffers to
-    # stay alive until the NEXT run's gc.collect() — by which point bs=80's
-    # allocation request encounters a pool that still holds 40+ GB committed
-    # from bs=10+20+50.  Slice views (calib_gpu = slot_buf[a:b]) keep the
-    # parent slot_buf alive via CuPy's base-array reference chain until every
-    # view is also freed.
-    del ds, comms
-    import gc as _gc
-    _gc.collect()
-    try:
-        cp.get_default_memory_pool().free_all_blocks()
-        cp.get_default_pinned_memory_pool().free_all_blocks()
-    except Exception:
-        pass
-
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -353,15 +326,12 @@ def print_report(args, cpu_stats, gpu_runs):
         print(f'  GPU speedup:    {speedup:>8.2f}×  {bar}')
 
         # I/O path — crucial for interpreting throughput numbers.
-        io_paths  = list({s.get('io_path', 'unknown') for s in gpu_stats if s.get('n_events',0) > 0})
-        io_path   = io_paths[0] if len(io_paths) == 1 else str(io_paths)
-        bw_vals   = [s.get('io_bw_gbs', 0.0) for s in gpu_stats if s.get('io_bw_gbs', 0.0) > 0]
-        avg_bw    = float(np.mean(bw_vals)) if bw_vals else 0.0
-        bw_str    = f'{avg_bw:.2f} GB/s' if avg_bw > 0 else 'not measured'
+        io_paths = list({s.get('io_path', 'unknown') for s in gpu_stats if s.get('n_events', 0) > 0})
+        io_path  = io_paths[0] if len(io_paths) == 1 else str(io_paths)
         if io_path == 'GDS':
-            print(f'\n  I/O: {io_path} ({bw_str}) — NVMe → GPU VRAM direct (DMA, bypasses CPU)')
+            print(f'\n  I/O: GDS — NVMe → GPU VRAM direct (DMA, bypasses CPU DRAM)')
         else:
-            print(f'\n  I/O: {io_path} ({bw_str}) — NVMe → CPU DRAM → GPU VRAM via cudaMemcpy')
+            print(f'\n  I/O: {io_path} — NVMe → CPU DRAM → GPU VRAM via cudaMemcpy')
             print(f'  WARNING: True GDS not available. Likely cause: Lustre/GPFS filesystem')
             print(f'           or cuFile kernel module not loaded on this node.')
 
@@ -451,6 +421,10 @@ def main():
                    help='GPU batch-size scaling sweep (bs = 1, 2, 5, 10, 20)')
     p.add_argument('--skip-cpu', action='store_true',
                    help='Skip CPU baseline (GPU-only mode)')
+    p.add_argument('--gpu-d2h-chunk-sizes',
+                   help='Comma-separated chunk sizes for _D2hPipeline sweep, '
+                        'e.g. 1,10,50.  Each runs .on_cpu with the internal '
+                        'pipeline active.  0 (default) runs .on_gpu only.')
     args = p.parse_args()
 
     kw = dict(exp=args.exp, run=args.run, xtc_dir=args.dir, det_name=args.det,
@@ -496,23 +470,7 @@ def main():
             if _WORLD_RANK == 0:
                 print(f'  [GPU] batch_size={bs}  pool_depth={pd}...', flush=True)
 
-            # Flush the CuPy pool BEFORE each run so fragmented blocks from
-            # previous runs (especially large bs/pd combos) don't contribute
-            # to the "allocated so far" count and cause OOM on later runs.
-            # run_gpu() also flushes at the end, but that post-run flush only
-            # covers the blocks that were freed *within* that run; blocks held
-            # alive by lingering slice views from earlier runs won't be freed
-            # until the next gc.collect() here.
-            try:
-                import gc as _gc2
-                import cupy as _cp2
-                _gc2.collect()
-                _cp2.cuda.Device().synchronize()
-                _cp2.get_default_memory_pool().free_all_blocks()
-                _cp2.get_default_pinned_memory_pool().free_all_blocks()
-            except Exception:
-                pass
-
+            _flush_gpu_pool()
             local = run_gpu(batch_size=bs, n_gpu_streams=pd, **kw)
             all_  = _COMM.gather(local, root=0)
             if _WORLD_RANK == 0:
@@ -520,6 +478,27 @@ def main():
                 gpu_grid.append((bs, pd, gpu_stats))
                 agg = _agg_eps(gpu_stats)
                 print(f'  [GPU] bs={bs} pd={pd}  aggregate={agg:.0f} evt/s',
+                      flush=True)
+            _COMM.Barrier()
+
+    # ── _D2hPipeline sweep (.on_cpu with internal chunked D→H) ────────────
+    if args.gpu_d2h_chunk_sizes:
+        d2h_chunks = [int(x) for x in args.gpu_d2h_chunk_sizes.split(',')]
+        if _WORLD_RANK == 0:
+            print(f'\n  ── _D2hPipeline sweep (bs={batch_sizes[0]} '
+                  f'pd={pool_depths[0]}) ──', flush=True)
+        for chunk in d2h_chunks:
+            if _WORLD_RANK == 0:
+                print(f'  [D2H chunk={chunk}] on_cpu...', flush=True)
+            _flush_gpu_pool()
+            local = run_gpu(batch_size=batch_sizes[0],
+                            n_gpu_streams=pool_depths[0],
+                            d2h_chunk_size=chunk, **kw)
+            all_ = _COMM.gather(local, root=0)
+            if _WORLD_RANK == 0:
+                stats = [s for s in (all_ or []) if s]
+                gpu_grid.append((f'd2h={chunk}', pool_depths[0], stats))
+                print(f'  [D2H chunk={chunk}] aggregate={_agg_eps(stats):.0f} evt/s',
                       flush=True)
             _COMM.Barrier()
 
@@ -565,6 +544,8 @@ def main():
                   f'{_agg_eps(best[2]):.0f} evt/s  '
                   f'{best_speedup:.1f}× over CPU')
             print(f'\n{sep}\n')
+
+
 
 
 if __name__ == '__main__':

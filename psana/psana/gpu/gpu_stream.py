@@ -1,51 +1,43 @@
-"""Reusable CUDA stream slots for the integrated GPU event path."""
+"""Reusable CUDA stream slots for the integrated GPU event path.
+
+EventPool manages N in-flight calibration batches.  Each slot follows
+the state machine from gpu_memory_backpressure_and_async_join.md:
+
+    FREE → READING/COMPUTING → RESULT_READY → D2H_IN_FLIGHT → FREE
+
+Phase 1 of the design: slot leases and CUDA completion tokens.
+The calibration stream is no longer the only completion signal — a slot
+may not be recycled until every consumer (D2H or downstream GPU kernel)
+has registered completion via SlotLease.register_d2h_done().
+"""
 
 
 class EventPool:
     """Keep N GPU calibration batches in flight simultaneously.
 
-    While batch N's calibration kernel runs on stream[N % n], batch N+1's
-    GDS reads and CPU work proceed concurrently.  Results from batch N are
-    retired (and its stream synchronised) before slot N % n is recycled for
-    batch N + n.  The caller yields the retired result before submitting the
-    replacement because calibrated arrays alias reusable per-slot buffers.
+    For each submitted batch:
+      1. submit()      — launch calibration kernels on the slot's stream;
+                         record one calib_done CUDA event covering all
+                         kernels; create one SlotLease per event.
+      2. retire_next() — wait for each SlotLease's consumer to complete
+                         (e.g. D→H), then synchronise the calib stream
+                         and yield the results for the caller to process.
 
-    Timeline with n=2 (two batches overlapping)
-    -------------------------------------------
-    Batch 0: submit → launch calib on stream_0 (non-blocking)
-                       store (results_0, evts_0) in slot 0
-                       nothing to return yet (slot was empty)
-    Batch 1: submit → launch calib on stream_1 (non-blocking)
-                       store (results_1, evts_1) in slot 1
-    Batch 2: retire_next → sync stream_0, yield results_0
-             submit     → launch calib on stream_0 (now safe to recycle)
-                          store (results_2, evts_2) in slot 0
-    flush() → sync remaining slots in order, yield results
-
-    Benefit
-    -------
-    For detectors whose single-batch calibration kernel does not fully saturate
-    the GPU (small detectors, short kernels), n=2 or n=4 allows consecutive
-    batches' kernels to execute concurrently on separate SMs, improving GPU
-    utilisation.  For large detectors like Jungfrau on an A100 — where a single
-    2.6 M-pixel batch already saturates the GPU — the benefit is smaller but
-    the pattern still reduces CPU-side synchronisation overhead.
+    The caller (GpuEvents) must call retire_next() before submit() so
+    the outgoing slot is fully drained before its buffers are overwritten.
 
     Parameters
     ----------
     n : int
-        Number of batches to keep in flight.  2 is the practical default
-        (two streams: compute for batch N, prefetch for batch N+1).
-        4 is appropriate when single-batch kernels are very short (<0.5 ms).
-
-    Guide reference: §12 (EventPool — N events in flight).
+        Number of batches to keep in flight.  2 is a practical default.
     """
 
     def __init__(self, n: int = 2):
         import cupy as cp
         self._n = n
         self._streams = [cp.cuda.Stream(non_blocking=True) for _ in range(n)]
-        # Each slot: (gpu_results_by_ts, cpu_evts, stream) | None
+        # Each slot: (gpu_results_by_ts, cpu_evts, stream, leases) | None
+        # leases is a flat list of all SlotLease objects for that slot.
         self._slots: list = [None] * n
         self._write_idx = 0
 
@@ -55,57 +47,59 @@ class EventPool:
 
     @property
     def next_slot_id(self) -> int:
-        """Slot that the next submitted batch will occupy."""
+        """Slot index that the next submitted batch will occupy."""
         return self._write_idx % self._n
 
     def retire_next(self):
-        """Synchronise and remove the batch occupying the next write slot.
+        """Wait for all consumers to finish, then release the next slot.
 
-        The returned arrays remain valid only until the caller submits the
-        replacement batch into this slot.  GpuEvents therefore yields them
-        before calling :meth:`submit`.
+        Phase 1: before synchronising the calibration stream, wait for
+        every SlotLease in the outgoing slot to signal that its D→H (or
+        other downstream consumer) has completed.  This guarantees the
+        slot buffers are not overwritten while data is still in transit.
+
+        Returns (gpu_results_by_ts, cpu_evts) or None if the slot is empty.
+        The returned arrays remain valid until submit() is called next.
         """
         slot = self.next_slot_id
-        old = self._slots[slot]
+        old  = self._slots[slot]
         if old is None:
             return None
 
-        old_results, old_evts, old_stream = old
+        old_results, old_evts, old_stream, old_leases, old_leases_by_ts = old
+
+        # Wait for every consumer (D→H or downstream GPU kernel) that
+        # registered a completion token on one of this slot's leases.
+        for lease in old_leases:
+            lease.wait_until_safe_to_reuse()
+
+        # Now safe to synchronise the calibration stream and recycle.
         old_stream.synchronize()
         self._slots[slot] = None
-        return old_results, old_evts
+        return old_results, old_evts, old_leases_by_ts
 
     def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
-        """Launch calibration into the already-retired next slot.
+        """Queue calibration into the already-retired next slot.
 
-        Calibration kernels are queued without a host synchronisation, so
-        work in other slots can overlap.  Call :meth:`retire_next` before this
-        method to make both the calibrated-output and raw-input slot safe to
-        reuse.
+        Records a calib_done CUDA event after all calibration kernels
+        are queued, then creates one SlotLease per event so downstream
+        consumers can issue async D→H and release the slot when done.
 
-        Parameters
-        ----------
-        gv            : GpuBatchView
-        gpu_read      : KvikioBatchRead with ``data_gpu`` populated
-        cpu_evts      : list of psana2 Event objects for this batch
-        gpu_detectors : dict  {det_name: (psana_det, GPUDetector)}
-
-        Returns
-        -------
-        None.  Retired results are returned by :meth:`retire_next`.
+        Returns None.  Results come back via retire_next().
         """
-        slot    = self.next_slot_id
+        import cupy as cp
+        from psana.gpu.context import SlotLease
+
+        slot   = self.next_slot_id
         if self._slots[slot] is not None:
             raise RuntimeError(
                 f"EventPool slot {slot} was submitted without retire_next()"
             )
-        stream  = self._streams[slot]    # ← no synchronize() here
+        stream = self._streams[slot]
 
-        # Launch calibration on this slot's stream (non-blocking).
+        # Launch calibration on this slot's non-blocking stream.
         gpu_results_by_ts: dict = {}
         for det_name, det_info in gpu_detectors.items():
-            # det_info is (psana_det, gpu_det_obj) or
-            # (psana_det, gpu_det_obj, cpu_seg_map) for D1 combined routing.
             gpu_det_obj = det_info[1]
             for ec in gpu_det_obj.process_batch(gv, gpu_read, stream=stream,
                                                 slot_id=slot):
@@ -116,32 +110,53 @@ class EventPool:
                 if ec.image_gpu is not None:
                     ts_dict[f'{det_name}.image'] = ec.image_gpu
 
+        # Record ONE calib_done event after all kernels are queued.
+        # All events in this batch share this single event — they all
+        # ran on the same stream so any one of them completing means all
+        # preceding work is done.
+        calib_done = cp.cuda.Event(disable_timing=True)
+        calib_done.record(stream)
+
+        # Create one SlotLease per (timestamp, det, result_type) — each
+        # gets the shared calib_done event but its own view (array slice).
+        leases_by_ts: dict = {}   # {ts: {key: SlotLease}}
+        all_leases: list  = []
+        for ts, ts_dict in gpu_results_by_ts.items():
+            ts_leases = {}
+            for key, arr in ts_dict.items():
+                lease = SlotLease(slot, calib_done, arr)
+                ts_leases[key] = lease
+                all_leases.append(lease)
+            leases_by_ts[ts] = ts_leases
+
         if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
             try:
                 from psana.gpu.gpu_mpi import log_gpu_mem
-                log_gpu_mem(f'EventPool.submit slot={slot} write={self._write_idx}')
+                log_gpu_mem(f'EventPool.submit slot={slot} '
+                            f'write={self._write_idx}')
             except Exception:
                 pass
-        self._slots[slot] = (gpu_results_by_ts, list(cpu_evts), stream)
-        self._write_idx += 1
 
+        self._slots[slot] = (gpu_results_by_ts, list(cpu_evts),
+                             stream, all_leases, leases_by_ts)
+        self._write_idx += 1
         return None
 
     def flush(self):
         """Drain all remaining in-flight slots in submission order.
 
-        Yields (gpu_results_by_ts, cpu_evts) for each non-empty slot,
-        synchronising the slot's stream before yielding.
-
-        Call this after the main batch loop to ensure no results are lost.
+        Waits for every consumer lease before synchronising each stream.
+        Yields (gpu_results_by_ts, cpu_evts) for each non-empty slot.
         """
         for i in range(self._n):
             slot = (self._write_idx + i) % self._n
             if self._slots[slot] is None:
                 continue
-            results, evts, stream = self._slots[slot]
+            results, evts, stream, leases, leases_by_ts = self._slots[slot]
+            for lease in leases:
+                lease.wait_until_safe_to_reuse()
             stream.synchronize()
-            yield results, evts
+            yield results, evts, leases_by_ts
             self._slots[slot] = None
 
     # ------------------------------------------------------------------

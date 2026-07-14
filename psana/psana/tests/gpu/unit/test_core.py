@@ -18,19 +18,16 @@ from psana.psexp.packet_footer import PacketFooter
 def test_public_gpu_api_is_minimal():
     import psana.gpu as gpu
 
-    assert gpu.__all__ == ["GPUResult", "GpuEventContext", "init_gpu_rank"]
+    # D→H join is now internal to GpuEvents — no join class in public API.
+    assert 'EventJoiner' not in gpu.__all__, "EventJoiner was made internal"
+    assert 'CalibJoiner' not in gpu.__all__, "CalibJoiner was renamed then made internal"
+    # These implementation-detail names must never be public.
     internal_names = {
-        "DetectorRouter",
-        "EventPool",
-        "GPUKernelRegistry",
-        "create_gpu_communicators",
         "gpu_error_handler",
-        "log_gpu_mem",
-        "optimal_kernel_batch_size",
         "share_calib_between_gpu_peers",
         "verify_gpu_pinning",
     }
-    assert internal_names.isdisjoint(vars(gpu))
+    assert internal_names.isdisjoint(gpu.__all__)
 
 
 def test_segment_ids_preserve_l1_child_order():
@@ -58,13 +55,28 @@ def test_segment_ids_preserve_l1_child_order():
     assert _segment_ids_in_l1_order(object(), "jungfrau") == []
 
 
+class _FakeEvent:
+    def __init__(self, disable_timing=False):
+        self.done = True
+
+    def record(self, stream=None):
+        pass
+
+    def synchronize(self):
+        pass
+
+
 class _FakeStream:
     def __init__(self, non_blocking=True):
         self.non_blocking = non_blocking
         self.synchronize_calls = 0
+        self.ptr = 0
 
     def synchronize(self):
         self.synchronize_calls += 1
+
+    def wait_event(self, event):
+        pass
 
 
 class _FakeDetector:
@@ -85,7 +97,11 @@ class _FakeFlushPool:
         pending, self.pending = self.pending, []
         for item in pending:
             self.yield_count += 1
-            yield item
+            # yield 3-tuple: (gpu_results_by_ts, cpu_evts, leases_by_ts)
+            if len(item) == 2:
+                yield item[0], item[1], {}
+            else:
+                yield item
 
 
 @pytest.fixture
@@ -109,6 +125,7 @@ def _new_gpu_events(log, pending=()):
     events.gpu_detectors = {}
     events.router = None
     events.cpu_dets = {}
+    events._d2h_pipelines = {}
     events.run = SimpleNamespace(
         _handle_transition=lambda dgrams: log.append(("transition", dgrams[0]))
     )
@@ -119,7 +136,8 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "cupy",
-        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream)),
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream,
+                                             Event=_FakeEvent)),
     )
 
     pool = EventPool(n=1)
@@ -129,9 +147,10 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     with pytest.raises(RuntimeError, match="without retire_next"):
         pool.submit(None, None, ["event-1"], detectors)
 
-    results, events = pool.retire_next()
+    results, events, leases_by_ts = pool.retire_next()
     assert results == {}
     assert events == ["event-0"]
+    assert leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
 
     pool.submit(None, None, ["event-1"], detectors)
