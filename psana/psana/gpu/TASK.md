@@ -699,6 +699,40 @@
   reversed-order 4-node confirm (phase order 5→3→2→4, k=4 warmest-last) to discharge
   the 3-vs-4 confound — if warm k=4 still loses to k=3, knee=3 at 4n is locked.
 
+- 2026-07-13 (iter 27, CONFIRMED — 3-vs-4 confound discharged, knee=3 at 4n LOCKED):
+  **reversed-order 4-node bracket puts k=4 warmest-last and k=3 still wins — so k=3 >
+  k=4 in BOTH phase orders and the `knee = node_count` law is definitively broken; the
+  knee saturates near 3.** Clean 4-node k∈{5,3,2,4} sweep, job 31593737 (all four
+  exit=0, COMPLETED 23:15, nodes sdfampere002/026/032/040, total_wall 1392s,
+  `bench_mpi_sweep/epn4nkr_{5eb,3eb,2eb,4eb}.log`, driver slurm-31593737.out),
+  n=100/rank warmup=10 --wait-split, phase order 5→3→2→4 (k=4 warmest-LAST — the
+  opposite warming bias from iter 26). Topology 132 ranks (rank0=smd0), k EB/node →
+  4k EB, 131−4k topo BD:
+  · mn4_5eb (COLD first): 758.8 Hz — 87/111 BD, 24 starved, eb_wait 1.44 / bd_read 111.97
+  · mn4_3eb (2nd): **832.1** Hz — 115/119 BD, 4 starved, eb_wait 15.52 / bd_read 69.79
+  · mn4_2eb (3rd): 670.6 Hz — 123/123 BD, 0 starved, eb_wait 16.32 / bd_read 92.90
+  · mn4_4eb (warmest LAST): 716.3 Hz — 115/115 BD, 0 starved, eb_wait 6.12 / bd_read 115.26
+  DECISIVE: k=3 (832.1, run colder/earlier) beats k=4 (716.3, warmest-last) by +16.2%.
+  Warming can only LIFT a later phase, so k=4 had its best shot (warmest slot) and still
+  lost — k=3's lead over k=4 is NOT a warming artifact. Combined with iter 26 (k=3 beat
+  k=4 cold-first, +12%), k=3 > k=4 in both orders → knee=3 at 4 nodes is robust/locked.
+  k=3 wins with the lowest bd_read (69.79 ms, vs 92–115 for k=2/4/5) and near-zero
+  starvation (4 BD idle) — the low-starvation, low-read sweet spot; k=4 again shows an
+  inflated bd_read (115.3, cf. iter-26 outlier 97) so its EB fan-out is not buying its
+  way out of the read cost. k=5 cold-first starves 24 of 111 BD ranks (past-knee
+  over-provisioning, consistent across all windows). Measured knees now 2@2n, 3@3n,
+  3@4n → the knee saturates near 3 for 3+ nodes; PLANNING.md guidance (k=3 for 3+
+  nodes) confirmed, 4-node row marked confirmed-both-orders. **This closes the last
+  open PS_EB_PER_NODE characterization item — the code-side multi-node EB levers
+  (node-local placement + intra-node fan-out) are now fully characterized.**
+  OBSERVED (not yet a lever): at the k=3 optimum the per-BD-rank cost splits bd_read
+  69.79 / residual 45.93 (CPU event construction) / eb_wait 15.52 ms. bd_read (FFB
+  storage) dominates but the 45.9 ms CPU-construction residual is a non-storage,
+  non-EB code cost that no iteration has profiled or attacked — the leading remaining
+  code-side lever candidate. NEXT: profile the BD-rank residual (event construction /
+  Dgram assembly) to see if any of the 45.9 ms is reducible, before concluding the
+  loop is storage-bound.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.

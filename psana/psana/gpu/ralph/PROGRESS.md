@@ -2188,3 +2188,78 @@ weakly. Either way the 3-vs-4 confound is discharged with one more in-window bra
 multi-node levers are fully characterized and the loop is at LOOP DONE pending the
 storage-side facility levers (the ~10–12 GB/s FFB ceiling — TASK.md "Remaining" items
 1–3, none of which are psana code).
+
+## Iteration 27 — reversed-order 4-node confirm: k=3 wins WARM-LAST too, 3-vs-4 confound discharged, knee=3 at 4 nodes LOCKED
+
+iter-26's forward 4-node bracket (order 4→2→3→5) ranked k=3 above the predicted
+k=4, breaking `knee ≈ node_count` — but k=4 ran cold-first and k=3 ran warmer, so
+the +12% lead was warming-inflated and the exact 3-vs-4 boundary was confounded.
+This iteration is the reversed-order confirm iter-26 asked for. **One variable:
+PS_EB_PER_NODE ∈ {5,3,2,4} at fixed 4 nodes, node-local colocation, phase order
+5→3→2→4 so k=4 now runs WARMEST-LAST and k=3 runs colder/earlier — the opposite
+warming bias.** No code change (measurement only), no C rebuild (pure-py); the
+PS_EB_PER_NODE numeric path is bit-exact and built since iter-22, untouched here.
+
+**The logic:** warming can only LIFT a later phase. So if k=4 loses to the
+colder-run k=3 *even with* the warmest-last advantage, k=3's lead is not a warming
+artifact and knee=3 at 4 nodes is robust; if warm-last k=4 overtakes k=3, the knee
+is 4 after all and node_count survives weakly.
+
+First submission (job 31593496) was preempted at 29s (preemptable QOS, CANCELLED
+by scheduler) as the first mpirun launched — a transient facility event, resubmitted
+immediately. Clean 4-node in-window bracket, **job 31593737 (all four exit=0,
+COMPLETED 23:15, nodes sdfampere002/026/032/040, total_wall 1392s,
+`bench_mpi_sweep/epn4nkr_{5eb,3eb,2eb,4eb}.log`, driver slurm-31593737.out),
+n=100/rank warmup=10 --wait-split. Phase order 5→3→2→4. Topology 132 ranks
+(rank0=smd0): k EB/node → 4k EB, 131−4k topo BD.**
+
+| config (phase order 5→3→2→4) | EB | topo BD | reporting | starved | aggregate Hz | eb_wait ms | bd_read ms | residual ms |
+|------------------------------|---:|--------:|----------:|--------:|-------------:|-----------:|-----------:|------------:|
+| mn4_5eb (COLD first)         | 20 | 111     | 87        | 24      | 758.8        | 1.44       | 111.97     | 11.04       |
+| mn4_3eb (2nd, colder)        | 12 | 119     | 115       | 4       | **832.1**    | 15.52      | 69.79      | 45.93       |
+| mn4_2eb (3rd)                |  8 | 123     | 123       | 0       | 670.6        | 16.32      | 92.90      | 65.56       |
+| mn4_4eb (WARMEST last)       | 16 | 115     | 115       | 0       | 716.3        | 6.12       | 115.26     | 24.67       |
+
+**Verdict — knee=3 at 4 nodes is LOCKED; the 3-vs-4 confound is discharged in the
+conservative direction. k=3 (832.1 Hz), run colder as the 2nd phase, beats k=4
+(716.3 Hz) by +16.2% even though k=4 ran WARMEST-LAST — its best possible slot.**
+Warming can only lift a later phase, so k=4 had every advantage this window offers
+and still lost. Combined with iter-26 (k=3 beat cold-first k=4 by +12%), the
+ordering k=3 > k=4 now holds in BOTH phase orders, so k=3's lead is robust to the
+warming confound rather than an artifact of it. The predicted `knee = node_count`
+law is definitively broken: measured knees are 2@2n, 3@3n, 3@4n — **the knee
+saturates near 3 for 3+ nodes, it does not track node count.**
+
+**Mechanism (consistent across all four windows now):** eb_wait falls with k
+(reversed order shows the warming-scrambled magnitudes but the k=3 point sits at
+the sweet spot regardless). k=3 wins with the LOWEST bd_read (69.79 ms vs 92–115
+for k=2/4/5) and near-zero starvation (4 BD idle of 119). k=4 again shows an
+inflated bd_read (115.3, echoing iter-26's k=4 outlier ~97) — its extra EB fan-out
+is not buying its way out of the read cost, it just converts BD-reader slots to EBs
+without a throughput return. k=5 cold-first starves 24 of 111 topological BD ranks —
+the same past-knee over-provisioning that starved BD readers at 3n k=5 and 4n k=5
+(iter-25/26). The single smd0 feeding all node-local EBs is the binding constraint
+that caps how much EB parallelism can help, so the knee plateaus at ~3.
+
+**Keep/graduate:** feature unchanged (opt-in, default-off, bit-exact since iter-22
+— numeric path untouched, no re-gate needed). This iteration FINALIZES the
+graduated PLANNING.md entry: the 4-node row goes from `≥3, 3-vs-4 confounded` to
+`3, confirmed both orders`, the mechanism note records the reversed-window confirm,
+and the closing paragraph drops the "awaits a reversed-order confirm" caveat.
+TASK.md gets the iter-27 bracket marked CONFIRMED / knee-locked. **This closes the
+last open PS_EB_PER_NODE characterization item — the code-side multi-node EB levers
+(node-local placement PS_EB_NODE_LOCAL + intra-node fan-out PS_EB_PER_NODE) are now
+fully characterized: knee=2@2n, 3@3n, 3@4n, +23–32% aggregate over k=1.**
+
+**Recommended next step — one code lever is NOT yet ruled out before declaring the
+loop storage-bound.** At the k=3 optimum the per-BD-rank wait splits bd_read 69.79
+(FFB storage) / residual 45.93 (CPU event construction) / eb_wait 15.52 ms. bd_read
+dominates and is the ~10–12 GB/s facility ceiling (TASK.md "Remaining" 1–3, not
+code), but the **45.9 ms/event residual is a non-storage, non-EB CPU cost that no
+iteration has profiled** — Dgram/event assembly on the BD rank. That is the leading
+remaining code-side lever candidate and it is substantial (~40% of per-rank wait).
+The next iteration should profile the BD-rank residual (py-spy or timestamped
+instrumentation on the construction path, §8) to see whether any of the 45.9 ms is
+reducible. Only if the residual proves irreducible is the loop genuinely at LOOP
+DONE pending storage-side facility levers; until then there is one untested code
+hypothesis and the loop should not stop.

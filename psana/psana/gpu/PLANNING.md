@@ -313,7 +313,7 @@ near 3**:
 |------:|:-------------:|--------------:|-----------:|-------------------:|
 | 2     | **2**         | 502.9         | 410.6      | +23%  (k=3/4 regress −18%) |
 | 3     | **3**         | 802.5 / 791.5 | 622.9/419.5| +24–32% (k=2 between; k=4/5 lose) |
-| 4     | **3** (≥3, 3-vs-4 confounded) | 914.1 (k=3) | — | k=3 > k=5 > k=2 > k=4; k=4 not the peak |
+| 4     | **3** (confirmed both orders) | 914.1 (k=3) | — | k=3 wins cold-first AND warm-last; k=4 not the peak |
 
 *(2-node: iters 22/23, jobs 31586774/31587292. 3-node knee pinned across the full
 {1,2,3,4,5} sweep in three windows — iter 24 forward job 31588126 + reversed
@@ -324,7 +324,11 @@ windows (802.5 vs 791.5, ~1.4%), so the peak is real, not window drift. 4-node:
 iter 26 job 31592091 (`epn4nk_*` logs), phase order 4→2→3→5 with k=4 cold-first —
 k=4 placed LAST (815.8 Hz), k=3 FIRST (914.1); k=5 (896.6) lost to k=3 despite
 being warmest. Past the knee, over-provisioned EBs starve BD-reader ranks into
-idleness — 3n k=5: 67 of ~83 reported; 4n k=5: 90 of 111 reported.)*
+idleness — 3n k=5: 67 of ~83 reported; 4n k=5: 90 of 111 reported. iter 27 job
+31593737 (`epn4nkr_*` logs) reversed the order to 5→3→2→4 so k=4 ran WARMEST-LAST
+and k=3 ran colder/earlier: k=3 (832.1 Hz) still beat k=4 (716.3, +16.2%) — so
+k=3 > k=4 in BOTH orders and the 3-vs-4 confound is discharged. knee=3 at 4 nodes
+is locked.)*
 
 **Mechanism:** `eb_wait` falls monotonically with `k` at every node count (more
 EBs, fewer BDs each). But the single `smd0` feeds *all* node-local EBs, so added
@@ -344,11 +348,11 @@ export PS_EB_NODE_LOCAL=1
 export PS_EB_PER_NODE=3           # knee saturates near 3; overrides PS_EB_NODES -> nodes*k
 ```
 
-The 3-node knee is pinned at exactly 3 (iter 25). The 4-node point (iter 26) shows
-k=3 wins and k=4 (the `node_count` prediction) is *not* the peak — but k=4 ran
-cold-first, so the exact 3-vs-4 boundary is order-confounded and awaits a
-reversed-order confirm (phase order 5→3→2→4, k=4 warmest-last). See
-`ralph/PROGRESS.md` iters 24–26.
+The 3-node knee is pinned at exactly 3 (iter 25). The 4-node knee is also 3,
+confirmed in both phase orders: iter 26 (4→2→3→5, k=4 cold-first) and iter 27
+(5→3→2→4, k=4 warmest-last) both rank k=3 above k=4, so k=3's lead is not a
+warming artifact and the `knee = node_count` law is definitively broken — the knee
+saturates near 3. See `ralph/PROGRESS.md` iters 24–27.
 
 ---
 
