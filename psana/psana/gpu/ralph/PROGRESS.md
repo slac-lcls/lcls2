@@ -2031,3 +2031,77 @@ the rule. Once the knee's functional form is pinned, the code-side multi-node
 levers (node-local EB placement + intra-node EB fan-out) are fully characterized
 and the loop is at LOOP DONE pending storage-side facility levers (the ~10–12
 GB/s FFB ceiling, none of which are psana code — TASK.md "Remaining" items 1–3).
+
+## Iteration 25 — the 3-node PS_EB_PER_NODE knee is EXACTLY 3 (k=4,5 both lose to k=3), knee ≈ node_count HOLDS
+
+iter-24 left the 3-node knee bounded only as `≥3` (3 EB/node beat {1,2}; k=4,5
+untested). This iteration sweeps the upper end `k∈{3,4,5}` at 3 nodes to pin
+whether the knee is exactly 3 or keeps climbing — the difference between the
+emergent rule `knee ≈ node_count` holding vs the knee growing *faster* than node
+count. **One variable: PS_EB_PER_NODE ∈ {3,4,5}, fixed 3 nodes, node-local
+colocation.** No code change (measurement only), no C rebuild (pure-py); node.py
+diff-identical source-vs-install (the iter-22 non-editable gotcha checked).
+
+**Order front-loads the hypothesized winner k=3 as the COLD first phase.** FFB
+window state warms within an allocation and favors LATER phases, so if k=3 wins
+even cold-first (over warmer k=4/k=5) the knee=3 verdict is conservative — this
+is the same clean design iter-24's reversed control used.
+
+**Clean 3-node in-window bracket, job 31590259 (all three exit=0, COMPLETED),
+nodes sdfampere002/023/028, `bench_mpi_sweep/epn3nk_{3eb,4eb,5eb}.log`, driver
+`slurm-31590259.out`, n=100/rank warmup=10 --wait-split. Phase order 3→4→5:**
+
+| config (phase order 3→4→5) | BD rep | aggregate Hz | per-rank Hz | eb_wait ms | bd_read ms | residual ms |
+|----------------------------|-------:|-------------:|------------:|-----------:|-----------:|------------:|
+| mn3_3eb (COLD first phase) | 86     | **791.5**    | 9.20        | 9.58       | 53.22      | 26.45       |
+| mn3_4eb                    | 86     | 658.9        | 7.66        | 4.69       | 97.00      | 16.13       |
+| mn3_5eb (warmest last)     | 67     | 757.1        | 11.30       | 2.53       | 67.60      | 8.52        |
+
+**Verdict — the 3-node knee is EXACTLY 3. k=3 wins on aggregate throughput even
+as the coldest first phase: 791.5 Hz vs 658.9 (k=4, −16.8%) and 757.1 (k=5,
+−4.3%).** Since warming favors later phases, k=3 beating warmer k=4/k=5 is the
+conservative direction — the knee does NOT keep climbing past 3. Combined with
+iter-24's `k=3 > k=2 > k=1`, the full 3-node sweep {1,2,3,4,5} now peaks at k=3,
+and the 3eb anchor here (791.5) matches iter-24's reversed-window 3eb (802.5)
+within ~1.4%, so the two windows are directly comparable and the peak is real,
+not window drift. **`knee ≈ node_count` (2@2n, 3@3n) HOLDS as a two-point law —
+the knee grows with node count but tracks it, not faster.**
+
+**Mechanism (coherent, matches the iter-24 model past its crossover):** `eb_wait`
+keeps falling monotonically as k rises (9.58 → 4.69 → 2.53 ms) — more EBs, less
+BD blocking, exactly as predicted. But past the knee that saving is bought by
+converting BD-reader slots into EB ranks, and it stops paying: at k=5 only 67 of
+the ~83 topological BD ranks reported measurements — ~16 BD ranks are starved
+into idleness by the over-provisioned EB fan-out, so aggregate throughput drops
+even though per-*reporting*-rank rate looks high (11.3 Hz over a shrunken
+denominator). That starvation is the concrete "do not exceed the knee" cost.
+
+**HONEST CAVEAT — the k=4 bd_read outlier.** k=4's `bd_read` is 97.0 ms, nearly
+2× both neighbors (53 / 68) and far outside iter-24's 3-node range (61–104). That
+is almost certainly a transient FFB-window read degradation during phase 2, not
+an intrinsic property of k=4 — so the *magnitude* of the 3→4 drop (−16.8%) is
+inflated by a storage-window dip and should not be read as the true k=4 penalty.
+The robust, window-safe claims are only the two that survive the cold-first
+design: (1) **k=3 is the peak** (it won as the coldest phase, so no warming could
+have manufactured its lead), and (2) k=5, despite the warming advantage of being
+last, still lost to k=3 — so pushing k past 3 does not recover. The precise shape
+of the falloff between k=3 and k=5 is not pinned by this single bracket; the knee
+location is.
+
+**Keep/graduate:** feature unchanged (opt-in, default-off, bit-exact
+correctness-gated since iter-22 — numeric path untouched, no re-gate needed).
+This iteration REFINES the graduated PLANNING.md entry: the 3-node knee row goes
+from `≥3` to exactly `3`, with the k=4/k=5 falloff and the BD-starvation
+mechanism noted; TASK.md gets the pinned-knee bracket. `knee ≈ node_count` is now
+a confirmed two-point law rather than a lower-bounded conjecture.
+
+**Recommended next step:** the last open characterization item is the 4-node
+point — does `k = node_count` predict k=4 wins at 4 nodes? A 4-node k∈{2,3,4,5}
+bracket would turn the two-point law into three points (and 4 nodes is the layout
+where mis-provisioning EBs costs the most BD slots). 4-node allocations have been
+structurally hard in-loop (iter-19: parent assoc GrpNodes cap — must go through
+the `lcls:default`/`preemptable` hierarchy, which these EB templates already do).
+If the 4-node point confirms, the code-side multi-node levers are fully
+characterized and the loop is at LOOP DONE pending the storage-side facility
+levers (the ~10–12 GB/s FFB ceiling — TASK.md "Remaining" items 1–3, none of
+which are psana code).

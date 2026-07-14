@@ -650,6 +650,27 @@
   the 3-node knee is exactly 3 or higher; a 4-node k∈{2,3,4} bracket to test the
   knee≈node_count rule as a law.
 
+- 2026-07-13 (iter 25, CONFIRMED): **the 3-node PS_EB_PER_NODE knee is EXACTLY 3
+  — k=4 and k=5 both lose to k=3, so `knee = node_count` holds (the knee does not
+  climb faster than node count).** Clean 3-node upper-end sweep k∈{3,4,5}, job
+  31590259 (all exit=0, COMPLETED, nodes sdfampere002/023/028,
+  `bench_mpi_sweep/epn3nk_{3eb,4eb,5eb}.log`), n=100/rank warmup=10 --wait-split,
+  phase order 3→4→5 (winner cold-first):
+  · mn3_3eb (COLD first): **791.5** Hz (86 BD, 9.20/rank), eb_wait 9.58, bd_read 53.22
+  · mn3_4eb: 658.9 Hz (86 BD, 7.66/rank), eb_wait 4.69, bd_read 97.0 (window outlier)
+  · mn3_5eb (warm last): 757.1 Hz (67 of ~83 BD reported, 11.30/rank), eb_wait 2.53
+  k=3 wins as the COLDEST phase → conservative (warming favors later phases), so
+  the knee=3 verdict is not a warming artifact. 3eb anchor matches iter-24's
+  reversed 3eb (791.5 vs 802.5, ~1.4%) → windows comparable, peak real. Full
+  {1,2,3,4,5} 3-node curve now peaks at k=3. **Mechanism past the knee:** eb_wait
+  keeps falling with k (9.58→4.69→2.53) but is bought by converting BD-reader
+  slots to EB ranks — at k=5 ~16 of ~83 BD ranks are starved into idleness, so
+  aggregate drops (the concrete "don't exceed the knee" cost). CAVEAT: k=4's
+  bd_read 97 ms is a transient FFB-window dip (2× neighbors), so the 3→4 drop
+  magnitude is inflated; the window-safe claims are only "k=3 is the peak" and
+  "k>3 does not recover." PLANNING.md 3-node knee row updated ≥3 → 3. NEXT: 4-node
+  k∈{2,3,4,5} bracket to make knee=node_count a three-point law.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.

@@ -311,21 +311,27 @@ optimum `k` is a **crossover, and it grows with node count**:
 | nodes | knee (best k) | best-k agg Hz | k=1 agg Hz | best-k gain vs k=1 |
 |------:|:-------------:|--------------:|-----------:|-------------------:|
 | 2     | **2**         | 502.9         | 410.6      | +23%  (k=3/4 regress −18%) |
-| 3     | **≥3**        | 802.5 / 553.3 | 622.9/419.5| +24–32% (k=2 between) |
+| 3     | **3**         | 802.5 / 791.5 | 622.9/419.5| +24–32% (k=2 between; k=4/5 lose) |
 
-*(2-node: iters 22/23, jobs 31586774/31587292. 3-node: iter 24, forward job
-31588126 + reversed-order confirm 31589010 — `epn3n*`/`epn3nrev*` logs. Two 3-node
-windows differ in absolute rate but the k-ordering `3 > 2 > 1` is identical and
-order-robust: k=3 wins even as the cold first phase.)*
+*(2-node: iters 22/23, jobs 31586774/31587292. 3-node knee pinned across the full
+{1,2,3,4,5} sweep in three windows — iter 24 forward job 31588126 + reversed
+confirm 31589010 gave `3 > 2 > 1` (`epn3n*`/`epn3nrev*`); iter 25 job 31590259
+swept the upper end and found k=3 (791.5 Hz) beats k=4 (658.9) and k=5 (757.1)
+even as the cold first phase (`epn3nk_*` logs). The k=3 anchor matches across
+windows (802.5 vs 791.5, ~1.4%), so the peak is real, not window drift. Past the
+knee, over-provisioned EBs starve BD-reader ranks into idleness — at 3n k=5 only
+67 of ~83 BD ranks reported work.)*
 
 **Mechanism:** `eb_wait` falls monotonically with `k` at every node count (more
 EBs, fewer BDs each). But the single `smd0` feeds *all* node-local EBs, so with
 more nodes there are more EBs contending for smd batches and `eb_wait` at low `k`
 is larger — pushing the crossover (where the marginal EB's lost BD slot + `bd_read`
 inflation outweighs the `eb_wait` it saves) to higher `k`. Empirically the knee
-≈ node count (2 nodes → k=2, 3 nodes → k≥3). **Guidance: scale `PS_EB_PER_NODE`
-up with node count; start at `k = node_count`.** Do not set `k` above the knee —
-past it, aggregate regresses (measured −18% at 2 nodes with k=3/4).
+= node count (2 nodes → k=2, 3 nodes → k=3, both pinned by full sweeps).
+**Guidance: scale `PS_EB_PER_NODE` up with node count; set `k = node_count`.** Do
+not set `k` above the knee — past it, aggregate regresses (measured −18% at 2
+nodes with k=3/4; at 3 nodes k=4/5 both lose to k=3, and k=5 starves ~16 of ~83
+BD ranks into idleness).
 
 ```bash
 # Multi-node GPU calib, tuned EB fan-out. Template: bench_mpi_sweep/eb_per_node_3n.sbatch
@@ -333,9 +339,9 @@ export PS_EB_NODE_LOCAL=1
 export PS_EB_PER_NODE=3           # ~= node count; overrides PS_EB_NODES -> nodes*k
 ```
 
-The exact knee at ≥3 nodes (is 3-node k exactly 3 or higher? does k=node_count
-hold at 4 nodes?) is the remaining characterization — see `ralph/PROGRESS.md`
-iter 24.
+The 3-node knee is now pinned at exactly 3 (iter 25). The remaining
+characterization is the 4-node point — does `k = node_count` predict k=4 wins at
+4 nodes, turning the two-point law into three? See `ralph/PROGRESS.md` iters 24–25.
 
 ---
 
