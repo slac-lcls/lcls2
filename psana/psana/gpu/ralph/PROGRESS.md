@@ -2338,3 +2338,74 @@ loop (§6 trap). If that lever is measured and proves not to move the aggregate
 (because per-rank reads already saturate the FFB link and leave no idle PCIe window
 to overlap into), then every code-side lever is exhausted and the loop is at LOOP
 DONE pending storage-side facility levers (TASK.md "Remaining" 1–3).
+
+## Iteration 29 — async-H2D overlap (the last untested code lever) REGRESSES −21%: loop is storage-bound, code-side levers exhausted → LOOP DONE
+
+iter-28 pre-registered exactly one remaining code lever before declaring the loop
+storage-bound: **pinned-host + async H2D prefetch** — issue event N's H→D on a CUDA
+stream and let it run while the CPU advances the generator to READ event N+1 (the
+dominant ~95 ms/event FFB os.pread), hiding the ~7.7 ms H→D + ~0.55 ms kernel that
+sit *after* the read in the synchronous chain. This iteration implements and measures
+it. **One variable: a new `--overlap` bench path (`run_gpu_bench_overlap`) — pinned
+double buffer, async H→D + kernel on a per-slot stream, NO per-event device sync,
+buffer reuse guarded by a per-slot `stream.synchronize()`.** Numerically identical to
+`--seg-h2d` (same `_segment_numbers` order, same layout, same `fused_calib_gpu`
+kernel; `fused_calib_gpu`/`.set` verified to hold no internal sync). Pure-Python bench
+harness change, default path untouched; correctness re-gated below.
+
+**Timing per §6 (this is overlap):** headline is WALL-CLOCK rate only; H→D/kernel
+magnitudes attributed with CUDA events recorded ON the stream (overlap-safe), read
+AFTER the timed loop — they characterize the hidden GPU work, they are not the headline.
+
+**Measurement — 32-BD ABBA (warming-controlled), r47/FFB, A100 (sdfampere033,
+ralph-gpu job 31583622), `mpirun --bind-to none --oversubscribe -n 34`, n=200/rank
+warmup=10, logs `bench_mpi_sweep/ralph_tmp/ab_{A1_seg,B1_ovl,B2_ovl,A2_seg}_213119.log`
+(+ consolidated `ab_overlap_full.log`).** Correctness gate PASS bit-exact (20/20,
+max_diff 0.0, `smoke_overlap.sh`); single-rank `--overlap` smoke ran clean.
+
+| phase (order) | mode | aggregate Hz | on-stream H2D ms | on-stream kernel ms |
+|---------------|------|-------------:|-----------------:|--------------------:|
+| A1 (COLD first) | --seg-h2d | 113.8 | 60.97 (sync bucket) | 2.19 |
+| B1              | --overlap |  93.2 | 2.53 (async DMA)    | 1.04 |
+| B2              | --overlap |  92.0 | 2.53 (async DMA)    | 1.01 |
+| A2 (WARM last)  | --seg-h2d | 120.7 | 55.52 (sync bucket) | 2.12 |
+
+**Verdict — the last code lever is a DEAD END: overlap REGRESSES −21%
+(92.6 Hz mean vs seg-h2d 117.3 Hz mean), robust to warming.** seg-h2d ran BOTH
+cold-first (113.8) and warm-last (120.7), bracketing overlap's two middle phases,
+and both seg-h2d phases beat both overlap phases — overlap loses even to the
+*coldest* seg-h2d point, so the −21% is not a warming artifact (warming can only
+lift a later phase). The CUDA-event attribution proves the overlap machinery works
+as intended — the async H→D DMA from pinned is only **2.53 ms/event** (vs the
+seg-h2d sync bucket's 55–61 ms that bundles 32× per-seg deserialize+stage+transfer+
+sync), kernel ~1.0 ms — so there is only **~3.5 ms/event of GPU work to hide** behind
+the ~95 ms read. But the overlap path must first gather all 32 segments into the
+pinned staging buffer: an extra **full-event 33.5 MB host→host `np.copyto` every
+event**, and under 32-rank host-memory-bandwidth contention that added traffic costs
+MORE than the ~3.5 ms it hides. Net −21%. This is exactly iter-28's prediction:
+per-rank reads already saturate the FFB link, the GPU work is tiny, and there is no
+idle window worth paying host bandwidth to overlap into.
+
+**Keep/revert:** KEEP `--overlap` as a default-off, opt-in bench flag documenting
+the reproducible negative (repo precedent: `--reader-probe`, the `--profile*`
+variants), with a `VERDICT: DEAD END` header on its docstring so no one mistakes it
+for a throughput path. Numeric path untouched, correctness PASS bit-exact — the
+default event-delivery path is unchanged. TASK.md gets the iter-29 ABBA row.
+
+**LOOP STATUS — every code-side lever is now exhausted; the loop is storage-bound.**
+The per-BD-rank wall is 98% FFB os.pread (iter-28: bd_read 95.2 ms = ~8.8 GB/s
+aggregate at the ~7.9–12 GB/s per-node FFB ceiling); eb_wait, event construction,
+H→D and kernel are all negligible against it and now — with overlap discharged — none
+of them is a reducible code lever. The three characterized multi-node EB placement
+levers (`PS_EB_NODE_LOCAL`, `PS_EB_PER_NODE`, knee=2@2n/3@3n/3@4n, +23–32% aggregate)
+are the code-side wins and are graduated into PLANNING.md. What remains is
+facility-level only: FFB storage bandwidth and node count (TASK.md "Remaining" 1–3),
+not psana code. Per iter-27/28's pre-registered criterion — "only if this lever proves
+not to move the aggregate is the loop genuinely at LOOP DONE" — that gate is now
+closed by measurement.
+
+**Recommended next step:** none code-side. Throughput past the single-node ~117–175 Hz
+storage-bound rate requires more nodes (scales per-node, already characterized) or a
+higher-bandwidth FFB stage — both facility decisions for the human, not loop levers.
+
+LOOP DONE

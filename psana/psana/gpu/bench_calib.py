@@ -97,6 +97,17 @@ def parse_args():
                         "would not, so it over-states cost. Reports the reader's achieved "
                         "MB/s so an IO-bandwidth limit is distinguishable from GIL/CPU "
                         "contention.")
+    p.add_argument("--overlap",        action="store_true",
+                   help="Async-H2D overlap fast path (iter 29): the last untested "
+                        "code lever. Pinned-host double buffer + async H2D on a CUDA "
+                        "stream, NO per-event device sync, so the ~7.7 ms/event H->D "
+                        "of event N runs on the GPU while the CPU immediately advances "
+                        "the generator to READ event N+1 (the dominant ~95 ms/event FFB "
+                        "os.pread). Numerically identical to --seg-h2d (same seg order, "
+                        "same kernel). Headline is WALL-CLOCK rate ONLY (PROMPT.md §6 "
+                        "sync-timing trap); H->D/kernel magnitudes are attributed with "
+                        "CUDA events recorded ON the stream (overlap-safe), read after "
+                        "the timed loop. Compare its aggregate Hz against --seg-h2d.")
     p.add_argument("--cpu",            action="store_true",
                    help="CPU-only mode: BD ranks run det.raw.calib() on the shared "
                         "collective DataSource (no GPU). MPI-capable — measures B-CPU "
@@ -391,6 +402,146 @@ def run_gpu_bench_seg_h2d(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
         "kernel_ms_mean": np.mean(kernel_times) if kernel_times else 0,
         "d2h_ms_mean": np.mean(d2h_times) if d2h_times else 0,
         "reader_mbps": reader_mbps,
+    }
+
+
+def run_gpu_bench_overlap(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
+    """Async-H2D overlap variant (iter 29) — the last untested code lever.
+
+    VERDICT (iter 29, measured): DEAD END, kept only as a reproducible negative.
+    32-BD ABBA on r47/FFB (job 31583622, `bench_mpi_sweep/ralph_tmp/ab_*_213119.log`)
+    put overlap at 92.6 Hz mean vs --seg-h2d 117.3 Hz — a -21% REGRESSION robust to
+    warming (seg-h2d won both cold-first AND warm-last). CUDA-event attribution shows
+    only ~3.5 ms/event of GPU work exists to hide (async H2D DMA 2.53 ms + kernel
+    1.0 ms), while the pinned host->host gather adds a full 33.5 MB memcpy/event whose
+    host-memory-bandwidth cost, under 32-rank contention, exceeds what it hides. Do
+    NOT use this path for throughput; it confirms iter-28's storage-bound verdict.
+
+
+    Baseline (--seg-h2d, run_gpu_bench_seg_h2d) is fully SYNCHRONOUS: it copies
+    each segment host->device with a device sync after the transfer loop, so per
+    event the CPU BLOCKS on read (~95 ms) THEN on H->D (~7.7 ms) THEN on kernel
+    (~0.55 ms), all serialized. iter-28 showed the BD-rank wall is 98% storage
+    read; the only code-side slack left is the ~7.7 ms H->D + 0.55 ms kernel that
+    sit AFTER the read in that serial chain. This variant overlaps them:
+
+      * a pinned-host DOUBLE buffer (NB=2) so H->D can be a true async DMA;
+      * H->D + kernel issued on a per-slot CUDA stream with NO per-event sync,
+        so the CPU returns immediately and advances the generator to READ event
+        N+1 while the GPU digests event N;
+      * buffer reuse guarded by a per-slot stream.synchronize() BEFORE the slot
+        is overwritten (pipeline correctness, not instrumentation — in steady
+        state the 95 ms read gap means the prior slot's ~8 ms of GPU work has
+        long completed, so this wait is ~0).
+
+    Numerics are bit-identical to --seg-h2d: same _segment_numbers order, same
+    per-seg row-major layout into the device buffer, same fused_calib_gpu kernel.
+
+    TIMING (PROMPT.md §6): overlap makes the sync-instrumented per-stage attribution
+    invalid, so the HEADLINE is wall-clock rate ONLY (events / elapsed, no intra-
+    event syncs in the timed region). H->D and kernel magnitudes are attributed
+    with CUDA events recorded ON the stream (overlap-safe) and read AFTER the timed
+    loop finishes — they characterize the GPU work being hidden, they are not the
+    headline.
+    """
+    import cupy as cp
+    from psana.gpu import fused_calib_gpu
+
+    raw_det = det_obj.raw
+    seg_nums = raw_det._segment_numbers
+    NB = 2
+
+    streams = [cp.cuda.Stream(non_blocking=True) for _ in range(NB)]
+    pinned = [None] * NB          # pinned host staging buffers
+    dbuf   = [None] * NB          # device raw buffers
+    dbuf3d = [None] * NB          # (n_seg, 512, 1024) views
+    ev_pairs = []                 # (h2d_start, h2d_stop, ker_stop) per timed event
+
+    warmup_done = False
+    n_measured = 0
+    t_start = None
+    slot = 0
+
+    for evt in run.events():
+        segs = raw_det._segments(evt)
+        if segs is None:
+            continue
+
+        b = slot % NB
+        s0 = segs[seg_nums[0]].raw
+        if pinned[b] is None:
+            shape = (len(seg_nums),) + s0.shape
+            count = int(np.prod(shape))
+            mem = cp.cuda.alloc_pinned_memory(count * s0.dtype.itemsize)
+            pinned[b] = np.frombuffer(mem, dtype=s0.dtype,
+                                      count=count).reshape(shape)
+            dbuf[b] = cp.empty(shape, dtype=s0.dtype)
+            dbuf3d[b] = dbuf[b].reshape(-1, s0.shape[-2], s0.shape[-1])
+
+        st = streams[b]
+        # Reuse guard: the prior async H->D/kernel on THIS slot must be done
+        # before we overwrite its pinned/device memory. Steady state ~0 (read
+        # gap >> GPU work); it is pipeline correctness, not an instrumentation
+        # sync, so it does not defeat the overlap.
+        st.synchronize()
+
+        timed = warmup_done and len(ev_pairs) < args.nevents
+        if timed:
+            e_h0 = cp.cuda.Event(); e_h1 = cp.cuda.Event(); e_k1 = cp.cuda.Event()
+
+        # host->host gather into the pinned staging buffer (replaces CUDA's
+        # hidden pageable->pinned bounce; enables the async DMA below).
+        for idx, sid in enumerate(seg_nums):
+            np.copyto(pinned[b][idx], np.ascontiguousarray(segs[sid].raw))
+
+        with st:
+            if timed:
+                e_h0.record(st)
+            dbuf[b].set(pinned[b], stream=st)        # async H->D (pinned source)
+            if timed:
+                e_h1.record(st)
+            calib_gpu = fused_calib_gpu(dbuf3d[b], peds_gpu, gmask_gpu)  # kernel on st
+            if timed:
+                e_k1.record(st)
+            if args.d2h:
+                _ = calib_gpu.get()                  # (syncs st internally)
+        # NO synchronize here: CPU proceeds to read event N+1 while the GPU
+        # works event N.
+
+        if timed:
+            ev_pairs.append((e_h0, e_h1, e_k1))
+
+        if not warmup_done:
+            if n_measured >= args.warmup:
+                warmup_done = True
+                t_start = time.perf_counter()
+            n_measured += 1
+            slot += 1
+            continue
+
+        n_measured += 1
+        slot += 1
+        if allow_break and len(ev_pairs) >= args.nevents:
+            break
+
+    t_wall = time.perf_counter() - t_start if t_start else 0
+    # drain outstanding GPU work (post-timing cleanup only)
+    for st in streams:
+        st.synchronize()
+
+    # overlap-safe stage attribution, read AFTER the timed loop
+    h2d_ms, ker_ms = [], []
+    for (h0, h1, k1) in ev_pairs:
+        h2d_ms.append(cp.cuda.get_elapsed_time(h0, h1))
+        ker_ms.append(cp.cuda.get_elapsed_time(h1, k1))
+
+    n = len(ev_pairs)
+    return {
+        "n": n,
+        "wall_s": t_wall,
+        "rate_hz": n / t_wall if t_wall > 0 else 0,
+        "h2d_ms_mean": float(np.mean(h2d_ms)) if h2d_ms else 0,
+        "kernel_ms_mean": float(np.mean(ker_ms)) if ker_ms else 0,
     }
 
 
@@ -1069,7 +1220,10 @@ def main():
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
             _print_occupancy(rank, peds_gpu)
 
-        if args.wait_split:
+        if args.overlap:
+            result = run_gpu_bench_overlap(args, run, det, peds_gpu,
+                                           gmask_gpu, allow_break=(size == 1))
+        elif args.wait_split:
             result = run_gpu_bench_wait_split(args, run, det, peds_gpu,
                                               gmask_gpu, allow_break=(size == 1))
         elif args.seg_h2d and args.profile:
@@ -1100,6 +1254,12 @@ def main():
             # MPI_Abort. Skip it; the rank-0 aggregate already filters to ranks
             # with measurements. Seen at 62/64 BD, warm window (job 31586227).
             print(f"  (rank starved: no measured events; excluded from breakdown)")
+        elif args.overlap:
+            print(f"  H->D:        {result['h2d_ms_mean']:.3f} ms/event "
+                  f"(async DMA on stream, CUDA-event timed; hidden behind read)")
+            print(f"  kernel:      {result['kernel_ms_mean']:.3f} ms/event "
+                  f"(CUDA-event timed; hidden behind read)")
+            print(f"  (headline = wall-clock rate only; overlap defeats sync attribution)")
         elif args.profile_read:
             print(f"  wait:        {result['wait_ms_mean']:.3f} ms/event "
                   f"(gen advance = bigdata read + EB/MPI)")

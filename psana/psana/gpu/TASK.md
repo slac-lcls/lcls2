@@ -753,6 +753,28 @@
   `--wait-split`); if it doesn't move the aggregate, the loop is at LOOP DONE pending
   facility-level storage levers.
 
+- 2026-07-13 (iter 29, MEASURED DEAD END — LOOP DONE): **the last untested code
+  lever, pinned-host + async-H2D overlap, REGRESSES −21% at scale.** New default-off
+  `--overlap` bench path (`run_gpu_bench_overlap`): pinned double buffer, async H→D +
+  kernel on a per-slot CUDA stream, NO per-event device sync, so event N's GPU work
+  runs while the CPU advances the generator to READ event N+1. Numerically identical
+  to `--seg-h2d` (same seg order/layout/kernel). Headline = wall-clock only (§6);
+  H→D/kernel attributed with on-stream CUDA events. **32-BD ABBA (warming-controlled),
+  r47/FFB, A100 (job 31583622, `mpirun --bind-to none --oversubscribe -n 34`,
+  n=200/rank warmup=10, `bench_mpi_sweep/ralph_tmp/ab_{A1_seg,B1_ovl,B2_ovl,A2_seg}_213119.log`):**
+  seg-h2d 113.8 (cold-first) / 120.7 (warm-last) = 117.3 mean; overlap 93.2 / 92.0 =
+  92.6 mean → **−21%, robust to warming** (seg-h2d brackets overlap on both sides and
+  wins even at its coldest point). CUDA-event attribution: async H→D DMA from pinned is
+  only **2.53 ms/event** (kernel ~1.0), so just ~3.5 ms/event of GPU work exists to hide
+  behind the ~95 ms read — but the pinned path adds a full **33.5 MB host→host memcpy
+  every event** whose host-memory-bandwidth cost under 32-rank contention exceeds what
+  it hides. Confirms iter-28's prediction exactly. Correctness PASS bit-exact (20/20,
+  max_diff 0.0). KEEP `--overlap` as a reproducible-negative diagnostic (VERDICT header
+  in its docstring); default path untouched. **Every code-side lever is now exhausted;
+  the loop is storage-bound (BD wait 98% FFB os.pread at the per-node link ceiling).
+  LOOP DONE — remaining gains require facility-level storage bandwidth / node count
+  (items 1–3 below), not psana code.**
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.
