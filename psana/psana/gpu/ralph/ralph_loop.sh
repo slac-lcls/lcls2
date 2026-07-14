@@ -120,8 +120,11 @@ echo "=== Ralph loop start $(date -u +%FT%TZ) | max=$MAX_ITERS model=$MODEL ==="
 malfunction=0
 
 for ((i=1; i<=MAX_ITERS; i++)); do
-  # Sentinel: the agent ends the mission with a final journal line LOOP DONE.
-  if tail -5 "$PROGRESS" | grep -q 'LOOP DONE'; then
+  # Sentinel: the agent ends the mission with a final journal line starting
+  # with LOOP DONE. Match only at line start on the last non-blank line —
+  # journal prose that merely mentions the phrase ("near LOOP DONE") must not
+  # end the mission.
+  if last_journal_line | grep -q '^LOOP DONE'; then
     echo ">>> LOOP DONE sentinel in journal — mission complete." | tee -a "$LOG"
     break
   fi
