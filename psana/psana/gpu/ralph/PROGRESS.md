@@ -2105,3 +2105,86 @@ If the 4-node point confirms, the code-side multi-node levers are fully
 characterized and the loop is at LOOP DONE pending the storage-side facility
 levers (the ~10–12 GB/s FFB ceiling — TASK.md "Remaining" items 1–3, none of
 which are psana code).
+
+## Iteration 26 — the 4-node PS_EB_PER_NODE knee is NOT 4: k=3 wins, `knee ≈ node_count` BREAKS (saturates), order-confounded on 3-vs-4
+
+iter-25 pinned the 3-node knee at exactly 3 and left the emergent two-point law
+`knee ≈ node_count` (2@2n, 3@3n) predicting k=4 wins at 4 nodes. This iteration
+is that third point — a 4-node `k∈{2,3,4,5}` sweep to turn the line into a law or
+break it. **One variable: PS_EB_PER_NODE ∈ {2,3,4,5}, fixed 4 nodes, node-local
+colocation.** No code change (measurement only), no C rebuild (pure-py); the
+PS_EB_PER_NODE numeric path is bit-exact and built since iter-22, untouched here.
+
+**Order front-loads the predicted winner k=4 as the COLD first phase** (same
+cold-first design as iter-25): FFB window state warms within an allocation and
+favors LATER phases, so the two nearest threats k=3 (rule says knee stays 3) and
+k=5 (rule says knee climbs faster) run later/warmer. The design intent: if k=4
+wins even cold, the knee=4 / node_count law is conservatively confirmed.
+
+**Clean 4-node in-window bracket, job 31592091 (all four exit=0, COMPLETED),
+nodes sdfampere002/026/028/030, `bench_mpi_sweep/epn4nk_{4eb,2eb,3eb,5eb}.log`,
+driver `slurm-31592091.out`, n=100/rank warmup=10 --wait-split. Phase order
+4→2→3→5. Topology at 4 nodes / 132 ranks (rank0=smd0): k EB/node → 4k EB,
+131−4k topological BD.**
+
+| config (phase order 4→2→3→5) | EB | topo BD | BD reporting | starved | aggregate Hz |
+|------------------------------|---:|--------:|-------------:|--------:|-------------:|
+| mn4_4eb (COLD first / predicted hero) | 16 | 115 | 115 | 0  | 815.8 |
+| mn4_2eb                       |  8 | 123 | 111 | 12 | 854.2 |
+| mn4_3eb                       | 12 | 119 | 118 | 1  | **914.1** |
+| mn4_5eb (warmest last)        | 20 | 111 |  90 | 21 | 896.6 |
+
+**Verdict — the node_count law does NOT hold at 4 nodes. The predicted winner
+k=4 placed LAST (815.8 Hz); k=3 placed FIRST (914.1 Hz).** The knee does not
+climb to 4 — it appears to saturate at ~3. Two claims from this bracket are
+robust against the warming confound, one is confounded:
+
+1. **ROBUST — knee < 5.** k=5 (896.6) drops below k=3 (914.1) *despite* being the
+   warmest last phase; warming should have lifted k=5 above k=3 if they were
+   equal, so k=5's real penalty beats the warming trend. k=5 also starves 21 of
+   111 topological BD ranks (only 90 reported) — the over-provisioned EB fan-out
+   converting BD-reader slots to idle EBs, the same past-knee starvation mechanism
+   iter-25 saw at 3n k=5. So pushing k past 3–4 at 4 nodes does not recover.
+2. **ROBUST — the node_count=4 prediction is unsupported.** k=4 was deliberately
+   placed cold-first so that a genuine knee=4 would win despite the cold window
+   (conservative-for-the-hypothesis design). It came in *lowest*. A cold window
+   can only *depress* a phase, so k=4's last-place finish cannot be a warming
+   artifact working in its favor — the knee=4 hypothesis had its best shot and
+   missed. k=4 shows zero starvation (115/115), so it is not failing for lack of
+   readers; it simply is not the throughput optimum.
+3. **CONFOUNDED — exact knee is 3 vs 4.** k=4 cold-first vs k=3 third-phase: the
+   warming drift favors k=3, so the *magnitude* of k=3's lead over k=4 (+12%) is
+   inflated and I cannot cleanly rank k=3 above k=4 from this window alone. What I
+   can say: the knee is 3 or 4, not 2 or 5, and it did NOT reach the predicted 4.
+
+**So `knee ≈ node_count` breaks at its first out-of-sample test: measured knees
+are 2@2n, 3@3n, and (3 or 4)@4n — the knee grows SLOWER than node count and looks
+to be saturating near 3.** Mechanistically this fits the iter-24/25 model: `eb_wait`
+falls with more EBs, but the smd0→EB feed and the BD-slot budget are the binding
+constraints, and past ~3 EB/node the fan-out starts starving BD readers (k=2 already
+starves 12, k=5 starves 21; k=3 is the low-starvation sweet spot at 1). The single
+smd0 feeding all node-local EBs caps how much added EB parallelism can help, so the
+knee plateaus rather than tracking node_count linearly.
+
+**HONEST CAVEAT — the k=2 starvation (12 BD idle) is anomalous** and larger than
+its 2-node/3-node analogs; at low k the EB count may be too small to keep all BD
+readers fed, a different failure mode than the high-k over-provisioning. It does not
+change the ranking (k=2 is mid-pack) but means the low-k side of the 4-node curve is
+noisier than the clean k=3 point.
+
+**Keep/graduate:** feature unchanged (opt-in, default-off, bit-exact since iter-22 —
+numeric path untouched, no re-gate). This iteration CORRECTS the graduated
+PLANNING.md `knee ≈ node_count` guidance: it is a 2-node/3-node coincidence, not a
+law — the knee saturates near 3, so `PS_EB_PER_NODE=3` is the best single setting for
+3+ nodes rather than "scale k with node count." TASK.md gets the 4-node bracket and
+the corrected rule. The confounded 3-vs-4 boundary is flagged for a reversed confirm.
+
+**Recommended next step:** a reversed-order 4-node confirm — order `5→3→2→4` so k=4
+runs *warmest-last* instead of cold-first. If k=4 still loses to k=3 even with the
+warming advantage, `knee=3 at 4 nodes` is robust and the saturation verdict is
+locked; if warm k=4 overtakes k=3, the knee is 4 after all and node_count survives
+weakly. Either way the 3-vs-4 confound is discharged with one more in-window bracket
+(reuse `eb_per_node_knee_4n.sbatch`, swap the phase order). After that the code-side
+multi-node levers are fully characterized and the loop is at LOOP DONE pending the
+storage-side facility levers (the ~10–12 GB/s FFB ceiling — TASK.md "Remaining" items
+1–3, none of which are psana code).

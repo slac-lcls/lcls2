@@ -671,6 +671,34 @@
   "k>3 does not recover." PLANNING.md 3-node knee row updated ≥3 → 3. NEXT: 4-node
   k∈{2,3,4,5} bracket to make knee=node_count a three-point law.
 
+- 2026-07-13 (iter 26, order-confounded on 3-vs-4): **`knee ≈ node_count` BREAKS
+  at 4 nodes — the predicted k=4 placed LAST, k=3 placed FIRST; the knee saturates
+  near 3 rather than tracking node count.** Clean 4-node k∈{2,3,4,5} sweep, job
+  31592091 (all four exit=0, COMPLETED, nodes sdfampere002/026/028/030,
+  `bench_mpi_sweep/epn4nk_{4eb,2eb,3eb,5eb}.log`, driver slurm-31592091.out),
+  n=100/rank warmup=10 --wait-split, phase order 4→2→3→5 (predicted-winner k=4
+  cold-first). Topology 132 ranks (rank0=smd0), k EB/node → 4k EB, 131−4k topo BD:
+  · mn4_4eb (COLD first / predicted hero): 815.8 Hz — 115/115 BD, 0 starved
+  · mn4_2eb: 854.2 Hz — 111/123 BD, 12 starved
+  · mn4_3eb: **914.1** Hz — 118/119 BD, 1 starved
+  · mn4_5eb (warm last): 896.6 Hz — 90/111 BD, 21 starved
+  ROBUST claims (survive the warming confound): (1) knee < 5 — k=5 drops below k=3
+  despite being warmest, and starves 21 of 111 BD ranks (past-knee over-provisioning,
+  same mechanism as 3n k=5); (2) the node_count=4 prediction is unsupported — k=4 was
+  placed cold-first so a genuine knee=4 would win despite the cold window, and it came
+  in lowest with zero starvation (not failing for lack of readers). CONFOUNDED: the
+  exact 3-vs-4 boundary — warming favors k=3's third-phase slot, so k=3's +12% lead
+  over cold k=4 is inflated; the knee is 3 or 4, not the predicted-linear 4+. So the
+  measured knees are 2@2n, 3@3n, (3 or 4)@4n → the knee grows SLOWER than node count
+  and looks to saturate near 3. Mechanism: single smd0 feeds all node-local EBs, so
+  added EB parallelism past ~3/node stops helping and starts starving BD readers (k=2
+  starves 12, k=5 starves 21; k=3 is the low-starvation sweet spot). CAVEAT: k=2's
+  12-BD starvation is a distinct low-k underfeed mode, noisier than the clean k=3
+  point. PLANNING.md "scale k with node count" guidance CORRECTED to "k=3 is the best
+  single setting for 3+ nodes (knee saturates near 3, not = node_count)". NEXT:
+  reversed-order 4-node confirm (phase order 5→3→2→4, k=4 warmest-last) to discharge
+  the 3-vs-4 confound — if warm k=4 still loses to k=3, knee=3 at 4n is locked.
+
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
    production workflow needs calibrated frames back on host.
