@@ -511,12 +511,13 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
 
     def _snap():
         if bd_node is None:
-            return (0, 0, 0, 0, 0)
+            return (0, 0, 0, 0, 0, 0)
         dm = getattr(bd_node, "dm", None)
         dgram_ns = getattr(dm, "total_dgram_ns", 0) if dm is not None else 0
         smdparse_ns = getattr(dm, "total_smdparse_ns", 0) if dm is not None else 0
+        gen_wait_ns = getattr(bd_node, "total_wait_ns", 0)
         return (bd_node.total_eb_wait_ns, bd_node.total_bd_read_ns,
-                bd_node.total_events, dgram_ns, smdparse_ns)
+                bd_node.total_events, dgram_ns, smdparse_ns, gen_wait_ns)
 
     wait_times, h2d_times, kernel_times = [], [], []
     warmup_done = False
@@ -525,11 +526,11 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
     t_prev_end = None
     raw_gpu_buf = None
     raw_gpu_3d = None
-    # Must match _snap()'s width (eb_wait, bd_read, events, dgram, smdparse):
-    # a rank starved below `warmup` events never runs `snap0 = _snap()` and
-    # would otherwise keep a short tuple, so snap1[3]/snap1[4] -> IndexError
-    # -> MPI_Abort. Seen at 62 BD ranks / cold window (job 31585830).
-    snap0 = (0, 0, 0, 0, 0)
+    # Must match _snap()'s width (eb_wait, bd_read, events, dgram, smdparse,
+    # gen_wait): a rank starved below `warmup` events never runs
+    # `snap0 = _snap()` and would otherwise keep a short tuple, so snap1[3..5]
+    # -> IndexError -> MPI_Abort. Seen at 62 BD ranks / cold window (job 31585830).
+    snap0 = (0, 0, 0, 0, 0, 0)
 
     events = run.events()
     while True:
@@ -588,6 +589,7 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
     d_events = snap1[2] - snap0[2]
     d_dgram_ns = snap1[3] - snap0[3]
     d_smdparse_ns = snap1[4] - snap0[4]
+    d_gen_wait_ns = snap1[5] - snap0[5]
     # ms/event over the measured window (bd_node counts every event the rank
     # advanced past, incl. skipped transitions; use its own event delta).
     ev = d_events if d_events > 0 else max(n, 1)
@@ -602,6 +604,11 @@ def run_gpu_bench_wait_split(args, run, det_obj, peds_gpu, gmask_gpu, allow_brea
         "bd_read_ms_mean": (d_bd_read_ns / 1e6) / ev,
         "dgram_ms_mean": (d_dgram_ns / 1e6) / ev,
         "smdparse_ms_mean": (d_smdparse_ns / 1e6) / ev,
+        # gen_wait = the WHOLE generator-advance timed INSIDE node.py on the SAME
+        # bd_events denominator as eb_wait/bd_read. Unlike wait_ms_mean (÷n), this
+        # lets residual be computed consistently: gen_wait - eb_wait - bd_read is
+        # the true CPU/plumbing leftover per bd_event (should ~= dgram+smdparse+ε).
+        "gen_wait_ms_mean": (d_gen_wait_ns / 1e6) / ev,
         "bd_events": int(d_events),
     }
 
@@ -960,14 +967,18 @@ def _report_aggregate(result, size):
         ker = g('kernel_ms_mean')
         dgram = g('dgram_ms_mean')
         smdparse = g('smdparse_ms_mean')
+        gen_wait = g('gen_wait_ms_mean')
         resid = wait - eb_wait - bd_read
-        print(f"  wait:             {wait:.3f} ms/event (gen advance = EB-wait + bd-read)")
+        resid_consistent = gen_wait - eb_wait - bd_read
+        print(f"  wait:             {wait:.3f} ms/event (gen advance, timed OUTSIDE per L1 event / n)")
         print(f"    eb_wait:        {eb_wait:.3f} ms/event (BD blocked on EB batch: Probe+Irecv)")
         print(f"    bd_read:        {bd_read:.3f} ms/event (os.pread bigdata xtc off FFB)")
-        print(f"    residual:       {resid:.3f} ms/event (wait - eb_wait - bd_read; CPU construction)")
+        print(f"    residual(OLD):  {resid:.3f} ms/event (wait - eb_wait - bd_read; MIXED denom, artifact)")
+        print(f"  gen_wait:         {gen_wait:.3f} ms/event (WHOLE gen advance, timed INSIDE / bd_events)")
+        print(f"    residual(cons): {resid_consistent:.3f} ms/event (gen_wait - eb_wait - bd_read; one denom = real CPU plumbing)")
         print(f"      dgram:        {dgram:.3f} ms/event (per-event dgram.Dgram() construction)")
         print(f"      smdparse:     {smdparse:.3f} ms/event (per-batch offset/size array build)")
-        print(f"    (eb_wait+bd_read: {eb_wait + bd_read:.3f} ms/event vs wait {wait:.3f})")
+        print(f"    (eb_wait+bd_read: {eb_wait + bd_read:.3f} ms/event vs gen_wait {gen_wait:.3f})")
         print(f"  H->D:             {h2d:.3f} ms/event")
         print(f"  kernel:           {ker:.3f} ms/event")
         print(f"  sum:              {wait + h2d + ker:.3f} ms/event  "
@@ -1115,8 +1126,15 @@ def main():
                   f"(os.pread bigdata xtc off FFB)")
             _resid = (result['wait_ms_mean'] - result['eb_wait_ms_mean']
                       - result['bd_read_ms_mean'])
-            print(f"    residual:  {_resid:.3f} ms/event "
-                  f"(wait - eb_wait - bd_read; CPU construction)")
+            _gen_wait = result.get('gen_wait_ms_mean', 0)
+            _resid_cons = (_gen_wait - result['eb_wait_ms_mean']
+                           - result['bd_read_ms_mean'])
+            print(f"    residual(OLD): {_resid:.3f} ms/event "
+                  f"(wait - eb_wait - bd_read; MIXED denom, artifact)")
+            print(f"  gen_wait:    {_gen_wait:.3f} ms/event "
+                  f"(WHOLE gen advance, timed INSIDE / bd_events)")
+            print(f"    residual(cons): {_resid_cons:.3f} ms/event "
+                  f"(gen_wait - eb_wait - bd_read; one denom = real CPU plumbing)")
             print(f"      dgram:     {result['dgram_ms_mean']:.3f} ms/event "
                   f"(per-event dgram.Dgram() construction)")
             print(f"      smdparse:  {result['smdparse_ms_mean']:.3f} ms/event "

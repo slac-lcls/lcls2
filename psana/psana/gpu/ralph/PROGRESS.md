@@ -2263,3 +2263,78 @@ instrumentation on the construction path, §8) to see whether any of the 45.9 ms
 reducible. Only if the residual proves irreducible is the loop genuinely at LOOP
 DONE pending storage-side facility levers; until then there is one untested code
 hypothesis and the loop should not stop.
+
+## Iteration 28 — the 45.9 ms BD-rank "residual" is a denominator artifact, NOT a code lever: same-denominator counter shows real CPU plumbing = 1.15 ms, the loop is storage-bound
+
+iter-27 flagged the ~45.9 ms/event BD-rank `residual` (at the 4-node k=3 optimum)
+as "a non-storage, non-EB CPU cost that no iteration has profiled" and the last
+untested code lever before declaring the loop storage-bound. This iteration
+profiles it — and closes it. **One variable: add an additive-only `total_wait_ns`
+counter that times the WHOLE generator advance INSIDE `node.py` on the same
+`bd_events` denominator as eb_wait/bd_read/dgram/smdparse, so the residual can be
+decomposed on ONE denominator instead of the mixed-denominator subtraction the
+report has always used.** No numeric-path change (correctness re-gated anyway,
+below); pure-Python, synced source→install.
+
+**The bug in the old `residual`.** The report computes
+`residual = wait − eb_wait − bd_read`, but `wait` (`np.mean(wait_times)`) is
+normalized over `n` = the *timed* L1 events (=150), while eb_wait/bd_read/dgram/
+smdparse are additive counters normalized over `bd_events` = every node advance
+incl. transitions (bd_events > n). Subtracting a ÷n quantity from ÷bd_events
+quantities inflates the leftover by exactly `(wait − gen_wait)`. This is precisely
+the "subtractive artifact / mixed denominators" iter-15 identified when it directly
+counted dgram at ~1–4 ms; iter-27 re-read the inflated subtraction as if it were
+measured construction time.
+
+**Measurement — single-node 32 BD, r47/FFB, A100 (sdfampere033, ralph-gpu job
+31583622), `mpirun --bind-to none --oversubscribe -n 34`, `-n 150 --warmup 10
+--wait-split`, `bench_mpi_sweep/ralph_tmp/genwait_mpi_32bd_205830.log`.** Single
+node reproduces the phenomenon: iter-10 measured the single-node 32-BD residual at
+~45.5 ms, ≈ the 4-node k=3 45.9 ms, so no multi-node allocation was needed.
+
+| bucket | value (ms/event) | denominator | meaning |
+|---|---:|---|---|
+| wait (OLD)        | 123.249 | ÷n (timed)       | gen advance, timed OUTSIDE in the benchmark |
+| residual(OLD)     |  26.879 | mixed            | wait − eb_wait − bd_read — **the artifact** |
+| **gen_wait**      | **97.521** | ÷bd_events    | WHOLE gen advance, timed INSIDE node.py |
+| **residual(cons)**|  **1.151** | ÷bd_events    | gen_wait − eb_wait − bd_read — **real CPU plumbing** |
+| eb_wait           |   1.129 | ÷bd_events       | Probe+Irecv on EB batch |
+| bd_read           |  95.241 | ÷bd_events       | os.pread bigdata off FFB |
+| dgram             |   1.460 | ÷bd_events       | per-event dgram.Dgram() |
+| smdparse          |   0.464 | ÷bd_events       | per-batch offset/size build |
+
+**Verdict — the last untested code lever is discharged: it was never a real cost.**
+On a consistent denominator `eb_wait + bd_read = 96.370 ≈ gen_wait 97.521` (match
+within 1.15 ms), and that 1.15 ms leftover is fully accounted for by the
+directly-counted construction (dgram 1.46 + smdparse 0.46 = 1.92 ms, within
+run-to-run noise). **Real per-event CPU plumbing on the BD rank is ~1.9 ms, not
+45.9 ms.** The 26.9/45.9 ms "residual" is entirely `wait − gen_wait` — the
+÷n vs ÷bd_events denominator gap (here bd_events/n ≈ 1.26). This CONFIRMS iter-15
+at the multi-node optimum and definitively refutes iter-27's "45.9 ms untested
+lever": there is no reducible CPU-construction cost hiding in the residual.
+
+**The BD-rank wait is 98% storage read (bd_read 95.2 ms/event = ~276 MB/s/rank ×
+32 ≈ 8.8 GB/s, at the ~7.9–12 GB/s per-node FFB ceiling).** eb_wait (1.1 ms
+single-node), construction (1.9 ms), and kernel (0.55 ms) are all negligible
+against it. The event loop is storage-bound, exactly as TASK.md "Remaining" 1–3
+(all facility-level) state.
+
+**Keep/graduate:** KEEP the `total_wait_ns` counter — it is an additive-only,
+default-path-safe instrument that makes the residual correctly decomposable going
+forward, replacing the misleading `residual(OLD)` line (now relabeled as the
+mixed-denom artifact in both the single-rank and aggregate reports). Correctness
+gate PASS bit-exact (20/20, max_diff 0.0), so the touched event-delivery path
+(node.py generator loop) is verified unbroken. TASK.md gets the iter-28 row and
+the residual-artifact resolution.
+
+**Recommended next step.** The residual is dead, so the remaining code-side lever
+is the one PROGRESS/TASK have pointed at since iter-10: H2D is 7.66 ms/event at
+32-rank contention and sits *after* bd_read in the synchronous chain — pinned-host
+memory + async H2D prefetch (overlap H2D of event N behind the bd_read of event
+N+1) could hide most of that ~7.7 ms (~8% of the 121 ms per-rank wall) behind the
+storage read that dominates. This is overlap, so it MUST be measured with
+wall-clock rate + CUDA-event attribution, never the sync-instrumented `--wait-split`
+loop (§6 trap). If that lever is measured and proves not to move the aggregate
+(because per-rank reads already saturate the FFB link and leave no idle PCIe window
+to overlap into), then every code-side lever is exhausted and the loop is at LOOP
+DONE pending storage-side facility levers (TASK.md "Remaining" 1–3).

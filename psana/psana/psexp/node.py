@@ -1280,6 +1280,13 @@ class BigDataNode(object):
         self.total_bd_read_ns = 0
         self.total_events = 0
         self.total_batches = 0
+        # total_wait_ns = the WHOLE generator-advance time per yielded event,
+        # timed inside this loop so it shares the total_events (bd_events)
+        # denominator with eb_wait/bd_read/dgram/smdparse. The benchmark's own
+        # `wait` bucket is timed OUTSIDE (per timed L1 event, ÷n) so
+        # `wait - eb_wait - bd_read` mixes denominators and inflates its leftover;
+        # this counter lets the residual be decomposed on ONE denominator.
+        self.total_wait_ns = 0
 
     def start(self):
         def on_batch_end(payload):
@@ -1350,12 +1357,19 @@ class BigDataNode(object):
                         self.shared_state,
                         get_smd=get_smd,
                         on_batch_end=on_batch_end)
+        _adv_start = time.monotonic()
         for i_evt, dgrams in enumerate(dgrams_iter):
+            # Time spent advancing the generator to produce THIS event (folds
+            # eb_wait + bd_read + dgram/smdparse construction + pure-Python
+            # EventManager plumbing). Same per-event granularity as total_events.
+            self.total_wait_ns += int((time.monotonic() - _adv_start) * 1e9)
             # throw away events if termination flag is set
             if self.shared_state.terminate_flag.value:
+                _adv_start = time.monotonic()
                 continue
 
             yield dgrams
+            _adv_start = time.monotonic()
 
     def start_smdonly(self):
         bd_comm = self.comms.bd_comm

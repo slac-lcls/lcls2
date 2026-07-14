@@ -726,12 +726,32 @@
   open PS_EB_PER_NODE characterization item — the code-side multi-node EB levers
   (node-local placement + intra-node fan-out) are now fully characterized.**
   OBSERVED (not yet a lever): at the k=3 optimum the per-BD-rank cost splits bd_read
-  69.79 / residual 45.93 (CPU event construction) / eb_wait 15.52 ms. bd_read (FFB
-  storage) dominates but the 45.9 ms CPU-construction residual is a non-storage,
-  non-EB code cost that no iteration has profiled or attacked — the leading remaining
-  code-side lever candidate. NEXT: profile the BD-rank residual (event construction /
-  Dgram assembly) to see if any of the 45.9 ms is reducible, before concluding the
-  loop is storage-bound.
+  69.79 / residual 45.93 / eb_wait 15.52 ms — see iter-28, which proved the residual
+  is a denominator artifact, not a real cost.
+- 2026-07-13 (iter 28): **the ~45.9 ms BD-rank "residual" is a MIXED-DENOMINATOR
+  ARTIFACT, not a code lever — real per-event CPU plumbing = 1.15 ms.** Added an
+  additive-only `total_wait_ns` counter timing the WHOLE generator advance INSIDE
+  node.py on the same `bd_events` denominator as eb_wait/bd_read (the benchmark's
+  `wait` bucket is timed OUTSIDE ÷n = timed L1 events; bd_events > n, so
+  `residual = wait − eb_wait − bd_read` inflates the leftover by exactly
+  `wait − gen_wait`). Single-node 32 BD, r47/FFB, A100 (job 31583622,
+  `mpirun --bind-to none --oversubscribe -n 34`, `-n 150 --warmup 10 --wait-split`,
+  `bench_mpi_sweep/ralph_tmp/genwait_mpi_32bd_205830.log`): wait(OLD)=123.25 →
+  residual(OLD)=26.88 ms (artifact); **gen_wait=97.52 (÷bd_events) → residual(cons)=
+  1.15 ms**; eb_wait+bd_read=96.37 ≈ gen_wait 97.52 (match within 1.15 ms), and the
+  1.15 leftover is fully covered by directly-counted dgram 1.46 + smdparse 0.46 =
+  1.92 ms. Single-node reproduces the multi-node phenomenon (iter-10 residual ~45.5
+  ≈ 4n-k=3 45.93). **CONFIRMS iter-15, refutes iter-27's "45.9 ms untested lever":
+  there is no reducible CPU-construction cost.** The BD-rank wait is 98% storage read
+  (bd_read 95.24 ms = ~276 MB/s/rank × 32 ≈ 8.8 GB/s, at the per-node FFB ceiling);
+  eb_wait 1.13, construction 1.9, kernel 0.55 ms are all negligible against it — the
+  event loop is storage-bound. KEEP the counter (default-path-safe instrument;
+  report now labels `residual(OLD)` the mixed-denom artifact and prints
+  `residual(cons)`). Correctness PASS bit-exact (20/20, max_diff 0.0). NEXT: the only
+  remaining code lever is pinned-host + async H2D prefetch to hide the 7.66 ms/event
+  32-rank H2D behind bd_read (must use overlap-safe CUDA-event timing, §6, NOT
+  `--wait-split`); if it doesn't move the aggregate, the loop is at LOOP DONE pending
+  facility-level storage levers.
 
 Remaining (all beyond pure measurement):
 1. AsyncD2HJoiner — trigger MET (DEFERRED.md updated); build when a
