@@ -280,6 +280,21 @@
   .flow .step .t { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem; }
   .flow .step .b { font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; }
   .flow .arr { align-self: center; color: var(--muted); font-family: var(--mono); font-size: 1rem; padding: 0 0.1rem; }
+  .flow .step.hot { border-color: var(--warn-text); }
+  .flow .step.hot .t { color: var(--warn-text); }
+  .flow .step.dim { border-style: dashed; opacity: 0.8; }
+
+  .topo-node { fill: none; stroke: var(--line); stroke-width: 1.25; }
+  .topo-chip { fill: var(--code-bg); stroke: var(--line); }
+  .topo-t { fill: var(--ink); font-size: 11px; font-weight: 600; }
+  .topo-t-inv { fill: #fff; font-size: 11px; font-weight: 600; }
+  .topo-l { fill: var(--muted); font-size: 9.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .topo-eb-old { fill: var(--muted); opacity: 0.55; }
+  .topo-eb-new { fill: var(--accent); }
+  .topo-bd { fill: var(--ink-2); stroke: var(--surface); stroke-width: 1.5; }
+  .topo-link-old { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
+  .topo-link-x { stroke: var(--crit-text); stroke-width: 1; opacity: 0.5; stroke-dasharray: 3 3; }
+  .topo-link-new { stroke: var(--accent); stroke-width: 1.4; opacity: 0.8; }
 
   .kicker {
     border-left: 3px solid var(--accent);
@@ -471,21 +486,124 @@
   </div>
 </section>
 
-<!-- ───────────────────────── 04 · USEFUL #3: EB PLACEMENT ───────────────────────── -->
+<!-- ───────────────────────── 04 · THE TAKE-HOME: COMMUNICATOR TOPOLOGY ───────────────────────── -->
 <section class="slide" id="s4">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">04</span><span>what proved useful · multi-node</span></div>
-    <h2>~120 lines of EB placement broke the 300 Hz plateau</h2>
-    <p>Multi-node runs plateaued near 300 Hz regardless of node count. The cause wasn’t storage — it was a
-    single global EventBuilder serializing as it served more BD ranks (<span class="mono">eb_wait</span> climbing
-    3.5 → 70 ms as BDs went 32 → 96). Two opt-in, default-off env flags fixed it:</p>
-    <ul class="tight">
-      <li><strong><code>PS_EB_NODE_LOCAL=1</code></strong> — one EB per physical node, serving only that node’s
-      BD ranks (<span class="mono">psexp/node.py</span>, ~48 lines changed).</li>
-      <li><strong><code>PS_EB_PER_NODE=k</code></strong> — sub-split each node into k EventBuilders. The knee is
-      k=2 at 2 nodes, <strong>k=3 at 3 and 4 nodes</strong> — confirmed in both warm-up orders; past the knee,
-      extra EBs starve BD-reader slots (<span class="mono">node.py</span> + <span class="mono">datasource.py</span>, ~36 lines).</li>
-    </ul>
+    <div class="eyebrow"><span class="n">04</span><span>what proved useful · the take-home message</span></div>
+    <h2>The biggest win wasn’t GPU code — it was communicator topology</h2>
+    <p>Multi-node throughput plateaued near 300 Hz no matter how many nodes were added. The cause was
+    <em>who talks to whom</em>: psana grouped BD ranks to EventBuilders by <strong>rank number</strong>
+    (<code>rank % PS_EB_NODES</code>) — blind to physical placement — so one EventBuilder ended up serving
+    every BD rank on every node, over the network. ~120 opt-in lines regrouped the <em>same ranks</em> by
+    <strong>physical host</strong>. Nothing about the data path, the kernel, or the storage changed.</p>
+
+    <div class="grid grid-2">
+      <figure>
+        <div class="chart-box">
+          <svg viewBox="0 0 470 260" role="img" aria-label="Diagram, before: one EventBuilder on node 1 serves BD ranks on all three nodes, with dashed lines crossing node boundaries.">
+            <rect class="topo-chip" x="195" y="8" width="80" height="24" rx="6"/>
+            <text class="topo-t" x="235" y="24" text-anchor="middle">smd0</text>
+            <line class="topo-link-old" x1="235" y1="32" x2="62" y2="98"/>
+            <rect class="topo-node" x="12"  y="66" width="146" height="176" rx="10"/>
+            <rect class="topo-node" x="162" y="66" width="146" height="176" rx="10"/>
+            <rect class="topo-node" x="312" y="66" width="146" height="176" rx="10"/>
+            <text class="topo-l" x="22"  y="82">node 1</text>
+            <text class="topo-l" x="172" y="82">node 2</text>
+            <text class="topo-l" x="322" y="82">node 3</text>
+            <!-- intra-node links -->
+            <line class="topo-link-old" x1="62" y1="122" x2="55"  y2="150"/>
+            <line class="topo-link-old" x1="62" y1="122" x2="95"  y2="150"/>
+            <line class="topo-link-old" x1="62" y1="122" x2="55"  y2="185"/>
+            <line class="topo-link-old" x1="62" y1="122" x2="95"  y2="185"/>
+            <line class="topo-link-old" x1="62" y1="122" x2="55"  y2="220"/>
+            <line class="topo-link-old" x1="62" y1="122" x2="95"  y2="220"/>
+            <!-- cross-node links -->
+            <line class="topo-link-x" x1="62" y1="122" x2="205" y2="150"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="245" y2="150"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="205" y2="185"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="245" y2="185"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="205" y2="220"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="245" y2="220"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="355" y2="150"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="395" y2="150"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="355" y2="185"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="395" y2="185"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="355" y2="220"/>
+            <line class="topo-link-x" x1="62" y1="122" x2="395" y2="220"/>
+            <rect class="topo-eb-old" x="40" y="98" width="44" height="24" rx="5"/>
+            <text class="topo-t" x="62" y="114" text-anchor="middle">EB</text>
+            <circle class="topo-bd" cx="55"  cy="150" r="5"/><circle class="topo-bd" cx="95"  cy="150" r="5"/>
+            <circle class="topo-bd" cx="55"  cy="185" r="5"/><circle class="topo-bd" cx="95"  cy="185" r="5"/>
+            <circle class="topo-bd" cx="55"  cy="220" r="5"/><circle class="topo-bd" cx="95"  cy="220" r="5"/>
+            <circle class="topo-bd" cx="205" cy="150" r="5"/><circle class="topo-bd" cx="245" cy="150" r="5"/>
+            <circle class="topo-bd" cx="205" cy="185" r="5"/><circle class="topo-bd" cx="245" cy="185" r="5"/>
+            <circle class="topo-bd" cx="205" cy="220" r="5"/><circle class="topo-bd" cx="245" cy="220" r="5"/>
+            <circle class="topo-bd" cx="355" cy="150" r="5"/><circle class="topo-bd" cx="395" cy="150" r="5"/>
+            <circle class="topo-bd" cx="355" cy="185" r="5"/><circle class="topo-bd" cx="395" cy="185" r="5"/>
+            <circle class="topo-bd" cx="355" cy="220" r="5"/><circle class="topo-bd" cx="395" cy="220" r="5"/>
+          </svg>
+        </div>
+        <figcaption><strong>Before — grouped by rank number.</strong> One EventBuilder serves every BD rank on
+        every node, most of it over cross-node MPI (dashed). Its queue grows with the <em>whole job</em>:
+        <span class="mono">eb_wait</span> 3.5 → 70 ms as BDs go 32 → 96. That queue is the ~300 Hz plateau.</figcaption>
+      </figure>
+      <figure>
+        <div class="chart-box">
+          <svg viewBox="0 0 470 260" role="img" aria-label="Diagram, after: each node contains its own EventBuilders serving only that node's BD ranks over short local links.">
+            <rect class="topo-chip" x="195" y="8" width="80" height="24" rx="6"/>
+            <text class="topo-t" x="235" y="24" text-anchor="middle">smd0</text>
+            <line class="topo-link-old" x1="235" y1="32" x2="50"  y2="98"/>
+            <line class="topo-link-old" x1="235" y1="32" x2="118" y2="98"/>
+            <line class="topo-link-old" x1="235" y1="32" x2="200" y2="98"/>
+            <line class="topo-link-old" x1="235" y1="32" x2="268" y2="98"/>
+            <line class="topo-link-old" x1="235" y1="32" x2="350" y2="98"/>
+            <line class="topo-link-old" x1="235" y1="32" x2="418" y2="98"/>
+            <rect class="topo-node" x="12"  y="66" width="146" height="176" rx="10"/>
+            <rect class="topo-node" x="162" y="66" width="146" height="176" rx="10"/>
+            <rect class="topo-node" x="312" y="66" width="146" height="176" rx="10"/>
+            <text class="topo-l" x="22"  y="82">node 1</text>
+            <text class="topo-l" x="172" y="82">node 2</text>
+            <text class="topo-l" x="322" y="82">node 3</text>
+            <line class="topo-link-new" x1="50"  y1="122" x2="50"  y2="220"/>
+            <line class="topo-link-new" x1="118" y1="122" x2="118" y2="220"/>
+            <line class="topo-link-new" x1="200" y1="122" x2="200" y2="220"/>
+            <line class="topo-link-new" x1="268" y1="122" x2="268" y2="220"/>
+            <line class="topo-link-new" x1="350" y1="122" x2="350" y2="220"/>
+            <line class="topo-link-new" x1="418" y1="122" x2="418" y2="220"/>
+            <rect class="topo-eb-new" x="28"  y="98" width="44" height="24" rx="5"/>
+            <rect class="topo-eb-new" x="96"  y="98" width="44" height="24" rx="5"/>
+            <rect class="topo-eb-new" x="178" y="98" width="44" height="24" rx="5"/>
+            <rect class="topo-eb-new" x="246" y="98" width="44" height="24" rx="5"/>
+            <rect class="topo-eb-new" x="328" y="98" width="44" height="24" rx="5"/>
+            <rect class="topo-eb-new" x="396" y="98" width="44" height="24" rx="5"/>
+            <text class="topo-t-inv" x="50"  y="114" text-anchor="middle">EB</text>
+            <text class="topo-t-inv" x="118" y="114" text-anchor="middle">EB</text>
+            <text class="topo-t-inv" x="200" y="114" text-anchor="middle">EB</text>
+            <text class="topo-t-inv" x="268" y="114" text-anchor="middle">EB</text>
+            <text class="topo-t-inv" x="350" y="114" text-anchor="middle">EB</text>
+            <text class="topo-t-inv" x="418" y="114" text-anchor="middle">EB</text>
+            <circle class="topo-bd" cx="50"  cy="150" r="5"/><circle class="topo-bd" cx="50"  cy="185" r="5"/><circle class="topo-bd" cx="50"  cy="220" r="5"/>
+            <circle class="topo-bd" cx="118" cy="150" r="5"/><circle class="topo-bd" cx="118" cy="185" r="5"/><circle class="topo-bd" cx="118" cy="220" r="5"/>
+            <circle class="topo-bd" cx="200" cy="150" r="5"/><circle class="topo-bd" cx="200" cy="185" r="5"/><circle class="topo-bd" cx="200" cy="220" r="5"/>
+            <circle class="topo-bd" cx="268" cy="150" r="5"/><circle class="topo-bd" cx="268" cy="185" r="5"/><circle class="topo-bd" cx="268" cy="220" r="5"/>
+            <circle class="topo-bd" cx="350" cy="150" r="5"/><circle class="topo-bd" cx="350" cy="185" r="5"/><circle class="topo-bd" cx="350" cy="220" r="5"/>
+            <circle class="topo-bd" cx="418" cy="150" r="5"/><circle class="topo-bd" cx="418" cy="185" r="5"/><circle class="topo-bd" cx="418" cy="220" r="5"/>
+          </svg>
+        </div>
+        <figcaption><strong>After — grouped by physical host.</strong> <code>PS_EB_NODE_LOCAL=1</code> regroups by
+        shared-memory domain (<code>Split_type(COMM_TYPE_SHARED)</code>); <code>PS_EB_PER_NODE=k</code> sub-splits
+        again (k=2 shown). Every EB serves only ~31/k node-mates over shared memory. Same ranks, same data,
+        same storage — only the grouping changed.</figcaption>
+      </figure>
+    </div>
+
+    <div class="kicker">
+      <p>It’s a queueing fix, not a data fix: one server’s wait compounds with its client count. Grouping by
+      host caps each EB’s queue at the node (~31 BDs), and <code>PS_EB_PER_NODE=k</code> caps it at ~31/k —
+      the knee is k=2 at 2 nodes, k=3 at 3–4 nodes, because each extra EB costs a BD-reader slot.
+      Both flags are opt-in and default-off: unset, the standard event loop is byte-for-byte unchanged.</p>
+    </div>
+
     <figure>
       <div class="chart-box">
         <svg viewBox="0 0 640 300" role="img" aria-label="Bar chart: aggregate Hz by node count, default EB placement versus tuned placement, with dashed raw-storage ceiling. Tuned reaches 914 Hz at 4 nodes, near the 940 Hz ceiling.">
@@ -532,19 +650,84 @@
         <span><span class="sw" style="background:var(--accent);"></span>tuned (node-local + per-node knee)</span>
       </div>
       <figcaption>Loop iterations 18–27; ABBA warming-controlled brackets, knee confirmed in both phase orders.
-      At 4 nodes the tuned layout reaches ≈97% of the raw storage ceiling — the “psana plateau” is gone.</figcaption>
+      At 4 nodes the tuned layout reaches ≈97% of the raw storage ceiling — the “psana plateau” is gone,
+      and psana is now within a few percent of what the filesystem physically serves.</figcaption>
     </figure>
+  </div>
+</section>
+
+<!-- ───────────────────────── 05 · THE BOUNCE & GDS ───────────────────────── -->
+<section class="slide" id="s4b">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">05</span><span>the road not needed yet · gds</span></div>
+    <h2>The host “bounce” — and the storage that would make skipping it matter</h2>
+    <p>Every byte headed for the GPU today takes a detour through host DRAM: it arrives from the FFB over
+    the network, lands in a host buffer, and only then crosses PCIe into VRAM. That relay stop is the
+    <strong>bounce</strong>. GPUDirect Storage (GDS) — the road GPUBAT1’s manifest was built for — would DMA
+    bytes straight into VRAM and skip it.</p>
+
+    <div class="flow">
+      <div class="step"><div class="t">FFB storage</div><div class="b">network filesystem, serves ~7.9 GB/s per node — <strong>the wall: 95 ms/event</strong></div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">NIC</div><div class="b">bytes arrive over the network into kernel buffers</div></div>
+      <div class="arr">→</div>
+      <div class="step hot"><div class="t">host DRAM · the bounce</div><div class="b">pread lands 33.5 MB/event/rank here — consuming the contended memory bus 32 ranks share</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">PCIe</div><div class="b">H→D transfer, 2.5 ms/event async</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">GPU VRAM</div><div class="b">kernel runs in ~1 ms</div></div>
+    </div>
+    <div class="flow">
+      <div class="step dim"><div class="t">storage</div><div class="b">GDS-capable filesystem or node-local NVMe</div></div>
+      <div class="arr">→</div>
+      <div class="step dim"><div class="t">direct DMA</div><div class="b">NVMe→VRAM, or NIC→VRAM via GPUDirect RDMA — host DRAM never sees the payload</div></div>
+      <div class="arr">→</div>
+      <div class="step dim"><div class="t">GPU VRAM</div><div class="b"><strong>not available on S3DF today</strong> — kvikio runs <span class="mono">compat_mode</span>: the same bounce in a costume</div></div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat">
+        <div class="k">today · FFB at 95 ms/event</div>
+        <div class="v">≤ 8%</div>
+        <div class="d">the whole prize: bounce + H→D + event construction sum to ~8 ms of a ~103 ms event.
+        GDS moves where bytes <em>land</em>, not how fast storage <em>serves</em> — the ceiling doesn’t move.</div>
+      </div>
+      <div class="stat hi">
+        <div class="k">after NVMe staging · 10–25 GB/s</div>
+        <div class="v">co-equal</div>
+        <div class="d">read drops to ~3–10 ms/event and the ~8 ms bounce becomes a peer wall —
+        GPUBAT1 + GDS graduate from fluff to the load-bearing design.</div>
+      </div>
+      <div class="stat">
+        <div class="k">per-node ceiling change</div>
+        <div class="v">235 → 300–750 <span class="unit">Hz</span></div>
+        <div class="d">what a storage upgrade buys directly, before any direct-read code is written</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="name">How to know the GDS pathway has earned its place <span class="chip chip-cond">watch these three</span></div>
+      <p><strong>1 — The gap reopens:</strong> psana achieves &lt; ~80% of a raw <span class="mono">pread</span>
+      control at the same layout, <em>after</em> EB-placement tuning (today it’s 89–97%).
+      <strong>2 — The read stops dominating:</strong> per-event <span class="mono">bd_read</span> ≲ 15 ms, making
+      the bounce ≥ ~20% of the wall.
+      <strong>3 — GDS is physically real:</strong> <span class="mono">kvikio compat_mode == False</span> on the
+      target filesystem — not the silent CPU fallback every prior benchmark actually exercised.</p>
+    </div>
+
     <div class="kicker">
-      <p>Default path untouched: both flags are opt-in and gated entirely behind env vars —
-      unset, the standard psana MPI event loop is byte-for-byte unchanged.</p>
+      <p>Order of operations, from the measurements: GDS doesn’t raise the ceiling — it’s what you build
+      <b>after</b> someone raises the ceiling. Storage first (a node-local NVMe staging tier, or a
+      GDS-capable FFB); then the direct-read manifest and reader stop being over-engineering and become
+      the only way the software keeps up.</p>
     </div>
   </div>
 </section>
 
-<!-- ───────────────────────── 05 · RALPH LOOP ───────────────────────── -->
+<!-- ───────────────────────── 06 · RALPH LOOP ───────────────────────── -->
 <section class="slide" id="s5">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">05</span><span>method · the ralph loop</span></div>
+    <div class="eyebrow"><span class="n">06</span><span>method · the ralph loop</span></div>
     <h2>The campaign engine: a memoryless agent, one proof per turn</h2>
     <p>A bash driver runs up to 25 iterations. Each iteration is a <em>fresh</em> agent with no memory of
     the previous one — its entire state is what the journal and the repo say. That forcing function is
@@ -575,7 +758,7 @@
 <!-- ───────────────────────── 06 · MEASUREMENT DISCIPLINE ───────────────────────── -->
 <section class="slide" id="s6">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">06</span><span>method · why the verdicts hold</span></div>
+    <div class="eyebrow"><span class="n">07</span><span>method · why the verdicts hold</span></div>
     <h2>The discipline that makes “fluff” a safe word</h2>
     <p>Calling a deferred feature dead is a strong claim on a filesystem with minute-to-minute variance.
     The loop earned it with controls:</p>
@@ -621,7 +804,7 @@
 <!-- ───────────────────────── 07 · VERDICT: STORAGE-BOUND ───────────────────────── -->
 <section class="slide" id="s7">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">07</span><span>the endpoint</span></div>
+    <div class="eyebrow"><span class="n">08</span><span>the endpoint</span></div>
     <h2>Where the 103 ms per event actually goes</h2>
     <p>Final attribution at 32 BD ranks (iter 28, same-denominator counters). This chart is the audit
     criterion for everything on the next slides — a deferred feature can only matter if the component
@@ -662,7 +845,7 @@
 <!-- ───────────────────────── 08 · DEFERRED: FLUFF ───────────────────────── -->
 <section class="slide" id="s8">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">08</span><span>deferred audit · killed by measurement</span></div>
+    <div class="eyebrow"><span class="n">09</span><span>deferred audit · killed by measurement</span></div>
     <h2>Fluff, confirmed — each with its cause of death</h2>
     <p>These were deferred on judgment; the campaign upgraded that to evidence. Each card names the
     measurement that killed it, and the concrete check that would revive it.</p>
@@ -689,8 +872,8 @@
         <p><strong>Killed by:</strong> the same counters — metadata serialization and offset extraction never
         appeared in any profile (SMD parse ≈ 1.9 ms). The direct-read path they exist to feed lost its
         justification (next slide).</p>
-        <div class="revive"><b>Revives when:</b> the direct BD-read family revives (slide 09 criteria) — these
-        three are its plumbing and only earn their place together with it.</div>
+        <div class="revive"><b>Revives when:</b> the direct BD-read family revives (criteria on slides 05 and 10) —
+        these three are its plumbing and only earn their place together with it.</div>
       </div>
       <div class="card">
         <div class="name">gpudgramlite (on-device dgram parse) <span class="chip chip-fluff">fluff · confirmed</span></div>
@@ -714,7 +897,7 @@
 <!-- ───────────────────────── 09 · NEAR MISS ───────────────────────── -->
 <section class="slide" id="s9">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">09</span><span>deferred audit · the near-miss</span></div>
+    <div class="eyebrow"><span class="n">10</span><span>deferred audit · the near-miss</span></div>
     <h2>The direct-read family almost earned its place — honesty requires saying so</h2>
     <p>Mid-campaign, the evidence genuinely favored reviving KvikIO/GDS and the direct BD-read path:
     at 2 nodes psana achieved only <strong>65% of raw storage</strong> (9.9 vs 15.2 GB/s), and a ~300 Hz
@@ -752,7 +935,7 @@
 <!-- ───────────────────────── 10 · TRIGGERS FIRED + UNTESTED ───────────────────────── -->
 <section class="slide" id="s10">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">10</span><span>deferred audit · alive</span></div>
+    <div class="eyebrow"><span class="n">11</span><span>deferred audit · alive</span></div>
     <h2>Two triggers fired exactly as written — four wait on use cases</h2>
     <div class="grid grid-2">
       <div class="card">
@@ -807,7 +990,7 @@
 <!-- ───────────────────────── 11 · CLOSING ───────────────────────── -->
 <section class="slide" id="s11">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">11</span><span>closing</span></div>
+    <div class="eyebrow"><span class="n">12</span><span>closing</span></div>
     <h2>The slim-to-MVP bet is now vindicated by measurement</h2>
     <p class="lede">Of ~11,200 deferred lines, only two items had triggers that could fire — both fired
     exactly as the deferral doc predicted, and neither is a throughput lever for this workload. Roughly
@@ -830,7 +1013,7 @@
   </div>
 </section>
 
-<div id="hud"><b>01</b> / 11</div>
+<div id="hud"><b>01</b> / 12</div>
 
 <script>
   const slides = Array.from(document.querySelectorAll('.slide'));
