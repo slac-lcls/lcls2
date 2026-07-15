@@ -53,6 +53,14 @@ def jungfrau_init(
     weakref.finalize(jungfrau_kcu, jungfrau_kcu.stop)
     jungfrau_kcu.start()
 
+    time.sleep(0.1)
+    print('**** cpo hack TxPhyPllReset ****')
+    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    time.sleep(3)
+    
+    print('*** cpo add early startrun')
+    jungfrau_kcu.StartRun()
+
     print('*** cpo done init')
     return jungfrau_kcu
 
@@ -65,15 +73,16 @@ def jungfrau_connectionInfo(jungfrau_kcu, alloc_json_str):
     rxId = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
 
-    jungfrau_kcu.StopRun()
+    print('*** cpo eliminate stoprun 1')
+    #jungfrau_kcu.StopRun()
 
     connect_info = {}
     connect_info["paddr"] = rxId
 
-    time.sleep(0.1)
-    print('**** cpo hack RxUserRst ****')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.RxUserRst()
-    time.sleep(0.1)
+    #time.sleep(0.1)
+    #print('**** cpo hack TxPhyPllReset ****')
+    #jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    #time.sleep(0.1)
 
     return connect_info
 
@@ -143,7 +152,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     ocfg = [] # per segment dicts for later use (config scans)
     cfg_list = [] # Json strings
     segm_lane = 0
-    jungfrau_kcu.StopRun()
+    print('*** cpo eliminate stoprun 2')
+    #jungfrau_kcu.StopRun()
     # reset the card if needed
     jungfrau_reset(jungfrau_kcu)
     for segm in detsegm_list:
@@ -200,7 +210,8 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
 
     segm_lane = 0
     trigEventManager = jungfrau_kcu.DevPcie.Hsio.TimingRx.TriggerEventManager
-    jungfrau_kcu.StartRun()
+    print('*** cpo eliminate startrun 3')
+    #jungfrau_kcu.StartRun()
     print("Disabling all lanes")
     for i in range(7):
         trigEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
@@ -209,10 +220,10 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
             print(f"Enabling lane {i}")
             trigEventManager.TriggerEventBuffer[i].MasterEnable.set(1)
 
-    time.sleep(0.1)
-    print('**** cpo hack RxUserRst2 ****')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.RxUserRst()
-    time.sleep(0.1)
+    #time.sleep(0.1)
+    #print('**** cpo hack TxPhyPllReset ****')
+    #jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    #time.sleep(0.1)
 
     return cfg_list
 
@@ -277,6 +288,7 @@ def jungfrau_update(update):
 def jungfrau_unconfig(jungfrau_kcu):
     print("jungfrau_unconfig")
 
+    print('*** stoprun 4')
     jungfrau_kcu.StopRun()
 
     return jungfrau_kcu
