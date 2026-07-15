@@ -1,0 +1,861 @@
+<title>GPU Calib MVP — What Earned Its Place</title>
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #f7f8f7;
+    --surface: #fcfdfc;
+    --ink: #131614;
+    --ink-2: #4c524e;
+    --muted: #858b86;
+    --line: #e1e4e0;
+    --line-soft: #ecefeb;
+    --accent: #2a78d6;
+    --accent-deep: #1c5cab;
+    --accent-soft: #86b6ef;
+    --good-text: #006300;
+    --good-bg: rgba(12,163,12,0.10);
+    --warn-text: #7a5200;
+    --warn-bg: rgba(250,178,25,0.14);
+    --crit-text: #a12626;
+    --crit-bg: rgba(208,59,59,0.10);
+    --code-bg: #eef1ed;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --bg: #0e100f;
+      --surface: #161917;
+      --ink: #f0f3f0;
+      --ink-2: #b7beb8;
+      --muted: #8a908b;
+      --line: #272c29;
+      --line-soft: #1e2320;
+      --accent: #3987e5;
+      --accent-deep: #6da7ec;
+      --accent-soft: #2a5d9e;
+      --good-text: #3fc43f;
+      --good-bg: rgba(12,163,12,0.16);
+      --warn-text: #fab219;
+      --warn-bg: rgba(250,178,25,0.12);
+      --crit-text: #e66767;
+      --crit-bg: rgba(208,59,59,0.16);
+      --code-bg: #1c201d;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e100f;
+    --surface: #161917;
+    --ink: #f0f3f0;
+    --ink-2: #b7beb8;
+    --muted: #8a908b;
+    --line: #272c29;
+    --line-soft: #1e2320;
+    --accent: #3987e5;
+    --accent-deep: #6da7ec;
+    --accent-soft: #2a5d9e;
+    --good-text: #3fc43f;
+    --good-bg: rgba(12,163,12,0.16);
+    --warn-text: #fab219;
+    --warn-bg: rgba(250,178,25,0.12);
+    --crit-text: #e66767;
+    --crit-bg: rgba(208,59,59,0.16);
+    --code-bg: #1c201d;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --bg: #f7f8f7;
+    --surface: #fcfdfc;
+    --ink: #131614;
+    --ink-2: #4c524e;
+    --muted: #858b86;
+    --line: #e1e4e0;
+    --line-soft: #ecefeb;
+    --accent: #2a78d6;
+    --accent-deep: #1c5cab;
+    --accent-soft: #86b6ef;
+    --good-text: #006300;
+    --good-bg: rgba(12,163,12,0.10);
+    --warn-text: #7a5200;
+    --warn-bg: rgba(250,178,25,0.14);
+    --crit-text: #a12626;
+    --crit-bg: rgba(208,59,59,0.10);
+    --code-bg: #eef1ed;
+  }
+
+  html { scroll-snap-type: y proximity; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  * { box-sizing: border-box; }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4.5rem 1.5rem 4rem;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .wrap { width: 100%; max-width: 1060px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .eyebrow .n { color: var(--accent); font-weight: 600; }
+  .eyebrow::after { content: ""; flex: 1; border-top: 1px solid var(--line); align-self: center; }
+
+  h1 {
+    font-size: clamp(2.1rem, 5vw, 3.4rem);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    font-weight: 750;
+    margin: 0 0 1.2rem;
+    text-wrap: balance;
+  }
+  h2 {
+    font-size: clamp(1.5rem, 3.2vw, 2.15rem);
+    line-height: 1.15;
+    letter-spacing: -0.015em;
+    font-weight: 700;
+    margin: 0 0 0.9rem;
+    text-wrap: balance;
+  }
+  h3 { font-size: 1.02rem; font-weight: 650; margin: 0 0 0.35rem; }
+  p { margin: 0 0 0.9rem; max-width: 68ch; color: var(--ink-2); }
+  p strong, li strong { color: var(--ink); }
+  .lede { font-size: 1.08rem; color: var(--ink-2); }
+
+  code, .mono {
+    font-family: var(--mono);
+    font-size: 0.86em;
+  }
+  code {
+    background: var(--code-bg);
+    border-radius: 4px;
+    padding: 0.08em 0.35em;
+    color: var(--ink);
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.9rem 1.1rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  pre code { background: none; padding: 0; }
+
+  .grid { display: grid; gap: 1rem; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.15rem 1.25rem;
+  }
+  .card .name {
+    font-family: var(--mono);
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.55rem;
+  }
+  .card p { font-size: 0.88rem; margin-bottom: 0.55rem; }
+  .card p:last-child { margin-bottom: 0; }
+  .revive {
+    font-size: 0.85rem;
+    border-top: 1px dashed var(--line);
+    padding-top: 0.55rem;
+    margin-top: 0.6rem;
+    color: var(--ink-2);
+  }
+  .revive b { color: var(--ink); font-weight: 650; }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    padding: 0.22em 0.75em;
+    white-space: nowrap;
+  }
+  .chip-fluff { background: var(--crit-bg); color: var(--crit-text); }
+  .chip-lever { background: var(--good-bg); color: var(--good-text); }
+  .chip-cond  { background: var(--warn-bg); color: var(--warn-text); }
+
+  .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 1.4rem 0; }
+  .stat {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.05rem 1.2rem;
+  }
+  .stat .v {
+    font-size: 2rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    color: var(--ink);
+  }
+  .stat .v .unit { font-size: 1rem; font-weight: 600; color: var(--muted); }
+  .stat .k {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+  }
+  .stat .d { font-size: 0.83rem; color: var(--ink-2); margin-top: 0.35rem; }
+  .stat.hi { border-color: var(--accent); }
+  .stat.hi .v { color: var(--accent); }
+
+  figure { margin: 1.5rem 0 0.5rem; }
+  figure .chart-box {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 1.1rem 1.2rem 0.7rem;
+    overflow-x: auto;
+  }
+  figcaption { font-size: 0.8rem; color: var(--muted); margin-top: 0.6rem; max-width: 75ch; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: var(--mono); }
+  .ax { fill: var(--muted); font-size: 11px; }
+  .val { fill: var(--ink); font-size: 11.5px; font-weight: 600; }
+  .val-on { fill: #fff; font-size: 11.5px; font-weight: 600; }
+  .gridline { stroke: var(--line-soft); stroke-width: 1; }
+  .baseline { stroke: var(--line); stroke-width: 1.25; }
+  .bar-gpu { fill: var(--accent); }
+  .bar-cpu { fill: var(--muted); opacity: 0.55; }
+  .bar-seq-hi { fill: var(--accent-deep); }
+  .bar-seq-lo { fill: var(--accent-soft); }
+  .ceil { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 5 4; }
+  .legend { display: flex; gap: 1.4rem; flex-wrap: wrap; font-size: 0.78rem; color: var(--ink-2); font-family: var(--mono); margin-top: 0.4rem; }
+  .legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 0.45em; vertical-align: -1px; }
+
+  ul.tight { padding-left: 1.15rem; margin: 0 0 0.9rem; color: var(--ink-2); }
+  ul.tight li { margin-bottom: 0.45rem; max-width: 68ch; }
+  ul.tight li::marker { color: var(--accent); }
+
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.5rem; margin: 1.3rem 0; }
+  .flow .step {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    flex: 1 1 150px;
+    min-width: 150px;
+  }
+  .flow .step .t { font-family: var(--mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 0.3rem; }
+  .flow .step .b { font-size: 0.8rem; color: var(--ink-2); line-height: 1.45; }
+  .flow .arr { align-self: center; color: var(--muted); font-family: var(--mono); font-size: 1rem; padding: 0 0.1rem; }
+
+  .kicker {
+    border-left: 3px solid var(--accent);
+    padding: 0.15rem 0 0.15rem 1rem;
+    margin: 1.2rem 0;
+    max-width: 66ch;
+  }
+  .kicker p { margin: 0; color: var(--ink); font-weight: 500; }
+
+  table.data {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+  }
+  table.data th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-align: left;
+    font-weight: 600;
+    padding: 0.45rem 0.9rem 0.45rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  table.data td {
+    padding: 0.5rem 0.9rem 0.5rem 0;
+    border-bottom: 1px solid var(--line-soft);
+    color: var(--ink-2);
+    vertical-align: top;
+  }
+  table.data td:first-child { color: var(--ink); font-weight: 550; }
+  .num { text-align: right; }
+  th.num { text-align: right; }
+
+  #hud {
+    position: fixed;
+    bottom: 1rem;
+    right: 1.25rem;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--muted);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 0.3em 0.9em;
+    z-index: 10;
+    user-select: none;
+  }
+  #hud b { color: var(--ink); font-weight: 650; }
+  .hint { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); margin-top: 2.2rem; }
+
+  @media (max-width: 640px) {
+    .slide { padding: 3rem 1rem; }
+    .flow .arr { display: none; }
+  }
+</style>
+
+<!-- ───────────────────────── 01 · TITLE ───────────────────────── -->
+<section class="slide" id="s1">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">01</span><span>psana2 · GPU Jungfrau calibration · LCLS-II</span></div>
+    <h1>What earned its place —<br>and what the benchmarks killed</h1>
+    <p class="lede">A 29-iteration autonomous benchmark campaign (the “Ralph loop”, July 10–13, 2026) took the
+    GPU calibration MVP from first anchor measurements to a measured endpoint: <strong>storage-bound, code-side
+    levers exhausted</strong>. Along the way it retroactively audited every feature deferred out of the
+    original branch — confirming two, killing eight, and pricing the revival criteria for the rest.</p>
+    <div class="stat-row">
+      <div class="stat hi">
+        <div class="k">GPU vs CPU · 32 BD ranks</div>
+        <div class="v">3.9×</div>
+        <div class="d">44.9 → 175.3 Hz aggregate, same run, same filesystem</div>
+      </div>
+      <div class="stat">
+        <div class="k">4-node aggregate after tuning</div>
+        <div class="v">914 <span class="unit">Hz</span></div>
+        <div class="d">≈ 97% of the raw storage ceiling — up from a ~300 Hz plateau</div>
+      </div>
+      <div class="stat">
+        <div class="k">Correctness, every change</div>
+        <div class="v">bit-exact</div>
+        <div class="d">max_diff 0.0 vs <code>det.raw.calib()</code>, gated per iteration</div>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; color:var(--muted);">Reference dataset: <span class="mono">mfx101572426 r47</span>,
+    32-segment Jungfrau (16.8 M px, 33.5 MB/event), FFB filesystem, A100. Branch: <span class="mono">features/psana2-gpu-mvp</span>.</p>
+    <div class="hint">↓ scroll or use arrow keys</div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 02 · USEFUL #1: MVP CORE ───────────────────────── -->
+<section class="slide" id="s2">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">02</span><span>what proved useful · the core</span></div>
+    <h2>462 lines beat a path that can never catch up</h2>
+    <p>The MVP is deliberately tiny: a fused CUDA kernel plus a two-function API, called from psana’s
+    <em>standard</em> event loop. No custom iterator, no DataSource integration, no wire format.</p>
+    <div class="grid grid-2">
+      <div>
+        <table class="data">
+          <tr><th>Code that carries the result</th><th class="num">Lines</th></tr>
+          <tr><td><span class="mono">cuda/fused_calib.cuh</span> — 3-gain-mode fused kernel</td><td class="num">55</td></tr>
+          <tr><td><span class="mono">gpu_calib.py</span> — constants prep + launch</td><td class="num">186</td></tr>
+          <tr><td><span class="mono">__init__.py</span> — GPU rank init</td><td class="num">83</td></tr>
+          <tr><td><span class="mono">test_jungfrau_calib.py</span> — bit-exact gate</td><td class="num">138</td></tr>
+        </table>
+        <div class="kicker">
+          <p>The mechanism, not just the ratio: CPU calibration inflates from 31.6 to 433.7 ms/event
+          (13.7×) under 32-way memory-bandwidth contention. That caps the CPU path at <b>~74 Hz per node —
+          at any rank count</b>. The GPU path doesn’t just win; it removes the ceiling.</p>
+        </div>
+      </div>
+      <figure>
+        <div class="chart-box">
+          <svg viewBox="0 0 520 290" role="img" aria-label="Bar chart: aggregate Hz, CPU vs GPU path, at 1 and 32 BD ranks. GPU reaches 175.3 Hz at 32 ranks versus CPU 44.9.">
+            <g>
+              <line class="gridline" x1="52" y1="238" x2="500" y2="238"/>
+              <line class="gridline" x1="52" y1="180" x2="500" y2="180"/>
+              <line class="gridline" x1="52" y1="122" x2="500" y2="122"/>
+              <line class="gridline" x1="52" y1="64" x2="500" y2="64"/>
+              <text class="ax" x="44" y="242" text-anchor="end">0</text>
+              <text class="ax" x="44" y="184" text-anchor="end">50</text>
+              <text class="ax" x="44" y="126" text-anchor="end">100</text>
+              <text class="ax" x="44" y="68" text-anchor="end">150</text>
+              <text class="ax" x="14" y="36">Hz</text>
+            </g>
+            <!-- group 1: 1 BD.  scale: 238 - v*1.16 -->
+            <rect class="bar-cpu" x="98"  y="211.9" width="54" height="26.1" rx="4"/>
+            <rect class="bar-gpu" x="156" y="195.3" width="54" height="42.7" rx="4"/>
+            <text class="val" x="125" y="205" text-anchor="middle">22.5</text>
+            <text class="val" x="183" y="188.4" text-anchor="middle">36.8</text>
+            <text class="ax" x="154" y="262" text-anchor="middle">1 BD rank</text>
+            <!-- group 2: 32 BD -->
+            <rect class="bar-cpu" x="318" y="185.9" width="54" height="52.1" rx="4"/>
+            <rect class="bar-gpu" x="376" y="34.7"  width="54" height="203.3" rx="4"/>
+            <text class="val" x="345" y="179" text-anchor="middle">44.9</text>
+            <text class="val" x="403" y="27.7" text-anchor="middle">175.3</text>
+            <text class="ax" x="374" y="262" text-anchor="middle">32 BD ranks</text>
+            <line class="baseline" x1="52" y1="238" x2="500" y2="238"/>
+          </svg>
+        </div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--muted); opacity:0.55;"></span>CPU path (det.raw.calib)</span>
+          <span><span class="sw" style="background:var(--accent);"></span>GPU path (fused kernel)</span>
+        </div>
+        <figcaption>Anchor pair, r47 on FFB, measured back-to-back before any tuning landed (loop iterations 1–2).
+        Aggregate Hz across ranks; 1.6× serial → 3.9× at scale, and the gap widens with concurrency.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 03 · USEFUL #2: DATA-PATH WINS ───────────────────────── -->
+<section class="slide" id="s3">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">03</span><span>what proved useful · landed throughput wins</span></div>
+    <h2>Two nearly-free changes: stop copying 33.5 MB per event</h2>
+    <p>Profiling (not intuition) found that the GPU path spent most of its CPU time on two host-side
+    memcpys of the full detector frame. Both fixes are small, both were gated bit-exact, and both were
+    measured with interleaved A/B brackets in the same allocation.</p>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="k">iter 7 · copy=False</div>
+        <div class="v">+30%</div>
+        <div class="d">at 1 BD <em>and</em> 32 BD. <code>det.raw.raw(evt, copy=False)</code> — the flag already
+        existed; the GPU path consumes the array immediately, so the defensive copy was pure waste.
+        Promoted to the GPU-path default.</div>
+      </div>
+      <div class="stat">
+        <div class="k">iter 8 · per-segment H2D</div>
+        <div class="v">+38% <span class="unit">/ +32%</span></div>
+        <div class="d">1 BD / 32 BD. Skip the host <code>stack</code> memcpy: 32 per-segment 1 MB
+        transfers straight into a device buffer (<code>raw_gpu_buf[idx].set(segs[sid].raw)</code>)
+        instead of assembling the frame on host first.</div>
+      </div>
+      <div class="stat hi">
+        <div class="k">combined · single node, 32 BD</div>
+        <div class="v">+70%</div>
+        <div class="d">210 → 337 Hz across the two landed wins. Absolute Hz varies with FFB window
+        (live production filesystem); the interleaved relative gains are the controlled numbers.</div>
+      </div>
+    </div>
+    <div class="kicker">
+      <p>Pattern worth keeping: every landed win here <b>removed work</b> from the per-event path.
+      Every attempt to <b>overlap or hide</b> work instead (async H2D, D2H every event) lost to
+      memory-bandwidth contention at scale. On a contended node, bytes moved is the budget.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 04 · USEFUL #3: EB PLACEMENT ───────────────────────── -->
+<section class="slide" id="s4">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">04</span><span>what proved useful · multi-node</span></div>
+    <h2>~120 lines of EB placement broke the 300 Hz plateau</h2>
+    <p>Multi-node runs plateaued near 300 Hz regardless of node count. The cause wasn’t storage — it was a
+    single global EventBuilder serializing as it served more BD ranks (<span class="mono">eb_wait</span> climbing
+    3.5 → 70 ms as BDs went 32 → 96). Two opt-in, default-off env flags fixed it:</p>
+    <ul class="tight">
+      <li><strong><code>PS_EB_NODE_LOCAL=1</code></strong> — one EB per physical node, serving only that node’s
+      BD ranks (<span class="mono">psexp/node.py</span>, ~48 lines changed).</li>
+      <li><strong><code>PS_EB_PER_NODE=k</code></strong> — sub-split each node into k EventBuilders. The knee is
+      k=2 at 2 nodes, <strong>k=3 at 3 and 4 nodes</strong> — confirmed in both warm-up orders; past the knee,
+      extra EBs starve BD-reader slots (<span class="mono">node.py</span> + <span class="mono">datasource.py</span>, ~36 lines).</li>
+    </ul>
+    <figure>
+      <div class="chart-box">
+        <svg viewBox="0 0 640 300" role="img" aria-label="Bar chart: aggregate Hz by node count, default EB placement versus tuned placement, with dashed raw-storage ceiling. Tuned reaches 914 Hz at 4 nodes, near the 940 Hz ceiling.">
+          <g>
+            <line class="gridline" x1="56" y1="248" x2="620" y2="248"/>
+            <line class="gridline" x1="56" y1="196" x2="620" y2="196"/>
+            <line class="gridline" x1="56" y1="144" x2="620" y2="144"/>
+            <line class="gridline" x1="56" y1="92"  x2="620" y2="92"/>
+            <line class="gridline" x1="56" y1="40"  x2="620" y2="40"/>
+            <text class="ax" x="48" y="252" text-anchor="end">0</text>
+            <text class="ax" x="48" y="200" text-anchor="end">250</text>
+            <text class="ax" x="48" y="148" text-anchor="end">500</text>
+            <text class="ax" x="48" y="96"  text-anchor="end">750</text>
+            <text class="ax" x="48" y="44"  text-anchor="end">1000</text>
+            <text class="ax" x="14" y="24">Hz</text>
+          </g>
+          <!-- scale: y = 248 - v*0.208 -->
+          <!-- 2 nodes: default 301.0, tuned 502.9, ceil 470 -->
+          <rect class="bar-cpu" x="112" y="185.4" width="58" height="62.6" rx="4"/>
+          <rect class="bar-gpu" x="174" y="143.4" width="58" height="104.6" rx="4"/>
+          <line class="ceil" x1="104" y1="150.2" x2="240" y2="150.2"/>
+          <text class="val" x="141" y="178.4" text-anchor="middle">301</text>
+          <text class="val" x="203" y="136.4" text-anchor="middle">503</text>
+          <text class="ax" x="172" y="272" text-anchor="middle">2 nodes</text>
+          <!-- 3 nodes: default 338.3, tuned 802.5, ceil 705 -->
+          <rect class="bar-cpu" x="300" y="177.6" width="58" height="70.4" rx="4"/>
+          <rect class="bar-gpu" x="362" y="81.1"  width="58" height="166.9" rx="4"/>
+          <line class="ceil" x1="292" y1="101.4" x2="428" y2="101.4"/>
+          <text class="val" x="329" y="170.6" text-anchor="middle">338</text>
+          <text class="val" x="391" y="74.1" text-anchor="middle">803</text>
+          <text class="ax" x="360" y="272" text-anchor="middle">3 nodes</text>
+          <!-- 4 nodes: default not measured, tuned 914.1, ceil 940 -->
+          <text class="ax" x="517" y="242" text-anchor="middle" font-style="italic">default n/m</text>
+          <rect class="bar-gpu" x="550" y="57.9" width="58" height="190.1" rx="4"/>
+          <line class="ceil" x1="480" y1="52.5" x2="616" y2="52.5"/>
+          <text class="val" x="579" y="50.9" text-anchor="middle">914</text>
+          <text class="ax" x="548" y="272" text-anchor="middle">4 nodes</text>
+          <text class="ax" x="620" y="40" text-anchor="end" font-style="italic">– – raw storage ceiling (~235 Hz × nodes)</text>
+          <line class="baseline" x1="56" y1="248" x2="620" y2="248"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--muted); opacity:0.55;"></span>default (single global EB)</span>
+        <span><span class="sw" style="background:var(--accent);"></span>tuned (node-local + per-node knee)</span>
+      </div>
+      <figcaption>Loop iterations 18–27; ABBA warming-controlled brackets, knee confirmed in both phase orders.
+      At 4 nodes the tuned layout reaches ≈97% of the raw storage ceiling — the “psana plateau” is gone.</figcaption>
+    </figure>
+    <div class="kicker">
+      <p>Default path untouched: both flags are opt-in and gated entirely behind env vars —
+      unset, the standard psana MPI event loop is byte-for-byte unchanged.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 05 · RALPH LOOP ───────────────────────── -->
+<section class="slide" id="s5">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">05</span><span>method · the ralph loop</span></div>
+    <h2>The campaign engine: a memoryless agent, one proof per turn</h2>
+    <p>A bash driver runs up to 25 iterations. Each iteration is a <em>fresh</em> agent with no memory of
+    the previous one — its entire state is what the journal and the repo say. That forcing function is
+    the design: nothing counts unless it was written down and committed.</p>
+    <div class="flow">
+      <div class="step"><div class="t">holder</div><div class="b">Driver ensures an exclusive A100 node is held (<span class="mono">sbatch … sleep infinity</span>), reused across iterations.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">fresh agent</div><div class="b">One <span class="mono">claude&nbsp;-p</span> reads <span class="mono">PROMPT.md</span> — the standing orders: north star, rules, current anchors.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">one unit of work</div><div class="b">Orient from <span class="mono">PROGRESS.md</span> → pick ONE lever → measure it → gate correctness bit-exact.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">journal + commit</div><div class="b">Append the result to <span class="mono">PROGRESS.md</span>, <span class="mono">git commit</span>. Journaling comes first, always.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">driver checks</div><div class="b"><span class="mono">^LOOP DONE</span> sentinel ends the mission · 2 no-journal strikes stop the loop · <span class="mono">BLOCKED: job&nbsp;ID</span> makes the driver poll squeue for free.</div></div>
+    </div>
+    <ul class="tight">
+      <li><strong>29 iterations over 4 days</strong>, typically 4–30 turns and ~$1–6 each; the human reviewed
+      the journal between blocks and restarted with sharpened orders.</li>
+      <li><strong>Self-terminating by evidence:</strong> the loop may only write <span class="mono">LOOP DONE</span>
+      after a pre-registered kill criterion is closed by measurement — it ended when the last untested
+      code lever was measured and lost.</li>
+      <li><strong>Negative results are kept, not discarded:</strong> dead-end levers stay in the tree as opt-in
+      flags with <span class="mono">VERDICT: DEAD END</span> docstrings, so nobody re-derives them.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ───────────────────────── 06 · MEASUREMENT DISCIPLINE ───────────────────────── -->
+<section class="slide" id="s6">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">06</span><span>method · why the verdicts hold</span></div>
+    <h2>The discipline that makes “fluff” a safe word</h2>
+    <p>Calling a deferred feature dead is a strong claim on a filesystem with minute-to-minute variance.
+    The loop earned it with controls:</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>Bit-exact gate, every change</h3>
+        <p>Every code change re-ran the correctness test: 20 events vs <code>det.raw.calib()</code>,
+        <strong>max_diff 0.0</strong> required. No throughput number was accepted from a path that hadn’t passed.</p>
+      </div>
+      <div class="card">
+        <h3>ABBA warming brackets</h3>
+        <p>FFB warms up across a session, so A/B comparisons ran A-B-B-A in one allocation. A lever only
+        won (or lost) if it beat the <em>opposing phase in both positions</em> — e.g. async-H2D lost even to
+        the coldest baseline phase.</p>
+      </div>
+      <div class="card">
+        <h3>Reversed-order confirms</h3>
+        <p>Any result that could be order-confounded was re-run with the phase order reversed
+        (the k=3 vs k=4 knee at 4 nodes: k=3 won cold-first <em>and</em> warm-last).</p>
+      </div>
+      <div class="card">
+        <h3>Attribution counters</h3>
+        <p>The bench splits per-event wall into <span class="mono">bd_read / eb_wait / H2D / kernel /
+        plumbing</span> buckets — so claims name the component, not just the total. A same-denominator
+        counter (iter 28) caught a 45.9 ms “residual” that turned out to be an artifact, not a lever.</p>
+      </div>
+      <div class="card">
+        <h3>Pre-registered kill criteria</h3>
+        <p>Before running an experiment the journal states what result would kill the hypothesis.
+        Iter 27/28 wrote the loop’s own exit condition — “only if this lever fails to move the aggregate
+        is the loop done” — one iteration before it fired.</p>
+      </div>
+      <div class="card">
+        <h3>Raw-ceiling controls</h3>
+        <p>A psana-free raw <code>os.pread</code> harness measured what the filesystem itself can do
+        (~7.9 GB/s/node, scaling with nodes) — the yardstick that separates “psana inefficiency”
+        from “physics of the storage”.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 07 · VERDICT: STORAGE-BOUND ───────────────────────── -->
+<section class="slide" id="s7">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">07</span><span>the endpoint</span></div>
+    <h2>Where the 103 ms per event actually goes</h2>
+    <p>Final attribution at 32 BD ranks (iter 28, same-denominator counters). This chart is the audit
+    criterion for everything on the next slides — a deferred feature can only matter if the component
+    it accelerates is visible here.</p>
+    <figure>
+      <div class="chart-box">
+        <svg viewBox="0 0 640 232" role="img" aria-label="Horizontal bars: per-event milliseconds at 32 BD ranks. Storage read 95.2 ms dominates; event plumbing 3.0, host-to-device 2.5, EB wait 1.2, kernel 1.0.">
+          <!-- scale: width = v * 4.6 ; x0=170 -->
+          <text class="ax" x="160" y="34" text-anchor="end">bd_read (FFB pread)</text>
+          <rect class="bar-seq-hi" x="170" y="20" width="437.9" height="22" rx="4"/>
+          <text class="val-on" x="598" y="35" text-anchor="end">95.2 ms · 92%</text>
+          <text class="ax" x="160" y="76" text-anchor="end">event plumbing</text>
+          <rect class="bar-seq-lo" x="170" y="62" width="14" height="22" rx="3"/>
+          <text class="val" x="192" y="77">3.0 ms</text>
+          <text class="ax" x="160" y="118" text-anchor="end">H→D transfer</text>
+          <rect class="bar-seq-lo" x="170" y="104" width="11.6" height="22" rx="3"/>
+          <text class="val" x="190" y="119">2.5 ms</text>
+          <text class="ax" x="160" y="160" text-anchor="end">eb_wait</text>
+          <rect class="bar-seq-lo" x="170" y="146" width="5.5" height="22" rx="3"/>
+          <text class="val" x="184" y="161">1.2 ms</text>
+          <text class="ax" x="160" y="202" text-anchor="end">GPU kernel</text>
+          <rect class="bar-seq-lo" x="170" y="188" width="4.6" height="22" rx="3"/>
+          <text class="val" x="183" y="203">1.0 ms</text>
+          <line class="baseline" x1="170" y1="14" x2="170" y2="216"/>
+        </svg>
+      </div>
+      <figcaption>Per-BD-rank wall time per event, 32 ranks, r47/FFB. “Plumbing” = dgram construction +
+      SMD parse + generator advance. Everything that is not the storage read sums to ~8 ms.</figcaption>
+    </figure>
+    <div class="kicker">
+      <p>Amdahl, concretely: make everything except the read <b>infinitely fast</b> and you gain ~8%.
+      The closing experiment (iter 29) proved the corollary — overlapping the ~3.5 ms of GPU work behind
+      the read <em>regressed −21%</em>, because its staging copy cost more host bandwidth than the time it hid.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 08 · DEFERRED: FLUFF ───────────────────────── -->
+<section class="slide" id="s8">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">08</span><span>deferred audit · killed by measurement</span></div>
+    <h2>Fluff, confirmed — each with its cause of death</h2>
+    <p>These were deferred on judgment; the campaign upgraded that to evidence. Each card names the
+    measurement that killed it, and the concrete check that would revive it.</p>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="name">EventPool / StreamPool <span class="chip chip-fluff">fluff · confirmed</span></div>
+        <p><strong>Killed by:</strong> occupancy math + kernel timing. One Jungfrau event launches 65,536 blocks
+        vs the A100’s ~864-block saturation (7,585%); the kernel runs 0.6–1.0 ms. There is nothing for
+        N-in-flight pipelining to fill.</p>
+        <div class="revive"><b>Revives when:</b> a detector whose single event <i>under-fills</i> the GPU needs
+        this path. Check: single-event SM utilization &lt; 50% (blocks-launched vs SM count) — i.e. small
+        detectors at very high rate, not larger ones.</div>
+      </div>
+      <div class="card">
+        <div class="name">GpuEvents custom iterator <span class="chip chip-fluff">fluff · confirmed</span></div>
+        <p><strong>Killed by:</strong> iter 28’s same-denominator counters. The standard event loop’s overhead
+        the iterator would replace — generator advance + dgram + SMD parse — is ~3 ms of a ~103 ms event (~3%).</p>
+        <div class="revive"><b>Revives when:</b> plumbing ≥ ~20% of per-event wall. That requires storage
+        ~10× faster first — check the <span class="mono">gen_wait / dgram / smdparse</span> counters after any
+        storage upgrade before considering it.</div>
+      </div>
+      <div class="card">
+        <div class="name">GPUBAT1 wire format + Dgram.raw_descriptors() + SmdInfoExtractIter <span class="chip chip-fluff">fluff · confirmed</span></div>
+        <p><strong>Killed by:</strong> the same counters — metadata serialization and offset extraction never
+        appeared in any profile (SMD parse ≈ 1.9 ms). The direct-read path they exist to feed lost its
+        justification (next slide).</p>
+        <div class="revive"><b>Revives when:</b> the direct BD-read family revives (slide 09 criteria) — these
+        three are its plumbing and only earn their place together with it.</div>
+      </div>
+      <div class="card">
+        <div class="name">gpudgramlite (on-device dgram parse) <span class="chip chip-fluff">fluff · confirmed</span></div>
+        <p><strong>Killed by:</strong> smd0 measured idle and CPU-side parse ≈ 1.9 ms/event. GPU-side routing
+        solves a bottleneck that does not exist at any measured scale.</p>
+        <div class="revive"><b>Revives when:</b> CPU-side event routing is measured ≥ ~20% of wall — effectively
+        never on this workload; would need ~50× storage speedup.</div>
+      </div>
+      <div class="card">
+        <div class="name">gpu_bd_read standalone pipeline <span class="chip chip-fluff">superseded</span></div>
+        <p><strong>Killed by:</strong> the standard loop reaching 89–97% of the raw storage ceiling — a bespoke
+        516-line parallel pipeline has ≤ 11% of headroom to chase. Its correctness tools were replaced by
+        <span class="mono">test_jungfrau_calib.py</span> (bit-exact PASS).</p>
+        <div class="revive"><b>Revives when:</b> same criteria as the direct-read family — and even then,
+        prefer extending the standard loop over a parallel implementation.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 09 · NEAR MISS ───────────────────────── -->
+<section class="slide" id="s9">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">09</span><span>deferred audit · the near-miss</span></div>
+    <h2>The direct-read family almost earned its place — honesty requires saying so</h2>
+    <p>Mid-campaign, the evidence genuinely favored reviving KvikIO/GDS and the direct BD-read path:
+    at 2 nodes psana achieved only <strong>65% of raw storage</strong> (9.9 vs 15.2 GB/s), and a ~300 Hz
+    “psana plateau” bound before storage did. Had the loop stopped at iteration 16, these features would
+    look justified.</p>
+    <div class="stat-row">
+      <div class="stat">
+        <div class="k">iter 16 · psana vs raw, 2 nodes</div>
+        <div class="v">65%</div>
+        <div class="d">the gap that argued for bypassing psana’s read path</div>
+      </div>
+      <div class="stat hi">
+        <div class="k">iter 27 · psana vs raw, 4 nodes, tuned</div>
+        <div class="v">≈97%</div>
+        <div class="d">after ~120 lines of EB placement — the gap was topology, not the read path</div>
+      </div>
+    </div>
+    <p>Iterations 18–27 found the real cause: smd0→EB coordination topology, fixed by
+    <code>PS_EB_NODE_LOCAL</code> + <code>PS_EB_PER_NODE</code>. That result retroactively kills the
+    family — there is no psana-vs-raw gap left for a direct-read path to close.</p>
+    <div class="card">
+      <div class="name">KvikIO / GDS reader + direct BD-read path <span class="chip chip-cond">conditional</span></div>
+      <p><strong>Today:</strong> H→D is 2.53 ms async of a ~103 ms event — GDS’s best case saves ~3%. GDS skips
+      the CPU bounce; it does not make the storage faster, and the storage is the wall. S3DF Lustre also
+      has no GDS (all prior benchmarks silently ran the CPU-fallback path).</p>
+      <div class="revive"><b>Revives when — check all three:</b> (1) the psana-vs-raw gap reopens
+      (&lt; ~80% of a raw <span class="mono">fio</span>/pread control at the same layout) <i>after</i> EB-placement
+      tuning; (2) per-event read drops to ≲ 15 ms (local NVMe staging or a faster FFB tier), making the
+      33.5 MB host bounce a ≥ 20% cost; (3) the filesystem actually supports GDS —
+      <span class="mono">kvikio compat_mode == False</span>, not the silent fallback.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 10 · TRIGGERS FIRED + UNTESTED ───────────────────────── -->
+<section class="slide" id="s10">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">10</span><span>deferred audit · alive</span></div>
+    <h2>Two triggers fired exactly as written — four wait on use cases</h2>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="name">AsyncD2HJoiner <span class="chip chip-lever">trigger met · real lever</span></div>
+        <p><strong>Fired:</strong> synchronous <code>.get()</code> under 32-rank PCIe contention costs
+        72 ms/event and drops aggregate −28% (236 → 170 Hz), ~73% additive. Never implemented — a 370-line
+        design note only.</p>
+        <div class="revive"><b>Earns its place:</b> the moment any production workflow needs calibrated frames
+        back on host at scale — worth ~+39%. <b>Design constraint from iter 29:</b> stage device-side (D2D)
+        only; any extra host-side copy per event will lose to memory-bandwidth contention, exactly as the
+        H2D-overlap experiment did.</div>
+      </div>
+      <div class="card">
+        <div class="name">IPC calib-constant sharing (gpu_mpi.py) <span class="chip chip-lever">trigger met · memory, not Hz</span></div>
+        <p><strong>Fired (iter 5):</strong> each BD rank replicates ~384 MB of constants; 48 ranks OOM a 40 GB
+        A100, 32 fit. But throughput is flat 16 → 32 BD — sharing buys packing density, not speed. This is
+        real, tested code (527 lines + its own test) recoverable at <span class="mono">d1972b0ac</span>.</p>
+        <div class="revive"><b>Earns its place:</b> any topology needing &gt; 32 BD ranks/GPU, or
+        smaller-memory GPUs. Check: constants-per-rank × ranks vs GPU memory, or an observed
+        <span class="mono">OutOfMemoryError</span> in the sweep.</div>
+      </div>
+      <div class="card">
+        <div class="name">GPUKernelRegistry <span class="chip chip-cond">untested · event-driven</span></div>
+        <p>Built for a second detector that doesn’t exist yet. No benchmark can fire this — a use case does.</p>
+        <div class="revive"><b>Earns its place:</b> a second detector type (ePix10k, ePixHR, …) needs GPU
+        calibration in production. Until then, one kernel needs no registry.</div>
+      </div>
+      <div class="card">
+        <div class="name">DetectorRouter <span class="chip chip-cond">untested · event-driven</span></div>
+        <p>GPU+CPU segment combining for split readouts. Never exercised — every run was all-GPU.</p>
+        <div class="revive"><b>Earns its place:</b> a real run mixes GPU-path and CPU-path panels of the same
+        detector (e.g. only some streams on the GPU rank). Correctness then requires its segment scatter.</div>
+      </div>
+      <div class="card">
+        <div class="name">GpuEventContext / GPUResult <span class="chip chip-cond">untested · adoption-driven</span></div>
+        <p>API sugar over a two-function interface. Zero performance content.</p>
+        <div class="revive"><b>Earns its place:</b> users demonstrably struggle to mix GPU and CPU detectors
+        with the plain API. Evidence is support requests, not benchmarks.</div>
+      </div>
+      <div class="card">
+        <div class="name">DataSource(gpu_det=…) integration <span class="chip chip-cond">untested · adoption-driven</span></div>
+        <p>The full psexp wiring. Historical warning: its first incarnation broke <span class="mono">mpi_ds</span>
+        and the eventbuilder extension at import time for everyone.</p>
+        <div class="revive"><b>Earns its place:</b> GPU calib is production-adopted <i>and</i> the explicit API is a
+        measured adoption barrier. Requirement carried forward: type-stable — never silently return CuPy
+        where NumPy is expected.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────────────────────── 11 · CLOSING ───────────────────────── -->
+<section class="slide" id="s11">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">11</span><span>closing</span></div>
+    <h2>The slim-to-MVP bet is now vindicated by measurement</h2>
+    <p class="lede">Of ~11,200 deferred lines, only two items had triggers that could fire — both fired
+    exactly as the deferral doc predicted, and neither is a throughput lever for this workload. Roughly
+    90% of the speculative architecture targeted components that sum to under 8% of the per-event wall.
+    Nothing is lost: everything is recoverable at commit <span class="mono">d1972b0ac</span>.</p>
+    <table class="data">
+      <tr><th>Where the next Hz comes from</th><th>What it buys</th><th>Whose decision</th></tr>
+      <tr><td>More nodes</td><td>~linear: storage scales per-node; EB placement law is characterized (knee ≈ 3)</td><td>facility / allocation</td></tr>
+      <tr><td>Faster FFB tier or NVMe staging</td><td>raises the ~235 Hz/node read ceiling directly</td><td>facility</td></tr>
+      <tr><td>Detector-data compression at write</td><td>~2× fewer bytes through the same storage</td><td>DAQ / detector group</td></tr>
+      <tr><td>More psana code work</td><td>≤ ~8% by Amdahl — measured, not argued</td><td>closed by the loop</td></tr>
+    </table>
+    <div class="kicker" style="margin-top:1.6rem;">
+      <p>The campaign’s real deliverable isn’t 914 Hz — it’s the audit: measured proof of which
+      engineering matters, which doesn’t yet, and exactly what to check before changing that answer.</p>
+    </div>
+    <p style="font-size:0.8rem; color:var(--muted); margin-top:2rem;" class="mono">
+      sources: ralph/PROGRESS.md (29 iterations) · TASK.md · PLANNING.md · DEFERRED.md ·
+      branch features/psana2-gpu-mvp · July 10–13, 2026</p>
+  </div>
+</section>
+
+<div id="hud"><b>01</b> / 11</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const hud = document.getElementById('hud');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let current = 0;
+
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting) {
+        current = slides.indexOf(e.target);
+        hud.innerHTML = '<b>' + String(current + 1).padStart(2, '0') + '</b> / ' + slides.length;
+      }
+    }
+  }, { threshold: 0.5 });
+  slides.forEach(s => io.observe(s));
+
+  function go(i) {
+    const t = Math.max(0, Math.min(slides.length - 1, i));
+    slides[t].scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+  }
+  addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) { e.preventDefault(); go(current + 1); }
+    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) { e.preventDefault(); go(current - 1); }
+    if (e.key === 'Home') { e.preventDefault(); go(0); }
+    if (e.key === 'End') { e.preventDefault(); go(slides.length - 1); }
+  });
+</script>
