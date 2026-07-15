@@ -387,10 +387,87 @@
   </div>
 </section>
 
+<!-- ───────────────────────── 06 · RALPH LOOP ───────────────────────── -->
+<section class="slide" id="s5">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">02</span><span>method · the ralph loop</span></div>
+    <h2>The campaign engine: a memoryless agent, one proof per turn</h2>
+    <p>A bash driver runs up to 25 iterations. Each iteration is a <em>fresh</em> agent with no memory of
+    the previous one — its entire state is what the journal and the repo say. That forcing function is
+    the design: nothing counts unless it was written down and committed.</p>
+    <div class="flow">
+      <div class="step"><div class="t">holder</div><div class="b">Driver ensures an exclusive A100 node is held (<span class="mono">sbatch … sleep infinity</span>), reused across iterations.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">fresh agent</div><div class="b">One <span class="mono">claude&nbsp;-p</span> reads <span class="mono">PROMPT.md</span> — the standing orders: north star, rules, current anchors.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">one unit of work</div><div class="b">Orient from <span class="mono">PROGRESS.md</span> → pick ONE lever → measure it → gate correctness bit-exact.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">journal + commit</div><div class="b">Append the result to <span class="mono">PROGRESS.md</span>, <span class="mono">git commit</span>. Journaling comes first, always.</div></div>
+      <div class="arr">→</div>
+      <div class="step"><div class="t">driver checks</div><div class="b"><span class="mono">^LOOP DONE</span> sentinel ends the mission · 2 no-journal strikes stop the loop · <span class="mono">BLOCKED: job&nbsp;ID</span> makes the driver poll squeue for free.</div></div>
+    </div>
+    <ul class="tight">
+      <li><strong>29 iterations over 4 days</strong>, typically 4–30 turns and ~$1–6 each; the human reviewed
+      the journal between blocks and restarted with sharpened orders.</li>
+      <li><strong>Self-terminating by evidence:</strong> the loop may only write <span class="mono">LOOP DONE</span>
+      after a pre-registered kill criterion is closed by measurement — it ended when the last untested
+      code lever was measured and lost.</li>
+      <li><strong>Negative results are kept, not discarded:</strong> dead-end levers stay in the tree as opt-in
+      flags with <span class="mono">VERDICT: DEAD END</span> docstrings, so nobody re-derives them.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ───────────────────────── 06 · MEASUREMENT DISCIPLINE ───────────────────────── -->
+<section class="slide" id="s6">
+  <div class="wrap">
+    <div class="eyebrow"><span class="n">03</span><span>method · why the verdicts hold</span></div>
+    <h2>The discipline that makes “fluff” a safe word</h2>
+    <p>Calling a deferred feature dead is a strong claim on a filesystem with minute-to-minute variance.
+    The loop earned it with controls:</p>
+    <div class="grid grid-3">
+      <div class="card">
+        <h3>Bit-exact gate, every change</h3>
+        <p>Every code change re-ran the correctness test: 20 events vs <code>det.raw.calib()</code>,
+        <strong>max_diff 0.0</strong> required. No throughput number was accepted from a path that hadn’t passed.</p>
+      </div>
+      <div class="card">
+        <h3>ABBA warming brackets</h3>
+        <p>FFB warms up across a session, so A/B comparisons ran A-B-B-A in one allocation. A lever only
+        won (or lost) if it beat the <em>opposing phase in both positions</em> — e.g. async-H2D lost even to
+        the coldest baseline phase.</p>
+      </div>
+      <div class="card">
+        <h3>Reversed-order confirms</h3>
+        <p>Any result that could be order-confounded was re-run with the phase order reversed
+        (the k=3 vs k=4 knee at 4 nodes: k=3 won cold-first <em>and</em> warm-last).</p>
+      </div>
+      <div class="card">
+        <h3>Attribution counters</h3>
+        <p>The bench splits per-event wall into <span class="mono">bd_read / eb_wait / H2D / kernel /
+        plumbing</span> buckets — so claims name the component, not just the total. A same-denominator
+        counter (iter 28) caught a 45.9 ms “residual” that turned out to be an artifact, not a lever.</p>
+      </div>
+      <div class="card">
+        <h3>Pre-registered kill criteria</h3>
+        <p>Before running an experiment the journal states what result would kill the hypothesis.
+        Iter 27/28 wrote the loop’s own exit condition — “only if this lever fails to move the aggregate
+        is the loop done” — one iteration before it fired.</p>
+      </div>
+      <div class="card">
+        <h3>Raw-ceiling controls</h3>
+        <p>A psana-free raw <code>os.pread</code> harness measured what the filesystem itself can do
+        (~7.9 GB/s/node, scaling with nodes) — the yardstick that separates “psana inefficiency”
+        from “physics of the storage”.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ───────────────────────── 02 · USEFUL #1: MVP CORE ───────────────────────── -->
 <section class="slide" id="s2">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">02</span><span>what proved useful · the core</span></div>
+    <div class="eyebrow"><span class="n">04</span><span>what proved useful · the core</span></div>
     <h2>462 lines beat a path that can never catch up</h2>
     <p>The MVP is deliberately tiny: a fused CUDA kernel plus a two-function API, called from psana’s
     <em>standard</em> event loop. No custom iterator, no DataSource integration, no wire format.</p>
@@ -452,7 +529,7 @@
 <!-- ───────────────────────── 03 · USEFUL #2: DATA-PATH WINS ───────────────────────── -->
 <section class="slide" id="s3">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">03</span><span>what proved useful · landed throughput wins</span></div>
+    <div class="eyebrow"><span class="n">05</span><span>what proved useful · landed throughput wins</span></div>
     <h2>Two nearly-free changes: stop copying 33.5 MB per event</h2>
     <p>Profiling (not intuition) found that the GPU path spent most of its CPU time on two host-side
     memcpys of the full detector frame. Both fixes are small, both were gated bit-exact, and both were
@@ -490,7 +567,7 @@
 <!-- ───────────────────────── 04 · THE TAKE-HOME: COMMUNICATOR TOPOLOGY ───────────────────────── -->
 <section class="slide" id="s4">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">04</span><span>what proved useful · the take-home message</span></div>
+    <div class="eyebrow"><span class="n">06</span><span>what proved useful · the take-home message</span></div>
     <h2>The biggest win wasn’t GPU code — it was communicator topology</h2>
     <p>Multi-node throughput plateaued near 300 Hz no matter how many nodes were added. The cause was
     <em>who talks to whom</em>: psana grouped BD ranks to EventBuilders by <strong>rank number</strong>
@@ -667,7 +744,7 @@
 <!-- ───────────────────────── 05 · THE BOUNCE & GDS ───────────────────────── -->
 <section class="slide" id="s4b">
   <div class="wrap">
-    <div class="eyebrow"><span class="n">05</span><span>the road not needed yet · gds</span></div>
+    <div class="eyebrow"><span class="n">07</span><span>the road not needed yet · gds</span></div>
     <h2>The host “bounce” — and the storage that would make skipping it matter</h2>
     <p>Every byte headed for the GPU today takes a detour through host DRAM: it arrives from the FFB over
     the network, lands in a host buffer, and only then crosses PCIe into VRAM. That relay stop is the
@@ -728,83 +805,6 @@
       <b>after</b> someone raises the ceiling. Storage first (a node-local NVMe staging tier, or a
       GDS-capable FFB); then the direct-read manifest and reader stop being over-engineering and become
       the only way the software keeps up.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ───────────────────────── 06 · RALPH LOOP ───────────────────────── -->
-<section class="slide" id="s5">
-  <div class="wrap">
-    <div class="eyebrow"><span class="n">06</span><span>method · the ralph loop</span></div>
-    <h2>The campaign engine: a memoryless agent, one proof per turn</h2>
-    <p>A bash driver runs up to 25 iterations. Each iteration is a <em>fresh</em> agent with no memory of
-    the previous one — its entire state is what the journal and the repo say. That forcing function is
-    the design: nothing counts unless it was written down and committed.</p>
-    <div class="flow">
-      <div class="step"><div class="t">holder</div><div class="b">Driver ensures an exclusive A100 node is held (<span class="mono">sbatch … sleep infinity</span>), reused across iterations.</div></div>
-      <div class="arr">→</div>
-      <div class="step"><div class="t">fresh agent</div><div class="b">One <span class="mono">claude&nbsp;-p</span> reads <span class="mono">PROMPT.md</span> — the standing orders: north star, rules, current anchors.</div></div>
-      <div class="arr">→</div>
-      <div class="step"><div class="t">one unit of work</div><div class="b">Orient from <span class="mono">PROGRESS.md</span> → pick ONE lever → measure it → gate correctness bit-exact.</div></div>
-      <div class="arr">→</div>
-      <div class="step"><div class="t">journal + commit</div><div class="b">Append the result to <span class="mono">PROGRESS.md</span>, <span class="mono">git commit</span>. Journaling comes first, always.</div></div>
-      <div class="arr">→</div>
-      <div class="step"><div class="t">driver checks</div><div class="b"><span class="mono">^LOOP DONE</span> sentinel ends the mission · 2 no-journal strikes stop the loop · <span class="mono">BLOCKED: job&nbsp;ID</span> makes the driver poll squeue for free.</div></div>
-    </div>
-    <ul class="tight">
-      <li><strong>29 iterations over 4 days</strong>, typically 4–30 turns and ~$1–6 each; the human reviewed
-      the journal between blocks and restarted with sharpened orders.</li>
-      <li><strong>Self-terminating by evidence:</strong> the loop may only write <span class="mono">LOOP DONE</span>
-      after a pre-registered kill criterion is closed by measurement — it ended when the last untested
-      code lever was measured and lost.</li>
-      <li><strong>Negative results are kept, not discarded:</strong> dead-end levers stay in the tree as opt-in
-      flags with <span class="mono">VERDICT: DEAD END</span> docstrings, so nobody re-derives them.</li>
-    </ul>
-  </div>
-</section>
-
-<!-- ───────────────────────── 06 · MEASUREMENT DISCIPLINE ───────────────────────── -->
-<section class="slide" id="s6">
-  <div class="wrap">
-    <div class="eyebrow"><span class="n">07</span><span>method · why the verdicts hold</span></div>
-    <h2>The discipline that makes “fluff” a safe word</h2>
-    <p>Calling a deferred feature dead is a strong claim on a filesystem with minute-to-minute variance.
-    The loop earned it with controls:</p>
-    <div class="grid grid-3">
-      <div class="card">
-        <h3>Bit-exact gate, every change</h3>
-        <p>Every code change re-ran the correctness test: 20 events vs <code>det.raw.calib()</code>,
-        <strong>max_diff 0.0</strong> required. No throughput number was accepted from a path that hadn’t passed.</p>
-      </div>
-      <div class="card">
-        <h3>ABBA warming brackets</h3>
-        <p>FFB warms up across a session, so A/B comparisons ran A-B-B-A in one allocation. A lever only
-        won (or lost) if it beat the <em>opposing phase in both positions</em> — e.g. async-H2D lost even to
-        the coldest baseline phase.</p>
-      </div>
-      <div class="card">
-        <h3>Reversed-order confirms</h3>
-        <p>Any result that could be order-confounded was re-run with the phase order reversed
-        (the k=3 vs k=4 knee at 4 nodes: k=3 won cold-first <em>and</em> warm-last).</p>
-      </div>
-      <div class="card">
-        <h3>Attribution counters</h3>
-        <p>The bench splits per-event wall into <span class="mono">bd_read / eb_wait / H2D / kernel /
-        plumbing</span> buckets — so claims name the component, not just the total. A same-denominator
-        counter (iter 28) caught a 45.9 ms “residual” that turned out to be an artifact, not a lever.</p>
-      </div>
-      <div class="card">
-        <h3>Pre-registered kill criteria</h3>
-        <p>Before running an experiment the journal states what result would kill the hypothesis.
-        Iter 27/28 wrote the loop’s own exit condition — “only if this lever fails to move the aggregate
-        is the loop done” — one iteration before it fired.</p>
-      </div>
-      <div class="card">
-        <h3>Raw-ceiling controls</h3>
-        <p>A psana-free raw <code>os.pread</code> harness measured what the filesystem itself can do
-        (~7.9 GB/s/node, scaling with nodes) — the yardstick that separates “psana inefficiency”
-        from “physics of the storage”.</p>
-      </div>
     </div>
   </div>
 </section>
@@ -880,7 +880,7 @@
         <p><strong>Killed by:</strong> the same counters — metadata serialization and offset extraction never
         appeared in any profile (SMD parse ≈ 1.9 ms). The direct-read path they exist to feed lost its
         justification (next slide).</p>
-        <div class="revive"><b>Revives when:</b> the direct BD-read family revives (criteria on slides 05 and 10) —
+        <div class="revive"><b>Revives when:</b> the direct BD-read family revives (criteria on slides 07 and 10) —
         these three are its plumbing and only earn their place together with it.</div>
       </div>
       <div class="card">
