@@ -216,7 +216,8 @@ class GPUDetector:
                  seg_stride_bytes=None,
                  stream_seg_map=None,
                  cmpars=None,
-                 n_slots=4):
+                 n_slots=2,
+                 budget=None):
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
         self.gmask_gpu         = gmask_gpu
@@ -271,6 +272,7 @@ class GPUDetector:
         # call .on_cpu() to get an independent NumPy copy, then call
         # free_calib_bufs() to reclaim GPU memory.
         self._n_slots         = int(n_slots)
+        self._budget          = budget  # _GpuBudget | None
         self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
         # Common-mode correction — not yet implemented on GPU.
         if cmpars is not None:
@@ -557,6 +559,36 @@ class GPUDetector:
         """
         self._calib_slot_bufs = [None] * self._n_slots
 
+    def memory_bytes(self) -> dict:
+        """Return current VRAM usage broken down by category.
+
+        All values are bytes on the GPU device.  Used by
+        GpuEvents.log_memory() for Phase-0 accounting.
+
+        Categories
+        ----------
+        constants   peds_gpu + gmask_gpu (calibration constants)
+        geometry    scatter_ix + scatter_iy (pixel coordinate maps)
+        calib_slots sum of allocated per-slot calibrated-output buffers
+        raw_slots   sum of allocated per-slot raw-gather buffers
+        total       sum of the above
+        """
+        def _nb(arr):
+            return int(arr.nbytes) if arr is not None else 0
+
+        constants   = _nb(self.peds_gpu) + _nb(self.gmask_gpu)
+        geometry    = _nb(self._scatter_ix) + _nb(self._scatter_iy)
+        calib_slots = sum(_nb(b) for b in (self._calib_slot_bufs or []))
+        raw_slots   = sum(_nb(b) for b in self._raw_slot_bufs.values())
+        total       = constants + geometry + calib_slots + raw_slots
+        return {
+            'constants':   constants,
+            'geometry':    geometry,
+            'calib_slots': calib_slots,
+            'raw_slots':   raw_slots,
+            'total':       total,
+        }
+
     def process_batch(self, gpu_view, gpu_read,
                       stream=None, slot_id=None,
                       compute_raw=False,
@@ -629,16 +661,22 @@ class GPUDetector:
         if self._calib_slot_bufs is not None and slot is not None:
             buf = self._calib_slot_bufs[slot]
             if buf is None or buf.shape != batch_shape:
-                # Compact pool before a large new allocation.
-                free_b, _ = cp.cuda.Device().mem_info
+                needed   = int(batch_shape[0] * batch_shape[1] * batch_shape[2]) * 4
+                old_size = int(buf.nbytes) if buf is not None else 0
+                if self._budget is not None:
+                    # Update budget regardless of grow vs shrink so _committed
+                    # never drifts.  reserve() raises GpuMemoryPressureError if
+                    # the new allocation would exceed the per-BD limit.
+                    if old_size:
+                        self._budget.release(old_size)
+                    self._budget.reserve(needed)
+                else:
+                    # No budget object — flush pool before a large allocation.
+                    cp.get_default_memory_pool().free_all_blocks()
                 if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
-                    print('[GPU-MEM] calib slot grow: free=%.1fGB pool_used=%.1fGB'
-                          % (free_b/1e9, cp.get_default_memory_pool().used_bytes()/1e9),
-                          flush=True)
-                cp.get_default_memory_pool().free_all_blocks()
-                if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
-                    free_b2, _ = cp.cuda.Device().mem_info
-                    print('[GPU-MEM] after free_all_blocks: free=%.1fGB' % (free_b2/1e9,), flush=True)
+                    free_b, _ = cp.cuda.Device().mem_info
+                    print('[GPU-MEM] calib slot grow: need=%.1fGB free=%.1fGB'
+                          % (needed/1e9, free_b/1e9), flush=True)
                 self._calib_slot_bufs[slot] = cp.empty(batch_shape, dtype=cp.float32)
             slot_buf = self._calib_slot_bufs[slot]
 

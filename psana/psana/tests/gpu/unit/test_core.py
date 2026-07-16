@@ -19,8 +19,8 @@ def test_public_gpu_api_is_minimal():
     import psana.gpu as gpu
 
     # D→H join is now internal to GpuEvents — no join class in public API.
-    assert 'EventJoiner' not in gpu.__all__, "EventJoiner was made internal"
-    assert 'CalibJoiner' not in gpu.__all__, "CalibJoiner was renamed then made internal"
+    assert "EventJoiner" not in gpu.__all__, "EventJoiner was made internal"
+    assert "CalibJoiner" not in gpu.__all__, "CalibJoiner was renamed then made internal"
     # These implementation-detail names must never be public.
     internal_names = {
         "gpu_error_handler",
@@ -126,9 +126,12 @@ def _new_gpu_events(log, pending=()):
     events.router = None
     events.cpu_dets = {}
     events._d2h_pipelines = {}
-    events.run = SimpleNamespace(
-        _handle_transition=lambda dgrams: log.append(("transition", dgrams[0]))
-    )
+    events._high_water = {}
+    events._first_batch_logged = True  # suppress first-batch log in tests
+    from psana.gpu.gpu_budget import _GpuBudget
+
+    events._gpu_budget = _GpuBudget(limit_bytes=1024**4)  # 1 TiB sentinel
+    events.run = SimpleNamespace(_handle_transition=lambda dgrams: log.append(("transition", dgrams[0])))
     return events
 
 
@@ -136,8 +139,7 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "cupy",
-        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream,
-                                             Event=_FakeEvent)),
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
     )
 
     pool = EventPool(n=1)
@@ -162,11 +164,7 @@ def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_deco
     events.gpu_detectors = {
         "jungfrau": (
             object(),
-            SimpleNamespace(
-                beginstep=lambda peds, gmask: log.append(
-                    ("beginstep", peds, gmask)
-                )
-            ),
+            SimpleNamespace(beginstep=lambda peds, gmask: log.append(("beginstep", peds, gmask))),
         )
     }
 
@@ -174,9 +172,7 @@ def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_deco
         log.append("constants")
         return "peds", "gmask"
 
-    monkeypatch.setattr(
-        gpu_events_module, "_compute_calib_constants_cpu", fake_constants
-    )
+    monkeypatch.setattr(gpu_events_module, "_compute_calib_constants_cpu", fake_constants)
 
     step_dict = _transition_batch(
         TransitionId.Enable,
@@ -215,7 +211,10 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     log = []
     timestamp = 123
-    gpu_result = object()
+    import numpy as np
+
+    # Use a real ndarray so on_gpu (which now returns a copy) works correctly.
+    gpu_result = np.ones((4, 8, 8), dtype=np.float32) * 42.0
     cpu_evt = SimpleNamespace(timestamp=timestamp)
     events = _new_gpu_events(
         log,
@@ -239,7 +238,9 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     assert request_count == 1
     assert len(results) == 1
     assert results[0].timestamp == timestamp
-    assert results[0].get("jungfrau.calib").on_gpu is gpu_result
+    # on_gpu returns a copy — verify the value not identity
+    copy = results[0].get("jungfrau.calib").on_gpu
+    np.testing.assert_array_equal(copy, gpu_result)
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
     assert log[-1] == "close"

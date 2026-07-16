@@ -41,7 +41,7 @@ class SlotLease:
     has completed — generator advancement alone is not sufficient.
     """
 
-    __slots__ = ('slot_id', 'calib_done', 'view', '_d2h_done')
+    __slots__ = ('slot_id', 'calib_done', 'view', '_d2h_done', '_needs_release')
 
     def __init__(self, slot_id: int, calib_done, view):
         """
@@ -55,12 +55,19 @@ class SlotLease:
         self.slot_id    = slot_id
         self.calib_done = calib_done
         self.view       = view
-        self._d2h_done  = None   # set by _D2hPipeline after D→H is issued
+        self._d2h_done  = None   # set by _D2hPipeline or release_after
+        self._needs_release = False  # set by on_gpu_view
+
+    def mark_needs_release(self):
+        """Called by GPUResult.on_gpu_view — prevents slot recycling until
+        release_after() is called."""
+        self._needs_release = True
 
     def register_d2h_done(self, event):
-        """Record the CUDA event that fires when this slot's D→H is done.
+        """Record the CUDA event that fires when this slot's consumer is done.
 
-        Called by _D2hPipeline immediately after issuing cudaMemcpyAsync.
+        Called by _D2hPipeline after issuing cudaMemcpyAsync, or by the
+        user via GPUResult.release_after() after a downstream GPU kernel.
         EventPool will wait on this event in retire_next() before
         recycling the slot for a future batch.
         """
@@ -70,11 +77,25 @@ class SlotLease:
         """Block the calling thread until the consumer has completed.
 
         Called by EventPool.retire_next() before overwriting the slot.
-        If no D→H was registered (e.g. the event was dropped or the
-        joiner was not used), returns immediately.
+
+        Three outcomes:
+          _d2h_done set              → synchronize and recycle (correct)
+          _needs_release, no done    → RuntimeError (on_gpu_view used but
+                                       release_after never called)
+          neither                    → recycle immediately (on_gpu copy or
+                                       no access)
         """
         if self._d2h_done is not None:
             self._d2h_done.synchronize()
+        elif self._needs_release:
+            raise RuntimeError(
+                "Slot cannot be recycled: on_gpu_view was accessed but "
+                "release_after() was never called.\n"
+                "After your downstream GPU kernel add:\n"
+                "    done = cp.cuda.Event(disable_timing=True)\n"
+                "    stream.record(done)\n"
+                "    result.release_after(done)"
+            )
 
 
 class GPUResult:
@@ -123,8 +144,54 @@ class GPUResult:
 
     @property
     def on_gpu(self):
-        """Return the CuPy ndarray on device without any transfer."""
+        """Return an independent D→D copy of the calibrated result.
+
+        The copy is not tied to the EventPool slot buffer — the slot can
+        be recycled immediately after this call.  Use when the copy cost
+        (~2 ms D→D for Jungfrau) is acceptable and simplicity is preferred.
+        """
+        if self._stream is not None:
+            self._stream.synchronize()
+        return self._arr.copy()
+
+    @property
+    def on_gpu_view(self):
+        """Return a zero-copy view into the slot buffer.
+
+        Fastest GPU path — avoids the D→D copy — but the slot buffer will
+        be overwritten when the slot is recycled.  REQUIRES calling
+        release_after(done_event) after any downstream GPU kernel that
+        reads this array.  If forgotten, retire_next() raises RuntimeError.
+
+        Raises RuntimeError immediately if this GPUResult has no SlotLease
+        (i.e. was not produced by EventPool.submit()), because the safety
+        contract cannot be fulfilled — use on_gpu instead.
+        """
+        if self._lease is None:
+            raise RuntimeError(
+                "on_gpu_view is not safe: this GPUResult has no SlotLease. "
+                "Use on_gpu (D→D copy) instead, which is always safe."
+            )
+        self._lease.mark_needs_release()
         return self._arr
+
+    def release_after(self, event):
+        """Tell EventPool the slot can be recycled once `event` fires.
+
+        Call this after recording a CUDA event on the stream that your
+        downstream kernel ran on.  Required when using on_gpu_view.
+
+        Example::
+
+            result = ctx.get('jungfrau.calib')
+            arr    = result.on_gpu_view
+            my_kernel(arr, stream=stream)
+            done = cp.cuda.Event(disable_timing=True)
+            stream.record(done)
+            result.release_after(done)
+        """
+        if self._lease is not None:
+            self._lease.register_d2h_done(event)
 
     @property
     def on_cpu(self):
