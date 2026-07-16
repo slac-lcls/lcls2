@@ -367,13 +367,15 @@
     <div class="stat-row">
       <div class="stat hi">
         <div class="k">GPU vs CPU · 32 BD ranks</div>
-        <div class="v">3.9×</div>
-        <div class="d">44.9 → 175.3 Hz aggregate, same run, same filesystem</div>
+        <div class="v">2.6–3.9×</div>
+        <div class="d">CPU 44.9 Hz vs GPU 117–175 Hz aggregate, same node &amp; filesystem, different
+        FFB windows — the CPU path is compute-bound at ~74 Hz regardless of window</div>
       </div>
       <div class="stat">
         <div class="k">4-node aggregate after tuning</div>
-        <div class="v">914 <span class="unit">Hz</span></div>
-        <div class="d">≈ 97% of the raw storage ceiling — up from a ~300 Hz plateau</div>
+        <div class="v">811 <span class="unit">Hz</span></div>
+        <div class="d">cold-window control (sole phase, fresh allocation); 914 Hz in the warm
+        iter-26 window. 86% of the cold storage floor — up from a ~300 Hz plateau</div>
       </div>
       <div class="stat">
         <div class="k">Correctness, every change</div>
@@ -519,8 +521,10 @@
           <span><span class="sw" style="background:var(--muted); opacity:0.55;"></span>CPU path (det.raw.calib)</span>
           <span><span class="sw" style="background:var(--accent);"></span>GPU path (fused kernel)</span>
         </div>
-        <figcaption>Anchor pair, r47 on FFB, measured back-to-back before any tuning landed (loop iterations 1–2).
-        Aggregate Hz across ranks; 1.6× serial → 3.9× at scale, and the gap widens with concurrency.</figcaption>
+        <figcaption>Anchor pair, r47 on FFB, before any tuning landed (loop iterations 1–2) — same node, but
+        measured hours apart in different FFB windows, so the GPU absolute is window-flavored (the same config
+        spans 117–175 Hz across windows; multiplier ~2.6–3.9×). The robust claims are the mechanism: the CPU
+        path is compute-bound at a ~74 Hz ceiling, and the gap widens with concurrency.</figcaption>
       </figure>
     </div>
   </div>
@@ -552,8 +556,10 @@
       <div class="stat hi">
         <div class="k">combined · single node, 32 BD</div>
         <div class="v">+70%</div>
-        <div class="d">210 → 337 Hz across the two landed wins. Absolute Hz varies with FFB window
-        (live production filesystem); the interleaved relative gains are the controlled numbers.</div>
+        <div class="d">the compounded interleaved gains (1.30 × 1.32). The endpoint absolutes
+        (210 → 337 Hz) mix datasets and FFB windows — 337 Hz is 11.3 GB/s of read, above the
+        7.9 GB/s/node cold floor, i.e. a warm-window number; cold windows put the same config
+        near ~120 Hz. The interleaved relative gains are the controlled numbers.</div>
       </div>
     </div>
     <div class="kicker">
@@ -684,7 +690,7 @@
 
     <figure>
       <div class="chart-box">
-        <svg viewBox="0 0 640 300" role="img" aria-label="Bar chart: aggregate Hz by node count, default EB placement versus tuned placement, against the shaded raw-storage serving band whose dashed floor is the cold-window control. Tuned reaches 914 Hz at 4 nodes, just under the band floor.">
+        <svg viewBox="0 0 640 300" role="img" aria-label="Bar chart: aggregate Hz by node count, default EB placement versus tuned placement, against the shaded raw-storage serving band whose dashed floor is the cold-window control. Tuned reaches 811 Hz cold at 4 nodes (914 in a warm window), below the band floor.">
           <g>
             <line class="gridline" x1="56" y1="248"   x2="620" y2="248"/>
             <line class="gridline" x1="56" y1="178.7" x2="620" y2="178.7"/>
@@ -716,10 +722,12 @@
           <text class="val" x="329" y="194.1" text-anchor="middle">338</text>
           <text class="val" x="391" y="129.7" text-anchor="middle">803</text>
           <text class="ax" x="360" y="272" text-anchor="middle">3 nodes</text>
-          <!-- 4 nodes: default not measured, tuned 914.1 -->
+          <!-- 4 nodes: default not measured; tuned 811.2 cold sole-phase control (914.1 as warm 3rd phase, iter 26) -->
           <text class="ax" x="517" y="242" text-anchor="middle" font-style="italic">default n/m</text>
-          <rect class="bar-gpu" x="550" y="121.3" width="58" height="126.7" rx="4"/>
-          <text class="val" x="579" y="114.3" text-anchor="middle">914</text>
+          <rect class="bar-gpu" x="550" y="135.5" width="58" height="112.5" rx="4"/>
+          <line class="gridline" x1="550" y1="121.3" x2="608" y2="121.3" stroke-dasharray="3 3"/>
+          <text class="ax" x="546" y="124.8" text-anchor="end">914 warm</text>
+          <text class="val" x="579" y="128.5" text-anchor="middle">811</text>
           <text class="ax" x="548" y="272" text-anchor="middle">4 nodes</text>
           <text class="ax" x="616" y="42" text-anchor="end" font-style="italic">shaded: what the FFB itself serves</text>
           <line class="baseline" x1="56" y1="248" x2="620" y2="248"/>
@@ -730,13 +738,16 @@
         <span><span class="sw" style="background:var(--accent);"></span>tuned (node-local + per-node knee)</span>
         <span><span class="sw" style="background:var(--muted); opacity:0.16; outline:1px dashed var(--ink-2);"></span>raw serving range, 7.9–12 GB/s/node (dashed = cold-window floor)</span>
       </div>
-      <figcaption>Loop iterations 18–27; ABBA warming-controlled brackets, knee confirmed in both phase orders.
-      The shaded band is what the filesystem itself serves: the dashed floor is the firm number — a cold-window
-      disjoint-pread control at 7.9 GB/s/node — and the band top is the ~12 GB/s/node observed in warm windows
-      on the live production FS. That window variance is why the 3-node tuned bar sits above the dashed floor:
-      that psana bracket ran in a faster window than the cold control (803 Hz ≈ 9 GB/s/node, inside the band).
-      At 4 nodes, tuned reaches 914 Hz ≈ 97% of the cold floor — psana is delivering essentially everything
-      the storage offers.</figcaption>
+      <figcaption>Loop iterations 18–27 plus the 2026-07-15 cold-window control; ABBA warming-controlled
+      brackets, knee confirmed in both phase orders. The shaded band is what the filesystem itself serves:
+      the dashed floor is the firm number — a cold-window disjoint-pread control at 7.9 GB/s/node — and the
+      band top is the ~12 GB/s/node observed in warm windows on the live production FS. That window variance
+      is why the 3-node tuned bar sits above the dashed floor: that psana bracket ran in a faster window than
+      the cold control (803 Hz ≈ 9 GB/s/node, inside the band). The 4-node bar is itself a cold control — the
+      winning config re-run as the sole phase of a fresh allocation measured 811 Hz = 86% of the cold floor;
+      the same config read 914 Hz as a warm third phase, an ~11% window inflation measured directly on an
+      identical config. psana delivers most of what the cold floor offers, and the remaining gap is the same
+      size as the window variance itself.</figcaption>
     </figure>
   </div>
 </section>
@@ -793,7 +804,8 @@
     <div class="card">
       <div class="name">How to know the GDS pathway has earned its place <span class="chip chip-cond">watch these three</span></div>
       <p><strong>1 — The gap reopens:</strong> psana achieves &lt; ~80% of a raw <span class="mono">pread</span>
-      control at the same layout, <em>after</em> EB-placement tuning (today it’s 89–97%).
+      control at the same layout, <em>after</em> EB-placement tuning (today it’s ~86% measured cold-for-cold;
+      the earlier 89–97% figures divided warm psana windows by the cold floor).
       <strong>2 — The read stops dominating:</strong> per-event <span class="mono">bd_read</span> ≲ 15 ms, making
       the bounce ≥ ~20% of the wall.
       <strong>3 — GDS is physically real:</strong> <span class="mono">kvikio compat_mode == False</span> on the
@@ -892,9 +904,9 @@
       </div>
       <div class="card">
         <div class="name">gpu_bd_read standalone pipeline <span class="chip chip-fluff">superseded</span></div>
-        <p><strong>Killed by:</strong> the standard loop reaching 89–97% of the raw storage ceiling — a bespoke
-        516-line parallel pipeline has ≤ 11% of headroom to chase. Its correctness tools were replaced by
-        <span class="mono">test_jungfrau_calib.py</span> (bit-exact PASS).</p>
+        <p><strong>Killed by:</strong> the standard loop reaching ~86% of the raw storage ceiling cold-for-cold
+        — a bespoke 516-line parallel pipeline has ≤ ~14% of headroom to chase, comparable to window variance.
+        Its correctness tools were replaced by <span class="mono">test_jungfrau_calib.py</span> (bit-exact PASS).</p>
         <div class="revive"><b>Revives when:</b> same criteria as the direct-read family — and even then,
         prefer extending the standard loop over a parallel implementation.</div>
       </div>
@@ -918,14 +930,16 @@
         <div class="d">the gap that argued for bypassing psana’s read path</div>
       </div>
       <div class="stat hi">
-        <div class="k">iter 27 · psana vs raw, 4 nodes, tuned</div>
-        <div class="v">≈97%</div>
-        <div class="d">after ~120 lines of EB placement — the gap was topology, not the read path</div>
+        <div class="k">cold control · psana vs raw, 4 nodes, tuned</div>
+        <div class="v">≈86%</div>
+        <div class="d">after ~120 lines of EB placement, measured cold-for-cold (a warm window reads ≈97%) —
+        the gap was topology, not the read path</div>
       </div>
     </div>
     <p>Iterations 18–27 found the real cause: smd0→EB coordination topology, fixed by
     <code>PS_EB_NODE_LOCAL</code> + <code>PS_EB_PER_NODE</code>. That result retroactively kills the
-    family — there is no psana-vs-raw gap left for a direct-read path to close.</p>
+    family — the remaining cold-for-cold gap (~14%, comparable to the window variance itself) is far
+    too small for a parallel direct-read path to justify its complexity.</p>
     <div class="card">
       <div class="name">KvikIO / GDS reader + direct BD-read path <span class="chip chip-cond">conditional</span></div>
       <p><strong>Today:</strong> H→D is 2.53 ms async of a ~103 ms event — GDS’s best case saves ~3%. GDS skips
@@ -1012,12 +1026,12 @@
       <tr><td>More psana code work</td><td>≤ ~8% by Amdahl — measured, not argued</td><td>closed by the loop</td></tr>
     </table>
     <div class="kicker" style="margin-top:1.6rem;">
-      <p>The campaign’s real deliverable isn’t 914 Hz — it’s the audit: measured proof of which
+      <p>The campaign’s real deliverable isn’t 811 Hz — it’s the audit: measured proof of which
       engineering matters, which doesn’t yet, and exactly what to check before changing that answer.</p>
     </div>
     <p style="font-size:0.8rem; color:var(--muted); margin-top:2rem;" class="mono">
-      sources: ralph/PROGRESS.md (29 iterations) · TASK.md · PLANNING.md · DEFERRED.md ·
-      branch features/psana2-gpu-mvp · July 10–13, 2026</p>
+      sources: ralph/PROGRESS.md (29 iterations + cold-window addendum) · TASK.md · PLANNING.md · DEFERRED.md ·
+      branch features/psana2-gpu-mvp · July 10–13, 2026 · cold-window control July 15, 2026</p>
   </div>
 </section>
 

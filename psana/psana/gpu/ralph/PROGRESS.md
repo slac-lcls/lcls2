@@ -2409,3 +2409,73 @@ storage-bound rate requires more nodes (scales per-node, already characterized) 
 higher-bandwidth FFB stage — both facility decisions for the human, not loop levers.
 
 LOOP DONE
+
+## 2026-07-15 — Post-loop addendum: cold-window control on the 4-node headline; absolute-figure hygiene across the campaign
+
+**Measurement: iter-26's mn4_3eb config re-run as the SOLE phase of a fresh 4-node
+allocation** — job 31812885 (`bench_mpi_sweep/eb_knee_4n_3eb_cold.sbatch`), identical
+config to the iter-26 winner (PS_EB_NODE_LOCAL=1, PS_EB_PER_NODE=3, 132 ranks,
+n=100/rank warmup=10 --wait-split), log `bench_mpi_sweep/epn4nk_3eb_cold.log`,
+exit=0, wall 113 s:
+
+| run | window position | ranks reporting | aggregate Hz |
+|-----|-----------------|---:|---:|
+| `epn4nk_3eb` (iter 26) | 3rd of 4 phases (warm) | 121 | 913.5 (journal headline 914.1) |
+| `epn4nk_3eb_cold` | sole phase, fresh allocation | 121 | **811.2** |
+
+Same parse on both logs (sum of per-rank `rate:` lines), identical rank census —
+the −11.2% is window state, not topology or starvation. This is the first direct
+measurement of the within-allocation warming magnitude on an identical config.
+
+**Corrections this forces:**
+
+1. **The 4-node headline is ~811 Hz cold, up to ~914 Hz warm.** 914.1 was earned
+   in the warm third-phase slot and carries ~11% window inflation. It graduated
+   into PLANNING.md and ralph_summary.html as a bare absolute; both now quote the
+   band. 811 Hz × 33.5 MB/event = 6.8 GB/s/node = **86%** of the 7.9 GB/s
+   cold-window floor — not the ~97% the warm number implied.
+2. **Cold-for-cold, k=3 ≈ k=4 at 4 nodes** (811.2 vs iter-26's cold-first 815.8).
+   The two cold points come from different allocations/days, so this comparison is
+   itself cross-window — but it caps the plausible k=3-over-k=4 gap well below
+   iter-26's confounded +12%. The in-window both-orders ranking stands (iter-27:
+   k=3 832.1 > k=4 716.3 with k=4 given the warmest-last slot), so k=3 remains
+   the recommended setting. Honest phrasing: **knee = 3, with k=4 within window
+   noise of it cold-for-cold — a 3–4 plateau, never past 4.**
+3. **Retro-flag on iter-23** (not flagged at the time): in the 2-node bracket the
+   3eb leg ran as the COLD FIRST phase, so the "k=3/4 regress −18% @2n" magnitude
+   is partly a cold-window artifact on the k=3 side — consistent with k=3 winning
+   outright at 3 nodes in both orders one iteration later. The knee=2@2n verdict
+   itself stands (2eb beat warm-last 4eb, and beat 1eb in iter-22's conservative
+   order).
+4. **Absolute-figure hygiene — the storage band, not a point, is the yardstick.**
+   At 33.5 MB/event the FFB serving band is ~7.9 GB/s/node cold (disjoint-pread
+   control → **~235 Hz/node floor**) up to ~12 GB/s/node warm (**~355 Hz/node**).
+   Single-node 32-BD absolutes for the SAME tuned config legitimately span
+   ~113–121 Hz (iter-29 window), 175.3 Hz (iter-1b anchor window), and 337.2 Hz
+   (iter-15 warm window = 11.3 GB/s read — above the cold floor, which only a warm
+   window can serve). Quoting "337 Hz" next to "235 Hz/node storage ceiling"
+   without the window class reads as a contradiction; it is not one, but every
+   absolute must carry its window class from here on. The controlled results are
+   the relative, warming-bracketed claims: +30% (iter 7), +32–38% (iter 8), the
+   knee orderings (iters 20–27), −21% overlap (iter 29).
+5. **The "+70% (210 → 337 Hz)" endpoints are cross-window AND cross-dataset**
+   (210 = historical r387 B-MVP anchor; 337.2 = post-wins r47 in iter-15's warm
+   window). The +70% itself is honest as the compounded interleaved gains
+   (1.30 × 1.32 ≈ 1.7); the endpoint absolutes are illustrative only, and the
+   docs that quote them now say so.
+6. **The 3.9× GPU/CPU multiplier is window-flavored on the GPU side.** GPU 175.3
+   (iter 1b) and CPU 44.9 (iter 2) ran on the same node (job 31267701) but hours
+   apart in different windows — not "the same run". Across measured windows the
+   same GPU config spans 117–175 Hz, so the measured multiplier spans ~2.6–3.9×.
+   The mechanism claims are unaffected (CPU compute-bound at its ~74 Hz ceiling,
+   kernel has 76× headroom, the advantage widens with scale), but quoted
+   multipliers now carry the range.
+
+Full-campaign audit against this confound: the qualitative conclusions survive.
+Every knee ranking and every negative from iter-20 on was bracketed so that
+warming worked AGAINST the reported effect, and the profiling attributions
+(iter 3/9/10/15/28) are within-run relative metrics independent of absolute rate.
+The casualties are absolute Hz figures only — 914 (now 811 cold), the 210→337
+endpoints, the 175.3 anchor — plus iter-18's +9.1%, whose margin is comparable to
+the window swing and survives only because its bracket happened to drift downward
+around the winner.

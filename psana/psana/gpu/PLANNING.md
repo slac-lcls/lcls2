@@ -311,9 +311,9 @@ near 3**:
 
 | nodes | knee (best k) | best-k agg Hz | k=1 agg Hz | best-k gain vs k=1 |
 |------:|:-------------:|--------------:|-----------:|-------------------:|
-| 2     | **2**         | 502.9         | 410.6      | +23%  (k=3/4 regress −18%) |
+| 2     | **2**         | 502.9         | 410.6      | +23%  (k=3/4 regress −18%; the k=3 leg ran cold-first, so that magnitude is window-inflated) |
 | 3     | **3**         | 802.5 / 791.5 | 622.9/419.5| +24–32% (k=2 between; k=4/5 lose) |
-| 4     | **3** (confirmed both orders) | 914.1 (k=3) | — | k=3 wins cold-first AND warm-last; k=4 not the peak |
+| 4     | **3** (3–4 plateau; k=3 recommended) | 811 cold / 914 warm (k=3) | — | k=3 beats k=4 in both in-window orders; cold-for-cold k=3 ≈ k=4 |
 
 *(2-node: iters 22/23, jobs 31586774/31587292. 3-node knee pinned across the full
 {1,2,3,4,5} sweep in three windows — iter 24 forward job 31588126 + reversed
@@ -327,8 +327,14 @@ being warmest. Past the knee, over-provisioned EBs starve BD-reader ranks into
 idleness — 3n k=5: 67 of ~83 reported; 4n k=5: 90 of 111 reported. iter 27 job
 31593737 (`epn4nkr_*` logs) reversed the order to 5→3→2→4 so k=4 ran WARMEST-LAST
 and k=3 ran colder/earlier: k=3 (832.1 Hz) still beat k=4 (716.3, +16.2%) — so
-k=3 > k=4 in BOTH orders and the 3-vs-4 confound is discharged. knee=3 at 4 nodes
-is locked.)*
+k=3 > k=4 in BOTH orders and the 3-vs-4 confound is discharged. Cold-window
+control 2026-07-15, job 31812885 (`epn4nk_3eb_cold.log`): the iter-26 k=3 config
+re-run as the sole phase of a fresh allocation measures **811.2 Hz** — the 914.1
+headline was a warm-third-phase number carrying ~11% window inflation, so quote
+the 4-node figure as ~811 Hz cold / up to ~914 warm. Cold-for-cold, k=3 (811.2)
+≈ k=4 (815.8, iter-26 cold-first), so the 4-node optimum is a 3–4 plateau; k=3
+stays the recommended setting because it never loses within a window and has
+minimal BD starvation.)*
 
 **Mechanism:** `eb_wait` falls monotonically with `k` at every node count (more
 EBs, fewer BDs each). But the single `smd0` feeds *all* node-local EBs, so added
@@ -336,7 +342,8 @@ EB parallelism past ~3/node stops paying — the marginal EB's lost BD slot +
 `bd_read` inflation outweighs the `eb_wait` it saves, and the fan-out begins
 starving BD readers. The knee tracked node count from 2→3 nodes but did **not**
 climb to 4 at 4 nodes (the `knee = node_count` two-point coincidence broke on its
-first out-of-sample test); it saturates near 3.
+first out-of-sample test); it saturates into a 3–4 plateau, and k=3 is the setting
+that never loses.
 **Guidance: use `PS_EB_PER_NODE=3` for 3+ nodes** (best single setting; at 2 nodes
 use k=2). Do not push `k` higher hoping it tracks node count — past ~3 aggregate
 regresses (−18% at 2n with k=3/4; at 3n and 4n k=5 loses to k=3 and starves BD

@@ -147,7 +147,11 @@
   - **RE-MEASURED post-wins on r47 (2026-07-10, iter 16, job 31291349, 64
     BD, log `bench_mpi_sweep/sweep_mn2x32_r47.log`): 284.4 Hz** — the
     plateau HELD. Despite copy=False + seg-h2d lifting single-node 32-BD
-    +70% (210 -> 337 Hz), the 2-node aggregate is unchanged (~295 -> 284,
+    +70% (the compounded interleaved gains, 1.30 × 1.32; the oft-quoted
+    210 -> 337 Hz endpoints are cross-window AND cross-dataset — 210 is the
+    historical r387 anchor, 337.2 is iter-15's warm r47 window at 11.3 GB/s
+    read, above the 7.9 GB/s/node cold floor — so quote the +70%, not the
+    endpoints), the 2-node aggregate is unchanged (~295 -> 284,
     window variance). `--wait-split` attribution at 64 BD: bd_read 133.1
     ms/event (59% of the 225 ms/rank wall), eb_wait only 9.15 ms (4%),
     H->D 8.1, kernel 0.65. So the multi-node ceiling is **bd_read/storage-
@@ -171,14 +175,19 @@
     (currently only eb_wait/bd_read surface there) to split residual =
     dgram-plumbing vs pure smd0/EB coordination latency.
   - Synthesis (two ceilings, dominating at different scales):
-      * Storage: per-node ~7.9 GB/s (~235 Hz/node), scales with nodes.
+      * Storage: a per-node BAND, not a point — ~7.9 GB/s cold-window floor
+        (~235 Hz/node at 33.5 MB/event) up to ~12 GB/s in warm windows
+        (~355 Hz/node); scales with nodes. Single-node absolutes above
+        235 Hz (e.g. the 337 Hz warm-window measurement) are the window
+        serving above the cold floor, NOT psana exceeding storage — never
+        quote an absolute against the 235 floor without its window class.
       * psana serving/pipeline: a ~260-306 Hz plateau independent of node
         count (2 vs 4), BD ranks/node (16 vs 32), EB count, and batch.
-    At 1 node the two nearly coincide (storage 235, psana 210 = storage-
-    bound). Beyond ~1 node the psana plateau (~300 Hz) binds first while
-    storage still has headroom (450+ at 2 nodes). So ~300 Hz IS a psana
-    ceiling at multi-node after all — but NOT smd0 (proven idle), NOT EB
-    count, NOT batch size.
+    At 1 node the two nearly coincide in a cold window (storage floor 235,
+    psana 210 = storage-bound). Beyond ~1 node the psana plateau (~300 Hz)
+    binds first while storage still has headroom (450+ at 2 nodes). So
+    ~300 Hz IS a psana ceiling at multi-node after all — but NOT smd0
+    (proven idle), NOT EB count, NOT batch size.
   - ~~Most likely remaining cause: the per-BD-rank synchronous pipeline
     (read bigdata -> H2D -> kernel with no overlap; ... H2D ... inflating to
     16 ms) ... RAISES the priority of pinned-host + overlapped H2D ... the one
@@ -228,7 +237,11 @@
     aggregate. CPU compute ceiling at 32 ranks ≈ 32/0.4337 = ~74 Hz — the CPU path
     is compute-bound, not I/O-bound, at scale on this detector. GPU advantage
     widens 1.6× -> 3.9× with scale because the kernel (0.32–0.6 ms) has 76×
-    headroom while the CPU stops scaling.
+    headroom while the CPU stops scaling. WINDOW CAVEAT (2026-07-15 addendum):
+    the GPU 175.3 and CPU 44.9 are same-node (job 31267701) but hours apart in
+    different FFB windows — the same GPU config spans 117–175 Hz across measured
+    windows, so the multiplier is ~2.6–3.9× window-dependent; the mechanism
+    (CPU compute-bound at ~74 Hz, gap widens with scale) is the robust claim.
   - Verification numbers on Lustre r387 (job 31260656, sdfampere042,
     `bench_mpi_sweep/cpu_lustre_bd{1,32}.log`, `cpu_baseline_README.md`):
 
@@ -680,7 +693,9 @@
   cold-first). Topology 132 ranks (rank0=smd0), k EB/node → 4k EB, 131−4k topo BD:
   · mn4_4eb (COLD first / predicted hero): 815.8 Hz — 115/115 BD, 0 starved
   · mn4_2eb: 854.2 Hz — 111/123 BD, 12 starved
-  · mn4_3eb: **914.1** Hz — 118/119 BD, 1 starved
+  · mn4_3eb: **914.1** Hz — 118/119 BD, 1 starved (3rd/warm phase; cold-window
+    control 2026-07-15, sole phase of fresh allocation, job 31812885,
+    `epn4nk_3eb_cold.log`: **811.2** Hz — quote ~811 cold / ~914 warm)
   · mn4_5eb (warm last): 896.6 Hz — 90/111 BD, 21 starved
   ROBUST claims (survive the warming confound): (1) knee < 5 — k=5 drops below k=3
   despite being warmest, and starves 21 of 111 BD ranks (past-knee over-provisioning,
