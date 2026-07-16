@@ -97,6 +97,17 @@ class EventPool:
             )
         stream = self._streams[slot]
 
+        # Synchronise the null (default) stream before launching the
+        # calibration kernel.  Any on_gpu D→D copies issued by the user
+        # in the previous iteration run on the null stream; without this
+        # sync they could race with the new calib kernel which writes to
+        # the same slot buffer (Race 1).  The sync is a no-op if no
+        # null-stream work is pending, so it adds negligible overhead.
+        try:
+            cp.cuda.Stream.null.synchronize()
+        except Exception:
+            pass
+
         # Launch calibration on this slot's non-blocking stream.
         gpu_results_by_ts: dict = {}
         for det_name, det_info in gpu_detectors.items():

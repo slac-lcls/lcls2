@@ -36,7 +36,7 @@ class PendingBatch:
 
 
 class KvikioGpuReader:
-    def __init__(self, task_size=None, n_slots=4):
+    def __init__(self, task_size=None, n_slots=2, budget=None):
         """Create a GPU reader with optional pre-allocated per-slot buffers.
 
         Parameters
@@ -97,6 +97,7 @@ class KvikioGpuReader:
         # start of a run as batch sizes stabilise).
         self._slot_bufs: list = [None] * n_slots
         self._n_slots: int = n_slots
+        self._budget = budget  # _GpuBudget | None
         self._slot_idx: int = 0     # incremented on every issue_batch() call
 
     def io_stats(self) -> dict:
@@ -130,6 +131,18 @@ class KvikioGpuReader:
         for fh in self._files.values():
             fh.close()
         self._files.clear()
+
+    def memory_bytes(self) -> dict:
+        """Return current VRAM usage for the raw input slot buffers.
+
+        Used by GpuEvents.log_memory() for Phase-0 accounting.
+        """
+        slot_sizes = [int(b.nbytes) if b is not None else 0
+                      for b in self._slot_bufs]
+        return {
+            'raw_input_slots': sum(slot_sizes),
+            'per_slot':        slot_sizes,
+        }
 
     def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
@@ -170,6 +183,11 @@ class KvikioGpuReader:
         self._slot_idx += 1
         existing = self._slot_bufs[slot]
         if existing is None or existing.nbytes < total_nbytes:
+            old_size = int(existing.nbytes) if existing is not None else 0
+            if self._budget is not None:
+                if old_size:
+                    self._budget.release(old_size)
+                self._budget.reserve(total_nbytes)
             self._slot_bufs[slot] = self.cp.empty(
                 total_nbytes, dtype=self.cp.uint8
             )
