@@ -4,10 +4,12 @@ import sys
 from psana.detector.dir_root import DIR_REPO
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
 from psana.pscalib.calib.CalibConstants import list_calib_names
-from psana.detector.UtilsJungfrauCalib import DIC_GAIN_MODE
-from psana.detector.UtilsEpix10ka import GAIN_MODES_IN
-lst_gainmodes = list(DIC_GAIN_MODE.keys()) # ['DYNAMIC', 'FORCE_SWITCH_G1', 'FORCE_SWITCH_G2']
-lst_gainmodes += list(GAIN_MODES_IN)
+import psana.detector.UtilsJungfrauCalib as ujc
+import psana.detector.UtilsEpix10ka as ue10ka
+import psana.detector.UtilsEpixUHR as ueu
+str_gainmodes =  ' jungfrau: ' + ', '.join(list(ujc.DIC_GAIN_MODE.keys()))
+str_gainmodes += ' epix10ka: ' + ', '.join(list(ue10ka.GAIN_MODES))
+str_gainmodes += ' epixUHR: '  + ', '.join(list(ueu.GAIN_STATES))
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ def argument_parser():
     d_detname = None # 'jungfrau'
     d_dirrepo = DIR_REPO # './work'
     d_ctype = None
-    d_version = 'V2025-11-06'
+    d_version = 'V2026-07-14' # 'V2025-11-06'
     d_segind  = None
     d_gainmode = None
     d_logmode = 'INFO'
@@ -66,7 +68,7 @@ def argument_parser():
     h_filemode= 'file access mode, default = %s' % oct(d_filemode)
     h_version = 'script version, default = %s' % str(d_version)
     h_segind  = 'segment index to process, default = %s' % str(d_segind)
-    h_gainmode  = 'gainmode, (detector-dependent) one of %s, default = %s' % (str(lst_gainmodes), d_gainmode)
+    h_gainmode = 'gainmode, (detector-dependent) one of %s, default = %s' % (str(str_gainmodes), d_gainmode)
     h_fname2darr = 'file name for 2d panel constants, default = %s' %d_fname2darr
 
     parser = ArgumentParser(prog=SCRNAME, usage=USAGE, description=DESCRIPTION, epilog='help: %s -h' % SCRNAME )
