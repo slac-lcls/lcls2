@@ -54,9 +54,9 @@ def jungfrau_init(
     jungfrau_kcu.start()
 
     time.sleep(0.1)
-    print('**** cpo hack TxPhyPllReset ****')
-    jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
-    time.sleep(3)
+    #print('**** cpo hack TxPhyPllReset ****')
+    #jungfrau_kcu.DevPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyPllReset()
+    #time.sleep(3)
     
     print('*** cpo add early startrun')
     jungfrau_kcu.StartRun()
