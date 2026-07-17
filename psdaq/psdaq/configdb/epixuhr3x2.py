@@ -106,13 +106,6 @@ class EpixUHR3x2_Manager:
         self.write_and_check(register=trig_event_buf.MasterEnable, value=True)
         logger.info("Starting run.")
 
-    # Config C1100
-    ##############
-
-    @property
-    def CfgFpga(self):
-        return self._root.CfgFpga
-
     # Data C1100
     ###################
 
