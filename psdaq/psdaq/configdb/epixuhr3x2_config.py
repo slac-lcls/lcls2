@@ -180,6 +180,7 @@ def epixuhr3x2_init(
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
+    emulator: bool = False
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
         ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc
@@ -187,7 +188,7 @@ def epixuhr3x2_init(
         dualPcie       = False,
         defaultFile    = "",        # No config to load
         # Emulator doesn't have all registers - emuMode prevents erroneous r/w in root
-        emuMode        = True,
+        emuMode        = emulator,
         justCtrl       = True,      # If False, data doesn't make it to DAQ
         loadPllCsv     = False,     # No config to load
         standAloneMode = False,     # Use LCLSII timing
@@ -208,7 +209,6 @@ def epixuhr3x2_init(
     # The manager object encapsulates access to the rogue object and simplifies
     # most routines. Many registers can be read and written with properties.
     # Methods will do bulk configuration via many writes.
-    emulator: bool = False
     manager: EpixUHR3x2_Manager = EpixUHR3x2_Manager(
         root=detectorRoot,
         nasics=6,
@@ -218,8 +218,7 @@ def epixuhr3x2_init(
     )
     base["manager"] = manager
 
-    manager.init_board()
-    manager.initialize_timing(timebase=timebase)
+    manager.init_board(timebase=timebase)
 
     # Firmware info reads can hang if the bus is locked or PGP is down.
     # We will try to read them, but not crash if it fails.

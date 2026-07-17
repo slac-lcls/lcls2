@@ -10,6 +10,7 @@ import surf.protocols.batcher as batcher
 
 from psdaq.utils import enable_epix_uhr3x2
 import epixuhr_3x2_readout_testing as epixUhrDev
+from epixuhr_3x2_readout_testing import Uhr3x2ReadoutSystem
 
 
 class TimingParameters(TypedDict):
@@ -208,12 +209,13 @@ class EpixUHR3x2_Manager:
         return self.FebFpga.App.TriggerRegisters
 
     def init_waveform_control(self, raw_init: bool = False) -> None:
-        logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger.info("**** Setting Initial Waveform Settings ****")
+        print("**** Setting Initial Waveform Settings ****")
         registers_and_vals: Dict[str, Any] = {
             "enable": True,
             "GlblRstPolarity": True,
             "AsicSroEn": True,
-            "AsicClkEn": True,
             "SroPolarity": False,
             "SroDelay": 1195,
             "SroWidth": 1,
@@ -221,16 +223,17 @@ class EpixUHR3x2_Manager:
             "AcqPolarity": False,
             "AcqDelay": 655,
             "AcqWidth": 535,
+            "AsicR0En": True,
             "R0Polarity": False,
             "R0Delay": 70,
             "R0Width": 1125,
-            "AsicR0En": True,
             "InjPolarity": False,
             "InjDelay": 700,  # +45 (1 us) after AcqDelay
             "InjWidth": 535,
             "InjEn": False,
             "InjSkipFrames": 0,
             "ResetCounters": False,
+            # "AsicClkEn": True,
         }
         if raw_init:
             # Mirror panel_init defaults if they differ
@@ -240,29 +243,26 @@ class EpixUHR3x2_Manager:
             base_node=self.FebWaveformControl, registers_and_vals=registers_and_vals
         )
 
-        time.sleep(1)
-        self.write_and_check(self.FebWaveformControl.GlblRstPolarity, value=False)
-        time.sleep(1)
-        self.write_and_check(self.FebWaveformControl.GlblRstPolarity, value=True)
-        logger.info("Done with Waveform configuration")
-
     def running_waveform_control(self) -> None:
         self.init_waveform_control()
 
     def init_trigger_registers(self) -> None:
+        # logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger.info("**** Setting Initial Trigger Settings ****")
+        print("**** Setting Initial Trigger Settings ****")
         registers_and_vals: Dict[str, Any] = {
             "enable": True,
             "RunTriggerEnable": False,
             "RunTriggerDelay": 0,
             "DaqTriggerEnable": False,
-            "DaqTriggerDelay": 0,
-            "TimingRunTriggerEnable": False,
-            "TimingDaqTriggerEnable": False,
+            "DaqTriggerDelay": 1210,
             "AutoRunEn": False,
             "AutoDaqEn": False,
+            # "TimingRunTriggerEnable": False,
+            # "TimingDaqTriggerEnable": False,
             "AutoTrigPeriod": 42700000,
             "numberTrigger": 0,
-            "PgpTrigEn": False,
+            "PgpTrigEn": True,
         }
         self.write_many(
             base_node=self.FebTriggerRegisters, registers_and_vals=registers_and_vals
@@ -559,61 +559,95 @@ class EpixUHR3x2_Manager:
             logger.debug("AsicGtData registers do not exist for emulator.")
 
     def _enable_clock_dependencies(self):
-        import uhr_integration_support as epixUhrSupport
-        import pixel_camera_readout_common as ROCommon
-
-        for device in self.ReadoutSystem.find(
-            typ=epixUhrSupport.AxiStreamUhrDescrambleWrapper
-        ):
-            device.enable.set(True)
-
-        for device in self.ReadoutSystem.find(typ=ROCommon.UhrAxiStreamFramer):
-            device.enable.set(True)
-
-        self.FebFpga.App.ClockGeneration.enable.set(True)
-        self.FebFpga.App.U_matrixClk.enable.set(True)
-        self.FebFpga.App.U_sspClk.enable.set(True)
+        # logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger.info("**** Enabling Clock Dependencies ****")
+        print("**** Enabling Clock Dependencies ****")
+        for devPtr in self._root.find(typ=Uhr3x2ReadoutSystem.Uhr3x2ReadoutSystem):
+            devPtr.StopRun()
+            devPtr.enableClockDependencies()
+            devPtr.FebFpga.App.WaveformControl.enable.set(True)
 
     def _check_pll_lock(self):
-        logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger: logging.Logger = logging.getLogger(self._logger_name)
         # PLL initialization for setting up clocks
         # Actually only needed first time after power on, but harmless to leave
-        self.write_and_check(self.FebFpga.Core.SystemDevices.Si5345Pll.enable, True)
-        if self.FebFpga.Core.SystemDevices.Si5345Pll.LockedWait():
-            logger.error("Failed to lock FEB (Si5345) PLL")
-        else:
-            logger.debug("FEB (Si5345) PLL established")
-        self.write_and_check(self.FebFpga.Core.SystemDevices.Si5345Pll.enable, False)
 
-    def init_board(self):
-        # self.power_on()
+        # logger.info("FEB (Si5345) PLL established")
+        print("**** Checking PLL Lock ****")
+        for devPtr in self._root.find(typ=Uhr3x2ReadoutSystem.Uhr3x2ReadoutSystem):
+            pll = devPtr.FebFpga.Core.SystemDevices.Si5345Pll
+            pll.enable.set(True)
+
+        for devPtr in self._root.find(typ=Uhr3x2ReadoutSystem.Uhr3x2ReadoutSystem):
+            pll = devPtr.FebFpga.Core.SystemDevices.Si5345Pll
+            if pll.LockedWait():
+                # logger.error("Failed to lock FEB (Si5345) PLL")
+                print("Failed to lock PLL!")
+            else:
+                # logger.debug("FEB (Si5345) PLL established")
+                print("PLL Established.")
+
+            pll.enable.set(False)
+
+    def _initial_power_up(self):
+        # logger: logging.Logger = logging.getLogger(self._logger_name)
+        # logger.info("**** Doing Init Power Up Sequence ****")
+        print("**** Doing Init Power Up Sequence ****")
+        for devPtr in self._root.find(typ=Uhr3x2ReadoutSystem.Uhr3x2ReadoutSystem):
+            devPtr.FebFpga.App.EnableCommonAsicPower()
+            devPtr.FebFpga.App.EnableAllAsicDigitalPower()
+
+            # GT Module Setup - Emulator does not have
+            if not self._emulator:
+                devPtr.FebFpga.App.AsicGtClk.enable.set(True)
+                for i in range(self._nasics):
+                    devPtr.FebFpga.App.AsicGtData[i+1].enable.set(True)
+
+            time.sleep(1)
+            devPtr.FebFpga.App.WaveformControl.GlblRstPolarity.set(False)
+            time.sleep(1)
+            devPtr.FebFpga.App.WaveformControl.GlblRstPolarity.set(True)
+
+            carrierPresent: bool = not bool(devPtr.FebFpga.App.BoardCtrl3x2Readout.prsntCarrierL.get())
+            if carrierPresent:
+                devPtr.FebFpga.App.EnableAllAsicAnalogPower()
+                # Load register settings??
+
+            if not self._emulator:
+                devPtr.FebFpga.App.AsicGtClk.gtRstAll.set(True)
+                time.sleep(1)
+                devPtr.FebFpga.App.AsicGtClk.gtRstAll.set(False)
+                for i in range(self._nasics):
+                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(True)
+                time.sleep(1)
+                for i in range(self._nasics):
+                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(False)
+
+    def init_board(self, timebase: str):
         self._check_pll_lock()
 
-        self.Stop()
-        self._enable_clock_dependencies()
-        self.FebFpga.App.WaveformControl.enable.set(True)
+        if timebase != "119M":
+            print("**** Doing first round ConfigLclsTimingV2 ****")
+            for devPtr in self._root.find(typ=Uhr3x2ReadoutSystem.Uhr3x2ReadoutSystem):
+                devPtr.FebFpga.App.TimingRx.ConfigLclsTimingV2()
 
-        self.FebFpga.App.TriggerRegisters.enable.set(True)
+        self._enable_clock_dependencies()
+
         self.init_trigger_registers()
+
         self.init_waveform_control()
 
-        # self.init_asics(asics=tuple(range(1, self._nasics + 1)))
+        self._initial_power_up()
 
-        # GT Module Setup - Emulator does not have
-        if not self._emulator:
-            self.write_and_check(self.FebFpga.App.AsicGtClk.enable, True)
-            self.write_and_check(self.FebFpga.App.AsicGtClk.gtRstAll, True)
-            time.sleep(0.1)
-            self.write_and_check(self.FebFpga.App.AsicGtClk.gtRstAll, False)
-            self.reset_asic_gt(
-                asics=tuple(range(1, self._nasics + 1)), emulator=self._emulator
-            )
+        print("**** Init Done. ****")
 
         # Now can do the rest of the initialization
 
         self.write_and_check(self.FebFpga.App.TimingRx.enable, True)
         self.write_and_check(self.FebFpga.App.VINJ_DAC.dacEn, False)
         self.write_and_check(self.FebFpga.App.VINJ_DAC.rampEn, False)
+
+        self.initialize_timing(timebase=timebase)
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()
