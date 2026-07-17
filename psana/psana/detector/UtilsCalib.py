@@ -22,9 +22,9 @@ import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
-from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record  # info_command_line
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
-from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
+from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, reshape_to_3d, save_ndarray_in_textfile
 from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
