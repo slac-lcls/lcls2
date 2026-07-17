@@ -14,7 +14,7 @@ if [ -d "/cds/sw/" ]; then
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
     #export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_01152026
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_02202026
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_170726
 
     osrel=`uname -r`
     case $osrel in
