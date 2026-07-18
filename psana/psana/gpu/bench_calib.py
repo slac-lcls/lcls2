@@ -153,6 +153,34 @@ def _is_bd_rank():
     return _rank() >= 1 + _n_eb()
 
 
+class _EventCountingRun:
+    """Proxy a Run while measuring its complete events() iteration.
+
+    The GPU benchmark's existing wall time starts after warmup and counts only
+    detector events that reach the measured path. This proxy deliberately uses
+    the ds_count_events.py boundaries instead: time the whole run.events() loop
+    and count every event yielded to the user on each BD rank.
+    """
+
+    def __init__(self, run):
+        self._run = run
+        self.event_count = 0
+        self.loop_start = None
+        self.loop_end = None
+
+    def __getattr__(self, name):
+        return getattr(self._run, name)
+
+    def events(self):
+        self.loop_start = time.perf_counter()
+        try:
+            for evt in self._run.events():
+                self.event_count += 1
+                yield evt
+        finally:
+            self.loop_end = time.perf_counter()
+
+
 def run_gpu_bench(args, run, det_obj, peds_gpu, gmask_gpu, allow_break):
     """Time the GPU path over run.events(). Does NOT create a DataSource —
     the caller's DataSource is shared by all ranks (collective)."""
@@ -1072,6 +1100,35 @@ def _print_occupancy(rank, peds_gpu):
         print(f"[rank {rank}] npixels={npixels:,}  blocks/event={blocks:,}")
 
 
+def _report_loop_timing(timed_run, init_start, size):
+    """Print ds_count_events.py-equivalent init, loop, and total rate."""
+    if timed_run.loop_start is None or timed_run.loop_end is None:
+        local_init_s = 0.0
+        local_loop_s = 0.0
+    else:
+        local_init_s = timed_run.loop_start - init_start
+        local_loop_s = timed_run.loop_end - timed_run.loop_start
+
+    if size > 1:
+        from mpi4py import MPI
+        comm = MPI.COMM_WORLD
+        total_events = comm.reduce(timed_run.event_count, op=MPI.SUM, root=0)
+        init_s = comm.reduce(local_init_s, op=MPI.MAX, root=0)
+        loop_s = comm.reduce(local_loop_s, op=MPI.MAX, root=0)
+        if comm.Get_rank() != 0:
+            return
+    else:
+        total_events = timed_run.event_count
+        init_s = local_init_s
+        loop_s = local_loop_s
+
+    loop_rate = total_events / loop_s if loop_s > 0 else 0.0
+    print(
+        f"\n[total] Init time={init_s:.2f}s Loop time={loop_s:.2f}s "
+        f"Total events: {total_events} Rate={loop_rate:.1f} Hz"
+    )
+
+
 def _report_aggregate(result, size):
     """Gather per-BD-rank results on rank 0 and print the aggregate rate.
 
@@ -1159,6 +1216,10 @@ def main():
     args = parse_args()
     rank = _rank()
     size = _world_size()
+    if size > 1:
+        from mpi4py import MPI
+        MPI.COMM_WORLD.Barrier()
+    init_start = time.perf_counter()
     # Provisional (rank-arithmetic) role, used only to size the global event
     # budget. The authoritative role comes from psana AFTER DataSource
     # construction (below): rank arithmetic assumes contiguous low-rank EBs,
@@ -1193,13 +1254,22 @@ def main():
     # it so real EB ranks (not contiguous under colocate) serve instead of
     # running the benchmark body. Falls back to the arithmetic guess if the
     # global is unavailable (e.g. single-process / non-MPI DataSource).
+    node_type = None
     if size > 1:
         try:
             from psana.psexp import mpi_ds as _mpi_ds
             if _mpi_ds.nodetype is not None:
-                is_bd = (_mpi_ds.nodetype == "bd")
+                node_type = _mpi_ds.nodetype
+                is_bd = (node_type == "bd")
         except Exception:
             pass
+
+    if node_type == "eb":
+        from mpi4py import MPI
+        print(
+            f"[EB] world_rank={rank} hostname={MPI.Get_processor_name()}",
+            flush=True,
+        )
 
     if is_bd and not args.cpu:
         init_gpu_rank()
@@ -1207,41 +1277,44 @@ def main():
     run = next(ds.runs())
     det = run.Detector(args.det)
 
-    result = None
-    if is_bd and args.cpu:
-        result = run_cpu_bench_mpi(args, run, det, allow_break=(size == 1))
-        print(f"\n[rank {rank}] CPU results ({result['n']} events, "
-              f"warmup={args.warmup}):")
-        print(f"  rate:        {result['rate_hz']:.1f} Hz")
-        print(f"  CPU calib:   {result['calib_ms_mean']:.3f} ms/event")
-    elif is_bd:
+    peds_gpu = gmask_gpu = None
+    if is_bd and not args.cpu:
         peds_gpu, gmask_gpu = prep_calib_constants(det)
 
         if size == 1 or rank == 1 + _n_eb():   # first BD rank only
             _print_occupancy(rank, peds_gpu)
 
+    timed_run = _EventCountingRun(run)
+    result = None
+    if is_bd and args.cpu:
+        result = run_cpu_bench_mpi(args, timed_run, det, allow_break=(size == 1))
+        print(f"\n[rank {rank}] CPU results ({result['n']} events, "
+              f"warmup={args.warmup}):")
+        print(f"  rate:        {result['rate_hz']:.1f} Hz")
+        print(f"  CPU calib:   {result['calib_ms_mean']:.3f} ms/event")
+    elif is_bd:
         if args.overlap:
-            result = run_gpu_bench_overlap(args, run, det, peds_gpu,
+            result = run_gpu_bench_overlap(args, timed_run, det, peds_gpu,
                                            gmask_gpu, allow_break=(size == 1))
         elif args.wait_split:
-            result = run_gpu_bench_wait_split(args, run, det, peds_gpu,
+            result = run_gpu_bench_wait_split(args, timed_run, det, peds_gpu,
                                               gmask_gpu, allow_break=(size == 1))
         elif args.seg_h2d and args.profile:
-            result = run_gpu_bench_seg_h2d_profile(args, run, det, peds_gpu,
+            result = run_gpu_bench_seg_h2d_profile(args, timed_run, det, peds_gpu,
                                                    gmask_gpu, allow_break=(size == 1))
         elif args.seg_h2d or args.reader_probe:
             # --reader-probe runs the seg-h2d fast path (the baseline it compares
             # against) with a background reader thread; see _start_reader_probe.
-            result = run_gpu_bench_seg_h2d(args, run, det, peds_gpu, gmask_gpu,
+            result = run_gpu_bench_seg_h2d(args, timed_run, det, peds_gpu, gmask_gpu,
                                            allow_break=(size == 1))
         elif args.profile_read:
-            result = run_gpu_bench_profile_read(args, run, det, peds_gpu, gmask_gpu,
+            result = run_gpu_bench_profile_read(args, timed_run, det, peds_gpu, gmask_gpu,
                                                 allow_break=(size == 1))
         elif args.profile:
-            result = run_gpu_bench_profile(args, run, det, peds_gpu, gmask_gpu,
+            result = run_gpu_bench_profile(args, timed_run, det, peds_gpu, gmask_gpu,
                                            allow_break=(size == 1))
         else:
-            result = run_gpu_bench(args, run, det, peds_gpu, gmask_gpu,
+            result = run_gpu_bench(args, timed_run, det, peds_gpu, gmask_gpu,
                                    allow_break=(size == 1))
 
         print(f"\n[rank {rank}] GPU results ({result['n']} events, "
@@ -1346,9 +1419,10 @@ def main():
     else:
         # smd0/EB ranks serve data from inside the events() generator and
         # yield nothing; they must drive the same loop or BD ranks starve.
-        for _ in run.events():
+        for _ in timed_run.events():
             pass
 
+    _report_loop_timing(timed_run, init_start, size)
     _report_aggregate(result, size)
 
 

@@ -119,7 +119,7 @@ def _force_mfx_overrides(exp, kwargs):
                 os.environ["PS_EB_NODES"] = str(node_count)
                 capped_eb_nodes = True
             else:
-                if requested_eb_nodes < 1 or requested_eb_nodes > node_count:
+                if requested_eb_nodes < 1:
                     os.environ["PS_EB_NODES"] = str(node_count)
                     capped_eb_nodes = True
                 else:

@@ -4,7 +4,8 @@ net_bandwidth.py
 
 Sample per-interface network byte counters on the current node and print
 receive/transmit bandwidth. This is useful for checking node-level read
-bandwidth while running psana jobs against FFB/Weka or other network storage.
+bandwidth while running psana jobs against FFB/Weka, Perlmutter Lustre, or
+other network storage.
 
 Example usage:
 
@@ -25,6 +26,15 @@ Example usage:
     # Measure NIC physical counters from ethtool -S. This is useful on Weka
     # clients where RDMA/storage traffic may not appear in netdev rx_bytes.
     python psana/psana/debugtools/net_bandwidth.py --source ethtool --samples 60
+
+    # Measure Perlmutter Slingshot/CXI physical octets. Lustre uses KFI/CXI and
+    # therefore does not appear in the Linux hsn* netdev rx_bytes counters.
+    python psana/psana/debugtools/net_bandwidth.py --source cxi --samples 60
+
+    # Restrict CXI to optimized Slingshot traffic instead of all good octets.
+    python psana/psana/debugtools/net_bandwidth.py --source cxi \
+        --cxi-rx-counter hni_sts_rx_octets_opt \
+        --cxi-tx-counter hni_sts_tx_octets_opt --samples 60
 
     # Machine-readable output.
     python psana/psana/debugtools/net_bandwidth.py --jsonl --samples 10
@@ -58,7 +68,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Measure node network receive/transmit bandwidth from netdev, "
-            "InfiniBand, or NIC hardware counters."
+            "InfiniBand, CXI telemetry, or NIC hardware counters."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
@@ -85,14 +95,32 @@ Notes:
     )
     parser.add_argument(
         "--source",
-        choices=("netdev", "ib", "ethtool", "all"),
+        choices=("netdev", "ib", "cxi", "ethtool", "all"),
         default="netdev",
         help=(
             "Counter source: netdev uses /sys/class/net rx/tx byte counters; "
             "ib uses /sys/class/infiniband port_rcv_data/port_xmit_data "
-            "converted from 4-byte words to bytes; ethtool uses NIC hardware "
-            "counters from ethtool -S; all uses all sources and may double "
-            "count traffic (default: netdev)."
+            "converted from 4-byte words to bytes; cxi uses Slingshot hardware "
+            "octet counters from /sys/class/cxi and includes Perlmutter Lustre "
+            "KFI traffic; ethtool uses NIC hardware counters from ethtool -S; "
+            "all uses all sources and may double count traffic "
+            "(default: netdev)."
+        ),
+    )
+    parser.add_argument(
+        "--cxi-rx-counter",
+        default="hni_sts_rx_ok_octets",
+        help=(
+            "CXI telemetry receive counter to use with --source cxi "
+            "(default: hni_sts_rx_ok_octets)"
+        ),
+    )
+    parser.add_argument(
+        "--cxi-tx-counter",
+        default="hni_sts_tx_ok_octets",
+        help=(
+            "CXI telemetry transmit counter to use with --source cxi "
+            "(default: hni_sts_tx_ok_octets)"
         ),
     )
     parser.add_argument(
@@ -169,6 +197,12 @@ def read_int(path, default=0):
         return default
 
 
+def read_counter(path):
+    """Read a plain integer or a CXI telemetry value of form VALUE@TIMESTAMP."""
+    value = path.read_text().strip().split("@", 1)[0]
+    return int(value)
+
+
 def is_selected(name, operstate, args):
     includes = args.include
     excludes = DEFAULT_EXCLUDE + tuple(args.exclude)
@@ -188,6 +222,8 @@ def interface_info(args):
         infos.extend(netdev_info(args))
     if args.source in ("ib", "all"):
         infos.extend(ib_info(args))
+    if args.source in ("cxi", "all"):
+        infos.extend(cxi_info(args))
     if args.source in ("ethtool", "all"):
         infos.extend(ethtool_info(args))
     return infos
@@ -240,6 +276,44 @@ def ib_info(args):
                 "rx_path": rx_path,
                 "tx_path": tx_path,
                 "scale": 4,
+            }
+        )
+    return infos
+
+
+def cxi_info(args):
+    """Discover Slingshot/CXI telemetry counters, including KFI traffic."""
+    infos = []
+    for cxi_path in sorted(Path("/sys/class/cxi").glob("cxi*")):
+        telemetry = cxi_path / "device" / "telemetry"
+        rx_path = telemetry / args.cxi_rx_counter
+        tx_path = telemetry / args.cxi_tx_counter
+        if not rx_path.exists() or not tx_path.exists():
+            continue
+
+        net_paths = sorted((cxi_path / "device" / "net").glob("*"))
+        if net_paths:
+            net_path = net_paths[0]
+            label = net_path.name
+            operstate = read_text(net_path / "operstate", "unknown")
+            speed_mbit = read_int(net_path / "speed", -1)
+        else:
+            label = cxi_path.name
+            operstate = "unknown"
+            speed_mbit = -1
+
+        if not is_selected(label, operstate, args):
+            continue
+        infos.append(
+            {
+                "name": f"cxi:{label}",
+                "source": "cxi",
+                "label": label,
+                "operstate": operstate,
+                "speed_mbit": speed_mbit,
+                "rx_path": rx_path,
+                "tx_path": tx_path,
+                "scale": 1,
             }
         )
     return infos
@@ -308,9 +382,9 @@ def sample(infos):
                 rx = counters[info["rx_counter"]]
                 tx = counters[info["tx_counter"]]
             else:
-                rx = int(info["rx_path"].read_text())
-                tx = int(info["tx_path"].read_text())
-        except OSError:
+                rx = read_counter(info["rx_path"])
+                tx = read_counter(info["tx_path"])
+        except (OSError, ValueError):
             continue
         except KeyError:
             continue
