@@ -649,6 +649,9 @@ class EpixUHR3x2_Manager:
 
         self.initialize_timing(timebase=timebase)
 
+        # Force use of CPU data path. Seems to not determine that sometimes.
+        self._kick_data_path(use_cpu=True)
+
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()
         self.FebFpga.App.TimingRx.TriggerEventManager.TriggerEventBuffer[1].countReset()
