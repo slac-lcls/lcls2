@@ -73,8 +73,7 @@ elif [ -n "$ZSH_VERSION" ]; then
     SCRIPT_SOURCE="${(%):-%x}"
 fi
 
-#RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
-RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
+RELDIR="$(builtin cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
 
 export PATH=$RELDIR/install/bin:${PATH}
 echo $RELDIR
