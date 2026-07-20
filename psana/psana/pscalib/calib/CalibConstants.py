@@ -44,11 +44,11 @@ URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', None)
 CALIB_JWT  = os.environ.get('CALIB_JWT', None) is not None
 
 #print('IS_OFFSITE:', IS_OFFSITE)
-#URL = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
-URL = 'https://psextapi.slac.stanford.edu/calib_ws/' if IS_OFFSITE else\
+URL = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
+      'https://psextapi.slac.stanford.edu/calib_ws/' if IS_OFFSITE else\
       'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
-#URL_KRB = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
-URL_KRB = 'https://psextapi.slac.stanford.edu/ws-kerb/calib_ws/' if IS_OFFSITE else\
+URL_KRB = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
+          'https://psextapi.slac.stanford.edu/ws-kerb/calib_ws/' if IS_OFFSITE else\
           'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
 URL_KRB_HEADERS = URL_KRB if IS_OFFSITE else\
                   'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
