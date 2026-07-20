@@ -20,7 +20,8 @@ if __name__ == "__main__":
     return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=float)
 
   def test_database_names():
-    print('test_database_names:', database_names())
+    dbnames = database_names()
+    print('test_database_names:', dbnames, '\nnumber of DBs:', len(dbnames))
 
   def test_collection_names():
     dbname = sys.argv[2] if len(sys.argv) > 2 else 'cdb_cspad_0001'
@@ -261,7 +262,7 @@ if __name__ == "__main__":
     import os
     from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
     global print_ndarr, info_ndarr
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s Test %s %s' % (25*'_',tname, 25*'_'))
