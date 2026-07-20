@@ -994,7 +994,13 @@ class MPIDataSource(DataSourceBase):
             from psana.gpu.gpu_mpi import init_gpu_rank
             bd_local_rank = self.comms.bd_rank - 1   # 0-indexed BD worker
             n_gpus = int(os.environ.get('SLURM_GPUS_ON_NODE', 1))
-            init_gpu_rank(local_rank=bd_local_rank, n_gpus=n_gpus)
+            gpu_id = init_gpu_rank(local_rank=bd_local_rank, n_gpus=n_gpus)
+            print(
+                f"[GPU-PIN] rank={rank} bd_rank={self.comms.bd_rank} "
+                f"bd_local_rank={bd_local_rank} n_gpus={n_gpus} gpu_id={gpu_id} "
+                f"CUDA_VISIBLE_DEVICES={os.environ.get('CUDA_VISIBLE_DEVICES')}",
+                flush=True,
+            )
 
         # prepare comms for running SmallData
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
