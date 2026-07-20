@@ -241,6 +241,90 @@ Any asynchronous D2H implementation must extend slot ownership through D2H
 completion. Synchronizing only the calibration stream is not sufficient if a
 separate D2H stream still reads the slot.
 
+## KvikIO Compatibility-Mode Read Tuning
+
+Tests on 2026-07-20 measured KvikIO's CPU-fallback path on the Weka FFB:
+
+```text
+Weka -> CPU DRAM -> GPU VRAM
+```
+
+True GDS was not active. The tests ran on `sdfampere033` with one A100 visible,
+one Smd0 rank, one EventBuilder rank, and one BD rank. All cases used
+Jungfrau, `batch_size=1`, `gpu_pool_depth=1`, `gpu_d2h_interval=0`, and no
+explicit CPU result access. NIC receive rates came from the physical
+`ethtool:enp225s0` counter. An active sample means receive bandwidth greater
+than or equal to 1 GB/s.
+
+Different FFB experiment/runs were used for the cache-clean comparisons. They
+had the same 32-segment Jungfrau layout spread over five bigdata streams. The
+integrated NIC bytes per event agree closely enough to reject a large node
+cache advantage in the compared cases.
+
+### KvikIO thread count
+
+These cases held `KVIKIO_TASK_SIZE=2097152` (2 MiB) constant:
+
+| KvikIO threads | Experiment/run | Events | Loop time | Rate | NIC receive during loop | NIC/event | Active recv avg | Peak recv |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 | `mfx101572426` r192 | 16,000 | 197.19 s | 81.1 Hz | 549.70 GiB | 36.890 MB | 3.056 GB/s | 3.363 GB/s |
+| 2 | `mfx101592326` r192 | 16,000 | 155.36 s | 103.0 Hz | 542.57 GiB | 36.412 MB | 3.825 GB/s | 4.261 GB/s |
+| 4 | `mfx102101026` r10 | 16,000 | 158.56 s | 100.9 Hz | 549.75 GiB | 36.893 MB | 3.783 GB/s | 4.288 GB/s |
+
+Going from one to two workers increased the event rate by 27.0% and active NIC
+bandwidth by 25.2%. Going from two to four workers did not improve sustained
+throughput: the event rate was 2.0% lower and active NIC bandwidth was 1.1%
+lower, while the peak sample changed by less than 1%. Two KvikIO workers are
+therefore the best measured setting for one BD reading five Jungfrau streams.
+
+### KvikIO task size
+
+The cache-clean task-size comparison held `KVIKIO_NTHREADS=2` constant. The
+4 MiB entry intentionally uses the longer 7,216-event case rather than the
+earlier 3,000-event run:
+
+| Task size | Experiment/run | Events | Loop time | Full rate | Rate after first 1,000 | NIC receive during loop | NIC/event | Active recv avg | Peak recv |
+|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| 2 MiB | `mfx101592326` r192 | 16,000 | 155.36 s | 103.0 Hz | 105.2 Hz | 542.57 GiB | 36.412 MB | 3.825 GB/s | 4.261 GB/s |
+| 4 MiB | `mfx101592326` r198 | 7,216 | 77.10 s | 93.6 Hz | 97.5 Hz | 244.44 GiB | 36.373 MB | 3.535 GB/s | 3.894 GB/s |
+
+The NIC volume differs by only 0.11% per event. After removing the slower first
+1,000 events from each run, 4 MiB tasks were 7.3% slower than 2 MiB tasks. The
+active and peak NIC rates were respectively 7.6% and 8.6% lower. A plausible
+explanation is that 2 MiB tasks give the two-worker global pool finer-grained
+scheduling across uneven per-stream dgram sizes, but this mechanism has not
+been isolated directly.
+
+Preliminary 1, 2, 4, and 8 MiB tests with one KvikIO worker reused the same
+experiment/run. Their integrated NIC volumes fell as the node cache warmed, so
+they are not used to select the task size. The cache-clean results support this
+compatibility-mode starting point:
+
+```bash
+export KVIKIO_TASK_SIZE=2097152
+export KVIKIO_NTHREADS=2
+```
+
+An equivalent command used inside the Ampere allocation on `sdfampere033` was:
+
+```bash
+mpirun \
+  -x SLURM_GPUS_ON_NODE=1 \
+  -x KVIKIO_TASK_SIZE=2097152 \
+  -x KVIKIO_NTHREADS=2 \
+  -n 3 python psana/psana/debugtools/ds_count_events.py \
+  -e mfx101592326 -r 192 --ffb \
+  --gpu_det jungfrau \
+  --batch_size 1 \
+  --gpu_pool_depth 1 \
+  --max_events 16000 \
+  --gpu_d2h_interval 0
+```
+
+The 4 MiB task-size comparison used the same command with
+`KVIKIO_TASK_SIZE=4194304` and `mfx101592326` run 198. Raw logs and NIC samples
+are under `tmp/20260720/02/` in the test workspace.
+
 ## Current Limitations and Next Optimizations
 
 - Integrated calibration supports Jungfrau only.
