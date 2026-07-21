@@ -187,6 +187,9 @@ class EventContext:
     raw_gpu:   object = None    # cp.ndarray uint16 or None
     image_gpu: object = None    # cp.ndarray float32 or None
     stream:    object = None    # cp.cuda.Stream or None
+    extra:     dict   = None    # {result_name: cp.ndarray} from reduction
+                                # kernels (registry entries != 'calib');
+                                # surfaced as ctx.get(f'{det}.{name}')
 
 
 class GPUDetector:
@@ -217,6 +220,7 @@ class GPUDetector:
                  stream_seg_map=None,
                  cmpars=None,
                  calib_kernel=None,
+                 extra_kernels=None,
                  n_slots=4):
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
@@ -240,6 +244,13 @@ class GPUDetector:
         # Default: None resolved lazily to JungfrauCalibKernel on first use
         # (backward compat); callers should pass an explicit kernel.
         self._calib_kernel     = calib_kernel   # type: GPUKernel | None
+        # Reduction kernels (registry entries with name != 'calib') run per
+        # event on the calibrated buffer; results land in EventContext.extra.
+        self._extra_kernels    = dict(extra_kernels) if extra_kernels else {}
+        self._extra_needs_raw  = any(
+            getattr(k, 'needs_raw', False)
+            for k in self._extra_kernels.values()
+        )
         # CPU-side cache for beginstep() change detection.
         self._peds_cpu_cache   = None
         self._gmask_cpu_cache  = None
@@ -590,6 +601,9 @@ class GPUDetector:
         cp         = _cupy()
         data_u16   = gpu_read.data_gpu.view(cp.uint16)
         desc_table = gpu_read.desc_table   # NumPy CPU array — no D2H needed
+        # Reduction kernels that need gain bits (needs_raw) force raw
+        # retention for the batch even when the caller didn't ask for it.
+        compute_raw = compute_raw or self._extra_needs_raw
 
         # Auto-detect layout on the first batch only.  The guard is outside the
         # .get() call because Python evaluates arguments before calling the
@@ -700,11 +714,26 @@ class GPUDetector:
                 image_gpu = (self.assemble_image(calib_gpu, stream=stream)
                              if compute_image else None)
 
+                # Reduction kernels: derived per-event results on the same
+                # stream, after calibration.  Ordered dict iteration lets an
+                # in-place kernel (e.g. common-mode) precede a reducer.
+                extra = None
+                if self._extra_kernels:
+                    extra = {}
+                    for name, kern in self._extra_kernels.items():
+                        extra[name] = kern.reduce(
+                            calib_gpu,
+                            raw_gpu=raw_gpu,
+                            gmask_gpu=self.gmask_gpu,
+                            stream=stream,
+                        )
+
             yield EventContext(timestamp=event.timestamp,
                                calib_gpu=calib_gpu,
                                raw_gpu=raw_gpu,
                                image_gpu=image_gpu,
-                               stream=stream)
+                               stream=stream,
+                               extra=extra)
 
             batch_offset += total_segs   # advance to next event's region
 

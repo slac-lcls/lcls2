@@ -126,6 +126,53 @@ class GPUKernel:
             f'{type(self).__name__}.calibrate() is not implemented'
         )
 
+    # ------------------------------------------------------------------
+    # Reduction-kernel interface (result_name != 'calib')
+    # ------------------------------------------------------------------
+    #
+    # Kernels registered under a name other than 'calib' produce a DERIVED
+    # per-event result (e.g. an azimuthal-integration histogram) instead of
+    # a frame-shaped calibrated array.  They are dispatched by GPUDetector
+    # AFTER calibration, consuming the event's calibrated GPU buffer, and
+    # their output appears in the event context under
+    # ``ctx.get(f'{det_name}.{name}')``.
+    #
+    # The 'calib' contract (frame-shaped, slot-buffered) is unchanged.
+
+    needs_raw = False
+    """Set True if reduce() needs the event's raw uint16 array (e.g. for
+    gain-bit-dependent steps like common-mode).  GPUDetector then retains
+    raw_gpu for the batch."""
+
+    def result_shape(self, det_shape):
+        """Per-event output shape of reduce() for a detector of det_shape.
+
+        Returns None for 'calib' kernels (frame-shaped by contract).
+        Reduction kernels must override, e.g. ``return (3, self.nbins)``.
+        """
+        return None
+
+    def reduce(self, calib_gpu, raw_gpu=None, gmask_gpu=None, stream=None):
+        """Compute this kernel's derived result for one event.
+
+        Parameters
+        ----------
+        calib_gpu : cp.ndarray float32 — the event's calibrated pixels
+            (a view into the batch slot buffer; treat as read-only unless
+            the kernel deliberately owns in-place semantics, e.g. a
+            common-mode variant that corrects the frame before reducing).
+        raw_gpu   : cp.ndarray uint16 or None — provided when needs_raw.
+        gmask_gpu : cp.ndarray float32 or None — flat mode-major gain*mask.
+        stream    : cp.cuda.Stream or None.
+
+        Returns
+        -------
+        cp.ndarray with shape result_shape(det_shape).
+        """
+        raise NotImplementedError(
+            f'{type(self).__name__}.reduce() is not implemented'
+        )
+
 
 # ---------------------------------------------------------------------------
 # File-based kernel support
@@ -458,6 +505,17 @@ class GPUKernelRegistry:
         result_name : str, default 'calib'
         """
         return self._kernels.get((det_type, result_name))
+
+    def kernels_for(self, det_type: str) -> dict:
+        """Return {result_name: kernel} for every kernel registered for
+        det_type.  Includes 'calib' when present; reduction kernels
+        (result_name != 'calib') are dispatched by GPUDetector after
+        calibration and surface as ``ctx.get(f'{det_name}.{name}')``."""
+        return {
+            name: kernel
+            for (dt, name), kernel in self._kernels.items()
+            if dt == det_type
+        }
 
     def list_registered(self) -> list:
         """Return sorted list of (det_type, result_name) pairs."""

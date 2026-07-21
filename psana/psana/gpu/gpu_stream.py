@@ -160,6 +160,9 @@ class EventPool:
                     ts_dict[f'{det_name}.raw'] = ec.raw_gpu
                 if ec.image_gpu is not None:
                     ts_dict[f'{det_name}.image'] = ec.image_gpu
+                if ec.extra:
+                    for extra_name, extra_arr in ec.extra.items():
+                        ts_dict[f'{det_name}.{extra_name}'] = extra_arr
 
         if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
             try:

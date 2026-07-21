@@ -200,16 +200,24 @@ class GpuEvents:
             all_gpu_stream_ids.update(gpu_stream_ids)
 
             kernel = reg.get(det_name, "calib")
+            extra_kernels = {
+                name: k
+                for name, k in reg.kernels_for(det_name).items()
+                if name != "calib"
+            }
             gpu_detector = GPUDetector(
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
                 stream_seg_map=stream_seg_map or None,
                 calib_kernel=kernel,
+                extra_kernels=extra_kernels or None,
                 n_slots=getattr(self.dsparms, 'n_gpu_streams', 4),  # one calib_gpu per slot
             )
             if kernel is not None:
                 kernel.setup(det, gpu_detector)
+            for extra_kernel in extra_kernels.values():
+                extra_kernel.setup(det, gpu_detector)
             if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
                 ix_all, iy_all = self._prebuilt_geometry[det_name]
                 gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)
