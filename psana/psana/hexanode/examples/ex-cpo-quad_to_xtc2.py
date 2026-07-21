@@ -5,7 +5,7 @@
 # . setup_env.sh
 # python lcls2/psana/psana/hexanode/examples/ex-cpo-quad_to_xtc2.py
 
-import dgramCreate as dc
+import psalg.utils.dgramCreate as dc
 import numpy as np
 import os
 import h5py

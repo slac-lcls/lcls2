@@ -68,7 +68,7 @@ LIST_SAVE = (RAW, RUNINFO, EBEAM, EVENTID, GASDET, XTCAVPARS)
 
 def convert_hdf5_to_xtc2_with_runinfo() :
 
-    import dgramCreate as dc # .../psana/peakFinder/dgramCreate.pyx (Lord, why it is here?)
+    import psalg.utils.dgramCreate as dc
     import numpy as np
     import os
     import h5py

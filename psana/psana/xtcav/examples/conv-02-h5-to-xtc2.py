@@ -47,7 +47,7 @@ FNAME_XTC2 = os.path.join(DIRTMP,OFNAME)
 
 def convert_hdf5_to_xtc2_with_runinfo() :
 
-    import dgramCreate as dc
+    import psalg.utils.dgramCreate as dc
     import numpy as np
     import os
     import h5py
