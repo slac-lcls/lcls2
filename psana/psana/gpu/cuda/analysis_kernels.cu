@@ -164,6 +164,72 @@ __global__ void fused_calib_cm_azint_kernel(
 }
 
 // ---------------------------------------------------------------------------
+// fused_calib_azint_sorted_kernel — calibrate + 1D azint, no atomics
+//
+// The pre-sorted strategy from jungfrau_gpu_azint DirectIntegrate
+// (method='sorted'), fused one step further: instead of gathering into a
+// bin-contiguous staging array, each bin's block reads its pixels through
+// the sort_order indirection and calibrates in-register — so neither the
+// calibrated array nor the gather intermediate ever exists in global
+// memory.  sort_order lists the indices of all VALID (unmasked, in-range)
+// pixels grouped by bin; bin_offsets[b]..bin_offsets[b+1] is bin b's range.
+// Both are precomputed once per run on CPU (geometry is fixed).
+//
+// One block per bin: threads stride the bin's range accumulating private
+// partial sums (registers), then tree-reduce in shared memory.  Every bin
+// is written unconditionally, so sum_I / sum_N need no pre-zeroing.
+//
+// Launch: grid (nbins,1,1), block (256,1,1).
+// ---------------------------------------------------------------------------
+__global__ void fused_calib_azint_sorted_kernel(
+    const unsigned short* __restrict__ raw,
+    const float*          __restrict__ peds,        // (3 * npixels,) mode-major
+    const float*          __restrict__ gmask,       // (3 * npixels,) mode-major
+    const int*            __restrict__ sort_order,  // (n_valid,) grouped by bin
+    const int*            __restrict__ bin_offsets, // (nbins + 1,)
+    float*                __restrict__ sum_I,       // (nbins,)
+    float*                __restrict__ sum_N,       // (nbins,)
+    const unsigned long long npixels)
+{
+    const int bin        = blockIdx.x;
+    const int lid        = threadIdx.x;
+    const int local_size = blockDim.x;
+
+    __shared__ float s_I[256];
+    __shared__ float s_N[256];
+
+    const int start = bin_offsets[bin];
+    const int end   = bin_offsets[bin + 1];
+
+    float my_I = 0.0f;
+    float my_N = 0.0f;
+
+    for (int i = start + lid; i < end; i += local_size) {
+        const unsigned long long pix = (unsigned long long)sort_order[i];
+        my_I += psana_gpu::jungfrau_calib_pixel(
+            raw[pix], peds, gmask, pix, npixels);
+        my_N += 1.0f;
+    }
+
+    s_I[lid] = my_I;
+    s_N[lid] = my_N;
+    __syncthreads();
+
+    for (int s = local_size / 2; s > 0; s >>= 1) {
+        if (lid < s) {
+            s_I[lid] += s_I[lid + s];
+            s_N[lid] += s_N[lid + s];
+        }
+        __syncthreads();
+    }
+
+    if (lid == 0) {
+        sum_I[bin] = s_I[0];
+        sum_N[bin] = s_N[0];
+    }
+}
+
+// ---------------------------------------------------------------------------
 // normalize_kernel — intensity_avg[i] = sum_I[i] / sum_N[i]  (0 where empty)
 // ---------------------------------------------------------------------------
 __global__ void normalize_kernel(

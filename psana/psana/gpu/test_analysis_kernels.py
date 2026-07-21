@@ -51,6 +51,29 @@ def make_data(nsegs, seed):
     return raw, peds, gmask, mask
 
 
+def make_bin_idx_from_calib(calib_path, nbins, dist=0.13, wavelength=1.746e-10,
+                            poni1=-0.0018616, poni2=-0.0063890, pixel=75e-6):
+    """q-bin indices from a jungfrau_gpu_azint streaming_calib directory
+    (pixel_ix/pixel_iy/mask .npy), same math as DirectIntegrate there.
+    Geometry defaults are the mfx101344525 run0123 values from
+    tests/benchmark_direct_integrate.py.  Returns (bin_idx, mask, nsegs)."""
+    calib_path = Path(calib_path)
+    ix = np.load(calib_path / 'pixel_ix.npy')
+    iy = np.load(calib_path / 'pixel_iy.npy')
+    mask = np.load(calib_path / 'mask.npy').ravel().astype(bool)
+    nsegs = ix.shape[0]
+
+    x_mm = (ix.ravel() - ix.max() / 2) * (pixel * 1e3) + poni2 * 1e3
+    y_mm = (iy.ravel() - iy.max() / 2) * (pixel * 1e3) + poni1 * 1e3
+    r_mm = np.hypot(x_mm, y_mm)
+    q = 4 * np.pi / (wavelength * 1e10) * np.sin(np.arctan2(r_mm, dist * 1e3) / 2)
+
+    edges = np.linspace(q[mask].min(), q[mask].max(), nbins + 1)
+    bin_idx = np.clip(np.digitize(q, edges) - 1, 0, nbins - 1)
+    bin_idx = np.where(mask, bin_idx, -1).astype(np.int32)
+    return bin_idx, mask, nsegs
+
+
 def make_bin_idx(nsegs, nbins, mask, dist=0.1, wavelength=1e-10, pixel=75e-6):
     """Per-pixel q-bin index from a simple tiled-panel geometry (the
     once-per-run CPU precompute; with real data this comes from psana
@@ -124,21 +147,41 @@ def main():
     ap.add_argument('--cormax', type=float, default=100.0)
     ap.add_argument('--min-pixels', type=int, default=10)
     ap.add_argument('--seed', type=int, default=42)
+    ap.add_argument('--calib-path', default=None,
+                    help='jungfrau_gpu_azint streaming_calib dir: use its real '
+                         'pixel_ix/pixel_iy/mask geometry instead of synthetic '
+                         '(overrides --segs)')
     args = ap.parse_args()
 
     import cupy as cp
 
-    nsegs, nbins = args.segs, args.nbins
-    npix = nsegs * ROWS * COLS
+    nbins = args.nbins
+    if args.calib_path:
+        bin_idx, mask, nsegs = make_bin_idx_from_calib(args.calib_path, nbins)
+        npix = nsegs * ROWS * COLS
+        raw, peds, gmask, _ = make_data(nsegs, args.seed)
+        gmask *= mask[None, :]                  # real bad-pixel mask
+        print(f'real geometry from {args.calib_path}')
+    else:
+        nsegs = args.segs
+        npix = nsegs * ROWS * COLS
+        raw, peds, gmask, mask = make_data(nsegs, args.seed)
+        bin_idx, _q = make_bin_idx(nsegs, nbins, mask)
     print(f'{nsegs} segs = {npix / 1e6:.1f} Mpix, {nbins} q-bins')
 
-    raw, peds, gmask, mask = make_data(nsegs, args.seed)
-    bin_idx, _q = make_bin_idx(nsegs, nbins, mask)
+    # sorted-strategy tables: valid pixel indices grouped by bin (per run)
+    valid_pix = np.nonzero(bin_idx >= 0)[0]
+    sort_order = valid_pix[np.argsort(bin_idx[valid_pix],
+                                      kind='stable')].astype(np.int32)
+    bin_offsets = np.zeros(nbins + 1, dtype=np.int32)
+    bin_offsets[1:] = np.cumsum(np.bincount(bin_idx[valid_pix],
+                                            minlength=nbins))
 
     mod = cp.RawModule(code=(CUDA_DIR / 'analysis_kernels.cu').read_text(),
                        options=('--std=c++17', f'-I{CUDA_DIR}'))
     k_azint = mod.get_function('fused_calib_azint_kernel')
     k_cm = mod.get_function('fused_calib_cm_azint_kernel')
+    k_sorted = mod.get_function('fused_calib_azint_sorted_kernel')
 
     raw_d = cp.asarray(raw)
     peds_d = cp.asarray(peds.ravel())
@@ -147,8 +190,13 @@ def main():
     sum_I = cp.zeros(nbins, dtype=cp.float32)
     sum_N = cp.zeros(nbins, dtype=cp.float32)
 
+    sort_order_d = cp.asarray(sort_order)
+    bin_offsets_d = cp.asarray(bin_offsets)
+
     grid_1d = ((npix + TPB - 1) // TPB,)
     azint_args = (raw_d, peds_d, gmask_d, bin_d, sum_I, sum_N, np.uint64(npix))
+    sorted_args = (raw_d, peds_d, gmask_d, sort_order_d, bin_offsets_d,
+                   sum_I, sum_N, np.uint64(npix))
     cm_args = (raw_d, peds_d, gmask_d, bin_d, sum_I, sum_N,
                np.int32(ROWS * COLS), np.int32(COLS),
                np.int32(BANK_ROWS), np.int32(BANK_COLS),
@@ -157,6 +205,9 @@ def main():
                np.uint64(npix))
 
     def launch(which):
+        if which == 'sorted':          # writes every bin; no pre-zero needed
+            k_sorted((nbins,), (TPB,), sorted_args)
+            return
         sum_I.fill(0)
         sum_N.fill(0)
         if which == 'azint':
@@ -167,10 +218,11 @@ def main():
     # --- correctness --------------------------------------------------------
     v = calib_cpu(raw, peds, gmask)
     refs = {
-        'azint': azint_cpu(v, bin_idx, nbins),
-        'cm':    azint_cpu(common_mode_cpu(v, raw, gmask, nsegs,
-                                           args.cormax, args.min_pixels),
-                           bin_idx, nbins),
+        'azint':  azint_cpu(v, bin_idx, nbins),
+        'sorted': azint_cpu(v, bin_idx, nbins),
+        'cm':     azint_cpu(common_mode_cpu(v, raw, gmask, nsegs,
+                                            args.cormax, args.min_pixels),
+                            bin_idx, nbins),
     }
 
     failed = False
