@@ -37,6 +37,7 @@ add_executable(drp
     EpixHRemu.cc
     EpixM320.cc
     EpixUHR.cc
+    EpixUHR3x2.cc
     Epix100.cc
     EpixQuad.cc
     Jungfrau.cc
@@ -305,3 +306,4 @@ install(TARGETS drp
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
 )
+

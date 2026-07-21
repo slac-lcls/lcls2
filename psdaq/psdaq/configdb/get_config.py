@@ -3,6 +3,19 @@ import json
 
 #import pprint
 
+def get_serno(connect_info, detname):
+    """Lookup a serial number for a detector given current DAQ status."""
+
+    for level in ('drp', 'tpr'):
+        if level in connect_info['body']:
+            for _, item in connect_info['body'][level].items():
+                if item.get('proc_info', {}).get('alias') == detname:
+                    # We will pass around serial numbers in connect_info
+                    # These are truncated hashes of the full serial number to make
+                    # it easier to read. They also include the det type
+                    # E.g. f"{det_type}_{short_hash}"
+                    return item.get('connect_info', {}).get('short_sn_id')
+
 # json2xtc conversion depends on these being present with ':RO'
 # (and the :RO does not appear in the xtc names)
 leave_alone = ['detName:RO','detType:RO','detId:RO','doc:RO','alg:RO','version:RO']
@@ -50,7 +63,23 @@ def get_config(connect_json,cfgtype,detname,detsegm):
     cfg_dbase = control_info['cfg_dbase'].rsplit('/', 1)
     db_url = cfg_dbase[0]
     db_name =cfg_dbase[1]
-    return get_config_with_params(db_url, instrument, db_name, cfgtype, detname+'_%d'%detsegm)
+
+    cfg = get_config_with_params(db_url, instrument, db_name, cfgtype, detname+'_%d'%detsegm)
+
+    final_cfg = cfg
+    if cfg.get('use_serial_db', False):
+        serno = get_serno(connect_info, detname)
+        # Check for placeholder... brittle if placeholder changes
+        if serno and serno != '-':
+            sn_detname = f"{serno}_{detsegm}"
+            try:
+                # Special `det` database has seriial number lookups
+                serno_instrument = "det"
+                cfg_sn = get_config_with_params(db_url, serno_instrument, db_name, cfgtype, sn_detname)
+                final_cfg = update_config(cfg_sn, final_cfg)
+            except:
+                print("Unable to retrieve serial number config for:", sn_detname)
+    return final_cfg
 
 def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
     create = False
@@ -88,3 +117,4 @@ def get_config_json(*args):
 
 def get_config_json_with_params(*args):
     return json.dumps(get_config_with_params(*args))
+

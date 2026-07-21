@@ -36,6 +36,7 @@ TebReceiver::TebReceiver(const Parameters&        para,
   TebReceiverBase(para, drp),
   m_mon          (drp.mebContributor()),
   m_terminate    (terminate),
+  m_stream       (0),
   m_worker       (0),
   m_recordQueue  (drp.pool.nbuffers()),
   m_para         (para)
@@ -46,7 +47,10 @@ TebReceiver::~TebReceiver()
 {
   printf("*** TebRcvr::dtor: 1\n");
 
-  chkError(cudaStreamDestroy(m_stream));
+  if (m_stream) {
+    chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
+  }
 
   printf("*** TebRcvr::dtor: 2\n");
   teardown();
@@ -54,19 +58,34 @@ TebReceiver::~TebReceiver()
   printf("*** TebRcvr::dtor: 3\n");
 }
 
+//bool     lDisable{false};
+//unsigned lLastIndex{0};
+unsigned lStateMon{0};
+
 int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
-                             std::map<std::string, std::string>&        labels)
+                              std::map<std::string, std::string>&   labels)
 {
   exporter->add("DRP_smdWriting",  labels, MetricType::Gauge, [&](){ return m_smdWriter ? m_smdWriter->writing() : 0; });
   exporter->add("DRP_fileWriting", labels, MetricType::Gauge, [&](){ return m_fileWriter ? m_fileWriter->writing() : 0; });
   exporter->add("DRP_recordQueue", labels, MetricType::Gauge, [&](){ return m_recordQueue.guess_size(); });
+  exporter->add("DRP_recordState", labels, MetricType::Gauge, [&](){ return lStateMon; });
+
+  m_metrics.cmpCtr = 0;
+  m_metrics.recCtr = 0;
+  m_metrics.reducerStarts = 0;
+  m_metrics.reducerReceives = 0;
+  m_metrics.freeCtr = 0;
+  exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
+  exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
+  exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
+  exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
+  exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
 
   return 0;
 }
 
-void TebReceiver::setup()
+void TebReceiver::setup(cudaExecutionContext_t green_ctx)
 {
-  //printf("*** TebRcvr::setup: 1\n");
   m_worker = 0;
 
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
@@ -74,17 +93,17 @@ void TebReceiver::setup()
   // Set up the file writers
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
-  size_t maxBufSize = 16 * 1024 * 1024UL;
-  //m_fileWriter = std::make_unique<FileWriter>(std::max(bufSize, m_para.maxTrSize), true);
-  m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize, true);
+  size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
+  constexpr auto dio{true};
+  m_fileWriter = std::make_unique<FileWriter>(maxBufSize, dio);
+  //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, dio); // For 2 ping pong buffers
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);
-  //printf("*** TebRcvr::setup: 2\n");
 
   // Reset the record queue
   m_recordQueue.startup();
 
   // Start the Data Recorder
-  m_recorderThread = std::thread(&TebReceiver::_recorder, std::ref(*this));
+  m_recorderThread = std::thread(&TebReceiver::_recorder, this, green_ctx);
 }
 
 void TebReceiver::teardown()
@@ -92,6 +111,7 @@ void TebReceiver::teardown()
   // Unblock the record queue
   m_recordQueue.shutdown();
 
+  // Wait for the recorder thread to finish
   if (m_recorderThread.joinable()) {
     m_recorderThread.join();
     logging::info("Recorder thread finished");
@@ -100,13 +120,8 @@ void TebReceiver::teardown()
 
 void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
 {
-  //uint32_t* p = (uint32_t*)dgram;
-  //printf("wDg: ");
-  //for (unsigned i = 0; i < 18; ++i)  printf("%08x ", p[i]);
-  //printf("\n");
-
   size_t size = sizeof(*dgram) + dgram->xtc.sizeofPayload();
-  m_fileWriter->writeEvent(devPtr, size, dgram->time);
+  if (m_fileWriter)  m_fileWriter->writeEvent(devPtr, size, dgram->time);
 
   // small data writing
   Smd smd;
@@ -122,6 +137,7 @@ void TebReceiver::_writeDgram(Dgram* dgram, void* devPtr)
  *  processing and dispose of the event.  It presumes that the caller has
  *  already vetted index and result
  */
+
 void TebReceiver::complete(unsigned index, const ResultDgram& result)
 {
   tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
@@ -131,18 +147,39 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
   }
 
-  // Start up a reducer only when there is a need for its result
-  // Running the reducer on transitions is a no-op, so avoid its overhead
-  if (result.isEvent() && (result.persist() || result.monitor())) {
-    static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index);
-    m_worker = (m_worker + 1) % m_para.nworkers;
-  }
+  logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
+                 TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
+
+//  if (result.service() == TransitionId::Disable) {
+//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
+//           m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
+//    static_cast<PGPDrp&>(m_drp).reducerDump();
+//    lDisable = true;
+//    const_cast<Parameters*>(&m_para)->verbose++;
+//  }
 
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
+  ++m_metrics.cmpCtr;
+
+  // Start up a reducer only when there is a need for its result
+  // Running the reducer on transitions is a no-op, so avoid its overhead
+  if (result.persist() || result.monitor()) {
+    nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
+    //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
+    while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
+      if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+        printf("*** TebRcvr::complete: Terminating on inputQueue[%u] full for idx %u\n", m_worker, index);
+        return;                         // @todo: Revisit
+      }
+    }
+    m_worker = (m_worker + 1) % m_para.nworkers;
+    ++m_metrics.reducerStarts;
+//    lLastIndex = index;
+  }
 }
 
-void TebReceiver::_recorder()
+void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 {
   tr_scoped_range r{/*"TebReceiver::_recorder"*/}; // Expose function name via NVTX
 
@@ -151,9 +188,10 @@ void TebReceiver::_recorder()
     perror("prctl");
   }
 
+  // Establish context in this thread
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
-  //auto  bufMask = memPool.nbuffers() - 1;
-  unsigned worker = 0;
+  chkError(cudaSetDevice(memPool.context().deviceNo()));
+  chkError(cuCtxSetCurrent(memPool.context().context()));
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
@@ -165,8 +203,9 @@ void TebReceiver::_recorder()
   // Create a GPU stream in the recorder thread context and register it with the
   // fileWriter during phase 1 of Configure before files are opened during BeginRun
   // The highest priority is to dispose of the data
-  chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
-  m_fileWriter->registerStream(m_stream);
+  //chkFatal(cudaStreamCreateWithPriority(&m_stream, cudaStreamNonBlocking, prio));
+  chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
+  if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
   auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
   //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
@@ -174,51 +213,96 @@ void TebReceiver::_recorder()
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
   // Collect completion information from the reducer kernels in time order
+  unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
+    lStateMon = 1;
     // Wait for a new Result to appear from the TEB via the complete() method above
-    ResultItems items;
-    if (!m_recordQueue.pop(items))  continue;
-    auto result = items.result;
-    //printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
-    //       result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
-
-    // Wait for the next GPU Reducer in sequence to complete
-    auto index = items.index;
-    tr_scoped_range loop_range{/*"TebReceiver::_recorder", */nvtx3::payload{index}};
-    size_t dataSize;                    // Receives the size of the reduced L1Accept payload
-    if (result->persist() || result->monitor()) {
-      drp.reducerReceive(worker, dataSize); // This blocks until result is ready from GPU
-      worker = (worker + 1) % m_para.nworkers;
+    ResultTuple items;
+    if (!m_recordQueue.pop(items)) {
+      printf("*** TebRcvr::recorder: No item from recordQueue\n");
+      continue;
     }
+    lStateMon = 2;
+    ++m_metrics.recCtr;
+    const auto index  = std::get<0>(items);
+    const auto result = std::get<1>(items);
+    nvtx3::mark("Recorder", nvtx3::payload{index});
+//    if (lDisable) {
+//      printf("*** TebRcvr::recorder: Disable T, idx %u, result->svc %u\n", index, result->service());
+//    }
+    logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
+                   TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
+
+    // If needed, wait for the next GPU Reducer in sequence to complete
+    size_t dataSize{0};
+    if (result->isEvent() && (result->persist() || result->monitor())) {
+      nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
+      lStateMon = 3;
+      ReducerTuple rt;
+      while (!drp.reducerReceive(worker, &rt)) { // Block here until a result is ready from GPU
+        if (m_terminate.load(std::memory_order_acquire)) [[unlikely]] {
+          printf("*** TebRcvr::recorder: Terminating on outputQueue[%u] empty\n", worker);
+          return;                       // @todo: Revisit
+        }
+      }
+      ++m_metrics.reducerReceives;
+      lStateMon = 4;
+      //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
+      worker = (worker + 1) % m_para.nworkers;
+
+      if (rt.index != index) [[unlikely]] { // Sanity check
+        logging::critical("Recorder vs Reducer index mismatch: wkr %u: %u vs %u", worker, index, rt.index);
+        //abort();
+      }
+      dataSize = rt.dataSize;
+    }
+    lStateMon = 5;
+
+//    if (lDisable) {
+//      printf("*** TebRcvr::recorder: reducerReceives %lu\n", m_metrics.reducerReceives);
+//      drp.reducerDump();
+//      printf("*** TebRcvr::recorder: 1 idx %u, dataSize %zu\n", index, dataSize);
+//      printf("*** TebRcvr::recorder: 1 pid %014lx, svc %u, prescale %d, persist %d, monitor %d\n",
+//             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
+//    }
 
     // Release the GPU intermediate buffers for reuse
-    drp.freeBufs(index);
+    drp.freeBuffers(index);             // Leaves event mask = 0
+    nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
+    lStateMon = 6;
 
     // Look up the datagram, whether transition or L1Accept
     auto dgram = result->isEvent() ? (EbDgram*)m_pool.pebble[index] : m_pool.transitionDgrams[index];
-    if (dgram->pulseId() != result->pulseId()) { // Sanity check
+    auto pulseId = dgram->pulseId();
+    if (pulseId != result->pulseId()) { // Sanity check
       logging::critical("Pulse IDs differ: idx %u, %014lx, %014lx\n",
-                        index, dgram->pulseId(), result->pulseId());
+                        index, pulseId, result->pulseId());
       abort();
     }
-    //printf("*** TebRcvr::recorder: 2 dg[%u] pid %014lx, env %08x\n", index, dgram->pulseId(), dgram->env);
+    //printf("*** TebRcvr::recorder: 2 dg[%u] pid %014lx, env %08x\n", index, pulseId, dgram->env);
 
+    // pass everything except L1 accepts and slow updates to control level
     TransitionId::Value transitionId = dgram->service();
     if (transitionId != TransitionId::L1Accept) {
       if (transitionId != TransitionId::SlowUpdate) {
-        logging::info("Recorder   saw %s @ %u.%09u (%014lx)",
+        // send pulseId to inproc so it gets forwarded to the collection
+        json msg = createPulseIdMsg(pulseId);
+        m_inprocSend.send(msg.dump());
+
+        logging::info("Recorder   saw %12s @ %u.%09u (%014lx)",
                       TransitionId::name(transitionId),
                       dgram->time.seconds(), dgram->time.nanoseconds(),
-                      dgram->pulseId());
+                      pulseId);
       }
       else {
-        logging::debug("Recorder   saw %s @ %u.%09u (%014lx)",
+        logging::debug("Recorder   saw %12s @ %u.%09u (%014lx)",
                        TransitionId::name(transitionId),
                        dgram->time.seconds(), dgram->time.nanoseconds(),
-                       dgram->pulseId());
+                       pulseId);
       }
     }
+    lStateMon = 7;
 
     // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
     auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
@@ -258,11 +342,12 @@ void TebReceiver::_recorder()
       buffer -= sizeof(Dgram);          // Points to the start of the Dgram
       dgSize  = cpSize;
     }
+    lStateMon = 8;
 
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
     if (dgSize > maxSize) {
       logging::critical("Datagram is too large (%zu) for reduce buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
-                        dgSize, maxSize, dgram->pulseId(), dgram->time.value(), dgram->env);
+                        dgSize, maxSize, pulseId, dgram->time.value(), dgram->env);
       abort();
     }
 
@@ -343,11 +428,12 @@ void TebReceiver::_recorder()
     //printf("*** TebRcvr::recorder: 5 sz %zu, writing %d\n", dgSize, writing());
 
     // Measure latency before sending dgram for monitoring
-    if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+    if (pulseId - m_latPid > 1300000/14) { // 10 Hz
       m_latency = Eb::latency<us_t>(dgram->time);
-      m_latPid = dgram->pulseId();
+      m_latPid = pulseId;
     }
     //printf("*** TebRcvr::recorder: 6 latency %ld us\n", m_latency);
+    lStateMon = 9;
 
     m_evtSize = dgSize;
 
@@ -368,6 +454,7 @@ void TebReceiver::_recorder()
       }
     }
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
+    lStateMon = 10;
 
     // Synchronize before releasing buffers
     //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
@@ -375,16 +462,28 @@ void TebReceiver::_recorder()
     // Free the transition datagram buffer
     if (!dgram->isEvent()) {
         m_pool.freeTr(dgram);
-        //printf("*** TebRcvr::recorder: 8, freeTr %014lx\n", dgram->pulseId());
+        //printf("*** TebRcvr::recorder: 8, freeTr %014lx\n", pulseId);
     }
+    lStateMon = 11;
 
     // Free the pebble datagram buffer
     m_pool.freePebble(index);
-    //printf("*** TebRcvr::recorder: 8, freePebble\n");
+    //printf("*** TebRcvr::recorder: 8, freePebble %d\n", index);
+    lStateMon = 12;
 
     //// Free the reduce buffer
     //m_reducer->release(index);
     //printf("*** TebRcvr::recorder: 8, released reduce buffer %u\n", index);
+    ++m_metrics.freeCtr;
+    nvtx3::mark("Pebble released", nvtx3::payload{index});
+  }
+
+  // Clean up
+  if (m_stream) {
+    if (m_fileWriter)
+      m_fileWriter->deregisterStream(m_stream);
+    chkError(cudaStreamDestroy(m_stream));
+    m_stream = 0;
   }
 
   logging::info("Recorder thread is exiting");
@@ -394,20 +493,24 @@ void TebReceiver::_recorder()
 PGPDrp::PGPDrp(Parameters&    parameters,
                MemPoolGpu&    memPool,
                Gpu::Detector& detector,
-               ZmqContext&    context) :
-  DrpBase      (parameters, memPool, detector, context),
+               ZmqContext&    zmqContext) :
+  DrpBase      (parameters, memPool, detector, zmqContext),
   m_para       (parameters),
   m_det        (detector),
+  m_green_ctx  {{}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
   m_nNoTrDgrams(0)
 {
   if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
-    logging::critical("Failed to allocate lane/vc "
-                      "- does another process have (one or more of) %s open?",
-                      m_para.device.c_str());
+    logging::critical("Failed to allocate lane/vc: '%m' "
+                      "- does another process have %s:%02x open?",
+                      m_para.device.c_str(), m_para.laneMask);
     abort();
   }
+
+  // Partition the GPU for the various kernels to be run
+  _setupGreenContexts(memPool);
 
   // Set up thread termination flags
   chkError(cudaMalloc(&m_terminate_d,    sizeof(*m_terminate_d)));
@@ -421,7 +524,74 @@ PGPDrp::~PGPDrp()
 {
   printf("*** PGPDrp::dtor: 1\n");
   chkError(cudaFree(m_terminate_d));
+  m_terminate_d = nullptr;
   printf("*** PGPDrp::dtor: 2\n");
+}
+
+void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
+{
+  auto gpu_device_index{memPool.context().deviceNo()};
+  chkError(cudaSetDevice(gpu_device_index));
+
+  // Determine all available GPU SM resources
+  cudaDevResource initial_SM_resources = {};
+  chkError(cudaDeviceGetDevResource(gpu_device_index,        // GPU device
+                                    &initial_SM_resources,   // Device resource to populate
+                                    cudaDevResourceTypeSm)); // Resource type
+
+  logging::info("Initial SM resources: %d SMs", initial_SM_resources.sm.smCount); // number of available SMs
+
+  // Special fields relevant for partitioning
+  logging::info("  - Min. SM partition size: %d SMs", initial_SM_resources.sm.minSmPartitionSize);
+  logging::info("  - SM co-scheduled alignment: %d SMs", initial_SM_resources.sm.smCoscheduledAlignment);
+
+  //// Determine all available GPU Work Queue resources
+  //cudaDevResource initial_WQ_config_resources = {};
+  //chkError(cudaDeviceGetDevResource(gpu_device_index,                     // GPU device
+  //                                  &initial_WQ_config_resources,         // Device resource to populate
+  //                                  cudaDevResourceTypeWorkqueueConfig)); // Resource type
+  //
+  //logging::info("Initial WQ config. resources: ");
+  //logging::info("  - WQ concurrency limit: %d", initial_WQ_config_resources.wqConfig.wqConcurrencyLimit);
+  //logging::info("  - WQ sharing scope: %d", initial_WQ_config_resources.wqConfig.sharingScope);
+
+  // Split SM resources
+  constexpr int nbGroups {2};
+  constexpr unsigned default_split_flags {0};
+  cudaDevResource remainder {};
+  cudaDevResource result[nbGroups] {{}, {}};
+  cudaDevSmResourceGroupParams group_params[2] =  {
+    {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
+    {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
+  if (group_params[0].smCount < initial_SM_resources.sm.minSmPartitionSize) {
+    group_params[0].smCount = initial_SM_resources.sm.minSmPartitionSize;
+  }
+  chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
+
+  // Generate resource descriptors for each resource
+  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}};
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[0], &result[0], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[1], &result[1], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[2], &remainder, 1));
+
+  // Create green contexts
+  chkError(cudaGreenCtxCreate(&m_green_ctx[0], resource_desc[0], gpu_device_index, 0));
+  chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
+  chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
+
+  // Get all available GPU SM resources
+  for (unsigned i = 0; i < nbGroups+1; ++i) {
+    cudaDevResource final_SM_resources = {};
+    chkError(cudaExecutionCtxGetDevResource(m_green_ctx[i],          // GPU context
+                                            &final_SM_resources,     // Device resource to populate
+                                            cudaDevResourceTypeSm)); // Resource type
+
+    logging::info("Final SM resources for context %u: %d SMs", i, final_SM_resources.sm.smCount); // number of available SMs
+
+    // Special fields relevant for partitioning
+    logging::info("  - Min. SM partition size: %d SMs", final_SM_resources.sm.minSmPartitionSize);
+    logging::info("  - SM co-scheduled alignment: %d SMs", final_SM_resources.sm.smCoscheduledAlignment);
+  }
 }
 
 std::string PGPDrp::configure(const json& msg)
@@ -441,29 +611,33 @@ std::string PGPDrp::configure(const json& msg)
   //printf("*** PGPDrp: trgPrm->size %zu\n", trgPrimitive->size());
   auto tpSz = trgPrimitive ? trgPrimitive->size() : 0;
 
-  // Set up a Reader per PGP card (panel) to receive DMAed data and calibrate it
-  for (unsigned i = 0; i < memPool.panels().size(); ++i) {
-    m_readers.emplace_back(i, m_para, memPool, m_det, tpSz, *m_terminate_d);
-  }
+  // Set up a Reader to receive DMAed data and calibrate it
+  m_reader = std::make_shared<Reader>(m_para, memPool, m_det, tpSz, m_green_ctx[0], *m_terminate_d);
 
-  // Create the event building collector, which calculates the TEB input data
+  // Create the Trigger Input Generator, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_collector = std::make_unique<Collector>(m_para, memPool, m_readers, trgPrimitive, m_terminate, *m_terminate_d);
+  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
-  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_terminate, *m_terminate_d);
+  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
+
+  // Launch the collector thread
+  m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
-  static_cast<TebReceiver&>(tebReceiver()).setup();
+  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
 
-  //// Start the Reducers
+  // Start the Reducers
   m_reducer->startup();
 
-  // Launch the Collector thread
-  m_collectorThread = std::thread(&PGPDrp::_collector, std::ref(*this));
+  // Start the TrgInpGen before phase 2 is issued
+  m_trgInpGen->start();
+
+  // Start the PGP reader before phase 2 is issued
+  m_reader->start();
 
   return std::string{};
 }
@@ -473,29 +647,29 @@ unsigned PGPDrp::unconfigure()
   logging::info("PGPDrp::unconfigure: Shutting down");
 
   DrpBase::unconfigure(); // TebContributor must be shut down before the reader
-  printf("*** PGPDrp::unconfigure 1\n");
+  //printf("*** PGPDrp::unconfigure 1\n");
 
-  // @todo: Right place for this?
   m_terminate.store(true, std::memory_order_release);
-  chkError(cudaMemset(m_terminate_d, 1, sizeof(true))); // Write only one byte
-  printf("*** PGPDrp::unconfigure 2\n");
+  chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
+  //printf("*** PGPDrp::unconfigure 2\n");
 
-  // Tear down the TebReceiver
+  if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
-  printf("*** PGPDrp::unconfigure 3\n");
+  //printf("*** PGPDrp::unconfigure 3\n");
 
+  // Wait for the Collector thread to finish
   if (m_collectorThread.joinable()) {
     m_collectorThread.join();
     logging::info("Collector thread finished");
   }
-  printf("*** PGPDrp::unconfigure 4\n");
+  //printf("*** PGPDrp::unconfigure 4\n");
 
   m_reducer.reset();
-  printf("*** PGPDrp::unconfigure 5\n");
-  m_collector.reset();
-  printf("*** PGPDrp::unconfigure 6\n");
-  m_readers.clear();
-  printf("*** PGPDrp::unconfigure 7\n");
+  //printf("*** PGPDrp::unconfigure 5\n");
+  m_trgInpGen.reset();
+  //printf("*** PGPDrp::unconfigure 6\n");
+  m_reader.reset();
+  //printf("*** PGPDrp::unconfigure 7\n");
 
   return 0;
 }
@@ -508,68 +682,54 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                                             {"partition", std::to_string(m_para.partition)},
                                             {"detname", m_para.detName},
                                             {"alias", m_para.alias}};
-  m_colMetrics.m_nevents = 0L;
-  exporter->add("drp_event_rate", labels, MetricType::Rate,
-                [&](){return m_colMetrics.m_nevents.load();});
-
   //auto queueLength = [](std::vector<SPSCQueue<Batch> >& vec)
   //    { size_t sum = 0;  for (auto& q: vec) sum += q.guess_size();  return sum; };
-  //uint64_t nbuffers = memPool.panels().size() * memPool.nbuffers();
+  //uint64_t nbuffers = memPool.nbuffers();
   //exporter->constant("drp_worker_queue_depth", labels, nbuffers);
   //
   //exporter->add("drp_worker_output_queue", labels, MetricType::Gauge,
   //              [&](){return queueLength(m_workerQueues);});
-
-  m_colMetrics.m_nDmaRet = 0;
-  exporter->add("drp_num_dma_ret", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nDmaRet.load();});
-  m_colMetrics.m_dmaBytes = 0;
-  exporter->add("drp_pgp_byte_rate", labels, MetricType::Rate,
-                [&](){return m_colMetrics.m_dmaBytes.load();});
-  m_colMetrics.m_dmaSize = 0;
-  exporter->add("drp_dma_size", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_dmaSize.load();});
-  exporter->add("drp_th_latency", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_latency.load();});
-  m_colMetrics.m_nDmaErrors = 0;
-  exporter->add("drp_num_dma_errors", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nDmaErrors.load();});
-  m_colMetrics.m_nNoComRoG = 0;
-  exporter->add("drp_num_no_common_rog", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nNoComRoG.load();});
-  m_colMetrics.m_nMissingRoGs = 0;
-  exporter->add("drp_num_missing_rogs", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nMissingRoGs.load();});
-  m_colMetrics.m_nTmgHdrError = 0;
-  exporter->add("drp_num_th_error", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nTmgHdrError.load();});
-  m_colMetrics.m_nPgpJumps = 0;
-  exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
-                [&](){return m_colMetrics.m_nPgpJumps.load();});
   m_nNoTrDgrams = 0;
   exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                 [&](){return m_nNoTrDgrams;});
 
-  // @todo: Expand for all units in memPool.panels()
-  const unsigned unit{0};
   exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
   exporter->add("drp_num_pgp_in_user",  labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInUser(unit);});
+                [&](){return memPool.nPgpInUser();});
   exporter->add("drp_num_pgp_in_hw",    labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInHw(unit);});
+                [&](){return memPool.nPgpInHw();});
   exporter->add("drp_num_pgp_in_prehw", labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInPreHw(unit);});
+                [&](){return memPool.nPgpInPreHw();});
   exporter->add("drp_num_pgp_in_rx",    labels, MetricType::Gauge,
-                [&](){return memPool.nPgpInRx(unit);});
+                [&](){return memPool.nPgpInRx();});
+
+  m_reader->setupMetrics(exporter, labels);
+
+  m_trgInpGen->setupMetrics(exporter, labels);
 
   m_reducer->setupMetrics(exporter, labels);
 
   return 0;
 }
 
+void PGPDrp::freeBuffers(unsigned index)
+{
+  const auto timingHeader = m_det.getTimingHeader(index);
+  const auto bufferMask = pool.nbuffers() - 1;
+  const auto pgpIndex = timingHeader->evtCounter & bufferMask;
+  auto event = &pool.pgpEvents[pgpIndex];
+  //printf("*** PGPDrp::freeBuffers: bufIndex, %u, pgpIndex %u, event %p\n", index, pgpIndex, event);
+  m_reader->freeDma(event);
+}
+
 void PGPDrp::_collector()
 {
   drp_scoped_range r{/*"PGPDrp::_collector"*/}; // Expose function name via NVTX
+
+  logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
+  if (prctl(PR_SET_NAME, "drp_gpu/Collector", 0, 0, 0) == -1) {
+    perror("prctl");
+  }
 
   pool.resetCounters();                 // Avoid jumps in TebReceiver
 
@@ -582,42 +742,41 @@ void PGPDrp::_collector()
       logging::error("PGPDrp::_collector: setupMetrics failed");
   }
 
-  // Start the PGP readers on the GPU
-  for (auto& reader : m_readers) {
-    reader.start();
-  }
+  // Create a queue for handling batches of event indices
+  SPSCQueue<unsigned> collectorQueue(pool.nbuffers());
+  m_trgInpGen->start(collectorQueue);
 
-  // Start the Collector on the GPU
-  m_collector->start();
-
-  // Now run the CPU side of the Collector
-  logging::info("Collector is starting with process ID %lu\n", syscall(SYS_gettid));
-  if (prctl(PR_SET_NAME, "drp_gpu/Collector", 0, 0, 0) == -1) {
-    perror("prctl");
-  }
-
+  // Run the Collector
   auto trgPrimitive = triggerPrimitive();
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
+  uint64_t l1Count = 0;
   unsigned bufIndex = 0;                // Intermediate buffer index
-  while (true) {
+  while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
-    if (m_terminate.load(std::memory_order_relaxed)) {
-      break;
-    }
 
-    auto nRet = m_collector->receive(&m_det, m_colMetrics); // This can block
-    m_colMetrics.m_nDmaRet.store(nRet);
+    // Receive events
+    unsigned nRet;
+    if (!collectorQueue.pop(nRet))  continue; // This can block
 
     for (unsigned b = 0; b < nRet; ++b) {
-      drp_scoped_range loop_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
+      drp_scoped_range batch_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
       auto timingHeader = m_det.getTimingHeader(bufIndex);
+      //printf("*** PGPDrp::collector: bufIdx %u, th %p\n", bufIndex, timingHeader);
+      //auto p = (const uint32_t*)timingHeader;
+      //printf("*** PGPDrp::collector: th %08x %08x %08x %08x %08x %08x %08x %08x\n",
+      //       p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
       auto pgpIndex = timingHeader->evtCounter & bufferMask;
+      //printf("*** PGPDrp::collector: pgpIndex %u\n", pgpIndex);
       auto event = &pool.pgpEvents[pgpIndex];
-      if (event->mask == 0)
+      if (event->mask == 0) {
+        printf("*** PGPDrp::collector: Broken event %p skipped, pgpIdx %u, bufIdx %u\n", event, pgpIndex, bufIndex);
         continue;                       // Skip broken event
+      }
+      //printf("*** PGPDrp::collector: event %p\n", event);
 
       auto pid = timingHeader->pulseId();
+      //printf("*** P: pid %014lx, svc %u\n", pid, timingHeader->service());
       if (pid <= lastPid)
         logging::error("%s: PulseId did not advance: %014lx <= %014lx", __PRETTY_FUNCTION__, pid, lastPid);
       lastPid = pid;
@@ -625,19 +784,21 @@ void PGPDrp::_collector()
       // Allocate transition datagrams before allocating the pebble buffer
       // since pebble buffers can't be freed out of order if this fails
       TransitionId::Value transitionId = timingHeader->service();
-      EbDgram* trDgram;
+      EbDgram* trDgram{nullptr};
       if (transitionId != TransitionId::L1Accept) {
         // Allocate a transition datagram from the pool
         trDgram = pool.allocateTr();
         if (!trDgram) [[unlikely]] {
-          m_collector->freeDma(event);  // Leaves event mask = 0
+          m_reader->freeDma(event);       // Leaves event mask = 0
           ++m_nNoTrDgrams;
-          continue;                     // Can happen during shutdown
+          continue;                       // Can happen during shutdown
         }
       }
 
       // Allocate a pebble buffer
+      //printf("*** Drp::collector: bufIndex %u, evtCtr %u\n", bufIndex, timingHeader->evtCounter);
       auto pebbleIndex = pool.allocate(); // This can block
+      //printf("*** Drp::collector: pblIdx %u\n", pebbleIndex);
       event->pebbleIndex = pebbleIndex;
       Src src{m_det.nodeId};
 
@@ -650,14 +811,16 @@ void PGPDrp::_collector()
       auto l3InpDg  = new(l3InpBuf) EbDgram(*dgram);
 
       if (transitionId == TransitionId::L1Accept) {
-        // @todo: Can event() here help with prescaled raw/calibrated data?
-        //m_det.event(dgram, bufEnd);
+        const void* bufEnd = (char*)dgram + pool.bufferSize();
+        m_det.event(*dgram, bufEnd, event, ++l1Count);
+        //const auto p = (uint32_t*)&timingHeader[1];
+        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
         if (trgPrimitive) { // else this DRP doesn't provide TEB input
           // Copy the TEB input data from the GPU into the TEB input datagram
           auto tpSz = trgPrimitive->size();
           const void* l3BufEnd = (char*)l3InpDg + sizeof(*l3InpDg) + tpSz;
           auto buf = l3InpDg->xtc.alloc(tpSz, l3BufEnd);
-          memcpy(buf, &timingHeader[1], tpSz); // @todo: cudaMemcpy() needed?
+          memcpy(buf, &timingHeader[1], tpSz);
         }
       } else {  // Transition
         logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
@@ -672,7 +835,7 @@ void PGPDrp::_collector()
 
         if (transitionId == TransitionId::SlowUpdate) {
           // Store the SlowUpdate's payload in the transition datagram
-          const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+          const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
           m_det.slowupdate(trDgram->xtc, bufEnd);
           //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
         } else {                // Transition
@@ -680,7 +843,7 @@ void PGPDrp::_collector()
           // into the real location
           Xtc& trXtc = m_det.transitionXtc();
           trDgram->xtc = trXtc; // Preserve header info, but allocate to check fit
-          const void* bufEnd  = (char*)trDgram + m_para.maxTrSize;
+          const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
           auto payload = trDgram->xtc.alloc(trXtc.sizeofPayload(), bufEnd);
           memcpy(payload, (const void*)trXtc.payload(), trXtc.sizeofPayload());
           //printf("*** Collector: dg[%u] %014lx, tr %u, sz %zu\n", pebbleIndex, trDgram->pulseId(), trDgram->service(), sizeof(*trDgram) + trDgram->xtc.sizeofPayload());
@@ -688,8 +851,9 @@ void PGPDrp::_collector()
       }
 
       // Post level-3 input datagram to the TEB
-      //printf("*** Collector: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
+      //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
       tebContributor().process(pebbleIndex);
+      nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
 
       // Time out batches for the TEB
       /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
@@ -704,7 +868,11 @@ void PGPDrp::_collector()
     }
   }
 
-  // Flush the PGP Reader buffers
+  // Clean up the Trigger Input Generator receiver
+  collectorQueue.shutdown();
+  m_trgInpGen->shutdown();
+
+  // Flush the Reader buffers
   // @todo: dmaFlush();
   pool.flushPebble();
 

@@ -660,6 +660,28 @@ def issue_2026_05_05(args):
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
 
+
+def issue_2026_07_08(args):
+    """ISSUE: - gabriel cm correction for epix100 needs in 3d array....
+       PROBLEM:
+       FIX:
+       datinfo -k exp=mfx101572426,run=8 -d epix100_0
+    """
+    import psana
+    import psana.detector.NDArrUtils as ndu
+
+    exp: str = "mfx101572426"
+    run_num = 8
+    detname = "epix100_0"
+    ds = psana.DataSource(exp=exp, run=run_num)
+    run = next(ds.runs())
+    det = run.Detector(detname)
+    evt = next(run.events())
+    
+    calib_cm = det.raw.calib(evt, cmpars=(0,7,100,10))
+    print(ndu.info_ndarr(calib_cm, '  calib_cm'))
+
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -716,6 +738,8 @@ def selector():
     elif TNAME in ('8',): issue_2026_05_01(args)
     elif TNAME in ('9',): issue_2026_05_04(args)
     elif TNAME in ('10',):issue_2026_05_05(args)
+    
+    elif TNAME in ('13',):issue_2026_07_08(args)
     elif TNAME in ('99',):issue_2026_MM_DD(args)
     else:
         print(USAGE())

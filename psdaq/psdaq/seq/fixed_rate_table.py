@@ -12,8 +12,15 @@ def main():
         factors = [2,2,2,2,2,5,5,5,5,5,5]  # product is 500,000
         base = 500.e3
     else:
-        factors = [2,2,2,2,5,5,5,5,7,13]  # product is 910,000
-        base = 1300.e6/1400.
+#        factors = [2,2,2,2,5,5,5,5,7,13]  # product is 910,000 (13/14 MHz)
+#        base = 1300.e6/(7*200)
+#  Future considerations
+        factors = [2,2,2,2,2,2,5,5,5,5,5,7]  # product is 1,400,000 (10/7 MHz)
+        base = 1300.e6/(7*130)
+#        factors = [2,2,2,2,2,5,5,5,5,5,7]  # product is 700,000 (5/7 MHz)
+#        base = 1300.e6/(7*260)
+#        factors = [2,2,2,2,2,2,2,5,5,5,5,7]  # product is 560,000 (4/7 MHz)
+#        base = 1300.e6/(7*325)
 
     iters = [itertools.combinations(factors,i+1) for i in range(len(factors))]
     f = set()

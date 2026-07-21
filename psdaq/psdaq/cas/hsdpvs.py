@@ -144,6 +144,7 @@ class ChipServer(object):
                                     handler=PVHandlerAlarm(prefix+':FEXOOR'))
 
         self.monTiming   = MySharedPV(monTiming)
+        self.monTrig     = MySharedPV(monTrig)
         self.monPgp      = MySharedPV(monPgp)
         self.monRawBuf   = MySharedPV(monBuf)
         self.monFexBuf   = MySharedPV(monBuf)
@@ -163,6 +164,7 @@ class ChipServer(object):
         self.provider.add(prefix+':KEEPROWS'  ,self.keepRows)
         self.provider.add(prefix+':FEXOOR'    ,self.fexOor)
         self.provider.add(prefix+':MONTIMING' ,self.monTiming)
+        self.provider.add(prefix+':MONTRIG'   ,self.monTrig)
         self.provider.add(prefix+':MONPGP'    ,self.monPgp)
         self.provider.add(prefix+':MONRAWBUF' ,self.monRawBuf)
         self.provider.add(prefix+':MONFEXBUF' ,self.monFexBuf)

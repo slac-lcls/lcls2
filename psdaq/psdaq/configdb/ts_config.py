@@ -1,20 +1,26 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
+from psdaq.configdb.ts_connect import ts_connector
 from psdaq.seq.globals import *
 from p4p.client.thread import Context
 import json
 import time
-import logging
 
 ocfg = None
 pv_prefix = None
 readout_groups = None
+connector = None
 
 DEST_INCLUDE  = 0
 DEST_DONTCARE = 1
 DEST_BSY = 2
 DEST_HXR = 3
 DEST_SXR = 4
+
+def ts_connect(json_connect_info):
+    global connector
+    connector = ts_connector(json_connect_info)
+    return json.dumps({})
 
 def ts_config(connect_json,cfgtype,detname,detsegm):
     global ocfg
@@ -75,7 +81,7 @@ def apply_config(cfg):
             if 'keepRawRate' in grp:
                 pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['keepRawRate'])
             else:
-                logging.warning(f'No keepRawRate entry in user.SC.{grp_prefix}.  Run ts_config_update.py')
+                raise RuntimeError(f'No keepRawRate entry in user.SC.{grp_prefix}.  Run ts_config_update.py')
 
             if 'ac' in grp:
                 pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
@@ -118,6 +124,9 @@ def apply_config(cfg):
     # program the values
     ctxt = Context('pva')
     ctxt.put(names,values)
+
+    #  Check the errors
+    connector.check_errors('config')
 
     #  Capture firmware version for persistence in xtc
     #rcfg['firmwareVersion'] = ctxt.get(pv_prefix+'FwVersion').raw.value
@@ -218,4 +227,5 @@ def ts_update(update):
     return json.dumps(cfg)
 
 def ts_unconfig():
-    pass
+    #  Check the errors
+    connector.check_errors('unconfig')

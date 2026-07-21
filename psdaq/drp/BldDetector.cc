@@ -188,6 +188,7 @@ BldFactory::BldFactory(const char* name,
         else {
             mcaddr = 0xefff1901;
         }
+        _detType = std::string("pcav");
         _alg    = Alg("raw", 2, 0, 0);
         _varDef.NameVec = BldNames::PCav().NameVec;
     }
@@ -687,60 +688,6 @@ private:
     std::vector<VarDef> m_rawDef;
 };
 
-    /**
-//
-//  This is as generic as I can imagine
-//
-void BldDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
-                            double* dst, DescData& rawData)
-{
-    NamesId namesId(nodeId, BldNamesIndex+rawDefIndex);
-    Name& name = m_namesLookup[namesId].names().get(valueIndex);
-    //VarDef& rawDef = m_rawDef[rawDefIndex];
-    //Name& name = rawDef.NameVec[valueIndex];
-    if (name.rank()==0) {
-        double v = 0;
-        switch(name.type()) {
-        case Name::UINT8 : v = rawData.get_value<uint8_t >(valueIndex); break;
-        case Name::UINT16: v = rawData.get_value<uint16_t>(valueIndex); break;
-        case Name::UINT32: v = rawData.get_value<uint32_t>(valueIndex); break;
-        case Name::UINT64: v = rawData.get_value<uint64_t>(valueIndex); break;
-        case Name::INT8  : v = rawData.get_value<int8_t  >(valueIndex); break;
-        case Name::INT16 : v = rawData.get_value<int16_t >(valueIndex); break;
-        case Name::INT32 : v = rawData.get_value<int32_t >(valueIndex); break;
-        case Name::INT64 : v = rawData.get_value<int64_t >(valueIndex); break;
-        case Name::FLOAT : v = rawData.get_value<float   >(valueIndex); break;
-        case Name::DOUBLE: v = rawData.get_value<double  >(valueIndex); break;
-        default: break;
-        }
-        *dst += v;
-    }
-    else {
-        uint32_t* shape = rawData.shape(name);
-        Array<double_t> calArrT((char*)dst, shape, name.rank());
-
-#define ADD_ARRAY(T) {                                           \
-            Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
-            for(unsigned i=0; i<rawArrT.num_elem(); i++)         \
-                calArrT.data()[i] += double(rawArrT.data()[i]);  \
-        } break;
-        switch(name.type()) {
-        case Name::UINT8 : ADD_ARRAY(uint8_t)
-        case Name::UINT16: ADD_ARRAY(uint16_t)
-        case Name::UINT32: ADD_ARRAY(uint32_t)
-        case Name::UINT64: ADD_ARRAY(uint64_t)
-        case Name::INT8  : ADD_ARRAY(int8_t)
-        case Name::INT16 : ADD_ARRAY(int16_t)
-        case Name::INT32 : ADD_ARRAY(int32_t)
-        case Name::INT64 : ADD_ARRAY(int64_t)
-        case Name::FLOAT : ADD_ARRAY(float)
-        case Name::DOUBLE: ADD_ARRAY(double)
-        default: break;
-        }
-#undef ADD_ARRAY
-    }
-}
-    **/
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
     PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
@@ -861,7 +808,8 @@ int Pgp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
     return 0;
 }
 
-void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
+void Pgp::worker(std::shared_ptr<MetricExporter> exporter[],
+                 prometheus::Exposer* exposer)
 {
     logging::warning("Worker thread is starting with process ID %lu", syscall(SYS_gettid));
     if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
@@ -875,11 +823,6 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
     // Reset counters to avoid 'jumping' errors on reconfigures
     m_pool.resetCounters();
     resetEventCounter();
-
-    // Set up monitoring
-    if (exporter) {
-        if (_setupMetrics(exporter))  return;
-    }
 
     //
     //  Setup the multicast receivers
@@ -922,6 +865,29 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
 
     for(unsigned i=0; i<bldPva.size(); i++)
         m_config.push_back(std::make_shared<BldFactory>(*bldPva[i].get(),simulate));
+
+    // Set up monitoring
+    if (exposer) {
+        //  Add some metrics for each BLD contributor
+        for(unsigned i=0; i<m_config.size(); i++) {
+            exporter[i] = std::make_shared<MetricExporter>();
+            m_damage[i] = 0;
+            m_events[i] = 0;
+            logging::warning("Setting up prometheus for %s",m_config[i]->detName().c_str());
+            std::map<std::string, std::string> labels
+            {{"instrument", m_para.instrument},
+             {"partition", std::to_string(m_para.partition)},
+             {"detname", m_config[i]->detName()},
+             {"alias", m_config[i]->detName()}};
+            exporter[i]->add("DRP_Damage", labels, Pds::MetricType::Gauge, [=,this](){ return *(m_damage+i); });
+            exporter[i]->add("drp_event_rate", labels, Pds::MetricType::Rate, [=,this](){ return *(m_events+i); });
+            exposer->RegisterCollectable(exporter[i]);
+        }
+        //  Base metrics for the process
+        exporter[m_config.size()] = std::make_shared<MetricExporter>();
+        exposer->RegisterCollectable(exporter[m_config.size()]);
+        if (_setupMetrics(exporter[m_config.size()]))  return;
+    }
 
     uint64_t nextId = -1UL;
     uint64_t timestamp[m_config.size()];
@@ -1050,12 +1016,14 @@ void Pgp::worker(const std::shared_ptr<MetricExporter> exporter)
                         // Revisit: This is intended to be done by BldDetector::event()
                         NamesId namesId(m_det->nodeId, BldNamesIndex + i);
                         m_config[i]->addEventData(dgram->xtc, bufEnd, namesLookup, namesId);
+                        m_events[i]++;
                     }
                     else {
                         lMissed = true;
+                        m_damage[i]++;
                         if (!lMissing)
-                            logging::warning("Missed bld[%u]: pgp %016lx  bld %016lx  pid %014lx",
-                                           i, nextId, timestamp[i], dgram->pulseId());
+                            logging::warning("Missed %s: pgp %016lx  bld %016lx  pid %014lx",
+                                             m_config[i]->detName().c_str(), nextId, timestamp[i], dgram->pulseId());
                     }
                 }
                 if (lMissed) {
@@ -1135,12 +1103,7 @@ std::string BldDrp::configure(const json& msg)
         return errorMsg;
     }
 
-    if (exposer()) {
-        m_exporter = std::make_shared<MetricExporter>();
-        exposer()->RegisterCollectable(m_exporter);
-    }
-
-    m_workerThread = std::thread{&Pgp::worker, &m_pgp, m_exporter};
+    m_workerThread = std::thread{&Pgp::worker, &m_pgp, m_exporter, exposer()};
 
     return std::string();
 }
@@ -1154,7 +1117,8 @@ unsigned BldDrp::unconfigure()
         m_workerThread.join();
     }
 
-    if (m_exporter)  m_exporter.reset();
+    for(unsigned i=0; i<MAX_BLD; i++)
+        if (m_exporter[i])  m_exporter[i].reset();
 
     return 0;
 }

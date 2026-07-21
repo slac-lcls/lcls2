@@ -183,3 +183,4 @@ int main(int argc, char* argv[])
     catch (...)                { logging::critical("Default exception"); }
     return EXIT_FAILURE;
 }
+

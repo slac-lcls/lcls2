@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 from PyQt5.QtWidgets import QTabBar
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QTextEdit,\
-                            QPushButton, QFileDialog, QComboBox
+                            QPushButton, QFileDialog, QComboBox, QCheckBox
 
 from psdaq.control_gui.CGWConfigEditorTree import CGWConfigEditorTree
 from psdaq.control_gui.CGWConfigEditorText import CGWConfigEditorText
@@ -70,6 +70,7 @@ class CGWConfigEditor(QWidget):
         self.but_apply= QPushButton('Apply')
         self.but_expn = QPushButton('Expand %s'%char_expand)
         self.box_type = QComboBox(self)
+        self.cbx_serno = QCheckBox('Use Serial Number Database')
 
         self.box_type.addItems(self.EDITOR_TYPES)
         self.box_type.setCurrentIndex(1)
@@ -87,6 +88,7 @@ class CGWConfigEditor(QWidget):
         self.hbox.addStretch(1)
         self.hbox.addWidget(self.box_more)
         self.hbox.addWidget(self.box_type)
+        self.hbox.addWidget(self.cbx_serno)
 
         self.vbox = QVBoxLayout() 
         self.vbox.addLayout(self.hbox)
@@ -100,6 +102,7 @@ class CGWConfigEditor(QWidget):
         self.but_apply.clicked.connect(self.on_but_apply)
         self.but_close.clicked.connect(self.on_but_close)
         self.but_select.clicked.connect(self.on_but_select)
+        self.cbx_serno.stateChanged[int].connect(self.on_cbx_serno)
         self.box_type.currentIndexChanged[int].connect(self.on_box_type)
         self.box_more.currentIndexChanged[int].connect(self.on_box_more)
 
@@ -147,6 +150,16 @@ class CGWConfigEditor(QWidget):
 
         #style = "background-color: rgb(255, 255, 220); color: rgb(0, 0, 0);" # Yellowish
         #self.setStyleSheet(style)
+        # Gray out the Serial Number database selection if no serno found
+        dev_edit = getattr(cp.cgwmainconfiguration, 'device_edit', None)
+        serno = cp.get_serno(dev_edit) if dev_edit else None
+
+        # Fragile placeholder check - if anyone uses something other than `-`
+        self.cbx_serno.setEnabled(serno is not None and serno != '-')
+        if serno:
+            self.cbx_serno.setToolTip(f'Detector Serial Number: {serno}')
+        else:
+            self.cbx_serno.setToolTip('Serial number not available (detector not in partition)')
  
 #--------------------
 
@@ -198,6 +211,62 @@ class CGWConfigEditor(QWidget):
                                         text=self.toolTip(), title='Help')
 
 #--------------------
+
+    def on_cbx_serno(self, state):
+        """Handle toggling the use of the serial number config databases."""
+        from PyQt5.QtCore import Qt
+
+        db_redirect = (state == Qt.Checked)
+        logger.debug(f'on_cbx_serno: {db_redirect}')
+
+        w = cp.cgwmainconfiguration
+        if w is None:
+            return
+
+        cfgtype = w.cfgtype_edit
+        dev = w.device_edit
+        inst, confdb = w.inst_configdb()
+
+        if db_redirect:
+            sn_dev = cp.get_serno(dev)
+
+            # Fragile placeholder check - if anyone uses something other than `-`
+            if not sn_dev or sn_dev == '-':
+                logger.warning('Serial number not available for redirection')
+
+                self.cbx_serno.blockSignals(True)
+                self.cbx_serno.setChecked(False)
+                self.cbx_serno.blockSignals(False)
+                return
+
+            try:
+                sn_config = confdb.get_configuration(cfgtype, sn_dev, hutch='det')
+
+                alias_config = confdb.get_configuration(cfgtype, dev, hutch=inst)
+
+                alias_config['use_serial_db'] = True
+                alias_config.setdefault(':types:', {})['use_serial_db'] = 'boolEnum'
+
+                from psdaq.configdb.get_config import update_config
+                self.dictj = update_config(sn_config, alias_config)
+            except Exception as e:
+                logger.error(f'Failed to fetch serial number config for {sn_dev}: {e}')
+
+                self.cbx_serno.blockSignals(True)
+                self.cbx_serno.setChecked(False)
+                self.cbx_serno.blockSignals(False)
+                return
+        else:
+            try:
+                self.dictj = confdb.get_configuration(cfgtype, dev, hutch=inst)
+                self.dictj['use_serial_db'] = False
+                self.dictj.setdefault(':types:', {})['use_serial_db'] = 'boolEnum'
+            except Exception as e:
+                logger.error(f'Failed to revert to the alias config for {dev}: {e}')
+                return
+
+        self.wedi.set_content(self.dictj)
+#--------------------
  
     def select_ofname(self):
         logger.info('select_ofname %s' % self.ofname_json)
@@ -235,11 +304,40 @@ class CGWConfigEditor(QWidget):
         sj = str_json(dj)
         logger.info('on_but_apply jason/dict:\n%s' % sj)
 
-        if cp.cgwmainconfiguration is None:
+        w = cp.cgwmainconfiguration
+        if w is None:
             logger.warning("parent (ctrl) is None - changes can't be applied to DB")
             return
-        else:
-            cp.cgwmainconfiguration.save_dictj_in_db(dj, msg='CGWConfigEditor: ')
+
+        cfgtype = w.cfgtype_edit
+        alias_dev = w.device_edit
+        inst, confdb = w.inst_configdb()
+
+        if self.cbx_serno.isChecked():
+            sn_dev = cp.get_serno(alias_dev)
+
+            # Fragile placeholder check - if anyone uses something other than `-`
+            if not sn_dev or sn_dev == '-':
+                import copy
+                dj_sn = copy.deepcopy(dj)
+                dj_sn['detName:RO'] = sn_dev
+                logger.info(f"Applying changes to serial number db: {sn_dev}")
+
+                w.save_dictj_in_db(dj_sn, msg='CGWConfigEditor (S/N DB): ')
+
+                try:
+                    alias_cfg = confdb.get_configuration(cfgtype, alias_dev, hutch=inst)
+                    if not alias_cfg.get('use_serial_db', False):
+                        # Save the choice to use serial number database
+                        alias_cfg['use_serial_db'] = True
+                        alias_cfg.setdefault(':types:', {})['use_serial_db'] = 'boolEnum'
+                        logger.info(f'Updating {alias_dev} database to redirect to s/n')
+                except Exception as e:
+                    logger.error(f'Failed to access detector alias db: {e}')
+
+        # TODO: Start setting on all detectors?
+        # dj['use_serial_db'] = False
+        w.save_dictj_in_db(dj, msg='CGWConfigEditor (Alias DB): ')
 
 #--------------------
  
@@ -356,3 +454,4 @@ if __name__ == "__main__":
     app.exec_()
 
 #--------------------
+

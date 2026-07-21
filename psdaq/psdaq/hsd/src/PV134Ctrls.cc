@@ -8,6 +8,7 @@
 #include "ChipAdcReg.hh"
 #include "Pgp.hh"
 #include "OptFmc.hh"
+#include "Mmcm.hh"
 #include "Jesd204b.hh"
 
 #include "psdaq/mmhw/TprCore.hh"
@@ -98,6 +99,8 @@ namespace Pds {
         reg.setChannels(1);
         reg.start();
 
+        fex._triggerMon.enableCorrection(PVGET(trig_phaselock)!=0);
+        
         _m.tem().det(fmc).start(group);
       }
       else {
@@ -146,6 +149,14 @@ namespace Pds {
         tpr.resetRx();
         usleep(10000);
         tpr.resetCounts();
+      }
+      if (PVGET(mmcmsetup)) {
+          int v = PVGET(mmcmphase);
+          printf("MmcmPhase %d\n",v);
+          // _m.mmcm().setPhase(PVGET(mmcmphase));
+          // _m.mmcm().dump();
+          _m.optfmc().shiftAdcPhase(v);
+          _m.chip(fmc).fex._triggerMon.resetCounters();
       }
       loopback   (fmc,PVGET(pgploopback)!=0);
       disablefull(fmc,PVGET(pgpnofull)!=0);

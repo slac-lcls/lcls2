@@ -519,7 +519,7 @@ void EbCtrbInBase::_deliverBypass(TebContributor& ctrb,
   ++_bypassCount;
   ++_eventCount;
 
-  const EbDgram* ins;
+  const EbDgram* ins{nullptr};
   ctrb.pending().try_pop(ins);          // Take Inputs batch off the list
   assert (ins->pulseId() == pid);
 }

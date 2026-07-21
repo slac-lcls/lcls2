@@ -32,6 +32,26 @@ mfxTripperTeb_lib = shared_library('mfxTripperTeb',
   install_rpath: libdir_install_rpath,
 )
 
+mfxTripperEvSelectTeb_lib = shared_library('mfxTripperEvSelectTeb',
+  [
+    'src/mfxTripperPrimitive.cc',
+    'src/mfxTripperPrimitive_jungfrau.cc',
+    'src/mfxTripperPrimitive_timing.cc',
+    'src/mfxTripperEvSelectTeb.cc',
+  ],
+  include_directories: [
+    trigger_inc_dir,
+    include_directories(join_paths(get_option('epics_base'), 'include')),
+  ],
+  dependencies: [
+    xtcdata_dep,
+    psalg_utils_dep,
+    epics_dep,
+  ],
+  install: true,
+  install_rpath: libdir_install_rpath,
+)
+
 tmoTrigger_lib = shared_library('tmoTrigger',
   [
     'src/TriggerPrimitiveExample_cam.cc',
@@ -51,6 +71,7 @@ tmoTrigger_lib = shared_library('tmoTrigger',
 tmoTeb_lib = shared_library('tmoTeb',
   [
     'src/tmoTebPrimitive.cc',
+    'src/tmoTebPrimitive_cpu.cc',
     'src/tmoTeb.cc',
   ],
   include_directories: [trigger_inc_dir],
@@ -64,9 +85,12 @@ tmoTeb_lib = shared_library('tmoTeb',
 cuda_compiler = find_program('nvcc', required: false)
 if cuda_compiler.found()
   cuda_args = [
+    '-forward-unknown-to-host-compiler',
     '-gencode=arch=compute_86,code=sm_86',
     '-gencode=arch=compute_90,code=sm_90',
+    '-Wno-uninitialized',
     '-Wno-deprecated-gpu-targets',
+    '-fno-omit-frame-pointer',
     '-Xcompiler=-fPIC',
     #'-G', #for debugging
     #'--verbose',
@@ -95,10 +119,11 @@ tstTebPy_lib = shared_library('tstTebPy',
   [
     'src/bldTebPrimitive.cc',
     'src/hrEncoderTebPrimitive.cc',
-    'src/piranha4TebPrimitive.cc', 
+    'src/piranha4TebPrimitive.cc',
     'src/timingTebPrimitive.cc',
     'src/tmoTebPrimitive.cc',
     'src/tebPyTrigger.cc',
+    'src/tmoTebPrimitive_cpu.cc',
   ],
   include_directories: [trigger_inc_dir],
   dependencies: [

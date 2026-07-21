@@ -1,22 +1,25 @@
 #pragma once
 
+#include <stdint.h>                     // For uint8_t
+
 namespace LC_framework {
 
-class LC_Compressor
+class Compressor
 {
   using byte = unsigned char;
 public:
-  LC_Compressor(size_t insize, double paramv);
-  ~LC_Compressor();
+  Compressor(size_t insize, double paramv);
+  ~Compressor();
 
   void banner() const;
   long long maxSize() const { return _maxsize; }
-  void updateGraph(cudaStream_t      stream,
-                   const unsigned&   index,
-                   byte const* const d_input_base,
-                   const long long   insize,
-                   byte* const       d_encoded_base,
-                   const long long   d_encsize);
+  void updateGraph(cudaStream_t         stream,
+                   unsigned*      const state_d,
+                   unsigned*      const index_d,
+                   uint8_t const* const d_input_base,
+                   long long      const insize,
+                   uint8_t*       const d_encoded_base,
+                   long long      const d_encsize);
 private:
   double     _paramv[1];
   int        _blocks;

@@ -67,9 +67,9 @@ namespace Pds {
 
     using MetricExporter_t = std::shared_ptr<MetricExporter>;
 
-    struct Batch
+    struct EbBatch
     {
-      Batch(const EbDgram* dgram, uint64_t dsts_, unsigned idx_) :
+      EbBatch(const EbDgram* dgram, uint64_t dsts_, unsigned idx_) :
         start(dgram), end(dgram), dsts(dsts_), idx(idx_) {};
       const EbDgram* start;
       const EbDgram* end;
@@ -100,14 +100,14 @@ namespace Pds {
       void     _queueMrqBuffers();
       void     _monitor(ResultDgram* rdg);
       void     _tryPost(const EbDgram* dg, uint64_t dsts, unsigned idx);
-      void     _post(const Batch& batch);
+      void     _post(const EbBatch& batch);
       uint64_t _receivers(unsigned rogs) const;
     private:
       std::vector<EbLfCltLink*>    _l3Links;
       EbLfServer                   _mrqTransport;
       std::vector<EbLfSvrLink*>    _mrqLinks;
       BatchManager                 _batMan;
-      Batch                        _batch;
+      EbBatch                      _batch;
       std::vector<Fifo<unsigned> > _monBufLists;
     private:
       //uint64_t                     _trimmed;
@@ -615,7 +615,7 @@ void Teb::process(EbEvent* event)
       if (rdg->persist())  _writeCount++;
       if (rdg->monitor())  _monitor(rdg);
     }
-    else 
+    else
     {   // Allow trigger to return a non-default result on transitions
         _trigger->event(event->begin(), event->end(), *rdg); // Consume
     }
@@ -763,7 +763,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
   }
 }
 
-void Teb::_post(const Batch& batch)
+void Teb::_post(const EbBatch& batch)
 {
   size_t   maxResultSize = _trigger->size();
   size_t   extent = (reinterpret_cast<const char*>(batch.end) -

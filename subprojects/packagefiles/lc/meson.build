@@ -6,10 +6,18 @@ project('LC',
     'cpp_std=c++17',
     'cuda_std=c++17',
     'b_staticpic=true',
+    'b_lto=true',
   ])
+
+cuda = dependency('cuda', required: true)
 
 cpp = meson.get_compiler('cpp')
 cuda = meson.get_compiler('cuda')
+
+cuda_arch = [
+  '-gencode=arch=compute_86,code=sm_86',
+  '-gencode=arch=compute_90,code=sm_90',
+]
 
 cpp_args = [
   '-O3',
@@ -20,18 +28,14 @@ cpp_args = [
 ]
 
 cuda_args = [
-  '-O3',
   '-fmad=false',
-  '-Xcompiler=-Wno-unused-result',
   '-Xcompiler=-O3,-march=native,-mno-fma,-ffp-contract=off',
-  '-gencode=arch=compute_80,code=sm_80',
-  '-gencode=arch=compute_86,code=sm_86',
-  '-gencode=arch=compute_90,code=sm_90',
-  '-gencode=arch=compute_100,code=sm_100',
+  '-Xcompiler=-Wno-unused-result',
+  cuda_arch,
 ]
 
 lc_inc_dir = include_directories('.')
-lc_app_dir  = include_directories('app')
+lc_app_dir = include_directories('app')
 
 conda_base = get_option('conda_prefix')
 cuda_dep = declare_dependency(
@@ -40,6 +44,7 @@ cuda_dep = declare_dependency(
       include_directories(join_paths(conda_base, 'targets/x86_64-linux/include/cccl/')),
     ],
     link_args: [
+      cuda_arch,
       '-L' + join_paths(join_paths(conda_base, 'targets/x86_64-linux/lib/')),
       '-lcudart',
       '-lcuda',

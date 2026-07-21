@@ -33,7 +33,8 @@ logger = logging.getLogger(__name__)
 SEGMENT_SHAPE = (336, 576)
 #ASIC_SHAPE    = (168, 192)
 
-GAIN_MODES = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+GAIN_MODES = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2') #  8 total
+GAIN_STATES = GAIN_MODES + ('AHLG1_L', 'AHLG2_L', 'AMLG1_L', 'AMLG2_L')         # 12 total
 GAINS = (1.51, 0.54, 0.0172, 0.0086) # mV/keV gains for FHG, FMG, FLG1, FLG2
 
 # epix10ka data gainbit and mask
@@ -43,6 +44,8 @@ M14 = 0x3fff  # 16383 or (1<<14)-1 - 14-bit mask
 # epixuhr data gainbit and mask
 B15 = 0o100000 # 32768 or 1<<15 (16-th bit starting from 1)
 M15 = 0x7fff   # 32767 or (1<<15)-1 - 15-bit maskdef gain_bitword(dettype):
+
+DTYPE_MASK = np.uint8
 
 #def gain_bitword(dettype):
 #    return {'epix10ka':B14, 'epixhr':B15, 'epixhr2x2':B15, 'epixhremu':B15}.get(dettype, None)
@@ -133,9 +136,12 @@ def event_constants_for_gmaps(gmaps, cons, default=0, cmt=''):
     """ 6 msec
     Parameters
     ----------
-    - gmaps - tuple of 7 boolean maps ndarray(<nsegs>, 336, 576)
-    - cons - 4d constants  (7, <nsegs>, 336, 576)
+    - gmaps - tuple of 8 boolean maps ndarray(<nsegs>, 336, 576)
+    - cons - 4d constants  (8, <nsegs>, 336, 576)
     - default value for constants
+
+    - assuming that pedestals are calibrated for 8 gain modes (4-FIXED, 2-H>H, 2-M>M),
+    - but canstants can be also defined for all 12 states of gain modes (4-FIXED, 2-H>H, 2-M>M, 2-H>L, 2-M>L),
 
     Returns
     -------
@@ -146,9 +152,12 @@ def event_constants_for_gmaps(gmaps, cons, default=0, cmt=''):
         return None
     if cond_msg(cons is None, msg=cmt+'cons is None', output_meth=logger.warning):
         return None
+    #indices for LOW gain states AHLG1_L, AHLG2_L, AMLG1_L, AMLG2_L
+    #if 8 or 12 gain states are defined in cons for pedestals or pixel_gain
+    i08, i09, i10, i11 = (2,3,2,3) if cons.shape[0] < 9 else (8,9,10,11)
     return np.select(gmaps, (cons[0,:], cons[1,:], cons[2,:], cons[3,:],\
                              cons[4,:], cons[5,:], cons[6,:], cons[7,:],\
-                             cons[2,:], cons[3,:], cons[2,:], cons[3,:]), default=default)
+                             cons[i08,:], cons[i09,:], cons[i10,:], cons[i11,:]), default=default)
 
 
 def reshape_6x32256_to_6x168x192(a, shape_out=(6, 168, 192)):
@@ -201,19 +210,15 @@ def bit_opers_2x3(a):
        The ePixUHR3x2, when not using "gain expansion" transmits the data as 12
        bits, in a 16 bit integer. The layout of this data is:
 
-                           G D D D D D D D D D D D U U U U
-                           | \___________________/ \_____/
-                          /            |              |
-                     Gain bit   11 bits of data  Unused bits
+                           U U U U D D D D D D D D U U U G
+                           \_____/ \___________________/ |
+                              |              |            \
+                         Unused bits    11 data bits    Gain bit
 
        Given the above representation, the data is not "packed" in the traditional
-       sense. For space saving, the DAQ WILL pack the data, removing the unused bits.
+       sense.
     """
-    gbit = a & B15                 # save array with gain bit in 16-th position
-    a = np.right_shift(a & M15, 4) # mask 15 lower bits of data and move them 4 bits right
-    a = np.bitwise_or(a, gbit)     # set the gain bit
-    return a
-
+    return a & 0x0FFF
 
 def raw_v01(det_raw, evt, sh_seg=(336,576)):
     """returns raw for all segments shaped as (<number of segments>, 336, 576)
@@ -284,7 +289,8 @@ class Storage_epixuhr_v01():
         gain = det_raw._gain()      # - 4d gains  (8, <nsegs>, 336, 576)
         peds = det_raw._pedestals() # - 4d pedestals
         if cond_msg(gain is None, msg='gain is None - use default', output_meth=logger.warning):
-            gain = gain_default(nsegs=peds.shape[1])
+            if peds is not None:
+                gain = gain_default(nsegs=peds.shape[1])
         logger.info('Storage_epixuhr_v01'\
              +info_ndarr(peds, '\n  peds')\
              +info_ndarr(gain, '\n  gain'))
@@ -294,7 +300,7 @@ class Storage_epixuhr_v01():
         gmaps_hm = gain_maps_epixuhr(cbits_hm) # gr0, gr1, gr2, ..., gr11 boolean maps of shape (<nsegs>, 336, 576)
         gmaps_lo = gain_maps_epixuhr(cbits_lo)
 
-        self.shape_det = tuple(peds.shape)[-3:]
+        self.shape_det = tuple(peds.shape)[-3:] if peds is not None else None
         self.shape_as_daq = det_raw._shape_as_daq()
 
         # select per/pixel constants for H,M / L gains for gain bit 0/1, respectively
@@ -318,10 +324,10 @@ class Storage_epixuhr_v01():
         self.gfac = None
 
         if gain is not None:
-          gfac_sw = ndu.divide_protected(np.ones_like(gain_sw), gain_sw)
-          gfac_sw[0,:] *= mask
-          gfac_sw[1,:] *= mask
-          self.gfac = arrNgrToPerPixelCons(gfac_sw) if perpix else gfac_sw
+            gfac_sw = ndu.divide_protected(np.ones_like(gain_sw), gain_sw)
+            gfac_sw[0,:] *= mask
+            gfac_sw[1,:] *= mask
+            self.gfac = arrNgrToPerPixelCons(gfac_sw) if perpix else gfac_sw
 
         self.peds = arrNgrToPerPixelCons(peds_sw) if perpix else peds_sw
 
@@ -358,20 +364,27 @@ def calib_v02(det_raw, evt, **kwa):
     igr = ue10ka.grindex_array(raw, gbit=det_raw._data_gain_bitnum) # per-pixel array of gain indices 0 or 1
 
     t0_sec = time()
-    pedest = np.select((igr==0, igr==1), (store.peds[0,:], store.peds[1,:]))
-    factor = np.select((igr==0, igr==1), (store.gfac[0,:], store.gfac[1,:]))
+    if store.peds is not None and store.peds[0] is not None:
+        pedest = np.select((igr==0, igr==1), (store.peds[0,:], store.peds[1,:]))
+        factor = np.select((igr==0, igr==1), (store.gfac[0,:], store.gfac[1,:]))
+    else:
+        pedest = None
+        factor = None
     logger.debug('np.select for pedest & factor time: %.6f sec' % (time() - t0_sec)\
                  +info_ndarr(factor,  '\n    factor:')\
                  +info_ndarr(pedest,  '\n    pedest:'))
 
     raw11 = np.bitwise_and(raw, det_raw._data_bit_mask)
+    # Shift data down 1 bit, since the gain bit was the LSB
+    raw11 >>= 1
     arrf = np.array(raw11, dtype=np.float32)
     if pedest is not None: arrf -= pedest
 
     #if store.cmpars is not None:
     #    common_mode_epix_multigain_apply(arrf, gmaps, store)
 
-    if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
+    #if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.warning): factor = 1
+    if cond_msg(factor is None, msg='factor is None - substitute with 1', output_meth=logger.debug): factor = 1
 
     mask = store.mask
     calib = arrf * factor if mask is None else arrf * factor * mask
