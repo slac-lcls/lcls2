@@ -176,6 +176,7 @@ public:
     virtual ~BldDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
+    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     Pgp                                  m_pgp;
     std::thread                          m_workerThread;

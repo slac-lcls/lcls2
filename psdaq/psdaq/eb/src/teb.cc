@@ -1057,12 +1057,6 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
     return -1;
   }
 
-  if (trigger->configure(_connectMsg, body, _prms))
-  {
-    logging::error("Trigger::configure() failed");
-    return -1;
-  }
-
 # define _FETCH(key, item)                                              \
   if (top.find(key) != top.end())  item = top[key];                     \
   else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
@@ -1074,9 +1068,9 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
 
 # undef _FETCH
 
-  logging::info("Trigger configured from configDb %s/%s/%s_0 using %s",
-                _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str(),
-                soname.c_str());
+  logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
+                soname.c_str(), _prms.instrument.c_str(),
+                configAlias.c_str(), triggerConfig.c_str());
 
   return rc;
 }
@@ -1093,6 +1087,12 @@ int TebApp::_configure(const json& msg)
   unsigned prescale{0};
   if (_setupTrigger(msg["body"], trigger, prescale)) {
     logging::error("Failed to set up Trigger)");
+    return -1;
+  }
+
+  if (trigger->configure(_connectMsg, msg["body"], _prms))
+  {
+    logging::error("Trigger::configure() failed");
     return -1;
   }
 

@@ -166,7 +166,7 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
   const auto maxBpSM{prop.maxBlocksPerMultiProcessor};
   auto nThrs{tpSM/maxBpSM}; //{32}; // @todo: Find from green context
   auto nBlks{nSMs*maxBpSM}; //20*48;
-  printf("NoOpReducer blocks %u * threads %u = %u threads\n", nBlks, nThrs, nBlks * nThrs);
+  printf("*** NoOpReducer blocks %u * threads %u = %u threads\n", nBlks, nThrs, nBlks * nThrs);
   _reduce<<<nBlks, nThrs, 0, stream>>>(state_d,
                                        index_d,
                                        calibBuffers_d,
@@ -258,8 +258,19 @@ void NoOpReducer::reduce(cudaGraphExec_t,
 }
 #endif
 
+int NoOpReducer::configure(const nlohmann::json& configureMsg,
+                           const nlohmann::json& connectMsg,
+                           size_t                collectionId)
+{
+  logging::info("NoOpReducer::configure(configure_json, connect_json, collection_id)");
+
+  return 0;
+}
+
 unsigned NoOpReducer::configure(Xtc& xtc, const void* bufEnd)
 {
+  logging::info("NoOpReducer::configure(xtc, bufEnd)");
+
   // Set up the names for L1Accept data
   Alg alg("noOp", 0, 0, 0);
   NamesId namesId(m_det.nodeId, ReducerNamesIndex);

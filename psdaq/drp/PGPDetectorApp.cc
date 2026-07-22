@@ -545,30 +545,39 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             }
         }
 
-        // Configure the detector first
-        const std::string& config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-        if (!error) {
-            json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-            if (!scan.empty())
-                error = m_det->configureScan(scan, xtc, bufEnd);
-        }
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::configure()";
+        // Configure the DRP first
+        std::string errorMsg = m_drp->configure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            // Next, configure the DRP
-            std::string errorMsg = m_drp->configure(msg);
-            if (!errorMsg.empty()) {
-                errorMsg = "Phase 1 error: " + errorMsg;
+            // Next, configure the detector
+            const std::string& config_alias = msg["body"]["config_alias"];
+            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+            if (!error) {
+                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+                if (!scan.empty())
+                    error = m_det->configureScan(scan, xtc, bufEnd);
+            }
+            if (error) {
+                std::string errorMsg = "Phase 1 error in Detector::configure()";
                 body["err_info"] = errorMsg;
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                // Finally, do any remaining configuration and start up the DRP processes
+                std::string errorMsg = m_drp->startup(xtc, bufEnd);
+                if (!errorMsg.empty()) {
+                    errorMsg = "Phase 1 error: " + errorMsg;
+                    body["err_info"] = errorMsg;
+                    logging::error("%s", errorMsg.c_str());
+                }
+                else {
+                    m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                    m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                }
             }
         }
     }
@@ -637,9 +646,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
         unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
         if (error) {
-          std::string errorMsg = "Phase 1 error in Detector::beginrun()";
-          body["err_info"] = errorMsg;
-          logging::error("%s", errorMsg.c_str());
+            std::string errorMsg = "Phase 1 error in Detector::beginrun()";
+            body["err_info"] = errorMsg;
+            logging::error("%s", errorMsg.c_str());
         }
     }
     else if (key == "endrun") {

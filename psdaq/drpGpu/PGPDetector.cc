@@ -596,10 +596,10 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
 
 std::string PGPDrp::configure(const json& msg)
 {
+  // Do the base class configuration
   std::string errorMsg = DrpBase::configure(msg);
-  if (!errorMsg.empty()) {
+  if (!errorMsg.empty())
     return errorMsg;
-  }
 
   m_terminate.store(false, std::memory_order_release);
   chkError(cudaMemset(m_terminate_d, 0, sizeof(*m_terminate_d)));
@@ -624,20 +624,50 @@ std::string PGPDrp::configure(const json& msg)
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
   m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
 
+  // Do initial configuration of the reducers
+  if (m_reducer->configure(msg["body"], connectMsg(), collectionId())) {
+    return "Reducer configure failed";
+  }
+
+  return std::string{};
+}
+
+std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
+{
+  // Do the base class startup
+  std::string errorMsg = DrpBase::startup(xtc, bufEnd);
+  if (!errorMsg.empty())
+    return errorMsg;
+
+  // Set up the PGP reader before phase 2 is issued
+  if (m_reader->setup())
+    return "Reader setup failed";
+
+  // Set up the TrgInpGen before phase 2 is issued
+  if (m_trgInpGen->setup())
+    return "Trigger input generator setup failed";
+
+  // Set up the Reducers
+  if (m_reducer->setup(xtc, bufEnd))
+    return "Reducer setup failed";
+
   // Launch the collector thread
   m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
   static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
 
-  // Start the Reducers
-  m_reducer->startup();
+  // Start the PGP reader before phase 2 is issued
+  if (m_reader->startup())
+    return "Reader startup failed";
 
   // Start the TrgInpGen before phase 2 is issued
-  m_trgInpGen->start();
+  if (m_trgInpGen->startup())
+    return "Trigger input generator startup failed";
 
-  // Start the PGP reader before phase 2 is issued
-  m_reader->start();
+  // Start the Reducers
+  if (m_reducer->startup())
+    return "Reducer startup failed";
 
   return std::string{};
 }

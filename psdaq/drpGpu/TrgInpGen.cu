@@ -96,12 +96,6 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   *m_metrics.rcvWtCtr = 0;
   chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
   *m_metrics.fwdWtCtr = 0;
-
-  // Prepare the TrgInpGen graph
-  if (_setupGraph()) {
-    logging::critical("Failed to set up TrgInpGen graph");
-    abort();
-  }
 }
 
 TrgInpGen::~TrgInpGen()
@@ -196,8 +190,9 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 int TrgInpGen::_setupGraph()
 {
-  // Build the graph
   logging::debug("Recording TrgInpGen graph");
+
+  // Build the graph
   cudaGraph_t graph = _recordGraph(m_stream);
   if (graph == 0) {
     return -1;
@@ -218,6 +213,7 @@ int TrgInpGen::_setupGraph()
     return -1;
   }
 
+  logging::debug("Done recording TrgInpGen graph");
   return 0;
 }
 
@@ -356,15 +352,27 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
   return graph;
 }
 
-void TrgInpGen::start()
+bool TrgInpGen::setup()                 // Called during phase 1 of Configure
+{
+  // Prepare the TrgInpGen graph
+  if (_setupGraph()) {
+    logging::error("Failed to set up TrgInpGen graph");
+    return true;
+  }
+  return false;
+}
+
+bool TrgInpGen::startup()               // Called during phase 1 of Configure
 {
   logging::info("TrgInpGen starting");
 
   resetEventCounter();
 
   // Launch the TrgInpGen graph
-  printf("*** TrgInpGen: Launching graph\n");
+  logging::debug("Launching TrgInpGen graph");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
+
+  return false;
 }
 
 void TrgInpGen::start(SPSCQueue<unsigned>& collectorQueue)

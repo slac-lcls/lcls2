@@ -830,6 +830,16 @@ std::string UdpDrp::configure(const json& msg)
         return errorMsg;
     }
 
+    return std::string();
+}
+
+std::string UdpDrp::startup(Xtc& xtc, const void* bufEnd)
+{
+    std::string errorMsg = DrpBase::startup(xtc, bufEnd);
+    if (!errorMsg.empty()) {
+        return errorMsg;
+    }
+
     m_workerThread = std::thread{&UdpDrp::_worker, this};
 
     return std::string();
@@ -1322,25 +1332,34 @@ void UdpApp::handlePhase1(const json& msg)
             _unconfigure();
         }
 
-        // Configure the detector first
-        std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-        if (error) {
-            std::string errorMsg = "Failed transition phase 1";
+        // Configure the DRP first
+        std::string errorMsg = m_drp->configure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            // Next, configure the DRP
-            std::string errorMsg = m_drp->configure(msg);
-            if (!errorMsg.empty()) {
-                errorMsg = "Phase 1 error: " + errorMsg;
+            // Next, configure the detector
+            std::string config_alias = msg["body"]["config_alias"];
+            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+            if (error) {
+                std::string errorMsg = "Failed transition phase 1";
                 body["err_info"] = errorMsg;
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                // Finally, do any remaining configuration and start up the DRP processes
+                std::string errorMsg = m_drp->startup(xtc, bufEnd);
+                if (!errorMsg.empty()) {
+                    errorMsg = "Phase 1 error: " + errorMsg;
+                    body["err_info"] = errorMsg;
+                    logging::error("%s", errorMsg.c_str());
+                }
+                else {
+                    m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                    m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                }
             }
         }
     }
