@@ -23,6 +23,7 @@
 #include "Opal.hh"
 #include "HREncoder.hh"
 #include "Wave8.hh"
+#include "Wave8HE.hh"
 #include "Piranha4.hh"
 #include "PGPDetectorApp.hh"
 #include "psalg/utils/SysLog.hh"
@@ -344,6 +345,7 @@ void PGPDetectorApp::initialize()
     f.register_type<TimingBEB>       ("tb");
     f.register_type<TimingSystem>    ("ts");
     f.register_type<Wave8>           ("wave8");
+    f.register_type<Wave8HE>         ("wave8he");
     f.register_type<HREncoder>       ("hrencoder");
     f.register_type<Piranha4>        ("piranha4");
     f.register_type<EpixUHR3x2>      ("epixuhr3x2");
