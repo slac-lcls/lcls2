@@ -14,7 +14,7 @@ if [ -d "/cds/sw/" ]; then
     export DIR_PSDM=/cds/group/psdm
     export SIT_PSDM_DATA=/cds/data/psdm
     #export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_01152026
-    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_02202026
+    export SUBMODULEDIR=/cds/sw/ds/ana/conda2/rel/lcls2_submodules_170726
 
     osrel=`uname -r`
     case $osrel in
@@ -73,8 +73,7 @@ elif [ -n "$ZSH_VERSION" ]; then
     SCRIPT_SOURCE="${(%):-%x}"
 fi
 
-#RELDIR="$( cd "$( dirname $(readlink -f "${BASH_SOURCE[0]:-${(%):-%x}}") )" && pwd )"
-RELDIR="$(cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
+RELDIR="$(builtin cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
 
 export PATH=$RELDIR/install/bin:${PATH}
 echo $RELDIR

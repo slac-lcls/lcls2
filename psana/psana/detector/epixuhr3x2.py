@@ -22,7 +22,8 @@ class epixuhr3x2_config_0_1_0(DetectorImpl):
 class epixuhr3x2_raw_0_1_0(eb.epix_base):
     def __init__(self, *args, **kwargs):
         eb.epix_base.__init__(self, *args, **kwargs)
-        self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+        self._gain_modes = ueu.GAIN_MODES # ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+        self._gain_states = ueu.GAIN_STATES # GAIN_MODES + ('AHLG1_L', 'AHLG2_L', 'AMLG1_L', 'AMLG2_L') # 12 total
         self._store_ = None
         self._counter_image = 0
         self._seg_geo = eb.sgs.Create(segname='EPIXUHR3X2:V1')
