@@ -40,10 +40,15 @@ COMMON="-e $EXP -r $RUN --dir $DIR --n_warmup 100 --n_events 500 --batch_size 1 
 run_cfg () {
     local tag="$1" nbd="$2"; shift 2
     echo "════ config: $tag (${nbd} BD) ════"
-    PS_EB_NODES=1 timeout 12m mpirun -n $((nbd + 2)) --bind-to none --oversubscribe \
+    local SD="$OUT/stats_${tag}_${SLURM_JOB_ID}"
+    mkdir -p "$SD"
+    # Hang-proof: ranks persist stats as they finish; timeout reaps any
+    # stranded by the EB termination bug; aggregate whatever landed.
+    PS_EB_NODES=1 timeout 10m mpirun -n $((nbd + 2)) --bind-to none --oversubscribe \
         python psana/psana/gpu/bench_pipeline_stages.py $COMMON \
-        --json_out "$OUT/stages_${tag}_${SLURM_JOB_ID}.json" "$@" \
+        --stats-dir "$SD" "$@" \
         2>&1 | grep -vE "UserWarning|self.gpu_reader|kvikio I/O|\[stages\] rank"
+    python psana/psana/gpu/bench_pipeline_stages.py --report-dir "$SD"
     echo
 }
 

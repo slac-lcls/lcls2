@@ -117,11 +117,30 @@ def parse_args():
     ap.add_argument('--d2h', choices=('none', 'azint', 'calib'),
                     default='none')
     ap.add_argument('--json_out', default=None)
+    ap.add_argument('--stats-dir', default=None,
+                    help='Hang-proof mode: each BD rank writes '
+                         'rank<N>.json here as soon as it finishes and no '
+                         'MPI gather is attempted (the EB termination bug '
+                         'can strand ranks; aggregate afterwards with '
+                         '--report-dir).')
+    ap.add_argument('--report-dir', default=None,
+                    help='Aggregate rank*.json files from a --stats-dir '
+                         'run and print the report (no MPI, run serially).')
     return ap.parse_args()
 
 
 def main():
     args = parse_args()
+
+    if args.report_dir:
+        import glob
+        ranks = []
+        for path in sorted(glob.glob(os.path.join(args.report_dir,
+                                                  'rank*.json'))):
+            with open(path) as f:
+                ranks.append(json.load(f))
+        _report(args, ranks)
+        return
 
     # Knob: disable CUDA-IPC constant sharing (A/B against default-on).
     if args.no_share_calib:
@@ -170,6 +189,17 @@ def main():
     else:
         stats = _bd_loop(ds, args, comms, calib_proxy, azint_proxy,
                          azint_key)
+
+    if args.stats_dir:
+        # Hang-proof mode: persist per-rank stats immediately, skip the
+        # collective (stranded ranks would deadlock the gather).
+        if stats is not None:
+            path = os.path.join(args.stats_dir,
+                                f'rank{stats["bd_rank"]:03d}.json')
+            with open(path, 'w') as f:
+                json.dump(stats, f)
+            print(f'[stages] rank {_RANK}: wrote {path}', flush=True)
+        return
 
     print(f'[stages] rank {_RANK}: event loop done, entering gather',
           flush=True)

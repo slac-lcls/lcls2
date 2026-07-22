@@ -1182,8 +1182,15 @@ class EventBuilderNode(object):
         copied_waiting_bds = waiting_bds[:]
         for dest_rank in copied_waiting_bds:
             missing_step_views = self.step_hist.get_buffer(dest_rank)
-            batches[dest_rank] = repack_for_bd(
+            # Wrap like every data send: BD _unpack_batch expects the
+            # pack(smd, gpubat1) two-packet format on non-empty messages.
+            # An unwrapped step batch with exactly two packets is misparsed
+            # as GPUBAT1 on GPU BD ranks (bad gpu batch magic).
+            _repacked = repack_for_bd(
                 bytearray(), missing_step_views, self.configs, client=dest_rank
+            )
+            batches[dest_rank] = (
+                self.pack(_repacked, bytearray()) if _repacked else _repacked
             )
             if batches[dest_rank]:
                 self.logger.debug(
@@ -1207,8 +1214,11 @@ class EventBuilderNode(object):
         for i in range(n_bd_nodes - len(waiting_bds)):
             self._request_rank(rankreq)
             missing_step_views = self.step_hist.get_buffer(rankreq[0])
-            batches[rankreq[0]] = repack_for_bd(
+            _repacked = repack_for_bd(
                 bytearray(), missing_step_views, self.configs, client=rankreq[0]
+            )
+            batches[rankreq[0]] = (
+                self.pack(_repacked, bytearray()) if _repacked else _repacked
             )
             if batches[rankreq[0]]:
                 self.logger.debug(
@@ -1328,7 +1338,12 @@ class BigDataNode(object):
             pf = PacketFooter(view=chunk)
             if pf.n_packets == 2:
                 packets = pf.split_packets()
-                return bytearray(packets[0]), bytearray(packets[1])
+                gpu_chunk = bytearray(packets[1])
+                # Accept the second packet as GPU work only when it carries
+                # the GPUBAT1 magic (or is empty).  A two-packet smd/step
+                # batch would otherwise be misparsed as GPU routing.
+                if not gpu_chunk or gpu_chunk[:8] == b"GPUBAT1\x00":
+                    return bytearray(packets[0]), gpu_chunk
         except Exception:
             pass
         # Fallback: treat entire chunk as smd_batch (no GPU routing).
