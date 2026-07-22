@@ -188,6 +188,7 @@ public:
     std::string connect(const nlohmann::json& msg, size_t id);
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
+    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter);
     void _worker();
@@ -227,6 +228,7 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -236,6 +238,7 @@ private:
     std::unique_ptr<UdpEncoder> m_det;
     std::unique_ptr<UdpDrp>     m_drp;
     bool                        m_unconfigure;
+    std::string                 m_lastKey;
 };
 
 }

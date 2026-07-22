@@ -250,14 +250,6 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
                 transition = true;
                 EbDgram* trDgram = pool.transitionDgrams[pebbleIndex];
 
-                //  Allow trigger primitives to parse Configure/Names data
-                if (transitionId == TransitionId::Configure) {
-                    auto trgPrimitive = drp.triggerPrimitive();
-                    if (trgPrimitive) { // else this DRP doesn't provide input
-                        trgPrimitive->configure(trDgram->xtc, (char*)trDgram + para.maxTrSize);
-                    }
-                }
-
                 if (pythonDrp) {
                     Dgram* inpDg = trDgram;
                     memcpy(inpData, (void*)inpDg, sizeof(*inpDg) + inpDg->xtc.sizeofPayload());
@@ -401,6 +393,15 @@ std::string PGPDrp::configure(const json& msg)
         m_workerInputQueues.emplace_back(SPSCQueue<Batch>(pool.nbuffers()));
         m_workerOutputQueues.emplace_back(SPSCQueue<Batch>(pool.nbuffers()));
     }
+
+    return std::string();
+}
+
+std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
+{
+    std::string errorMsg = DrpBase::startup(xtc, bufEnd);
+    if (!errorMsg.empty())
+        return errorMsg;
 
     for (unsigned i = 0; i < m_para.nworkers; i++) {
         m_workerThreads.emplace_back(workerFunc,

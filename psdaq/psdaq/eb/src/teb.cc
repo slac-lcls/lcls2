@@ -80,7 +80,7 @@ namespace Pds {
     class Teb : public EbAppBase
     {
     public:
-      Teb(const EbParams& prms);
+      Teb(EbParams& prms);
     public:
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
@@ -172,7 +172,7 @@ using namespace Pds::Eb;
 //   }
 // }
 
-Teb::Teb(const EbParams& prms) :
+Teb::Teb(EbParams& prms) :
   EbAppBase     (prms, "TEB"),
   _mrqTransport (prms.verbose, prms.kwargs),
   _batch        {nullptr, 0, 0},
@@ -199,7 +199,7 @@ Teb::Teb(const EbParams& prms) :
   _l3Transport  (prms.verbose, prms.kwargs)
 {
   if (_prms.kwargs.find("mon_throttle") != _prms.kwargs.end())
-    _monThrottle = std::stoul(const_cast<EbParams&>(_prms).kwargs["mon_throttle"]);
+    _monThrottle = std::stoul(_prms.kwargs.at("mon_throttle"));
 }
 
 int Teb::resetCounters()
@@ -889,6 +889,7 @@ public:                                 // For CollectionApp
 private:
   std::string
        _error(const json& msg, const std::string& errorMsg);
+  void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
   int  _setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale);
@@ -906,6 +907,7 @@ private:
   json                                 _connectMsg;
   Trg::Factory<Trg::Trigger>           _factory;
   bool                                 _unconfigFlag;
+  std::string                          _lastKey;
 };
 
 TebApp::TebApp(EbParams& prms) :
@@ -914,7 +916,7 @@ TebApp::TebApp(EbParams& prms) :
   _ebPortEph   (prms.ebPort.empty()),
   _mrqPortEph  (prms.mrqPort.empty()),
   _exposer     (Pds::createExposer(prms.prometheusDir, getHostname())),
-  _teb         (std::make_unique<Teb>(_prms)),
+  _teb         (std::make_unique<Teb>(prms)),
   _unconfigFlag(false)
 {
   Py_Initialize();
@@ -934,7 +936,7 @@ TebApp::~TebApp()
 std::string TebApp::_error(const json&        msg,
                            const std::string& errorMsg)
 {
-  json body = json({});
+  json body({});
   const std::string& key = msg["header"]["key"];
   body["err_info"] = errorMsg;
   logging::error("%s", errorMsg.c_str());
@@ -976,6 +978,7 @@ void TebApp::handleConnect(const json& msg)
   // Save a copy of the json so we can use it to connect to
   // the config database on configure
   _connectMsg = msg;
+  _lastKey = msg["header"]["key"];
 
   // If the exporter already exists, replace it so that previous metrics are deleted
   if (_exposer)
@@ -984,8 +987,8 @@ void TebApp::handleConnect(const json& msg)
     _exposer->RegisterCollectable(_exporter);
   }
 
-  json body = json({});
-  int  rc   = _parseConnectionParams(msg["body"]);
+  json body({});
+  int  rc = _parseConnectionParams(msg["body"]);
   if (rc)
   {
     _error(msg, "Connection parameters error - see log");
@@ -1054,12 +1057,6 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
     return -1;
   }
 
-  if (trigger->configure(_connectMsg, body, _prms))
-  {
-    logging::error("Trigger::configure() failed");
-    return -1;
-  }
-
 # define _FETCH(key, item)                                              \
   if (top.find(key) != top.end())  item = top[key];                     \
   else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
@@ -1071,11 +1068,17 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
 
 # undef _FETCH
 
-  logging::info("Trigger configured from configDb %s/%s/%s_0 using %s",
-                _prms.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str(),
-                soname.c_str());
+  logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
+                soname.c_str(), _prms.instrument.c_str(),
+                configAlias.c_str(), triggerConfig.c_str());
 
   return rc;
+}
+
+void TebApp::_disconnect()
+{
+  if (_teb)
+    _teb->disconnect();
 }
 
 int TebApp::_configure(const json& msg)
@@ -1084,6 +1087,12 @@ int TebApp::_configure(const json& msg)
   unsigned prescale{0};
   if (_setupTrigger(msg["body"], trigger, prescale)) {
     logging::error("Failed to set up Trigger)");
+    return -1;
+  }
+
+  if (trigger->configure(_connectMsg, msg["body"], _prms))
+  {
+    logging::error("Trigger::configure() failed");
     return -1;
   }
 
@@ -1103,20 +1112,23 @@ void TebApp::_unconfigure()
   lRunning = 0;
   if (_appThread.joinable())  _appThread.join();
 
-  _teb->unconfigure();
+  if (_teb)
+    _teb->unconfigure();
 
   _unconfigFlag = false;
 }
 
 void TebApp::handlePhase1(const json& msg)
 {
-  json        body = json({});
-  std::string key  = msg["header"]["key"];
+  json        body({});
+  std::string key = msg["header"]["key"];
 
   if (key == "configure")
   {
     // Handle a "queued" Unconfigure, if any
-    if (_unconfigFlag)  _unconfigure();
+    // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+    if (_unconfigFlag || (_lastKey == key))
+      _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -1138,6 +1150,7 @@ void TebApp::handlePhase1(const json& msg)
   {
     _teb->resetCounters();              // Same time as DRPs
   }
+  _lastKey = key;
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -1148,12 +1161,12 @@ void TebApp::handleDisconnect(const json& msg)
   // Carry out the queued Unconfigure, if there was one
   if (_unconfigFlag)  _unconfigure();
 
-  _teb->disconnect();
+  _disconnect();
 
   if (_exporter)  _exporter.reset();
 
   // Reply to collection with transition status
-  json body = json({});
+  json body({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -1162,7 +1175,7 @@ void TebApp::handleReset(const json& msg)
   unsubscribePartition();               // ZMQ_UNSUBSCRIBE
 
   _unconfigure();
-  _teb->disconnect();
+  _disconnect();
   if (_exporter)  _exporter.reset();
   connectionShutdown();
 }

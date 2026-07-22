@@ -41,7 +41,7 @@ Reader::Reader(const Parameters&                  para,
 {
   // Establish the number of Reader graphs to use
   if (para.kwargs.find("nReaders") != para.kwargs.end())
-    m_nReaders = std::stoul(const_cast<Parameters&>(para).kwargs["nReaders"]);
+    m_nReaders = std::stoul(para.kwargs.at("nReaders"));
   else
     m_nReaders = 1;
   if ((m_nReaders == 0) || (m_nReaders * (m_pool.dmaCount()/m_nReaders)) != m_pool.dmaCount()) {
@@ -55,7 +55,7 @@ Reader::Reader(const Parameters&                  para,
     abort();
   }
 
-  logging::info("Running with %u Reader streams", m_nReaders);
+  logging::info("Configuring %u Reader streams", m_nReaders);
 
   // Create DMA buffer index counters for each Reader
   m_dmaBufferIdxes.resize(m_nReaders);
@@ -130,15 +130,6 @@ Reader::Reader(const Parameters&                  para,
     *m_metrics.dmaWtCtrs[i] = 0;
     chkError(cudaHostAlloc(&m_metrics.fwdWtCtrs[i], sizeof(*m_metrics.fwdWtCtrs[i]), cudaHostAllocDefault));
     *m_metrics.fwdWtCtrs[i] = 0;
-  }
-
-  // Prepare the CUDA graph
-  m_graphExecs.resize(m_nReaders);
-  for (unsigned i = 0; i < m_nReaders; ++i) {
-    if (_setupGraph(i)) {
-      logging::critical("Failed to set up Reader[%u]'s graph", i);
-      abort();
-    }
   }
 }
 
@@ -237,8 +228,9 @@ int Reader::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 int Reader::_setupGraph(unsigned reader)
 {
-  // Generate the graph
   logging::debug("Recording Reader graph %u", reader);
+
+  // Generate the graph
   auto graph = _recordGraph(reader);
   if (graph == 0) {
     return -1;
@@ -259,6 +251,7 @@ int Reader::_setupGraph(unsigned reader)
     return -1;
   }
 
+  logging::debug("Done recording Reader graph %u", reader);
   return 0;
 }
 
@@ -608,9 +601,22 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   return graph;
 }
 
-void Reader::start()
+bool Reader::setup()                    // Called during phase 1 of Configure
 {
-  logging::info("Reader is starting");
+  // Prepare the CUDA graphs
+  m_graphExecs.resize(m_nReaders);
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    if (_setupGraph(i)) {
+      logging::error("Failed to set up Reader[%u]'s graph", i);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool Reader::startup()                  // Called during phase 1 of Configure
+{
+  logging::info("Starting %u Reader(s)", m_nReaders);
 
   auto const panel = m_pool.panel();
 
@@ -619,8 +625,8 @@ void Reader::start()
   for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
     auto rc = gpuSetWriteEn(panel->datadev.fd(), dmaIdx);
     if (rc < 0) {
-      logging::critical("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
-      abort();
+      logging::error("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
+      return true;
     }
   }
 #endif // HOST_REARMS_DMA
@@ -644,9 +650,11 @@ void Reader::start()
 
   // Launch the Reader graph
   for (unsigned i = 0; i < m_nReaders; ++i) {
-    //printf("*** Reader: Launching graph %u\n", i);
+    logging::debug("Launching Reader graph %u\n", i);
     chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
   }
+
+  return false;
 }
 
 void Reader::freeDma(PGPEvent* event)
@@ -656,6 +664,18 @@ void Reader::freeDma(PGPEvent* event)
   DmaBuffer* buffer = &event->buffers[lane];
   event->mask = 0;
   m_pebbleQueue.h->push(buffer->index);
-  m_pool.freeDma(1, nullptr);
+  //m_pool.freeDma(1, nullptr); // This doesn't do anything
   //printf("*** Reader::freeDma: pblIdx %u, hd %u, tl %u, occ %u\n", buffer->index, m_pebbleQueue.h->head(), m_pebbleQueue.h->tail(), m_pebbleQueue.h->occupancy());
 }
+
+void Reader::flush()
+{
+  // Free buffers associated with the DMAs
+  for (auto& event : m_pool.pgpEvents) {
+    if (event.mask)  freeDma(&event);   // Leaves event mask = 0
+  }
+
+  // Free any in-use pebble buffers
+  m_pool.flushPebble();
+}
+
