@@ -364,7 +364,7 @@ bool TrgInpGen::setup()                 // Called during phase 1 of Configure
 
 bool TrgInpGen::startup()               // Called during phase 1 of Configure
 {
-  logging::info("TrgInpGen starting");
+  logging::info("Starting TrgInpGen");
 
   resetEventCounter();
 
