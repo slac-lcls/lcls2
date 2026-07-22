@@ -166,17 +166,35 @@ def main():
         for r in ds.runs():
             for _ in r.events():
                 pass
-        return
+        stats = None
+    else:
+        stats = _bd_loop(ds, args, comms, calib_proxy, azint_proxy,
+                         azint_key)
 
+    print(f'[stages] rank {_RANK}: event loop done, entering gather',
+          flush=True)
+    all_stats = _COMM.gather(stats, root=0)
+    if _RANK == 0:
+        _report(args, all_stats)
+
+
+def _bd_loop(ds, args, comms, calib_proxy, azint_proxy, azint_key):
     import cupy as cp
 
     calib_key = f'{args.det}.calib'
     feed_ms, hot_ms, d2h_ms = [], [], []
     wall_t0 = wall_t1 = None
     n = 0
+    done = False
     t_prev = time.perf_counter()
 
+    # Break out at the event target instead of draining the iterator:
+    # with max_events truncation the GPU-path BD loop never receives a
+    # termination signal and blocks forever waiting for the next batch
+    # (framework bug — reproduced with azint off and sharing off).
     for r in ds.runs():
+        if done:
+            break
         for ctx in r.events():
             t_in = time.perf_counter()
             if n == args.n_warmup:
@@ -201,8 +219,12 @@ def main():
                 hot_ms.append((t1 - t0) * 1e3)
                 d2h_ms.append(dt_d2h)
             t_prev = time.perf_counter()
+            if n % 100 == 0:
+                print(f'[stages] rank {_RANK}: {n} events', flush=True)
             if n == args.n_warmup + args.n_events:
                 wall_t1 = t_prev
+                done = True
+                break
 
     if wall_t0 is not None and wall_t1 is None:
         wall_t1 = time.perf_counter()
@@ -224,10 +246,10 @@ def main():
         'wall_per_evt_ms': wall_ms / counted if counted else 0.0,
         'evt_per_sec': counted / (wall_ms / 1e3) if wall_ms > 0 else 0.0,
     }
+    return stats
 
-    all_stats = _COMM.gather(stats, root=0)
-    if _RANK != 0:
-        return
+
+def _report(args, all_stats):
     bd = [s for s in all_stats if s and s.get('n_events', 0) > 0]
     if not bd:
         print('no BD stats collected')
