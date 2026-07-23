@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import sys
 from psana.detector.dir_root import DIR_REPO_EPIX
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
@@ -13,6 +14,7 @@ USAGE = 'Usage:'\
       + '\nTests:'\
       + '\n  %s -k exp=mfxdet23,run=15 -d epixuhr -o work1 # data on psana' % SCRNAME\
       + '\n  %s -k exp=mfx101628626,run=163 -d epixuhr3x2 -o work1' % SCRNAME\
+      + '\n  %s -k exp=ascdaq123,run=578 -d epixuhr3x2 -o work1' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 
 
@@ -22,6 +24,8 @@ def do_main():
     if len(sys.argv)<3: sys.exit('\n%s\n\nMISSING ARGUMENTS - EXIT\n' % USAGE)
     assert args.dskwargs is not None, 'WARNING: option "-k <DataSource-kwargs>" MUST be specified.'
     assert args.det is not None, 'WARNING: option "-d <detector-name>" MUST be specified.'
+    assert os.path.exists(args.dirrepo), f'WARNING: repository "{args.dirrepo}" MUST exist before using this script.'\
+           '\n\nHINT: create/populate repository with scripts like calibrepo or epix_dark_proc\n'
 
     from psana.detector.UtilsEpixCalib import epix_deploy_constants
     from time import time
