@@ -6,6 +6,7 @@
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psalg/detector/UtilsConfig.hh"
+#include "psalg/detector/FFT.hh"
 #include "psalg/utils/SysLog.hh"
 
 #include <Python.h>
@@ -15,9 +16,12 @@
 #include <fstream>
 #include <string>
 
+#define ADD_FFT
+
 using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
+using Complex = std::complex<double>;
 
 namespace Drp {
 
@@ -37,20 +41,6 @@ namespace Drp {
             memcpy(arrayT.data(), seg.data(), seg.num_elem());
         }
     };
-
-    class RawStreamDef {
-    public:
-        RawStreamDef() {
-            VarDef v;
-            for(unsigned i=0; i<8; i++)
-                W8::RawStream::varDef(v,i);
-            _rawDefV.push_back(v);
-        }
-
-        std::vector<VarDef>& rawDefV() { return _rawDefV; }
-    private:
-        std::vector<VarDef> _rawDefV;
-    } _rawStreamDef;
 
     class IntegralStream {
     public:
@@ -129,6 +119,56 @@ namespace Drp {
         double   _posX;
         double   _posY;
     };
+
+    class FFTStream {
+    public:
+        static void varDef(VarDef& v,unsigned ch) {
+            char name[32];
+            sprintf(name,"fftabs_%d",ch);
+            v.NameVec.push_back(XtcData::Name(name, XtcData::Name::DOUBLE,1));
+        }
+        static void createData(CreateData& cd, unsigned& index, unsigned ch, Array<uint8_t>& seg) {
+            unsigned n = seg.num_elem()>>1;
+            unsigned shape[MaxRank];
+            shape[0] = n>>1;
+            Array<double_t> arrayT = cd.allocate<double_t>(index++, shape);
+            std::vector<Complex> data(n);
+            uint16_t* p = (uint16_t*)seg.data();
+            for(unsigned i=0; i<n; i++)
+                data[i] = Complex(p[i]);
+            detector::fft(data,false);
+            for(unsigned i=0; i<shape[0]; i++)
+                arrayT.data()[i] = std::abs(data[i]);
+        }
+        FFTStream() {}
+    private:
+        void _dump() const {
+        }
+    };
+
+    class RawStreamDef {
+    public:
+        RawStreamDef() {
+            VarDef v;
+            for(unsigned i=0; i<8; i++)
+                W8::RawStream::varDef(v,i);
+            _rawDefV.push_back(v);
+
+            VarDef w;
+            IntegralStream::varDef(w);
+            ProcStream    ::varDef(w);
+#ifdef ADD_FFT
+            for(unsigned i=0; i<8; i++)
+                W8::FFTStream::varDef(w,i);
+#endif
+            _rawDefV.push_back(w);
+        }
+
+        std::vector<VarDef>& rawDefV() { return _rawDefV; }
+    private:
+        std::vector<VarDef> _rawDefV;
+    } _rawStreamDef;
+
     class Streams {
     public:
         static void defineData(Xtc& xtc, const void* bufEnd, const char* detName,
@@ -139,19 +179,13 @@ namespace Drp {
             Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                         detName, alg,
                                                         detType, detNum, raw);
-            VarDef v;
-            for(unsigned i=0; i<8; i++)
-                RawStream::varDef(v,i);
-            eventNames.add(xtc, bufEnd, v);
+            eventNames.add(xtc, bufEnd, _rawStreamDef.rawDefV()[0]);
             lookup[raw] = NameIndex(eventNames); }
           { Alg alg("fex", 0, 0, 1);
             Names& eventNames = *new(xtc, bufEnd) Names(bufEnd,
                                                         detName, alg,
                                                         detType, detNum, fex);
-            VarDef v;
-            IntegralStream::varDef(v);
-            ProcStream    ::varDef(v);
-            eventNames.add(xtc, bufEnd, v);
+            eventNames.add(xtc, bufEnd, _rawStreamDef.rawDefV()[1]);
             lookup[fex] = NameIndex(eventNames); }
         }
         static void createData(XtcData::Xtc&         xtc,
@@ -174,6 +208,11 @@ namespace Drp {
 
             if (streams[9].data())
                 ProcStream::createData(fex,index,streams[9]);
+
+#ifdef ADD_FFT
+            for(unsigned i=0; i<8; i++)
+                FFTStream::createData(fex,index,i,streams[i]);
+#endif
        }
     };
 
@@ -205,6 +244,7 @@ void Wave8::_event(XtcData::Xtc& xtc,
     W8::Streams::createData(xtc, bufEnd, m_namesLookup, m_evtNamesRaw, m_evtNamesFex, &subframes[2]);
 }
 
+    /*
 void     Wave8::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, double* dst, XtcData::DescData& rawData) 
 {
     if (valueIndex < 8) {
@@ -222,7 +262,7 @@ void     Wave8::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned su
         abort();
     }
 }
-
+    */
 std::vector<XtcData::VarDef>& Wave8::rawDef()
 { return Drp::W8::_rawStreamDef.rawDefV(); }
 }
