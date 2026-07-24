@@ -604,16 +604,11 @@ void Teb::process(EbEvent* event)
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
-      rdg->prescale(!rdg->persist() && !_wrtCounter--);
-      if (rdg->prescale())
-      {
-        _wrtCounter = _prescale;        // Rearm
+      rdg->prescale(dgram->keepRaw());
 
-        _prescaleCount++;
-      }
-
-      if (rdg->persist())  _writeCount++;
-      if (rdg->monitor())  _monitor(rdg);
+      if (rdg->prescale())  _prescaleCount++;
+      if (rdg->persist())   _writeCount++;
+      if (rdg->monitor())   _monitor(rdg);
     }
     else
     {   // Allow trigger to return a non-default result on transitions
