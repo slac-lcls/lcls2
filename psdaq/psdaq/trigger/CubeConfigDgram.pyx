@@ -8,7 +8,7 @@ cdef class CubeConfigDgram:
     cdef dgram.CubeConfigDgram* cptr
     cdef int _bufOwner
 
-    def __cinit__(self, view = None, nbins = 1, json_str = None):
+    def __cinit__(self, view = None, nbins = 1, rtype_str = 'Cube', json_str = None):
         self._bufOwner = view is not None
         if self._bufOwner:
             #  Inheritance is not provided
@@ -18,6 +18,7 @@ cdef class CubeConfigDgram:
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
             view_ptr = <char *>self.buf.buf
             self.cptr = <dgram.CubeConfigDgram *>(view_ptr)
+            self.cptr.resultType   (rtype_str.encode("utf-8"))
             self.cptr.bins         (nbins)
             if json_str:
                self.cptr.appendJson(json_str.encode("utf-8"))

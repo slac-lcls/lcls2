@@ -144,16 +144,12 @@ class ts_raw_2_1_0(ts_raw_2_0_0):
 class ts_cube_2_0_0(DetectorImpl):
     def __init__(self, *args):
         super().__init__(*args)
-    def bin(self, evt) -> amitypes.Array1d:
-        segs = self._segments(evt)
-        if segs is None: return None
-        if segs[0] is None: return None
-        return segs[0].bin
-    def entries(self, evt) -> amitypes.Array1d:
-        segs = self._segments(evt)
-        if segs is None: return None
-        if segs[0] is None: return None
-        return segs[0].entries
+        self._add_fields()
+
+    def _info(self,evt):
+        segments = self._segments(evt)
+        if segments is None: return None
+        return segments[0]
 
 class triginfo_triginfo_0_0_1(DetectorImpl):
     def __init__(self, *args):

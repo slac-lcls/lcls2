@@ -9,6 +9,7 @@
 #include "psdaq/aes-stream-drivers/AxisDriver.h"
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/eb/src/ResultDgram.hh"
+#include "psalg/utils/SysLog.hh"
 
 #include <fcntl.h>
 #include <Python.h>
@@ -21,8 +22,8 @@ static char config_buf [BUFSIZE];
 
 using namespace XtcData;
 using namespace rapidjson;
-
 using json = nlohmann::json;
+using logging = psalg::SysLog;
 
 static PyObject* check(PyObject* obj) {
     if (!obj) {
@@ -219,10 +220,78 @@ void TimingSystem::event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::E
 
 unsigned TimingSystem::rawNamesIndex () { return EventNamesIndex; }
 unsigned TimingSystem::cubeNamesIndex() { return CubeNamesIndex; }
-unsigned TimingSystem::cubeBinBytes  () { return 20; }
+unsigned TimingSystem::cubeBinBytes  () { return m_pool->bufferSize(); }
 
-static std::vector<VarDef> _rawDefV(1,VarDef());
+static VarDef cubeVar()
+{
+    VarDef v;
+    Alg raw("raw", 1, 0, 0);
+    v.NameVec.push_back({"eventcodes",Name::UINT8,1,raw}); // type doesn't matter
+    v.NameVec.push_back({"inhibitCounts" ,Name::UINT32,1,raw});
+    return v;
+}
+
+static std::vector<VarDef> _rawDefV(1,cubeVar());
+//static std::vector<VarDef> _rawDefV(1,TSDef);
 
 std::vector<XtcData::VarDef>& TimingSystem::rawDef() { return _rawDefV; }
 
 unsigned TimingSystem::maxMonBufSize() { return m_para->nCubeWorkers==0 ? m_pool->pebble.bufferSize() : 0x40000; }
+
+XtcData::Shape TimingSystem::shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData)
+{
+    static uint32_t seqShape[] = {288,0,0,0,0};
+    static uint32_t inhShape[] = {  8,0,0,0,0};
+    
+    if (rawDefIndex==0) {
+        switch(valueIndex) {
+        case 0: // eventcodes
+            return XtcData::Shape(seqShape);
+        case 1: // inhibitCounts
+            return XtcData::Shape(inhShape);
+        default:
+            break;
+        }
+    }
+    logging::critical("shapeCube called with rawDefIndex %u and valueIndex %u",rawDefIndex,valueIndex);
+    abort();
+}
+
+unsigned TimingSystem::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                                  double* dst, unsigned bin, XtcData::DescData& rawData)
+{
+    if (rawDefIndex==0) {
+        switch(valueIndex) {
+        case 0: // eventcodes
+            {
+                unsigned arraySize = 288*sizeof(double_t);
+                dst += bin*arraySize;
+                Array<uint16_t> seqArray = rawData.get_array<uint16_t>(TSDef.sequenceValues);
+                for(unsigned iw=0; iw<18; iw++) {
+                    unsigned mask = seqArray.data()[iw];
+                    unsigned ib;
+                    while((ib = __builtin_ffs(mask))) {
+                        ib--;
+                        mask &= ~(1<<ib);
+                        dst[ib]++;
+                    }
+                    dst+=16;
+                }
+                return arraySize;
+            }
+        case 1: // inhibitCounts
+            {
+                unsigned arraySize = 8*sizeof(double_t);
+                dst += bin*arraySize;
+                Array<uint32_t> seqArray = rawData.get_array<uint32_t>(TSDef.inhibitCounts);
+                for(unsigned iw=0; iw<8; iw++)
+                    dst[iw] += double(seqArray.data()[iw]);
+                return arraySize;
+            }
+        default:
+            break;
+        }
+    }
+    logging::critical("addToCube called with rawDefIndex %u and valueIndex %u",rawDefIndex,valueIndex);
+    abort();
+}

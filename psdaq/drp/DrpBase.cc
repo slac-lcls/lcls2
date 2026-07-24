@@ -1084,6 +1084,7 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
             }
             if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
+
             // send pulseId to inproc so it gets forwarded to the collection
             json msg = createPulseIdMsg(pulseId);
             m_inprocSend.send(msg.dump());
@@ -1818,14 +1819,21 @@ std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
     abort();
 }
 
+XtcData::Shape Drp::Detector::shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData)
+{
+    return rawData.shape(rawDef()[rawDefIndex].NameVec[valueIndex]);
+}
+
 //
 //  This is generic but without calibration
 //
-void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
-                              double* dst, DescData& rawData)
+unsigned Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                                  double* dst, unsigned bin, DescData& rawData)
 {
     NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
     Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    unsigned arraySize = name.rank() ? sizeof(double_t)*Shape(rawData.shape(name)).num_elements(name.rank()) : sizeof(double_t);
+    dst += bin*arraySize;
     if (name.rank()==0) {
 
         /*
@@ -1878,5 +1886,6 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         }
 #undef ADD_ARRAY
     }
+    return arraySize;
 }
 

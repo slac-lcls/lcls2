@@ -79,7 +79,8 @@ CubeData::CubeData(Detector& det, unsigned nbins, unsigned poolBufferSize) :
     m_det     (det),
     m_nbins   (nbins),
     m_rawDefV (det.rawDef()),
-    m_cubeDefV(0)
+    m_cubeDefV(0),
+    m_init    (true)
 {
     unsigned index = det.rawNamesIndex();
     unsigned nshapes = 0;
@@ -184,10 +185,11 @@ void CubeData::initialize(Src&       src,
                         logging::error("Initializing cube vector without raw data");
                         abort();
                     }
+                    Shape n(m_det.shapeCube(idef, i, *rawdata));
                     uint32_t newShape[XtcData::MaxRank];
                     newShape[0] = nbins;
                     for(unsigned r=0; r<4; r++)
-                        newShape[r+1] = rawdata->shape(rawDef.NameVec[i])[r];
+                        newShape[r+1] = n.shape()[r];
                     Shape s(newShape);
                     unsigned arraySize = s.size(cubeDef.NameVec[i+2]); 
                     memset(dst, 0, arraySize);
@@ -211,15 +213,17 @@ void CubeData::initialize(Src&       src,
                 if (rank>1) {
                     uint32_t newShape[XtcData::MaxRank];
                     newShape[0] = nbins;
+                    Shape n(m_det.shapeCube(idef, i-2, *rawdata));
                     for(unsigned r=0; r<4; r++)
-                        newShape[r+1] = rawdata->shape(rawDef.NameVec[i-2])[r];
+                        newShape[r+1] = n.shape()[r];
                     s = Shape(newShape);
                 }
                 data.set_array_shape(i, s.shape());
             }
 
             //  Printout
-            if (threadNum==0) {
+            if (threadNum==0 && m_init) {
+                m_init = false;
                 logging::info("Initialized cube[%u] with %u bins.", ibuff, nbins);
                 ShapesData& shd = data.shapesdata();
                 logging::info("Shapes at %lx,  Data at %lx",
@@ -227,9 +231,13 @@ void CubeData::initialize(Src&       src,
                               (char*)&shd.data  ()-xtc.payload());
                 if (ibuff==0) {
                     for(unsigned i=0; i<cubeDef.NameVec.size(); i++) {
+                        Name& name = cubeDef.NameVec[i];
+                        char buff[64];
+                        char* p = buff;
                         uint32_t* sh = shd.shapes().get(i).shape();
-                        logging::info("Shape[%u] (%s): %u %u %u %u %u",
-                                      i, cubeDef.NameVec[i].name(), sh[0], sh[1], sh[2], sh[3], sh[4]);
+                        for(unsigned j=0; j<name.rank(); j++)
+                            p += sprintf(p," %u",sh[j]);
+                        logging::info("Shape[%u] (%s): %s", i, name.name(), buff);
                     } 
                 }
             }
@@ -243,6 +251,41 @@ void CubeData::initialize(Src&       src,
 #endif
         ibin += nbins;
     } // ibuff
+}
+
+//  Zero some entries
+void CubeData::flush(const std::vector<unsigned>& bins)
+{
+    unsigned ndstbins = bins.size();
+    for(unsigned dstbin=0; dstbin<ndstbins; dstbin++) {
+        unsigned bin   = bins[dstbin];  // source bin number
+        unsigned nbins = m_binsPerBuf;
+        unsigned ibuff = bin/nbins;
+        unsigned ibin  = bin%nbins;
+        Dgram* bdg = (Dgram*)m_buffer[ibuff];
+        Xtc* xtc = (Xtc*)(bdg->xtc.payload());
+
+        for(unsigned idef=0; idef < m_rawDefV.size(); idef++) {
+            VarDef& cubeDef = m_cubeDefV[idef];
+
+            NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
+            DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
+            ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+ibin] = 0;
+            unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+
+            //  The rest are double arrays
+            for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                Shape s(cubedata.shape(cubeDef.NameVec[i]));
+                s.shape()[0] = 1;
+                unsigned binSize = s.size(cubeDef.NameVec[i]);
+                double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+                memset(src, 0, binSize);
+                srcSize += binSize*nbins;
+            }
+
+            xtc = xtc->next();
+        }
+    }
 }
 
 //  Add names to the XTC
@@ -306,11 +349,9 @@ void CubeData::add    (unsigned   bin,
 
             VarDef& rawDef = m_rawDefV[idef];
             for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
-                Name& name = rawDef.NameVec[i];
-                unsigned arraySize = name.rank() ? sizeof(double_t)*Shape(rawdata.shape(name)).num_elements(name.rank()) : sizeof(double_t);
-                double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+ibin*arraySize);
+                double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size);
+                unsigned arraySize = m_det.addToCube(idef, i, 0, dst, ibin, rawdata);
                 size += nbins*arraySize;
-                m_det.addToCube(idef, i, 0, dst, rawdata);
             }
         }
                     
@@ -339,20 +380,18 @@ void CubeData::addSub (unsigned   bin,
 
         VarDef& rawDef = m_rawDefV[idef];
         for(unsigned i=0; i<rawDef.NameVec.size(); i++) {
-            Name& name = rawDef.NameVec[i];
-            unsigned arraySize = name.rank() ? sizeof(double_t)*Shape(rawdata.shape(name)).num_elements(name.rank()) : sizeof(double_t);
-            double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size+ibin*arraySize);
+            double* dst = (double_t*)((char*)cubedata.shapesdata().data().payload()+size);
+            unsigned arraySize = m_det.addToCube(idef, i, subDet, dst, ibin, rawdata);
             size += nbins*arraySize;
-            m_det.addToCube(idef, i, subDet, dst, rawdata);
         }
         xtc = (Xtc*)(xtc->next());
     }
 }
 
-//  Copy one bin into a datagram (unless we are the timing system)
-Pds::EbDgram* CubeData::copyBin(unsigned      bin,
-                                SDV&          shapesDataV,
-                                Pds::EbDgram* dg)
+//  Copy one or more bins into a datagram (unless we are the timing system)
+Pds::EbDgram* CubeData::copyBins(const std::vector<unsigned>& bins,
+                                 SDV&                         shapesDataV,
+                                 Pds::EbDgram*                dg)
 {
     //  Append the intermediate bin sum to the pebble data
     memcpy(m_bufferBin, dg, sizeof(*dg)+dg->xtc.sizeofPayload());
@@ -362,75 +401,85 @@ Pds::EbDgram* CubeData::copyBin(unsigned      bin,
     DUMP_DGRAM("TGT DG IN",dg);
 #endif
 
-    unsigned nbins = m_binsPerBuf;
-    unsigned ibuff = bin/nbins;
-    unsigned ibin  = bin%nbins;
-    Xtc* bxtc = (Xtc*)(((Dgram*)m_buffer[ibuff])->xtc.payload());
+    unsigned ndstbins = bins.size();
+    for(unsigned dstbin=0; dstbin<ndstbins; dstbin++) {
+        unsigned bin   = bins[dstbin];  // source bin number
+        unsigned nbins = m_binsPerBuf;
+        unsigned ibuff = bin/nbins;
+        unsigned ibin  = bin%nbins;
+        Xtc* bxtc = (Xtc*)(((Dgram*)m_buffer[ibuff])->xtc.payload());
 
-    //  Check for timing system
-    if (m_rawDefV[0].NameVec.size()==0) {
-        NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
-        //  DescribedData creates the Data container first, then the Shapes container
-        unsigned sz = 2*sizeof(uint32_t)*nbins+2*sizeof(Shape)+3*sizeof(Xtc);
-        DescribedData data(dg->xtc, (char*)dg->xtc.next()+sz, m_det.namesLookup(), namesId);
-        shapesDataV.push_back(&data.shapesdata());
-
-        DescData cubedata(*(ShapesData*)bxtc, m_det.namesLookup()[namesId]);
-        memcpy(data.data(), cubedata.shapesdata().data().payload(), 2*nbins*sizeof(uint32_t));
-        unsigned dstSize = 2*sizeof(uint32_t)*nbins;
-        data.set_data_length(dstSize);
-
-        //  Now set the shapes
-        uint32_t scalar_array[] = {nbins,0,0,0,0};
-        Shape    scalar(scalar_array);
-        data.set_array_shape(CubeDef::bin    , scalar_array);
-        data.set_array_shape(CubeDef::entries, scalar_array);
-    }
-    else {
-        //  Not timing system
-        for(unsigned idef=0; idef < m_rawDefV.size(); idef++) {
-#ifdef DBUG
-            DUMP_XTC("TGT",(&dg->xtc),dg);
-            DUMP_XTC("SRC",bxtc,m_buffer[ibuff]);
-#endif
-            VarDef& cubeDef = m_cubeDefV[idef];
-
-            NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
+#if 0
+        //  Check for timing system
+        if (m_rawDefV[0].NameVec.size()==0) {
+            NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
             //  DescribedData creates the Data container first, then the Shapes container
-            DescribedData data(dg->xtc, dg->xtc.payload()+m_det.cubeBinBytes(), m_det.namesLookup(), namesId);
+            unsigned sz = 2*sizeof(uint32_t)*nbins+2*sizeof(Shape)+3*sizeof(Xtc);
+            DescribedData data(dg->xtc, (char*)dg->xtc.next()+sz, m_det.namesLookup(), namesId);
             shapesDataV.push_back(&data.shapesdata());
 
             DescData cubedata(*(ShapesData*)bxtc, m_det.namesLookup()[namesId]);
-            ((uint32_t*)data.data())[0] = bin;
-            ((uint32_t*)data.data())[1] = ((uint32_t*)cubedata.shapesdata().data().payload())[nbins+ibin]; // entries
-            unsigned dstSize = 2*sizeof(uint32_t);
-            unsigned srcSize = 2*sizeof(uint32_t)*nbins;
-
-            //  The rest are double arrays
-            for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
-                Shape s(cubedata.shape(cubeDef.NameVec[i]));
-                s.shape()[0] = 1;
-                unsigned binSize = s.size(cubeDef.NameVec[i]);
-                double_t* dst = (double_t*)((char*)data.data()+dstSize);
-                double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
-                memcpy(dst, src, binSize);
-                dstSize += binSize;
-                srcSize += binSize*nbins;
-            }
+            memcpy(data.data(), cubedata.shapesdata().data().payload(), 2*nbins*sizeof(uint32_t));
+            unsigned dstSize = 2*sizeof(uint32_t)*nbins;
             data.set_data_length(dstSize);
 
             //  Now set the shapes
-            uint32_t scalar_array[] = {1,0,0,0,0};
+            uint32_t scalar_array[] = {nbins,0,0,0,0};
             Shape    scalar(scalar_array);
             data.set_array_shape(CubeDef::bin    , scalar_array);
             data.set_array_shape(CubeDef::entries, scalar_array);
-            for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
-                Shape s(cubedata.shape(cubeDef.NameVec[i]));
-                s.shape()[0] = 1;
-                data.set_array_shape(i, s.shape());
-            }
+        }
+        else {
+#else
+        {
+#endif
+            //  Not timing system
+            for(unsigned idef=0; idef < m_rawDefV.size(); idef++) {
+#ifdef DBUG
+                DUMP_XTC("TGT",(&dg->xtc),dg);
+                DUMP_XTC("SRC",bxtc,m_buffer[ibuff]);
+#endif
+                VarDef& cubeDef = m_cubeDefV[idef];
 
-            bxtc = (Xtc*)bxtc->next();
+                NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
+                //  DescribedData creates the Data container first, then the Shapes container
+                DescribedData data(dg->xtc, dg->xtc.payload()+m_det.cubeBinBytes(), m_det.namesLookup(), namesId);
+                shapesDataV.push_back(&data.shapesdata());
+
+                DescData cubedata(*(ShapesData*)bxtc, m_det.namesLookup()[namesId]);
+                ((uint32_t*)data.data())[dstbin] = bin;
+                ((uint32_t*)data.data())[dstbin+ndstbins] = ((uint32_t*)cubedata.shapesdata().data().payload())[nbins+ibin]; // entries
+                unsigned dstSize = 2*sizeof(uint32_t)*ndstbins;
+                unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+
+                //  The rest are double arrays
+                for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                    Shape s(cubedata.shape(cubeDef.NameVec[i]));
+                    s.shape()[0] = 1;
+                    unsigned binSize = s.size(cubeDef.NameVec[i]);
+                    double_t* dst = (double_t*)((char*)data.data()+dstSize+binSize*dstbin);
+                    double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+                    memcpy(dst, src, binSize);
+                    dstSize += binSize*ndstbins;
+                    srcSize += binSize*nbins;
+                }
+                if (dstbin==0) {  // only needs to be done once
+                    data.set_data_length(dstSize);
+
+                    //  Now set the shapes
+                    uint32_t scalar_array[] = {ndstbins,0,0,0,0};
+                    Shape    scalar(scalar_array);
+                    data.set_array_shape(CubeDef::bin    , scalar_array);
+                    data.set_array_shape(CubeDef::entries, scalar_array);
+                    for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                        Shape s(cubedata.shape(cubeDef.NameVec[i]));
+                        s.shape()[0] = ndstbins;
+                        data.set_array_shape(i, s.shape());
+                    }
+                }
+
+                bxtc = (Xtc*)bxtc->next();
+            }
         }
     }
 #ifdef DBUG
@@ -440,53 +489,61 @@ Pds::EbDgram* CubeData::copyBin(unsigned      bin,
     return dg;
 }        
 
-//  Add the contents of one bin into a datagram (unless we are the timing system)
-void CubeData::addBin (unsigned      bin,
-                       const SDV&    shapesDataV,
-                       Pds::EbDgram* dg)
+//  Add the contents of one or more bins into a datagram (unless we are the timing system)
+void CubeData::addBins(const std::vector<unsigned>& bins,
+                       const SDV&                   shapesDataV,
+                       Pds::EbDgram*                dg)
 {
-    unsigned nbins = m_binsPerBuf;
-    unsigned ibuff = bin/nbins;
-    unsigned ibin  = bin%nbins;
-    Dgram* bdg = (Dgram*)m_buffer[ibuff];
-    Xtc* xtc = (Xtc*)(bdg->xtc.payload());
+    unsigned ndstbins = bins.size();
+    for(unsigned dstbin=0; dstbin<ndstbins; dstbin++) {
+        unsigned bin   = bins[dstbin];  // source bin number
+        unsigned nbins = m_binsPerBuf;
+        unsigned ibuff = bin/nbins;
+        unsigned ibin  = bin%nbins;
+        Dgram* bdg = (Dgram*)m_buffer[ibuff];
+        Xtc* xtc = (Xtc*)(bdg->xtc.payload());
 
-    //  Check for timing system
-    if (m_rawDefV[0].NameVec.size()==0) {
-        NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
-        DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
-        void* data = shapesDataV[0]->data().payload();
-        for(unsigned i=0; i<nbins; i++)
-            ((uint32_t*)data)[nbins+i] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+i]; // entries
-    }
-    else {
-        //  Not timing system
-        for(unsigned idef=0; idef < m_rawDefV.size(); idef++) {
-            VarDef& cubeDef = m_cubeDefV[idef];
-
-            NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
+#if 0
+        //  Check for timing system
+        if (m_rawDefV[0].NameVec.size()==0) {
+            NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex());
             DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
-            void* data = shapesDataV[idef]->data().payload();
-            ((uint32_t*)data)[1] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+ibin]; // entries
-            unsigned dstSize = 2*sizeof(uint32_t);
-            unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+            void* data = shapesDataV[0]->data().payload();
+            for(unsigned i=0; i<nbins; i++)
+                ((uint32_t*)data)[nbins+i] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+i]; // entries
+        }
+        else {
+#else
+        {
+#endif
+            //  Not timing system
+            for(unsigned idef=0; idef < m_rawDefV.size(); idef++) {
+                VarDef& cubeDef = m_cubeDefV[idef];
 
-            //  The rest are double arrays
-            for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
-                Shape s(cubedata.shape(cubeDef.NameVec[i]));
-                s.shape()[0] = 1;
-                unsigned binSize = s.size(cubeDef.NameVec[i]);
-                double_t* dst = (double_t*)((char*)data+dstSize);
-                double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+                NamesId namesId(m_det.nodeId, m_det.cubeNamesIndex()+idef);
+                DescData cubedata(*(ShapesData*)xtc, m_det.namesLookup()[namesId]);
+                void* data = shapesDataV[idef]->data().payload();
+                ((uint32_t*)data)[dstbin+ndstbins] += ((uint32_t*)(cubedata.shapesdata().data().payload()))[nbins+ibin]; // entries
+                unsigned dstSize = 2*sizeof(uint32_t)*ndstbins;
+                unsigned srcSize = 2*sizeof(uint32_t)*nbins;
+
+                //  The rest are double arrays
+                for(unsigned i=2; i<cubeDef.NameVec.size(); i++) {
+                    Shape s(cubedata.shape(cubeDef.NameVec[i]));
+                    s.shape()[0] = ndstbins;
+                    unsigned binSize = s.size(cubeDef.NameVec[i]);
+                    double_t* dst = (double_t*)((char*)data+dstSize+binSize*dstbin);
+                    double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
                 
-                for(unsigned j=0; j<binSize/sizeof(double_t); j++)
-                    dst[j] += src[j];
+                    for(unsigned j=0; j<binSize/sizeof(double_t); j++)
+                        dst[j] += src[j];
 
-                dstSize += binSize;
-                srcSize += binSize*nbins;
+                    dstSize += binSize*ndstbins;
+                    srcSize += binSize*nbins;
+                }
+
+                xtc = xtc->next();
             }
-
-            xtc = xtc->next();
         }
     }
 }

@@ -24,6 +24,9 @@ public:
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     void event(XtcData::Dgram& dgram, const void* bufEnd, const Pds::Eb::ResultDgram& result) override;
     // For binning into the cube
+    XtcData::Shape shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData) override;
+    unsigned addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                       double* dst, unsigned bin, XtcData::DescData& rawData) override;
     unsigned rawNamesIndex () override;
     unsigned cubeNamesIndex() override;
     unsigned cubeBinBytes  () override;

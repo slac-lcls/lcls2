@@ -4,5 +4,6 @@ cimport psdaq.trigger.EbDgramw as dgram
 cdef extern from 'psdaq/eb/src/CubeConfigDgram.hh' namespace "Pds::Eb":
     cdef cppclass CubeConfigDgram:
         CubeConfigDgram(const dgram.EbDgram& dgram, unsigned id) except +
+        void     resultType    (char* value)
         void     bins          (uint32_t value)
         void     appendJson    (char* value)

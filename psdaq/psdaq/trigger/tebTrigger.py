@@ -9,8 +9,9 @@ import argparse
 from struct import unpack
 import psdaq.EbDgram     as edg
 import psdaq.ResultDgram as rdg
-import psdaq.CubeResultDgram as qdg
 import psdaq.CubeConfigDgram as cdg
+import psdaq.CubeResultDgram as qdg
+import psdaq.WindowResultDgram as wdg
 
 class ArgsParser(argparse.ArgumentParser):
     def __init__(self):
@@ -225,7 +226,7 @@ class CubeTriggerDataSource(TriggerDataSource):
     def configure(self):
         nbins = self.config['bins']
         logging.warning(f'[Python] Setting nbins {nbins}')
-        result = cdg.CubeConfigDgram(self._shm_res_mmap, nbins, json.dumps(self.config))
+        result = cdg.CubeConfigDgram(self._shm_res_mmap, nbins, 'Cube', json.dumps(self.config))
 
         self._mq_res.send(b"g")
 
@@ -242,6 +243,31 @@ class CubeTriggerDataSource(TriggerDataSource):
                                      bin_index, bin_record, bin_monitor, flush)
         self._mq_res.send(b"g")
 
+class WindowTriggerDataSource(TriggerDataSource):
+
+    def __init__(self, config):
+        self.config = config
+        TriggerDataSource.__init__(self, self.configure)
+
+
+    def configure(self):
+        nbins = self.config['bins']
+        logging.warning(f'[Python] Setting nbins {nbins}')
+        result = cdg.CubeConfigDgram(self._shm_res_mmap, nbins, 'Window', json.dumps(self.config))
+
+        self._mq_res.send(b"g")
+
+    """  persist     : keep the event
+         record      : record the event
+         monitor     : where forward the event for monitoring
+         win_add     : list of windows to add event into
+         win_flush   : list of windows to record, forward to monitoring, and reset after this event is processed
+    """
+    def result(self, persist, record, monitor, win_add, win_record, win_monitor, win_flush):
+        result = wdg.WindowResultDgram(self._shm_res_mmap, persist, record, monitor, 
+                                        win_add, win_flush)
+        self._mq_res.send(b"g")
+
 # Revisit: Move this into a .pyx?
 class Event(object):
     def __init__(self, shm_inp_mmap, shm_bufSizes, ctrb, det_src):
@@ -252,6 +278,7 @@ class Event(object):
         self._pid = None
         self._det_src = det_src
         self._det_lookup = None
+        self._readout_groups = None
 
     def __iter__(self):
         return self
@@ -267,6 +294,7 @@ class Event(object):
         beg = self._shm_bufSizes[self._idx]
         end = self._shm_bufSizes[self._idx + 1]
         datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
+        self._readout_groups = datagram.readoutGroups()
 
         self._idx += 1
 
@@ -290,10 +318,22 @@ class Event(object):
                     beg = self._shm_bufSizes[i]
                     end = self._shm_bufSizes[i + 1]
                     datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
+                    self._readout_groups = datagram.readoutGroups()
                     src = datagram.xtc.src.value()
                     if src in self._det_src:
                         self._det_lookup[ self._det_src[src] ] = datagram.xtc.payload()
         return self._det_lookup
+
+    def readoutGroups(self):
+        if self._readout_groups is None:
+            for i in range( len(self._shm_bufSizes) ):
+                if (self._ctrb >> i)&1:
+                    beg = self._shm_bufSizes[i]
+                    end = self._shm_bufSizes[i + 1]
+                    datagram = edg.EbDgram(view=self._shm_inp_mmap[beg:end])
+                    self._readout_groups = datagram.readoutGroups()
+                    break
+        return self._readout_groups
 
 class Detector(object):
     def __init__(self, index, tebType):
