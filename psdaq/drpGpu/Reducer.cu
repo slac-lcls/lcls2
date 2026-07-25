@@ -35,6 +35,7 @@ Reducer::Reducer(const Parameters&                  para,
                  const std::atomic<bool>&           terminate,
                  const cuda::std::atomic<unsigned>& terminate_d) :
   m_pool       (pool),
+  m_algo       (nullptr),
   m_terminate  (terminate),
   m_terminate_d(terminate_d),
   m_reduce_us  (0),
@@ -61,17 +62,16 @@ Reducer::Reducer(const Parameters&                  para,
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
 
-  // Set up the reducer algorithm instances
-  m_algos.resize(m_para.nworkers);
-  if (!_setupAlgos(det)) {
-    logging::critical("Error setting up Reducer Algorithm instances");
+  // Set up the reducer algorithm
+  if (!_setupAlgo(det)) {
+    logging::critical("Error setting up Reducer Algorithm");
     abort();
   }
 
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
   auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
-  auto payloadSize = m_algos.size() ? m_algos[0]->payloadSize() : 0; // Each instance returns the same value
+  auto payloadSize = m_algo ? m_algo->payloadSize() : 0;
   auto totalSize   = headerSize + payloadSize;
   if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
@@ -84,7 +84,7 @@ Reducer::Reducer(const Parameters&                  para,
   if (m_para.nworkers) {
     auto nEntries{nxtPwrOf2((m_pool.nbuffers() + m_para.nworkers-1) / m_para.nworkers)};
 #ifndef HOST_LAUNCHED_REDUCERS
-    if (m_algos[0]->hasGraph()) {         // Same value for all instances
+    if (m_algo->hasGraph()) {
       m_inputQueues2.resize(m_para.nworkers);
       m_outputQueues2.resize(m_para.nworkers);
       for (unsigned i = 0; i < m_para.nworkers; ++i) {
@@ -172,7 +172,7 @@ Reducer::~Reducer()
   m_retCode_d.clear();
 
 #ifndef HOST_LAUNCHED_REDUCERS
-  if (m_algos.size() && m_algos[0]->hasGraph()) { // Same value for all workers
+  if (m_algo && m_algo->hasGraph()) {
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (m_inputQueues2[i].d)  chkError(cudaFree(m_inputQueues2[i].d));
       if (m_inputQueues2[i].h)  delete m_inputQueues2[i].h;
@@ -211,10 +211,7 @@ Reducer::~Reducer()
   }
   m_graphExecs.clear();
 
-  for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    if (m_algos[i])  delete m_algos[i];
-  }
-  m_algos.clear();
+  if (m_algo)  delete m_algo;
   m_dl.close();
 
   m_pool.destroyReduceBuffers();
@@ -241,7 +238,7 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
     exporter->add("DRP_outWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.outWtCtr[i] ? *m_metrics.outWtCtr[i] : 0; });
   }
 
-  if (m_algos.size() && m_algos[0]->hasGraph()) {         // Same value for all workers
+  if (m_algo && m_algo->hasGraph()) {
     for (unsigned i = 0; i < m_inputQueues2.size(); ++i) {
       auto wkr = std::to_string(i);
       exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues2[i].h->occupancy(); });
@@ -260,7 +257,7 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   return 0;
 }
 
-bool Reducer::_setupAlgos(Detector& det)
+bool Reducer::_setupAlgo(Detector& det)
 {
   // @todo: In the future, find out which Reducer to load from the Detector's configDb entry
   //        For now, load it according to a command line kwarg parameter
@@ -271,9 +268,7 @@ bool Reducer::_setupAlgos(Detector& det)
   }
   reducer = m_para.kwargs.at("reducer");
 
-  for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    if (m_algos[i])  delete m_algos[i]; // If the object exists, delete it
-  }
+  if (m_algo)  delete m_algo;           // If the object exists, delete it
   m_dl.close();                         // If a lib is open, close it first
 
   const std::string soName("lib"+reducer+".so");
@@ -289,15 +284,14 @@ bool Reducer::_setupAlgos(Detector& det)
                    symName.c_str(), soName.c_str());
     return false;
   }
-  for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool, det);
-    if (!instance)
-    {
-      logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
-      return false;
-    }
-    m_algos[i] = instance;
+  auto instance = reinterpret_cast<reducerAlgoFactoryFn_t*>(createFn)(m_para, m_pool, det);
+  if (!instance)
+  {
+    logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
+    return false;
   }
+  m_algo = instance;
+
   logging::info("Loaded reducer library '%s' for %u workers", soName.c_str(), m_para.nworkers);
   return true;
 }
@@ -438,13 +432,13 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
 #endif
 
   // Perform the reduction algorithm
-  m_algos[worker]->recordGraph(stream,
-                               m_state_d[worker],
-                               m_indices[worker],
-                               calibBuffers,
-                               calibBufsCnt,
-                               dataBuffers,
-                               dataBufsCnt);
+  m_algo->recordGraph(stream,
+                      m_state_d[worker],
+                      m_indices[worker],
+                      calibBuffers,
+                      calibBufsCnt,
+                      dataBuffers,
+                      dataBufsCnt);
 
 #ifndef HOST_LAUNCHED_REDUCERS
   // Post the completed buffer results and relaunch
@@ -473,15 +467,11 @@ int Reducer::configure(const json& configureMsg,
                        const json& connectMsg,
                        size_t      collectionId) // Called during phase 1 of Configure
 {
-  if (m_para.nworkers) {
-    if (m_algos[0]->hasGraph()) {       // Same value for all instances
-      // Configure algorithm instances
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        if (m_algos[i]->configure(configureMsg, connectMsg, collectionId)) {
-          logging::error("Failed 1st configure of Reducer %u", i);
-          return -1;
-        }
-      }
+  // Configure algorithm
+  if (m_algo && m_algo->hasGraph()) {
+    if (m_algo->configure(configureMsg, connectMsg, collectionId)) {
+      logging::error("Failed 1st configure of Reducer");
+      return -1;
     }
   }
   return 0;
@@ -489,22 +479,18 @@ int Reducer::configure(const json& configureMsg,
 
 bool Reducer::setup(Xtc& xtc, const void* bufEnd) // Called during phase 1 of Configure
 {
-  if (m_para.nworkers) {
-    if (m_algos[0]->hasGraph()) {       // Same value for all instances
-      // Configure algorithm instances
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        if (m_algos[i]->configure(xtc, bufEnd)) {
-          logging::error("Failed 2nd configure of Reducer %u", i);
-          return true;
-        }
-      }
-      // Prepare the CUDA graphs
-      m_graphExecs.resize(m_para.nworkers);
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        if (_setupGraph(i)) {
-          logging::error("Failed to set up Reducer graph[%u]", i);
-          return true;
-        }
+  if (m_algo && m_algo->hasGraph()) {
+    // Configure algorithm instances
+    if (m_algo->configure(xtc, bufEnd)) {
+      logging::error("Failed 2nd configure of Reducer");
+      return true;
+    }
+    // Prepare the CUDA graphs
+    m_graphExecs.resize(m_para.nworkers);
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      if (_setupGraph(i)) {
+        logging::error("Failed to set up Reducer graph[%u]", i);
+        return true;
       }
     }
   }
@@ -516,7 +502,7 @@ bool Reducer::startup()                 // Called during phase 1 of Configure
   logging::info("Starting %u Reducer(s)", m_para.nworkers);
 
 #ifndef HOST_LAUNCHED_REDUCERS
-  if (m_algos.size() && m_algos[0]->hasGraph()) {           // Same value for all workers
+  if (m_algo && m_algo->hasGraph()) {
 
     // Launch the Reducer graphs
     for (unsigned i = 0; i < m_graphExecs.size(); ++i) {
@@ -535,7 +521,7 @@ bool Reducer::startup()                 // Called during phase 1 of Configure
 
 void Reducer::shutdown()
 {
-  if (m_algos.size() && !m_algos[0]->hasGraph()) { // Same value for all workers
+  if (m_algo && !m_algo->hasGraph()) {
     for (auto& outputQueue: m_outputQueues)
       outputQueue.shutdown();
     for (auto& inputQueue: m_inputQueues)
@@ -545,7 +531,7 @@ void Reducer::shutdown()
 
 void Reducer::dump() const
 {
-  if (m_algos[0]->hasGraph()) {
+  if (m_algo && m_algo->hasGraph()) {
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       printf("Reducer %u: in: head %u, tail %u, out: head %u, tail %u\n", i,
              m_inputQueues2[i].h->head(), m_inputQueues2[i].h->tail(),
@@ -568,19 +554,18 @@ void Reducer::_worker(unsigned worker)
   // Establish context in this thread
   chkError(cudaSetDevice(m_pool.context().deviceNo()));
 
-  auto algo         = m_algos[worker];
   auto index        = m_indices[worker];
   auto stream       = m_streams[worker];
   auto& inputQueue  = m_inputQueues[worker];
   auto& outputQueue = m_outputQueues[worker];
   //auto calibBufsSz  = m_pool.calibBufsSize();
   cudaGraphExec_t graph{0};
-  if (algo->hasGraph())  graph = m_graphExecs[worker];
+  if (m_algo->hasGraph())  graph = m_graphExecs[worker];
 
   unsigned idx;
   while (inputQueue.pop(idx)) {
     red_scoped_range loop_range{/*"Reducer::_worker", */nvtx3::payload{idx}};
-    if  (algo->hasGraph())  *index = idx;
+    if  (m_algo->hasGraph())  *index = idx;
     //printf("*** Reducer::_worker: worker %u index %u\n", worker, idx);
 
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
@@ -588,9 +573,9 @@ void Reducer::_worker(unsigned worker)
     // Launch the Reducer
     size_t   dataSize{0};
     unsigned retCode{0};
-    algo->reduce(graph, stream, idx, &dataSize, &retCode);
+    m_algo->reduce(graph, stream, idx, &dataSize, &retCode);
 
-    if  (algo->hasGraph()) {
+    if  (m_algo->hasGraph()) {
       // Wait for the graph to complete
       chkError(cudaStreamSynchronize(stream));
     }
