@@ -1,0 +1,73 @@
+unset LD_LIBRARY_PATH
+unset PYTHONPATH
+
+if [[ "${ENV_TYPE:-}" == "ana" ]]; then
+  echo "Please do not mix ana and daq setup scripts"
+  echo "You sourced the ${ENV_TYPE} script befores"
+  echo "Exiting"
+  return 1
+fi
+export ENV_TYPE=daq
+
+unset LD_LIBRARY_PATH
+unset PYTHONPATH
+
+source /sdf/group/lcls/ds/ana/sw/conda2-v6/inst/etc/profile.d/conda.sh
+export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
+export DIR_PSDM=/sdf/group/lcls/ds/ana/
+
+conda activate daq_20250402_r9
+
+AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
+if [ -f "$AUTH_FILE" ]; then
+    source $AUTH_FILE
+else
+  echo "$AUTH_FILE file is missing"
+fi
+
+export CUDA_ROOT=/usr/local/cuda
+if [ -h "$CUDA_ROOT" ]; then
+    export PATH=${CUDA_ROOT}/bin${PATH:+:${PATH}}
+    export LD_LIBRARY_PATH=${CUDA_ROOT}/lib64${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}
+    export MANPATH=${CUDA_ROOT}/man${MANPATH:+:${MANPATH}}
+fi
+
+# In ASC lab the command for zsh does not work, but in XPP it does.
+# So we need to check which shell we are in to get the correct path to the script
+if [ -n "$BASH_VERSION" ]; then
+    SCRIPT_SOURCE="${BASH_SOURCE[0]}"
+elif [ -n "$ZSH_VERSION" ]; then
+    SCRIPT_SOURCE="${(%):-%x}"
+fi
+
+RELDIR="$(builtin cd "$(dirname "$(readlink -f "$SCRIPT_SOURCE")")" && pwd)"
+
+export PATH=$RELDIR/install/bin:${PATH}
+pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
+export PYTHONPATH=$RELDIR/install/lib/python$pyver/site-packages
+export TESTRELDIR=$RELDIR/install
+
+export PROCMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
+export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
+
+# for daqbatch
+export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
+export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
+
+# cpo: seems that in more recent versions blas is creating many threads
+export OPENBLAS_NUM_THREADS=1
+export OMP_NUM_THREADS=1
+export NUMEXPR_NUM_THREADS=1
+# cpo: getting intermittent file-locking issue on ffb, so try this
+export HDF5_USE_FILE_LOCKING=FALSE
+# for libfabric. decreases performance a little, but allows forking
+export RDMAV_FORK_SAFE=1
+export RDMAV_HUGEPAGES_SAFE=1
+
+PS_PARALLEL='none'
+
+# needed by JupyterLab
+export JUPYTERLAB_WORKSPACES_DIR=${HOME}
+
+# needed by Ric to get correct libfabric man pages
+export MANPATH=$CONDA_PREFIX/share/man${MANPATH:+:${MANPATH}}

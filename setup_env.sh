@@ -7,6 +7,8 @@ unset AMI_CONDA_PREFIX
 unset AMI_CONDA_DEFAULT_ENV
 unset AMI_TESTRELDIR
 
+export ENV_TYPE=legacy
+
 if [ -d "/cds/sw/" ]; then
     # for psana
     source /cds/sw/ds/ana/conda2-v4/inst/etc/profile.d/conda.sh
