@@ -162,7 +162,7 @@ def run_cpu(exp, run, xtc_dir, det_name, n_warmup, n_events):
 def run_gpu(exp, run, xtc_dir, det_name, batch_size, n_gpu_streams, n_warmup, n_events, d2h_chunk_size=0):
     """Time BD-rank GPU calibration via the MPI GPU path.
 
-    d2h_chunk_size=0  → call .on_gpu  (no D→H, ceiling throughput)
+    d2h_chunk_size=0  → call .on_gpu_view (zero-copy view, no D→H, ceiling throughput)
     d2h_chunk_size=N  → activate _D2hPipeline; call .on_cpu (pre-done D→H)
     """
     from psana.psexp.mpi_ds import MPIDataSource
@@ -196,6 +196,11 @@ def run_gpu(exp, run, xtc_dir, det_name, batch_size, n_gpu_streams, n_warmup, n_
     hot_ms = []
     n = 0
 
+    # Non-blocking stream for on_gpu_view — created once, reused every event.
+    # on_gpu_view.__exit__ records a done-event on this stream so EventPool
+    # knows the slot is safe to recycle after arr.sum() completes.
+    view_stream = cp.cuda.Stream(non_blocking=True) if d2h_chunk_size == 0 else None
+
     # Detect I/O path directly from kvikio — works for both serial and MPI.
     # compat_mode=True  → CPU fallback: NVMe → CPU DRAM → GPU VRAM
     # compat_mode=False → GDS:          NVMe → GPU VRAM direct (DMA)
@@ -213,7 +218,13 @@ def run_gpu(exp, run, xtc_dir, det_name, batch_size, n_gpu_streams, n_warmup, n_
                 wall_t_start = time.perf_counter()
             t0 = time.perf_counter()
             res = ctx.get(det_name + ".calib")
-            _ = res.on_cpu if d2h_chunk_size > 0 else res.on_gpu
+            if d2h_chunk_size > 0:
+                _ = res.on_cpu
+            else:
+                # Zero-copy: view directly into the slot buffer,
+                # run a minimal kernel, __exit__ records done-event.
+                with res.on_gpu_view(view_stream) as arr:
+                    _ = arr.sum()
             dt = (time.perf_counter() - t0) * 1000.0
             n += 1
             if n > n_warmup:

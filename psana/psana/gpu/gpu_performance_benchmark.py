@@ -16,9 +16,10 @@ Four paths are benchmarked:
         calibration (same formula as the CUDA kernel).
         This is the FULL sequential critical path.
 
-  GPU on_gpu
-        Same exp/run with gpu_det=.  Measures the Python overhead of
-        retrieving the pre-computed result from the EventPool — nearly zero.
+  GPU on_gpu_view
+        Same exp/run with gpu_det=.  Zero-copy view into the slot buffer;
+        runs arr.sum() as a minimal representative kernel.  Measures the
+        Python + CUDA overhead of the view path — nearly zero hot-loop cost.
         The true AMORTISED wall time (GDS reads + CUDA kernel, pipelined
         across batches) is also measured separately.
 
@@ -151,22 +152,28 @@ def run_cpu(exp, run, xtc_dir, det_name, n_warmup, n_events):
 
 def run_gpu_on_gpu(exp, run, xtc_dir, det_name, batch_size, n_warmup, n_events,
                    n_gpu_streams=4):
-    """GPU path: calibration stays on GPU (hot-loop cost + true wall time)."""
+    """GPU path: zero-copy view via on_gpu_view — ceiling throughput, no D→H."""
+    import cupy as cp
     from psana import DataSource
     ds = DataSource(exp=exp, run=run, dir=xtc_dir, gpu_det=det_name,
                     batch_size=batch_size, n_gpu_streams=n_gpu_streams,
                     max_events=n_warmup + n_events)
 
-    # Per-call cost (Python overhead only — result already pre-computed)
+    # Non-blocking stream reused across events.  on_gpu_view.__exit__ records
+    # a done-event on this stream so EventPool can recycle the slot after
+    # arr.sum() completes.
+    view_stream = cp.cuda.Stream(non_blocking=True)
+
     hot_times = [];  shape = None
     t_wall_start = t_wall_end = None;  n = 0
     for r in ds.runs():
         for ctx in r.events():
             if n == n_warmup:
                 t_wall_start = time.perf_counter()
-            t0    = time.perf_counter()
-            calib = ctx.get('calib').on_gpu
-            dt    = (time.perf_counter() - t0) * 1000
+            t0 = time.perf_counter()
+            with ctx.get('calib').on_gpu_view(view_stream) as calib:
+                _ = calib.sum()   # minimal representative kernel
+            dt = (time.perf_counter() - t0) * 1000
             if n >= n_warmup:
                 hot_times.append(dt)
                 shape = tuple(calib.shape)
@@ -201,21 +208,28 @@ def run_gpu_on_cpu(exp, run, xtc_dir, det_name, batch_size, n_warmup, n_events,
 
 def run_gpu_selective(exp, run, xtc_dir, det_name, batch_size,
                        hit_pct, n_warmup, n_events, n_gpu_streams=4):
-    """GPU path with D→H only for hit_pct% of events."""
+    """GPU path with D→H only for hit_pct% of events.
+
+    Non-hit events use on_gpu_view (zero-copy) for GPU hit-finding.
+    Hit events additionally call on_cpu to transfer results to host.
+    """
     import cupy as cp
     from psana import DataSource
     ds   = DataSource(exp=exp, run=run, dir=xtc_dir, gpu_det=det_name,
                       batch_size=batch_size, n_gpu_streams=n_gpu_streams,
                       max_events=n_warmup + n_events)
     step = max(1, 100 // hit_pct)
+    # Non-blocking stream reused across events for on_gpu_view.
+    view_stream = cp.cuda.Stream(non_blocking=True)
     times = [];  shape = None;  n_dth = 0
     for r in ds.runs():
         for i, ctx in enumerate(r.events()):
-            t0    = time.perf_counter()
-            calib = ctx.get('calib').on_gpu
-            _     = int(cp.sum(calib > 5.0))   # GPU hit-finding
+            t0 = time.perf_counter()
+            result = ctx.get('calib')
+            with result.on_gpu_view(view_stream) as calib:
+                hit = int(cp.sum(calib > 5.0))   # GPU hit-finding (zero-copy)
             if i % step == 0:
-                _ = ctx.get('calib').on_cpu     # D→H for "hits" only
+                _ = result.on_cpu     # D→H for "hits" only
                 n_dth += 1
             dt = (time.perf_counter() - t0) * 1000
             if i >= n_warmup:
@@ -228,8 +242,10 @@ def run_gpu_selective(exp, run, xtc_dir, det_name, batch_size,
 
 def run_batch_scaling(exp, run, xtc_dir, det_name, n_warmup, n_events,
                        batch_sizes=(1, 2, 5, 10, 20), n_gpu_streams=4):
-    """GPU wall time vs batch_size."""
+    """GPU wall time vs batch_size (uses on_gpu_view, no D→H)."""
+    import cupy as cp
     from psana import DataSource
+    view_stream = cp.cuda.Stream(non_blocking=True)
     results = []
     for bs in batch_sizes:
         ds = DataSource(exp=exp, run=run, dir=xtc_dir, gpu_det=det_name,
@@ -239,7 +255,8 @@ def run_batch_scaling(exp, run, xtc_dir, det_name, n_warmup, n_events,
         for r in ds.runs():
             for ctx in r.events():
                 if n == n_warmup:        t_start = time.perf_counter()
-                _ = ctx.get('calib').on_gpu
+                with ctx.get('calib').on_gpu_view(view_stream) as _arr:
+                    pass   # wall-time sweep: minimal access
                 n += 1
                 if n == n_warmup + n_events: t_end = time.perf_counter()
         wall_ms = (t_end - t_start) * 1000 / n_events
@@ -282,7 +299,7 @@ def print_report(args, cpu_stats, cpu_shape,
          cpu_stats,
          f"bigdata reads (all 10 streams) + numpy calib (16.8M px)",
          None),
-        ('GPU  hot-loop (.on_gpu)',
+        ('GPU  hot-loop (.on_gpu_view + arr.sum)',
          gpu_hot,
          f"Python attr access only — result pre-computed by EventPool",
          cpu_mean),

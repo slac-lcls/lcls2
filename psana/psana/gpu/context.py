@@ -41,61 +41,83 @@ class SlotLease:
     has completed — generator advancement alone is not sufficient.
     """
 
-    __slots__ = ('slot_id', 'calib_done', 'view', '_d2h_done', '_needs_release')
+    __slots__ = ('calib_done', '_d2h_done')
 
-    def __init__(self, slot_id: int, calib_done, view):
+    def __init__(self, calib_done):
         """
         Parameters
         ----------
-        slot_id    : int           — EventPool slot index
         calib_done : cp.cuda.Event — fires after calibration kernel completes
-        view       : cp.ndarray   — slice of the slot output buffer
-                                    (n_segs, nrows, ncols) float32
         """
-        self.slot_id    = slot_id
         self.calib_done = calib_done
-        self.view       = view
-        self._d2h_done  = None   # set by _D2hPipeline or release_after
-        self._needs_release = False  # set by on_gpu_view
-
-    def mark_needs_release(self):
-        """Called by GPUResult.on_gpu_view — prevents slot recycling until
-        release_after() is called."""
-        self._needs_release = True
+        self._d2h_done  = None   # set by _D2hPipeline or _GpuViewContext.__exit__
 
     def register_d2h_done(self, event):
         """Record the CUDA event that fires when this slot's consumer is done.
 
-        Called by _D2hPipeline after issuing cudaMemcpyAsync, or by the
-        user via GPUResult.release_after() after a downstream GPU kernel.
-        EventPool will wait on this event in retire_next() before
-        recycling the slot for a future batch.
+        Called by _D2hPipeline after issuing cudaMemcpyAsync, or by
+        _GpuViewContext.__exit__ after the user's downstream GPU kernel.
+        EventPool waits on this event in retire_next() before recycling the slot.
         """
         self._d2h_done = event
 
     def wait_until_safe_to_reuse(self):
-        """Block the calling thread until the consumer has completed.
+        """Block until the consumer has completed; called by EventPool.retire_next().
 
-        Called by EventPool.retire_next() before overwriting the slot.
-
-        Three outcomes:
-          _d2h_done set              → synchronize and recycle (correct)
-          _needs_release, no done    → RuntimeError (on_gpu_view used but
-                                       release_after never called)
-          neither                    → recycle immediately (on_gpu copy or
-                                       no access)
+        Two outcomes:
+          _d2h_done set  → synchronize then recycle
+          neither        → recycle immediately (on_gpu copy or no access)
         """
         if self._d2h_done is not None:
             self._d2h_done.synchronize()
-        elif self._needs_release:
-            raise RuntimeError(
-                "Slot cannot be recycled: on_gpu_view was accessed but "
-                "release_after() was never called.\n"
-                "After your downstream GPU kernel add:\n"
-                "    done = cp.cuda.Event(disable_timing=True)\n"
-                "    stream.record(done)\n"
-                "    result.release_after(done)"
-            )
+
+
+class _GpuViewContext:
+    """Context manager returned by GPUResult.on_gpu_view(stream).
+
+    ``__enter__`` returns the raw slot-buffer array (zero-copy).
+    ``__exit__`` records a CUDA done-event on *stream* so that
+    EventPool.retire_next() knows the slot is safe to recycle once
+    that event fires.
+
+    ``__del__`` is a safety fallback: if the caller somehow receives
+    this object but never uses it as a ``with`` statement, the done-event
+    is recorded on the null stream (conservative — the null stream
+    serialises with all default-stream work) so the slot is never
+    permanently held.
+    """
+
+    __slots__ = ('_arr', '_lease', '_stream', '_exited')
+
+    def __init__(self, arr, lease, stream):
+        self._arr    = arr
+        self._lease  = lease
+        self._stream = stream
+        self._exited = False
+
+    def __enter__(self):
+        return self._arr
+
+    def __exit__(self, *_):
+        import cupy as cp
+        stream = self._stream or cp.cuda.Stream.null
+        done   = cp.cuda.Event(disable_timing=True)
+        stream.record(done)
+        self._lease.register_d2h_done(done)
+        self._exited = True
+
+    def __del__(self):
+        # Safety: if the object is GC'd without having been used as a context
+        # manager, record a conservative done-event on the null stream so the
+        # slot is not held forever.  Same pattern as _PendingD2H.__del__.
+        if not self._exited and self._lease._d2h_done is None:
+            try:
+                import cupy as cp
+                done = cp.cuda.Event(disable_timing=True)
+                cp.cuda.Stream.null.record(done)
+                self._lease.register_d2h_done(done)
+            except Exception:
+                pass
 
 
 class GPUResult:
@@ -121,22 +143,18 @@ class GPUResult:
         on_cpu returns this directly without any further GPU transfer.
     """
 
-    __slots__ = ('_arr', '_stream', '_lease', '_pinned_cpu', '_pending_d2h')
+    __slots__ = ('_arr', '_lease', '_pinned_cpu', '_pending_d2h')
 
-    def __init__(self, arr_gpu, stream=None, lease=None, pinned_cpu=None):
+    def __init__(self, arr_gpu, lease=None):
         """
         Parameters
         ----------
-        arr_gpu    : cp.ndarray | None
-        stream     : cp.cuda.Stream | None — production stream
-        lease      : SlotLease | None
-        pinned_cpu : np.ndarray | None — pre-done D→H result (set by _D2hPipeline
-                     once the transfer is confirmed complete)
+        arr_gpu : cp.ndarray | None
+        lease   : SlotLease | None
         """
         self._arr         = arr_gpu
-        self._stream      = stream
         self._lease       = lease
-        self._pinned_cpu  = pinned_cpu
+        self._pinned_cpu  = None
         # Set by _D2hPipeline immediately after issuing async D→H.
         # Carries the CUDA done-event + pinned-slot reference so on_cpu
         # can wait lazily rather than blocking inside the generator.
@@ -150,48 +168,33 @@ class GPUResult:
         be recycled immediately after this call.  Use when the copy cost
         (~2 ms D→D for Jungfrau) is acceptable and simplicity is preferred.
         """
-        if self._stream is not None:
-            self._stream.synchronize()
         return self._arr.copy()
 
-    @property
-    def on_gpu_view(self):
-        """Return a zero-copy view into the slot buffer.
+    def on_gpu_view(self, stream=None):
+        """Return a context manager that yields a zero-copy view into the slot buffer.
 
-        Fastest GPU path — avoids the D→D copy — but the slot buffer will
-        be overwritten when the slot is recycled.  REQUIRES calling
-        release_after(done_event) after any downstream GPU kernel that
-        reads this array.  If forgotten, retire_next() raises RuntimeError.
+        Fastest GPU path — avoids the D→D copy — but all kernels that read
+        the view MUST run on ``stream`` and MUST be enqueued inside the
+        ``with`` block.  ``__exit__`` records a CUDA done-event on ``stream``
+        automatically so EventPool knows when the slot is safe to recycle.
 
-        Raises RuntimeError immediately if this GPUResult has no SlotLease
-        (i.e. was not produced by EventPool.submit()), because the safety
-        contract cannot be fulfilled — use on_gpu instead.
+        Usage::
+
+            with ctx.get('jungfrau.calib').on_gpu_view(stream) as arr:
+                my_kernel(arr, stream=stream)
+            # done event recorded automatically — nothing else needed
+
+        If ``stream`` is None the CuPy null (default) stream is used.
+
+        Raises RuntimeError if this GPUResult has no SlotLease (i.e. was not
+        produced by EventPool.submit()) — use on_gpu (D→D copy) instead.
         """
         if self._lease is None:
             raise RuntimeError(
                 "on_gpu_view is not safe: this GPUResult has no SlotLease. "
                 "Use on_gpu (D→D copy) instead, which is always safe."
             )
-        self._lease.mark_needs_release()
-        return self._arr
-
-    def release_after(self, event):
-        """Tell EventPool the slot can be recycled once `event` fires.
-
-        Call this after recording a CUDA event on the stream that your
-        downstream kernel ran on.  Required when using on_gpu_view.
-
-        Example::
-
-            result = ctx.get('jungfrau.calib')
-            arr    = result.on_gpu_view
-            my_kernel(arr, stream=stream)
-            done = cp.cuda.Event(disable_timing=True)
-            stream.record(done)
-            result.release_after(done)
-        """
-        if self._lease is not None:
-            self._lease.register_d2h_done(event)
+        return _GpuViewContext(self._arr, self._lease, stream)
 
     @property
     def on_cpu(self):
@@ -212,8 +215,6 @@ class GPUResult:
             self._pinned_cpu  = self._pending_d2h.get()
             self._pending_d2h = None
             return self._pinned_cpu
-        if self._stream is not None:
-            self._stream.synchronize()
         return self._arr.get()
 
     def __repr__(self) -> str:
@@ -233,12 +234,12 @@ class GpuEventContext:
         ctx.service()          → int (TransitionId)
     """
 
-    __slots__ = ('_evt', '_gpu_results', '_cpu_dets', '_stream',
-                 '_cache', '_router', '_leases', '_pinned_results')
+    __slots__ = ('_evt', '_gpu_results', '_cpu_dets',
+                 '_cache', '_router', '_leases')
 
     def __init__(self, evt, gpu_results: dict,
                  cpu_dets: dict | None = None,
-                 stream=None, router=None,
+                 router=None,
                  leases: dict | None = None):
         """
         Parameters
@@ -246,22 +247,17 @@ class GpuEventContext:
         evt         : psana2 Event
         gpu_results : dict  {key: cp.ndarray}
         cpu_dets    : dict  {det_name: psana Detector} | None
-        stream      : cp.cuda.Stream | None
         router      : DetectorRouter | None
         leases      : dict  {key: SlotLease} | None
             Per-key slot leases created by EventPool.submit().
             Attached to GPUResult objects in get().
         """
-        self._evt             = evt
-        self._gpu_results     = gpu_results
-        self._cpu_dets        = cpu_dets or {}
-        self._stream          = stream
-        self._router          = router
-        self._leases          = leases or {}
-        self._cache: dict     = {}
-        # Populated by GpuEvents._D2hPipeline after async D→H completes.
-        # Maps resolved key → np.ndarray (pinned host copy, already ready).
-        self._pinned_results: dict = {}
+        self._evt         = evt
+        self._gpu_results = gpu_results
+        self._cpu_dets    = cpu_dets or {}
+        self._router      = router
+        self._leases      = leases or {}
+        self._cache: dict = {}
 
     def get(self, key: str) -> GPUResult:
         """Return the GPU result for key, with its SlotLease attached.
@@ -290,11 +286,9 @@ class GpuEventContext:
                     f"'{key}' resolved to '{resolved}' which is not available.  "
                     f"Available GPU keys: {available}"
                 )
-            lease      = self._leases.get(resolved)
-            pinned_cpu = self._pinned_results.get(resolved)
             self._cache[resolved] = GPUResult(
-                self._gpu_results[resolved], self._stream,
-                lease=lease, pinned_cpu=pinned_cpu,
+                self._gpu_results[resolved],
+                lease=self._leases.get(resolved),
             )
         return self._cache[resolved]
 
