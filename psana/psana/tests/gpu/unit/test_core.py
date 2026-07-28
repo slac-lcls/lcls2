@@ -364,6 +364,8 @@ def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):
 
 class _FakeDetForEstimate:
     """Minimal stand-in for GPUDetector used in estimate_subbatch_bytes tests."""
+    _passthrough = False   # normal (uint16) mode — matches GPUDetector default
+
     def __init__(self, n_segs, nrows, ncols, stream_seg_map=None):
         self._stream_seg_map = stream_seg_map
         self._n_segs_calib   = n_segs

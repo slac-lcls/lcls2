@@ -114,52 +114,50 @@ def optimal_kernel_batch_size(det_shape, threads_per_block=256,
 
 
 def _detect_dgram_layout(dgram_bytes):
-    """Walk the XTC tree of one bigdata L1Accept dgram to determine the
-    per-segment stride and the byte offset of the raw pixel data.
+    """Extract per-segment stride and pixel-data offset from a bigdata dgram.
 
-    Works for any uncompressed area detector whose bigdata dgram is laid out
-    as: Dgram-header (24 B) + N × child-XTC, where each child-XTC holds a
-    small metadata XTC followed by the raw pixel data leaf.
+    Every LCLS-II L1Accept bigdata dgram has the fixed layout below (verified
+    on Jungfrau, Epix, and CSPAD2x2 test fixtures):
+
+    .. code-block:: text
+
+        [  0: 24]  Dgram header  (TimeStamp[8] + env[4] + outer-Xtc[12])
+        [ 24: 36]  Container XTC — one per segment, repeated N times
+                   .extent [32:36] = seg_stride_bytes  (full Container size)
+        [ 36: 48]  Shapes XTC inside Container
+                   .extent [44:48] = shapes_extent (12 + numArrays × 20)
+        [36+shapes_extent : ...]  Data XTC header (12 bytes)
+        [36+shapes_extent+12 : ...]  raw pixel payload  ← raw_data_offset
+
+    ``seg_stride_bytes`` comes from bytes [32:36] — the extent of the first
+    per-segment Container XTC.  For multi-segment dgrams the value is the
+    same for every Container, so reading the first one is sufficient.
+
+    ``raw_data_offset`` = 36 + Shapes.extent + 12, where Shapes.extent is at
+    bytes [44:48].  It depends only on ``numArrays`` (number of array fields
+    in the detector algorithm), which is fixed for a given detector type.
+    E.g. Jungfrau has ``numArrays=1`` → shapes_extent=32 → rdo=80;
+    Epix has ``numArrays=2`` → shapes_extent=52 → rdo=100.
+
+    The pixel element dtype (uint16 vs float32) is *not* determined here — it
+    comes from the Configure-dgram ``drp_class_name`` (``Name::DataType`` in
+    the XTC ``Names`` container), the same source the CPU path uses
+    (``det.raw`` vs ``det.fex``).  ``GPUDetector`` receives it via the
+    ``passthrough`` constructor flag set by ``GpuEvents._setup_detectors``
+    from ``run.detinfo``.
 
     Parameters
     ----------
-    dgram_bytes : bytes-like, at least 512 bytes from the dgram start
+    dgram_bytes : bytes-like, first 48+ bytes of an L1Accept bigdata dgram
 
     Returns
     -------
     seg_stride_bytes : int
-        Bytes from the start of one child-XTC to the start of the next.
-        Equals the first child-XTC's ``extent`` field.
-    raw_data_offset : int
-        Byte offset from the dgram start to the first raw pixel.
-
-    Raises
-    ------
-    RuntimeError if no data leaf is found within the first child-XTC.
+    raw_data_offset  : int
     """
-    n = len(dgram_bytes)
-
-    # First child-XTC starts at offset 24 (after the 24-byte Dgram header).
-    # Its ``extent`` field lives at bytes [32:36] of the dgram.
-    seg_stride = int.from_bytes(dgram_bytes[32:36], 'little')
-
-    # Walk nested XTCs inside the first child-XTC payload (starts at 36).
-    # The data leaf is the first nested XTC whose payload exceeds half the
-    # child-XTC's total size — i.e., it contains the bulk of the pixel data.
-    walk_end = min(24 + seg_stride, n)
-    pos = 36
-    while pos + 12 <= walk_end:
-        extent = int.from_bytes(dgram_bytes[pos + 8: pos + 12], 'little')
-        if extent <= 12:
-            break
-        if (extent - 12) * 2 > seg_stride:   # large leaf → raw data
-            return seg_stride, pos + 12
-        pos += extent
-
-    raise RuntimeError(
-        f"_detect_dgram_layout: no raw-data leaf found "
-        f"(seg_stride={seg_stride}, walked bytes 36..{pos})"
-    )
+    seg_stride    = int.from_bytes(dgram_bytes[32:36], 'little')  # Container.extent
+    shapes_extent = int.from_bytes(dgram_bytes[44:48], 'little')  # Shapes.extent
+    return seg_stride, 36 + shapes_extent + 12                     # Data.payload start
 
 
 @dataclass
@@ -214,7 +212,8 @@ class GPUDetector:
                  stream_seg_map=None,
                  cmpars=None,
                  n_slots=2,
-                 budget=None):
+                 budget=None,
+                 passthrough=False):
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
         self.gmask_gpu         = gmask_gpu
@@ -233,6 +232,16 @@ class GPUDetector:
         self._n_modes_calib    = (int(peds_gpu.size) // n_pix_total
                                   if peds_gpu is not None and n_pix_total > 0
                                   else 3)
+        # Passthrough mode: bigdata is already calibrated float32 from the DRP.
+        # Skip fused_calib_gpu entirely; just read and reshape the float32 pixels.
+        self._passthrough = bool(passthrough)
+        # Bytes per pixel in the bigdata stream.
+        # Determined from drp_class_name via run.detinfo — the same source the
+        # CPU path uses (Name::DataType in the XTC Names Configure container):
+        #   drp_class_name == 'raw'  → uint16 (2 bytes)  → passthrough=False
+        #   drp_class_name == 'fex'  → float32 (4 bytes) → passthrough=True
+        # This is always known at construction time; no bigdata inspection needed.
+        self._pixel_bytes = 4 if passthrough else 2
         # CPU-side cache for beginstep() change detection.
         self._peds_cpu_cache   = None
         self._gmask_cpu_cache  = None
@@ -450,7 +459,12 @@ class GPUDetector:
     # ------------------------------------------------------------------
 
     def _ensure_layout(self, sample_bytes):
-        """Auto-detect raw_data_offset and seg_stride_bytes if not yet set."""
+        """Auto-detect seg_stride_bytes and raw_data_offset from the first bigdata dgram.
+
+        The pixel dtype (uint16 vs float32) is NOT derived here — it comes from
+        the Configure-dgram drp_class_name and is already set as _pixel_bytes in
+        __init__ via the passthrough flag.
+        """
         if self._raw_data_offset is None or self._seg_stride_bytes is None:
             self._seg_stride_bytes, self._raw_data_offset = \
                 _detect_dgram_layout(bytes(sample_bytes))
@@ -473,6 +487,9 @@ class GPUDetector:
         makes beginstep() a cheap no-op for single-gain-mode runs where
         constants don't change across steps.
 
+        In passthrough mode (pre-calibrated bigdata) there are no calibration
+        constants — this method is a no-op.
+
         Parameters
         ----------
         peds_flat  : np.ndarray float32, flat, length 3 * prod(det_shape)
@@ -480,6 +497,9 @@ class GPUDetector:
         gmask_flat : np.ndarray float32, flat, same length
             New gain*mask from _compute_calib_constants_cpu().
         """
+        if self._passthrough:
+            return   # no calibration constants in passthrough mode
+
         # Compare against cached CPU arrays to skip unnecessary H->D transfers.
         if (self._peds_cpu_cache is not None
                 and np.array_equal(peds_flat, self._peds_cpu_cache)
@@ -617,8 +637,13 @@ class GPUDetector:
         else:
             n_segs = self._n_segs_calib
         n_pix_per_event = n_segs * self._nrows * self._ncols
-        # float32 calib (4 bytes) + uint16 raw gather (2 bytes)
-        bytes_per_event = n_pix_per_event * (4 + 2)
+        # float32 calib output: 4 bytes/pixel in both modes.
+        # Normal (uint16) mode also needs a raw-gather scratch buffer: +2 bytes/pixel.
+        # Passthrough mode skips the scratch (bigdata is already float32).
+        if self._passthrough:
+            bytes_per_event = n_pix_per_event * 4
+        else:
+            bytes_per_event = n_pix_per_event * (4 + 2)
         return int(n_events * bytes_per_event)
 
     def process_batch(self, gpu_view, gpu_read,
@@ -642,7 +667,7 @@ class GPUDetector:
             stream to overlap batches and avoid default-stream serialisation.
         """
         cp         = _cupy()
-        data_u16   = gpu_read.data_gpu.view(cp.uint16)
+        data_gpu   = gpu_read.data_gpu     # raw uint8; view created inside _extract_and_calibrate
         desc_table = gpu_read.desc_table   # NumPy CPU array — no D2H needed
 
         # Auto-detect layout on the first batch only.  The guard is outside the
@@ -732,7 +757,7 @@ class GPUDetector:
                     out_slice = (out_buf[seg_offset:seg_offset + n_segs]
                                  if out_buf is not None else None)
                     calib, _ = self._extract_and_calibrate(
-                        data_u16, device_offset, read_size, seg_ids,
+                        data_gpu, device_offset, read_size, seg_ids,
                         out=out_slice, slot_id=slot, stream=stream,
                     )
                     if out_buf is None:
@@ -773,40 +798,43 @@ class GPUDetector:
         -------
         cp.ndarray float32, shape (n_segs, nrows, ncols)
         """
-        cp        = _cupy()
-        data_u16  = data_gpu.view(cp.uint16)
         read_size = int(data_gpu.nbytes) - device_offset
         # Auto-detect layout from first 512 bytes of this dgram.
         if self._raw_data_offset is None or self._seg_stride_bytes is None:
             self._ensure_layout(data_gpu[device_offset:device_offset + 512].get())
-        calib, _ = self._extract_and_calibrate(data_u16, device_offset, read_size)
+        calib, _ = self._extract_and_calibrate(data_gpu, device_offset, read_size)
         return calib
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _extract_and_calibrate(self, data_u16, device_offset, read_size,
+    def _extract_and_calibrate(self, data_gpu, device_offset, read_size,
                                seg_ids=None, out=None, slot_id=None,
                                stream=None):
-        """Gather raw uint16 pixels and run fused_calib_gpu.
+        """Gather pixels and run calibration.
+
+        In normal mode, gathers raw uint16 ADC pixels and calls fused_calib_gpu.
+        In passthrough mode (pre-calibrated float32 bigdata from the DRP),
+        reads the float32 pixels directly and skips the calibration kernel.
 
         Parameters
         ----------
-        data_u16      : cp.ndarray uint16 view of the full data_gpu buffer
-        device_offset : byte offset of this dgram within the original buffer
+        data_gpu      : cp.ndarray uint8 — the full raw bigdata GPU buffer.
+                        A uint16 or float32 view is created internally based
+                        on self._passthrough.
+        device_offset : byte offset of this dgram within data_gpu
         read_size     : size in bytes of this dgram
         seg_ids       : list of int or None
             Calibconst row indices for this stream's physical segments, in
             the same order as the child XTCs in the bigdata dgram.  When
-            provided, the calibration
-            constants are pulled from the correct rows rather than naively
-            using rows 0..n_segs-1.  Build this list with
-            build_stream_seg_map().  None falls back to the first-N
+            provided, calibration constants are pulled from the correct rows
+            rather than naively using rows 0..n_segs-1.  Build this list
+            with build_stream_seg_map().  None falls back to the first-N
             approximation (incorrect for mixed-segment detectors).
         stream        : cp.cuda.Stream or None
-            Stream on which the raw gather and calibration must execute in
-            order.  Passing None uses CuPy's default stream.
+            Stream on which the gather and calibration must execute in order.
+            Passing None uses CuPy's default stream.
 
         _ensure_layout() must have been called before this method.
         """
@@ -814,6 +842,31 @@ class GPUDetector:
 
         n_segs = max(1, (read_size - 24) // self._seg_stride_bytes)
 
+        # ── Passthrough mode: pre-calibrated float32 — no kernel needed ──────
+        if self._passthrough:
+            data_f32  = data_gpu.view(cp.float32)
+            pix_start = (device_offset + self._raw_data_offset) // 4
+            if n_segs == 1:
+                src = data_f32[pix_start:pix_start + self._n_pix_seg].reshape(
+                    1, self._nrows, self._ncols
+                )
+            else:
+                stride_f32 = self._seg_stride_bytes // 4
+                span_f32   = (n_segs - 1) * stride_f32 + self._n_pix_seg
+                src = cp.lib.stride_tricks.as_strided(
+                    data_f32[pix_start:pix_start + span_f32],
+                    shape=(n_segs, self._nrows, self._ncols),
+                    strides=(self._seg_stride_bytes, self._ncols * 4, 4),
+                )
+            if out is not None:
+                out[:] = src
+                return out, None
+            # No pre-allocated output slot — copy to prevent aliasing with the
+            # reader's slot buffer, which will be overwritten on the next batch.
+            return src.copy(), None
+
+        # ── Normal mode: raw uint16 → fused_calib_gpu ─────────────────────────
+        data_u16   = data_gpu.view(cp.uint16)
         stream_key = tuple(seg_ids) if seg_ids is not None else None
         raw_key    = (slot_id, stream_key, n_segs)
         if n_segs == 1:
