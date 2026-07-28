@@ -586,10 +586,31 @@ class GpuEvents:
         for det_name in self.gpu_det_names:
             det = self.run.Detector(det_name)
             det_type = getattr(det, "_dettype", None)
-            if det_type != "jungfrau":
-                raise NotImplementedError(f"gpu_det={det_name!r} has detector type {det_type!r}; the integrated GPU path currently supports only Jungfrau")
-            peds_gpu, gmask_gpu = prep_calib_constants(det)
-            log_gpu_mem(f"after prep_calib_constants ({det_name})", rank=_rank)
+
+            # Determine whether bigdata carries raw uint16 ADC data ('raw'
+            # drp_class) or DRP-calibrated float32 data ('fex' or similar).
+            drp_classes = {k[1] for k in self.run.detinfo if k[0] == det_name}
+            is_pre_calibrated = 'raw' not in drp_classes
+
+            if not is_pre_calibrated and det_type != "jungfrau":
+                raise NotImplementedError(
+                    f"gpu_det={det_name!r} has detector type {det_type!r}; "
+                    "the integrated GPU calibration path currently supports "
+                    "only Jungfrau.  Pre-calibrated (fex) data can be used "
+                    "via passthrough mode regardless of detector type."
+                )
+
+            if is_pre_calibrated:
+                peds_gpu  = None
+                gmask_gpu = None
+                _log.info(
+                    "gpu_det=%r: drp_classes=%s — using passthrough mode "
+                    "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
+                    det_name, sorted(drp_classes),
+                )
+            else:
+                peds_gpu, gmask_gpu = prep_calib_constants(det)
+                log_gpu_mem(f"after prep_calib_constants ({det_name})", rank=_rank)
             det_shape = det.calibconst["pedestals"][0].shape[1:]
 
             stream_segments = dict(getattr(self.dsparms, "det_stream_segments_table", {}).get(det_name, {}))
@@ -629,6 +650,7 @@ class GpuEvents:
                 stream_seg_map=stream_seg_map or None,
                 n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
                 budget=self._gpu_budget,
+                passthrough=is_pre_calibrated,
             )
             if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
                 ix_all, iy_all = self._prebuilt_geometry[det_name]
@@ -869,6 +891,10 @@ class GpuEvents:
         if service == TransitionId.BeginStep:
             for det_info in self.gpu_detectors.values():
                 det, gpu_detector = det_info[0], det_info[1]
+                # Skip constant computation for passthrough detectors — they have
+                # no calibration constants, and beginstep() is a no-op for them.
+                if getattr(gpu_detector, '_passthrough', False):
+                    continue
                 peds, gmask = _compute_calib_constants_cpu(det)
                 gpu_detector.beginstep(peds, gmask)
 

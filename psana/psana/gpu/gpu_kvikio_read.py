@@ -20,6 +20,8 @@ DESC_NCOLS = 6
 class KvikioBatchRead:
     desc_table: np.ndarray
     data_gpu: object = None
+    data_u16: object = None   # cp.uint16 view of data_gpu — raw ADC path
+    data_f32: object = None   # cp.float32 view of data_gpu — passthrough path
 
 
 @dataclass
@@ -239,9 +241,12 @@ class KvikioGpuReader:
         KvikioBatchRead with the CPU descriptor table and GPU data populated.
         """
         if not pending.futures:
+            _dgpu = pending.data_gpu
             return KvikioBatchRead(
                 pending.desc_table,
-                data_gpu=pending.data_gpu,
+                data_gpu=_dgpu,
+                data_u16=_dgpu.view(self.cp.uint16),
+                data_f32=_dgpu.view(self.cp.float32),
             )
 
         # Time the I/O wait to track effective bandwidth.
@@ -262,9 +267,12 @@ class KvikioGpuReader:
         self._total_bytes_read += _bytes
         self._total_io_ns      += _elapsed_ns
 
+        _dgpu = pending.data_gpu
         return KvikioBatchRead(
             pending.desc_table,
-            data_gpu=pending.data_gpu,
+            data_gpu=_dgpu,
+            data_u16=_dgpu.view(self.cp.uint16),
+            data_f32=_dgpu.view(self.cp.float32),
         )
 
     def _file_for_stream(self, bd_dm, stream_id):
