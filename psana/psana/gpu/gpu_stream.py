@@ -11,6 +11,8 @@ may not be recycled until every consumer (D2H or downstream GPU kernel)
 has registered completion via SlotLease.register_d2h_done().
 """
 
+import os
+
 
 class EventPool:
     """Keep N GPU calibration batches in flight simultaneously.
@@ -135,12 +137,12 @@ class EventPool:
         for ts, ts_dict in gpu_results_by_ts.items():
             ts_leases = {}
             for key, arr in ts_dict.items():
-                lease = SlotLease(slot, calib_done, arr)
+                lease = SlotLease(calib_done)
                 ts_leases[key] = lease
                 all_leases.append(lease)
             leases_by_ts[ts] = ts_leases
 
-        if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
+        if os.environ.get('PSANA_GPU_MEM_DEBUG'):
             try:
                 from psana.gpu.gpu_mpi import log_gpu_mem
                 log_gpu_mem(f'EventPool.submit slot={slot} '
@@ -151,7 +153,6 @@ class EventPool:
         self._slots[slot] = (gpu_results_by_ts, list(cpu_evts),
                              stream, all_leases, leases_by_ts)
         self._write_idx += 1
-        return None
 
     def flush(self):
         """Drain all remaining in-flight slots in submission order.

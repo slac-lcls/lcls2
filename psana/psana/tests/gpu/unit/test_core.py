@@ -310,3 +310,252 @@ def test_default_result_routing():
     router.register_gpu("jungfrau")
     assert router.resolve_key("calib") == "jungfrau.calib"
     assert router.resolve_key("jungfrau.calib") == "jungfrau.calib"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: GpuSubbatchView, estimate_subbatch_bytes, _split_subbatches
+# ---------------------------------------------------------------------------
+
+import struct
+
+from psana.gpu.gpu_batch import (
+    GPU_BATCH_MAGIC,
+    GPU_BATCH_VERSION,
+    GPU_DESC_FLAG_VALID,
+    GPU_DESC_NBYTES,
+    GPU_EVENT_NBYTES,
+    GPU_HEADER_NBYTES,
+    GpuBatchView,
+    GpuSubbatchView,
+)
+from psana.gpu.gpu_calib import GPUDetector
+
+
+def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):
+    """Build a minimal valid GPUBAT1 binary for unit testing.
+
+    All events share the same layout: ``descs_per_event`` descriptors each,
+    with bd_size bytes of bigdata per descriptor.  Stream IDs default to
+    [0, 1, ..., descs_per_event-1].
+    """
+    if stream_ids is None:
+        stream_ids = list(range(descs_per_event))
+    n_desc     = n_events * descs_per_event
+    evt_offset = GPU_HEADER_NBYTES
+    dsc_offset = evt_offset + n_events * GPU_EVENT_NBYTES
+    total      = dsc_offset + n_desc * GPU_DESC_NBYTES
+    mask       = sum(1 << s for s in stream_ids)
+
+    buf = bytearray(total)
+    struct.pack_into('<11Q', buf, 0,
+        GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+        GPU_EVENT_NBYTES, GPU_DESC_NBYTES, n_events, n_desc,
+        mask, evt_offset, dsc_offset, total,
+    )
+    for i in range(n_events):
+        struct.pack_into('<5Q', buf, evt_offset + i * GPU_EVENT_NBYTES,
+            i, 1000 + i, i * descs_per_event, descs_per_event, 0)
+    for i in range(n_desc):
+        stream_i = stream_ids[i % descs_per_event]
+        struct.pack_into('<7Q', buf, dsc_offset + i * GPU_DESC_NBYTES,
+            i // descs_per_event, stream_i, 0, bd_size, 0, GPU_DESC_FLAG_VALID, 0)
+    return bytes(buf)
+
+
+class _FakeDetForEstimate:
+    """Minimal stand-in for GPUDetector used in estimate_subbatch_bytes tests."""
+    def __init__(self, n_segs, nrows, ncols, stream_seg_map=None):
+        self._stream_seg_map = stream_seg_map
+        self._n_segs_calib   = n_segs
+        self._nrows          = nrows
+        self._ncols          = ncols
+
+    def estimate_subbatch_bytes(self, n_events):
+        return GPUDetector.estimate_subbatch_bytes(self, n_events)
+
+
+def _new_splitting_gpu_events(det, budget_bytes):
+    """Create a minimal GpuEvents with just enough state for _split_subbatches."""
+    events = GpuEvents.__new__(GpuEvents)
+    events.gpu_detectors         = {'jungfrau': (None, det, {})}
+    events._subbatch_budget_bytes = budget_bytes
+    return events
+
+
+# -- GpuSubbatchView tests ---------------------------------------------------
+
+class TestGpuSubbatchView:
+
+    def test_n_events(self):
+        gv = GpuBatchView(_make_batch(5))
+        sb = GpuSubbatchView(gv, 1, 4)
+        assert sb.n_events == 3
+
+    def test_has_work(self):
+        gv = GpuBatchView(_make_batch(5))
+        assert GpuSubbatchView(gv, 0, 3).has_work is True
+
+    def test_empty_subbatch_raises(self):
+        gv = GpuBatchView(_make_batch(5))
+        with pytest.raises(ValueError, match="empty range"):
+            GpuSubbatchView(gv, 2, 2)
+
+    def test_out_of_range_raises(self):
+        gv = GpuBatchView(_make_batch(3))
+        with pytest.raises(ValueError):
+            GpuSubbatchView(gv, 0, 4)   # event_end > n_events
+
+    def test_timestamps(self):
+        gv = GpuBatchView(_make_batch(5))
+        sb = GpuSubbatchView(gv, 2, 5)
+        assert sb.timestamps == frozenset({1002, 1003, 1004})
+
+    def test_iter_events_first_desc_reindexed(self):
+        """first_desc must be relative to the subbatch's own desc_table."""
+        # 4 events, 3 descs each.  Subbatch [1, 3) covers events 1 and 2.
+        gv   = GpuBatchView(_make_batch(4, descs_per_event=3, stream_ids=[0, 1, 2]))
+        sb   = GpuSubbatchView(gv, 1, 3)
+        evts = list(sb.iter_events())
+
+        # Event 1 → first_desc=0,  n_desc=3
+        # Event 2 → first_desc=3,  n_desc=3
+        assert [e.first_desc for e in evts] == [0, 3]
+        assert [e.n_desc     for e in evts] == [3, 3]
+
+    def test_iter_events_preserves_timestamps_and_batch_event_index(self):
+        gv   = GpuBatchView(_make_batch(5))
+        sb   = GpuSubbatchView(gv, 2, 5)
+        evts = list(sb.iter_events())
+        assert [e.timestamp         for e in evts] == [1002, 1003, 1004]
+        assert [e.batch_event_index for e in evts] == [2,    3,    4]
+
+    def test_total_read_bytes(self):
+        # 3 events, 2 descs each, 2048 bytes per desc
+        # subbatch [0, 2): 2 events × 2 descs × 2048 = 8192
+        gv = GpuBatchView(_make_batch(3, descs_per_event=2, bd_size=2048))
+        sb = GpuSubbatchView(gv, 0, 2)
+        assert sb.total_read_bytes == 2 * 2 * 2048
+
+    def test_whole_batch_subbatch(self):
+        """A subbatch covering the entire batch is identical to the parent."""
+        gv   = GpuBatchView(_make_batch(4))
+        sb   = GpuSubbatchView(gv, 0, 4)
+        full = list(gv.iter_events())
+        sub  = list(sb.iter_events())
+        assert [e.timestamp for e in sub] == [e.timestamp for e in full]
+        # first_desc for subbatch-0 must equal the parent's first_desc
+        # (both start from 0 for the first event)
+        assert sub[0].first_desc == full[0].first_desc == 0
+
+
+# -- GPUDetector.estimate_subbatch_bytes tests --------------------------------
+
+class TestEstimateSubbatchBytes:
+
+    def test_returns_zero_for_n_events_zero(self):
+        det = _FakeDetForEstimate(4, 512, 1024)
+        assert det.estimate_subbatch_bytes(0) == 0
+
+    def test_linear_in_n_events(self):
+        det = _FakeDetForEstimate(4, 512, 1024)
+        e1  = det.estimate_subbatch_bytes(1)
+        e10 = det.estimate_subbatch_bytes(10)
+        assert e10 == 10 * e1
+
+    def test_formula_with_stream_seg_map(self):
+        # stream_seg_map: 2 GPU streams, 5 and 7 segs respectively → 12 total GPU segs
+        det = _FakeDetForEstimate(
+            n_segs=32, nrows=512, ncols=1024,
+            stream_seg_map={6: list(range(5)), 8: list(range(7))},
+        )
+        n_segs_gpu = 5 + 7
+        expected   = 1 * n_segs_gpu * 512 * 1024 * (4 + 2)
+        assert det.estimate_subbatch_bytes(1) == expected
+
+    def test_formula_without_stream_seg_map_uses_n_segs_calib(self):
+        det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
+        expected = 1 * 8 * 256 * 512 * (4 + 2)
+        assert det.estimate_subbatch_bytes(1) == expected
+
+
+# -- _split_subbatches tests --------------------------------------------------
+
+class TestSplitSubbatches:
+
+    def _events_and_det(self, n_segs, nrows, ncols, budget_bytes):
+        det    = _FakeDetForEstimate(n_segs, nrows, ncols)
+        events = _new_splitting_gpu_events(det, budget_bytes)
+        return events, det
+
+    def test_no_split_when_budget_large(self):
+        events, det = self._events_and_det(4, 512, 1024, budget_bytes=10 * 1024**3)
+        gv = GpuBatchView(_make_batch(6))
+        sbs = events._split_subbatches(gv)
+        assert len(sbs) == 1
+        assert sbs[0]._start == 0 and sbs[0]._end == 6
+
+    def test_splits_into_equal_halves(self):
+        # 4 events, bd_size=0 (no raw input cost).
+        # Budget = exactly 2 events of calib cost.
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        events = _new_splitting_gpu_events(det, per_ev * 2)
+
+        # bd_size=0 → raw cost = 0, only calib cost counts
+        gv  = GpuBatchView(_make_batch(4, descs_per_event=2, bd_size=0))
+        sbs = events._split_subbatches(gv)
+        assert len(sbs) == 2
+        assert sbs[0]._start == 0 and sbs[0]._end == 2
+        assert sbs[1]._start == 2 and sbs[1]._end == 4
+
+    def test_single_oversized_event_not_split(self):
+        """An event that alone exceeds budget must still be included."""
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
+        gv     = GpuBatchView(_make_batch(3, bd_size=0))
+        sbs    = events._split_subbatches(gv)
+        # Each event must appear in exactly one subbatch (even with tiny budget)
+        assert len(sbs) == 3
+        for i, sb in enumerate(sbs):
+            assert sb._start == i and sb._end == i + 1
+
+    def test_event_order_preserved(self):
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        events = _new_splitting_gpu_events(det, per_ev * 2)
+        gv     = GpuBatchView(_make_batch(6, bd_size=0))
+        sbs    = events._split_subbatches(gv)
+        all_ts = []
+        for sb in sbs:
+            all_ts.extend(e.timestamp for e in sb.iter_events())
+        assert all_ts == [1000, 1001, 1002, 1003, 1004, 1005]
+
+    def test_empty_batch_returns_empty_list(self):
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        events = _new_splitting_gpu_events(det, 10 * 1024**3)
+        # build a batch with 0 events
+        hdr_bytes = GPU_HEADER_NBYTES
+        buf = bytearray(hdr_bytes)
+        struct.pack_into('<11Q', buf, 0,
+            GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+            GPU_EVENT_NBYTES, GPU_DESC_NBYTES, 0, 0, 0,
+            hdr_bytes, hdr_bytes, hdr_bytes,
+        )
+        gv  = GpuBatchView(bytes(buf), validate=True)
+        sbs = events._split_subbatches(gv)
+        assert sbs == []
+
+    def test_subbatch_estimates_stay_within_budget(self):
+        """For each subbatch, estimated bytes <= budget (except single-event overflows)."""
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        budget = per_ev * 3   # 3 events per subbatch max
+        events = _new_splitting_gpu_events(det, budget)
+        gv     = GpuBatchView(_make_batch(10, bd_size=0))
+        sbs    = events._split_subbatches(gv)
+        for sb in sbs:
+            sb_est = det.estimate_subbatch_bytes(sb.n_events)
+            assert sb_est <= budget or sb.n_events == 1, (
+                f"subbatch has {sb.n_events} events, "
+                f"estimated {sb_est} bytes > budget {budget}"
+            )

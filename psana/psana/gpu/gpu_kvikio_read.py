@@ -178,9 +178,11 @@ class KvikioGpuReader:
         )
         # Use the pre-allocated per-slot buffer when available.
         # Only re-allocate when the current buffer is too small (grows lazily).
-        slot = (self._slot_idx % self._n_slots
-                if slot_id is None else int(slot_id) % self._n_slots)
-        self._slot_idx += 1
+        if slot_id is not None:
+            slot = int(slot_id) % self._n_slots
+        else:
+            slot = self._slot_idx % self._n_slots
+            self._slot_idx += 1
         existing = self._slot_bufs[slot]
         if existing is None or existing.nbytes < total_nbytes:
             old_size = int(existing.nbytes) if existing is not None else 0

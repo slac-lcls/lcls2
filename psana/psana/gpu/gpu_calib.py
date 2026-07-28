@@ -175,18 +175,15 @@ class EventContext:
         Stays on GPU; call .get() only for validation.
     raw_gpu : cp.ndarray or None
         Raw uint16 ADC values on device, same shape as calib_gpu.
-        None when raw extraction was skipped (e.g. calibrate() shortcut).
+        None when raw extraction was skipped.
     image_gpu : cp.ndarray or None
         Assembled 2-D detector image on device, shape (nrows_image, ncols_image).
         None when geometry was not loaded or unavailable.
-    stream : cp.cuda.Stream or None
-        The CUDA stream on which the arrays above were produced.
     """
     timestamp: int
     calib_gpu: object           # cp.ndarray float32
     raw_gpu:   object = None    # cp.ndarray uint16 or None
     image_gpu: object = None    # cp.ndarray float32 or None
-    stream:    object = None    # cp.cuda.Stream or None
 
 
 class GPUDetector:
@@ -589,10 +586,43 @@ class GPUDetector:
             'total':       total,
         }
 
+    def estimate_subbatch_bytes(self, n_events: int) -> int:
+        """Estimate device VRAM needed for calibration of n_events events.
+
+        Accounts for the two dominant variable allocations per batch:
+          - Calibrated output buffer (float32): n_events × n_segs × nrows × ncols × 4
+          - Raw-gather scratch buffer (uint16): n_events × n_segs × nrows × ncols × 2
+
+        Calibration constants and geometry scatter maps are fixed allocations
+        that are excluded here (they are already committed in _GpuBudget).
+
+        Uses stream_seg_map when available to count only the GPU-routed
+        segments (not the full calibconst segment count which includes
+        CPU-routed segments).
+
+        Parameters
+        ----------
+        n_events : int
+            Number of L1Accept events in the proposed subbatch.
+
+        Returns
+        -------
+        int  — estimated bytes, always >= 0.
+        """
+        if n_events <= 0:
+            return 0
+        # Count only GPU-routed segments (stream_seg_map keys) if available.
+        if self._stream_seg_map:
+            n_segs = sum(len(segs) for segs in self._stream_seg_map.values())
+        else:
+            n_segs = self._n_segs_calib
+        n_pix_per_event = n_segs * self._nrows * self._ncols
+        # float32 calib (4 bytes) + uint16 raw gather (2 bytes)
+        bytes_per_event = n_pix_per_event * (4 + 2)
+        return int(n_events * bytes_per_event)
+
     def process_batch(self, gpu_view, gpu_read,
-                      stream=None, slot_id=None,
-                      compute_raw=False,
-                      compute_image=False) -> Iterator[EventContext]:
+                      stream=None, slot_id=None) -> Iterator[EventContext]:
         """Yield one EventContext per L1Accept event in the batch.
 
         Reads desc_table (CPU NumPy) for device_offset and read_size per
@@ -610,8 +640,6 @@ class GPUDetector:
             CUDA stream on which to run calibration kernels.  When None the
             CuPy default stream is used.  EventPool supplies a non-blocking
             stream to overlap batches and avoid default-stream serialisation.
-            The yielded EventContext stores the stream so the caller can
-            synchronise before reading results.
         """
         cp         = _cupy()
         data_u16   = gpu_read.data_gpu.view(cp.uint16)
@@ -685,8 +713,6 @@ class GPUDetector:
         batch_offset = 0   # segment offset into slot_buf for the current event
 
         for event, desc_rows, seg_counts, total_segs in events_info:
-            raw_segs = [] if compute_raw else None
-
             # Each event gets a UNIQUE slice of the batch slot buffer so that
             # calibrating event i+1 cannot overwrite event i's result.
             out_buf = (slot_buf[batch_offset : batch_offset + total_segs]
@@ -705,7 +731,7 @@ class GPUDetector:
                     # directly into it — no allocation inside calibrate().
                     out_slice = (out_buf[seg_offset:seg_offset + n_segs]
                                  if out_buf is not None else None)
-                    calib, raw = self._extract_and_calibrate(
+                    calib, _ = self._extract_and_calibrate(
                         data_u16, device_offset, read_size, seg_ids,
                         out=out_slice, slot_id=slot, stream=stream,
                     )
@@ -716,27 +742,13 @@ class GPUDetector:
                             calib_gpu = cp.concatenate(
                                 [calib_gpu, calib], axis=0
                             )
-                    if raw_segs is not None:
-                        raw_segs.append(raw)
                     seg_offset += n_segs
 
                 if out_buf is not None:
                     calib_gpu = out_buf   # unique view into slot_buf, no copy
 
-                if raw_segs is None:
-                    raw_gpu = None
-                elif len(raw_segs) == 1:
-                    raw_gpu = raw_segs[0]
-                else:
-                    raw_gpu = cp.concatenate(raw_segs, axis=0)
-                image_gpu = (self.assemble_image(calib_gpu, stream=stream)
-                             if compute_image else None)
-
             yield EventContext(timestamp=event.timestamp,
-                               calib_gpu=calib_gpu,
-                               raw_gpu=raw_gpu,
-                               image_gpu=image_gpu,
-                               stream=stream)
+                               calib_gpu=calib_gpu)
 
             batch_offset += total_segs   # advance to next event's region
 
