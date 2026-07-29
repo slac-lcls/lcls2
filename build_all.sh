@@ -17,8 +17,16 @@ compile_only=0
 build_daq=0
 build_jobs=8
 
-if [ -d "/cds/sw/" ]; then
+if [[ -z "${ENV_TYPE+x}" ]]; then
+  echo "Please source setup_env.sh or setup_daq.sh"
+  echo "Exiting"
+  exit 1
+fi
+
+echo "Building analysis software"
+if [[ "${ENV_TYPE:-}" == "daq" ]]; then
   build_daq=1
+  echo "Building DAQ software"
 fi
 
 while getopts "fdcj:" opt; do
@@ -37,7 +45,7 @@ while getopts "fdcj:" opt; do
   esac
 done
 
-echo "INSTDIR:" $INSTDIR
+echo "Installation directory:" $INSTDIR
 
 if [ $force_clean == 1 ]; then
   echo "force_clean"
