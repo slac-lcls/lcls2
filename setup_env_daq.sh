@@ -63,6 +63,7 @@ export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
+export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
 
 PS_PARALLEL='none'
 
