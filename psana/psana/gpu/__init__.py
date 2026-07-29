@@ -20,11 +20,12 @@ should be imported from their defining ``psana.gpu`` submodules.
 """
 
 from psana.gpu.context import GPUResult, GpuEventContext
-from psana.gpu.gpu_mpi import init_gpu_rank
+from psana.gpu.gpu_mpi import init_gpu_rank, is_calib_leader
 
 
 __all__ = [
     "GPUResult",
     "GpuEventContext",
     "init_gpu_rank",
+    "is_calib_leader",
 ]

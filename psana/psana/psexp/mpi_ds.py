@@ -742,6 +742,19 @@ class RunParallel(Run):
             # self.start() → RunParallel.start() → bd_node.start_gpu()
             # The _MpiGpuBatchSource adapter makes start_gpu() look like a
             # smdr_man so GpuEvents can drive its own batch loop.
+            # Determine whether this BD rank should allocate calibration
+            # constants (leader) or skip allocation and receive a CUDA IPC
+            # view from the leader (follower).
+            # Must be called BEFORE GpuEvents() to avoid the peak-allocation
+            # window where N × ~400 MiB exist simultaneously on one GPU.
+            _phys_gpu = int(os.environ.get('CUDA_VISIBLE_DEVICES', '0')
+                            .split(',')[0])
+            try:
+                from psana.gpu.gpu_mpi import is_calib_leader as _is_calib_leader
+                _calib_leader = _is_calib_leader(self.comms.bd_comm, _phys_gpu)
+            except Exception:
+                _calib_leader = True   # safe default: every rank allocates
+
             adapter = _MpiGpuBatchSource(self.start(), self.bd_node)
             gpu_ev = GpuEvents(
                 self.configs,
@@ -763,12 +776,11 @@ class RunParallel(Run):
                 setup_geometry=not bool(
                     getattr(self, '_gpu_geometry_arrays', None)
                 ),
+                calib_leader=_calib_leader,
             )
             # Share peds_gpu/gmask_gpu between BD ranks on the same physical
             # GPU via CUDA IPC.  When N_BD_PER_GPU > 1, multiple BD ranks
             # share one A100; this saves ~400 MB per follower rank.
-            _phys_gpu = int(os.environ.get('CUDA_VISIBLE_DEVICES', '0')
-                            .split(',')[0])
             try:
                 from psana.gpu.gpu_mpi import share_calib_between_gpu_peers
                 share_calib_between_gpu_peers(
