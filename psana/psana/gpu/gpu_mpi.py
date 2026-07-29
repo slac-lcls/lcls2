@@ -53,46 +53,110 @@ logger = logging.getLogger(__name__)
 # Shared calibration constants (CUDA IPC)
 # ---------------------------------------------------------------------------
 
+def is_calib_leader(bd_comm, phys_gpu_id):
+    """Return True if this BD rank should allocate calibration constants.
+
+    Within the group of BD ranks that share ``phys_gpu_id``, only the
+    lowest-rank member (the "leader") calls ``prep_calib_constants()``.
+    All other ranks (followers) skip allocation entirely and later receive
+    non-owning CUDA IPC views from the leader via
+    ``share_calib_between_gpu_peers()``.
+
+    This function must be called **before** ``_setup_detectors()`` so that
+    followers never allocate ``peds_gpu`` / ``gmask_gpu`` at all.  Allocating
+    on all ranks and then deleting on followers creates a peak-allocation window
+    of ``n_bd_per_gpu × ~400 MiB`` that can exhaust GPU VRAM before sharing
+    ever runs.
+
+    **No SLURM environment variables are needed.**
+
+    ``init_gpu_rank()`` already computed ``phys_gpu_id`` via::
+
+        phys_gpu_id = (bd_local_rank) % n_gpus   # bd_local_rank = bd_rank - 1
+
+    Rearranging, the leader for GPU ``g`` is the BD rank where
+    ``bd_rank - 1 == g``, i.e. the first BD worker ever assigned to that GPU
+    before any cycling.  No peer enumeration and no SLURM env vars are
+    required — just one comparison::
+
+        is_leader = (my_bd_rank - 1 == phys_gpu_id)
+
+    ``share_calib_between_gpu_peers()`` still uses ``SLURM_GPUS_ON_NODE`` to
+    enumerate follower bd_ranks for point-to-point IPC handle delivery, but
+    that function runs *after* allocation decisions are made.
+
+    Parameters
+    ----------
+    bd_comm      : mpi4py.MPI.Comm  (bd_rank 0 = EB, 1+ = BD workers)
+    phys_gpu_id  : int  (from init_gpu_rank())
+
+    Returns
+    -------
+    bool — True for the leader (should allocate), False for followers (skip).
+    """
+    try:
+        from mpi4py import MPI  # noqa: F401
+    except ImportError:
+        return True   # no MPI — single rank, always a leader
+
+    my_bd_rank = bd_comm.Get_rank()
+    # bd_rank 0 is EB; BD workers start at 1.  The leader for phys_gpu_id g
+    # is the BD worker whose zero-indexed local rank equals g, i.e. bd_rank = g+1.
+    return (my_bd_rank - 1) == phys_gpu_id
+
+
+_TAG_FOLLOWER_REG = 0x4750       # "GP" — follower announces itself to leader
+_TAG_IPC_HANDLES  = 0x4750 + 1  # "GP+1" — leader sends IPC handle to follower
+
+
 def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     """Share peds_gpu/gmask_gpu between BD ranks that map to the same physical GPU.
 
     Within each group of BD ranks sharing a GPU, the lowest-bd_comm-rank
     member (the "leader") exports CUDA IPC handles for its calibration
-    constant buffers.  Follower ranks replace their own ~400 MB allocations
-    with non-owning views into the leader's GPU memory.
+    constant buffers.  Follower ranks receive non-owning views into the
+    leader's GPU memory.
+
+    **No SLURM environment variables required.**
+
+    Uses a follower-first registration protocol to discover peers without
+    enumerating them from ``n_gpus``:
+
+    1. Every non-leader BD rank sends its own bd_rank to the leader
+       (``dest = phys_gpu_id + 1``, tag ``_TAG_FOLLOWER_REG``).  Since all
+       BD ranks enter this function at the same code point, all follower
+       sends are posted to the MPI network before any leader reaches the
+       drain loop.
+    2. The leader drains all pending ``_TAG_FOLLOWER_REG`` messages via
+       ``Iprobe + recv`` until none remain.  This gives the exact follower
+       list without knowing ``n_gpus``.
+    3. Leader sends CUDA IPC handles to each registered follower via
+       ``_TAG_IPC_HANDLES``.  Followers receive and open the handles.
 
     Calibration constants are read-only during event processing and change
     only on BeginStep transitions via GPUDetector.beginstep().  Leaders
     update the shared buffer in-place; followers see the change automatically.
     Followers are marked with ``_is_calib_follower=True`` so their
-    ``beginstep()`` skips the redundant H→D write and only clears derived caches.
+    ``beginstep()`` skips the redundant H→D write and only clears caches.
 
     Parameters
     ----------
     gpu_detectors : dict  {det_name: (psana_det, GPUDetector)}
-        From GpuEvents.gpu_detectors — already initialised with peds/gmask.
+        From GpuEvents.gpu_detectors — already initialised with peds/gmask
+        on the leader, and with peds_gpu=gmask_gpu=None on followers
+        (is_calib_leader() returned False before _setup_detectors() ran).
     bd_comm       : mpi4py.MPI.Comm
         BD-only communicator (bd_rank 0 = EB, bd_rank 1+ = BD workers).
+        No collectives are used — only point-to-point sends and receives
+        between the peers.  EB never participates.
     phys_gpu_id   : int
-        Physical GPU index for this rank (the value of CUDA_VISIBLE_DEVICES
-        before the per-rank restriction was applied).
+        Physical GPU index for this rank (from init_gpu_rank()).
 
     Returns
     -------
     is_leader : bool
         True for the rank that owns the underlying GPU buffers.
         False for followers whose peds_gpu/gmask_gpu are shared views.
-
-    Notes
-    -----
-    Memory saved: ~400 MB per follower rank (peds_gpu + gmask_gpu freed).
-    For N_BD_PER_GPU=2: one follower per GPU → 400 MB × N_GPUS saved.
-
-    beginstep() correctness:
-      Leader writes new constants into the shared buffer via .set().
-      Followers skip the .set() call (would race-write to shared memory)
-      and only clear their _stream_peds/_stream_gmask caches so slices
-      get recomputed from the updated shared arrays.
     """
     try:
         import cupy as cp
@@ -100,62 +164,59 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     except ImportError:
         return True   # no cupy/mpi4py — nothing to share
 
-    # Avoid ALL collectives involving bd_comm (which includes EB at rank 0).
-    # EB is in eb_node.start(), not here — any collective on bd_comm deadlocks.
-    #
-    # Instead, compute peers DETERMINISTICALLY from the GPU assignment formula:
-    #   phys_gpu = bd_local_rank % n_gpus_per_node
-    # where bd_local_rank = bd_rank - 1 (0-indexed, skipping EB at bd_rank=0).
-    # Peers are all BD workers with the same phys_gpu_id, sorted by bd_rank.
-    # No MPI communication is needed to discover them.
-    #
-    # IPC handle exchange uses point-to-point bd_comm.send/recv between the
-    # specific peer bd_ranks only — no collective, no sub-communicator.
-    my_bd_rank = bd_comm.Get_rank()          # 0=EB, 1..N=BD workers
-    n_bd_total = bd_comm.Get_size() - 1      # total BD workers (excl EB)
+    my_bd_rank = bd_comm.Get_rank()       # 0 = EB, 1..N = BD workers
+    n_bd_total = bd_comm.Get_size() - 1   # total BD workers (excl EB)
 
     if n_bd_total <= 1:
         return True   # only one BD worker — nothing to share
 
-    # Derive n_gpus from SLURM_GPUS_ON_NODE when available.
-    # When running outside Slurm (e.g. interactive mpirun without --gres),
-    # SLURM_GPUS_ON_NODE is unset and defaults to '1', which would incorrectly
-    # group ALL BD ranks as peers of GPU 0 even when they are on different GPUs.
-    # Guard: if all BD workers report the same phys_gpu_id (i.e. they all see
-    # CUDA_VISIBLE_DEVICES=0 after pinning) and n_gpus == 1, there really is
-    # only one GPU — sharing is correct.  If phys_gpu_id varies across ranks
-    # (only detectable via a collective, which we avoid) we fall back to no-op.
-    # The practical safe default when SLURM_GPUS_ON_NODE is missing is to use
-    # the physical GPU id directly: peers are those whose init_gpu_rank() chose
-    # the same phys_gpu_id, which is exactly phys_gpu_id == (bd_rank-1) % n_gpus.
-    slurm_gpus_set = 'SLURM_GPUS_ON_NODE' in os.environ
-    n_gpus = max(1, int(os.environ.get('SLURM_GPUS_ON_NODE', '1')))
+    # Leader for GPU g = BD rank (g + 1), consistent with is_calib_leader().
+    leader_bd_rank = phys_gpu_id + 1
+    is_leader      = (my_bd_rank == leader_bd_rank)
 
-    if not slurm_gpus_set and n_bd_total > 1:
-        # Cannot safely determine GPU topology without Slurm metadata.
-        # Skip IPC sharing rather than risk grouping ranks on different GPUs.
-        logger.debug(
-            'share_calib_between_gpu_peers: SLURM_GPUS_ON_NODE not set; '
-            'skipping IPC sharing to avoid incorrect peer grouping.'
-        )
-        return True
+    # ── Phase 1: follower self-registration ─────────────────────────────────
+    # Non-leaders post their bd_rank to the leader before ANY leader logic.
+    # Because all BD ranks are at the same code point, all sends are in the
+    # MPI network buffer by the time the leader's drain loop executes.
+    if not is_leader:
+        bd_comm.send(my_bd_rank, dest=leader_bd_rank, tag=_TAG_FOLLOWER_REG)
 
-    my_bd_local = my_bd_rank - 1             # 0-indexed BD worker number
+    # ── Synchronise all BD workers before the leader drains registrations ────
+    # Guarantee: all follower sends are in the MPI network buffer before the
+    # leader's Iprobe loop starts.  Without this, the leader may drain an
+    # empty queue (if it runs faster than followers) and return "no followers"
+    # even when followers exist.
+    #
+    # MPI_Comm_create_group is collective over its group only, NOT over
+    # bd_comm as a whole.  EB (rank 0) is excluded from the group and must
+    # NOT call this — the standard guarantees it will not be involved.
+    try:
+        _world_grp    = bd_comm.Get_group()
+        _bd_grp       = _world_grp.Excl([0])   # exclude EB at rank 0
+        _bd_only_comm = bd_comm.Create_group(_bd_grp)
+        _bd_only_comm.Barrier()
+    except Exception as _exc:
+        # Fallback if Create_group is unavailable (rare): brief sleep.
+        # 50 ms is sufficient for in-process sends on the same node.
+        logger.debug('share_calib: Create_group failed (%s); using sleep fallback', _exc)
+        import time as _time
+        _time.sleep(0.05)
 
-    # BD workers with the same phys_gpu, sorted by bd_rank (ascending).
-    peer_bd_ranks = sorted(
-        r for r in range(1, bd_comm.Get_size())
-        if (r - 1) % n_gpus == phys_gpu_id
-    )
-    is_leader = (peer_bd_ranks[0] == my_bd_rank)
-    n_peers   = len(peer_bd_ranks)
+    if is_leader:
+        follower_bd_ranks = []
+        while bd_comm.Iprobe(source=MPI.ANY_SOURCE, tag=_TAG_FOLLOWER_REG):
+            rank = bd_comm.recv(source=MPI.ANY_SOURCE, tag=_TAG_FOLLOWER_REG)
+            follower_bd_ranks.append(rank)
+        if not follower_bd_ranks:
+            return True   # solo rank on this GPU — no sharing needed
 
-    if n_peers == 1:
-        return True   # only one BD worker on this GPU — nothing to share
-
+    # ── Phase 2: CUDA IPC handle exchange ───────────────────────────────────
     IPC_LAZY = cp.cuda.runtime.cudaIpcMemLazyEnablePeerAccess
 
-    for det_name, (_, gpu_det) in gpu_detectors.items():
+    # gpu_detectors values may be 2-tuples (det, gpu_det) or 3-tuples
+    # (det, gpu_det, stream_seg_map) — use index access to handle both.
+    for det_name, det_info in gpu_detectors.items():
+        gpu_det = det_info[1]
         if is_leader:
             peds_handle  = cp.cuda.runtime.ipcGetMemHandle(
                 gpu_det.peds_gpu.data.ptr
@@ -168,15 +229,22 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
                 gpu_det.peds_gpu.shape,  gpu_det.gmask_gpu.shape,
                 gpu_det.peds_gpu.nbytes, gpu_det.gmask_gpu.nbytes,
             )
-            # Send to each follower using their bd_rank (point-to-point only).
-            for follower_bd_rank in peer_bd_ranks[1:]:
-                bd_comm.send(meta, dest=follower_bd_rank, tag=42)
+            for follower_bd_rank in follower_bd_ranks:
+                bd_comm.send(meta, dest=follower_bd_rank, tag=_TAG_IPC_HANDLES)
         else:
-            # Receive from the leader's bd_rank.
-            meta = bd_comm.recv(source=peer_bd_ranks[0], tag=42)
+            meta = bd_comm.recv(source=leader_bd_rank, tag=_TAG_IPC_HANDLES)
             (peds_handle,  gmask_handle,
              peds_shape,   gmask_shape,
              peds_nbytes,  gmask_nbytes) = meta
+
+            # Followers arrive here with peds_gpu=None (is_calib_leader()
+            # returned False before _setup_detectors(); prep_calib_constants()
+            # was never called).  Assert this to catch stale call patterns.
+            assert gpu_det.peds_gpu is None and gpu_det.gmask_gpu is None, (
+                "share_calib_between_gpu_peers: follower rank already has "
+                "peds_gpu allocated.  Call is_calib_leader() before "
+                "_setup_detectors() so followers skip prep_calib_constants()."
+            )
 
             peds_ptr  = cp.cuda.runtime.ipcOpenMemHandle(
                 peds_handle,  IPC_LAZY
@@ -184,30 +252,26 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
             gmask_ptr = cp.cuda.runtime.ipcOpenMemHandle(
                 gmask_handle, IPC_LAZY
             )
-
-            peds_gpu = cp.ndarray(
+            gpu_det.peds_gpu = cp.ndarray(
                 peds_shape, dtype=cp.float32,
                 memptr=cp.cuda.MemoryPointer(
                     cp.cuda.UnownedMemory(peds_ptr, peds_nbytes, None), 0
                 ),
             )
-            gmask_gpu = cp.ndarray(
+            gpu_det.gmask_gpu = cp.ndarray(
                 gmask_shape, dtype=cp.float32,
                 memptr=cp.cuda.MemoryPointer(
                     cp.cuda.UnownedMemory(gmask_ptr, gmask_nbytes, None), 0
                 ),
             )
-
-            del gpu_det.peds_gpu, gpu_det.gmask_gpu
-            gpu_det.peds_gpu           = peds_gpu
-            gpu_det.gmask_gpu          = gmask_gpu
             gpu_det._is_calib_follower = True
             gpu_det._stream_peds.clear()
             gpu_det._stream_gmask.clear()
 
+    n_followers = len(follower_bd_ranks) if is_leader else 1
     logger.debug(
-        'share_calib_between_gpu_peers: gpu=%d peers=%d role=%s',
-        phys_gpu_id, n_peers, 'leader' if is_leader else 'follower',
+        'share_calib_between_gpu_peers: gpu=%d n_followers=%d role=%s',
+        phys_gpu_id, n_followers, 'leader' if is_leader else 'follower',
     )
     return is_leader
 

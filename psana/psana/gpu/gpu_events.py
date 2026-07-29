@@ -453,6 +453,7 @@ class GpuEvents:
         smdr_man=None,
         setup_geometry=True,
         prebuilt_geometry=None,
+        calib_leader=True,
     ):
         self.configs = configs
         self.dm = dm
@@ -477,7 +478,7 @@ class GpuEvents:
         self.event_pool = None
         self.gpu_reader = None
 
-        self._setup_detectors()
+        self._setup_detectors(calib_leader=calib_leader)
 
     def __iter__(self):
         return self
@@ -557,7 +558,7 @@ class GpuEvents:
             return [gpu_det]
         return list(gpu_det)
 
-    def _setup_detectors(self):
+    def _setup_detectors(self, calib_leader=True):
         # Budget must exist before constructing GPUDetector objects.
         from psana.gpu.gpu_budget import _GpuBudget
 
@@ -607,6 +608,19 @@ class GpuEvents:
                     "gpu_det=%r: drp_classes=%s — using passthrough mode "
                     "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
                     det_name, sorted(drp_classes),
+                )
+            elif not calib_leader:
+                # Follower BD rank sharing a GPU with the leader.
+                # is_calib_leader() returned False before _setup_detectors() was
+                # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
+                # share_calib_between_gpu_peers() will populate them later via
+                # CUDA IPC handles from the leader — at zero allocation cost.
+                peds_gpu  = None
+                gmask_gpu = None
+                _log.info(
+                    "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
+                    "calibration constants will be shared from leader via CUDA IPC",
+                    det_name,
                 )
             else:
                 peds_gpu, gmask_gpu = prep_calib_constants(det)
