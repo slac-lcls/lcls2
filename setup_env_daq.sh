@@ -15,6 +15,7 @@ unset PYTHONPATH
 source /sdf/group/lcls/ds/ana/sw/conda2-v6/inst/etc/profile.d/conda.sh
 export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
 export DIR_PSDM=/sdf/group/lcls/ds/ana/
+export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
 
 conda activate daq_20250402_r9
 
