@@ -560,3 +560,35 @@ The main user-facing controls are:
 
 * Estimated size for 1 Jungfrau event and 1 Cuda stream
 
+## Note: Extend Slot Leases Through External Consumption
+The current slot model provides bounded backpressure for internal pipeline stages:
+raw input → decode → calibration → publish result
+After publishing a result, the pipeline may consider the slot available. However, a published GPUResult can remain a zero-copy CuPy view into that slot’s calibration buffer:
+```
+slot S, generation i
+        ↓
+calibration view returned to user
+        ↓
+pipeline marks S available
+        ↓
+S reused for generation i+1
+        ↓
+old view observes overwritten data
+```
+Holding the CuPy view keeps its device allocation alive, but does not prevent the pipeline from writing new data into that allocation.
+The lease must therefore extend beyond the internal pipeline and cover external consumption:
+```
+slot S, generation i
+        ↓
+result receives lease(S, i)
+        ↓
+downstream GPU kernels and/or D2H
+        ↓
+registered CUDA/D2H work completes
+        ↓
+consumer releases lease
+        ↓
+S may advance to its next generation
+```
+Each lease should include (slot_id, generation) so a stale result cannot release or register work against a newer occupant. If no slot is reusable, the producer waits, providing consumer-lifetime backpressure.
+This differs from the CPU big-data path, which allocates a new bytearray for each chunk. Retained CPU views keep the old allocation alive and unchanged, although retaining many chunks can grow host-memory usage. GPU slots deliberately reuse fixed VRAM allocations, so correctness requires an explicit lease spanning every zero-copy consumer and its asynchronous work.
