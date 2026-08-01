@@ -737,6 +737,30 @@ def issue_2026_07_23(args):
                 gr.show(mode='DO NOT HOLD', pause_sec=1)
         if plot_image: gr.show()
 
+
+
+
+
+def issue_2026_07_31(args):
+    """ISSUE: crash for Detector(..., status=False)
+              datinfo -k exp=xpp101570426,run=26 -d jungfrau1M
+       PROBLEM:
+       FIX:
+    """
+    import psana
+    import psana.detector.NDArrUtils as ndu
+    exp = "xpp101570426"
+    run = 26
+    max_evt = 100
+    ds = psana.DataSource(exp=exp, run=run, max_events=max_evt)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau1M', status=False)
+    evt = next(myrun.events())
+    cal = det.raw.calib(evt)
+    print(ndu.info_ndarr(cal, '  cal'))
+
+
+        
 #===
 
 def issue_2026_MM_DD(args):
@@ -796,6 +820,7 @@ def selector():
 
     elif TNAME in ('13',):issue_2026_07_08(args)
     elif TNAME in ('14',):issue_2026_07_23(args)
+    elif TNAME in ('15',):issue_2026_07_31(args) # Vincent - jungfrau mask
     elif TNAME in ('99',):issue_2026_MM_DD(args)
     else:
         print(USAGE())
