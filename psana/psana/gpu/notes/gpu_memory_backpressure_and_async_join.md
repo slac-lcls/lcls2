@@ -520,3 +520,43 @@ The design is successful when:
 5. D2H overlaps useful read or compute work when hardware permits.
 6. Backpressure reaches EB instead of producing unbounded local allocation.
 7. Transition and pixel-exact calibration correctness remain unchanged.
+
+## Buffer Flow from Lazy-Sync D→H Design 
+From features/psana2-gpu-d2h-pipeline branch, here is the buffer flow:
+```
+EB GPU metadata (CPU)
+        │
+        ▼
+KvikIO raw-input slot (GPU uint8)
+        │
+        ▼
+raw gather scratch (GPU uint16)
+        │
+        ▼
+calibration output slot (GPU float32)
+        │
+        ▼
+full-routing result (GPU float32, currently allocated per event)
+        │
+        ├── chunk_size=0 ──► on_cpu ──► ordinary NumPy result
+        │
+        └── chunk_size>0 ──► pinned host chunk
+                                      │
+                                      └── on_cpu ──► owned NumPy copy
+```
+The main user-facing controls are:
+
+| Buffer | Primary controls | Effect |  Size* |
+|---|---|---|---|
+| EB GPU metadata | `batch_size` | Controls events/descriptors represented in each GPU batch | small (CPU)
+| KvikIO raw-input slots | `n_gpu_streams`, `batch_size`, `gpu_memory_budget_gb` | Slot count comes from `n_gpu_streams`; subbatch size determines each slot’s capacity | 32 MiB |
+| Raw-gather scratch | `n_gpu_streams`, detector routing | Scratch is cached per slot and segment set; no direct size knob | 32 MiB |
+| Calibration-output slots | `n_gpu_streams`, `batch_size`, `gpu_memory_budget_gb` | One output buffer per slot; sized for one GPU subbatch | 64 MiB |
+| Full-routing result | Detector calibration shape and CPU/GPU segment routing | Always full detector shape; no direct buffer control | 64 MiB |
+| Pinned D2H chunks | `gpu_d2h_chunk_size` | Controls events allocated in each pinned chunk | 128 MiB (Two pinned D2H slots, chunk size 1) |
+| Final NumPy result | Accessing `.on_cpu` | One host result is created per requested event; no memory limit | 64 MiB (CPU) |
+| Calibration constants/caches | `gpu_det`, detector shape/routing | Run-lifetime size; no direct knob | 1 GiB (per run) |
+| CuPy allocator pool | Indirectly workload sizes | No psana configuration knob | small |
+
+* Estimated size for 1 Jungfrau event and 1 Cuda stream
+
