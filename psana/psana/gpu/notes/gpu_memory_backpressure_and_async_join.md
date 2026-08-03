@@ -592,3 +592,13 @@ S may advance to its next generation
 ```
 Each lease should include (slot_id, generation) so a stale result cannot release or register work against a newer occupant. If no slot is reusable, the producer waits, providing consumer-lifetime backpressure.
 This differs from the CPU big-data path, which allocates a new bytearray for each chunk. Retained CPU views keep the old allocation alive and unchanged, although retaining many chunks can grow host-memory usage. GPU slots deliberately reuse fixed VRAM allocations, so correctness requires an explicit lease spanning every zero-copy consumer and its asynchronous work.
+### Summary of the situations where calib buffers are not safe for external consumption
+| Situation | Late `.on_cpu` safe? |
+|---|---|
+| `chunk_size=0`, delayed `.on_cpu` | No—uses the possibly overwritten slot view |
+| `chunk_size>0`, async D2H successfully completed to pinned memory | Yes—`.on_cpu` reads the pinned copy |
+| `chunk_size>0`, no pinned slot available | No—falls back to the same delayed slot `.get()` path |
+| `chunk_size>0`, D2H still in flight when source slot is reused | Potentially no—source can be overwritten during transfer |
+| `.on_gpu` independent D2D copy | Yes |
+| Immediate `.on_cpu` before advancing | Yes |
+| Independent reduced GPU output | Yes |
