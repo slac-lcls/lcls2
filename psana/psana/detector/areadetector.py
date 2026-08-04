@@ -491,7 +491,7 @@ class AreaDetector(DetectorImpl):
     def _mask(self, **kwa):
         """Returns cached mask. **kwargs passed from Detector(..., **kwargs)"""
         logger.debug('in AreaDetector._mask(**kwa - not used, set them in Detector(..., **kwa))')
-        return self._mask_method_wrapper('mask')
+        return self._mask_method_wrapper('mask', **kwa)
 
 #    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
 #              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
