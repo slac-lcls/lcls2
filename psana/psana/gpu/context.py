@@ -139,8 +139,9 @@ class GPUResult:
         direct async D→H from the slot view and signal when the slot is
         safe to recycle.  User code should not access _lease directly.
     _pinned_cpu : np.ndarray | None
-        Set by GpuEvents._D2hPipeline after D→H completes.  When set,
-        on_cpu returns this directly without any further GPU transfer.
+        Cached independent CPU result.  Set either after GpuEvents' pinned
+        D→H completes or by the synchronous fallback.  When set, on_cpu
+        returns it without another GPU transfer.
     """
 
     __slots__ = ('_arr', '_lease', '_pinned_cpu', '_pending_d2h')
@@ -206,8 +207,8 @@ class GPUResult:
         2. _pending_d2h set         → wait for the async D→H that
            _D2hPipeline issued before yielding this event, then copy
            from the pinned slot and cache in _pinned_cpu.
-        3. Fallback                 → synchronise production stream and
-           call arr.get() (blocking D→H at the call site).
+        3. Fallback                 → call arr.get() (blocking D→H at the
+           call site), cache the independent NumPy result, and return it.
         """
         if self._pinned_cpu is not None:
             return self._pinned_cpu
@@ -215,7 +216,8 @@ class GPUResult:
             self._pinned_cpu  = self._pending_d2h.get()
             self._pending_d2h = None
             return self._pinned_cpu
-        return self._arr.get()
+        self._pinned_cpu = self._arr.get()
+        return self._pinned_cpu
 
     def __repr__(self) -> str:
         shape = getattr(self._arr, 'shape', '?')
