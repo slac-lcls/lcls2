@@ -2,6 +2,7 @@
 """
 :py:class:`Mask` - alternative access to AreaDetector det.raw._mask_* methods
 =============================================================================
+This class is intended to access hidden det.raw._mask_* methods directly, without preceeding underscore.
 
 Usage::
 
@@ -15,7 +16,7 @@ Usage::
 
     # All other methods are shotcuts to det._mask* methods w/o "_"
 
-    mask = o.set_mask(**kwa) # forces update
+    mask = o.set_mask(**kwa) # forces update cached mask
     mask = o.mask(**kwa)
     mask = o.mask_default()
     mask = o.mask_calib_or_default()
