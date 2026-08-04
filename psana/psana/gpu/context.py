@@ -33,9 +33,9 @@ class SlotLease:
        waiting for calib_done, then records d2h_done and calls
        register_d2h_done(event).
 
-    3. EventPool.retire_next() calls wait_until_safe_to_reuse() on
-       every lease in the outgoing slot before synchronising the
-       calibration stream and recycling the slot.
+    3. EventPool.begin_retire_next() exposes the completed result.
+       After the caller has had a chance to register its consumer,
+       finish_retire_next() calls wait_until_safe_to_reuse() before reuse.
 
     Rule: a slot may be reused only after every consumer of that slot
     has completed — generator advancement alone is not sufficient.
@@ -57,12 +57,12 @@ class SlotLease:
 
         Called by _D2hPipeline after issuing cudaMemcpyAsync, or by
         _GpuViewContext.__exit__ after the user's downstream GPU kernel.
-        EventPool waits on this event in retire_next() before recycling the slot.
+        EventPool waits on this event in finish_retire_next() before reuse.
         """
         self._d2h_done = event
 
     def wait_until_safe_to_reuse(self):
-        """Block until the consumer has completed; called by EventPool.retire_next().
+        """Block until the consumer has completed during final retirement.
 
         Two outcomes:
           _d2h_done set  → synchronize then recycle
@@ -77,7 +77,7 @@ class _GpuViewContext:
 
     ``__enter__`` returns the raw slot-buffer array (zero-copy).
     ``__exit__`` records a CUDA done-event on *stream* so that
-    EventPool.retire_next() knows the slot is safe to recycle once
+    EventPool.finish_retire_next() knows the slot is safe to recycle once
     that event fires.
 
     ``__del__`` is a safety fallback: if the caller somehow receives

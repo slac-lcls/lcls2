@@ -146,15 +146,18 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     detectors = {"jungfrau": (None, _FakeDetector())}
 
     pool.submit(None, None, ["event-0"], detectors)
-    with pytest.raises(RuntimeError, match="without retire_next"):
+    with pytest.raises(RuntimeError, match="before retirement finished"):
         pool.submit(None, None, ["event-1"], detectors)
 
-    results, events, leases_by_ts = pool.retire_next()
+    results, events, leases_by_ts = pool.begin_retire_next()
     assert results == {}
     assert events == ["event-0"]
     assert leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
+    with pytest.raises(RuntimeError, match="before retirement finished"):
+        pool.submit(None, None, ["event-1"], detectors)
 
+    pool.finish_retire_next()
     pool.submit(None, None, ["event-1"], detectors)
 
 

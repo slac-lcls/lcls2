@@ -191,9 +191,8 @@ class TestSlotLease:
 
 
 class TestEventPoolLeases:
-    def test_retire_next_waits_for_d2h_before_recycle(self, monkeypatch):
-        """EventPool.retire_next() must call synchronize() on every registered
-        D→H done-event before synchronising the calibration stream."""
+    def test_finish_retire_observes_consumer_registered_after_begin(self, monkeypatch):
+        """A consumer registered while the result is exposed must be joined."""
         from psana.gpu.context import SlotLease
         from psana.gpu.gpu_stream import EventPool
 
@@ -203,17 +202,20 @@ class TestEventPoolLeases:
         # Manually inject a slot that has a lease with a pending D→H.
         pending_d2h = _PendingEvent()
         calib_done = _FakeEvent()
-        fake_arr = _make_arr()
         lease = SlotLease(calib_done)
-        lease.register_d2h_done(pending_d2h)
-
         stream = pool._streams[0]
         pool._slots[0] = ({}, [], stream, [lease], {})
         pool._write_idx = 1  # pretend one batch was submitted
 
         assert not pending_d2h._synced
-        pool.retire_next()
-        assert pending_d2h._synced, "retire_next() must synchronise D→H before recycling the slot"
+        pool.begin_retire_next()
+        assert pool._slots[0] is not None, "begin must retain slot ownership"
+
+        # Models on_gpu_view().__exit__ running after the context was yielded.
+        lease.register_d2h_done(pending_d2h)
+        pool.finish_retire_next()
+        assert pending_d2h._synced, "finish must join the late-registered consumer"
+        assert pool._slots[0] is None
 
 
 # ===========================================================================
@@ -254,7 +256,7 @@ class TestOnGpuAndView:
 
     def test_on_gpu_view_records_done_event_on_exit(self):
         """__exit__ must record a done-event on the provided stream so
-        EventPool.retire_next() knows when the slot is safe to recycle."""
+        EventPool.finish_retire_next() knows when the slot is safe to recycle."""
         from psana.gpu.context import GPUResult, SlotLease
 
         arr = _make_arr()
@@ -278,7 +280,7 @@ class TestOnGpuAndView:
         with result.on_gpu_view(_FakeStream()):
             pass
         lease.wait_until_safe_to_reuse()   # must not raise
-        assert lease._d2h_done._synced, "retire_next must synchronize the done event"
+        assert lease._d2h_done._synced, "final retirement must synchronize the done event"
 
     def test_on_gpu_view_raises_without_lease(self):
         """on_gpu_view must raise RuntimeError when the GPUResult has no lease."""
