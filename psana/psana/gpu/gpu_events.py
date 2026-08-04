@@ -1034,9 +1034,16 @@ class GpuEvents:
                     all_subbatches.extend(self._split_subbatches(gpu_view))
 
                 if all_subbatches:
-                    # Retire the slot that subbatch 0 will write into, then
-                    # yield its results, then issue subbatch 0's reads.
-                    ready_0 = self.event_pool.retire_next()
+                    # Two-phase retirement keeps the outgoing slot owned
+                    # while its yielded context registers external work.
+                    ready_0 = self.event_pool.begin_retire_next()
+                    try:
+                        yield from self._yield_ready(ready_0)
+                    finally:
+                        self.event_pool.finish_retire_next()
+
+                    # Only now may the reader overwrite this slot.  Its I/O
+                    # still overlaps the CPU EventManager loop below.
                     slot_0  = self.event_pool.next_slot_id
                     first_pending = (
                         all_subbatches[0],
@@ -1044,7 +1051,6 @@ class GpuEvents:
                             all_subbatches[0], self.dm, slot_id=slot_0
                         ),
                     )
-                    yield from self._yield_ready(ready_0)
 
                 # ── CPU path ─────────────────────────────────────────────────
                 # EventManager loop runs while subbatch 0 reads are in-flight.
@@ -1093,13 +1099,17 @@ class GpuEvents:
                                 subbatch, gpu_read, sb_cpu, self.gpu_detectors
                             )
                         else:
-                            # Subbatches 1+: full retire/issue/wait/submit cycle.
-                            ready = self.event_pool.retire_next()
+                            # Subbatches 1+: two-phase retire, then issue the
+                            # next read only after the old slot is released.
+                            ready = self.event_pool.begin_retire_next()
+                            try:
+                                yield from self._yield_ready(ready)
+                            finally:
+                                self.event_pool.finish_retire_next()
                             slot  = self.event_pool.next_slot_id
                             pending = self.gpu_reader.issue_batch(
                                 subbatch, self.dm, slot_id=slot
                             )
-                            yield from self._yield_ready(ready)
                             gpu_read = self.gpu_reader.wait_batch(pending)
                             self.event_pool.submit(
                                 subbatch, gpu_read, sb_cpu, self.gpu_detectors
