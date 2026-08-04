@@ -117,6 +117,7 @@ class _FakeGPUArr:
 
     def __init__(self, data: np.ndarray):
         self._np = np.ascontiguousarray(data, dtype=np.float32)
+        self.get_calls = 0
         self.shape = self._np.shape
         self.dtype = self._np.dtype
         self.nbytes = self._np.nbytes
@@ -126,6 +127,7 @@ class _FakeGPUArr:
         return _FakeGPUArr(self._np.copy())
 
     def get(self) -> np.ndarray:
+        self.get_calls += 1
         return self._np.copy()
 
 
@@ -370,6 +372,21 @@ class TestPinnedCpu:
         copy = result.on_gpu
         assert copy is not arr, "on_gpu must return a copy, not the original"
         np.testing.assert_allclose(copy._np, arr._np)
+
+    def test_sync_fallback_caches_first_d2h_result(self):
+        """Repeated on_cpu access must not read a reused GPU slot again."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr(fill=3.0)
+        result = GPUResult(arr_gpu=arr)
+
+        first = result.on_cpu
+        arr._np.fill(9.0)  # model the execution slot being overwritten
+        second = result.on_cpu
+
+        assert first is second
+        assert arr.get_calls == 1
+        np.testing.assert_allclose(second, 3.0)
 
     def test_gpu_event_context_get_returns_gpu_result(self):
         """GpuEventContext.get() must return a GPUResult with the correct array."""
