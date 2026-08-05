@@ -5,13 +5,27 @@ the state machine from gpu_memory_backpressure_and_async_join.md:
 
     FREE → READING/COMPUTING → RESULT_READY → D2H_IN_FLIGHT → FREE
 
-Phase 1 of the design: slot leases and CUDA completion tokens.
-The calibration stream is no longer the only completion signal — a slot
-may not be recycled until every consumer (D2H or downstream GPU kernel)
-has registered completion via SlotLease.register_d2h_done().
+Slot leases and CUDA completion tokens connect the producer to its terminal
+consumer.  A slot may not be recycled until every consumer (automatic D2H or
+a downstream GPU kernel) has registered and completed its work.
 """
 
 import os
+from dataclasses import dataclass, field
+
+
+@dataclass
+class _EventSlot:
+    """One occupied execution slot and its eventual host-result handles."""
+
+    slot_id: int
+    gpu_results_by_ts: dict
+    cpu_evts: list
+    stream: object
+    leases: list
+    leases_by_ts: dict
+    pending_d2h_by_ts: dict = field(default_factory=dict)
+    cpu_results_by_ts: dict = field(default_factory=dict)
 
 
 class EventPool:
@@ -19,13 +33,14 @@ class EventPool:
 
     For each submitted batch:
       1. submit()      — launch calibration kernels on the slot's stream;
-                         record one calib_done CUDA event covering all
-                         kernels; create one SlotLease per event.
-      2. begin_retire_next() — synchronise the producer stream but retain
-                               ownership of the outgoing slot.
-      3. caller yields results — consumers may now register completion.
-      4. finish_retire_next() — wait for each registered consumer, then
-                                release the slot for reuse.
+                         finalize routed results; record one result-ready
+                         event; create one SlotLease per result.
+      2. automatic D2H may be armed immediately against that event.
+      3. begin_retire_next() — synchronise the producer stream but retain
+                               ownership of the outgoing slot while results
+                               are delivered.
+      4. finish_retire_next() — wait for each registered terminal consumer,
+                                then release the slot for reuse.
 
     The caller (GpuEvents) must complete both retirement phases before
     submit() so the outgoing slot is fully drained before overwrite.
@@ -40,8 +55,8 @@ class EventPool:
         import cupy as cp
         self._n = n
         self._streams = [cp.cuda.Stream(non_blocking=True) for _ in range(n)]
-        # Each slot: (gpu_results_by_ts, cpu_evts, stream, leases) | None
-        # leases is a flat list of all SlotLease objects for that slot.
+        # Each slot is an _EventSlot or None.  leases is a flat list of all
+        # SlotLease objects that protect buffers owned by that execution slot.
         self._slots: list = [None] * n
         self._write_idx = 0
         # Slot currently exposed between begin_retire_next() and
@@ -67,8 +82,8 @@ class EventPool:
         then call finish_retire_next(), allowing a consumer created during
         that yield to register its completion event first.
 
-        Returns (gpu_results_by_ts, cpu_evts) or None if the slot is empty.
-        The returned arrays remain valid through finish_retire_next().
+        Returns the occupied _EventSlot, or None if the slot is empty.  Its
+        arrays remain valid through finish_retire_next().
         """
         if self._retiring is not None:
             raise RuntimeError("EventPool retirement already in progress")
@@ -78,34 +93,39 @@ class EventPool:
         if old is None:
             return None
 
-        old_results, old_evts, old_stream, old_leases, old_leases_by_ts = old
-        old_stream.synchronize()
-        self._retiring = (slot, old_leases)
-        return old_results, old_evts, old_leases_by_ts
+        old.stream.synchronize()
+        self._retiring = old
+        return old
 
     def finish_retire_next(self):
         """Wait for consumers registered after begin, then release the slot."""
         if self._retiring is None:
             return
 
-        slot, leases = self._retiring
+        old = self._retiring
         # This lookup happens after the caller has consumed the yielded
         # result.  In particular, on_gpu_view().__exit__ may have registered
         # its external-kernel completion event during that interval.
-        for lease in leases:
+        for lease in old.leases:
             lease.wait_until_safe_to_reuse()
 
-        self._slots[slot] = None
+        self._slots[old.slot_id] = None
         self._retiring = None
 
-    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
+    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict,
+               finalize_results=None):
         """Queue calibration into the already-retired next slot.
 
-        Records a calib_done CUDA event after all calibration kernels
-        are queued, then creates one SlotLease per event so downstream
-        consumers can issue async D→H and release the slot when done.
+        Records a result-ready CUDA event after calibration and final routing
+        are queued, then creates one SlotLease per result so downstream
+        consumers can release the slot when done.
 
-        Returns None.  Results come back via begin_retire_next().
+        ``finalize_results`` may enqueue routing or assembly work on the same
+        producer stream before the final result-ready event is recorded.
+
+        Returns the occupied _EventSlot.  Automatic consumers such as D2H may
+        attach their completion tokens immediately; results are delivered later
+        by begin_retire_next().
         """
         import cupy as cp
         from psana.gpu.context import SlotLease
@@ -141,10 +161,14 @@ class EventPool:
                 if ec.image_gpu is not None:
                     ts_dict[f'{det_name}.image'] = ec.image_gpu
 
-        # Record ONE calib_done event after all kernels are queued.
-        # All events in this batch share this single event — they all
-        # ran on the same stream so any one of them completing means all
-        # preceding work is done.
+        if finalize_results is not None:
+            gpu_results_by_ts = finalize_results(
+                gpu_results_by_ts, cpu_evts, stream
+            )
+
+        # Record ONE result-ready event after calibration and any final routing
+        # work are queued.  All results share this event because they run on the
+        # same slot stream.
         calib_done = cp.cuda.Event(disable_timing=True)
         calib_done.record(stream)
 
@@ -168,29 +192,37 @@ class EventPool:
             except Exception:
                 pass
 
-        self._slots[slot] = (gpu_results_by_ts, list(cpu_evts),
-                             stream, all_leases, leases_by_ts)
+        record = _EventSlot(
+            slot_id=slot,
+            gpu_results_by_ts=gpu_results_by_ts,
+            cpu_evts=list(cpu_evts),
+            stream=stream,
+            leases=all_leases,
+            leases_by_ts=leases_by_ts,
+        )
+        self._slots[slot] = record
         self._write_idx += 1
+        return record
 
     def flush(self):
         """Drain all remaining in-flight slots in submission order.
 
-        Synchronizes each producer, yields its results so consumers can
+        Synchronizes each producer, yields its _EventSlot so consumers can
         register completion, then waits for those consumers before clearing
-        the slot.  Yields (gpu_results_by_ts, cpu_evts) for each slot.
+        the slot.
         """
         for i in range(self._n):
             slot = (self._write_idx + i) % self._n
             if self._slots[slot] is None:
                 continue
-            results, evts, stream, leases, leases_by_ts = self._slots[slot]
-            stream.synchronize()
+            record = self._slots[slot]
+            record.stream.synchronize()
             try:
-                yield results, evts, leases_by_ts
+                yield record
             finally:
                 # The yield above is the registration window.  This finally
                 # also protects generator close/early loop termination.
-                for lease in leases:
+                for lease in record.leases:
                     lease.wait_until_safe_to_reuse()
                 self._slots[slot] = None
 

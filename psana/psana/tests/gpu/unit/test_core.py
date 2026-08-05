@@ -97,11 +97,18 @@ class _FakeFlushPool:
         pending, self.pending = self.pending, []
         for item in pending:
             self.yield_count += 1
-            # yield 3-tuple: (gpu_results_by_ts, cpu_evts, leases_by_ts)
-            if len(item) == 2:
-                yield item[0], item[1], {}
-            else:
+            if hasattr(item, "gpu_results_by_ts"):
                 yield item
+                continue
+            results, evts = item[:2]
+            leases = item[2] if len(item) > 2 else {}
+            yield SimpleNamespace(
+                gpu_results_by_ts=results,
+                cpu_evts=evts,
+                leases_by_ts=leases,
+                pending_d2h_by_ts={},
+                cpu_results_by_ts={},
+            )
 
 
 @pytest.fixture
@@ -149,10 +156,10 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     with pytest.raises(RuntimeError, match="before retirement finished"):
         pool.submit(None, None, ["event-1"], detectors)
 
-    results, events, leases_by_ts = pool.begin_retire_next()
-    assert results == {}
-    assert events == ["event-0"]
-    assert leases_by_ts == {}
+    record = pool.begin_retire_next()
+    assert record.gpu_results_by_ts == {}
+    assert record.cpu_evts == ["event-0"]
+    assert record.leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
     with pytest.raises(RuntimeError, match="before retirement finished"):
         pool.submit(None, None, ["event-1"], detectors)
