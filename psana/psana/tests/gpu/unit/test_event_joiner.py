@@ -196,7 +196,7 @@ class TestEventPoolLeases:
     def test_finish_retire_observes_consumer_registered_after_begin(self, monkeypatch):
         """A consumer registered while the result is exposed must be joined."""
         from psana.gpu.context import SlotLease
-        from psana.gpu.gpu_stream import EventPool
+        from psana.gpu.gpu_stream import EventPool, _EventSlot
 
         pool = EventPool(n=1)
         detectors = {}  # no detectors → no events, but leases_by_ts={}
@@ -206,7 +206,14 @@ class TestEventPoolLeases:
         calib_done = _FakeEvent()
         lease = SlotLease(calib_done)
         stream = pool._streams[0]
-        pool._slots[0] = ({}, [], stream, [lease], {})
+        pool._slots[0] = _EventSlot(
+            slot_id=0,
+            gpu_results_by_ts={},
+            cpu_evts=[],
+            stream=stream,
+            leases=[lease],
+            leases_by_ts={},
+        )
         pool._write_idx = 1  # pretend one batch was submitted
 
         assert not pending_d2h._synced
@@ -413,45 +420,62 @@ class TestPinnedCpu:
 
 
 class TestD2hPipeline:
-    """Tests for the internal GpuEvents._D2hPipeline class.
+    """Tests for eager slot-level scheduling in _D2hPipeline."""
 
-    With the lazy-sync design, contexts are yielded IMMEDIATELY after
-    D→H is issued.  GPUResult._pending_d2h carries the CUDA done-event;
-    on_cpu waits lazily at the call site.
-    """
+    def _make_record(self, fills=(1.0,), key="jungfrau.calib",
+                     n_segs=4, nrows=8, ncols=8):
+        from psana.gpu.context import SlotLease
+        from psana.gpu.gpu_stream import _EventSlot
 
-    def _make_ctx(self, fill=1.0, key="jungfrau.calib", n_segs=4, nrows=8, ncols=8):
-        from psana.gpu.context import GpuEventContext, SlotLease
-        from types import SimpleNamespace
-
-        arr = _make_arr(n_segs=n_segs, nrows=nrows, ncols=ncols, fill=fill)
-        calib = _FakeEvent()
-        lease = SlotLease(calib_done=calib)
-        fake_evt = SimpleNamespace(timestamp=int(fill * 100))
-        ctx = GpuEventContext(
-            evt=fake_evt,
-            gpu_results={key: arr},
-            leases={key: lease},
+        gpu_results_by_ts = {}
+        leases_by_ts = {}
+        cpu_evts = []
+        leases = []
+        for fill in fills:
+            ts = int(fill * 100)
+            evt = SimpleNamespace(timestamp=ts)
+            lease = SlotLease(calib_done=_FakeEvent())
+            gpu_results_by_ts[ts] = {
+                key: _make_arr(
+                    n_segs=n_segs,
+                    nrows=nrows,
+                    ncols=ncols,
+                    fill=fill,
+                )
+            }
+            leases_by_ts[ts] = {key: lease}
+            cpu_evts.append(evt)
+            leases.append(lease)
+        return _EventSlot(
+            slot_id=0,
+            gpu_results_by_ts=gpu_results_by_ts,
+            cpu_evts=cpu_evts,
+            stream=_FakeStream(),
+            leases=leases,
+            leases_by_ts=leases_by_ts,
         )
-        return ctx
 
-    def test_pipeline_yields_immediately(self):
-        """Checks that the generator does not hold events waiting for D→H
-        to complete.  Adds 2 events with chunk_size=2.  After the first
-        add() the chunk is not full so nothing is returned.  After the
-        second add() the chunk fires and both events are returned — before
-        the transfer has finished (because the fake done_event is not yet
-        polled)."""
+    @staticmethod
+    def _make_ctx(record, evt):
+        from psana.gpu.context import GpuEventContext
+
+        ts = evt.timestamp
+        return GpuEventContext(
+            evt=evt,
+            gpu_results=record.gpu_results_by_ts.get(ts, {}),
+            leases=record.leases_by_ts.get(ts, {}),
+            pending_d2h=record.pending_d2h_by_ts.get(ts, {}),
+            cpu_results=record.cpu_results_by_ts.get(ts, {}),
+        )
+
+    def test_pipeline_schedules_complete_slot_immediately(self):
+        """All results in a submitted slot receive host-result tokens."""
         from psana.gpu.gpu_events import _D2hPipeline
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
-        ctx0 = self._make_ctx(fill=1.0)
-        ctx1 = self._make_ctx(fill=2.0)
-
-        ready = pipe.add(ctx0)
-        assert ready == [], "should not yield before chunk is full"
-        ready = pipe.add(ctx1)
-        assert len(ready) == 2, "both contexts yielded after chunk filled"
+        record = self._make_record(fills=(1.0, 2.0))
+        pipe.schedule(record)
+        assert set(record.pending_d2h_by_ts) == {100, 200}
 
     def test_pipeline_sets_pending_d2h(self):
         """Checks that the lazy-sync token is attached before yielding.
@@ -461,14 +485,11 @@ class TestD2hPipeline:
         from psana.gpu.gpu_events import _D2hPipeline
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
-        ctx0 = self._make_ctx(fill=1.0)
-        ctx1 = self._make_ctx(fill=2.0)
-        for ctx in [ctx0, ctx1]:
-            pipe.add(ctx)
-        # After yielding, the GPUResult in the cache must have _pending_d2h.
-        for ctx in [ctx0, ctx1]:
-            result = ctx._cache.get("jungfrau.calib")
-            assert result is not None
+        record = self._make_record(fills=(1.0, 2.0))
+        pipe.schedule(record)
+        for evt in record.cpu_evts:
+            ctx = self._make_ctx(record, evt)
+            result = ctx.get("jungfrau.calib")
             assert result._pending_d2h is not None, "_pending_d2h must be set so on_cpu can sync lazily"
 
     def test_on_cpu_returns_correct_data(self):
@@ -482,51 +503,31 @@ class TestD2hPipeline:
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
         fills = [3.0, 7.0]
-        ctxs = [self._make_ctx(fill=v) for v in fills]
-        ready = []
-        for ctx in ctxs:
-            ready.extend(pipe.add(ctx))
-        for ctx, expected in zip(ready, fills):
+        record = self._make_record(fills=fills)
+        pipe.schedule(record)
+        for evt, expected in zip(record.cpu_evts, fills):
+            ctx = self._make_ctx(record, evt)
             result = ctx.get("jungfrau.calib")
             np.testing.assert_allclose(result.on_cpu, expected)
 
-    def test_pipeline_flush_partial(self):
-        """Checks the batch-boundary drain path.  Adds 1 event to a
-        pipeline with chunk_size=3 — the chunk is not full so add()
-        returns nothing.  Calls flush() and checks the stranded event is
-        returned.  Without this flush, events whose count does not reach
-        chunk_size (e.g. the last batch of a run) would never be
-        yielded to the user."""
+    def test_pipeline_schedules_partial_chunk_immediately(self):
+        """A slot smaller than chunk_size is armed without a later flush."""
         from psana.gpu.gpu_events import _D2hPipeline
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=3)
-        ctx = self._make_ctx(fill=1.0)
-        assert pipe.add(ctx) == [], "no yield before chunk_size reached"
-        ready = pipe.flush()
-        assert len(ready) == 1
-        # The context is yielded with _pending_d2h set.
-        result = ready[0].get("jungfrau.calib")
-        assert result._pending_d2h is not None or result._pinned_cpu is not None
+        record = self._make_record()
+        pipe.schedule(record)
+        assert record.pending_d2h_by_ts[100]["jungfrau.calib"] is not None
 
     def test_pipeline_unknown_key_passthrough(self):
-        """Checks that the pipeline does not buffer events it has no data
-        for.  A context whose gpu_results dict does not contain the
-        pipeline's det_key (e.g. a BeginStep transition or a detector
-        that was absent in this event) must be returned immediately by
-        add() without entering the chunk buffer."""
+        """A slot without the configured result key is left unchanged."""
         from psana.gpu.gpu_events import _D2hPipeline
-        from psana.gpu.context import GpuEventContext
-        from types import SimpleNamespace
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
-        fake_evt = SimpleNamespace(timestamp=0)
-        ctx = GpuEventContext(
-            evt=fake_evt,
-            gpu_results={},  # no calib key
-            leases={},
-        )
-        ready = pipe.add(ctx)
-        assert ready == [ctx], "context without matching key must pass through"
+        record = self._make_record(key="jungfrau.raw")
+        pipe.schedule(record)
+        assert record.pending_d2h_by_ts == {}
+        assert record.cpu_results_by_ts == {}
 
     def test_calib_done_waited_before_d2h(self):
         """Checks the ordering guarantee between calibration and transfer.
@@ -538,61 +539,38 @@ class TestD2hPipeline:
         from psana.gpu.gpu_events import _D2hPipeline
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=1)
-        ctx = self._make_ctx(fill=5.0)
-        pipe.add(ctx)
-        calib = ctx._leases["jungfrau.calib"].calib_done
+        record = self._make_record(fills=(5.0,))
+        pipe.schedule(record)
+        calib = record.leases_by_ts[500]["jungfrau.calib"].calib_done
         assert calib in pipe._d2h_stream.wait_events, "D→H stream must call wait_event(calib_done) before memcpyAsync"
 
-    def test_get_free_slot_returns_none_when_all_slots_busy(self):
-        """Non-blocking fallback: _flush_chunk returns events without
-        _pending_d2h when all pinned slots are occupied.
-
-        This prevents the generator from deadlocking when the user
-        accumulates contexts before calling on_cpu (e.g. list(run.events())).
-
-        Sequence:
-          1. chunk_size=1 — each add() flushes immediately.
-          2. Add two events without calling on_cpu — both slots are now
-             claimed; _available queue is empty.
-          3. Add a third event.  _get_free_slot() must return None
-             (SimpleQueue.get_nowait() raises Empty), so the event is
-             yielded WITHOUT _pending_d2h (sync fallback path).
-          4. Verify ctx2's GPUResult has _pending_d2h=None.
-          5. Now call on_cpu for ctx0 — dec_ref() returns slot to queue.
-          6. Add a fourth event — slot available, async D→H resumes.
-        """
+    def test_no_free_pinned_slot_materializes_safe_cpu_fallback(self):
+        """Pinned exhaustion caches CPU data before device-slot reuse."""
         from psana.gpu.gpu_events import _D2hPipeline
 
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=1)
 
-        # Warm up: two events — both slots claimed; _available queue empty.
-        ctx0 = self._make_ctx(fill=1.0)
-        ctx1 = self._make_ctx(fill=2.0)
-        pipe.add(ctx0)
-        pipe.add(ctx1)
+        record0 = self._make_record(fills=(1.0,))
+        record1 = self._make_record(fills=(2.0,))
+        pipe.schedule(record0)
+        pipe.schedule(record1)
         assert pipe._available.empty(), "both slots should be claimed"
 
-        # Third event: queue empty → sync fallback (no _pending_d2h).
-        ctx2 = self._make_ctx(fill=3.0)
-        ready = pipe.add(ctx2)
-        assert len(ready) == 1, "ctx2 should be yielded immediately via sync fallback"
-        result2 = ready[0].get("jungfrau.calib")
-        assert result2._pending_d2h is None, (
-            "sync fallback should not attach _pending_d2h"
-        )
+        record2 = self._make_record(fills=(3.0,))
+        pipe.schedule(record2)
+        ctx2 = self._make_ctx(record2, record2.cpu_evts[0])
+        result2 = ctx2.get("jungfrau.calib")
+        assert result2._pending_d2h is None
+        np.testing.assert_allclose(result2.on_cpu, 3.0)
 
         # Free a slot: dec_ref() puts the slot back into _available.
-        ctx0.get("jungfrau.calib").on_cpu
+        self._make_ctx(record0, record0.cpu_evts[0]).get("jungfrau.calib").on_cpu
         assert not pipe._available.empty(), "slot should be back in the free queue"
 
         # Fourth event: slot available → async D→H resumes.
-        ctx3 = self._make_ctx(fill=4.0)
-        ready = pipe.add(ctx3)
-        assert len(ready) == 1, "ctx3 should be yielded"
-        result3 = ready[0].get("jungfrau.calib")
-        assert result3._pending_d2h is not None, (
-            "async D→H should resume once a slot is returned to the queue"
-        )
+        record3 = self._make_record(fills=(4.0,))
+        pipe.schedule(record3)
+        assert record3.pending_d2h_by_ts[400]["jungfrau.calib"] is not None
 
     def test_dec_ref_race_lock_prevents_lost_update(self):
         """_refs_lock ensures that concurrent dec_ref() calls produce the
@@ -611,10 +589,10 @@ class TestD2hPipeline:
 
         # Prime: two events with chunk_size=1 → each flushes into its own slot.
         # After both adds the _available queue must be empty (_refs=1 each).
-        ctx0 = self._make_ctx(fill=1.0)
-        ctx1 = self._make_ctx(fill=2.0)
-        pipe.add(ctx0)
-        pipe.add(ctx1)
+        record0 = self._make_record(fills=(1.0,))
+        record1 = self._make_record(fills=(2.0,))
+        pipe.schedule(record0)
+        pipe.schedule(record1)
         assert pipe._available.empty(), "both slots should be claimed (queue empty)"
 
         # Pick the slot that ctx0 is using — it has _refs=1.

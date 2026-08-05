@@ -10,7 +10,8 @@ GPUResult
 SlotLease
     Completion token linking one event's calibrated output view to the
     EventPool slot it was produced in.  Created by EventPool.submit(),
-    attached to GPUResult, consumed by GpuEvents._D2hPipeline.
+    consumed immediately by GpuEvents._D2hPipeline for automatic D→H, and
+    attached to GPUResult when the event is later delivered.
 
 GpuEventContext
     Per-event container returned by DataSource(gpu_det=...).
@@ -28,14 +29,13 @@ class SlotLease:
        ``calib_done`` immediately after all kernels, then creates one
        SlotLease per event (sharing ``calib_done``, unique ``view``).
 
-    2. GpuEvents._D2hPipeline receives the lease via GPUResult._lease.
-       It issues cudaMemcpyAsync on a separate D→H stream after
-       waiting for calib_done, then records d2h_done and calls
-       register_d2h_done(event).
+    2. GpuEvents._D2hPipeline receives the submitted slot record.  It issues
+       cudaMemcpyAsync on a separate D→H stream after waiting for calib_done,
+       then records d2h_done and calls register_d2h_done(event).
 
-    3. EventPool.begin_retire_next() exposes the completed result.
-       After the caller has had a chance to register its consumer,
-       finish_retire_next() calls wait_until_safe_to_reuse() before reuse.
+    3. EventPool.begin_retire_next() exposes the result and its prepared host
+       token.  After the caller has had a chance to register any external GPU
+       consumer, finish_retire_next() waits before reuse.
 
     Rule: a slot may be reused only after every consumer of that slot
     has completed — generator advancement alone is not sufficient.
@@ -144,9 +144,10 @@ class GPUResult:
         returns it without another GPU transfer.
     """
 
-    __slots__ = ('_arr', '_lease', '_pinned_cpu', '_pending_d2h')
+    __slots__ = ('_arr', '_lease', '_pinned_cpu', '_pending_d2h',
+                 '_device_released')
 
-    def __init__(self, arr_gpu, lease=None):
+    def __init__(self, arr_gpu, lease=None, device_released=False):
         """
         Parameters
         ----------
@@ -160,6 +161,18 @@ class GPUResult:
         # Carries the CUDA done-event + pinned-slot reference so on_cpu
         # can wait lazily rather than blocking inside the generator.
         self._pending_d2h = None   # _PendingD2H | None
+        # Automatic D2H contexts can outlive the EventPool device slot.  Keep
+        # that state explicit so stale slot-backed arrays are never exposed.
+        self._device_released = device_released
+
+    def _require_device_storage(self, accessor: str):
+        if self._device_released or self._arr is None:
+            raise RuntimeError(
+                f"{accessor} is unavailable because automatic D2H completed "
+                "and the EventPool device slot was released before this event "
+                "was yielded. Use on_cpu, or set gpu_d2h_chunk_size=0 for a "
+                "GPU consumer."
+            )
 
     @property
     def on_gpu(self):
@@ -169,6 +182,7 @@ class GPUResult:
         be recycled immediately after this call.  Use when the copy cost
         (~2 ms D→D for Jungfrau) is acceptable and simplicity is preferred.
         """
+        self._require_device_storage("on_gpu")
         return self._arr.copy()
 
     def on_gpu_view(self, stream=None):
@@ -190,10 +204,17 @@ class GPUResult:
         Raises RuntimeError if this GPUResult has no SlotLease (i.e. was not
         produced by EventPool.submit()) — use on_gpu (D→D copy) instead.
         """
+        self._require_device_storage("on_gpu_view")
         if self._lease is None:
             raise RuntimeError(
                 "on_gpu_view is not safe: this GPUResult has no SlotLease. "
                 "Use on_gpu (D→D copy) instead, which is always safe."
+            )
+        if self._pending_d2h is not None:
+            raise RuntimeError(
+                "on_gpu_view is unavailable after automatic D2H has been "
+                "scheduled. Use gpu_d2h_chunk_size=0 for a zero-copy GPU "
+                "consumer, or use on_gpu for an independent D→D copy."
             )
         return _GpuViewContext(self._arr, self._lease, stream)
 
@@ -216,6 +237,12 @@ class GPUResult:
             self._pinned_cpu  = self._pending_d2h.get()
             self._pending_d2h = None
             return self._pinned_cpu
+        if self._device_released or self._arr is None:
+            raise RuntimeError(
+                "on_cpu has no host result after the EventPool device slot "
+                "was released; this indicates an incomplete automatic-D2H "
+                "handoff."
+            )
         self._pinned_cpu = self._arr.get()
         return self._pinned_cpu
 
@@ -236,13 +263,17 @@ class GpuEventContext:
         ctx.service()          → int (TransitionId)
     """
 
-    __slots__ = ('_evt', '_gpu_results', '_cpu_dets',
-                 '_cache', '_router', '_leases')
+    __slots__ = ('_evt', '_gpu_results', '_cpu_dets', '_cache', '_router',
+                 '_leases', '_pending_d2h', '_cpu_results',
+                 '_device_released')
 
     def __init__(self, evt, gpu_results: dict,
                  cpu_dets: dict | None = None,
                  router=None,
-                 leases: dict | None = None):
+                 leases: dict | None = None,
+                 pending_d2h: dict | None = None,
+                 cpu_results: dict | None = None,
+                 device_released: bool = False):
         """
         Parameters
         ----------
@@ -253,12 +284,19 @@ class GpuEventContext:
         leases      : dict  {key: SlotLease} | None
             Per-key slot leases created by EventPool.submit().
             Attached to GPUResult objects in get().
+        pending_d2h : dict  {key: _PendingD2H} | None
+            Host-result tokens armed immediately after slot submission.
+        cpu_results : dict  {key: np.ndarray} | None
+            Independent CPU results materialized under pinned-buffer pressure.
         """
         self._evt         = evt
         self._gpu_results = gpu_results
         self._cpu_dets    = cpu_dets or {}
         self._router      = router
         self._leases      = leases or {}
+        self._pending_d2h = pending_d2h or {}
+        self._cpu_results = cpu_results or {}
+        self._device_released = device_released
         self._cache: dict = {}
 
     def get(self, key: str) -> GPUResult:
@@ -288,10 +326,14 @@ class GpuEventContext:
                     f"'{key}' resolved to '{resolved}' which is not available.  "
                     f"Available GPU keys: {available}"
                 )
-            self._cache[resolved] = GPUResult(
+            result = GPUResult(
                 self._gpu_results[resolved],
                 lease=self._leases.get(resolved),
+                device_released=self._device_released,
             )
+            result._pending_d2h = self._pending_d2h.get(resolved)
+            result._pinned_cpu = self._cpu_results.get(resolved)
+            self._cache[resolved] = result
         return self._cache[resolved]
 
     def raw(self, det_name: str):

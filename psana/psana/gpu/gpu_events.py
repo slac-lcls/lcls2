@@ -87,7 +87,7 @@ def _iter_step_events(batch_bytes, configs):
 class _PendingD2H:
     """Token held by GPUResult while its async D→H is in-flight.
 
-    Created by _D2hPipeline._flush_chunk() immediately after issuing
+    Created by _D2hPipeline._schedule_chunk() immediately after issuing
     cudaMemcpyAsync.  GPUResult.on_cpu calls .get() to wait for the
     transfer and retrieve the host copy.
 
@@ -180,23 +180,21 @@ class _PinnedSlot:
 class _D2hPipeline:
     """Internal GpuEvents D→H pipeline (not user-facing).
 
-    Issues async D→H from EventPool slot views to pinned host memory,
-    then yields contexts IMMEDIATELY — before the transfer completes.
-    GPUResult.on_cpu waits for the CUDA done-event lazily at the call
-    site, so the generator stays thin and D→H overlaps with whatever
-    work the user does between receiving a context and calling on_cpu.
+    Issues async D→H from an EventPool slot as soon as its final GPU work is
+    submitted.  Result delivery remains separate: GPUResult.on_cpu later waits
+    on the attached token and copies out of pinned memory.
 
     Activated by DataSource(gpu_d2h_chunk_size=N).  N=0 (default)
     bypasses the pipeline; on_cpu then triggers a blocking D→H on first
     access (existing behaviour).
     """
 
-    def __init__(self, det_key: str, chunk_size: int):
+    def __init__(self, det_key: str, chunk_size: int, max_inflight: int = 2):
         from queue import SimpleQueue
 
         self._key = det_key
         self._chunk_size = chunk_size
-        self._max_inflight = 2  # pinned slots; 2 lets one transfer while next fills
+        self._max_inflight = max(2, int(max_inflight))
 
         # _available is a SimpleQueue of free _PinnedSlot objects.
         # _get_free_slot() calls get_nowait() — O(1), thread-safe, no scan.
@@ -213,40 +211,32 @@ class _D2hPipeline:
         self._nrows: int | None = None
         self._ncols: int | None = None
 
-        # Accumulator for the current in-progress chunk.
-        self._chunk_buf: list = []  # list of (ctx, lease, arr)
+    def schedule(self, slot_record):
+        """Arm D→H for every matching result in one execution slot.
 
-    def add(self, ctx) -> list:
-        """Add one context.  Returns list of contexts ready to yield.
-
-        Contexts are returned immediately once their D→H has been
-        *issued* (not waited for).  The caller yields them; the user
-        completes the sync lazily via GPUResult.on_cpu.
+        This runs immediately after EventPool.submit().  It never waits for
+        normal asynchronous copies: the D→H stream waits on the slot's
+        result-ready event and records its own completion event.  If all pinned
+        buffers are retained, the result is copied synchronously now and cached
+        so a later on_cpu() can never read a reused GPU slot.
         """
-        arr = ctx._gpu_results.get(self._key)
-        lease = ctx._leases.get(self._key)
+        items = []
+        key = self._key
+        for evt in slot_record.cpu_evts:
+            ts = evt.timestamp
+            arr = slot_record.gpu_results_by_ts.get(ts, {}).get(key)
+            if arr is None:
+                continue
+            lease = slot_record.leases_by_ts.get(ts, {}).get(key)
+            items.append((ts, lease, arr))
 
-        if arr is None:
-            return [ctx]  # no GPU data for this key — pass through
-
+        if not items:
+            return
         if self._n_segs is None:
-            self._init(arr)
+            self._init(items[0][2])
 
-        self._chunk_buf.append((ctx, lease, arr))
-
-        if len(self._chunk_buf) >= self._chunk_size:
-            return self._flush_chunk()
-        return []
-
-    def flush(self) -> list:
-        """Issue D→H for any partial chunk; return all buffered contexts.
-
-        Called at EndRun, BeginStep, and end of each batch so no event
-        is stranded in _chunk_buf indefinitely.
-        """
-        if self._chunk_buf:
-            return self._flush_chunk()
-        return []
+        for start in range(0, len(items), self._chunk_size):
+            self._schedule_chunk(slot_record, items[start:start + self._chunk_size])
 
     def pinned_bytes(self) -> int:
         """Return bytes of pinned (page-locked) host memory currently
@@ -278,50 +268,32 @@ class _D2hPipeline:
         removes the slot from the free pool — eliminating the Semaphore +
         in_use scan that three separate mechanisms previously handled.
 
-        Returns None (sync D→H fallback) when the queue is empty so the
-        generator never deadlocks when the user accumulates contexts before
-        calling on_cpu (e.g. list(run.events())).
-
-        In the standard sequential for-loop a slot is always available here
-        (the previous chunk's slot is returned to the queue by dec_ref()
-        before the next chunk is flushed), so None is never returned.
+        Returns None when the queue is empty.  schedule() then materializes an
+        independent CPU result before the execution slot can be reused.
         """
         try:
             return self._available.get_nowait()
         except Exception:
-            return None   # queue empty — caller falls back to sync on_cpu
+            return None   # queue empty — schedule() materializes CPU data now
 
-    def _flush_chunk(self) -> list:
-        """Issue async D→H for the current chunk; attach _pending_d2h;
-        return all events immediately.
-
-        If a free pinned slot is available (_free_slots semaphore count > 0)
-        the D→H transfer is issued asynchronously and all events are returned
-        immediately (lazy-sync path).
-
-        If no slot is free (all max_inflight slots are occupied) the events
-        are returned without _pending_d2h and on_cpu will fall back to the
-        synchronous self._arr.get() path.  This prevents the generator from
-        deadlocking when the user accumulates contexts before calling on_cpu.
-        """
+    def _schedule_chunk(self, slot_record, chunk):
+        """Issue one pinned D→H chunk, or materialize a safe CPU fallback."""
         import cupy as cp
-        from psana.gpu.context import GPUResult
-
-        chunk = self._chunk_buf
-        self._chunk_buf = []
         n_evts = len(chunk)
 
         pslot = self._get_free_slot()
 
-        # ── Fallback: no free pinned slot ────────────────────────────────
-        # All max_inflight slots are occupied (user has not yet called on_cpu
-        # on every event from the previous chunks).  Yield events without
-        # _pending_d2h so on_cpu falls back to the synchronous self._arr.get()
-        # path — correct but without async overlap.  This also prevents the
-        # generator from deadlocking when the user accumulates events before
-        # calling on_cpu (e.g. list(run.events())).
+        # No free pinned slot: materialize while the device lease is valid.
+        # Deferring arr.get() until on_cpu() would allow this execution slot to
+        # be overwritten first when callers retain event contexts.
         if pslot is None:
-            return [ctx for ctx, _, _ in chunk]
+            for ts, lease, arr in chunk:
+                if lease is not None and lease.calib_done is not None:
+                    lease.calib_done.synchronize()
+                slot_record.cpu_results_by_ts.setdefault(ts, {})[
+                    self._key
+                ] = arr.get()
+            return
 
         # ── Issue async D→H ───────────────────────────────────────────────
         pslot.claim(n_evts)
@@ -330,7 +302,7 @@ class _D2hPipeline:
         dst_base = pslot.arr.ctypes.data
         leases_out = []
 
-        for i, (ctx, lease, arr) in enumerate(chunk):
+        for i, (_, lease, arr) in enumerate(chunk):
             if lease is not None and lease.calib_done is not None:
                 stream.wait_event(lease.calib_done)
             cp.cuda.runtime.memcpyAsync(
@@ -348,19 +320,12 @@ class _D2hPipeline:
         for lease in leases_out:
             lease.register_d2h_done(pslot.done_event)
 
-        # Attach _pending_d2h to each GPUResult and yield immediately.
-        key = self._key
-        results = []
-        for i, (ctx, lease, arr) in enumerate(chunk):
-            # Ensure GPUResult is cached so we can attach pending_d2h.
-            if key not in ctx._cache:
-                ctx._cache[key] = GPUResult(
-                    ctx._gpu_results.get(key),
-                    lease=ctx._leases.get(key),
-                )
-            ctx._cache[key]._pending_d2h = _PendingD2H(pslot, i, self._n_segs)
-            results.append(ctx)
-        return results
+        # Store host-result tokens on the execution record.  Context delivery
+        # later attaches them to GPUResult without scheduling new CUDA work.
+        for i, (ts, _, _) in enumerate(chunk):
+            slot_record.pending_d2h_by_ts.setdefault(ts, {})[self._key] = (
+                _PendingD2H(pslot, i, self._n_segs)
+            )
 
 
 def _fmt_mib(n: int) -> str:
@@ -477,6 +442,10 @@ class GpuEvents:
         self.router = DetectorRouter()
         self.event_pool = None
         self.gpu_reader = None
+        # At most one KvikIO read is pre-issued ahead of the CPU event loop.
+        # Keep explicit ownership so generator close/early termination can
+        # drain it before gpu_reader.close() releases its buffers.
+        self._pending_gpu_read = None
 
         self._setup_detectors(calib_leader=calib_leader)
 
@@ -727,6 +696,7 @@ class GpuEvents:
                 f"{det_name}.calib": _D2hPipeline(
                     det_key=f"{det_name}.calib",
                     chunk_size=chunk_size,
+                    max_inflight=n_streams,
                 )
                 for det_name in self.gpu_det_names
             }
@@ -940,68 +910,140 @@ class GpuEvents:
 
         return end_run_seen
 
-    def _make_context(self, evt, gpu_results, leases=None):
-        gpu_results = _apply_full_routing(
-            gpu_results,
-            evt,
-            self.gpu_detectors,
-            self.router,
-        )
+    def _make_context(self, evt, gpu_results, leases=None,
+                      pending_d2h=None, cpu_results=None,
+                      device_released=False):
         return GpuEventContext(
             evt=evt,
             gpu_results=gpu_results,
             cpu_dets=self.cpu_dets,
             router=self.router,
             leases=leases,
+            pending_d2h=pending_d2h,
+            cpu_results=cpu_results,
+            device_released=device_released,
         )
 
-    def _push_context(self, ctx):
-        """Feed one context through D→H pipelines; yield when ready."""
-        if not self._d2h_pipelines:
-            yield ctx
-            return
-        # Feed through every active pipeline (one per det key).
-        # A context is only yielded once ALL pipelines have finished with it.
-        # For the common single-detector case this is a single iteration.
-        ready = [ctx]
-        for pipe in self._d2h_pipelines.values():
-            next_ready = []
-            for c in ready:
-                next_ready.extend(pipe.add(c))
-            ready = next_ready
-        yield from ready
+    def _finalize_slot_results(self, gpu_results_by_ts, cpu_evts, stream):
+        """Queue full-result routing on the slot's producer stream."""
+        with stream:
+            for evt in cpu_evts:
+                ts = evt.timestamp
+                gpu_results_by_ts[ts] = _apply_full_routing(
+                    gpu_results_by_ts.get(ts, {}),
+                    evt,
+                    self.gpu_detectors,
+                    self.router,
+                )
+        return gpu_results_by_ts
 
-    def _yield_ready(self, ready):
+    def _submit_gpu(self, subbatch, gpu_read, cpu_evts):
+        """Submit one device slot and arm its automatic D→H immediately."""
+        record = self.event_pool.submit(
+            subbatch,
+            gpu_read,
+            cpu_evts,
+            self.gpu_detectors,
+            finalize_results=self._finalize_slot_results,
+        )
+        for pipe in self._d2h_pipelines.values():
+            pipe.schedule(record)
+        return record
+
+    @staticmethod
+    def _is_fully_host_backed(ready):
+        """Return True when every slot-backed result has a host handoff.
+
+        A pending pinned D2H token or an independent CPU fallback both make
+        the corresponding result safe after its device slot is reused.
+        """
+        if ready is None:
+            return True
+        for ts, results in ready.gpu_results_by_ts.items():
+            pending = ready.pending_d2h_by_ts.get(ts, {})
+            cached = ready.cpu_results_by_ts.get(ts, {})
+            if any(key not in pending and key not in cached for key in results):
+                return False
+        return True
+
+    def _yield_ready(self, ready, device_released=False):
         if ready is None:
             return
-        gpu_results_by_ts, cpu_evts, leases_by_ts = ready
         # Log after the first batch: slot buffers have grown to their
         # initial sizes so this shows the steady-state allocation.
-        if not self._first_batch_logged and cpu_evts:
+        if not self._first_batch_logged and ready.cpu_evts:
             self._first_batch_logged = True
             self.log_memory("first_batch")
-        for evt in cpu_evts:
-            ctx = self._make_context(
+        for evt in ready.cpu_evts:
+            ts = evt.timestamp
+            gpu_results = ready.gpu_results_by_ts.get(ts, {})
+            if device_released:
+                # Preserve the result-key API but never retain a stale view
+                # into a slot which the replacement H2D may now overwrite.
+                gpu_results = {key: None for key in gpu_results}
+            yield self._make_context(
                 evt,
-                gpu_results_by_ts.get(evt.timestamp, {}),
-                leases=leases_by_ts.get(evt.timestamp, {}),
+                gpu_results,
+                leases={} if device_released else ready.leases_by_ts.get(ts, {}),
+                pending_d2h=ready.pending_d2h_by_ts.pop(ts, {}),
+                cpu_results=ready.cpu_results_by_ts.get(ts, {}),
+                device_released=device_released,
             )
-            yield from self._push_context(ctx)
-        # Flush any partial D→H chunk at the batch boundary so events are
-        # never stranded in _chunk_buf when batch_size % chunk_size != 0.
-        yield from self._flush_d2h_pipelines()
 
-    def _flush_d2h_pipelines(self):
-        """Flush partial D→H chunks at EndRun, BeginStep, or end of pool drain.
+    def _issue_gpu_read(self, subbatch, slot_id):
+        """Issue and own the single read allowed ahead of CPU processing."""
+        if getattr(self, '_pending_gpu_read', None) is not None:
+            raise RuntimeError("a pre-issued GPU read is already outstanding")
+        pending = self.gpu_reader.issue_batch(subbatch, self.dm, slot_id=slot_id)
+        self._pending_gpu_read = pending
+        return pending
 
-        With the lazy-sync design, all events have already been yielded;
-        this only handles events still buffered in _chunk_buf (partial
-        chunk not yet flushed because it didn't reach chunk_size).
-        """
-        if not self._d2h_pipelines:
+    def _wait_gpu_read(self, pending):
+        """Complete a read and relinquish its controller-side ownership."""
+        if getattr(self, '_pending_gpu_read', None) is not pending:
+            raise RuntimeError("attempted to wait for an unowned GPU read")
+        try:
+            return self.gpu_reader.wait_batch(pending)
+        finally:
+            self._pending_gpu_read = None
+
+    def _drain_pending_gpu_read(self):
+        """Finish a pre-issued read before the reader and buffers are closed."""
+        pending = getattr(self, '_pending_gpu_read', None)
+        if pending is None:
             return
-        for pipe in self._d2h_pipelines.values():
-            yield from pipe.flush()
+        try:
+            self.gpu_reader.wait_batch(pending)
+        finally:
+            self._pending_gpu_read = None
+
+    def _retire_issue_and_yield(self, subbatch):
+        """Retire one slot, issue its replacement read, and yield its result.
+
+        Automatic-D2H results are already host-backed.  Their terminal D2H
+        consumer is joined first, then the freed slot receives the replacement
+        H2D before CPU code sees the old event.  External-GPU mode retains the
+        original yield-first registration window so a user kernel can attach a
+        completion event before the slot is released.
+        """
+        ready = self.event_pool.begin_retire_next()
+        release_before_yield = (
+            bool(self._d2h_pipelines) and self._is_fully_host_backed(ready)
+        )
+
+        if release_before_yield:
+            self.event_pool.finish_retire_next()
+            slot = self.event_pool.next_slot_id
+            pending = self._issue_gpu_read(subbatch, slot)
+            yield from self._yield_ready(ready, device_released=True)
+            return pending
+
+        try:
+            yield from self._yield_ready(ready)
+        finally:
+            self.event_pool.finish_retire_next()
+        slot = self.event_pool.next_slot_id
+        return self._issue_gpu_read(subbatch, slot)
 
     def _flush_event_pool(self):
         for slot_data in self.event_pool.flush():
@@ -1034,22 +1076,11 @@ class GpuEvents:
                     all_subbatches.extend(self._split_subbatches(gpu_view))
 
                 if all_subbatches:
-                    # Two-phase retirement keeps the outgoing slot owned
-                    # while its yielded context registers external work.
-                    ready_0 = self.event_pool.begin_retire_next()
-                    try:
-                        yield from self._yield_ready(ready_0)
-                    finally:
-                        self.event_pool.finish_retire_next()
-
-                    # Only now may the reader overwrite this slot.  Its I/O
-                    # still overlaps the CPU EventManager loop below.
-                    slot_0  = self.event_pool.next_slot_id
                     first_pending = (
                         all_subbatches[0],
-                        self.gpu_reader.issue_batch(
-                            all_subbatches[0], self.dm, slot_id=slot_0
-                        ),
+                        (yield from self._retire_issue_and_yield(
+                            all_subbatches[0]
+                        )),
                     )
 
                 # ── CPU path ─────────────────────────────────────────────────
@@ -1094,26 +1125,14 @@ class GpuEvents:
                             # Subbatch 0: reads were already issued before the
                             # CPU loop.  Just wait for them to complete.
                             _, pending_0 = first_pending
-                            gpu_read = self.gpu_reader.wait_batch(pending_0)
-                            self.event_pool.submit(
-                                subbatch, gpu_read, sb_cpu, self.gpu_detectors
-                            )
+                            gpu_read = self._wait_gpu_read(pending_0)
+                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
                         else:
-                            # Subbatches 1+: two-phase retire, then issue the
-                            # next read only after the old slot is released.
-                            ready = self.event_pool.begin_retire_next()
-                            try:
-                                yield from self._yield_ready(ready)
-                            finally:
-                                self.event_pool.finish_retire_next()
-                            slot  = self.event_pool.next_slot_id
-                            pending = self.gpu_reader.issue_batch(
-                                subbatch, self.dm, slot_id=slot
+                            pending = yield from self._retire_issue_and_yield(
+                                subbatch
                             )
-                            gpu_read = self.gpu_reader.wait_batch(pending)
-                            self.event_pool.submit(
-                                subbatch, gpu_read, sb_cpu, self.gpu_detectors
-                            )
+                            gpu_read = self._wait_gpu_read(pending)
+                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
                 else:
                     # No GPU batch — yield CPU-only events directly.
                     for evt in cpu_evts:
@@ -1124,4 +1143,7 @@ class GpuEvents:
                     break
         finally:
             if self.gpu_reader is not None:
-                self.gpu_reader.close()
+                try:
+                    self._drain_pending_gpu_read()
+                finally:
+                    self.gpu_reader.close()
