@@ -528,7 +528,6 @@ def issue_2026_05_01(args):
     flimg = None
     if isubset is not None:
         for nevt,evt in enumerate(run.events()):
-            #det.raw._raw_buf = None
             raw = det.raw.raw(evt)
             print('==== evt: %03d' % nevt)
             print(ndu.info_ndarr(raw, '  raw'))
@@ -537,10 +536,6 @@ def issue_2026_05_01(args):
             cal = det.raw.calib(evt)
             print('  calib time: %.6f sec' % (time() - t0_sec))  # ~3ms
             print(ndu.info_ndarr(cal, '  cal'))
-
-            #arr = det.raw._array(evt)
-            #print(ndu.info_ndarr(arr, 'arr'))
-            #if nevt>1: break
 
             if plot_image:
                 imgarr = raw   if isubset == 1 else\
@@ -677,11 +672,95 @@ def issue_2026_07_08(args):
     run = next(ds.runs())
     det = run.Detector(detname)
     evt = next(run.events())
-    
+
     calib_cm = det.raw.calib(evt, cmpars=(0,7,100,10))
     print(ndu.info_ndarr(calib_cm, '  calib_cm'))
 
 
+
+
+
+def issue_2026_07_23(args):
+    """ISSUE:
+              datinfo -k exp=ascdaq123,run=578 -d epixuhr3x2
+       PROBLEM:
+       FIX:
+    """
+    from psana import DataSource
+    from time import time
+    import sys
+    import numpy as np
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu
+
+    events = args.events
+    isubset = 0o7777 if args.subtest is None else int(args.subtest)
+
+    expname, runnum, detname = 'ascdaq123', 578, 'epixuhr3x2'
+
+    ds = DataSource(exp=expname, run=runnum, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector(detname)
+
+    #peds = det.raw._pedestals()
+    #print(ndu.info_ndarr(peds, 'det.raw._pedestals()', last=10))
+
+    cbits = det.raw._cbits_config_detector()
+
+    plot_image = False # True # True False
+    flimg = None
+    if isubset is not None:
+        for nevt,evt in enumerate(run.events()):
+            print('==== evt: %03d' % nevt)
+            raw = det.raw.raw(evt)
+            cal = det.raw.calib(evt)
+            print(ndu.info_ndarr(raw, '  raw'))
+            print(ndu.info_ndarr(cal, '  cal'))
+
+            if plot_image:
+                imgarr = raw   if isubset == 1 else\
+                         cal   if isubset == 2 else\
+                         cbits if isubset == 4 else\
+                         raw
+
+                #img = det.raw.image(evt)
+                #img=det.raw.image(evt, nda=raw)
+                #img=det.raw.image(evt, nda=cal)
+                img=det.raw.image(evt, nda=imgarr)
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
+                    gr.plt.ion()
+                title = 'evt %02d test image'%nevt
+                #flimg.fig.suptitle(title, fontsize=16)
+                gr.set_win_title(flimg.fig, titwin=title)
+                flimg.update(img)
+                gr.show(mode='DO NOT HOLD', pause_sec=1)
+        if plot_image: gr.show()
+
+
+
+
+
+def issue_2026_07_31(args):
+    """ISSUE: crash for Detector(..., status=False)
+              datinfo -k exp=xpp101570426,run=26 -d jungfrau1M
+       PROBLEM:
+       FIX:
+    """
+    import psana
+    import psana.detector.NDArrUtils as ndu
+    exp = "xpp101570426"
+    run = 26
+    max_evt = 100
+    ds = psana.DataSource(exp=exp, run=run, max_events=max_evt)
+    myrun = next(ds.runs())
+    det = myrun.Detector('jungfrau1M', status=False)
+    evt = next(myrun.events())
+    cal = det.raw.calib(evt)
+    print(ndu.info_ndarr(cal, '  cal'))
+
+
+        
 #===
 
 def issue_2026_MM_DD(args):
@@ -738,8 +817,10 @@ def selector():
     elif TNAME in ('8',): issue_2026_05_01(args)
     elif TNAME in ('9',): issue_2026_05_04(args)
     elif TNAME in ('10',):issue_2026_05_05(args)
-    
+
     elif TNAME in ('13',):issue_2026_07_08(args)
+    elif TNAME in ('14',):issue_2026_07_23(args)
+    elif TNAME in ('15',):issue_2026_07_31(args) # Vincent - jungfrau mask
     elif TNAME in ('99',):issue_2026_MM_DD(args)
     else:
         print(USAGE())

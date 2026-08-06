@@ -27,7 +27,7 @@ def pyxpm_optsdb(n,ext='NEH'):
                      'pyxpm-13'    : 2542,   # drp-srcf-gpu007
 		     'pyxpm-feh-4' : 2552,
 		     'pyxpm-feh-5' : 2553,
-		     'pyxpm-feh-6' : 2554 
+		     'pyxpm-feh-6' : 2554
         }
         xvc_ports = {}
         if not node in xvc_ports:
@@ -45,7 +45,10 @@ gpu_c11_host = "drp-srcf-gpu007"
 base_host = "drp-srcf-mon001"
 feh_host = "drp-srcf-mon001"
 fee_host  = "drp-neh-ctl002"
-prom_dir = "/cds/group/psdm/psdatmgr/etc/config/prom/base" # Prometheus
+if CONDA_PREFIX.startswith("/sdf"):
+    prom_dir = "/sdf/group/lcls/ds/daq/prom/base" # Prometheus
+else:
+    prom_dir = "/cds/group/psdm/psdatmgr/etc/config/prom/base" # Prometheus
 
 procmgr_config = [
 ## pyxpm

@@ -328,7 +328,7 @@ namespace Pds {
   class Meb : public EbAppBase
   {
   public:
-    Meb(const MebParams& prms, ZmqContext& context);
+    Meb(MebParams& prms, ZmqContext& context);
   public:
     int  resetCounters();
     int  connect(const std::shared_ptr<MetricExporter>);
@@ -376,8 +376,7 @@ static json createPulseIdMsg(uint64_t pulseId)
   return msg;
 }
 
-Meb::Meb(const MebParams&        prms,
-         ZmqContext&             context) :
+Meb::Meb(MebParams& prms, ZmqContext& context) :
   EbAppBase    (prms, "MEB"),
   _pidPrv      (0),
   _latPid      (0),
@@ -729,6 +728,7 @@ public:                                 // For CollectionApp
 private:
   std::string
        _error(const json& msg, const std::string& errorMsg);
+  void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
@@ -741,6 +741,7 @@ private:
   std::unique_ptr<Meb>                 _meb;
   std::thread                          _appThread;
   bool                                 _unconfigFlag;
+  std::string                          _lastKey;
 };
 
 MebApp::MebApp(MebParams& prms) :
@@ -748,7 +749,7 @@ MebApp::MebApp(MebParams& prms) :
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _exposer     (createExposer(prms.prometheusDir, getHostname())),
-  _meb         (std::make_unique<Meb>(_prms, context())),
+  _meb         (std::make_unique<Meb>(prms, context())),
   _unconfigFlag(false)
 {
   logging::info("Ready for transitions");
@@ -764,7 +765,7 @@ MebApp::~MebApp()
 std::string MebApp::_error(const json&        msg,
                            const std::string& errorMsg)
 {
-  json body = json({});
+  json body({});
   const std::string& key = msg["header"]["key"];
   body["err_info"] = errorMsg;
   logging::error("%s", errorMsg.c_str());
@@ -801,6 +802,8 @@ void MebApp::connectionShutdown()
 
 void MebApp::handleConnect(const json &msg)
 {
+  _lastKey = msg["header"]["key"];
+
   // If the exporter already exists, replace it so that previous metrics are deleted
   if (_exposer)
   {
@@ -808,7 +811,7 @@ void MebApp::handleConnect(const json &msg)
     _exposer->RegisterCollectable(_exporter);
   }
 
-  json body = json({});
+  json body({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
@@ -825,6 +828,12 @@ void MebApp::handleConnect(const json &msg)
 
   // Reply to collection with transition status
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+void MebApp::_disconnect()
+{
+  if (_meb)
+    _meb->disconnect();
 }
 
 int MebApp::_configure(const json &msg)
@@ -846,20 +855,23 @@ void MebApp::_unconfigure()
   lRunning = 0;
   if (_appThread.joinable())  _appThread.join();
 
-  _meb->unconfigure();
+  if (_meb)
+    _meb->unconfigure();
 
   _unconfigFlag = false;
 }
 
 void MebApp::handlePhase1(const json& msg)
 {
-  json        body = json({});
+  json        body({});
   std::string key  = msg["header"]["key"];
 
   if (key == "configure")
   {
     // Handle a "queued" Unconfigure, if any
-    if (_unconfigFlag)  _unconfigure();
+    // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+    if (_unconfigFlag || (_lastKey == key))
+      _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -881,6 +893,7 @@ void MebApp::handlePhase1(const json& msg)
   {
     _meb->resetCounters();              // Same time as DRPs
   }
+  _lastKey = key;
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -891,12 +904,12 @@ void MebApp::handleDisconnect(const json &msg)
   // Carry out the queued Unconfigure, if there was one
   if (_unconfigFlag)  _unconfigure();
 
-  _meb->disconnect();
+  _disconnect();
 
   if (_exporter)  _exporter.reset();
 
   // Reply to collection with connect status
-  json body = json({});
+  json body({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -905,7 +918,7 @@ void MebApp::handleReset(const json &msg)
   unsubscribePartition();               // ZMQ_UNSUBSCRIBE
 
   _unconfigure();
-  _meb->disconnect();
+  _disconnect();
   if (_exporter)  _exporter.reset();
   connectionShutdown();
 }

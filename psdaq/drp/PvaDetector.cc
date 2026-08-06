@@ -831,6 +831,16 @@ std::string PvDrp::configure(const json& msg)
         return errorMsg;
     }
 
+    return std::string();
+}
+
+std::string PvDrp::startup(Xtc& xtc, const void* bufEnd)
+{
+    std::string errorMsg = DrpBase::startup(xtc, bufEnd);
+    if (!errorMsg.empty()) {
+        return errorMsg;
+    }
+
     // Reset the queue
     m_evtQueue.startup();
 
@@ -1023,8 +1033,8 @@ void PvDrp::_collector()
         perror("prctl");
     }
 
-    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end()            ?
-                    std::stoul(const_cast<PvParameters&>(m_para).kwargs["match_tmo_ms"]) :
+    const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
+                    std::stoul(m_para.kwargs.at("match_tmo_ms"))              :
                     1500 };
 
     struct it_t it;
@@ -1157,8 +1167,8 @@ void PvDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 
 PvApp::PvApp(PvParameters& para) :
     CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
-    m_para(para),
-    m_pool(para),
+    m_para       (para),
+    m_pool       (para),
     m_unconfigure(false)
 {
     Py_Initialize();                    // for use by configuration
@@ -1180,16 +1190,30 @@ PvApp::~PvApp()
 
 void PvApp::_disconnect()
 {
-    m_drp->disconnect();
-    m_det->disconnect();
+    if (m_drp)
+        m_drp->disconnect();
+    if (m_det)
+        m_det->disconnect();
 }
 
 void PvApp::_unconfigure()
 {
-    m_drp->pool.shutdown();        // Release Tr buffer pool
-    m_drp->unconfigure();
-    m_det->unconfigure();
+    if (m_drp) {
+        m_drp->pool.shutdown();         // Release Tr buffer pool
+        m_drp->unconfigure();
+    }
+    if (m_det)
+        m_det->unconfigure();
     m_unconfigure = false;
+}
+
+std::string PvApp::_endrun(const json& phase1Info)
+{
+    std::string errorMsg = m_drp->endrun(phase1Info);
+    if (!errorMsg.empty()) {
+        logging::error("%s", errorMsg.c_str());
+    }
+    return errorMsg;
 }
 
 json PvApp::connectionInfo(const json& msg)
@@ -1214,7 +1238,7 @@ void PvApp::connectionShutdown()
 
 void PvApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
-    json body = json({});
+    json body({});
     body["err_info"] = errorMsg;
     json answer = createMsg(which, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -1222,6 +1246,8 @@ void PvApp::_error(const std::string& which, const json& msg, const std::string&
 
 void PvApp::handleConnect(const json& msg)
 {
+    m_lastKey = msg["header"]["key"];
+
     std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error(("DrpBase::connect: " + errorMsg).c_str());
@@ -1244,7 +1270,7 @@ void PvApp::handleConnect(const json& msg)
         }
     }
 
-    json body = json({});
+    json body({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -1258,7 +1284,7 @@ void PvApp::handleDisconnect(const json& msg)
 
     _disconnect();
 
-    json body = json({});
+    json body({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -1278,56 +1304,69 @@ void PvApp::handlePhase1(const json& msg)
         }
     }
 
-    json body = json({});
+    json body({});
 
     if (key == "configure") {
-        if (m_unconfigure) {
+        // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+        if (m_unconfigure || (m_lastKey == key)) {
             _unconfigure();
         }
 
-        // Configure the detector first
-        std::string config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-        if (error) {
-            std::string errorMsg = "Failed transition phase 1";
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
-        }
-
-        // Next, configure the DRP
+        // Configure the DRP first
         std::string errorMsg = m_drp->configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
+            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
         }
-
-        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        else {
+            // Next, configure the detector
+            std::string config_alias = msg["body"]["config_alias"];
+            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+            if (error) {
+                std::string errorMsg = "Phase 1 error in Detector::configure()";
+                body["err_info"] = errorMsg;
+                logging::error("%s", errorMsg.c_str());
+            }
+            else {
+                // Finally, do any remaining configuration and start up the DRP processes
+                std::string errorMsg = m_drp->startup(xtc, bufEnd);
+                if (!errorMsg.empty()) {
+                    errorMsg = "Phase 1 error: " + errorMsg;
+                    body["err_info"] = errorMsg;
+                    logging::error("%s", errorMsg.c_str());
+                }
+                else {
+                    m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                    m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                }
+            }
+        }
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {
+        // Clean up when BeginRun is being retried
+        if (m_lastKey == key) {
+            _endrun(phase1Info);        // Ignore possible error
+        }
+
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
+            body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
         }
-
-        m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        else {
+            m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
+        }
     }
     else if (key == "endrun") {
-        std::string errorMsg = m_drp->endrun(phase1Info);
+        std::string errorMsg = _endrun(phase1Info);
         if (!errorMsg.empty()) {
-            logging::error("%s", errorMsg.c_str());
-            _error(key, msg, errorMsg);
-            return;
+            body["err_info"] = "Phase 1 error:" + errorMsg;
         }
     }
     else if (key == "enable") {
@@ -1349,6 +1388,7 @@ void PvApp::handlePhase1(const json& msg)
         }
         logging::debug("handlePhase1 enable complete");
     }
+    m_lastKey = key;
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

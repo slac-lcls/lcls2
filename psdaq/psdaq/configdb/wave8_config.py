@@ -144,10 +144,13 @@ def user_to_expert(prefix, cfg, full=False):
 
     d = {}
     try:
+        # this register no longer exists for IOC firmware/software starting at version 3.2.0
+        # for that more recent software the IOC will manage setting of the delay register
+        # which is used both in IOC LocalConfig mode ("standalone") and in ReadoutGroup mode ("daq").
+        # this common register is: TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay - cpo aug 3 2026          
         ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
         if ctrlDelay is None:
-            print("Warning: Failed to retrieve control trigger delay.  Using partition delay as fallback.")
-            ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            print("Failed to retrieve controls trigger delay: IOC controls delay.")
             delayFlag = False
         else:
             delayFlag = True
@@ -156,6 +159,7 @@ def user_to_expert(prefix, cfg, full=False):
         clksPerFid = 200 if timebase=='186M' else 238
         nsPerClk   = 7000/1300. if timebase=='186M' else 1000/119.
 
+        # don't do anything if we have IOC software >= 3.2.0 since IOC will manage the delay register - cpo
         if delayFlag:
             #  LCLS2 timing. Let controls set the delay value.
             print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
@@ -174,6 +178,17 @@ def user_to_expert(prefix, cfg, full=False):
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+        else:
+            # new mode where IOC controls the delay value
+            # the IOC will set this value to 0 if the TriggerDelay(ns) is smaller than partitionDelay
+            # (a.k.a L0Delay).  Check we have legal value in readoutGroup mode which daq uses.
+            iocDelay = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            if iocDelay is None:
+                raise ValueError('Failed to retrieve IOC delay value')
+            if iocDelay==0:
+                print('Raise controls trigger delay >= {:} nanoseconds'.format(
+                    partitionDelay * nsPerClk))
+                raise ValueError('TriggerDelay(ns) too small')
 
     except KeyError:
         pass
