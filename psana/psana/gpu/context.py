@@ -2,7 +2,7 @@
 psana/gpu/context.py — Per-event GPU result types.
 
 GPUResult
-    Wraps a GPU-resident CuPy array with lazy .on_gpu / .on_cpu access.
+    Wraps a detector result with explicit GPU / CPU accessors.
     Carries an optional SlotLease so downstream consumers can release the
     EventPool slot as soon as their D→H is done rather than holding it
     until the Python generator advances.
@@ -25,13 +25,13 @@ class SlotLease:
 
     Lifecycle
     ---------
-    1. EventPool.submit() queues calibration on ``stream``, records
-       ``calib_done`` immediately after all kernels, then creates one
-       SlotLease per event (sharing ``calib_done``, unique ``view``).
+    1. EventPool.submit() queues calibration and final routing on ``stream``,
+       records ``result_ready`` after that producer work, then creates one
+       SlotLease per (timestamp, result key), sharing ``result_ready``.
 
     2. GpuEvents._D2hPipeline receives the submitted slot record.  It issues
-       cudaMemcpyAsync on a separate D→H stream after waiting for calib_done,
-       then records d2h_done and calls register_d2h_done(event).
+       cudaMemcpyAsync on a separate D→H stream after waiting for result_ready,
+       then records a completion event and calls register_consumer_done(event).
 
     3. EventPool.begin_retire_next() exposes the result and its prepared host
        token.  After the caller has had a chance to register any external GPU
@@ -41,35 +41,36 @@ class SlotLease:
     has completed — generator advancement alone is not sufficient.
     """
 
-    __slots__ = ('calib_done', '_d2h_done')
+    __slots__ = ('result_ready', '_consumer_done')
 
-    def __init__(self, calib_done):
+    def __init__(self, result_ready):
         """
         Parameters
         ----------
-        calib_done : cp.cuda.Event — fires after calibration kernel completes
+        result_ready : cp.cuda.Event
+            Fires after calibration and final result-routing work completes.
         """
-        self.calib_done = calib_done
-        self._d2h_done  = None   # set by _D2hPipeline or _GpuViewContext.__exit__
+        self.result_ready = result_ready
+        self._consumer_done = None
 
-    def register_d2h_done(self, event):
+    def register_consumer_done(self, event):
         """Record the CUDA event that fires when this slot's consumer is done.
 
         Called by _D2hPipeline after issuing cudaMemcpyAsync, or by
         _GpuViewContext.__exit__ after the user's downstream GPU kernel.
         EventPool waits on this event in finish_retire_next() before reuse.
         """
-        self._d2h_done = event
+        self._consumer_done = event
 
     def wait_until_safe_to_reuse(self):
         """Block until the consumer has completed during final retirement.
 
         Two outcomes:
-          _d2h_done set  → synchronize then recycle
+          _consumer_done set  → synchronize then recycle
           neither        → recycle immediately (on_gpu copy or no access)
         """
-        if self._d2h_done is not None:
-            self._d2h_done.synchronize()
+        if self._consumer_done is not None:
+            self._consumer_done.synchronize()
 
 
 class _GpuViewContext:
@@ -103,25 +104,25 @@ class _GpuViewContext:
         stream = self._stream or cp.cuda.Stream.null
         done   = cp.cuda.Event(disable_timing=True)
         stream.record(done)
-        self._lease.register_d2h_done(done)
+        self._lease.register_consumer_done(done)
         self._exited = True
 
     def __del__(self):
         # Safety: if the object is GC'd without having been used as a context
         # manager, record a conservative done-event on the null stream so the
         # slot is not held forever.  Same pattern as _PendingD2H.__del__.
-        if not self._exited and self._lease._d2h_done is None:
+        if not self._exited and self._lease._consumer_done is None:
             try:
                 import cupy as cp
                 done = cp.cuda.Event(disable_timing=True)
                 cp.cuda.Stream.null.record(done)
-                self._lease.register_d2h_done(done)
+                self._lease.register_consumer_done(done)
             except Exception:
                 pass
 
 
 class GPUResult:
-    """GPU-resident detector result with lazy D→H transfer.
+    """Detector result with explicit device and cached host access.
 
     Returned by GpuEventContext.get('det.result').
 
@@ -131,20 +132,20 @@ class GPUResult:
         Calibrated array on device.  Never triggers a D→H transfer.
     on_cpu : np.ndarray
         Host copy.  If GpuEvents has already transferred this result via
-        its internal D→H pipeline (gpu_d2h_chunk_size > 0), returns the
-        pre-populated pinned numpy array immediately with no synchronisation.
-        Otherwise synchronises the production stream on first access.
+        its internal D→H pipeline (gpu_d2h_chunk_size > 0), waits for that
+        token when necessary and caches an independent NumPy result. Otherwise
+        performs one blocking D→H on first access and caches the result.
     _lease : SlotLease | None
         Slot ownership token.  Used by GpuEvents._D2hPipeline to issue
         direct async D→H from the slot view and signal when the slot is
         safe to recycle.  User code should not access _lease directly.
-    _pinned_cpu : np.ndarray | None
+    _cpu_cache : np.ndarray | None
         Cached independent CPU result.  Set either after GpuEvents' pinned
         D→H completes or by the synchronous fallback.  When set, on_cpu
         returns it without another GPU transfer.
     """
 
-    __slots__ = ('_arr', '_lease', '_pinned_cpu', '_pending_d2h',
+    __slots__ = ('_arr', '_lease', '_cpu_cache', '_pending_d2h',
                  '_device_released')
 
     def __init__(self, arr_gpu, lease=None, device_released=False):
@@ -156,7 +157,7 @@ class GPUResult:
         """
         self._arr         = arr_gpu
         self._lease       = lease
-        self._pinned_cpu  = None
+        self._cpu_cache   = None
         # Set by _D2hPipeline immediately after issuing async D→H.
         # Carries the CUDA done-event + pinned-slot reference so on_cpu
         # can wait lazily rather than blocking inside the generator.
@@ -224,27 +225,27 @@ class GPUResult:
 
         Three paths in priority order:
 
-        1. _pinned_cpu already set  → return immediately (free).
+        1. _cpu_cache already set   → return immediately (free).
         2. _pending_d2h set         → wait for the async D→H that
            _D2hPipeline issued before yielding this event, then copy
-           from the pinned slot and cache in _pinned_cpu.
+           from the pinned slot and cache in _cpu_cache.
         3. Fallback                 → call arr.get() (blocking D→H at the
            call site), cache the independent NumPy result, and return it.
         """
-        if self._pinned_cpu is not None:
-            return self._pinned_cpu
+        if self._cpu_cache is not None:
+            return self._cpu_cache
         if self._pending_d2h is not None:
-            self._pinned_cpu  = self._pending_d2h.get()
+            self._cpu_cache   = self._pending_d2h.get()
             self._pending_d2h = None
-            return self._pinned_cpu
+            return self._cpu_cache
         if self._device_released or self._arr is None:
             raise RuntimeError(
                 "on_cpu has no host result after the EventPool device slot "
                 "was released; this indicates an incomplete automatic-D2H "
                 "handoff."
             )
-        self._pinned_cpu = self._arr.get()
-        return self._pinned_cpu
+        self._cpu_cache = self._arr.get()
+        return self._cpu_cache
 
     def __repr__(self) -> str:
         shape = getattr(self._arr, 'shape', '?')
@@ -264,7 +265,7 @@ class GpuEventContext:
     """
 
     __slots__ = ('_evt', '_gpu_results', '_cpu_dets', '_cache', '_router',
-                 '_leases', '_pending_d2h', '_cpu_results',
+                 '_leases', '_pending_d2h', '_cached_cpu_results',
                  '_device_released')
 
     def __init__(self, evt, gpu_results: dict,
@@ -272,7 +273,7 @@ class GpuEventContext:
                  router=None,
                  leases: dict | None = None,
                  pending_d2h: dict | None = None,
-                 cpu_results: dict | None = None,
+                 cached_cpu_results: dict | None = None,
                  device_released: bool = False):
         """
         Parameters
@@ -286,7 +287,7 @@ class GpuEventContext:
             Attached to GPUResult objects in get().
         pending_d2h : dict  {key: _PendingD2H} | None
             Host-result tokens armed immediately after slot submission.
-        cpu_results : dict  {key: np.ndarray} | None
+        cached_cpu_results : dict  {key: np.ndarray} | None
             Independent CPU results materialized under pinned-buffer pressure.
         """
         self._evt         = evt
@@ -295,7 +296,7 @@ class GpuEventContext:
         self._router      = router
         self._leases      = leases or {}
         self._pending_d2h = pending_d2h or {}
-        self._cpu_results = cpu_results or {}
+        self._cached_cpu_results = cached_cpu_results or {}
         self._device_released = device_released
         self._cache: dict = {}
 
@@ -332,7 +333,7 @@ class GpuEventContext:
                 device_released=self._device_released,
             )
             result._pending_d2h = self._pending_d2h.get(resolved)
-            result._pinned_cpu = self._cpu_results.get(resolved)
+            result._cpu_cache = self._cached_cpu_results.get(resolved)
             self._cache[resolved] = result
         return self._cache[resolved]
 

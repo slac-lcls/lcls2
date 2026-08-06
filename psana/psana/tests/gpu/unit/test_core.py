@@ -107,7 +107,7 @@ class _FakeFlushPool:
                 cpu_evts=evts,
                 leases_by_ts=leases,
                 pending_d2h_by_ts={},
-                cpu_results_by_ts={},
+                cached_cpu_results_by_ts={},
             )
 
 

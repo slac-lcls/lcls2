@@ -60,8 +60,8 @@ class DsParms:
     # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
     # yields GpuEventContext objects instead of Event objects.
     gpu_det: object = None  # str | list[str] | None
-    n_gpu_streams: int = 2  # EventPool depth; 2 fully hides calib kernel behind I/O
-    gpu_d2h_chunk_size: int = 0  # GpuEvents internal D2H chunk; 0 = disabled (lazy per-call)
+    n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
+    gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
     # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
     # already parsed by DgramManager.  Forwarded to EventBuilder so it can

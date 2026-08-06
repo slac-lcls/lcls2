@@ -79,8 +79,9 @@ Current reusable or persistent GPU allocations include:
 
 The slot buffers grow to their observed high-water sizes and generally do not
 shrink. `n_gpu_streams=2` therefore means at most two batches, not at most a
-specific number of GiB. `free_calib_bufs()` drops only calibrated-output
-references and is not a complete backpressure mechanism.
+specific number of GiB. The former `free_calib_bufs()` helper was removed: it
+dropped only calibrated-output references and was not a complete backpressure
+mechanism.
 
 ## Separate The Control Units
 
@@ -219,7 +220,7 @@ FREE
   -> READING
   -> COMPUTING
   -> RESULT_READY
-  -> GPU_CONSUMER or D2H_IN_FLIGHT
+  -> CONSUMER_IN_FLIGHT
   -> FREE
 ```
 
@@ -227,9 +228,8 @@ Relevant CUDA completion points include:
 
 ```text
 read_done
-calib_done
-downstream_done
-d2h_done
+result_ready
+consumer_done
 ```
 
 The final consumer returns an event or completion token. EventPool may recycle
@@ -238,9 +238,9 @@ the slot only after that token completes.
 For an asynchronous D2H on a separate stream:
 
 ```text
-calibration stream:  ... -> record calib_done
-copy stream:         wait calib_done -> D2H -> record d2h_done
-EventPool:           wait/query d2h_done before slot reuse
+producer stream:  ... -> record result_ready
+copy stream:      wait result_ready -> D2H -> record consumer_done
+EventPool:        wait/query consumer_done before slot reuse
 ```
 
 A `GPUResult` used directly by downstream GPU code also needs explicit lifetime
