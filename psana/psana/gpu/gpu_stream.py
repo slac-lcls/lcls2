@@ -3,7 +3,7 @@
 EventPool manages N in-flight calibration batches.  Each slot follows
 the state machine from gpu_memory_backpressure_and_async_join.md:
 
-    FREE → READING/COMPUTING → RESULT_READY → D2H_IN_FLIGHT → FREE
+    FREE → READING/COMPUTING → RESULT_READY → CONSUMER_IN_FLIGHT → FREE
 
 Slot leases and CUDA completion tokens connect the producer to its terminal
 consumer.  A slot may not be recycled until every consumer (automatic D2H or
@@ -25,7 +25,7 @@ class _EventSlot:
     leases: list
     leases_by_ts: dict
     pending_d2h_by_ts: dict = field(default_factory=dict)
-    cpu_results_by_ts: dict = field(default_factory=dict)
+    cached_cpu_results_by_ts: dict = field(default_factory=dict)
 
 
 class EventPool:
@@ -37,13 +37,14 @@ class EventPool:
                          event; create one SlotLease per result.
       2. automatic D2H may be armed immediately against that event.
       3. begin_retire_next() — synchronise the producer stream but retain
-                               ownership of the outgoing slot while results
-                               are delivered.
+                               ownership of the outgoing slot.
       4. finish_retire_next() — wait for each registered terminal consumer,
                                 then release the slot for reuse.
 
-    The caller (GpuEvents) must complete both retirement phases before
-    submit() so the outgoing slot is fully drained before overwrite.
+    The caller (GpuEvents) must complete both retirement phases before submit()
+    so the outgoing slot is fully drained before overwrite.  External-GPU mode
+    yields between the phases so user work can register its completion event;
+    automatic-D2H mode may finish retirement before yielding a host result.
 
     Parameters
     ----------
@@ -77,10 +78,10 @@ class EventPool:
         """Synchronize the outgoing producer but retain its slot lease.
 
         This is phase one of retirement.  The returned result is safe to
-        expose to the caller, but its slot remains occupied so a later
-        submit cannot overwrite it.  The caller must yield the result and
-        then call finish_retire_next(), allowing a consumer created during
-        that yield to register its completion event first.
+        expose to the caller, but its slot remains occupied so a later submit
+        cannot overwrite it.  Before calling finish_retire_next(), the caller
+        must ensure that any external consumer has registered its completion
+        event.  Automatic consumers may already have registered at submission.
 
         Returns the occupied _EventSlot, or None if the slot is empty.  Its
         arrays remain valid through finish_retire_next().
@@ -169,17 +170,17 @@ class EventPool:
         # Record ONE result-ready event after calibration and any final routing
         # work are queued.  All results share this event because they run on the
         # same slot stream.
-        calib_done = cp.cuda.Event(disable_timing=True)
-        calib_done.record(stream)
+        result_ready = cp.cuda.Event(disable_timing=True)
+        result_ready.record(stream)
 
         # Create one SlotLease per (timestamp, det, result_type) — each
-        # gets the shared calib_done event but its own view (array slice).
+        # gets the shared result_ready event but its own view (array slice).
         leases_by_ts: dict = {}   # {ts: {key: SlotLease}}
         all_leases: list  = []
         for ts, ts_dict in gpu_results_by_ts.items():
             ts_leases = {}
             for key, arr in ts_dict.items():
-                lease = SlotLease(calib_done)
+                lease = SlotLease(result_ready)
                 ts_leases[key] = lease
                 all_leases.append(lease)
             leases_by_ts[ts] = ts_leases

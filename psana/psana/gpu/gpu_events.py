@@ -3,6 +3,7 @@ import math
 import os
 import sys
 from dataclasses import dataclass, field
+from queue import Empty, SimpleQueue
 
 import numpy as np
 
@@ -189,12 +190,10 @@ class _D2hPipeline:
     access (existing behaviour).
     """
 
-    def __init__(self, det_key: str, chunk_size: int, max_inflight: int = 2):
-        from queue import SimpleQueue
-
+    def __init__(self, det_key: str, chunk_size: int, n_pinned_slots: int = 2):
         self._key = det_key
         self._chunk_size = chunk_size
-        self._max_inflight = max(2, int(max_inflight))
+        self._n_pinned_slots = max(2, int(n_pinned_slots))
 
         # _available is a SimpleQueue of free _PinnedSlot objects.
         # _get_free_slot() calls get_nowait() — O(1), thread-safe, no scan.
@@ -255,7 +254,7 @@ class _D2hPipeline:
         self._n_segs = int(arr.shape[0])
         self._nrows = int(arr.shape[1])
         self._ncols = int(arr.shape[2])
-        for _ in range(self._max_inflight):
+        for _ in range(self._n_pinned_slots):
             slot = _PinnedSlot(self._n_segs, self._nrows, self._ncols, self._chunk_size, self._available)
             self._pinned_pool.append(slot)
             self._available.put(slot)   # all slots start free
@@ -273,7 +272,7 @@ class _D2hPipeline:
         """
         try:
             return self._available.get_nowait()
-        except Exception:
+        except Empty:
             return None   # queue empty — schedule() materializes CPU data now
 
     def _schedule_chunk(self, slot_record, chunk):
@@ -288,9 +287,9 @@ class _D2hPipeline:
         # be overwritten first when callers retain event contexts.
         if pslot is None:
             for ts, lease, arr in chunk:
-                if lease is not None and lease.calib_done is not None:
-                    lease.calib_done.synchronize()
-                slot_record.cpu_results_by_ts.setdefault(ts, {})[
+                if lease is not None and lease.result_ready is not None:
+                    lease.result_ready.synchronize()
+                slot_record.cached_cpu_results_by_ts.setdefault(ts, {})[
                     self._key
                 ] = arr.get()
             return
@@ -303,8 +302,8 @@ class _D2hPipeline:
         leases_out = []
 
         for i, (_, lease, arr) in enumerate(chunk):
-            if lease is not None and lease.calib_done is not None:
-                stream.wait_event(lease.calib_done)
+            if lease is not None and lease.result_ready is not None:
+                stream.wait_event(lease.result_ready)
             cp.cuda.runtime.memcpyAsync(
                 dst_base + i * row_nbytes,
                 arr.data.ptr,
@@ -318,7 +317,7 @@ class _D2hPipeline:
         # Record done_event and register on leases.
         pslot.done_event.record(stream)
         for lease in leases_out:
-            lease.register_d2h_done(pslot.done_event)
+            lease.register_consumer_done(pslot.done_event)
 
         # Store host-result tokens on the execution record.  Context delivery
         # later attaches them to GPUResult without scheduling new CUDA work.
@@ -676,14 +675,14 @@ class GpuEvents:
             self.cpu_dets[det_name] = self.run.Detector(det_name)
             self.router.register_cpu(det_name)
 
-        n_streams = getattr(self.dsparms, "n_gpu_streams", 2)
-        self.event_pool = EventPool(n=n_streams)
+        pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
+        self.event_pool = EventPool(n=pool_depth)
 
         # KvikioGpuReader: pre-allocate one data_gpu buffer per slot.
         # _gpu_budget was already created in _setup_detectors() above and
         # is shared with every GPUDetector so all allocations are counted
         # against the same limit.
-        self.gpu_reader = KvikioGpuReader(n_slots=n_streams, budget=self._gpu_budget)
+        self.gpu_reader = KvikioGpuReader(n_slots=pool_depth, budget=self._gpu_budget)
 
         # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
         # Transfers calibrated results to pinned host memory in chunks so that
@@ -696,7 +695,7 @@ class GpuEvents:
                 f"{det_name}.calib": _D2hPipeline(
                     det_key=f"{det_name}.calib",
                     chunk_size=chunk_size,
-                    max_inflight=n_streams,
+                    n_pinned_slots=pool_depth,
                 )
                 for det_name in self.gpu_det_names
             }
@@ -862,15 +861,6 @@ class GpuEvents:
                 self._batch_iter = next(self.smdr_man)
                 self._has_gpu_batch_iter = hasattr(self._batch_iter, "next_with_gpu")
 
-    def free_calib_bufs(self):
-        """Release pre-allocated calib_gpu slot buffers for all GPU detectors.
-
-        Delegates to GPUDetector.free_calib_bufs() for each detector.
-        See GPUDetector.free_calib_bufs() for usage guidance.
-        """
-        for det_info in self.gpu_detectors.values():
-            det_info[1].free_calib_bufs()
-
     def _dispatch_transition(self, service, dgrams):
         if service == TransitionId.BeginStep:
             for det_info in self.gpu_detectors.values():
@@ -911,7 +901,7 @@ class GpuEvents:
         return end_run_seen
 
     def _make_context(self, evt, gpu_results, leases=None,
-                      pending_d2h=None, cpu_results=None,
+                      pending_d2h=None, cached_cpu_results=None,
                       device_released=False):
         return GpuEventContext(
             evt=evt,
@@ -920,7 +910,7 @@ class GpuEvents:
             router=self.router,
             leases=leases,
             pending_d2h=pending_d2h,
-            cpu_results=cpu_results,
+            cached_cpu_results=cached_cpu_results,
             device_released=device_released,
         )
 
@@ -961,7 +951,7 @@ class GpuEvents:
             return True
         for ts, results in ready.gpu_results_by_ts.items():
             pending = ready.pending_d2h_by_ts.get(ts, {})
-            cached = ready.cpu_results_by_ts.get(ts, {})
+            cached = ready.cached_cpu_results_by_ts.get(ts, {})
             if any(key not in pending and key not in cached for key in results):
                 return False
         return True
@@ -986,7 +976,7 @@ class GpuEvents:
                 gpu_results,
                 leases={} if device_released else ready.leases_by_ts.get(ts, {}),
                 pending_d2h=ready.pending_d2h_by_ts.pop(ts, {}),
-                cpu_results=ready.cpu_results_by_ts.get(ts, {}),
+                cached_cpu_results=ready.cached_cpu_results_by_ts.get(ts, {}),
                 device_released=device_released,
             )
 

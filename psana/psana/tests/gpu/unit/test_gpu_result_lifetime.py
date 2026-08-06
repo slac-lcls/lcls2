@@ -156,8 +156,8 @@ class TestSlotLease:
         from psana.gpu.context import SlotLease
 
         event = _FakeEvent()
-        lease = SlotLease(calib_done=event)
-        # No register_d2h_done — should be a no-op
+        lease = SlotLease(result_ready=event)
+        # No register_consumer_done — should be a no-op
         lease.wait_until_safe_to_reuse()  # must not raise or hang
 
     def test_d2h_registered_calls_synchronize(self):
@@ -166,8 +166,8 @@ class TestSlotLease:
 
         calib = _FakeEvent()
         d2h = _FakeEvent()
-        lease = SlotLease(calib_done=calib)
-        lease.register_d2h_done(d2h)
+        lease = SlotLease(result_ready=calib)
+        lease.register_consumer_done(d2h)
         lease.wait_until_safe_to_reuse()
         assert d2h._sync_calls == 1
 
@@ -178,8 +178,8 @@ class TestSlotLease:
 
         calib = _FakeEvent()
         pending = _PendingEvent()  # starts not done
-        lease = SlotLease(calib_done=calib)
-        lease.register_d2h_done(pending)
+        lease = SlotLease(result_ready=calib)
+        lease.register_consumer_done(pending)
 
         assert not pending.done  # not done yet
         # Calling wait_until_safe_to_reuse() must call synchronize()
@@ -203,8 +203,8 @@ class TestEventPoolLeases:
 
         # Manually inject a slot that has a lease with a pending D→H.
         pending_d2h = _PendingEvent()
-        calib_done = _FakeEvent()
-        lease = SlotLease(calib_done)
+        result_ready = _FakeEvent()
+        lease = SlotLease(result_ready)
         stream = pool._streams[0]
         pool._slots[0] = _EventSlot(
             slot_id=0,
@@ -221,14 +221,14 @@ class TestEventPoolLeases:
         assert pool._slots[0] is not None, "begin must retain slot ownership"
 
         # Models on_gpu_view().__exit__ running after the context was yielded.
-        lease.register_d2h_done(pending_d2h)
+        lease.register_consumer_done(pending_d2h)
         pool.finish_retire_next()
         assert pending_d2h._synced, "finish must join the late-registered consumer"
         assert pool._slots[0] is None
 
 
 # ===========================================================================
-# GPUResult._pinned_cpu / GpuEventContext._pinned_results tests
+# GPUResult._cpu_cache / GpuEventContext._cached_cpu_results tests
 # ===========================================================================
 
 
@@ -258,7 +258,7 @@ class TestOnGpuAndView:
         from psana.gpu.context import GPUResult, SlotLease
 
         arr = _make_arr()
-        lease = SlotLease(calib_done=_FakeEvent())
+        lease = SlotLease(result_ready=_FakeEvent())
         result = GPUResult(arr_gpu=arr, lease=lease)
         with result.on_gpu_view(_FakeStream()) as view:
             assert view is arr, "on_gpu_view must yield the original array, not a copy"
@@ -269,13 +269,13 @@ class TestOnGpuAndView:
         from psana.gpu.context import GPUResult, SlotLease
 
         arr = _make_arr()
-        lease = SlotLease(calib_done=_FakeEvent())
+        lease = SlotLease(result_ready=_FakeEvent())
         result = GPUResult(arr_gpu=arr, lease=lease)
         stream = _FakeStream()
         with result.on_gpu_view(stream):
             pass
-        assert lease._d2h_done is not None, "__exit__ must register a done event on the lease"
-        assert lease._d2h_done in stream.recorded_events, \
+        assert lease._consumer_done is not None, "__exit__ must register a done event on the lease"
+        assert lease._consumer_done in stream.recorded_events, \
             "done event must be recorded on the provided stream"
 
     def test_on_gpu_view_retire_safe_after_context_exit(self):
@@ -284,12 +284,12 @@ class TestOnGpuAndView:
         from psana.gpu.context import GPUResult, SlotLease
 
         arr = _make_arr()
-        lease = SlotLease(calib_done=_FakeEvent())
+        lease = SlotLease(result_ready=_FakeEvent())
         result = GPUResult(arr_gpu=arr, lease=lease)
         with result.on_gpu_view(_FakeStream()):
             pass
         lease.wait_until_safe_to_reuse()   # must not raise
-        assert lease._d2h_done._synced, "final retirement must synchronize the done event"
+        assert lease._consumer_done._synced, "final retirement must synchronize the done event"
 
     def test_on_gpu_view_raises_without_lease(self):
         """on_gpu_view must raise RuntimeError when the GPUResult has no lease."""
@@ -352,30 +352,30 @@ class TestGpuBudget:
         assert b.committed() == 0
 
 
-class TestPinnedCpu:
-    """Tests for the GpuEvents internal D→H path where _pinned_cpu is set
-    on GPUResult and _pinned_results is set on GpuEventContext before the
+class TestCpuCache:
+    """Tests for the GpuEvents internal D→H path where _cpu_cache is set
+    on GPUResult and _cached_cpu_results is set on GpuEventContext before the
     context is yielded to the user."""
 
-    def test_on_cpu_returns_pinned_immediately(self):
-        """When _pinned_cpu is set, on_cpu must return it without touching _arr."""
+    def test_on_cpu_returns_cached_result_immediately(self):
+        """When _cpu_cache is set, on_cpu must return it without touching _arr."""
         from psana.gpu.context import GPUResult
 
-        pinned = np.ones((4, 8, 8), dtype=np.float32) * 7.0
+        cached = np.ones((4, 8, 8), dtype=np.float32) * 7.0
         result = GPUResult(arr_gpu=None)
-        result._pinned_cpu = pinned   # set directly (as _D2hPipeline does via on_cpu)
+        result._cpu_cache = cached
         out = result.on_cpu
-        np.testing.assert_array_equal(out, pinned)
+        np.testing.assert_array_equal(out, cached)
 
-    def test_on_gpu_unaffected_by_pinned_cpu(self):
-        """on_gpu returns a copy of _arr even when pinned_cpu is set.
-        The copy must have the same values as _arr, not pinned_cpu."""
+    def test_on_gpu_unaffected_by_cpu_cache(self):
+        """on_gpu returns a copy of _arr even when the CPU cache is set.
+        The copy must have the same values as _arr, not the cached result."""
         from psana.gpu.context import GPUResult
 
         arr = _make_arr(fill=3.0)
-        pinned = np.zeros((4, 8, 8), dtype=np.float32)
+        cached = np.zeros((4, 8, 8), dtype=np.float32)
         result = GPUResult(arr_gpu=arr)
-        result._pinned_cpu = pinned
+        result._cpu_cache = cached
         copy = result.on_gpu
         assert copy is not arr, "on_gpu must return a copy, not the original"
         np.testing.assert_allclose(copy._np, arr._np)
@@ -434,7 +434,7 @@ class TestD2hPipeline:
         for fill in fills:
             ts = int(fill * 100)
             evt = SimpleNamespace(timestamp=ts)
-            lease = SlotLease(calib_done=_FakeEvent())
+            lease = SlotLease(result_ready=_FakeEvent())
             gpu_results_by_ts[ts] = {
                 key: _make_arr(
                     n_segs=n_segs,
@@ -465,7 +465,7 @@ class TestD2hPipeline:
             gpu_results=record.gpu_results_by_ts.get(ts, {}),
             leases=record.leases_by_ts.get(ts, {}),
             pending_d2h=record.pending_d2h_by_ts.get(ts, {}),
-            cpu_results=record.cpu_results_by_ts.get(ts, {}),
+            cached_cpu_results=record.cached_cpu_results_by_ts.get(ts, {}),
         )
 
     def test_pipeline_schedules_complete_slot_immediately(self):
@@ -527,12 +527,12 @@ class TestD2hPipeline:
         record = self._make_record(key="jungfrau.raw")
         pipe.schedule(record)
         assert record.pending_d2h_by_ts == {}
-        assert record.cpu_results_by_ts == {}
+        assert record.cached_cpu_results_by_ts == {}
 
-    def test_calib_done_waited_before_d2h(self):
+    def test_result_ready_waited_before_d2h(self):
         """Checks the ordering guarantee between calibration and transfer.
         After adding one event, inspects the D→H stream's wait_events
-        list and confirms that the calib_done CUDA event from the slot
+        list and confirms that the result_ready CUDA event from the slot
         lease appears in it.  This proves the memcpy cannot start until
         the calibration kernel has finished writing to the slot buffer —
         reading stale data would cause silent correctness errors."""
@@ -541,8 +541,8 @@ class TestD2hPipeline:
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=1)
         record = self._make_record(fills=(5.0,))
         pipe.schedule(record)
-        calib = record.leases_by_ts[500]["jungfrau.calib"].calib_done
-        assert calib in pipe._d2h_stream.wait_events, "D→H stream must call wait_event(calib_done) before memcpyAsync"
+        calib = record.leases_by_ts[500]["jungfrau.calib"].result_ready
+        assert calib in pipe._d2h_stream.wait_events, "D→H stream must call wait_event(result_ready) before memcpyAsync"
 
     def test_no_free_pinned_slot_materializes_safe_cpu_fallback(self):
         """Pinned exhaustion caches CPU data before device-slot reuse."""
