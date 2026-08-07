@@ -4,6 +4,7 @@ from psdaq.configdb.typed_json import *
 from psdaq.configdb.wave8_common import (
     ctxt_get, ctxt_put, confirm_xpm_rxid, config_timing,
     retrieve_config_from_epics,
+    configure_trigger_delay, init_pgp_monitor,
     set_system_regs, set_raw_buffers, set_batcher_event_builder,
     set_trigger_event_manager, set_adc_readout, set_adc_config,
     set_adc_pattern_tester, set_firmware_info, define_common_enums,
@@ -11,7 +12,6 @@ from psdaq.configdb.wave8_common import (
 from psdaq.cas.xpm_utils import timTxId
 
 from psdaq.utils import enable_lcls2_pgp_pcie_apps
-from psdaq.cas.pgpmonitor import PgpMonitor
 
 import json
 import time
@@ -84,16 +84,8 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
 
     print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
 
-    pcie_card = PgpMonitor(pollEn=False,
-                           initRead=False,
-                           dev=dev,
-                           lanemask=lanemask,
-                           numVc=2)
-    pcie_card.__enter__()
-    pcie_card.init_lanes()
+    init_pgp_monitor(base, dev, lanemask)
 
-    base['pcie'] = pcie_card
-    
     wave8_unconfig(base)
 
     return base
@@ -142,56 +134,7 @@ def user_to_expert(prefix, cfg, full=False):
     global ocfg
     global timebase
 
-    d = {}
-    try:
-        # this register no longer exists for IOC firmware/software starting at version 3.2.0
-        # for that more recent software the IOC will manage setting of the delay register
-        # which is used both in IOC LocalConfig mode ("standalone") and in ReadoutGroup mode ("daq").
-        # this common register is: TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay - cpo aug 3 2026          
-        ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
-        if ctrlDelay is None:
-            print("Failed to retrieve controls trigger delay: IOC controls delay.")
-            delayFlag = False
-        else:
-            delayFlag = True
-        partitionDelay = ctxt_get(prefix + 'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]' % group)
-
-        clksPerFid = 200 if timebase=='186M' else 238
-        nsPerClk   = 7000/1300. if timebase=='186M' else 1000/119.
-
-        # don't do anything if we have IOC software >= 3.2.0 since IOC will manage the delay register - cpo
-        if delayFlag:
-            #  LCLS2 timing. Let controls set the delay value.
-            print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
-
-            # Since controls now also runs off the LCLS2 timing fiber, there
-            # is no reason to have a "delta". This was put in place to
-            # compensate for different LCLS1/LCLS2 timing fiber lengths
-            # when controls used the LCLS1 timing fiber = cpo 02/01/24
-            # triggerDelay = int(ctrlDelay + delta*1300/7000 - partitionDelay*200)
-            triggerDelay = int(ctrlDelay - partitionDelay * clksPerFid)
-
-            print('triggerDelay {:}'.format(triggerDelay))
-            if triggerDelay < 0:
-                print('Raise controls trigger delay >= {:} nanoseconds ({:} clock ticks)'.format(
-                    -triggerDelay * nsPerClk, -triggerDelay))
-                raise ValueError('triggerDelay computes to < 0')
-
-            ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
-        else:
-            # new mode where IOC controls the delay value
-            # the IOC will set this value to 0 if the TriggerDelay(ns) is smaller than partitionDelay
-            # (a.k.a L0Delay).  Check we have legal value in readoutGroup mode which daq uses.
-            iocDelay = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
-            if iocDelay is None:
-                raise ValueError('Failed to retrieve IOC delay value')
-            if iocDelay==0:
-                print('Raise controls trigger delay >= {:} nanoseconds'.format(
-                    partitionDelay * nsPerClk))
-                raise ValueError('TriggerDelay(ns) too small')
-
-    except KeyError:
-        pass
+    configure_trigger_delay(prefix, group, timebase)
 
 #    try:
 #        prescale = cfg['user']['raw_prescale']

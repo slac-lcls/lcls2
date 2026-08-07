@@ -4,6 +4,7 @@ from psdaq.configdb.typed_json import *
 from psdaq.configdb.wave8_common import (
     ctxt_get, ctxt_put, confirm_xpm_rxid, config_timing,
     retrieve_config_from_epics,
+    configure_trigger_delay, init_pgp_monitor,
     set_system_regs, set_raw_buffers, set_batcher_event_builder,
     set_trigger_event_manager, set_adc_readout, set_adc_config,
     set_adc_pattern_tester, set_firmware_info, define_common_enums,
@@ -90,6 +91,8 @@ def wave8he_init(epics_prefix, dev="/dev/datadev_0", lanemask=1, xpmpv=None, tim
 
     print(f"--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---")
 
+    init_pgp_monitor(base, dev, lanemask)
+
     wave8he_unconfig(base)
 
     return base
@@ -102,6 +105,8 @@ def wave8he_init_feb(slane=None, schan=None):
 
 
 def wave8he_connectionInfo(base, alloc_json_str):
+    base['pcie'].check_lanes('connect')
+
     epics_prefix = base["prefix"]
 
     #  Switch to LCLS2 Timing
@@ -110,7 +115,7 @@ def wave8he_connectionInfo(base, alloc_json_str):
     config_timing(epics_prefix, timebase=base["timebase"])
 
     #  This fails with the current IOC, but hopefully it will be fixed.  It works directly via pgp.
-    #txId = timTxId("wave8he")
+    # txId = timTxId("wave8he")
     txId = timTxId("wave8")
     ctxt_put(epics_prefix + ":Top:TriggerEventManager:XpmMessageAligner:TxId", txId)
     ctxt_put(epics_prefix + ":Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable", 0)
@@ -159,37 +164,8 @@ def user_to_expert(prefix, cfg, full=False):
     global ocfg
     global timebase
 
-    d = {}
-
-    # Calculate trigger delay (same as Wave8)
-    try:
-        ctrlDelay = ctxt_get(prefix + "TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay")
-        if ctrlDelay is None:
-            print("Warning: Failed to retrieve control trigger delay.  Using partition delay as fallback.")
-            ctrlDelay = ctxt_get(prefix + "TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay")
-            delayFlag = False
-        else:
-            delayFlag = True
-        partitionDelay = ctxt_get(prefix + "TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]" % group)
-
-        clksPerFid = 200 if timebase == "186M" else 238
-        nsPerClk = 7000 / 1300.0 if timebase == "186M" else 1000 / 119.0
-
-        if delayFlag:
-            #  LCLS2 timing. Let controls set the delay value.
-            print("ctrlDelay {:}  partitionDelay {:}".format(ctrlDelay, partitionDelay))
-
-            triggerDelay = int(ctrlDelay - partitionDelay * clksPerFid)
-
-            print("triggerDelay {:}".format(triggerDelay))
-            if triggerDelay < 0:
-                print("Raise controls trigger delay >= {:} nanoseconds ({:} clock ticks)".format(-triggerDelay * nsPerClk, -triggerDelay))
-                raise ValueError("triggerDelay computes to < 0")
-
-            ctxt_put(prefix + "TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay", triggerDelay)
-
-    except KeyError:
-        pass
+    # Trigger delay (shared logic with Wave8)
+    configure_trigger_delay(prefix, group, timebase)
 
     # Calculate HLS auto-derived values
     # CRITICAL: These calculations MUST match C++ exactly (see HLS README)
@@ -240,6 +216,8 @@ def wave8he_config(base, connect_str, cfgtype, detname, detsegm, grp):
     prefix = base["prefix"]
     timebase = base["timebase"]
     group = grp
+
+    base['pcie'].check_lanes('config')
 
     #  Read the configdb
     cfg = get_config(connect_str, cfgtype, detname, detsegm)
@@ -382,13 +360,16 @@ def wave8he_update(update):
 
 #  This is really shutdown/disconnect
 def wave8he_unconfig(base):
+    base['pcie'].check_lanes('unconfig')
+
     epics_prefix = base["prefix"]
     # cpo removed setting Partition=1 (aka readout group) here
     # because this is called in init() and writes fail before the timing
     # the timing system is initialized.  Then subsequent writes start
     # silently failing as well resulting in lost configure phase2.
-    names_cfg = [epics_prefix + ":Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable"]
-    values = [0]
+    names_cfg = [epics_prefix + ":Top:TriggerEventManager:TriggerEventBuffer[0]:MasterEnable",
+                 epics_prefix + ":Top:DataPathCtrl:EnableStream",]  # 0x1 for Controls, 0x2 for DAQ
+    values = [0, 0]
     ctxt_put(names_cfg, values)
 
     #  Leaving DAQ control.

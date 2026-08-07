@@ -3,12 +3,21 @@ Shared utilities for Wave8 and Wave8HE configuration.
 
 This module contains common functions and schema helpers used by both
 wave8_config.py and wave8he_config.py to avoid code duplication.
+
+Note: importing :mod:`psdaq.utils.enable_lcls2_pgp_pcie_apps` has the
+side-effect of adding the axipcie/surf/l2si-core/lcls-timing-core/rogue
+submodule paths to ``sys.path`` (via ``pyrogue.addLibraryPath``). This must
+run *before* :mod:`psdaq.cas.pgpmonitor` (which does ``import axipcie``),
+hence the ordering of the imports below.
 """
 
 import epics
 import json
 import time
 import logging
+
+from psdaq.utils import enable_lcls2_pgp_pcie_apps  # noqa: F401 -- side-effect: sys.path setup for rogue submodules
+from psdaq.cas.pgpmonitor import PgpMonitor
 
 
 # =============================================================================
@@ -103,6 +112,114 @@ def retrieve_config_from_epics(epics_prefix, scfg, epics_get_func):
         else:
             c[k[0]] = v if v else c[k[0]]
     return scfg
+
+
+# =============================================================================
+# Trigger Delay Configuration (shared by Wave8 and Wave8HE)
+# =============================================================================
+
+def configure_trigger_delay(prefix, group, timebase):
+    """
+    Configure the DAQ TriggerDelay for the current readout group.
+
+    Two modes are supported, distinguished by whether the controls PV
+    ``TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay`` exists:
+
+    * **Old IOC (<3.2.0)** — that PV exists. The script computes
+      ``triggerDelay = ctrlDelay - partitionDelay * clksPerFid`` and writes
+      it to ``TriggerEventBuffer[0]:TriggerDelay``. Raises ``ValueError`` if
+      the result is negative.
+    * **New IOC (>=3.2.0)** — the PV no longer exists; the IOC owns
+      ``TriggerEventBuffer[0]:TriggerDelay``. The script reads it back and
+      raises ``ValueError`` if it is ``None`` or ``0`` (a value of 0 means
+      the controls trigger delay is too small, and no triggers will flow).
+
+    Args:
+        prefix: EPICS prefix including trailing ``:Top:``.
+        group: Readout group index (used to select the XPM partition delay).
+        timebase: ``'186M'`` or ``'119M'`` (LCLS-II or LCLS-I derived).
+    """
+    try:
+        # This register no longer exists for IOC firmware/software starting
+        # at version 3.2.0. In that mode the IOC manages the delay register
+        # (TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay), which is
+        # used in both LocalConfig ("standalone") and ReadoutGroup ("daq")
+        # modes. - cpo aug 3 2026
+        ctrlDelay = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
+        if ctrlDelay is None:
+            print("Failed to retrieve controls trigger delay: IOC controls delay.")
+            delayFlag = False
+        else:
+            delayFlag = True
+        partitionDelay = ctxt_get(prefix + 'TriggerEventManager:XpmMessageAligner:PartitionDelay[%d]' % group)
+
+        clksPerFid = 200 if timebase == '186M' else 238
+        nsPerClk   = 7000/1300. if timebase == '186M' else 1000/119.
+
+        # Skip if we have IOC software >= 3.2.0; the IOC manages the delay register. - cpo
+        if delayFlag:
+            # LCLS2 timing. Let controls set the delay value.
+            print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
+
+            # Since controls now also runs off the LCLS2 timing fiber, there
+            # is no reason to have a "delta". This was put in place to
+            # compensate for different LCLS1/LCLS2 timing fiber lengths
+            # when controls used the LCLS1 timing fiber. - cpo 02/01/24
+            triggerDelay = int(ctrlDelay - partitionDelay * clksPerFid)
+
+            print('triggerDelay {:}'.format(triggerDelay))
+            if triggerDelay < 0:
+                print('Raise controls trigger delay >= {:} nanoseconds ({:} clock ticks)'.format(
+                    -triggerDelay * nsPerClk, -triggerDelay))
+                raise ValueError('triggerDelay computes to < 0')
+
+            ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+        else:
+            # New mode where the IOC controls the delay value. The IOC will
+            # set this value to 0 if TriggerDelay(ns) is smaller than
+            # partitionDelay (a.k.a. L0Delay). Check we have a legal value
+            # in the readoutGroup mode that daq uses.
+            iocDelay = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            if iocDelay is None:
+                raise ValueError('Failed to retrieve IOC delay value')
+            if iocDelay == 0:
+                print('Raise controls trigger delay >= {:} nanoseconds'.format(
+                    partitionDelay * nsPerClk))
+                raise ValueError('TriggerDelay(ns) too small')
+
+    except KeyError:
+        pass
+
+
+# =============================================================================
+# PGP Monitor (PCIe lane health)
+# =============================================================================
+
+def init_pgp_monitor(base, dev, lanemask, numVc=2):
+    """
+    Instantiate a :class:`PgpMonitor` for the Wave8/Wave8HE PCIe board and
+    stash it in ``base['pcie']`` so ``connectionInfo``/``config``/``unconfig``
+    can call :meth:`PgpMonitor.check_lanes` to assert PGP link health at
+    each phase.
+
+    Called once during ``*_init``. ``PgpMonitor.__enter__`` starts the
+    embedded ZMQ server; there is no matching ``__exit__`` since the monitor
+    lives for the lifetime of the DRP process.
+
+    Args:
+        base: Detector state dict (mutated in place).
+        dev: Datadev path, e.g. ``'/dev/datadev_0'``.
+        lanemask: PGP lane mask (single bit for Wave8/Wave8HE).
+        numVc: Number of virtual channels per lane.
+    """
+    pcie_card = PgpMonitor(pollEn=False,
+                           initRead=False,
+                           dev=dev,
+                           lanemask=lanemask,
+                           numVc=numVc)
+    pcie_card.__enter__()
+    pcie_card.init_lanes()
+    base['pcie'] = pcie_card
 
 
 # =============================================================================
