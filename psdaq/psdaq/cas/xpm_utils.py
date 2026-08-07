@@ -63,6 +63,9 @@ def nameLinkJungfrau(v):
 def nameLinkEpixUHR3x2(v):
     return ('EpixUHR3x2', hostName(v))
 
+def nameLinkWave8HE(v):
+    return ('Wave8HE', hostName(v))
+
 timDevType = {}
 timDevType['xpm']        = 0xff
 timDevType['dti']        = 0xfe
@@ -81,7 +84,7 @@ timDevType['epixUHR']    = 0xf2
 timDevType['hrencoder']  = 0xf1
 timDevType['jungfrau']   = 0xf0
 timDevType['epixuhr3x2'] = 0xef
-
+timDevType['wave8he']    = 0xee
 
 linkType = {}
 linkType[0xff] = nameLinkXpm
@@ -101,6 +104,7 @@ linkType[0xf2] = nameLinkEpixUHR
 linkType[0xf1] = nameLinkHREncoder
 linkType[0xf0] = nameLinkJungfrau
 linkType[0xef] = nameLinkEpixUHR3x2
+linkType[0xee] = nameLinkWave8HE
 
 def xpmLinkId(value):
     itype = (value>>24)&0xff
