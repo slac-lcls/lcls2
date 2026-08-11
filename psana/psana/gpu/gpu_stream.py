@@ -107,8 +107,15 @@ class EventPool:
         # This lookup happens after the caller has consumed the yielded
         # result.  In particular, on_gpu_view().__exit__ may have registered
         # its external-kernel completion event during that interval.
-        for lease in old.leases:
-            lease.wait_until_safe_to_reuse()
+        try:
+            for lease in old.leases:
+                lease.wait_until_safe_to_reuse()
+        except Exception:
+            # Leave the slot occupied because consumer completion was not
+            # confirmed, but release the in-progress latch so retirement can
+            # be retried instead of permanently locking the pool.
+            self._retiring = None
+            raise
 
         self._slots[old.slot_id] = None
         self._retiring = None

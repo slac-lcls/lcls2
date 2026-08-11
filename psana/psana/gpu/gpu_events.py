@@ -167,13 +167,15 @@ class _PinnedSlot:
         The decrement-and-check is protected by _refs_lock so that
         concurrent dec_ref() calls from different threads (e.g. when
         multiple events from the same chunk have on_cpu called in parallel)
-        cannot race and produce a lost update on _refs.
+        cannot race and produce a lost update on _refs.  Releases after the
+        reference count reaches zero are ignored so a slot is never queued
+        in the free pool more than once.
         """
         with self._refs_lock:
+            if self._refs <= 0:
+                return
             self._refs -= 1
-            freed = self._refs <= 0
-            if freed:
-                self._refs = 0
+            freed = self._refs == 0
         if freed:
             self._available.put(self)  # return slot to the free pool
 
