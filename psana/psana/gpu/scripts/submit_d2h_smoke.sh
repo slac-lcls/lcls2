@@ -32,8 +32,10 @@ timeout 5m python psana/psana/gpu/test_analysis_kernels.py --iters 5 \
     || echo "TEST_ANALYSIS_FAILED"
 echo
 
+# r47 (the original campaign run) has aged off the FFB rolling buffer;
+# r200 is the same 32-segment Jungfrau on the current FFB window.
 EXP=mfx101572426
-RUN=47
+RUN=200
 DIR=/sdf/data/lcls/drpsrcf/ffb/mfx/mfx101572426/xtc
 COMMON="-e $EXP -r $RUN --dir $DIR --n_warmup 50 --n_events 150"
 
