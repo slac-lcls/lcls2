@@ -21,6 +21,7 @@ Other options:
     --detectors q_atmopal rix_fim0
     --gpu_det jungfrau
     --gpu_pool_depth 2
+    --gpu_d2h_chunk_size 2
     --gpu_d2h_interval 1000
     --max_events 10000
     --log_level INFO
@@ -55,6 +56,8 @@ def parse_args():
     parser.add_argument('--gpu_pool_depth', '--n_gpu_streams',
                         dest='n_gpu_streams', type=int, default=None,
                         help='GPU EventPool depth / DataSource(n_gpu_streams=...)')
+    parser.add_argument('--gpu_d2h_chunk_size', type=int, default=0,
+                        help='Async D2H chunk size / DataSource(gpu_d2h_chunk_size=...) (0=disabled)')
     parser.add_argument('--gpu_d2h_interval', type=int, default=0,
                         help='Call ctx.get("calib").on_cpu every N events in GPU mode (0=never)')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
@@ -97,6 +100,7 @@ def create_datasource(args, rank):
         common_kwargs["skip_calib_load"] = args.skip_calib_load
     if args.gpu_det:
         common_kwargs["gpu_det"] = args.gpu_det
+        common_kwargs["gpu_d2h_chunk_size"] = args.gpu_d2h_chunk_size
         if args.n_gpu_streams is not None:
             common_kwargs["n_gpu_streams"] = args.n_gpu_streams
 

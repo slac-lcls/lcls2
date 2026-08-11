@@ -281,7 +281,8 @@ def main():
     p.add_argument('--batch-size', type=int, default=10,
                    help='GPU batch size (default 10)')
     p.add_argument('--pool-depth', type=int, default=4,
-                   help='EventPool depth / n_gpu_streams (default 4)')
+                   help='EventPool depth / n_gpu_streams '
+                        '(benchmark default 4; DataSource default 2)')
     p.add_argument('--single-gpu-baseline-ms', type=float, default=0.0,
                    metavar='MS',
                    help='Single-GPU amortised ms/evt from gpu_performance_benchmark.py '

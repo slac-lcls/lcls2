@@ -410,7 +410,8 @@ def main():
     p.add_argument("--n-events", type=int, default=50, help="Events to time per BD rank (default 50)")
     p.add_argument("--n-warmup", type=int, default=5, help="Warmup events excluded from timing (default 5)")
     p.add_argument("--batch-size", type=int, default=10, help="GPU batch size for a single run (default 10)")
-    p.add_argument("--pool-depth", type=int, default=4, help="EventPool depth / n_gpu_streams (default 4)")
+    p.add_argument("--pool-depth", type=int, default=4,
+                   help="EventPool depth / n_gpu_streams (benchmark default 4; DataSource default 2)")
     p.add_argument("--batch-sizes", help="Comma-separated batch sizes to sweep, e.g. 10,20,30,50")
     p.add_argument("--pool-depths", help="Comma-separated pool depths to sweep, e.g. 2,4")
     p.add_argument("--scaling", action="store_true", help="GPU batch-size scaling sweep (bs = 1, 2, 5, 10, 20)")

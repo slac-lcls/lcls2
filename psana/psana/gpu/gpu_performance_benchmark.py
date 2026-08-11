@@ -371,8 +371,9 @@ def main():
     p.add_argument('--batch-size', type=int, default=5,
                    help='GPU batch size (default 5)')
     p.add_argument('--pool-depth', type=int, default=4,
-                   help='EventPool depth n_gpu_streams (default 4); '
-                        'more depth = more concurrent GDS reads = higher NVMe throughput')
+                   help='EventPool depth / n_gpu_streams '
+                        '(benchmark default 4; DataSource default 2); '
+                        'more depth permits more execution pipelines in flight')
     p.add_argument('--hit-pct',    type=int, default=10,
                    help='Simulated hit rate for selective D->H (default 10%%)')
     p.add_argument('--no-scaling', action='store_true',
