@@ -1,4 +1,4 @@
-name: Test LCLS-II
+name: Test DAQ
 on:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
@@ -16,7 +16,7 @@ jobs:
         # This makes the shell a login shell, which typically
         # sources said files. This is needed for conda.
         # Refer: https://github.com/marketplace/actions/setup-miniconda
-        shell: bash -el {0}  
+        shell: bash -el {0}
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -37,20 +37,14 @@ jobs:
           export PATH=$(pwd)/install/bin:${PATH}
           SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
-          pytest psana/psana/tests/test_HBins.py \
-                 psana/psana/tests/test_Time.py \
-                 psana/psana/tests/test_TimeFormat.py \
-                 psana/psana/tests/test_TimeParse.py \
-                 psana/psana/tests/test_dgramedit.py \
-                 psana/psana/tests/test_dgraminit.py \
-                 psana/psana/tests/test_epix_calib.py \
-                 psana/psana/tests/test_hsd.py \
-                 psana/psana/tests/test_packetfooter.py \
-                 psana/psana/tests/test_psalg.py \
-                 psana/psana/tests/test_py2xtc.py \
-                 psana/psana/tests/test_py2xtc_scan.py \
-                 psana/psana/tests/test_pyalgos.py \
-                 psana/psana/tests/test_sample.py \
-                 psana/psana/tests/test_timetool.py \
-                 psana/psana/tests/test_ts.py \
-                 psana/psana/tests/test_xtc.py
+          # Only the confirmed-safe tests are included here -- see
+          # .github/workflows/daq_test_readme.md for the full triage of every
+          # file in psdaq/psdaq/tests/, including which ones are deliberately
+          # left out and why, and which ones still need verification before
+          # being trusted here.
+          pytest psdaq/psdaq/tests/test_run_slurm_with_retries.py \
+                 psdaq/psdaq/tests/test_sbatch_env_dump.py \
+                 psdaq/psdaq/tests/test_sbatch_manager_output_path.py \
+                 psdaq/psdaq/tests/test_daqmgr_spawn_console.py \
+                 psdaq/psdaq/tests/test_daqmgr_strict_job_info.py \
+                 psdaq/psdaq/tests/test_subproc.py
