@@ -23,7 +23,9 @@ This node (`sdfiana023`) has a known infrastructure issue: rootless Podman fails
 
 **If your boss runs this under a different user account, these need to be replicated for that account first**, or the run will fail at the exact same cgroup error as the very first attempt. If running as `mavaylon` on `sdfiana023`, this is already in place.
 
-**Status of the second workaround (storage relocation): NOT YET DONE.** We diagnosed that Podman's default storage location (`~/.local/share/containers/storage`) sits on Weka and causes a second failure during image extraction, and identified `/lscratch` as the fix, but never actually created that config. **Running this right now will very likely fail again at that same storage/ownership step**, not because anything is wrong with the run itself, but because that fix is still outstanding.
+**Update, reviewed by Thorsten (via boss):** two refinements applied to the cgroups-side workaround — `cgroupns = "host"` added to `containers.conf`, and `pyproject.toml`'s `container-engine` now explicitly sets `create-args = ["--cgroups=disabled", "--cgroupns=host"]` plus `disable-host-mount = true` (stops cibuildwheel from bind-mounting the entire Weka-backed host filesystem into the container at `/host`, which isn't needed for this build). See `PODMAN_TEST_LOG.md` for the full writeup.
+
+**Status of the second workaround (storage relocation): STILL NOT DONE.** We diagnosed that Podman's default storage location (`~/.local/share/containers/storage`) sits on Weka and causes a second failure during image extraction, and identified `/lscratch` as the fix, but never actually created that config. **Running this right now will very likely fail again at that same storage/ownership step**, not because anything is wrong with the run itself, but because that fix is still outstanding.
 
 ## Commands to run
 

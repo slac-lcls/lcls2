@@ -6,9 +6,9 @@ Fuller narrative/evidence trail (meson.build line numbers, conda-list cross-chec
 
 ---
 
-## Current status (as of 2026-07-29)
+## Current status (as of 2026-07-29, updated)
 
-Podman is configured on this node. All local, non-Podman verification that could reasonably be done has been done. **The next required step is an actual `cibuildwheel` + Podman run — nobody has run that yet.** The exact command to run is at the bottom of this file. `build_wheel.sh` (the original, working, Conda-based manual build script) is untouched and still works as before — none of this is a replacement for it yet, it's the new container-only path being built alongside it.
+**Major update:** a real `cibuildwheel --platform linux` run has now succeeded all the way through image pull/extraction, `before-all`, `before-build`, and Meson configure, and reached actual C++/Cython compilation for the first time. The storage/`lchown` problem (see "Podman rootless-cgroup workaround" section below) appears to be resolved, not just worked around — see "BREAKTHROUGH" section near the end of this file for exactly what changed and why. Two new, real, previously-unseen problems were found during actual compilation (numpy header coverage, a RapidJSON/compiler version incompatibility) — see the same section. Neither has been fixed yet. `build_wheel.sh` (the original, working, Conda-based manual build script) remains untouched throughout all of this.
 
 ---
 
@@ -256,7 +256,24 @@ podman run --runtime ~/bin/crun --cgroups=disabled --cgroupns=host hello-world  
 - In `pyproject.toml`, change `container-engine = { name = "podman", create-args = ["--cgroups=disabled"] }` back to the plain `container-engine = "podman"`.
 - Optionally remove `~/bin/crun` if not needed for anything else.
 
-**Not yet re-validated after adding this:** the smoke test (`podman run --rm hello-world`, with no manual flags this time) has not been rerun since writing `containers.conf` — that's the first thing to check before the full `cibuildwheel` run (see below).
+**Update (reviewed by Thorsten, via boss):** confirmed the diagnosis independently — `runc` (Podman's default runtime) walks the full cgroup hierarchy when setting up a container, and that walk hits the same Weka-exposed, unreadable cgroup path; `crun` doesn't need to walk that same path, which is why swapping runtimes sidesteps it. Two refinements applied as a result:
+
+1. Added `cgroupns = "host"` to `~/.config/containers/containers.conf` under `[containers]` (previously only `cgroups = "disabled"` was set) — matches the original manually-tested working command exactly (`podman run --runtime ~/bin/crun --cgroups=disabled --cgroupns=host hello-world`).
+2. Updated `pyproject.toml`'s `container-engine` config to make the workaround explicit in `create-args` rather than relying solely on the global `containers.conf`, and added `disable-host-mount = true`:
+   ```toml
+   container-engine = { name = "podman", create-args = ["--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
+   ```
+   `disable-host-mount` turns off cibuildwheel's default behavior of bind-mounting the entire host filesystem into the container at `/host` (visible in the earlier failed command as `--volume=/:/host`) — since most of the host filesystem is Weka-backed, this removes one more place Weka could interfere. `build_wheel_container.sh` doesn't need `/host`; it only needs the project directory, which cibuildwheel mounts separately regardless of this setting.
+
+**Important caveat, set expectations accordingly:** neither of these changes touches the second problem (the storage/`lchown` ownership-remap error during image extraction). That failure comes from Podman's persistent image storage defaulting to living under `~/.local/share/containers/storage`, on Weka — a completely separate mechanism from the `/host` bind mount `disable-host-mount` turns off. **The `lchown` error is still expected to occur** on the next run unless the `/lscratch` storage relocation (proposed earlier, never applied) is also done.
+
+**Confirmed by an actual `cibuildwheel --platform linux` run after these changes:** the generated `podman create` command no longer includes `--volume=/:/host` (confirms `disable-host-mount` took effect) and now includes both `--cgroups=disabled` and `--cgroupns=host` (confirms `create-args` took effect). No cgroup-related error occurred this run. **The run still failed at the exact same storage step as before** — same error text, same blob hash, same file (`/usr/bin/write`):
+```
+Error: writing blob: adding layer with blob "sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f": Error processing tar file(exit status 1): potentially insufficient UIDs or GIDs available in user namespace (requested 0:5 for /usr/bin/write): Check /etc/subuid and /etc/subgid if configured locally and run podman-system-migrate: lchown /usr/bin/write: invalid argument
+```
+This is strong confirmation that the two problems are genuinely independent: fixing cgroups/host-mount had zero effect on the storage issue, exactly as predicted, since they're different Podman subsystems (OCI runtime vs. image storage). **The `/lscratch` storage relocation is now the only remaining blocker to getting past image extraction entirely.**
+
+**Update:** `create-args` also now explicitly includes `--runtime /sdf/home/m/mavaylon/bin/crun`, redundant with `containers.conf` (already confirmed working) but makes the config self-contained. Flagged inline in `pyproject.toml` as account-specific — the absolute path only exists under this user's home directory, so anyone else running this needs their own `crun` and either their own `containers.conf` or an adjusted path here.
 
 ## Exact command to run (Podman, on this node)
 
@@ -286,3 +303,54 @@ cibuildwheel --platform linux 2>&1 | tee cibuildwheel_run_$(date +%Y%m%d_%H%M%S)
 4. Does `auditwheel repair` run automatically and produce a `manylinux_2_28` tagged wheel in `./wheelhouse/`?
 
 The resulting log file (`cibuildwheel_run_*.log`) plus this file is everything a next session needs to diagnose whatever happens. Paste the tail of that log back, or point a new session at both files, either way.
+
+---
+
+## BREAKTHROUGH (2026-07-29): storage problem appears resolved, real compile errors reached for the first time
+
+### What happened
+
+After the `containers.conf`/`create-args`/`disable-host-mount` refinements above (still failed at the same storage/`lchown` step, confirmed), the user ran:
+
+```bash
+podman system migrate --new-runtime=crun
+```
+
+then reran `cibuildwheel --platform linux`. This time, **the entire image pull and extraction succeeded** — every blob copied cleanly, ending in "Writing manifest to image destination" / "Storing signatures," with **no `lchown` error at all**. This is the exact step that failed identically in every previous attempt. `podman system migrate` appears to reset/reinitialize internal storage state in a way that fixed the underlying extraction problem, not just worked around it — this may mean the `/lscratch` storage relocation (proposed earlier, never applied) is no longer necessary, though this hasn't been stress-tested (only one successful run so far).
+
+### Everything that succeeded after that (all first-time confirmations in a real container)
+
+- `before-all` (`dnf install -y libcurl-devel rapidjson-devel`) — clean install, no errors.
+- `before-build`'s `pip install meson ninja cython hatchling` — succeeded.
+- `build_wheel_container.sh`'s `sysconfig`-based Python.h fix — **confirmed working in a real manylinux container**, not just the local Conda approximation: `Python include path (sysconfig): /opt/python/cp311-cp311/include/python3.11`.
+- Meson configure — fully succeeded: `Library curl found: YES`, `Run-time dependency OpenMP found: YES 4.5`, `Build targets in project: 42`. Matches local predictions exactly.
+- RapidJSON header discovery — **confirmed found automatically** at `/usr/include/rapidjson/document.h`, with no explicit `-I` flag needed, validating the earlier "test as-is, don't pre-emptively fix" decision from the original dependency audit.
+- Meson compile started and got to **107+ of 174 targets** before `ninja` stopped due to failures — this is real compilation in a real container, further than any test this session has reached.
+
+### New problem A: numpy headers not reaching most targets
+
+Errors seen:
+```
+/project/psana/psana/peakFinder/peakFinder_ext.pyx:18:8: 'numpy.pxd' not found
+```
+```
+../psana/src/container.cc:5:10: fatal error: numpy/arrayobject.h: No such file or directory
+```
+
+**Root cause, diagnosed:** the old Conda-based `build_wheel.sh` sets a blanket `CXXFLAGS="-I${CONDA_PREFIX}/include"`, and Conda's numpy package happens to install its headers into that same shared, system-style include directory — so every compilation unit got numpy's headers *by accident*, regardless of whether its `meson.build` target actually declared `numpy_dep`. `build_wheel_container.sh` deliberately does not do that blanket injection (that's what fixed the Python.h and RapidJSON discovery concerns). The side effect: any target that doesn't explicitly list `numpy_dep` in its `dependencies:` no longer gets numpy's include path at all. Confirmed by inspecting the actual failing compile commands — several have no `-I` for numpy anywhere in them.
+
+**Proposed fix (not yet applied):** audit `psana/meson.build` and the `psalg/*/meson.build` files for every target using `#include <numpy/arrayobject.h>` or `cimport numpy`, and ensure `numpy_dep` is listed in that target's `dependencies:`. This is a build-configuration-only fix (no `.cc`/`.pyx` source changes) consistent with everything else done in this effort.
+
+### New problem B: RapidJSON version/compiler incompatibility (new, not the discovery gap we expected)
+
+Error seen, repeated across every file that includes `MDBWebUtils.hh` (which pulls in RapidJSON):
+```
+/usr/include/rapidjson/document.h: In member function 'rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)':
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member 'rapidjson::GenericStringRef<CharType>::length'
+```
+
+This is **not** the header-discovery risk that was flagged earlier (the header was found fine, at the expected default path). This is a genuine compile error inside RapidJSON's own header: `length` is declared `const`, and this old version's assignment operator tries to assign to it anyway. AlmaLinux 8's `rapidjson-devel` ships RapidJSON 1.1.0 (tagged 2016) — a version old enough to predate stricter const-correctness enforcement in the GCC 14.2.1 used by this manylinux image. **Not yet researched or fixed** — needs investigation into whether a newer RapidJSON build/package is available, or a minimal patch is the accepted community fix, before touching anything.
+
+### Status / next steps
+
+Neither new problem has been fixed yet, by explicit instruction (log first, fix later). Task list updated: problem A (numpy_dep) and problem B (RapidJSON/compiler incompatibility) tracked as new, separate tasks. Original task #1 ("run first cibuildwheel/Podman test for cp311") is substantially achieved, a real, far-reaching container build run happened, even though the wheel isn't complete yet — remaining work is now these two new, real, previously-unseen problems.

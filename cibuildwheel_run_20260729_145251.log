@@ -1,0 +1,136 @@
+
+     _ _       _ _   _       _           _
+ ___|_| |_ _ _|_| |_| |_ _ _| |_ ___ ___| |
+|  _| | . | | | | | . | | | |   | -_| -_| |
+|___|_|___|___|_|_|___|_____|_|_|___|___|_|
+
+cibuildwheel version 4.1.1
+
+Build options:
+  platform: linux
+  allow_empty: False
+  architectures: x86_64
+  build_selector: 
+    build_config: cp311-*
+    skip_config: pp* *-musllinux*
+    requires_python: >=3.11
+    enable: []
+  output_dir: /sdf/scratch/users/m/mavaylon/pip_lcls2/lcls2/wheelhouse
+  package_dir: /sdf/scratch/users/m/mavaylon/pip_lcls2/lcls2
+  test_selector: 
+    skip_config:
+  audit_command: 
+    abi3audit --strict --report {abi3_wheel}
+  audit_requires: 
+    abi3audit
+  before_all: dnf install -y libcurl-devel rapidjson-devel
+  before_build: pip install meson ninja cython hatchling && bash {project}/build_wheel_container.sh
+  before_test: 
+  build_frontend: build
+  build_verbosity: 0
+  config_settings: 
+  container_engine: 
+    name: podman
+    create_args: ('--runtime', '/sdf/home/m/mavaylon/bin/crun', '--cgroups=disabled', '--cgroupns=host')
+    disable_host_mount: True
+  dependency_constraints: pinned
+  environment: 
+  manylinux_images: 
+    x86_64: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+    i686: quay.io/pypa/manylinux_2_28_i686@sha256:3a4de216ae551c1cbb8f93d4bbf9faebe7fb16a67afa3380b9a3ed2cc7b80fcf
+    pypy_x86_64: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+    aarch64: quay.io/pypa/manylinux_2_28_aarch64@sha256:162c81dfd3efc710732a571717d3c916a6945ebf279e879ddee3243af96fe46f
+    ppc64le: quay.io/pypa/manylinux_2_28_ppc64le@sha256:32ec597dd87e27980750115a6c020cae54fd17386e18d86d695e35e6b3a3e0da
+    s390x: quay.io/pypa/manylinux_2_28_s390x@sha256:9c4f347bc43b1b799a296f6801a8845af132fa6f919cc6237b889c8d2e16ae01
+    armv7l: quay.io/pypa/manylinux_2_31_armv7l@sha256:a58ece566251a37b3b4cd17d7ef85d88df05f80670c7dfe80c1b1ffe4cd00bf8
+    riscv64: quay.io/pypa/manylinux_2_39_riscv64@sha256:04b3acc69a6cebb10ac1252587d202acce6445d91c783d3f92229bb2b2483069
+    pypy_aarch64: quay.io/pypa/manylinux_2_28_aarch64@sha256:162c81dfd3efc710732a571717d3c916a6945ebf279e879ddee3243af96fe46f
+    pypy_i686: quay.io/pypa/manylinux_2_28_i686@sha256:3a4de216ae551c1cbb8f93d4bbf9faebe7fb16a67afa3380b9a3ed2cc7b80fcf
+  musllinux_images: 
+    x86_64: quay.io/pypa/musllinux_1_2_x86_64@sha256:fd0694e23637ae8d13433c58f647aba1aae5de4fd50350201307be453a8b2ff4
+    i686: quay.io/pypa/musllinux_1_2_i686@sha256:a85be8fc5aa7fa291b8bee5647469d3d48dd26600cc7295553ff47ca60906ff2
+    aarch64: quay.io/pypa/musllinux_1_2_aarch64@sha256:e6ac3eca5f7d2cd5b8267b94b65d9a693e7ba06f5ba4c6643b1b0e6f9ae2cde3
+    ppc64le: quay.io/pypa/musllinux_1_2_ppc64le@sha256:d59ad21615cf5b83cc9046cf7c44d07e8ef1247333e8a72147d7c781008605c1
+    s390x: quay.io/pypa/musllinux_1_2_s390x@sha256:e29d28c68a0bd4594fd41cb2435ca64388038b05c24e77b34f186ff90a2968c4
+    armv7l: quay.io/pypa/musllinux_1_2_armv7l@sha256:d87cbc211df71486a6a90fb2bece474166f3e2dcf81bbfc4be07607fd64185b0
+    riscv64: quay.io/pypa/musllinux_1_2_riscv64@sha256:2d36623ffc59785e124ecf2992456847baaf2f2e0a87e64d23f2f6a69e5a0357
+  pyodide_version: None
+  repair_command: auditwheel repair -w {dest_dir} {wheel}
+  test_command: 
+  test_environment: 
+  test_extras: 
+  test_groups: 
+  test_requires: 
+  test_runtime: 
+    args: ()
+  test_sources: 
+  xbuild_files: 
+    numpy: ['numpy/_core/include/numpy/_numpyconfig.h', 'numpy/_core/include/numpy/numpyconfig.h', 'numpy/_core/lib/libnpymath.a', 'numpy/random/lib/libnpyrandom.a']
+  xbuild_tools: None
+
+Cache folder: /sdf/home/m/mavaylon/.cache/cibuildwheel
+
+cibuildwheel: warning: Invalid skip selector: 'pp*'. This selector matches a group that wasn't enabled. Enable it using the `enable` option or remove this selector. This selector will have no effect. 
+
+1 build selected:
+cp311-manylinux_x86_64
+
+Here we go!
+
+Starting container image quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca...
+
+info: This container will host the build for cp311-manylinux_x86_64...
++ podman version -f '{{json .}}'
++ podman image inspect quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca --format '{{.Os}}/{{.Architecture}}'
+Error: inspecting object: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca: image not known
+Trying to pull quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca...
+Getting image source signatures
+Copying blob sha256:aeddf06285a7cf07d041a9844536a6fca06bbedd43f81a979389786f232f04e0
+Copying blob sha256:aeddf06285a7cf07d041a9844536a6fca06bbedd43f81a979389786f232f04e0
+Copying blob sha256:ab109690924eedac43cc96594bc3051f5d95118dfbe178a97d5634331f7ebecd
+Copying blob sha256:ab109690924eedac43cc96594bc3051f5d95118dfbe178a97d5634331f7ebecd
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f
+Copying blob sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f
+Copying blob sha256:8a50cec8723fdd5bd9bbd69389e7c090deba7bccfb44fa4e602ba2d05b7c0c6c
+Copying blob sha256:8a50cec8723fdd5bd9bbd69389e7c090deba7bccfb44fa4e602ba2d05b7c0c6c
+Copying blob sha256:77393584a3a5c5cf7f2631b60137fc11dd32fbf40a7affec14b19471b0655d9e
+Copying blob sha256:77393584a3a5c5cf7f2631b60137fc11dd32fbf40a7affec14b19471b0655d9e
+Copying blob sha256:abbb2bab1e55602209e991d2a16107887c2d0fa643781407793217907ebf0752
+Copying blob sha256:abbb2bab1e55602209e991d2a16107887c2d0fa643781407793217907ebf0752
+Copying blob sha256:47367864dc9288fb748cd49954c9d90c46085320cf7497ed2cd8ab9ae5097cc2
+Copying blob sha256:47367864dc9288fb748cd49954c9d90c46085320cf7497ed2cd8ab9ae5097cc2
+Copying blob sha256:dcb8def6cf919ae6b68228461901b9a7ee6b675d490dc255bc84187eb170c667
+Copying blob sha256:dcb8def6cf919ae6b68228461901b9a7ee6b675d490dc255bc84187eb170c667
+Copying blob sha256:dbca5109fe5ac0cbb9793dd8d16247cdfe23e77755294a9e7af4a330e0738268
+Copying blob sha256:dbca5109fe5ac0cbb9793dd8d16247cdfe23e77755294a9e7af4a330e0738268
+Copying blob sha256:0e0bb3bba73f32eb7eb38ce6bb56afc7ac4c4bd49ecfe1e096950be9bb262d15
+Copying blob sha256:0e0bb3bba73f32eb7eb38ce6bb56afc7ac4c4bd49ecfe1e096950be9bb262d15
+Copying blob sha256:401c999611ceb75aac3e67c1d6820fc453b400f9a3ac0162d967e0d29a791239
+Copying blob sha256:401c999611ceb75aac3e67c1d6820fc453b400f9a3ac0162d967e0d29a791239
+Copying blob sha256:41ebd8756331c55414bb70c3f1724ab2e0e19665f8af7a4ca3fdccb2a742556b
+Copying blob sha256:41ebd8756331c55414bb70c3f1724ab2e0e19665f8af7a4ca3fdccb2a742556b
+Copying blob sha256:7eac8fc9d39d86b5a2d8ae2edd45b3168b16ce9ec65fe406ecd4cf2818e212a4
+Copying blob sha256:7eac8fc9d39d86b5a2d8ae2edd45b3168b16ce9ec65fe406ecd4cf2818e212a4
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:0b0dfb6d6bd0a668afc007b2fd7c1f44da7c825ac64da431dbdd23e9e7d51d60
+Copying blob sha256:0b0dfb6d6bd0a668afc007b2fd7c1f44da7c825ac64da431dbdd23e9e7d51d60
+Copying blob sha256:98f23bee00db35c9c7a93d3d6f8e09da5b3f597389835722a0d2c79f921b8ebc
+Copying blob sha256:98f23bee00db35c9c7a93d3d6f8e09da5b3f597389835722a0d2c79f921b8ebc
+Copying blob sha256:59f1858123cc9174499a079bf60fd165c5a8d22de36d0427f3c50c92d2f0ed65
+Copying blob sha256:59f1858123cc9174499a079bf60fd165c5a8d22de36d0427f3c50c92d2f0ed65
+Copying blob sha256:6f86af30148c9f5963e625aff7b4d4b9681002f3f0a7adcd337ea1cc0167458c
+Copying blob sha256:6f86af30148c9f5963e625aff7b4d4b9681002f3f0a7adcd337ea1cc0167458c
+Copying blob sha256:ce5809d5a250620cd2aba9dbde4bae3dc1114467a94cb32bb966308ab817241b
+Copying blob sha256:ce5809d5a250620cd2aba9dbde4bae3dc1114467a94cb32bb966308ab817241b
+Copying blob sha256:506e0b0d1123708719cc5290b9c376283e1f2531f07ea1506db46f7c3d7eb43c
+Copying blob sha256:506e0b0d1123708719cc5290b9c376283e1f2531f07ea1506db46f7c3d7eb43c
+Copying blob sha256:acc7e6fc474bcb4992c929e9bf28df918d5e031656056a4495b003571e8eb052
+Copying blob sha256:acc7e6fc474bcb4992c929e9bf28df918d5e031656056a4495b003571e8eb052
+Error: writing blob: adding layer with blob "sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f": Error processing tar file(exit status 1): potentially insufficient UIDs or GIDs available in user namespace (requested 0:5 for /usr/bin/write): Check /etc/subuid and /etc/subgid if configured locally and run podman-system-migrate: lchown /usr/bin/write: invalid argument
+
+                                                                      ✕ 31.10s
+cibuildwheel: error: Command ['podman', 'create', '--env=CIBUILDWHEEL', '--env=SOURCE_DATE_EPOCH', '--name=cibuildwheel-d499d9ca-7b85-4e71-a398-ecb4a6e14f7e', '--interactive', '--platform=linux/amd64', '--pull=always', '--runtime', '/sdf/home/m/mavaylon/bin/crun', '--cgroups=disabled', '--cgroupns=host', 'quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca', '/bin/bash'] failed with code 125. 
+

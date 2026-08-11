@@ -1,0 +1,740 @@
+
+     _ _       _ _   _       _           _
+ ___|_| |_ _ _|_| |_| |_ _ _| |_ ___ ___| |
+|  _| | . | | | | | . | | | |   | -_| -_| |
+|___|_|___|___|_|_|___|_____|_|_|___|___|_|
+
+cibuildwheel version 4.1.1
+
+Build options:
+  platform: linux
+  allow_empty: False
+  architectures: x86_64
+  build_selector: 
+    build_config: cp311-*
+    skip_config: pp* *-musllinux*
+    requires_python: >=3.11
+    enable: []
+  output_dir: /sdf/scratch/users/m/mavaylon/pip_lcls2/lcls2/wheelhouse
+  package_dir: /sdf/scratch/users/m/mavaylon/pip_lcls2/lcls2
+  test_selector: 
+    skip_config:
+  audit_command: 
+    abi3audit --strict --report {abi3_wheel}
+  audit_requires: 
+    abi3audit
+  before_all: dnf install -y libcurl-devel rapidjson-devel
+  before_build: pip install meson ninja cython hatchling && bash {project}/build_wheel_container.sh
+  before_test: 
+  build_frontend: build
+  build_verbosity: 0
+  config_settings: 
+  container_engine: 
+    name: podman
+    create_args: ('--runtime', '/sdf/home/m/mavaylon/bin/crun', '--cgroups=disabled', '--cgroupns=host')
+    disable_host_mount: True
+  dependency_constraints: pinned
+  environment: 
+  manylinux_images: 
+    x86_64: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+    i686: quay.io/pypa/manylinux_2_28_i686@sha256:3a4de216ae551c1cbb8f93d4bbf9faebe7fb16a67afa3380b9a3ed2cc7b80fcf
+    pypy_x86_64: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca
+    aarch64: quay.io/pypa/manylinux_2_28_aarch64@sha256:162c81dfd3efc710732a571717d3c916a6945ebf279e879ddee3243af96fe46f
+    ppc64le: quay.io/pypa/manylinux_2_28_ppc64le@sha256:32ec597dd87e27980750115a6c020cae54fd17386e18d86d695e35e6b3a3e0da
+    s390x: quay.io/pypa/manylinux_2_28_s390x@sha256:9c4f347bc43b1b799a296f6801a8845af132fa6f919cc6237b889c8d2e16ae01
+    armv7l: quay.io/pypa/manylinux_2_31_armv7l@sha256:a58ece566251a37b3b4cd17d7ef85d88df05f80670c7dfe80c1b1ffe4cd00bf8
+    riscv64: quay.io/pypa/manylinux_2_39_riscv64@sha256:04b3acc69a6cebb10ac1252587d202acce6445d91c783d3f92229bb2b2483069
+    pypy_aarch64: quay.io/pypa/manylinux_2_28_aarch64@sha256:162c81dfd3efc710732a571717d3c916a6945ebf279e879ddee3243af96fe46f
+    pypy_i686: quay.io/pypa/manylinux_2_28_i686@sha256:3a4de216ae551c1cbb8f93d4bbf9faebe7fb16a67afa3380b9a3ed2cc7b80fcf
+  musllinux_images: 
+    x86_64: quay.io/pypa/musllinux_1_2_x86_64@sha256:fd0694e23637ae8d13433c58f647aba1aae5de4fd50350201307be453a8b2ff4
+    i686: quay.io/pypa/musllinux_1_2_i686@sha256:a85be8fc5aa7fa291b8bee5647469d3d48dd26600cc7295553ff47ca60906ff2
+    aarch64: quay.io/pypa/musllinux_1_2_aarch64@sha256:e6ac3eca5f7d2cd5b8267b94b65d9a693e7ba06f5ba4c6643b1b0e6f9ae2cde3
+    ppc64le: quay.io/pypa/musllinux_1_2_ppc64le@sha256:d59ad21615cf5b83cc9046cf7c44d07e8ef1247333e8a72147d7c781008605c1
+    s390x: quay.io/pypa/musllinux_1_2_s390x@sha256:e29d28c68a0bd4594fd41cb2435ca64388038b05c24e77b34f186ff90a2968c4
+    armv7l: quay.io/pypa/musllinux_1_2_armv7l@sha256:d87cbc211df71486a6a90fb2bece474166f3e2dcf81bbfc4be07607fd64185b0
+    riscv64: quay.io/pypa/musllinux_1_2_riscv64@sha256:2d36623ffc59785e124ecf2992456847baaf2f2e0a87e64d23f2f6a69e5a0357
+  pyodide_version: None
+  repair_command: auditwheel repair -w {dest_dir} {wheel}
+  test_command: 
+  test_environment: 
+  test_extras: 
+  test_groups: 
+  test_requires: 
+  test_runtime: 
+    args: ()
+  test_sources: 
+  xbuild_files: 
+    numpy: ['numpy/_core/include/numpy/_numpyconfig.h', 'numpy/_core/include/numpy/numpyconfig.h', 'numpy/_core/lib/libnpymath.a', 'numpy/random/lib/libnpyrandom.a']
+  xbuild_tools: None
+
+Cache folder: /sdf/home/m/mavaylon/.cache/cibuildwheel
+
+cibuildwheel: warning: Invalid skip selector: 'pp*'. This selector matches a group that wasn't enabled. Enable it using the `enable` option or remove this selector. This selector will have no effect. 
+
+1 build selected:
+cp311-manylinux_x86_64
+
+Here we go!
+
+Starting container image quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca...
+
+info: This container will host the build for cp311-manylinux_x86_64...
++ podman version -f '{{json .}}'
++ podman image inspect quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca --format '{{.Os}}/{{.Architecture}}'
+Error: inspecting object: quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca: image not known
+Trying to pull quay.io/pypa/manylinux_2_28_x86_64@sha256:a61875a2f84cab7df8de222ff12cabc08ff86eb4ad402ac90ba7bdaed9600cca...
+Getting image source signatures
+Copying blob sha256:aeddf06285a7cf07d041a9844536a6fca06bbedd43f81a979389786f232f04e0
+Copying blob sha256:aeddf06285a7cf07d041a9844536a6fca06bbedd43f81a979389786f232f04e0
+Copying blob sha256:8a50cec8723fdd5bd9bbd69389e7c090deba7bccfb44fa4e602ba2d05b7c0c6c
+Copying blob sha256:8a50cec8723fdd5bd9bbd69389e7c090deba7bccfb44fa4e602ba2d05b7c0c6c
+Copying blob sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f
+Copying blob sha256:a0ca16fa6f59daa991d1f4bac1474eee6feecd5a9d67c587c38ec0b4bd0f853f
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:77393584a3a5c5cf7f2631b60137fc11dd32fbf40a7affec14b19471b0655d9e
+Copying blob sha256:77393584a3a5c5cf7f2631b60137fc11dd32fbf40a7affec14b19471b0655d9e
+Copying blob sha256:ab109690924eedac43cc96594bc3051f5d95118dfbe178a97d5634331f7ebecd
+Copying blob sha256:ab109690924eedac43cc96594bc3051f5d95118dfbe178a97d5634331f7ebecd
+Copying blob sha256:abbb2bab1e55602209e991d2a16107887c2d0fa643781407793217907ebf0752
+Copying blob sha256:abbb2bab1e55602209e991d2a16107887c2d0fa643781407793217907ebf0752
+Copying blob sha256:47367864dc9288fb748cd49954c9d90c46085320cf7497ed2cd8ab9ae5097cc2
+Copying blob sha256:47367864dc9288fb748cd49954c9d90c46085320cf7497ed2cd8ab9ae5097cc2
+Copying blob sha256:dcb8def6cf919ae6b68228461901b9a7ee6b675d490dc255bc84187eb170c667
+Copying blob sha256:dcb8def6cf919ae6b68228461901b9a7ee6b675d490dc255bc84187eb170c667
+Copying blob sha256:dbca5109fe5ac0cbb9793dd8d16247cdfe23e77755294a9e7af4a330e0738268
+Copying blob sha256:dbca5109fe5ac0cbb9793dd8d16247cdfe23e77755294a9e7af4a330e0738268
+Copying blob sha256:0e0bb3bba73f32eb7eb38ce6bb56afc7ac4c4bd49ecfe1e096950be9bb262d15
+Copying blob sha256:0e0bb3bba73f32eb7eb38ce6bb56afc7ac4c4bd49ecfe1e096950be9bb262d15
+Copying blob sha256:401c999611ceb75aac3e67c1d6820fc453b400f9a3ac0162d967e0d29a791239
+Copying blob sha256:401c999611ceb75aac3e67c1d6820fc453b400f9a3ac0162d967e0d29a791239
+Copying blob sha256:41ebd8756331c55414bb70c3f1724ab2e0e19665f8af7a4ca3fdccb2a742556b
+Copying blob sha256:41ebd8756331c55414bb70c3f1724ab2e0e19665f8af7a4ca3fdccb2a742556b
+Copying blob sha256:7eac8fc9d39d86b5a2d8ae2edd45b3168b16ce9ec65fe406ecd4cf2818e212a4
+Copying blob sha256:7eac8fc9d39d86b5a2d8ae2edd45b3168b16ce9ec65fe406ecd4cf2818e212a4
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1
+Copying blob sha256:0b0dfb6d6bd0a668afc007b2fd7c1f44da7c825ac64da431dbdd23e9e7d51d60
+Copying blob sha256:0b0dfb6d6bd0a668afc007b2fd7c1f44da7c825ac64da431dbdd23e9e7d51d60
+Copying blob sha256:98f23bee00db35c9c7a93d3d6f8e09da5b3f597389835722a0d2c79f921b8ebc
+Copying blob sha256:98f23bee00db35c9c7a93d3d6f8e09da5b3f597389835722a0d2c79f921b8ebc
+Copying blob sha256:59f1858123cc9174499a079bf60fd165c5a8d22de36d0427f3c50c92d2f0ed65
+Copying blob sha256:59f1858123cc9174499a079bf60fd165c5a8d22de36d0427f3c50c92d2f0ed65
+Copying blob sha256:6f86af30148c9f5963e625aff7b4d4b9681002f3f0a7adcd337ea1cc0167458c
+Copying blob sha256:6f86af30148c9f5963e625aff7b4d4b9681002f3f0a7adcd337ea1cc0167458c
+Copying blob sha256:ce5809d5a250620cd2aba9dbde4bae3dc1114467a94cb32bb966308ab817241b
+Copying blob sha256:ce5809d5a250620cd2aba9dbde4bae3dc1114467a94cb32bb966308ab817241b
+Copying blob sha256:506e0b0d1123708719cc5290b9c376283e1f2531f07ea1506db46f7c3d7eb43c
+Copying blob sha256:506e0b0d1123708719cc5290b9c376283e1f2531f07ea1506db46f7c3d7eb43c
+Copying blob sha256:acc7e6fc474bcb4992c929e9bf28df918d5e031656056a4495b003571e8eb052
+Copying blob sha256:acc7e6fc474bcb4992c929e9bf28df918d5e031656056a4495b003571e8eb052
+Copying config sha256:90630909f007ad4b58dd7b8271911f7b184aa97368ae35cd90eecce11bd98520
+Writing manifest to image destination
+Storing signatures
+fda01212ff02b645f6b6c324fa4716bcd606e922128d9085b2448043cdac7bc8
+    + /bin/true
+    + mkdir -p /project
+    + manylinux-interpreters --help
+    + manylinux-interpreters ensure cp311-cp311
+'cp311-cp311' already installed at '/opt/python/cp311-cp311'
+
+                                                                    ✓ 1698.86s
+Copying project into container...
+
+    + mkdir -p /project
+
+                                                                     ✓ 123.34s
+Running before_all...
+
+    + /opt/python/cp39-cp39/bin/python -c 'import sys, json, os; json.dump(os.environ.copy(), sys.stdout)'
+    + sh -c 'dnf install -y libcurl-devel rapidjson-devel'
+AlmaLinux 8 - BaseOS                             20 MB/s |  86 MB     00:04    
+AlmaLinux 8 - AppStream                         4.2 MB/s |  30 MB     00:07    
+AlmaLinux 8 - Extras                             52 kB/s |  14 kB     00:00    
+AlmaLinux 8 - PowerTools                         17 MB/s | 6.5 MB     00:00    
+Extra Packages for Enterprise Linux 8 - x86_64  4.0 MB/s |  14 MB     00:03    
+Dependencies resolved.
+================================================================================
+ Package              Arch       Version                    Repository     Size
+================================================================================
+Installing:
+ libcurl-devel        x86_64     7.61.1-34.el8_10.11        baseos        836 k
+ rapidjson-devel      x86_64     1.1.0-14.el8               epel          118 k
+Installing dependencies:
+ cmake-filesystem     x86_64     3.26.5-2.el8               appstream      44 k
+
+Transaction Summary
+================================================================================
+Install  3 Packages
+
+Total download size: 998 k
+Installed size: 1.9 M
+Downloading Packages:
+(1/3): cmake-filesystem-3.26.5-2.el8.x86_64.rpm 2.8 MB/s |  44 kB     00:00    
+(2/3): libcurl-devel-7.61.1-34.el8_10.11.x86_64  27 MB/s | 836 kB     00:00    
+(3/3): rapidjson-devel-1.1.0-14.el8.x86_64.rpm  192 kB/s | 118 kB     00:00    
+--------------------------------------------------------------------------------
+Total                                           635 kB/s | 998 kB     00:01     
+Running transaction check
+Transaction check succeeded.
+Running transaction test
+Transaction test succeeded.
+Running transaction
+  Preparing        :                                                        1/1 
+  Installing       : cmake-filesystem-3.26.5-2.el8.x86_64                   1/3 
+  Installing       : rapidjson-devel-1.1.0-14.el8.x86_64                    2/3 
+  Installing       : libcurl-devel-7.61.1-34.el8_10.11.x86_64               3/3 
+  Running scriptlet: libcurl-devel-7.61.1-34.el8_10.11.x86_64               3/3 
+  Verifying        : libcurl-devel-7.61.1-34.el8_10.11.x86_64               1/3 
+  Verifying        : cmake-filesystem-3.26.5-2.el8.x86_64                   2/3 
+  Verifying        : rapidjson-devel-1.1.0-14.el8.x86_64                    3/3 
+
+Installed:
+  cmake-filesystem-3.26.5-2.el8.x86_64 libcurl-devel-7.61.1-34.el8_10.11.x86_64
+  rapidjson-devel-1.1.0-14.el8.x86_64 
+
+Complete!
+
+                                                                      ✓ 59.17s
+
+Building cp311-manylinux_x86_64 wheel
+CPython 3.11 manylinux x86_64
+
+Setting up build environment...
+
+    + mkdir -p /
+    + /opt/python/cp39-cp39/bin/python -c 'import sys, json, os; json.dump(os.environ.copy(), sys.stdout)'
+    + which python
+    + python -V -V
+Python 3.11.15 (main, Jul 18 2026, 12:50:44) [GCC 14.2.1 20250110 (Red Hat 14.2.1-11)]
+    + which pip
+
+                                                                       ✓ 0.84s
+Running before_build...
+
+    + sh -c 'pip install meson ninja cython hatchling && bash /project/build_wheel_container.sh'
+Collecting meson
+  Downloading meson-1.11.2-py3-none-any.whl.metadata (1.8 kB)
+Collecting ninja
+  Downloading ninja-1.13.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (5.1 kB)
+Collecting cython
+  Downloading cython-3.2.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (4.6 kB)
+Collecting hatchling
+  Downloading hatchling-1.31.0-py3-none-any.whl.metadata (3.8 kB)
+Requirement already satisfied: packaging>=24.2 in /opt/_internal/cpython-3.11.15/lib/python3.11/site-packages (from hatchling) (26.2)
+Collecting pathspec>=0.10.1 (from hatchling)
+  Downloading pathspec-1.1.1-py3-none-any.whl.metadata (14 kB)
+Collecting pluggy>=1.0.0 (from hatchling)
+  Downloading pluggy-1.6.0-py3-none-any.whl.metadata (4.8 kB)
+Collecting trove-classifiers (from hatchling)
+  Downloading trove_classifiers-2026.6.1.19-py3-none-any.whl.metadata (2.3 kB)
+Downloading meson-1.11.2-py3-none-any.whl (1.1 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 1.1/1.1 MB 9.4 MB/s  0:00:00
+Downloading ninja-1.13.0-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (180 kB)
+Downloading cython-3.2.9-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (3.5 MB)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 3.5/3.5 MB 33.0 MB/s  0:00:00
+Downloading hatchling-1.31.0-py3-none-any.whl (77 kB)
+Downloading pathspec-1.1.1-py3-none-any.whl (57 kB)
+Downloading pluggy-1.6.0-py3-none-any.whl (20 kB)
+Downloading trove_classifiers-2026.6.1.19-py3-none-any.whl (14 kB)
+Installing collected packages: trove-classifiers, pluggy, pathspec, ninja, meson, cython, hatchling
+
+Successfully installed cython-3.2.9 hatchling-1.31.0 meson-1.11.2 ninja-1.13.0 pathspec-1.1.1 pluggy-1.6.0 trove-classifiers-2026.6.1.19
+======================================
+Preparing psana build (container)
+======================================
+
+Python version: 3.11
+Python executable: python3
+
+Python include path (sysconfig): /opt/python/cp311-cp311/include/python3.11
+
+=== Running Meson setup (container defaults, build_daq=false) ===
+The Meson build system
+Version: 1.11.2
+Source dir: /project
+Build dir: /project/builddir
+Build type: native build
+Project name: lcls
+Project version: 4.3.0
+meson.build:1: WARNING: Project does not target a minimum version but uses feature introduced in '1.11': Adding Cython language without c.
+C compiler for the host machine: cc (gcc 14.2.1 "cc (GCC) 14.2.1 20250110 (Red Hat 14.2.1-11)")
+C linker for the host machine: cc ld.bfd 2.41-4
+C++ compiler for the host machine: c++ (gcc 14.2.1 "c++ (GCC) 14.2.1 20250110 (Red Hat 14.2.1-11)")
+C++ linker for the host machine: c++ ld.bfd 2.41-4
+Cython compiler for the host machine: cython (cython 3.2.9)
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Program python3 found: YES (/opt/_internal/cpython-3.11.15/bin/python)
+Found pkg-config: YES (/usr/bin/pkg-config) 1.4.2
+Run-time dependency python found: YES 3.11
+WARNING: You should add the boolean check kwarg to the run_command call.
+         It currently defaults to false,
+         but it will default to true in meson 2.0.
+         See also: https://github.com/mesonbuild/meson/issues/9300
+Library rt found: YES
+Library curl found: YES
+Run-time dependency threads found: YES
+Run-time dependency OpenMP found: YES 4.5
+Run-time dependency python found: YES 3.11
+Library Resort64c_x64 found: NO
+Program nvcc found: NO
+Build targets in project: 42
+WARNING: Project specifies no minimum version but uses features which were added in versions:
+ * 1.11: {'Adding Cython language without c'}
+
+lcls 4.3.0
+
+  User defined options
+    build_daq: false
+    prefix   : /project/install
+
+Found ninja-1.13.0.git.kitware.jobserver-pipe-1 at /opt/python/cp311-cp311/bin/ninja
+
+=== Running Meson compile ===
+ninja: Entering directory `/project/builddir'
+[1/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_Level.cc.o
+[2/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TransitionId.cc.o
+[3/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TypeId.cc.o
+[4/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcFileIterator.cc.o
+[5/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcIterator.cc.o
+[6/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBTypes.cc.o
+[7/174] Compiling C++ object psalg/psalg/shmem/libshmemsrv.so.p/src_XtcMonitorMsg.cc.o
+[8/174] Compiling C++ object psalg/psalg/shmem/libshmemsrv.so.p/src_ProcInfo.cc.o
+[9/174] Compiling C++ object psalg/psalg/shmem/libshmemcli.so.p/src_XtcMonitorMsg.cc.o
+[10/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_Level.cc.o
+[11/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_TransitionId.cc.o
+[12/174] Compiling C++ object psalg/psalg/digitizer/libdigitizer.so.p/src_Stream.cc.o
+[13/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_TypeId.cc.o
+[14/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_XtcIterator.cc.o
+[15/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_XtcFileIterator.cc.o
+[16/174] Compiling Cython source /project/psana/psana/peakFinder/peakFinder_ext.pyx
+FAILED: [code=1] psana/peakFinder_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/peakFinder_ext.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/peakFinder/peakFinder_ext.pyx -o psana/peakFinder_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/peakFinder_ext.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+
+# Import the Python-level symbols of numpy
+import numpy as np
+
+# Import the C-level symbols of numpy
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/peakFinder/peakFinder_ext.pyx:18:8: 'numpy.pxd' not found
+[17/174] Compiling Cython source /project/psana/psana/peakFinder/dgramCreate.pyx
+FAILED: [code=1] psana/dgramCreate.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/dgramCreate.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/peakFinder/dgramCreate.pyx -o psana/dgramCreate.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/dgramCreate.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# Import the Python-level symbols of numpy
+import numpy as np
+import copy
+
+# Import the C-level symbols of numpy
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/peakFinder/dgramCreate.pyx:6:8: 'numpy.pxd' not found
+[18/174] Compiling Cython source /project/psana/psana/quadanode.pyx
+[19/174] Compiling Cython source /project/psana/psana/constFracDiscrim/constFracDiscrim.pyx
+[20/174] Compiling Cython source /project/psana/psana/dgramedit.pyx
+FAILED: [code=1] psana/dgramedit.cpython-311-x86_64-linux-gnu.so.p/psana/psana/dgramedit.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/dgramedit.pyx -o psana/dgramedit.cpython-311-x86_64-linux-gnu.so.p/psana/psana/dgramedit.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/dgramedit.pxd:1:8: 'numpy.pxd' not found
+[21/174] Compiling Cython source /project/psana/psana/pycalgos/utilsdetector_ext.pyx
+FAILED: [code=1] psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/pycalgos/utilsdetector_ext.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/pycalgos/utilsdetector_ext.pyx -o psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/pycalgos/utilsdetector_ext.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+# ./build_all.sh -m -d -b PYCALGOS
+
+# import psana.pycalgos.utilsdetector_ext as pcud
+
+import numpy as np
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/pycalgos/utilsdetector_ext.pyx:11:8: 'numpy.pxd' not found
+[22/174] Compiling Cython source /project/psana/psana/pycalgos/NDArray_ext.pyx
+FAILED: [code=1] psana/ndarray.cpython-311-x86_64-linux-gnu.so.p/psana/psana/pycalgos/NDArray_ext.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/pycalgos/NDArray_ext.pyx -o psana/ndarray.cpython-311-x86_64-linux-gnu.so.p/psana/psana/pycalgos/NDArray_ext.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+#cimport cython
+#from libc.time cimport time_t, ctime
+#from libc.string cimport memcpy
+
+import numpy as np
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/pycalgos/NDArray_ext.pyx:17:8: 'numpy.pxd' not found
+[23/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_TimeStamp.cc.o
+[24/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TimeStamp.cc.o
+[25/174] Compiling C++ object psana/container.cpython-311-x86_64-linux-gnu.so.p/src_container.cc.o
+FAILED: [code=1] psana/container.cpython-311-x86_64-linux-gnu.so.p/src_container.cc.o 
+c++ -Ipsana/container.cpython-311-x86_64-linux-gnu.so.p -Ipsana -I../psana -Ixtcdata -I../xtcdata -I. -I.. -I/opt/_internal/cpython-3.11.15/include/python3.11 -I/opt/python/cp311-cp311/include/python3.11 -fvisibility=hidden -fvisibility-inlines-hidden -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psana/container.cpython-311-x86_64-linux-gnu.so.p/src_container.cc.o -MF psana/container.cpython-311-x86_64-linux-gnu.so.p/src_container.cc.o.d -o psana/container.cpython-311-x86_64-linux-gnu.so.p/src_container.cc.o -c ../psana/src/container.cc
+../psana/src/container.cc:5:10: fatal error: numpy/arrayobject.h: No such file or directory
+    5 | #include <numpy/arrayobject.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[26/174] Compiling Cython source /project/psana/psana/peakFinder/psalg_ext.pyx
+FAILED: [code=1] psana/psalg_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/psalg_ext.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/peakFinder/psalg_ext.pyx -o psana/psalg_ext.cpython-311-x86_64-linux-gnu.so.p/psana/psana/peakFinder/psalg_ext.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+ctypedef uint16_t extrim_t
+ctypedef uint32_t conmap_t
+
+#------------------------------
+
+cimport numpy as np
+        ^
+------------------------------------------------------------
+/project/psana/psana/peakFinder/psalg_ext.pyx:47:8: 'numpy.pxd' not found
+[27/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometry.cc.o
+[28/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsTypes.cc.o
+[29/174] Compiling Cython source /project/psana/psana/shmem/shmem.pyx
+[30/174] Compiling C++ object psalg/psalg/shmem/shmemWriter.p/src_shmemWriter.cc.o
+[31/174] Compiling Cython source /project/psana/psana/dgramlite.pyx
+[32/174] Compiling C++ object psalg/psalg/shmem/shmemClient.p/src_shmemClientApp.cc.o
+[33/174] Compiling Cython source /project/psana/psana/peakFinder/peakfinder8.pyx
+[34/174] Compiling Cython source /project/psana/src/dgramchunk.pyx
+[35/174] Compiling C++ object psana/peakfinder8.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_peakfinder8.cc.o
+[36/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o -c ../psalg/psalg/calib/src/CalibParsDB.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/src/CalibParsDB.cc:2:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[37/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o -c ../psalg/psalg/calib/src/CalibParsDBStore.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibParsDBStore.hh:24,
+                 from ../psalg/psalg/calib/src/CalibParsDBStore.cc:4:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[38/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o -c ../psalg/psalg/calib/src/CalibParsDBWeb.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibParsDBWeb.hh:5,
+                 from ../psalg/psalg/calib/src/CalibParsDBWeb.cc:1:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[39/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_Query.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_Query.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_Query.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_Query.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_Query.cc.o -c ../psalg/psalg/calib/src/Query.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/src/Query.cc:2:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[40/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o -c ../psalg/psalg/calib/src/CalibParsEpix100a.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/CalibParsEpix100a.hh:5,
+                 from ../psalg/psalg/calib/src/CalibParsEpix100a.cc:1:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[41/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o -c ../psalg/psalg/calib/src/CalibPars.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/src/CalibPars.cc:3:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[42/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o -c ../psalg/psalg/calib/src/CalibParsStore.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/CalibParsStore.hh:15,
+                 from ../psalg/psalg/calib/src/CalibParsStore.cc:4:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[43/174] Compiling C++ object psana/dgram.cpython-311-x86_64-linux-gnu.so.p/src_dgram.cc.o
+FAILED: [code=1] psana/dgram.cpython-311-x86_64-linux-gnu.so.p/src_dgram.cc.o 
+c++ -Ipsana/dgram.cpython-311-x86_64-linux-gnu.so.p -Ipsana -I../psana -Ixtcdata -I../xtcdata -I. -I.. -I/opt/_internal/cpython-3.11.15/include/python3.11 -I/opt/python/cp311-cp311/include/python3.11 -fvisibility=hidden -fvisibility-inlines-hidden -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psana/dgram.cpython-311-x86_64-linux-gnu.so.p/src_dgram.cc.o -MF psana/dgram.cpython-311-x86_64-linux-gnu.so.p/src_dgram.cc.o.d -o psana/dgram.cpython-311-x86_64-linux-gnu.so.p/src_dgram.cc.o -c ../psana/src/dgram.cc
+../psana/src/dgram.cc:14:10: fatal error: numpy/arrayobject.h: No such file or directory
+   14 | #include <numpy/arrayobject.h>
+      |          ^~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[44/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_ShapesData.cc.o
+[45/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_ShapesData.cc.o
+[46/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_DetectorStore.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_DetectorStore.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_DetectorStore.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_DetectorStore.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_DetectorStore.cc.o -c ../psalg/psalg/detector/src/DetectorStore.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorStore.hh:14,
+                 from ../psalg/psalg/detector/src/DetectorStore.cc:5:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[47/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetector.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetector.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetector.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetector.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetector.cc.o -c ../psalg/psalg/detector/src/AreaDetector.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/src/AreaDetector.cc:5:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[48/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetectorEpix100a.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetectorEpix100a.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetectorEpix100a.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetectorEpix100a.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetectorEpix100a.cc.o -c ../psalg/psalg/detector/src/AreaDetectorEpix100a.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorEpix100a.hh:5,
+                 from ../psalg/psalg/detector/src/AreaDetectorEpix100a.cc:2:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[49/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetectorStore.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetectorStore.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetectorStore.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetectorStore.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetectorStore.cc.o -c ../psalg/psalg/detector/src/AreaDetectorStore.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorStore.hh:14,
+                 from ../psalg/psalg/detector/src/AreaDetectorStore.cc:3:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[50/174] Compiling C++ object xtcdata/xtcdata/app/xtcsave.p/xtcsave.cc.o
+[51/174] Compiling C++ object xtcdata/xtcdata/app/hsdduplicate.p/hsdduplicate.cc.o
+../xtcdata/xtcdata/app/hsdduplicate.cc: In function ‘int main(int, char**)’:
+../xtcdata/xtcdata/app/hsdduplicate.cc:80:19: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   80 |             memcpy(cfg,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../xtcdata/xtcdata/xtc/XtcFileIterator.hh:4,
+                 from ../xtcdata/xtcdata/app/hsdduplicate.cc:9:
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+   43 | class Dgram : public Transition {
+      |       ^~~~~
+../xtcdata/xtcdata/app/hsdduplicate.cc:84:19: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   84 |             memcpy(big,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+   43 | class Dgram : public Transition {
+      |       ^~~~~
+../xtcdata/xtcdata/app/hsdduplicate.cc:88:19: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   88 |             memcpy(small,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+   43 | class Dgram : public Transition {
+      |       ^~~~~
+[52/174] Compiling C++ object psalg/psalg/hsd_valid.p/tests_hsd_valid.cc.o
+[53/174] Compiling C++ object psalg/psalg/digitizer/libdigitizer.so.p/src_Hsd.cc.o
+[54/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryCspad2x1V1.cc.o
+[55/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryEpix100V1.cc.o
+[56/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryEpix10kaV1.cc.o
+[57/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetectorJungfrau.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetectorJungfrau.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetectorJungfrau.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetectorJungfrau.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetectorJungfrau.cc.o -c ../psalg/psalg/detector/src/AreaDetectorJungfrau.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorJungfrau.hh:6,
+                 from ../psalg/psalg/detector/src/AreaDetectorJungfrau.cc:7:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[58/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetectorPnccd.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetectorPnccd.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetectorPnccd.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetectorPnccd.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetectorPnccd.cc.o -c ../psalg/psalg/detector/src/AreaDetectorPnccd.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorPnccd.hh:6,
+                 from ../psalg/psalg/detector/src/AreaDetectorPnccd.cc:8:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[59/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_AreaDetectorOpal.cc.o
+FAILED: [code=1] psalg/psalg/detector/libdetector.so.p/src_AreaDetectorOpal.cc.o 
+c++ -Ipsalg/psalg/detector/libdetector.so.p -Ipsalg/psalg/detector -I../psalg/psalg/detector -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/detector/libdetector.so.p/src_AreaDetectorOpal.cc.o -MF psalg/psalg/detector/libdetector.so.p/src_AreaDetectorOpal.cc.o.d -o psalg/psalg/detector/libdetector.so.p/src_AreaDetectorOpal.cc.o -c ../psalg/psalg/detector/src/AreaDetectorOpal.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorOpal.hh:6,
+                 from ../psalg/psalg/detector/src/AreaDetectorOpal.cc:8:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[60/174] Compiling C++ object psalg/psalg/datareader.p/app_datareader.cc.o
+FAILED: [code=1] psalg/psalg/datareader.p/app_datareader.cc.o 
+c++ -Ipsalg/psalg/datareader.p -Ipsalg/psalg -I../psalg/psalg -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -MD -MQ psalg/psalg/datareader.p/app_datareader.cc.o -MF psalg/psalg/datareader.p/app_datareader.cc.o.d -o psalg/psalg/datareader.p/app_datareader.cc.o -c ../psalg/psalg/app/datareader.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/detector/AreaDetector.hh:9,
+                 from ../psalg/psalg/detector/AreaDetectorStore.hh:14,
+                 from ../psalg/psalg/app/datareader.cc:33:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[61/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -I/opt/python/cp311-cp311/include/python3.11 -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++20 -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o -c ../psalg/psalg/calib/src/MDBWebUtils.cc
+In file included from ../psalg/psalg/calib/MDBWebUtils.hh:31,
+                 from ../psalg/psalg/calib/src/MDBWebUtils.cc:12:
+/usr/include/rapidjson/document.h: In member function ‘rapidjson::GenericStringRef<CharType>& rapidjson::GenericStringRef<CharType>::operator=(const rapidjson::GenericStringRef<CharType>&)’:
+/usr/include/rapidjson/document.h:319:82: error: assignment of read-only member ‘rapidjson::GenericStringRef<CharType>::length’
+  319 |     GenericStringRef& operator=(const GenericStringRef& rhs) { s = rhs.s; length = rhs.length; }
+      |                                                                           ~~~~~~~^~~~~~~~~~~~
+[62/174] Compiling C++ object psana/ndarray.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_WFAlgos.cc.o
+[63/174] Compiling C++ object psana/utilsdetector_ext.cpython-311-x86_64-linux-gnu.so.p/psana_pycalgos_UtilsDetector.cc.o
+[64/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_trim.cc.o
+[65/174] Compiling C++ object psana/peakFinder_ext.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_LocalExtrema.cc.o
+[66/174] Compiling C++ object psana/psalg_ext.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_LocalExtrema.cc.o
+[67/174] Compiling C++ object psana/peakfinder8.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_LocalExtrema.cc.o
+[68/174] Compiling C++ object psalg/psalg/shmem/shmemServer.p/src_shmemServer.cc.o
+[69/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_DirFileIterator.cc.o
+[70/174] Compiling Cython source /project/psana/psana/hsd/hsd.pyx
+FAILED: [code=1] psana/hsd.cpython-311-x86_64-linux-gnu.so.p/psana/psana/hsd/hsd.pyx.cpp 
+cython -M --fast-fail -3 --cplus /project/psana/psana/hsd/hsd.pyx -o psana/hsd.cpython-311-x86_64-linux-gnu.so.p/psana/psana/hsd/hsd.pyx.cpp
+
+Error compiling Cython file:
+------------------------------------------------------------
+...
+errprint=True
+
+# Import to use cython decorators
+cimport cython
+# Import the C-level symbols of numpy
+cimport numpy as cnp
+        ^
+------------------------------------------------------------
+/project/psana/psana/hsd/hsd.pyx:15:8: 'numpy.pxd' not found
+[71/174] Compiling C++ object psana/constFracDiscrim.cpython-311-x86_64-linux-gnu.so.p/psana_constFracDiscrim_src_ConstFracDiscrim.cc.o
+[72/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_AreaDetectorTypes.cc.o
+[73/174] Compiling C++ object psalg/psalg/shmem/libshmemcli.so.p/src_ShmemClient.cc.o
+[74/174] Compiling C++ object psalg/psalg/shmem/libshmemsrv.so.p/src_TransitionCache.cc.o
+[75/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_DataIter.cc.o
+[76/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_DataIter.cc.o
+[77/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_GeometryObject.cc.o
+[78/174] Compiling Cython source /project/psana/psana/eventbuilder.pyx
+[79/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryMatrixV1.cc.o
+[80/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_Logger.cc.o
+[81/174] Compiling C++ object psana/psalg_ext.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_PeakFinderAlgosLCLS1.cc.o
+[82/174] Compiling Cython source /project/psana/psana/parallelreader.pyx
+[83/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_UtilsConfig.cc.o
+[84/174] Compiling Cython source /project/psana/psana/smdreader.pyx
+[85/174] Compiling C++ object psana/peakFinder_ext.cpython-311-x86_64-linux-gnu.so.p/psana_peakFinder_src_PeakFinderAlgos.cc.o
+[86/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_Detector.cc.o
+[87/174] Compiling C++ object psalg/psalg/detector/libdetector.so.p/src_DetectorTypes.cc.o
+[88/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_NamesIter.cc.o
+[89/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_NamesIter.cc.o
+[90/174] Compiling C++ object xtcdata/xtcdata/app/xtcupdate.p/xtcupdate.cc.o
+[91/174] Compiling C++ object xtcdata/xtcdata/app/jungfrau.p/jungfrau.cc.o
+[92/174] Compiling C++ object psalg/psalg/shmem/libshmemsrv.so.p/src_XtcRunSet.cc.o
+[93/174] Compiling C++ object psalg/psalg/shmem/libshmemsrv.so.p/src_XtcMonitorServer.cc.o
+[94/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_ConfigIter.cc.o
+[95/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_ConfigIter.cc.o
+[96/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_Smd.cc.o
+../xtcdata/xtcdata/xtc/src/Smd.cc: In member function ‘XtcData::Dgram* XtcData::Smd::generate(XtcData::Dgram*, void*, const void*, uint64_t, uint64_t, XtcData::NamesLookup&, XtcData::NamesId)’:
+../xtcdata/xtcdata/xtc/src/Smd.cc:88:19: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   88 |             memcpy(dgOut, dgIn, sizeof(*dgIn));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../xtcdata/xtcdata/xtc/Smd.hh:4,
+                 from ../xtcdata/xtcdata/xtc/src/Smd.cc:1:
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+   43 | class Dgram : public Transition {
+      |       ^~~~~
+[97/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_Smd.cc.o
+../xtcdata/xtcdata/xtc/src/Smd.cc: In member function ‘XtcData::Dgram* XtcData::Smd::generate(XtcData::Dgram*, void*, const void*, uint64_t, uint64_t, XtcData::NamesLookup&, XtcData::NamesId)’:
+../xtcdata/xtcdata/xtc/src/Smd.cc:88:19: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+   88 |             memcpy(dgOut, dgIn, sizeof(*dgIn));
+      |             ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from ../xtcdata/xtcdata/xtc/Smd.hh:4,
+                 from ../xtcdata/xtcdata/xtc/src/Smd.cc:1:
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+   43 | class Dgram : public Transition {
+      |       ^~~~~
+[98/174] Compiling C++ object xtcdata/xtcdata/app/randomaccess.p/randomaccess.cc.o
+[99/174] Compiling C++ object xtcdata/xtcdata/app/smdwriter.p/smdwriter.cc.o
+../xtcdata/xtcdata/app/smdwriter.cc: In member function ‘virtual int DebugIter::process(XtcData::Xtc*, const void*)’:
+../xtcdata/xtcdata/app/smdwriter.cc:217:19: warning: unused variable ‘data’ [-Wunused-variable]
+  217 |             Data& data = shapesdata.data();
+      |                   ^~~~
+[100/174] Compiling C++ object xtcdata/xtcdata/app/xtcreader.p/xtcreader.cc.o
+../xtcdata/xtcdata/app/xtcreader.cc: In member function ‘virtual int DebugIter::process(XtcData::Xtc*, const void*)’:
+../xtcdata/xtcdata/app/xtcreader.cc:218:19: warning: unused variable ‘data’ [-Wunused-variable]
+  218 |             Data& data = shapesdata.data();
+      |                   ^~~~
+[101/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_GeometryAccess.cc.o
+[102/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_ArrayIO.cc.o
+[103/174] Compiling C++ object psalg/psalg/libpsalg.so.p/calib_src_ArrayIO.cc.o
+[104/174] Compiling C++ object xtcdata/xtcdata/app/amiwriter.p/amiwriter.cc.o
+[105/174] Compiling C++ object xtcdata/xtcdata/app/xtcwriter.p/xtcwriter.cc.o
+[106/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcUpdateIter.cc.o
+[107/174] Compiling C++ object xtcdata/xtcdata/xtc/libstaticXtc.a.p/src_XtcUpdateIter.cc.o
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /opt/python/cp311-cp311/bin/ninja -C /project/builddir
+
+                                                                     ✕ 219.15s
+cibuildwheel: error: Command ['sh', '-c', 'pip install meson ninja cython hatchling && bash /project/build_wheel_container.sh'] failed with code 1. 
+

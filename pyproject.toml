@@ -178,10 +178,23 @@ build = "cp311-*"
 skip = "pp* *-musllinux*"
 # WORKAROUND (2026-07-29): create-args added to unblock a rootless-cgroup
 # permission failure specific to sdfiana023's Weka-backed cgroup mount --
-# see PODMAN_TEST_LOG.md. Once the node/infra team fixes proper cgroup
+# see PODMAN_TEST_LOG.md. cgroupns=host and disable-host-mount added per
+# review (Thorsten, via boss), matching the manually-confirmed working
+# `podman run --runtime ~/bin/crun --cgroups=disabled --cgroupns=host`
+# command, and avoiding cibuildwheel's default `--volume=/:/host` bind
+# mount of the entire host filesystem (which includes Weka-backed paths)
+# into the container. Once the node/infra team fixes proper cgroup
 # delegation, this can revert to the plain form:
 #   container-engine = "podman"
-container-engine = { name = "podman", create-args = ["--cgroups=disabled"] }
+#
+# NOTE: the explicit --runtime path below is account-specific
+# (/sdf/home/m/mavaylon/bin/crun only exists under this user's home
+# directory) and is redundant with ~/.config/containers/containers.conf,
+# which already sets crun as the default runtime and was confirmed working
+# in the prior run. Added anyway for an explicit, self-contained config.
+# Anyone else running this needs their own crun at their own path, either
+# via their own containers.conf or by changing this path to match.
+container-engine = { name = "podman", create-args = ["--runtime", "/sdf/home/m/mavaylon/bin/crun", "--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
