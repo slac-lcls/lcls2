@@ -64,6 +64,18 @@ class _PendingEvent(_FakeEvent):
         pass  # recording does NOT auto-mark done
 
 
+class _FailOnceLease:
+    """Lease-like test double whose first consumer synchronization fails."""
+
+    def __init__(self):
+        self.wait_calls = 0
+
+    def wait_until_safe_to_reuse(self):
+        self.wait_calls += 1
+        if self.wait_calls == 1:
+            raise RuntimeError("consumer synchronization failed")
+
+
 class _FakeStream:
     """Fake cp.cuda.Stream."""
 
@@ -224,6 +236,35 @@ class TestEventPoolLeases:
         lease.register_consumer_done(pending_d2h)
         pool.finish_retire_next()
         assert pending_d2h._synced, "finish must join the late-registered consumer"
+        assert pool._slots[0] is None
+
+    def test_finish_retire_can_retry_after_consumer_sync_error(self):
+        """A failed join keeps the slot protected but does not lock retirement."""
+        from psana.gpu.gpu_stream import EventPool, _EventSlot
+
+        pool = EventPool(n=1)
+        lease = _FailOnceLease()
+        record = _EventSlot(
+            slot_id=0,
+            gpu_results_by_ts={},
+            cpu_evts=[],
+            stream=pool._streams[0],
+            leases=[lease],
+            leases_by_ts={},
+        )
+        pool._slots[0] = record
+        pool._write_idx = 1
+
+        pool.begin_retire_next()
+        with pytest.raises(RuntimeError, match="consumer synchronization failed"):
+            pool.finish_retire_next()
+
+        assert pool._retiring is None
+        assert pool._slots[0] is record, "failed consumer must keep slot protected"
+
+        assert pool.begin_retire_next() is record
+        pool.finish_retire_next()
+        assert lease.wait_calls == 2
         assert pool._slots[0] is None
 
 
@@ -627,3 +668,25 @@ class TestD2hPipeline:
             f"slot should be returned to queue exactly once, got {len(returned)}"
         )
         assert returned[0] is slot, "the returned object should be the slot itself"
+
+    def test_dec_ref_after_zero_does_not_queue_slot_twice(self):
+        """An extra release is harmless and cannot duplicate a free slot."""
+        from queue import SimpleQueue
+        from psana.gpu.gpu_events import _PinnedSlot
+
+        available = SimpleQueue()
+        slot = _PinnedSlot(
+            max_segs=1,
+            nrows=1,
+            ncols=1,
+            chunk_size=1,
+            available=available,
+        )
+        slot.claim(1)
+
+        slot.dec_ref()
+        slot.dec_ref()
+
+        assert slot._refs == 0
+        assert available.get_nowait() is slot
+        assert available.empty(), "slot must be returned exactly once"
