@@ -1,0 +1,184 @@
+======================================
+Building psana wheel
+======================================
+
+Python version: 3.13
+Python executable: python3
+
+CONDA_PREFIX: /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build
+EPICS_BASE: /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build/epics
+EPICS_HOST_ARCH: linux-x86_64
+
+=== Cleaning previous build ===
+
+=== Running Meson setup ===
+The Meson build system
+Version: 1.11.1
+Source dir: /sdf/scratch/users/m/mavaylon/gitrepos/new_lcls2/lcls2
+Build dir: /sdf/scratch/users/m/mavaylon/gitrepos/new_lcls2/lcls2/builddir
+Build type: native build
+Project name: lcls
+Project version: 4.3.0
+meson.build:1: WARNING: Project does not target a minimum version but uses feature introduced in '1.11': Adding Cython language without c.
+C compiler for the host machine: cc (gcc 8.5.0 "cc (GCC) 8.5.0 20210514 (Red Hat 8.5.0-15)")
+C linker for the host machine: cc ld.bfd 2.30-113
+C++ compiler for the host machine: c++ (gcc 8.5.0 "c++ (GCC) 8.5.0 20210514 (Red Hat 8.5.0-15)")
+C++ linker for the host machine: c++ ld.bfd 2.30-113
+Cython compiler for the host machine: cython (cython 0.28.1)
+Host machine cpu family: x86_64
+Host machine cpu: x86_64
+Program python3 found: YES (/sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build/bin/python3.13)
+Found pkg-config: YES (/usr/bin/pkg-config) 1.4.2
+Run-time dependency python found: YES 3.13
+WARNING: You should add the boolean check kwarg to the run_command call.
+         It currently defaults to false,
+         but it will default to true in meson 2.0.
+         See also: https://github.com/mesonbuild/meson/issues/9300
+Library rt found: YES
+Library curl found: YES
+Run-time dependency threads found: YES
+Run-time dependency OpenMP found: YES 4.5
+Run-time dependency python found: YES 3.13
+Library Resort64c_x64 found: NO
+Program nvcc found: NO
+Build targets in project: 42
+WARNING: Project specifies no minimum version but uses features which were added in versions:
+ * 1.11: {'Adding Cython language without c'}
+
+lcls 4.3.0
+
+  User defined options
+    build_daq      : false
+    conda_prefix   : /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build
+    epics_base     : /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build/epics
+    epics_host_arch: linux-x86_64
+    prefix         : /sdf/scratch/users/m/mavaylon/gitrepos/new_lcls2/lcls2/install
+
+Found ninja-1.13.2 at /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build/bin/ninja
+
+=== Running Meson compile ===
+ninja: Entering directory `/sdf/scratch/users/m/mavaylon/gitrepos/new_lcls2/lcls2/builddir'
+[1/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_Level.cc.o
+[2/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TransitionId.cc.o
+[3/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBTypes.cc.o
+[4/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TypeId.cc.o
+[5/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcIterator.cc.o
+[6/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcFileIterator.cc.o
+[7/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_TimeStamp.cc.o
+[8/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometry.cc.o
+[9/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDB.cc.o -c ../psalg/psalg/calib/src/CalibParsDB.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/src/CalibParsDB.cc:2:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[10/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibPars.cc.o -c ../psalg/psalg/calib/src/CalibPars.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/src/CalibPars.cc:3:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[11/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsTypes.cc.o
+[12/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDBWeb.cc.o -c ../psalg/psalg/calib/src/CalibParsDBWeb.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibParsDBWeb.hh:5,
+                 from ../psalg/psalg/calib/src/CalibParsDBWeb.cc:1:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[13/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryEpix100V1.cc.o
+[14/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsDBStore.cc.o -c ../psalg/psalg/calib/src/CalibParsDBStore.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibParsDBStore.hh:24,
+                 from ../psalg/psalg/calib/src/CalibParsDBStore.cc:4:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[15/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryEpix10kaV1.cc.o
+[16/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryCspad2x1V1.cc.o
+[17/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsEpix100a.cc.o -c ../psalg/psalg/calib/src/CalibParsEpix100a.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/CalibParsEpix100a.hh:5,
+                 from ../psalg/psalg/calib/src/CalibParsEpix100a.cc:1:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[18/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_ShapesData.cc.o
+[19/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_CalibParsStore.cc.o -c ../psalg/psalg/calib/src/CalibParsStore.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/CalibParsDB.hh:8,
+                 from ../psalg/psalg/calib/CalibPars.hh:8,
+                 from ../psalg/psalg/calib/CalibParsStore.hh:15,
+                 from ../psalg/psalg/calib/src/CalibParsStore.cc:4:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[20/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_trim.cc.o
+[21/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_Query.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_Query.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_Query.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_Query.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_Query.cc.o -c ../psalg/psalg/calib/src/Query.cc
+In file included from ../psalg/psalg/calib/Query.hh:11,
+                 from ../psalg/psalg/calib/src/Query.cc:2:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[22/174] Compiling C++ object psalg/psalg/digitizer/libdigitizer.so.p/src_Stream.cc.o
+[23/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_DirFileIterator.cc.o
+[24/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o
+FAILED: [code=1] psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o 
+c++ -Ipsalg/psalg/calib/libcalib.so.p -Ipsalg/psalg/calib -I../psalg/psalg/calib -Ipsalg -I../psalg -Ixtcdata -I../xtcdata -fdiagnostics-color=always -D_GLIBCXX_ASSERTIONS=1 -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -std=c++2a -O0 -g -fPIC -MD -MQ psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o -MF psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o.d -o psalg/psalg/calib/libcalib.so.p/src_MDBWebUtils.cc.o -c ../psalg/psalg/calib/src/MDBWebUtils.cc
+In file included from ../psalg/psalg/calib/src/MDBWebUtils.cc:12:
+../psalg/psalg/calib/MDBWebUtils.hh:31:10: fatal error: rapidjson/document.h: No such file or directory
+ #include <rapidjson/document.h>
+          ^~~~~~~~~~~~~~~~~~~~~~
+compilation terminated.
+[25/174] Compiling C++ object psalg/psalg/utils/libutils.so.p/src_Logger.cc.o
+[26/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_AreaDetectorTypes.cc.o
+[27/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_SegGeometryMatrixV1.cc.o
+[28/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_DataIter.cc.o
+[29/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_NamesIter.cc.o
+[30/174] Compiling C++ object psalg/psalg/calib/libcalib.so.p/src_ArrayIO.cc.o
+[31/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_Smd.cc.o
+../xtcdata/xtcdata/xtc/src/Smd.cc: In member function ‘XtcData::Dgram* XtcData::Smd::generate(XtcData::Dgram*, void*, const void*, uint64_t, uint64_t, XtcData::NamesLookup&, XtcData::NamesId)’:
+../xtcdata/xtcdata/xtc/src/Smd.cc:88:46: warning: ‘void* memcpy(void*, const void*, size_t)’ writing to an object of type ‘class XtcData::Dgram’ with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+             memcpy(dgOut, dgIn, sizeof(*dgIn));
+                                              ^
+In file included from ../xtcdata/xtcdata/xtc/Smd.hh:4,
+                 from ../xtcdata/xtcdata/xtc/src/Smd.cc:1:
+../xtcdata/xtcdata/xtc/Dgram.hh:43:7: note: ‘class XtcData::Dgram’ declared here
+ class Dgram : public Transition {
+       ^~~~~
+[32/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_GeometryObject.cc.o
+[33/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_ConfigIter.cc.o
+[34/174] Compiling C++ object psalg/psalg/digitizer/libdigitizer.so.p/src_Hsd.cc.o
+[35/174] Compiling C++ object psalg/psalg/geometry/libgeometry.so.p/src_GeometryAccess.cc.o
+[36/174] Compiling C++ object xtcdata/xtcdata/xtc/libxtc.so.p/src_XtcUpdateIter.cc.o
+ninja: build stopped: subcommand failed.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /sdf/group/lcls/ds/ana/sw/conda_bld/mavaylon/.conda/envs/psana-wheel-build/bin/ninja -C /sdf/scratch/users/m/mavaylon/gitrepos/new_lcls2/lcls2/builddir

@@ -3,9 +3,72 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lcls2"
+name = "psana"
 version="4.3"
-requires-python = ">=3.8"
+requires-python = ">=3.11"  # Source code supports Python 3.11+
+
+# Core dependencies identified via AST-based import analysis (2026-07-18)
+# Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
+dependencies = [
+    "numpy",        # 289 imports, 245 files - core array operations
+    "h5py",         # 14 imports, 14 files - HDF5 file I/O
+    "mpi4py",       # 42 imports, 35 files - parallel processing (requires system MPI)
+    "matplotlib",   # 37 imports, 25 files - plotting
+    "scipy",        # 27 imports, 17 files - scientific computing
+    "requests",     # 10 imports, 10 files - HTTP requests
+    "psutil",       # 14 imports, 12 files - system utilities
+    # "amitypes",   # 20 imports, 19 files - BLOCKED: not on PyPI (only lcls-ii conda channel)
+                    # Used for type hints in detector modules (Array1d, Array2d, Array3d)
+                    # TODO: Either publish amitypes to PyPI or vendor it in wheel
+                    # Without this, detector modules will fail: ImportError: No module named 'amitypes'
+]
+
+[project.optional-dependencies]
+# GUI tools (graphqt applications)
+gui = [
+    "PyQt5",  # 231 imports, 99 files
+]
+
+# Analysis packages
+analysis = [
+    "scikit-learn",  # 3 imports, 2 files
+    "pywt",          # 1 import - wavelets
+]
+
+# Database access
+database = [
+    "pymongo",  # 2 imports, 2 files
+]
+
+# Messaging
+messaging = [
+    "pyzmq",  # 5 imports (imported as 'zmq'), 5 files
+]
+
+# Machine learning / advanced computing
+ml = [
+    "dask",   # 2 imports, 1 file
+    "cupy",   # 2 imports, 1 file - GPU arrays
+    "torch",  # 2 imports, 1 file - PyTorch
+]
+
+# Monitoring
+monitoring = [
+    "prometheus_client",  # 2 imports, 1 file
+]
+
+# All optional dependencies
+all = [
+    "PyQt5",
+    "scikit-learn",
+    "pywt",
+    "pymongo",
+    "pyzmq",
+    "dask",
+    "cupy",
+    "torch",
+    "prometheus_client",
+]
 
 [project.scripts]
 syslog = "psalg.utils.syslog:main"
@@ -84,8 +147,62 @@ exclude = [
 ]
 
 [tool.hatch.build.sources]
+# NOTE: The build_wheel.sh script will replace this line with the correct Python version
+# Pattern: "install/lib/pythonX.Y/site-packages/..." will be set dynamically
 "install/lib" = "lib"
 "install/bin" = "bin"
 
 [tool.hatch.build.targets.wheel]
-packages = ["lcls2"]
+# NOTE: build_wheel.sh will set this to [] to use sources mapping only
+packages = ["psana", "psalg"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"install/lib/libxtc.so" = "psana/.libs/libxtc.so"
+"install/lib/libpsalg.so" = "psana/.libs/libpsalg.so"
+"install/lib/libutils.so" = "psana/.libs/libutils.so"
+"install/lib/libgeometry.so" = "psana/.libs/libgeometry.so"
+"install/lib/libcalib.so" = "psana/.libs/libcalib.so"
+"install/lib/libdigitizer.so" = "psana/.libs/libdigitizer.so"
+"install/lib/libdetector.so" = "psana/.libs/libdetector.so"
+"install/lib/libshmemsrv.so" = "psana/.libs/libshmemsrv.so"
+"install/lib/libshmemcli.so" = "psana/.libs/libshmemcli.so"
+
+# Container build target: cp311 only for the first Podman run (widen to
+# cp312/cp313 once this is confirmed working). See build_wheel_container.sh
+# and docs/topics/psana-wheel-packaging.md (2026-07-29 sections) for the
+# reasoning behind this before-all/before-build split -- most notably that
+# MPI is deliberately NOT installed here because psana's C++/Cython code has
+# no direct MPI linkage (mpi4py is a pure Python-level runtime dependency),
+# confirmed by a repo-wide grep of every meson.build file.
+[tool.cibuildwheel]
+build = "cp311-*"
+skip = "pp* *-musllinux*"
+# WORKAROUND (2026-07-29): create-args added to unblock a rootless-cgroup
+# permission failure specific to sdfiana023's Weka-backed cgroup mount --
+# see PODMAN_TEST_LOG.md. cgroupns=host and disable-host-mount added per
+# review (Thorsten, via boss), matching the manually-confirmed working
+# `podman run --runtime ~/bin/crun --cgroups=disabled --cgroupns=host`
+# command, and avoiding cibuildwheel's default `--volume=/:/host` bind
+# mount of the entire host filesystem (which includes Weka-backed paths)
+# into the container. Once the node/infra team fixes proper cgroup
+# delegation, this can revert to the plain form:
+#   container-engine = "podman"
+#
+# NOTE: the explicit --runtime path below is account-specific
+# (/sdf/home/m/mavaylon/bin/crun only exists under this user's home
+# directory) and is redundant with ~/.config/containers/containers.conf,
+# which already sets crun as the default runtime and was confirmed working
+# in the prior run. Added anyway for an explicit, self-contained config.
+# Anyone else running this needs their own crun at their own path, either
+# via their own containers.conf or by changing this path to match.
+container-engine = { name = "podman", create-args = ["--runtime", "/sdf/home/m/mavaylon/bin/crun", "--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+before-all = [
+    "dnf install -y libcurl-devel rapidjson-devel",
+]
+before-build = [
+    "pip install meson ninja cython hatchling",
+    "bash {project}/build_wheel_container.sh",
+]
