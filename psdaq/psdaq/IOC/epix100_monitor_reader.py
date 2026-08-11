@@ -6,24 +6,30 @@ Read the ePix100 slow-ADC environmental monitor stream via rogue.
 
 The ePix100 FPGA continuously sends small "monitor packets" on a dedicated
 PGP virtual channel (separate from the main image data channel).  Each packet
-carries a hardware timestamp plus 8 slow-ADC readings that encode temperatures,
+carries a packet counter plus 16 slow-ADC readings that encode temperatures,
 humidity, currents, and voltages.
 
 In the normal DAQ pipeline the DRP reads only the image data and the monitor
 channel is bypassed (EventBuilder.Bypass bit 3 = 0x38).  This script connects
 directly to those bypassed DMA channels and decodes the packets.
 
-Packet format (mirrors EpixMonStreamAsic in psdaq/drp/pgpread_epixM320mon.cc):
-  9 × uint64_t little-endian words
-    word[0]  : bits [27:0]*16 = hardware tick count  (156.25 MHz clock)
-    word[1]  : carrier thermistor          → temperature (°C)
-    word[2]  : digital-section thermistor  → temperature (°C)
-    word[3]  : humidity sensor             → %RH
-    word[4]  : misc LDO/supply current     → Amps
-    word[5]  : ASIC analog supply current  → Amps
-    word[6]  : misc supply voltage 1       → Volts
-    word[7]  : misc supply voltage 2       → Volts
-    word[8]  : ASIC 2.5 V analog voltage   → Volts
+Packet format (68 bytes = 17 × int32 little-endian):
+  word[ 0]        : packet counter (unsigned 32-bit)
+  word[ 1]        : channel  0  (raw signed int32)
+  ...
+  word[16]        : channel 15
+
+Channel mapping (from epix100 viewer envConf):
+  ch  7  (word[ 8])  Strong Back Temp.    raw/100   °C
+  ch  8  (word[ 9])  Ambient Temp.        raw/100   °C
+  ch  9  (word[10])  Humidity             raw/100   %
+  ch 10  (word[11])  ASIC Analog Current  raw/1000  A
+  ch 11  (word[12])  ASIC Digital Current raw/1000  A
+  ch 12  (word[13])  Guard Ring Current   raw/1000  A
+  ch 13  (word[14])  Analog Voltage       raw/1000  V
+  ch 14  (word[15])  Digital Voltage      raw/1000  V
+
+Channels 0-6 and 15 are unused/unconnected.
 
 VC mapping (from epix100_config.py / firmware README):
   lane 0, VC 0  →  SRP register bus   (used for firmware register access)
@@ -36,7 +42,10 @@ NOTE: The exact VC for the monitor packets depends on the firmware version.
       three bypassed channels simultaneously.
 
 Requirements (same environment as the DAQ epix100 configuration):
-    rogue  pyrogue  epix100a_gen2  ePixFpga  lcls2_epix_hr_pcie
+    rogue  pyrogue  ePixFpga  lcls2_epix_hr_pcie
+
+Optional (for --hutch EPICS publishing):
+    p4p
 
 Usage examples:
     # listen passively on VC 3 (monitor stream must already be enabled by DAQ):
@@ -48,23 +57,82 @@ Usage examples:
     # scan all three bypassed VCs at once:
     python epix100_monitor_reader.py --vcs 3,4,5
 
+    # publish decoded values as EPICS PVAccess PVs:
+    python epix100_monitor_reader.py --hutch TMO
+
     # non-default hardware:
     python epix100_monitor_reader.py --dev /dev/datadev_1 --lane 0 --vc 4
 """
 
 import argparse
-import math
+import contextlib
+import gc
+import os
 import signal
 import struct
+import subprocess
 import sys
+import tempfile
 import time
-from typing import Dict, List, Tuple
+from typing import Any, Dict, List, Optional
 
 import rogue
 import rogue.hardware.axi
 import rogue.interfaces.stream
 import rogue.protocols.srp
 import pyrogue
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Embedded init script (written to a temp file by enable_monitor_stream)
+# ──────────────────────────────────────────────────────────────────────────────
+
+# This is the content of what was previously epix100_init.py.
+# It is written to a NamedTemporaryFile and executed in a subprocess so that
+# the VC0 file descriptor is guaranteed to be released before the parent
+# process opens the monitor VCs.
+#
+# dma and srp are created inside _Board.__init__ and registered with
+# addInterface so that root.stop() (called by __exit__) invokes _stop() on
+# both objects.  _stop() calls closeAllSlave()/closeAllMaster() in C++, which
+# breaks the streamConnectBiDir shared_ptr cycle and allows the C++ destructors
+# to run and close the VC0 fd while the subprocess is still alive.
+# OS process exit provides a second guarantee for any remaining fds.
+_INIT_SCRIPT = """\
+import sys
+from psdaq.utils import enable_epix_100a_gen2
+import epix100a_gen2, ePixFpga as fpga
+import rogue, rogue.hardware.axi, rogue.protocols.srp, pyrogue
+
+dev = sys.argv[1]
+lane = int(sys.argv[2])
+period_ticks = int(sys.argv[3]) if len(sys.argv) > 3 else 100_000_000
+
+class _Board(pyrogue.Root):
+    def __init__(self):
+        super().__init__(name='ePixBoard', pollEn=False, initRead=False)
+        dma = rogue.hardware.axi.AxiStreamDma(dev, lane * 0x100 + 0, True)
+        srp = rogue.protocols.srp.SrpV3()
+        pyrogue.streamConnectBiDir(dma, srp)
+        self.addInterface(dma)
+        self.addInterface(srp)
+        self.add(fpga.Epix100a(
+            name='ePix100aFPGA', offset=0,
+            memBase=srp, hidden=False, enabled=True))
+
+with _Board() as root:
+    fw = root.ePix100aFPGA.AxiVersion.FpgaVersion.get()
+    print('  FPGA version   : 0x%08x' % fw)
+    root.ePix100aFPGA.SlowAdcRegisters.enable.set(1)
+    root.ePix100aFPGA.SlowAdcRegisters.StreamPeriod.set(period_ticks)
+    root.ePix100aFPGA.SlowAdcRegisters.StreamEn.set(1)
+    root.ePix100aFPGA.SlowAdcRegisters.enable.set(0)
+    print(f'  StreamPeriod : {period_ticks} ticks')
+    print('  StreamEn     : 1  (monitor stream active)')
+# root.__exit__ -> root.stop() -> addInterface._stop() breaks shared_ptr cycle
+# -> C++ destructors run -> VC0 fd closed before process exits
+"""
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Packet decoding
@@ -73,15 +141,56 @@ import pyrogue
 # Channel definitions confirmed from envConf in the epix100 viewer software.
 # 'id' = channel index (0-based); maps to packet word[id+1] since word[0] is counter.
 # 'conv' converts raw signed int32 to physical units.
-CHANNEL_DEFS = {
-    7: dict(name="Strong Back Temp.", unit="°C", conv=lambda d: d / 100),
-    8: dict(name="Ambient Temp.", unit="°C", conv=lambda d: d / 100),
-    9: dict(name="Humidity", unit="%", conv=lambda d: d / 100),
-    10: dict(name="ASIC Analog Current", unit="A", conv=lambda d: d / 1000),
-    11: dict(name="ASIC Digital Current", unit="A", conv=lambda d: d / 1000),
-    12: dict(name="Guard Ring Current", unit="A", conv=lambda d: d / 1000),
-    13: dict(name="Analog Voltage", unit="V", conv=lambda d: d / 1000),
-    14: dict(name="Digital Voltage", unit="V", conv=lambda d: d / 1000),
+# 'pv_signal' is the EPICS signal name used in the PV: HUTCH:EPIX100:NN:SIGNAL
+CHANNEL_DEFS: Dict[int, Any] = {
+    7: dict(
+        name="Strong Back Temp.",
+        unit="°C",
+        conv=lambda d: d / 100,
+        pv_signal="SBTEMP",
+    ),
+    8: dict(
+        name="Ambient Temp.",
+        unit="°C",
+        conv=lambda d: d / 100,
+        pv_signal="AMBTEMP",
+    ),
+    9: dict(
+        name="Humidity",
+        unit="%",
+        conv=lambda d: d / 100,
+        pv_signal="HUMD",
+    ),
+    10: dict(
+        name="ASIC Analog Current",
+        unit="A",
+        conv=lambda d: d / 1000,
+        pv_signal="ASIC_ACURR",
+    ),
+    11: dict(
+        name="ASIC Digital Current",
+        unit="A",
+        conv=lambda d: d / 1000,
+        pv_signal="ASIC_DCURR",
+    ),
+    12: dict(
+        name="Guard Ring Current",
+        unit="A",
+        conv=lambda d: d / 1000,
+        pv_signal="GRCURR",
+    ),
+    13: dict(
+        name="Analog Voltage",
+        unit="V",
+        conv=lambda d: d / 1000,
+        pv_signal="AVLTG",
+    ),
+    14: dict(
+        name="Digital Voltage",
+        unit="V",
+        conv=lambda d: d / 1000,
+        pv_signal="DVLTG",
+    ),
 }
 
 
@@ -90,7 +199,7 @@ class EpixMonitorPacket:
     One ePix100 slow-ADC monitor stream packet.
 
     Format (68 bytes = 17 × int32 little-endian):
-      word[ 0]        : packet counter
+      word[ 0]        : packet counter (decoded as unsigned)
       word[ 1]        : channel  0  (raw signed int32)
       ...
       word[16]        : channel 15
@@ -118,9 +227,10 @@ class EpixMonitorPacket:
             raise ValueError(
                 f"Packet too short: {len(data)} B  (expected {self.PACKET_BYTES} B)"
             )
-        # Signed int32 — needed for correct conversion of channels that can
-        # go negative (e.g. humidity at startup, unconnected sensors).
-        self.raw = struct.unpack_from(f"<{self.N_WORDS}i", data)
+        # word[0] is an unsigned counter; words[1:] are signed sensor readings.
+        counter = struct.unpack_from("<I", data, 0)[0]
+        signed = struct.unpack_from("<16i", data, 4)
+        self.raw = (counter,) + signed
 
     @property
     def counter(self) -> int:
@@ -130,7 +240,7 @@ class EpixMonitorPacket:
         """Raw signed int32 for channel ch (0–15)."""
         return self.raw[ch + 1]
 
-    def channel_value(self, ch: int) -> float:
+    def channel_value(self, ch: int) -> Optional[float]:
         """Converted physical value for a defined channel, or None if undefined."""
         if ch not in CHANNEL_DEFS:
             return None
@@ -155,6 +265,47 @@ class EpixMonitorPacket:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# EPICS PV setup
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+def build_epics_pvs(hutch: str, unit: int):
+    """
+    Create one p4p SharedPV per defined channel and register them with a
+    StaticProvider.
+
+    PV names follow the LCLS convention:
+        HUTCH:EPIX100:NN:SIGNAL
+    e.g. TMO:EPIX100:01:SBTEMP
+
+    Returns (provider, pvs) where pvs is {channel_number: SharedPV}.
+    Both must be kept alive for the duration of the server.
+
+    Requires p4p (pip install p4p).
+    """
+    from p4p.nt import NTScalar
+    from p4p.server import StaticProvider
+    from p4p.server.thread import SharedPV
+
+    prefix = f"{hutch.upper()}:EPIX100:{unit:02d}:"
+    # float64 with display fields (units, description, limits, alarm, timestamp)
+    nt_float = NTScalar("d", display=True)
+    provider = StaticProvider("epix-mon")
+    pvs = {}
+
+    for ch, defn in CHANNEL_DEFS.items():
+        pv_name = prefix + defn["pv_signal"]
+        # initial=0.0 opens the PV immediately so clients can connect before
+        # the first real packet arrives.
+        pv = SharedPV(nt=nt_float, initial=0.0)
+        provider.add(pv_name, pv)
+        pvs[ch] = pv
+        print(f"  {pv_name}  ({defn['unit']})")
+
+    return provider, pvs
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # rogue stream receiver
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -166,11 +317,15 @@ class MonitorStreamSlave(rogue.interfaces.stream.Slave):
 
     rogue strips the AXI stream framing (header/footer) before calling
     _acceptFrame, so `frame` contains only the packet payload.
+
+    If a pvs dict ({channel_number: SharedPV}) is supplied, decoded values
+    are posted to the corresponding EPICS PVs after each packet.
     """
 
-    def __init__(self, vc: int):
+    def __init__(self, vc: int, pvs: Optional[dict] = None):
         super().__init__()
         self.vc = vc
+        self.pvs = pvs or {}
         self.n_received = 0
         self.n_errors = 0
         self.last_packet = None
@@ -185,9 +340,15 @@ class MonitorStreamSlave(rogue.interfaces.stream.Slave):
         try:
             pkt = EpixMonitorPacket(bytes(buf))
             self.last_packet = pkt
+
+            if self.pvs:
+                ts = time.time()
+                for ch, pv in self.pvs.items():
+                    pv.post(pkt.channel_value(ch), timestamp=ts)
+
             print(
                 f"\n[VC={self.vc}] packet #{self.n_received}  ({size} B  "
-                f"raw[0]=0x{pkt.raw[0]:016x})"
+                f"counter=0x{pkt.counter:08x})"
             )
             print(pkt)
         except Exception as exc:
@@ -204,10 +365,34 @@ class MonitorStreamSlave(rogue.interfaces.stream.Slave):
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def open_monitor_vcs(dev: str, lane: int, vcs: List[int]):
+@contextlib.contextmanager
+def _silence_stderr():
+    """Redirect fd 2 to /dev/null for the duration of the block.
+
+    Python-level sys.stderr redirection does not suppress output from C++
+    libraries (such as rogue's built-in error logging).  Redirecting at the
+    OS file-descriptor level silences both.  The original fd is saved and
+    restored in the finally clause so that subsequent output is unaffected.
+    """
+    saved = os.dup(2)
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    os.dup2(devnull, 2)
+    os.close(devnull)
+    try:
+        yield
+    finally:
+        os.dup2(saved, 2)
+        os.close(saved)
+
+
+def open_monitor_vcs(dev: str, lane: int, vcs: List[int], pvs: Optional[dict] = None):
     """
     Open rogue AxiStreamDma handles for the given virtual channels and
     attach a MonitorStreamSlave to each.
+
+    Any failure to open a VC (device taken, permissions, etc.) is treated as
+    non-fatal: a warning is printed and that VC is skipped.  This avoids
+    fragile exception-type and message-string matching across rogue versions.
 
     Returns (dma_handles, slaves) dicts keyed by vc number.
     """
@@ -216,82 +401,60 @@ def open_monitor_vcs(dev: str, lane: int, vcs: List[int]):
 
     for vc in vcs:
         dma_dest = lane * 0x100 + vc
-        print(f"  DMA dest 0x{dma_dest:03x}  (lane={lane}, VC={vc})")
-        dma = rogue.hardware.axi.AxiStreamDma(dev, dma_dest, True)
-        slv = MonitorStreamSlave(vc=vc)
+        try:
+            with _silence_stderr():
+                dma = rogue.hardware.axi.AxiStreamDma(dev, dma_dest, True)
+        except Exception as exc:
+            print(
+                f"  DMA dest 0x{dma_dest:03x} (lane={lane}, VC={vc}) could not be "
+                f"opened — skipping.  ({exc})"
+            )
+            continue
+        slv = MonitorStreamSlave(vc=vc, pvs=pvs)
         pyrogue.streamConnect(dma, slv)
         dma_handles[vc] = dma
         slaves[vc] = slv
+        print(f"  DMA dest 0x{dma_dest:03x} opened  (lane={lane}, VC={vc})")
 
     return dma_handles, slaves
 
 
-def build_register_root(dev: str, lane: int):
+def enable_monitor_stream(dev: str, lane: int, period_ticks: int = 100_000_000) -> None:
     """
-    Build a minimal pyrogue.Root that exposes the ePix100a FPGA register tree
-    over SRP on VC0.
+    Enable the slow-ADC monitor stream by running _INIT_SCRIPT in a subprocess.
 
-    This is only needed for --enable (to write SlowAdcRegisters).
-    Follows the pattern of EpixBoard / epix100_init() in
-        psdaq/psdaq/configdb/epix100_config.py
+    The script is written to a NamedTemporaryFile and executed with the current
+    Python interpreter.  When the subprocess exits the OS closes every fd
+    unconditionally, guaranteeing that VC0 is free when this function returns
+    regardless of any Python or C++ reference-count cycles inside the child.
 
-    The epix100a_gen2 and ePixFpga packages are part of the DAQ software
-    stack and must be on sys.path (psdaq.utils.enable_epix_100a_gen2 does this).
+    period_ticks=100_000_000  ≈ 1 Hz  (100 MHz slow-ADC firmware clock).
     """
-    from psdaq.utils import enable_epix_100a_gen2  # adds ePixFpga to sys.path
-    import epix100a_gen2  # noqa: F401 (side-effect import)
-    import ePixFpga as fpga
+    tmp_path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as tmp:
+            tmp.write(_INIT_SCRIPT)
+            tmp_path = tmp.name
 
-    vc0_dma = rogue.hardware.axi.AxiStreamDma(dev, lane * 0x100 + 0, True)
-    srp = rogue.protocols.srp.SrpV3()
-    pyrogue.streamConnectBiDir(vc0_dma, srp)
-
-    class _EpixBoard(pyrogue.Root):
-        def __init__(self, srp_bus, **kw):
-            super().__init__(name="ePixBoard", description="ePix100a Board", **kw)
-            self.add(
-                fpga.Epix100a(
-                    name="ePix100aFPGA",
-                    offset=0,
-                    memBase=srp_bus,
-                    hidden=False,
-                    enabled=True,
-                )
+        result = subprocess.run(
+            [sys.executable, tmp_path, dev, str(lane), str(period_ticks)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        print(result.stdout.rstrip())
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"enable_monitor_stream subprocess failed (rc={result.returncode}):\n"
+                f"{result.stderr}"
             )
-
-    # pollEn=False  : do not continuously poll registers in the background
-    # initRead=False: do not read ALL registers on startup — that scan triggers
-    #                 a Transaction Timeout if another process (e.g. the DAQ)
-    #                 already owns VC0, or if the firmware isn't fully ready.
-    #                 Matches the pattern used in epix100_config.py for pbase and
-    #                 epixhr2x2_config.py for cbase.
-    root = _EpixBoard(srp, pollEn=False, initRead=False)
-    root.__enter__()
-    return root, vc0_dma  # keep vc0_dma alive (rogue holds a weak ref)
-
-
-def enable_monitor_stream(root, period_ticks: int = 100_000_000) -> None:
-    """
-    Enable the slow-ADC monitor stream via firmware register writes.
-
-    period_ticks=100_000_000 ≈ 1 Hz (100 MHz firmware clock).
-
-    Note: In epix100_config.py the matching block ends with enable.set(0)
-    which disables *pyrogue polling* of this module but leaves the firmware
-    StreamEn register set.  We leave polling enabled here so register reads
-    also work for diagnostics.
-    """
-    regs = root.ePix100aFPGA.SlowAdcRegisters
-    regs.enable.set(1)
-    regs.StreamPeriod.set(period_ticks)
-    regs.StreamEn.set(1)
-    fw_ver = root.ePix100aFPGA.AxiVersion.FpgaVersion.get()
-    print(f"  FPGA version   : 0x{fw_ver:08x}")
-    print(
-        f"  StreamPeriod   : {period_ticks} ticks  "
-        f"≈ {period_ticks / 1e8:.2f} s per packet"
-    )
-    print("  StreamEn       : 1  (monitor stream active)")
+        print("  VC0 released (subprocess exited).")
+    finally:
+        if tmp_path is not None:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -310,7 +473,12 @@ def parse_args():
         default="/dev/datadev_0",
         help="PCIe DMA device (default: /dev/datadev_0)",
     )
-    ap.add_argument("--lane", default=0, type=int, help="PGP lane number (default: 0)")
+    ap.add_argument(
+        "--lane",
+        default=0,
+        type=int,
+        help="PGP lane number (default: 0)",
+    )
     ap.add_argument(
         "--vc",
         default=3,
@@ -327,16 +495,30 @@ def parse_args():
     ap.add_argument(
         "--enable",
         action="store_true",
-        help="Enable the monitor stream by writing SlowAdcRegisters "
-        "via SRP on VC0.  Use only when the DAQ is NOT running "
-        "(requires exclusive register access).",
+        help="Enable the monitor stream by writing SlowAdcRegisters via SRP on VC0. "
+        "Use only when the DAQ is NOT running (requires exclusive register access).",
     )
     ap.add_argument(
         "--period",
         default=100_000_000,
         type=int,
-        help="Monitor stream period in firmware ticks when --enable "
-        "is used (default: 1e8 ≈ 1 Hz at 100 MHz clock).",
+        help="Monitor stream period in firmware ticks when --enable is used "
+        "(default: 1e8 ≈ 1 Hz at 100 MHz clock).",
+    )
+    ap.add_argument(
+        "--hutch",
+        default=None,
+        metavar="NAME",
+        help="Hutch name for EPICS PV publishing (e.g. TMO, CXI, MFX). "
+        "When given, decoded values are posted as PVAccess PVs: "
+        "HUTCH:EPIX100:NN:SIGNAL.  Requires p4p.",
+    )
+    ap.add_argument(
+        "--unit",
+        default=1,
+        type=int,
+        metavar="N",
+        help="Detector unit number used in the EPICS PV prefix (default: 1)",
     )
     return ap.parse_args()
 
@@ -348,26 +530,7 @@ def main():
         [int(v.strip()) for v in args.vcs.split(",")] if args.vcs else [args.vc]
     )
 
-    # ── optional: enable the stream via register writes ──────────────────
-    reg_root = None
-    vc0_dma = None
-    if args.enable:
-        print("Connecting to ePix100a FPGA registers (SRP on VC0) …")
-        reg_root, vc0_dma = build_register_root(dev=args.dev, lane=args.lane)
-        enable_monitor_stream(reg_root, period_ticks=args.period)
-        print()
-
-    # ── open monitor stream DMA channels ─────────────────────────────────
-    print(
-        f"Opening monitor virtual channel(s) {monitor_vcs} "
-        f"on {args.dev} lane {args.lane} …"
-    )
-    dma_handles, slaves = open_monitor_vcs(
-        dev=args.dev, lane=args.lane, vcs=monitor_vcs
-    )
-    print("Listening for monitor packets … (Ctrl-C to stop)\n")
-
-    # ── run until Ctrl-C ─────────────────────────────────────────────────
+    # ── signal handling ───────────────────────────────────────────────────
     stop = [False]
 
     def _sig(sig, _frame):
@@ -376,6 +539,53 @@ def main():
     signal.signal(signal.SIGINT, _sig)
     signal.signal(signal.SIGTERM, _sig)
 
+    # ── optional: enable the stream via register writes ───────────────────
+    # Uses a subprocess so the VC0 fd is released on process exit regardless
+    # of any C++ shared_ptr cycles inside the child.
+    if args.enable:
+        print(
+            "Enabling monitor stream via subprocess (VC0 released on subprocess exit) …"
+        )
+        try:
+            enable_monitor_stream(
+                dev=args.dev, lane=args.lane, period_ticks=args.period
+            )
+        except Exception as exc:
+            print(f"  WARNING: enable_monitor_stream failed: {exc}", file=sys.stderr)
+            print("  Continuing to listen anyway …", file=sys.stderr)
+        print()
+
+    # ── optional: build EPICS PVs ─────────────────────────────────────────
+    epics_server = None
+    pvs = {}
+    if args.hutch:
+        print(
+            f"Creating EPICS PVs  (hutch={args.hutch.upper()}, unit={args.unit:02d}) …"
+        )
+        from p4p.server import Server
+
+        provider, pvs = build_epics_pvs(args.hutch, args.unit)
+        epics_server = Server(providers=[provider])
+        print()
+
+    # ── open DMA channels and listen ──────────────────────────────────────
+    print(
+        f"Opening monitor virtual channel(s) {monitor_vcs} "
+        f"on {args.dev} lane {args.lane} …"
+    )
+    dma_handles, slaves = open_monitor_vcs(
+        dev=args.dev, lane=args.lane, vcs=monitor_vcs, pvs=pvs
+    )
+
+    if not slaves:
+        print("No DMA channels could be opened — exiting.", file=sys.stderr)
+        sys.exit(1)
+
+    print(
+        f"Opened {len(dma_handles)} of {len(monitor_vcs)} requested VC(s).  "
+        f"Listening for monitor packets … (Ctrl-C to stop)\n"
+    )
+
     try:
         while not stop[0]:
             time.sleep(0.1)
@@ -383,8 +593,21 @@ def main():
         total = sum(s.n_received for s in slaves.values())
         errors = sum(s.n_errors for s in slaves.values())
         print(f"\nDone.  Received {total} packets total, {errors} decode errors.")
-        if reg_root is not None:
-            reg_root.__exit__(None, None, None)
+
+        # Release DMA destinations so the DAQ (or any other process) can
+        # reclaim them immediately after this script exits.
+        #
+        # Clearing the dict drops each AxiStreamDma Python wrapper's refcount
+        # to zero.  In CPython this immediately triggers the C++ destructor,
+        # which joins the rogue receive thread, closes the fd, and releases the
+        # dmaSetMaskBytes kernel entry for that destination.
+        #
+        # This works because streamConnect(dma, slv) is UNIDIRECTIONAL
+        # (dma→slv only): nothing holds a C++ shared_ptr back to dma, so
+        # there is no cycle preventing the destructor from running.
+        dma_handles.clear()
+        slaves.clear()
+        gc.collect()  # belt-and-suspenders: flush any deferred destructors
 
 
 if __name__ == "__main__":
