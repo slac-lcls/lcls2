@@ -27,10 +27,18 @@ jobs:
           auto-update-conda: true
           activate-environment: build-conda-env
           channels: lcls-ii, conda-forge
-          environment-file: .daq_20250402.txt
+          environment-file: .daq_20250402_r9.txt
 
       - name: Build
-        run: ./build_all.sh -d
+        run: |
+          # build_all.sh now requires ENV_TYPE to be set before it will run
+          # at all (normally done by sourcing setup_env.sh, which is S3DF/CDS
+          # specific and won't work on a GitHub-hosted runner). "legacy" is
+          # the same value setup_env.sh itself sets.
+          # -d is kept here: in the current build_all.sh, -d turns the DAQ
+          # build ON, which this workflow actually needs.
+          export ENV_TYPE=legacy
+          ./build_all.sh -d
 
       - name: Run Tests
         run: |
