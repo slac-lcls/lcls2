@@ -51,6 +51,9 @@ jobs:
           export PATH=$(pwd)/install/bin:${PATH}
           SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
+          # test_daqstat.py builds a real QApplication; headless runners
+          # have no display to attach to.
+          export QT_QPA_PLATFORM=offscreen
           # Only the confirmed-safe tests are included here -- see
           # .github/workflows/daq_test_readme.md for the full triage of every
           # file in psdaq/psdaq/tests/, including which ones are deliberately
@@ -61,4 +64,28 @@ jobs:
                  psdaq/psdaq/tests/test_sbatch_manager_output_path.py \
                  psdaq/psdaq/tests/test_daqmgr_spawn_console.py \
                  psdaq/psdaq/tests/test_daqmgr_strict_job_info.py \
-                 psdaq/psdaq/tests/test_subproc.py
+                 psdaq/psdaq/tests/test_subproc.py \
+                 psdaq/psdaq/tests/test_configdb.py \
+                 psdaq/psdaq/tests/test_json2xtc.py \
+                 psdaq/psdaq/tests/test_daqstat.py
+
+      - name: Run test_rogue.py (isolated)
+        # Kept out of the main pytest step on purpose: the test's own
+        # comment notes rogue "has a rather complex boost dependency which
+        # we have gotten wrong in the past." Running it alone keeps a
+        # hang/crash from taking down or obscuring the rest of the suite.
+        # timeout-minutes is a safety net in case it hangs instead of
+        # failing cleanly.
+        timeout-minutes: 5
+        run: |
+          export PATH=$(pwd)/install/bin:${PATH}
+          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
+          pytest psdaq/psdaq/tests/test_rogue.py
+
+      - name: Run test_shlex.py (manual review, not pytest)
+        # No pytest import and no asserts in this file -- it just prints
+        # input/output pairs for a human to read. Run as a plain script;
+        # there is no pass/fail signal to check here.
+        run: |
+          python psdaq/psdaq/tests/test_shlex.py

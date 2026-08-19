@@ -23,33 +23,39 @@ This isn't the first time this exact problem has hit this repo's CI. It was alre
 
 `.daq_20250402_r9.txt` (this branch's `first try` commit) is a separately regenerated lockfile, not derived from the already-fixed `.daq_20250402.txt`, so it silently reintroduced `gdb-15.1` and the same failure. None of the tests in `run_daq_tests.yaml` need a debugger, so gdb is dropped from this file the same way it was dropped before.
 
+## Status summary
+
+All 11 `test_*.py` files in `psdaq/psdaq/tests/` are now wired into `run_daq_tests.yaml` in one of three forms: the main `pytest` step, an isolated `pytest` step of their own, or a plain-script step. Scope here was making sure each one *runs* on a GitHub-hosted runner, not fixing anything about what the test itself checks or how well it checks it — a few of these (`test_configdb.py`, `test_json2xtc.py`) have real quality issues in the test itself, noted below, that are left as-is.
+
+None of this has been exercised by an actual CI run yet — the first real run will confirm whether `test_rogue.py` and `test_daqstat.py` behave as expected on a fresh runner (see their entries below for what to watch for).
+
 ## Add to the pytest step — safe as-is
 
-Currently included in `run_daq_tests.yaml`.
+Currently included in `run_daq_tests.yaml`, main `Run Tests` step.
 
 - `test_run_slurm_with_retries.py`, `test_sbatch_env_dump.py`, `test_sbatch_manager_output_path.py` — despite the names, none of these touch real SLURM. `test_run_slurm_with_retries.py` writes a fake `sbatch` shell script to a temp dir and puts it first on `PATH`, testing the Python retry logic only. The other two use `monkeypatch`/`tmp_path` fixtures and only check generated command strings or computed paths, no subprocess call to `sbatch`/`srun` ever happens.
 - `test_daqmgr_spawn_console.py`, `test_daqmgr_strict_job_info.py` — fully mocked (`monkeypatch` on `Popen` and on `run_slurm_with_retries`), no real process spawning or SLURM calls.
 - `test_subproc.py` — self-contained `asyncio` subprocess tests using `sys.executable`, no external DAQ dependencies.
 
+## Add to the pytest step — runs for real, caveats are on the test itself
+
+Currently included in `run_daq_tests.yaml`, main `Run Tests` step. Unlike the group above, these actually exercise real code paths (their guard/skip conditions don't trigger in this environment), and each has a known wrinkle. None of these wrinkles are being fixed here — only that the test is able to run.
+
+- `test_configdb.py` — always reports as **skipped**, not passed: line 2 is an unconditional `pytest.skip("skip so we can avoid pymongo dependency", allow_module_level=True)`, and `pymongo` isn't in `.daq_20250402_r9.txt`. Included for completeness; expect a skip notice, not coverage, until someone adds `pymongo` to the environment and removes that line — not something this CI setup is fixing.
+- `test_json2xtc.py` — has real assertions, but silently returns (reports as **passed**, not skipped) if the `json2xtc` executable isn't found on `PATH`: `if not exe_found: return`. If `build_all.sh -d` doesn't actually build/install `json2xtc`, this is a false green that tests nothing. That's a test-quality issue in `test_json2xtc.py` itself (it should skip or fail loudly instead of silently passing) — not addressed here.
+- `test_daqstat.py` — gated with `pytest.importorskip("PyQt5")`, which won't trigger since `PyQt5` is present, so `daqstat.main()` runs for real with `-h`/`-v`/`--help`/`--version`. Headless GitHub runners need a display for `QApplication` construction even for help-text-only invocations, so the `Run Tests` step now sets `QT_QPA_PLATFORM=offscreen` before the `pytest` call. This is an environment fix (in scope), not a test-code fix.
+
+## Add, but isolated in its own step — not bundled into the main pytest run
+
+Currently included in `run_daq_tests.yaml` as its own `Run test_rogue.py (isolated)` step, with a 5-minute `timeout-minutes` safety net.
+
+- `test_rogue.py` — just `import rogue`, but the test's own comment says: *"do this simple test since rogue has a rather complex boost dependency which we have gotten wrong in the past."* `rogue` is present in the environment file, so this genuinely attempts the import on a fresh GitHub Actions runner. Split into its own step (rather than the main pytest list) so that if it hangs or crashes instead of failing cleanly, it doesn't take down or obscure the rest of the suite's results. If it fails cleanly, that's between the DAQ team and the `rogue` package, not something to fix here.
+
 ## Add, but as its own separate step — not pytest, plain script
 
-Not yet added to either workflow.
+Currently included in `run_daq_tests.yaml` as its own `Run test_shlex.py (manual review, not pytest)` step.
 
-- `test_shlex.py` — has no `pytest.skip()`, no `import pytest` at all, and runs to completion fine via `python psdaq/psdaq/tests/test_shlex.py` (hits `if __name__ == '__main__': run()`). The logic (`fix_env_whitespace`) is real and exercised, but there are no `assert` statements anywhere, it just prints input/output pairs for a human to read. Needs to be run as a plain script step, not collected by pytest, and someone still has to eyeball the output to judge correctness.
-
-## Don't add — currently dead, zero signal either way
-
-Not included in either workflow.
-
-- `test_configdb.py` — contains a real, well-written, `assert`-based test (`Test_CONFIGDB.test_one()`), but it's unreachable in *every* invocation mode: line 2 is an unconditional `pytest.skip("skip so we can avoid pymongo dependency", allow_module_level=True)`, which raises immediately regardless of whether the module is collected by pytest or run directly with `python test_configdb.py`. Execution never reaches the class definition, `run()`, or the `if __name__ == "__main__":` block. Confirmed `pymongo` isn't even in `.daq_20250402.txt`, so this would need both the skip line removed and `pymongo` added to the environment before it could ever run again. Adding it to CI as-is produces a skip notice, not coverage.
-
-## Needs verification before trusting in CI — will actually execute, not skip
-
-Not yet added to either workflow — each of these has an optional-dependency guard, but the dependency is confirmed present in `.daq_20250402.txt`, so the guard won't trigger and the real code path will run.
-
-- `test_rogue.py` — just `import rogue`, but the test's own comment says: *"do this simple test since rogue has a rather complex boost dependency which we have gotten wrong in the past."* `rogue` is present in the environment file, so this will genuinely attempt the import on a fresh GitHub Actions runner, not skip. Worth running in isolation first.
-- `test_daqstat.py` — gated with `pytest.importorskip("PyQt5")`. `PyQt5` is present, so it won't skip, it calls `daqstat.main()` with `-h`/`-v`/`--help`/`--version`. Headless GitHub runners sometimes need `QT_QPA_PLATFORM=offscreen` even for help-text-only invocations, depending on how the app constructs its `QApplication`. Worth a standalone run before trusting it in the full suite.
-- `test_json2xtc.py` — a real test with real assertions, but it silently returns (reports as **passed**, not skipped) if the `json2xtc` executable isn't found on `PATH`: `if not exe_found: return`. Needs confirmation that `build_all.sh -d` actually builds and installs `json2xtc` before this can be trusted, otherwise it's a false green that tests nothing.
+- `test_shlex.py` — has no `pytest.skip()`, no `import pytest` at all, and runs to completion fine via `python psdaq/psdaq/tests/test_shlex.py` (hits `if __name__ == '__main__': run()`). The logic (`fix_env_whitespace`) is real and exercised, but there are no `assert` statements anywhere, it just prints input/output pairs for a human to read. There's no pytest pass/fail signal here — the step runs and exits 0 as long as the script itself doesn't raise; someone still has to read the log output to judge correctness.
 
 ## Files outside this directory, checked but out of scope here
 
