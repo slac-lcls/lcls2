@@ -1,6 +1,8 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
+DAQ_CONDA_ENVIRONMENT=daq_20260311
+
 if [[ "${ENV_TYPE:-}" == "ana" ]]; then
   echo "Please do not mix ana and daq setup scripts"
   echo "You sourced the ${ENV_TYPE} script befores"
@@ -17,7 +19,7 @@ export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
 export DIR_PSDM=/sdf/group/lcls/ds/ana/
 export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
 
-conda activate daq_20250402_r9
+conda activate ${DAQ_CONDA_ENVIRONMENT}
 
 AUTH_FILE=$DIR_PSDM"/sw/conda2/auth.sh"
 if [ -f "$AUTH_FILE" ]; then
@@ -54,7 +56,6 @@ export PROCMGR_EXPORT=$PROCMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,N
 # for daqbatch
 export DAQMGR_EXPORT=RDMAV_FORK_SAFE=1,RDMAV_HUGEPAGES_SAFE=1  # See fi_verbs man page regarding fork()
 export DAQMGR_EXPORT=$DAQMGR_EXPORT,OPENBLAS_NUM_THREADS=1,OMP_NUM_THREADS=1,NUMEXPR_NUM_THREADS=1,PS_PARALLEL='none'
-
 # cpo: seems that in more recent versions blas is creating many threads
 export OPENBLAS_NUM_THREADS=1
 export OMP_NUM_THREADS=1
