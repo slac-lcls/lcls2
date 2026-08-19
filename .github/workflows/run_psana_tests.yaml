@@ -1,5 +1,11 @@
 name: Test psana
 on:
+  # TEMP: remove this push trigger before merging to main. workflow_dispatch
+  # only works once a workflow exists on the default branch, so pushing to
+  # this branch is how we get CI status on the PR while iterating.
+  push:
+    branches:
+      - ci_daq
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
