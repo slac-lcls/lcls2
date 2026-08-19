@@ -1,11 +1,5 @@
 name: Test DAQ
 on:
-  # TEMP: remove this push trigger before merging to main. workflow_dispatch
-  # only works once a workflow exists on the default branch, so pushing to
-  # this branch is how we get CI status on the PR while iterating.
-  push:
-    branches:
-      - ci_daq
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
@@ -54,11 +48,8 @@ jobs:
           # test_daqstat.py builds a real QApplication; headless runners
           # have no display to attach to.
           export QT_QPA_PLATFORM=offscreen
-          # Only the confirmed-safe tests are included here -- see
-          # .github/workflows/daq_test_readme.md for the full triage of every
-          # file in psdaq/psdaq/tests/, including which ones are deliberately
-          # left out and why, and which ones still need verification before
-          # being trusted here.
+          # See .github/workflows/DAQ_TESTS_README.md for the full test
+          # triage and the reasoning behind each group and nuance below.
           pytest psdaq/psdaq/tests/test_run_slurm_with_retries.py \
                  psdaq/psdaq/tests/test_sbatch_env_dump.py \
                  psdaq/psdaq/tests/test_sbatch_manager_output_path.py \
@@ -69,7 +60,7 @@ jobs:
                  psdaq/psdaq/tests/test_json2xtc.py \
                  psdaq/psdaq/tests/test_daqstat.py
 
-      - name: Run test_rogue.py (isolated)
+      - name: Run test_rogue.py
         # Kept out of the main pytest step on purpose: the test's own
         # comment notes rogue "has a rather complex boost dependency which
         # we have gotten wrong in the past." Running it alone keeps a
@@ -83,7 +74,7 @@ jobs:
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           pytest psdaq/psdaq/tests/test_rogue.py
 
-      - name: Run test_shlex.py (manual review, not pytest)
+      - name: Run test_shlex.py
         # No pytest import and no asserts in this file -- it just prints
         # input/output pairs for a human to read. Run as a plain script;
         # there is no pass/fail signal to check here.
