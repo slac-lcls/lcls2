@@ -10,15 +10,22 @@ using namespace XtcData;
 using namespace Drp;
 using namespace Pds;
 using namespace Pds::Eb;
+using json    = nlohmann::json;
 using logging = psalg::SysLog;
-using us_t = std::chrono::microseconds;
+using us_t    = std::chrono::microseconds;
 
+
+static bool getDioFlag(const Parameters& para)
+{
+    return para.kwargs.find("directIO") != para.kwargs.end()
+         ? para.kwargs.at("directIO") != "no" // Default to "yes"
+         : true;
+}
 
 TebReceiver::TebReceiver(const Parameters& para, DrpBase& drp) :
     TebReceiverBase(para, drp),
     m_mon       (drp.mebContributor()),
-    m_fileWriter(std::max(m_pool.pebble.bufferSize(), para.maxTrSize),
-                 const_cast<Parameters&>(para).kwargs["directIO"] != "no"), // Default to "yes"
+    m_fileWriter(std::max(m_pool.pebble.bufferSize(), para.maxTrSize), getDioFlag(para)),
     m_smdWriter (std::max(m_pool.pebble.bufferSize(), para.maxTrSize), para.maxTrSize),
     m_para      (para)
 {
@@ -57,9 +64,20 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     // This function is called by the base class's process() method to complete
     // processing and dispose of the event.  It presumes that the caller has
     // already vetted index and result
+
     TransitionId::Value transitionId = result.service();
     auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
                                                         : m_pool.transitionDgrams[index];
+    uint64_t pulseId = dgram->pulseId();
+
+    // pass everything except L1 accepts and slow updates to control level
+    if ((transitionId != TransitionId::L1Accept)) {
+        if (transitionId != TransitionId::SlowUpdate) {
+            // send pulseId to inproc so it gets forwarded to the collection
+            json msg = createPulseIdMsg(pulseId);
+            m_inprocSend.send(msg.dump());
+        }
+    }
 
     if (writing()) {                    // Won't ever be true for Configure
         // write event to file if it passes event builder or if it's a transition
@@ -87,9 +105,9 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
     m_evtSize = sizeof(Dgram) + dgram->xtc.sizeofPayload();
 
     // Measure latency before sending dgram for monitoring
-    if (dgram->pulseId() - m_latPid > 1300000/14) { // 10 Hz
+    if (pulseId - m_latPid > 1300000/14) { // 10 Hz
         m_latency = Pds::Eb::latency<us_t>(dgram->time);
-        m_latPid = dgram->pulseId();
+        m_latPid = pulseId;
     }
 
     if (m_mon.enabled()) {

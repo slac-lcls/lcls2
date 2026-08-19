@@ -98,28 +98,15 @@ class ReadoutSystemDefn(TypedDict):
     - dataDev1: The second device file if bifurcation is on.
     """
     name: str
-    cfgLane: int
     dataDev0: str
     dataDev1: str
-
-
-class DataDevConfig(TypedDict):
-    """A full system layout is specified by multiple panels + a config C1100.
-
-    You provide:
-    - cfgDev: The device file for the config C1100 ("/dev/datadev_1b") etc.
-    - ReadoutSystems: A list of panel descriptions as above.
-    """
-    cfgDev: str
-    ReadoutSystems: List[ReadoutSystemDefn]
 
 
 def construct_devs_dict(
     dataDev0: str,
     dataDev1: Optional[str],
-    cfgDev: str = "/dev/datadev_1b",
-    cfgLane: int = 0,
-) -> DataDevConfig:
+    rosNum: int = 0,
+) -> ReadoutSystemDefn:
     """Construct the panel dictionary in appropriate format for the root object.
 
     Args:
@@ -127,28 +114,19 @@ def construct_devs_dict(
 
         dataDev1 (str | None): The second device file if using bifurcation.
 
-        cfgLane (int): The lane for the configuration C1100 used by this panel.
-
-        cfgDev (str): The configuration C1100 device file.
+        rosNum (int): The readout system identifier.
 
     Returns:
-        devCfgDict (DataDevConfig): The device configuration dict suitable for
+        devReadoutSystem (ReadoutSystemDefn): The device configuration dict suitable for
             the root object.
     """
-    MyReadoutSystem: ReadoutSystemDefn = {
-        "name": f"ROS[{cfgLane}]",
-        "cfgLane": cfgLane,
+    devReadoutSystem: ReadoutSystemDefn = {
+        "name": f"ROS[{rosNum}]",
         "dataDev0": dataDev0,
         "dataDev1": dataDev1 if dataDev1 else "",
     }
-    devCfgDict: DataDevConfig = {
-        "cfgDev": cfgDev,
-        "ReadoutSystems": [
-            MyReadoutSystem,
-        ],
-    }
 
-    return devCfgDict
+    return devReadoutSystem
 
 
 def mask_to_lane(lanemask: int) -> int:
@@ -170,8 +148,6 @@ def epixuhr3x2_init(
     arg,
     dev="/dev/datadev_1a",
     lanemask=0x1,
-    cfgDev="/dev/datadev_1b",
-    cfgLaneMask=0x1,
     xpmpv=None,
     timebase="186M",
     verbosity=0
@@ -194,29 +170,25 @@ def epixuhr3x2_init(
 
     logger.info("epixuhr3x2_init")
 
-    cfgLane: int = mask_to_lane(lanemask=cfgLaneMask)
-    if (cfgLaneMask != (1 << cfgLane)):
-        raise ValueError("Only 1 lane should be specified from the lanemask!")
-
-    configDevDict: DataDevConfig = construct_devs_dict(
+    rosNum: int = 0
+    devReadoutSystem: ReadoutSystemDefn = construct_devs_dict(
         dataDev0=dev,
         dataDev1=None,
-        cfgDev=cfgDev,
-        cfgLane=cfgLane
+        # rosNum=rosNum, # Will need to update eventually for multi-panel
     )
 
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
+    emulator: bool = False
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
-        ReadoutSystems = configDevDict["ReadoutSystems"],
-        cfgDev         = configDevDict["cfgDev"],
+        ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc
         # dualPcie specifies using bifurcated bus - we're not
         dualPcie       = False,
         defaultFile    = "",        # No config to load
         # Emulator doesn't have all registers - emuMode prevents erroneous r/w in root
-        emuMode        = True,
+        emuMode        = emulator,
         justCtrl       = True,      # If False, data doesn't make it to DAQ
         loadPllCsv     = False,     # No config to load
         standAloneMode = False,     # Use LCLSII timing
@@ -237,18 +209,16 @@ def epixuhr3x2_init(
     # The manager object encapsulates access to the rogue object and simplifies
     # most routines. Many registers can be read and written with properties.
     # Methods will do bulk configuration via many writes.
-    emulator: bool = False
     manager: EpixUHR3x2_Manager = EpixUHR3x2_Manager(
         root=detectorRoot,
         nasics=6,
-        readout_system_num=cfgLane,
+        readout_system_num=rosNum,
         logger_name=LOGGER_NAME,
         emulator=emulator,
     )
     base["manager"] = manager
 
-    manager.init_board()
-    manager.initialize_timing(timebase=timebase)
+    manager.init_board(timebase=timebase)
 
     # Firmware info reads can hang if the bus is locked or PGP is down.
     # We will try to read them, but not crash if it fails.
@@ -343,6 +313,12 @@ def epixuhr3x2_connectionInfo(base, alloc_json_str):
     det_type: str = "epixuhr3x2"
     connect_info["short_sn_id"] = f"{det_type}_{manager.ShortSerNo}_0"
 
+    print(
+        "**** ePixUHR3x2 Panel Short Serial Number Identifier:",
+        connect_info["short_sn_id"],
+        "****"
+    )
+
     return connect_info
 
 
@@ -434,8 +410,9 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
         manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
         manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
 
-    # Setup the debug timing outputs
+    # Setup BoardCtrl3x2Readout Registers - this also sets the debug timing outputs
     board_ctrl: Dict[str, Any] = cfg["expert"]["FebFpga"]["App"]["BoardCtrl3x2Readout"]
+    # manager.setup_board_control_registers(board_ctrl=board_ctrl)
     manager.setup_debug_timing_out(board_ctrl=board_ctrl)
 
     # Setup trigger register config - tell detector to run off LCLS2 triggers

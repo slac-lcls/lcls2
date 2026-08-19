@@ -4,6 +4,9 @@ from psdaq.configdb.typed_json import *
 from psdaq.cas.xpm_utils import timTxId
 import epics
 
+from psdaq.utils import enable_lcls2_pgp_pcie_apps
+from psdaq.cas.pgpmonitor import PgpMonitor
+
 import json
 import time
 import pprint
@@ -121,6 +124,8 @@ def config_timing(epics_prefix, timebase='186M'):
 def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timebase="186M", verbosity=0):
     global prefix
     global lane
+    global base
+
     logging.getLogger().setLevel(40-10*verbosity)
     prefix = epics_prefix
     base['prefix'] = epics_prefix
@@ -131,6 +136,16 @@ def wave8_init(epics_prefix, dev='/dev/datadev_0', lanemask=1, xpmpv=None, timeb
 
     print(f'--- lanemask {lanemask:x}  lane {lane}  timebase {timebase} ---')
 
+    pcie_card = PgpMonitor(pollEn=False,
+                           initRead=False,
+                           dev=dev,
+                           lanemask=lanemask,
+                           numVc=2)
+    pcie_card.__enter__()
+    pcie_card.init_lanes()
+
+    base['pcie'] = pcie_card
+    
     wave8_unconfig(base)
 
     return base
@@ -141,6 +156,9 @@ def wave8_init_feb(slane=None,schan=None):
         lane = int(slane)
 
 def wave8_connectionInfo(base, alloc_json_str):
+
+    base['pcie'].check_lanes('connect')
+
     epics_prefix = base['prefix']
 
     #  Switch to LCLS2 Timing
@@ -171,25 +189,6 @@ def wave8_connectionInfo(base, alloc_json_str):
     print(f'wave8_connect returning {d}')
     return d
 
-def detect_version():
-    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
-    file_datadev='/proc/datadev_0'
-    isC1100 = False
-    try:
-        with open(file_datadev, 'r', encoding='utf-8') as file:
-            for line in file:
-                if 'Build String' in line:
-                    isC1100 = 'C1100' in line
-                    break
-        return isC1100
-
-    except FileNotFoundError:
-        logging.error(f"Error: File '{file_datadev}' not found.")
-        return False
-    except Exception as e:
-        logging.error(f"Error reading file: {e}")
-        return False
-     
 def user_to_expert(prefix, cfg, full=False):
     global group
     global ocfg
@@ -197,10 +196,13 @@ def user_to_expert(prefix, cfg, full=False):
 
     d = {}
     try:
+        # this register no longer exists for IOC firmware/software starting at version 3.2.0
+        # for that more recent software the IOC will manage setting of the delay register
+        # which is used both in IOC LocalConfig mode ("standalone") and in ReadoutGroup mode ("daq").
+        # this common register is: TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay - cpo aug 3 2026          
         ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:EvrV2CoreTriggers:EvrV2TriggerReg[0]:Delay')
         if ctrlDelay is None:
-            print("Warning: Failed to retrieve control trigger delay.  Using partition delay as fallback.")
-            ctrlDelay      = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            print("Failed to retrieve controls trigger delay: IOC controls delay.")
             delayFlag = False
         else:
             delayFlag = True
@@ -209,6 +211,7 @@ def user_to_expert(prefix, cfg, full=False):
         clksPerFid = 200 if timebase=='186M' else 238
         nsPerClk   = 7000/1300. if timebase=='186M' else 1000/119.
 
+        # don't do anything if we have IOC software >= 3.2.0 since IOC will manage the delay register - cpo
         if delayFlag:
             #  LCLS2 timing. Let controls set the delay value.
             print('ctrlDelay {:}  partitionDelay {:}'.format(ctrlDelay, partitionDelay))
@@ -227,6 +230,17 @@ def user_to_expert(prefix, cfg, full=False):
                 raise ValueError('triggerDelay computes to < 0')
 
             ctxt_put(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay', triggerDelay)
+        else:
+            # new mode where IOC controls the delay value
+            # the IOC will set this value to 0 if the TriggerDelay(ns) is smaller than partitionDelay
+            # (a.k.a L0Delay).  Check we have legal value in readoutGroup mode which daq uses.
+            iocDelay = ctxt_get(prefix + 'TriggerEventManager:TriggerEventBuffer[0]:TriggerDelay')
+            if iocDelay is None:
+                raise ValueError('Failed to retrieve IOC delay value')
+            if iocDelay==0:
+                print('Raise controls trigger delay >= {:} nanoseconds'.format(
+                    partitionDelay * nsPerClk))
+                raise ValueError('TriggerDelay(ns) too small')
 
     except KeyError:
         pass
@@ -251,6 +265,8 @@ def wave8_config(base,connect_str,cfgtype,detname,detsegm,grp):
     prefix = base['prefix']
     timebase = base['timebase']
     group = grp
+
+    base['pcie'].check_lanes('config')
 
     #  Read the configdb
     cfg = get_config(connect_str,cfgtype,detname,detsegm)
@@ -439,6 +455,8 @@ def wave8_update(update):
 
 #  This is really shutdown/disconnect
 def wave8_unconfig(base):
+
+    base['pcie'].check_lanes('unconfig')
 
     epics_prefix = base['prefix']
     # cpo removed setting Partition=1 (aka readout group) here

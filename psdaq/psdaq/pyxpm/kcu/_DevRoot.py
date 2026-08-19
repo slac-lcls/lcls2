@@ -94,12 +94,15 @@ class DevRoot(pr.Root):
         # Determine boardType
         boardType = None
         isXpmGen  = False
+        fwVersion = None
         result = subprocess.run(['cat',dev.replace('/dev/','/proc/')],capture_output=True,text=True)
         for line in result.stdout.split('\n'):
             if 'Build' in line:
                 if 'C1100' in line: boardType = 'C1100'
                 if 'Kcu1500' in line: boardType = 'Kcu1500'
                 if 'Gen' in line: isXpmGen = True
+            if 'Firmware Version' in line:
+                fwVersion = int(line.split(':')[1],16)
         if boardType is None:
             raise RuntimeError('Could not parse boardType from datadev')
 
@@ -115,7 +118,7 @@ class DevRoot(pr.Root):
         # Create empty list
         self.dmaStreams     = [[None for x in range(4)] for y in range(4)]
         self._srp           = [None for x in range(4)]
-        self._dbg           = [None for x in range(4)]
+        self._dbg           = [DmaHandle(name=f'DmaHandle[{x}]') for x in range(4)]
         self.enVcMask       = [False for x in range(4)]
 
         # Create DMA streams
@@ -129,7 +132,6 @@ class DevRoot(pr.Root):
                     else:
                         self.dmaStreams[lane][vc] = rogue.interfaces.stream.TcpClient('localhost', (8000+2)+(512*lane)+2*vc)
 
-                    self._dbg[vc] = DmaHandle(name='DmaHandle')
                     # Connect the streams
                     self.dmaStreams[lane][vc] >> self._dbg[vc]
 
@@ -138,16 +140,16 @@ class DevRoot(pr.Root):
         # Add XVC
         if xvcPort:
             print(f'Connecting XVC to port {xvcPort}')
-            self.dmaStreams[1][0] = rogue.hardware.axi.AxiStreamDma(dev,0x100,1)
+            self.dmaStreams[lane+1][0] = rogue.hardware.axi.AxiStreamDma(dev,0x100*(lane+1),1)
             self.xvc = rogue.protocols.xilinx.Xvc(xvcPort)
             self.addProtocol(self.xvc)
-            self.dmaStreams[1][0] == self.xvc
+            self.dmaStreams[lane+1][0] == self.xvc
             
         # Check if not doing simulation
         if (dev != 'sim'):
 
             # Create the stream interface
-            lane = 0
+#            lane = 0
             if True:
 
                 # Check if PGP[lane].VC[0] = SRPv3 (register access) is enabled

@@ -24,7 +24,7 @@ static std::string errorString(cudaError_t res) {
 
 // -------------------------------------------------------------------
 
-DataGPU::DataGPU(const char* path) {
+DataDev::DataDev(const char* path) {
     fd_ = open(path, O_RDWR);
     if (fd_ < 0) {
         logging::critical("Error opening %s: %m", path);
@@ -34,36 +34,30 @@ DataGPU::DataGPU(const char* path) {
 
 // -------------------------------------------------------------------
 
-CudaContext::CudaContext() {
-
-    CUresult status;
-    if ((status = cuInit(0)) != CUDA_SUCCESS) {
-        logging::critical("Error while initting cuda, code %d", status);
-        abort();
-    }
-}
-
 bool CudaContext::init(int device, bool quiet) {
 
-    int devs = 0;
-    if (chkError(cuDeviceGetCount(&devs)))
+    int devCount = 0;
+    if (chkError(cudaGetDeviceCount(&devCount)))
         return false;
-    logging::debug("Total GPU devices: %d", devs);
-    if (devs <= 0) {
+    logging::debug("Total GPU devices: %d", devCount);
+    if (devCount <= 0) {
         logging::error("No GPU devices available!");
         return false;
     }
 
+    if (!quiet)  listDevices();
+
     device = device < 0 ? 0 : device;
-    if (devs <= device) {
-        logging::error("Invalid GPU device number %d! There are only %d devices available", device, devs);
+    if (devCount <= device) {
+        logging::error("Invalid GPU device number %d! There are only %d devices available", device, devCount);
         return false;
     }
+    _devNo = device;
 
     // Actually get the device...
     CUresult status;
     if ((status = cuDeviceGet(&device_, device)) != CUDA_SUCCESS) {
-        logging::error("Could not get GPU device! code=%d", status);
+        logging::error("Failed to get GPU device %d: code=%d", device, status);
         return false;
     }
 
@@ -71,25 +65,17 @@ bool CudaContext::init(int device, bool quiet) {
     char name[256];
     if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
         return false;
-    logging::info("Selected GPU device: %s", name);
+    logging::info("Selected GPU device %d: %s", device, name);
 
     cudaDeviceProp deviceProp;
     chkError(cudaGetDeviceProperties(&deviceProp, device_));
     logging::info("Compute Capability: %d.%d", deviceProp.major, deviceProp.minor);
 
-    // Set required attributes
-    if (!getAttribute(CU_DEVICE_ATTRIBUTE_CAN_USE_STREAM_MEM_OPS_V1)) {
-        logging::warning("This device does not support CUDA Stream Operations, this code will not run!");
-        logging::error("  Consider setting NVreg_EnableStreamMemOPs=1 when loading the NVIDIA kernel module, "
-                       "if your GPU is supported.");
-        return false;
-    }
-
     // Report memory totals
     size_t global_mem = 0;
     if (chkError(cuDeviceTotalMem(&global_mem, device_)))
         return false;
-    logging::debug("Global memory: %zu MB", global_mem >> 20);
+    logging::info("Global memory: %zu MB", global_mem >> 20);
     if (global_mem > (size_t)4 << 30)
         logging::debug("64-bit Memory Address support");
 
@@ -290,12 +276,11 @@ void gpuUnmapFpgaMem(GpuDmaBuffer_t* mem)
     chkError(cuMemFree(mem->dptr));
 }
 
-DmaTgt_t dmaTgtGet(const DataGPU& gpu)
+DmaTgt_t dmaTgtGet(const DataDev& datadev)
 {
-    // @todo: This line addresses only lane 0
-    const uint64_t dynRtReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_DynamicRouteMasks0.offset;
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
     uint32_t regVal;
-    auto rc = dmaReadRegister(gpu.fd(), dynRtReg, &regVal);
+    auto rc = dmaReadRegister(datadev.fd(), reg, &regVal);
     if (rc) perror("dmaTgtGet: dmaWriteRegister");
 
     DmaTgt_t tgt;
@@ -307,23 +292,22 @@ DmaTgt_t dmaTgtGet(const DataGPU& gpu)
     return tgt;
 }
 
-void dmaTgtSet(const DataGPU& gpu, DmaTgt_t tgt)
+void dmaTgtSet(const DataDev& datadev, DmaTgt_t tgt)
 {
-    // @todo: This line addresses only lane 0
-    const uint64_t dynRtReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_DynamicRouteMasks0.offset;
-    auto rc = dmaWriteRegister(gpu.fd(), dynRtReg, tgt);
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_AxisDeMuxSelect.offset;
+    auto rc = dmaWriteRegister(datadev.fd(), reg, tgt);
     if (rc) perror("dmaTgtSet: dmaWriteRegister");
 }
 
 /** Function to reset the DMA buffer index */
-void dmaIdxReset(const DataGPU& gpu)
+void dmaIdxReset(const DataDev& datadev)
 {
     // Toggle the writeEnable register to reset the DMA buffer index
-    const uint64_t writeEnReg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnable.offset;
+    const uint64_t reg = GPU_ASYNC_CORE_OFFSET + GpuAsyncReg_WriteEnableV1.offset;
     uint32_t value;
-    auto rc = dmaReadRegister(gpu.fd(), writeEnReg, &value);
-    rc = dmaWriteRegister(gpu.fd(), writeEnReg, value & ~GpuAsyncReg_WriteEnable.bitMask);
+    auto rc = dmaReadRegister(datadev.fd(), reg, &value);
+    rc = dmaWriteRegister(datadev.fd(), reg, value & ~GpuAsyncReg_WriteEnableV1.bitMask);
     if (rc) perror("dmaIdxReset: dmaWriteRegister 1");
-    rc = dmaWriteRegister(gpu.fd(), writeEnReg, value);
+    rc = dmaWriteRegister(datadev.fd(), reg, value);
     if (rc) perror("dmaIdxReset: dmaWriteRegister 2");
 }

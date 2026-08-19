@@ -7,13 +7,14 @@
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
 
-#include "GpuAsyncLib.hh"
+#include "gpuUtils.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "drp/spscqueue.hh"
 
 namespace cg = cooperative_groups;
 
 using namespace Pds;
+using namespace Drp::Gpu;
 
 using us_t = std::chrono::microseconds;
 
@@ -391,15 +392,16 @@ static __global__ void _calibrate(float*   const        __restrict__ calibBuffer
   // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   for (int i = pixel; i < nPixels; i += stride) {
-    const auto gain  = (in[i] >> GainOffset) & ((1 << GainBits) - 1);
-    const auto peds  = &peds_ [gain * nPixels];
-    const auto gains = &gains_[gain * nPixels];
-    const auto data  = in[i] & ((1 << GainOffset) - 1);
-    out[i] = (data - peds[i]) * gains[i];
+    auto const              gain  = (in[i] >> GainOffset) & ((1 << GainBits) - 1);
+    auto const __restrict__ peds  = &peds_ [gain * nPixels];
+    auto const __restrict__ gains = &gains_[gain * nPixels];
+    auto const              data  = in[i] & ((1 << GainOffset) - 1);
+    out[i] = (float(data) - peds[i]) * gains[i];
   }
 }
 
@@ -525,15 +527,16 @@ static __global__ void _calibrate2(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropiate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   for (int i = pixel; i < nPixels; i += stride) {
     auto        datum = in[i];
-    const auto  gain  = (datum >> GainOffset) & ((1 << GainBits) - 1);
-    const auto& pg    = pedGains[gain * nPixels + i];
+    auto const  gain  = (datum >> GainOffset) & ((1 << GainBits) - 1);
+    auto const& pg    = pedGains[gain * nPixels + i];
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - pg.ped) * pg.gain;
+    out[i] = (float(datum) - pg.ped) * pg.gain;
   }
 }
 
@@ -664,8 +667,8 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   extern __shared__ uint8_t smem[];
   //auto sIn    = (uint16_t*)smem;                      // uint16_t sIn[TPB];
@@ -687,7 +690,7 @@ static __global__ void _calibrate3(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - sPeds[pgIdx]) * sGains[pgIdx];
+    out[i] = (float(datum) - sPeds[pgIdx]) * sGains[pgIdx];
   }
 }
 
@@ -812,8 +815,8 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
   // Place the calibrated data for a given panel in the calibBuffers array at the appropriate offset
   auto const __restrict__ out = &calibBuffers[index * calibBufsCnt + panel * nPixels];
   auto const __restrict__ in  = &rawBuffers[index * calibBufsCnt]; // Raw data for the given panel
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const pixel  = blockIdx.x * blockDim.x + threadIdx.x;
+  auto const stride = blockDim.x * gridDim.x;
 
   extern __shared__ uint8_t smem[];
   //auto sIn       = (uint16_t*)smem;                      // uint16_t sIn[TPB];
@@ -833,7 +836,7 @@ static __global__ void _calibrate4(float*   const        __restrict__ calibBuffe
     //__syncthreads();
     cg::sync(cta);
     datum &= ((1 << GainOffset) - 1);
-    out[i] = (datum - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
+    out[i] = (float(datum) - sPedGains[pgIdx].ped) * sPedGains[pgIdx].gain;
   }
 }
 
@@ -971,8 +974,8 @@ int main(int argc, char **argv)
       case 'B':  nBlocks     = std::stoi(optarg);  break;
       default: {
         printf("%s [-n <nEvents (%u)>] [-g <nGains (%u)>] [-p <nPixels (%u)>] "
-               "[t <nThreads (%u)] [t <nBlocks (%u)]\n",
-               argv[0], nEvents, nGains, nPixels, nThreads, nBlocks);
+               "[-t <nThreads (%u)] [-T <nGpuThreads (%u)] [-B <nBlocks (%u)]\n",
+               argv[0], nEvents, nGains, nPixels, nThreads, nGpuThreads, nBlocks);
         return 1;
       }
     }
@@ -1008,11 +1011,15 @@ int main(int argc, char **argv)
     }
   }
 
+  // Determine the processing resources to use.  Slightly better times seem to
+  // be achieved when nPixels/stride is an integer.  Adjusting nBlocks for this
+  // might lead to a partially used SM.  Aim for maximum occupancy.
   cudaDeviceProp prop;
   cudaGetDeviceProperties(&prop, 0);
   const auto tpMP{prop.maxThreadsPerMultiProcessor};
-  printf("GPU threads per SM: %u, total threads: %u, SMs %.1f, pixels per thread: %u\n",
-         tpMP, nBlocks * nGpuThreads, float(nBlocks * nGpuThreads) / tpMP, nPixels / (nBlocks * nGpuThreads));
+  const auto stride{nBlocks * nGpuThreads};
+  printf("GPU threads per SM: %d, total threads: %u, SMs %.1f, pixels per thread: %.1f\n",
+         tpMP, stride, float(stride) / tpMP, float(nPixels) / stride);
 
   const auto nSMs{(nBlocks * nGpuThreads + tpMP-1) / tpMP};
   const auto shSize{nGpuThreads * (/*sizeof(uint16_t) +*/ (1 << GainBits) * (sizeof(pedestals[0][0]) + sizeof(gains[0][0])))};

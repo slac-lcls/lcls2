@@ -149,7 +149,7 @@ int main(int argc, char* argv[])
   const char* filename = 0;
   unsigned intf = 0;
   unsigned partn = 0;
-  const char* payName = 0;
+  [[maybe_unused]] const char* payName = 0;
   const char* addName = 0;
   const char* prtName = 0;
   bool lverbose = false;
@@ -222,7 +222,7 @@ int main(int argc, char* argv[])
   //  Open the bld receiver
   //
 
-  Pds::Bld::Client  bld(intf, 
+  Pds::Bld::Client  bld(intf,
                         mcaddr,
                         pvaPort->getScalarAs<unsigned>());
 

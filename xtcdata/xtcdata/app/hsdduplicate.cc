@@ -23,7 +23,7 @@ void writedgram(Dgram* dg, unsigned& count, FILE* outFile) {
     if (fwrite(dg, sizeof(*dg) + dg->xtc.sizeofPayload(), 1, outFile) != 1) {
         printf("Error writing to output xtc file.\n");
     }
-    
+
     return;
 }
 
@@ -77,15 +77,15 @@ int main(int argc, char* argv[])
             break;
         }
         if (ievt==0) {
-            memcpy(cfg,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+            memcpy((void*)cfg,(void*)dg,sizeof(*dg)+dg->xtc.sizeofPayload());
             printf("config evt %d size %d\n",ievt,dg->xtc.sizeofPayload());
             configDone=true;
         } else if (dg->xtc.sizeofPayload()>1000) {
-            memcpy(big,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+            memcpy((void*)big,(void*)dg,sizeof(*dg)+dg->xtc.sizeofPayload());
             printf("big evt %d size %d\n",ievt,dg->xtc.sizeofPayload());
             bigDone=true;
         } else if (dg->xtc.sizeofPayload()<=1000 && !smallDone) {
-            memcpy(small,dg,sizeof(*dg)+dg->xtc.sizeofPayload());
+            memcpy((void*)small,(void*)dg,sizeof(*dg)+dg->xtc.sizeofPayload());
             printf("small evt %d size %d\n",ievt,dg->xtc.sizeofPayload());
             smallDone=true;
         }

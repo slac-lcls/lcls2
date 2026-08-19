@@ -84,6 +84,7 @@ public:
 
 class PgpReader;
 class DrpBase;
+nlohmann::json createPulseIdMsg(uint64_t pulseId);
 
 class TebReceiverBase : public Pds::Eb::EbCtrbInBase
 {
@@ -122,7 +123,9 @@ protected:
     unsigned m_tsId;
 private:
     bool m_writing;
+protected:
     ZmqSocket& m_inprocSend;
+private:
     uint32_t m_lastIndex;
     uint64_t m_lastPid;
     XtcData::TransitionId::Value m_lastTid;
@@ -221,6 +224,7 @@ public:
     std::string enable(const nlohmann::json& phase1Info, bool& chunkRequest, ChunkInfo& chunkInfo);
     void unconfigure();
     void disconnect();
+    std::string startup  (XtcData::Xtc& xtc, const void* bufEnd);
     void runInfoSupport  (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
     void runInfoData     (XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup, const RunInfo& runInfo);
     void chunkInfoSupport(XtcData::Xtc& xtc, const void* bufEnd, XtcData::NamesLookup& namesLookup);
@@ -232,6 +236,8 @@ public:
     Pds::Trg::TriggerPrimitive* triggerPrimitive() const {return m_triggerPrimitive;}
     prometheus::Exposer* exposer() const { return m_exposer.get(); }
     ZmqSocket& inprocSend() { return m_inprocSend; }
+    const nlohmann::json& connectMsg() const { return m_connectMsg; }
+    size_t collectionId() const { return m_collectionId; }
     unsigned nodeId() const {return m_nodeId;}
     const Pds::Eb::TebCtrbParams& tebPrms() const {return m_tPrms;}
     bool isSupervisor() const {return m_isSupervisor;}

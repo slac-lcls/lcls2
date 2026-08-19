@@ -17,8 +17,8 @@ using namespace XtcData;
 using psalg::NDArray;
 using logging = psalg::SysLog;
 
-enum Cuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT,
-            _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
+enum OpalCuts { _NCALLS, _NOLASER, _FRAMESIZE, _PROJCUT,
+                _NOBEAM, _NOREF, _NOFITS, _FWHMCUT, _NCUTS };
 static const char* cuts[] = {"NCalls",
                              "NoLaser",
                              "FrameSize",
@@ -30,19 +30,19 @@ static const char* cuts[] = {"NCalls",
                              NULL };
 
 //static ndarray<double,1> load_reference(unsigned key, unsigned sz);
-static void              read_roi(Roi& roi, DescData& descdata, const char* name, 
+static void              read_roi(Roi& roi, DescData& descdata, const char* name,
                                   unsigned columns, unsigned rows);
 // formerly psalg functions
 static std::vector<int>    project_x(NDArray<uint16_t>&, Roi&, unsigned);
 static std::vector<int>    project_y(NDArray<uint16_t>&, Roi&, unsigned);
-static void            rolling_average(std::vector<int>& a, 
-                                       std::vector<double>& avg, 
+static void            rolling_average(std::vector<int>& a,
+                                       std::vector<double>& avg,
                                        double fraction);
-static void            rolling_average(std::vector<double>& a, 
-                                       std::vector<double>& avg, 
+static void            rolling_average(std::vector<double>& a,
+                                       std::vector<double>& avg,
                                        double fraction);
-//static void            rolling_average(NDArray<double>& a, 
-//                                       NDArray<double>& avg, 
+//static void            rolling_average(NDArray<double>& a,
+//                                       NDArray<double>& avg,
 //                                       double fraction);
 static std::vector<double> finite_impulse_response(std::vector<double>& filter,
                                                std::vector<double>& sample);
@@ -82,7 +82,7 @@ OpalTTFex::OpalTTFex(Parameters* para) :
   }
 }
 
-OpalTTFex::~OpalTTFex() 
+OpalTTFex::~OpalTTFex()
 {
   // Record accumulated reference
   FILE* f = fopen(m_fname.c_str(),"w");
@@ -99,14 +99,14 @@ OpalTTFex::~OpalTTFex()
 void OpalTTFex::configure(XtcData::ConfigIter& configo,
                           unsigned      columns,
                           unsigned      rows) {
-  
+
   m_columns = columns;
   m_rows    = rows;
 
   XtcData::Names& names = detector::configNames(configo);
   XtcData::DescData& descdata = configo.desc_shape();
   IndexMap& nameMap = descdata.nameindex().nameMap();
-  
+
   for (unsigned i = 0; i < names.num(); i++) {
       XtcData::Name& name = names.get(i);
       int data_rank = name.rank();
@@ -140,7 +140,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
           }
       }
   }
-  
+
   m_beam_select.set_incl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.incl.eventcode") );
   m_beam_select.set_incl_destination( descdata.get_value<int32_t> ("fex.beam.incl.destination:destEnum") );
   m_beam_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.beam.excl.eventcode") );
@@ -150,7 +150,7 @@ void OpalTTFex::configure(XtcData::ConfigIter& configo,
   m_laser_select.set_incl_destination( descdata.get_value<int32_t> ("fex.laser.incl.destination:destEnum") );
   m_laser_select.set_excl_eventcode  ( descdata.get_value<uint16_t>("fex.laser.excl.eventcode") );
   m_laser_select.set_excl_destination( descdata.get_value<int32_t> ("fex.laser.excl.destination:destEnum") );
-  
+
 #define GET_ENUM(a,b,c) {                                                \
     m_##a##_##b = descdata.get_value<int32_t>("fex." #a "." #b ":" #c); \
       printf("m_" #a "_" #b " = %u\n", m_##a##_##b);                    \
@@ -222,7 +222,7 @@ void OpalTTFex::unconfigure()
     printf("TimeTool::Fex Summary\n");
     for(unsigned i=0; i<_NCUTS; i++)
       printf("%s: %3.2f [%u]\n",
-             cuts[i], 
+             cuts[i],
              double(m_cut[i])/double(m_cut[_NCALLS]),
              m_cut[i]);
   }
@@ -334,7 +334,7 @@ OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
       m_ref_avg.resize(0);
       m_ref_avg_sem.give();
   }
-  
+
   // Checking that the projections of the ROIs are
   // consistent
   if (m_use_ref_roi) {
@@ -569,7 +569,7 @@ OpalTTFex::analyze(std::vector< XtcData::Array<uint8_t> >& subframes,
 //  access during the reference updates
 //
 /*
-void OpalTTFex::_monitor_raw_sig (std::vector<double>& a) 
+void OpalTTFex::_monitor_raw_sig (std::vector<double>& a)
 {
   _etype = TimeToolDataType::Signal;
   MapType::iterator it = _ref.find(_src);
@@ -580,9 +580,9 @@ void OpalTTFex::_monitor_raw_sig (std::vector<double>& a)
   }
 }
 
-void OpalTTFex::_monitor_ref_sig (std::vector<double>& ref) 
+void OpalTTFex::_monitor_ref_sig (std::vector<double>& ref)
 {
-  _etype = TimeToolDataType::Reference; 
+  _etype = TimeToolDataType::Reference;
   MapType::iterator it = _ref.find(_src);
   if (it == _ref.end()) {
     ndarray<double> a(ref.shape(), 1);
@@ -610,15 +610,15 @@ void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned columns, 
   if (roi.x1 >= columns) {
     std::stringstream s;
     s << "Timetool: " << name << ".roi.x1[" << roi.x1
-      << "] exceeds frame columns [" << columns 
+      << "] exceeds frame columns [" << columns
       << "].  Truncating.";
     msg += s.str();
     roi.x1 = columns-1;
   }
   if (roi.y1 >= rows) {
     std::stringstream s;
-    s << "Timetool: " << name << " roi.y1[" << roi.y1 
-      << "] exceeds frame rows [" << rows 
+    s << "Timetool: " << name << " roi.y1[" << roi.y1
+      << "] exceeds frame rows [" << rows
       << "].  Truncating.";
     msg += s.str();
     roi.y1 = rows-1;
@@ -629,7 +629,7 @@ void read_roi(Roi& roi, DescData& descdata, const char* name, unsigned columns, 
 }
 
 
-std::vector<int> project_x(NDArray<uint16_t>& f, 
+std::vector<int> project_x(NDArray<uint16_t>& f,
                            Roi& roi,
                            unsigned ped)
 {
@@ -646,7 +646,7 @@ std::vector<int> project_x(NDArray<uint16_t>& f,
   return result;
 }
 
-std::vector<int> project_y(NDArray<uint16_t>& f, 
+std::vector<int> project_y(NDArray<uint16_t>& f,
                            Roi& roi,
                            unsigned ped)
 {
@@ -675,7 +675,7 @@ void rolling_average(std::vector<int>& a, std::vector<double>& avg, double fract
     for(unsigned i=0; i<a.size(); i++)
       avg[i] = avg[i]*g + double(a[i])*f;
   }
-} 
+}
 
 void rolling_average(std::vector<double>& a, std::vector<double>& avg, double fraction)
 {
@@ -692,7 +692,7 @@ void rolling_average(std::vector<double>& a, std::vector<double>& avg, double fr
     for(unsigned i=0; i<a.size(); i++)
       avg[i] = avg[i]*g + a[i]*f;
   }
-} 
+}
 
 //void rolling_average(NDArray<double>& a, NDArray<double>& avg, double fraction)
 //{
@@ -710,14 +710,14 @@ void rolling_average(std::vector<double>& a, std::vector<double>& avg, double fr
 //    for(unsigned i=0; i<sz; i++)
 //      avgd[i] = avgd[i]*g + ad[i]*f;
 //  }
-//} 
+//}
 
 std::vector<double> finite_impulse_response(std::vector<double>& filter,
                                             std::vector<double>& sample)
 {
   unsigned nf = filter.size();
   if (sample.size()<filter.size()) {
-    logging::critical("OpalTTFex sample size %i smaller than filter size %i", sample.size(), filter.size()); 
+    logging::critical("OpalTTFex sample size %i smaller than filter size %i", sample.size(), filter.size());
     throw("Error OpalTTFex sample size too small");
   } else {
     unsigned len = sample.size()-nf;
@@ -785,11 +785,11 @@ std::list<unsigned> find_peaks(std::vector<double>& a,
 std::vector<double> parab_fit(double* input, unsigned len)
 {
   std::vector<double> result(3);
-  
+
   double xx[5], xy[3];
   memset(xx,0,5*sizeof(double));
   memset(xy,0,3*sizeof(double));
-        
+
   for(unsigned ix=0; ix<len; ix++) {
     double x = double(ix);
     double qx=x;
@@ -876,7 +876,7 @@ std::vector<double> parab_fit(double* input,
   return _p;
 }
 
-void OpalTTFex::_monitor_raw_sig (std::vector<double>& a) 
+void OpalTTFex::_monitor_raw_sig (std::vector<double>& a)
 {
 #ifdef DBUG2
   printf("raw_sig: ");
@@ -913,14 +913,14 @@ void OpalTTFex::_monitor_flt_sig (std::vector<double>& a)
 #endif
 }
 
-bool   OpalTTFex::write_evt_image      ()  
+bool   OpalTTFex::write_evt_image      ()
 {
   bool r = m_prescale_image_counter>=m_prescale_image;
   if (m_prescale_image_counter >= m_prescale_image)
     m_prescale_image_counter = 0;
   return r;
 }
-bool   OpalTTFex::write_evt_projections() 
+bool   OpalTTFex::write_evt_projections()
 {
   bool r = m_prescale_projections_counter>=m_prescale_projections;
   if (m_prescale_projections_counter >= m_prescale_projections)
@@ -928,4 +928,4 @@ bool   OpalTTFex::write_evt_projections()
   return r;
 }
 
-      
+

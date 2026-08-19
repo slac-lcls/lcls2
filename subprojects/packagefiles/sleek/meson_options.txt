@@ -1,0 +1,4 @@
+option('conda_prefix',
+  type: 'string',
+  description: 'Path to conda env directory',
+)

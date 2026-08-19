@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.21)
 
 # Project configuration
-project(cuSZp VERSION 2.0.0 DESCRIPTION "Error-bounded GPU lossy compression library")
+project(cuSZp VERSION 3.0.0 DESCRIPTION "Error-bounded GPU lossy compression library")
 
 # Enable languages
 enable_language(CXX CUDA)
@@ -19,7 +19,7 @@ set(CMAKE_CUDA_STANDARD_REQUIRED ON)
 # Set CUDA host compiler
 set(CMAKE_CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER})
 set(CMAKE_CUDA_SEPARABLE_COMPILATION ON)
-set(CMAKE_CUDA_ARCHITECTURES 75 80 86 87 88 89 90 100 110 103 120 121)
+set(CMAKE_CUDA_ARCHITECTURES 86 90)
 set(CUDA_PROPAGATE_HOST_FLAGS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -34,12 +34,20 @@ set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Xcompiler -Wno-unused-result")
 
 # List of source files
 set(cuSZp_SOURCES
-    src/cuSZp_kernels_f32.cu
-    src/cuSZp_kernels_f64.cu
+    src/cuSZp_kernels_1D_f32.cu
+    src/cuSZp_kernels_1D_f64.cu
+    src/cuSZp_kernels_2D_f32.cu
+    src/cuSZp_kernels_2D_f64.cu
+    src/cuSZp_kernels_3D_f32.cu
+    src/cuSZp_kernels_3D_f64.cu
     src/cuSZp_utility.cu
     src/cuSZp_timer.cu
-    src/cuSZp_entry_f32.cu
-    src/cuSZp_entry_f64.cu
+    src/cuSZp_entry_1D_f32.cu
+    src/cuSZp_entry_1D_f64.cu
+    src/cuSZp_entry_2D_f32.cu
+    src/cuSZp_entry_2D_f64.cu
+    src/cuSZp_entry_3D_f32.cu
+    src/cuSZp_entry_3D_f64.cu
     src/cuSZp.cu
 )
 
@@ -91,9 +99,17 @@ include(Installing)
 enable_testing()
 
 # Add test for installed cuSZp_test binary
-add_test(NAME cuSZpTest_f32 COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f32)
-add_test(NAME cuSZpTest_f64 COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f64)
+add_test(NAME cuSZpTest_f32_1D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f32_1D)
+add_test(NAME cuSZpTest_f32_2D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f32_2D)
+add_test(NAME cuSZpTest_f32_3D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f32_3D)
+add_test(NAME cuSZpTest_f64_1D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f64_1D)
+add_test(NAME cuSZpTest_f64_2D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f64_2D)
+add_test(NAME cuSZpTest_f64_3D COMMAND ${CMAKE_INSTALL_PREFIX}/bin/cuSZp_test_f64_3D)
 
 # Optional: Set working directory if required
-set_tests_properties(cuSZpTest_f32 PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
-set_tests_properties(cuSZpTest_f64 PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f32_1D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f32_2D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f32_3D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f64_1D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f64_2D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)
+set_tests_properties(cuSZpTest_f64_3D PROPERTIES WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}/bin)

@@ -7,7 +7,6 @@ find_package(Threads REQUIRED)
 if(CMAKE_CUDA_COMPILER)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-    set(CMAKE_CUDA_ARCHITECTURES 86 90)
     set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -Wno-deprecated-gpu-targets")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} -G")  # enable cuda-gdb (expensive)
@@ -24,7 +23,7 @@ if(CMAKE_CUDA_COMPILER)
 
     add_library(drpbase_gpu SHARED
         MemPool.cc
-        GpuAsyncLib.cc
+        gpuUtils.cc
     )
     target_include_directories(drpbase_gpu PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -39,7 +38,7 @@ if(CMAKE_CUDA_COMPILER)
         PGPDetectorApp.cc
         PGPDetector.cc
         Reader.cu
-        Collector.cu
+        TrgInpGen.cu
         Reducer.cu
         FileWriter.cc
     )
@@ -59,7 +58,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cuda_driver
         CUDA::cuFile            # cufile is not found, but cuFile is
     )
-    set_target_properties(drp_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(drp_gpu PUBLIC -O3)
     #target_link_options(drp_gpu PUBLIC "-rdc=true")
 
@@ -82,7 +80,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(AreaDetector_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(AreaDetector_gpu PUBLIC -O3)
 
     add_library(EpixUHRemu_gpu SHARED
@@ -102,8 +99,27 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(EpixUHRemu_gpu PROPERTIES CUDA_ARCHITECTURES "86")
     #target_compile_options(EpixUHRemu_gpu PUBLIC -O3)
+
+    add_library(EpixUHRsim_gpu SHARED
+        Detector.cc
+        SimDetector.cc
+        EpixUHRsim.cu
+        ../drp/AreaDetector.cc  # @todo: Better solution than '../drp/'?
+    )
+    target_include_directories(EpixUHRsim_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+    target_link_libraries(EpixUHRsim_gpu
+        drpbase_gpu
+        xtcdata::xtc
+        nlohmann_json::nlohmann_json
+        CUDA::cudart
+        CUDA::cuda_driver
+    )
+    #target_compile_options(EpixUHRsim_gpu PUBLIC -O3)
 
 #--- Reducer libraries
 
@@ -113,6 +129,7 @@ if(CMAKE_CUDA_COMPILER)
     #   export CUSZ_DIR=~/git/psdaq-reducers/install/lib64/cmake/CUSZ
     #   export cuSZp_DIR=~/git/psdaq-reducers/install/cmake
 
+#--- NoOp
     add_library(NoOpReducer SHARED
         NoOpReducer.cu
     )
@@ -127,8 +144,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(NoOpReducer PROPERTIES CUDA_ARCHITECTURES "86")
-    #target_compile_options(NoOpReducer PUBLIC -O3)
 
 #--- LC
 
@@ -149,8 +164,6 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(LcReducer PROPERTIES CUDA_ARCHITECTURES "86")
-    #target_compile_options(LcReducer PUBLIC -O3)
 
 #--- PFPL
 
@@ -171,31 +184,49 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(PfplReducer PROPERTIES CUDA_ARCHITECTURES "86")
-    #target_compile_options(PfplReducer PUBLIC -O3)
 
-#--- cuSZ
+#--- SLEEK
 
-    find_package(CUSZ REQUIRED)
+    find_package(SLEEK REQUIRED)
 
-    add_library(CuSzReducer SHARED
-        CuSzReducer.cu
+    add_library(SleekReducer SHARED
+        SleekReducer.cu
     )
-    target_include_directories(CuSzReducer PUBLIC
+    target_include_directories(SleekReducer PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
         ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
     )
-    target_link_libraries(CuSzReducer
-        CUSZ::cusz
+    target_link_libraries(SleekReducer
+        SLEEK::sleek_shared
         xtcdata::xtc
         nlohmann_json::nlohmann_json
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(CuSzReducer PROPERTIES CUDA_ARCHITECTURES "86")
-    #target_compile_options(CuSzReducer PUBLIC -O3)
 
+##--- cuSZ
+#
+# 5/19/26 cuSZ from its own repo is replaced by the one in EIP
+#
+#    find_package(CUSZ REQUIRED)
+#
+#    add_library(CuSzReducer SHARED
+#        CuSzReducer.cu
+#    )
+#    target_include_directories(CuSzReducer PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        $<INSTALL_INTERFACE:include>
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(CuSzReducer
+#        CUSZ::cusz
+#        xtcdata::xtc
+#        nlohmann_json::nlohmann_json
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
+#
 #--- cuSZp
 
     find_package(cuSZp REQUIRED)
@@ -215,11 +246,32 @@ if(CMAKE_CUDA_COMPILER)
         CUDA::cudart
         CUDA::cuda_driver
     )
-    set_target_properties(CuSZpReducer PROPERTIES CUDA_ARCHITECTURES "86")
-    #target_compile_options(CuSZpReducer PUBLIC -O3)
+
+#--- EIP
+
+# 5/19/26: EIP's third party package is not ready for use in the DAQ yet
+#
+#    find_package(EIP REQUIRED)
+#
+#    add_library(EipReducer SHARED
+#        EipReducer.cu
+#    )
+#    target_include_directories(EipReducer PUBLIC
+#        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+#        $<INSTALL_INTERFACE:include>
+#        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+#    )
+#    target_link_libraries(EipReducer
+#        EIP::eip_shared
+#        xtcdata::xtc
+#        nlohmann_json::nlohmann_json
+#        CUDA::cudart
+#        CUDA::cuda_driver
+#    )
 
 #--- Tools
 
+    # @todo: Needs to be converted to aes-stream-drivers v7.0.  Use rdmaTest in the meantime
     add_executable(pgpread_gpu
         pgpread.cc
         GpuAsyncLib.cc
@@ -252,7 +304,7 @@ if(CMAKE_CUDA_COMPILER)
 
     add_executable(calibTest
         calibTest.cu
-        GpuAsyncLib.cc
+        gpuUtils.cc
     )
     target_include_directories(calibTest PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -265,6 +317,23 @@ if(CMAKE_CUDA_COMPILER)
         Threads::Threads
     )
 
+    add_executable(fileWriteTest_gpu
+        fileWriteTest.cc
+        FileWriter.cc
+        gpuUtils.cc
+    )
+    target_include_directories(fileWriteTest_gpu PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+    )
+  target_link_libraries(fileWriteTest_gpu
+        CUDA::cudart
+        CUDA::cuda_driver
+        CUDA::cuFile            # cufile is not found, but cuFile is
+        Threads::Threads
+    )
+
 #--- Install
 
     install(TARGETS
@@ -272,12 +341,14 @@ if(CMAKE_CUDA_COMPILER)
         drp_gpu
         AreaDetector_gpu
         EpixUHRemu_gpu
+        EpixUHRsim_gpu
         NoOpReducer
-        #LcReducer_old
         LcReducer
         PfplReducer
-        CuSzReducer
+        SleekReducer
+        #CuSzReducer
         CuSZpReducer
+        #EipReducer
         pgpread_gpu
         cudaDeviceProperties
         ARCHIVE DESTINATION lib

@@ -2,14 +2,6 @@
 :py:class:`UtilsEpixm320Calib` dark processing algorithms for generic area detector
 ===============================================================================
 
-
-TODO:
-  UtilsCalib import * -> import psana.detector.UtilsCalib as uc
-  NEEDS TO BE COMPLETED for fname_prefix, calib_file_name etc.
-
-  RepoManager > set_repoman_and_logger
-
-
 Usage::
 
     from psana.detector.UtilsEpixCalib import *
@@ -28,7 +20,6 @@ from psana.detector.Utils import info_dict, is_true, is_none
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.UtilsCalib import * # logging
 import psana.detector.UtilsCalib as uc
-#import psana.detector.utils_psana as up
 from psana.detector.RepoManager import init_repoman_and_logger, fname_prefix, fname_prefix_merge, calib_file_name
 import json
 import logging
@@ -58,6 +49,9 @@ def pedestals_calibration(parser):
   stepmax = kwa.get('stepmax', None)
   evskip  = kwa.get('evskip', 0)
   events  = kwa.get('events', 1000)
+  ctdepl  = kwa.get('ctdepl', None) # 'prs'
+  dbsuffix= kwa.get('dbsuffix', None)
+
   dskwargs = up.datasource_kwargs_from_string(str_dskwargs)
   shortname = None
 
@@ -88,8 +82,6 @@ def pedestals_calibration(parser):
     nevrun = 0
     logger.info('\n==== %02d run: %d exp: %s' % (irun, runnum, expname))
     logger.info(up.info_run(orun, cmt='run info:    ', sep='\n    ', verb=3))
-
-    #sys.exit('TEST EXIT')
 
     odet = orun.Detector(detname)
     if dettype is None:
@@ -215,10 +207,7 @@ def pedestals_calibration(parser):
                      +'detector short name: %s' % shortname)
           kwa_depl['shortname'] = shortname
 
-          #kwa_depl['segment_ids'] = odet.raw._segment_ids()
-
           logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
-          #sys.exit('TEST EXIT')
 
           save_constants_in_repository(dic_consts, **kwa_depl)
           dic_consts_tot[gainmode] = dic_consts
@@ -240,22 +229,23 @@ def pedestals_calibration(parser):
              +'\n  created  for gain modes: %s' % str(gainmodes)\
              +'\n  expected for gain modes: %s' % str(odet.raw._gain_modes))
 
-  ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
   gmodes = odet.raw._gain_modes #  or gainmodes
   kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
   kwa_depl['exp'] = expname
   kwa_depl['det'] = detname
+  kwa_depl['dbsuffix'] = dbsuffix
   kwa_depl['run_orig'] = runnum
 
-  #print('XXXXX kwa_depl', kwa_depl)
-  #sys.exit('TEST EXIT')
+  logger.debug('XXXXX kwa_depl: %s' % str(kwa_depl))
+
+  #ctypes = ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min')
+  ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
+  logger.debug('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
 
   deploy_constants(ctypes, gmodes, **kwa_depl)
 
   logger.debug('run/step/event loop is completed')
   repoman.logfile_save()
-
-  #sys.exit('TEST EXIT see commented deploy_constants')
 
 
 def gain_mode_name(odet, asic=0):
@@ -314,7 +304,6 @@ def save_constants_in_repository(dic_consts, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig', None)
-    #uniqueid = kwa.get('uniqueid', 'not-def-id')
     uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     segids   = kwa.get('segment_ids', [])
@@ -326,21 +315,17 @@ def save_constants_in_repository(dic_consts, **kwa):
     fmt_status = kwa.get('fmt_status', '%4i')
     fmt_max    = kwa.get('fmt_max', '%i')
     fmt_min    = kwa.get('fmt_min', '%i')
+    fmt_gain   = kwa.get('fmt_gain', '%.3f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
-                 'status_extra': fmt_status}
+                 'status_extra': fmt_status,
+                 'pixel_gain'  : fmt_gain}
 
-#    if repoman is None:
-#       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
     repoman = set_repoman_and_logger(kwa)
-
-    #dircons = repoman.makedir_constants(dname='constants')
-
-    #logger.info('segment_ids:\n%s' % '\n'.join([id for id in segids]))
 
     logger.info('uniqueid %s' % uniqueid)
     segid = uniqueid.split('_')[1]
@@ -362,6 +347,44 @@ def save_constants_in_repository(dic_consts, **kwa):
         logger.info('saved: %s' % fname)
 
 
+def ds_run_det(**kwa):
+    repoman = set_repoman_and_logger(kwa)
+    str_dskwargs = kwa.get('dskwargs', None)
+    detname = kwa.get('det', None)
+    dskwargs = up.datasource_kwargs_from_string(str_dskwargs, detname=None)
+    logger.info('DataSource kwargs:%s' % info_dict(dskwargs, fmt='  %12s: %s', sep='\n'))
+    ds = psana.DataSource(**dskwargs)
+    orun = next(ds.runs())
+    odet = orun.Detector(detname)
+
+    dettype = odet.raw._dettype
+    repoman.set_dettype(dettype)
+
+    gain_modes = odet.raw._gain_modes # i.e. for epixuhr: ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+    logger.info('created %s detector object' % detname)
+    logger.info(up.info_detector(odet, cmt='  detector info:\n      ', sep='\n      '))
+    return ds, orun, odet
+
+
+def epix_deploy_constants(parser):
+    args = parser.parse_args()
+    kwa = vars(args)
+    repoman = set_repoman_and_logger(kwa)
+    #repoman = init_repoman_and_logger(parser=parser, **kwa)
+
+    ctdepl  = kwa.get('ctdepl', 'prs')
+    ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
+    logger.info('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
+
+    ds, orun, odet = ds_run_det(**kwa)
+    gainmodes = odet.raw._gain_states if 'g' in ctypes else\
+                odet.raw._gain_modes # + ('AHLG1_L', 'AHLG2_L', ...
+    logger.info('odet.raw._gain_modes: %s' % str(odet.raw._gain_modes))
+
+    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+    deploy_constants(ctypes, gainmodes, **kwa_depl)
+
+
 def deploy_constants(ctypes, gainmodes, **kwa):
 
     from psana.pscalib.calib.MDBUtils import data_from_file
@@ -380,7 +403,6 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
     runnum   = kwa.get('run_orig',None)
-    #uniqueid = kwa.get('uniqueid', 'not-def-id')
     uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
@@ -391,27 +413,23 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     fmt_status = kwa.get('fmt_status', '%4i')
     fmt_max    = kwa.get('fmt_max', '%i')
     fmt_min    = kwa.get('fmt_min', '%i')
+    fmt_gain   = kwa.get('fmt_gain', '%.3f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
-                 'status_extra': fmt_status}
-
-#    if repoman is None:
-#       repoman = RepoManager(dirrepo=dirrepo, dirmode=dirmode, filemode=filemode, group=group, dettype=dettype)
+                 'status_extra': fmt_status,
+                 'pixel_gain'  : fmt_gain}
 
     repoman = set_repoman_and_logger(kwa)
-    #dircons = repoman.makedir_constants(dname='constants')
 
-    #segid = uniqueid.split('_',1)[-1]
     segid = uniqueid.split('_')[1]
     logger.info('\n\n\ndeploy_constants'\
                +'\n  segment id: %s' % segid\
                +'\n  gainmodes : %s' % str(gainmodes))
 
-    #for ctype, nda in dic_consts.items():
     for ctype in ctypes:
 
       dir_ct = repoman.makedir_ctype(segid, ctype)
@@ -445,7 +463,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
           logger.warning(err)
           data = np.zeros(shape_as_daq, np.uint16)
           logger.info(info_ndarr(data, 'substitute array with', last=10))
-        dic_nda[gm] = data
+        dic_nda[gm] = reshape_to_3d(data)
 
       nda = np.stack([dic_nda[gm] for gm in gainmodes])
       fname = calib_file_name(fprefix, ctype, 'comb')
@@ -454,13 +472,11 @@ def deploy_constants(ctypes, gainmodes, **kwa):
       logger.info(info_ndarr(nda, 'constants combined for %s' % ctype))  # shape:(3, 4, 192, 384)
       logger.info('saved in file: %s' % fname)
 
+      logger.info('deployment metadata %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
       if deploy:
-            logger.info('DEPLOY metadata: %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
-
             detname = kwa['longname']
             resp = add_data_and_two_docs(nda, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
             if resp:
-                #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
             else:
                 logger.info('constants are not deployed')
@@ -470,22 +486,18 @@ def deploy_constants(ctypes, gainmodes, **kwa):
 
 
 if __name__ == "__main__":
-    """
-    """
-
     sys.stdout.write(80*'_', '\n')
     logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=logging.INFO)
 
     kwa = {\
         'dskwargs': 'exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/',\
         'det'     : 'tst_epixm',\
-        'dirrepo' : 'work',\
+        'dirrepo' : 'work1',\
         'nrecs1'  : 100,\
         'nrecs'   : 200,\
     }
 
     pedestals_calibration(**kwa)
     sys.exit('End of %s' % sys.argv[0])
-
 
 # EOF

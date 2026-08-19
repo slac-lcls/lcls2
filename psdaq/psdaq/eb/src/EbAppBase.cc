@@ -35,16 +35,15 @@ using logging          = psalg::SysLog;
 using MetricExporter_t = std::shared_ptr<MetricExporter>;
 using ms_t             = std::chrono::milliseconds;
 
-static unsigned _ebTimeout(const EbParams& prms)
+static unsigned _ebTimeout(EbParams& prms)
 {
-  if (prms.kwargs.find("eb_timeout") != prms.kwargs.end())
-    return std::stoul(const_cast<EbParams&>(prms).kwargs["eb_timeout"]);
+  if (prms.kwargs.find("eb_timeout") == prms.kwargs.end())
+    prms.kwargs["eb_timeout"] = std::to_string(EB_TMO_MS);
 
-  const_cast<EbParams&>(prms).kwargs["eb_timeout"] = std::to_string(EB_TMO_MS);
-  return EB_TMO_MS;
+  return std::stoul(prms.kwargs.at("eb_timeout"));
 }
 
-EbAppBase::EbAppBase(const EbParams&    prms,
+EbAppBase::EbAppBase(EbParams&          prms,
                      const std::string& pfx) :
   EventBuilder (_ebTimeout(prms), prms.verbose),
   _transport   (prms.verbose, prms.kwargs),
@@ -515,7 +514,7 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
     _notifySocket.send(jmsg.dump());
   }
 
-  if (fixupCnt() + timeoutCnt() < 100)
+  if (fixupCnt() + timeoutCnt() < 50)
   {
     time_t now;  time (&now);   // Current time
     logging::error("%s, %014lx, size %zu is missing src %u (%s) @ %s",
@@ -523,13 +522,13 @@ void EbAppBase::fixup(EbEvent* event, unsigned srcId)
                    event->sequence(), event->size(), srcId,
                    _prms.drps[srcId].c_str(), ctime(&now));
   }
-  else {
-    auto msg("Too many events missing a contribution.  Aborting.");
+  else if (fixupCnt() + timeoutCnt() == 50) {
+    auto msg("Too many events missing a contribution.  Going quiet.");
     json jmsg = createAsyncErrMsg(_prms.alias, msg);
     _notifySocket.send(jmsg.dump());
-    logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
-                      fixupCnt(), timeoutCnt());
-    abort();
+    //logging::critical("Aborting due to too many event fix-ups (%u) and/or time-outs (%u)",
+    //                  fixupCnt(), timeoutCnt());
+    //abort();
   }
 
   if (_fixupSrc)  _fixupSrc->observe(double(srcId));

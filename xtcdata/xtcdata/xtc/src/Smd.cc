@@ -85,7 +85,7 @@ Dgram* Smd::generate(Dgram* dgIn, void* buf, const void* bufEnd, uint64_t offset
             new (buf) Dgram(*dgIn, dgIn->xtc);
         }
         else {
-            memcpy(dgOut, dgIn, sizeof(*dgIn));
+            memcpy((void*)dgOut, (void*)dgIn, sizeof(*dgIn));
             memcpy(dgOut->xtc.payload(), dgIn->xtc.payload(), dgIn->xtc.sizeofPayload());
             if (dgIn->service() == TransitionId::Configure) {
                 addNames(dgOut->xtc, bufEnd, namesLookup, namesId);

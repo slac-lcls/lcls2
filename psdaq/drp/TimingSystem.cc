@@ -129,11 +129,8 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
 {
     XpmDetector::connect(connect_json, collectionId);
 
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_connect");
-    check(pModule);
     // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
+    PyObject* pDict = PyModule_GetDict(m_module);
     check(pDict);
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_connect");
@@ -143,7 +140,6 @@ void TimingSystem::connect(const json& connect_json, const std::string& collecti
     PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_json.c_str());
     check(mybytes);
 
-    Py_DECREF(pModule);
     Py_DECREF(mybytes);
 }
 

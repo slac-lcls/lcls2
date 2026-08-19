@@ -19,15 +19,15 @@ namespace Pds {
        *       m is the mask, right justified
        *       s is the mask shifted into place
        */
-      enum { v_prescale = 0, k_prescale = 1 };
-      enum { v_persist  = 1, k_persist  = 1 };
-      enum { v_monitor  = 2, k_monitor  = MAX_MRQS };
-      enum { v_auxdata  = 8, k_auxdata  = 24 };
+      static constexpr uint32_t v_prescale{0}, k_prescale{1};
+      static constexpr uint32_t v_persist {1}, k_persist {1};
+      static constexpr uint32_t v_monitor {2}, k_monitor {MAX_MRQS};
+      static constexpr uint32_t v_auxdata {8}, k_auxdata {24};
 
-      enum { m_prescale = ((1 << k_prescale) - 1), s_prescale = (m_prescale << v_prescale) };
-      enum { m_persist  = ((1 << k_persist)  - 1), s_persist  = (m_persist  << v_persist)  };
-      enum { m_monitor  = ((1 << k_monitor)  - 1), s_monitor  = (m_monitor  << v_monitor)  };
-      enum { m_auxdata  = ((1 << k_auxdata)  - 1), s_auxdata  = (m_auxdata  << v_auxdata)  };
+      static constexpr uint32_t m_prescale{(1 << k_prescale) - 1}, s_prescale{m_prescale << v_prescale};
+      static constexpr uint32_t m_persist {(1 << k_persist)  - 1}, s_persist {m_persist  << v_persist };
+      static constexpr uint32_t m_monitor {(1 << k_monitor)  - 1}, s_monitor {m_monitor  << v_monitor };
+      static constexpr uint32_t m_auxdata {(1 << k_auxdata)  - 1}, s_auxdata {m_auxdata  << v_auxdata };
 
     public:
       ResultDgram(const Pds::EbDgram& dgram, unsigned id) :

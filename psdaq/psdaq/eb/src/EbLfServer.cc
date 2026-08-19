@@ -334,8 +334,8 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 
 int Pds::Eb::EbLfServer::poll(uint64_t* data)
 {
-  const uint64_t   flags = FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA;
-  fi_cq_data_entry cqEntry;
+  constexpr uint64_t flags{FI_MSG | FI_RECV | FI_REMOTE_CQ_DATA};
+  fi_cq_data_entry   cqEntry{nullptr, 0, 0, nullptr, 0};
 
   int rc = _poll(&cqEntry, flags);
   *data = cqEntry.data;

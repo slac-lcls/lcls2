@@ -28,9 +28,9 @@ namespace Pds {
     using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
 
     class EbCtrbInBase;
-    struct Batch
+    struct CtrbBatch
     {
-      Batch(const Pds::EbDgram* dgram, bool contractor_);
+      CtrbBatch(const Pds::EbDgram* dgram, bool contractor_);
 
     public:
       unsigned            entries;
@@ -65,7 +65,7 @@ namespace Pds {
       int        _setupMetrics(const std::shared_ptr<MetricExporter>);
       void       _flush();
       void       _post(const Pds::EbDgram* nonEvent);
-      void       _post(const Batch& batch);
+      void       _post(const CtrbBatch& batch);
     public:
       using listU32_t = std::list<uint32_t>;
     private:
@@ -77,7 +77,7 @@ namespace Pds {
       unsigned                  _id;
       unsigned                  _numEbs;
       BatchQueue                _pending; // Time ordered list of completed batches
-      Batch                     _batch;
+      CtrbBatch                 _batch;
       uint64_t                  _previousPid;
     private:
       mutable uint64_t          _eventCount;

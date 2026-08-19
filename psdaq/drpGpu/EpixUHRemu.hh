@@ -19,22 +19,27 @@ public:  // ePixUHR parameters:
   static const unsigned NumRows    { 192 };
   static const unsigned NumCols    { 168 };
   static const unsigned NPixels    { NumAsics*NumRows*NumCols };
-  static const unsigned GainOffset {  14 };
-  static const unsigned GainBits   {   2 };
-  static const unsigned NGains     {   4 };
+  static const unsigned RangeOffset{  14 };
+  static const unsigned RangeBits  {   2 };
+  static const unsigned NRanges    {   4 };
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
   unsigned beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) override;
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  void recordGraph(cudaStream_t&         stream,
-                   const unsigned&       index,
-                   const unsigned        panel,
-                   uint16_t const* const data) override;
+  unsigned     rangeOffset() const override { return RangeOffset; }
+  unsigned     rangeBits()   const override { return RangeBits; }
+  float const* pedestals_d() const override { return m_pedsVec_d; };
+  float const* gains_d()     const override { return m_gainsVec_d; };
+
+  //void recordGraph(cudaStream_t          stream,
+  //                 const unsigned&       index,
+  //                 uint16_t const* const data) override;
+  //CalibrateFn_t* getCalibFn() const override; // Not working
 private:
-  std::vector<float*> m_peds_d;  // [NPanels][NGains][NPixels]
-  std::vector<float*> m_gains_d; // [NPanels][NGains][NPixels]
+  float* m_pedsVec_d;                   // [NRanges * NPixels]
+  float* m_gainsVec_d;                  // [NRanges * NPixels]
 };
 
   } // Gpu

@@ -33,7 +33,8 @@ logger = logging.getLogger(__name__)
 SEGMENT_SHAPE = (336, 576)
 #ASIC_SHAPE    = (168, 192)
 
-GAIN_MODES = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+GAIN_MODES = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2') #  8 total
+GAIN_STATES = GAIN_MODES + ('AHLG1_L', 'AHLG2_L', 'AMLG1_L', 'AMLG2_L')         # 12 total
 GAINS = (1.51, 0.54, 0.0172, 0.0086) # mV/keV gains for FHG, FMG, FLG1, FLG2
 
 # epix10ka data gainbit and mask
@@ -135,9 +136,12 @@ def event_constants_for_gmaps(gmaps, cons, default=0, cmt=''):
     """ 6 msec
     Parameters
     ----------
-    - gmaps - tuple of 7 boolean maps ndarray(<nsegs>, 336, 576)
-    - cons - 4d constants  (7, <nsegs>, 336, 576)
+    - gmaps - tuple of 8 boolean maps ndarray(<nsegs>, 336, 576)
+    - cons - 4d constants  (8, <nsegs>, 336, 576)
     - default value for constants
+
+    - assuming that pedestals are calibrated for 8 gain modes (4-FIXED, 2-H>H, 2-M>M),
+    - but canstants can be also defined for all 12 states of gain modes (4-FIXED, 2-H>H, 2-M>M, 2-H>L, 2-M>L),
 
     Returns
     -------
@@ -148,9 +152,12 @@ def event_constants_for_gmaps(gmaps, cons, default=0, cmt=''):
         return None
     if cond_msg(cons is None, msg=cmt+'cons is None', output_meth=logger.warning):
         return None
+    #indices for LOW gain states AHLG1_L, AHLG2_L, AMLG1_L, AMLG2_L
+    #if 8 or 12 gain states are defined in cons for pedestals or pixel_gain
+    i08, i09, i10, i11 = (2,3,2,3) if cons.shape[0] < 9 else (8,9,10,11)
     return np.select(gmaps, (cons[0,:], cons[1,:], cons[2,:], cons[3,:],\
                              cons[4,:], cons[5,:], cons[6,:], cons[7,:],\
-                             cons[2,:], cons[3,:], cons[2,:], cons[3,:]), default=default)
+                             cons[i08,:], cons[i09,:], cons[i10,:], cons[i11,:]), default=default)
 
 
 def reshape_6x32256_to_6x168x192(a, shape_out=(6, 168, 192)):

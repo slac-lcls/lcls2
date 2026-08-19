@@ -69,26 +69,10 @@ namespace Drp {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    size_t cfgLaneMask { 0x1 }; // Lane 0 (use mask to be similar to data mask)
-    std::string cfgDev { "" };
-    if (para->kwargs.count("cfgDev")) {
-      cfgDev = para->kwargs["cfgDev"];
-      if (para->kwargs.count("cfgLaneMask")) {
-        // Pass 0 as base to auto-detect and allow hex or decimal
-        cfgLaneMask = std::stoul(para->kwargs["cfgLaneMask"], nullptr, 0);
-      } else {
-        logging::warning("No config FPGA lane passed! Will use lane 0, but check!");
-      }
-    }
-    if (cfgDev.empty()) {
-      logging::critical("Config FPGA must be provided! Pass --cfgDev to the drp command.");
-      abort();
-    }
-
     // Don't call the BEBDetector version of _init. Call the new _init_dual_dev
     // We also pass a config device and lane. Only ePixUHR currently uses this, so
     // updating the BEBDetector function, or making it virtual seems less appropriate
-    _init_dual_dev(para->detName, m_para->device, m_para->laneMask, cfgDev, cfgLaneMask);
+    _init_dual_dev(para->detName, m_para->device, m_para->laneMask);
 
 #define REGISTER(t) {                               \
       if (sigaction(t, &sa, &old_actions[t]) > 0)   \
@@ -105,10 +89,8 @@ namespace Drp {
 
   void EpixUHR3x2::_init_dual_dev(std::string detname,
                                   std::string data_fpga,
-                                  size_t data_lane_mask,
-                                  std::string cfg_fpga,
-                                  size_t cfg_lane_mask) {
-    std::string detType {m_para->detType};
+                                  size_t data_lane_mask) {
+    std::string detType { m_para->detType };
     std::string module_name {"psdaq.configdb." + detType + "_config"};
 
     m_module = _check(PyImport_ImportModule(module_name.c_str()));
@@ -134,14 +116,11 @@ namespace Drp {
       // Argument string: "ssisissi"
       // - s   : for `arg` (Not sure what this is for, but leaving for similarity sake)
       // - si  : for dev and lanemask
-      // - si  : for cfgDev and cfgLaneMask ** These are new!
       // - ssi : for xpmpv, timebase, verbosity
-      m_root = _check(PyObject_CallFunction(init_func, "ssisissi",
+      m_root = _check(PyObject_CallFunction(init_func, "ssissi",
                                             detname.c_str(),
                                             data_fpga.c_str(),
                                             data_lane_mask,
-                                            cfg_fpga.c_str(),
-                                            cfg_lane_mask,
                                             xpmpv,
                                             timebase,
                                             m_para->verbose));

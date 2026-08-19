@@ -4,23 +4,32 @@
 
 #include "MemPool.hh"                   // Needed for the base class
 #include "psdaq/service/range.hh"
+#include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
 
 #include <cuda_runtime.h>
 
 namespace Drp {
   namespace Gpu {
 
-    enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
-    enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
-           EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
-           FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
-           ReducerNamesIndex };         // index for xtc NamesId
+enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
+enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
+       EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
+       FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
+       ReducerNamesIndex };         // index for xtc NamesId
+
+// Not working:
+//typedef void CalibrateFn_t(float*    const calib,
+//                           uint16_t* const raw,
+//                           unsigned  const nElements);
 
 class Detector : public Drp::Detector
 {
 public:
-  Detector(Parameters* para, MemPoolGpu* pool) : Drp::Detector(para, pool) {}
-  virtual ~Detector() { printf("*** Gpu::Detector: dtor\n"); for (const auto& det : m_dets) { delete det; } }
+  Detector(Parameters* para, MemPoolGpu* pool) :
+    Drp::Detector(para, pool),
+    m_det(nullptr)
+  {}
+  virtual ~Detector() { if (m_det)  delete m_det; }
 
   Gpu::Detector* gpuDetector() override { return this; }
 
@@ -43,40 +52,39 @@ public:
   Pds::TimingHeader* getTimingHeader(uint32_t index) const override
   {
     auto       memPool    = m_pool->getAs<MemPoolGpu>();
-    const auto dmaBuffers = memPool->hostWrtBufsVec_h()[0]; // Reference only panel 0's
+    const auto dmaBuffers = memPool->hostWrtBufs();
     const auto cnt        = memPool->hostWrtBufsSize()/sizeof(*dmaBuffers);
-    auto       dsc        = &dmaBuffers[index * cnt];
-    constexpr unsigned DmaDscWords = sizeof(DmaDsc) / sizeof(uint32_t);
-    return reinterpret_cast<Pds::TimingHeader*>(&dsc[DmaDscWords]);
+    auto       dmaDsc     = (DmaDsc*)&dmaBuffers[index * cnt];
+    return reinterpret_cast<Pds::TimingHeader*>(&dmaDsc[1]);
   }
 
-  virtual void recordGraph(cudaStream_t&         stream,
-                           const unsigned&       index_d,
-                           const unsigned        panel,
-                           uint16_t const* const data) = 0;
+  //// Device methods can't be virtual due to the vtable not containing device pointers
+  //__device__ void calibrate(float*    const calib,
+  //                          uint16_t* const raw,
+  //                          unsigned  const count,
+  //                          unsigned  const rangeOffset,
+  //                          unsigned  const rangeBits) const;
+  virtual unsigned     rangeOffset() const = 0;
+  virtual unsigned     rangeBits()   const = 0;
+  virtual float const* pedestals_d() const = 0;
+  virtual float const* gains_d()     const = 0;
+
+  //virtual void recordGraph(cudaStream_t          stream,
+  //                         const unsigned&       index_d,
+  //                         uint16_t const* const data) = 0;
+  //virtual CalibrateFn_t* getCalibFn() const { return nullptr; } // Not working
+
+  virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
+  virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
+  virtual unsigned     referenceBufCnt()  const { return 0; }       // Used in simulator mode only
 protected:
   template<typename T>
   void _initialize(Parameters& para, MemPoolGpu& pool) {
-    // Create a copy of the Parameters and replace the PGP device name with the
-    // real one for each Detector instance the GPU will service
-    // @todo: This seems wasteful - is there a nicer solution?
-    unsigned i = 0;
-    std::vector<int> panels;
-    auto pos = para.device.find("_", 0);
-    Pds::getRange(para.device.substr(pos+1, para.device.length()), panels);
-    for (const auto& unit : panels) {
-      m_params.push_back(para);
-      m_params[i].device = para.device.substr(0, pos+1) + std::to_string(unit);
-
-      // Create a Drp::Detector for each panel/PGP device
-      m_dets.push_back(new T(&m_params[i], &pool));
-
-      ++i;
-    }
+    // Create a Drp::Detector for the panel/PGP device
+    m_det = new T(&para, &pool);
   }
 protected:
-  std::vector<Parameters>     m_params;
-  std::vector<Drp::Detector*> m_dets;
+  Drp::Detector* m_det;
 };
 
   } // Gpu
