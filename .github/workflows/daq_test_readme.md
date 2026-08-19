@@ -2,6 +2,27 @@
 
 Every `test_*.py` file in this directory, reviewed for whether it's safe to run in GitHub Actions. Checked against the actual CI environment file (`.daq_20250402.txt`) for which optional dependencies (`rogue`, `PyQt5`, `typer`, `pymongo`) are really present, not just assumed.
 
+## Environment file: gdb removed (again)
+
+`gdb-15.1-py39hc71013c_1` was removed from `.daq_20250402_r9.txt`. Installing it on a fresh GitHub Actions runner fails conda's environment creation step entirely:
+
+```
+LinkError: post-link script failed for package conda-forge::gdb-15.1-py39hc71013c_1
+location of failed script: /usr/share/miniconda/envs/build-conda-env/bin/.gdb-post-link.sh
+stderr: /usr/share/miniconda/envs/build-conda-env/etc/conda/deactivate.d/deactivate-gxx_linux-64.sh: line 68: CONDA_BACKUP_CXX: unbound variable
+```
+
+gdb's post-link script activates/deactivates the pinned C++ compiler (`gxx_linux-64-13.3.0`) as part of a self-check. `deactivate-gxx_linux-64.sh` tries to restore `$CXX` from `$CONDA_BACKUP_CXX`, but that backup variable was never set (the corresponding activate script never ran first in this context), so the reference is to an undefined variable. That script runs with bash's `nounset` (`set -u`) in effect, so the undefined reference is a hard error, and conda rolls back the *entire* environment-creation transaction — not just gdb.
+
+This is a known class of bug in conda-forge's compiler activation/deactivation scripts (they aren't written defensively, e.g. `${CONDA_BACKUP_CXX:-}`) against being invoked before the matching activate script has run — see [conda/conda#3200](https://github.com/conda/conda/issues/3200) and [conda/conda#9966](https://github.com/conda/conda/issues/9966).
+
+This isn't the first time this exact problem has hit this repo's CI. It was already found and fixed once on `.daq_20250402.txt`:
+
+- `fce5929d9` — "Remove gdb from ci conda env."
+- `0cfda798c` (#82) — "Remove gdb from ci conda env." (the change that stuck)
+
+`.daq_20250402_r9.txt` (this branch's `first try` commit) is a separately regenerated lockfile, not derived from the already-fixed `.daq_20250402.txt`, so it silently reintroduced `gdb-15.1` and the same failure. None of the tests in `run_daq_tests.yaml` need a debugger, so gdb is dropped from this file the same way it was dropped before.
+
 ## Add to the pytest step — safe as-is
 
 Currently included in `run_daq_tests.yaml`.
