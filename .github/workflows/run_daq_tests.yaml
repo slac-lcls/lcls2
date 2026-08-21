@@ -1,0 +1,82 @@
+name: Test DAQ
+on:
+  schedule:
+    - cron: '0 5 * * *'  # once per day at midnight ET
+  workflow_dispatch:
+
+jobs:
+  build-lcls-ii:
+    runs-on: ubuntu-latest
+    env:
+      LCLS_CALIB_HTTP: "https://pswww.slac.stanford.edu/calib_ws/"
+    defaults:
+      run:
+        # Bash shells do not use ~/.profile (for env variables) or ~/.bashrc,
+        # so these shells need to be explicitly declared.
+        # This makes the shell a login shell, which typically
+        # sources said files. This is needed for conda.
+        # Refer: https://github.com/marketplace/actions/setup-miniconda
+        shell: bash -el {0}
+    steps:
+      - name: Checkout repo with submodules
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
+        with:
+          auto-update-conda: true
+          activate-environment: build-conda-env
+          channels: lcls-ii, conda-forge
+          environment-file: .daq_20250402_r9.txt
+
+      - name: Build
+        run: |
+          # build_all.sh now requires ENV_TYPE to be set before it will run
+          # at all (normally done by sourcing setup_env.sh, which is S3DF/CDS
+          # specific and won't work on a GitHub-hosted runner). "legacy" is
+          # the same value setup_env.sh itself sets.
+          # -d is kept here: in the current build_all.sh, -d turns the DAQ
+          # build ON, which this workflow actually needs.
+          export ENV_TYPE=legacy
+          ./build_all.sh -d
+
+      - name: Run Tests
+        run: |
+          export PATH=$(pwd)/install/bin:${PATH}
+          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
+          # test_daqstat.py builds a real QApplication; headless runners
+          # have no display to attach to.
+          export QT_QPA_PLATFORM=offscreen
+          # See .github/workflows/DAQ_TESTS_README.md for the full test
+          # triage and the reasoning behind each group and nuance below.
+          pytest psdaq/psdaq/tests/test_run_slurm_with_retries.py \
+                 psdaq/psdaq/tests/test_sbatch_env_dump.py \
+                 psdaq/psdaq/tests/test_sbatch_manager_output_path.py \
+                 psdaq/psdaq/tests/test_daqmgr_spawn_console.py \
+                 psdaq/psdaq/tests/test_daqmgr_strict_job_info.py \
+                 psdaq/psdaq/tests/test_subproc.py \
+                 psdaq/psdaq/tests/test_configdb.py \
+                 psdaq/psdaq/tests/test_json2xtc.py \
+                 psdaq/psdaq/tests/test_daqstat.py
+
+      - name: Run test_rogue.py
+        # Kept out of the main pytest step on purpose: the test's own
+        # comment notes rogue "has a rather complex boost dependency which
+        # we have gotten wrong in the past." Running it alone keeps a
+        # hang/crash from taking down or obscuring the rest of the suite.
+        # timeout-minutes is a safety net in case it hangs instead of
+        # failing cleanly.
+        timeout-minutes: 5
+        run: |
+          export PATH=$(pwd)/install/bin:${PATH}
+          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
+          pytest psdaq/psdaq/tests/test_rogue.py
+
+      - name: Run test_shlex.py
+        # No pytest import and no asserts in this file -- it just prints
+        # input/output pairs for a human to read. Run as a plain script;
+        # there is no pass/fail signal to check here.
+        run: |
+          python psdaq/psdaq/tests/test_shlex.py
