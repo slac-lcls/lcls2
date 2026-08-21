@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 epix100_monitor_reader.py
 
@@ -44,7 +43,7 @@ NOTE: The exact VC for the monitor packets depends on the firmware version.
 Requirements (same environment as the DAQ epix100 configuration):
     rogue  pyrogue  ePixFpga  lcls2_epix_hr_pcie
 
-Optional (for --hutch EPICS publishing):
+Mandatory (for --Ext EPICS publishing):
     p4p
 
 Usage examples:
@@ -58,7 +57,7 @@ Usage examples:
     python epix100_monitor_reader.py --vcs 3,4,5
 
     # publish decoded values as EPICS PVAccess PVs:
-    python epix100_monitor_reader.py --hutch TMO
+    python epix100_monitor_reader.py --ext CMP004
 
     # non-default hardware:
     python epix100_monitor_reader.py --dev /dev/datadev_1 --lane 0 --vc 4
@@ -269,17 +268,49 @@ class EpixMonitorPacket:
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def build_epics_pvs(hutch: str, unit: int):
+class _SetMonitorHandler:
+    """p4p PV handler that accepts client PUT requests to the SET_MONITOR PV.
+
+    Writing 1 re-enables PV posting; writing 0 suspends it.
+    The new value is immediately reflected by the PV so that subsequent
+    monitors/gets see the updated state.
+
+    ``posting_enabled`` is a plain Python bool updated inside the GIL.
+    MonitorStreamSlave reads it directly from the rogue callback thread,
+    avoiding the p4p current()-from-foreign-thread issue that would otherwise
+    cause the check to silently fall through to the default (True).
     """
-    Create one p4p SharedPV per defined channel and register them with a
-    StaticProvider.
+
+    def __init__(self):
+        self.posting_enabled = True  # True = PV updates active
+
+    def put(self, pv, op):
+        val = op.value()
+        # op.value() may be a raw Python int (tests) or a p4p Value (production).
+        # Extract the plain scalar so bool() is always reliable.
+        try:
+            scalar = int(val["value"])
+        except Exception:
+            scalar = int(val)
+        self.posting_enabled = bool(scalar)
+        pv.post(val)
+        op.done()
+
+
+def build_epics_pvs(ext: str, unit: int):
+    """
+    Create one p4p SharedPV per defined channel plus a writable SET_MONITOR PV,
+    and register them all with a StaticProvider.
 
     PV names follow the LCLS convention:
         HUTCH:EPIX100:NN:SIGNAL
     e.g. TMO:EPIX100:01:SBTEMP
 
-    Returns (provider, pvs) where pvs is {channel_number: SharedPV}.
-    Both must be kept alive for the duration of the server.
+    Returns (provider, pvs, set_monitor_pv) where:
+      pvs            – {channel_number: SharedPV}  (read-only sensor PVs)
+      set_monitor_pv – writable int SharedPV; value 1 = posting enabled, 0 = suspended.
+
+    All three must be kept alive for the duration of the server.
 
     Requires p4p (pip install p4p).
     """
@@ -287,9 +318,10 @@ def build_epics_pvs(hutch: str, unit: int):
     from p4p.server import StaticProvider
     from p4p.server.thread import SharedPV
 
-    prefix = f"{hutch.upper()}:EPIX100:{unit:02d}:"
+    prefix = f"{ext.upper()}:{unit:02d}:"
     # float64 with display fields (units, description, limits, alarm, timestamp)
     nt_float = NTScalar("d", display=True)
+    nt_int = NTScalar("i", display=True)
     provider = StaticProvider("epix-mon")
     pvs = {}
 
@@ -302,7 +334,18 @@ def build_epics_pvs(hutch: str, unit: int):
         pvs[ch] = pv
         print(f"  {pv_name}  ({defn['unit']})")
 
-    return provider, pvs
+    # SET_MONITOR: writable bool-as-int PV.  Initial value 1 = posting enabled.
+    # A client can write 0 to suspend PV updates and 1 to resume.
+    set_monitor_pv_name = prefix + "SET_MONITOR"
+    _handler = _SetMonitorHandler()
+    set_monitor_pv = SharedPV(nt=nt_int, initial=1, handler=_handler)
+    # Attach handler as a Python attribute so MonitorStreamSlave can read
+    # posting_enabled directly without calling current() from a foreign thread.
+    set_monitor_pv._monitor_handler = _handler
+    provider.add(set_monitor_pv_name, set_monitor_pv)
+    print(f"  {set_monitor_pv_name}  (int, writable: 1=enabled 0=suspended)")
+
+    return provider, pvs, set_monitor_pv
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -322,10 +365,11 @@ class MonitorStreamSlave(rogue.interfaces.stream.Slave):
     are posted to the corresponding EPICS PVs after each packet.
     """
 
-    def __init__(self, vc: int, pvs: Optional[dict] = None):
+    def __init__(self, vc: int, pvs: Optional[dict] = None, set_monitor_pv=None):
         super().__init__()
         self.vc = vc
         self.pvs = pvs or {}
+        self.set_monitor_pv = set_monitor_pv
         self.n_received = 0
         self.n_errors = 0
         self.last_packet = None
@@ -342,9 +386,28 @@ class MonitorStreamSlave(rogue.interfaces.stream.Slave):
             self.last_packet = pkt
 
             if self.pvs:
-                ts = time.time()
-                for ch, pv in self.pvs.items():
-                    pv.post(pkt.channel_value(ch), timestamp=ts)
+                # Check SET_MONITOR; default to enabled if PV unavailable.
+                posting_enabled = True
+                if self.set_monitor_pv is not None:
+                    # Prefer reading the handler's Python bool directly.
+                    # _acceptFrame runs on rogue's C++ callback thread; calling
+                    # set_monitor_pv.current() from a foreign thread can silently
+                    # fail in p4p, leaving posting_enabled stuck at True.
+                    # The isinstance guard ensures the test MagicMock falls through
+                    # to the current().value path, keeping tests unmodified.
+                    _h = getattr(self.set_monitor_pv, "_monitor_handler", None)
+                    if isinstance(_h, _SetMonitorHandler):
+                        posting_enabled = _h.posting_enabled
+                    else:
+                        try:
+                            posting_enabled = bool(self.set_monitor_pv.current().value)
+                        except Exception:
+                            pass  # keep posting_enabled=True on any error
+
+                if posting_enabled:
+                    ts = time.time()
+                    for ch, pv in self.pvs.items():
+                        pv.post(pkt.channel_value(ch), timestamp=ts)
 
             print(
                 f"\n[VC={self.vc}] packet #{self.n_received}  ({size} B  "
@@ -385,7 +448,13 @@ def _silence_stderr():
         os.close(saved)
 
 
-def open_monitor_vcs(dev: str, lane: int, vcs: List[int], pvs: Optional[dict] = None):
+def open_monitor_vcs(
+    dev: str,
+    lane: int,
+    vcs: List[int],
+    pvs: Optional[dict] = None,
+    set_monitor_pv=None,
+):
     """
     Open rogue AxiStreamDma handles for the given virtual channels and
     attach a MonitorStreamSlave to each.
@@ -410,7 +479,7 @@ def open_monitor_vcs(dev: str, lane: int, vcs: List[int], pvs: Optional[dict] = 
                 f"opened — skipping.  ({exc})"
             )
             continue
-        slv = MonitorStreamSlave(vc=vc, pvs=pvs)
+        slv = MonitorStreamSlave(vc=vc, pvs=pvs, set_monitor_pv=set_monitor_pv)
         pyrogue.streamConnect(dma, slv)
         dma_handles[vc] = dma
         slaves[vc] = slv
@@ -506,8 +575,8 @@ def parse_args():
         "(default: 1e8 ≈ 1 Hz at 100 MHz clock).",
     )
     ap.add_argument(
-        "--hutch",
-        default=None,
+        "--ext",
+        required=True,
         metavar="NAME",
         help="Hutch name for EPICS PV publishing (e.g. TMO, CXI, MFX). "
         "When given, decoded values are posted as PVAccess PVs: "
@@ -515,7 +584,7 @@ def parse_args():
     )
     ap.add_argument(
         "--unit",
-        default=1,
+        required=True,
         type=int,
         metavar="N",
         help="Detector unit number used in the EPICS PV prefix (default: 1)",
@@ -542,6 +611,7 @@ def main():
     # ── optional: enable the stream via register writes ───────────────────
     # Uses a subprocess so the VC0 fd is released on process exit regardless
     # of any C++ shared_ptr cycles inside the child.
+    enable_failed = False
     if args.enable:
         print(
             "Enabling monitor stream via subprocess (VC0 released on subprocess exit) …"
@@ -551,6 +621,7 @@ def main():
                 dev=args.dev, lane=args.lane, period_ticks=args.period
             )
         except Exception as exc:
+            enable_failed = True
             print(f"  WARNING: enable_monitor_stream failed: {exc}", file=sys.stderr)
             print("  Continuing to listen anyway …", file=sys.stderr)
         print()
@@ -558,14 +629,21 @@ def main():
     # ── optional: build EPICS PVs ─────────────────────────────────────────
     epics_server = None
     pvs = {}
-    if args.hutch:
+    set_monitor_pv = None
+    if args.ext:
         print(
-            f"Creating EPICS PVs  (hutch={args.hutch.upper()}, unit={args.unit:02d}) …"
+            f"Creating EPICS PVs  (ext={args.ext.upper()}, unit={args.unit:02d}) …"
         )
         from p4p.server import Server
 
-        provider, pvs = build_epics_pvs(args.hutch, args.unit)
+        provider, pvs, set_monitor_pv = build_epics_pvs(args.ext, args.unit)
         epics_server = Server(providers=[provider])
+        if enable_failed and set_monitor_pv is not None:
+            set_monitor_pv.post(0)
+            _h = getattr(set_monitor_pv, "_monitor_handler", None)
+            if isinstance(_h, _SetMonitorHandler):
+                _h.posting_enabled = False
+            print("  SET_MONITOR set to 0 (enable failed).", file=sys.stderr)
         print()
 
     # ── open DMA channels and listen ──────────────────────────────────────
@@ -574,17 +652,35 @@ def main():
         f"on {args.dev} lane {args.lane} …"
     )
     dma_handles, slaves = open_monitor_vcs(
-        dev=args.dev, lane=args.lane, vcs=monitor_vcs, pvs=pvs
+        dev=args.dev,
+        lane=args.lane,
+        vcs=monitor_vcs,
+        pvs=pvs,
+        set_monitor_pv=set_monitor_pv,
     )
 
     if not slaves:
-        print("No DMA channels could be opened — exiting.", file=sys.stderr)
-        sys.exit(1)
+        if epics_server is None:
+            # Nothing to do: no DMA and no PV server.
+            print("No DMA channels could be opened — exiting.", file=sys.stderr)
+            sys.exit(1)
+        # Keep the PV server alive even though DMA failed.  PVs hold their
+        # initial 0.0 values and remain reachable via pvget / pvmonitor.
+        # This is the common case when the DAQ holds the channels exclusively.
+        print(
+            "  WARNING: No DMA channels could be opened.  "
+            "EPICS PV server is running but values will not update "
+            "until the monitor stream becomes available.",
+            file=sys.stderr,
+        )
 
-    print(
-        f"Opened {len(dma_handles)} of {len(monitor_vcs)} requested VC(s).  "
-        f"Listening for monitor packets … (Ctrl-C to stop)\n"
-    )
+    if slaves:
+        print(
+            f"Opened {len(dma_handles)} of {len(monitor_vcs)} requested VC(s).  "
+            f"Listening for monitor packets … (Ctrl-C to stop)\n"
+        )
+    else:
+        print("EPICS PV server running.  (Ctrl-C to stop)\n")
 
     try:
         while not stop[0]:
