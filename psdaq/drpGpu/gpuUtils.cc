@@ -96,7 +96,7 @@ void CudaContext::listDevices() {
 void CoreRegisters::initialize(bool sim, void* regs)
 {
   if (!sim) _fwRegs = std::make_unique<GpuAsyncCoreRegs>(regs);
-  else      _swRegs = static_cast<uint32_t*>(regs);
+  else      _swRegs = static_cast<uint8_t*>(regs);
 }
 
 // -------------------------------------------------------------------

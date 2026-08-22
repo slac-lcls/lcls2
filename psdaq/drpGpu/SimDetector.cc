@@ -176,7 +176,6 @@ void SimDetector::_eventSimulator()
   bool running{false};
   auto suTime{fast_monotonic_clock::now()};
   auto panel{memPool.panel()};
-  auto fpgaRegs{panel->fpgaRegs};
   auto& coreRegs{panel->coreRegs};
   unsigned dmaIdx{0};
   uint32_t dmaCntMsk{memPool.dmaCount() - 1};
@@ -197,7 +196,7 @@ void SimDetector::_eventSimulator()
     }
 
     // Wait for DMA buffer to become ready for writing
-    volatile uint8_t* const wrEnReg{(uint8_t*)fpgaRegs + coreRegs.freeListOffset(dmaIdx)};
+    volatile uint8_t* const wrEnReg{coreRegs.registers() + coreRegs.freeListOffset(dmaIdx)};
     auto dmaBuffer = dmaBuffers[dmaIdx];
     //printf("*** SimDetector::evtSim: dmaIdx %u, dmaBuffer %p\n", dmaIdx, dmaBuffer);
     //printf("*** SimDetector::evtSim: Wait for wrEnReg[%u] %p\n", dmaIdx, wrEnReg);

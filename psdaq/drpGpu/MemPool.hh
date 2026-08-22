@@ -97,11 +97,10 @@ protected:
 struct DetPanel
 {
   DataDev               datadev;
-  void*                 fpgaRegs;
+  CoreRegisters         coreRegs;       // GpuAsyncCore registers wrapper
   std::vector<uint8_t*> dmaBuffers;     // Host vector of dmaCount dptrs
   uint8_t**             dmaBuffers_d;   // Device array of dmaCount dptrs
   std::string           name;
-  CoreRegisters         coreRegs;
 
   DetPanel(std::string& device) : datadev(device.c_str()), name(device) {}
 };

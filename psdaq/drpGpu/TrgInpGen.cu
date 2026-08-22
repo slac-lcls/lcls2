@@ -419,8 +419,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       if (m_para.verbose > 2) {
         printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
         const auto& p = (const uint32_t*)dmaDsc;
-        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
-               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x | %08x %08x\n",
+               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[10], p[11]); // Skip TH.opaques
       }
 
       uint64_t pid = timingHeader->pulseId();
@@ -499,7 +499,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         break;
       }
 
-      XtcData::TransitionId::Value transitionId = timingHeader->service();
+      TransitionId::Value transitionId = timingHeader->service();
       const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
       logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
                      size,
@@ -538,7 +538,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       auto rogs = timingHeader->readoutGroups();
       if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
+                       TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
@@ -547,11 +547,11 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         ++m_metrics.nNoComRoG;
         break;
       }
-      if (transitionId == XtcData::TransitionId::SlowUpdate) {
+      if (transitionId == TransitionId::SlowUpdate) {
         uint16_t missingRogs = m_para.rogMask & ~rogs;
         if (missingRogs) [[unlikely]] {
           logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId(), missingRogs, timingHeader->env);
           ++m_lastComplete;
@@ -562,16 +562,16 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
       }
 
-      if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+      if (transitionId != TransitionId::L1Accept) {
+        if (transitionId != TransitionId::SlowUpdate) {
           logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                        XtcData::TransitionId::name(transitionId),
+                        TransitionId::name(transitionId),
                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                         timingHeader->pulseId());
         }
         else {
           logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId());
         }

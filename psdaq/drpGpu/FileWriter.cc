@@ -239,7 +239,7 @@ void FileWriter::_reset()
 {
   m_count           = 0;
   m_fileOffset      = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriter::_flush()
@@ -249,7 +249,7 @@ void FileWriter::_flush()
   _write();
   m_writing -= 2;
   m_count = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 ssize_t FileWriter::_write()
@@ -322,7 +322,7 @@ void FileWriterAsync::_reset()
   m_index           = 0;
   m_bytesWritten    = 0;
   m_fileOffset      = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriterAsync::_flush()
@@ -345,7 +345,7 @@ void FileWriterAsync::_flush()
   m_fileOffset += m_bytesWritten;
 
   m_counts[m_index] = 0;
-  m_batch_starttime = XtcData::TimeStamp(0,0);
+  m_batch_starttime = TimeStamp(0,0);
 }
 
 void FileWriterAsync::_write()
