@@ -67,8 +67,6 @@ private:
   Ptr<RingIndexHtoD>                 m_pebbleQueue;
   std::vector< Ptr<RingIndexDtoD> >  m_readerQueues;
   std::vector<unsigned*>             m_states_d;
-  CUdeviceptr*                       m_dmaBuffers;    // [dmaCount][maxDmaSize]
-  CUdeviceptr*                       m_fpgaRegs;
   unsigned                           m_nReaders;
   const Parameters&                  m_para;
   ReaderMetrics                      m_metrics;

@@ -115,6 +115,8 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
   logging::debug("Done with device context setup\n");
 
+  void* fpgaRegs{nullptr};
+
   // Check for normal DAQ mode (datadev device) or simulator mode (null device)
   if (para.device != "/dev/null") {
     m_panel = make_shared<DetPanel>(para.device);
@@ -135,19 +137,19 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     }
 
     // Map device control registers to the host
-    m_panel->fpgaRegs = dmaMapRegister(fd, GPU_ASYNC_CORE_OFFSET, GPU_ASYNC_CORE_SIZE);
-    if (!m_panel->fpgaRegs) {
+    fpgaRegs = dmaMapRegister(fd, GPU_ASYNC_CORE_OFFSET, GPU_ASYNC_CORE_SIZE);
+    if (!fpgaRegs) {
       logging::critical("Failed to map FPGA registers");
       abort();
     }
 
     // Init a register object
-    m_panel->coreRegs.initialize(false, m_panel->fpgaRegs);
+    m_panel->coreRegs.initialize(false, fpgaRegs);
 
 #ifndef HOST_REARMS_DMA
     // Map the GpuAsyncCore FPGA registers into the CUDA address space to allow the GPU to access them
     // This causes 'operation not permitted' when the process doesn't have sufficient privileges
-    if ((cuMemHostRegister(m_panel->fpgaRegs, GPU_ASYNC_CORE_SIZE, CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP)) != CUDA_SUCCESS) {
+    if ((cuMemHostRegister(fpgaRegs, GPU_ASYNC_CORE_SIZE, CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP)) != CUDA_SUCCESS) {
       logging::critical("cuMemHostRegister failed: %m");
       logging::info("You may have to run the application as root or consider "
                     "rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
@@ -177,18 +179,16 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
       chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
     }
 
-    // Map the GPU's DMA write buffers into the FPGA registers
+    // Map the GPU's DMA write buffers to the FPGA registers
     for (unsigned i = 0; i < m_dmaCount; ++i) {
       if (gpuAddNvidiaMemory(fd, 1, (uint64_t)m_panel->dmaBuffers[i], m_dmaSize)) {
         logging::critical("gpuAddNvidiaMemory failed: %m");
         abort();
       }
-      logging::info("DMA buffer[%u] dptr %p, size %u, fpgaRegs[%u] %p",
+      logging::info("DMA buffer[%u] dptr %p, size %u, free list[%u] %p",
                     i, m_panel->dmaBuffers[i], m_dmaSize,
-                    i, (uint8_t*)m_panel->fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
+                    i, (uint8_t*)fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
     }
-
-    logging::debug("Done with device mem alloc for %s\n", para.device.c_str());
   } else {                              // Simulator mode
     m_panel = std::make_shared<DetPanel>(para.device);
     logging::info("NULL PGP device '%s' opened", para.device.c_str());
@@ -198,10 +198,11 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     chkError(cudaHostAlloc(&ptr,    regBlkSize, cudaHostAllocDefault));
     chkMemory             ( ptr,    regBlkSize, sizeof(*ptr), "fpgaRegs");
     chkError(cudaMemset   ( ptr, 0, regBlkSize));
-    m_panel->fpgaRegs = ptr;
+
+    fpgaRegs = ptr;
 
     // Init a register object
-    m_panel->coreRegs.initialize(true, m_panel->fpgaRegs);
+    m_panel->coreRegs.initialize(true, fpgaRegs);
 
     // Configure max. FPGA->GPU buffer on the "FPGA" side
     m_panel->coreRegs.setRemoteWriteMaxSize(0, m_dmaSize);
@@ -223,27 +224,27 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
       chkError(cudaMemset( dp, 0, sz));
       m_panel->dmaBuffers[i] = dp;
       chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
-      logging::info("DMA buffer[%u] dptr %p, size %u, fpgaRegs[%u] %p",
+      logging::info("DMA buffer[%u] dptr %p, size %u, free list[%u] %p",
                     i, m_panel->dmaBuffers[i], m_dmaSize,
-                    i, (uint8_t*)m_panel->fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
+                    i, (uint8_t*)fpgaRegs + m_panel->coreRegs.freeListOffset(0) + i*4);
     }
 
     // No need to call setMaskBytes, so fake done
     m_setMaskBytesDone = true;
   }
 
+  logging::debug("Done with device mem alloc for %s, FPGA regs %p\n",
+                 para.device.c_str(), fpgaRegs);
+
   // Stop the FPGA side
   m_panel->coreRegs.setWriteEnable(0);
-
-  // Configure the buffer counts on the FPGA side
-  m_panel->coreRegs.setWriteCount(m_dmaCount-1);
 
   // Ensure that timing messages are DMAed to the GPU
   dmaTgtSet(m_panel->coreRegs, DmaTgt_t::TGT_GPU);
 
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
-  pgpEvents.resize(m_nbuffers); // Need 1 per intermediate buffer - w/o this have only dmaCount buffers
+  pgpEvents.resize(nbuffers()); // Need 1 per intermediate buffer - w/o this have only dmaCount buffers
 
   // Set up intermediate buffer pointers
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));
