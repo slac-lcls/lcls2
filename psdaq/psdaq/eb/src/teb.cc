@@ -746,15 +746,18 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
     if (flush)                          // Post the batch + transition
     {
-      // Make the batch big enough to contain the variable payload dgram
-      // Add one dgram buffer at the end for automatic EOL flag
-      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
-      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
-      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//      // Make the batch big enough to contain the variable payload dgram
+//      // Add one dgram buffer at the end for automatic EOL flag
+//      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
+//      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
+//      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//
+//      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+//      _batch.dsts |= dsts;
+//      _batch.start->setEOL();              // Force the processing to see only one dg
 
-      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+      _batch.end   = dgram;             // Append dgram to batch
       _batch.dsts |= dsts;
-      _batch.start->setEOL();              // Force the processing to see only one dg
 
       _post(_batch);
 
@@ -798,6 +801,25 @@ void Teb::_post(const EbBatch& batch)
     fprintf(stderr, "TEB posts          %9lu result  [%8u] @ "
             "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
             _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
+  }
+  else
+  {
+    auto dgram = batch.end;
+    auto svc   = dgram->service();
+    if (svc != TransitionId::L1Accept) {
+      if (svc != TransitionId::SlowUpdate) {
+        logging::info("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                      TransitionId::name(svc),
+                      dgram->time.seconds(), dgram->time.nanoseconds(),
+                      dgram->pulseId(), offset, extent, destns);
+      }
+      else {
+        logging::debug("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                       TransitionId::name(svc),
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       dgram->pulseId(), offset, extent, destns);
+      }
+    }
   }
 
   // uint64_t pid = batch.start->pulseId();
