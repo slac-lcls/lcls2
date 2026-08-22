@@ -196,7 +196,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
         return;                         // @todo: Revisit
       }
     }
-    tb.wkr = m_worker;
+    //tb.wkr = m_worker;
     m_worker = (m_worker + 1) % m_para.nworkers;
     ++m_metrics.reducerStarts;
     //lLastIndex = index;

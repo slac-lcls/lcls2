@@ -2,9 +2,9 @@
  * ----------------------------------------------------------------------------
  * Company    : SLAC National Accelerator Laboratory
  * ----------------------------------------------------------------------------
- * Description: User space API for Gpu Async support. Attempts to abstract away
- *  some of the internal implementation detail from user-space software.
- *  This file contains no handling for big-endian systems.
+ * Description: User space C++ wrapper around the mapped GpuAsyncCore
+ *  register block. Hides offset / behaviour differences between V1 and
+ *  V4 firmware. This file contains no handling for big-endian systems.
  * ----------------------------------------------------------------------------
  * This file is part of the aes_stream_drivers package. It is subject to
  * the license terms in the LICENSE.txt file found in the top-level directory
@@ -37,11 +37,15 @@ public:
    GpuAsyncCoreRegs() = delete;
 
    /**
-    * @brief regs Pointer to the memory mapped GpuAsyncCore registers.
+    * @param regs Pointer to the memory mapped GpuAsyncCore registers.
+    * @param versionOverride Force this specific version of GpuAsyncCore, instead of reading from the GpuAsyncReg_Version
     */
-   explicit GpuAsyncCoreRegs(volatile void* regs) :
+   explicit GpuAsyncCoreRegs(volatile void* regs, int versionOverride = -1) :
       regs_((volatile uint8_t*)regs) {
-      this->version_ = readReg(GpuAsyncReg_Version);
+      if (versionOverride < 0)
+         this->version_ = readReg(GpuAsyncReg_Version);
+      else
+         this->version_ = versionOverride;
    }
 
    inline volatile uint8_t* registers() const {
@@ -95,33 +99,57 @@ public:
    }
 
    inline uint32_t writeCount() const {
-      return readRegV1V4(GpuAsyncReg_WriteCountV1, GpuAsyncReg_WriteCountV4);
+      // Write count is zero-inclusive
+      return readRegV1V4(GpuAsyncReg_WriteCountV1, GpuAsyncReg_WriteCountV4) + 1;
    }
 
+   /**
+    * @brief Sets the number of write buffers.
+    * @param val Number of write buffers.
+    * @note gpuAddNvidiaMemory sets this for you.
+    * @note This is an INTERNAL register, you should not use this unless you know what you're doing!
+    */
    inline void setWriteCount(uint32_t val) {
-      writeRegV1V4(GpuAsyncReg_WriteCountV1, GpuAsyncReg_WriteCountV4, val);
+      // Count is zero inclusive, but we've made it cleaner for callers of this function.
+      writeRegV1V4(GpuAsyncReg_WriteCountV1, GpuAsyncReg_WriteCountV4, val ? val-1 : 0);
    }
 
    inline uint32_t writeEnable() const {
       return readRegV1V4(GpuAsyncReg_WriteEnableV1, GpuAsyncReg_WriteEnableV4);
    }
 
+   /**
+    * @brief Sets the write (Tx) enable bit, enabling data flow from FPGA -> GPU.
+    * @note Use gpuEnableTx to set this register.
+    */
    inline void setWriteEnable(uint32_t val) {
       writeRegV1V4(GpuAsyncReg_WriteEnableV1, GpuAsyncReg_WriteEnableV4, val);
    }
 
    inline uint32_t readCount() const {
-      return readRegV1V4(GpuAsyncReg_ReadCountV1, GpuAsyncReg_ReadCountV4);
+      // Read count is a zero-inclusive count
+      return readRegV1V4(GpuAsyncReg_ReadCountV1, GpuAsyncReg_ReadCountV4) + 1;
    }
 
+   /**
+    * @brief Sets the number of read buffers.
+    * @param val Number of read buffers.
+    * @note gpuAddNvidiaMemory sets this for you.
+    * @note This is an INTERNAL register, you should not use this unless you know what you're doing!
+    */
    inline void setReadCount(uint32_t val) {
-      writeRegV1V4(GpuAsyncReg_ReadCountV1, GpuAsyncReg_ReadCountV4, val);
+      // Count is zero inclusive, but we've made it cleaner for callers of this function.
+      writeRegV1V4(GpuAsyncReg_ReadCountV1, GpuAsyncReg_ReadCountV4, val ? val-1 : 0);
    }
 
    inline uint32_t readEnable() const {
       return readRegV1V4(GpuAsyncReg_ReadEnableV1, GpuAsyncReg_ReadEnableV4);
    }
 
+   /**
+    * @brief Sets the write (Rx) enable bit, enabling data flow from GPU -> FPGA.
+    * @note Use gpuEnableRx to set this register.
+    */
    inline void setReadEnable(uint32_t val) {
       writeRegV1V4(GpuAsyncReg_ReadEnableV1, GpuAsyncReg_ReadEnableV4, val);
    }
@@ -190,6 +218,18 @@ public:
       }
    }
 
+   inline uint32_t totalLatencyOffset(uint32_t buffer) const {
+      switch (versionSwitch()) {
+      case 0:
+         return 0xFFFFFFFF;
+      case 1:
+         return GPU_ASYNC_REG_LATENCY_TOTAL_OFFSET_V1(buffer);
+      case 4:
+      default:
+         return GpuAsyncReg_TotLatencyV4.offset;
+      }
+   }
+
    /**
     * @brief Returns the GPU processing latency, in clock cycles, reported for the buffer
     * @note For V4+, the buffer argument is ignored and should be 0.
@@ -206,6 +246,18 @@ public:
       }
    }
 
+   inline uint32_t gpuLatencyOffset(uint32_t buffer) const {
+      switch (versionSwitch()) {
+      case 0:
+         return 0xFFFFFFFF;
+      case 1:
+         return GPU_ASYNC_REG_LATENCY_GPU_OFFSET_V1(buffer);
+      case 4:
+      default:
+         return GpuAsyncReg_GpuLatencyV4.offset;
+      }
+   }
+
    /**
     * @brief Returns the FPGA -> GPU write latency, in clock cycles, reported for the buffer
     * @note For V4+, the buffer argument is ignored and should be 0.
@@ -219,6 +271,18 @@ public:
       case 4:
       default:
          return readReg(GpuAsyncReg_WrLatencyV4);
+      }
+   }
+
+   inline uint32_t writeLatencyOffset(uint32_t buffer) const {
+      switch (versionSwitch()) {
+      case 0:
+         return 0xFFFFFFFF;
+      case 1:
+         return GPU_ASYNC_REG_LATENCY_WRITE_OFFSET_V1(buffer);
+      case 4:
+      default:
+         return GpuAsyncReg_WrLatencyV4.offset;
       }
    }
 
@@ -244,6 +308,7 @@ public:
     * @param buffer The buffer to set the remote size for. Ignored in version >= 4
     * @param size The size
     * @note buffer is ignored when version() >= 4, since in V4 all buffers share the same register
+    * @note This is an INTERNAL register, you should not use this unless you know what you're doing!
     */
    inline void setRemoteWriteMaxSize(uint32_t buffer, uint32_t size) {
       switch (versionSwitch()) {
@@ -263,6 +328,7 @@ public:
     * @brief Sets the remote write address for the specified buffer. Used for FPGA -> GPU transfers
     * @param buffer The buffer index. Must be < 16 for V1, and < 1024 for V4
     * @param addr 64-bit address in GPU device memory
+    * @note This is an INTERNAL register, you should not use this unless you know what you're doing!
     */
    inline void setRemoteWriteAddress(uint32_t buffer, uint64_t addr) {
       uint32_t l = uint32_t(addr & 0xFFFFFFFF);
@@ -287,6 +353,7 @@ public:
     * @brief Sets the remote read address for the specified buffer. Used for GPU -> FPGA transfers
     * @param buffer The buffer index. Must be < 16 for V1, and < 1024 for V4
     * @param addr 64-bit address in GPU device memory
+    * @note This is an INTERNAL register, you should not use this unless you know what you're doing!
     */
    inline void setRemoteReadAddress(uint32_t buffer, uint64_t addr) {
       uint32_t l = uint32_t(addr & 0xFFFFFFFF);
@@ -309,7 +376,7 @@ public:
 
    /**
     * @brief Arms free list buffer for remote write from FPGA -> GPU.
-    * @see triggerRemoteWriteOffset() for something usable with CUDA
+    * @see freeListOffset() for something usable with CUDA
     * @param buffer Buffer index to trigger.
     */
    inline void returnFreeListIndex(uint32_t buffer) {
