@@ -143,6 +143,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   tr_scoped_range r{/*"TebReceiver::complete", */nvtx3::payload{index}}; // Expose function name via NVTX
 
   // Set the nworkers to 0 to run without the Reducer workers in the loop
+  // Nb: This also prevents recording because no Reducer runs to copy the data to the output buffer
   if (m_para.nworkers == 0) {
     *(uint32_t*)const_cast<ResultDgram&>(result).xtc.payload() = 0;
   }
@@ -150,13 +151,35 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
   logging::debug("TebRcvr::complete: Posting  %s, pid %014lx, prescale %d, persist %d, monitor %d to Recorder",
                  TransitionId::name(result.service()), result.pulseId(), result.prescale(), result.persist(), result.monitor());
 
-//  if (result.service() == TransitionId::Disable) {
-//    printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
-//           m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
-//    static_cast<PGPDrp&>(m_drp).reducerDump();
-//    lDisable = true;
-//    const_cast<Parameters*>(&m_para)->verbose++;
-//  }
+  //static unsigned traceIndex = 0;
+  //static struct Trace_t
+  //{
+  //  unsigned idx;
+  //  unsigned svc;
+  //  uint64_t pid;
+  //  int      wkr;
+  //} traceBuffer[1024];
+  //auto& tb{traceBuffer[(traceIndex++)&1023]};
+  //tb.idx = index;
+  //tb.svc = result.service();
+  //tb.pid = result.pulseId();
+  //tb.wkr = -1;
+
+  //if (result.service() == TransitionId::Disable) {
+    //printf("*** TebRcvr::complete: Disable seen, recordQueue occ %d, reducerStarts %lu, reducerReceives %lu, lastIdx %u, idx %u, state %u\n",
+    //       m_recordQueue.guess_size(), m_metrics.reducerStarts, m_metrics.reducerReceives, lLastIndex, index, lStateMon);
+    //static_cast<PGPDrp&>(m_drp).reducerDump();
+    //lDisable = true;
+    //const_cast<Parameters*>(&m_para)->verbose++;
+
+    //printf("\n");
+    //for (unsigned i = 0; i < 16; ++i) {
+    //  unsigned j = (traceIndex-16+i) & 1023;
+    //  auto& tb1{traceBuffer[j]};
+    //  printf("i %4u : %4u, who %u, idx %4u, svc %02x, pid %014lx, wkr %d\n",
+    //         i, j, 1, tb1.idx, tb1.svc, tb1.pid, tb1.wkr);
+    //}
+  //}
 
   // Pass parameters to the recorder thread
   m_recordQueue.push({index, &result});
@@ -164,7 +187,7 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
   // Start up a reducer only when there is a need for its result
   // Running the reducer on transitions is a no-op, so avoid its overhead
-  if (result.persist() || result.monitor()) {
+  if (result.isEvent() && (result.persist() || result.monitor())) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
     while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
@@ -173,9 +196,10 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
         return;                         // @todo: Revisit
       }
     }
+    tb.wkr = m_worker;
     m_worker = (m_worker + 1) % m_para.nworkers;
     ++m_metrics.reducerStarts;
-//    lLastIndex = index;
+    //lLastIndex = index;
   }
 }
 
@@ -233,6 +257,22 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     logging::debug("TebRcvr::recorder: Handling %s, pid %014lx, prescale %d, persist %d, monitor %d",
                    TransitionId::name(result->service()), result->pulseId(), result->prescale(), result->persist(), result->monitor());
 
+    //static unsigned traceIndex = 0;
+    //static struct Trace_t
+    //{
+    //  unsigned idx;
+    //  int      rtIdx;
+    //  unsigned svc;
+    //  uint64_t pid;
+    //  int      wkr;
+    //} traceBuffer[1024];
+    //auto& tb{traceBuffer[(traceIndex++)&1023]};
+    //tb.idx = index;
+    //tb.rtIdx = -1;
+    //tb.svc = result->service();
+    //tb.pid = result->pulseId();
+    //tb.wkr = -1;
+
     // If needed, wait for the next GPU Reducer in sequence to complete
     size_t dataSize{0};
     if (result->isEvent() && (result->persist() || result->monitor())) {
@@ -248,11 +288,22 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       ++m_metrics.reducerReceives;
       lStateMon = 4;
       //printf("*** TebRcvr::recorder: wkr %u, rt idx %u, sz %zu\n", worker, rt.index, rt.dataSize);
+      //tb.wkr = worker;
+      //tb.rtIdx = rt.index;
       worker = (worker + 1) % m_para.nworkers;
 
       if (rt.index != index) [[unlikely]] { // Sanity check
         logging::critical("Recorder vs Reducer index mismatch: wkr %u: %u vs %u", worker, index, rt.index);
-        //abort();
+
+        //printf("\n");
+        //for (unsigned i = 0; i < 16; ++i) {
+        //  unsigned j = (traceIndex-16+i) & 1023;
+        //  auto& tb1{traceBuffer[j]};
+        //  printf("i %4u : %4u, who %u, idx %4u vs %4d, svc %02x, pid %014lx, wkr %d\n",
+        //         i, j, 2, tb1.idx, tb1.rtIdx, tb1.svc, tb1.pid, tb1.wkr);
+        //}
+        //while(1)  usleep(1000000);      // Hang
+        abort();
       }
       dataSize = rt.dataSize;
     }
@@ -378,7 +429,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     if (writing()) {                  // Won't ever be true for Configure
       //printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
       // write event to file if it passes event builder or if it's a transition
-      if (result->persist() || result->prescale()) {
+      if (result->isEvent() && (result->persist() || result->prescale())) {
         //printf("*** TebRcvr::recorder: persist or prescale\n");
         //uint32_t* p = (uint32_t*)dgram;
         //printf("l1:  ");
@@ -844,7 +895,8 @@ void PGPDrp::_collector()
         const void* bufEnd = (char*)dgram + pool.bufferSize();
         m_det.event(*dgram, bufEnd, event, ++l1Count);
         //const auto p = (uint32_t*)&timingHeader[1];
-        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, pyld %08x %08x\n", trgPrimitive, trgPrimitive->size(), p[0], p[1]);
+        //printf("*** PGPDrp::Collector: trgPrim %p, sz %zu, payload %08x %08x\n",
+        //       trgPrimitive, trgPrimitive->size(), p[0], p[1]);
         if (trgPrimitive) { // else this DRP doesn't provide TEB input
           // Copy the TEB input data from the GPU into the TEB input datagram
           auto tpSz = trgPrimitive->size();
@@ -853,9 +905,9 @@ void PGPDrp::_collector()
           memcpy(buf, &timingHeader[1], tpSz);
         }
       } else {  // Transition
-        logging::debug("Collector  saw %s @ %u.%09u (%014lx)",
-                       TransitionId::name(transitionId),
-                       dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+        logging::info("Collector  saw %12s @ %u.%09u (%014lx)",
+                      TransitionId::name(transitionId),
+                      dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
 
         // Store the empty transition dgram allocated above in the pebble
         pool.transitionDgrams[pebbleIndex] = trDgram;
