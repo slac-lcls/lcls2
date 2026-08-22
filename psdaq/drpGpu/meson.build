@@ -148,6 +148,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       python_dep,
       cuda_dep,
@@ -167,6 +168,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       psalg_utils_dep,
@@ -187,6 +189,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       psalg_utils_dep,
@@ -202,6 +205,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       #python_dep,
       xtcdata_dep,
@@ -218,6 +222,8 @@ cuda_inc_dir = include_directories([
     ],
     install: true,
     install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       cuda_dep,
@@ -233,6 +239,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       pfpl_dep,
@@ -247,6 +254,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       sleek_dep,
@@ -262,6 +270,7 @@ cuda_inc_dir = include_directories([
   #  install: true,
   #  install_rpath: libdir_install_rpath,
   #  link_with: [],
+  #  cuda_args: cuda_args,
   #  dependencies: [
   #    xtcdata_dep,
   #    cusz_dep,
@@ -277,6 +286,7 @@ cuda_inc_dir = include_directories([
   #  install: true,
   #  install_rpath: libdir_install_rpath,
   #  link_with: [],
+  #  cuda_args: cuda_args,
   #  dependencies: [
   #    xtcdata_dep,
   #    cuszp_dep,
@@ -292,6 +302,7 @@ cuda_inc_dir = include_directories([
 #    install: true,
 #    install_rpath: libdir_install_rpath,
 #    link_with: [],
+#    cuda_args: cuda_args,
 #    dependencies: [
 #      xtcdata_dep,
 #      eip_dep,
