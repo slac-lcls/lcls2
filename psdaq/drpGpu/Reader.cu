@@ -456,10 +456,10 @@ void _readerLoop(unsigned  const                            reader,
 
       auto const dmaIdx{*dmaBufferIdx};
       *(volatile uint32_t*)(dmaBuffers[dmaIdx] + 4) = 0;   // Clear the handshake space
-      *(volatile uint8_t*)(wrEnReg + dmaIdx * 4) = 1;      // Enable the DMA
+      *(volatile uint32_t*)(wrEnReg + dmaIdx * 4) = 1;     // Return buffer index to FPGA
       *dmaBufferIdx = (dmaIdx + nReaders) & (dmaCount-1);  // Prepare for the next DMA buffer
-      //printf("### Reader[%u]: idx %u, hand shake %p, next write enable %p\n",
-      //       reader, dmaIdx, dmaBuffers[dmaIdx] + 4, wrEnReg + dmaIdx * 4);
+      //printf("### Reader[%u]: idx %u, next %u, hand shake %p, next write enable %p\n",
+      //       reader, dmaIdx, *dmaBufferIdx, dmaBuffers[dmaIdx] + 4, wrEnReg + dmaIdx * 4);
 
       *state = 0;
       DBG(*stateMon = 15; ++(*evtCtr);)
@@ -497,10 +497,11 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
 
   auto       stream         = m_streams[reader];
   auto       panel          = m_pool.panel();
-  auto const wrEnReg_d      = (uint8_t*)panel->fpgaRegs + panel->coreRegs.freeListOffset(0);
+  auto&      coreRegs       = panel->coreRegs;
+  auto const wrEnReg_d      = (uint8_t*)coreRegs.registers() + coreRegs.freeListOffset(0);
   auto const dmaBuffers_d   = panel->dmaBuffers_d;
   auto const dmaCount       = m_pool.dmaCount();
-  auto const frameSize      = panel->coreRegs.dmaDataBytes();
+  auto const frameSize      = coreRegs.dmaDataBytes();
   auto const hostWrtBufs    = m_pool.hostWrtBufs();
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
@@ -620,33 +621,31 @@ bool Reader::startup()                  // Called during phase 1 of Configure
 
   auto const panel = m_pool.panel();
 
-#ifdef HOST_REARMS_DMA
-  // Write to the DMA start register in the FPGA
-  for (unsigned dmaIdx = 0; dmaIdx < m_pool.dmaCount(); ++dmaIdx) {
-    auto rc = gpuSetWriteEn(panel->datadev.fd(), dmaIdx);
-    if (rc < 0) {
-      logging::error("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
-      return true;
-    }
-  }
-#endif // HOST_REARMS_DMA
-
   // Enable a DMA for all buffers
   for (unsigned dmaBufIdx = 0; dmaBufIdx < m_pool.dmaCount(); ++dmaBufIdx) {
     // Clear handshake space on the GPU side (A.K.A. "GPU's doorbell")
     const auto dmaBufs = panel->dmaBuffers[dmaBufIdx];
     chkError(cudaMemset(dmaBufs + 4, 0, sizeof(uint32_t)));
-    //const auto dmaWrtStart = (uint8_t*)panel->fpgaRegs + panel->coreRegs.freeListOffset(dmaBufIdx);
+    //const auto dmaWrtStart = (uint8_t*)panel->coreRegs.registers() + panel->coreRegs.freeListOffset(dmaBufIdx);
     //printf("*** Reader: dmaBufIdx %u, dmaBuffer %p, hwWrtStart %p\n", dmaBufIdx, dmaBufs, dmaWrtStart);
 
+    // Return the buffer index back to the FPGA side ("FPGA's free list")
 #ifndef HOST_REARMS_DMA
-    // Write to the DMA start register in the FPGA to trigger the write
     panel->coreRegs.returnFreeListIndex(dmaBufIdx);
+#else
+    auto rc = gpuSetWriteEn(panel->datadev.fd(), dmaIdx);
+    if (rc < 0) {
+      logging::error("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
+      return true;
+    }
 #endif // HOST_REARMS_DMA
   }
 
   // Ensure that the DMA round-robin index starts with buffer 0
   dmaIdxReset(panel->coreRegs);
+
+  // Enable DMAs
+  gpuEnableTx(panel->datadev.fd(), 1);
 
   // Launch the Reader graph
   for (unsigned i = 0; i < m_nReaders; ++i) {
@@ -663,8 +662,8 @@ void Reader::freeDma(PGPEvent* event)
   constexpr uint32_t lane{0};                // The lane is always 0 for GPU-enabled PGP devices
   DmaBuffer* buffer = &event->buffers[lane];
   event->mask = 0;
-  m_pebbleQueue.h->push(buffer->index);
-  //m_pool.freeDma(1, nullptr); // This doesn't do anything
+  m_pebbleQueue.h->push(buffer->index); // @todo: Right place for this?
+  m_pool.freeDma(1, nullptr);           // Count freed 'DMA' (host) buffers
   //printf("*** Reader::freeDma: pblIdx %u, hd %u, tl %u, occ %u\n", buffer->index, m_pebbleQueue.h->head(), m_pebbleQueue.h->tail(), m_pebbleQueue.h->occupancy());
 }
 
@@ -678,4 +677,3 @@ void Reader::flush()
   // Free any in-use pebble buffers
   m_pool.flushPebble();
 }
-
