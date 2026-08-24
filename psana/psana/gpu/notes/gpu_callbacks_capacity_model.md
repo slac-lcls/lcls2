@@ -145,6 +145,76 @@ inside the callback phase. Event-loop code cannot request that view after psana
 has released the slot. A callback using `on_gpu` instead obtains an independent
 device copy, but its copy and later outputs remain user-owned memory.
 
+## Access After Callback Release
+
+Early-release callback mode and external event-loop GPU access have different
+slot-lifetime contracts. After callbacks finish and psana releases the input
+slot, event-loop calls to either `on_gpu` or `on_gpu_view` must fail rather than
+read storage which may already contain a later event:
+
+- `on_gpu` creates an independent D2D copy, but its source slot must still be
+  valid when the copy is requested.
+- `on_gpu_view` is zero-copy and must keep the source slot leased until the
+  user's stream-completion event fires.
+
+Without `gpu_callbacks`, `gpu_d2h_chunk_size=0` may retain the existing
+yield-first external-consumer mode: yield the event with its slot leased, let
+the current event-loop iteration call `on_gpu` or `on_gpu_view`, and release
+the slot only after the registered consumer completes. Supporting this window
+after managed callbacks would delay early release and couple slot availability
+to event-loop progress, so it is not part of the initial callback model.
+
+If later GPU work needs the raw array, a callback can explicitly return an
+independent copy:
+
+```python
+def retain_raw(ctx, stream):
+    # on_gpu copies out of the reusable slot. Keep the D2D copy ordered on the
+    # callback stream so callback_done also covers this copy.
+    with stream:
+        return ctx.get("jungfrau.raw").on_gpu
+
+
+ds = DataSource(
+    ...,
+    gpu_callbacks=[retain_raw, peak_finding],
+    gpu_d2h_chunk_size=0,
+    max_pending_gpu_outputs=1000,
+)
+```
+
+The returned CuPy array is retained in `output_results`. It consumes
+user-owned VRAM, counts as one retained event record rather than a known byte
+budget, and remains live until all references to it are dropped.
+
+If CPU access is sufficient, a positive `gpu_d2h_chunk_size` selects the
+automatic host-transfer path:
+
+```python
+ds = DataSource(
+    ...,
+    gpu_callbacks=[peak_finding],
+    gpu_d2h_chunk_size=32,
+)
+
+for ctx in run.events():
+    calib_cpu = ctx.get("jungfrau.calib").on_cpu
+```
+
+In the current implementation, this asynchronously copies calibrated results
+into a bounded pool of page-locked (pinned) host buffers. `on_cpu` waits for
+the D2H completion when necessary and materializes an independent NumPy array
+before the pinned slot is reused. The value of `gpu_d2h_chunk_size` is a
+physical transfer-chunk size, not an output-retention or logical join size.
+Automatic D2H currently covers `<det>.calib`, not `<det>.raw`; preserving raw
+on the host would require an explicit additional result/pipeline contract.
+
+When callbacks and automatic D2H are both enabled, callback completion and
+`d2h_done` are separate consumers of slot-backed storage. Psana may reuse the
+input slot only after both completion events have made reuse safe. The yielded
+host-backed context supports `on_cpu`; its `on_gpu` and `on_gpu_view` accessors
+must remain unavailable because the device slot was released before delivery.
+
 ## User Example
 
 ```python
