@@ -45,7 +45,8 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$(pwd)/install/bin:${PATH}
-          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
+          SITE_PACKAGES=$(pwd)/install/lib/python${pyver}/site-packages
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           pytest psana/psana/tests/test_HBins.py \
                  psana/psana/tests/test_Time.py \

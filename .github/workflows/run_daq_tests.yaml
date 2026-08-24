@@ -43,7 +43,8 @@ jobs:
       - name: Run Tests
         run: |
           export PATH=$(pwd)/install/bin:${PATH}
-          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
+          SITE_PACKAGES=$(pwd)/install/lib/python${pyver}/site-packages
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           # test_daqstat.py builds a real QApplication; headless runners
           # have no display to attach to.
@@ -70,7 +71,8 @@ jobs:
         timeout-minutes: 5
         run: |
           export PATH=$(pwd)/install/bin:${PATH}
-          SITE_PACKAGES=$(python -c "import sys; print(f'$(pwd)/install/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages')")
+          pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
+          SITE_PACKAGES=$(pwd)/install/lib/python${pyver}/site-packages
           export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           pytest psdaq/psdaq/tests/test_rogue.py
 
