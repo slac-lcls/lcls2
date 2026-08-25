@@ -1,307 +1,284 @@
-# GPU Callbacks: Capacity-Based User Kernel Model
+# GPU Callbacks: Event-Loop Comparison And CUDA Graphs
 
 ## Status
 
 Proposed design, not yet implemented.
 
-## Goal
+This note compares ordinary per-event GPU callbacks with calling the same
+Python functions directly in `run.events()`. It also identifies the narrower
+producer-side scheduling hook that could provide a performance advantage and
+the additional restrictions required for CUDA Graphs.
 
-Support arbitrary user GPU analysis without requiring psana to understand the
-callback's CUDA kernels, workspace, output shapes, or CUDA graph. Keep the
-framework responsibility narrow:
+## Current Execution Model
 
-- Protect the reusable slot-backed `jungfrau.raw` input until all callbacks
-  that read it have completed.
-- Retain references to callback outputs in a bounded `output_results`
-  container.
-- Require the user to drain retained outputs often enough to stay within the
-  configured capacity.
+For this example:
 
-Psana does not byte-budget, allocate, resize, or otherwise manage user output
-memory. A count limit bounds retained result records, not their VRAM usage.
+```text
+batch_size = 5
+pool_depth = 2
 
-## Proposed Interface
+slot 0: batch 0, events 0..4, reusable input/calib/work buffers
+slot 1: batch 1, events 5..9, reusable input/calib/work buffers
+```
+
+`batch_size` is the EventBuilder communication size. A batch may be split into
+smaller GPU subbatches when required by the execution-memory limit, so the
+example assumes that all five events fit one slot. `pool_depth` bounds
+concurrent execution slots, not total GPU bytes.
+
+Each slot owns a CUDA stream and reusable input, raw-gather, calibration-output,
+and scratch capacity. A slot is safe to reuse only after every kernel, copy, or
+other consumer reading its buffers has completed. Callback-created output and
+workspace allocations are user-owned and are not bounded by `pool_depth`.
+
+## Ordinary Callback Interface
+
+An ordinary callback is a Python function invoked once per event:
 
 ```python
+class UserAnalysis:
+    def __init__(self):
+        self.peaks = []
+
+    def peak_finding(self, ctx, stream):
+        with ctx.get("jungfrau.calib").on_gpu_view(stream) as calib:
+            positions, energies = find_peaks(calib, stream=stream)
+
+        # positions and energies own independent allocations. The user chooses
+        # whether and how long to retain them.
+        self.peaks.append((ctx.timestamp, positions, energies))
+
+    def max_projection(self, ctx, stream):
+        update_max_projection(ctx, stream=stream)
+
+
+analysis = UserAnalysis()
+
 ds = DataSource(
     exp="mfx...",
     run=123,
     gpu_det="jungfrau",
     gpu_d2h_chunk_size=0,
-    gpu_callbacks=[peak_finding, max_projection],
-    pool_depth=4,
-    max_pending_gpu_outputs=1000,
+    gpu_callbacks=[analysis.peak_finding, analysis.max_projection],
+    pool_depth=2,
 )
+
+for ctx in next(ds.runs()).events():
+    # Event-loop GPU access remains available under the retained-slot contract.
+    with ctx.get("jungfrau.raw").on_gpu_view(user_stream) as raw:
+        consume_raw(raw, stream=user_stream)
 ```
 
-The controls are independent:
+Callbacks run in list order for each event. Psana does not infer dependencies,
+allocate callback workspace, retain callback return values, or manage the
+user's CuPy objects. A callback may put results in its own list, accumulator,
+writer, or other application-owned object. Keeping a CuPy object keeps its
+allocation live and may eventually produce CUDA OOM; that is user memory
+policy rather than psana output-queue policy.
 
-| Control | Meaning |
-| --- | --- |
-| `pool_depth` | Maximum concurrent psana execution slots and callback work |
-| `max_pending_gpu_outputs` | Maximum retained user-result records per BD |
-| User drain interval | Application-selected CPU/GPU join or consumption point |
+Psana therefore adds no output-retention container or output-capacity
+DataSource argument in this model.
 
-Increasing output capacity does not create more CUDA streams or execution
-slots. Increasing `pool_depth` does not increase the number of outputs the
-application may retain.
+## Similarities With Event-Loop Calls
 
-## Callback Semantics
-
-A callback may contain Python conditions, CuPy operations, RawKernel launches,
-calls to other functions, or a user-defined CUDA graph:
+The equivalent explicit event-loop code is:
 
 ```python
-def peak_finding(ctx, stream):
-    if ctx.raw("gmd").energy >= 5_000:
-        return None
-
-    with ctx.get("jungfrau.raw").on_gpu_view(stream) as raw:
-        positions, energies = find_peaks(raw, stream=stream)
-
-    return {
-        "positions": positions,
-        "energies": energies,
-    }
-```
-
-A plain `gpu_callbacks=[a, b, c]` list has deterministic, ordered semantics.
-Psana invokes `a`, then `b`, then `c` for each event and queues their GPU work
-on one supplied stream. It records one completion event after the complete
-callback chain.
-
-Returned outputs must be independent of the psana `jungfrau.raw` execution
-slot. Psana stores the returned CuPy arrays or user result object, not raw
-device pointers. Holding the Python object preserves its allocation lifetime;
-it does not transfer byte-level memory management to psana.
-
-## Output Results
-
-Psana retains at most one composite record per event with non-`None` callback
-output:
-
-```text
-GpuOutputRecord
-  timestamp
-  event_index
-  results       callback name -> returned user object
-  ready         CUDA completion event
-```
-
-`output_results` holds strong references to the returned objects until the
-user drains or discards them. If the user keeps another reference after a
-drain, that allocation remains live. Dropped CuPy allocations may also remain
-cached in the CuPy memory pool.
-
-`max_pending_gpu_outputs` is a capacity guard, not a byte budget. Variable or
-large outputs can exhaust VRAM before the count limit is reached. Capacity
-exhaustion should fail rather than block, because only the user event loop can
-drain the container:
-
-```text
-GpuOutputCapacityError:
-1000 pending GPU output records are retained. Drain more frequently or
-increase max_pending_gpu_outputs.
-```
-
-An opaque callback or a single event may still cause CUDA OOM. Psana should
-report the callback, timestamp, pending count, and available GPU-memory
-diagnostics, then terminate distributed execution coherently. It cannot safely
-recover or recommend only one tuning knob because OOM may come from callback
-workspace, output size, persistent user state, or `pool_depth`.
-
-## Call Path And Slot Release
-
-```text
-Run.events()
-  -> GpuEvents receives one GPU subbatch
-  -> EventPool acquires a free execution slot
-  -> KvikIO fills the slot-backed Jungfrau raw buffer
-  -> raw_ready is recorded
-  -> callback stream waits for raw_ready
-  -> callbacks run in configured list order
-  -> callback_done is recorded
-  -> non-None outputs are retained in output_results
-  -> EventPool waits for or observes callback_done
-  -> Jungfrau raw slot is released and may be reused
-```
-
-The important lifetime split is:
-
-```text
-jungfrau.raw slot lifetime
-    ends at callback_done
-
-user output lifetime
-    ends when output_results is drained/discarded and no user references remain
-```
-
-Python callback return is not proof of GPU completion. The raw slot must remain
-protected until the recorded CUDA event completes. Conversely, retained user
-outputs do not keep the raw slot leased when they own independent allocations.
-
-This early-release mode means the slot-backed `jungfrau.raw` view is valid only
-inside the callback phase. Event-loop code cannot request that view after psana
-has released the slot. A callback using `on_gpu` instead obtains an independent
-device copy, but its copy and later outputs remain user-owned memory.
-
-## Access After Callback Release
-
-Early-release callback mode and external event-loop GPU access have different
-slot-lifetime contracts. After callbacks finish and psana releases the input
-slot, event-loop calls to either `on_gpu` or `on_gpu_view` must fail rather than
-read storage which may already contain a later event:
-
-- `on_gpu` creates an independent D2D copy, but its source slot must still be
-  valid when the copy is requested.
-- `on_gpu_view` is zero-copy and must keep the source slot leased until the
-  user's stream-completion event fires.
-
-Without `gpu_callbacks`, `gpu_d2h_chunk_size=0` may retain the existing
-yield-first external-consumer mode: yield the event with its slot leased, let
-the current event-loop iteration call `on_gpu` or `on_gpu_view`, and release
-the slot only after the registered consumer completes. Supporting this window
-after managed callbacks would delay early release and couple slot availability
-to event-loop progress, so it is not part of the initial callback model.
-
-If later GPU work needs the raw array, a callback can explicitly return an
-independent copy:
-
-```python
-def retain_raw(ctx, stream):
-    # on_gpu copies out of the reusable slot. Keep the D2D copy ordered on the
-    # callback stream so callback_done also covers this copy.
-    with stream:
-        return ctx.get("jungfrau.raw").on_gpu
-
-
-ds = DataSource(
-    ...,
-    gpu_callbacks=[retain_raw, peak_finding],
-    gpu_d2h_chunk_size=0,
-    max_pending_gpu_outputs=1000,
-)
-```
-
-The returned CuPy array is retained in `output_results`. It consumes
-user-owned VRAM, counts as one retained event record rather than a known byte
-budget, and remains live until all references to it are dropped.
-
-If CPU access is sufficient, a positive `gpu_d2h_chunk_size` selects the
-automatic host-transfer path:
-
-```python
-ds = DataSource(
-    ...,
-    gpu_callbacks=[peak_finding],
-    gpu_d2h_chunk_size=32,
-)
+analysis = UserAnalysis()
 
 for ctx in run.events():
-    calib_cpu = ctx.get("jungfrau.calib").on_cpu
+    analysis.peak_finding(ctx, analysis_stream)
+    analysis.max_projection(ctx, analysis_stream)
 ```
 
-In the current implementation, this asynchronously copies calibrated results
-into a bounded pool of page-locked (pinned) host buffers. `on_cpu` waits for
-the D2H completion when necessary and materializes an independent NumPy array
-before the pinned slot is reused. The value of `gpu_d2h_chunk_size` is a
-physical transfer-chunk size, not an output-retention or logical join size.
-Automatic D2H currently covers `<det>.calib`, not `<det>.raw`; preserving raw
-on the host would require an explicit additional result/pipeline contract.
+The two forms share the important behavior:
 
-When callbacks and automatic D2H are both enabled, callback completion and
-`d2h_done` are separate consumers of slot-backed storage. Psana may reuse the
-input slot only after both completion events have made reuse safe. The yielded
-host-backed context supports `on_cpu`; its `on_gpu` and `on_gpu_view` accessors
-must remain unavailable because the device slot was released before delivery.
+- Both call ordinary Python once per event.
+- CUDA launches inside either function are asynchronous with respect to
+  Python.
+- Both may use CuPy operations, RawKernel launches, helper functions, or a
+  user-created CUDA Graph.
+- The user owns workspace, persistent state, and output allocations.
+- Psana cannot infer hidden data dependencies or safely parallelize arbitrary
+  functions.
+- The GPU slot must remain protected until every asynchronous consumer that
+  reads slot-backed raw or calibrated data has completed.
 
-## User Example
+For these semantics, `gpu_callbacks=[...]` is primarily configuration and
+convenience. Merely moving the same per-event Python calls into psana does not
+create more GPU concurrency, reduce kernel launch count, or make the work
+CUDA-Graph compatible.
+
+## Differences
+
+| Property | Event-loop call | Ordinary `gpu_callbacks` |
+| --- | --- | --- |
+| Placement | Explicit in user loop | Configured on `DataSource` |
+| Invocation | User chooses when and whether | Psana invokes each callback per event |
+| Ordering | Written directly by user | Deterministic list order per event |
+| Outputs | User stores objects | User callback stores objects |
+| Dependencies | User-managed | User-managed |
+| Workspace | User-managed | User-managed |
+| Basic scheduling | During yielded-event window | Normally the same window |
+
+Callbacks may still be useful for packaging reusable analysis, applying the
+same analysis in serial and MPI execution, or keeping the event loop focused
+on CPU analysis. Those are usability benefits, not automatic GPU-performance
+benefits.
+
+## Slot Lifetime And Event-Loop Access
+
+Ordinary callbacks should preserve the current external-GPU retirement window:
+
+```text
+begin_retire(slot)
+  -> keep slot leased
+  -> for each event in the retired subbatch
+       invoke configured callbacks
+       yield the event
+       allow event-loop on_gpu/on_gpu_view consumers
+  -> wait for every registered CUDA consumer
+  -> release slot
+```
+
+With this contract and `gpu_d2h_chunk_size=0`, callbacks do not cause early
+slot release. Event-loop code may still request `jungfrau.raw` or
+`jungfrau.calib` through `on_gpu` or `on_gpu_view`:
+
+- `on_gpu` creates an independent D2D copy while the source slot is valid.
+- `on_gpu_view(stream)` exposes a zero-copy slot view and records a completion
+  event for work enqueued on `stream` inside the context manager.
+
+Safety requires psana to wait for all callback and event-loop consumers. The
+current `SlotLease` stores one consumer-completion event. Supporting a callback
+and a later event-loop view on different streams therefore requires either a
+collection/aggregate of completion events or explicit stream ordering that
+makes the final recorded event cover all earlier work. A later registration
+must not simply overwrite an unrelated outstanding consumer event.
+
+Automatic D2H remains a different mode. With `gpu_d2h_chunk_size > 0`, psana
+copies calibrated results asynchronously into a bounded pinned-host pool and
+may release the device slot before yielding the event. The resulting context
+supports `on_cpu`, while event-loop `on_gpu` and `on_gpu_view` remain
+unavailable. Automatic D2H currently covers `<det>.calib`, not `<det>.raw`.
+An implementation should either reject ordinary GPU callbacks in this mode or
+run callbacks that need slot-backed data on the producer side before D2H and
+wait for both consumers before reuse.
+
+User outputs retained beyond the leased-event window must own independent
+storage. A callback must not save a bare pointer or zero-copy view into a
+reusable psana slot.
+
+## One Possible Scheduling Advantage
+
+The current external event-loop path synchronizes the producer stream before
+yielding slot-backed results. A callback invoked only after that synchronization
+has no scheduling advantage over a function called directly in the event loop:
+
+```text
+calibration -> producer synchronize -> callback/event-loop launches
+```
+
+A narrower producer-side implementation could invoke callbacks while the slot
+is submitted, queueing their GPU work directly after calibration on the slot's
+stream:
+
+```text
+slot stream: read -> calibration -> callback launches -> result_ready
+CPU:                                      independent CPU work
+```
+
+This could provide three benefits:
+
+- No host synchronization between calibration and callback kernel launches.
+- Callback work can overlap CPU event construction and work in another slot.
+- One final completion event can cover calibration and same-stream callback
+  work.
+
+This advantage is not inherent in a Python callback list; it depends on where
+psana invokes the callbacks and which stream they use. Per-event Python calls
+and kernel-launch overhead still remain. It should be measured against the
+event-loop baseline before adding framework complexity.
+
+Producer-side enqueue does not require early slot release. Psana can enqueue
+callbacks before synchronization and still retain the slot through the later
+event-loop access window. Releasing before yield would be a separate,
+incompatible mode for contexts that need slot-backed GPU access.
+
+## Cross-Slot Stateful Analysis
+
+List order defines dependencies only within one event. With two slot streams,
+batch 0 and batch 1 may execute concurrently. For example, both
+`max_projection` callbacks must not update one run-wide array concurrently
+without an ordering strategy.
+
+Safe choices include:
+
+- Run all projection updates on one explicitly ordered stream.
+- Keep one partial maximum per slot and reduce the partials later.
+- Use an algorithm whose cross-stream writes are explicitly safe.
+
+Psana should not infer which choice is correct from arbitrary Python code.
+
+## CUDA Graphs
+
+A Python callback is not itself captured in a CUDA Graph. It can construct a
+graph during setup or launch a previously instantiated graph for each event:
 
 ```python
-import cupy as cp
-from psana import DataSource
-
-
-def peak_finding(ctx, stream):
-    if ctx.raw("gmd").energy >= 5_000:
-        return None
-
-    with ctx.get("jungfrau.raw").on_gpu_view(stream) as raw:
-        mask = raw > 100
-        positions = cp.argwhere(mask)
-        energies = raw[mask]
-
-    return positions, energies
-
-
-ds = DataSource(
-    exp="mfx...",
-    run=123,
-    gpu_det="jungfrau",
-    gpu_d2h_chunk_size=0,
-    gpu_callbacks=[peak_finding],
-    pool_depth=4,
-    max_pending_gpu_outputs=1000,
-)
-
-run = next(ds.runs())
-
-for i, ctx in enumerate(run.events()):
-    # Normal CPU detector analysis can proceed in the event loop.
-    energy = ctx.raw("gmd").energy
-
-    if (i + 1) % 1000 == 0:
-        records = run.gpu.output_results.drain()
-        join_cpu_and_gpu(records)
-
-# Drain the partial tail at end of input.
-records = run.gpu.output_results.drain()
-if records:
-    join_cpu_and_gpu(records)
+def graph_callback(ctx, stream):
+    # Select a graph for the stable backing slot, or update graph-node inputs.
+    graph_exec = prepare_graph_exec(ctx)
+    graph_exec.launch(stream=stream)
 ```
 
-`drain()` should return records only after their `ready` events complete, or
-return explicit readiness handles while transferring object ownership to the
-user. A separate `discard()` operation must defer reference release until GPU
-work has completed. A plain list `clear()` is insufficient because it could
-drop the final output reference while a kernel is still writing it.
+The captured graph may contain multiple kernels, supported CuPy/library
+operations, asynchronous copies, and explicit GPU dependencies. Callbacks do
+not have to be single RawKernels. Python branches, object mutation, and other
+host behavior run while the graph is constructed; they are not repeated by
+graph replay.
 
-## Parallel Callbacks
+Practical restrictions include:
 
-The initial implementation should not infer callback independence or
-parallelize a plain list. Arbitrary callbacks may share writable arrays,
-captured state, library state, or hidden streams, and concurrent memory-bound
-kernels may be slower.
+- Capture and replay use explicit non-default streams.
+- CPU/GPU synchronization and synchronous D2H are not allowed during capture.
+- Input, output, and workspace addresses must remain valid for replay. A pool
+  normally needs one graph per stable slot or explicit graph-node parameter
+  updates when pointers change.
+- Fixed batch shapes are easiest. A partial final batch needs padding/masking,
+  another graph, or a non-graph fallback.
+- Variable-sized peak output normally needs preallocated maximum capacity plus
+  a device-side count, rather than allocating from a CPU-visible peak count.
+- A Python condition such as `if evt.energy < threshold` selects whether to
+  launch a graph outside capture. Per-event conditional work inside one graph
+  needs device-side predication or alternate graph executables.
+- Stateful operations such as a run-wide maximum projection still require
+  explicit ordering across slot streams.
+- A completion event recorded after graph launch must participate in the slot
+  lease before psana reuses graph input buffers.
 
-If measurements justify it, a later API may add explicit parallel groups:
+Per-event graph replay can reduce the launch overhead of a multi-kernel chain,
+but still performs one graph launch per event. Capturing calibration and user
+analysis once for an entire GPU subbatch could remove more host launch overhead,
+but that requires a distinct batch-oriented interface with stable shapes,
+buffers, workspace, and output-capacity rules. It should not be presented as
+automatic optimization of arbitrary `gpu_callbacks`.
 
-```python
-gpu_callbacks=[
-    parallel(peak_finding, roi_sum),
-    classify_peaks,
-]
-```
+See the CuPy `Stream.begin_capture()` documentation and the NVIDIA CUDA
+Programming Guide's CUDA Graphs chapter for the capture rules:
 
-The user would assert that callbacks in the group are independent. Psana would
-fan out from `raw_ready`, run each branch on its own stream, fan completion
-events back into one `callback_done`, and release the raw slot only after that
-aggregate event. Stateful callbacks such as a run-wide maximum projection need
-ordered execution across events unless they provide their own safe concurrency.
+- <https://docs.cupy.dev/en/stable/reference/generated/cupy.cuda.Stream.html>
+- <https://docs.nvidia.com/cuda/cuda-programming-guide/04-special-topics/cuda-graphs.html>
 
-Until such an API is needed, advanced users can encapsulate parallel streams or
-a CUDA graph inside one callback and return a completion event covering all
-work.
+## Design Conclusion
 
-## Design Boundary
+The initial choice is:
 
-This model intentionally favors simplicity and scaling over complete memory
-safety for arbitrary user code:
+- Keep GPU analysis in the event loop for the smallest public API; or
+- Add ordinary callbacks as a convenience mechanism with the same leased-slot
+  and user-memory semantics.
 
-- Psana protects only its reusable `jungfrau.raw` source slot.
-- Psana bounds retained output records by count.
-- Users own callback workspace and returned GPU allocations.
-- Users choose output capacity and drain frequency.
-- CUDA OOM remains the failure boundary for unknown user memory demand.
-
-This is separate from a fully managed GPU-stage model, which would require
-declared inputs, outputs, workspaces, and byte-level admission control.
+Neither choice requires psana to retain or cap user outputs. A future
+producer-side enqueue hook may improve overlap, and a batch-oriented processor
+may support efficient CUDA Graph replay, but both are narrower contracts that
+should be justified by measurements rather than implied by ordinary callbacks.
