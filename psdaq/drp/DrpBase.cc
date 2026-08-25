@@ -482,7 +482,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     // Ensure there are more DMA buffers than the size of the batch used to free them
     if (pool.dmaCount() < m_dmaIndices.size()) {
         logging::critical("dmaCount (%u) must be >= nDmaIndices (%zu)",
-                          pool.dmaCount()), m_dmaIndices.size();
+                          pool.dmaCount(), m_dmaIndices.size());
         abort();
     }
 
