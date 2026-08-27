@@ -123,22 +123,11 @@ echo ""
 echo "=== Building wheel with Hatchling ==="
 "${PYTHON}" -m pip install --quiet build hatchling
 
-# Set Python tag for the wheel (cpXYZ for CPython X.Y.Z)
-PYTAG="cp${PYVER//./}"  # e.g., "3.13" -> "cp313"
-
-# Build with correct platform tags
+# Build with correct platform tags. hatch_build.py's build hook
+# (pure_python=False, infer_tag=True) makes hatchling emit a wheel already
+# tagged for the running interpreter/platform (e.g. cp311-cp311-linux_x86_64)
+# -- no manual rename needed.
 "${PYTHON}" -m build --wheel --outdir "${DIST_DIR}"
-
-# Rename wheel to have correct platform-specific tags
-# Hatchling may produce a generic wheel, but we have compiled extensions
-# so we need platform-specific tags
-OLD_WHEEL="${DIST_DIR}/psana-4.3-py3-none-any.whl"
-NEW_WHEEL="${DIST_DIR}/psana-4.3-${PYTAG}-${PYTAG}-linux_x86_64.whl"
-
-if [ -f "${OLD_WHEEL}" ]; then
-    mv "${OLD_WHEEL}" "${NEW_WHEEL}"
-    echo "Renamed wheel to: $(basename ${NEW_WHEEL})"
-fi
 
 # Restore original pyproject.toml
 mv pyproject.toml.bak pyproject.toml
