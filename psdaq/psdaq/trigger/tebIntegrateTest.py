@@ -7,7 +7,7 @@ fastCamWindow = 0
 slowCamWindow = 1
 #  end-of-integration is group 2 and group 3 trigger
 fastCamGroup = 1<<2
-slowCamGroup = 1<<3
+slowCamGroup = 1<<5
 
 logging.warning(f"[Python] tebIntegrateTest script starting")
 

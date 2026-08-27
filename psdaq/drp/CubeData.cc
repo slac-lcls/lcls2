@@ -449,9 +449,15 @@ Pds::EbDgram* CubeData::copyBins(const std::vector<unsigned>& bins,
 	    unsigned ibuff = bin/nbins;
 	    unsigned ibin  = bin%nbins;
 	    Xtc* bxtc = (Xtc*)(((Dgram*)m_buffer[ibuff])->xtc.payload());
-	    for(unsigned id=1; id < idef; id++)
+	    for(unsigned id=0; id < idef; id++)
  	        bxtc = (Xtc*)bxtc->next();
 
+#ifdef DBUG	    
+	    printf("Cube idef %u  xtc %p\n",idef,bxtc);
+	    DumpIterator iter((char*)bxtc);
+	    iter.iterate(bxtc, m_buffer[ibuff]+m_bufferSize);
+#endif
+	    
 	    DescData cubedata(*(ShapesData*)bxtc, m_det.namesLookup()[namesId]);
 	    ((uint32_t*)data.data())[dstbin] = bin;
 	    ((uint32_t*)data.data())[dstbin+ndstbins] = ((uint32_t*)cubedata.shapesdata().data().payload())[nbins+ibin]; // entries
@@ -466,8 +472,10 @@ Pds::EbDgram* CubeData::copyBins(const std::vector<unsigned>& bins,
 		unsigned binSize = s.size(nm);
 		double_t* dst = (double_t*)((char*)data.data()+dstSize+binSize*dstbin);
 		double_t* src = (double_t*)((char*)cubedata.shapesdata().data().payload()+srcSize+ibin*binSize);
+#ifdef DBUG		
 		printf("  [%s][%u]  dst %p  src %p  binSize %u\n",
 		       nm.name(), nm.rank(), dst, src, binSize);
+#endif
 		memcpy(dst, src, binSize);
 		dstSize += binSize*ndstbins;
 		srcSize += binSize*nbins;
@@ -521,7 +529,7 @@ void CubeData::addBins(const std::vector<unsigned>& bins,
 	    unsigned ibuff = bin/nbins;
 	    unsigned ibin  = bin%nbins;
 	    Xtc* bxtc = (Xtc*)(((Dgram*)m_buffer[ibuff])->xtc.payload());
-	    for(unsigned id=1; id < idef; id++)
+	    for(unsigned id=0; id < idef; id++)
  	        bxtc = (Xtc*)bxtc->next();
 
 	    DescData cubedata(*(ShapesData*)bxtc, ni);
