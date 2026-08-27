@@ -85,7 +85,7 @@ namespace Pds {
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
       int      connect(const std::shared_ptr<MetricExporter>);
-      int      configure(Trigger* object);
+      int      configure(Trigger* object, unsigned prescale);
       void     unconfigure();
       void     disconnect();
       void     shutdown();
@@ -112,11 +112,13 @@ namespace Pds {
     private:
       //uint64_t                     _trimmed;
       Trigger*                     _trigger;
+      unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
       uint64_t                     _lastMonPid;
       uint64_t                     _monThrottle;
     private:
+      unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
     private:
       uint64_t                     _eventCount;
@@ -332,14 +334,17 @@ int Teb::connect(const MetricExporter_t exporter)
   return 0;
 }
 
-int Teb::configure(Trigger* trigger)
+int Teb::configure(Trigger* trigger,
+                   unsigned prescale)
 {
   _monitorCount = 0; // Cleared here to stay in sync with MEB
   _nMonCount    = 0;
   for (unsigned i = 0; i < MAX_MEBS; ++ i)
     _mebCount[i] = 0;
 
-  _trigger = trigger;                   // The trigger object
+  _trigger    = trigger;                // The trigger object
+  _prescale   = prescale - 1;           // Be zero based
+  _wrtCounter = _prescale;              // Reset prescale counter
 
   // MRQ links need no configuration
 
@@ -727,7 +732,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
     // Combining a flushing dgram (i.e., a non-SlowUpdate transition) into an
     // expired batch can lead to downstream problems since the transition's
     // pulseId may fall outside the batch duration (epoch)
-    if (expired)                        // Post just the batch
+    if (_batch.start != dgram)          // Post just the batch
     {
       _post(_batch);                    // The batch end is the previous Dgram
 
@@ -882,7 +887,7 @@ private:
   void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
-  int  _setupTrigger(const json& body, Trigger*& trigger);
+  int  _setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale);
   void _buildContract(const json& top);
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, Trigger* trigger) const;
@@ -1022,7 +1027,7 @@ void TebApp::_buildContract(const json& top)
   }
 }
 
-int TebApp::_setupTrigger(const json& body, Trigger*& trigger)
+int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale)
 {
   int               rc = 0;
   const std::string configAlias  {body["config_alias"]};
@@ -1047,6 +1052,17 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger)
     return -1;
   }
 
+# define _FETCH(key, item)                                              \
+  if (top.find(key) != top.end())  item = top[key];                     \
+  else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
+                        key, _prms.instrument.c_str(),                  \
+                        configAlias.c_str(), triggerConfig.c_str());    \
+         rc = -1; }
+
+  _FETCH("prescale", prescale);
+
+# undef _FETCH
+
   logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
                 soname.c_str(), _prms.instrument.c_str(),
                 configAlias.c_str(), triggerConfig.c_str());
@@ -1063,7 +1079,8 @@ void TebApp::_disconnect()
 int TebApp::_configure(const json& msg)
 {
   Trigger* trigger {nullptr};
-  if (_setupTrigger(msg["body"], trigger)) {
+  unsigned prescale{0};
+  if (_setupTrigger(msg["body"], trigger, prescale)) {
     logging::error("Failed to set up Trigger)");
     return -1;
   }
@@ -1074,7 +1091,7 @@ int TebApp::_configure(const json& msg)
     return -1;
   }
 
-  int rc = _teb->configure(trigger);
+  int rc = _teb->configure(trigger, prescale);
   if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);

@@ -481,8 +481,8 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
     if (pool.dmaCount() < m_dmaIndices.size()) {
-        logging::critical("dmaCount (%u) must be >= nDmaIndices (%zu)",
-                          pool.dmaCount(), m_dmaIndices.size());
+        logging::critical("nDmaIndices (%zu) must be >= dmaCount (%u)",
+                          m_dmaIndices.size(), pool.dmaCount());
         abort();
     }
 
@@ -1081,6 +1081,10 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
             }
             if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
+
+            // send pulseId to inproc so it gets forwarded to the collection
+            json msg = createPulseIdMsg(pulseId);
+            m_inprocSend.send(msg.dump());
 
             logging::info("TebRcvr    saw %12s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
@@ -1847,14 +1851,27 @@ std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
     abort();
 }
 
+XtcData::Shape Drp::Detector::shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData)
+{
+    return rawData.shape(rawDef()[rawDefIndex].NameVec[valueIndex]);
+}
+
 //
 //  This is generic but without calibration
 //
-void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex,
-                              double* dst, DescData& rawData)
+unsigned Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                                  double* dst, unsigned bin, DescData& rawData)
 {
     NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
     Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    unsigned arraySize = name.rank() ? Shape(rawData.shape(name)).num_elements(name.rank()) : 1;
+    double* dsto = dst+bin*arraySize;
+
+#if 0    
+    printf("addToCube  rawDef %u  idx %u  dst %p  dsto %p  bin %u  arraySz %u\n",
+	   rawDefIndex, valueIndex, dst, dsto, bin, arraySize);
+#endif
+    
     if (name.rank()==0) {
 
         /*
@@ -1866,7 +1883,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         */
 #define ADD_VALUE(T) {                                           \
             double v = double(rawData.get_value<T>(valueIndex)); \
-            *dst += v;                                           \
+            *dsto += v;                                           \
         break; }
 
         switch(name.type()) {
@@ -1885,7 +1902,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
     }
     else {
         uint32_t* shape = rawData.shape(name);
-        Array<double_t> calArrT((char*)dst, shape, name.rank());
+        Array<double_t> calArrT((char*)dsto, shape, name.rank());
 
 #define ADD_ARRAY(T) {                                           \
             Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
@@ -1907,5 +1924,6 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         }
 #undef ADD_ARRAY
     }
+    return arraySize*sizeof(double_t);
 }
 

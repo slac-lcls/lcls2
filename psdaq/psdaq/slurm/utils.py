@@ -282,7 +282,7 @@ class SbatchManager:
                 cmd += f" -u {job_name}"
         if job_name == "daqstat":
             cmd += f" {self.configfilename}"
-        if self.is_drp(details["cmd"]):
+        if self.is_drp(details["cmd"]) and not " -W " in cmd:
             n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
             if n_workers < 1:
                 n_workers = 1
