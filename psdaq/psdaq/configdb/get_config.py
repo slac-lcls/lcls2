@@ -1,6 +1,8 @@
 import psdaq.configdb.configdb as cdb
 import json
 
+from psdaq.configdb.alg_parameter_manager import DrpAlgParamManager
+
 #import pprint
 
 def get_serno(connect_info, detname):
@@ -110,7 +112,13 @@ def get_config_with_params(db_url, instrument, db_name, cfgtype, detname):
 
     cfg_no_RO_names = remove_read_only(cfg)
 
-    return cfg_no_RO_names
+    # Substitute DRP algorithm parameters if relevant
+    with_alg_params = DrpAlgParamManager.inline_drp_alg_config(
+        det_config=cfg_no_RO_names,
+        confdb_client=mycdb,
+    )
+
+    return with_alg_params
 
 def get_config_json(*args):
     return json.dumps(get_config(*args))
