@@ -30,7 +30,7 @@ public:
     virtual void handleBrokenEvent(const PGPEvent& event) override;
     virtual void resetEventCounter() override;
 private:
-    static const int MAX_RET_CNT_C = 1000;
+    static const unsigned MAX_RET_CNT_C = 1000;
     PGPDrp& m_drp;
 };
 

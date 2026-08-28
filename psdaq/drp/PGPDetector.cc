@@ -305,8 +305,8 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
 // ---
 
 Pgp::Pgp(const Parameters& para, MemPool& pool, Detector& det, PGPDrp& drp) :
-   PgpReader(para, pool, MAX_RET_CNT_C, para.batchSize),
-   m_drp(drp)
+    PgpReader(para, pool, std::min(MAX_RET_CNT_C, pool.dmaCount()), 32),
+    m_drp(drp)
 {
     if (pool.setMaskBytes(para.laneMask, det.virtChan)) {
         logging::critical("Failed to allocate lane/vc: '%m' "

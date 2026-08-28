@@ -470,7 +470,7 @@ void PvMonitor::timeout(EbDgram* dgram)
 // ---
 
 Pgp::Pgp(const Parameters& para, MemPool& pool, Detector* det) :
-    PgpReader(para, pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, pool, std::min(MAX_RET_CNT_C, pool.dmaCount()), 32),
     m_det(det),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
