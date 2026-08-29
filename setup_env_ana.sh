@@ -1,6 +1,8 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
+ANA_CONDA_ENVIRONMENT=psana_20260405
+
 if [[ "${ENV_TYPE:-}" == "daq" ]]; then
   echo "Please do not mix ana and daq setup scripts"
   echo "You sourced the ${ENV_TYPE} script befores"
@@ -16,7 +18,7 @@ export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
 export DIR_PSDM=/sdf/group/lcls/ds/ana/
 export SIT_PSDM_DATA=/sdf/data/lcls/ds/
 
-conda activate ps_20241122
+conda activate ${ANA_CONDA_ENVIRONMENT}
 
 # In ASC lab the command for zsh does not work, but in XPP it does.
 # So we need to check which shell we are in to get the correct path to the script
