@@ -85,7 +85,7 @@ namespace Pds {
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
       int      connect(const std::shared_ptr<MetricExporter>);
-      int      configure(Trigger* object, unsigned prescale);
+      int      configure(Trigger* object);
       void     unconfigure();
       void     disconnect();
       void     shutdown();
@@ -112,13 +112,11 @@ namespace Pds {
     private:
       //uint64_t                     _trimmed;
       Trigger*                     _trigger;
-      unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
       uint64_t                     _lastMonPid;
       uint64_t                     _monThrottle;
     private:
-      unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
     private:
       uint64_t                     _eventCount;
@@ -334,17 +332,14 @@ int Teb::connect(const MetricExporter_t exporter)
   return 0;
 }
 
-int Teb::configure(Trigger* trigger,
-                   unsigned prescale)
+int Teb::configure(Trigger* trigger)
 {
   _monitorCount = 0; // Cleared here to stay in sync with MEB
   _nMonCount    = 0;
   for (unsigned i = 0; i < MAX_MEBS; ++ i)
     _mebCount[i] = 0;
 
-  _trigger    = trigger;                // The trigger object
-  _prescale   = prescale - 1;           // Be zero based
-  _wrtCounter = _prescale;              // Reset prescale counter
+  _trigger = trigger;                   // The trigger object
 
   // MRQ links need no configuration
 
@@ -604,16 +599,11 @@ void Teb::process(EbEvent* event)
       _trgTime = std::chrono::duration_cast<ns_t>(t1 - t0).count();
 
       // Handle prescale
-      rdg->prescale(!rdg->persist() && !_wrtCounter--);
-      if (rdg->prescale())
-      {
-        _wrtCounter = _prescale;        // Rearm
+      rdg->prescale(dgram->keepRaw());
 
-        _prescaleCount++;
-      }
-
-      if (rdg->persist())  _writeCount++;
-      if (rdg->monitor())  _monitor(rdg);
+      if (rdg->prescale())  _prescaleCount++;
+      if (rdg->persist())   _writeCount++;
+      if (rdg->monitor())   _monitor(rdg);
     }
     else
     {   // Allow trigger to return a non-default result on transitions
@@ -914,7 +904,7 @@ private:
   void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
-  int  _setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale);
+  int  _setupTrigger(const json& body, Trigger*& trigger);
   void _buildContract(const json& top);
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, Trigger* trigger) const;
@@ -1054,7 +1044,7 @@ void TebApp::_buildContract(const json& top)
   }
 }
 
-int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale)
+int TebApp::_setupTrigger(const json& body, Trigger*& trigger)
 {
   int               rc = 0;
   const std::string configAlias  {body["config_alias"]};
@@ -1079,17 +1069,6 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
     return -1;
   }
 
-# define _FETCH(key, item)                                              \
-  if (top.find(key) != top.end())  item = top[key];                     \
-  else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
-                        key, _prms.instrument.c_str(),                  \
-                        configAlias.c_str(), triggerConfig.c_str());    \
-         rc = -1; }
-
-  _FETCH("prescale", prescale);
-
-# undef _FETCH
-
   logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
                 soname.c_str(), _prms.instrument.c_str(),
                 configAlias.c_str(), triggerConfig.c_str());
@@ -1106,8 +1085,7 @@ void TebApp::_disconnect()
 int TebApp::_configure(const json& msg)
 {
   Trigger* trigger {nullptr};
-  unsigned prescale{0};
-  if (_setupTrigger(msg["body"], trigger, prescale)) {
+  if (_setupTrigger(msg["body"], trigger)) {
     logging::error("Failed to set up Trigger)");
     return -1;
   }
@@ -1118,7 +1096,7 @@ int TebApp::_configure(const json& msg)
     return -1;
   }
 
-  int rc = _teb->configure(trigger, prescale);
+  int rc = _teb->configure(trigger);
   if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);

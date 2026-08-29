@@ -690,7 +690,7 @@ private:
 
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
-    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, drp.pool, std::min(MAX_RET_CNT_C, drp.pool.dmaCount()), 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
     m_available(0), m_current(0), m_nDmaRet(0)

@@ -19,11 +19,11 @@ public:
     const uint64_t nDmaRet() const { return m_nDmaRet; }
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
-    Detector*        m_det;
-    static const int MAX_RET_CNT_C = 100;
-    int32_t          m_available;
-    int32_t          m_current;
-    uint64_t         m_nDmaRet;
+    Detector*             m_det;
+    static const unsigned MAX_RET_CNT_C = 100;
+    int32_t               m_available;
+    int32_t               m_current;
+    uint64_t              m_nDmaRet;
 };
 
 

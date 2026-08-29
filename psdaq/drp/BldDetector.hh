@@ -152,7 +152,7 @@ private:
     Parameters&                                m_para;
     DrpBase&                                   m_drp;
     Detector*                                  m_det;
-    static const int MAX_RET_CNT_C = 100;
+    static const unsigned MAX_RET_CNT_C = 100;
     std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     bool                                       m_running;

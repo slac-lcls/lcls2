@@ -464,8 +464,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
     m_lastTid     (TransitionId::Unconfigure),
-    m_dmaIndices  (maxRetCnt),
-    m_dmaRetCnt   (dmaFreeCnt),
+    m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
@@ -481,8 +480,8 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
     if (pool.dmaCount() < m_dmaIndices.size()) {
-        logging::critical("nDmaIndices (%zu) must be >= dmaCount (%u)",
-                          m_dmaIndices.size(), pool.dmaCount());
+        logging::critical("dmaCount (%u) must be >= nDmaIndices (%zu)",
+                          pool.dmaCount(), m_dmaIndices.size());
         abort();
     }
 
@@ -763,7 +762,7 @@ void PgpReader::freeDma(PGPEvent* event)
             auto idx = event->buffers[i].index;
             if (idx < m_pool.dmaCount()) [[likely]] {
                 m_dmaIndices[m_count++] = idx;
-                if (m_count >= m_dmaRetCnt) {
+                if (m_count == m_dmaIndices.size()) {
                     // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
                     if (!m_pool.freeDma(m_count, m_dmaIndices.data())) {
                         m_count = 0;    // Reset only on success

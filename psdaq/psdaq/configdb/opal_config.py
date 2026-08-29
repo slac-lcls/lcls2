@@ -397,6 +397,8 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
         # must be done after StartRun because that routine sets MasterEnable
         # to True for all lanes. That causes 100% deadtime from unused lanes.
         for i in range(4):
+            # select the XPM trigger source, not EVR
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].TriggerSource.set(0)
             cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
     barrier_global.wait()
     # enable our lane
