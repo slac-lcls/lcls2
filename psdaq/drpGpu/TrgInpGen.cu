@@ -487,8 +487,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
       // Check whether the DMA is reporting an error
-      // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
-      if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
+      if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
+      // @todo: KCU: if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
         // Assume we can recover from non-overflow DMA errors
         if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
           logging::error("DMA error 0x%08x", dmaDsc->header);
