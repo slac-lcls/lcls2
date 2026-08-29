@@ -147,6 +147,8 @@ int main(int argc, char* argv[])
         }
         if (para.detType == "wave8")
             if (kwargs.first == "epics_prefix")      continue;  // Wave8
+        if (para.detType == "wave8he")
+            if (kwargs.first == "epics_prefix")      continue;  // Wave8HE
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
             if (kwargs.first == "l1aOffset")         continue;  // EpixHRemu
