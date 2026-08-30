@@ -17,8 +17,6 @@
 #include <string>
 #include <bit>
 
-#define ADD_FFT
-
 using namespace XtcData;
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -152,7 +150,7 @@ namespace Drp {
 
     class RawStreamDef {
     public:
-        RawStreamDef() {
+      RawStreamDef(bool addFFT=false) : _hasFFT(addFFT) {
             VarDef v;
             for(unsigned i=0; i<8; i++)
                 W8::RawStream::varDef(v,i);
@@ -161,16 +159,18 @@ namespace Drp {
             VarDef w;
             IntegralStream::varDef(w);
             ProcStream    ::varDef(w);
-#ifdef ADD_FFT
-            for(unsigned i=0; i<8; i++)
-                W8::FFTStream::varDef(w,i);
-#endif
+	    if (addFFT) {
+	        for(unsigned i=0; i<8; i++)
+		    W8::FFTStream::varDef(w,i);
+	    }
             _rawDefV.push_back(w);
         }
 
         std::vector<VarDef>& rawDefV() { return _rawDefV; }
+        bool                 hasFFT () { return _hasFFT; }
     private:
         std::vector<VarDef> _rawDefV;
+        bool                _hasFFT;
     } _rawStreamDef;
 
     class Streams {
@@ -213,10 +213,9 @@ namespace Drp {
             if (streams[9].data())
                 ProcStream::createData(fex,index,streams[9]);
 
-#ifdef ADD_FFT
-            for(unsigned i=0; i<8; i++)
-                FFTStream::createData(fex,index,i,streams[i]);
-#endif
+	    if (_rawStreamDef.hasFFT())
+	        for(unsigned i=0; i<8; i++)
+		    FFTStream::createData(fex,index,i,streams[i]);
        }
     };
 
@@ -234,6 +233,8 @@ unsigned Wave8::_configure(Xtc& xtc, const void* bufEnd, ConfigIter& configo)
     m_evtNamesRaw = NamesId(nodeId, EventNamesIndex+0);
     m_evtNamesFex = NamesId(nodeId, EventNamesIndex+1);
 
+    W8::_rawStreamDef = W8::RawStreamDef(m_para->nCubeWorkers!=0);
+    
     W8::Streams::defineData(xtc,bufEnd,m_para->detName.c_str(),
                             m_para->detType.c_str(),m_para->serNo.c_str(),
                             m_namesLookup,m_evtNamesRaw,m_evtNamesFex);

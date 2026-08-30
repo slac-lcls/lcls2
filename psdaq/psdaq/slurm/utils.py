@@ -282,8 +282,13 @@ class SbatchManager:
                 cmd += f" -u {job_name}"
         if job_name == "daqstat":
             cmd += f" {self.configfilename}"
+        # If the number of workers is not specified, set it based on ncores
         if self.is_drp(details["cmd"]) and not " -W " in cmd:
-            n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
+            n_cube_workers = 0
+            if ' -Q ' in cmd:
+                args = cmd.split()
+                n_cube_workers = int( re.match('^\d+', args[args.index('-Q')+1]).group() )
+            n_workers = self.get_n_cores(details) - n_cube_workers - DRP_N_RSV_CORES
             if n_workers < 1:
                 n_workers = 1
             cmd += f" -W {n_workers}"
