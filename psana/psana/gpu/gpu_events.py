@@ -28,6 +28,27 @@ from psana.psexp.event_manager import EventManager
 from psana.psexp.packet_footer import PacketFooter
 
 
+class _GpuOnlyDgram:
+    """Minimal L1Accept metadata for an event whose streams all went to GPU.
+
+    GPU splitting intentionally removes GPU-stream SMD dgrams from the CPU
+    batch.  When every selected stream is a GPU stream, EventManager therefore
+    returns an all-None dgram list.  Event still needs timestamp/service
+    metadata so GpuEventContext can preserve the normal event API without
+    causing a redundant CPU BigData read.
+    """
+
+    def __init__(self, timestamp):
+        self._timestamp = int(timestamp)
+        self._env = int(TransitionId.L1Accept) << 24
+
+    def timestamp(self):
+        return self._timestamp
+
+    def env(self):
+        return self._env
+
+
 def _apply_full_routing(gpu_results, evt, gpu_detectors, router):
     if not router:
         return gpu_results
@@ -1090,22 +1111,45 @@ class GpuEvents:
                         self.use_smds,
                     )
                     for dgrams in event_manager:
+                        # All GPU streams are represented in GPUBAT1, not the
+                        # CPU batch.  A GPU-only dataset therefore has no CPU
+                        # dgram from which Event could obtain service/time.
+                        # Synthesize that metadata below from GPUBAT1 instead.
+                        if not any(dgrams):
+                            continue
                         evt = Event(dgrams=dgrams, run=self.run._run_ctx)
                         if not TransitionId.isEvent(evt.service()):
                             continue
                         cpu_evts.append(evt)
-                        n_events += 1
-                        if self.dsparms.max_events > 0 and n_events >= self.dsparms.max_events:
-                            stop_after = True
-                            break
                     if event_manager.exit_id:
                         raise RuntimeError(f"EventManager exit {event_manager.exit_id}")
-                    if stop_after:
-                        break
 
                 # ── Submit subbatches ─────────────────────────────────────────
                 if all_subbatches:
-                    # Build a timestamp → cpu_event lookup for fast partitioning.
+                    # Build a timestamp → CPU Event lookup, filling GPU-only
+                    # events from GPUBAT1 timestamps without reading BigData
+                    # through the CPU path.
+                    ts_to_cpu = {evt.timestamp: evt for evt in cpu_evts}
+                    selected_cpu_evts = []
+                    for subbatch in all_subbatches:
+                        for timestamp in subbatch.timestamps:
+                            if (
+                                self.dsparms.max_events > 0
+                                and n_events >= self.dsparms.max_events
+                            ):
+                                stop_after = True
+                                break
+                            timestamp = int(timestamp)
+                            evt = ts_to_cpu.get(timestamp)
+                            if evt is None:
+                                dgrams = [None] * len(self.configs)
+                                dgrams[0] = _GpuOnlyDgram(timestamp)
+                                evt = Event(dgrams=dgrams, run=self.run._run_ctx)
+                            selected_cpu_evts.append(evt)
+                            n_events += 1
+                        if stop_after:
+                            break
+                    cpu_evts = selected_cpu_evts
                     ts_to_cpu = {evt.timestamp: evt for evt in cpu_evts}
 
                     for i, subbatch in enumerate(all_subbatches):
@@ -1128,6 +1172,13 @@ class GpuEvents:
                 else:
                     # No GPU batch — yield CPU-only events directly.
                     for evt in cpu_evts:
+                        if (
+                            self.dsparms.max_events > 0
+                            and n_events >= self.dsparms.max_events
+                        ):
+                            stop_after = True
+                            break
+                        n_events += 1
                         yield self._make_context(evt, {})
 
                 if stop_after or end_run_seen:

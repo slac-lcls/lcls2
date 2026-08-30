@@ -11,6 +11,7 @@ from psana.gpu.detector_router import DetectorRouter
 from psana.gpu.gpu_calib import _segment_ids_in_l1_order
 from psana.gpu.gpu_events import GpuEvents
 from psana.gpu.gpu_stream import EventPool
+from psana.event import Event
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 
@@ -28,6 +29,18 @@ def test_public_gpu_api_is_minimal():
         "verify_gpu_pinning",
     }
     assert internal_names.isdisjoint(gpu.__all__)
+
+
+def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
+    """A GPU-only event must not require a CPU BigData dgram."""
+    timestamp = (1_234_567 << 32) | 890
+    dgram = gpu_events_module._GpuOnlyDgram(timestamp)
+    evt = Event([dgram, None])
+
+    assert evt.timestamp == timestamp
+    assert evt.service() == TransitionId.L1Accept
+    assert evt.env == TransitionId.L1Accept << 24
+    assert evt._det_segments == {}
 
 
 def test_segment_ids_preserve_l1_child_order():
@@ -276,6 +289,9 @@ def test_mpi_transport_unpacking():
         (bytearray(), b"", b""),
         (_pack_transport(b"smd", b"GPUBAT1\0gpu"), b"smd", b"GPUBAT1\0gpu"),
         (_pack_transport(b"cpu-only", b""), b"cpu-only", b""),
+        # A legacy two-packet step batch is not a GPU transport envelope.
+        (_pack_transport(b"step-one", b"step-two"),
+         bytes(_pack_transport(b"step-one", b"step-two")), b""),
         (bytearray(b"legacy-without-footer"), b"legacy-without-footer", b""),
     ]
 
