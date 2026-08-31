@@ -204,12 +204,16 @@ class GPUDetector:
     seg_stride_bytes : int or None
         Bytes between consecutive segment starts inside a multi-segment
         bigdata dgram.  None (default) means auto-detect.
+    canonical_segment_ids : sequence[int] or None
+        Segment order expected by the normal psana detector API. GPU input is
+        gathered in L1 child-XTC order and reordered before it is exposed.
     """
 
     def __init__(self, det_shape, peds_gpu, gmask_gpu,
                  raw_data_offset=None,
                  seg_stride_bytes=None,
                  stream_seg_map=None,
+                 canonical_segment_ids=None,
                  cmpars=None,
                  n_slots=2,
                  budget=None,
@@ -225,6 +229,22 @@ class GPUDetector:
         self._n_pix_seg        = self._nrows * self._ncols
         # {stream_id: [seg_ids]}
         self._stream_seg_map   = stream_seg_map  # type: dict | None
+        self._canonical_segment_ids = tuple(
+            range(self._n_segs_calib)
+            if canonical_segment_ids is None else canonical_segment_ids
+        )
+        if len(self._canonical_segment_ids) != self._n_segs_calib:
+            raise ValueError(
+                "canonical_segment_ids must contain one entry per detector "
+                f"segment: got {len(self._canonical_segment_ids)}, "
+                f"expected {self._n_segs_calib}"
+            )
+        if len(set(self._canonical_segment_ids)) != len(self._canonical_segment_ids):
+            raise ValueError("canonical_segment_ids contains duplicates")
+        self._canonical_segment_rows = {
+            segment_id: row
+            for row, segment_id in enumerate(self._canonical_segment_ids)
+        }
         # Number of calibration gain modes from calibconst.
         # Derived from peds_gpu.size = n_modes * n_segs_calib * n_pix_seg.
         # Used by _extract_and_calibrate to avoid hardcoding 3 (Jungfrau).
@@ -325,21 +345,13 @@ class GPUDetector:
             )
             return
 
-        # Build the ordered list of segment IDs in the same order that
-        # process_batch() concatenates segments (stream_id ascending, then
-        # L1Accept child-XTC order within each stream).
-        if self._stream_seg_map:
-            all_seg_ids = []
-            for sid in sorted(self._stream_seg_map):
-                all_seg_ids.extend(self._stream_seg_map[sid])
-        else:
-            # No seg map: assume rows 0..n_segs_calib-1.
-            all_seg_ids = list(range(self._n_segs_calib))
+        # process_batch() exposes rows in normal psana segment order.
+        all_seg_ids = self._canonical_segment_ids
 
         # Select and flatten scatter indices for the GPU-routed segments.
         try:
-            ix = ix_all[all_seg_ids].astype(np.int64)  # (n_segs, nrows, ncols)
-            iy = iy_all[all_seg_ids].astype(np.int64)
+            ix = ix_all[list(all_seg_ids)].astype(np.int64)  # (n_segs, nrows, ncols)
+            iy = iy_all[list(all_seg_ids)].astype(np.int64)
         except IndexError as exc:
             import warnings
             warnings.warn(
@@ -388,16 +400,11 @@ class GPUDetector:
         """
         import cupy as cp
 
-        if self._stream_seg_map:
-            all_seg_ids = []
-            for sid in sorted(self._stream_seg_map):
-                all_seg_ids.extend(self._stream_seg_map[sid])
-        else:
-            all_seg_ids = list(range(self._n_segs_calib))
+        all_seg_ids = self._canonical_segment_ids
 
         try:
-            ix = ix_all[all_seg_ids].astype(np.int64)
-            iy = iy_all[all_seg_ids].astype(np.int64)
+            ix = ix_all[list(all_seg_ids)].astype(np.int64)
+            iy = iy_all[list(all_seg_ids)].astype(np.int64)
         except IndexError as exc:
             import warnings
             warnings.warn(
@@ -663,17 +670,44 @@ class GPUDetector:
         # per-event resize check would reuse (and overwrite) the same buffer
         # for every event in the batch — all timestamps would alias the last
         # event's calibration result.
-        events_info = []   # list of (GpuBatchEvent, desc_rows, seg_counts, total_segs)
+        events_info = []   # (GpuBatchEvent, desc_rows, seg_counts, segment_ids)
         for event in gpu_view.iter_events():
             if event.n_desc == 0:
                 continue
             desc_rows = [desc_table[event.first_desc + i]
-                         for i in range(int(event.n_desc))]
+                         for i in range(int(event.n_desc))
+                         if (not self._stream_seg_map
+                             or int(desc_table[event.first_desc + i][DESC_STREAM_ID])
+                             in self._stream_seg_map)]
+            if not desc_rows:
+                continue
             seg_counts = [
                 max(1, (int(row[DESC_READ_SIZE]) - 24) // self._seg_stride_bytes)
                 for row in desc_rows
             ]
-            events_info.append((event, desc_rows, seg_counts, sum(seg_counts)))
+            segment_ids = []
+            for row, n_segs in zip(desc_rows, seg_counts):
+                stream_id = int(row[DESC_STREAM_ID])
+                stream_segment_ids = (
+                    self._stream_seg_map.get(stream_id)
+                    if self._stream_seg_map else None
+                )
+                if stream_segment_ids is None:
+                    stream_segment_ids = list(range(n_segs))
+                if len(stream_segment_ids) != n_segs:
+                    raise RuntimeError(
+                        f"GPU stream {stream_id} contains {n_segs} segments, "
+                        "but Configure/L1 metadata identifies "
+                        f"{len(stream_segment_ids)}: {stream_segment_ids}"
+                    )
+                segment_ids.extend(stream_segment_ids)
+            unknown = set(segment_ids) - set(self._canonical_segment_rows)
+            if unknown:
+                raise RuntimeError(
+                    "GPU batch contains detector segments absent from "
+                    f"Configure: {sorted(unknown)}"
+                )
+            events_info.append((event, desc_rows, seg_counts, segment_ids))
 
         if not events_info:
             return
@@ -682,7 +716,7 @@ class GPUDetector:
         # The slot buffer covers ALL events: shape = (total_segs_batch, nrows, ncols).
         # Each event's calib output lands in a unique non-overlapping slice, so
         # no event's data can be overwritten by a later event in the same batch.
-        total_segs_batch = sum(e[3] for e in events_info)
+        total_segs_batch = sum(len(e[3]) for e in events_info)
         batch_shape      = (total_segs_batch, self._nrows, self._ncols)
 
         slot    = (int(slot_id) % self._n_slots
@@ -714,7 +748,8 @@ class GPUDetector:
         sctx         = stream if stream is not None else cp.cuda.Stream.null
         batch_offset = 0   # segment offset into slot_buf for the current event
 
-        for event, desc_rows, seg_counts, total_segs in events_info:
+        for event, desc_rows, seg_counts, segment_ids in events_info:
+            total_segs = len(segment_ids)
             # Each event gets a UNIQUE slice of the batch slot buffer so that
             # calibrating event i+1 cannot overwrite event i's result.
             out_buf = (slot_buf[batch_offset : batch_offset + total_segs]
@@ -748,6 +783,16 @@ class GPUDetector:
 
                 if out_buf is not None:
                     calib_gpu = out_buf   # unique view into slot_buf, no copy
+
+                if tuple(segment_ids) != self._canonical_segment_ids:
+                    full_calib = cp.zeros(
+                        (self._n_segs_calib, self._nrows, self._ncols),
+                        dtype=cp.float32,
+                    )
+                    for input_row, segment_id in enumerate(segment_ids):
+                        output_row = self._canonical_segment_rows[segment_id]
+                        full_calib[output_row] = calib_gpu[input_row]
+                    calib_gpu = full_calib
 
             yield EventContext(timestamp=event.timestamp,
                                calib_gpu=calib_gpu)

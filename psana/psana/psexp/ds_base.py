@@ -63,9 +63,8 @@ class DsParms:
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
-    # already parsed by DgramManager.  Forwarded to EventBuilder so it can
-    # split those streams into GPUBAT1 without relying on PS_TEST_GPU_STREAM_IDS.
+    # Whole bigdata stream indices for gpu_det. Populated from the Configure
+    # dgrams already parsed by DgramManager and forwarded to EventBuilder.
     gpu_stream_ids: list = None  # list[int] | None
 
     def set_det_class_table(

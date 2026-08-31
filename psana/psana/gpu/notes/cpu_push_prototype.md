@@ -80,9 +80,9 @@ Here `stream_id` indexes psana's stream/file list, while `segment_id` is the
 physical detector segment from Configure. An event ShapesData `names_id` links
 the event payload back to its Configure Names record.
 
-For normal integrated use, `gpu_det="jungfrau"` selects streams through these
-Configure-derived tables. `PS_TEST_GPU_STREAM_IDS` remains only as a legacy
-direct-test override.
+`gpu_det="jungfrau"` selects every stream for that detector through these
+Configure-derived tables. A detector cannot be split between CPU and GPU
+streams; EventBuilder routes each selected stream as a whole.
 
 EventBuilder's GPU split produces:
 
@@ -218,9 +218,9 @@ share read-only detector calibration buffers through CUDA IPC, avoiding one
 full constant allocation per follower rank. Event read, raw gather, and output
 slot buffers remain owned by each BD process.
 
-Mixed CPU/GPU routing of one large detector remains available through
-`DetectorRouter` as a correctness/debug bridge. It can copy CPU-calibrated
-segments back to GPU and is not the preferred performance path.
+`GPUDetector` restores L1 child-XTC panel order to the canonical psana segment
+order before exposing a result. `GpuEventState` resolves unqualified keys such
+as `evt.gpu.get("calib")` when exactly one GPU detector is configured.
 
 ## D2H and Backpressure Status
 

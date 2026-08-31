@@ -1,17 +1,12 @@
 #!/usr/bin/env python
-"""Reproduce late-consumer registration overwriting a GPU execution slot.
+"""Probe late-consumer registration against GPU result reuse.
 
 This is a diagnostic for the current GPU DataSource iterator ordering.  It
 uses a pool depth and batch size of one, disables automatic D2H, and launches
 a deliberately delayed external CUDA consumer for event 0.  Advancing the
-normal ``run.events()`` iterator submits event 1 into the same calibration
-slot before the external consumer's completion event is honored.
-
-The normal Jungfrau path assembles calibration into a newly allocated full
-detector array during routing.  That allocation masks execution-slot reuse,
-so this diagnostic monkey-patches only ``_apply_full_routing`` to return the
-underlying slot-backed calibration view.  DataSource, EventPool, GPUDetector,
-SlotLease, ``on_gpu_view()``, and the event iterator remain unchanged.
+normal ``run.events()`` iterator while checking whether the prior result can
+change during use. DataSource, EventPool, GPUDetector, SlotLease,
+``on_gpu_view()``, and the event iterator remain unchanged.
 
 Expected result on the affected implementation::
 
@@ -88,20 +83,10 @@ def _parse_args():
                         help="Number of float32 words included in each hash")
     parser.add_argument("--log-level", default="WARNING")
     parser.add_argument(
-        "--expect", choices=("overwrite", "safe"), default="overwrite",
-        help="Expected outcome; use 'safe' to validate the retirement fix",
+        "--expect", choices=("overwrite", "safe"), default="safe",
+        help="Expected outcome (default: safe)",
     )
     return parser.parse_args()
-
-
-def _disable_full_routing_copy():
-    """Expose GPUDetector's execution-slot view through the normal context."""
-    import psana.gpu.gpu_events as gpu_events
-
-    def identity_routing(gpu_results, evt, gpu_detectors, router):
-        return gpu_results
-
-    gpu_events._apply_full_routing = identity_routing
 
 
 def _hash_now(cp, kernel, arr, samples):
@@ -171,8 +156,6 @@ def main():
     args = _parse_args()
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-
-    _disable_full_routing_copy()
 
     from psana import DataSource
 

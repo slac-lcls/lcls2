@@ -12,7 +12,6 @@ _log = logging.getLogger(__name__)
 from psana import dgram
 from psana.event import Event
 from psana.gpu.context import GpuEventState
-from psana.gpu.detector_router import DetectorRouter
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
 from psana.gpu.gpu_calib import (
     GPUDetector,
@@ -47,27 +46,6 @@ class _GpuOnlyDgram:
 
     def env(self):
         return self._env
-
-
-def _apply_full_routing(gpu_results, evt, gpu_detectors, router):
-    if not router:
-        return gpu_results
-
-    for det_name, det_info in gpu_detectors.items():
-        if not router.has_full_routing(det_name):
-            continue
-        calib_key = f"{det_name}.calib"
-        gpu_calib = gpu_results.get(calib_key)
-        if gpu_calib is None:
-            continue
-
-        det = det_info[0]
-        cpu_calib = router.compute_cpu_calib(det_name, det, evt)
-        combined = router.assemble_full_calib(det_name, gpu_calib, cpu_calib)
-        if combined is not None:
-            gpu_results[calib_key] = combined
-
-    return gpu_results
 
 
 def _iter_step_events(batch_bytes, configs):
@@ -463,7 +441,6 @@ class GpuEventManager:
 
         self.gpu_det_names = self._normalize_gpu_det(dsparms.gpu_det)
         self.gpu_detectors = {}
-        self.router = DetectorRouter()
         self.event_pool = None
         self.gpu_reader = None
         # At most one KvikIO read is pre-issued ahead of the CPU event loop.
@@ -484,7 +461,7 @@ class GpuEventManager:
     def _snapshot_memory(self, label: str) -> _GpuMemStats:
         """Collect a _GpuMemStats snapshot from all pipeline components."""
         s = _GpuMemStats(label=label)
-        for name, (_, det, _) in self.gpu_detectors.items():
+        for name, (_, det) in self.gpu_detectors.items():
             m = det.memory_bytes()
             s.det_constants[name] = m["constants"]
             s.det_geometry[name] = m["geometry"]
@@ -568,10 +545,48 @@ class GpuEventManager:
             n_bd = max(1, int(os.environ.get("PS_BD_NODES", 1)))
             self._gpu_budget = _GpuBudget.auto(n_bd_ranks=n_bd)
 
-        all_gpu_stream_ids = set()
         opt_batch_sizes = []
+        ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
+        segments_table = getattr(
+            self.dsparms, "det_stream_segments_table", {}
+        )
+        streams_by_detector = {
+            name: sorted(ids_table.get(name) or segments_table.get(name, {}).keys())
+            for name in self.gpu_det_names
+        }
+        missing = [name for name, stream_ids in streams_by_detector.items()
+                   if not stream_ids]
+        if missing:
+            raise RuntimeError(
+                f"gpu_det did not resolve to any stream ids: {missing}"
+            )
+
+        all_gpu_stream_ids = {
+            stream_id
+            for stream_ids in streams_by_detector.values()
+            for stream_id in stream_ids
+        }
         requested_stream_ids = getattr(self.dsparms, "gpu_stream_ids", None)
-        requested_stream_ids = set(requested_stream_ids) if requested_stream_ids is not None else None
+        if (requested_stream_ids is not None
+                and set(requested_stream_ids) != all_gpu_stream_ids):
+            raise RuntimeError(
+                "GPU stream routing must include every stream for each "
+                f"gpu_det: expected {sorted(all_gpu_stream_ids)}, got "
+                f"{sorted(requested_stream_ids)}"
+            )
+
+        selected_detectors = set(self.gpu_det_names)
+        stream_owners = getattr(self.dsparms, "stream_id_to_detnames", {})
+        for stream_id in sorted(all_gpu_stream_ids):
+            cpu_only = set(stream_owners.get(stream_id, ())) - selected_detectors
+            if cpu_only:
+                raise RuntimeError(
+                    f"GPU stream {stream_id} also contains detector(s) "
+                    f"{sorted(cpu_only)}. EventBuilder routes whole streams, "
+                    "so every detector on that stream must be selected by "
+                    "gpu_det."
+                )
+        self.dsparms.gpu_stream_ids = sorted(all_gpu_stream_ids)
 
         from psana.gpu.gpu_mpi import log_gpu_mem
 
@@ -626,14 +641,8 @@ class GpuEventManager:
                 log_gpu_mem(f"after prep_calib_constants ({det_name})", rank=_rank)
             det_shape = det.calibconst["pedestals"][0].shape[1:]
 
-            stream_segments = dict(getattr(self.dsparms, "det_stream_segments_table", {}).get(det_name, {}))
-            det_stream_ids = sorted(getattr(self.dsparms, "det_stream_ids_table", {}).get(det_name, stream_segments.keys()))
-            if requested_stream_ids is None:
-                gpu_stream_ids = det_stream_ids
-            else:
-                gpu_stream_ids = [stream_id for stream_id in det_stream_ids if stream_id in requested_stream_ids]
-            if not gpu_stream_ids:
-                raise RuntimeError(f"gpu_det={det_name!r} did not resolve to any stream ids")
+            stream_segments = dict(segments_table.get(det_name, {}))
+            gpu_stream_ids = streams_by_detector[det_name]
 
             # Configure identifies which physical segments belong to each
             # stream, but its dictionary order is not necessarily the order
@@ -653,14 +662,43 @@ class GpuEventManager:
                 configured = set(stream_segments.get(stream_id, []))
                 if configured and set(segment_ids) != configured:
                     raise RuntimeError(f"gpu_det={det_name!r} stream {stream_id} segment mismatch: Configure={sorted(configured)} L1Accept={segment_ids}")
-            cpu_stream_seg_map = {stream_id: sorted(segment_ids) for stream_id, segment_ids in stream_segments.items() if stream_id not in gpu_stream_ids}
-            all_gpu_stream_ids.update(gpu_stream_ids)
+            configured_segment_ids = sorted({
+                segment_id
+                for stream_id in gpu_stream_ids
+                for segment_id in stream_segments.get(stream_id, ())
+            })
+            detector_api = next(
+                (
+                    getattr(det, drp_class, None)
+                    for drp_class in sorted(drp_classes)
+                    if hasattr(
+                        getattr(det, drp_class, None),
+                        "_sorted_segment_inds",
+                    )
+                ),
+                None,
+            )
+            canonical_segment_ids = list(
+                getattr(detector_api, "_sorted_segment_inds", configured_segment_ids)
+            )
+            routed_segment_ids = {
+                segment_id
+                for stream_id in gpu_stream_ids
+                for segment_id in stream_seg_map.get(stream_id, ())
+            }
+            if routed_segment_ids != set(canonical_segment_ids):
+                raise RuntimeError(
+                    f"gpu_det={det_name!r} must route all detector segments: "
+                    f"configured={canonical_segment_ids}, "
+                    f"routed={sorted(routed_segment_ids)}"
+                )
 
             gpu_detector = GPUDetector(
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
                 stream_seg_map=stream_seg_map or None,
+                canonical_segment_ids=canonical_segment_ids,
                 n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
                 budget=self._gpu_budget,
                 passthrough=is_pre_calibrated,
@@ -673,28 +711,7 @@ class GpuEventManager:
             log_gpu_mem(f"after setup_geometry ({det_name})", rank=_rank)
 
             opt_batch_sizes.append(optimal_kernel_batch_size(det_shape))
-            self.gpu_detectors[det_name] = (det, gpu_detector, cpu_stream_seg_map)
-            self.router.register_gpu(det_name)
-
-            gpu_seg_ids = []
-            for stream_id in sorted(stream_seg_map):
-                gpu_seg_ids.extend(stream_seg_map[stream_id])
-            cpu_seg_ids = []
-            for stream_id in sorted(cpu_stream_seg_map):
-                cpu_seg_ids.extend(cpu_stream_seg_map[stream_id])
-
-            self.router.setup_full_routing(
-                det_name=det_name,
-                gpu_seg_ids=gpu_seg_ids,
-                cpu_seg_ids=cpu_seg_ids,
-                calibconst_n_segs=det_shape[0],
-                nrows=det_shape[1],
-                ncols=det_shape[2],
-                gpu_det_obj=gpu_detector,
-            )
-
-        if all_gpu_stream_ids:
-            self.dsparms.gpu_stream_ids = sorted(all_gpu_stream_ids)
+            self.gpu_detectors[det_name] = (det, gpu_detector)
 
         if not self.dsparms.batch_size:
             self.dsparms.batch_size = min(opt_batch_sizes) if opt_batch_sizes else 1
@@ -789,7 +806,7 @@ class GpuEventManager:
 
         try:
             fixed_bytes = 0
-            for _, (_, det, _) in self.gpu_detectors.items():
+            for _, (_, det) in self.gpu_detectors.items():
                 mb = det.memory_bytes()
                 fixed_bytes += mb['constants'] + mb['geometry']
         except Exception:
@@ -833,7 +850,7 @@ class GpuEventManager:
         # Estimate calibration bytes per event (sum across all GPU detectors).
         calib_bytes_per_event = sum(
             det_obj.estimate_subbatch_bytes(1)
-            for _, (_, det_obj, _) in self.gpu_detectors.items()
+            for _, (_, det_obj) in self.gpu_detectors.items()
         )
 
         # Per-event raw input bytes from the desc table (varies by event).
@@ -931,26 +948,13 @@ class GpuEventManager:
                     device_released=False):
         state = GpuEventState(
             gpu_results=gpu_results,
-            router=self.router,
+            detector_names=self.gpu_det_names,
             leases=leases,
             pending_d2h=pending_d2h,
             cached_cpu_results=cached_cpu_results,
             device_released=device_released,
         )
         return evt._attach_gpu(state)
-
-    def _finalize_slot_results(self, gpu_results_by_ts, cpu_evts, stream):
-        """Queue full-result routing on the slot's producer stream."""
-        with stream:
-            for evt in cpu_evts:
-                ts = evt.timestamp
-                gpu_results_by_ts[ts] = _apply_full_routing(
-                    gpu_results_by_ts.get(ts, {}),
-                    evt,
-                    self.gpu_detectors,
-                    self.router,
-                )
-        return gpu_results_by_ts
 
     def _submit_gpu(self, subbatch, gpu_read, cpu_evts):
         """Submit one device slot and arm its automatic D→H immediately."""
@@ -959,7 +963,6 @@ class GpuEventManager:
             gpu_read,
             cpu_evts,
             self.gpu_detectors,
-            finalize_results=self._finalize_slot_results,
         )
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)
