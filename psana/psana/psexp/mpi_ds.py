@@ -904,8 +904,8 @@ class MPIDataSource(DataSourceBase):
             self.xtc_files, configs=configs, config_consumers=[self.dsparms]
         )
 
-        # Set gpu_stream_ids on ALL ranks (including EB) so that
-        # EventBuilderManager enables GPU splitting for the right streams.
+        # Set gpu_stream_ids on ALL ranks (including EB) so EventBuilderManager
+        # routes every stream belonging to gpu_det through GPUBAT1.
         # det_stream_segments_table was just populated by DgramManager on all
         # ranks; its keys are the stream IDs that carry the GPU detector data.
         if getattr(self.dsparms, 'gpu_det', None):
@@ -916,8 +916,8 @@ class MPIDataSource(DataSourceBase):
             ids_table  = getattr(self.dsparms, 'det_stream_ids_table', {})
             all_gpu_ids = set()
             for name in gpu_det_names:
-                # Mirror GpuEventManager._setup_detectors(): prefer det_stream_ids_table,
-                # fall back to det_stream_segments_table keys.
+                # Prefer the detector-to-stream table and fall back to the
+                # detector-to-stream-segment table populated from Configure.
                 stream_ids = ids_table.get(name) or list(seg_table.get(name, {}).keys())
                 all_gpu_ids.update(stream_ids)
             if all_gpu_ids:

@@ -25,8 +25,8 @@ class SlotLease:
 
     Lifecycle
     ---------
-    1. EventPool.submit() queues calibration and final routing on ``stream``,
-       records ``result_ready`` after that producer work, then creates one
+    1. EventPool.submit() queues detector processing on ``stream``, records
+       ``result_ready`` after that producer work, then creates one
        SlotLease per (timestamp, result key), sharing ``result_ready``.
 
     2. GpuEventManager._D2hPipeline receives the submitted slot record. It issues
@@ -260,11 +260,11 @@ class GpuEventState:
     run-wide GPU manager. Normal detector access remains ``det.raw.raw(evt)``.
     """
 
-    __slots__ = ('_gpu_results', '_cache', '_router',
-                 '_leases', '_pending_d2h', '_cached_cpu_results',
+    __slots__ = ('_gpu_results', '_detector_names', '_cache', '_leases',
+                 '_pending_d2h', '_cached_cpu_results',
                  '_device_released')
 
-    def __init__(self, gpu_results: dict, router=None,
+    def __init__(self, gpu_results: dict, detector_names=None,
                  leases: dict | None = None,
                  pending_d2h: dict | None = None,
                  cached_cpu_results: dict | None = None,
@@ -273,7 +273,9 @@ class GpuEventState:
         Parameters
         ----------
         gpu_results : dict  {key: cp.ndarray}
-        router      : DetectorRouter | None
+        detector_names : sequence[str] | None
+            GPU detectors configured for the run. Used to resolve an
+            unqualified result key without a separate routing object.
         leases      : dict  {key: SlotLease} | None
             Per-key slot leases created by EventPool.submit().
             Attached to GPUResult objects in get().
@@ -283,7 +285,13 @@ class GpuEventState:
             Independent CPU results materialized under pinned-buffer pressure.
         """
         self._gpu_results = gpu_results
-        self._router      = router
+        if detector_names is None:
+            detector_names = dict.fromkeys(
+                key.split('.', 1)[0]
+                for key in gpu_results
+                if '.' in key
+            )
+        self._detector_names = tuple(detector_names)
         self._leases      = leases or {}
         self._pending_d2h = pending_d2h or {}
         self._cached_cpu_results = cached_cpu_results or {}
@@ -293,11 +301,19 @@ class GpuEventState:
     def get(self, key: str) -> GPUResult:
         """Return the GPU result for key, with its SlotLease attached.
 
-        Accepts both qualified ('jungfrau.calib') and unqualified
-        ('calib') keys when a DetectorRouter is present.
+        Accepts a qualified key such as ``'jungfrau.calib'``. An unqualified
+        key such as ``'calib'`` is accepted when exactly one available result
+        has that suffix.
         """
-        resolved = (self._router.resolve_key(key)
-                    if self._router is not None else key)
+        resolved = key
+        if '.' not in key:
+            if len(self._detector_names) == 1:
+                resolved = f'{self._detector_names[0]}.{key}'
+            elif len(self._detector_names) > 1:
+                raise KeyError(
+                    f"'{key}' is ambiguous. Use a detector-qualified key. "
+                    f"GPU detectors: {sorted(self._detector_names)}"
+                )
 
         if resolved not in self._cache:
             if resolved not in self._gpu_results:

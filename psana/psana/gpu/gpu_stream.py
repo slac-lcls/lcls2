@@ -32,9 +32,8 @@ class EventPool:
     """Keep N GPU calibration batches in flight simultaneously.
 
     For each submitted batch:
-      1. submit()      — launch calibration kernels on the slot's stream;
-                         finalize routed results; record one result-ready
-                         event; create one SlotLease per result.
+      1. submit()      — launch detector work on the slot's stream; record one
+                         result-ready event; create one SlotLease per result.
       2. automatic D2H may be armed immediately against that event.
       3. begin_retire_next() — synchronise the producer stream but retain
                                ownership of the outgoing slot.
@@ -120,16 +119,12 @@ class EventPool:
         self._slots[old.slot_id] = None
         self._retiring = None
 
-    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict,
-               finalize_results=None):
+    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
         """Queue calibration into the already-retired next slot.
 
-        Records a result-ready CUDA event after calibration and final routing
-        are queued, then creates one SlotLease per result so downstream
-        consumers can release the slot when done.
-
-        ``finalize_results`` may enqueue routing or assembly work on the same
-        producer stream before the final result-ready event is recorded.
+        Records a result-ready CUDA event after detector processing is queued,
+        then creates one SlotLease per result so downstream consumers can
+        release the slot when done.
 
         Returns the occupied _EventSlot.  Automatic consumers such as D2H may
         attach their completion tokens immediately; results are delivered later
@@ -169,14 +164,8 @@ class EventPool:
                 if ec.image_gpu is not None:
                     ts_dict[f'{det_name}.image'] = ec.image_gpu
 
-        if finalize_results is not None:
-            gpu_results_by_ts = finalize_results(
-                gpu_results_by_ts, cpu_evts, stream
-            )
-
-        # Record ONE result-ready event after calibration and any final routing
-        # work are queued.  All results share this event because they run on the
-        # same slot stream.
+        # Record ONE result-ready event after detector work is queued. All
+        # results share this event because they run on the same slot stream.
         result_ready = cp.cuda.Event(disable_timing=True)
         result_ready.record(stream)
 

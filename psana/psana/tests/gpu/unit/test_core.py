@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.detector_router import DetectorRouter
 from psana.gpu.gpu_calib import _segment_ids_in_l1_order
+from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
 from psana.event import Event
@@ -166,7 +166,7 @@ def _new_gpu_events(log, pending=()):
     events.configs = []
     events.event_pool = _FakeFlushPool(log, pending=pending)
     events.gpu_detectors = {}
-    events.router = None
+    events.gpu_det_names = []
     events._d2h_pipelines = {}
     events._high_water = {}
     events._first_batch_logged = True  # suppress first-batch log in tests
@@ -504,11 +504,25 @@ def test_gpu_io_error_aborts_mpi_job():
     assert abort_calls == [1]
 
 
-def test_default_result_routing():
-    router = DetectorRouter()
-    router.register_gpu("jungfrau")
-    assert router.resolve_key("calib") == "jungfrau.calib"
-    assert router.resolve_key("jungfrau.calib") == "jungfrau.calib"
+def test_unqualified_result_key_resolves_for_one_gpu_detector():
+    arr = object()
+    state = GpuEventState(
+        {"jungfrau.calib": arr},
+        detector_names=["jungfrau"],
+    )
+
+    assert state.get("calib")._arr is arr
+    assert state.get("jungfrau.calib")._arr is arr
+
+
+def test_unqualified_result_key_rejects_multiple_gpu_detectors():
+    state = GpuEventState(
+        {"jungfrau.calib": object(), "epix.calib": object()},
+        detector_names=["jungfrau", "epix"],
+    )
+
+    with pytest.raises(KeyError, match="ambiguous"):
+        state.get("calib")
 
 
 # ---------------------------------------------------------------------------
@@ -578,7 +592,7 @@ class _FakeDetForEstimate:
 def _new_splitting_gpu_events(det, budget_bytes):
     """Create a minimal manager with enough state for _split_subbatches."""
     events = GpuEventManager.__new__(GpuEventManager)
-    events.gpu_detectors         = {'jungfrau': (None, det, {})}
+    events.gpu_detectors         = {'jungfrau': (None, det)}
     events._subbatch_budget_bytes = budget_bytes
     return events
 
