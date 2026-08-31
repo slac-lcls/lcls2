@@ -35,11 +35,19 @@ class Step(object):
         for i, item in enumerate(self._evt_iter):
             proxy_evt = None
             if self.proxy_events is not None:
-                dgrams, proxy_evt = item
+                item, proxy_evt = item
+
+            if isinstance(item, Event):
+                evt = item
+                dgrams = evt._dgrams
             else:
                 dgrams = item
+                evt = Event(
+                    dgrams=dgrams,
+                    run=self._run_ctx,
+                    proxy_evt=proxy_evt,
+                )
             svc = utils.first_service(dgrams)
-            evt = Event(dgrams=dgrams, run=self._run_ctx, proxy_evt=proxy_evt)
             if self.run is not None:
                 bufsize = self.run.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.run.dm.transition_bufsize
 

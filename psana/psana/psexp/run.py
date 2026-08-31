@@ -739,15 +739,17 @@ class RunSerial(Run):
         super()._setup_envstore()
         self._setup_run_calibconst()
         if self.dsparms.gpu_det:
-            from psana.gpu.gpu_events import GpuEvents
-            self._evt_iter = GpuEvents(configs,
-                                       dm,
-                                       self.dsparms.max_retries,
-                                       self.dsparms.use_smds,
-                                       self.shared_state,
-                                       self.dsparms,
-                                       self,
-                                       smdr_man=smdr_man)
+            from psana.gpu.gpu_events import GpuEventManager
+            self._evt_iter = GpuEventManager(
+                configs,
+                dm,
+                self.dsparms.max_retries,
+                self.dsparms.use_smds,
+                self.shared_state,
+                self.dsparms,
+                self,
+                smdr_man=smdr_man,
+            )
         else:
             self._evt_iter = Events(configs,
                                     dm,

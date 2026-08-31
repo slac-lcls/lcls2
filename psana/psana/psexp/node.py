@@ -6,7 +6,7 @@ import numpy as np
 from psana import utils
 from psana.dgram import Dgram
 from psana.psexp.eventbuilder_manager import EventBuilderManager
-from psana.psexp.events import Events
+from psana.psexp.events import BatchEnvelope, Events
 from psana.psexp.run import CallbackRunState
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
@@ -723,14 +723,6 @@ class EventBuilderNode(object):
         _smd_packed = repack_for_bd(
             smd_batch, missing_step_views, self.configs, client=dest_rank
         )
-        # Wait for any previous non-blocking send to dest_rank to complete
-        # before overwriting batches[dest_rank].  Without this, the smd_callback
-        # multi-dest path can return dest_rank before the previous Isend to that
-        # rank has finished, overwriting the send buffer mid-flight.  On the GPU
-        # path this produces corrupt GPUBAT1 bytes (bad magic); on the CPU path
-        # it causes silent data corruption in EventManager.
-        if self.requests[dest_rank - 1] is not None:
-            self.requests[dest_rank - 1].Wait()
         # Pack smd_batch alongside gpubat1_bytes so that GPU BD ranks receive
         # both in one MPI message.  gpubat1_bytes is empty for CPU-only batches.
         batches[dest_rank] = self.pack(_smd_packed, gpubat1_bytes or bytearray())
@@ -1080,14 +1072,6 @@ class EventBuilderNode(object):
                     _smd_packed = repack_for_bd(
                         smd_batch, missing_step_views, self.configs, client=dest_rank
                     )
-                    # Wait for the previous Isend to dest_rank to complete before
-                    # overwriting batches[dest_rank].  Without this, round-robin
-                    # can bring dest_rank back before the previous send finishes:
-                    # the buffer is overwritten mid-flight and the BD rank receives
-                    # a corrupt mix of two batches → GpuBatchFormatError (bad magic)
-                    # on GPU path, or silent data corruption on CPU path.
-                    if self.requests[dest_rank - 1] is not None:
-                        self.requests[dest_rank - 1].Wait()
                     # Pack smd_batch alongside gpubat1_bytes so GPU BD ranks
                     # receive both in one message.  CPU BD ranks unpack and
                     # discard the empty gpu_chunk transparently.
@@ -1300,26 +1284,6 @@ class BigDataNode(object):
     # Wire-format helpers and stats
     # ------------------------------------------------------------------
 
-    def set_batch_stats(self, read_bytes, read_time_ns, proc_events, proc_time_ns):
-        """Update per-batch stats that will be sent to EB in the next request.
-
-        Called by RunParallel._gpu_events_mpi() after processing each GPU
-        batch so that the EB load-balancer receives accurate accounting for
-        GPU BD ranks — the same information that the CPU path provides
-        automatically via the on_batch_end callback inside Events.
-
-        Parameters
-        ----------
-        read_bytes    : int   Total bigdata bytes read via GDS this batch.
-        read_time_ns  : int   Wall-ns spent waiting for GDS reads.
-        proc_events   : int   L1Accept events in the GPU batch.
-        proc_time_ns  : int   Wall-ns for the full batch processing window.
-        """
-        self._last_bd_read_bytes   = int(read_bytes)
-        self._last_bd_read_time_ns = int(read_time_ns)
-        self._last_bd_proc_events  = int(proc_events)
-        self._last_bd_proc_time_ns = int(proc_time_ns)
-
     def _unpack_batch(self, chunk):
         """Unpack an EB batch into (smd_chunk, gpu_chunk).
 
@@ -1349,7 +1313,7 @@ class BigDataNode(object):
         # Fallback: treat entire chunk as smd_batch (no GPU routing).
         return chunk, bytearray()
 
-    def start(self):
+    def start(self, run=None, gpu_manager=None):
         def on_batch_end(payload):
             (read_bytes, read_time), event_count, elapsed = payload
             self._last_bd_read_bytes = int(read_bytes)
@@ -1359,79 +1323,34 @@ class BigDataNode(object):
             if elapsed > 0 and event_count > 0:
                 pass
 
-        def get_smd():
-            bd_comm = self.comms.bd_comm
-            bd_rank = self.comms.bd_rank
-            self.logger.debug(
-                f"TIMELINE 13. BD{self.comms.world_rank}SENDREQTOEB {time.monotonic()}",
-            )
-            req_payload = np.array(
-                [
-                    bd_rank,
-                    self._last_bd_read_bytes,
-                    self._last_bd_read_time_ns,
-                    self._last_bd_wait_time_ns,
-                    self._last_bd_proc_events,
-                    self._last_bd_proc_time_ns,
-                ],
-                dtype=np.int64,
-            )
-            req = bd_comm.Isend(req_payload, dest=0)
-            req.Wait()
-            self._last_bd_read_bytes = 0
-            self._last_bd_read_time_ns = 0
-            self._last_bd_wait_time_ns = 0
-            self._last_bd_proc_events = 0
-            self._last_bd_proc_time_ns = 0
-            self.logger.debug(
-                f"TIMELINE 14. BD{self.comms.world_rank}DONESENDREQTOEB {time.monotonic()}",
-            )
-            info = MPI.Status()
-            bd_comm.Probe(source=0, tag=MPI.ANY_TAG, status=info)
-            count = info.Get_elements(MPI.BYTE)
-            chunk = bytearray(count)
-            st_req = time.monotonic()
-            req = bd_comm.Irecv(chunk, source=0)
-            req.Wait()
-            self.logger.debug(
-                f"TIMELINE 15. BD{self.comms.world_rank}RECVDATA {time.monotonic()}",
-            )
-            en_req = time.monotonic()
-            wait_time = en_req - st_req
-            self._last_bd_wait_time_ns = int(wait_time * 1e9)
-            self.wait_gauge.set(wait_time)
-            # Unpack: smd_chunk goes to EventManager; gpu_chunk stored for
-            # the GPU event loop (RunParallel._gpu_events_mpi).
-            smd_chunk, gpu_chunk = self._unpack_batch(chunk)
-            self._pending_gpu_batch = gpu_chunk
-            return smd_chunk
+        batch_source = self._batch_envelopes()
 
-        dgrams_iter = Events(self.configs,
-                        self.dm,
-                        self.dsparms.max_retries,
-                        self.dsparms.use_smds,
-                        self.shared_state,
-                        get_smd=get_smd,
-                        on_batch_end=on_batch_end)
-        for i_evt, dgrams in enumerate(dgrams_iter):
-            # throw away events if termination flag is set
-            if self.shared_state.terminate_flag.value:
-                continue
+        events = Events(
+            self.configs,
+            self.dm,
+            self.dsparms.max_retries,
+            self.dsparms.use_smds,
+            self.shared_state,
+            batch_source=batch_source,
+            run=run,
+            gpu_manager=gpu_manager,
+            on_batch_end=on_batch_end,
+        )
+        try:
+            yield from events
+        finally:
+            if gpu_manager is not None:
+                gpu_manager.close()
+            # A consumer may stop at max_events or close the generator while
+            # one look-ahead request is outstanding. Drain to EB termination.
+            for _ in batch_source:
+                pass
 
-            yield dgrams
+    def _batch_envelopes(self):
+        """Yield coherent batches with one-message look-ahead for every BD.
 
-    def start_gpu(self):
-        """Yield (smd_batch, gpubat1_bytes) per EB batch for GPU BD ranks.
-
-        Unlike start() which feeds dgrams into the CPU Events iterator,
-        start_gpu() yields one raw pair per EB batch so that the GPU pipeline
-        (RunParallel._gpu_events_mpi) can process a whole batch in one
-        GDS read + kernel launch.
-
-        The request/response protocol and per-batch stats tracking are
-        identical to start().  The only difference is that the received chunk
-        is unpacked into (smd_batch, gpubat1_bytes) rather than being fed
-        directly to EventManager.
+        The next request is posted before the current envelope is returned, so
+        EB building overlaps CPU or GPU processing through the same path.
         """
         bd_comm = self.comms.bd_comm
         bd_rank = self.comms.bd_rank
@@ -1482,16 +1401,6 @@ class BigDataNode(object):
             # --- Unpack ---
             smd_batch, gpubat1_bytes = self._unpack_batch(chunk)
 
-            if self.shared_state.terminate_flag.value:
-                # Terminating: do NOT send the look-ahead request here.
-                # The look-ahead at the top of the loop already sent one
-                # request before we received this batch.  Sending a second
-                # request would leave EB expecting one more BD request than
-                # will ever arrive, causing EB to hang after all events are
-                # processed.  Breaking here lets the finally-drain in
-                # _gpu_events_mpi() consume the remaining EB batches cleanly.
-                break
-
             # --- EB LOOK-AHEAD: send request for the NEXT batch now ---
             # EB starts building batch N+1 immediately while the consumer
             # below is doing GDS reads for batch N.  GDS takes ~660 ms;
@@ -1499,7 +1408,7 @@ class BigDataNode(object):
             # batch N+1 is already waiting in the EB send buffer.
             _send_request()
 
-            yield smd_batch, gpubat1_bytes
+            yield BatchEnvelope(smd=smd_batch, gpu=gpubat1_bytes)
 
     def start_smdonly(self):
         bd_comm = self.comms.bd_comm

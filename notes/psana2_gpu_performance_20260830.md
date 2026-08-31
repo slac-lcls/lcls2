@@ -3,13 +3,9 @@
 ## Executive summary
 
 This note consolidates the accepted Jungfrau GPU measurements made from the
-`codex/psana2-gpu-two-phase-retire` branch on 2026-08-27 through 2026-08-29.
-The jobs ran from base commit
-`ca2345b75eabd4aaefd9f4c849447ebb03b093d2` plus the then-uncommitted GPU-only
-event metadata and MPI transport fixes recorded in their logs. Those exact
-fixes are now committed as
+`codex/psana2-gpu-two-phase-retire` branch
 `e18cf6bb700152c461c2884bbfa28014d8d6e006` (`Fix GPU-only events and MPI batch
-transport`). Use that commit as the reproducible benchmark code snapshot.
+transport`) commit. Use this commit as the reproducible benchmark code snapshot.
 
 The main results are:
 

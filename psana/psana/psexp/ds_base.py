@@ -57,8 +57,8 @@ class DsParms:
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
     # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau') or
-    # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
-    # yields GpuEventContext objects instead of Event objects.
+    # DataSource(gpu_det=['jungfrau', 'epix']). Run.events() still yields
+    # Event; per-event GPU results are available through evt.gpu.
     gpu_det: object = None  # str | list[str] | None
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
@@ -222,7 +222,7 @@ class DataSourceBase(abc.ABC):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
         # Final sanity check.
-        # batch_size=0 is allowed when gpu_det is set: GpuEvents will
+        # batch_size=0 is allowed when gpu_det is set: GpuEventManager will
         # auto-compute the optimal value from GPU detector properties.
         if self.batch_size == 0 and not kwargs.get("gpu_det"):
             self.batch_size = 1  # default for CPU path

@@ -137,7 +137,7 @@ class KvikioGpuReader:
     def memory_bytes(self) -> dict:
         """Return current VRAM usage for the raw input slot buffers.
 
-        Used by GpuEvents.log_memory() for Phase-0 accounting.
+        Used by GpuEventManager.log_memory() for Phase-0 accounting.
         """
         slot_sizes = [int(b.nbytes) if b is not None else 0
                       for b in self._slot_bufs]

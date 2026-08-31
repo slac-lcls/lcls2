@@ -23,13 +23,15 @@ ds = DataSource(
 )
 run = next(ds.runs())
 
-for ctx in run.events():
-    calib_gpu = ctx.get("calib").on_gpu
-    # calib_cpu = ctx.get("calib").on_cpu  # explicit synchronous D2H
-    # energy = ctx.raw("gmd").energy       # normal CPU detector access
+gmd = run.Detector("gmd")
+for evt in run.events():
+    calib_gpu = evt.gpu.get("calib").on_gpu
+    # calib_cpu = evt.gpu.get("calib").on_cpu
+    # energy = gmd.raw.energy(evt)
 ```
 
-`ctx.get("calib").on_gpu` is a CuPy view into a reusable EventPool slot. It
+`evt.gpu.get("calib").on_gpu` returns an independent CuPy copy. The
+`on_gpu_view(stream)` context manager exposes a reusable EventPool slot and
 must be consumed before that slot is recycled. `.on_cpu` returns an independent
 NumPy copy.
 
@@ -45,20 +47,20 @@ EventBuilder
   builds a GPUBAT1 descriptor batch for GPU-routed streams
   sends CPU, GPU, and step batches to BD
 
-BD / GpuEvents
+BD / Events / GpuEventManager
   issues KvikIO reads for the GPUBAT1 descriptors
   builds normal CPU Event objects through EventManager
   waits for the KvikIO futures
   launches Jungfrau raw gathering and calibration
   joins CPU events and GPU results by timestamp
-  yields GpuEventContext objects
+  attaches GpuEventState and yields Event objects
 ```
 
-The same `GpuEvents` implementation is used by both execution modes:
+The same `GpuEventManager` implementation is used by both execution modes:
 
 - `RunSerial` uses it directly when `DataSource(..., gpu_det=...)` is set.
-- MPI BD ranks use `RunParallel._gpu_events_mpi()` and
-  `BigDataNode.start_gpu()` as the batch source.
+- MPI BD ranks receive `BatchEnvelope` objects through the common
+  `BigDataNode.start()` and `Events` path.
 
 Smd0, EventBuilder, and service ranks do not need CUDA contexts.
 
