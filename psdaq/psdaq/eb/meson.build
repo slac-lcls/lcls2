@@ -32,7 +32,6 @@ contributor_lib = shared_library('contributor',
     'src/TebContributor.cc',
     'src/MebContributor.cc',
     'src/BatchManager.cc',
-    'src/Batch.cc',
     'src/CubeConfigDgram.cc',
   ],
   dependencies: [

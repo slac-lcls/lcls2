@@ -19,6 +19,7 @@
 #include "xtcdata/xtc/XtcIterator.hh"
 #include "psdaq/eb/src/CubeConfigDgram.hh"
 #include "psdaq/service/Json2Xtc.hh"
+#include <nlohmann/json.hpp>
 
 #include <sys/prctl.h>
 
@@ -26,6 +27,7 @@ using namespace XtcData;
 using namespace Drp;
 using namespace Pds;
 using namespace Pds::Eb;
+using json = nlohmann::json;
 using logging = psalg::SysLog;
 using us_t = std::chrono::microseconds;
 
@@ -620,8 +622,18 @@ void CubeTebReceiver::finalize()
 
             // Free the transition datagram buffer
             TransitionId::Value transitionId = result.service();
-            auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
+	    auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
                 : m_pool.transitionDgrams[index];
+
+	    // pass everything except L1 accepts and slow updates to control level
+	    if (transitionId != TransitionId::L1Accept &&
+		transitionId != TransitionId::SlowUpdate) {
+	        // send pulseId to inproc so it gets forwarded to the collection
+ 	        uint64_t pulseId = dgram->pulseId();
+	        json msg = createPulseIdMsg(pulseId);
+		m_inprocSend.send(msg.dump());
+	    }
+
             if (!dgram->isEvent()) {
                 m_pool.freeTr(dgram);
             }

@@ -1082,10 +1082,6 @@ void TebReceiverBase::process(const ResultDgram& result, unsigned index)
             if (transitionId == TransitionId::BeginRun)
               m_offset = 0;// reset for monitoring (and not recording)
 
-            // send pulseId to inproc so it gets forwarded to the collection
-            json msg = createPulseIdMsg(pulseId);
-            m_inprocSend.send(msg.dump());
-
             logging::info("TebRcvr    saw %12s @ %u.%09u (%014lx)",
                            TransitionId::name(transitionId),
                           dgram->time.seconds(), dgram->time.nanoseconds(), pulseId);
