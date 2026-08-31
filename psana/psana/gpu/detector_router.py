@@ -8,8 +8,8 @@ diagnostics).
 Two capabilities:
 
 1. Key resolution  (unqualified → qualified):
-       ctx.get('calib')          → resolves to 'jungfrau.calib'
-       ctx.get('jungfrau.calib') → passes through unchanged (backward compat)
+       evt.gpu.get('calib')          → resolves to 'jungfrau.calib'
+       evt.gpu.get('jungfrau.calib') → passes through unchanged
 
 2. Full calibration combining  (GPU segments + CPU segments → complete array):
        setup_full_routing() — call at BeginRun with both GPU and CPU seg_ids.
@@ -25,7 +25,7 @@ import numpy as np
 class DetectorRouter:
     """Tracks GPU-routed and CPU-only detectors for a run.
 
-    Created once per GPU-enabled run and attached to every GpuEventContext so
+    Created once per GPU-enabled run and referenced by every GpuEventState so
     that unqualified keys can be resolved without
     the user repeating the detector name, and so that GPU + CPU detector
     segments can be combined into a complete calibrated array.

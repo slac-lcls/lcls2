@@ -175,8 +175,8 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
     run = next(ds.runs())
 
     seen = set()
-    for ctx in run.events():
-        timestamp = int(ctx.timestamp)
+    for evt in run.events():
+        timestamp = int(evt.timestamp)
         assert timestamp not in seen, f"duplicate GPU timestamp {timestamp}"
         assert timestamp in cpu_reference, (
             f"GPU produced timestamp {timestamp} absent from CPU reference"
@@ -184,7 +184,7 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
 
         # Copy immediately, before advancing the iterator can recycle the
         # EventPool slot that owns this result.
-        gpu_calib = np.asarray(ctx.get("calib").on_cpu).copy()
+        gpu_calib = np.asarray(evt.gpu.get("calib").on_cpu).copy()
         _assert_pixel_exact(timestamp, cpu_reference[timestamp], gpu_calib)
         seen.add(timestamp)
 

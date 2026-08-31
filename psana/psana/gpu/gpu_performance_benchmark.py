@@ -167,11 +167,11 @@ def run_gpu_on_gpu(exp, run, xtc_dir, det_name, batch_size, n_warmup, n_events,
     hot_times = [];  shape = None
     t_wall_start = t_wall_end = None;  n = 0
     for r in ds.runs():
-        for ctx in r.events():
+        for evt in r.events():
             if n == n_warmup:
                 t_wall_start = time.perf_counter()
             t0 = time.perf_counter()
-            with ctx.get('calib').on_gpu_view(view_stream) as calib:
+            with evt.gpu.get('calib').on_gpu_view(view_stream) as calib:
                 _ = calib.sum()   # minimal representative kernel
             dt = (time.perf_counter() - t0) * 1000
             if n >= n_warmup:
@@ -195,9 +195,9 @@ def run_gpu_on_cpu(exp, run, xtc_dir, det_name, batch_size, n_warmup, n_events,
 
     times = [];  shape = None
     for r in ds.runs():
-        for i, ctx in enumerate(r.events()):
+        for i, evt in enumerate(r.events()):
             t0    = time.perf_counter()
-            calib = ctx.get('calib').on_cpu    # triggers D→H
+            calib = evt.gpu.get('calib').on_cpu    # triggers D→H
             dt    = (time.perf_counter() - t0) * 1000
             if i >= n_warmup:
                 times.append(dt)
@@ -223,9 +223,9 @@ def run_gpu_selective(exp, run, xtc_dir, det_name, batch_size,
     view_stream = cp.cuda.Stream(non_blocking=True)
     times = [];  shape = None;  n_dth = 0
     for r in ds.runs():
-        for i, ctx in enumerate(r.events()):
+        for i, evt in enumerate(r.events()):
             t0 = time.perf_counter()
-            result = ctx.get('calib')
+            result = evt.gpu.get('calib')
             with result.on_gpu_view(view_stream) as calib:
                 hit = int(cp.sum(calib > 5.0))   # GPU hit-finding (zero-copy)
             if i % step == 0:
@@ -253,9 +253,9 @@ def run_batch_scaling(exp, run, xtc_dir, det_name, n_warmup, n_events,
                         max_events=n_warmup + n_events)
         t_start = t_end = None;  n = 0
         for r in ds.runs():
-            for ctx in r.events():
+            for evt in r.events():
                 if n == n_warmup:        t_start = time.perf_counter()
-                with ctx.get('calib').on_gpu_view(view_stream) as _arr:
+                with evt.gpu.get('calib').on_gpu_view(view_stream) as _arr:
                     pass   # wall-time sweep: minimal access
                 n += 1
                 if n == n_warmup + n_events: t_end = time.perf_counter()

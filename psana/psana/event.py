@@ -25,13 +25,26 @@ class Event:
     Event holds list of dgrams
     """
 
-    def __init__(self, dgrams, run=None, proxy_evt=None):
+    def __init__(self, dgrams, run=None, proxy_evt=None, gpu=None):
         self._dgrams = dgrams
         self._size = len(dgrams)
         self._complete()
         self._position = 0
         self._run = run  # RunCtx object
         self._proxy_evt = proxy_evt # For smalldata-event loop
+        self._gpu = gpu
+
+    @property
+    def gpu(self):
+        """Per-event GPU results, or ``None`` for a CPU-only event."""
+        return self._gpu
+
+    def _attach_gpu(self, gpu):
+        """Attach GPU state exactly once while assembling this event."""
+        if self._gpu is not None:
+            raise RuntimeError("GPU state is already attached to this event")
+        self._gpu = gpu
+        return self
 
     def __iter__(self):
         return self

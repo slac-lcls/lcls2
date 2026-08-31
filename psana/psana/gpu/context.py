@@ -10,11 +10,11 @@ GPUResult
 SlotLease
     Completion token linking one event's calibrated output view to the
     EventPool slot it was produced in.  Created by EventPool.submit(),
-    consumed immediately by GpuEvents._D2hPipeline for automatic D→H, and
+    consumed immediately by GpuEventManager._D2hPipeline for automatic D→H, and
     attached to GPUResult when the event is later delivered.
 
-GpuEventContext
-    Per-event container returned by DataSource(gpu_det=...).
+GpuEventState
+    Per-event GPU results attached to :class:`psana.Event`.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ class SlotLease:
        records ``result_ready`` after that producer work, then creates one
        SlotLease per (timestamp, result key), sharing ``result_ready``.
 
-    2. GpuEvents._D2hPipeline receives the submitted slot record.  It issues
+    2. GpuEventManager._D2hPipeline receives the submitted slot record. It issues
        cudaMemcpyAsync on a separate D→H stream after waiting for result_ready,
        then records a completion event and calls register_consumer_done(event).
 
@@ -124,23 +124,23 @@ class _GpuViewContext:
 class GPUResult:
     """Detector result with explicit device and cached host access.
 
-    Returned by GpuEventContext.get('det.result').
+    Returned by ``evt.gpu.get('det.result')``.
 
     Attributes
     ----------
     on_gpu : cp.ndarray
         Calibrated array on device.  Never triggers a D→H transfer.
     on_cpu : np.ndarray
-        Host copy.  If GpuEvents has already transferred this result via
+        Host copy. If GpuEventManager has already transferred this result via
         its internal D→H pipeline (gpu_d2h_chunk_size > 0), waits for that
         token when necessary and caches an independent NumPy result. Otherwise
         performs one blocking D→H on first access and caches the result.
     _lease : SlotLease | None
-        Slot ownership token.  Used by GpuEvents._D2hPipeline to issue
+        Slot ownership token. Used by GpuEventManager._D2hPipeline to issue
         direct async D→H from the slot view and signal when the slot is
         safe to recycle.  User code should not access _lease directly.
     _cpu_cache : np.ndarray | None
-        Cached independent CPU result.  Set either after GpuEvents' pinned
+        Cached independent CPU result. Set after GpuEventManager's pinned
         D→H completes or by the synchronous fallback.  When set, on_cpu
         returns it without another GPU transfer.
     """
@@ -196,7 +196,7 @@ class GPUResult:
 
         Usage::
 
-            with ctx.get('jungfrau.calib').on_gpu_view(stream) as arr:
+            with evt.gpu.get('jungfrau.calib').on_gpu_view(stream) as arr:
                 my_kernel(arr, stream=stream)
             # done event recorded automatically — nothing else needed
 
@@ -253,24 +253,18 @@ class GPUResult:
         return f'GPUResult(shape={shape}, dtype={dtype})'
 
 
-class GpuEventContext:
-    """Per-event context combining GPU results with CPU detector access.
+class GpuEventState:
+    """GPU results and leases owned by one :class:`psana.Event`.
 
-    Returned by run.events() when DataSource has gpu_det enabled.
-
-        ctx.get('det.result')  → GPUResult
-        ctx.raw('det')         → CPU detector (unchanged API)
-        ctx.timestamp          → int (64-bit LCLS timestamp)
-        ctx.service()          → int (TransitionId)
+    This state intentionally has no reference back to its Event or to the
+    run-wide GPU manager. Normal detector access remains ``det.raw.raw(evt)``.
     """
 
-    __slots__ = ('_evt', '_gpu_results', '_cpu_dets', '_cache', '_router',
+    __slots__ = ('_gpu_results', '_cache', '_router',
                  '_leases', '_pending_d2h', '_cached_cpu_results',
                  '_device_released')
 
-    def __init__(self, evt, gpu_results: dict,
-                 cpu_dets: dict | None = None,
-                 router=None,
+    def __init__(self, gpu_results: dict, router=None,
                  leases: dict | None = None,
                  pending_d2h: dict | None = None,
                  cached_cpu_results: dict | None = None,
@@ -278,9 +272,7 @@ class GpuEventContext:
         """
         Parameters
         ----------
-        evt         : psana2 Event
         gpu_results : dict  {key: cp.ndarray}
-        cpu_dets    : dict  {det_name: psana Detector} | None
         router      : DetectorRouter | None
         leases      : dict  {key: SlotLease} | None
             Per-key slot leases created by EventPool.submit().
@@ -290,9 +282,7 @@ class GpuEventContext:
         cached_cpu_results : dict  {key: np.ndarray} | None
             Independent CPU results materialized under pinned-buffer pressure.
         """
-        self._evt         = evt
         self._gpu_results = gpu_results
-        self._cpu_dets    = cpu_dets or {}
         self._router      = router
         self._leases      = leases or {}
         self._pending_d2h = pending_d2h or {}
@@ -337,26 +327,6 @@ class GpuEventContext:
             self._cache[resolved] = result
         return self._cache[resolved]
 
-    def raw(self, det_name: str):
-        """Access a CPU detector — identical to original psana2 API."""
-        if det_name not in self._cpu_dets:
-            available = sorted(self._cpu_dets)
-            raise KeyError(
-                f"CPU detector '{det_name}' not registered.  "
-                f"Available: {available}"
-            )
-        return self._cpu_dets[det_name](self._evt)
-
-    @property
-    def timestamp(self) -> int:
-        """64-bit LCLS event timestamp."""
-        return self._evt.timestamp
-
-    def service(self) -> int:
-        """TransitionId service type (12 = L1Accept)."""
-        return self._evt.service()
-
     def __repr__(self) -> str:
         keys = sorted(self._gpu_results)
-        return (f'GpuEventContext(ts={self.timestamp}, '
-                f'gpu_keys={keys})')
+        return f'GpuEventState(gpu_keys={keys})'

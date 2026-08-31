@@ -41,7 +41,7 @@ class EventPool:
       4. finish_retire_next() — wait for each registered terminal consumer,
                                 then release the slot for reuse.
 
-    The caller (GpuEvents) must complete both retirement phases before submit()
+    GpuEventManager must complete both retirement phases before submit()
     so the outgoing slot is fully drained before overwrite.  External-GPU mode
     yields between the phases so user work can register its completion event;
     automatic-D2H mode may finish retirement before yielding a host result.

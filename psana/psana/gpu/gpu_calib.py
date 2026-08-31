@@ -143,7 +143,7 @@ def _detect_dgram_layout(dgram_bytes):
     comes from the Configure-dgram ``drp_class_name`` (``Name::DataType`` in
     the XTC ``Names`` container), the same source the CPU path uses
     (``det.raw`` vs ``det.fex``).  ``GPUDetector`` receives it via the
-    ``passthrough`` constructor flag set by ``GpuEvents._setup_detectors``
+    ``passthrough`` constructor flag set by ``GpuEventManager._setup_detectors``
     from ``run.detinfo``.
 
     Parameters
@@ -321,7 +321,7 @@ class GPUDetector:
             import warnings
             warnings.warn(
                 f'GPUDetector.setup_geometry: could not load pixel coordinate '
-                f'indices ({exc}). ctx.get("*.image") will return None.'
+                f'indices ({exc}). evt.gpu.get("*.image") will fail.'
             )
             return
 
@@ -344,7 +344,7 @@ class GPUDetector:
             import warnings
             warnings.warn(
                 f'GPUDetector.setup_geometry: segment index out of range '
-                f'({exc}). ctx.get("*.image") will return None.'
+                f'({exc}). evt.gpu.get("*.image") will fail.'
             )
             return
 
@@ -359,7 +359,7 @@ class GPUDetector:
             import warnings
             warnings.warn(
                 f'GPUDetector.setup_geometry: could not transfer scatter '
-                f'indices to GPU ({exc}).  ctx.get("*.image") will return '
+                f'indices to GPU ({exc}). evt.gpu.get("*.image") will return '
                 f'None.  This typically occurs when the detector has many '
                 f'segments (e.g. full Jungfrau 16M) and GPU memory is limited.'
             )
@@ -402,7 +402,7 @@ class GPUDetector:
             import warnings
             warnings.warn(
                 f'GPUDetector.setup_geometry_from_arrays: segment index out '
-                f'of range ({exc}). ctx.get("*.image") will return None.'
+                f'of range ({exc}). evt.gpu.get("*.image") will fail.'
             )
             return
 
@@ -417,7 +417,7 @@ class GPUDetector:
             import warnings
             warnings.warn(
                 f'GPUDetector.setup_geometry_from_arrays: GPU transfer failed '
-                f'({exc}). ctx.get("*.image") will return None.'
+                f'({exc}). evt.gpu.get("*.image") will fail.'
             )
 
     def assemble_image(self, calib_gpu, stream=None):
@@ -557,7 +557,7 @@ class GPUDetector:
         """Return current VRAM usage broken down by category.
 
         All values are bytes on the GPU device.  Used by
-        GpuEvents.log_memory() for Phase-0 accounting.
+        GpuEventManager.log_memory() for Phase-0 accounting.
 
         Categories
         ----------

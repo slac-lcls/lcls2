@@ -59,7 +59,7 @@ def parse_args():
     parser.add_argument('--gpu_d2h_chunk_size', type=int, default=0,
                         help='Async D2H chunk size / DataSource(gpu_d2h_chunk_size=...) (0=disabled)')
     parser.add_argument('--gpu_d2h_interval', type=int, default=0,
-                        help='Call ctx.get("calib").on_cpu every N events in GPU mode (0=never)')
+                        help='Call evt.gpu.get("calib").on_cpu every N events in GPU mode (0=never)')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
     parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
     parser.add_argument('--print_interval', type=int, default=1000,
@@ -216,7 +216,7 @@ def main():
         if args.gpu_det:
             if args.gpu_d2h_interval > 0 and i_evt % args.gpu_d2h_interval == 0:
                 det_t0 = time.perf_counter()
-                _ = evt.get("calib").on_cpu
+                _ = evt.gpu.get("calib").on_cpu
                 gpu_d2h_seconds += time.perf_counter() - det_t0
                 gpu_d2h_count += 1
                 det_accessed = True
