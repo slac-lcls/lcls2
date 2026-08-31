@@ -1313,7 +1313,7 @@ class BigDataNode(object):
         # Fallback: treat entire chunk as smd_batch (no GPU routing).
         return chunk, bytearray()
 
-    def start(self, run=None, gpu_manager=None):
+    def start(self, gpu_manager=None):
         def on_batch_end(payload):
             (read_bytes, read_time), event_count, elapsed = payload
             self._last_bd_read_bytes = int(read_bytes)
@@ -1332,7 +1332,6 @@ class BigDataNode(object):
             self.dsparms.use_smds,
             self.shared_state,
             batch_source=batch_source,
-            run=run,
             gpu_manager=gpu_manager,
             on_batch_end=on_batch_end,
         )
@@ -1430,31 +1429,12 @@ class BigDataNode(object):
 
         cn_events = 0
         cn_pass = 0
-        def _extract_dgrams_service_ts(item):
-            if isinstance(item, (list, tuple)):
-                dgrams = item
-                svc = utils.first_service(dgrams)
-                ts = utils.first_timestamp(dgrams)
-                return dgrams, svc, ts
-
-            dgrams = getattr(item, "_dgrams", None)
-            if dgrams is None:
-                raise TypeError("SmdEvents yielded unsupported type")
-
-            svc_fn = getattr(item, "service", None)
-            svc = svc_fn() if callable(svc_fn) else utils.first_service(dgrams)
-
-            ts_attr = getattr(item, "timestamp", None)
-            ts = ts_attr() if callable(ts_attr) else ts_attr
-            if ts is None:
-                ts = utils.first_timestamp(dgrams)
-
-            return dgrams, svc, ts
-
-        for item in events:
+        for envelope in events:
             cn_events += 1
             try:
-                dgrams, svc, ts = _extract_dgrams_service_ts(item)
+                dgrams = envelope.dgrams
+                svc = utils.first_service(dgrams)
+                ts = utils.first_timestamp(dgrams)
             except Exception as exc:
                 self.logger.debug(f"Skipping smd entry during table build: {exc}")
                 continue

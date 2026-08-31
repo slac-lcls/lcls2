@@ -1,6 +1,7 @@
 # import detectors
 
 import datetime
+from dataclasses import dataclass
 import numpy as np
 
 
@@ -13,6 +14,14 @@ from psana import utils
 # 3) hook up the detector class table
 
 epoch = datetime.datetime(1990, 1, 1)
+
+
+@dataclass
+class EventEnvelope:
+    """Internal handoff used to materialize one public :class:`Event`."""
+
+    dgrams: object
+    gpu_state: object = None
 
 
 class DrpClassContainer(object):

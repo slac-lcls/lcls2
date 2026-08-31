@@ -627,10 +627,10 @@ class RunParallel(Run):
             ana_interval = 1000
         if ana_interval <= 0:
             ana_interval = 1000
-        for i, evt in enumerate(evt_iter):
-            if self._handle_transition(evt._dgrams):
+        for i, envelope in enumerate(evt_iter):
+            if self._handle_transition(envelope.dgrams):
                 continue  # swallow non-L1 transitions in events() stream
-            yield evt
+            yield self._materialize_event(envelope)
             if i % ana_interval == 0:
                 en = time.time()
                 interval = en - st
@@ -668,8 +668,8 @@ class RunParallel(Run):
             return
 
         evt_iter = self.start()
-        for evt in evt_iter:
-            dgrams = evt._dgrams
+        for envelope in evt_iter:
+            dgrams = envelope.dgrams
             svc = utils.first_service(dgrams)
             if TransitionId.isEvent(svc):
                 # steps() only yields on BeginStep transitions; ignore L1
@@ -679,7 +679,7 @@ class RunParallel(Run):
 
             if svc == TransitionId.BeginStep:
                 yield Step(
-                    evt,
+                    self._materialize_event(envelope),
                     evt_iter,
                     self._run_ctx,
                     esm=self.esm,
@@ -701,10 +701,7 @@ class RunParallel(Run):
         elif nodetype == "eb":
             self.eb_node.start()
         elif nodetype == "bd":
-            yield from self.bd_node.start(
-                run=self._run_ctx,
-                gpu_manager=gpu_manager,
-            )
+            yield from self.bd_node.start(gpu_manager=gpu_manager)
         elif nodetype == "srv":
             return
 
