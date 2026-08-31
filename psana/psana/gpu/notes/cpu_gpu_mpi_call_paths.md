@@ -10,13 +10,14 @@ yield `psana.Event` from `RunParallel.events()`.
 RunParallel.events()
   -> RunParallel._events_impl()
   -> RunParallel.start(gpu_manager=None | GpuEventManager)
-  -> BigDataNode.start(run, gpu_manager)
+  -> BigDataNode.start(gpu_manager)
   -> BigDataNode._batch_envelopes()
        receive EB message
        unpack BatchEnvelope(smd, gpu)
        request the next EB batch before yielding the current envelope
-  -> Events(batch_source, run, gpu_manager)
-  -> yield Event
+  -> Events(batch_source, gpu_manager)
+  -> EventEnvelope(dgrams, gpu_state=None | GpuEventState)
+  -> RunParallel materializes and yields Event
 ```
 
 There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
@@ -31,10 +32,11 @@ There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
 | Run dispatch | `RunParallel.start(None)` | `RunParallel.start(manager)` | Passes the optional processor into the common BD path. |
 | MPI receive | `BigDataNode._batch_envelopes()` | Same | Receives the two-packet EB message and posts one-batch look-ahead. |
 | Transport value | `BatchEnvelope(smd, None)` | `BatchEnvelope(smd, gpubat1)` | Keeps the coherent CPU/GPU communication unit together. |
-| Stream controller | `Events.__next__()` | Same | Requests another envelope only after the active batch iterator is exhausted. |
-| CPU materialization | `EventManager` | `EventManager` inside `GpuEventManager` | Reads CPU bigdata and constructs dgrams. |
+| Stream controller | `Events.__next__()` | Same | Requests another batch only after the active event-envelope iterator is exhausted. |
+| CPU materialization | `EventManager` | `EventManager` inside `GpuEventManager` | Reads CPU bigdata and constructs `EventEnvelope(dgrams)`. |
 | GPU processing | None | `GpuEventManager.process_batch()` | Issues KvikIO reads, launches detector work, and correlates timestamps. |
-| Per-event result | `Event(gpu=None)` | `Event(gpu=GpuEventState)` | The same public object is returned in both modes. |
+| Internal result | `EventEnvelope(dgrams)` | `EventEnvelope(dgrams, gpu_state)` | Carries one event without owning RunCtx. |
+| Public result | `RunParallel` creates `Event(gpu=None)` | `RunParallel` creates `Event(gpu=GpuEventState)` | The same public object is returned in both modes. |
 | User GPU access | N/A | `evt.gpu.get("calib")` | Returns a lease-aware `GPUResult`. |
 
 ## CPU path
@@ -42,9 +44,9 @@ There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
 ```text
 BatchEnvelope.smd
   -> EventManager
-  -> dgram list
+  -> EventEnvelope(dgrams)
+  -> RunParallel handles/swallows transitions
   -> Event(dgrams, run=RunCtx)
-  -> RunParallel handles/swallow transitions
   -> yield Event
 ```
 
@@ -59,9 +61,10 @@ BatchEnvelope(smd, gpubat1)
        run EventManager for CPU-routed streams
        wait for GPU reads and submit detector kernels
        correlate CPU and GPU records by timestamp
-       attach GpuEventState to each Event
+       attach GpuEventState to each EventEnvelope
   -> Events
   -> RunParallel.events()
+       Event(envelope.dgrams, run=RunCtx, gpu=envelope.gpu_state)
   -> yield Event
 ```
 

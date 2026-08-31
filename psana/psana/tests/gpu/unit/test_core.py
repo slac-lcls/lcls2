@@ -11,7 +11,7 @@ from psana.gpu.gpu_calib import _segment_ids_in_l1_order
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
-from psana.event import Event
+from psana.event import Event, EventEnvelope
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 
@@ -64,6 +64,27 @@ def test_event_owns_optional_gpu_state_once():
     assert evt.gpu is state
     with pytest.raises(RuntimeError, match="already attached"):
         evt._attach_gpu(object())
+
+
+def test_run_events_materializes_event_envelope():
+    from psana.psexp.run import Run
+
+    gpu_state = object()
+    envelope = EventEnvelope(
+        [gpu_events_module._GpuOnlyDgram(43)],
+        gpu_state=gpu_state,
+    )
+    run = Run.__new__(Run)
+    run._evt_iter = iter([envelope])
+    run._run_ctx = object()
+
+    events = list(run.events())
+
+    assert len(events) == 1
+    assert isinstance(events[0], Event)
+    assert events[0].timestamp == 43
+    assert events[0].gpu is gpu_state
+    assert events[0].run() is run._run_ctx
 
 
 def test_segment_ids_preserve_l1_child_order():
@@ -140,7 +161,7 @@ class _FakeFlushPool:
             leases = item[2] if len(item) > 2 else {}
             yield SimpleNamespace(
                 gpu_results_by_ts=results,
-                cpu_evts=evts,
+                event_envelopes=evts,
                 leases_by_ts=leases,
                 pending_d2h_by_ts={},
                 cached_cpu_results_by_ts={},
@@ -197,7 +218,7 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
 
     record = pool.begin_retire_next()
     assert record.gpu_results_by_ts == {}
-    assert record.cpu_evts == ["event-0"]
+    assert record.event_envelopes == ["event-0"]
     assert record.leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
     with pytest.raises(RuntimeError, match="before retirement finished"):
@@ -264,12 +285,11 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
 
     # Use a real ndarray so on_gpu (which now returns a copy) works correctly.
     gpu_result = np.ones((4, 8, 8), dtype=np.float32) * 42.0
-    from psana.event import Event
     from psana.gpu.gpu_events import _GpuOnlyDgram
-    cpu_evt = Event([_GpuOnlyDgram(timestamp)])
+    envelope = EventEnvelope([_GpuOnlyDgram(timestamp)])
     events = _new_gpu_events(
         log,
-        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [cpu_evt])],
+        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [envelope])],
     )
     events.gpu_reader = SimpleNamespace(close=lambda: log.append("close"))
 
@@ -288,9 +308,9 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
 
     assert request_count == 1
     assert len(results) == 1
-    assert results[0].timestamp == timestamp
+    assert results[0].dgrams[0].timestamp() == timestamp
     # on_gpu returns a copy — verify the value not identity
-    copy = results[0].gpu.get("jungfrau.calib").on_gpu
+    copy = results[0].gpu_state.get("jungfrau.calib").on_gpu
     np.testing.assert_array_equal(copy, gpu_result)
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
@@ -386,7 +406,7 @@ def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
         next(batches)
 
 
-def test_mpi_events_yield_event_for_cpu_and_gpu(monkeypatch):
+def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):
     from psana.psexp import events as events_module
     from psana.psexp.events import BatchEnvelope, Events
 
@@ -398,7 +418,7 @@ def test_mpi_events_yield_event_for_cpu_and_gpu(monkeypatch):
             return self
 
         def __next__(self):
-            return next(self._items)
+            return EventEnvelope(next(self._items))
 
         def get_bd_read_stats(self):
             return 0, 0.0
@@ -413,14 +433,13 @@ def test_mpi_events_yield_event_for_cpu_and_gpu(monkeypatch):
         use_smds=[],
         shared_state=SimpleNamespace(),
         batch_source=envelopes,
-        run="run-context",
     )
 
     cpu_events = Events(**common)
-    cpu_evt = next(cpu_events)
-    assert isinstance(cpu_evt, Event)
-    assert cpu_evt.timestamp == 11
-    assert cpu_evt.gpu is None
+    cpu_envelope = next(cpu_events)
+    assert isinstance(cpu_envelope, EventEnvelope)
+    assert cpu_envelope.dgrams[0].timestamp() == 11
+    assert cpu_envelope.gpu_state is None
     with pytest.raises(StopIteration):
         next(cpu_events)
 
@@ -431,8 +450,10 @@ def test_mpi_events_yield_event_for_cpu_and_gpu(monkeypatch):
             self.finished = False
 
         def process_batch(self, _smd, _gpu):
-            evt = Event([gpu_events_module._GpuOnlyDgram(12)])
-            yield evt._attach_gpu(gpu_state)
+            yield EventEnvelope(
+                [gpu_events_module._GpuOnlyDgram(12)],
+                gpu_state=gpu_state,
+            )
 
         def finish(self):
             self.finished = True
@@ -443,10 +464,10 @@ def test_mpi_events_yield_event_for_cpu_and_gpu(monkeypatch):
     gpu_manager = _FakeGpuManager()
     common["gpu_manager"] = gpu_manager
     gpu_events = Events(**common)
-    gpu_evt = next(gpu_events)
-    assert isinstance(gpu_evt, Event)
-    assert gpu_evt.timestamp == 12
-    assert gpu_evt.gpu is gpu_state
+    gpu_envelope = next(gpu_events)
+    assert isinstance(gpu_envelope, EventEnvelope)
+    assert gpu_envelope.dgrams[0].timestamp() == 12
+    assert gpu_envelope.gpu_state is gpu_state
     with pytest.raises(StopIteration):
         next(gpu_events)
     assert gpu_manager.finished

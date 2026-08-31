@@ -25,6 +25,9 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from psana.event import EventEnvelope
+from psana.gpu.gpu_events import _GpuOnlyDgram
+
 
 # ---------------------------------------------------------------------------
 # Fake CuPy infrastructure
@@ -221,7 +224,7 @@ class TestEventPoolLeases:
         pool._slots[0] = _EventSlot(
             slot_id=0,
             gpu_results_by_ts={},
-            cpu_evts=[],
+            event_envelopes=[],
             stream=stream,
             leases=[lease],
             leases_by_ts={},
@@ -247,7 +250,7 @@ class TestEventPoolLeases:
         record = _EventSlot(
             slot_id=0,
             gpu_results_by_ts={},
-            cpu_evts=[],
+            event_envelopes=[],
             stream=pool._streams[0],
             leases=[lease],
             leases_by_ts={},
@@ -466,11 +469,11 @@ class TestD2hPipeline:
 
         gpu_results_by_ts = {}
         leases_by_ts = {}
-        cpu_evts = []
+        event_envelopes = []
         leases = []
         for fill in fills:
             ts = int(fill * 100)
-            evt = SimpleNamespace(timestamp=ts)
+            envelope = EventEnvelope([_GpuOnlyDgram(ts)])
             lease = SlotLease(result_ready=_FakeEvent())
             gpu_results_by_ts[ts] = {
                 key: _make_arr(
@@ -481,22 +484,23 @@ class TestD2hPipeline:
                 )
             }
             leases_by_ts[ts] = {key: lease}
-            cpu_evts.append(evt)
+            event_envelopes.append(envelope)
             leases.append(lease)
         return _EventSlot(
             slot_id=0,
             gpu_results_by_ts=gpu_results_by_ts,
-            cpu_evts=cpu_evts,
+            event_envelopes=event_envelopes,
             stream=_FakeStream(),
             leases=leases,
             leases_by_ts=leases_by_ts,
         )
 
     @staticmethod
-    def _make_state(record, evt):
+    def _make_state(record, envelope):
         from psana.gpu.context import GpuEventState
+        from psana import utils
 
-        ts = evt.timestamp
+        ts = utils.first_timestamp(envelope.dgrams)
         return GpuEventState(
             gpu_results=record.gpu_results_by_ts.get(ts, {}),
             leases=record.leases_by_ts.get(ts, {}),
@@ -523,8 +527,8 @@ class TestD2hPipeline:
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
         record = self._make_record(fills=(1.0, 2.0))
         pipe.schedule(record)
-        for evt in record.cpu_evts:
-            state = self._make_state(record, evt)
+        for envelope in record.event_envelopes:
+            state = self._make_state(record, envelope)
             result = state.get("jungfrau.calib")
             assert result._pending_d2h is not None, "_pending_d2h must be set so on_cpu can sync lazily"
 
@@ -541,8 +545,8 @@ class TestD2hPipeline:
         fills = [3.0, 7.0]
         record = self._make_record(fills=fills)
         pipe.schedule(record)
-        for evt, expected in zip(record.cpu_evts, fills):
-            state = self._make_state(record, evt)
+        for envelope, expected in zip(record.event_envelopes, fills):
+            state = self._make_state(record, envelope)
             result = state.get("jungfrau.calib")
             np.testing.assert_allclose(result.on_cpu, expected)
 
@@ -594,13 +598,13 @@ class TestD2hPipeline:
 
         record2 = self._make_record(fills=(3.0,))
         pipe.schedule(record2)
-        state2 = self._make_state(record2, record2.cpu_evts[0])
+        state2 = self._make_state(record2, record2.event_envelopes[0])
         result2 = state2.get("jungfrau.calib")
         assert result2._pending_d2h is None
         np.testing.assert_allclose(result2.on_cpu, 3.0)
 
         # Free a slot: dec_ref() puts the slot back into _available.
-        self._make_state(record0, record0.cpu_evts[0]).get("jungfrau.calib").on_cpu
+        self._make_state(record0, record0.event_envelopes[0]).get("jungfrau.calib").on_cpu
         assert not pipe._available.empty(), "slot should be back in the free queue"
 
         # Fourth event: slot available → async D→H resumes.

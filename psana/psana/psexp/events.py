@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 
-from psana.event import Event
+from psana.event import EventEnvelope
 from .event_manager import EventManager
 
 
@@ -23,7 +23,8 @@ class Events:
     - RunSingleFile / RunShmem: reads directly from a DgramManager
 
     This class abstracts the complexity of batching, filtering empty events,
-    and respecting termination signals, providing a uniform interface via `__next__()`.
+    and respecting termination signals. It yields EventEnvelope objects for
+    Run.events() or Step.events() to materialize.
     """
     def __init__(
         self,
@@ -33,7 +34,6 @@ class Events:
         use_smds,
         shared_state,
         batch_source=None,
-        run=None,
         gpu_manager=None,
         smdr_man=None,
         on_batch_end=None,
@@ -46,7 +46,6 @@ class Events:
         self._batch_source = (
             iter(batch_source) if batch_source is not None else None
         )
-        self.run = run               # RunCtx for Event construction
         self.gpu_manager = gpu_manager
         self.smdr_man = smdr_man     # Serial batch manager (RunSerial)
         self._on_batch_end = on_batch_end
@@ -96,14 +95,11 @@ class Events:
                 if terminate_flag is not None and terminate_flag.value:
                     raise StopIteration
                 try:
-                    item = next(self._evt_man)
-                    if isinstance(item, Event):
-                        self._batch_event_count += 1
-                        return item
-                    if not any(item):
+                    envelope = next(self._evt_man)
+                    if not any(envelope.dgrams):
                         continue
                     self._batch_event_count += 1
-                    return Event(dgrams=item, run=self.run)
+                    return envelope
                 except StopIteration:
                     self._emit_batch_end()
                     try:
@@ -139,12 +135,12 @@ class Events:
                 if self.shared_state.terminate_flag.value:
                     raise StopIteration
                 try:
-                    dgrams = next(self._evt_man)
+                    envelope = next(self._evt_man)
                     cn += 1
-                    if not any(dgrams):
+                    if not any(envelope.dgrams):
                         continue
                     self._batch_event_count += 1
-                    return dgrams
+                    return envelope
                 except StopIteration:
                     try:
                         self._emit_batch_end()
@@ -176,4 +172,4 @@ class Events:
 
                 if not any(dgrams):
                     continue
-                return dgrams
+                return EventEnvelope(dgrams=dgrams)

@@ -20,7 +20,7 @@ class _EventSlot:
 
     slot_id: int
     gpu_results_by_ts: dict
-    cpu_evts: list
+    event_envelopes: list
     stream: object
     leases: list
     leases_by_ts: dict
@@ -119,7 +119,7 @@ class EventPool:
         self._slots[old.slot_id] = None
         self._retiring = None
 
-    def submit(self, gv, gpu_read, cpu_evts: list, gpu_detectors: dict):
+    def submit(self, gv, gpu_read, event_envelopes: list, gpu_detectors: dict):
         """Queue calibration into the already-retired next slot.
 
         Records a result-ready CUDA event after detector processing is queued,
@@ -192,7 +192,7 @@ class EventPool:
         record = _EventSlot(
             slot_id=slot,
             gpu_results_by_ts=gpu_results_by_ts,
-            cpu_evts=list(cpu_evts),
+            event_envelopes=list(event_envelopes),
             stream=stream,
             leases=all_leases,
             leases_by_ts=leases_by_ts,

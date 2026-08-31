@@ -9,8 +9,8 @@ import numpy as np
 
 _log = logging.getLogger(__name__)
 
-from psana import dgram
-from psana.event import Event
+from psana import dgram, utils
+from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
 from psana.gpu.gpu_calib import (
@@ -32,9 +32,9 @@ class _GpuOnlyDgram:
 
     GPU splitting intentionally removes GPU-stream SMD dgrams from the CPU
     batch.  When every selected stream is a GPU stream, EventManager therefore
-    returns an all-None dgram list.  Event still needs timestamp/service
-    metadata so Event can preserve the normal event API without
-    causing a redundant CPU BigData read.
+    returns an all-None dgram list. EventEnvelope still needs timestamp/service
+    metadata so Run.events() can preserve the normal API without causing a
+    redundant CPU BigData read.
     """
 
     def __init__(self, timestamp):
@@ -222,8 +222,8 @@ class _D2hPipeline:
         """
         items = []
         key = self._key
-        for evt in slot_record.cpu_evts:
-            ts = evt.timestamp
+        for envelope in slot_record.event_envelopes:
+            ts = utils.first_timestamp(envelope.dgrams)
             arr = slot_record.gpu_results_by_ts.get(ts, {}).get(key)
             if arr is None:
                 continue
@@ -403,8 +403,6 @@ class GpuEventManager:
     interface. The MPI path supplies coherent SMD/GPU batches directly through
     ``process_batch``; the manager never owns MPI communication.
     """
-
-    is_gpu_events = True
 
     def __init__(
         self,
@@ -943,7 +941,7 @@ class GpuEventManager:
 
         return end_run_seen
 
-    def _attach_gpu(self, evt, gpu_results, leases=None,
+    def _attach_gpu(self, envelope, gpu_results, leases=None,
                     pending_d2h=None, cached_cpu_results=None,
                     device_released=False):
         state = GpuEventState(
@@ -954,14 +952,14 @@ class GpuEventManager:
             cached_cpu_results=cached_cpu_results,
             device_released=device_released,
         )
-        return evt._attach_gpu(state)
+        return EventEnvelope(dgrams=envelope.dgrams, gpu_state=state)
 
-    def _submit_gpu(self, subbatch, gpu_read, cpu_evts):
+    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):
         """Submit one device slot and arm its automatic D→H immediately."""
         record = self.event_pool.submit(
             subbatch,
             gpu_read,
-            cpu_evts,
+            event_envelopes,
             self.gpu_detectors,
         )
         for pipe in self._d2h_pipelines.values():
@@ -989,18 +987,18 @@ class GpuEventManager:
             return
         # Log after the first batch: slot buffers have grown to their
         # initial sizes so this shows the steady-state allocation.
-        if not self._first_batch_logged and ready.cpu_evts:
+        if not self._first_batch_logged and ready.event_envelopes:
             self._first_batch_logged = True
             self.log_memory("first_batch")
-        for evt in ready.cpu_evts:
-            ts = evt.timestamp
+        for envelope in ready.event_envelopes:
+            ts = utils.first_timestamp(envelope.dgrams)
             gpu_results = ready.gpu_results_by_ts.get(ts, {})
             if device_released:
                 # Preserve the result-key API but never retain a stale view
                 # into a slot which the replacement H2D may now overwrite.
                 gpu_results = {key: None for key in gpu_results}
             yield self._attach_gpu(
-                evt,
+                envelope,
                 gpu_results,
                 leases={} if device_released else ready.leases_by_ts.get(ts, {}),
                 pending_d2h=ready.pending_d2h_by_ts.pop(ts, {}),
@@ -1098,7 +1096,7 @@ class GpuEventManager:
                 # ── CPU path ─────────────────────────────────────────────────
                 # EventManager loop runs while subbatch 0 reads are in-flight.
                 stop_after = False
-                cpu_evts   = []
+                event_envelopes = []
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
                         continue
@@ -1109,27 +1107,30 @@ class GpuEventManager:
                         self.max_retries,
                         self.use_smds,
                     )
-                    for dgrams in event_manager:
+                    for envelope in event_manager:
+                        dgrams = envelope.dgrams
                         # All GPU streams are represented in GPUBAT1, not the
                         # CPU batch.  A GPU-only dataset therefore has no CPU
-                        # dgram from which Event could obtain service/time.
+                        # dgram from which the envelope could obtain service/time.
                         # Synthesize that metadata below from GPUBAT1 instead.
                         if not any(dgrams):
                             continue
-                        evt = Event(dgrams=dgrams, run=self.run._run_ctx)
-                        if not TransitionId.isEvent(evt.service()):
+                        if not TransitionId.isEvent(utils.first_service(dgrams)):
                             continue
-                        cpu_evts.append(evt)
+                        event_envelopes.append(envelope)
                     if event_manager.exit_id:
                         raise RuntimeError(f"EventManager exit {event_manager.exit_id}")
 
                 # ── Submit subbatches ─────────────────────────────────────────
                 if all_subbatches:
-                    # Build a timestamp → CPU Event lookup, filling GPU-only
+                    # Build a timestamp → envelope lookup, filling GPU-only
                     # events from GPUBAT1 timestamps without reading BigData
                     # through the CPU path.
-                    ts_to_cpu = {evt.timestamp: evt for evt in cpu_evts}
-                    selected_cpu_evts = []
+                    ts_to_envelope = {
+                        utils.first_timestamp(envelope.dgrams): envelope
+                        for envelope in event_envelopes
+                    }
+                    selected_envelopes = []
                     for subbatch in all_subbatches:
                         for timestamp in subbatch.timestamps:
                             if (
@@ -1139,38 +1140,45 @@ class GpuEventManager:
                                 stop_after = True
                                 break
                             timestamp = int(timestamp)
-                            evt = ts_to_cpu.get(timestamp)
-                            if evt is None:
+                            envelope = ts_to_envelope.get(timestamp)
+                            if envelope is None:
                                 dgrams = [None] * len(self.configs)
                                 dgrams[0] = _GpuOnlyDgram(timestamp)
-                                evt = Event(dgrams=dgrams, run=self.run._run_ctx)
-                            selected_cpu_evts.append(evt)
+                                envelope = EventEnvelope(dgrams=dgrams)
+                            selected_envelopes.append(envelope)
                             n_events += 1
                         if stop_after:
                             break
-                    cpu_evts = selected_cpu_evts
-                    ts_to_cpu = {evt.timestamp: evt for evt in cpu_evts}
+                    event_envelopes = selected_envelopes
+                    ts_to_envelope = {
+                        utils.first_timestamp(envelope.dgrams): envelope
+                        for envelope in event_envelopes
+                    }
 
                     for i, subbatch in enumerate(all_subbatches):
-                        # CPU events whose timestamps appear in this subbatch.
+                        # Event envelopes whose timestamps appear in this subbatch.
                         sb_ts  = subbatch.timestamps
-                        sb_cpu = [ts_to_cpu[ts] for ts in sb_ts if ts in ts_to_cpu]
+                        sb_envelopes = [
+                            ts_to_envelope[ts]
+                            for ts in sb_ts
+                            if ts in ts_to_envelope
+                        ]
 
                         if i == 0 and first_pending is not None:
                             # Subbatch 0: reads were already issued before the
                             # CPU loop.  Just wait for them to complete.
                             _, pending_0 = first_pending
                             gpu_read = self._wait_gpu_read(pending_0)
-                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
+                            self._submit_gpu(subbatch, gpu_read, sb_envelopes)
                         else:
                             pending = yield from self._retire_issue_and_yield(
                                 subbatch
                             )
                             gpu_read = self._wait_gpu_read(pending)
-                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
+                            self._submit_gpu(subbatch, gpu_read, sb_envelopes)
                 else:
                     # No GPU batch — yield CPU-only events directly.
-                    for evt in cpu_evts:
+                    for envelope in event_envelopes:
                         if (
                             self.dsparms.max_events > 0
                             and n_events >= self.dsparms.max_events
@@ -1178,7 +1186,7 @@ class GpuEventManager:
                             stop_after = True
                             break
                         n_events += 1
-                        yield self._attach_gpu(evt, {})
+                        yield self._attach_gpu(envelope, {})
 
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
@@ -1188,7 +1196,7 @@ class GpuEventManager:
             self._n_events = n_events
 
     def process_batch(self, smd_batch, gpu_batch=None):
-        """Process one coherent EB-to-BD batch and yield final Events."""
+        """Process one coherent EB-to-BD batch and yield EventEnvelopes."""
         if self._done:
             return
         if self.gpu_reader is not None:
